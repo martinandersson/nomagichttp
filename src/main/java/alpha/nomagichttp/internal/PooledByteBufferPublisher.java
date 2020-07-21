@@ -35,14 +35,14 @@ public interface PooledByteBufferPublisher extends Flow.Publisher<ByteBuffer> {
      * It is permitted to release a buffer even if it has bytes {@link
      * ByteBuffer#hasRemaining() remaining} to be read. In this case, the
      * implementation must ensure the bytebuffer is immediately scheduled as the
-     * next one to be published. This is necessary for processors that process
-     * framed messages within a stream.<p>
+     * next one to be published. This is necessary for chained processors that
+     * process framed messages within a stream.<p>
      * 
      * This method is thread-safe and any thread can release a buffer; thread
      * identity does not matter.<p>
      * 
      * The invoking thread may be used by the implementation to perform new data
-     * reads and future subscriber deliveries.<p>
+     * reads and future item-deliveries.<p>
      * 
      * This method is safe to be called recursively.
      * 
