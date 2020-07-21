@@ -124,9 +124,8 @@ public class MediaType
      * 
      * @see Handler
      */
-    // TODO: rename to NOTHING_AND_ALL
-    public static final MediaType WHATEVER
-            = new MediaType("<whatever>", null, null, Map.of()) {};
+    public static final MediaType NOTHING_AND_ALL
+            = new MediaType("<nothing and all>", null, null, Map.of()) {};
     
     /**
      * A sentinel media type that can optionally be used as a handler's
@@ -459,7 +458,7 @@ public class MediaType
      * 
      * The specificity is defined as such:<p>
      * 
-     * 7 = if this is WHATEVER<br>
+     * 7 = if this is NOTHING_AND_ALL<br>
      * 6 = if this is NOTHING<br>
      * 5 = type and subtype is wildcard, no parameters.<br>
      * 4 = type and subtype is wildcard, has parameters.<br>
@@ -471,7 +470,7 @@ public class MediaType
      * @return an integer value for specificity
      */
     public final int specificity() {
-        if (this == WHATEVER) {
+        if (this == NOTHING_AND_ALL) {
             return 7;
         }
         
@@ -518,7 +517,7 @@ public class MediaType
         }
         
         // These sentinel objects use identity based equality.
-        if (this == NOTHING || obj == NOTHING || this == WHATEVER || obj == WHATEVER) {
+        if (this == NOTHING || obj == NOTHING || this == NOTHING_AND_ALL || obj == NOTHING_AND_ALL) {
             return false;
         }
         

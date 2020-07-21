@@ -18,7 +18,7 @@ import java.util.TreeSet;
 
 import static alpha.nomagichttp.message.MediaType.NOTHING;
 import static alpha.nomagichttp.message.MediaType.Score.NOPE;
-import static alpha.nomagichttp.message.MediaType.WHATEVER;
+import static alpha.nomagichttp.message.MediaType.NOTHING_AND_ALL;
 import static java.text.MessageFormat.format;
 import static java.util.Arrays.stream;
 import static java.util.Comparator.comparingDouble;
@@ -291,7 +291,7 @@ public final class DefaultRoute implements Route
     private static boolean filterByContentType(Handler handler, MediaType contentType) {
         final MediaType consumes = handler.consumes();
         
-        if (consumes == WHATEVER) {
+        if (consumes == NOTHING_AND_ALL) {
             return true;
         }
         

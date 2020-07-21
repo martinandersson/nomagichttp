@@ -55,7 +55,7 @@ import java.util.function.Function;
  * To guard against ambiguity, the application can register a more generic
  * handler as a fallback. The most generic handler which can never be
  * eliminated as a candidate based on media types alone, consumes
- * {@link MediaType#WHATEVER} and produces "*&#47;*".<p>
+ * {@link MediaType#NOTHING_AND_ALL} and produces "*&#47;*".<p>
  * 
  * For example:
  * <pre>{@code
@@ -114,7 +114,7 @@ import java.util.function.Function;
  * 
  * The handler may declare that he doesn't care at all whether or not the
  * "Content-Type" is provided or what value it possibly has: {@link
- * MediaType#WHATEVER}.<p>
+ * MediaType#NOTHING_AND_ALL}.<p>
  * 
  * 
  * <h4>Qualify handler with producing media type (content negotiation)</h4>
@@ -143,10 +143,9 @@ import java.util.function.Function;
  * response whatever it would be or even absent, is unacceptable.<p>
  * 
  * For the same reasons, a handler's producing media type can not be {@code
- * MediaType.NOTHING} or {@code MediaType.WHATEVER} as is the case for the
- * consuming media type of a handler. The most generic handler's producing media
- * type is "*&#47;*". This handler would still be free to not produce a response
- * body if it doesn't want to.<p>
+ * MediaType.NOTHING} or {@code MediaType.NOTHING_AND_ALL}. The most generic
+ * handler's producing media type is "*&#47;*". This handler would still be free
+ * to not produce a response body if it doesn't want to.<p>
  * 
  * Technically speaking, an "I accept nothing" media range could be declared as 
  * "*&#47;*; q=0". This however appears to be outside of what the quality value

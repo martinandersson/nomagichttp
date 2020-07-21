@@ -11,7 +11,7 @@ import java.util.Set;
 
 import static alpha.nomagichttp.message.MediaType.ALL;
 import static alpha.nomagichttp.message.MediaType.NOTHING;
-import static alpha.nomagichttp.message.MediaType.WHATEVER;
+import static alpha.nomagichttp.message.MediaType.NOTHING_AND_ALL;
 import static java.text.MessageFormat.format;
 import static java.util.Arrays.stream;
 import static java.util.Objects.requireNonNull;
@@ -162,7 +162,7 @@ public class RouteBuilder
         return this;
     }
     
-    private static final Set<MediaType> SPECIAL = Set.of(NOTHING, WHATEVER, ALL);
+    private static final Set<MediaType> SPECIAL = Set.of(NOTHING, NOTHING_AND_ALL, ALL);
     
     // TODO: Docs
     public RouteBuilder handler(Handler first, Handler... more) {
@@ -179,7 +179,7 @@ public class RouteBuilder
             if (specials.equals(SPECIAL)) {
                 throw new HandlerCollisionException(format(
                         "All other meta data being equal; if there''s a consumes {0} then {1} is effectively equal to {2}.",
-                        NOTHING, WHATEVER, ALL));
+                        NOTHING, NOTHING_AND_ALL, ALL));
             }
         }
         

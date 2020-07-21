@@ -5,7 +5,7 @@ import alpha.nomagichttp.message.MediaType;
 /**
  * Factory methods for building the default handler implementation without any
  * regards related to media types. ALl handlers returned by this class consumes
- * {@link MediaType#WHATEVER} and produces {@link MediaType#ALL}.
+ * {@link MediaType#NOTHING_AND_ALL} and produces {@link MediaType#ALL}.
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  */

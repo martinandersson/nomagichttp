@@ -103,7 +103,7 @@ public final class DefaultHandler implements Handler
     private static MediaType validateProduces(MediaType produces) {
         requireQualityOne(requireNonNull(produces));
         requireNotSame(produces, NOTHING);
-        requireNotSame(produces, WHATEVER);
+        requireNotSame(produces, NOTHING_AND_ALL);
         return produces;
     }
     
