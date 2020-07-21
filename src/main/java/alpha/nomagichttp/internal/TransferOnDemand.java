@@ -206,7 +206,7 @@ final class TransferOnDemand<T>
      */
     boolean finish(Runnable afterFinish) {
         // We require a callback because when after == null, that is how we know it got executed.
-        // A future overload could be provided of course which pass "() -> {}" to this method.
+        // A future overload could be provided of course which pass in "() -> {}" to this method.
         requireNonNull(afterFinish);
         
         long curr; boolean success = false;
