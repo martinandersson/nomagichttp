@@ -267,9 +267,10 @@ abstract class AbstractUnicastPublisher<T> implements Flow.Publisher<T>, Closeab
         
         @Override
         public void cancel() {
-            LOG.log(TRACE, () -> getClass().getSimpleName() +
-                    "'s subscriber asked to cancel the subscription.");
-            mediator.finish(this::clearSubscriberRef);
+            boolean effect = mediator.finish(this::clearSubscriberRef);
+            
+            LOG.log(TRACE, () -> AbstractUnicastPublisher.this.getClass().getSimpleName() +
+                    "'s subscriber asked to cancel the subscription. With effect: " + effect);
         }
         
         void announce() {
