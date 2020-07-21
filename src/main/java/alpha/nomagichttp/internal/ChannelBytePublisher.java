@@ -18,12 +18,6 @@ import static java.util.Objects.requireNonNull;
  * This class publishes bytebuffers read from an asynchronous channel (assumed
  * to not support concurrent read operations).<p>
  * 
- * When a bytebuffer has been read from the channel, it will be put in a queue
- * of <i>readable</i> bytebuffers, from which the subscriber polls.<p>
- * 
- * When the subscriber releases a bytebuffer, the buffer will be put in a queue
- * of <i>writable</i> buffers, from which channel read operations polls.<p>
- * 
  * Although not prohibited, it is probably not the best of ideas to process the
  * bytes asynchronously unless order of processing and releasing is guaranteed.
  * This would be a very weird protocol!
@@ -41,6 +35,14 @@ final class ChannelBytePublisher extends AbstractUnicastPublisher<ByteBuffer> im
                              BUFF_COUNT = 5,
                              // TODO: Document (same as jdk.internal.net.http.common.Utils.DEFAULT_BUFSIZE)
                              BUFF_SIZE  = 16 * 1_024;
+    
+    /*
+     * When a bytebuffer has been read from the channel, it will be put in a
+     * queue of readable bytebuffers, from which the subscriber polls.
+     * 
+     * When the subscriber releases a bytebuffer, the buffer will be put in a
+     * queue of writable buffers, from which channel read operations polls.
+     */
     
     private final AsynchronousByteChannel channel;
     private final Deque<ByteBuffer>       readable;
