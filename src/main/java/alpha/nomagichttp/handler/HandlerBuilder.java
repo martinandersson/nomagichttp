@@ -39,8 +39,7 @@ public final class HandlerBuilder
         return consumes(ALL);
     }
     
-    // TODO: Rename to consumesNothingAndAll()
-    public NextStep consumesWhatever() {
+    public NextStep consumesNothingAndAll() {
         return consumes(NOTHING_AND_ALL);
     }
     

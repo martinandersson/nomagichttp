@@ -62,7 +62,7 @@ import java.util.function.Function;
  *     import static alpha.nomagichttp.handler.HandlerBuilder.GET;
  *     ...
  *     Handler handler = GET()
- *             .consumesWhatever()
+ *             .consumesNothingAndAll()
  *             .producesAll()
  *             .run(() -> System.out.println("Hello, World!"));
  * }</pre>

@@ -28,7 +28,7 @@ public final class Handlers
     }
     
     public static HandlerBuilder.LastStep method(String method) {
-        return new HandlerBuilder(method).consumesWhatever().producesAll();
+        return new HandlerBuilder(method).consumesNothingAndAll().producesAll();
     }
     
     // TODO: Lots of more stuff
