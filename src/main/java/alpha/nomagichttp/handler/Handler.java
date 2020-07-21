@@ -26,13 +26,13 @@ import java.util.function.Function;
  * interprets the request headers- and body as well as what headers and body are
  * sent back.<p>
  * 
- * THe default implementation can be built using {@link HandlerBuilder} and
+ * THe default implementation can be built by using {@link HandlerBuilder} and
  * static methods in {@link Handlers}.
  * 
  * 
  * <h3>Handler Selection</h3>
  * 
- * The procedure to select which handlers of a route to call, is pretty straight
+ * The procedure to select which handler of a route to call, is pretty straight
  * forward: weed out all handlers that does not qualify and then call the one
  * with media types preferred by the client and most {@link
  * MediaType#specificity() specific} - details will be discussed throughout
@@ -42,9 +42,9 @@ import java.util.function.Function;
  * 
  * It is possible for an inbound request to be matched against many handlers
  * which are from the request's perspective an equally good fit. For example,
- * suppose we have two handlers mapped to the "GET" method token. They both
- * consume "text/plain" and differs only in their producing media type. They
- * would both match a "GET" request with header "Content-Type: text/plain"
+ * suppose the route has two handlers mapped to the "GET" method token which
+ * both consume "text/plain" and differs only in their producing media type.
+ * They would both match a "GET" request with header "Content-Type: text/plain"
  * and "Accept: *&#47;*". For this request, the matched handlers are
  * "ambiguous". When the handler resolution ends ambiguously, a
  * {@link AmbiguousNoHandlerFoundException} is thrown<p>
@@ -57,8 +57,7 @@ import java.util.function.Function;
  * eliminated as a candidate based on media types alone, consumes
  * {@link MediaType#WHATEVER} and produces "*&#47;*".<p>
  * 
- * For example, this handler is opting out from will be able to process all requests targeting the
- * route he is registered with:
+ * For example:
  * <pre>{@code
  *     import static alpha.nomagichttp.handler.HandlerBuilder.GET;
  *     ...
@@ -98,7 +97,7 @@ import java.util.function.Function;
  * If an inbound request has a {@link MediaType media type} set in the
  * "Content-Type" header, then this hints that an entity-body will be attached
  * and the server will proceed to filter out all handlers that does not consume
- * a {@link MediaType#compatibility(MediaType) compatible}  media type.<p>
+ * a {@link MediaType#compatibility(MediaType) compatible} media type.<p>
  * 
  * The handler can be very generic; ""text/*"", or the handler can be more
  * specific; "text/plain". In the event both of these handlers would remain after
@@ -210,11 +209,21 @@ import java.util.function.Function;
  * 
  * <h3>Scopes</h3>
  * 
- * Currently, no library-provided handler types are provided that caches the
- * request-handling function instance. {@link DefaultHandler} returns the
- * instance provided during construction time and is therefore a singleton. A
- * custom scoped implementation would have to implement this in {@link #logic()}
- * which is invoked by the server for each request.<p>
+ * Currently, no library-provided handler types are provided that arbitrarily
+ * caches the request-handling logic instance within a specified and limited
+ * scope. {@link DefaultHandler} returns the same logic instance provided during
+ * construction time and is therefore a singleton with a life time dependent on
+ * the life time of the route registry to which it is registered. A custom
+ * scoped implementation would have to be implement by a custom handler type's
+ * implementation of {@link #logic()} which is invoked by the server anew for
+ * each request.<p>
+ * 
+ * TODO: Implement "dependent/prototype" scope; new instance each time. Primary
+ * intended use-case is for handlers to more easily be able to save and use
+ * non-thread safe collaborators in a logic instance. Dependent+singleton are likely the
+ * only scopes we will ever provide and application would have to use phantom
+ * reference if they really want a destroy notification (there's no
+ * "@PreDestroy"). I.e. normal Java reference visibility rules.<p>
  * 
  * 
  * <h3>Thread safety and identity</h3>
