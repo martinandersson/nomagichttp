@@ -26,8 +26,8 @@
  * {@link java.util.concurrent.Flow.Publisher Flow.Publisher&lt;ByteBuffer&gt;},
  * consumed as request body and produced as response body respectively. This
  * enables the server implementation to be very scalable. Helpful API-provided
- * types and methods will ensure that working in an asynchronous environment is
- * easy and fun.<p>
+ * types and methods will make working in an asynchronous environment both easy
+ * and fun.<p>
  * 
  * Once the route has been constructed it can be added to a {@link
  * alpha.nomagichttp.Server Server}. The default server implementation ({@link
@@ -36,11 +36,10 @@
  * "proactive" for maximum performance across all operating systems that runs
  * Java.<p>
  * 
- * Routes can dynamically be added to and removed from a server both before and
- * after server-start. A legal server variant is to not even have any routes
- * registered. The idea is that resources (what's "behind the route") can be
- * short-lived and serve very specific purposes, so their presence can
- * change.<p>
+ * Routes can dynamically be added to and removed from a server. A legal server
+ * variant is to not even have any routes registered. The idea is that resources
+ * (what's "behind the route") can be short-lived and serve very specific
+ * purposes, so their presence can change.<p>
  * 
  * Request handlers does not enjoy the same level of freedom. They can not
  * dynamically come and go from the route. If "hot swapping" out the logic

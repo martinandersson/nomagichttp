@@ -30,18 +30,18 @@ import java.util.List;
  * address.<p>
  * 
  * The server's function is to provide port- and channel management, parse
- * inbound request headers and possibly based on these, resolve which handler of
- * a route is qualified to handle the request. The server will not apply or
- * validate HTTP semantics once the handler has been called. The handler is in
- * complete control over how it interprets the request headers- and body as well
- * as what headers and body it responds.
+ * an inbound request head and resolve which handler of a route is qualified to
+ * handle the request. The server will not apply or validate HTTP semantics once
+ * the handler has been called. The handler is in complete control over how it
+ * interprets the request headers- and body as well as what headers and body it
+ * responds.
  * 
  * 
  * <h3>Server Life-Cycle</h3>
  * 
  * It is possible to start many server instances on different ports. One
  * use-case for this pattern is to expose public endpoints on one port but
- * more sensitive administrator endpoints on another port.<p>
+ * more sensitive administrator endpoints on another more secluded port.<p>
  * 
  * If at least one server is running, then the JVM will not shutdown when the
  * main application thread returns. For the application process to end, all
@@ -63,15 +63,15 @@ import java.util.List;
  * The server instance is thread-safe.<p>
  * 
  * The server has a pool of threads (many times referred to as "request
- * threads"). This pool executes tasks that 1) accept new child channels on a
- * listening port (HTTP connections), 2) read/write bytes on the child channels
- * and 3) invoke the application-provided request handler.<p>
+ * threads"). This pool executes managerial tasks that 1) accept new child
+ * channels on a listening port (HTTP connections), 2) read/write bytes on the
+ * child channels and 3) invoke the application-provided request handler.<p>
  * 
- * The server thread pool is designed for short-lived tasks and request handlers
- * should thread-off for blocking I/O operations or any other type of work that
- * is anticipated to take a long time to complete. Failure to do so could starve
- * the pool of threads able to perform other work, potentially with a negative
- * impact on scalability.<p>
+ * The server thread pool is designed for short-lived CPU-bound tasks and
+ * request handlers should thread-off for blocking I/O operations or any other
+ * type of work that is anticipated to take a long time to complete. Failure to
+ * do so could starve the pool of threads able to perform other work,
+ * potentially with a negative impact on scalability.<p>
  * 
  * A future API will expose the server tread pool for re-use by
  * application-provided, CPU-bound and short-lived tasks without having to
