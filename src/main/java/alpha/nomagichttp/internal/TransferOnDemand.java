@@ -125,7 +125,13 @@ final class TransferOnDemand<T>
     private final Supplier<? extends T> from;
     private final Consumer<? super T> to;
     private final AtomicLong demand;
-    private volatile Runnable before, after;
+    // #before is safely published through volatile init and subsequent read of
+    // #demand thereafter only updated (to null) in the first serial run with
+    // full memory visibility in subsequent runs (so doesn't need volatile)
+    private Runnable before;
+    // #after is set outside a run and needs to be volatile
+    // (otherwise the reference value could in theory never be observed and executed)
+    private volatile Runnable after;
     
     /**
      * Constructs a {@code TransferOnDemand}.
@@ -155,9 +161,9 @@ final class TransferOnDemand<T>
     TransferOnDemand(Supplier<? extends T> from, Consumer<? super T> to, Runnable beforeFirstDelivery) {
         this.from   = requireNonNull(from);
         this.to     = requireNonNull(to);
-        this.demand = new AtomicLong();
         this.before = beforeFirstDelivery;
         this.after  = null;
+        this.demand = new AtomicLong();
     }
     
     /**
@@ -191,39 +197,55 @@ final class TransferOnDemand<T>
     }
     
     /**
-     * Stops future transfers and executes {@code afterFinish} immediately if no
-     * transfer is active, otherwise the callback is scheduled to be executed
-     * serially after the current transfer.<p>
+     * Stop future transfers.<p>
      * 
      * If the service has already finished, then this method is NOP and returns
-     * false ({@code afterFinish} will never execute).
+     * {@code false}. Otherwise, if this method invocation was the one to
+     * effectively mark the service finished, {@code true} is returned.<p>
      * 
-     * @param afterFinish callback
+     * A currently running transfer is not aborted and will run to completion.<p>
      * 
-     * @return {@code true} if the callback was executed immediately or
-     * scheduled to execute, otherwise {@code false}
+     * For competing parties trying stop the service, only one of them will
+     * succeed.<p>
      * 
-     * @throws NullPointerException if {@code afterFinish} is {@code null}
+     * @return a successful flag (see javadoc)
      */
-    boolean finish(Runnable afterFinish) {
-        // We require a callback because when after == null, that is how we know it got executed.
-        // A future overload could be provided of course which pass in "() -> {}" to this method.
-        requireNonNull(afterFinish);
-        
+    boolean finish() {
         long curr; boolean success = false;
         while ((curr = demand.get()) != FINISHED && !(success = demand.compareAndSet(curr, FINISHED))) {
             // try again
         }
-        
+        return success;
+    }
+    
+    /**
+     * Stop future transfers.<p>
+     * 
+     * Same as {@link #finish()}, except this method allows to submit a callback
+     * that is executed exactly-once and serially after the last transfer and
+     * only if this method invocation was successful in marking the service
+     * finished.<p>
+     * 
+     * The callback can only be executed immediately if no transfer is active,
+     * otherwise it will be scheduled to run after the active transfer.<p>
+     * 
+     * @param afterFinish callback
+     * 
+     * @return a successful flag (see javadoc)
+     * 
+     * @throws NullPointerException if {@code afterFinish} is {@code null}
+     */
+    // TODO: Rename afterFinish to andThen
+    boolean finish(Runnable afterFinish) {
+        requireNonNull(afterFinish);
+        final boolean success = finish();
         if (success) {
             // Only set callback if we were the party setting the FINISHED flag.
-            // We don't need to set this atomically together with the FINISHED flag...
+            // (i.e. a non-null value can only be set once)
             after = afterFinish;
-            
-            // ...because we will always tryTransfer() which will ensure the task is called.
+            // Re-signal to ensure the task is executed.
             tryTransfer();
         }
-        
         return success;
     }
     
@@ -245,7 +267,7 @@ final class TransferOnDemand<T>
     private final Runnable transferSerially = new SeriallyRunnable(this::transferLogic);
     
     private void transferLogic() {
-        // Volatile read before doing anything else (synchronizes-with write at the bottom)
+        // Volatile read before doing anything else (synchronizes-with c-tor + write at the bottom)
         final long then = demand.get();
         
         if (then == FINISHED) {
@@ -278,22 +300,22 @@ final class TransferOnDemand<T>
         }
     }
     
-    private void runBeforeOnce() {
-        if (before != null) {
-            try {
-                before.run();
-            } finally {
-                before = null;
-            }
-        }
-    }
-    
     private void runAfterOnce() {
         if (after != null) {
             try {
                 after.run();
             } finally {
                 after = null;
+            }
+        }
+    }
+    
+    private void runBeforeOnce() {
+        if (before != null) {
+            try {
+                before.run();
+            } finally {
+                before = null;
             }
         }
     }
