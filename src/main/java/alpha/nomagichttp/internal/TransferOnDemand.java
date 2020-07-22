@@ -97,19 +97,20 @@ import static java.util.Objects.requireNonNull;
  * 
  * <h2>Memory Synchronization</h2>
  * 
- * A request for more items ({@code increaseDemand}) happens-before a
- * transfer takes place and transfer {@code n} happens-before transfer
- * {@code n+1} (memory visibility in between).<p>
+ * A request for more items ({@code increaseDemand}) happens-before a subsequent
+ * transfer and transfer {@code n} happens-before transfer {@code n+1} (memory
+ * visibility in between).<p>
  * 
  * No guarantees are made about memory visibility between {@code tryTransfer}
- * and a subsequent transfer execution. Nor is this really needed. To be real
- * frank, what happens on the supplier-side ought to be completely irrelevant on
- * the consumer-side except for the item passed down which is by what means they
- * communicate.<p>
+ * and a subsequent transfer execution made by another thread. Nor is this
+ * really needed. To be real frank, what happens on the supplier-side ought to
+ * be completely irrelevant on the consumer-side except for the item passed down
+ * which is by what means they communicate. The item should always be safely
+ * published before making it available for delivery.<p>
  * 
- * What is important though is also what this class guarantees: the consumer
- * will never receive items <i>before</i> they have been requested and the
- * consumer will never receive <i>more<i/> items than what was requested.
+ * What is important is also what this class guarantees: the consumer will never
+ * receive items <i>before</i> they have been requested and the consumer will
+ * never receive <i>more<i/> items than what was requested.
  * 
  * 
  * @param <T> type of item to transfer

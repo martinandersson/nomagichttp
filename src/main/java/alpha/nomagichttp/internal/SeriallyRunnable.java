@@ -41,9 +41,9 @@ import static java.util.Objects.requireNonNull;
  * run is executed by another thread.<p>
  * 
  * Implementation-wise, this is guaranteed because each run starts with a read
- * of- followed by a write of a running-state variable using volatile semantics.
- * The subsequent initial read of the subsequent run is what establishes the
- * relationship with the write from after the previous run.<p>
+ * of- followed by an ending write of a running-state variable using volatile
+ * semantics. The subsequent initial read of the subsequent run is what
+ * establishes the relationship with the write from after the previous run.<p>
  * 
  * This also means that the very first run is only guaranteed to be
  * synchronized-with the initial state value written by the class constructor.
