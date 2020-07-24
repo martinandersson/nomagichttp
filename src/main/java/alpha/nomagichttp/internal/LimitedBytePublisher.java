@@ -80,7 +80,10 @@ final class LimitedBytePublisher implements Flow.Publisher<ByteBuffer>
             final int thenRemaining = item.remaining();
             
             if (desire < thenRemaining) {
-                delegate.onNext(item.slice().limit((int) desire));
+                int limit = (int) desire;
+                ByteBuffer slice = item.slice().limit(limit);
+                delegate.onNext(slice);
+                item.position(item.position() + slice.position());
             } else {
                 delegate.onNext(item);
             }
