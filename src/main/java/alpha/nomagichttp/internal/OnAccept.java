@@ -180,7 +180,7 @@ final class OnAccept implements CompletionHandler<AsynchronousSocketChannel, Voi
                                 if (exc2 != null) {
                                     dealWithError(exc2, child, handler);
                                 } else {
-                                    // TODO: Restart flow HTTP exchange flow
+                                    // TODO: Restart HTTP exchange flow
                                     LOG.log(INFO, "TODO: Restart flow.");
                                 }
                             });
