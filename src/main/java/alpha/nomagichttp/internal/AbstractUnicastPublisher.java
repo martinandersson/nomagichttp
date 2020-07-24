@@ -203,7 +203,6 @@ abstract class AbstractUnicastPublisher<T> implements Flow.Publisher<T>, Closeab
             // Can only call onError() if subscription hasn't been cancelled.
             // https://github.com/reactive-streams/reactive-streams-jvm/issues/487
             if (!temp.isCancelled()) {
-                // (in theory, an async cancel can happen just before we call onError() next)
                 subscriber.onError(new IllegalStateException(reason.get()));
             }
         } else {
