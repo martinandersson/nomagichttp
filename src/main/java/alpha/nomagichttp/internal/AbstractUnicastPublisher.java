@@ -1,14 +1,14 @@
 package alpha.nomagichttp.internal;
 
 import java.io.Closeable;
-import java.util.Optional;
 import java.util.concurrent.Flow;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Supplier;
 
-import static java.lang.System.Logger.Level.*;
+import static java.lang.System.Logger.Level.DEBUG;
+import static java.lang.System.Logger.Level.TRACE;
+import static java.lang.System.Logger.Level.WARNING;
 import static java.util.Objects.requireNonNull;
-import static java.util.Optional.ofNullable;
 
 /**
  * Provides all the subscriber and subscription plumbing for the concrete
@@ -260,18 +260,20 @@ abstract class AbstractUnicastPublisher<T> implements Flow.Publisher<T>, Closeab
                 mediator.increaseDemand(n);
             } catch (IllegalArgumentException e) {
                 // Rule 1.6, 1.7 and 2.4: After onError, the subscription is cancelled
-                mediator.finish(() ->
-                         clearSubscriberRef()
-                        .ifPresent(prev -> prev.onError(e)));
+                if (mediator.finish()) {
+                    clearSubscriberRef().onError(e);
+                }
             }
         }
         
         @Override
         public void cancel() {
-            boolean effect = mediator.finish(this::clearSubscriberRef);
-            
-            LOG.log(TRACE, () -> AbstractUnicastPublisher.this.getClass().getSimpleName() +
-                    "'s subscriber asked to cancel the subscription. With effect: " + effect);
+            boolean success = mediator.finish();
+            if (success) {
+                clearSubscriberRef();
+            }
+            LOG.log(TRACE, () -> AbstractUnicastPublisher.this +
+                    "'s subscriber asked to cancel the subscription. With effect: " + success);
         }
         
         void announce() {
@@ -279,22 +281,23 @@ abstract class AbstractUnicastPublisher<T> implements Flow.Publisher<T>, Closeab
         }
         
         void complete() {
-            mediator.finish(() ->
-                     clearSubscriberRef()
-                    .ifPresent(prev -> {
-                        try {
-                            prev.onComplete();
-                        } catch (RuntimeException e) {
-                            LOG.log(WARNING, "Ignoring RuntimeException caught while calling \"Subscriber.onComplete()\".", e);
-                        }
-                    }));
+            if (mediator.finish()) {
+                try {
+                    clearSubscriberRef().onComplete();
+                } catch (RuntimeException e) {
+                    LOG.log(WARNING, "Ignoring RuntimeException caught while calling \"Subscriber.onComplete()\".", e);
+                }
+            }
         }
         
-        private Optional<Flow.Subscriber<? super T>> clearSubscriberRef() {
-            AbstractUnicastPublisher.this.subscription.set(null);
-            Flow.Subscriber<? super T> prev = subscriber;
-            subscriber = null;
-            return ofNullable(prev);
+        // TODO: Rename to getAndClearSubscriberRef
+        private Flow.Subscriber<? super T> clearSubscriberRef() {
+            subscription.set(null);
+            try {
+                return subscriber;
+            } finally {
+                subscriber = null;
+            }
         }
         
         private void push(T item) {
