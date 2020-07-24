@@ -50,6 +50,13 @@ final class HeapSubscriber<R> implements Flow.Subscriber<ByteBuffer>
     
     @Override
     public void onSubscribe(Flow.Subscription subscription) {
+        if (result.isDone()) {
+            subscription.cancel();
+            // This is actually breaking the specification, but we have no other choice.
+            // https://github.com/reactive-streams/reactive-streams-jvm/issues/495
+            throw new IllegalStateException("No support for subscriber re-use.");
+        }
+        
         subscription.request(MAX_VALUE);
     }
     
