@@ -48,6 +48,7 @@ class SocketChannelOperations implements Closeable
         });
     }
     
+    // TODO: Return void and remove throws clause from all client call-sites
     private <V> V run(Callable<V> operation) throws Exception {
         final Thread worker = Thread.currentThread();
         final AtomicBoolean communicating = new AtomicBoolean(true);
