@@ -169,8 +169,8 @@ final class TransferOnDemand<T>
     /**
      * Increase the demand by {@code n} items.<p>
      * 
-     * If the service has <i>{@link #finish(Runnable) finished}</i>, then this
-     * method is NOP.
+     * If the service has <i>{@link #finish() finished}</i>, then this method is
+     * NOP.
      * 
      * @param n the number of items more the consumer is willing to accept
      * 
@@ -255,8 +255,8 @@ final class TransferOnDemand<T>
      * Must be called after condition changes to the effect a previously
      * null-producing supplier might start yielding non-null items again.<p>
      * 
-     * If the service has <i>{@link #finish(Runnable) finished}</i>, then this
-     * method is NOP.
+     * If the service has <i>{@link #finish() finished}</i>, then this method is
+     * NOP.
      * 
      * @see TransferOnDemand
      */
