@@ -17,8 +17,8 @@ import static java.lang.System.Logger.Level.DEBUG;
  * can be safely read in order to produce the final result, exposed through a
  * {@code CompletionStage}.<p>
  * 
- * Useful for clients that wish to collect data from bytebuffers in order for it
- * to be converted into any other arbitrary Java type.<p>
+ * Useful for clients that wish to collect data from bytebuffers in order for
+ * the data to be converted into any other arbitrary Java type.<p>
  * 
  * The intermediate byte[] occupies heap-space and so this class should not be
  * used if the final destination does not also reside in memory as this could
