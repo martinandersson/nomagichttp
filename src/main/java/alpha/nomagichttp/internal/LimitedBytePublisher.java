@@ -10,10 +10,9 @@ import static java.lang.System.Logger.Level.DEBUG;
  * of bytes sent to downstream subscriber before cancelling upstream
  * subscription and completing downstream subscriber.<p>
  * 
- * The upstream must be a {@link PooledByteBufferPublisher} and each buffer
- * published will be released immediately after delivery to the downstream
- * subscriber. This assumes the downstream subscriber processes the bytes
- * synchronously.
+ * Each buffer published by the upstream will be released immediately after
+ * delivery to the downstream subscriber. This assumes then that the downstream
+ * subscriber processes the bytes synchronously.
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  */
