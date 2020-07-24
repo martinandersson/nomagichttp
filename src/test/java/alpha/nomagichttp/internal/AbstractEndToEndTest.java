@@ -1,10 +1,10 @@
 package alpha.nomagichttp.internal;
 
 import alpha.nomagichttp.ExceptionHandler;
-import alpha.nomagichttp.route.Route;
-import alpha.nomagichttp.route.RouteBuilder;
 import alpha.nomagichttp.Server;
 import alpha.nomagichttp.ServerConfig;
+import alpha.nomagichttp.route.Route;
+import alpha.nomagichttp.route.RouteBuilder;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 
@@ -13,12 +13,12 @@ import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.http.HttpClient;
 import java.nio.ByteBuffer;
-import java.nio.channels.ClosedByInterruptException;
 import java.nio.channels.NetworkChannel;
 import java.nio.channels.SocketChannel;
 import java.util.Set;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import static alpha.nomagichttp.handler.Handlers.noop;
@@ -95,7 +95,9 @@ abstract class AbstractEndToEndTest
         return server;
     }
     
-    protected final String writeReadText(String request, String responseEnd) throws IOException {
+    protected final String writeReadText(String request, String responseEnd)
+            throws IOException, InterruptedException
+    {
         byte[] bytes = writeReadBytes(
                 request.getBytes(US_ASCII),
                 responseEnd.getBytes(US_ASCII));
@@ -103,11 +105,13 @@ abstract class AbstractEndToEndTest
         return new String(bytes, US_ASCII);
     }
     
-    protected final byte[] writeReadBytes(byte[] request, byte[] responseEnd) throws IOException {
+    protected final byte[] writeReadBytes(byte[] request, byte[] responseEnd)
+            throws IOException, InterruptedException
+    {
         final Thread worker = Thread.currentThread();
         final AtomicBoolean communicating = new AtomicBoolean(true);
         
-        scheduler.schedule(() -> {
+        ScheduledFuture<?> interrupt = scheduler.schedule(() -> {
             if (communicating.get()) {
                 LOG.log(WARNING, "HTTP exchange took too long, will timeout.");
                 worker.interrupt();
@@ -123,22 +127,24 @@ abstract class AbstractEndToEndTest
             FiniteByteBufferSink sink = new FiniteByteBufferSink(128, responseEnd);
             ByteBuffer buff = allocate(128);
             
-            try {
-                while (!sink.hasReachedEnd() && client.read(buff) != -1) {
-                    buff.flip();
-                    sink.write(buff);
-                    buff.clear();
-                }
+            while (!worker.isInterrupted() &&
+                    !sink.hasReachedEnd()   &&
+                    client.read(buff) != -1)
+            {
+                buff.flip();
+                sink.write(buff);
+                buff.clear();
             }
-            catch (ClosedByInterruptException e) {
-                Thread.interrupted(); // clear flag
-                throw e;
+            
+            if (Thread.interrupted()) { // clear flag
+                throw new InterruptedException();
             }
             
             return sink.toByteArray();
         }
         finally {
             communicating.set(false);
+            interrupt.cancel(false);
         }
     }
     

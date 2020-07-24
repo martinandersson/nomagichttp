@@ -32,7 +32,7 @@ class SimpleEndToEndTest extends AbstractEndToEndTest
     }
     
     @Test
-    void helloworld() throws IOException {
+    void helloworld() throws IOException, InterruptedException {
         Handler handler = Handlers.GET().supply(() ->
                 Responses.ok(TEXT_PLAIN, BodyPublishers.ofString("Hello World!")).asCompletedStage());
         
@@ -56,7 +56,7 @@ class SimpleEndToEndTest extends AbstractEndToEndTest
     }
     
     @Test
-    void echo_parameter() throws IOException {
+    void echo_parameter() throws IOException, InterruptedException {
         Handler echo = Handlers.GET().apply(request -> {
             String name = request.paramFromPath("name").get();
             String text = "Hello " + name + "!";
@@ -83,7 +83,7 @@ class SimpleEndToEndTest extends AbstractEndToEndTest
     // TODO: echo query parameter (but this needs to be implemented first lol)
     
     @Test
-    void echo_body() throws IOException {
+    void echo_body() throws IOException, InterruptedException {
         Handler echo = Handlers.GET().apply(request -> request.body().toText().thenApply(name -> {
             String greeting = "Hello " + name + "!";
             return Responses.ok(TEXT_PLAIN, BodyPublishers.ofString(greeting));
