@@ -196,10 +196,12 @@ abstract class AbstractUnicastPublisher<T> implements Flow.Publisher<T>, Closeab
             LOG.log(DEBUG, () -> "Failed to subscribe subscriber. " + reason.get());
             
             // Rule 1.9: Must call onSubscribe() before signalling error.
+            // https://github.com/reactive-streams/reactive-streams-jvm/issues/487
             CanOnlyBeCancelledSubscription temp = new CanOnlyBeCancelledSubscription();
             subscriber.onSubscribe(temp);
             
-            // Rule 1.9: Can only call onError() if subscription hasn't been cancelled.
+            // Can only call onError() if subscription hasn't been cancelled.
+            // https://github.com/reactive-streams/reactive-streams-jvm/issues/487
             if (!temp.isCancelled()) {
                 // (in theory, an async cancel can happen just before we call onError() next)
                 subscriber.onError(new IllegalStateException(reason.get()));
