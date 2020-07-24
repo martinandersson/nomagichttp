@@ -193,7 +193,7 @@ abstract class AbstractUnicastPublisher<T> implements Flow.Publisher<T>, Closeab
             Supplier<String> reason = () -> witnessValue == CLOSED ?
                         "Publisher is closed." : "Publisher has a subscriber already.";
             
-            LOG.log(DEBUG, () -> "Failed to subscribe subscriber. " + reason.get());
+            LOG.log(DEBUG, () -> "Failed to subscribe " + subscriber + ". " + reason.get());
             
             // Rule 1.9: Must call onSubscribe() before signalling error.
             // https://github.com/reactive-streams/reactive-streams-jvm/issues/487
@@ -207,7 +207,7 @@ abstract class AbstractUnicastPublisher<T> implements Flow.Publisher<T>, Closeab
                 subscriber.onError(new IllegalStateException(reason.get()));
             }
         } else {
-            LOG.log(DEBUG, () -> getClass().getSimpleName() + " has a new subscriber.");
+            LOG.log(DEBUG, () -> this + " has a new subscriber: " + subscriber);
             subscriber.onSubscribe(subscription);
         }
     }
