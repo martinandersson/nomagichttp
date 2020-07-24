@@ -74,6 +74,7 @@ final class ChannelBytePublisher extends AbstractUnicastPublisher<ByteBuffer> im
     public void release(ByteBuffer buffer) {
         if (buffer.hasRemaining()) {
             readable.addFirst(buffer);
+            announce();
         } else {
             writable.add(buffer.clear());
             readOp.run();
