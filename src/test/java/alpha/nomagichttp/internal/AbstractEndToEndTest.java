@@ -82,6 +82,7 @@ abstract class AbstractEndToEndTest
     @AfterAll
     static void stop() throws IOException, InterruptedException {
         if (listener != null) {
+            // TODO: Use official Server.stop() instead
             listener.close();
         }
         if (scheduler != null) {
