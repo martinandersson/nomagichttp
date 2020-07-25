@@ -277,7 +277,7 @@ class RouteMatchesTest
     }
     
     // PRIVATE
-    // -------
+    // ---
     
     private void assertMatches(String requestTarget, Map<String, String> expectedParameters) {
         if (expectedParameters == null) {
