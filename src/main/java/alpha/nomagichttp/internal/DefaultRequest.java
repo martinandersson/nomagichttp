@@ -18,11 +18,11 @@ import static java.util.Optional.ofNullable;
 
 final class DefaultRequest implements Request
 {
-    private final Head head;
+    private final RequestHead head;
     private final Map<String, String> pathParameters;
     private final Flow.Publisher<ByteBuffer> channel;
     
-    DefaultRequest(Head head, Map<String, String> pathParameters, Flow.Publisher<ByteBuffer> channel) {
+    DefaultRequest(RequestHead head, Map<String, String> pathParameters, Flow.Publisher<ByteBuffer> channel) {
         this.head = head;
         this.pathParameters = pathParameters;
         this.channel = channel;

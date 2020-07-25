@@ -31,7 +31,7 @@ class HeadParserTest
     private static final TestServer SERVER = new TestServer();
     
     private SocketChannelOperations client;
-    private CompletionStage<Head> testee;
+    private CompletionStage<RequestHead> testee;
     
     @BeforeAll
     static void beforeAll() throws IOException {
@@ -328,10 +328,10 @@ class HeadParserTest
             throws InterruptedException, ExecutionException, TimeoutException
     {
         return assertThat(actual()).extracting(
-                Head::method, Head::requestTarget, Head::httpVersion, Head::headers);
+                RequestHead::method, RequestHead::requestTarget, RequestHead::httpVersion, RequestHead::headers);
     }
     
-    private Head actual() throws InterruptedException, ExecutionException, TimeoutException {
+    private RequestHead actual() throws InterruptedException, ExecutionException, TimeoutException {
         return testee.toCompletableFuture().get(2, SECONDS);
     }
     

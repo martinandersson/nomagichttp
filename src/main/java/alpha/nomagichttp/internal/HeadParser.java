@@ -26,7 +26,7 @@ final class HeadParser
     
     private final PooledByteBufferPublisher publisher;
     private final int maxHeadSize;
-    private final CompletableFuture<Head> result;
+    private final CompletableFuture<RequestHead> result;
     private final HeadProcessor processor;
     
     HeadParser(PooledByteBufferPublisher from, int maxRequestHeadSize) {
@@ -38,7 +38,7 @@ final class HeadParser
         publisher.subscribe(new Subscriber());
     }
     
-    CompletionStage<Head> asCompletionStage() {
+    CompletionStage<RequestHead> asCompletionStage() {
         return result.minimalCompletionStage();
     }
     
@@ -65,7 +65,7 @@ final class HeadParser
         }
         
         private void onNext0(ByteBuffer buff) {
-            Head finished = null;
+            RequestHead finished = null;
             
             while (buff.hasRemaining() && finished == null) {
                 char curr = (char) buff.get();

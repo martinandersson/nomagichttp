@@ -109,7 +109,7 @@ final class HeadProcessor
     private char prev, curr;
     
     private Runnable step;
-    private Head completed;
+    private RequestHead completed;
     
     HeadProcessor() {
         token = new StringBuilder();
@@ -118,7 +118,7 @@ final class HeadProcessor
         completed = null;
     }
     
-    Head accept(char curr) {
+    RequestHead accept(char curr) {
         ++read;
         this.curr = curr;
         step.run();
@@ -321,7 +321,7 @@ final class HeadProcessor
                 headerValues != null ? headerValues : Map.of(),
                 (k, v) -> true);
         
-        completed = new Head(
+        completed = new RequestHead(
                 method, requestTarget, httpVersion, headers);
     }
 }
