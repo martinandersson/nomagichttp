@@ -222,9 +222,6 @@ public class MediaType
         
         if (!extension.isEmpty()) {
             LOG.log(WARNING, () -> "Media type extension parameters ignored: " + extension);
-            // TODO: Remove this once I have test for the logging statement
-            throw new UnsupportedOperationException(
-                    "Need to log these extension params: " + extension);
         }
         
         if (type.equals(WILDCARD) || subtype.equals(WILDCARD) || qVal.isPresent()) {

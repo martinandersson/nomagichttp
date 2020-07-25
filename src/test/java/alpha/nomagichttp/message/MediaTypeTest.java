@@ -1,10 +1,15 @@
 package alpha.nomagichttp.message;
 
+import alpha.nomagichttp.test.Logging;
 import org.junit.jupiter.api.Test;
+import org.mockito.Mockito;
 
 import java.util.Map;
+import java.util.logging.Handler;
 
+import static java.util.logging.Level.WARNING;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.argThat;
 
 class MediaTypeTest
 {
@@ -65,10 +70,19 @@ class MediaTypeTest
         assertThat(actual.toStringNormalized()).isEqualTo("text/plain; b=123; a=4 5 6; q=1");
     }
     
-    // TODO: Fix once we log stuff
     @Test
     void extension_params() {
+        Handler handler = Mockito.mock(Handler.class);
+        Logging.addHandler(MediaType.class, handler);
+        
         MediaType.parse("*/*; q=1; extension=param");
+        
+        String expMsg = "Media type extension parameters ignored: " +
+                Map.of("extension", "param").toString();
+        
+        Mockito.verify(handler).publish(argThat(r ->
+                r.getLevel().equals(WARNING) &&
+                r.getMessage().equals(expMsg)));
     }
     
     // TODO: more error cases
