@@ -1,16 +1,19 @@
 package alpha.nomagichttp.internal;
 
+import alpha.nomagichttp.message.MediaType;
 import alpha.nomagichttp.message.Request;
 
 import java.net.http.HttpHeaders;
 import java.nio.ByteBuffer;
-import java.nio.charset.StandardCharsets;
+import java.nio.charset.Charset;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.Flow;
 import java.util.function.BiFunction;
 
+import static alpha.nomagichttp.message.Headers.contentType;
+import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.util.Optional.ofNullable;
 
 final class DefaultRequest implements Request
@@ -67,12 +70,15 @@ final class DefaultRequest implements Request
     {
         @Override
         public CompletionStage<String> toText() {
-            // TODO: Charset should be taken out from request headers
+            Charset charset = contentType(headers())
+                    .filter(m -> m.type().equals("text"))
+                    .map(MediaType::parameters)
+                    .map(p -> p.get("charset"))
+                    .map(Charset::forName)
+                    .orElse(UTF_8);
             
-            BiFunction<byte[], Integer, String> f = (buf, count) ->
-                    new String(buf, 0, count, StandardCharsets.US_ASCII);
-            
-            return convert(f);
+            return convert((buf, count) ->
+                    new String(buf, 0, count, charset));
         }
         
         @Override
