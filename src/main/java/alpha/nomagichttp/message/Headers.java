@@ -62,7 +62,7 @@ public final class Headers {
      * @throws BadMediaTypeSyntaxException
      *           see {@link MediaType#parse(CharSequence)}}
      * 
-     * @throws BadRequestException
+     * @throws BadHeaderException
      *           if headers has multiple Content-Type keys
      * 
      * @see <a href="https://tools.ietf.org/html/rfc7231#section-3.1.1.5">RFC 7231 §3.1.1.5</a>
@@ -77,7 +77,7 @@ public final class Headers {
             return Optional.of(MediaType.parse(values.get(0)));
         }
         
-        throw new BadRequestException("Multiple Content-Type values in request.");
+        throw new BadHeaderException("Multiple Content-Type values in request.");
     }
     
     /**
@@ -96,7 +96,7 @@ public final class Headers {
      * @param  headers source to parse from
      * @return parsed value (never {@code null})
      * 
-     * @throws BadRequestException
+     * @throws BadHeaderException
      *             if header value can not be parsed, or
      *             the header has multiple Content-Length keys
      * 
@@ -113,12 +113,12 @@ public final class Headers {
             try {
                 return OptionalLong.of(parseLong(values.get(0)));
             } catch (NumberFormatException e) {
-                throw new BadRequestException(
+                throw new BadHeaderException(
                         "Can not parse Content-Length into an int.", e);
             }
         }
         
-        throw new BadRequestException(
+        throw new BadHeaderException(
                 "Multiple Content-Length values in request.");
     }
 }

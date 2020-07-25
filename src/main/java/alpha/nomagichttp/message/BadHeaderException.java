@@ -13,14 +13,13 @@ import alpha.nomagichttp.route.Route;
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  */
-// TODO: Rename to BadHeaderValueException
-public class BadRequestException extends RuntimeException
+public class BadHeaderException extends RuntimeException
 {
-    public BadRequestException(String message) {
+    public BadHeaderException(String message) {
         super(message);
     }
     
-    public BadRequestException(String message, Throwable cause) {
+    public BadHeaderException(String message, Throwable cause) {
         super(message, cause);
     }
 }
