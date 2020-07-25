@@ -25,8 +25,7 @@ import static java.lang.System.Logger.Level.ALL;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
 
-// TODO: Rename to RequestHeadParserTest
-class HeadParserTest
+class RequestHeadParserTest
 {
     private static final TestServer SERVER = new TestServer();
     
