@@ -28,6 +28,8 @@ dependencies {
     testImplementation 'org.junit.jupiter:junit-jupiter-api:5.5.1'
     testImplementation 'org.assertj:assertj-core:3.16.1'
     
+    testImplementation 'org.mockito:mockito-core:3.4.4'
+    
     // Use JUnit Jupiter Engine for testing.
     testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine:5.5.1'
 }
