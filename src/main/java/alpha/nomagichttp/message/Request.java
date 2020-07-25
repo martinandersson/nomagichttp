@@ -5,6 +5,7 @@ import java.nio.ByteBuffer;
 import java.util.Optional;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.Flow;
+import java.util.function.BiFunction;
 
 // TODO: Document
 public interface Request
@@ -70,6 +71,30 @@ public interface Request
         CompletionStage<String> toText();
         
         // TODO: toEverythingElse()
+        
+        /**
+         * Convert the request body into an arbitrary Java type.<p>
+         * 
+         * All bytes in the bytebuffers from the network source will be
+         * collected into a byte[]. Once all of the body has been read, the
+         * byte[] will be passed to the specified function together with a count
+         * of valid bytes that can be safely read from the array.<p>
+         * 
+         * For example;
+         * <pre>{@code
+         *   BiFunction<byte[], Integer, String> f = (buf, count) ->
+         *       new String(buf, 0, count, StandardCharsets.US_ASCII);
+         *   
+         *   CompletionStage<String> text = myRequest.body().convert(f);
+         * }</pre>
+         * 
+         * @param f    byte[]-to-type converter
+         * @param <R>  result type
+         * 
+         * @return the result from applying the function {@code f}
+         */
+        <R> CompletionStage<R> convert(BiFunction<byte[], Integer, R> f);
+        
         /**
          * Returns the request body as a publisher of bytebuffers.<p>
          * 
