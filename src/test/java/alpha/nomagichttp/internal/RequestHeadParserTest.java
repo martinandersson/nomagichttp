@@ -1,6 +1,6 @@
 package alpha.nomagichttp.internal;
 
-import alpha.nomagichttp.message.ParseException;
+import alpha.nomagichttp.message.RequestHeadParseException;
 import alpha.nomagichttp.test.Logging;
 import org.assertj.core.api.AbstractListAssert;
 import org.assertj.core.api.ObjectAssert;
@@ -109,7 +109,7 @@ class RequestHeadParserTest
         waitForCompletion();
         
         assertThat(testee).hasFailedWithThrowableThat()
-                .isInstanceOf(ParseException.class)
+                .isInstanceOf(RequestHeadParseException.class)
                 .hasMessage("Unexpected char.")
                 .extracting("pos").isEqualTo(p1.length());
     }
@@ -131,7 +131,7 @@ class RequestHeadParserTest
         waitForCompletion();
         
         assertThat(testee).hasFailedWithThrowableThat()
-                .isInstanceOf(ParseException.class)
+                .isInstanceOf(RequestHeadParseException.class)
                 .hasMessage("Empty HTTP-version.")
                 .extracting("pos").isEqualTo(p1.length());
     }
@@ -149,7 +149,7 @@ class RequestHeadParserTest
         waitForCompletion();
         
         assertThat(testee).hasFailedWithThrowableThat()
-                .isInstanceOf(ParseException.class)
+                .isInstanceOf(RequestHeadParseException.class)
                 .hasMessage("CR followed by something other than LF.")
                 .extracting("pos").isEqualTo(p1.length());
     }
@@ -161,7 +161,7 @@ class RequestHeadParserTest
         waitForCompletion();
         
         assertThat(testee).hasFailedWithThrowableThat()
-                .isInstanceOf(ParseException.class)
+                .isInstanceOf(RequestHeadParseException.class)
                 .hasMessage("Whitespace in HTTP-version not accepted.")
                 .extracting("pos").isEqualTo(p1.length());
     }
@@ -179,7 +179,7 @@ class RequestHeadParserTest
         waitForCompletion();
         
         assertThat(testee).hasFailedWithThrowableThat()
-                .isInstanceOf(ParseException.class)
+                .isInstanceOf(RequestHeadParseException.class)
                 .hasMessage("Whitespace in header key or before colon is not accepted.")
                 .extracting("pos").isEqualTo(p1.length());
     }
@@ -194,7 +194,7 @@ class RequestHeadParserTest
         waitForCompletion();
         
         assertThat(testee).hasFailedWithThrowableThat()
-                .isInstanceOf(ParseException.class)
+                .isInstanceOf(RequestHeadParseException.class)
                 .hasMessage("Whitespace in header key or before colon is not accepted.")
                 .extracting("pos").isEqualTo(p1.length());
     }
@@ -209,7 +209,7 @@ class RequestHeadParserTest
         waitForCompletion();
         
         assertThat(testee).hasFailedWithThrowableThat()
-                .isInstanceOf(ParseException.class)
+                .isInstanceOf(RequestHeadParseException.class)
                 .hasMessage("Whitespace in header key or before colon is not accepted.")
                 .extracting("pos").isEqualTo(p1.length());
     }
@@ -224,7 +224,7 @@ class RequestHeadParserTest
         waitForCompletion();
         
         assertThat(testee).hasFailedWithThrowableThat()
-                .isInstanceOf(ParseException.class)
+                .isInstanceOf(RequestHeadParseException.class)
                 .hasMessage("Leading whitespace in header key not accepted.")
                 .extracting("pos").isEqualTo(p1.length());
     }

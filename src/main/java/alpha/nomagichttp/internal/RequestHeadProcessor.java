@@ -1,6 +1,6 @@
 package alpha.nomagichttp.internal;
 
-import alpha.nomagichttp.message.ParseException;
+import alpha.nomagichttp.message.RequestHeadParseException;
 
 import java.net.http.HttpHeaders;
 import java.util.ArrayList;
@@ -312,7 +312,7 @@ final class RequestHeadProcessor
     }
     
     private RuntimeException parseException(String msg) {
-        return new ParseException(msg, prev, curr, read - 1);
+        return new RequestHeadParseException(msg, prev, curr, read - 1);
     }
     
     private void complete() {
