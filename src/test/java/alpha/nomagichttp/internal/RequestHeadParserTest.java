@@ -34,7 +34,7 @@ class RequestHeadParserTest
     
     @BeforeAll
     static void beforeAll() throws IOException {
-        Logging.setLevel(HeadParser.class, ALL);
+        Logging.setLevel(RequestHeadParser.class, ALL);
         SERVER.start();
     }
     
@@ -42,7 +42,7 @@ class RequestHeadParserTest
     void beforeEach() throws Throwable {
         client = new SocketChannelOperations(SERVER.newClient());
         PooledByteBufferPublisher child = new ChannelBytePublisher(SERVER.accept());
-        testee = new HeadParser(child, MAX_VALUE).asCompletionStage();
+        testee = new RequestHeadParser(child, MAX_VALUE).asCompletionStage();
     }
     
     @AfterEach

@@ -10,8 +10,6 @@ import java.util.concurrent.Flow;
 
 import static java.lang.System.Logger.Level.DEBUG;
 
-// TODO: Rename to RequestHeadParser
-
 // TODO: Should we have a timeout for how long we allow a client to send the head?
 //       Or do we accept that server+client may have an "infinitely" slow connection?
 //       Why we might want to add such a limit is because the connection might be
@@ -20,16 +18,16 @@ import static java.lang.System.Logger.Level.DEBUG;
 //       cleared on each new read, almost like a heartbeat. So, if we don't get a single
 //       byte despite us waiting for bytes, then we timeout.
 
-final class HeadParser 
+final class RequestHeadParser 
 {
-    private static final System.Logger LOG = System.getLogger(HeadParser.class.getPackageName());
+    private static final System.Logger LOG = System.getLogger(RequestHeadParser.class.getPackageName());
     
     private final PooledByteBufferPublisher publisher;
     private final int maxHeadSize;
     private final CompletableFuture<RequestHead> result;
     private final HeadProcessor processor;
     
-    HeadParser(PooledByteBufferPublisher from, int maxRequestHeadSize) {
+    RequestHeadParser(PooledByteBufferPublisher from, int maxRequestHeadSize) {
         publisher   = from;
         maxHeadSize = maxRequestHeadSize;
         result      = new CompletableFuture<>();

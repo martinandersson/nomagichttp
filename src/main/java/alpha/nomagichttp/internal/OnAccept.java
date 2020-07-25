@@ -40,8 +40,8 @@ import static java.lang.System.Logger.Level.INFO;
  * which is a {@link Flow.Publisher Flow.Publisher&lt;ByteBuffer&gt;}. This
  * publisher will never complete for as long as the channel remains open.<p>
  * 
- * The first subscriber to subscribe to the channel is {@link HeadParser} which
- * is setup by this class. Once the request head has been parsed, an
+ * The first subscriber to subscribe to the channel is {@link RequestHeadParser}
+ * which is setup by this class. Once the request head has been parsed, an
  * application-provided {@link Handler} will be resolved and called with a
  * {@link DefaultRequest} through which the channel byte publisher is exposed.
  * The handler will then be able to subscribe to the channel and consume the
@@ -91,7 +91,7 @@ final class OnAccept implements CompletionHandler<AsynchronousSocketChannel, Voi
         
         PooledByteBufferPublisher bytebuffers = new ChannelBytePublisher(child);
         
-        new HeadParser(bytebuffers, config.maxRequestHeadSize())
+        new RequestHeadParser(bytebuffers, config.maxRequestHeadSize())
                 .asCompletionStage()
                 .whenComplete((head, exc) -> {
                     if (exc != null) {
