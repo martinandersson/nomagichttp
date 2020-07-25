@@ -82,15 +82,9 @@ class RouteMatchesTest
         assertMatchesNull("/a//", "/a///", "/a////");
     }
     
-    @Test
-    void not_tolerant_to_many_slashes_3() {
-        builder = new RouteBuilder("/a");
-        assertMatchesNull("/a//", "/a///", "/a////");
-    }
-    
     // TODO: Fix failing test.
     @Test
-    void not_tolerant_to_many_slashes_4() {
+    void not_tolerant_to_many_slashes_3() {
         builder = new RouteBuilder("/a").param("x");
         assertMatchesNull("/a//", "/a///", "/a////");
     }
