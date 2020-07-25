@@ -31,7 +31,7 @@ import static java.lang.System.Logger.Level.ERROR;
 import static java.lang.System.Logger.Level.INFO;
 
 /**
- * Handles accepted (new) client/child connections.<p>
+ * Handles a newly accepted client/child connection.<p>
  * 
  * The way this class handles the channel (client connection) is to setup an
  * asynchronous and continuous flow of anticipated HTTP exchanges.<p>
