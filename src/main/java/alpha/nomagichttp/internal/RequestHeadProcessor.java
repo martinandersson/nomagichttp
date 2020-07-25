@@ -96,10 +96,9 @@ import static java.util.Objects.requireNonNull;
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  */
-// TODO: Rename to RequestHeadProcessor
-final class HeadProcessor
+final class RequestHeadProcessor
 {
-    private static final System.Logger LOG = System.getLogger(HeadProcessor.class.getPackageName());
+    private static final System.Logger LOG = System.getLogger(RequestHeadProcessor.class.getPackageName());
     
     private static final byte CR = 13, LF = 10;
     
@@ -111,7 +110,7 @@ final class HeadProcessor
     private Runnable step;
     private RequestHead completed;
     
-    HeadProcessor() {
+    RequestHeadProcessor() {
         token = new StringBuilder();
         prev = curr = Character.MIN_VALUE;
         step = this::parseMethod;

@@ -25,13 +25,13 @@ final class RequestHeadParser
     private final PooledByteBufferPublisher publisher;
     private final int maxHeadSize;
     private final CompletableFuture<RequestHead> result;
-    private final HeadProcessor processor;
+    private final RequestHeadProcessor processor;
     
     RequestHeadParser(PooledByteBufferPublisher from, int maxRequestHeadSize) {
         publisher   = from;
         maxHeadSize = maxRequestHeadSize;
         result      = new CompletableFuture<>();
-        processor   = new HeadProcessor();
+        processor   = new RequestHeadProcessor();
         
         publisher.subscribe(new Subscriber());
     }
