@@ -145,7 +145,7 @@ public class MediaType
     public static final MediaType TEXT_PLAIN = parse("text/plain");
     
     /**
-     * Parse a value into a {@link MediaType} or a {@link MediaRange}.<p>
+     * Parse a text into a {@link MediaType} or a {@link MediaRange}.<p>
      * 
      * If the parsed <i>type</i> or <i>subtype</i> is a wildcard character ("*")
      * or the last parameter (if present) is a "q"/"Q"-named parameter, then the
@@ -168,7 +168,7 @@ public class MediaType
      * <a href="https://tools.ietf.org/html/rfc2046#section-4.1.2">
      * RFC 2046 §4.1.2</a>).<p>
      * 
-     * All tokens extracted out from the specified {@code mediaType} will be
+     * All tokens extracted from the specified {@code mediaType} will be
      * stripped of leading and trailing white space.<p>
      * 
      * As an example, all these are considered equal:
