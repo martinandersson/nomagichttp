@@ -33,12 +33,11 @@ import static java.util.Objects.requireNonNull;
  * same thread and this operation never runs concurrently.<p>
  * 
  * Transfers will repeat for as long as they are successful (supplier and
- * consumer does not throw exception) and for as long as the supplier is able to
- * produce non-null items and for as long as the consumer is in demand. This
- * means that a thread initiating a transfer may be used to not just deliver one
- * item but many. Time-sensitive applications that can not afford a thread being
- * blocked for long must cap/throttle either one or both of the supplier and
- * consumer (through his demand).
+ * consumer does not throw exception). This means that a thread initiating a
+ * transfer may be used to not just deliver one item but many. Time-sensitive
+ * applications that can not afford a thread being blocked for long must
+ * cap/throttle either one or both of the supplier and consumer (through his
+ * demand).
  * 
  * 
  * <h2>Threading Model</h2>
