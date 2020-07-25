@@ -28,7 +28,7 @@ import static java.util.Objects.requireNonNull;
  * method which will trigger a new attempt to transfer an item to the
  * subscriber.<p>
  * 
- * The transfer logic is provided by {@link TransferOnDemand} and the same
+ * The transfer logic is provided by {@link SerialTransferService} and the same
  * guarantees and semantics {@code TransferOnDemand} specifies applies also to
  * this class which can be regarded as merely a {@code Flow.Publisher} API on
  * top of {@code TransferOnDemand}. In fact, the publisher subclass is the
@@ -245,11 +245,11 @@ abstract class AbstractUnicastPublisher<T> implements Flow.Publisher<T>, Closeab
     
     private final class RealSubscription implements Flow.Subscription
     {
-        private final TransferOnDemand<T> mediator;
+        private final SerialTransferService<T> mediator;
         private volatile Flow.Subscriber<? super T> subscriber;
         
         RealSubscription(Flow.Subscriber<? super T> subscriber) {
-            this.mediator = new TransferOnDemand<>(AbstractUnicastPublisher.this::poll, this::push);
+            this.mediator = new SerialTransferService<>(AbstractUnicastPublisher.this::poll, this::push);
             this.subscriber = subscriber;
         }
         

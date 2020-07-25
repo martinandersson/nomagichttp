@@ -59,14 +59,14 @@ final class ResponseToChannelWriter
     
     private final AsynchronousByteChannel channel;
     private final Deque<ByteBuffer> readable;
-    private final TransferOnDemand<ByteBuffer> transfer;
+    private final SerialTransferService<ByteBuffer> transfer;
     private final CompletableFuture<Void> result;
     
     ResponseToChannelWriter(AsynchronousByteChannel channel, Response response) {
         this.channel = requireNonNull(channel);
         
         readable = new ConcurrentLinkedDeque<>();
-        transfer = new TransferOnDemand<>(readable::poll, new Writer()::write);
+        transfer = new SerialTransferService<>(readable::poll, new Writer()::write);
         result   = new CompletableFuture<Void>()
                 .whenComplete((ign,ored) -> readable.clear());
         

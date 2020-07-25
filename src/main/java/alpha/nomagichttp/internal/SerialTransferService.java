@@ -116,8 +116,7 @@ import static java.util.Objects.requireNonNull;
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  */
-// TODO: Rename to TransferService
-final class TransferOnDemand<T>
+final class SerialTransferService<T>
 {
     private static final int FINISHED = -1;
     
@@ -140,7 +139,7 @@ final class TransferOnDemand<T>
      * 
      * @throws NullPointerException if {@code from} or {@code to} is {@code null}
      */
-    TransferOnDemand(Supplier<? extends T> from, Consumer<? super T> to) {
+    SerialTransferService(Supplier<? extends T> from, Consumer<? super T> to) {
         this(from, to, null);
     }
     
@@ -157,7 +156,7 @@ final class TransferOnDemand<T>
      * 
      * @throws NullPointerException if {@code from} or {@code to} is {@code null}
      */
-    TransferOnDemand(Supplier<? extends T> from, Consumer<? super T> to, Runnable beforeFirstDelivery) {
+    SerialTransferService(Supplier<? extends T> from, Consumer<? super T> to, Runnable beforeFirstDelivery) {
         this.from   = requireNonNull(from);
         this.to     = requireNonNull(to);
         this.before = beforeFirstDelivery;
@@ -257,7 +256,7 @@ final class TransferOnDemand<T>
      * If the service has <i>{@link #finish() finished}</i>, then this method is
      * NOP.
      * 
-     * @see TransferOnDemand
+     * @see SerialTransferService
      */
     void tryTransfer() {
         transferSerially.run();
