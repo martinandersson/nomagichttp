@@ -65,7 +65,7 @@ class RouteMatchesTest
     }
     
     @Test
-    void simple_match_multiple_slash_tolerant_1() {
+    void simple_match_no_slash_tolerant() {
         builder = new RouteBuilder("/a");
         assertMatches("a", of());          // <-- no slash at all
     }
