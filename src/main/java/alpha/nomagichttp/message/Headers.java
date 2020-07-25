@@ -2,6 +2,7 @@ package alpha.nomagichttp.message;
 
 import java.net.http.HttpHeaders;
 import java.util.List;
+import java.util.Optional;
 import java.util.OptionalLong;
 
 import static alpha.nomagichttp.message.Strings.split;
@@ -55,24 +56,25 @@ public final class Headers {
      * 
      * TODO: Example.<p>
      * 
-     * {@link MediaType#NOTHING} is returned if the header is not present.
-     * 
      * @param  headers source to parse from
      * @return parsed value (never {@code null})
      * 
-     * @throws BadMediaTypeSyntaxException see {@link MediaType#parse(CharSequence)}}
-     * @throws BadRequestException if headers has multiple Content-Type keys
+     * @throws BadMediaTypeSyntaxException
+     *           see {@link MediaType#parse(CharSequence)}}
+     * 
+     * @throws BadRequestException
+     *           if headers has multiple Content-Type keys
      * 
      * @see <a href="https://tools.ietf.org/html/rfc7231#section-3.1.1.5">RFC 7231 §3.1.1.5</a>
      */
-    public static MediaType contentType(HttpHeaders headers) {
+    public static Optional<MediaType> contentType(HttpHeaders headers) {
         final List<String> values = headers.allValues("Content-Type");
         
         if (values.isEmpty()) {
-            return MediaType.NOTHING;
+            return Optional.empty();
         }
         else if (values.size() == 1) {
-            return MediaType.parse(values.get(0));
+            return Optional.of(MediaType.parse(values.get(0)));
         }
         
         throw new BadRequestException("Multiple Content-Type values in request.");

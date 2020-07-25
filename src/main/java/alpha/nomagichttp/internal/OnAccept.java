@@ -147,8 +147,10 @@ final class OnAccept implements CompletionHandler<AsynchronousSocketChannel, Voi
             match = routes.lookup(head.requestTarget());
             // TODO: From hereon we call route-level exception handler for errors
             // And he should have access to Request. Has even been specified in BadMediaTypeSyntaxException.
-            handler = match.route().lookup(head.method(),
-                    contentType(head.headers()), accepts(head.headers()));
+            handler = match.route().lookup(
+                    head.method(),
+                    contentType(head.headers()).orElse(null),
+                    accepts(head.headers()));
             
             LOG.log(DEBUG, () -> "Matched handler: " + handler);
         } catch (Throwable t) {
