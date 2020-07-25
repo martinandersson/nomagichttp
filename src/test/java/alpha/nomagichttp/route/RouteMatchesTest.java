@@ -49,19 +49,19 @@ class RouteMatchesTest
     @Test
     void simple_match_single_slash_tolerant_1() {
         builder = new RouteBuilder("/a/"); // <--slash
-        assertMatches("/a", of());        // <-- no slash
+        assertMatches("/a", of());         // <-- no slash
     }
     
     @Test
     void simple_match_single_slash_tolerant_2() {
         builder = new RouteBuilder("/a"); // <-- no slash
-        assertMatches("/a/", of());      // <-- slash
+        assertMatches("/a/", of());       // <-- slash
     }
     
     @Test
     void simple_match_single_slash_tolerant_3() {
         builder = new RouteBuilder("/a/"); // <-- slash
-        assertMatches("/a/", of());       // <-- slash
+        assertMatches("/a/", of());        // <-- slash
     }
     
     @Test
