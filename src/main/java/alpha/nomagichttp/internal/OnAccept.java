@@ -49,7 +49,7 @@ import static java.lang.System.Logger.Level.INFO;
  * 
  * The request handler will return the response body in the form of a
  * {@code Flow.Publisher<ByteBuffer>} to which this class subscribes a
- * {@link SingleResponseSubscriber}. The response subscriber will write the
+ * {@link ResponseToChannelWriter}. The response subscriber will write the
  * response head- and body to the channel.<p>
  * 
  * Once the response subscription completes, the entire flow is restarted.<p>
@@ -177,7 +177,7 @@ final class OnAccept implements CompletionHandler<AsynchronousSocketChannel, Voi
                 if (exc != null) {
                     dealWithError(exc, child, handler);
                 } else {
-                    new SingleResponseSubscriber(child, resp).asCompletionStage()
+                    new ResponseToChannelWriter(child, resp).asCompletionStage()
                             .whenComplete((Void, exc2) -> {
                                 if (exc2 != null) {
                                     dealWithError(exc2, child, handler);

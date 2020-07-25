@@ -28,8 +28,6 @@ import static java.util.Objects.requireNonNull;
  * @author Martin Andersson (webmaster at martinandersson.com)
  */
 
-// TODO: Rename to ResponseToChannelWriter
-
 // TODO: Although this is a simple design, it does create a lot of garbage for
 //       each response, specifically the "readable" and "transfer" fields.
 //       Ideally, just as we do have a singleton "ChannelBytePublisher" for a
@@ -39,7 +37,7 @@ import static java.util.Objects.requireNonNull;
 //       be too grand since it's probably just a matter of redesigning the
 //       life-cycle of this class.
 
-final class SingleResponseSubscriber
+final class ResponseToChannelWriter
 {
     private static final String CRLF = "\r\n";
     
@@ -47,7 +45,7 @@ final class SingleResponseSubscriber
     // the rule should be found here (if not, this implementation is outdated):
     // https://github.com/reactive-streams/reactive-streams-jvm/blob/v1.0.3/README.md
     
-    private static final System.Logger LOG = System.getLogger(SingleResponseSubscriber.class.getPackageName());
+    private static final System.Logger LOG = System.getLogger(ResponseToChannelWriter.class.getPackageName());
     
     private static final int
             // When number of outstanding requested buffers reaches this number...
@@ -64,7 +62,7 @@ final class SingleResponseSubscriber
     private final TransferOnDemand<ByteBuffer> transfer;
     private final CompletableFuture<Void> result;
     
-    SingleResponseSubscriber(AsynchronousByteChannel channel, Response response) {
+    ResponseToChannelWriter(AsynchronousByteChannel channel, Response response) {
         this.channel = requireNonNull(channel);
         
         readable = new ConcurrentLinkedDeque<>();
