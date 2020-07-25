@@ -69,16 +69,17 @@ final class DefaultRequest implements Request
         public CompletionStage<String> toText() {
             // TODO: Charset should be taken out from request headers
             
-            BiFunction<byte[], Integer, String> finisher = (buf, count) ->
+            BiFunction<byte[], Integer, String> f = (buf, count) ->
                     new String(buf, 0, count, StandardCharsets.US_ASCII);
             
-            // TODO: Implicitly expose this through API that accepts the finisher
-            //       and receives CompletionStage<T> back.
-            HeapSubscriber<String> sub = new HeapSubscriber<>(finisher);
-            
-            asPublisher().subscribe(sub);
-            
-            return sub.asCompletionStage();
+            return convert(f);
+        }
+        
+        @Override
+        public <R> CompletionStage<R> convert(BiFunction<byte[], Integer, R> f) {
+            HeapSubscriber<R> subscriber = new HeapSubscriber<>(f);
+            asPublisher().subscribe(subscriber);
+            return subscriber.asCompletionStage();
         }
         
         @Override
