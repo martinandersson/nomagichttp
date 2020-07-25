@@ -261,7 +261,7 @@ abstract class AbstractUnicastPublisher<T> implements Flow.Publisher<T>, Closeab
             } catch (IllegalArgumentException e) {
                 // Rule 1.6, 1.7 and 2.4: After onError, the subscription is cancelled
                 if (mediator.finish()) {
-                    clearSubscriberRef().onError(e);
+                    getAndClearSubscriberRef().onError(e);
                 }
             }
         }
@@ -270,7 +270,7 @@ abstract class AbstractUnicastPublisher<T> implements Flow.Publisher<T>, Closeab
         public void cancel() {
             boolean success = mediator.finish();
             if (success) {
-                clearSubscriberRef();
+                getAndClearSubscriberRef();
             }
             LOG.log(TRACE, () -> AbstractUnicastPublisher.this +
                     "'s subscriber asked to cancel the subscription. With effect: " + success);
@@ -283,15 +283,14 @@ abstract class AbstractUnicastPublisher<T> implements Flow.Publisher<T>, Closeab
         void complete() {
             if (mediator.finish()) {
                 try {
-                    clearSubscriberRef().onComplete();
+                    getAndClearSubscriberRef().onComplete();
                 } catch (RuntimeException e) {
                     LOG.log(WARNING, "Ignoring RuntimeException caught while calling \"Subscriber.onComplete()\".", e);
                 }
             }
         }
         
-        // TODO: Rename to getAndClearSubscriberRef
-        private Flow.Subscriber<? super T> clearSubscriberRef() {
+        private Flow.Subscriber<? super T> getAndClearSubscriberRef() {
             subscription.set(null);
             try {
                 return subscriber;
