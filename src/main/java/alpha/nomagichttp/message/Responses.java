@@ -3,7 +3,9 @@ package alpha.nomagichttp.message;
 import java.nio.ByteBuffer;
 import java.util.concurrent.Flow;
 
+import static alpha.nomagichttp.message.MediaType.TEXT_PLAIN;
 import static java.net.http.HttpRequest.BodyPublisher;
+import static java.net.http.HttpRequest.BodyPublishers;
 
 // TODO: Document
 public final class Responses
@@ -18,6 +20,10 @@ public final class Responses
     
     public static Response accepted() {
         return ACCEPTED;
+    }
+    
+    public static Response ok(String textPlain) {
+        return ok(TEXT_PLAIN, BodyPublishers.ofString(textPlain));
     }
     
     public static Response ok(String contentType, BodyPublisher body) {
