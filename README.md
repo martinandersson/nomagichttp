@@ -57,3 +57,32 @@ Content-Length: 0
 ```
 
 [2-1]: src/main/java/alpha/nomagichttp/examples/HelloWorldConsole.java
+
+### Hello World - Response
+
+This example will make the server respond with "Hello, World!" in the message
+body.
+
+See code: [src/main/java/.../HelloWorldResponse.java][2-1]
+
+Run:
+
+```console
+foo@bar:~$ java --class-path=$JAR $PKG.HelloWorldResponse
+Listening on port 8080.
+```
+
+Unlike the previous example, this version has hardcoded port 8080.
+
+Run:
+
+```console
+foo@bar:~$ curl -i localhost:8080
+HTTP/1.1 200 OK
+Content-Type: text/plain; charset=utf-8
+Content-Length: 13
+
+Hello, World!
+```
+
+[2-1]: src/main/java/alpha/nomagichttp/examples/HelloWorldResponse.java
