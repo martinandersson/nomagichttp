@@ -77,6 +77,8 @@ final class ResponseToChannelWriter
         return result.minimalCompletionStage();
     }
     
+    // TODO: try-catch all and forward to result?
+    
     private final class BodySubscriber implements Flow.Subscriber<ByteBuffer> {
         private final Response response;
         private Flow.Subscription subsc;
@@ -110,15 +112,8 @@ final class ResponseToChannelWriter
                 return;
             }
             
-            // Rule 1.3: onNext() executes serially with memory visibility between runs
-            //           (i.e. we don't need a volatile here)
             if (!pushedHead) {
-                // TODO: try-catch error and forward to onError?
-                readable.add(serializeHead(response));
-                pushedHead = true;
-                // TODO: try-catch error and forward to onError?
-                // Trigger first write
-                transfer.increaseDemand(1);
+                pushHead();
             }
             
             readable.add(body);
@@ -143,8 +138,25 @@ final class ResponseToChannelWriter
         
         @Override
         public void onComplete() {
+            if (!pushedHead) {
+                pushHead();
+            }
             readable.add(NO_MORE);
             transfer.tryTransfer();
+        }
+        
+        private void pushHead() {
+            final String line = response.statusLine() + CRLF,
+                    vals = join(CRLF, response.headers()),
+                    head = line + (vals.isEmpty() ? CRLF : vals + CRLF + CRLF);
+    
+            ByteBuffer buff = ByteBuffer.wrap(head.getBytes(US_ASCII));
+            
+            readable.add(buff);
+            pushedHead = true;
+            
+            // Trigger first write
+            transfer.increaseDemand(1);
         }
     }
     
@@ -188,13 +200,5 @@ final class ResponseToChannelWriter
             
             // TODO: Shutdown channel? By default exception handler.
         }
-    }
-    
-    private static ByteBuffer serializeHead(Response response) {
-        final String line = response.statusLine() + CRLF,
-                     vals = join(CRLF, response.headers()),
-                     head = line + (vals.isEmpty() ? CRLF : vals + CRLF + CRLF);
-        
-        return ByteBuffer.wrap(head.getBytes(US_ASCII));
     }
 }
