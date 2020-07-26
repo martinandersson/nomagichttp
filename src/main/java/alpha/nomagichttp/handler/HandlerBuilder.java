@@ -9,17 +9,45 @@ import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Supplier;
 
-import static alpha.nomagichttp.message.MediaType.*;
+import static alpha.nomagichttp.message.MediaType.ALL;
+import static alpha.nomagichttp.message.MediaType.NOTHING;
+import static alpha.nomagichttp.message.MediaType.NOTHING_AND_ALL;
+import static alpha.nomagichttp.message.MediaType.TEXT_PLAIN;
+import static alpha.nomagichttp.message.MediaType.parse;
 import static alpha.nomagichttp.message.Responses.accepted;
 import static java.util.Objects.requireNonNull;
 
 /**
- * TODO: Docs
+ * Builds the default implementation of {@link Handler}.<p>
  * 
- * LastStep
- *   run    = logic to run, don't care about request and has no response body ... 202
- *   accept = logic to run, does care about request but has no response body  ... 202
- *   apply  = logic cares about request and has a response body
+ * This class guides the user through a series of steps along the process of
+ * building a handler.<p>
+ * 
+ * The first step is the constructor which requires an HTTP method such as
+ * "GET", "POST" or anything else - it's just a string after all
+ * (case-sensitive).<p>
+ * 
+ * The HandlerBuilder instance will then expose methods that specifies what
+ * media-type the handler consumes.<p>
+ * 
+ * Once the consumes media-type has been specified, the next step is to specify
+ * what media-type the handler produces.<p>
+ * 
+ * The last step will be to specify the logic of the handler. The methods
+ * offered by this class to do so, comes in three different flavors:<p>
+ * 
+ * {@code run()} accepts a no-args {@code Runnable} which represents logic that
+ * does not need to access the request object and has no need to customize the
+ * "202 Accepted" response sent back to the client. This flavor is useful for
+ * handlers that will accept all requests as a command to initiate processes on
+ * the server.<p>
+ * 
+ * {@code accept()} is very much similar to {@code run()}, except the logic is
+ * represented by a {@code Consumer} who will receive the request object and can
+ * therefore read meaningful data out of it.<p>
+ * 
+ * {@code apply()} accepts a {@code Function} that receives the request object
+ * <i>and</i> must return a fully customizable response object.
  */
 public final class HandlerBuilder
 {
@@ -90,7 +118,6 @@ public final class HandlerBuilder
             super(prev);
         }
         
-        // TODO: 202 Accepted
         public Handler run(Runnable logic) {
             requireNonNull(logic);
             return accept(requestIgnored -> logic.run());
@@ -101,7 +128,6 @@ public final class HandlerBuilder
             return apply(requestIgnored -> logic.get());
         }
         
-        // TODO: 202 Accepted
         public Handler accept(Consumer<Request> logic) {
             requireNonNull(logic);
             return apply(req -> {
