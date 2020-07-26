@@ -162,7 +162,7 @@ final class OnAccept implements CompletionHandler<AsynchronousSocketChannel, Voi
             // TODO: If length is not present, then body is possibly chunked.
             // https://tools.ietf.org/html/rfc7230#section-3.3.3
             
-            // TODO: Server should throw ParseException if Content-Length is present AND Content-Encoding
+            // TODO: Server should throw BadRequestException if Content-Length is present AND Content-Encoding
             // https://tools.ietf.org/html/rfc7230#section-3.3.2
             
             OptionalLong len = contentLength(head.headers());
