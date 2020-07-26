@@ -18,10 +18,6 @@ public final class Responses
         return OK;
     }
     
-    public static Response accepted() {
-        return ACCEPTED;
-    }
-    
     public static Response ok(String textPlain) {
         return ok(TEXT_PLAIN, BodyPublishers.ofString(textPlain));
     }
@@ -43,6 +39,10 @@ public final class Responses
                 .contentType(contentType)
                 .contentLenght(length)
                 .body(body);
+    }
+    
+    public static Response accepted() {
+        return ACCEPTED;
     }
     
     private static final Response OK = new ResponseBuilder()
