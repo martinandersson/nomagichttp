@@ -48,9 +48,12 @@ public final class Responses
     private static final Response OK = new ResponseBuilder()
             .httpVersion("HTTP/1.1").statusCode(200).reasonPhrase("OK")
             // TODO: Replace with noBody()
+            .contentLenght(0)
             .body(Publishers.empty());
     
     private static final Response ACCEPTED = new ResponseBuilder()
             .httpVersion("HTTP/1.1").statusCode(202).reasonPhrase("Accepted")
+            // TODO: Replace with noBody()
+            .contentLenght(0)
             .body(Publishers.empty());
 }

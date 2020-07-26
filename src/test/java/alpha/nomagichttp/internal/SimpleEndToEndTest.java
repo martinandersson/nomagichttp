@@ -40,7 +40,9 @@ class SimpleEndToEndTest extends AbstractEndToEndTest
         String req = "GET /hello-console HTTP/1.1" + CRLF + CRLF + CRLF;
         String res = writeReadText(req, CRLF + CRLF);
         
-        assertThat(res).isEqualTo("HTTP/1.1 202 Accepted" + CRLF + CRLF);
+        assertThat(res).isEqualTo(
+            "HTTP/1.1 202 Accepted" + CRLF +
+            "Content-Length: 0" + CRLF + CRLF);
     }
     
     @Test
