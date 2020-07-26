@@ -132,7 +132,7 @@ final class SerialTransferService<T>
     private volatile Runnable after;
     
     /**
-     * Constructs a {@code TransferOnDemand}.
+     * Constructs a {@code SerialTransferService}.
      * 
      * @param from  item supplier
      * @param to    item consumer
@@ -144,7 +144,7 @@ final class SerialTransferService<T>
     }
     
     /**
-     * Constructs a {@code TransferOnDemand}.
+     * Constructs a {@code SerialTransferService}.
      * 
      * The before-first-delivery callback is called exactly once, serially
      * within the scope of the first delivery just before the consumer receives

@@ -29,10 +29,10 @@ import static java.util.Objects.requireNonNull;
  * subscriber.<p>
  * 
  * The transfer logic is provided by {@link SerialTransferService} and the same
- * guarantees and semantics {@code TransferOnDemand} specifies applies also to
- * this class which can be regarded as merely a {@code Flow.Publisher} API on
- * top of {@code TransferOnDemand}. In fact, the publisher subclass is the
- * transfer-on-demand supplier and the subscriber is the transfer-on-demand
+ * guarantees and semantics {@code SerialTransferService} specifies applies also
+ * to this class which can be regarded as merely a {@code Flow.Publisher} API on
+ * top of {@code SerialTransferService}. In fact, the publisher subclass is the
+ * transfer-service supplier and the subscriber is the transfer-service
  * consumer.<p>
  * 
  * This class implements {@link Closeable} and the default close-behavior is

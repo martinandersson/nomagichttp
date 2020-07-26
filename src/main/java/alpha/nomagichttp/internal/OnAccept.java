@@ -97,7 +97,7 @@ final class OnAccept implements CompletionHandler<AsynchronousSocketChannel, Voi
                     if (exc != null) {
                         dealWithError(exc, child, null);
                     } else {
-                        callHandler(head, child, bytebuffers);
+                        callRequestHandler(head, child, bytebuffers);
                     }
                 });
     }
@@ -139,9 +139,12 @@ final class OnAccept implements CompletionHandler<AsynchronousSocketChannel, Voi
         }
     }
     
-    private void callHandler(RequestHead head, AsynchronousSocketChannel child, PooledByteBufferPublisher bytebuffers) {
+    private void callRequestHandler(RequestHead head, AsynchronousSocketChannel child, PooledByteBufferPublisher bytebuffers) {
         final Route.Match match;
         final Handler handler;
+        
+        // 1. Lookup route and handler
+        // ---
         
         try {
             match = routes.lookup(head.requestTarget());
@@ -158,6 +161,9 @@ final class OnAccept implements CompletionHandler<AsynchronousSocketChannel, Voi
             return;
         }
         
+        // 2. Invoke handler
+        // ---
+        
         try {
             // TODO: If length is not present, then body is possibly chunked.
             // https://tools.ietf.org/html/rfc7230#section-3.3.3
@@ -173,11 +179,12 @@ final class OnAccept implements CompletionHandler<AsynchronousSocketChannel, Voi
             Request request = new DefaultRequest(head, match.parameters(), requestBody);
             CompletionStage<Response> response = handler.logic().apply(request);
             
-            response.whenComplete((resp, exc) -> {
+            response.whenComplete((result, exc) -> {
                 if (exc != null) {
                     dealWithError(exc, child, handler);
                 } else {
-                    new ResponseToChannelWriter(child, resp).asCompletionStage()
+                    new ResponseToChannelWriter(child, result)
+                            .asCompletionStage()
                             .whenComplete((Void, exc2) -> {
                                 if (exc2 != null) {
                                     dealWithError(exc2, child, handler);
