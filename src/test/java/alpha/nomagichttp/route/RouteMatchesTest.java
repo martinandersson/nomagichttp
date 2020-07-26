@@ -1,13 +1,18 @@
 package alpha.nomagichttp.route;
 
+import alpha.nomagichttp.test.Logging;
 import org.junit.jupiter.api.Test;
+import org.mockito.Mockito;
 
 import java.util.Map;
+import java.util.logging.Handler;
 
 import static alpha.nomagichttp.handler.Handlers.noop;
 import static java.util.Arrays.stream;
 import static java.util.Map.of;
+import static java.util.logging.Level.WARNING;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.argThat;
 
 /**
  * Tests different ways to combine segments and parameters into a route and what
@@ -103,8 +108,8 @@ class RouteMatchesTest
     }
     
     // ...the fact that the algorithm is not slash tolerant in the particular
-    // case when the request-target is one segment without a parameter is sort
-    // of irrelevant because slash tolerance is not specified. However,
+    // case when a request-target is only one segment without a parameter is
+    // sort of irrelevant because slash tolerance is not specified. However,
     // TODO: It would be neat to specify slash tolerance exactly and make sure
     //       the behavior is consistent.
     
@@ -282,17 +287,25 @@ class RouteMatchesTest
         assertMatchesNull("/a/");
     }
     
+    // TODO: I'm not sure if "unknown-value" should really be considered an
+    //       unknown parameter value to the segment "/a" (which is what we
+    //       currently do) or be considered a segment in it's own right and
+    //       therefor fail the match. Just as with "slash tolerancy", this
+    //       should perhaps be specified exactly somewhere.
     @Test
-    void uknown_values() {
+    void unknown_parameter_values() {
         builder = new RouteBuilder("/a").param("p1").concat("/b");
-        
         assertMatches("/a/v1/b", of("p1", "v1"));
         
-        // What if the route matches but we have unknown values?
-        // TODO: I think that either "/v2" is actually part of p1's value or
-        //       should be considered a segment and therefore not match the Route.
-        //       Probably the segment approach is the least magic and most expected?
-        assertMatches("/a/v1/v2/b", of("p", "v1"));
+        Handler handler = Mockito.mock(Handler.class);
+        Logging.addHandler(DefaultRoute.class, handler);
+        
+        assertMatches("/a/v1/unknown-value/b", of("p1", "v1"));
+        
+        String expMsg = "Segment \"/a/{p1}\" received unknown parameter value(s).";
+        Mockito.verify(handler).publish(argThat(r ->
+                r.getLevel().equals(WARNING) &&
+                r.getMessage().equals(expMsg)));
     }
     
     // PRIVATE

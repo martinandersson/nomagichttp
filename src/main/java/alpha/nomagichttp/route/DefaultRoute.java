@@ -17,8 +17,10 @@ import java.util.Set;
 import java.util.TreeSet;
 
 import static alpha.nomagichttp.message.MediaType.NOTHING;
-import static alpha.nomagichttp.message.MediaType.Score.NOPE;
 import static alpha.nomagichttp.message.MediaType.NOTHING_AND_ALL;
+import static alpha.nomagichttp.message.MediaType.Score.NOPE;
+import static java.lang.System.Logger;
+import static java.lang.System.Logger.Level.WARNING;
 import static java.text.MessageFormat.format;
 import static java.util.Arrays.stream;
 import static java.util.Comparator.comparingDouble;
@@ -35,6 +37,8 @@ import static java.util.stream.Collectors.toSet;
  */
 public final class DefaultRoute implements Route
 {
+    private static final Logger LOG = System.getLogger(DefaultRoute.class.getPackageName());
+    
     // TODO: Consider replacing with array[]
     private final List<Segment> segments;
     private final String identity;
@@ -187,7 +191,7 @@ public final class DefaultRoute implements Route
                     .filter(s0 -> !s0.isEmpty())
                     .iterator();
             
-            // Values now map in order. We put unknown values in unknown param map.
+            // Values now map in order. We log the presence of unknown values.
             for (String k : paramNames) {
                 if (!values.hasNext()) {
                     // Param is optional and value not provided
@@ -205,8 +209,7 @@ public final class DefaultRoute implements Route
                 else {
                     // There's still more segments to be evaluated,
                     // so remaining values are unknown param values to the current segment
-                    throw new UnsupportedOperationException(
-                            "We have unknown parameter values and we need to put them somewhere?");
+                    LOG.log(WARNING, () -> "Segment \"" + s + "\" received unknown parameter value(s).");
                 }
             }
         }
