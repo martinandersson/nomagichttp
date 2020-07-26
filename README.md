@@ -88,3 +88,31 @@ Hello, World!
 ```
 
 [3-1]: src/main/java/alpha/nomagichttp/examples/HelloWorldResponse.java
+
+### Greet from path parameter
+
+This example will greet the user with a name taken from a path parameter.
+
+See code: [src/main/java/.../GreetPathParam.java][4-1]
+
+Run:
+
+```console
+foo@bar:~$ java --class-path=$JAR $PKG.GreetPathParam
+Listening on port 8080.
+```
+
+In a new terminal, run:
+
+Run:
+
+```console
+foo@bar:~$ curl -i localhost:8080/hello/John
+HTTP/1.1 200 OK
+Content-Type: text/plain; charset=utf-8
+Content-Length: 12
+
+Hello, John!
+```
+
+[4-1]: src/main/java/alpha/nomagichttp/examples/GreetPathParam.java
