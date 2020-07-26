@@ -57,13 +57,13 @@ class SimpleEndToEndTest extends AbstractEndToEndTest
         
         String req =
             "GET /hello-response HTTP/1.1" + CRLF +
-            "Accept: text/plain;charset=utf-8" + CRLF + CRLF;
+            "Accept: text/plain; charset=utf-8" + CRLF + CRLF;
         
         String resp = writeReadText(req, "World!");
         
         assertThat(resp).isEqualTo(
             "HTTP/1.1 200 OK" + CRLF +
-            "Content-Type: text/plain" + CRLF +
+            "Content-Type: text/plain; charset=utf-8" + CRLF +
             "Content-Length: 12" + CRLF + CRLF +
             
             "Hello World!");
@@ -82,13 +82,13 @@ class SimpleEndToEndTest extends AbstractEndToEndTest
         
         String request =
             "GET /hello-param/John HTTP/1.1" + CRLF +
-            "Accept: text/plain;charset=utf-8" + CRLF + CRLF;
+            "Accept: text/plain; charset=utf-8" + CRLF + CRLF;
         
         String resp = writeReadText(request, "John!");
         
         assertThat(resp).isEqualTo(
             "HTTP/1.1 200 OK" + CRLF +
-            "Content-Type: text/plain" + CRLF +
+            "Content-Type: text/plain; charset=utf-8" + CRLF +
             "Content-Length: 11" + CRLF + CRLF +
             
             "Hello John!");
@@ -108,7 +108,7 @@ class SimpleEndToEndTest extends AbstractEndToEndTest
         
         String request =
             "GET /hello-body HTTP/1.1" + CRLF +
-            "Accept: text/plain;charset=utf-8" + CRLF +
+            "Accept: text/plain; charset=utf-8" + CRLF +
             "Content-Length: 4" + CRLF + CRLF +
             
             "John";
@@ -117,7 +117,7 @@ class SimpleEndToEndTest extends AbstractEndToEndTest
         
         assertThat(resp).isEqualTo(
             "HTTP/1.1 200 OK" + CRLF +
-            "Content-Type: text/plain" + CRLF +
+            "Content-Type: text/plain; charset=utf-8" + CRLF +
             "Content-Length: 11" + CRLF +
             CRLF +
             "Hello John!");

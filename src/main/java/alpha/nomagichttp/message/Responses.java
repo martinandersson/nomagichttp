@@ -3,7 +3,6 @@ package alpha.nomagichttp.message;
 import java.nio.ByteBuffer;
 import java.util.concurrent.Flow;
 
-import static alpha.nomagichttp.message.MediaType.TEXT_PLAIN;
 import static java.net.http.HttpRequest.BodyPublisher;
 import static java.net.http.HttpRequest.BodyPublishers;
 
@@ -19,7 +18,7 @@ public final class Responses
     }
     
     public static Response ok(String textPlain) {
-        return ok(TEXT_PLAIN, BodyPublishers.ofString(textPlain));
+        return ok("text/plain; charset=utf-8", BodyPublishers.ofString(textPlain));
     }
     
     public static Response ok(String contentType, BodyPublisher body) {
