@@ -62,7 +62,7 @@ class MediaTypeTest
     void two_params_range() {
         String s = "text/plain; b=123; a=4 5 6; q=1;";
         MediaType actual = MediaType.parse(s);
-        System.out.println("RAW: " + actual.toString());
+        System.out.println("Raw: " + actual.toString());
         System.out.println("Normal: " + actual.toStringNormalized());
         // Different quality, doesn't matter
         assertThat(actual).isEqualTo(new MediaRange(s, "text", "plain", Map.of("a", "4 5 6", "b", "123"), 0.5));
