@@ -43,7 +43,7 @@
  * Request handlers does not enjoy the same level of freedom. They can not
  * dynamically come and go from the route. If "hot swapping" out the logic
  * inside a route is really necessary, then the application has to provide it's
- * own handler implementation or reconstruct the route itself.<p>
+ * own handler implementation or reconstruct the route.<p>
  * 
  * {@code Route}, {@code Handler}, {@code Request}, {@code Response} and even
  * the {@code Server} are interfaces, of which any implementation can be used as
