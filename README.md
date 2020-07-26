@@ -104,8 +104,6 @@ Listening on port 8080.
 
 In a new terminal, run:
 
-Run:
-
 ```console
 foo@bar:~$ curl -i localhost:8080/hello/John
 HTTP/1.1 200 OK
