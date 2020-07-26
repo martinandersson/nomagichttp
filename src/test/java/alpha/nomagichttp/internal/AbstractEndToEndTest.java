@@ -164,17 +164,17 @@ abstract class AbstractEndToEndTest
                 throw new IllegalStateException();
             }
             
-            int offset = data.arrayOffset() + data.position(),
-                until  = offset + data.remaining();
+            int start = data.arrayOffset() + data.position(),
+                end   = start + data.remaining();
             
-            for (int i = offset; i < until; ++i) {
+            for (int i = start; i < end; ++i) {
                 byte b = data.array()[i];
                 delegate.write(b);
                 memorize(b);
                 
                 if (hasReachedEnd()) {
-                    assertThat(i + 1 == until)
-                            .as("Unexpected trailing bytes in response.")
+                    assertThat(i + 1 == end)
+                            .as("Unexpected trailing bytes in response: " + dump(data.array(), i + 1, end))
                             .isTrue();
                 }
             }
@@ -194,6 +194,16 @@ abstract class AbstractEndToEndTest
         
         byte[] toByteArray() {
             return delegate.toByteArray();
+        }
+        
+        private static String dump(byte[] bytes, int start, int end) {
+            StringBuilder b = new StringBuilder();
+            
+            for (int i = start; i < end; ++i) {
+                b.append(bytes[i]).append(" ");
+            }
+            
+            return b.toString();
         }
     }
 }
