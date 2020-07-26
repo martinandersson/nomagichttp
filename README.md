@@ -26,7 +26,7 @@ working directory is the NoMagicHTTP project root. The command uses Java's
 [source-file mode][1-2] to skip the compilation step.
 
 [1-1]: src/main/java/alpha/nomagichttp/package-info.java
-[1-2]: https://docs.oracle.com/en/java/javase/12/tools/java.html#GUID-3B1CE181-CD30-4178-9602-230B800D4FAE
+[1-2]: https://docs.oracle.com/en/java/javase/12/tools/java.html#GUID-3B1CE181-CD30-4178-9602-230B800D4FAE__USINGSOURCE-FILEMODETOLAUNCHSINGLE--B5E57618
 
 ### Hello World 1
 
