@@ -1,19 +1,18 @@
 package alpha.nomagichttp.internal;
 
 import alpha.nomagichttp.handler.Handler;
+import alpha.nomagichttp.handler.Handlers;
+import alpha.nomagichttp.message.Responses;
 import alpha.nomagichttp.route.Route;
 import alpha.nomagichttp.route.RouteBuilder;
 import alpha.nomagichttp.test.Logging;
-import alpha.nomagichttp.handler.Handlers;
-import alpha.nomagichttp.message.Responses;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
 
-import static alpha.nomagichttp.message.MediaType.TEXT_PLAIN;
+import static alpha.nomagichttp.route.Routes.route;
 import static java.lang.System.Logger.Level.ALL;
-import static java.net.http.HttpRequest.BodyPublishers;
 import static org.assertj.core.api.Assertions.assertThat;
 
 
@@ -60,7 +59,7 @@ class SimpleEndToEndTest extends AbstractEndToEndTest
         Handler echo = Handlers.GET().apply(request -> {
             String name = request.paramFromPath("name").get();
             String text = "Hello " + name + "!";
-            return Responses.ok(TEXT_PLAIN, BodyPublishers.ofString(text)).asCompletedStage();
+            return Responses.ok(text).asCompletedStage();
         });
         
         Route route = new RouteBuilder("/hello-param").param("name").handler(echo).build();
@@ -86,7 +85,7 @@ class SimpleEndToEndTest extends AbstractEndToEndTest
     void echo_body() throws IOException, InterruptedException {
         Handler echo = Handlers.GET().apply(request -> request.body().toText().thenApply(name -> {
             String greeting = "Hello " + name + "!";
-            return Responses.ok(TEXT_PLAIN, BodyPublishers.ofString(greeting));
+            return Responses.ok(greeting);
         }));
         
         Route route = new RouteBuilder("/hello-body").param("name").handler(echo).build();
