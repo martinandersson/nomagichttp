@@ -28,6 +28,7 @@ public class HelloWorldConsole {
         
         Route route = Routes.route("/", handler);
         
+        // Not supplying a port makes the system pick one
         NetworkChannel listener = Server.with(route).start();
         
         int port = ((InetSocketAddress) listener.getLocalAddress()).getPort();
