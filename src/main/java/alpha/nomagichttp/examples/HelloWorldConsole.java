@@ -31,6 +31,6 @@ public class HelloWorldConsole {
         NetworkChannel listener = Server.with(route).start();
         
         int port = ((InetSocketAddress) listener.getLocalAddress()).getPort();
-        System.out.println("The server is now listening on port " + port + ".");
+        System.out.println("Listening on port " + port + ".");
     }
 }

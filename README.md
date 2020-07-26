@@ -45,7 +45,7 @@ Run:
 
 ```console
 foo@bar:~$ java --class-path=$JAR $PKG.HelloWorldConsole
-The server is now listening on port 52063.
+Listening on port 52063.
 ```
 
 Take note of the port and in a new terminal, run:
