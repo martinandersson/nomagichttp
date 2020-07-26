@@ -31,6 +31,7 @@ import static java.util.Objects.requireNonNull;
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  */
+// TODO: Consider renaming to ProactiveServer.
 public final class AsyncServer implements Server
 {
     // Good info on async groups:
