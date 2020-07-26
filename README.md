@@ -19,11 +19,14 @@ world of magic!**
 
 The intent of this project is to be primarily documented through javadoc of an
 API that is _discoverable_ and intuitive. A good start to read is the
-[package-info.java](src/main/java/alpha/nomagichttp/package-info.java) file of
-`alpha.nomagichttp`.
+[package-info.java][1-1] file of `alpha.nomagichttp`.
 
 The following examples will assume that Java 11+ is installed and the current
-working directory is the NoMagicHTTP project root.
+working directory is the NoMagicHTTP project root. The command uses Java's
+[source-file mode][1-2] to skip the compilation step.
+
+[1-1]: src/main/java/alpha/nomagichttp/package-info.java
+[1-2]: https://docs.oracle.com/en/java/javase/12/tools/java.html#GUID-3B1CE181-CD30-4178-9602-230B800D4FAE
 
 ### Hello World 1
 
