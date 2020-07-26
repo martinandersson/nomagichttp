@@ -31,17 +31,30 @@ class SimpleEndToEndTest extends AbstractEndToEndTest
     }
     
     @Test
-    void helloworld() throws IOException, InterruptedException {
-        Handler handler = Handlers.GET().supply(() ->
-                Responses.ok(TEXT_PLAIN, BodyPublishers.ofString("Hello World!")).asCompletedStage());
+    void helloworld_console() throws IOException, InterruptedException {
+        Handler handler = Handlers.GET().run(() ->
+                System.out.println("Hello, World!"));
         
-        Route route = new RouteBuilder("/hello-world")
+        server().getRouteRegistry().add(route("/hello-console", handler));
+        
+        String req = "GET /hello-console HTTP/1.1" + CRLF + CRLF + CRLF;
+        String res = writeReadText(req, CRLF + CRLF);
+        
+        assertThat(res).isEqualTo("HTTP/1.1 202 Accepted" + CRLF + CRLF);
+    }
+    
+    @Test
+    void helloworld_response() throws IOException, InterruptedException {
+        Handler handler = Handlers.GET().supply(() ->
+                Responses.ok("Hello World!").asCompletedStage());
+        
+        Route route = new RouteBuilder("/hello-response")
                 .handler(handler).build();
         
         server().getRouteRegistry().add(route);
         
         String req =
-            "GET /hello-world HTTP/1.1" + CRLF +
+            "GET /hello-response HTTP/1.1" + CRLF +
             "Accept: text/plain;charset=utf-8" + CRLF + CRLF;
         
         String resp = writeReadText(req, "World!");
