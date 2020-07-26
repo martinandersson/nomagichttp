@@ -43,7 +43,7 @@ import java.util.Map;
  * apart. The handler is still free to perform request argument validation and
  * respond accordingly.<p>
  * 
- * This identity-rule has many benefits. It's much more aligned with the HTTP
+ * The identity-rule has many benefits. It's much more aligned with the HTTP
  * specification which defines a resource to which handlers and parameters are
  * semantics; icing on the cake. It's also a much more simple design and easy to
  * understand versus having to specify how exactly the semantics would
