@@ -63,7 +63,7 @@ Content-Length: 0
 This example will make the server respond with "Hello, World!" in the message
 body.
 
-See code: [src/main/java/.../HelloWorldResponse.java][2-1]
+See code: [src/main/java/.../HelloWorldResponse.java][3-1]
 
 Run:
 
@@ -85,4 +85,4 @@ Content-Length: 13
 Hello, World!
 ```
 
-[2-1]: src/main/java/alpha/nomagichttp/examples/HelloWorldResponse.java
+[3-1]: src/main/java/alpha/nomagichttp/examples/HelloWorldResponse.java
