@@ -123,17 +123,17 @@ public final class HandlerBuilder
             return accept(requestIgnored -> logic.run());
         }
         
-        public Handler supply(Supplier<CompletionStage<Response>> logic) {
-            requireNonNull(logic);
-            return apply(requestIgnored -> logic.get());
-        }
-        
         public Handler accept(Consumer<Request> logic) {
             requireNonNull(logic);
             return apply(req -> {
                 logic.accept(req);
                 return accepted().asCompletedStage();
             });
+        }
+        
+        public Handler supply(Supplier<CompletionStage<Response>> logic) {
+            requireNonNull(logic);
+            return apply(requestIgnored -> logic.get());
         }
         
         public Handler apply(Function<Request, CompletionStage<Response>> logic) {
