@@ -18,13 +18,14 @@ import static alpha.nomagichttp.route.Routes.route;
  */
 public class HelloWorldResponse
 {
+    private static final int PORT = 8080;
+    
     public static void main(String... ignored) throws IOException {
-        final int port = 8080;
-        
         /*
          * The API is asynchronous and handlers return to the server a
-         * CompletionStage of a Response. If the response is created immediately
-         * by the handler, use Response.asCompletedStage().
+         * CompletionStage of a Response. If the response can be created
+         * immediately by the handler without blocking, use
+         * Response.asCompletedStage().
          */
         
         CompletionStage<Response> answer
@@ -32,7 +33,7 @@ public class HelloWorldResponse
         
         Handler handler = Handlers.GET().supply(() -> answer);
         
-        Server.with(route("/", handler)).start(port);
-        System.out.println("Listening on port " + port + ".");
+        Server.with(route("/", handler)).start(PORT);
+        System.out.println("Listening on port " + PORT + ".");
     }
 }

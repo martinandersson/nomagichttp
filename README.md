@@ -56,6 +56,8 @@ HTTP/1.1 202 Accepted
 Content-Length: 0
 ```
 
+The text message is printed in the first terminal window.
+
 [2-1]: src/main/java/alpha/nomagichttp/examples/HelloWorldConsole.java
 
 ### Hello World - Response
@@ -74,7 +76,7 @@ Listening on port 8080.
 
 Unlike the previous example, this version has hardcoded port 8080.
 
-Run:
+In a new terminal, run:
 
 ```console
 foo@bar:~$ curl -i localhost:8080
