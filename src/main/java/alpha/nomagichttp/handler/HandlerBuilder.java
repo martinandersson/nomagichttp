@@ -34,9 +34,10 @@ import static java.util.Objects.requireNonNull;
  * what media-type the handler produces.<p>
  * 
  * The last step will be to specify the logic of the handler. The methods
- * offered by this class to do so, comes in three different flavors:<p>
+ * offered by this class to do so, comes in many flavors which accepts different
+ * functional types depending on the needs of the application.<p>
  * 
- * {@code run()} accepts a no-args {@code Runnable} which represents logic that
+ * {@code run()} receives a no-args {@code Runnable} which represents logic that
  * does not need to access the request object and has no need to customize the
  * "202 Accepted" response sent back to the client. This flavor is useful for
  * handlers that will accept all requests as a command to initiate processes on
@@ -46,8 +47,12 @@ import static java.util.Objects.requireNonNull;
  * represented by a {@code Consumer} who will receive the request object and can
  * therefore read meaningful data out of it.<p>
  * 
- * {@code apply()} accepts a {@code Function} that receives the request object
- * <i>and</i> must return a fully customizable response object.
+ * {@code supply()} receives a {@code Supplier} which represents logic that is
+ * not interested in the request object but does have the need to return a fully
+ * customizable response.<p>
+ * 
+ * {@code apply()} receives a {@code Function} which has access to the request
+ * object <i>and</i> returns a fully customizable response.
  */
 public final class HandlerBuilder
 {
