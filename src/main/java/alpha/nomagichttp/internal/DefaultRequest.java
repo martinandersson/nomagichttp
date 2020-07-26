@@ -39,7 +39,7 @@ final class DefaultRequest implements Request
     }
     
     @Override
-    public String version() {
+    public String httpVersion() {
         return head.httpVersion();
     }
     

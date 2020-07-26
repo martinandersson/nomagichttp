@@ -38,7 +38,7 @@ public interface Request
      * 
      * this method will return "HTTP/1.1".
      */
-    String version();
+    String httpVersion();
     
     // TODO: Document
     Optional<String> paramFromPath(String name);
