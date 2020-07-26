@@ -127,7 +127,9 @@ public final class ResponseBuilder
     
     // TODO: Lots more of convenient-to-use header methods
     
-    // TODO: noBody()
+    public Response noBody() {
+        return contentLenght(0).body(Publishers.empty());
+    }
     
     // TODO: Document
     // Does not allow replace of old value. Call exactly once by calling
