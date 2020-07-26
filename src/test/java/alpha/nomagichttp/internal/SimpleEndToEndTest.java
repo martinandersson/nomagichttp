@@ -110,4 +110,5 @@ class SimpleEndToEndTest extends AbstractEndToEndTest
     }
     
     // TODO: echo body LARGE! Like super large. 100MB or something. Must brake all buffer capacities, that's the point.
+    //       Should go to "large" test set.
 }
