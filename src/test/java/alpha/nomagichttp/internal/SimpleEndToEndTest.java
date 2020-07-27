@@ -2,7 +2,6 @@ package alpha.nomagichttp.internal;
 
 import alpha.nomagichttp.handler.Handler;
 import alpha.nomagichttp.handler.Handlers;
-import alpha.nomagichttp.message.Responses;
 import alpha.nomagichttp.route.Route;
 import alpha.nomagichttp.route.RouteBuilder;
 import alpha.nomagichttp.test.Logging;
@@ -11,6 +10,7 @@ import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
 
+import static alpha.nomagichttp.message.Responses.ok;
 import static alpha.nomagichttp.route.Routes.route;
 import static java.lang.System.Logger.Level.ALL;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -48,7 +48,7 @@ class SimpleEndToEndTest extends AbstractEndToEndTest
     @Test
     void helloworld_response() throws IOException, InterruptedException {
         Handler handler = Handlers.GET().supply(() ->
-                Responses.ok("Hello World!").asCompletedStage());
+                ok("Hello World!").asCompletedStage());
         
         Route route = new RouteBuilder("/hello-response")
                 .handler(handler).build();
@@ -74,7 +74,7 @@ class SimpleEndToEndTest extends AbstractEndToEndTest
         Handler echo = Handlers.GET().apply(request -> {
             String name = request.paramFromPath("name").get();
             String text = "Hello " + name + "!";
-            return Responses.ok(text).asCompletedStage();
+            return ok(text).asCompletedStage();
         });
         
         Route route = new RouteBuilder("/hello-param").param("name").handler(echo).build();
@@ -98,16 +98,14 @@ class SimpleEndToEndTest extends AbstractEndToEndTest
     
     @Test
     void echo_body() throws IOException, InterruptedException {
-        Handler echo = Handlers.GET().apply(request -> request.body().toText().thenApply(name -> {
-            String greeting = "Hello " + name + "!";
-            return Responses.ok(greeting);
-        }));
+        Handler echo = Handlers.POST().apply(request ->
+                request.body().toText().thenApply(name -> ok("Hello " + name + "!")));
         
         Route route = new RouteBuilder("/hello-body").handler(echo).build();
         server().getRouteRegistry().add(route);
         
         String request =
-            "GET /hello-body HTTP/1.1" + CRLF +
+            "POST /hello-body HTTP/1.1" + CRLF +
             "Accept: text/plain; charset=utf-8" + CRLF +
             "Content-Length: 4" + CRLF + CRLF +
             
