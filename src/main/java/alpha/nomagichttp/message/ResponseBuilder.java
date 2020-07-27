@@ -100,14 +100,14 @@ public final class ResponseBuilder
     
     // TODO: Document
     public ResponseBuilder header(String name, Iterable<String> values) {
-        values.forEach(v -> modifying(() -> header(name, v)));
+        values.forEach(v -> header(name, v));
         return this;
     }
     
     // TODO: Document
     public ResponseBuilder header(String name, String firstValue, String... moreValues) {
         Stream.concat(of(firstValue), of(moreValues))
-                .forEach(v -> modifying(() -> header(name, v)));
+                .forEach(v -> header(name, v));
         
         return this;
     }
