@@ -1,7 +1,6 @@
 package alpha.nomagichttp.internal;
 
 import alpha.nomagichttp.handler.Handler;
-import alpha.nomagichttp.handler.Handlers;
 import alpha.nomagichttp.route.Route;
 import alpha.nomagichttp.route.RouteBuilder;
 import alpha.nomagichttp.test.Logging;
@@ -10,6 +9,8 @@ import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
 
+import static alpha.nomagichttp.handler.Handlers.GET;
+import static alpha.nomagichttp.handler.Handlers.POST;
 import static alpha.nomagichttp.message.Responses.ok;
 import static alpha.nomagichttp.route.Routes.route;
 import static java.lang.System.Logger.Level.ALL;
@@ -17,7 +18,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 
 /**
- * "Simple" end-to-end server tests, almost like "Hello World!" examples.
+ * "Simple" end-to-end server tests, more specifically, the unit-test version of
+ * examples provided in {@code alpha.nomagichttp.examples}.
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  */
@@ -32,7 +34,7 @@ class SimpleEndToEndTest extends AbstractEndToEndTest
     
     @Test
     void helloworld_console() throws IOException, InterruptedException {
-        Handler handler = Handlers.GET().run(() ->
+        Handler handler = GET().run(() ->
                 System.out.println("Hello, World!"));
         
         server().getRouteRegistry().add(route("/hello-console", handler));
@@ -47,7 +49,7 @@ class SimpleEndToEndTest extends AbstractEndToEndTest
     
     @Test
     void helloworld_response() throws IOException, InterruptedException {
-        Handler handler = Handlers.GET().supply(() ->
+        Handler handler = GET().supply(() ->
                 ok("Hello World!").asCompletedStage());
         
         Route route = new RouteBuilder("/hello-response")
@@ -70,18 +72,18 @@ class SimpleEndToEndTest extends AbstractEndToEndTest
     }
     
     @Test
-    void echo_parameter() throws IOException, InterruptedException {
-        Handler echo = Handlers.GET().apply(request -> {
+    void greet_pathparam() throws IOException, InterruptedException {
+        Handler echo = GET().apply(request -> {
             String name = request.paramFromPath("name").get();
             String text = "Hello " + name + "!";
             return ok(text).asCompletedStage();
         });
         
-        Route route = new RouteBuilder("/hello-param").param("name").handler(echo).build();
+        Route route = new RouteBuilder("/greet-param").param("name").handler(echo).build();
         server().getRouteRegistry().add(route);
         
         String request =
-            "GET /hello-param/John HTTP/1.1" + CRLF +
+            "GET /greet-param/John HTTP/1.1" + CRLF +
             "Accept: text/plain; charset=utf-8" + CRLF + CRLF;
         
         String resp = writeReadText(request, "John!");
@@ -94,18 +96,18 @@ class SimpleEndToEndTest extends AbstractEndToEndTest
             "Hello John!");
     }
     
-    // TODO: echo query parameter (but this needs to be implemented first lol)
+    // TODO: greet_queryparameter() (but this needs to be implemented first lol)
     
     @Test
-    void echo_body() throws IOException, InterruptedException {
-        Handler echo = Handlers.POST().apply(request ->
+    void greet_requestbody() throws IOException, InterruptedException {
+        Handler echo = POST().apply(request ->
                 request.body().toText().thenApply(name -> ok("Hello " + name + "!")));
         
-        Route route = new RouteBuilder("/hello-body").handler(echo).build();
+        Route route = new RouteBuilder("/greet-body").handler(echo).build();
         server().getRouteRegistry().add(route);
         
         String request =
-            "POST /hello-body HTTP/1.1" + CRLF +
+            "POST /greet-body HTTP/1.1" + CRLF +
             "Accept: text/plain; charset=utf-8" + CRLF +
             "Content-Length: 4" + CRLF + CRLF +
             
