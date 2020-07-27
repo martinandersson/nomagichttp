@@ -152,6 +152,7 @@ public interface Request
          * 
          * @return the request body as a publisher of bytebuffers
          */
+        // TODO: Remove this method and let Body interface extend Flow.Publisher
         Flow.Publisher<ByteBuffer> asPublisher();
     }
 }
