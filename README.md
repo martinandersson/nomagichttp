@@ -114,3 +114,29 @@ Hello, John!
 ```
 
 [4-1]: src/main/java/alpha/nomagichttp/examples/GreetPathParam.java
+
+### Greet using name from request body
+
+This example will greet the user with a name taken as being the request body.
+
+See code: [src/main/java/.../GreetRequestBody.java][5-1]
+
+Run:
+
+```console
+foo@bar:~$ java --class-path=$JAR $PKG.GreetRequestBody
+Listening on port 8080.
+```
+
+In a new terminal, run:
+
+```console
+foo@bar:~$ curl -i localhost:8080/hello -d John
+HTTP/1.1 200 OK
+Content-Type: text/plain; charset=utf-8
+Content-Length: 12
+
+Hello, John!
+```
+
+[5-1]: src/main/java/alpha/nomagichttp/examples/GreetRequestBody.java
