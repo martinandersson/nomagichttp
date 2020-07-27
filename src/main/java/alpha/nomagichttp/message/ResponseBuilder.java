@@ -116,6 +116,10 @@ public final class ResponseBuilder
     // Does not throw exception if quality is set to anything different than 1 (DefaultHandler do).
     // As with all other headers, this also appends. But it would be weird to
     // send many different content types to client.
+    
+    // TODO: Rename to headerContentType() or move all named headers to sub-API
+    //       like responseBuilder.header().contentType("val")
+    
     public ResponseBuilder contentType(MediaType type) {
         return header("Content-Type", type.toString());
     }
