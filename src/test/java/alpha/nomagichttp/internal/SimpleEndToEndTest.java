@@ -103,7 +103,7 @@ class SimpleEndToEndTest extends AbstractEndToEndTest
             return Responses.ok(greeting);
         }));
         
-        Route route = new RouteBuilder("/hello-body").param("name").handler(echo).build();
+        Route route = new RouteBuilder("/hello-body").handler(echo).build();
         server().getRouteRegistry().add(route);
         
         String request =
