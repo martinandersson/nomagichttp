@@ -1,6 +1,7 @@
 package alpha.nomagichttp.internal;
 
 import alpha.nomagichttp.handler.Handler;
+import alpha.nomagichttp.message.ResponseBuilder;
 import alpha.nomagichttp.route.Route;
 import alpha.nomagichttp.route.RouteBuilder;
 import alpha.nomagichttp.test.Logging;
@@ -121,6 +122,40 @@ class SimpleEndToEndTest extends AbstractEndToEndTest
             "Content-Length: 11" + CRLF +
             CRLF +
             "Hello John!");
+    }
+    
+    @Test
+    void echo_server() throws IOException, InterruptedException {
+        Handler echo = POST().apply(request -> {
+            ResponseBuilder builder = new ResponseBuilder()
+                    .httpVersion(request.httpVersion())
+                    .statusCode(200)
+                    .reasonPhrase("OK");
+            
+            request.headers().map().forEach(builder::header);
+            
+            return builder.body(request.body().asPublisher())
+                    .asCompletedStage();
+        });
+        
+        Route route = new RouteBuilder("/echo").handler(echo).build();
+        server().getRouteRegistry().add(route);
+        
+        String request =
+            "POST /echo HTTP/99+" + CRLF +
+            "Accept: text/plain; charset=utf-8" + CRLF +
+            "Content-Length: 14" + CRLF + CRLF +
+            
+            "Some body text";
+        
+        String resp = writeReadText(request, "body text");
+        
+        assertThat(resp).isEqualTo(
+            "HTTP/99+ 200 OK" + CRLF +
+            "Accept: text/plain; charset=utf-8" + CRLF +
+            "Content-Length: 14" + CRLF + CRLF +
+            
+            "Some body text");
     }
     
     // TODO: echo body LARGE! Like super large. 100MB or something. Must brake all buffer capacities, that's the point.
