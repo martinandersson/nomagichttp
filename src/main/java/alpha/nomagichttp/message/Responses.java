@@ -44,11 +44,6 @@ public final class Responses
         return ACCEPTED;
     }
     
-    private static final Response OK = new ResponseBuilder()
-            .httpVersion("HTTP/1.1").statusCode(200).reasonPhrase("OK")
-            .noBody();
-    
-    private static final Response ACCEPTED = new ResponseBuilder()
-            .httpVersion("HTTP/1.1").statusCode(202).reasonPhrase("Accepted")
-            .noBody();
+    private static final Response OK = ResponseBuilder.ok().noBody();
+    private static final Response ACCEPTED = ResponseBuilder.accepted().noBody();
 }
