@@ -89,7 +89,7 @@ Hello, World!
 
 [3-1]: src/main/java/alpha/nomagichttp/examples/HelloWorldResponse.java
 
-### Greet from path parameter
+### Greet using name from path parameter
 
 This example will greet the user with a name taken from a path parameter.
 
