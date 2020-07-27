@@ -3,6 +3,7 @@ package alpha.nomagichttp.internal;
 import alpha.nomagichttp.ExceptionHandler;
 import alpha.nomagichttp.Server;
 import alpha.nomagichttp.ServerConfig;
+import alpha.nomagichttp.message.Char;
 import alpha.nomagichttp.route.Route;
 import alpha.nomagichttp.route.RouteBuilder;
 import org.junit.jupiter.api.AfterAll;
@@ -15,6 +16,9 @@ import java.net.http.HttpClient;
 import java.nio.ByteBuffer;
 import java.nio.channels.NetworkChannel;
 import java.nio.channels.SocketChannel;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.List;
 import java.util.Set;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
@@ -118,29 +122,30 @@ abstract class AbstractEndToEndTest
             }
         }, 3, SECONDS);
         
+        final FiniteByteBufferSink sink = new FiniteByteBufferSink(128, responseEnd);
+        
         try (SocketChannel client = SocketChannel.open(
                 new InetSocketAddress(getLoopbackAddress(), port)))
         {
             int r = client.write(wrap(request));
             assertThat(r).isEqualTo(request.length);
             
-            FiniteByteBufferSink sink = new FiniteByteBufferSink(128, responseEnd);
             ByteBuffer buff = allocate(128);
             
-            while (!worker.isInterrupted() &&
-                    !sink.hasReachedEnd()   &&
-                    client.read(buff) != -1)
-            {
+            while (!sink.hasReachedEnd() && client.read(buff) != -1) {
                 buff.flip();
                 sink.write(buff);
                 buff.clear();
-            }
-            
-            if (Thread.interrupted()) { // clear flag
-                throw new InterruptedException();
+                
+                if (Thread.interrupted()) { // clear flag
+                    throw new InterruptedException();
+                }
             }
             
             return sink.toByteArray();
+        } catch (Exception e) {
+            sink.dumpToLog();
+            throw e;
         }
         finally {
             communicating.set(false);
@@ -196,14 +201,25 @@ abstract class AbstractEndToEndTest
             return delegate.toByteArray();
         }
         
-        private static String dump(byte[] bytes, int start, int end) {
-            StringBuilder b = new StringBuilder();
-            
-            for (int i = start; i < end; ++i) {
-                b.append(bytes[i]).append(" ");
+        void dumpToLog() {
+            if (!LOG.isLoggable(WARNING)) {
+                return;
             }
             
-            return b.toString();
+            byte[] b = delegate.toByteArray();
+            Collection<String> chars = dump(b, 0, b.length);
+            LOG.log(WARNING, "About to crash. We received this many bytes: " + chars.size() + ". Will log each as a char.");
+            dump(b, 0, b.length).forEach(c -> LOG.log(WARNING, c));
+        }
+        
+        private static Collection<String> dump(byte[] bytes, int start, int end) {
+            List<String> l = new ArrayList<>();
+            
+            for (int i = start; i < end; ++i) {
+                l.add(Char.toDebugString((char) bytes[i]));
+            }
+            
+            return l;
         }
     }
 }
