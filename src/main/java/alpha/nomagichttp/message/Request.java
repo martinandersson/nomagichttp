@@ -7,49 +7,109 @@ import java.util.concurrent.CompletionStage;
 import java.util.concurrent.Flow;
 import java.util.function.BiFunction;
 
-// TODO: Document
+/**
+ * An inbound HTTP request.
+ * 
+ * @author Martin Andersson (webmaster at martinandersson.com)
+ * 
+ * @see <a href="https://tools.ietf.org/html/rfc7230#section-3.1.1">RFC 7230 §3.1.1</a>
+ * @see <a href="https://tools.ietf.org/html/rfc7230#section-3.3">RFC 7230 §3.3</a>
+ */
 public interface Request
 {
-    // TODO: Document
+    /**
+     * Returns the request-line's method token, such as "GET" or "POST".<p>
+     * 
+     * In the following example, the method is "GET":
+     * <pre>{@code
+     *   GET /hello.txt HTTP/1.1
+     *   User-Agent: curl/7.16.3 libcurl/7.16.3 OpenSSL/0.9.7l zlib/1.2.3
+     *   Host: www.example.com
+     *   Accept: text/plain;charset=utf-8
+     * }</pre>
+     * 
+     * @return the request-line method token
+     */
     String method();
     
     /**
-     * TODO: Document
-     * 
-     * Also known as the "path" or "uri". Is the part of the request-line
-     * between method and protocol version and includes the full query string.
-     * For example, from this request-line:
-     * <pre>
-     *   GET /hello.txt?something=value HTTP/1.1
-     * </pre>
-     * 
-     * This method will return "/hello.txt?something=value".
+     * Returns the request-line's resource-target.<p>
+     *
+     * In the following example, the resource-target is
+     * "/hello.txt?query=value":
+     * <pre>{@code
+     *   GET /hello.txt?query=value HTTP/1.1
+     *   User-Agent: curl/7.16.3 libcurl/7.16.3 OpenSSL/0.9.7l zlib/1.2.3
+     *   Host: www.example.com
+     *   Accept: text/plain;charset=utf-8
+     * }</pre>
+     *
+     * @return the request-line's resource-target
      */
     String target();
     
     /**
-     * TODO: Document
-     * 
-     * From:
-     * <pre>
-     *   GET /hello.txt?something=value HTTP/1.1
-     * </pre>
-     * 
-     * 
-     * this method will return "HTTP/1.1".
+     * Returns the request-line's HTTP version.<p>
+     *
+     * In the following example, the HTTP version is "HTTP/1.1":
+     * <pre>{@code
+     *   GET /hello.txt HTTP/1.1
+     *   User-Agent: curl/7.16.3 libcurl/7.16.3 OpenSSL/0.9.7l zlib/1.2.3
+     *   Host: www.example.com
+     *   Accept: text/plain;charset=utf-8
+     * }</pre>
+     *
+     * @return the request-line's HTTP version
      */
     String httpVersion();
     
-    // TODO: Document
+    /**
+     * Returns a parameter value, or an empty optional if value is not bound.<p>
+     * 
+     * Suppose the server has a route with a parameter "id" declared:<p>
+     * <pre>
+     *   /account/{id}
+     * </pre>
+     * 
+     * For the following request, {@code paramFromPath("id")} would return
+     * "123":
+     * <pre>
+     *   GET /account/123 HTTP/1.1
+     *   ...
+     * </pre>
+     * 
+     * A resource-target "/account" without the parameter value would still
+     * match the route and call the handler, but this method would then return
+     * an empty optional.
+     * 
+     * @param name of parameter
+     * @return the parameter value
+     * @throws NullPointerException if {@code name} is {@code null}
+     */
     Optional<String> paramFromPath(String name);
     
-    // TODO: Document
+    /**
+     * Throws UnsupportedOperationException (query parameters are not yet
+     * implemented).
+     */
     Optional<String> paramFromQuery(String name);
     
-    // TODO: Document
+    /**
+     * Returns the HTTP headers.
+     * 
+     * @return the HTTP headers
+     * 
+     * @see HttpHeaders
+     */
     HttpHeaders headers();
     
-    // TODO: Document
+    /**
+     * Returns the request body.
+     * 
+     * @return the request body
+     * 
+     * @see Body
+     */
     Body body();
     
     /**
@@ -88,8 +148,8 @@ public interface Request
      * The default implementation does not support multiple subscribers at the
      * same time.<p>
      * 
-     * The default implementation assumes that the active subscriber process the
-     * bytebuffer synchronously. When {@code onNext} returns (normally or
+     * The default implementation assumes that the active subscriber process
+     * each bytebuffer synchronously. When {@code onNext} returns (normally or
      * exceptionally) and the bytebuffer has been fully read, then it will be
      * recycled back into a pool of bytebuffers that the server may immediately
      * use for new channel read operations. Processing a published bytebuffer
