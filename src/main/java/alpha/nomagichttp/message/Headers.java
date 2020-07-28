@@ -100,7 +100,7 @@ public final class Headers {
      *             if header value can not be parsed, or
      *             the header has multiple Content-Length keys
      * 
-     * @see <a href="https://tools.ietf.org/html/rfc7230#section-3.3.3">RFC 7231 §3.3.3</a>
+     * @see <a href="https://tools.ietf.org/html/rfc7230#section-3.3.2">RFC 7230 §3.3.2</a>
      */
     public static OptionalLong contentLength(HttpHeaders headers) {
         final List<String> values = headers.allValues("Content-Length");
