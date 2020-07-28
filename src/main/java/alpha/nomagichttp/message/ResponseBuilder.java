@@ -10,27 +10,42 @@ import java.util.stream.Stream;
 import static java.util.Objects.requireNonNull;
 import static java.util.stream.Stream.of;
 
-// TODO: Document we work just like Java's HttpHeaders:
-/*
- * An HTTP header name may appear more than once in the HTTP protocol. As
- * such, headers are represented as a name and a list of values. Each occurrence
- * of a header value is added verbatim, to the appropriate header name list,
- * without interpreting its value. In particular, {@code HttpHeaders} does not
- * perform any splitting or joining of comma separated header value strings. The
- * order of elements in a header value list is preserved when {@link
- * HttpRequest.Builder#header(String, String) building} a request. For
- * responses, the order of elements in a header value list is the order in which
- * they were received.
+/**
+ * Builds a {@link Response}.<p>
  * 
- * Other notes:
+ * Building a response is composed of a number of steps. The HTTP-specification
+ * mandates a status-line consisting of a {@code httpVersion}, {@code
+ * statusCode} and {@code reasonPhrase}. Static methods exists that returns
+ * builders already populated with common status-lines such as {@link #ok()} and
+ * {@link #accepted()}. The status-line may be followed by optional headers and
+ * message body.<p>
  * 
- * The returned response is just a linked view. The builder instance should be
- * discarded once built (response polled).
+ * Status-line methods replace any value set previously. Header methods add the
+ * header - duplicates allowed.<p>
+ * 
+ * Header key and values provided to header methods are concatenated using a
+ * colon followed by a space ": ". Other then this, no validation or
+ * interpretation at all is performed by this class.<p>
+ * 
+ * Setting the body using {@link #noBody()} or {@link #body(Flow.Publisher)} is
+ * what actually "builds" the builder. These methods return a {@code Response}
+ * view which is linked to the builder instance. The builder instance should be
+ * thrown away after use.
+ * 
+ * The builder instance is not thread-safe.<p>
+ * 
+ * @author Martin Andersson (webmaster at martinandersson.com)
  */
-// Not thread-safe and provides fail-fast exceptions only on a best-effort basis (no use of volatile variables)
-// Fail-fast in the form of ConcurrentModificationException and IllegalStateException
 public final class ResponseBuilder
 {
+    /**
+     * Returns a builder already populated with a status-line
+     * "HTTP/1.1 200 OK".<p>
+     * 
+     * What remains is to set headers and the message body.
+     * 
+     * @return a semi-populated builder
+     */
     public static ResponseBuilder ok() {
         return new ResponseBuilder()
                 .httpVersion("HTTP/1.1")
@@ -38,6 +53,14 @@ public final class ResponseBuilder
                 .reasonPhrase("OK");
     }
     
+    /**
+     * Returns a builder already populated with a status-line
+     * "HTTP/1.1 202 Accepted".<p>
+     *
+     * What remains is to set headers and the message body.
+     *
+     * @return a semi-populated builder
+     */
     public static ResponseBuilder accepted() {
         return new ResponseBuilder()
                 .httpVersion("HTTP/1.1")
@@ -50,13 +73,19 @@ public final class ResponseBuilder
     private String reasonPhrase;
     private final Queue<String> headers;
     private Flow.Publisher<ByteBuffer> body;
+    // TODO: This class was originally designed thread-safe. Not being
+    //       thread-safe renders the non-atomic modCount variable and
+    //       ConcurrentModificationException pretty useless. Remove.
     private int modCount;
+    // TODO: The original thread-safe design also had lazy population of the
+    //       response head in mind. Remove.
     private boolean committed;
     
     public ResponseBuilder() {
         httpVersion = null;
         statusCode = 0;
         reasonPhrase = null;
+        // TODO: Create lazily on first use
         headers = new ArrayDeque<>();
         body = null;
         modCount = 0;
@@ -64,12 +93,11 @@ public final class ResponseBuilder
     }
     
     /**
-     * TODO: Document
+     * Set HTTP version.
      * 
-     * Replaces previous values.
+     * @throws NullPointerException if {@code httpVersion} is {@code null}
      * 
-     * Throws IllegalStateException if server has pulled the status-line or
-     * headers already (i.e. response has commenced).
+     * @return this (for chaining/fluency)
      */
     public ResponseBuilder httpVersion(String httpVersion) {
         requireNonNull(httpVersion);
@@ -77,20 +105,36 @@ public final class ResponseBuilder
         return this;
     }
     
-    // TODO: Document
+    /**
+     * Set status-code.
+     *
+     * @return this (for chaining/fluency)
+     */
     public ResponseBuilder statusCode(int statusCode) {
         modifying(() -> this.statusCode = statusCode);
         return this;
     }
     
-    // TODO: Document
+    /**
+     * Set reason-phrase.
+     *
+     * @throws NullPointerException if {@code reasonPhrase} is {@code null}
+     *
+     * @return this (for chaining/fluency)
+     */
     public ResponseBuilder reasonPhrase(String reasonPhrase) {
         requireNonNull(reasonPhrase);
         modifying(() -> this.reasonPhrase = reasonPhrase);
         return this;
     }
     
-    // TODO: Document
+    /**
+     * Add a header key and value pair.
+     *
+     * @throws NullPointerException if any argument is {@code null}
+     *
+     * @return this (for chaining/fluency)
+     */
     public ResponseBuilder header(String name, String value) {
         requireNonNull(name);
         requireNonNull(value);
@@ -98,13 +142,25 @@ public final class ResponseBuilder
         return this;
     }
     
-    // TODO: Document
+    /**
+     * Add a repeated header with what should be different values.
+     *
+     * @throws NullPointerException if any argument is effectively {@code null}
+     *
+     * @return this (for chaining/fluency)
+     */
     public ResponseBuilder header(String name, Iterable<String> values) {
         values.forEach(v -> header(name, v));
         return this;
     }
     
-    // TODO: Document
+    /**
+     * Add a repeated header with what should be different values.
+     *
+     * @throws NullPointerException if any argument is {@code null}
+     *
+     * @return this (for chaining/fluency)
+     */
     public ResponseBuilder header(String name, String firstValue, String... moreValues) {
         Stream.concat(of(firstValue), of(moreValues))
                 .forEach(v -> header(name, v));
@@ -112,36 +168,64 @@ public final class ResponseBuilder
         return this;
     }
     
-    // TODO: Document
-    // Does not throw exception if quality is set to anything different than 1 (DefaultHandler do).
-    // As with all other headers, this also appends. But it would be weird to
-    // send many different content types to client.
-    
     // TODO: Rename to headerContentType() or move all named headers to sub-API
     //       like responseBuilder.header().contentType("val")
     
+    /**
+     * Add a "Content-Type" header.<p>
+     * 
+     * As with other header-methods, this method too allows repeated headers.
+     * However, it is not recommended to repeat the "Content-Type" header.<p>
+     * 
+     * @param type media type
+     * 
+     * @return this (for chaining/fluency)
+     * 
+     * @throws NullPointerException if {@code type} is {@code null}
+     */
     public ResponseBuilder contentType(MediaType type) {
         return header("Content-Type", type.toString());
     }
     
-    // TODO: Document
+    /**
+     * Add a "Content-Length" header.<p>
+     *
+     * As with other header-methods, this method too allows repeated headers.
+     * However, it is not recommended to repeat the "Content-Length" header.<p>
+     *
+     * @param value content length
+     *
+     * @return this (for chaining/fluency)
+     */
     public ResponseBuilder contentLenght(long value) {
         return header("Content-Length", Long.toString(value));
     }
     
     // TODO: Lots more of convenient-to-use header methods
     
+    /**
+     * Set an empty message body and return a {@code Response} view linked to
+     * this builder.
+     * 
+     * @return a {@code Response} view
+     */
     public Response noBody() {
         return contentLenght(0).body(Publishers.empty());
     }
     
-    // TODO: Document
-    // Does not allow replace of old value. Call exactly once by calling
-    // request-thread before handler return.
+    /**
+     * Set the message body and return a {@code Response} view linked to this
+     * builder.
+     *
+     * @return a {@code Response} view
+     * 
+     * @throws NullPointerException if {@code body} is {@code null}
+     */
     public Response body(Flow.Publisher<ByteBuffer> body) {
         requireNonNull(body);
         
         if (this.body != null) {
+            // Can hit this if the builder instance is re-used
             throw new IllegalStateException("Response body already set.");
         }
         
@@ -174,7 +258,7 @@ public final class ResponseBuilder
         }
     }
     
-    class View implements Response {
+    final class View implements Response {
         @Override
         public String statusLine() {
             committed = true;
