@@ -83,14 +83,14 @@ final class DefaultRequest implements Request
         
         @Override
         public <R> CompletionStage<R> convert(BiFunction<byte[], Integer, R> f) {
-            HeapSubscriber<R> subscriber = new HeapSubscriber<>(f);
-            asPublisher().subscribe(subscriber);
-            return subscriber.asCompletionStage();
+            HeapSubscriber<R> s = new HeapSubscriber<>(f);
+            subscribe(s);
+            return s.asCompletionStage();
         }
         
         @Override
-        public Flow.Publisher<ByteBuffer> asPublisher() {
-            return channel;
+        public void subscribe(Flow.Subscriber<? super ByteBuffer> subscriber) {
+            channel.subscribe(subscriber);
         }
     }
 }

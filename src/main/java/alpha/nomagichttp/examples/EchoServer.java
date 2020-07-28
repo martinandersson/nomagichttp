@@ -38,8 +38,7 @@ public class EchoServer
             req.headers().map().forEach(b::header);
             
             // The body is the last part and also builds/finalizes the response object
-            Response res = b.body(
-                    req.body().asPublisher());
+            Response res = b.body(req.body());
             
             return res.asCompletedStage();
         });

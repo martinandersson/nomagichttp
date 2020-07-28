@@ -134,7 +134,7 @@ class SimpleEndToEndTest extends AbstractEndToEndTest
             
             request.headers().map().forEach(builder::header);
             
-            return builder.body(request.body().asPublisher())
+            return builder.body(request.body())
                     .asCompletedStage();
         });
         

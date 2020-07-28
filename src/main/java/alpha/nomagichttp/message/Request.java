@@ -52,19 +52,101 @@ public interface Request
     // TODO: Document
     Body body();
     
-     /**
-      * An API for access of the request body.
-      * 
-      * @author Martin Andersson (webmaster at martinandersson.com)
-      */
-    interface Body
+    /**
+     * An API for accessing the request body, either as a high-level Java type
+     * using conversion methods such as {@link #toText()} or directly consuming
+     * bytes by using the low-level {@link #subscribe(Flow.Subscriber)
+     * subscribe(Flow.Subscriber&lt;ByteBuffer&gt;)} method.<p>
+     * 
+     * The application should consume the body, even if this entails
+     * <i>discarding</i> it. Not consuming all of the body could have the effect
+     * that the server begins parsing a subsequent request head from the same
+     * channel at the wrong position.<p>
+     * 
+     * An attempt to consume the body more than once should not be done and has
+     * undefined application behavior. The default implementation does not save
+     * the bytes once they have been consumed.<p>
+     * 
+     * 
+     * <h3>Subscribing to bytes with a {@code Flow.Subscriber}</h3>
+     * 
+     * The subscription will be completed as soon as the server has determined
+     * that the end of the body has been reached.<p>
+     * 
+     * If need be, the server will slice the last published bytebuffer to make
+     * sure that the subscriber can not accidentally read past the body limit
+     * into a subsequent HTTP message from the same channel. I.e., it is safe
+     * for the subscriber to read <i>all remaining bytes</i> of each published
+     * bytebuffer.<p>
+     * 
+     * If {@code Subscriber.onNext} returns (normally or exceptionally) and the
+     * bytebuffer has bytes remaining, then the bytebuffer will be immediately
+     * re-published. This makes it possible for a subscriber to cancel his
+     * subscription and "hand-off" byte processing to another subscriber
+     * (logical framing within the body).<p>
+     * 
+     * The default implementation does not support multiple subscribers at the
+     * same time.<p>
+     * 
+     * The default implementation assumes that the active subscriber process the
+     * bytebuffer synchronously. When {@code onNext} returns (normally or
+     * exceptionally) and the bytebuffer has been fully read, then it will be
+     * recycled back into a pool of bytebuffers that the server may immediately
+     * use for new channel read operations. Processing a published bytebuffer
+     * asynchronously in the future has undefined application behavior.<p>
+     * 
+     * Finally, as a word of caution; the default implementation uses
+     * <i>direct</i> bytebuffers in order to support "zero-copy" transfers.
+     * I.e., no data is moved into Java heap space unless the subscriber itself
+     * causes this to happen. Whenever possible, always pass forward the
+     * bytebuffers to the destination without reading the bytes in application
+     * code.
+     * 
+     * 
+     * @author Martin Andersson (webmaster at martinandersson.com)
+     */
+    
+    // TODO: See beginning of javadoc. We ask the handler to consume the body or
+    //       discard it - otherwise dire consequences. A) This is not enforced,
+    //       so yes, dire consequences can happen - not good! Some type of
+    //       fail-fast from the server would be great. B) This probably also
+    //       translates to a lot of boilerplate code for some handlers; forced
+    //       to "make a decision" and write code for a body they possibly wasn't
+    //       even interested in to start with. I propose that the server
+    //       auto-discards bodies that wasn't consumed, including partial
+    //       bodies - and no logging about it (really up to the handler what he
+    //       makes out of the body or the absence of such). In fact, probably
+    //       even required behavior, to be applied after error handling. I mean,
+    //       what if the handler crashes half-way through consuming the body,
+    //       then an error handler "rescues" the situation by responding an
+    //       error code. The application would rightfully think that future HTTP
+    //       exchanges can take place as if nothing ever happened.
+    
+    // TODO: Currently we don't allow async consumption of the bytebuffers, the
+    //       underlying "real" subscriber will autorelease bytebuffers back to
+    //       the pool as soon as onNext returns (see LimitedBytePublisher). I
+    //       anticipate that our API will accommodate asynchronous destinations
+    //       such as AsynchronousFileChannel.write(). Perhaps through a method
+    //       such as Request.Body.toFile(). This future implementation will have
+    //       to consume bytes asynchronous and so we need to accommodate this in
+    //       a smart way, and, we should then also let the user have access to
+    //       such async consumption capabilities directly. We could perhaps do
+    //       "Request.Body.subscribe(Subscriber<ByteBuffer>)" and
+    //       "Request.Body.subscribeAsync(Subscriber<PooledByteBuffer>)". The
+    //       latter of which exposes PooledByteBuffer.release(). Or, we can make
+    //       PooledByteBufferPublisher public and have Body extend it? Then add
+    //       in docs that a manual Subscriber must always release(), or use one
+    //       of the conversion methods.
+    
+    interface Body extends Flow.Publisher<ByteBuffer>
     {
         /**
          * Returns the body as a string.<p>
          * 
-         * The charset used will be taken from the request headers (charset
-         * parameter of "Content-Type"). If this information is not present,
-         * then UTF-8 will be used.<p>
+         * The charset used for decoding will be taken from the request headers
+         * ("Content-Type" media type parameter "charset" only if the type is
+         * "text"). If this information is not present, then UTF-8 will be
+         * used.<p>
          * 
          * @return the body as a string
          */
@@ -75,10 +157,10 @@ public interface Request
         /**
          * Convert the request body into an arbitrary Java type.<p>
          * 
-         * All bytes in the bytebuffers from the network source will be
-         * collected into a byte[]. Once all of the body has been read, the
-         * byte[] will be passed to the specified function together with a count
-         * of valid bytes that can be safely read from the array.<p>
+         * All body bytes will be collected into a byte[]. Once all of the body
+         * has been read, the byte[] will be passed to the specified function
+         * together with a count of valid bytes that can be safely read from the
+         * array.<p>
          * 
          * For example;
          * <pre>{@code
@@ -94,65 +176,5 @@ public interface Request
          * @return the result from applying the function {@code f}
          */
         <R> CompletionStage<R> convert(BiFunction<byte[], Integer, R> f);
-        
-        /**
-         * Returns the request body as a publisher of bytebuffers.<p>
-         * 
-         * This is a low-level method meant to be used as a fallback if no other
-         * API method does the job.<p>
-         *
-         * In reality, the publisher is actually the network channel. The "body"
-         * is just a semantically defined intersection of a flow of bytes from
-         * the channel.<p>
-         * 
-         * The bytes published will be read from the end of the request head
-         * until the server has determined the end of the body at which point
-         * the subscription is completed. The subscriber is fully responsible
-         * for the interpretation of these bytes.<p>
-         * 
-         * Note that currently, chunked transfer-encoding is not implemented by
-         * the default server implementation which is likely to reject chunked
-         * messages.<p>
-         * 
-         * The default server implementation imposes a few restrictions:<p>
-         * 
-         * 1) Only one subscriber at a time may be active. Once the data has
-         * been published, it will never be published again.<p>
-         * 
-         * 2) As soon as {@code Subscriber.onNext} returns and if the published
-         * bytebuffer has no more bytes remaining, it will go back to a pool of
-         * bytebuffers and become immediately available as a target for new
-         * channel read operations. It is therefore not safe to process the
-         * bytebuffer asynchronously.<p>
-         * 
-         * 3) If {@code onNext} returns and the bytebuffer has bytes remaining,
-         * then the bytebuffer will immediately be re-published. Therefore it
-         * doesn't really make much sense for the subscriber to <i>not</i> read
-         * all of the remaining bytes unless he also cancels the
-         * subscription (in which case the remaining bytes will be published to
-         * the next subscriber).<p>
-         * 
-         * 4) Speaking of, the next subscriber may be a server-provided head
-         * parser that expects to begin a new HTTP exchange by parsing the next
-         * request head. The head parser is guaranteed to fail if it picks up
-         * parsing from an arbitrary point in the previous request body. The
-         * subscriber should therefor not prematurely cancel it's subscription
-         * unless the intention is to immediately re-subscribe with a new
-         * subscriber that will consume the rest of the body. A subscriber that
-         * is not interested in all of the body should <i>discard</i> bytes
-         * until the subscription is completed.<p>
-         * 
-         * The server will slice the last bytebuffer to make sure the subscriber
-         * can not accidentally read past the body limit into a subsequent HTTP
-         * message.<p>
-         * 
-         * 5) Re-subscribing after the request body has been completely read has
-         * undefined behavior, most likely, not a good one. So, should not be
-         * done.
-         * 
-         * @return the request body as a publisher of bytebuffers
-         */
-        // TODO: Remove this method and let Body interface extend Flow.Publisher
-        Flow.Publisher<ByteBuffer> asPublisher();
     }
 }
