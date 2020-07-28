@@ -24,7 +24,7 @@ types and the architecture is the [package-info.java][1-1] file of
 
 The following examples assume that Java 11+ is installed and the current working
 directory is the NoMagicHTTP project root. In addition, please run these
-commands:
+commands before running the examples:
 
 ```shell
 ./gradlew build
