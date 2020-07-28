@@ -6,40 +6,65 @@ import java.util.concurrent.CompletionStage;
 import java.util.concurrent.Flow;
 
 /**
- * TODO: Document properly.
+ * Contains the status-line (HTTP-version, status-code and reason-phrase) as
+ * well as headers and message body.<p>
  * 
- * Status line (HTTP-version, status-code, reason-phrase) as well
- * as headers and message body.
+ * The server will write the response to the client as-is with no inference.<p>
  * 
- * Server does not call the statusLine() method before the body publisher has started
- * to yield bytes. Then the headers(). This means that the implementation should not
- * allow to be modified after the statusLine() method has been called as the
- * new state would not safely make it to the actual response bytes. It also means
- * that the implementation could if need be, set these values lazily as long as
- * the body hasn't started.
+ * The first thing the server do when receiving the response object from the
+ * request handler is to subscribe to the message body.<p>
+ * 
+ * Not before the body publisher issues a bytebuffer or completes the
+ * subscription (whichever happens first) will the server call {@code
+ * statusLine()} and {@code headers()} in order to get the response head. This
+ * means that the implementation may internally write these values lazily, if
+ * need be.<p>
+ * 
+ * @author Martin Andersson (webmaster at martinandersson.com)
  */
 public interface Response
 {
-    // TODO: Document
+    /**
+     * Returns the status-line, for example "HTTP/1.1 200 OK".<p>
+     * 
+     * The status-line will be sent to client verbatim.
+     * 
+     * @return the status-line
+     */
     String statusLine();
     
     /**
-     * TODO: Document properly
-     * Provides all header lines. Header keys may be duplicated. They will be
-     * written orderly verbatim.
+     * Returns the headers.<p>
      * 
-     * @return
+     * The header lines will be sent to client verbatim.
+     * 
+     * @return the headers
      */
     Iterable<String> headers();
     
     /**
-     * TODO: Document
+     * Returns the message body.
      * 
-     * The server will subscribe and push the content to the other side.
+     * @return the message body
+     * 
+     * @see Response
      */
     Flow.Publisher<ByteBuffer> body();
     
-    // TODO: Document
+    /**
+     * Returns this response object boxed in a completed stage.<p>
+     * 
+     * Useful for synchronous request handler implementations that are able to
+     * build the response immediately.
+     * 
+     * @implSpec
+     * The default implementation is equivalent to:
+     * <pre>{@code
+     *     return CompletableFuture.completedStage(this);
+     * }</pre>
+     * 
+     * @return this response object boxed in a completed stage
+     */
     default CompletionStage<Response> asCompletedStage() {
         return CompletableFuture.completedStage(this);
     }
