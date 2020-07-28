@@ -22,9 +22,12 @@ API that is _discoverable_ and intuitive. A good start to read about core Java
 types and the architecture is the [package-info.java][1-1] file of
 `alpha.nomagichttp`.
 
-The following examples assume that Java 11+ is installed and the current working
+Each of the following examples has a link to the source code which should be
+read as it contains helpful code commentary to introduce the NoMagicHTTP API.
+
+The examples assume that Java 11+ is installed and the current working
 directory is the NoMagicHTTP project root. In addition, please run these
-commands before running the examples:
+commands before trying the examples:
 
 ```shell
 ./gradlew build
