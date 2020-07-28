@@ -48,7 +48,7 @@ foo@bar:~$ java --class-path=$JAR $PKG.HelloWorldConsole
 Listening on port 52063.
 ```
 
-Take note of the port and in a new terminal, run:
+Take note of the port and in a new terminal window, run:
 
 ```console
 foo@bar:~$ curl -i localhost:52063
