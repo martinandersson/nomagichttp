@@ -158,6 +158,34 @@ class SimpleEndToEndTest extends AbstractEndToEndTest
             "Some body text");
     }
     
+    /** Performs two requests in a row .*/
+    @Test
+    void exchange_restart() throws IOException, InterruptedException {
+        // Echo request body as-is
+        Handler echo = POST().apply(req ->
+                ResponseBuilder.ok().body(req.body()).asCompletedStage());
+        
+        server().getRouteRegistry().add(route("/restart", echo));
+        
+        final String reqHead =
+            "POST /restart HTTP/1.1" + CRLF +
+            "Accept: text/plain; charset=utf-8" + CRLF +
+            "Content-Length: 3" + CRLF + CRLF;
+        
+        final String respHead =
+            "HTTP/1.1 200 OK" + CRLF + CRLF;
+    
+        openConnection();
+        
+        String resp1 = writeReadText(reqHead + "ABC", "ABC");
+        assertThat(resp1).isEqualTo(respHead + "ABC");
+        
+        String resp2 = writeReadText(reqHead + "DEF", "DEF");
+        assertThat(resp2).isEqualTo(respHead + "DEF");
+    }
+    
     // TODO: echo body LARGE! Like super large. 100MB or something. Must brake all buffer capacities, that's the point.
     //       Should go to "large" test set.
+    
+    // TODO: exchange restart with thousands of continous messages, also "large" test
 }
