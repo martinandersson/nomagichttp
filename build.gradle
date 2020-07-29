@@ -11,6 +11,14 @@ plugins {
     id 'jacoco'
 }
 
+sourceSets {
+    test {
+        // Move from default 'src/test' to 'src/test/unit'
+        java.srcDirs = ['src/test/unit/java']
+        resources.srcDirs = ['src/test/unit/resources']
+    }
+}
+
 repositories {
     // Use jcenter for resolving dependencies.
     // You can declare any Maven/Ivy/file repository here.
