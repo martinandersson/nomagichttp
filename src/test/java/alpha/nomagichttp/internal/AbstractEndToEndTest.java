@@ -7,6 +7,7 @@ import alpha.nomagichttp.message.Char;
 import alpha.nomagichttp.route.Route;
 import alpha.nomagichttp.route.RouteBuilder;
 import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 
 import java.io.ByteArrayOutputStream;
@@ -99,6 +100,33 @@ abstract class AbstractEndToEndTest
         return server;
     }
     
+    private SocketChannel client;
+    
+    @AfterEach
+    void closeClient() throws IOException {
+        if (client != null) {
+            client.close();
+            client = null;
+        }
+    }
+    
+    /**
+     * Open a persistent connection for re-use throughout the test.<p>
+     * 
+     * This method should be called at the start of a test for connection
+     * re-use by all subsequent {@code writeXXX()} calls. Not calling this
+     * method will make the {@code writeXXX()} methods open a new connection
+     * each time.
+     */
+    protected final void openConnection() throws IOException {
+        if (client != null) {
+            throw new IllegalStateException("Already opened.");
+        }
+        
+        client = SocketChannel.open(
+                new InetSocketAddress(getLoopbackAddress(), port));
+    }
+    
     protected final String writeReadText(String request, String responseEnd)
             throws IOException, InterruptedException
     {
@@ -123,10 +151,13 @@ abstract class AbstractEndToEndTest
         }, 3, SECONDS);
         
         final FiniteByteBufferSink sink = new FiniteByteBufferSink(128, responseEnd);
+        final boolean persistent = client != null;
         
-        try (SocketChannel client = SocketChannel.open(
-                new InetSocketAddress(getLoopbackAddress(), port)))
-        {
+        try {
+            if (!persistent) {
+                openConnection();
+            }
+            
             int r = client.write(wrap(request));
             assertThat(r).isEqualTo(request.length);
             
@@ -150,6 +181,11 @@ abstract class AbstractEndToEndTest
         finally {
             communicating.set(false);
             interrupt.cancel(false);
+            Thread.interrupted(); // clear flag
+            
+            if (!persistent) {
+                closeClient();
+            }
         }
     }
     
