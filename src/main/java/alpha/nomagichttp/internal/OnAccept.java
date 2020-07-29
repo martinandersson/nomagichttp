@@ -28,7 +28,6 @@ import static alpha.nomagichttp.message.Publishers.empty;
 import static java.lang.System.Logger;
 import static java.lang.System.Logger.Level.DEBUG;
 import static java.lang.System.Logger.Level.ERROR;
-import static java.lang.System.Logger.Level.INFO;
 
 /**
  * Handles a newly accepted client/child connection.<p>
@@ -90,16 +89,7 @@ final class OnAccept implements CompletionHandler<AsynchronousSocketChannel, Voi
         // TODO: child.setOption(StandardSocketOptions.SO_KEEPALIVE, true); ??
         
         PooledByteBufferPublisher bytebuffers = new ChannelBytePublisher(child);
-        
-        new RequestHeadParser(bytebuffers, config.maxRequestHeadSize())
-                .asCompletionStage()
-                .whenComplete((head, exc) -> {
-                    if (exc != null) {
-                        dealWithError(exc, child, null);
-                    } else {
-                        callRequestHandler(head, child, bytebuffers);
-                    }
-                });
+        setupRequestHeadParser(bytebuffers, child);
     }
     
     @Override
@@ -137,6 +127,18 @@ final class OnAccept implements CompletionHandler<AsynchronousSocketChannel, Voi
             
             throw t;
         }
+    }
+    
+    private void setupRequestHeadParser(PooledByteBufferPublisher bytebuffers, AsynchronousSocketChannel child) {
+        new RequestHeadParser(bytebuffers, config.maxRequestHeadSize())
+                .asCompletionStage()
+                .whenComplete((head, exc) -> {
+                    if (exc != null) {
+                        dealWithError(exc, child, null);
+                    } else {
+                        callRequestHandler(head, child, bytebuffers);
+                    }
+                });
     }
     
     private void callRequestHandler(RequestHead head, AsynchronousSocketChannel child, PooledByteBufferPublisher bytebuffers) {
@@ -178,25 +180,28 @@ final class OnAccept implements CompletionHandler<AsynchronousSocketChannel, Voi
             
             Request request = new DefaultRequest(head, match.parameters(), requestBody);
             CompletionStage<Response> response = handler.logic().apply(request);
-            
-            response.whenComplete((result, exc) -> {
-                if (exc != null) {
-                    dealWithError(exc, child, handler);
-                } else {
-                    new ResponseToChannelWriter(child, result)
-                            .asCompletionStage()
-                            .whenComplete((Void, exc2) -> {
-                                if (exc2 != null) {
-                                    dealWithError(exc2, child, handler);
-                                } else {
-                                    // TODO: Restart HTTP exchange flow
-                                    LOG.log(INFO, "TODO: Restart flow.");
-                                }
-                            });
-                }
-            });
+            dealWithResponse(response, child, handler, bytebuffers);
         } catch (Throwable t) {
             dealWithError(t, child, handler);
         }
+    }
+    
+    private void dealWithResponse(CompletionStage<Response> response, AsynchronousSocketChannel child, Handler handler, PooledByteBufferPublisher bytebuffers) {
+        response.whenComplete((result, exc) -> {
+            if (exc != null) {
+                dealWithError(exc, child, handler);
+            } else {
+                new ResponseToChannelWriter(child, result)
+                        .asCompletionStage()
+                        .whenComplete((Void, exc2) -> {
+                            if (exc2 != null) {
+                                dealWithError(exc2, child, handler);
+                            } else {
+                                // Restart HTTP exchange flow
+                                setupRequestHeadParser(bytebuffers, child);
+                            }
+                        });
+            }
+        });
     }
 }
