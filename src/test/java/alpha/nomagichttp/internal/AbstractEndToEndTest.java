@@ -60,7 +60,7 @@ abstract class AbstractEndToEndTest
     private static ScheduledExecutorService scheduler;
     
     @BeforeAll
-    static void setup() throws IOException {
+    static void startServer() throws IOException {
         Route route = new RouteBuilder("/")
                 .handler(noop())
                 .build();
@@ -84,7 +84,7 @@ abstract class AbstractEndToEndTest
     }
     
     @AfterAll
-    static void stop() throws IOException, InterruptedException {
+    static void stopServer() throws IOException, InterruptedException {
         if (listener != null) {
             // TODO: Use official Server.stop() instead
             listener.close();
