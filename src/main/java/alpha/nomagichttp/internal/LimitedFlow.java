@@ -49,6 +49,14 @@ final class LimitedFlow implements
     
     @Override
     public void onSubscribe(Flow.Subscription subscription) {
+        // TODO: LimitedFlow is exposed through the Request.Body API, we can not
+        //       trust application code to behave. In order to convert
+        //       "best-effort" fails into rock-solid requirements, take
+        //       subscriber/subscription reference management out from
+        //       AbstractUnicastPublisher to separate class shared by superclass
+        //       of LimitedFlow.
+        
+        // Best effort only, upstream not volatile
         if (upstream != null) {
             subscription.cancel();
             // https://github.com/reactive-streams/reactive-streams-jvm/issues/495
@@ -94,7 +102,9 @@ final class LimitedFlow implements
             
             if (desire() == 0) {
                 upstream.cancel();
+                upstream = null;
                 downstream.onComplete();
+                downstream = null;
             } else {
                 tryRequest();
             }
@@ -115,6 +125,7 @@ final class LimitedFlow implements
     
     @Override
     public void subscribe(Flow.Subscriber<? super PooledByteBufferHolder> subscriber) {
+        // Best effort only, upstream not volatile
         if (upstream == null) {
             // https://github.com/reactive-streams/reactive-streams-jvm/issues/495
             throw new IllegalStateException("Nothing more to publish.");
