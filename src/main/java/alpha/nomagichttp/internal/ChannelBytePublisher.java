@@ -1,5 +1,8 @@
 package alpha.nomagichttp.internal;
 
+import alpha.nomagichttp.message.PooledByteBufferHolder;
+import alpha.nomagichttp.message.Request;
+
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.AsynchronousByteChannel;
@@ -18,16 +21,14 @@ import static java.util.Objects.requireNonNull;
  * This class publishes bytebuffers read from an asynchronous channel (assumed
  * to not support concurrent read operations).<p>
  * 
- * Although not prohibited, it is probably not the best of ideas to process the
- * bytes asynchronously unless order of processing and releasing is guaranteed.
- * This would be a very weird protocol!
+ * Many aspects of how to consume published bytebuffers has been documented in
+ * {@link Request.Body} and {@link PooledByteBufferHolder}.
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  * 
- * @see PooledByteBufferPublisher
  * @see AbstractUnicastPublisher
  */
-final class ChannelBytePublisher extends AbstractUnicastPublisher<ByteBuffer> implements PooledByteBufferPublisher
+final class ChannelBytePublisher extends AbstractUnicastPublisher<DefaultPooledByteBufferHolder>
 {
     private static final System.Logger LOG = System.getLogger(ChannelBytePublisher.class.getPackageName());
     
@@ -66,26 +67,25 @@ final class ChannelBytePublisher extends AbstractUnicastPublisher<ByteBuffer> im
     }
     
     @Override
-    protected ByteBuffer poll() {
-        return readable.poll();
+    protected DefaultPooledByteBufferHolder poll() {
+        ByteBuffer b = readable.poll();
+        return b == null ? null :
+                new DefaultPooledByteBufferHolder(b, (b2, read) -> release(b2));
     }
     
-    @Override
-    public void release(ByteBuffer buffer) {
-        if (buffer.hasRemaining()) {
-            readable.addFirst(buffer);
+    private void release(ByteBuffer b) {
+        if (b.hasRemaining()) {
+            readable.addFirst(b);
             announce();
         } else {
-            writable.add(buffer.clear());
+            writable.add(b.clear());
             readOp.run();
         }
     }
     
     @Override
-    protected void failed(ByteBuffer buffer) {
-        if (writable.stream().noneMatch(e -> e == buffer)) {
-            release(buffer);
-        }
+    protected void failed(DefaultPooledByteBufferHolder buffer) {
+        buffer.release();
     }
     
     private void readImpl() {

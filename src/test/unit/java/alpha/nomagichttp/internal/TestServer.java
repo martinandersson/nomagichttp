@@ -43,7 +43,7 @@ final class TestServer implements Closeable
         acceptExc = new AtomicReference<>();
     }
     
-    TestServer start() throws IOException {
+    void start() throws IOException {
         listener = AsynchronousServerSocketChannel.open()
                 .bind(new InetSocketAddress(getLoopbackAddress(), 0));
         
@@ -59,8 +59,6 @@ final class TestServer implements Closeable
                 acceptExc.set(exc);
             }
         });
-        
-        return this;
     }
     
     SocketChannel newClient() throws IOException {

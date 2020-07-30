@@ -2,6 +2,7 @@ package alpha.nomagichttp.internal;
 
 import alpha.nomagichttp.message.Char;
 import alpha.nomagichttp.message.MaxRequestHeadSizeExceededException;
+import alpha.nomagichttp.message.PooledByteBufferHolder;
 
 import java.nio.ByteBuffer;
 import java.util.concurrent.CompletableFuture;
@@ -18,29 +19,27 @@ import static java.lang.System.Logger.Level.DEBUG;
 //       cleared on each new read, almost like a heartbeat. So, if we don't get a single
 //       byte despite us waiting for bytes, then we timeout.
 
-final class RequestHeadParser 
+final class RequestHeadParser
 {
     private static final System.Logger LOG = System.getLogger(RequestHeadParser.class.getPackageName());
     
-    private final PooledByteBufferPublisher publisher;
     private final int maxHeadSize;
     private final CompletableFuture<RequestHead> result;
     private final RequestHeadProcessor processor;
     
-    RequestHeadParser(PooledByteBufferPublisher from, int maxRequestHeadSize) {
-        publisher   = from;
+    RequestHeadParser(Flow.Publisher<? extends PooledByteBufferHolder> bytes, int maxRequestHeadSize) {
         maxHeadSize = maxRequestHeadSize;
         result      = new CompletableFuture<>();
         processor   = new RequestHeadProcessor();
         
-        publisher.subscribe(new Subscriber());
+        bytes.subscribe(new Subscriber());
     }
     
     CompletionStage<RequestHead> asCompletionStage() {
         return result.minimalCompletionStage();
     }
     
-    private final class Subscriber implements Flow.Subscriber<ByteBuffer> {
+    private final class Subscriber implements Flow.Subscriber<PooledByteBufferHolder> {
         private Flow.Subscription sub;
         
         @Override
@@ -51,22 +50,22 @@ final class RequestHeadParser
         int read;
         
         @Override
-        public void onNext(ByteBuffer buff) {
+        public void onNext(PooledByteBufferHolder item) {
             try {
-                onNext0(buff);
+                onNext0(item.get());
             } catch (Throwable t) {
                 sub.cancel();
                 result.completeExceptionally(t);
             } finally {
-                publisher.release(buff);
+                item.release();
             }
         }
         
-        private void onNext0(ByteBuffer buff) {
+        private void onNext0(ByteBuffer buf) {
             RequestHead finished = null;
             
-            while (buff.hasRemaining() && finished == null) {
-                char curr = (char) buff.get();
+            while (buf.hasRemaining() && finished == null) {
+                char curr = (char) buf.get();
                 LOG.log(DEBUG, () -> "pos=" + read + ", curr=\"" + Char.toDebugString(curr) + "\"");
                 
                 if (++read > maxHeadSize) {

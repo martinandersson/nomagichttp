@@ -22,7 +22,7 @@
  * When processing a request, the handler will have an optionally complete
  * control over the bytes read from the inbound message body as well as the
  * response sent back (head + body). The message bodies are modelled as a
- * {@link java.util.concurrent.Flow.Publisher Flow.Publisher&lt;ByteBuffer&gt;},
+ * {@link java.util.concurrent.Flow.Publisher Flow.Publisher} of bytebuffers,
  * consumed as request body and produced as response body respectively. This
  * enables the server implementation to be very scalable. Helpful API-provided
  * types and methods will make working in an asynchronous environment both easy

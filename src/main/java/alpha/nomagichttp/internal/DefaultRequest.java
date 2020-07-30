@@ -1,10 +1,10 @@
 package alpha.nomagichttp.internal;
 
 import alpha.nomagichttp.message.MediaType;
+import alpha.nomagichttp.message.PooledByteBufferHolder;
 import alpha.nomagichttp.message.Request;
 
 import java.net.http.HttpHeaders;
-import java.nio.ByteBuffer;
 import java.nio.charset.Charset;
 import java.util.Map;
 import java.util.Optional;
@@ -20,9 +20,9 @@ final class DefaultRequest implements Request
 {
     private final RequestHead head;
     private final Map<String, String> pathParameters;
-    private final Flow.Publisher<ByteBuffer> channel;
+    private final Flow.Publisher<PooledByteBufferHolder> channel;
     
-    DefaultRequest(RequestHead head, Map<String, String> pathParameters, Flow.Publisher<ByteBuffer> channel) {
+    DefaultRequest(RequestHead head, Map<String, String> pathParameters, Flow.Publisher<PooledByteBufferHolder> channel) {
         this.head = head;
         this.pathParameters = pathParameters;
         this.channel = channel;
@@ -89,7 +89,7 @@ final class DefaultRequest implements Request
         }
         
         @Override
-        public void subscribe(Flow.Subscriber<? super ByteBuffer> subscriber) {
+        public void subscribe(Flow.Subscriber<? super PooledByteBufferHolder> subscriber) {
             channel.subscribe(subscriber);
         }
     }

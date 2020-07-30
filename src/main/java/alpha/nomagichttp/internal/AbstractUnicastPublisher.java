@@ -72,9 +72,7 @@ import static java.util.Objects.requireNonNull;
  * Having more tightly coupled semantics also makes it easier to reason about
  * the application behavior and how-to implement a "correct" subscriber. With
  * only one subscriber, it becomes quite clear that he is fully responsible for
- * processing bytes <i>in order</i> (which is probably a requirement by all
- * protocols known to man), as well as hopefully also releasing them back to a
- * potentially {@link PooledByteBufferPublisher} <i>in order</i>.<p>
+ * processing bytes hopefully <i>in order</i>.<p>
  * 
  * This is especially true for bytebuffers which are not thread-safe and
  * therefore by definition not meant to be operated on at the same time by
@@ -148,10 +146,6 @@ abstract class AbstractUnicastPublisher<T> implements Flow.Publisher<T>, Closeab
      * This gives the publisher implementation the ability to probe further and
      * possibly recycle a not fully consumed item; for future delivery to the
      * next subscriber.<p>
-     * 
-     * A {@link PooledByteBufferPublisher} must take note that the subscriber
-     * could have <i>released</i> the bytebuffer prior to crashing; don't assume
-     * the item wasn't fully consumed.<p>
      * 
      * Overriding this method won't stop the exception from propagating to the
      * active thread performing the subscriber delivery.<p>

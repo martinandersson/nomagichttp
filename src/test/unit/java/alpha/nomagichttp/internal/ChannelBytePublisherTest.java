@@ -8,7 +8,6 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
-import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Flow;
@@ -31,7 +30,7 @@ class ChannelBytePublisherTest
     
     private static final TestServer SERVER = new TestServer();
     private SocketChannelOperations client;
-    private PooledByteBufferPublisher testee;
+    private Flow.Publisher<DefaultPooledByteBufferHolder> testee;
     
     @BeforeAll
     static void beforeAll() throws IOException {
@@ -63,7 +62,8 @@ class ChannelBytePublisherTest
      */
     @Test
     void switch_subscriber_midway() throws Exception {
-        final Flow.Publisher<ByteBuffer> oneByteOnly = new LimitedBytePublisher(testee, 1);
+        LimitedFlow oneByteOnly = new LimitedFlow(1);
+        testee.subscribe(oneByteOnly);
         
         // TODO: "finisher" copy-pasted from DefaultRequest impl. DRY.
         BiFunction<byte[], Integer, String> finisher = (buf, count) ->
@@ -82,6 +82,10 @@ class ChannelBytePublisherTest
         
         // A new subscriber subscribes and is re-issued the same bytebuffer,
         // but with a position where the first subscriber left off
+        
+        oneByteOnly = new LimitedFlow(1);
+        testee.subscribe(oneByteOnly);
+        
         HeapSubscriber<String> s2 = new HeapSubscriber<>(finisher);
         oneByteOnly.subscribe(s2);
         
@@ -90,7 +94,7 @@ class ChannelBytePublisherTest
     
     // TODO: Once we have the common type for "asCompletionStage() we can rely
     //       on that instead of HeapSubscriber.
-    private static <T> T get(HeapSubscriber<T> subscriber) throws InterruptedException, ExecutionException, TimeoutException {
+    private static <R> R get(HeapSubscriber<R> subscriber) throws InterruptedException, ExecutionException, TimeoutException {
         return subscriber.asCompletionStage().toCompletableFuture().get(3, SECONDS);
     }
 }

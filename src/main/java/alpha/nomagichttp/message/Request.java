@@ -1,14 +1,21 @@
 package alpha.nomagichttp.message;
 
 import java.net.http.HttpHeaders;
-import java.nio.ByteBuffer;
 import java.util.Optional;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.Flow;
 import java.util.function.BiFunction;
 
 /**
- * An inbound HTTP request.
+ * An inbound HTTP request.<p>
+ * 
+ * The handler will be invoked as soon as the request head has been fully
+ * parsed and to the extent necessarily; interpreted by the server. The request
+ * body will arrive asynchronously which the handler can access using the
+ * {@link #body() method}.<p>
+ * 
+ * TODO: Once we have auto-discard, make note the handler can write a response
+ * immediately without consuming the body.
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  * 
@@ -116,12 +123,12 @@ public interface Request
      * An API for accessing the request body, either as a high-level Java type
      * using conversion methods such as {@link #toText()} or directly consuming
      * bytes by using the low-level {@link #subscribe(Flow.Subscriber)
-     * subscribe(Flow.Subscriber&lt;ByteBuffer&gt;)} method.<p>
+     * subscribe(Flow.Subscriber&lt;PooledByteBufferHolder&gt;)} method.<p>
      * 
      * The application should consume the body, even if this entails
-     * <i>discarding</i> it. Not consuming all of the body could have the effect
-     * that the server begins parsing a subsequent request head from the same
-     * channel at the wrong position.<p>
+     * <i>discarding</i> it. Not consuming all of the body will have the effect
+     * that the server crashes when attempting to subsequently subscribe a
+     * request head parser.<p>
      * 
      * An attempt to consume the body more than once should not be done and has
      * undefined application behavior. The default implementation does not save
@@ -129,31 +136,30 @@ public interface Request
      * 
      * 
      * <h3>Subscribing to bytes with a {@code Flow.Subscriber}</h3>
-     * 
+     *
      * The subscription will be completed as soon as the server has determined
      * that the end of the body has been reached.<p>
-     * 
+     *
      * If need be, the server will slice the last published bytebuffer to make
      * sure that the subscriber can not accidentally read past the body limit
      * into a subsequent HTTP message from the same channel. I.e., it is safe
      * for the subscriber to read <i>all remaining bytes</i> of each published
      * bytebuffer.<p>
      * 
-     * If {@code Subscriber.onNext} returns (normally or exceptionally) and the
-     * bytebuffer has bytes remaining, then the bytebuffer will be immediately
-     * re-published. This makes it possible for a subscriber to cancel his
-     * subscription and "hand-off" byte processing to another subscriber
-     * (logical framing within the body).<p>
+     * Only one subscriber at a time is allowed. This subscriber will receive
+     * bytebuffers orderly as they are read from the underlying channel. The
+     * subscriber may process the bytebuffers asynchronously, but only when the
+     * bytebuffer has been {@link PooledByteBufferHolder#release() released}
+     * will the next bytebuffer be published.<p>
      * 
-     * The default implementation does not support multiple subscribers at the
-     * same time.<p>
+     * Releasing the bytebuffer with bytes remaining to be read will cause the
+     * bytebuffer to be immediately re-published. This makes it possible for a
+     * subscriber to cancel his subscription and "hand-off" byte processing to
+     * another subscriber (logical framing within the body).<p>
      * 
-     * The default implementation assumes that the active subscriber process
-     * each bytebuffer synchronously. When {@code onNext} returns (normally or
-     * exceptionally) and the bytebuffer has been fully read, then it will be
-     * recycled back into a pool of bytebuffers that the server may immediately
-     * use for new channel read operations. Processing a published bytebuffer
-     * asynchronously in the future has undefined application behavior.<p>
+     * Cancelling the subscription does not cause the bytebuffer to be released.
+     * Releasing has to be done explicitly, or implicitly through an exceptional
+     * return of {@code Subscriber.onNext()}.<p>
      * 
      * Finally, as a word of caution; the default implementation uses
      * <i>direct</i> bytebuffers in order to support "zero-copy" transfers.
@@ -181,24 +187,12 @@ public interface Request
     //       then an error handler "rescues" the situation by responding an
     //       error code. The application would rightfully think that future HTTP
     //       exchanges can take place as if nothing ever happened.
+    //       When should auto-discard commence? Probably something like as soon
+    //       as the response completes, that's about as much as we can wait. At
+    //       this point the server wants to restart a new exchange and he should
+    //       be able to assume that the handler was never interested in the body.
     
-    // TODO: Currently we don't allow async consumption of the bytebuffers, the
-    //       underlying "real" subscriber will autorelease bytebuffers back to
-    //       the pool as soon as onNext returns (see LimitedBytePublisher). I
-    //       anticipate that our API will accommodate asynchronous destinations
-    //       such as AsynchronousFileChannel.write(). Perhaps through a method
-    //       such as Request.Body.toFile(). This future implementation will have
-    //       to consume bytes asynchronous and so we need to accommodate this in
-    //       a smart way, and, we should then also let the user have access to
-    //       such async consumption capabilities directly. We could perhaps do
-    //       "Request.Body.subscribe(Subscriber<ByteBuffer>)" and
-    //       "Request.Body.subscribeAsync(Subscriber<PooledByteBuffer>)". The
-    //       latter of which exposes PooledByteBuffer.release(). Or, we can make
-    //       PooledByteBufferPublisher public and have Body extend it? Then add
-    //       in docs that a manual Subscriber must always release(), or use one
-    //       of the conversion methods.
-    
-    interface Body extends Flow.Publisher<ByteBuffer>
+    interface Body extends Flow.Publisher<PooledByteBufferHolder>
     {
         /**
          * Returns the body as a string.<p>

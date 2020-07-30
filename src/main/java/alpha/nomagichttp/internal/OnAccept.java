@@ -4,13 +4,13 @@ import alpha.nomagichttp.ExceptionHandler;
 import alpha.nomagichttp.Server;
 import alpha.nomagichttp.ServerConfig;
 import alpha.nomagichttp.handler.Handler;
+import alpha.nomagichttp.message.PooledByteBufferHolder;
 import alpha.nomagichttp.message.Request;
 import alpha.nomagichttp.message.Response;
 import alpha.nomagichttp.route.Route;
 import alpha.nomagichttp.route.RouteRegistry;
 
 import java.io.IOException;
-import java.nio.ByteBuffer;
 import java.nio.channels.AsynchronousServerSocketChannel;
 import java.nio.channels.AsynchronousSocketChannel;
 import java.nio.channels.Channel;
@@ -36,8 +36,8 @@ import static java.lang.System.Logger.Level.ERROR;
  * asynchronous and continuous flow of anticipated HTTP exchanges.<p>
  * 
  * Logically, the channel is transformed into a {@link ChannelBytePublisher}
- * which is a {@link Flow.Publisher Flow.Publisher&lt;ByteBuffer&gt;}. This
- * publisher will never complete for as long as the channel remains open.<p>
+ * which is a {@link Flow.Publisher} of bytebuffers. This publisher will never
+ * complete for as long as the channel remains open.<p>
  * 
  * The first subscriber to subscribe to the channel is {@link RequestHeadParser}
  * which is setup by this class. Once the request head has been parsed, an
@@ -80,7 +80,7 @@ final class OnAccept implements CompletionHandler<AsynchronousSocketChannel, Voi
     }
     
     @Override
-    public void completed(AsynchronousSocketChannel child, Void attachmentIgnored) {
+    public void completed(AsynchronousSocketChannel child, Void noAttachment) {
         // TODO: Wrap everything in error handling.
         
         LOG.log(DEBUG, () -> "Accepted: " + child);
@@ -88,35 +88,34 @@ final class OnAccept implements CompletionHandler<AsynchronousSocketChannel, Voi
         
         // TODO: child.setOption(StandardSocketOptions.SO_KEEPALIVE, true); ??
         
-        PooledByteBufferPublisher bytebuffers = new ChannelBytePublisher(child);
-        setupRequestHeadParser(bytebuffers, child);
+        setupRequestHeadParser(new ChannelBytePublisher(child), child);
     }
     
     @Override
-    public void failed(Throwable exc, Void attachment) {
-        if (exc instanceof ClosedChannelException) {
+    public void failed(Throwable t, Void noAttachment) {
+        if (t instanceof ClosedChannelException) {
             LOG.log(DEBUG, "Group already closed when initiating a new accept. Will accept no more.");
         }
-        else if (exc instanceof IOException && exc.getCause() instanceof ShutdownChannelGroupException) {
+        else if (t instanceof IOException && t.getCause() instanceof ShutdownChannelGroupException) {
             LOG.log(DEBUG, "Connection accepted and immediately closed, because group is shutting down/was shutdown. Will accept no more.");
         }
         else {
             // TODO: We wanna catch error here and shut down server?
-            onError.apply(exc);
+            onError.apply(t);
         }
     }
     
-    private void dealWithError(Throwable exc, Channel child, Handler handler) {
+    private void dealWithError(Throwable t, Channel child, Handler handler) {
         try {
-            onError.apply(exc);
+            onError.apply(t);
         }
-        catch (Throwable t) {
+        catch (Throwable t2) {
             // TODO: Move somewhere else
-            LOG.log(ERROR, "Exception handler threw a throwable, will close child socket.", t);
+            LOG.log(ERROR, "Exception handler threw a throwable, will close child socket.", t2);
             try {
                 child.close();
-            } catch (IOException e1) {
-                LOG.log(ERROR, "Failed to close child socket. Will close server (reduce security risk).", e1);
+            } catch (IOException e) {
+                LOG.log(ERROR, "Failed to close child socket. Will close server (reduce security risk).", e);
                 try {
                     listener.close();
                 } catch (IOException e2) {
@@ -125,23 +124,24 @@ final class OnAccept implements CompletionHandler<AsynchronousSocketChannel, Voi
                 }
             }
             
-            throw t;
+            // TODO: Add t as suppressed
+            throw t2;
         }
     }
     
-    private void setupRequestHeadParser(PooledByteBufferPublisher bytebuffers, AsynchronousSocketChannel child) {
-        new RequestHeadParser(bytebuffers, config.maxRequestHeadSize())
+    private void setupRequestHeadParser(Flow.Publisher<DefaultPooledByteBufferHolder> bytes, AsynchronousSocketChannel child) {
+        new RequestHeadParser(bytes, config.maxRequestHeadSize())
                 .asCompletionStage()
                 .whenComplete((head, exc) -> {
                     if (exc != null) {
                         dealWithError(exc, child, null);
                     } else {
-                        callRequestHandler(head, child, bytebuffers);
+                        callRequestHandler(head, child, bytes);
                     }
                 });
     }
     
-    private void callRequestHandler(RequestHead head, AsynchronousSocketChannel child, PooledByteBufferPublisher bytebuffers) {
+    private void callRequestHandler(RequestHead reqHead, AsynchronousSocketChannel child, Flow.Publisher<DefaultPooledByteBufferHolder> bytes) {
         final Route.Match match;
         final Handler handler;
         
@@ -149,13 +149,13 @@ final class OnAccept implements CompletionHandler<AsynchronousSocketChannel, Voi
         // ---
         
         try {
-            match = routes.lookup(head.requestTarget());
+            match = routes.lookup(reqHead.requestTarget());
             // TODO: From hereon we call route-level exception handler for errors
             // And he should have access to Request. Has even been specified in BadMediaTypeSyntaxException.
             handler = match.route().lookup(
-                    head.method(),
-                    contentType(head.headers()).orElse(null),
-                    accepts(head.headers()));
+                    reqHead.method(),
+                    contentType(reqHead.headers()).orElse(null),
+                    accepts(reqHead.headers()));
             
             LOG.log(DEBUG, () -> "Matched handler: " + handler);
         } catch (Throwable t) {
@@ -173,32 +173,47 @@ final class OnAccept implements CompletionHandler<AsynchronousSocketChannel, Voi
             // TODO: Server should throw BadRequestException if Content-Length is present AND Content-Encoding
             // https://tools.ietf.org/html/rfc7230#section-3.3.2
             
-            OptionalLong len = contentLength(head.headers());
+            Flow.Publisher<PooledByteBufferHolder> reqBody = empty();
             
-            Flow.Publisher<ByteBuffer> requestBody = len.isPresent() ?
-                    new LimitedBytePublisher(bytebuffers, len.getAsLong()) : empty();
+            OptionalLong len = contentLength(reqHead.headers());
             
-            Request request = new DefaultRequest(head, match.parameters(), requestBody);
-            CompletionStage<Response> response = handler.logic().apply(request);
-            dealWithResponse(response, child, handler, bytebuffers);
+            if (len.isPresent()) {
+                long v = len.getAsLong();
+                if (v > 0) {
+                    LimitedFlow lf = new LimitedFlow(v);
+                    bytes.subscribe(lf);
+                    reqBody = lf;
+                }
+            }
+            
+            Request req = new DefaultRequest(reqHead, match.parameters(), reqBody);
+            CompletionStage<Response> res = handler.logic().apply(req);
+            
+            dealWithResponse(res, child, handler, bytes);
         } catch (Throwable t) {
             dealWithError(t, child, handler);
         }
     }
     
-    private void dealWithResponse(CompletionStage<Response> response, AsynchronousSocketChannel child, Handler handler, PooledByteBufferPublisher bytebuffers) {
-        response.whenComplete((result, exc) -> {
+    private void dealWithResponse(
+            // TODO: Possibly about time we create a value type; InvocationContext
+            CompletionStage<Response> res,
+            AsynchronousSocketChannel child,
+            Handler handler,
+            Flow.Publisher<DefaultPooledByteBufferHolder> bytes)
+    {
+        res.whenComplete((r, exc) -> {
             if (exc != null) {
                 dealWithError(exc, child, handler);
             } else {
-                new ResponseToChannelWriter(child, result)
+                new ResponseToChannelWriter(child, r)
                         .asCompletionStage()
                         .whenComplete((Void, exc2) -> {
                             if (exc2 != null) {
                                 dealWithError(exc2, child, handler);
                             } else {
-                                // Restart HTTP exchange flow
-                                setupRequestHeadParser(bytebuffers, child);
+                                // Start a new HTTP exchange
+                                setupRequestHeadParser(bytes, child);
                             }
                         });
             }

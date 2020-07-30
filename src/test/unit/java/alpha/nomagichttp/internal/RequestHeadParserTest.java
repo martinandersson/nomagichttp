@@ -1,5 +1,6 @@
 package alpha.nomagichttp.internal;
 
+import alpha.nomagichttp.message.PooledByteBufferHolder;
 import alpha.nomagichttp.message.RequestHeadParseException;
 import alpha.nomagichttp.test.Logging;
 import org.assertj.core.api.AbstractListAssert;
@@ -18,6 +19,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Flow;
 import java.util.concurrent.TimeoutException;
 
 import static java.lang.Integer.MAX_VALUE;
@@ -41,7 +43,7 @@ class RequestHeadParserTest
     @BeforeEach
     void beforeEach() throws Throwable {
         client = new SocketChannelOperations(SERVER.newClient());
-        PooledByteBufferPublisher child = new ChannelBytePublisher(SERVER.accept());
+        Flow.Publisher<? extends PooledByteBufferHolder> child = new ChannelBytePublisher(SERVER.accept());
         testee = new RequestHeadParser(child, MAX_VALUE).asCompletionStage();
     }
     

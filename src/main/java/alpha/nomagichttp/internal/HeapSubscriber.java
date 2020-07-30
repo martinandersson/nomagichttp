@@ -1,5 +1,7 @@
 package alpha.nomagichttp.internal;
 
+import alpha.nomagichttp.message.PooledByteBufferHolder;
+
 import java.io.ByteArrayOutputStream;
 import java.nio.ByteBuffer;
 import java.util.concurrent.CompletableFuture;
@@ -20,17 +22,12 @@ import static java.lang.System.Logger.Level.DEBUG;
  * Useful for clients that wish to collect data from bytebuffers in order for
  * the data to be converted into any other arbitrary Java type.<p>
  * 
- * The intermediate byte[] occupies heap-space and so this class should not be
- * used if the final destination does not also reside in memory as this could
- * possibly and unnecessarily move bytes from a <i>direct</i> bytebuffer source
- * into memory only to be sent back out again.<p>
- * 
  * Collecting more bytes than what can be hold in a byte[] will likely result in
  * an {@code OutOfMemoryError}.
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  */
-final class HeapSubscriber<R> implements Flow.Subscriber<ByteBuffer>
+final class HeapSubscriber<R> implements Flow.Subscriber<PooledByteBufferHolder>
 {
     private static final System.Logger LOG = System.getLogger(HeapSubscriber.class.getPackageName());
     
@@ -61,7 +58,12 @@ final class HeapSubscriber<R> implements Flow.Subscriber<ByteBuffer>
     }
     
     @Override
-    public void onNext(ByteBuffer item) {
+    public void onNext(PooledByteBufferHolder item) {
+        onNext(item.get());
+        item.release();
+    }
+    
+    private void onNext(ByteBuffer item) {
         if (result.isDone()) {
             LOG.log(DEBUG, "Received bytes although I'm done.");
             return;
@@ -77,8 +79,8 @@ final class HeapSubscriber<R> implements Flow.Subscriber<ByteBuffer>
     }
     
     @Override
-    public void onError(Throwable throwable) {
-        result.completeExceptionally(throwable);
+    public void onError(Throwable t) {
+        result.completeExceptionally(t);
     }
     
     @Override

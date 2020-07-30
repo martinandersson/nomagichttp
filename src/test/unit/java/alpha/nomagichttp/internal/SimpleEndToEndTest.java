@@ -2,6 +2,7 @@ package alpha.nomagichttp.internal;
 
 import alpha.nomagichttp.handler.Handler;
 import alpha.nomagichttp.message.ResponseBuilder;
+import alpha.nomagichttp.message.Responses;
 import alpha.nomagichttp.route.Route;
 import alpha.nomagichttp.route.RouteBuilder;
 import alpha.nomagichttp.test.Logging;
@@ -19,8 +20,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 
 /**
- * "Simple" end-to-end server tests, more specifically, the unit-test version of
- * examples provided in {@code alpha.nomagichttp.examples}.
+ * "Simple" end-to-end server tests.
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  */
@@ -53,18 +53,15 @@ class SimpleEndToEndTest extends AbstractEndToEndTest
         Handler handler = GET().supply(() ->
                 ok("Hello World!").asCompletedStage());
         
-        Route route = new RouteBuilder("/hello-response")
-                .handler(handler).build();
-        
-        server().getRouteRegistry().add(route);
+        server().getRouteRegistry().add(route("/hello-response", handler));
         
         String req =
             "GET /hello-response HTTP/1.1" + CRLF +
             "Accept: text/plain; charset=utf-8" + CRLF + CRLF;
         
-        String resp = writeReadText(req, "World!");
+        String res = writeReadText(req, "World!");
         
-        assertThat(resp).isEqualTo(
+        assertThat(res).isEqualTo(
             "HTTP/1.1 200 OK" + CRLF +
             "Content-Type: text/plain; charset=utf-8" + CRLF +
             "Content-Length: 12" + CRLF + CRLF +
@@ -80,16 +77,19 @@ class SimpleEndToEndTest extends AbstractEndToEndTest
             return ok(text).asCompletedStage();
         });
         
-        Route route = new RouteBuilder("/greet-param").param("name").handler(echo).build();
+        Route route = new RouteBuilder("/greet-param").param("name")
+                .handler(echo)
+                .build();
+        
         server().getRouteRegistry().add(route);
         
-        String request =
+        String req =
             "GET /greet-param/John HTTP/1.1" + CRLF +
             "Accept: text/plain; charset=utf-8" + CRLF + CRLF;
         
-        String resp = writeReadText(request, "John!");
+        String res = writeReadText(req, "John!");
         
-        assertThat(resp).isEqualTo(
+        assertThat(res).isEqualTo(
             "HTTP/1.1 200 OK" + CRLF +
             "Content-Type: text/plain; charset=utf-8" + CRLF +
             "Content-Length: 11" + CRLF + CRLF +
@@ -101,22 +101,21 @@ class SimpleEndToEndTest extends AbstractEndToEndTest
     
     @Test
     void greet_requestbody() throws IOException, InterruptedException {
-        Handler echo = POST().apply(request ->
-                request.body().toText().thenApply(name -> ok("Hello " + name + "!")));
+        Handler echo = POST().apply(req ->
+                req.body().toText().thenApply(name -> ok("Hello " + name + "!")));
         
-        Route route = new RouteBuilder("/greet-body").handler(echo).build();
-        server().getRouteRegistry().add(route);
+        server().getRouteRegistry().add(route("/greet-body", echo));
         
-        String request =
+        String req =
             "POST /greet-body HTTP/1.1" + CRLF +
             "Accept: text/plain; charset=utf-8" + CRLF +
             "Content-Length: 4" + CRLF + CRLF +
             
             "John";
         
-        String resp = writeReadText(request, "John!");
+        String res = writeReadText(req, "John!");
         
-        assertThat(resp).isEqualTo(
+        assertThat(res).isEqualTo(
             "HTTP/1.1 200 OK" + CRLF +
             "Content-Type: text/plain; charset=utf-8" + CRLF +
             "Content-Length: 11" + CRLF +
@@ -125,37 +124,27 @@ class SimpleEndToEndTest extends AbstractEndToEndTest
     }
     
     @Test
-    void echo_server() throws IOException, InterruptedException {
-        Handler echo = POST().apply(request -> {
-            ResponseBuilder builder = new ResponseBuilder()
-                    .httpVersion(request.httpVersion())
-                    .statusCode(200)
-                    .reasonPhrase("OK");
-            
-            request.headers().map().forEach(builder::header);
-            
-            return builder.body(request.body())
-                    .asCompletedStage();
+    void echo_headers() throws IOException, InterruptedException {
+        Handler echo = GET().apply(req -> {
+            ResponseBuilder b = ResponseBuilder.ok();
+            req.headers().map().forEach(b::header);
+            return b.noBody().asCompletedStage();
         });
         
-        Route route = new RouteBuilder("/echo").handler(echo).build();
-        server().getRouteRegistry().add(route);
+        server().getRouteRegistry().add(route("/echo-headers", echo));
         
-        String request =
-            "POST /echo HTTP/99+" + CRLF +
+        String req =
+            "GET /echo-headers HTTP/1.1" + CRLF +
             "Accept: text/plain; charset=utf-8" + CRLF +
-            "Content-Length: 14" + CRLF + CRLF +
-            
-            "Some body text";
+            "Content-Length: 0" + CRLF + CRLF;
         
-        String resp = writeReadText(request, "body text");
+        String res = writeReadText(req, CRLF + CRLF);
         
-        assertThat(resp).isEqualTo(
-            "HTTP/99+ 200 OK" + CRLF +
+        assertThat(res).isEqualTo(
+            "HTTP/1.1 200 OK" + CRLF +
             "Accept: text/plain; charset=utf-8" + CRLF +
-            "Content-Length: 14" + CRLF + CRLF +
-            
-            "Some body text");
+            "Content-Length: 0" + CRLF +
+            "Content-Length: 0" + CRLF + CRLF);
     }
     
     /** Performs two requests in a row .*/
@@ -163,7 +152,7 @@ class SimpleEndToEndTest extends AbstractEndToEndTest
     void exchange_restart() throws IOException, InterruptedException {
         // Echo request body as-is
         Handler echo = POST().apply(req ->
-                ResponseBuilder.ok().body(req.body()).asCompletedStage());
+                req.body().toText().thenApply(Responses::ok));
         
         server().getRouteRegistry().add(route("/restart", echo));
         
@@ -172,20 +161,24 @@ class SimpleEndToEndTest extends AbstractEndToEndTest
             "Accept: text/plain; charset=utf-8" + CRLF +
             "Content-Length: 3" + CRLF + CRLF;
         
-        final String respHead =
-            "HTTP/1.1 200 OK" + CRLF + CRLF;
-    
+        final String resHead =
+            "HTTP/1.1 200 OK" + CRLF +
+            "Content-Type: text/plain; charset=utf-8" + CRLF +
+            "Content-Length: 3" + CRLF + CRLF;
+        
         openConnection();
         
-        String resp1 = writeReadText(reqHead + "ABC", "ABC");
-        assertThat(resp1).isEqualTo(respHead + "ABC");
+        String res1 = writeReadText(reqHead + "ABC", "ABC");
+        assertThat(res1).isEqualTo(resHead + "ABC");
         
-        String resp2 = writeReadText(reqHead + "DEF", "DEF");
-        assertThat(resp2).isEqualTo(respHead + "DEF");
+        String res2 = writeReadText(reqHead + "DEF", "DEF");
+        assertThat(res2).isEqualTo(resHead + "DEF");
     }
+    
+    // TODO: Autodiscard request body test. Handler should be able to respond with no body.
     
     // TODO: echo body LARGE! Like super large. 100MB or something. Must brake all buffer capacities, that's the point.
     //       Should go to "large" test set.
     
-    // TODO: exchange restart with thousands of continous messages, also "large" test
+    // TODO: exchange restart with thousands of continuous messages, also "large" test
 }

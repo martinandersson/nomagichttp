@@ -162,23 +162,23 @@ final class ResponseToChannelWriter
     
     private final class Writer implements CompletionHandler<Integer, ByteBuffer>
     {
-        void write(ByteBuffer buff) {
-            if (buff == NO_MORE) {
+        void write(ByteBuffer buf) {
+            if (buf == NO_MORE) {
                 result.complete(null);
             } else {
                 // TODO: What if this throws ShutdownChannelGroupException? Or anything else for that matter..
-                channel.write(buff, buff, this);
+                channel.write(buf, buf, this);
             }
         }
         
         @Override
-        public void completed(Integer resultIgnored, ByteBuffer buff) {
+        public void completed(Integer ignored, ByteBuffer buf) {
             if (result.isDone()) {
                 return;
             }
             
-            if (buff.hasRemaining()) {
-                readable.addFirst(buff);
+            if (buf.hasRemaining()) {
+                readable.addFirst(buf);
                 if (result.isDone()) {
                     readable.clear();
                     return;

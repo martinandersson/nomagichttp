@@ -144,16 +144,16 @@ Hello, John!
 
 [5-1]: src/main/java/alpha/nomagichttp/examples/GreetRequestBody.java
 
-### Echo Server
+### Echo request headers
 
-This example echoes back the headers and body of POST requests.
+This example echoes back the request headers.
 
-See code: [src/main/java/.../EchoServer.java][6-1]
+See code: [src/main/java/.../EchoHeaders.java][6-1]
 
 Run:
 
 ```console
-foo@bar:~$ java --class-path=$JAR $PKG.EchoServer
+foo@bar:~$ java --class-path=$JAR $PKG.EchoHeaders
 Listening on port 8080.
 ```
 
@@ -162,18 +162,14 @@ In a new terminal, run:
 ```console
 foo@bar:~$ curl -i localhost:8080/echo \
     -H "My-Header: Value 1" \
-    -H "My-Header: Value 2" \
-    -d "Some body text"
+    -H "My-Header: Value 2"
 HTTP/1.1 200 OK
 Accept: */*
-Content-Length: 14
-Content-Type: application/x-www-form-urlencoded
 Host: localhost:8080
 My-Header: Value 1
 My-Header: Value 2
 User-Agent: curl/7.68.0
-
-Some body text
+Content-Length: 0
 ```
 
-[6-1]: src/main/java/alpha/nomagichttp/examples/EchoServer.java
+[6-1]: src/main/java/alpha/nomagichttp/examples/EchoHeaders.java
