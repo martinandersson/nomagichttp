@@ -52,6 +52,8 @@ import static org.assertj.core.api.Assertions.assertThat;
  */
 abstract class AbstractEndToEndTest
 {
+    protected static final String CRLF = "\r\n";
+    
     private static final System.Logger LOG = System.getLogger(AbstractEndToEndTest.class.getPackageName());
     
     private static Server server;
@@ -127,6 +129,28 @@ abstract class AbstractEndToEndTest
                 new InetSocketAddress(getLoopbackAddress(), port));
     }
     
+    /**
+     * Same as {@link #writeReadText(String, String)} but with a response end
+     * hardcoded to be "\r\n".<p>
+     * 
+     * Useful when <i>not</i> expecting a response body, in which case the
+     * response should end with two newlines.
+     */
+    protected final String writeReadText(String request)
+            throws IOException, InterruptedException
+    {
+        return writeReadText(request, CRLF + CRLF);
+    }
+    
+    /**
+     * Same as {@link #writeReadBytes(byte[], byte[])} except this method gets
+     * the bytes by decoding the parameters and encoding the response using
+     * {@code US_ASCII}.<p>
+     * 
+     * Useful when sending ASCII data and expecting an ASCII response.<p>
+     * 
+     * Please note that UTF-8 is backwards compatible with ASCII.
+     */
     protected final String writeReadText(String request, String responseEnd)
             throws IOException, InterruptedException
     {
@@ -137,6 +161,22 @@ abstract class AbstractEndToEndTest
         return new String(bytes, US_ASCII);
     }
     
+    /**
+     * Write a bunch of bytes to the server, and receive a bunch of bytes back.<p>
+     * 
+     * This method will not stop reading the response from the server until the
+     * last chunk of bytes specified by {@code responseEnd} has been received. A
+     * test that times out after 3 seconds could very well be because the test
+     * case expected a different end of the response than what was received.<p>
+     * 
+     * @param request bytes to write
+     * @param responseEnd last chunk of expected bytes in response
+     * 
+     * @return the response
+     * 
+     * @throws IOException for some reason
+     * @throws InterruptedException for some reason
+     */
     protected final byte[] writeReadBytes(byte[] request, byte[] responseEnd)
             throws IOException, InterruptedException
     {

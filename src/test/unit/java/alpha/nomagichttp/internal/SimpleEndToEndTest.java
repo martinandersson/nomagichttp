@@ -26,8 +26,6 @@ import static org.assertj.core.api.Assertions.assertThat;
  */
 class SimpleEndToEndTest extends AbstractEndToEndTest
 {
-    private static final String CRLF = "\r\n";
-    
     @BeforeAll
     static void logEverything() {
         Logging.setLevel(SimpleEndToEndTest.class, ALL);
@@ -41,7 +39,7 @@ class SimpleEndToEndTest extends AbstractEndToEndTest
         server().getRouteRegistry().add(route("/hello-console", handler));
         
         String req = "GET /hello-console HTTP/1.1" + CRLF + CRLF + CRLF;
-        String res = writeReadText(req, CRLF + CRLF);
+        String res = writeReadText(req);
         
         assertThat(res).isEqualTo(
             "HTTP/1.1 202 Accepted" + CRLF +
@@ -138,7 +136,7 @@ class SimpleEndToEndTest extends AbstractEndToEndTest
             "Accept: text/plain; charset=utf-8" + CRLF +
             "Content-Length: 0" + CRLF + CRLF;
         
-        String res = writeReadText(req, CRLF + CRLF);
+        String res = writeReadText(req);
         
         assertThat(res).isEqualTo(
             "HTTP/1.1 200 OK" + CRLF +
