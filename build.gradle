@@ -9,6 +9,7 @@ sourceSets {
         java.srcDirs = ['src/test/unit/java']
         java.outputDir = file("$buildDir/classes/java/test/unit")
         resources.srcDirs = ['src/test/unit/resources']
+        output.resourcesDir = file("$buildDir/resources/test/unit")
     }
 }
 
