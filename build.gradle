@@ -5,8 +5,9 @@ plugins {
 
 sourceSets {
     test {
-        // Move from default 'src/test' to 'src/test/unit'
+        // Move unit test locations from default '/test' to 'test/unit'
         java.srcDirs = ['src/test/unit/java']
+        java.outputDir = file("$buildDir/classes/java/test/unit")
         resources.srcDirs = ['src/test/unit/resources']
     }
 }
