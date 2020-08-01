@@ -44,6 +44,11 @@ final class DefaultRequest implements Request
     }
     
     @Override
+    public String toString() {
+        return DefaultRequest.class.getSimpleName() + "{head=" + head + ", body=?}";
+    }
+    
+    @Override
     public Optional<String> paramFromPath(String name) {
         return ofNullable(pathParameters.get(name));
     }
