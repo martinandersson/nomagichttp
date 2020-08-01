@@ -18,8 +18,8 @@ import static java.lang.System.Logger.Level.ERROR;
 import static java.util.Objects.requireNonNull;
 
 /**
- * This class publishes bytebuffers read from an asynchronous channel (assumed
- * to not support concurrent read operations).<p>
+ * Publishes bytebuffers read from an asynchronous byte channel (assumed to not
+ * support concurrent read operations).<p>
  * 
  * Many aspects of how to consume published bytebuffers has been documented in
  * {@link Request.Body} and {@link PooledByteBufferHolder}.
