@@ -18,6 +18,7 @@ import java.util.concurrent.ThreadLocalRandom;
 import static alpha.nomagichttp.route.Routes.route;
 import static java.net.http.HttpRequest.BodyPublishers;
 import static java.net.http.HttpResponse.BodyHandlers;
+import static java.nio.charset.StandardCharsets.UTF_8;
 
 /**
  * Starts a server on system-picked port using an echo handler that responds the
@@ -42,17 +43,21 @@ abstract class AbstractSingleClientTest
         
         int port = ((InetSocketAddress) listener.getLocalAddress()).getPort();
         TEMPLATE = HttpRequest.newBuilder()
+                .setHeader("Content-Type", "text/plain; charset=utf-8")
                 .uri(URI.create("http://localhost:" + port));
     }
     
     protected static HttpResponse<String> post(String body) throws IOException, InterruptedException {
-        HttpRequest req = TEMPLATE.POST(BodyPublishers.ofString(body)).build();
-        return CLIENT.send(req, BodyHandlers.ofString());
+        HttpRequest req = TEMPLATE.POST(BodyPublishers.ofString(body, UTF_8)).build();
+        return CLIENT.send(req, BodyHandlers.ofString(UTF_8));
     }
     
     protected static String randomText(int length) {
         ThreadLocalRandom r = ThreadLocalRandom.current();
-        int[] chars = r.ints(length, '!', '~').toArray();
-        return new String(chars, 0, chars.length);
+        byte[] bytes = new byte[length];
+        for (int i = 0; i < length; ++i) {
+            bytes[i] = (byte) r.nextInt('!', '~');
+        }
+        return new String(bytes, UTF_8);
     }
 }
