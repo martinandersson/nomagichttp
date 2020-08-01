@@ -8,7 +8,6 @@ import java.lang.management.ThreadInfo;
 import java.util.Optional;
 import java.util.logging.ConsoleHandler;
 import java.util.logging.Formatter;
-import java.util.logging.Handler;
 import java.util.logging.LogRecord;
 import java.util.logging.Logger;
 
@@ -42,10 +41,6 @@ public final class Logging
         else {
             l.addHandler(newConsoleHandler(impl));
         }
-    }
-    
-    public static void addHandler(Class<?> component, Handler handler) {
-        Logger.getLogger(component.getPackageName()).addHandler(handler);
     }
     
     private static java.util.logging.Level toJUL(System.Logger.Level level) {
