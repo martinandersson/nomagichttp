@@ -12,6 +12,21 @@ sourceSets {
         resources.srcDirs = ['src/test/unit/resources']
         output.resourcesDir = file("$buildDir/resources/test/unit")
     }
+    
+    largeTest {
+        java.srcDirs = ['src/test/large/java']
+        java.outputDir = file("$buildDir/classes/java/test/large")
+        resources.srcDirs = ['src/test/large/resources']
+        output.resourcesDir = file("$buildDir/resources/test/large")
+        compileClasspath += sourceSets.main.output
+        runtimeClasspath += sourceSets.main.output
+    }
+}
+
+configurations {
+    // All unit test dependencies are also large test dependencies
+    largeTestImplementation.extendsFrom testImplementation
+    largeTestRuntimeOnly.extendsFrom testRuntimeOnly
 }
 
 repositories {
@@ -51,8 +66,25 @@ test {
     useJUnitPlatform()
 }
 
-test {
-    finalizedBy jacocoTestReport // report is always generated after tests run
+task largeTest(type: Test) {
+    description = 'Runs the large tests.'
+    group = 'verification'
+    
+    useJUnitPlatform()
+    
+    testClassesDirs = sourceSets.largeTest.output.classesDirs
+    classpath = sourceSets.largeTest.runtimeClasspath
+    shouldRunAfter test
 }
+
+check.dependsOn largeTest
+
+// Generate report after tests
+tasks.withType(Test).configureEach {
+    finalizedBy jacocoTestReport
+}
+
 jacocoTestReport {
+    // Use data file not just from test but also largeTest
+    getExecutionData().setFrom(fileTree(dir: "$buildDir/jacoco", includes: ['*.exec']))
 }
