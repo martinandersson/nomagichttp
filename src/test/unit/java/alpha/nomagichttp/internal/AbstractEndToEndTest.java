@@ -43,7 +43,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  * Any exchange taking 3 seconds or longer will be interrupted and consequently
  * fail the test.<p>
  * 
- * Note: This class provides low-level access for test cases that needs direct
+ * Note: This class provides low-level access for test cases that need direct
  * control over what bytes are put on the wire and what is received. Test cases
  * that operate on a higher "HTTP exchange semantics kind of layer" should use a
  * client such as JDK's {@link HttpClient} instead.
