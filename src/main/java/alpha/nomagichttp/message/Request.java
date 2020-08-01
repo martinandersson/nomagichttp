@@ -1,8 +1,14 @@
 package alpha.nomagichttp.message;
 
 import java.net.http.HttpHeaders;
+import java.nio.channels.AsynchronousFileChannel;
+import java.nio.file.OpenOption;
+import java.nio.file.Path;
+import java.nio.file.attribute.FileAttribute;
 import java.util.Optional;
+import java.util.Set;
 import java.util.concurrent.CompletionStage;
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Flow;
 import java.util.function.BiFunction;
 
@@ -205,6 +211,51 @@ public interface Request
          * @return the body as a string
          */
         CompletionStage<String> toText();
+        
+        /**
+         * Save the request body to a file.<p>
+         * 
+         * This method is equivalent to {@link
+         * AsynchronousFileChannel#open(Path, OpenOption...)} except
+         * if {@code options} is empty, a set of {@code WRITE}, {@code CREATE}
+         * and {@code TRUNCATE_EXISTING} will be used. I.e, by default, a new
+         * file will be created or an existing file will be overwritten.<p>
+         * 
+         * {@code IOException}s thrown by the call to open a file channel is
+         * delivered through the returned {@code CompletionStage}.<p>
+         * 
+         * Option {@code READ} should not be specified.
+         * 
+         * @param file to dump body into
+         * @param options specifying how the file is opened
+         * 
+         * @return the number of bytes written to file
+         */
+        CompletionStage<Long> toFile(Path file, OpenOption... options);
+    
+        /**
+         * Save the request body to a file.<p>
+         * 
+         * This method is equivalent to {@link
+         * AsynchronousFileChannel#open(Path, Set, ExecutorService, FileAttribute[])}
+         * except if {@code options} is empty, a set of {@code WRITE}, {@code
+         * CREATE} and {@code TRUNCATE_EXISTING} will be used. I.e, by default,
+         * a new file will be created or an existing file will be
+         * overwritten.<p>
+         * 
+         * {@code IOException}s thrown by the call to open a file channel is
+         * delivered through the returned {@code CompletionStage}.<p>
+         * 
+         * Option {@code READ} should not be specified.
+         * 
+         * @param file     to dump body into
+         * @param options  specifying how the file is opened
+         * @param attrs    an optional list of file attributes to set atomically
+         *                 when creating the file
+         * 
+         * @return the number of bytes written to file
+         */
+        CompletionStage<Long> toFile(Path file, Set<? extends OpenOption> options, FileAttribute<?>... attrs);
         
         // TODO: toEverythingElse()
         

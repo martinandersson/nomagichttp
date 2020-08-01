@@ -10,6 +10,8 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 
 import static alpha.nomagichttp.handler.Handlers.GET;
 import static alpha.nomagichttp.handler.Handlers.POST;
@@ -171,6 +173,33 @@ class SimpleEndToEndTest extends AbstractEndToEndTest
         
         String res2 = writeReadText(reqHead + "DEF", "DEF");
         assertThat(res2).isEqualTo(resHead + "DEF");
+    }
+    
+    @Test
+    void post_small_file() throws IOException, InterruptedException {
+        // 1. Save to new file
+        // ---
+        Path file = Files.createTempDirectory("nomagic")
+                .resolve("some-file.txt");
+        
+        Handler saver = POST().apply(req ->
+                req.body().toFile(file)
+                          .thenApply(n -> Long.toString(n))
+                          .thenApply(Responses::ok));
+        
+        server().getRouteRegistry().add(route("/small-file", saver));
+        
+        final String reqHead =
+            "POST /small-file HTTP/1.1" + CRLF +
+            "Content-Length: 3" + CRLF + CRLF;
+        
+        writeReadText(reqHead + "Foo", "3");
+        assertThat(Files.readString(file)).isEqualTo("Foo");
+        
+        // 2. By default, existing files are overwritten
+        // ---
+        writeReadText(reqHead + "Bar", "3");
+        assertThat(Files.readString(file)).isEqualTo("Bar");
     }
     
     // TODO: Autodiscard request body test. Handler should be able to respond with no body.

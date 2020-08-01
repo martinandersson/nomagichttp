@@ -4,20 +4,34 @@ import alpha.nomagichttp.message.MediaType;
 import alpha.nomagichttp.message.PooledByteBufferHolder;
 import alpha.nomagichttp.message.Request;
 
+import java.io.IOException;
 import java.net.http.HttpHeaders;
+import java.nio.channels.AsynchronousFileChannel;
 import java.nio.charset.Charset;
+import java.nio.file.OpenOption;
+import java.nio.file.Path;
+import java.nio.file.attribute.FileAttribute;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.Flow;
 import java.util.function.BiFunction;
 
 import static alpha.nomagichttp.message.Headers.contentType;
 import static java.nio.charset.StandardCharsets.UTF_8;
+import static java.nio.file.StandardOpenOption.CREATE;
+import static java.nio.file.StandardOpenOption.TRUNCATE_EXISTING;
+import static java.nio.file.StandardOpenOption.WRITE;
 import static java.util.Optional.ofNullable;
 
 final class DefaultRequest implements Request
 {
+    // Copy-pasted from AsynchronousFileChannel.NO_ATTRIBUTES
+    @SuppressWarnings({"unchecked", "rawtypes"}) // generic array construction
+    private static final FileAttribute<?>[] NO_ATTRIBUTES = new FileAttribute[0];
+    
     private final RequestHead head;
     private final Map<String, String> pathParameters;
     private final Flow.Publisher<PooledByteBufferHolder> channel;
@@ -88,6 +102,30 @@ final class DefaultRequest implements Request
             
             return convert((buf, count) ->
                     new String(buf, 0, count, charset));
+        }
+        
+        @Override
+        public CompletionStage<Long> toFile(Path file, OpenOption... options) {
+            return toFile(file, Set.of(options), NO_ATTRIBUTES);
+        }
+        
+        @Override
+        public CompletionStage<Long> toFile(Path file, Set<? extends OpenOption> options, FileAttribute<?>... attrs) {
+            final Set<? extends OpenOption> opt = !options.isEmpty() ? options :
+                    Set.of(WRITE, CREATE, TRUNCATE_EXISTING);
+            
+            final AsynchronousFileChannel fs;
+            
+            try {
+                // TODO: Use server's thread pool (must expose it through API)
+                fs = AsynchronousFileChannel.open(file, opt, null, attrs);
+            } catch (IOException e) {
+                return CompletableFuture.failedStage(e);
+            }
+            
+            FileSubscriber s = new FileSubscriber(fs);
+            subscribe(s);
+            return s.asCompletionStage();
         }
         
         @Override
