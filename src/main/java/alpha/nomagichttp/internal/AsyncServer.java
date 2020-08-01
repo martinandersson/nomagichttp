@@ -13,6 +13,7 @@ import java.nio.channels.AsynchronousServerSocketChannel;
 import java.nio.channels.NetworkChannel;
 import java.util.concurrent.Executors;
 
+import static java.lang.System.Logger.Level.INFO;
 import static java.net.InetAddress.getLoopbackAddress;
 import static java.util.Objects.requireNonNull;
 
@@ -34,6 +35,8 @@ import static java.util.Objects.requireNonNull;
 // TODO: Consider renaming to ProactiveServer.
 public final class AsyncServer implements Server
 {
+    private static final System.Logger LOG = System.getLogger(AsyncServer.class.getPackageName());
+    
     // Good info on async groups:
     // https://openjdk.java.net/projects/nio/resources/AsynchronousIo.html
     
@@ -75,6 +78,8 @@ public final class AsyncServer implements Server
                 new InetSocketAddress(getLoopbackAddress(), 0);
         
         listener = AsynchronousServerSocketChannel.open(group()).bind(use);
+        LOG.log(INFO, () -> "Opened server channel: " + listener);
+        
         new OnAccept(listener, onError, this);
         
         return listener;

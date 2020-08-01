@@ -28,6 +28,7 @@ import static alpha.nomagichttp.message.Publishers.empty;
 import static java.lang.System.Logger;
 import static java.lang.System.Logger.Level.DEBUG;
 import static java.lang.System.Logger.Level.ERROR;
+import static java.lang.System.Logger.Level.INFO;
 
 /**
  * Handles a newly accepted client/child connection.<p>
@@ -83,7 +84,7 @@ final class OnAccept implements CompletionHandler<AsynchronousSocketChannel, Voi
     public void completed(AsynchronousSocketChannel child, Void noAttachment) {
         // TODO: Wrap everything in error handling.
         
-        LOG.log(DEBUG, () -> "Accepted: " + child);
+        LOG.log(INFO, () -> "Accepted: " + child);
         listener.accept(null, this);
         
         // TODO: child.setOption(StandardSocketOptions.SO_KEEPALIVE, true); ??
