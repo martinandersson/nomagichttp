@@ -22,7 +22,11 @@ final class DefaultRequest implements Request
     private final Map<String, String> pathParameters;
     private final Flow.Publisher<PooledByteBufferHolder> channel;
     
-    DefaultRequest(RequestHead head, Map<String, String> pathParameters, Flow.Publisher<PooledByteBufferHolder> channel) {
+    DefaultRequest(
+            RequestHead head,
+            Map<String, String> pathParameters,
+            Flow.Publisher<PooledByteBufferHolder> channel)
+    {
         this.head = head;
         this.pathParameters = pathParameters;
         this.channel = channel;
