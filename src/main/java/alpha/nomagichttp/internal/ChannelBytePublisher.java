@@ -33,9 +33,9 @@ final class ChannelBytePublisher extends AbstractUnicastPublisher<DefaultPooledB
     private static final System.Logger LOG = System.getLogger(ChannelBytePublisher.class.getPackageName());
     
     private static final int // TODO: Document
-                             BUFF_COUNT = 5,
+                             BUF_COUNT = 5,
                              // TODO: Document (same as jdk.internal.net.http.common.Utils.DEFAULT_BUFSIZE)
-                             BUFF_SIZE  = 16 * 1_024;
+                             BUF_SIZE = 16 * 1_024;
     
     /*
      * When a bytebuffer has been read from the channel, it will be put in a
@@ -58,8 +58,8 @@ final class ChannelBytePublisher extends AbstractUnicastPublisher<DefaultPooledB
         this.readOp   = new SeriallyRunnable(this::readImpl, true);
         this.handler  = new ReadHandler();
         
-        IntStream.generate(() -> BUFF_SIZE)
-                .limit(BUFF_COUNT)
+        IntStream.generate(() -> BUF_SIZE)
+                .limit(BUF_COUNT)
                 .mapToObj(ByteBuffer::allocateDirect)
                 .forEach(writable::add);
         
@@ -89,16 +89,16 @@ final class ChannelBytePublisher extends AbstractUnicastPublisher<DefaultPooledB
     }
     
     private void readImpl() {
-        final ByteBuffer buff = writable.poll();
+        final ByteBuffer buf = writable.poll();
         
-        if (buff == null) {
+        if (buf == null) {
             // Nothing to do, complete immediately
             readOp.complete();
             return;
         }
         
         // TODO: What if this throws ShutdownChannelGroupException? Or anything else for that matter..
-        channel.read(buff, buff, handler);
+        channel.read(buf, buf, handler);
     }
     
     @Override
@@ -212,11 +212,11 @@ final class ChannelBytePublisher extends AbstractUnicastPublisher<DefaultPooledB
         }
         
         @Override
-        public void failed(Throwable exc, ByteBuffer buff) {
+        public void failed(Throwable exc, ByteBuffer buf) {
             try {
                 // TODO: Deliver somewhere?
                 LOG.log(ERROR, "TODO: Deliver somewhere?", exc);
-                release(buff);
+                release(buf);
             } finally {
                 readOp.complete();
             }
