@@ -32,12 +32,12 @@ final class HeapSubscriber<R> implements Flow.Subscriber<PooledByteBufferHolder>
     private static final System.Logger LOG = System.getLogger(HeapSubscriber.class.getPackageName());
     
     private final BiFunction<byte[], Integer, ? extends R> finisher;
-    private final ExposedByteArrayOutputStream buf;
+    private final ExposedByteArrayOutputStream sink;
     private final CompletableFuture<R> result;
     
     HeapSubscriber(BiFunction<byte[], Integer, ? extends R> finisher) {
         this.finisher = finisher;
-        this.buf = new ExposedByteArrayOutputStream();
+        this.sink = new ExposedByteArrayOutputStream();
         this.result = new CompletableFuture<>();
     }
     
@@ -63,17 +63,17 @@ final class HeapSubscriber<R> implements Flow.Subscriber<PooledByteBufferHolder>
         item.release();
     }
     
-    private void onNext(ByteBuffer item) {
+    private void onNext(ByteBuffer buf) {
         if (result.isDone()) {
             LOG.log(DEBUG, "Received bytes although I'm done.");
             return;
         }
         
-        if (item.hasArray()) {
-            buf.write(item.array(), item.arrayOffset(), item.remaining());
+        if (buf.hasArray()) {
+            sink.write(buf.array(), buf.arrayOffset(), buf.remaining());
         } else {
-            while (item.hasRemaining()) {
-                buf.write(item.get());
+            while (buf.hasRemaining()) {
+                sink.write(buf.get());
             }
         }
     }
@@ -85,7 +85,7 @@ final class HeapSubscriber<R> implements Flow.Subscriber<PooledByteBufferHolder>
     
     @Override
     public void onComplete() {
-        R product = finisher.apply(buf.buffer(), buf.count());
+        R product = finisher.apply(sink.buffer(), sink.count());
         result.complete(product);
     }
     
