@@ -13,7 +13,6 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.channels.NetworkChannel;
-import java.util.concurrent.ThreadLocalRandom;
 
 import static alpha.nomagichttp.route.Routes.route;
 import static java.net.http.HttpRequest.BodyPublishers;
@@ -52,12 +51,26 @@ abstract class AbstractSingleClientTest
         return CLIENT.send(req, BodyHandlers.ofString(UTF_8));
     }
     
-    protected static String randomText(int length) {
-        ThreadLocalRandom r = ThreadLocalRandom.current();
-        byte[] bytes = new byte[length];
-        for (int i = 0; i < length; ++i) {
-            bytes[i] = (byte) r.nextInt('!', '~');
+    protected static String text(int length) {
+        byte[] source = lettersRange('!', '~');
+        byte[] target = new byte[length];
+        
+        for (int i = 0, j = 0; i < length; ++i) {
+            target[i] = source[j];
+            // Re-cycle source
+            j = j < source.length - 1 ? j + 1 : 0;
         }
-        return new String(bytes, UTF_8);
+        
+        return new String(target, UTF_8);
+    }
+    
+    private static byte[] lettersRange(char beginIncl, char endIncl) {
+        final byte[] bytes = new byte[endIncl - beginIncl + 1];
+        
+        for (int i = beginIncl; i <= endIncl; ++i) {
+            bytes[i - beginIncl] = (byte) i;
+        }
+        
+        return bytes;
     }
 }

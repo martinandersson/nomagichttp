@@ -29,7 +29,7 @@ class OneHundredRequestsFromSameClient extends AbstractSingleClientTest
     private static Stream<String> messages() {
         Supplier<String> s = () -> {
             ThreadLocalRandom r = ThreadLocalRandom.current();
-            return randomText(r.nextInt(LEN_MIN, LEN_MAX + 1));
+            return text(r.nextInt(LEN_MIN, LEN_MAX + 1));
         };
         
         return Stream.generate(s).limit(N);
