@@ -21,9 +21,11 @@ public class GreetRequestBody
     public static void main(String... ignored) throws IOException {
         
         /*
-         * Request.body() returns an API with various methods for accessing the
-         * body bytes. One of those methods is toText() which returns a
-         * CompletionStage<String>, mapped by this handler into a greeting.
+         * The handler is invoked as soon as the server has parsed a request
+         * head which is likely before the body has arrived. Method
+         * Request.body() returns an API with methods for asynchronously
+         * accessing the body bytes. One of the those is toText() which returns
+         * a CompletionStage<String>, mapped by this handler into a greeting.
          */
         
         Handler greeter = POST().apply(req ->

@@ -21,9 +21,9 @@ public class GreetPathParam
     public static void main(String... ignored) throws IOException {
         /*
          * When the server invokes the handler, the request head will have been
-         * fully parsed and populated with path parameter values. It is
-         * therefore safe to build an immediate response with no regards to
-         * asynchronicity.
+         * fully parsed and populated with path parameter values. These are
+         * accessible using method Request.paramFromPath() which returns an
+         * Optional.
          */
         
         Handler greeter = Handlers.GET().apply(request -> {
@@ -34,8 +34,14 @@ public class GreetPathParam
         
         /*
          * More complex setups usually entails using builder classes for a more
-         * fine-grained control. This builds a route with a path parameter and
-         * registers the greeter with the route.
+         * fine-grained control. This builds a route with a declared path
+         * parameter and registers the greeter with the route.
+         * 
+         * Please note that parameters are always optional and client-provided
+         * values at runtime can not be used to differentiate between routes.
+         * The route declared next would match a request targeting "/hello/John"
+         * as well as a request "/hello", difference being that the latter
+         * Request object would return an empty Optional.
          */
         
         Route route = new RouteBuilder("/hello").param("name")
