@@ -51,20 +51,28 @@ final class RequestHeadParser
         
         @Override
         public void onNext(PooledByteBufferHolder item) {
+            final RequestHead head;
+            
             try {
-                onNext0(item.get());
+                head = process(item.get());
             } catch (Throwable t) {
                 sub.cancel();
                 result.completeExceptionally(t);
+                return;
             } finally {
                 item.release();
             }
+            
+            if (head != null) {
+                sub.cancel();
+                result.complete(head);
+            }
         }
         
-        private void onNext0(ByteBuffer buf) {
-            RequestHead finished = null;
+        private RequestHead process(ByteBuffer buf) {
+            RequestHead head = null;
             
-            while (buf.hasRemaining() && finished == null) {
+            while (buf.hasRemaining() && head == null) {
                 char curr = (char) buf.get();
                 LOG.log(DEBUG, () -> "pos=" + read + ", curr=\"" + Char.toDebugString(curr) + "\"");
                 
@@ -72,13 +80,10 @@ final class RequestHeadParser
                     throw new MaxRequestHeadSizeExceededException();
                 }
                 
-                finished = processor.accept(curr);
+                head = processor.accept(curr);
             }
             
-            if (finished != null) {
-                sub.cancel();
-                result.complete(finished);
-            }
+            return head;
         }
         
         @Override
