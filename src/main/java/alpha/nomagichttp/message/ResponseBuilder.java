@@ -36,6 +36,7 @@ import static java.util.stream.Stream.of;
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  */
+// TODO: Should be able to be re-used as template
 public final class ResponseBuilder
 {
     /**

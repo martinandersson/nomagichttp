@@ -22,6 +22,7 @@ import java.util.concurrent.Flow;
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  */
+// TODO: Require immutable; a response-object should be able to be re-used.
 public interface Response
 {
     /**
