@@ -1,5 +1,9 @@
 package alpha.nomagichttp.largetest;
 
+import alpha.nomagichttp.handler.Handler;
+import alpha.nomagichttp.handler.Handlers;
+import alpha.nomagichttp.message.Responses;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
@@ -16,17 +20,25 @@ import static org.assertj.core.api.Assertions.assertThat;
  */
 class BigTextRequest extends AbstractSingleClientTest
 {
+    @BeforeAll
+    static void addHandler() {
+        Handler echo = Handlers.POST().apply(req ->
+                req.body().toText().thenApply(Responses::ok));
+        
+        addHandler("/echo", echo);
+    }
+    
     @Test
     void test() throws IOException, InterruptedException {
         // ChannelBytePublisher has 5 of these in a pool, we use 20
         final int size = 20 * 16 * 1_024;
-        final String expected = text(size);
+        final String expected = DataUtil.text(size);
         System.out.println("Expected size: " + expected.length());
         System.out.println("First ten: " + expected.substring(0, 10));
         System.out.println("Last ten:  " + expected.substring(expected.length() - 10));
         System.out.println();
         
-        HttpResponse<String> res = post(expected);
+        HttpResponse<String> res = postAndReceiveText("/echo", expected);
         assertThat(res.statusCode()).isEqualTo(200);
         
         final String actual = res.body();

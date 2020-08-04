@@ -1,5 +1,9 @@
 package alpha.nomagichttp.largetest;
 
+import alpha.nomagichttp.handler.Handler;
+import alpha.nomagichttp.handler.Handlers;
+import alpha.nomagichttp.message.Responses;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
@@ -22,10 +26,18 @@ import static org.assertj.core.api.Assertions.assertThat;
  */
 class TwoHundredRequestsFromSameClient extends AbstractSingleClientTest
 {
+    @BeforeAll
+    static void addHandler() {
+        Handler echo = Handlers.POST().apply(req ->
+                req.body().toText().thenApply(Responses::ok));
+        
+        addHandler("/echo", echo);
+    }
+    
     @ParameterizedTest
     @MethodSource("small_messages")
     void small(String msg) throws IOException, InterruptedException {
-        HttpResponse<String> res = post(msg);
+        HttpResponse<String> res = postAndReceiveText("/echo", msg);
         assertThat(res.statusCode()).isEqualTo(200);
         assertThat(res.body()).isEqualTo(msg);
     }
@@ -43,7 +55,7 @@ class TwoHundredRequestsFromSameClient extends AbstractSingleClientTest
     @ParameterizedTest
     @MethodSource("big_messages")
     void big(String msg) throws IOException, InterruptedException {
-        HttpResponse<String> res = post(msg);
+        HttpResponse<String> res = postAndReceiveText("/echo", msg);
         assertThat(res.statusCode()).isEqualTo(200);
         assertThat(res.body()).isEqualTo(msg);
     }
@@ -69,7 +81,7 @@ class TwoHundredRequestsFromSameClient extends AbstractSingleClientTest
     private static Stream<String> messages(int n, int minLen, int maxLen) {
         Supplier<String> s = () -> {
             ThreadLocalRandom r = ThreadLocalRandom.current();
-            return text(r.nextInt(minLen, maxLen + 1));
+            return DataUtil.text(r.nextInt(minLen, maxLen + 1));
         };
         
         return Stream.generate(s).limit(n);

@@ -3,7 +3,6 @@ package alpha.nomagichttp.largetest;
 import alpha.nomagichttp.Server;
 import alpha.nomagichttp.handler.Handler;
 import alpha.nomagichttp.handler.Handlers;
-import alpha.nomagichttp.message.Responses;
 import org.junit.jupiter.api.BeforeAll;
 
 import java.io.IOException;
@@ -20,57 +19,51 @@ import static java.net.http.HttpResponse.BodyHandlers;
 import static java.nio.charset.StandardCharsets.UTF_8;
 
 /**
- * Starts a server on system-picked port using an echo handler that responds the
- * text-based request body. An {@link HttpClient} can be operated using
- * protected methods in this class.
+ * Starts a server on a system-picked port. An {@link HttpClient} connecting to
+ * the server can be operated using protected methods in this class.<p>
+ * 
+ * A NOOP handler will be added to route "/". Test-specific handlers can be
+ * added using {@code addHandler()}.
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  */
 abstract class AbstractSingleClientTest
 {
+    private static Server SERVER;
+    private static String ROOT;
     private static HttpClient CLIENT;
-    private static HttpRequest.Builder TEMPLATE;
     
     @BeforeAll
     static void setup() throws IOException {
-        Handler echo = Handlers.POST().apply(req ->
-                req.body().toText().thenApply(Responses::ok));
-        
-        NetworkChannel listener = Server.with(route("/", echo)).start();
-        
-        CLIENT = HttpClient.newHttpClient();
+        SERVER = Server.with(route("/", Handlers.noop()));
+        NetworkChannel listener = SERVER.start();
         
         int port = ((InetSocketAddress) listener.getLocalAddress()).getPort();
-        TEMPLATE = HttpRequest.newBuilder()
+        ROOT = "http://localhost:" + port;
+        
+        CLIENT = HttpClient.newHttpClient();
+    }
+    
+    protected static void addHandler(String route, Handler handler) {
+        SERVER.getRouteRegistry().add(route(route, handler));
+    }
+    
+    protected static HttpResponse<Void> postBytes(String route, byte[] bytes) throws IOException, InterruptedException {
+        HttpRequest req = HttpRequest.newBuilder()
+                .uri(URI.create(ROOT + route))
+                .POST(BodyPublishers.ofByteArray(bytes))
+                .build();
+        
+        return CLIENT.send(req, BodyHandlers.discarding());
+    }
+    
+    protected static HttpResponse<String> postAndReceiveText(String route, String utf8) throws IOException, InterruptedException {
+        HttpRequest req = HttpRequest.newBuilder()
                 .setHeader("Content-Type", "text/plain; charset=utf-8")
-                .uri(URI.create("http://localhost:" + port));
-    }
-    
-    protected static HttpResponse<String> post(String body) throws IOException, InterruptedException {
-        HttpRequest req = TEMPLATE.POST(BodyPublishers.ofString(body, UTF_8)).build();
+                .uri(URI.create(ROOT + route))
+                .POST(BodyPublishers.ofString(utf8, UTF_8))
+                .build();
+        
         return CLIENT.send(req, BodyHandlers.ofString(UTF_8));
-    }
-    
-    protected static String text(int length) {
-        byte[] source = lettersRange('!', '~');
-        byte[] target = new byte[length];
-        
-        for (int i = 0, j = 0; i < length; ++i) {
-            target[i] = source[j];
-            // Re-cycle source
-            j = j < source.length - 1 ? j + 1 : 0;
-        }
-        
-        return new String(target, UTF_8);
-    }
-    
-    private static byte[] lettersRange(char beginIncl, char endIncl) {
-        final byte[] bytes = new byte[endIncl - beginIncl + 1];
-        
-        for (int i = beginIncl; i <= endIncl; ++i) {
-            bytes[i - beginIncl] = (byte) i;
-        }
-        
-        return bytes;
     }
 }
