@@ -4,7 +4,6 @@ import alpha.nomagichttp.handler.Handler;
 import alpha.nomagichttp.handler.Handlers;
 import alpha.nomagichttp.message.Responses;
 import org.junit.jupiter.api.BeforeAll;
-import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 
@@ -34,7 +33,12 @@ class TwoHundredRequestsFromSameClient extends AbstractSingleClientTest
         addHandler("/echo", echo);
     }
     
-    @ParameterizedTest
+    // Default name would have been msg argument, which is a super huge string!
+    // This renders the html report file 50 MB large and extremely slow to open.
+    // @DisplayName normally changes the "test name" but has no effect at all
+    // for parameterized tests. So we must use the name attribute instead.
+    // https://github.com/gradle/gradle/issues/5975
+    @ParameterizedTest(name = "small")
     @MethodSource("small_messages")
     void small(String msg) throws IOException, InterruptedException {
         HttpResponse<String> res = postAndReceiveText("/echo", msg);
@@ -46,13 +50,7 @@ class TwoHundredRequestsFromSameClient extends AbstractSingleClientTest
         return messages(100, 0, 10);
     }
     
-    // Default name would have been msg argument, which is a super huge string!
-    // This renders the html report file 50 MB large and extremely slow to open.
-    // @DisplayName should take care of that, but doesn't work:
-    // https://github.com/gradle/gradle/issues/5975
-    // TODO: Keep track of updates and remove comment when resolved.
-    @DisplayName("big")
-    @ParameterizedTest
+    @ParameterizedTest(name = "big")
     @MethodSource("big_messages")
     void big(String msg) throws IOException, InterruptedException {
         HttpResponse<String> res = postAndReceiveText("/echo", msg);
