@@ -212,6 +212,10 @@ public interface Request
          */
         CompletionStage<String> toText();
         
+        // TODO: Mimic method signatures of BodyHandlers.ofFile. I.e., no-arg
+        //       overload specifies default values and impl. crashes for
+        //       "non-sensible" values.
+        
         /**
          * Save the request body to a file.<p>
          * 
