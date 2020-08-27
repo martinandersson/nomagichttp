@@ -74,6 +74,7 @@ public final class ResponseBuilder
     private String reasonPhrase;
     private final Queue<String> headers;
     private Flow.Publisher<ByteBuffer> body;
+    private boolean mustCloseAfterWrite;
     // TODO: This class was originally designed thread-safe. Not being
     //       thread-safe renders the non-atomic modCount variable and
     //       ConcurrentModificationException pretty useless. Remove.
@@ -83,6 +84,7 @@ public final class ResponseBuilder
     private boolean committed;
     
     public ResponseBuilder() {
+        // TODO: Take in version, code and phrase in constructor and remove corresponding builder methods.
         httpVersion = null;
         statusCode = 0;
         reasonPhrase = null;
@@ -200,6 +202,27 @@ public final class ResponseBuilder
      */
     public ResponseBuilder contentLenght(long value) {
         return header("Content-Length", Long.toString(value));
+    }
+    
+    /**
+     * Instruct the server to close the client channel after writing the
+     * response.
+     * 
+     * @return this (for chaining/fluency)
+     * 
+     * @see Response#mustCloseAfterWrite() 
+     */
+    // TODO: Move down after body-methods and the body methods no longer builds
+    // the response. Need explicit build method for that.
+    public ResponseBuilder mustCloseAfterWrite() {
+        if (mustCloseAfterWrite) {
+            return this;
+        }
+        
+        modifying(() ->
+            mustCloseAfterWrite = true);
+        
+        return this;
     }
     
     // TODO: Lots more of convenient-to-use header methods

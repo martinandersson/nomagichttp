@@ -69,4 +69,24 @@ public interface Response
     default CompletionStage<Response> asCompletedStage() {
         return CompletableFuture.completedStage(this);
     }
+    
+    /**
+     * Returns {@code true} if the server must close the underlying client
+     * channel after writing the response, otherwise {@code false}.<p>
+     * 
+     * The server is free to close the channel even if this method returns
+     * {@code false}.<p>
+     * 
+     * For security; If closing the client channel fails, the server will try to
+     * close itself. If closing itself fails, the server will stop the JVM.
+     * 
+     * @implSpec
+     * The default implementation returns @code false}.
+     * 
+     * @return {@code true} if the server must close the underlying client
+     * channel, otherwise {@code false}
+     */
+    default boolean mustCloseAfterWrite() {
+        return false;
+    }
 }
