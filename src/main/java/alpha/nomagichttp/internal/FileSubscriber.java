@@ -53,10 +53,8 @@ final class FileSubscriber implements Flow.Subscriber<PooledByteBufferHolder>
     public void onError(Throwable t) {
         try {
             file.close();
-        } catch (IOException e) {
-            e.addSuppressed(t);
-            result.completeExceptionally(e);
-            return;
+        } catch (IOException next) {
+            t.addSuppressed(next);
         }
         result.completeExceptionally(t);
     }
