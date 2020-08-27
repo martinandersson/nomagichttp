@@ -21,18 +21,18 @@ import static java.util.Objects.requireNonNull;
  * subscribe while a subscription is already active will result in an
  * {@code IllegalStateException} being signalled to the rejected subscriber.<p>
  * 
- * Subclass is allowed to produce {@code null} items. However, it is important
- * that any thread running through the context of the publisher that notices a
- * change in a condition to the effect that a previously {@code null}-producing
- * publisher might be able to produce again, must call the {@link #announce()}
- * method which will trigger a new attempt to transfer an item to the
- * subscriber.<p>
+ * Subclass is allowed to produce {@code null} items which in turn will not be
+ * delivered to the subscriber. However, it is important that any thread running
+ * through the context of the publisher that notices a change in a condition to
+ * the effect that a previously {@code null}-producing publisher might be able
+ * to produce again, must call the {@link #announce()} method which will trigger
+ * a new attempt to transfer an item to the subscriber.<p>
  * 
- * The transfer logic is provided by {@link SerialTransferService} and the same
- * guarantees and semantics {@code SerialTransferService} specifies applies also
- * to this class which can be regarded as merely a {@code Flow.Publisher} API on
- * top of {@code SerialTransferService}. In fact, the publisher subclass is the
- * transfer-service supplier and the subscriber is the transfer-service
+ * The transfer logic is implemented by {@link SerialTransferService} and the
+ * same guarantees and semantics {@code SerialTransferService} specifies applies
+ * also to this class which can be regarded as merely a {@code Flow.Publisher}
+ * API on top of {@code SerialTransferService}. In fact, the publisher subclass
+ * is the transfer-service supplier and the subscriber is the transfer-service
  * consumer.<p>
  * 
  * This class implements {@link Closeable} and the default close-behavior is
@@ -49,45 +49,12 @@ import static java.util.Objects.requireNonNull;
  * will be called serially within the scope of an attempt to transfer.<p>
  * 
  * 
- * <h2>Error Handling</h2>
- * 
- * TODO: Write something.
- * 
- * 
  * @apiNote
- * Only one subscriber at a time is allowed. The chief reason as to why this
- * decision was made is because there's simply no current need to support
- * more subscribers. Moreover, this constraint doesn't actually <i>stop</i> a
- * multi-subscriber behavior to be implemented and documented separately by a
- * "fan-out" or "pipeline" {@code Flow.Processor} subscriber. Any simplification
- * made in code is a huge win for long-term maintenance and performance.<p>
- * 
- * The only expected concrete class is {@link ChannelBytePublisher} which sits
- * on top of a byte-producing channel - which in turn, and for good reasons,
- * only support one concurrent read/write operation at a time. Allowing only one
- * subscriber brings the subscriber closer together and more aligned with the
- * channel publisher, making sure the same semantics hold true from end to
- * end.<p>
- * 
- * Having more tightly coupled semantics also makes it easier to reason about
- * the application behavior and how-to implement a "correct" subscriber. With
- * only one subscriber, it becomes quite clear that he is fully responsible for
- * processing bytes hopefully <i>in order</i>.<p>
- * 
- * This is especially true for bytebuffers which are not thread-safe and
- * therefore by definition not meant to be operated on at the same time by
- * different subscribers.<p>
- * 
- * "Keeping it simple" also has another advantage: pooling without reference
- * counting. Netty, for example - which essentially has "no control" over who
- * receives their buffers - use reference counting and with that comes a very
- * hard-to-understand API which is even prone to memory leaks.<p>
- * 
- * And the list goes on. For example, having the one-subscriber constraint also
- * makes it rational to implement "features" such as closing an underlying
- * channel if {@code Subscriber.onNext(T)} throws an exception. With multiple
- * subscribers, it would be a bit unfair to indiscriminately punish them all for
- * the failure of just one of them!
+ * Only one subscriber at a time is allowed. This decision was made in order to
+ * better suite publishers of bytebuffers; which are not thread-safe and carries
+ * bytes that most likely should be processed sequentially. This constraint does
+ * not <i>stop</i> a multi-subscriber behavior to be implemented and documented
+ * separately by a "fan-out" or "pipeline" {@code Flow.Processor} subscriber.
  * 
  * @param <T> type of item to publish
  * 
@@ -140,7 +107,7 @@ abstract class AbstractUnicastPublisher<T> implements Flow.Publisher<T>, Closeab
     protected abstract T poll();
     
     /**
-     * If {@code Subscriber.onNext} crash with an exception, then this method is
+     * If {@code Subscriber.onNext} returns exceptionally, then this method is
      * called (serially) with the same item.<p>
      * 
      * This gives the publisher implementation the ability to probe further and
