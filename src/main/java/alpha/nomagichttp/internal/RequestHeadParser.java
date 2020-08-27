@@ -32,7 +32,11 @@ final class RequestHeadParser
         result      = new CompletableFuture<>();
         processor   = new RequestHeadProcessor();
         
-        bytes.subscribe(new Subscriber());
+        try {
+            bytes.subscribe(new Subscriber());
+        } catch (Throwable t) {
+            result.completeExceptionally(t);
+        }
     }
     
     CompletionStage<RequestHead> asCompletionStage() {
