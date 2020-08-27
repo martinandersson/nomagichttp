@@ -1,11 +1,7 @@
 package alpha.nomagichttp.internal;
 
-import alpha.nomagichttp.ExceptionHandler;
 import alpha.nomagichttp.Server;
-import alpha.nomagichttp.ServerConfig;
 import alpha.nomagichttp.message.Char;
-import alpha.nomagichttp.route.Route;
-import alpha.nomagichttp.route.RouteBuilder;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
@@ -20,14 +16,13 @@ import java.nio.channels.SocketChannel;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
-import java.util.Set;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import static alpha.nomagichttp.handler.Handlers.noop;
-import static java.lang.System.Logger.Level.ERROR;
+import static alpha.nomagichttp.route.Routes.route;
 import static java.lang.System.Logger.Level.WARNING;
 import static java.net.InetAddress.getLoopbackAddress;
 import static java.nio.ByteBuffer.allocate;
@@ -59,26 +54,13 @@ abstract class AbstractEndToEndTest
     private static Server server;
     private static NetworkChannel listener;
     private static int port;
-    private static volatile Throwable lastExc;
     private static ScheduledExecutorService scheduler;
     
     @BeforeAll
     static void startServer() throws IOException {
-        Route route = new RouteBuilder("/")
-                .handler(noop())
-                .build();
-        
-        server = Server.with(ServerConfig.DEFAULT, Set.of(route), exc -> {
-            lastExc = exc;
-            // TODO: Default error handler should log
-            LOG.log(ERROR, "Unhandled exception.", exc);
-            return ExceptionHandler.DEFAULT.apply(exc);
-        });
-        
+        server = Server.with(route("/", noop()));
         listener = server.start();
-        
         port = ((InetSocketAddress) listener.getLocalAddress()).getPort();
-        
         scheduler = Executors.newSingleThreadScheduledExecutor(r -> {
             Thread t = new Thread(r);
             t.setDaemon(true);

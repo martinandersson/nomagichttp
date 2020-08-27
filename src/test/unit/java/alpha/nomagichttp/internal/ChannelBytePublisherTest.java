@@ -17,6 +17,7 @@ import java.util.function.BiFunction;
 import static java.lang.System.Logger.Level.ALL;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.mock;
 
 /**
  * Tests for {@code ChannelBytePublisher}.
@@ -41,7 +42,9 @@ class ChannelBytePublisherTest
     @BeforeEach
     void beforeEach() throws Throwable {
         client = new SocketChannelOperations(SERVER.newClient());
-        testee = new ChannelBytePublisher(SERVER.accept());
+        ChannelBytePublisher cbp = new ChannelBytePublisher(mock(AsyncServer.class), SERVER.accept());
+        cbp.begin();
+        testee = cbp;
     }
     
     @AfterEach
