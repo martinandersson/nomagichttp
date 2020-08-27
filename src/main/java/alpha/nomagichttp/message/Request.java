@@ -1,5 +1,8 @@
 package alpha.nomagichttp.message;
 
+import alpha.nomagichttp.ExceptionHandler;
+import alpha.nomagichttp.handler.Handler;
+
 import java.net.http.HttpHeaders;
 import java.nio.channels.AsynchronousFileChannel;
 import java.nio.file.OpenOption;
@@ -117,9 +120,18 @@ public interface Request
     HttpHeaders headers();
     
     /**
-     * Returns the request body.
+     * Returns the request body.<p>
+     * 
+     * A {@link Handler request handler} will never see the
+     * {@code IllegalStateException} because when the handler is called, a body
+     * will always have been bound, even if the body is empty. An {@link
+     * ExceptionHandler exception handler} on the other hand may be invoked
+     * earlier in the process of binding the body and if so, this method will
+     * throw an {@code IllegalStateException}.
      * 
      * @return the request body
+     * 
+     * @throws IllegalStateException if body has not yet been bound
      * 
      * @see Body
      */
@@ -198,6 +210,7 @@ public interface Request
     //       this point the server wants to restart a new exchange and he should
     //       be able to assume that the handler was never interested in the body.
     
+    // TODO: Any heap based read of bytes must save bytes and return same subsequently
     interface Body extends Flow.Publisher<PooledByteBufferHolder>
     {
         /**
@@ -236,7 +249,7 @@ public interface Request
          * @return the number of bytes written to file
          */
         CompletionStage<Long> toFile(Path file, OpenOption... options);
-    
+        
         /**
          * Save the request body to a file.<p>
          * 

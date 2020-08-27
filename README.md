@@ -173,3 +173,36 @@ Content-Length: 0
 ```
 
 [6-1]: src/main/java/alpha/nomagichttp/examples/EchoHeaders.java
+
+### Retry request on error
+
+This example demonstrates exception handling and will re-execute the request
+handler on a particular known exception.
+
+See code: [src/main/java/.../RetryRequestOnError.java][7-1]
+
+Run:
+
+```console
+foo@bar:~$ java --class-path=$JAR $PKG.RetryRequestOnError
+Listening on port 8080.
+```
+
+In a new terminal, run:
+
+```console
+foo@bar:~$ curl -i localhost:8080
+HTTP/1.1 200 OK
+Content-Length: 0
+```
+
+In the server terminal, you should see text similar to this:
+```console
+Request handler received a request 18:57:09.403 and will crash!
+Exception handler will retry #1 after delay (ms): 40
+Request handler received a request 18:57:09.456 and will crash!
+Exception handler will retry #2 after delay (ms): 160
+Request handler received a request 18:57:09.627 and will return 200 OK.
+```
+
+[7-1]: src/main/java/alpha/nomagichttp/examples/RetryRequestOnError.java

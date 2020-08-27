@@ -33,9 +33,9 @@ import static java.util.Objects.requireNonNull;
  * Once the consumes media-type has been specified, the next step is to specify
  * what media-type the handler produces.<p>
  * 
- * The last step will be to specify the logic of the handler. The methods
- * offered by this class to do so, comes in many flavors which accepts different
- * functional types depending on the needs of the application.<p>
+ * The last step will be to specify the logic of the handler. The adapter
+ * methods offered by this class to do so, comes in many flavors which accepts
+ * different functional types depending on the needs of the application.<p>
  * 
  * {@code run()} receives a no-args {@code Runnable} which represents logic that
  * does not need to access the request object and has no need to customize the
@@ -118,6 +118,9 @@ public final class HandlerBuilder
         // TODO: Lots more
     }
     
+    /**
+     * @see HandlerBuilder
+     */
     public static final class LastStep extends Link<NextStep> {
         LastStep(NextStep prev) {
             super(prev);

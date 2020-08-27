@@ -3,7 +3,6 @@ package alpha.nomagichttp.internal;
 import alpha.nomagichttp.message.PooledByteBufferHolder;
 import alpha.nomagichttp.message.Request;
 
-import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.AsynchronousByteChannel;
 import java.nio.channels.CompletionHandler;
@@ -15,7 +14,6 @@ import java.util.stream.IntStream;
 
 import static java.lang.System.Logger.Level.DEBUG;
 import static java.lang.System.Logger.Level.ERROR;
-import static java.util.Objects.requireNonNull;
 
 /**
  * Publishes bytebuffers read from an asynchronous byte channel (assumed to not
@@ -45,14 +43,16 @@ final class ChannelBytePublisher extends AbstractUnicastPublisher<DefaultPooledB
      * queue of writable buffers, from which channel read operations polls.
      */
     
+    private final AsyncServer             server;
     private final AsynchronousByteChannel channel;
     private final Deque<ByteBuffer>       readable;
     private final Queue<ByteBuffer>       writable;
     private final SeriallyRunnable        readOp;
     private final ReadHandler             handler;
     
-    ChannelBytePublisher(AsynchronousByteChannel channel) {
-        this.channel  = requireNonNull(channel);
+    ChannelBytePublisher(AsyncServer server, AsynchronousByteChannel channel) {
+        this.server   = server;
+        this.channel  = channel;
         this.readable = new ConcurrentLinkedDeque<>();
         this.writable = new ConcurrentLinkedQueue<>();
         this.readOp   = new SeriallyRunnable(this::readImpl, true);
@@ -62,7 +62,9 @@ final class ChannelBytePublisher extends AbstractUnicastPublisher<DefaultPooledB
                 .limit(BUF_COUNT)
                 .mapToObj(ByteBuffer::allocateDirect)
                 .forEach(writable::add);
-        
+    }
+    
+    void begin() {
         readOp.run();
     }
     
@@ -84,38 +86,34 @@ final class ChannelBytePublisher extends AbstractUnicastPublisher<DefaultPooledB
     }
     
     @Override
-    protected void failed(DefaultPooledByteBufferHolder buffer) {
-        buffer.release();
+    protected void failed(DefaultPooledByteBufferHolder buf) {
+        buf.release();
     }
     
     private void readImpl() {
         final ByteBuffer buf = writable.poll();
         
-        if (buf == null) {
+        if (buf == null || !channel.isOpen()) {
             // Nothing to do, complete immediately
             readOp.complete();
             return;
         }
         
-        // TODO: What if this throws ShutdownChannelGroupException? Or anything else for that matter..
-        channel.read(buf, buf, handler);
+        try {
+            channel.read(buf, buf, handler);
+        } catch (Throwable t) {
+            handler.failed(t, null);
+        }
     }
     
     @Override
     public void close() {
         try {
-            close0();
-        } catch (IOException e) {
-            // TODO: Deliver somewhere?
-            LOG.log(ERROR, "TODO: Deliver somewhere?", e);
-        }
-    }
-    
-    private void close0() throws IOException {
-        try {
             super.close();
         } finally {
-            channel.close();
+            server.orderlyShutdown(channel);
+            writable.clear();
+            readable.clear();
         }
     }
     
@@ -134,7 +132,6 @@ final class ChannelBytePublisher extends AbstractUnicastPublisher<DefaultPooledB
                         break;
                     case 0:
                         LOG.log(ERROR, "Buffer wasn't writable. Fake!");
-                        // TODO: Submit AssertionError instead of logging, to subscriber, through close(Throwable)
                         close();
                         announce = false;
                         break;
@@ -212,11 +209,10 @@ final class ChannelBytePublisher extends AbstractUnicastPublisher<DefaultPooledB
         }
         
         @Override
-        public void failed(Throwable exc, ByteBuffer buf) {
+        public void failed(Throwable t, ByteBuffer ignored) {
             try {
-                // TODO: Deliver somewhere?
-                LOG.log(ERROR, "TODO: Deliver somewhere?", exc);
-                release(buf);
+                LOG.log(ERROR, "Channel read operation failed. Will close channel.", t);
+                close();
             } finally {
                 readOp.complete();
             }
