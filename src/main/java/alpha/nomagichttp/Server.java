@@ -14,6 +14,9 @@ import java.net.InetSocketAddress;
 import java.net.SocketAddress;
 import java.nio.channels.NetworkChannel;
 import java.util.List;
+import java.util.function.Supplier;
+
+import static java.util.Collections.singleton;
 
 /**
  * A server receives HTTP {@link Request requests}, routes these to a {@link
@@ -152,7 +155,9 @@ public interface Server
      * @throws NullPointerException if any argument is {@code null}
      */
     static Server with(ServerConfig config, Iterable<? extends Route> routes) {
-        return with(config, routes, ExceptionHandler.DEFAULT);
+        RouteRegistry reg = new DefaultRouteRegistry();
+        routes.forEach(reg::add);
+        return new AsyncServer(reg, config, List.of());
     }
     
     /**
@@ -166,10 +171,10 @@ public interface Server
      * 
      * @throws NullPointerException if any argument is {@code null}
      */
-    static Server with(ServerConfig config, Iterable<? extends Route> routes, ExceptionHandler onError) {
+    static Server with(ServerConfig config, Iterable<? extends Route> routes, Supplier<ExceptionHandler> onError) {
         RouteRegistry reg = new DefaultRouteRegistry();
         routes.forEach(reg::add);
-        return new AsyncServer(reg, config, onError);
+        return new AsyncServer(reg, config, singleton(onError));
     }
     
     /**
