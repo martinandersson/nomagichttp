@@ -39,10 +39,9 @@ import static java.lang.System.Logger.Level.ERROR;
  * considered to be a new error and the whole process is restarted.<p>
  * 
  * The server accepts a supplier of the exception handler. The supplier will be
- * called lazily upon the first invocation of the error handler but the handler
+ * called lazily upon the first invocation of the error handler and the handler
  * instance is cached throughout each unique HTTP exchange. This means that the
- * exception handler can keep state related to the exchange such as a
- * retry-counter.
+ * handler can safely keep state related to the exchange such as a retry-counter.
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  * 
