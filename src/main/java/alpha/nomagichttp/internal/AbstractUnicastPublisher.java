@@ -307,9 +307,8 @@ abstract class AbstractUnicastPublisher<T> implements Flow.Publisher<T>, Closeab
                 
                 try {
                     failed(item);
-                } catch (Throwable t0) {
-                    t0.addSuppressed(t);
-                    throw t0;
+                } catch (Throwable next) {
+                    t.addSuppressed(next);
                 }
                 
                 throw t;
