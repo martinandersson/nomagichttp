@@ -57,13 +57,13 @@ public interface ExceptionHandler
      * be null or non-null depending on how much progress was made in the HTTP
      * exchange before the error occurred.<p>
      * 
+     * For example, if {@code exc} is a {@link NoHandlerFoundException} then all
+     * arguments to the left of {@code handler} will be non-null but {@code
+     * handler} will be null (because it was never successfully resolved).<p>
+     *
      * The final step of the exchange is to invoke the request handler, and so
      * all arguments will be non-null for all errors thrown by the request
      * handler.<p>
-     * 
-     * For example, if {@code exc} is a {@link NoHandlerFoundException} then all
-     * arguments to the left of {@code handler} will be non-null but {@code
-     * handler} will be null.<p>
      * 
      * If the original error is a {@code CompletionException}, then the server
      * will attempt to recursively unpack the cause which is then passed to the
