@@ -45,14 +45,16 @@ final class ChannelBytePublisher extends AbstractUnicastPublisher<DefaultPooledB
      * queue of writable buffers, from which channel read operations polls.
      */
     
+    private final AsyncServer             server;
     private final AsynchronousByteChannel channel;
     private final Deque<ByteBuffer>       readable;
     private final Queue<ByteBuffer>       writable;
     private final SeriallyRunnable        readOp;
     private final ReadHandler             handler;
     
-    ChannelBytePublisher(AsynchronousByteChannel channel) {
-        this.channel  = requireNonNull(channel);
+    ChannelBytePublisher(AsyncServer server, AsynchronousByteChannel channel) {
+        this.server   = server;
+        this.channel  = channel;
         this.readable = new ConcurrentLinkedDeque<>();
         this.writable = new ConcurrentLinkedQueue<>();
         this.readOp   = new SeriallyRunnable(this::readImpl, true);
@@ -100,22 +102,21 @@ final class ChannelBytePublisher extends AbstractUnicastPublisher<DefaultPooledB
         // TODO: What if this throws ShutdownChannelGroupException? Or anything else for that matter..
         channel.read(buf, buf, handler);
     }
+        try {
+            channel.read(buf, buf, handler);
+        } catch (Throwable t) {
+            handler.failed(t, null);
+        }
+    }
     
     @Override
     public void close() {
         try {
-            close0();
-        } catch (IOException e) {
-            // TODO: Deliver somewhere?
-            LOG.log(ERROR, "TODO: Deliver somewhere?", e);
-        }
-    }
-    
-    private void close0() throws IOException {
-        try {
             super.close();
         } finally {
-            channel.close();
+            server.orderlyShutdown(channel);
+            writable.clear();
+            readable.clear();
         }
     }
     
@@ -134,7 +135,6 @@ final class ChannelBytePublisher extends AbstractUnicastPublisher<DefaultPooledB
                         break;
                     case 0:
                         LOG.log(ERROR, "Buffer wasn't writable. Fake!");
-                        // TODO: Submit AssertionError instead of logging, to subscriber, through close(Throwable)
                         close();
                         announce = false;
                         break;
