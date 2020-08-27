@@ -3,7 +3,6 @@ package alpha.nomagichttp.internal;
 import alpha.nomagichttp.message.PooledByteBufferHolder;
 import alpha.nomagichttp.message.Request;
 
-import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.AsynchronousByteChannel;
 import java.nio.channels.CompletionHandler;
@@ -15,7 +14,6 @@ import java.util.stream.IntStream;
 
 import static java.lang.System.Logger.Level.DEBUG;
 import static java.lang.System.Logger.Level.ERROR;
-import static java.util.Objects.requireNonNull;
 
 /**
  * Publishes bytebuffers read from an asynchronous byte channel (assumed to not
@@ -88,22 +86,19 @@ final class ChannelBytePublisher extends AbstractUnicastPublisher<DefaultPooledB
     }
     
     @Override
-    protected void failed(DefaultPooledByteBufferHolder buffer) {
-        buffer.release();
+    protected void failed(DefaultPooledByteBufferHolder buf) {
+        buf.release();
     }
     
     private void readImpl() {
         final ByteBuffer buf = writable.poll();
         
-        if (buf == null) {
+        if (buf == null || !channel.isOpen()) {
             // Nothing to do, complete immediately
             readOp.complete();
             return;
         }
         
-        // TODO: What if this throws ShutdownChannelGroupException? Or anything else for that matter..
-        channel.read(buf, buf, handler);
-    }
         try {
             channel.read(buf, buf, handler);
         } catch (Throwable t) {
@@ -214,11 +209,10 @@ final class ChannelBytePublisher extends AbstractUnicastPublisher<DefaultPooledB
         }
         
         @Override
-        public void failed(Throwable exc, ByteBuffer buf) {
+        public void failed(Throwable t, ByteBuffer ignored) {
             try {
-                // TODO: Deliver somewhere?
-                LOG.log(ERROR, "TODO: Deliver somewhere?", exc);
-                release(buf);
+                LOG.log(ERROR, "Channel read operation failed. Will close channel.", t);
+                close();
             } finally {
                 readOp.complete();
             }
