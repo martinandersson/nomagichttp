@@ -34,16 +34,15 @@ final class DefaultRequest implements Request
     
     private final RequestHead head;
     private final Map<String, String> pathParameters;
-    private final Flow.Publisher<PooledByteBufferHolder> channel;
+    private volatile Flow.Publisher<PooledByteBufferHolder> bodySource;
     
-    DefaultRequest(
-            RequestHead head,
-            Map<String, String> pathParameters,
-            Flow.Publisher<PooledByteBufferHolder> channel)
-    {
+    DefaultRequest(RequestHead head, Map<String, String> pathParameters) {
         this.head = head;
         this.pathParameters = pathParameters;
-        this.channel = channel;
+    }
+    
+    void setBodySource(Flow.Publisher<PooledByteBufferHolder> source) {
+        this.bodySource = source;
     }
     
     @Override
@@ -81,12 +80,16 @@ final class DefaultRequest implements Request
         return head.headers();
     }
     
-    private Body body;
+    private Body bodyView;
     
     @Override
     public Body body() {
-        Body b = body;
-        return b != null ? b : (body = new DefaultBody());
+        if (bodySource == null) {
+            throw new IllegalStateException("Body not yet bound.");
+        }
+        
+        Body b = bodyView;
+        return b != null ? b : (bodyView = new DefaultBody());
     }
     
     private final class DefaultBody implements Request.Body
@@ -137,7 +140,7 @@ final class DefaultRequest implements Request
         
         @Override
         public void subscribe(Flow.Subscriber<? super PooledByteBufferHolder> subscriber) {
-            channel.subscribe(subscriber);
+            bodySource.subscribe(subscriber);
         }
     }
 }
