@@ -66,7 +66,7 @@ The text message is printed in the first terminal window.
 ### Hello World - Response
 
 This example will make the server respond with "Hello, World!" in the message
-body.
+body returned to the client.
 
 See code: [src/main/java/.../HelloWorldResponse.java][3-1]
 
