@@ -21,12 +21,14 @@
  * 
  * When processing a request, the handler will have an optionally complete
  * control over the bytes read from the inbound message body as well as the
- * response sent back (head + body). The message bodies are modelled as a
- * {@link java.util.concurrent.Flow.Publisher Flow.Publisher} of bytebuffers,
- * consumed as request body and produced as response body respectively. This
- * enables the server implementation to be very scalable. Helpful API-provided
- * types and methods will make working in an asynchronous environment both easy
- * and fun.<p>
+ * response sent back (head + body). The message bodies are ultimately modelled
+ * as a {@link java.util.concurrent.Flow.Publisher Flow.Publisher} of
+ * bytebuffers, consumed as request body and produced as response body
+ * respectively. This enables the server implementation to be very scalable.
+ * For the developer not in need of low-level control, an easily accessible and
+ * helpful API is provided that abstracts away flows of byte processing into
+ * higher level types makes working in an asynchronous environment both easy and
+ * fun.<p>
  * 
  * Once the route has been constructed it can be added to a {@link
  * alpha.nomagichttp.Server Server}. The default server implementation ({@link
