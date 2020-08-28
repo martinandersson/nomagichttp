@@ -22,8 +22,8 @@ public class EchoHeaders
     public static void main(String... ignored) throws IOException {
         Handler echo = GET().apply(req -> {
             // The response builder allows setting any arbitrary status-line.
-            // Static methods such as "ok()" returns a builder with the
-            // status-line already populated.
+            // The static method "ResponseBuilder.ok()" returns a builder with
+            // the status-line already populated.
             ResponseBuilder b = ResponseBuilder.ok();
             
             // Copy all request headers to the response headers
