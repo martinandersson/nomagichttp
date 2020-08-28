@@ -60,7 +60,7 @@ abstract class AbstractEndToEndTest
     static void startServer() throws IOException {
         server = Server.with(route("/", noop()));
         listener = server.start();
-        port = ((InetSocketAddress) listener.getLocalAddress()).getPort();
+        port = server.getPort();
         scheduler = Executors.newSingleThreadScheduledExecutor(r -> {
             Thread t = new Thread(r);
             t.setDaemon(true);

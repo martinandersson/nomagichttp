@@ -6,12 +6,10 @@ import alpha.nomagichttp.handler.Handlers;
 import org.junit.jupiter.api.BeforeAll;
 
 import java.io.IOException;
-import java.net.InetSocketAddress;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
-import java.nio.channels.NetworkChannel;
 
 import static alpha.nomagichttp.route.Routes.route;
 import static java.net.http.HttpRequest.BodyPublishers;
@@ -36,11 +34,9 @@ abstract class AbstractSingleClientTest
     @BeforeAll
     static void setup() throws IOException {
         SERVER = Server.with(route("/", Handlers.noop()));
-        NetworkChannel listener = SERVER.start();
+        SERVER.start();
         
-        int port = ((InetSocketAddress) listener.getLocalAddress()).getPort();
-        ROOT = "http://localhost:" + port;
-        
+        ROOT = "http://localhost:" + SERVER.getPort();
         CLIENT = HttpClient.newHttpClient();
     }
     
