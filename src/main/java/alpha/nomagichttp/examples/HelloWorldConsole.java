@@ -7,8 +7,6 @@ import alpha.nomagichttp.route.Route;
 import alpha.nomagichttp.route.Routes;
 
 import java.io.IOException;
-import java.net.InetSocketAddress;
-import java.nio.channels.NetworkChannel;
 
 /**
  * Prints "Hello, World!" in the console.
@@ -23,15 +21,15 @@ public class HelloWorldConsole {
          * we do not inline or statically import for learning purposes.
          */
         
-        Handler handler = Handlers.GET().run(() ->
+        Handler h = Handlers.GET().run(() ->
                 System.out.println("Hello, World!"));
         
-        Route route = Routes.route("/", handler);
+        Route r = Routes.route("/", h);
         
         // Not supplying a port makes the system pick one
-        NetworkChannel listener = Server.with(route).start();
+        Server s = Server.with(r);
+        s.start();
         
-        int port = ((InetSocketAddress) listener.getLocalAddress()).getPort();
-        System.out.println("Listening on port " + port + ".");
+        System.out.println("Listening on port " + s.getPort() + ".");
     }
 }
