@@ -23,8 +23,8 @@ class RequestErrorTest extends AbstractEndToEndTest
     
     @Test
     void not_found_default() throws IOException, InterruptedException {
-        String req = "GET /404 HTTP/1.1" + CRLF + CRLF + CRLF;
-        String res = writeReadText(req);
+        String req = "GET /404 HTTP/1.1" + CRLF + CRLF + CRLF,
+               res = writeReadText(req);
         
         assertThat(res).isEqualTo(
             "HTTP/1.1 404 Not Found" + CRLF +
