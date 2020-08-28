@@ -33,8 +33,9 @@ class RequestErrorTest extends AbstractEndToEndTest
     
     // TODO: Implement
     //       First, we need to make AbstractEndToEndTest an API with explicit
-    //       control over life cycle and Server setup. Probably also rename
-    //       TestServer to something else.
+    //       control over life cycle and Server setup, rename him to
+    //       "ClientOperations". The only parameter the new c-tor should depend
+    //       on is the port number, which he uses to connect an embedded client to.
     //@Test
     void not_found_custom() {
         
