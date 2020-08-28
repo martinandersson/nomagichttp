@@ -288,6 +288,15 @@ public interface Server
     void stop();
     
     /**
+     * Returns the port used by the server.
+     * 
+     * @return the port used by the server
+     * 
+     * @throws IllegalStateException if server is not running
+     */
+    int getPort() throws IllegalStateException;
+    
+    /**
      * Returns the server's route registry.
      * 
      * @return the server's route registry (never {@code null})

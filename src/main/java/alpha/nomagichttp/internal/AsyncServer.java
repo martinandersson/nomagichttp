@@ -75,6 +75,7 @@ public final class AsyncServer implements Server
     private final ServerConfig config;
     private final List<Supplier<ExceptionHandler>> onError;
     private AsynchronousServerSocketChannel listener;
+    private int port;
     
     public AsyncServer(RouteRegistry routes, ServerConfig config, Iterable<Supplier<ExceptionHandler>> onError) {
         this.routes   = requireNonNull(routes);
@@ -100,6 +101,7 @@ public final class AsyncServer implements Server
         listener = AsynchronousServerSocketChannel.open(group()).bind(use);
         LOG.log(INFO, () -> "Opened server channel: " + listener);
         
+        port = ((InetSocketAddress) listener.getLocalAddress()).getPort();
         listener.accept(null, new OnAccept());
         
         return listener;
@@ -116,6 +118,15 @@ public final class AsyncServer implements Server
         // This could become tricky if application is supposed to be able to
         // specify or directly lookup the group's thread pool since shutting
         // down a group also shuts down the thread pool!
+    }
+    
+    @Override
+    public synchronized int getPort() throws IllegalStateException {
+        if (listener == null || !listener.isOpen()) {
+            throw new IllegalStateException("Server is not running.");
+        }
+        
+        return port;
     }
     
     @Override
