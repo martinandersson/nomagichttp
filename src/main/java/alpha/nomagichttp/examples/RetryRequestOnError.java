@@ -97,8 +97,8 @@ public class RetryRequestOnError
             final int delay = 40 * (int) Math.pow(++retries, 2);
             System.out.println("Exception handler will retry #" + retries + " after delay (ms): " + delay);
             
-            // Or shorter but hacky:
-            // return runAsync(() -> {}, delayedExecutor(delay, MILLISECONDS))
+            // Alternatively:
+            // return CompletableFuture.runAsync(() -> {}, delayedExecutor(delay, MILLISECONDS))
             //         .thenCompose(Void -> handler.logic().apply(req));
             return CompletableFuture.supplyAsync(() ->
                         handler.logic().apply(req), delayedExecutor(delay, MILLISECONDS))
