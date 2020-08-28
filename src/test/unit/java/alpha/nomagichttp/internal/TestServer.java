@@ -29,6 +29,7 @@ import static java.util.concurrent.TimeUnit.SECONDS;
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  */
+// TODO: Rename to something else
 final class TestServer implements Closeable
 {
     private AsynchronousServerSocketChannel listener;
