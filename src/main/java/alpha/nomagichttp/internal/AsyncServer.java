@@ -8,6 +8,7 @@ import alpha.nomagichttp.route.RouteRegistry;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
+import java.nio.channels.AsynchronousChannel;
 import java.nio.channels.AsynchronousChannelGroup;
 import java.nio.channels.AsynchronousServerSocketChannel;
 import java.nio.channels.AsynchronousSocketChannel;
@@ -108,16 +109,29 @@ public final class AsyncServer implements Server
     }
     
     @Override
-    public synchronized void stop() {
-        throw new UnsupportedOperationException();
+    public synchronized void stop() throws IOException {
+        if (listener == null) {
+            return;
+        }
+    
+        AsynchronousChannel l = listener;
+        listener = null;
         
-        // First, "listener.close();" but then we will also need to manage the
-        // channel group which is shared by all servers. Last member of the
-        // group to stop should shutdown orderly the group as well. Then from
-        // that point on we want any new server starts to initialize a new group.
-        // This could become tricky if application is supposed to be able to
-        // specify or directly lookup the group's thread pool since shutting
-        // down a group also shuts down the thread pool!
+        if (!l.isOpen()) {
+            LOG.log(DEBUG, "Asked to stop server but channel was not open.");
+            return;
+        }
+        
+        l.close();
+        
+        // TODO: We will also need to manage the channel group which is shared
+        // by all servers. Last member of the group to stop should shutdown
+        // orderly the group as well. Then from that point on we want any new
+        // server starts to initialize a new group. This could become tricky if
+        // application is supposed to be able to specify or directly lookup the
+        // group's thread pool since shutting down a group also shuts down the
+        // thread pool!
+        LOG.log(WARNING, "Global group management not yet implemented.");
     }
     
     @Override

@@ -272,11 +272,13 @@ public interface Server
     Server start(SocketAddress address) throws IOException;
     
     /**
-     * TODO: Document
+     * Stop the server.<p>
      * 
-     * @throws UnsupportedOperationException for now
+     * This method is NOP if server is already stopped.
+     * 
+     * @throws IOException if an I/O error occurs
      */
-    void stop();
+    void stop() throws IOException;
     
     /**
      * Returns the port used by the server.
