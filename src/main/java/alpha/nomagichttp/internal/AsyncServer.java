@@ -92,7 +92,7 @@ public final class AsyncServer implements Server
     @Override
     public synchronized Server start(SocketAddress address) throws IOException {
         if (listener != null) {
-            throw new IllegalStateException("Already started.");
+            throw new IllegalStateException("Already running.");
         }
         
         SocketAddress use = address != null? address :
