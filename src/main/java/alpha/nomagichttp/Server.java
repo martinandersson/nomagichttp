@@ -50,11 +50,6 @@ import static java.util.Collections.singleton;
  * server instances must {@link #stop()}.
  * 
  * 
- * <h3>Error Handling</h3>
- * 
- * TODO: Write
- * 
- * 
  * <h3>Channel Life-Cycle</h3>
  * 
  * TODO: Write
@@ -94,6 +89,7 @@ import static java.util.Collections.singleton;
  * @author Martin Andersson (webmaster at martinandersson.com)
  * 
  * @see Route
+ * @see ExceptionHandler
  */
 
 // TODO: The "with" methods are currently breaking with the architecture of how
