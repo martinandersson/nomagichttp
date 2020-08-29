@@ -57,7 +57,7 @@ public final class AsyncServer implements Server
     
     private static AsynchronousChannelGroup group;
     
-    public static synchronized AsynchronousChannelGroup group() throws IOException {
+    private static synchronized AsynchronousChannelGroup group() throws IOException {
         if (group == null) {
             // TODO: Motivate in docs why we're not using default-group, or otherwise use default-group
             //       And also expose the thread pool through API.
