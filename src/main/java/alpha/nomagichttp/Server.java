@@ -12,7 +12,6 @@ import java.io.IOException;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
-import java.nio.channels.NetworkChannel;
 import java.util.List;
 import java.util.function.Supplier;
 
@@ -207,7 +206,7 @@ public interface Server
     //       interface. This change will also impact contract of start(null)
     //       which is specified to be equivalent to this method.
     
-    default NetworkChannel start() throws IOException {
+    default Server start() throws IOException {
         return start(null);
     }
     
@@ -223,14 +222,14 @@ public interface Server
      * 
      * @param port to use
      * 
-     * @return a bound server-socket channel
+     * @return this (for chaining/fluency)
      * 
      * @throws IllegalStateException if server is already running
      * @throws IOException if an I/O error occurs
      * 
      * @see InetAddress
      */
-    default NetworkChannel start(int port) throws IOException  {
+    default Server start(int port) throws IOException  {
         return start(new InetSocketAddress(port));
     }
     
@@ -247,14 +246,14 @@ public interface Server
      * @param hostname to use
      * @param port to use
      * 
-     * @return a bound server-socket channel
+     * @return this (for chaining/fluency)
      * 
      * @throws IllegalStateException if server is already running
      * @throws IOException if an I/O error occurs
-     *
+     * 
      * @see InetAddress
      */
-    default NetworkChannel start(String hostname, int port) throws IOException {
+    default Server start(String hostname, int port) throws IOException {
         return start(new InetSocketAddress(hostname, port));
     }
     
@@ -267,14 +266,14 @@ public interface Server
      * 
      * @param address to use
      * 
-     * @return a bound server-socket channel
-     *
+     * @return this (for chaining/fluency)
+     * 
      * @throws IllegalStateException if server is already running
      * @throws IOException if an I/O error occurs
      *
      * @see InetAddress
      */
-    NetworkChannel start(SocketAddress address) throws IOException;
+    Server start(SocketAddress address) throws IOException;
     
     /**
      * TODO: Document

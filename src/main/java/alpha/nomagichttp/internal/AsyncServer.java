@@ -90,7 +90,7 @@ public final class AsyncServer implements Server
     }
     
     @Override
-    public synchronized NetworkChannel start(SocketAddress address) throws IOException {
+    public synchronized Server start(SocketAddress address) throws IOException {
         if (listener != null) {
             throw new IllegalStateException("Already started.");
         }
@@ -104,7 +104,7 @@ public final class AsyncServer implements Server
         port = ((InetSocketAddress) listener.getLocalAddress()).getPort();
         listener.accept(null, new OnAccept());
         
-        return listener;
+        return this;
     }
     
     @Override
