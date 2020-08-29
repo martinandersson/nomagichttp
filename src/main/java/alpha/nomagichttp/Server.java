@@ -207,10 +207,6 @@ public interface Server
     //       interface. This change will also impact contract of start(null)
     //       which is specified to be equivalent to this method.
     
-    // TODO: Remove IllegalStateException limitation. A server should be able to
-    //       start-stop-start-stop however many times client wishes. Then update
-    //       all method JavaDocs as well as the "life cycle" section on top.
-    
     default NetworkChannel start() throws IOException {
         return start(null);
     }
