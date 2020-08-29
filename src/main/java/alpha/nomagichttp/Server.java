@@ -195,7 +195,7 @@ public interface Server
      * 
      * @return a bound server-socket channel
      * 
-     * @throws IllegalStateException if server has been started before
+     * @throws IllegalStateException if server is already running
      * @throws IOException if an I/O error occurs
      * 
      * @see InetAddress
@@ -225,7 +225,7 @@ public interface Server
      * 
      * @return a bound server-socket channel
      * 
-     * @throws IllegalStateException if server has been started before
+     * @throws IllegalStateException if server is already running
      * @throws IOException if an I/O error occurs
      * 
      * @see InetAddress
@@ -249,7 +249,7 @@ public interface Server
      * 
      * @return a bound server-socket channel
      * 
-     * @throws IllegalStateException if server has been started before
+     * @throws IllegalStateException if server is already running
      * @throws IOException if an I/O error occurs
      *
      * @see InetAddress
@@ -269,7 +269,7 @@ public interface Server
      * 
      * @return a bound server-socket channel
      *
-     * @throws IllegalStateException if server has been started before
+     * @throws IllegalStateException if server is already running
      * @throws IOException if an I/O error occurs
      *
      * @see InetAddress
