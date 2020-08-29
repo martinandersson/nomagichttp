@@ -11,7 +11,6 @@ import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.http.HttpClient;
 import java.nio.ByteBuffer;
-import java.nio.channels.NetworkChannel;
 import java.nio.channels.SocketChannel;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -52,14 +51,12 @@ abstract class AbstractEndToEndTest
     private static final System.Logger LOG = System.getLogger(AbstractEndToEndTest.class.getPackageName());
     
     private static Server server;
-    private static NetworkChannel listener;
     private static int port;
     private static ScheduledExecutorService scheduler;
     
     @BeforeAll
     static void startServer() throws IOException {
-        server = Server.with(route("/", noop()));
-        listener = server.start();
+        server = Server.with(route("/", noop())).start();
         port = server.getPort();
         scheduler = Executors.newSingleThreadScheduledExecutor(r -> {
             Thread t = new Thread(r);
@@ -69,11 +66,9 @@ abstract class AbstractEndToEndTest
     }
     
     @AfterAll
-    static void stopServer() throws IOException, InterruptedException {
-        if (listener != null) {
-            // TODO: Use official Server.stop() instead
-            listener.close();
-        }
+    static void stopServer() throws InterruptedException, IOException {
+        server.stop();
+        
         if (scheduler != null) {
             scheduler.shutdownNow();
             scheduler.awaitTermination(1, SECONDS);
