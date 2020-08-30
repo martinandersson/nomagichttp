@@ -1,10 +1,6 @@
 package alpha.nomagichttp.internal;
 
-import alpha.nomagichttp.Server;
 import alpha.nomagichttp.message.Char;
-import org.junit.jupiter.api.AfterAll;
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeAll;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -20,8 +16,6 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-import static alpha.nomagichttp.handler.Handlers.noop;
-import static alpha.nomagichttp.route.Routes.route;
 import static java.lang.System.Logger.Level.WARNING;
 import static java.net.InetAddress.getLoopbackAddress;
 import static java.nio.ByteBuffer.allocate;
@@ -31,79 +25,57 @@ import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * Abstract class to help facilitate end-to-end testing by using
- * <i>{@code writeReadXXX}</i>-provided methods.<p>
+ * A utility API on top of a {@code SocketChannel}.<p>
  * 
- * Any exchange taking 3 seconds or longer will be interrupted and consequently
- * fail the test.<p>
+ * Any operation taking 3 seconds or longer will cause an {@code
+ * InterruptedException} to be thrown<p>
+ * 
+ * All channel operating methods will automatically open/close a new connection
+ * valid only for the span of that method call. In order to re-use a persistent
+ * connection, please operate the embedded client's life-cycle manually by using
+ * the open- and closeConnection methods.<p>
  * 
  * Note: This class provides low-level access for test cases that need direct
  * control over what bytes are put on the wire and what is received. Test cases
  * that operate on a higher "HTTP exchange semantics kind of layer" should use a
- * client such as JDK's {@link HttpClient} instead.
+ * real client such as JDK's {@link HttpClient} instead.
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  */
-abstract class AbstractEndToEndTest
+final class ClientOperations
 {
     protected static final String CRLF = "\r\n";
     
-    private static final System.Logger LOG = System.getLogger(AbstractEndToEndTest.class.getPackageName());
+    private static final System.Logger LOG = System.getLogger(ClientOperations.class.getPackageName());
     
-    private static Server server;
-    private static int port;
-    private static ScheduledExecutorService scheduler;
+    private static final ScheduledExecutorService SCHEDULER
+            = Executors.newSingleThreadScheduledExecutor(r -> {
+                Thread t = new Thread(r);
+                t.setDaemon(true);
+                return t;
+            });
     
-    @BeforeAll
-    static void startServer() throws IOException {
-        server = Server.with(route("/", noop())).start();
-        port = server.getPort();
-        scheduler = Executors.newSingleThreadScheduledExecutor(r -> {
-            Thread t = new Thread(r);
-            t.setDaemon(true);
-            return t;
-        });
+    private final int port;
+    private SocketChannel delegate;
+    
+    ClientOperations(int port) {
+        this.port = port;
     }
     
-    @AfterAll
-    static void stopServer() throws InterruptedException, IOException {
-        server.stop();
-        
-        if (scheduler != null) {
-            scheduler.shutdownNow();
-            scheduler.awaitTermination(1, SECONDS);
-        }
-    }
-    
-    protected static Server server() {
-        return server;
-    }
-    
-    private SocketChannel client;
-    
-    @AfterEach
-    void closeClient() throws IOException {
-        if (client != null) {
-            client.close();
-            client = null;
-        }
-    }
-    
-    /**
-     * Open a persistent connection for re-use throughout the test.<p>
-     * 
-     * This method should be called at the start of a test for connection
-     * re-use by all subsequent {@code writeXXX()} calls. Not calling this
-     * method will make the {@code writeXXX()} methods open a new connection
-     * each time.
-     */
-    protected final void openConnection() throws IOException {
-        if (client != null) {
+    void openConnection() throws IOException {
+        if (delegate != null) {
             throw new IllegalStateException("Already opened.");
         }
         
-        client = SocketChannel.open(
+        delegate = SocketChannel.open(
                 new InetSocketAddress(getLoopbackAddress(), port));
+    }
+    
+    void closeConnection() throws IOException {
+        if (delegate != null) {
+            delegate.close();
+            delegate = null;
+        }
     }
     
     /**
@@ -120,9 +92,8 @@ abstract class AbstractEndToEndTest
     }
     
     /**
-     * Same as {@link #writeReadBytes(byte[], byte[])} except this method gets
-     * the bytes by decoding the parameters and encoding the response using
-     * {@code US_ASCII}.<p>
+     * Same as {@link #writeReadBytes(byte[], byte[])} except this method
+     * decodes the arguments and encodes the response using {@code US_ASCII}.<p>
      * 
      * Useful when sending ASCII data and expecting an ASCII response.<p>
      * 
@@ -142,9 +113,11 @@ abstract class AbstractEndToEndTest
      * Write a bunch of bytes to the server, and receive a bunch of bytes back.<p>
      * 
      * This method will not stop reading the response from the server until the
-     * last chunk of bytes specified by {@code responseEnd} has been received. A
-     * test that times out after 3 seconds could very well be because the test
-     * case expected a different end of the response than what was received.<p>
+     * last chunk of bytes specified by {@code responseEnd} has been received.<p>
+     * 
+     * Please note that if this method throws an {@code InterruptedException}
+     * then this could be because the test case expected a different end of the
+     * response than what was received.<p>
      * 
      * @param request bytes to write
      * @param responseEnd last chunk of expected bytes in response
@@ -160,7 +133,7 @@ abstract class AbstractEndToEndTest
         final Thread worker = Thread.currentThread();
         final AtomicBoolean communicating = new AtomicBoolean(true);
         
-        ScheduledFuture<?> interrupt = scheduler.schedule(() -> {
+        ScheduledFuture<?> interrupt = SCHEDULER.schedule(() -> {
             if (communicating.get()) {
                 LOG.log(WARNING, "HTTP exchange took too long, will timeout.");
                 worker.interrupt();
@@ -168,19 +141,19 @@ abstract class AbstractEndToEndTest
         }, 3, SECONDS);
         
         final FiniteByteBufferSink sink = new FiniteByteBufferSink(128, responseEnd);
-        final boolean persistent = client != null;
+        final boolean persistent = delegate != null;
         
         try {
             if (!persistent) {
                 openConnection();
             }
             
-            int r = client.write(wrap(request));
+            int r = delegate.write(wrap(request));
             assertThat(r).isEqualTo(request.length);
             
             ByteBuffer buff = allocate(128);
             
-            while (!sink.hasReachedEnd() && client.read(buff) != -1) {
+            while (!sink.hasReachedEnd() && delegate.read(buff) != -1) {
                 buff.flip();
                 sink.write(buff);
                 buff.clear();
@@ -201,7 +174,7 @@ abstract class AbstractEndToEndTest
             Thread.interrupted(); // clear flag
             
             if (!persistent) {
-                closeClient();
+                closeConnection();
             }
         }
     }

@@ -19,7 +19,11 @@ import static java.util.concurrent.TimeUnit.SECONDS;
  * Adds a convenient API to a SocketChannel.
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
+ * 
+ * @deprecated use {@link ClientOperations}
  */
+// TODO: Remove
+@Deprecated
 class SocketChannelOperations implements Closeable
 {
     private final static ScheduledExecutorService SCHEDULER
