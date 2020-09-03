@@ -46,7 +46,7 @@ class RequestErrorTest
         ClientOperations client = new ClientOperations(server.getPort());
         
         String req = "GET /404 HTTP/1.1" + CRLF + CRLF + CRLF,
-               res = client.writeReadText(req);
+               res = client.writeRead(req);
         
         assertThat(res).isEqualTo(
             "HTTP/1.1 404 Not Found" + CRLF +
@@ -72,7 +72,7 @@ class RequestErrorTest
         ClientOperations client = new ClientOperations(server.getPort());
         
         String req = "GET /404 HTTP/1.1" + CRLF + CRLF + CRLF,
-               res = client.writeReadText(req);
+               res = client.writeRead(req);
         
         assertThat(res).isEqualTo(
             "HTTP/1.1 123 Custom Not Found!" + CRLF +

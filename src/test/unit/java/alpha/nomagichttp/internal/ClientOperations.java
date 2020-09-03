@@ -88,8 +88,6 @@ final class ClientOperations
         }
     }
     
-    // TODO: Remove Text/Bytes name suffix
-    
     /**
      * Decode and subsequently write the bytes on the connection using {@code
      * US_ASCII}.<p>
@@ -98,31 +96,31 @@ final class ClientOperations
      * 
      * @param text to write
      */
-    void writeText(String text) throws IOException, InterruptedException {
-        writeReadText(text, "");
+    void write(String text) throws IOException, InterruptedException {
+        writeRead(text, "");
     }
     
     /**
-     * Same as {@link #writeReadText(String, String)} but with a response end
+     * Same as {@link #writeRead(String, String)} but with a response end
      * hardcoded to be "\r\n".<p>
      * 
      * Useful when <i>not</i> expecting a response body, in which case the
      * response should end with two newlines.
      */
-    String writeReadText(String request) throws IOException, InterruptedException {
-        return writeReadText(request, CRLF + CRLF);
+    String writeRead(String request) throws IOException, InterruptedException {
+        return writeRead(request, CRLF + CRLF);
     }
     
     /**
-     * Same as {@link #writeReadBytes(byte[], byte[])} except this method
-     * decodes the arguments and encodes the response using {@code US_ASCII}.<p>
+     * Same as {@link #writeRead(byte[], byte[])} except this method decodes the
+     * arguments and encodes the response using {@code US_ASCII}.<p>
      * 
      * Useful when sending ASCII data and expecting an ASCII response.<p>
      * 
      * Please note that UTF-8 is backwards compatible with ASCII.
      */
-    String writeReadText(String request, String responseEnd) throws IOException, InterruptedException {
-        byte[] bytes = writeReadBytes(
+    String writeRead(String request, String responseEnd) throws IOException, InterruptedException {
+        byte[] bytes = writeRead(
                 request.getBytes(US_ASCII),
                 responseEnd.getBytes(US_ASCII));
         
@@ -147,7 +145,7 @@ final class ClientOperations
      * @throws IOException for some reason
      * @throws InterruptedException for some reason
      */
-    byte[] writeReadBytes(byte[] request, byte[] responseEnd) throws IOException, InterruptedException {
+    byte[] writeRead(byte[] request, byte[] responseEnd) throws IOException, InterruptedException {
         final Thread worker = Thread.currentThread();
         final AtomicBoolean communicating = new AtomicBoolean(true);
         

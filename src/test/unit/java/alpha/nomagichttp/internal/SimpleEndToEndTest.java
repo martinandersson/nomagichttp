@@ -57,7 +57,7 @@ class SimpleEndToEndTest
         server.getRouteRegistry().add(route("/hello-console", handler));
         
         String req = "GET /hello-console HTTP/1.1" + CRLF + CRLF + CRLF;
-        String res = client.writeReadText(req);
+        String res = client.writeRead(req);
         
         assertThat(res).isEqualTo(
             "HTTP/1.1 202 Accepted" + CRLF +
@@ -75,7 +75,7 @@ class SimpleEndToEndTest
             "GET /hello-response HTTP/1.1" + CRLF +
             "Accept: text/plain; charset=utf-8" + CRLF + CRLF;
         
-        String res = client.writeReadText(req, "World!");
+        String res = client.writeRead(req, "World!");
         
         assertThat(res).isEqualTo(
             "HTTP/1.1 200 OK" + CRLF +
@@ -103,7 +103,7 @@ class SimpleEndToEndTest
             "GET /greet-param/John HTTP/1.1" + CRLF +
             "Accept: text/plain; charset=utf-8" + CRLF + CRLF;
         
-        String res = client.writeReadText(req, "John!");
+        String res = client.writeRead(req, "John!");
         
         assertThat(res).isEqualTo(
             "HTTP/1.1 200 OK" + CRLF +
@@ -129,7 +129,7 @@ class SimpleEndToEndTest
             
             "John";
         
-        String res = client.writeReadText(req, "John!");
+        String res = client.writeRead(req, "John!");
         
         assertThat(res).isEqualTo(
             "HTTP/1.1 200 OK" + CRLF +
@@ -154,7 +154,7 @@ class SimpleEndToEndTest
             "Accept: text/plain; charset=utf-8" + CRLF +
             "Content-Length: 0" + CRLF + CRLF;
         
-        String res = client.writeReadText(req);
+        String res = client.writeRead(req);
         
         assertThat(res).isEqualTo(
             "HTTP/1.1 200 OK" + CRLF +
@@ -185,10 +185,10 @@ class SimpleEndToEndTest
         client.openConnection();
         
         try {
-            String res1 = client.writeReadText(reqHead + "ABC", "ABC");
+            String res1 = client.writeRead(reqHead + "ABC", "ABC");
             assertThat(res1).isEqualTo(resHead + "ABC");
             
-            String res2 = client.writeReadText(reqHead + "DEF", "DEF");
+            String res2 = client.writeRead(reqHead + "DEF", "DEF");
             assertThat(res2).isEqualTo(resHead + "DEF");
         } finally {
             client.closeConnection();
@@ -213,12 +213,12 @@ class SimpleEndToEndTest
             "POST /small-file HTTP/1.1" + CRLF +
             "Content-Length: 3" + CRLF + CRLF;
     
-        client.writeReadText(reqHead + "Foo", "3");
+        client.writeRead(reqHead + "Foo", "3");
         assertThat(Files.readString(file)).isEqualTo("Foo");
         
         // 2. By default, existing files are overwritten
         // ---
-        client.writeReadText(reqHead + "Bar", "3");
+        client.writeRead(reqHead + "Bar", "3");
         assertThat(Files.readString(file)).isEqualTo("Bar");
     }
     
