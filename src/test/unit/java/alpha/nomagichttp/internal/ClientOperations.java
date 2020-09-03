@@ -88,6 +88,23 @@ final class ClientOperations
         }
     }
     
+    // TODO: Remove protected and final
+    // TODO: Remove Text/Bytes name suffix
+    
+    /**
+     * Decode and subsequently write the bytes on the connection using {@code
+     * US_ASCII}.<p>
+     * 
+     * Please note that UTF-8 is backwards compatible with ASCII.
+     * 
+     * @param text to write
+     */
+    protected final void writeText(String text)
+            throws IOException, InterruptedException
+    {
+        writeReadText(text, "");
+    }
+    
     /**
      * Same as {@link #writeReadText(String, String)} but with a response end
      * hardcoded to be "\r\n".<p>
