@@ -21,6 +21,7 @@ import static java.net.InetAddress.getLoopbackAddress;
 import static java.nio.ByteBuffer.allocate;
 import static java.nio.ByteBuffer.wrap;
 import static java.nio.charset.StandardCharsets.US_ASCII;
+import static java.util.Objects.requireNonNull;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -55,11 +56,21 @@ final class ClientOperations
                 return t;
             });
     
-    private final int port;
+    private final SocketChannelSupplier factory;
     private SocketChannel delegate;
     
     ClientOperations(int port) {
-        this.port = port;
+        this(() -> SocketChannel.open(
+                new InetSocketAddress(getLoopbackAddress(), port)));
+    }
+    
+    @FunctionalInterface
+    public interface SocketChannelSupplier {
+        SocketChannel get() throws IOException;
+    }
+    
+    ClientOperations(SocketChannelSupplier factory) {
+        this.factory = requireNonNull(factory);
     }
     
     void openConnection() throws IOException {
@@ -67,8 +78,7 @@ final class ClientOperations
             throw new IllegalStateException("Already opened.");
         }
         
-        delegate = SocketChannel.open(
-                new InetSocketAddress(getLoopbackAddress(), port));
+        delegate = factory.get();
     }
     
     void closeConnection() throws IOException {
