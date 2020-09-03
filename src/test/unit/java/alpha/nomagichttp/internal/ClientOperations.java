@@ -31,10 +31,10 @@ import static org.assertj.core.api.Assertions.assertThat;
  * Any operation taking 3 seconds or longer will cause an {@code
  * InterruptedException} to be thrown<p>
  * 
- * All channel operating methods will automatically open/close a new connection
+ * All channel operating methods will by default open/close a new connection
  * valid only for the span of that method call. In order to re-use a persistent
- * connection, please operate the embedded client's life-cycle manually by using
- * the open- and closeConnection methods.<p>
+ * connection across operations, call the open- and closeConnection methods
+ * manually.<p>
  * 
  * Note: This class provides low-level access for test cases that need direct
  * control over what bytes are put on the wire and what is received. Test cases
