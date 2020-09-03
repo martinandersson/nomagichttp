@@ -5,9 +5,7 @@ import alpha.nomagichttp.test.Logging;
 import org.assertj.core.api.AbstractListAssert;
 import org.assertj.core.api.ObjectAssert;
 import org.junit.jupiter.api.AfterAll;
-import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
@@ -18,7 +16,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ExecutionException;
-import java.util.concurrent.TimeoutException;
 
 import static java.lang.Integer.MAX_VALUE;
 import static java.lang.System.Logger.Level.ALL;
@@ -28,36 +25,31 @@ import static org.mockito.Mockito.mock;
 
 class RequestHeadParserTest
 {
-    private static final TestServer SERVER = new TestServer();
-    
-    private SocketChannelOperations client;
+    private static TestServer SERVER;
+    private static ClientOperations CLIENT;
     private CompletionStage<RequestHead> testee;
     
     @BeforeAll
     static void beforeAll() throws IOException {
         Logging.setLevel(RequestHeadParser.class, ALL);
+        SERVER = new TestServer();
         SERVER.start();
-    }
-    
-    @BeforeEach
-    void beforeEach() throws Throwable {
-        client = new SocketChannelOperations(SERVER.newClient());
-        ChannelBytePublisher child = new ChannelBytePublisher(mock(AsyncServer.class), SERVER.accept());
-        child.begin();
-        
-        testee = new RequestHeadParser(child, MAX_VALUE).asCompletionStage();
-    }
-    
-    @AfterEach
-    void afterEach() throws IOException {
-        if (client != null) {
-            client.close();
-        }
+        CLIENT = new ClientOperations(SERVER::newClient);
     }
     
     @AfterAll
     static void afterAll() throws IOException {
         SERVER.close();
+    }
+    
+    CompletionStage<RequestHead> testee() throws Throwable {
+        if (testee == null) {
+            ChannelBytePublisher child = new ChannelBytePublisher(mock(AsyncServer.class), SERVER.accept());
+            child.begin();
+            testee = new RequestHeadParser(child, MAX_VALUE).asCompletionStage();
+        }
+        
+        return testee;
     }
     
     @Test
@@ -67,8 +59,8 @@ class RequestHeadParserTest
             "User-Agent: curl/7.16.3 libcurl/7.16.3 OpenSSL/0.9.7l zlib/1.2.3\r\n" + // <-- CR ignored
             "Host: www.example.com\n" +
             "Accept: text/plain;charset=utf-8\n\r\n";  // <-- CR ignored
-        
-        client.write(request);
+    
+        CLIENT.write(request);
         
         assertHead().containsExactly(
             "GET", "/hello.txt", "HTTP/1.1", headers(
@@ -81,7 +73,7 @@ class RequestHeadParserTest
     void happypath_headers_no() throws Throwable {
         // any whitespace between tokens (except for HTTP version) is a delimiter
         String request = "GET\t/hello.txt\tHTTP/1.1\r\n\r\n";
-        client.write(request);
+        CLIENT.write(request);
         assertHead().containsExactly("GET", "/hello.txt", "HTTP/1.1", headers());
     }
     
@@ -91,7 +83,7 @@ class RequestHeadParserTest
     @Test
     void method_leading_whitespace_ignored() throws Throwable {
         String request = "\r\n \t \r\n GET /hello.txt HTTP/1.1\r\n\n";
-        client.write(request);
+        CLIENT.write(request);
         assertHead().containsExactly("GET", "/hello.txt", "HTTP/1.1", headers());
     }
     
@@ -101,17 +93,17 @@ class RequestHeadParserTest
     @Test
     void requesttarget_leading_whitespace_ignored() throws Throwable {
         String request = "GET\r \t/hello.txt HTTP/1.1\n\n";
-        client.write(request);
+        CLIENT.write(request);
         assertHead().containsExactly("GET", "/hello.txt", "HTTP/1.1", headers());
     }
     
     @Test
     void requesttarget_leading_whitespace_linefeed_illegal() throws Throwable {
         String p1 = "GET ", p2 = "\n/hel....";
-        client.write(p1 + p2);
+        CLIENT.write(p1 + p2);
         waitForCompletion();
         
-        assertThat(testee).hasFailedWithThrowableThat()
+        assertThat(testee()).hasFailedWithThrowableThat()
                 .isInstanceOf(RequestHeadParseException.class)
                 .hasMessage("Unexpected char.")
                 .extracting("pos").isEqualTo(p1.length());
@@ -123,17 +115,17 @@ class RequestHeadParserTest
     @Test
     void httpversion_leading_whitespace_ignored() throws Throwable {
         String request = "GET /hello.txt \tHTTP/1.1\n\n";
-        client.write(request);
+        CLIENT.write(request);
         assertHead().containsExactly("GET", "/hello.txt", "HTTP/1.1", headers());
     }
     
     @Test
     void httpversion_leading_whitespace_linefeed_illegal() throws Throwable {
         String p1 = "GET /hello.txt ", p2 = "\nHTTP....";
-        client.write(p1 + p2);
+        CLIENT.write(p1 + p2);
         waitForCompletion();
         
-        assertThat(testee).hasFailedWithThrowableThat()
+        assertThat(testee()).hasFailedWithThrowableThat()
                 .isInstanceOf(RequestHeadParseException.class)
                 .hasMessage("Empty HTTP-version.")
                 .extracting("pos").isEqualTo(p1.length());
@@ -148,10 +140,10 @@ class RequestHeadParserTest
         // TODO: That's pretty inconsistent, giving CR different semantics. Needs research.
         
         String p1 = "GET\r/hello.txt\r", p2 = "Boom!";
-        client.write(p1 + p2);
+        CLIENT.write(p1 + p2);
         waitForCompletion();
         
-        assertThat(testee).hasFailedWithThrowableThat()
+        assertThat(testee()).hasFailedWithThrowableThat()
                 .isInstanceOf(RequestHeadParseException.class)
                 .hasMessage("CR followed by something other than LF.")
                 .extracting("pos").isEqualTo(p1.length());
@@ -160,10 +152,10 @@ class RequestHeadParserTest
     @Test
     void httpversion_illegal_whitespace_in_token() throws Throwable {
         String p1 = "GET /hello.txt HT", p2 = " TP/1....";
-        client.write(p1 + p2);
+        CLIENT.write(p1 + p2);
         waitForCompletion();
         
-        assertThat(testee).hasFailedWithThrowableThat()
+        assertThat(testee()).hasFailedWithThrowableThat()
                 .isInstanceOf(RequestHeadParseException.class)
                 .hasMessage("Whitespace in HTTP-version not accepted.")
                 .extracting("pos").isEqualTo(p1.length());
@@ -178,10 +170,10 @@ class RequestHeadParserTest
             "A B C\n" +
             "Has", p2 = " Space: blabla\n\n"; // <-- space added in key/name
         
-        client.write(p1 + p2);
+        CLIENT.write(p1 + p2);
         waitForCompletion();
         
-        assertThat(testee).hasFailedWithThrowableThat()
+        assertThat(testee()).hasFailedWithThrowableThat()
                 .isInstanceOf(RequestHeadParseException.class)
                 .hasMessage("Whitespace in header key or before colon is not accepted.")
                 .extracting("pos").isEqualTo(p1.length());
@@ -193,10 +185,10 @@ class RequestHeadParserTest
             "A B C\n" +
             "Has", p2 = "\nSpace: blabla\n\n"; // <-- space as LF
         
-        client.write(p1 + p2);
+        CLIENT.write(p1 + p2);
         waitForCompletion();
         
-        assertThat(testee).hasFailedWithThrowableThat()
+        assertThat(testee()).hasFailedWithThrowableThat()
                 .isInstanceOf(RequestHeadParseException.class)
                 .hasMessage("Whitespace in header key or before colon is not accepted.")
                 .extracting("pos").isEqualTo(p1.length());
@@ -208,10 +200,10 @@ class RequestHeadParserTest
             "A B C\n" +
             "Has-Space", p2 = " : blabla\n\n"; // <-- space added before colon
         
-        client.write(p1 + p2);
+        CLIENT.write(p1 + p2);
         waitForCompletion();
         
-        assertThat(testee).hasFailedWithThrowableThat()
+        assertThat(testee()).hasFailedWithThrowableThat()
                 .isInstanceOf(RequestHeadParseException.class)
                 .hasMessage("Whitespace in header key or before colon is not accepted.")
                 .extracting("pos").isEqualTo(p1.length());
@@ -223,10 +215,10 @@ class RequestHeadParserTest
             "A B C\n", p2 =
             " Has-Space: blabla\n\n"; // <-- space added before key/name
         
-        client.write(p1 + p2);
+        CLIENT.write(p1 + p2);
         waitForCompletion();
         
-        assertThat(testee).hasFailedWithThrowableThat()
+        assertThat(testee()).hasFailedWithThrowableThat()
                 .isInstanceOf(RequestHeadParseException.class)
                 .hasMessage("Leading whitespace in header key not accepted.")
                 .extracting("pos").isEqualTo(p1.length());
@@ -243,7 +235,7 @@ class RequestHeadParserTest
             "  Line 2\n" +
             "Another: Value\n\n";
         
-        client.write(request);
+        CLIENT.write(request);
         
         assertHead().containsExactly(
             "A", "B", "C", headers(
@@ -260,7 +252,7 @@ class RequestHeadParserTest
             " Line 1   \n" + 
             "   Line 2   \n\n";
         
-        client.write(request);
+        CLIENT.write(request);
         
         assertHead().containsExactly(
             "A", "B", "C", headers(
@@ -274,7 +266,7 @@ class RequestHeadParserTest
             "Key:\n" +
             "   \n\n"; // <-- parser first believes this is a continuation of last header value
         
-        client.write(request);
+        CLIENT.write(request);
         
         assertHead().containsExactly(
             "A", "B", "C", headers(
@@ -287,7 +279,7 @@ class RequestHeadParserTest
             "A B C\n" +
             "Key:\n\n";
         
-        client.write(request);
+        CLIENT.write(request);
         
         assertHead().containsExactly(
             "A", "B", "C", headers(
@@ -300,7 +292,7 @@ class RequestHeadParserTest
             "A B C\n" +
             "Key:   \n\n"; // <-- trailing whitespace..
         
-        client.write(request);
+        CLIENT.write(request);
         
         assertHead().containsExactly(
             "A", "B", "C", headers(
@@ -316,7 +308,7 @@ class RequestHeadParserTest
             "Third: Also has value.\n" +
             "Second:\n\n";
         
-        client.write(request);
+        CLIENT.write(request);
         
         assertHead().containsExactly(
             "A", "B", "C", headers(
@@ -327,17 +319,17 @@ class RequestHeadParserTest
     }
     
     private AbstractListAssert<?, List<?>, Object, ObjectAssert<Object>> assertHead()
-            throws InterruptedException, ExecutionException, TimeoutException
+            throws Throwable
     {
         return assertThat(actual()).extracting(
                 RequestHead::method, RequestHead::requestTarget, RequestHead::httpVersion, RequestHead::headers);
     }
     
-    private RequestHead actual() throws InterruptedException, ExecutionException, TimeoutException {
-        return testee.toCompletableFuture().get(2, SECONDS);
+    private RequestHead actual() throws Throwable {
+        return testee().toCompletableFuture().get(2, SECONDS);
     }
     
-    private void waitForCompletion() throws TimeoutException, InterruptedException {
+    private void waitForCompletion() throws Throwable {
         try {
             actual();
         }
