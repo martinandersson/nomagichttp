@@ -15,7 +15,6 @@ import java.nio.channels.AsynchronousSocketChannel;
 import java.nio.channels.Channel;
 import java.nio.channels.ClosedChannelException;
 import java.nio.channels.CompletionHandler;
-import java.nio.channels.NetworkChannel;
 import java.nio.channels.ShutdownChannelGroupException;
 import java.util.ArrayList;
 import java.util.List;
@@ -113,7 +112,7 @@ public final class AsyncServer implements Server
         if (listener == null) {
             return;
         }
-    
+        
         AsynchronousChannel l = listener;
         listener = null;
         
@@ -123,6 +122,7 @@ public final class AsyncServer implements Server
         }
         
         l.close();
+        LOG.log(INFO, () -> "Closed server channel: " + l);
         
         // TODO: We will also need to manage the channel group which is shared
         // by all servers. Last member of the group to stop should shutdown
@@ -194,10 +194,8 @@ public final class AsyncServer implements Server
     }
     
     private void stopOrElseJVMExit() {
-        // TODO: Use stop() when we have that implemented
         try {
-            listener.close();
-            LOG.log(INFO, () -> "Closed server channel: " + listener);
+            stop();
         } catch (Throwable t) {
             LOG.log(ERROR, "Failed to close server. Will exit application (reduce security risk).", t);
             System.exit(1);
