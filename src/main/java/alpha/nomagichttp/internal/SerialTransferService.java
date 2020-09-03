@@ -227,20 +227,19 @@ final class SerialTransferService<T>
      * The callback can only be executed immediately if no transfer is active,
      * otherwise it will be scheduled to run after the active transfer.<p>
      * 
-     * @param afterFinish callback
+     * @param andThen callback
      * 
      * @return a successful flag (see javadoc)
      * 
-     * @throws NullPointerException if {@code afterFinish} is {@code null}
+     * @throws NullPointerException if {@code andThen} is {@code null}
      */
-    // TODO: Rename afterFinish to andThen
-    boolean finish(Runnable afterFinish) {
-        requireNonNull(afterFinish);
+    boolean finish(Runnable andThen) {
+        requireNonNull(andThen);
         final boolean success = finish();
         if (success) {
             // Only set callback if we were the party setting the FINISHED flag.
             // (i.e. a non-null value can only be set once)
-            after = afterFinish;
+            after = andThen;
             // Re-signal to ensure the task is executed.
             tryTransfer();
         }
