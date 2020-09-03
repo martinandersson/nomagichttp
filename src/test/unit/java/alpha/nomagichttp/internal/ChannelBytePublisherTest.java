@@ -2,15 +2,12 @@ package alpha.nomagichttp.internal;
 
 import alpha.nomagichttp.test.Logging;
 import org.junit.jupiter.api.AfterAll;
-import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.concurrent.ExecutionException;
-import java.util.concurrent.Flow;
 import java.util.concurrent.TimeoutException;
 import java.util.function.BiFunction;
 
@@ -29,29 +26,16 @@ class ChannelBytePublisherTest
     // TODO: Most of this plumbing is copy-pasted from HeadParserTest.
     //       DRY; refactor to common superclass or something.
     
-    private static final TestServer SERVER = new TestServer();
-    private SocketChannelOperations client;
-    private Flow.Publisher<DefaultPooledByteBufferHolder> testee;
+    private static TestServer SERVER;
+    private static ClientOperations CLIENT;
+    private ChannelBytePublisher testee;
     
     @BeforeAll
     static void beforeAll() throws IOException {
         Logging.setLevel(ChannelBytePublisher.class, ALL);
+        SERVER = new TestServer();
         SERVER.start();
-    }
-    
-    @BeforeEach
-    void beforeEach() throws Throwable {
-        client = new SocketChannelOperations(SERVER.newClient());
-        ChannelBytePublisher cbp = new ChannelBytePublisher(mock(AsyncServer.class), SERVER.accept());
-        cbp.begin();
-        testee = cbp;
-    }
-    
-    @AfterEach
-    void afterEach() throws IOException {
-        if (client != null) {
-            client.close();
-        }
+        CLIENT = new ClientOperations(SERVER::newClient);
     }
     
     @AfterAll
@@ -59,14 +43,26 @@ class ChannelBytePublisherTest
         SERVER.close();
     }
     
+    ChannelBytePublisher testee() throws Throwable {
+        if (testee == null) {
+            testee = new ChannelBytePublisher(mock(AsyncServer.class), SERVER.accept());
+            testee.begin();
+        }
+        
+        return testee;
+    }
+    
     /**
      * Making sure two different subsequent subscribers can slice and share one
      * and same source bytebuffer (assuming testee's buffer size is >= 2 bytes).
      */
     @Test
-    void switch_subscriber_midway() throws Exception {
+    void switch_subscriber_midway() throws Throwable {
+        // Hopefully this goes into just 1 ByteBuffer
+        CLIENT.write("ab");
+        
         LimitedFlow oneByteOnly = new LimitedFlow(1);
-        testee.subscribe(oneByteOnly);
+        testee().subscribe(oneByteOnly);
         
         // TODO: "finisher" copy-pasted from DefaultRequest impl. DRY.
         BiFunction<byte[], Integer, String> finisher = (buf, count) ->
@@ -74,9 +70,6 @@ class ChannelBytePublisherTest
         
         HeapSubscriber<String> s1 = new HeapSubscriber<>(finisher);
         oneByteOnly.subscribe(s1);
-        
-        // Hopefully this goes into just 1 ByteBuffer
-        client.write("ab");
         
         // But the first subscriber only receives the first letter
         assertThat(get(s1)).isEqualTo("a");
@@ -87,7 +80,7 @@ class ChannelBytePublisherTest
         // but with a position where the first subscriber left off
         
         oneByteOnly = new LimitedFlow(1);
-        testee.subscribe(oneByteOnly);
+        testee().subscribe(oneByteOnly);
         
         HeapSubscriber<String> s2 = new HeapSubscriber<>(finisher);
         oneByteOnly.subscribe(s2);
