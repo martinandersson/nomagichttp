@@ -11,8 +11,8 @@ import static java.lang.System.Logger.Level.WARNING;
 
 /**
  * A {@code Flow.Processor} that limits the flow of bytebuffers downstream to
- * just one at a time (maintains no buffers) and completes the subscription as
- * soon as a target byte count has been read.<p>
+ * just one at a time (maintains no buffers on its own) and completes the
+ * subscription as soon as a target byte count has been read.<p>
  * 
  * @implNote
  * Limiting to just one bytebuffer at a time is not a "stop-and-wait" protocol,
