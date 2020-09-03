@@ -88,7 +88,6 @@ final class ClientOperations
         }
     }
     
-    // TODO: Remove protected and final
     // TODO: Remove Text/Bytes name suffix
     
     /**
@@ -99,9 +98,7 @@ final class ClientOperations
      * 
      * @param text to write
      */
-    protected final void writeText(String text)
-            throws IOException, InterruptedException
-    {
+    void writeText(String text) throws IOException, InterruptedException {
         writeReadText(text, "");
     }
     
@@ -112,9 +109,7 @@ final class ClientOperations
      * Useful when <i>not</i> expecting a response body, in which case the
      * response should end with two newlines.
      */
-    protected final String writeReadText(String request)
-            throws IOException, InterruptedException
-    {
+    String writeReadText(String request) throws IOException, InterruptedException {
         return writeReadText(request, CRLF + CRLF);
     }
     
@@ -126,9 +121,7 @@ final class ClientOperations
      * 
      * Please note that UTF-8 is backwards compatible with ASCII.
      */
-    protected final String writeReadText(String request, String responseEnd)
-            throws IOException, InterruptedException
-    {
+    String writeReadText(String request, String responseEnd) throws IOException, InterruptedException {
         byte[] bytes = writeReadBytes(
                 request.getBytes(US_ASCII),
                 responseEnd.getBytes(US_ASCII));
@@ -154,9 +147,7 @@ final class ClientOperations
      * @throws IOException for some reason
      * @throws InterruptedException for some reason
      */
-    protected final byte[] writeReadBytes(byte[] request, byte[] responseEnd)
-            throws IOException, InterruptedException
-    {
+    byte[] writeReadBytes(byte[] request, byte[] responseEnd) throws IOException, InterruptedException {
         final Thread worker = Thread.currentThread();
         final AtomicBoolean communicating = new AtomicBoolean(true);
         
