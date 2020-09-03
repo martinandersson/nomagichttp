@@ -35,6 +35,11 @@ final class ChannelBytePublisher extends AbstractUnicastPublisher<DefaultPooledB
                              // TODO: Document (same as jdk.internal.net.http.common.Utils.DEFAULT_BUFSIZE)
                              BUF_SIZE = 16 * 1_024;
     
+    /**
+     * Sentinel value indicating the publisher has finished and must be closed.
+     */
+    private static final ByteBuffer DELAYED_CLOSE = ByteBuffer.allocate(0);
+    
     /*
      * When a bytebuffer has been read from the channel, it will be put in a
      * queue of readable bytebuffers, from which the subscriber polls.
@@ -70,9 +75,16 @@ final class ChannelBytePublisher extends AbstractUnicastPublisher<DefaultPooledB
     
     @Override
     protected DefaultPooledByteBufferHolder poll() {
-        ByteBuffer b = readable.poll();
-        return b == null ? null :
-                new DefaultPooledByteBufferHolder(b, (b2, read) -> release(b2));
+        final ByteBuffer b = readable.poll();
+        
+        if (b == null) {
+            return null;
+        } else if (b == DELAYED_CLOSE) {
+            close();
+            return null;
+        }
+        
+        return new DefaultPooledByteBufferHolder(b, (b2, read) -> release(b2));
     }
     
     private void release(ByteBuffer b) {
@@ -121,24 +133,20 @@ final class ChannelBytePublisher extends AbstractUnicastPublisher<DefaultPooledB
     {
         @Override
         public void completed(Integer result, ByteBuffer buff) {
-            final boolean announce;
-            
             try {
                 switch (result) {
                     case -1:
                         LOG.log(DEBUG, "End of stream; other side must have closed.");
-                        close();
-                        announce = false;
+                        server.orderlyShutdown(channel);
+                        readable.add(DELAYED_CLOSE);
                         break;
                     case 0:
                         LOG.log(ERROR, "Buffer wasn't writable. Fake!");
                         close();
-                        announce = false;
-                        break;
+                        return;
                     default:
                         assert result > 0;
                         readable.add(buff.flip());
-                        announce = true;
                         // 1. Schedule a new read operation
                         //    (do not announce(), see note)
                         readOp.run();
@@ -148,10 +156,8 @@ final class ChannelBytePublisher extends AbstractUnicastPublisher<DefaultPooledB
                 readOp.complete();
             }
             
-            if (announce) {
-                // 3. Announce the availability to subscriber
-                announce();
-            }
+            // 3. Announce the availability to subscriber
+            announce();
             
             // Note: We could have announced the bytebuffer immediately after
             // putting it into the readable queue. This wouldn't have been
