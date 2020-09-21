@@ -66,4 +66,21 @@ public interface ServerConfig {
     }
     
     // TODO: Number of request threads
+    
+    /**
+     * Returns the number of request threads that should be allocated for
+     * executing HTTP exchanges (such as calling the application-provided
+     * request- and error handlers).<p>
+     * 
+     * For a runtime change of this value to have an effect, all server
+     * instances must restart.
+     * 
+     * @implSpec
+     * The default implementation returns {@link Runtime#availableProcessors()}.
+     * 
+     * @return thread pool size
+     */
+    default int threadPoolSize() {
+        return Runtime.getRuntime().availableProcessors();
+    }
 }

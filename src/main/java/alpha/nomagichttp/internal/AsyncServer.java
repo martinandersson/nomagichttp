@@ -8,7 +8,6 @@ import alpha.nomagichttp.route.RouteRegistry;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
-import java.nio.channels.AsynchronousChannel;
 import java.nio.channels.AsynchronousChannelGroup;
 import java.nio.channels.AsynchronousServerSocketChannel;
 import java.nio.channels.AsynchronousSocketChannel;
@@ -59,11 +58,9 @@ public final class AsyncServer implements Server
     private static final AtomicInteger SERVER_COUNT = new AtomicInteger();
     private static AsynchronousChannelGroup group;
     
-    private static synchronized AsynchronousChannelGroup group() throws IOException {
+    private static synchronized AsynchronousChannelGroup group(int nThreads) throws IOException {
         if (group == null) {
-            group = AsynchronousChannelGroup.withFixedThreadPool(
-                    // Same N of threads as default-group, except we're not cached, rather fixed
-                    Runtime.getRuntime().availableProcessors(),
+            group = AsynchronousChannelGroup.withFixedThreadPool(nThreads,
                     // Default-group uses daemon threads, we use non-daemon
                     Executors.defaultThreadFactory());
         }
@@ -107,12 +104,24 @@ public final class AsyncServer implements Server
         SocketAddress use = address != null? address :
                 new InetSocketAddress(getLoopbackAddress(), 0);
         
-        listener = AsynchronousServerSocketChannel.open(group()).bind(use);
-        LOG.log(INFO, () -> "Opened server channel: " + listener);
+        try {
+            AsynchronousChannelGroup grp = group(config.threadPoolSize());
+            listener = AsynchronousServerSocketChannel.open(grp).bind(use);
+        } catch (Throwable t) {
+            groupShutdown();
+            throw t;
+        }
         
         SERVER_COUNT.incrementAndGet();
-        port = ((InetSocketAddress) listener.getLocalAddress()).getPort();
-        listener.accept(null, new OnAccept());
+        LOG.log(INFO, () -> "Opened server channel: " + listener);
+        
+        try {
+            port = ((InetSocketAddress) listener.getLocalAddress()).getPort();
+            listener.accept(null, new OnAccept());
+        } catch (Throwable t) {
+            stop();
+            throw t;
+        }
         
         return this;
     }
@@ -123,16 +132,14 @@ public final class AsyncServer implements Server
             return;
         }
         
-        AsynchronousChannel l = listener;
-        listener = null;
-        
-        if (!l.isOpen()) {
+        if (!listener.isOpen()) {
             LOG.log(DEBUG, "Asked to stop server but channel was not open.");
-            return;
+        } else {
+            listener.close();
+            LOG.log(INFO, () -> "Closed server channel: " + listener);
         }
         
-        l.close();
-        LOG.log(INFO, () -> "Closed server channel: " + l);
+        listener = null;
         
         if (SERVER_COUNT.decrementAndGet() == 0) {
             groupShutdown();

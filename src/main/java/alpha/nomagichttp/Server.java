@@ -59,19 +59,19 @@ import static java.util.Collections.singleton;
  * 
  * The server instance is thread-safe.<p>
  * 
- * The server has a pool of threads (many times referred to as "request
+ * The server has only one pool of threads (many times referred to as "request
  * threads"). This pool handles I/O completion events and executes
  * application-provided entities such as the request- and error handlers. The
- * pool size is fixed and set to the {@link Runtime#availableProcessors() number
- * of available processors} at the time of the first server start.<p>
+ * pool size is fixed and set to the value of {@link
+ * ServerConfig#threadPoolSize()} at the time of the first server start.<p>
  * 
  * It is absolutely crucial that the application does not block a request
  * thread, for example by synchronously waiting on an I/O result. The request
  * thread is suitable only for short-lived and CPU-bound work. I/O work or
- * long-lived tasks should execute somewhere else. Blocking will have a
- * negative impact on scalability and could at worse starve the pool of
- * available threads making the server unable to make progress with other tasks
- * such as accepting new client connections or processing requests.<p>
+ * long-lived tasks should execute somewhere else. Blocking the request thread
+ * will have a negative impact on scalability and could at worse starve the pool
+ * of available threads making the server unable to make progress with tasks
+ * such as accepting new client connections or processing other requests.<p>
  * 
  * Servers started on different ports all share the same underlying thread pool.
  * 
@@ -85,6 +85,7 @@ import static java.util.Collections.singleton;
  * 
  * @see Route
  * @see ExceptionHandler
+ * @see ServerConfig
  */
 
 // TODO: The "with" methods are currently breaking with the architecture of how
