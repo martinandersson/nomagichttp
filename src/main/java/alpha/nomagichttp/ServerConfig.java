@@ -64,4 +64,6 @@ public interface ServerConfig {
     default int maxErrorRecoveryAttempts() {
         return 5;
     }
+    
+    // TODO: Number of request threads
 }
