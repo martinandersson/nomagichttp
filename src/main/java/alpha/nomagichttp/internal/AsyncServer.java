@@ -19,12 +19,12 @@ import java.nio.channels.ShutdownChannelGroupException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.Executors;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Supplier;
 
 import static java.lang.System.Logger.Level.DEBUG;
 import static java.lang.System.Logger.Level.ERROR;
 import static java.lang.System.Logger.Level.INFO;
-import static java.lang.System.Logger.Level.WARNING;
 import static java.net.InetAddress.getLoopbackAddress;
 import static java.util.Collections.unmodifiableList;
 import static java.util.Objects.requireNonNull;
@@ -55,20 +55,29 @@ public final class AsyncServer implements Server
     // Good info on async groups:
     // https://openjdk.java.net/projects/nio/resources/AsynchronousIo.html
     
+    /** Global count of active servers. */
+    private static final AtomicInteger SERVER_COUNT = new AtomicInteger();
     private static AsynchronousChannelGroup group;
     
     private static synchronized AsynchronousChannelGroup group() throws IOException {
         if (group == null) {
-            // TODO: Motivate in docs why we're not using default-group, or otherwise use default-group
-            //       And also expose the thread pool through API.
             group = AsynchronousChannelGroup.withFixedThreadPool(
                     // Same N of threads as default-group, except we're not cached, rather fixed
                     Runtime.getRuntime().availableProcessors(),
-                    // Non-daemon threads
+                    // Default-group uses daemon threads, we use non-daemon
                     Executors.defaultThreadFactory());
         }
         
         return group;
+    }
+    
+    private static synchronized  void groupShutdown() {
+        if (group == null || SERVER_COUNT.get() > 0) {
+            return;
+        }
+        
+        group.shutdown();
+        group = null;
     }
     
     private final RouteRegistry routes;
@@ -101,6 +110,7 @@ public final class AsyncServer implements Server
         listener = AsynchronousServerSocketChannel.open(group()).bind(use);
         LOG.log(INFO, () -> "Opened server channel: " + listener);
         
+        SERVER_COUNT.incrementAndGet();
         port = ((InetSocketAddress) listener.getLocalAddress()).getPort();
         listener.accept(null, new OnAccept());
         
@@ -124,14 +134,9 @@ public final class AsyncServer implements Server
         l.close();
         LOG.log(INFO, () -> "Closed server channel: " + l);
         
-        // TODO: We will also need to manage the channel group which is shared
-        // by all servers. Last member of the group to stop should shutdown
-        // orderly the group as well. Then from that point on we want any new
-        // server starts to initialize a new group. This could become tricky if
-        // application is supposed to be able to specify or directly lookup the
-        // group's thread pool since shutting down a group also shuts down the
-        // thread pool!
-        LOG.log(WARNING, "Global group management not yet implemented.");
+        if (SERVER_COUNT.decrementAndGet() == 0) {
+            groupShutdown();
+        }
     }
     
     @Override
@@ -218,7 +223,9 @@ public final class AsyncServer implements Server
             LOG.log(INFO, () -> "Accepted child: " + child);
             
             try {
-                listener.accept(null, this);
+                if (listener.isOpen()) {
+                    listener.accept(null, this);
+                }
             } catch (Throwable t) {
                 failed(t, null);
             }
@@ -234,10 +241,10 @@ public final class AsyncServer implements Server
         @Override
         public void failed(Throwable t, Void noAttachment) {
             if (t instanceof ClosedChannelException) {
-                LOG.log(WARNING, "Channel already closed when initiating a new accept. Will accept no more.");
+                LOG.log(DEBUG, "Channel already closed when initiating a new accept (race). Will accept no more.");
             }
             else if (t instanceof ShutdownChannelGroupException) {
-                LOG.log(WARNING, "Group already closed when initiating a new accept. Will accept no more.");
+                LOG.log(DEBUG, "Group already closed when initiating a new accept. Will accept no more.");
             }
             else if (t instanceof IOException && t.getCause() instanceof ShutdownChannelGroupException) {
                 LOG.log(DEBUG, "Connection accepted and immediately closed, because group is shutting down/was shutdown. Will accept no more.");

@@ -46,7 +46,7 @@ import static java.util.Collections.singleton;
  * more sensitive administrator endpoints on another more secluded port.<p>
  * 
  * If at least one server is running, then the JVM will not shutdown when the
- * main application thread returns. For the application process to end, all
+ * main application thread dies. For the application process to end, all
  * server instances must {@link #stop()}.
  * 
  * 
@@ -60,25 +60,20 @@ import static java.util.Collections.singleton;
  * The server instance is thread-safe.<p>
  * 
  * The server has a pool of threads (many times referred to as "request
- * threads"). This pool executes managerial tasks that 1) accept new child
- * channels on a listening port (HTTP connections), 2) read/write bytes on the
- * child channels and 3) invoke the application-provided request handler.<p>
+ * threads"). This pool handles I/O completion events and executes
+ * application-provided entities such as the request- and error handlers. The
+ * pool size is fixed and set to the {@link Runtime#availableProcessors() number
+ * of available processors} at the time of the first server start.<p>
  * 
- * The server thread pool is designed for short-lived CPU-bound tasks and
- * request handlers should thread-off for blocking I/O operations or any other
- * type of work that is anticipated to take a long time to complete. Failure to
- * do so could starve the pool of threads able to perform other work,
- * potentially with a negative impact on scalability.<p>
+ * It is absolutely crucial that the application does not block a request
+ * thread, for example by synchronously waiting on an I/O result. The request
+ * thread is suitable only for short-lived and CPU-bound work. I/O work or
+ * long-lived tasks should execute somewhere else. Blocking will have a
+ * negative impact on scalability and could at worse starve the pool of
+ * available threads making the server unable to make progress with other tasks
+ * such as accepting new client connections or processing requests.<p>
  * 
- * A future API will expose the server tread pool for re-use by
- * application-provided, CPU-bound and short-lived tasks without having to
- * create yet another pool (which is a problem in all other to-date known
- * frameworks). For example, when an I/O thread returns with the result,
- * packaging the result into a client-response should be done by a request
- * thread and not the I/O thread (TODO Implement).<p>
- * 
- * In the event many servers are started on different ports, they all share the
- * same underlying thread pool.
+ * Servers started on different ports all share the same underlying thread pool.
  * 
  * 
  * <h3>Examples</h3>
@@ -274,7 +269,9 @@ public interface Server
     /**
      * Stop the server.<p>
      * 
-     * This method is NOP if server is already stopped.
+     * This method is NOP if server is already stopped.<p>
+     * 
+     * All currently running HTTP exchanges will be allowed to complete.
      * 
      * @throws IOException if an I/O error occurs
      */
