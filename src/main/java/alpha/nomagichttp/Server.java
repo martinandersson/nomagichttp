@@ -50,11 +50,6 @@ import static java.util.Collections.singleton;
  * server instances must {@link #stop()}.
  * 
  * 
- * <h3>Channel Life-Cycle</h3>
- * 
- * TODO: Write
- * 
- * 
  * <h3>Threading Model</h3>
  * 
  * The server instance is thread-safe.<p>
@@ -74,11 +69,6 @@ import static java.util.Collections.singleton;
  * such as accepting new client connections or processing other requests.<p>
  * 
  * Servers started on different ports all share the same underlying thread pool.
- * 
- * 
- * <h3>Examples</h3>
- * 
- * TODO: Write
  * 
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
