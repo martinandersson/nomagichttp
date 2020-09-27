@@ -26,11 +26,14 @@ import static java.lang.System.Logger.Level.ERROR;
  * Handles exceptions originating from after the point where a client has begun
  * transmitting a request until the request handler invocation has returned.<p>
  * 
+ * The exception handler produces a response which - due to an error - the
+ * ordinary request handler could not do.<p>
+ * 
  * If no exception handler is configured on the server, the {@link #DEFAULT}
  * will be used.<p>
  * 
- * Configuring many exception handlers means they will be called orderly until
- * one of them is able to produce a response.<p>
+ * Exception handlers are called in the same order they were configured/added to
+ * the server.<p>
  * 
  * An exception handler that is unfit or unwilling to handle a particular
  * exception must re-throw the same exception instance, in which case the server
@@ -39,9 +42,10 @@ import static java.lang.System.Logger.Level.ERROR;
  * considered to be a new error and the whole process is restarted.<p>
  * 
  * The server accepts a supplier of the exception handler. The supplier will be
- * called lazily upon the first invocation of the error handler and the handler
- * instance is cached throughout each unique HTTP exchange. This means that the
- * handler can safely keep state related to the exchange such as a retry-counter.
+ * called lazily upon the first invocation of the exception handler and the
+ * handler instance returned from the supplier is cached throughout each unique
+ * HTTP exchange. This means that the handler can safely keep state related to
+ * the exchange such as a retry-counter.
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  * 
@@ -61,9 +65,9 @@ public interface ExceptionHandler
      * arguments to the left of {@code handler} will be non-null but {@code
      * handler} will be null (because it was never successfully resolved).<p>
      *
-     * The final step of the exchange is to invoke the request handler, and so
-     * all arguments will be non-null for all errors thrown by the request
-     * handler.<p>
+     * The final step of the exchange is for the server to invoke the request
+     * handler, and so all arguments will be non-null for all errors thrown by
+     * the request handler.<p>
      * 
      * If the original error is a {@code CompletionException}, then the server
      * will attempt to recursively unpack the cause which is then passed to the
@@ -80,11 +84,6 @@ public interface ExceptionHandler
      * 
      * @see ExceptionHandler
      */
-    
-    // TODO: Describe in JavaDoc NoRouteFoundException example after we've bound
-    //       the request param values lazily and can provide a request object.
-    //       See TODO note in HttpExchange.handleRequest().
-    
     CompletionStage<Response> apply(Throwable exc, Request req, Route route, Handler handler) throws Throwable;
     
     /**

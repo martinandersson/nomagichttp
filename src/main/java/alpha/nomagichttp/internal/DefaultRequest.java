@@ -33,11 +33,14 @@ final class DefaultRequest implements Request
     private static final FileAttribute<?>[] NO_ATTRIBUTES = new FileAttribute[0];
     
     private final RequestHead head;
-    private final Map<String, String> pathParameters;
+    private volatile Map<String, String> pathParameters;
     private volatile Flow.Publisher<PooledByteBufferHolder> bodySource;
     
-    DefaultRequest(RequestHead head, Map<String, String> pathParameters) {
+    DefaultRequest(RequestHead head) {
         this.head = head;
+    }
+    
+    void setPathParameters(Map<String, String> pathParameters) {
         this.pathParameters = pathParameters;
     }
     
@@ -67,6 +70,10 @@ final class DefaultRequest implements Request
     
     @Override
     public Optional<String> paramFromPath(String name) {
+        if (pathParameters == null) {
+            throw new IllegalStateException("Path parameters not yet bound.");
+        }
+        
         return ofNullable(pathParameters.get(name));
     }
     

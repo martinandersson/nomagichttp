@@ -18,10 +18,16 @@ import java.util.function.BiFunction;
 /**
  * An inbound HTTP request.<p>
  * 
- * The handler will be invoked as soon as the request head has been fully
- * parsed and to the extent necessarily; interpreted by the server. The request
- * body will arrive asynchronously which the handler can access using the
- * {@link #body() method}.<p>
+ * The {@link Handler request handler} will be invoked as soon as the request
+ * head has been fully parsed and to the extent necessarily; interpreted by the
+ * server. The contents of the request body will arrive asynchronously and is
+ * exposed through the {@link #body() method}.<p>
+ * 
+ * Methods on this interface that document {@code IllegalStateException} will
+ * never throw the exception when accessed by a request handler. However, the
+ * exception may be thrown when accessed by an {@link ExceptionHandler exception
+ * handlers} as these handlers may be called before all of the parts of the
+ * request object has been bound.<p>
  * 
  * TODO: Once we have auto-discard, make note the handler can write a response
  * immediately without consuming the body.
@@ -99,8 +105,14 @@ public interface Request
      * an empty optional.
      * 
      * @param name of parameter
+     * 
      * @return the parameter value
-     * @throws NullPointerException if {@code name} is {@code null}
+     * 
+     * @throws NullPointerException
+     *           if {@code name} is {@code null}
+     * 
+     * @throws IllegalStateException
+     *           if path parameters has not yet been bound (see {@link Request})
      */
     Optional<String> paramFromPath(String name);
     
@@ -122,16 +134,10 @@ public interface Request
     /**
      * Returns the request body.<p>
      * 
-     * A {@link Handler request handler} will never see the
-     * {@code IllegalStateException} because when the handler is called, a body
-     * will always have been bound, even if the body is empty. An {@link
-     * ExceptionHandler exception handler} on the other hand may be invoked
-     * earlier in the process of binding the body and if so, this method will
-     * throw an {@code IllegalStateException}.
-     * 
      * @return the request body
      * 
-     * @throws IllegalStateException if body has not yet been bound
+     * @throws IllegalStateException
+     *           if body has not yet been bound (see {@link Request})
      * 
      * @see Body
      */

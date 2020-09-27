@@ -50,7 +50,7 @@ import static java.lang.System.Logger.Level.WARNING;
  */
 final class HttpExchange
 {
-    // All mutable fields in this class is not volatile or synchronized; it is
+    // All mutable fields in this class are not volatile nor synchronized; it is
     // assumed that the asynchronous execution facility of the CompletionStage
     // implementation establishes a happens-before relationship. This is
     // certainly true for JDK's CompletableFuture which uses an
@@ -84,24 +84,27 @@ final class HttpExchange
     void begin() {
         new RequestHeadParser(bytes, server.getServerConfig().maxRequestHeadSize())
                 .asCompletionStage()
-                .thenCompose(this::handleRequest)
+                .thenAccept(this::createRequest)
+                .thenCompose(Null -> handleRequest())
                 .thenCompose(this::handleResponse)
                 .whenComplete(this::finish);
     }
     
-    private CompletionStage<Response> handleRequest(RequestHead reqHead) {
+    private void createRequest(RequestHead reqHead) {
+        request = new DefaultRequest(reqHead);
+    }
+    
+    private CompletionStage<Response> handleRequest() {
         // 1. Lookup route and handler
         // ---
-        final Route.Match match = server.getRouteRegistry().lookup(reqHead.requestTarget());
+        final Route.Match match = server.getRouteRegistry().lookup(request.target());
         route = match.route();
-        // TODO: In order to improve exception handling, create request immediately
-        //       after receiving the request-head and .setParamValues() after
-        //       matching the route.
-        request = new DefaultRequest(reqHead, match.parameters());
+        request.setPathParameters(match.parameters());
+        
         handler = route.lookup(
-                reqHead.method(),
-                contentType(reqHead.headers()).orElse(null),
-                accepts(reqHead.headers()));
+                request.method(),
+                contentType(request.headers()).orElse(null),
+                accepts(request.headers()));
         
         LOG.log(DEBUG, () -> "Matched handler: " + handler);
         
@@ -111,13 +114,13 @@ final class HttpExchange
         
         // TODO: If length is not present, then body is possibly chunked.
         // https://tools.ietf.org/html/rfc7230#section-3.3.3
-    
+        
         // TODO: Server should throw BadRequestException if Content-Length is present AND Content-Encoding
         // https://tools.ietf.org/html/rfc7230#section-3.3.2
         
         Flow.Publisher<PooledByteBufferHolder> reqBody = empty();
         
-        OptionalLong len = contentLength(reqHead.headers());
+        OptionalLong len = contentLength(request.headers());
         
         if (len.isPresent()) {
             long v = len.getAsLong();
