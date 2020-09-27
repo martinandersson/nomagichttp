@@ -54,7 +54,7 @@ import static java.util.Collections.singleton;
  * 
  * The server instance is thread-safe.<p>
  * 
- * The server has only one pool of threads (many times referred to as "request
+ * The server uses only one pool of threads (many times referred to as "request
  * threads"). This pool handles I/O completion events and executes
  * application-provided entities such as the request- and error handlers. The
  * pool size is fixed and set to the value of {@link
