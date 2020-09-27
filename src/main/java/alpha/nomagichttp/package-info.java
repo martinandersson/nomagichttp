@@ -13,24 +13,13 @@
  * 
  * <h3>Architectural overview</h3>
  * 
- * A very central component is a {@link alpha.nomagichttp.route.Route Route}
- * (the "resource" or "request-target"), to which at least one request {@link
+ * A central component is a {@link alpha.nomagichttp.route.Route Route} (the
+ * "resource" or "request-target"), to which at least one request {@link
  * alpha.nomagichttp.handler.Handler Handler} must be added. The handler is
  * responsible for processing a {@link alpha.nomagichttp.message.Request
  * Request} into a {@link alpha.nomagichttp.message.Response Response}<p>
  * 
- * When processing a request, the handler will have an optionally complete
- * control over the bytes read from the inbound message body as well as the
- * response sent back (head + body). The message bodies are ultimately modelled
- * as a {@link java.util.concurrent.Flow.Publisher Flow.Publisher} of
- * bytebuffers, consumed as request body and produced as response body
- * respectively. This enables the server implementation to be very scalable.
- * For the developer not in need of low-level control, an easily accessible and
- * helpful API is provided that abstracts away flows of byte processing into
- * higher level types makes working in an asynchronous environment both easy and
- * fun.<p>
- * 
- * Once the route has been constructed it can be added to a {@link
+ * Once the route has been setup it can be added to a {@link
  * alpha.nomagichttp.Server Server}. The default server implementation ({@link
  * alpha.nomagichttp.internal.AsyncServer AsyncServer}) does not use selector
  * threads or any other type of polling. It is completely non-blocking and
@@ -61,13 +50,11 @@
  * Commonly, there's also a convenient API on top of the builders meant for
  * static import in order to easily implement common use-cases, for example
  * {@link alpha.nomagichttp.handler.Handlers#GET() Handlers.GET()} and {@link
- * alpha.nomagichttp.message.Responses#ok() Responses.ok()}.<p>
- * 
- * TODO: Describe error handling
+ * alpha.nomagichttp.message.Responses#ok() Responses.ok()}.
  * 
  * 
  * <h3>Examples</h3>
  * 
- * TODO: Provide
+ * See package {@link alpha.nomagichttp.examples}.
  */
 package alpha.nomagichttp;
