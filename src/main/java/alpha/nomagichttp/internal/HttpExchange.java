@@ -63,7 +63,7 @@ final class HttpExchange
     private final AsynchronousByteChannel child;
     private final Flow.Publisher<DefaultPooledByteBufferHolder> bytes;
     
-    // Set lazily as exchange progresses
+    // Are set lazily as exchange progresses
     private DefaultRequest request;
     private Route route;
     private Handler handler;
