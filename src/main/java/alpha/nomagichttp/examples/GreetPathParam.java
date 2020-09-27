@@ -38,10 +38,12 @@ public class GreetPathParam
          * parameter and registers the greeter with the route.
          * 
          * Please note that parameters are always optional and client-provided
-         * values at runtime can not be used to differentiate between routes.
-         * The route declared next would match a request targeting "/hello/John"
-         * as well as a request "/hello", difference being that the latter
-         * Request object would return an empty Optional.
+         * values at runtime can not be used to differentiate between routes
+         * (magic not supported!).
+         * 
+         * The route declared next matches a request targeting "/hello/John"
+         * as well as a request targeting "/hello", difference being that the
+         * latter request object would not have the path parameter value present.
          */
         
         Route route = new RouteBuilder("/hello").param("name")
