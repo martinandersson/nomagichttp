@@ -23,9 +23,8 @@ public class HelloWorldResponse
     public static void main(String... ignored) throws IOException {
         /*
          * The API is asynchronous and handlers return to the server a
-         * CompletionStage of a Response. If the response can be created
-         * immediately by the handler without blocking, use
-         * Response.asCompletedStage().
+         * CompletionStage<Response>. If the response can be created immediately
+         * by the handler without blocking, use Response.asCompletedStage().
          */
         
         CompletionStage<Response> answer
