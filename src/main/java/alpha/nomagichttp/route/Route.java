@@ -131,22 +131,13 @@ public interface Route
          * Returns path parameters which have been extracted from the
          * request-target.<p>
          * 
-         * The returned map could be empty if the route has no path parameters
+         * The returned map is empty if the route has no path parameters
          * declared or none was provided in the request-target.<p>
          * 
-         * The returned map is modifiable.
+         * The returned map is unmodifiable.
          * 
          * @return path parameters (never null)
          */
-        // TODO: Don't specify modifiable. The map isn't directly exposed to
-        //       application code, and if even it was, it would be weird by
-        //       application code to have the need to modify it. Without
-        //       specifying modifiability the implementation doesn't need to
-        //       create a new map instance for each match. I think the idea was
-        //       that future filters may need to hack at parameters before the
-        //       pipeline moves forward, but this could probably then be
-        //       implemented with a modifiable empty map or whatever for those
-        //       specific cases.
         Map<String, String> parameters();
     }
 }

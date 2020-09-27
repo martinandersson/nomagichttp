@@ -23,6 +23,7 @@ import static java.lang.System.Logger;
 import static java.lang.System.Logger.Level.WARNING;
 import static java.text.MessageFormat.format;
 import static java.util.Arrays.stream;
+import static java.util.Collections.unmodifiableMap;
 import static java.util.Comparator.comparingDouble;
 import static java.util.Comparator.comparingInt;
 import static java.util.stream.Collectors.groupingBy;
@@ -72,7 +73,7 @@ public final class DefaultRoute implements Route
         // If we have only one segment with no params, then all of it must match.
         if (segments.size() == 1 && segments.get(0).params().isEmpty()) {
             String seg = ensureSingleSlashWrap(segments.get(0).value());
-            return parse.equals(seg) ? new DefaultMatch(new HashMap<>()) : null;
+            return parse.equals(seg) ? new DefaultMatch(Map.of()) : null;
         }
         
         LinkedHashMap<Segment, Integer> indices = segmentIndices(parse);
@@ -214,7 +215,7 @@ public final class DefaultRoute implements Route
             }
         }
         
-        return paramToValue;
+        return unmodifiableMap(paramToValue);
     }
     
     @Override
@@ -402,6 +403,11 @@ public final class DefaultRoute implements Route
     private final class DefaultMatch implements Route.Match {
         private final Map<String, String> params;
         
+        /**
+         * Constructs a {@code DefaultMap}.<p>
+         * 
+         * @param params from path (assumed to be unmodifiable)
+         */
         DefaultMatch(Map<String, String> params) {
             this.params = params;
         }
