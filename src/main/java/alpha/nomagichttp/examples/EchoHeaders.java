@@ -20,7 +20,7 @@ public class EchoHeaders
     private static final int PORT = 8080;
     
     public static void main(String... ignored) throws IOException {
-        Handler echo = GET().apply(req -> {
+        Handler h = GET().apply(req -> {
             // The response builder allows setting any arbitrary status-line.
             // The static method "ResponseBuilder.ok()" returns a builder with
             // the status-line already populated.
@@ -35,7 +35,7 @@ public class EchoHeaders
             return res.asCompletedStage();
         });
         
-        Server.with(route("/echo", echo)).start(PORT);
+        Server.with(route("/echo", h)).start(PORT);
         System.out.println("Listening on port " + PORT + ".");
     }
 }

@@ -26,7 +26,7 @@ public class GreetPathParam
          * Optional.
          */
         
-        Handler greeter = Handlers.GET().apply(request -> {
+        Handler h = Handlers.GET().apply(request -> {
             String name = request.paramFromPath("name").get();
             String text = "Hello, " + name + "!";
             return Responses.ok(text).asCompletedStage();
@@ -46,11 +46,11 @@ public class GreetPathParam
          * latter request object would not have the path parameter value present.
          */
         
-        Route route = new RouteBuilder("/hello").param("name")
-                .handler(greeter)
+        Route r = new RouteBuilder("/hello").param("name")
+                .handler(h)
                 .build();
         
-        Server.with(route).start(PORT);
+        Server.with(r).start(PORT);
         System.out.println("Listening on port " + PORT + ".");
     }
 }

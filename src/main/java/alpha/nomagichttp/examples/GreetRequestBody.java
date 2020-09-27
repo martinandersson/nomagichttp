@@ -28,11 +28,11 @@ public class GreetRequestBody
          * a CompletionStage<String>, mapped by this handler into a greeting.
          */
         
-        Handler greeter = POST().apply(req ->
+        Handler h = POST().apply(req ->
                 req.body().toText().thenApply(name ->
                         ok("Hello, " + name + "!")));
         
-        Server.with(route("/hello", greeter)).start(PORT);
+        Server.with(route("/hello", h)).start(PORT);
         System.out.println("Listening on port " + PORT + ".");
     }
 }

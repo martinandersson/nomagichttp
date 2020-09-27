@@ -36,22 +36,21 @@ public class RetryRequestOnError
     private static final int PORT = 8080;
     
     public static void main(String... ignored) throws IOException {
-        Handler handler = GET().supply(new MyUnstableResponseSupplier());
-        Route route = route("/", handler);
+        Handler h = GET().supply(new MyUnstableResponseSupplier());
+        Route r = route("/", h);
         
         // The server accepts a factory/supplier of the exception handler because
         // a new instance of the exception handler will be used for each failed request.
         Supplier<ExceptionHandler> retrier = MyExponentialRetrier::new;
         
-        Server.with(ServerConfig.DEFAULT, singleton(route), retrier).start(PORT);
+        Server.with(ServerConfig.DEFAULT, singleton(r), retrier).start(PORT);
         System.out.println("Listening on port " + PORT + ".");
     }
     
     // This response supplier will succeed only every third request.
     // This example is synchronous but the outcome would have been the same if
     // the returned CompletionStage completed exceptionally.
-    private static class MyUnstableResponseSupplier implements Supplier<CompletionStage<Response>>
-    {
+    private static class MyUnstableResponseSupplier implements Supplier<CompletionStage<Response>> {
         // In the real world a request counter should probably be of type LongAdder
         private final AtomicLong requestCount = new AtomicLong();
         
