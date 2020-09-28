@@ -27,7 +27,7 @@ import static java.lang.System.Logger.Level.ERROR;
  * transmitting a request until the request handler invocation has returned.<p>
  * 
  * The exception handler produces a response which - due to an error - the
- * ordinary request handler could not do.<p>
+ * ordinary request handler could not provide.<p>
  * 
  * If no exception handler is configured on the server, the {@link #DEFAULT}
  * will be used.<p>
@@ -38,8 +38,9 @@ import static java.lang.System.Logger.Level.ERROR;
  * An exception handler that is unfit or unwilling to handle a particular
  * exception must re-throw the same exception instance, in which case the server
  * will call the next exception handler, eventually reaching the {@code
- * DEFAULT}. If an exception handler throws a different exception, then this is
- * considered to be a new error and the whole process is restarted.<p>
+ * DEFAULT}. If an exception handler returns {@code null} or throws a different
+ * exception, then this is considered to be a new error and the whole cycle is
+ * restarted.<p>
  * 
  * The server accepts a supplier of the exception handler. The supplier will be
  * called lazily upon the first invocation of the exception handler and the

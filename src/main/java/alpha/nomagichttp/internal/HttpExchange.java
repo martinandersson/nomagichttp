@@ -22,6 +22,7 @@ import static alpha.nomagichttp.message.Publishers.empty;
 import static java.lang.System.Logger.Level.DEBUG;
 import static java.lang.System.Logger.Level.ERROR;
 import static java.lang.System.Logger.Level.WARNING;
+import static java.util.Objects.requireNonNull;
 
 /**
  * Initiates read and write operations on a client channel in order to realize
@@ -195,7 +196,7 @@ final class HttpExchange
             }
             
             try {
-                alternative = h.apply(u, request, route, handler);
+                alternative = requireNonNull(h.apply(u, request, route, handler));
                 break;
             } catch (Throwable next) {
                 if (u == next) {
