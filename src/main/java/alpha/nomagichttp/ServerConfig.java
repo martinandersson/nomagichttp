@@ -5,14 +5,10 @@ import alpha.nomagichttp.message.MaxRequestHeadSizeExceededException;
 /**
  * Server configuration.<p>
  * 
- * The values are read as late in the process as possible and not cached by the
- * server implementation.<p>
- * 
  * The implementation must be thread-safe.
  * 
  * @author Martin Andersson (webmaster at martinandersson.com
  */
-// TODO: Define object identity.
 public interface ServerConfig {
     ServerConfig DEFAULT = new ServerConfig(){};
     
@@ -21,7 +17,9 @@ public interface ServerConfig {
      * head before giving up.<p>
      * 
      * Once the limit has been exceeded, a {@link
-     * MaxRequestHeadSizeExceededException} will be thrown.
+     * MaxRequestHeadSizeExceededException} will be thrown.<p>
+     * 
+     * This configuration value will be polled at the start of each new request.
      * 
      * @implSpec
      * The default implementation is equivalent to:
@@ -44,15 +42,16 @@ public interface ServerConfig {
      * Returns the max number of attempts at recovering a failed request.<p>
      * 
      * This configuration has an effect only if the application has provided one
-     * or more exception handlers to the server and is then the max number of
-     * times the server is willing to attempt request recovery before giving
-     * up.<p>
+     * or more exception handlers to the server.<p>
      * 
      * When all tries have been exhausted, the {@link ExceptionHandler#DEFAULT
      * default exception handler} will be called with the original exception.<p>
      * 
      * Successfully invoking an exception handler (handler returns a response or
      * throws a <i>different</i> exception instance) counts as one attempt.<p>
+     * 
+     * This configuration value will be polled at the start of each recovery
+     * attempt.
      * 
      * @implSpec
      * The default implementation returns {@code 5}.
