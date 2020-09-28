@@ -30,14 +30,13 @@ final class ChannelBytePublisher extends AbstractUnicastPublisher<DefaultPooledB
 {
     private static final System.Logger LOG = System.getLogger(ChannelBytePublisher.class.getPackageName());
     
-    private static final int // TODO: Document
-                             BUF_COUNT = 5,
-                             // TODO: Document (same as jdk.internal.net.http.common.Utils.DEFAULT_BUFSIZE)
-                             BUF_SIZE = 16 * 1_024;
+    private static final int
+            /** Number of bytebuffers in pool. */
+            BUF_COUNT = 5,
+            /** Size of each pooled bytebuffer (same as jdk.internal.net.http.common.Utils.DEFAULT_BUFSIZE). */
+            BUF_SIZE = 16 * 1_024;
     
-    /**
-     * Sentinel value indicating the publisher has finished and must be closed.
-     */
+    /** Sentinel value indicating the publisher has finished and must be closed. */
     private static final ByteBuffer DELAYED_CLOSE = ByteBuffer.allocate(0);
     
     /*
