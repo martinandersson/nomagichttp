@@ -163,63 +163,61 @@ final class HttpExchange
     }
     
     // Context for error handling
+    private Throwable original;
     private List<ExceptionHandler> constructed;
     private int attemptCount;
     
     private void handleError(final Throwable t) {
-        final Throwable u = unpackCompletionException(t);
-        final int maxAttempts = server.getServerConfig().maxErrorRecoveryAttempts();
         final List<Supplier<ExceptionHandler>> factories = server.exceptionHandlers();
-        
-        if (!factories.isEmpty()) {
-            attemptCount++;
-            LOG.log(DEBUG, () -> "Attempting error recovery attempt #" + attemptCount);
-        }
-        
+        final Throwable unpacked = unpackCompletionException(t);
         CompletionStage<Response> alternative = null;
         
-        if (attemptCount >= maxAttempts) {
-            // TODO: Configuration value is supposed to "have an effect" only if handlers were provided.
-            //       FIX.
-            LOG.log(WARNING, "Error recovery attempts depleted.");
-        }
-        else for (int i = 0; i < factories.size(); ++i) {
-            if (constructed == null) {
-                constructed = new ArrayList<>();
-            }
-            
-            final ExceptionHandler h;
-            if (constructed.size() < i + 1) {
-                constructed.add(h = factories.get(i).get());
-            } else {
-                h = constructed.get(i);
-            }
-            
-            try {
-                alternative = requireNonNull(h.apply(u, request, route, handler));
-                break;
-            } catch (Throwable next) {
-                if (u == next) {
-                    // Handler opted out
-                    continue;
-                }
-                // New fail
-                t.addSuppressed(next);
-                // TODO: According to docs of ServerConfig.maxErrorRecoveryAttempts(),
-                //       we're supposed to call the default handler with the original
-                //       exception. Currently, we're calling it with the "next".
-                handleError(next);
-                return;
-            }
+        if (original == null) {
+            original = unpacked;
         }
         
-        if (alternative == null) {
+        if (factories.isEmpty() ||
+            ++attemptCount > server.getServerConfig().maxErrorRecoveryAttempts())
+        {
+            if (!factories.isEmpty()) {
+                LOG.log(WARNING, "Error recovery attempts depleted.");
+            }
+            
             try {
-                alternative = ExceptionHandler.DEFAULT.apply(u, request, route, handler);
+                alternative = ExceptionHandler.DEFAULT.apply(unpacked, request, route, handler);
             } catch (Throwable next) {
                 LOG.log(ERROR, "Default exception handler failed. Will initiate orderly shutdown.", next);
                 server.orderlyShutdown(child);
                 return;
+            }
+        } else {
+            LOG.log(DEBUG, () -> "Attempting error recovery #" + attemptCount);
+            
+            for (int i = 0; i < factories.size(); ++i) {
+                if (constructed == null) {
+                    constructed = new ArrayList<>();
+                }
+                
+                final ExceptionHandler h;
+                if (constructed.size() < i + 1) {
+                    constructed.add(h = factories.get(i).get());
+                } else {
+                    h = constructed.get(i);
+                }
+                
+                try {
+                    alternative = requireNonNull(h.apply(unpacked, request, route, handler));
+                    break;
+                } catch (Throwable next) {
+                    if (unpacked == next) {
+                        // Handler opted out
+                        continue;
+                    }
+                    // New fail
+                    unpacked.addSuppressed(next);
+                    handleError(next);
+                    return;
+                }
             }
         }
         
