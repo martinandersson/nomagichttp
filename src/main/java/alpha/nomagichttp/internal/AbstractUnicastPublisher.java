@@ -143,8 +143,14 @@ abstract class AbstractUnicastPublisher<T> implements Flow.Publisher<T>, Closeab
     
     @Override
     public final void subscribe(Flow.Subscriber<? super T> subscriber) {
-        // TODO: clearSubscriberRef() on any error in this method
-        
+        try {
+            subscribe0(subscriber);
+        } catch (Throwable t) {
+            subscription.set(null);
+        }
+    }
+    
+    public final void subscribe0(Flow.Subscriber<? super T> subscriber) {
         // Rule 1.9: NPE the only allowed Exception to be thrown out of this method.
         requireNonNull(subscriber);
         final Flow.Subscription witnessValue;
