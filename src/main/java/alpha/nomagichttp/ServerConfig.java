@@ -65,8 +65,6 @@ public interface ServerConfig {
         return 5;
     }
     
-    // TODO: Number of request threads
-    
     /**
      * Returns the number of request threads that should be allocated for
      * executing HTTP exchanges (such as calling the application-provided
