@@ -70,7 +70,7 @@ import static java.util.Objects.requireNonNull;
  * 
  * <h2>Demand</h2>
  * 
- * This class starts with a zeroed demand. Therefore, the {@code increaseDemand}
+ * The demand starts out being zero. Therefore, the {@code increaseDemand}
  * method must be called at least once. The signalled demand is additive and can
  * as the greatest only become {@code Long.MAX_VALUE} at which point this class
  * cease to bother about demand completely. At this point, the service is

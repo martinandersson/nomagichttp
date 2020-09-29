@@ -45,8 +45,9 @@ import static java.util.Objects.requireNonNull;
  * 
  * The {@code announce} method and the {@code close} method implementation
  * provided by this class, is thread-safe. Overrides of the methods {@code poll}
- * and {@link #failed(Object) failed} doesn't need to be thread-safe since they
- * will be called serially within the scope of an attempt to transfer.<p>
+ * and {@link #failed(Object) failed} doesn't need to be programmed with
+ * thread-safety in mind since they will be called serially within a transfer
+ * attempt.<p>
  * 
  * 
  * @apiNote

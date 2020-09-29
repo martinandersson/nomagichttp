@@ -20,7 +20,7 @@ import static java.util.Objects.requireNonNull;
 /**
  * Writes a {@link Response} to the client channel.<p>
  * 
- * This class is semantically the "reversed" version of a {@link
+ * This class is semantically the reversed version of a {@link
  * ChannelBytePublisher} with the key difference being that the lifetime scope
  * of an instance of this class is much shorter; only relevant for a single
  * response.
@@ -28,14 +28,17 @@ import static java.util.Objects.requireNonNull;
  * @author Martin Andersson (webmaster at martinandersson.com)
  */
 
-// TODO: Although this is a simple design, it does create a lot of garbage for
-//       each response, specifically the "readable" and "transfer" fields.
-//       Ideally, just as we do have a singleton "ChannelBytePublisher" for a
-//       particular channel to whom subscribers come and go over time, we would
-//       similarly like to have a singleton "ChannelByteSubscriber" to whom
-//       publishers come and go over time. The work to accomplish this shouldn't
-//       be too grand since it's probably just a matter of redesigning the
-//       life-cycle of this class.
+// TODO: Although this is a simple design, it does create some garbage for each
+//       response, specifically the "readable" and "transfer" fields. Ideally,
+//       just as we do have a singleton "ChannelBytePublisher" for a particular
+//       channel to whom subscribers come and go over time, we would similarly
+//       like to have a singleton "ChannelByteSubscriber" to whom publishers
+//       come and go over time. The work to accomplish this shouldn't be too
+//       grand since it's probably just a matter of redesigning the life-cycle
+//       of this class.
+//           Should be done when performance tests are in place so that the new
+//       design can be proved to be more efficient (premature optimization is
+//       the root of all evil...)
 
 final class ResponseToChannelWriter
 {
@@ -48,9 +51,10 @@ final class ResponseToChannelWriter
     private static final System.Logger LOG = System.getLogger(ResponseToChannelWriter.class.getPackageName());
     
     private static final int
-            // When number of outstanding requested buffers reaches this number...
+            // When number of outstanding requested buffers reaches this value...
+            /** Minimum amount of outstanding */
             MIN_REQUESTED_BUFFERS = 1,
-            // ...we request delta to hit this number:
+            // ...we request the delta to reach this value:
             // (a quite small span because the server could be handling a lot of responses)
             MAX_REQUESTED_BUFFERS = 3;
     
