@@ -72,7 +72,7 @@ final class ResponseToChannelWriter
         readable = new ConcurrentLinkedDeque<>();
         transfer = new SerialTransferService<>(readable::poll, new Writer()::write);
         result   = new CompletableFuture<Void>()
-                .whenComplete((ign,ored) -> readable.clear());
+                .whenComplete((ign,ored) -> { transfer.finish(); readable.clear();} );
         
         new BodySubscriber(response);
     }
@@ -80,8 +80,6 @@ final class ResponseToChannelWriter
     CompletionStage<Void> asCompletionStage() {
         return result.minimalCompletionStage();
     }
-    
-    // TODO: try-catch all and forward to result?
     
     private final class BodySubscriber implements Flow.Subscriber<ByteBuffer> {
         private final Response response;
@@ -91,7 +89,14 @@ final class ResponseToChannelWriter
         
         BodySubscriber(Response response) {
             this.response = response;
-            response.body().subscribe(this);
+            
+            try {
+                response.body().subscribe(this);
+            } catch (Throwable t) {
+                if (!result.completeExceptionally(t)) {
+                    LOG.log(WARNING, "subscribe() failed to return normally, but a result was already reported. This error will be ignored.", t);
+                }
+            }
         }
         
         @Override
@@ -132,10 +137,7 @@ final class ResponseToChannelWriter
         
         @Override
         public void onError(Throwable t) {
-            boolean success = transfer.finish(() ->
-                    result.completeExceptionally(t));
-            
-            if (!success) {
+            if (!result.completeExceptionally(t)) {
                 LOG.log(WARNING, "Response body publisher failed, but subscription was already done. This error will be ignored.", t);
             }
         }
@@ -153,7 +155,7 @@ final class ResponseToChannelWriter
             final String line = response.statusLine() + CRLF,
                     vals = join(CRLF, response.headers()),
                     head = line + (vals.isEmpty() ? CRLF : vals + CRLF + CRLF);
-    
+            
             ByteBuffer buff = ByteBuffer.wrap(head.getBytes(US_ASCII));
             
             readable.add(buff);
@@ -170,8 +172,11 @@ final class ResponseToChannelWriter
             if (buf == NO_MORE) {
                 result.complete(null);
             } else {
-                // TODO: What if this throws ShutdownChannelGroupException? Or anything else for that matter..
-                channel.write(buf, buf, this);
+                try {
+                    channel.write(buf, buf, this);
+                } catch (Throwable t) {
+                    failed(t, null);
+                }
             }
         }
         
@@ -195,14 +200,9 @@ final class ResponseToChannelWriter
         
         @Override
         public void failed(Throwable t, ByteBuffer ignored) {
-            boolean success = transfer.finish(() ->
-                    result.completeExceptionally(t));
-            
-            if (!success) {
+            if (!result.completeExceptionally(t)) {
                 LOG.log(WARNING, "Writing response body to channel failed, but subscription was already done. This error will be ignored.", t);
             }
-            
-            // TODO: Shutdown channel? By default exception handler.
         }
     }
 }
