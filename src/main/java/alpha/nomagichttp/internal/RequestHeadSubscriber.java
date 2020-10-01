@@ -5,7 +5,6 @@ import alpha.nomagichttp.message.MaxRequestHeadSizeExceededException;
 import alpha.nomagichttp.message.PooledByteBufferHolder;
 
 import java.nio.ByteBuffer;
-import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.Flow;
@@ -20,15 +19,15 @@ import static java.lang.System.Logger.Level.DEBUG;
 //       cleared on each new read, almost like a heartbeat. So, if we don't get a single
 //       byte despite us waiting for bytes, then we timeout.
 
-final class RequestHeadParser implements Flow.Subscriber<PooledByteBufferHolder>
+final class RequestHeadSubscriber implements Flow.Subscriber<PooledByteBufferHolder>
 {
-    private static final System.Logger LOG = System.getLogger(RequestHeadParser.class.getPackageName());
+    private static final System.Logger LOG = System.getLogger(RequestHeadSubscriber.class.getPackageName());
     
     private final int maxHeadSize;
     private final RequestHeadProcessor processor;
     private final CompletableFuture<RequestHead> result;
     
-    RequestHeadParser(int maxRequestHeadSize) {
+    RequestHeadSubscriber(int maxRequestHeadSize) {
         maxHeadSize = maxRequestHeadSize;
         processor   = new RequestHeadProcessor();
         result      = new CompletableFuture<>();

@@ -36,7 +36,7 @@ import static java.util.Objects.requireNonNull;
  * remains open.<p>
  * 
  * The first subscriber to subscribe to the channel is {@link
- * RequestHeadParser}. Once the request head has been parsed, an
+ * RequestHeadSubscriber}. Once the request head has been parsed, an
  * application-provided {@link Handler} will be resolved and called with a
  * {@link DefaultRequest} through which the channel byte publisher is exposed.
  * The handler will then be able to subscribe to the channel and consume the
@@ -83,7 +83,7 @@ final class HttpExchange
     }
     
     void begin() {
-        RequestHeadParser rhp = new RequestHeadParser(server.getServerConfig().maxRequestHeadSize());
+        RequestHeadSubscriber rhp = new RequestHeadSubscriber(server.getServerConfig().maxRequestHeadSize());
         bytes.subscribe(rhp);
         
         rhp.asCompletionStage()

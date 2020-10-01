@@ -24,7 +24,7 @@ import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
 
-class RequestHeadParserTest
+class RequestHeadSubscriberTest
 {
     private static TestServer SERVER;
     private static ClientOperations CLIENT;
@@ -32,7 +32,7 @@ class RequestHeadParserTest
     
     @BeforeAll
     static void beforeAll() throws IOException {
-        Logging.setLevel(RequestHeadParser.class, ALL);
+        Logging.setLevel(RequestHeadSubscriber.class, ALL);
         SERVER = new TestServer();
         SERVER.start();
         CLIENT = new ClientOperations(SERVER::newClient);
@@ -48,7 +48,7 @@ class RequestHeadParserTest
             Flow.Publisher<DefaultPooledByteBufferHolder> bytes
                     = new ChannelBytePublisher(mock(AsyncServer.class), SERVER.accept());
             
-            RequestHeadParser rhp = new RequestHeadParser(MAX_VALUE);
+            RequestHeadSubscriber rhp = new RequestHeadSubscriber(MAX_VALUE);
             bytes.subscribe(rhp);
             
             testee = rhp.asCompletionStage();

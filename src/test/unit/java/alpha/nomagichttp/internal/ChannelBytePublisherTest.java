@@ -23,7 +23,7 @@ import static org.mockito.Mockito.mock;
  */
 class ChannelBytePublisherTest
 {
-    // TODO: Most of this plumbing is copy-pasted from RequestHeadParserTest.
+    // TODO: Most of this plumbing is copy-pasted from RequestHeadSubscriberTest.
     //       DRY; refactor to common superclass or something.
     
     private static TestServer SERVER;
