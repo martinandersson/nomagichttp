@@ -26,9 +26,9 @@ import static java.lang.System.Logger.Level.ERROR;
  * 
  * @see AbstractUnicastPublisher
  */
-final class ChannelBytePublisher extends AbstractUnicastPublisher<DefaultPooledByteBufferHolder>
+final class ChannelByteBufferPublisher extends AbstractUnicastPublisher<DefaultPooledByteBufferHolder>
 {
-    private static final System.Logger LOG = System.getLogger(ChannelBytePublisher.class.getPackageName());
+    private static final System.Logger LOG = System.getLogger(ChannelByteBufferPublisher.class.getPackageName());
     
     private static final int
             /** Number of bytebuffers in pool. */
@@ -54,7 +54,7 @@ final class ChannelBytePublisher extends AbstractUnicastPublisher<DefaultPooledB
     private final SeriallyRunnable        readOp;
     private final ReadHandler             handler;
     
-    ChannelBytePublisher(AsyncServer server, AsynchronousByteChannel channel) {
+    ChannelByteBufferPublisher(AsyncServer server, AsynchronousByteChannel channel) {
         this.server   = server;
         this.channel  = channel;
         this.readable = new ConcurrentLinkedDeque<>();

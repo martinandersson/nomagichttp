@@ -21,7 +21,7 @@ import static java.util.Objects.requireNonNull;
  * Writes a {@link Response} to the client channel.<p>
  * 
  * This class is semantically the reversed version of a {@link
- * ChannelBytePublisher} with the key difference being that the lifetime scope
+ * ChannelByteBufferPublisher} with the key difference being that the lifetime scope
  * of an instance of this class is much shorter; only relevant for a single
  * response.
  * 
@@ -30,12 +30,12 @@ import static java.util.Objects.requireNonNull;
 
 // TODO: Although this is a simple design, it does create some garbage for each
 //       response, specifically the "readable" and "transfer" fields. Ideally,
-//       just as we do have a singleton "ChannelBytePublisher" for a particular
-//       channel to whom subscribers come and go over time, we would similarly
-//       like to have a singleton "ChannelByteSubscriber" to whom publishers
-//       come and go over time. The work to accomplish this shouldn't be too
-//       grand since it's probably just a matter of redesigning the life-cycle
-//       of this class.
+//       just as we do have a singleton "ChannelByteBufferPublisher" for a
+//       particular channel to whom subscribers come and go over time, we would
+//       similarly like to have a singleton "ChannelByteSubscriber" to whom
+//       publishers come and go over time. The work to accomplish this shouldn't
+//       be too grand since it's probably just a matter of redesigning the
+//       life-cycle of this class.
 //           Should be done when performance tests are in place so that the new
 //       design can be proved to be more efficient (premature optimization is
 //       the root of all evil...)

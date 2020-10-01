@@ -30,7 +30,7 @@ class BigTextRequest extends AbstractSingleClientTest
     
     @Test
     void test() throws IOException, InterruptedException {
-        // ChannelBytePublisher has 5 of these in a pool, we use 20
+        // ChannelByteBufferPublisher has 5 of these in a pool, we use 20
         final int size = 20 * 16 * 1_024;
         final String expected = DataUtil.text(size);
         System.out.println("Expected size: " + expected.length());

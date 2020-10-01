@@ -241,7 +241,7 @@ public final class AsyncServer implements Server
             // TODO: child.setOption(StandardSocketOptions.SO_KEEPALIVE, true); ??
             
             Flow.Publisher<DefaultPooledByteBufferHolder> bytes
-                    = new ChannelBytePublisher(AsyncServer.this, child);
+                    = new ChannelByteBufferPublisher(AsyncServer.this, child);
             
             new HttpExchange(AsyncServer.this, child, bytes).begin();
         }

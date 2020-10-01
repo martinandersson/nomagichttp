@@ -31,9 +31,8 @@ import static java.util.Objects.requireNonNull;
  * 
  * @implNote
  * Logically, the client channel is transformed into a
- * {@link ChannelBytePublisher} which is a {@link Flow.Publisher} of
- * bytebuffers. This publisher will never complete for as long as the channel
- * remains open.<p>
+ * {@link ChannelByteBufferPublisher} which is a {@link Flow.Publisher} that
+ * will never complete for as long as the channel remains open.<p>
  * 
  * The first subscriber to subscribe to the channel is {@link
  * RequestHeadSubscriber}. Once the request head has been parsed, an

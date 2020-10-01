@@ -17,22 +17,22 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
 
 /**
- * Tests for {@code ChannelBytePublisher}.
+ * Tests for {@code ChannelByteBufferPublisher}.
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  */
-class ChannelBytePublisherTest
+class ChannelByteBufferPublisherTest
 {
     // TODO: Most of this plumbing is copy-pasted from RequestHeadSubscriberTest.
     //       DRY; refactor to common superclass or something.
     
     private static TestServer SERVER;
     private static ClientOperations CLIENT;
-    private ChannelBytePublisher testee;
+    private ChannelByteBufferPublisher testee;
     
     @BeforeAll
     static void beforeAll() throws IOException {
-        Logging.setLevel(ChannelBytePublisher.class, ALL);
+        Logging.setLevel(ChannelByteBufferPublisher.class, ALL);
         SERVER = new TestServer();
         SERVER.start();
         CLIENT = new ClientOperations(SERVER::newClient);
@@ -43,9 +43,9 @@ class ChannelBytePublisherTest
         SERVER.close();
     }
     
-    ChannelBytePublisher testee() throws Throwable {
+    ChannelByteBufferPublisher testee() throws Throwable {
         if (testee == null) {
-            testee = new ChannelBytePublisher(mock(AsyncServer.class), SERVER.accept());
+            testee = new ChannelByteBufferPublisher(mock(AsyncServer.class), SERVER.accept());
         }
         
         return testee;
