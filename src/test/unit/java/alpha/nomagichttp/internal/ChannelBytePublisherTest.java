@@ -46,7 +46,6 @@ class ChannelBytePublisherTest
     ChannelBytePublisher testee() throws Throwable {
         if (testee == null) {
             testee = new ChannelBytePublisher(mock(AsyncServer.class), SERVER.accept());
-            testee.begin();
         }
         
         return testee;

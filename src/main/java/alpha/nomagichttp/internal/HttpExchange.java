@@ -83,12 +83,14 @@ final class HttpExchange
     }
     
     void begin() {
-        new RequestHeadParser(bytes, server.getServerConfig().maxRequestHeadSize())
-                .asCompletionStage()
-                .thenAccept(this::createRequest)
-                .thenCompose(Null -> handleRequest())
-                .thenCompose(this::handleResponse)
-                .whenComplete(this::finish);
+        RequestHeadParser rhp = new RequestHeadParser(server.getServerConfig().maxRequestHeadSize());
+        bytes.subscribe(rhp);
+        
+        rhp.asCompletionStage()
+           .thenAccept(this::createRequest)
+           .thenCompose(Null -> handleRequest())
+           .thenCompose(this::handleResponse)
+           .whenComplete(this::finish);
     }
     
     private void createRequest(RequestHead reqHead) {

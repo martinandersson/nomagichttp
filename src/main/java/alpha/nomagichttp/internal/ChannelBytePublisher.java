@@ -66,9 +66,7 @@ final class ChannelBytePublisher extends AbstractUnicastPublisher<DefaultPooledB
                 .limit(BUF_COUNT)
                 .mapToObj(ByteBuffer::allocateDirect)
                 .forEach(writable::add);
-    }
-    
-    void begin() {
+        
         readOp.run();
     }
     

@@ -18,6 +18,7 @@ import java.nio.channels.ShutdownChannelGroupException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.Executors;
+import java.util.concurrent.Flow;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Supplier;
 
@@ -239,10 +240,10 @@ public final class AsyncServer implements Server
             
             // TODO: child.setOption(StandardSocketOptions.SO_KEEPALIVE, true); ??
             
-            ChannelBytePublisher publisher = new ChannelBytePublisher(AsyncServer.this, child);
-            publisher.begin();
+            Flow.Publisher<DefaultPooledByteBufferHolder> bytes
+                    = new ChannelBytePublisher(AsyncServer.this, child);
             
-            new HttpExchange(AsyncServer.this, child, publisher).begin();
+            new HttpExchange(AsyncServer.this, child, bytes).begin();
         }
         
         @Override

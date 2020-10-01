@@ -16,6 +16,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Flow;
 
 import static java.lang.Integer.MAX_VALUE;
 import static java.lang.System.Logger.Level.ALL;
@@ -44,9 +45,13 @@ class RequestHeadParserTest
     
     CompletionStage<RequestHead> testee() throws Throwable {
         if (testee == null) {
-            ChannelBytePublisher child = new ChannelBytePublisher(mock(AsyncServer.class), SERVER.accept());
-            child.begin();
-            testee = new RequestHeadParser(child, MAX_VALUE).asCompletionStage();
+            Flow.Publisher<DefaultPooledByteBufferHolder> bytes
+                    = new ChannelBytePublisher(mock(AsyncServer.class), SERVER.accept());
+            
+            RequestHeadParser rhp = new RequestHeadParser(MAX_VALUE);
+            bytes.subscribe(rhp);
+            
+            testee = rhp.asCompletionStage();
         }
         
         return testee;
