@@ -87,8 +87,6 @@ class ChannelByteBufferPublisherTest
         assertThat(get(s2)).isEqualTo("b");
     }
     
-    // TODO: Once we have the common type for "asCompletionStage() we can rely
-    //       on that instead of HeapSubscriber.
     private static <R> R get(HeapSubscriber<R> subscriber) throws InterruptedException, ExecutionException, TimeoutException {
         return subscriber.asCompletionStage().toCompletableFuture().get(3, SECONDS);
     }
