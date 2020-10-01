@@ -39,9 +39,6 @@ public final class Headers {
      * @see <a href="https://tools.ietf.org/html/rfc7231#section-5.3.2">RFC 7231 §5.3.2</a>
      */
     public static MediaType[] accepts(HttpHeaders headers) {
-        // TODO: Would be useful to implement "HeaderKeys.ACCEPT".
-        //       These are used a little bit all over the place, here and ResponseBuilder + more?
-        //       Also JavaDoc descriptions of the header can go to this new type.
         return headers.allValues("Accept").stream()
                 .flatMap(v -> stream(split(v, ',', '"')))
                 .map(MediaType::parse)
