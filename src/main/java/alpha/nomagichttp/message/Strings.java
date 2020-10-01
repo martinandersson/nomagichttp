@@ -4,13 +4,26 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.PrimitiveIterator;
 
-// TODO: Document
 final class Strings
 {
     private Strings() {
         // Empty
     }
     
+    /**
+     * Works just as {@code String.split}, except this method accepts an exclude
+     * boundary within which, the delimiter will have no effect and the substring
+     * will be taken at face value.<p>
+     * 
+     * For example, good to use when dealing with strings that have quoted parts
+     * in them and the split shouldn't occur within those quoted parts.
+     * 
+     * @param string input string to split
+     * @param delimiter char to split by...
+     * @param excludeBoundary ...except if found within this boundary
+     * 
+     * @return the substrings
+     */
     static String[] split(String string, char delimiter, char excludeBoundary) {
         if (delimiter == excludeBoundary) {
             throw new IllegalArgumentException(
