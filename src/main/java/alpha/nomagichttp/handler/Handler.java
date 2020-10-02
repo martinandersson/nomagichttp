@@ -201,28 +201,14 @@ import java.util.function.Function;
  * which is treated case-insensitively.<p>
  * 
  * 
- * <h4>Examples<h4/>
- * 
- * TODO: Provide
- * 
- * 
  * <h3>Scopes</h3>
  * 
- * Currently, no library-provided handler types are provided that arbitrarily
- * caches the request-handling logic instance within a specified and limited
- * scope. {@link DefaultHandler} returns the same logic instance provided during
- * construction time and is therefore a singleton with a life time dependent on
- * the life time of the route registry to which it is registered. A custom
- * scoped implementation would have to be implement by a custom handler type's
- * implementation of {@link #logic()} which is invoked by the server anew for
- * each request.<p>
- * 
- * TODO: Implement "dependent/prototype" scope; new instance each time. Primary
- * intended use-case is for handlers to more easily be able to save and use
- * non-thread safe collaborators in a logic instance. Dependent+singleton are likely the
- * only scopes we will ever provide and application would have to use phantom
- * reference if they really want a destroy notification (there's no
- * "@PreDestroy"). I.e. normal Java reference visibility rules.<p>
+ * There is no library-provided scope mechanism. Normal rules concerning
+ * reachability of Java references applies. Effectively, this means that
+ * {@link DefaultHandler} can be regarded as "singleton" or
+ * "application-scoped". A custom implementation can choose to create a new
+ * logic instance for each request since the {@link #logic()} method is invoked
+ * anew for each request.
  * 
  * 
  * <h3>Thread safety and identity</h3>

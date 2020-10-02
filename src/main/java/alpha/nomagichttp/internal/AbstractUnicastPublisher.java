@@ -61,13 +61,14 @@ import static java.util.Objects.requireNonNull;
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  */
-// TODO: Test this guy against the TCK
-// https://github.com/reactive-streams/reactive-streams-jvm/tree/master/tck
 abstract class AbstractUnicastPublisher<T> implements Flow.Publisher<T>, Closeable
 {
     // Whenever a "rule" is referred to in source-code comments inside this file,
     // the rule should be found here (if not, this implementation is outdated):
     // https://github.com/reactive-streams/reactive-streams-jvm/blob/v1.0.3/README.md
+    
+    // TODO: Test this guy against the TCK
+    // https://github.com/reactive-streams/reactive-streams-jvm/tree/master/tck
     
     private static final System.Logger LOG = System.getLogger(AbstractUnicastPublisher.class.getPackageName());
     private static final Flow.Subscription CLOSED = new NoOperationSubscription();
