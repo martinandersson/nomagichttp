@@ -77,40 +77,27 @@ import static java.util.Collections.singleton;
  * @see ExceptionHandler
  * @see ServerConfig
  */
-
-// TODO: The "with" methods are currently breaking with the architecture of how
-//       we normally construct default implementations. Usually we do Things ->
-//       ThingBuilder -> DefaultThing. I don't like having a "Servers" type, and
-//       I like having "Server.with".
-
 public interface Server
 {
     /**
-     * Builds a server with an initial route.<p>
+     * Builds a server using the {@linkplain ServerConfig#DEFAULT default
+     * configuration}.<p>
      * 
-     * The configuration used is {@link ServerConfig#DEFAULT} and the exception
-     * handler used for all server errors and unhandled request-handler errors
-     * is {@link ExceptionHandler#DEFAULT}.
-     * 
-     * @param  route the initial route
+     * @param routes of server
      * 
      * @return an instance of {@link DefaultServer}
      * 
      * @throws NullPointerException if {@code route} is {@code null}
      */
-    static Server with(Route route) {
-        return with(ServerConfig.DEFAULT, route);
+    static Server with(Route... routes) {
+        return with(ServerConfig.DEFAULT, List.of(routes));
     }
     
     /**
-     * Builds a server with zero, one or many initial routes.<p>
+     * Builds a server.<p>
      * 
-     * The configuration used is {@link ServerConfig#DEFAULT} and the exception
-     * handler used for all server errors and unhandled request-handler errors
-     * is {@link ExceptionHandler#DEFAULT}.
-     * 
-     * @param config  server configuration
-     * @param routes  initial route(s)
+     * @param config of server
+     * @param routes of server
      * 
      * @return an instance of {@link DefaultServer}
      * 
@@ -121,14 +108,10 @@ public interface Server
     }
     
     /**
-     * Builds a server with zero, one or many initial routes.<p>
+     * Builds a server.<p>
      * 
-     * The configuration used is {@link ServerConfig#DEFAULT} and the exception
-     * handler used for all server errors and unhandled request-handler errors
-     * is {@link ExceptionHandler#DEFAULT}.
-     * 
-     * @param config  server configuration
-     * @param routes  initial route(s)
+     * @param config of server
+     * @param routes of server
      * 
      * @return an instance of {@link DefaultServer}
      * 
@@ -141,20 +124,39 @@ public interface Server
     }
     
     /**
-     * Builds a server with zero, one or many initial routes.
+     * Builds a server.<p>
      * 
-     * @param config   server configuration
-     * @param routes   initial route(s)
+     * @param config   of server
+     * @param routes   of server
      * @param onError  exception handler
      * 
      * @return an instance of {@link DefaultServer}
      * 
      * @throws NullPointerException if any argument is {@code null}
      */
-    static Server with(ServerConfig config, Iterable<? extends Route> routes, Supplier<ExceptionHandler> onError) {
+    static Server with(ServerConfig config, Iterable<? extends Route> routes,
+                       Supplier<? extends ExceptionHandler> onError)
+    {
+        return with(config, routes, singleton(onError));
+    }
+    
+    /**
+     * Builds a server.<p>
+     * 
+     * @param config   of server
+     * @param routes   of server
+     * @param onError  exception handlers
+     * 
+     * @return an instance of {@link DefaultServer}
+     * 
+     * @throws NullPointerException if any argument is {@code null}
+     */
+    static Server with(ServerConfig config, Iterable<? extends Route> routes,
+                       Iterable<Supplier<? extends ExceptionHandler>> onError)
+    {
         RouteRegistry reg = new DefaultRouteRegistry();
         routes.forEach(reg::add);
-        return new DefaultServer(reg, config, singleton(onError));
+        return new DefaultServer(reg, config, onError);
     }
     
     /**

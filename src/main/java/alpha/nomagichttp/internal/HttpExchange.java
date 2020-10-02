@@ -169,7 +169,7 @@ final class HttpExchange
     private int attemptCount;
     
     private void handleError(final Throwable t) {
-        final List<Supplier<ExceptionHandler>> factories = server.exceptionHandlers();
+        final List<Supplier<? extends ExceptionHandler>> factories = server.exceptionHandlers();
         final Throwable unpacked = unpackCompletionException(t);
         CompletionStage<Response> alternative = null;
         
