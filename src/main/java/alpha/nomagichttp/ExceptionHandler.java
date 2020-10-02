@@ -23,11 +23,14 @@ import static alpha.nomagichttp.message.Responses.notImplemented;
 import static java.lang.System.Logger.Level.ERROR;
 
 /**
- * Handles exceptions originating from after the point where a client has begun
- * transmitting a request until the request handler invocation has returned.<p>
+ * Handles all exceptions occurring from after the point where a client has
+ * begun transmitting a request on the wire until the request handler invocation
+ * has returned.<p>
  * 
- * The exception handler produces a response which - due to an error - the
- * ordinary request handler could not provide.<p>
+ * The exception handler's job is to produce an alternative response which the
+ * ordinary request handler could not provide. One simple strategy for error
+ * recovery on known and expected errors is to retry another execution of the
+ * request handler.<p>
  * 
  * If no exception handler is configured on the server, the {@link #DEFAULT}
  * will be used.<p>
