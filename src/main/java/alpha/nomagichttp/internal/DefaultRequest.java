@@ -127,7 +127,8 @@ final class DefaultRequest implements Request
             final AsynchronousFileChannel fs;
             
             try {
-                // TODO: Use server's thread pool (must expose it through API)
+                // TODO: Potentially re-use server's async group
+                //       (currently not possible to specify group?)
                 fs = AsynchronousFileChannel.open(file, opt, null, attrs);
             } catch (IOException e) {
                 return CompletableFuture.failedStage(e);
