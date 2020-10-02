@@ -10,6 +10,13 @@ import alpha.nomagichttp.message.MaxRequestHeadSizeExceededException;
  * @author Martin Andersson (webmaster at martinandersson.com
  */
 public interface ServerConfig {
+    /**
+     * Values used:<p>
+     * 
+     * Max request head size = 8 000 <br>
+     * Max error recovery attempts = 5 <br>
+     * Thread pool-size = {@code Runtime.getRuntime().availableProcessors()}
+     */
     ServerConfig DEFAULT = new ServerConfig(){};
     
     /**
