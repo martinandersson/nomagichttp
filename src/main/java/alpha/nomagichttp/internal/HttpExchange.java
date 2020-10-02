@@ -59,7 +59,7 @@ final class HttpExchange
     
     private static final System.Logger LOG = System.getLogger(HttpExchange.class.getPackageName());
     
-    private final AsyncServer server;
+    private final DefaultServer server;
     private final AsynchronousByteChannel child;
     private final Flow.Publisher<DefaultPooledByteBufferHolder> bytes;
     
@@ -69,7 +69,7 @@ final class HttpExchange
     private Handler handler;
     
     HttpExchange(
-            AsyncServer server,
+            DefaultServer server,
             AsynchronousByteChannel child,
             Flow.Publisher<DefaultPooledByteBufferHolder> bytes)
     {

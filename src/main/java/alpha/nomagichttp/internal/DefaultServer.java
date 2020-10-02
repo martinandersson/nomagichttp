@@ -47,10 +47,9 @@ import static java.util.stream.StreamSupport.stream;
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  */
-// TODO: Consider renaming to ProactiveServer.
-public final class AsyncServer implements Server
+public final class DefaultServer implements Server
 {
-    private static final System.Logger LOG = System.getLogger(AsyncServer.class.getPackageName());
+    private static final System.Logger LOG = System.getLogger(DefaultServer.class.getPackageName());
     
     // Good info on async groups:
     // https://openjdk.java.net/projects/nio/resources/AsynchronousIo.html
@@ -84,7 +83,7 @@ public final class AsyncServer implements Server
     private AsynchronousServerSocketChannel listener;
     private int port;
     
-    public AsyncServer(RouteRegistry routes, ServerConfig config, Iterable<Supplier<ExceptionHandler>> onError) {
+    public DefaultServer(RouteRegistry routes, ServerConfig config, Iterable<Supplier<ExceptionHandler>> onError) {
         this.routes   = requireNonNull(routes);
         this.config   = requireNonNull(config);
         
@@ -241,9 +240,9 @@ public final class AsyncServer implements Server
             // TODO: child.setOption(StandardSocketOptions.SO_KEEPALIVE, true); ??
             
             Flow.Publisher<DefaultPooledByteBufferHolder> bytes
-                    = new ChannelByteBufferPublisher(AsyncServer.this, child);
+                    = new ChannelByteBufferPublisher(DefaultServer.this, child);
             
-            new HttpExchange(AsyncServer.this, child, bytes).begin();
+            new HttpExchange(DefaultServer.this, child, bytes).begin();
         }
         
         @Override

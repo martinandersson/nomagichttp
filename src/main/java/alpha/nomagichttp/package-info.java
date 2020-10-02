@@ -20,11 +20,10 @@
  * Request} into a {@link alpha.nomagichttp.message.Response Response}<p>
  * 
  * Once the route has been setup it can be added to a {@link
- * alpha.nomagichttp.Server Server}. The default server implementation ({@link
- * alpha.nomagichttp.internal.AsyncServer AsyncServer}) does not use selector
- * threads or any other type of polling. It is completely non-blocking and
- * "proactive" for maximum performance across all operating systems that runs
- * Java.<p>
+ * alpha.nomagichttp.Server Server}. The default server implementation does not
+ * use selector threads or any other type of polling. It is completely
+ * non-blocking and "proactive" for maximum performance across all operating
+ * systems that runs Java.<p>
  * 
  * Routes can dynamically be added to and removed from a server. A legal server
  * variant is to not even have any routes registered. The idea is that resources

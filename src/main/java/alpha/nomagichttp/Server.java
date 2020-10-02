@@ -1,7 +1,7 @@
 package alpha.nomagichttp;
 
 import alpha.nomagichttp.handler.Handler;
-import alpha.nomagichttp.internal.AsyncServer;
+import alpha.nomagichttp.internal.DefaultServer;
 import alpha.nomagichttp.message.Request;
 import alpha.nomagichttp.message.Response;
 import alpha.nomagichttp.route.DefaultRouteRegistry;
@@ -27,8 +27,8 @@ import static java.util.Collections.singleton;
  * server to do meaningful work.<p>
  * 
  * This interface declares static <i>{@code with}</i> methods that construct
- * and return the default implementation {@link AsyncServer}. Then, what remains
- * is to use any of the {@code start} methods to start the server on an
+ * and return the default implementation {@link DefaultServer}. Then, what
+ * remains is to use any of the {@code start} methods to start the server on an
  * address.<p>
  * 
  * The server's function is to provide port- and channel management, parse
@@ -81,8 +81,7 @@ import static java.util.Collections.singleton;
 // TODO: The "with" methods are currently breaking with the architecture of how
 //       we normally construct default implementations. Usually we do Things ->
 //       ThingBuilder -> DefaultThing. I don't like having a "Servers" type, and
-//       I like having "Server.with". But at least we should introduce a
-//       ServerBuilder and rename AsyncServer to DefaultServer?
+//       I like having "Server.with".
 
 public interface Server
 {
@@ -95,7 +94,7 @@ public interface Server
      * 
      * @param  route the initial route
      * 
-     * @return an instance of {@link AsyncServer}
+     * @return an instance of {@link DefaultServer}
      * 
      * @throws NullPointerException if {@code route} is {@code null}
      */
@@ -113,7 +112,7 @@ public interface Server
      * @param config  server configuration
      * @param routes  initial route(s)
      * 
-     * @return an instance of {@link AsyncServer}
+     * @return an instance of {@link DefaultServer}
      * 
      * @throws NullPointerException if any argument is {@code null}
      */
@@ -131,14 +130,14 @@ public interface Server
      * @param config  server configuration
      * @param routes  initial route(s)
      * 
-     * @return an instance of {@link AsyncServer}
+     * @return an instance of {@link DefaultServer}
      * 
      * @throws NullPointerException if any argument is {@code null}
      */
     static Server with(ServerConfig config, Iterable<? extends Route> routes) {
         RouteRegistry reg = new DefaultRouteRegistry();
         routes.forEach(reg::add);
-        return new AsyncServer(reg, config, List.of());
+        return new DefaultServer(reg, config, List.of());
     }
     
     /**
@@ -148,14 +147,14 @@ public interface Server
      * @param routes   initial route(s)
      * @param onError  exception handler
      * 
-     * @return an instance of {@link AsyncServer}
+     * @return an instance of {@link DefaultServer}
      * 
      * @throws NullPointerException if any argument is {@code null}
      */
     static Server with(ServerConfig config, Iterable<? extends Route> routes, Supplier<ExceptionHandler> onError) {
         RouteRegistry reg = new DefaultRouteRegistry();
         routes.forEach(reg::add);
-        return new AsyncServer(reg, config, singleton(onError));
+        return new DefaultServer(reg, config, singleton(onError));
     }
     
     /**

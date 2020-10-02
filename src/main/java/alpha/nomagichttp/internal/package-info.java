@@ -2,7 +2,7 @@
  * The one and only library-provided server implementation.<p>
  * 
  * The only public type in this package is {@link
- * alpha.nomagichttp.internal.AsyncServer}, which is used by the {@link
+ * alpha.nomagichttp.internal.DefaultServer}, which is used by the {@link
  * alpha.nomagichttp.Server} interface as the default implementation. All other
  * types in this package can therefore be regarded as an implementation
  * detail.<p>

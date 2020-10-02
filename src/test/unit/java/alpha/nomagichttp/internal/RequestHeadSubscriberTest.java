@@ -46,7 +46,7 @@ class RequestHeadSubscriberTest
     CompletionStage<RequestHead> testee() throws Throwable {
         if (testee == null) {
             Flow.Publisher<DefaultPooledByteBufferHolder> bytes
-                    = new ChannelByteBufferPublisher(mock(AsyncServer.class), SERVER.accept());
+                    = new ChannelByteBufferPublisher(mock(DefaultServer.class), SERVER.accept());
             
             RequestHeadSubscriber rhp = new RequestHeadSubscriber(MAX_VALUE);
             bytes.subscribe(rhp);
