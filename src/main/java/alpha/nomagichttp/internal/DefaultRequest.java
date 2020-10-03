@@ -33,8 +33,8 @@ final class DefaultRequest implements Request
     private static final FileAttribute<?>[] NO_ATTRIBUTES = new FileAttribute[0];
     
     private final RequestHead head;
-    private volatile Map<String, String> pathParameters;
-    private volatile Flow.Publisher<PooledByteBufferHolder> bodySource;
+    private Map<String, String> pathParameters;
+    private Flow.Publisher<PooledByteBufferHolder> bodySource;
     
     DefaultRequest(RequestHead head) {
         this.head = head;
