@@ -74,7 +74,7 @@ abstract class AbstractUnicastPublisher<T> implements Flow.Publisher<T>, Closeab
     // https://github.com/reactive-streams/reactive-streams-jvm/tree/master/tck
     
     private static final System.Logger LOG = System.getLogger(AbstractUnicastPublisher.class.getPackageName());
-    private static final Flow.Subscription CLOSED = new NoOperationSubscription();
+    private static final Flow.Subscription CLOSED = Subscriptions.noop();
     
     private final AtomicReference<Flow.Subscription> subscription;
     
@@ -175,19 +175,6 @@ abstract class AbstractUnicastPublisher<T> implements Flow.Publisher<T>, Closeab
         } else {
             LOG.log(DEBUG, () -> this + " has a new subscriber: " + subscriber);
             subscriber.onSubscribe(subscription);
-        }
-    }
-    
-    private static final class NoOperationSubscription implements Flow.Subscription
-    {
-        @Override
-        public void request(long n) {
-            // Empty
-        }
-        
-        @Override
-        public void cancel() {
-            // Empty
         }
     }
     

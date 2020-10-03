@@ -83,4 +83,27 @@ public final class Subscriptions
     public interface CanOnlyBeCancelled extends Flow.Subscription {
         boolean isCancelled();
     }
+    
+    /**
+     * Returns a NOOP subscription.
+     * 
+     * @return a NOOP subscription
+     */
+    public static Flow.Subscription noop() {
+        return Noop.INSTANCE;
+    }
+    
+    private enum Noop implements Flow.Subscription {
+        INSTANCE;
+        
+        @Override
+        public void request(long n) {
+            // Empty
+        }
+    
+        @Override
+        public void cancel() {
+            // Empty
+        }
+    }
 }
