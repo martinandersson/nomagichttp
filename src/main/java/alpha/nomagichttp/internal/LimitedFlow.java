@@ -10,17 +10,25 @@ import static java.lang.System.Logger.Level.DEBUG;
 import static java.lang.System.Logger.Level.WARNING;
 
 /**
- * A {@code Flow.Processor} that limits the flow of bytebuffers downstream to
- * just one at a time (maintains no buffers on its own) and completes the
- * subscription as soon as a target byte count has been read.<p>
+ * A {@code Flow.Processor} with certain characteristics:
+ * <ol>
+ *   <li>Throttles actual upstream demand to just one bytebuffer at a time no
+ *       matter the demand received from downstream. A new bytebuffer will only
+ *       be requested from upstream immediately after the downstream has
+ *       released the previous one.</li>
+ *   <li>Limits the total number of bytes pushed given a specified length and
+ *       will - as soon as the length is reached; cancel upstream's subscription
+ *       and complete downstream's subscriber.</li>
+ *   <li>Only ever allow one downstream subscriber.</li>
+ * </ol>
  * 
  * @implNote
- * Limiting to just one bytebuffer at a time is not a "stop-and-wait" protocol,
- * because there is no "wait". The channel upstream do read ahead and put
- * available buffers in a queue, from which we poll. The only overhead is the
- * "communication" in the form of method calls. A negligible cost to pay for the
- * great benefit of reducing API complexity and making the life of subscribers
- * much more easy.
+ * Rate-limiting to just one bytebuffer at a time is not a "stop-and-wait"
+ * protocol, because there is no "wait". The channel upstream do read ahead and
+ * put available buffers in a cache/queue, from which we poll. The only overhead
+ * is the "communication" in the form of method calls. A negligible cost to pay
+ * for the great benefit of reducing API complexity and making the life of
+ * subscribers much more easy.
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  */
@@ -31,15 +39,31 @@ final class LimitedFlow implements
     
     private final long length;
     private Flow.Subscription upstream;
-    // Is true whenever an item is in-flight; has been delivered to downstream
-    // but not yet released. Volatile because T1 may do delivery and T2 may
-    // release.
+    
+    /**
+     * Is true whenever an item is in-flight; has been delivered to downstream
+     * but not yet released.<p>
+     * 
+     * When true; a request/new demand from downstream will not translate into
+     * an actual request to upstream. In this case, the request will only
+     * propagate after the processing completes.<p>
+     * 
+     * Is modified with volatile because T1 may do delivery and T2 may release.
+     */
     private volatile boolean processing;
-    // Count of bytes read by downstream. Volatile because T1 may read
-    // "Subscription.request() -> tryRequest() -> desire()" and T2 may write
-    // "DefaultPooledByteBufferHolder.release()". Not atomic arithmetic because
-    // releasing runs exactly-once (i.e. no concurrent writes).
+    
+    /**
+     * Count of bytes read by downstream.<p>
+     * 
+     * Is modified with volatile because T1 may read ("Subscription.request() ->
+     * tryRequest() -> desire()") and T2 may write
+     * ("DefaultPooledByteBufferHolder.release()").<p>
+     * 
+     * No need for atomic arithmetic because releasing runs exactly-once (i.e.
+     * no concurrent writes).
+     */
     private volatile long read;
+    
     private Flow.Subscriber<? super PooledByteBufferHolder> downstream;
     private long demand;
     
