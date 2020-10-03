@@ -1,11 +1,8 @@
 package alpha.nomagichttp.util;
 
 import java.net.http.HttpRequest;
-import java.nio.ByteBuffer;
-import java.nio.charset.Charset;
 import java.util.concurrent.Flow;
 
-import static java.nio.charset.StandardCharsets.US_ASCII;
 import static java.util.Objects.requireNonNull;
 
 /**
@@ -71,18 +68,6 @@ public final class Publishers
     public static <T> Flow.Publisher<T> singleton(T item) {
         return new Singleton<>(item);
     }
-    
-    // TODO: Deprecate, client uses BodyPublishers from JDK
-    public static Flow.Publisher<ByteBuffer> ofText(String text) {
-        return ofText(text, US_ASCII);
-    }
-    
-    public static Flow.Publisher<ByteBuffer> ofText(String text, Charset charset) {
-        ByteBuffer buf = ByteBuffer.wrap(text.getBytes(charset));
-        return singleton(buf);
-    }
-    
-    // TODO: Lots more!
     
     private enum Empty implements Flow.Publisher<Void> {
         INSTANCE;
