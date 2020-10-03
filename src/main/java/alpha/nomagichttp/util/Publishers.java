@@ -3,6 +3,7 @@ package alpha.nomagichttp.util;
 import java.net.http.HttpRequest;
 import java.util.concurrent.Flow;
 
+import static alpha.nomagichttp.util.Subscriptions.CanOnlyBeCancelled;
 import static java.util.Objects.requireNonNull;
 
 /**
@@ -79,38 +80,10 @@ public final class Publishers
         
         @Override
         public void subscribe(Flow.Subscriber<? super Void> subscriber) {
-            CanOnlyBeCancelled subscription = new CanOnlyBeCancelled(subscriber);
-            
-            subscriber.onSubscribe(subscription);
-            
-            if (!subscription.isCancelled()) {
+            CanOnlyBeCancelled tmp = Subscriptions.canOnlyBeCancelled();
+            subscriber.onSubscribe(tmp);
+            if (!tmp.isCancelled()) {
                 subscriber.onComplete();
-            }
-        }
-        
-        private static class CanOnlyBeCancelled implements Flow.Subscription {
-            private final Flow.Subscriber<? super Void> subscriber;
-            private volatile boolean cancelled;
-    
-            CanOnlyBeCancelled(Flow.Subscriber<? super Void> subscriber) {
-                this.subscriber = subscriber;
-                this.cancelled = false;
-            }
-            
-            @Override
-            public void request(long n) {
-                if (!cancelled && n < 1) {
-                    subscriber.onError(new IllegalArgumentException());
-                }
-            }
-            
-            @Override
-            public void cancel() {
-                cancelled = true;
-            }
-            
-            boolean isCancelled() {
-                return cancelled;
             }
         }
     }

@@ -1,10 +1,13 @@
 package alpha.nomagichttp.internal;
 
+import alpha.nomagichttp.util.Subscriptions;
+
 import java.io.Closeable;
 import java.util.concurrent.Flow;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Supplier;
 
+import static alpha.nomagichttp.util.Subscriptions.CanOnlyBeCancelled;
 import static java.lang.System.Logger.Level.DEBUG;
 import static java.lang.System.Logger.Level.TRACE;
 import static java.lang.System.Logger.Level.WARNING;
@@ -164,14 +167,9 @@ abstract class AbstractUnicastPublisher<T> implements Flow.Publisher<T>, Closeab
             
             LOG.log(DEBUG, () -> "Failed to subscribe " + subscriber + ". " + reason.get());
             
-            // Rule 1.9: Must call onSubscribe() before signalling error.
-            // https://github.com/reactive-streams/reactive-streams-jvm/issues/487
-            CanOnlyBeCancelledSubscription temp = new CanOnlyBeCancelledSubscription();
-            subscriber.onSubscribe(temp);
-            
-            // Can only call onError() if subscription hasn't been cancelled.
-            // https://github.com/reactive-streams/reactive-streams-jvm/issues/487
-            if (!temp.isCancelled()) {
+            CanOnlyBeCancelled tmp = Subscriptions.canOnlyBeCancelled();
+            subscriber.onSubscribe(tmp);
+            if (!tmp.isCancelled()) {
                 subscriber.onError(new IllegalStateException(reason.get()));
             }
         } else {
@@ -190,25 +188,6 @@ abstract class AbstractUnicastPublisher<T> implements Flow.Publisher<T>, Closeab
         @Override
         public void cancel() {
             // Empty
-        }
-    }
-    
-    private static final class CanOnlyBeCancelledSubscription implements Flow.Subscription
-    {
-        private volatile boolean cancelled;
-        
-        @Override
-        public void request(long n) {
-            // Empty
-        }
-        
-        @Override
-        public void cancel() {
-            cancelled = true;
-        }
-        
-        boolean isCancelled() {
-            return cancelled;
         }
     }
     
