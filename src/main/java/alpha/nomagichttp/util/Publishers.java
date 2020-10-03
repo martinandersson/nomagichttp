@@ -1,4 +1,4 @@
-package alpha.nomagichttp.message;
+package alpha.nomagichttp.util;
 
 import java.nio.ByteBuffer;
 import java.nio.charset.Charset;

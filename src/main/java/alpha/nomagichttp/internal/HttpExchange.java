@@ -18,7 +18,7 @@ import java.util.function.Supplier;
 import static alpha.nomagichttp.message.Headers.accepts;
 import static alpha.nomagichttp.message.Headers.contentLength;
 import static alpha.nomagichttp.message.Headers.contentType;
-import static alpha.nomagichttp.message.Publishers.empty;
+import static alpha.nomagichttp.util.Publishers.empty;
 import static java.lang.System.Logger.Level.DEBUG;
 import static java.lang.System.Logger.Level.ERROR;
 import static java.lang.System.Logger.Level.WARNING;
