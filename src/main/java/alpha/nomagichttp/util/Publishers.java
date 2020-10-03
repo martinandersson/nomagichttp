@@ -26,10 +26,15 @@ public final class Publishers
     
     /**
      * Creates an empty publisher that immediately completes new
-     * subscriptions.<p>
+     * subscriptions without ever calling {@code Subscriber.onNext()}.<p>
      * 
      * Is an alternative to {@link HttpRequest.BodyPublishers#noBody()} except
-     * with less CPU overhead and memory garbage.
+     * with less CPU overhead and memory garbage.<p>
+     * 
+     * Please note that the publisher will always call {@code
+     * Subscriber.onSubscribe} first with a NOP-subscription that responds only
+     * to a cancellation request and if the subscription is cancelled, the
+     * publisher will <i>not</i> raise the complete signal.
      * 
      * @param <T> type of non-existent item (inferred on call site, {@code Void} for example)
      * 
