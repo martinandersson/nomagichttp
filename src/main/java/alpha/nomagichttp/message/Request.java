@@ -26,8 +26,10 @@ import java.util.function.BiFunction;
  * Methods on this interface that document {@code IllegalStateException} will
  * never throw the exception when accessed by a request handler. However, the
  * exception may be thrown when accessed by an {@link ExceptionHandler exception
- * handlers} as these handlers may be called before all of the parts of the
+ * handler} as these handlers may be called before all of the parts of the
  * request object has been bound.<p>
+ * 
+ * The implementation is thread-safe.<p>
  * 
  * TODO: Once we have auto-discard, make note the handler can write a response
  * immediately without consuming the body.
