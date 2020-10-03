@@ -1,5 +1,6 @@
 package alpha.nomagichttp.util;
 
+import java.net.http.HttpRequest;
 import java.nio.ByteBuffer;
 import java.nio.charset.Charset;
 import java.util.concurrent.Flow;
@@ -7,15 +8,36 @@ import java.util.concurrent.Flow;
 import static java.nio.charset.StandardCharsets.US_ASCII;
 import static java.util.Objects.requireNonNull;
 
-// TODO: Document
+/**
+ * Utility class for constructing instances of {@link Flow.Publisher}.<p>
+ * 
+ * Please note that the JDK has some pretty neat utilities in
+ * {@link HttpRequest.BodyPublishers}.<p>
+ * 
+ * All publishers created by this class will not - and could not even
+ * realistically - enforce <a
+ * href="https://github.com/reactive-streams/reactive-streams-jvm/blob/v1.0.3/README.md">
+ * Reactive Streams §2.12</a>. I.e., subscribers can be re-used.<p>
+ * 
+ * @author Martin Andersson (webmaster at martinandersson.com)
+ */
 public final class Publishers
 {
     private Publishers() {
         // Empty
     }
     
-    // TODO: Document
-    // Alternative to HttpRequest.BodyPublishers.noBody(), except no garbage and less logic.
+    /**
+     * Creates an empty publisher that immediately completes new
+     * subscriptions.<p>
+     * 
+     * Is an alternative to {@link HttpRequest.BodyPublishers#noBody()} except
+     * with less CPU overhead and memory garbage.
+     * 
+     * @param <T> type of non-existent item (inferred on call site, {@code Void} for example)
+     * 
+     * @return an empty publisher
+     */
     public static <T> Flow.Publisher<T> empty() {
         @SuppressWarnings("unchecked")
         Flow.Publisher<T> typed = (Flow.Publisher<T>) Empty.INSTANCE;
@@ -26,6 +48,26 @@ public final class Publishers
     // Rule 2.13: Item must not be null
     // Item is shared by all subscribers to the returned publisher and must
     // therefore be thread-safe if many subscribers will subscribe.
+    
+    /**
+     * Creates a publisher that emits a single item.<p>
+     * 
+     * According to <a
+     * href="https://github.com/reactive-streams/reactive-streams-jvm/blob/v1.0.3/README.md">
+     * Reactive Streams §2.13</a>, the item can not be null and this method will
+     * fail immediately if the item provided is null.<p>
+     * 
+     * The publisher will emit the item immediately upon subscriber subscription
+     * and does not limit how many subscriptions at a time can be active. Thus,
+     * the item should be thread-safe.<p>
+     * 
+     * @param item the singleton item
+     * @param <T> type of item
+     * 
+     * @return an empty publisher
+     * 
+     * @throws NullPointerException if {@code item} is {@code null}
+     */
     public static <T> Flow.Publisher<T> singleton(T item) {
         return new Singleton<>(item);
     }
@@ -42,10 +84,6 @@ public final class Publishers
     
     // TODO: Lots more!
     
-    // TODO: Document
-    // https://github.com/reactive-streams/reactive-streams-jvm/blob/v1.0.3/README.md
-    // Rule 2.9: May complete immediately.
-    // Rule 2.8 and 3.12: May complete an already cancelled subscription.
     private enum Empty implements Flow.Publisher<Void> {
         INSTANCE;
         
