@@ -15,7 +15,6 @@ import static alpha.nomagichttp.handler.Handlers.GET;
 import static alpha.nomagichttp.handler.Handlers.POST;
 import static alpha.nomagichttp.internal.ClientOperations.CRLF;
 import static alpha.nomagichttp.message.Responses.ok;
-import static alpha.nomagichttp.route.Routes.route;
 import static org.assertj.core.api.Assertions.assertThat;
 
 
