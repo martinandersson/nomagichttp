@@ -1,14 +1,10 @@
 package alpha.nomagichttp.internal;
 
-import alpha.nomagichttp.Server;
 import alpha.nomagichttp.handler.Handler;
 import alpha.nomagichttp.message.ResponseBuilder;
 import alpha.nomagichttp.message.Responses;
 import alpha.nomagichttp.route.Route;
 import alpha.nomagichttp.route.RouteBuilder;
-import alpha.nomagichttp.test.Logging;
-import org.junit.jupiter.api.AfterAll;
-import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
@@ -17,11 +13,9 @@ import java.nio.file.Path;
 
 import static alpha.nomagichttp.handler.Handlers.GET;
 import static alpha.nomagichttp.handler.Handlers.POST;
-import static alpha.nomagichttp.handler.Handlers.noop;
 import static alpha.nomagichttp.internal.ClientOperations.CRLF;
 import static alpha.nomagichttp.message.Responses.ok;
 import static alpha.nomagichttp.route.Routes.route;
-import static java.lang.System.Logger.Level.ALL;
 import static org.assertj.core.api.Assertions.assertThat;
 
 
@@ -30,34 +24,17 @@ import static org.assertj.core.api.Assertions.assertThat;
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  */
-class SimpleEndToEndTest
+class SimpleEndToEndTest extends AbstractEndToEndTest
 {
-    static Server server;
-    static ClientOperations client;
-    
-    @BeforeAll
-    static void start() throws IOException {
-        Logging.setLevel(SimpleEndToEndTest.class, ALL);
-        server = Server.with(route("/", noop())).start();
-        client = new ClientOperations(server.getPort());
-    }
-    
-    @AfterAll
-    static void stop() throws IOException {
-        if (server != null) {
-            server.stop();
-        }
-    }
-    
     @Test
     void helloworld_console() throws IOException, InterruptedException {
         Handler handler = GET().run(() ->
                 System.out.println("Hello, World!"));
         
-        server.getRouteRegistry().add(route("/hello-console", handler));
+        server().getRouteRegistry().add(route("/hello-console", handler));
         
         String req = "GET /hello-console HTTP/1.1" + CRLF + CRLF + CRLF;
-        String res = client.writeRead(req);
+        String res = client().writeRead(req);
         
         assertThat(res).isEqualTo(
             "HTTP/1.1 202 Accepted" + CRLF +
@@ -69,13 +46,13 @@ class SimpleEndToEndTest
         Handler handler = GET().supply(() ->
                 ok("Hello World!").asCompletedStage());
         
-        server.getRouteRegistry().add(route("/hello-response", handler));
+        server().getRouteRegistry().add(route("/hello-response", handler));
         
         String req =
             "GET /hello-response HTTP/1.1" + CRLF +
             "Accept: text/plain; charset=utf-8" + CRLF + CRLF;
         
-        String res = client.writeRead(req, "World!");
+        String res = client().writeRead(req, "World!");
         
         assertThat(res).isEqualTo(
             "HTTP/1.1 200 OK" + CRLF +
@@ -97,13 +74,13 @@ class SimpleEndToEndTest
                 .handler(echo)
                 .build();
         
-        server.getRouteRegistry().add(route);
+        server().getRouteRegistry().add(route);
         
         String req =
             "GET /greet-param/John HTTP/1.1" + CRLF +
             "Accept: text/plain; charset=utf-8" + CRLF + CRLF;
         
-        String res = client.writeRead(req, "John!");
+        String res = client().writeRead(req, "John!");
         
         assertThat(res).isEqualTo(
             "HTTP/1.1 200 OK" + CRLF +
@@ -120,7 +97,7 @@ class SimpleEndToEndTest
         Handler echo = POST().apply(req ->
                 req.body().toText().thenApply(name -> ok("Hello " + name + "!")));
         
-        server.getRouteRegistry().add(route("/greet-body", echo));
+        server().getRouteRegistry().add(route("/greet-body", echo));
         
         String req =
             "POST /greet-body HTTP/1.1" + CRLF +
@@ -129,7 +106,7 @@ class SimpleEndToEndTest
             
             "John";
         
-        String res = client.writeRead(req, "John!");
+        String res = client().writeRead(req, "John!");
         
         assertThat(res).isEqualTo(
             "HTTP/1.1 200 OK" + CRLF +
@@ -147,14 +124,14 @@ class SimpleEndToEndTest
             return b.noBody().asCompletedStage();
         });
         
-        server.getRouteRegistry().add(route("/echo-headers", echo));
+        server().getRouteRegistry().add(route("/echo-headers", echo));
         
         String req =
             "GET /echo-headers HTTP/1.1" + CRLF +
             "Accept: text/plain; charset=utf-8" + CRLF +
             "Content-Length: 0" + CRLF + CRLF;
         
-        String res = client.writeRead(req);
+        String res = client().writeRead(req);
         
         assertThat(res).isEqualTo(
             "HTTP/1.1 200 OK" + CRLF +
@@ -172,7 +149,7 @@ class SimpleEndToEndTest
         Handler echo = POST().apply(req ->
                 req.body().toText().thenApply(Responses::ok));
         
-        server.getRouteRegistry().add(route("/restart", echo));
+        server().getRouteRegistry().add(route("/restart", echo));
         
         final String reqHead =
             "POST /restart HTTP/1.1" + CRLF +
@@ -184,16 +161,16 @@ class SimpleEndToEndTest
             "Content-Type: text/plain; charset=utf-8" + CRLF +
             "Content-Length: 3" + CRLF + CRLF;
         
-        client.openConnection();
+        client().openConnection();
         
         try {
-            String res1 = client.writeRead(reqHead + "ABC", "ABC");
+            String res1 = client().writeRead(reqHead + "ABC", "ABC");
             assertThat(res1).isEqualTo(resHead + "ABC");
             
-            String res2 = client.writeRead(reqHead + "DEF", "DEF");
+            String res2 = client().writeRead(reqHead + "DEF", "DEF");
             assertThat(res2).isEqualTo(resHead + "DEF");
         } finally {
-            client.closeConnection();
+            client().closeConnection();
         }
     }
     
@@ -209,18 +186,18 @@ class SimpleEndToEndTest
                           .thenApply(n -> Long.toString(n))
                           .thenApply(Responses::ok));
         
-        server.getRouteRegistry().add(route("/small-file", saver));
+        server().getRouteRegistry().add(route("/small-file", saver));
         
         final String reqHead =
             "POST /small-file HTTP/1.1" + CRLF +
             "Content-Length: 3" + CRLF + CRLF;
     
-        client.writeRead(reqHead + "Foo", "3");
+        client().writeRead(reqHead + "Foo", "3");
         assertThat(Files.readString(file)).isEqualTo("Foo");
         
         // 2. By default, existing files are overwritten
         // ---
-        client.writeRead(reqHead + "Bar", "3");
+        client().writeRead(reqHead + "Bar", "3");
         assertThat(Files.readString(file)).isEqualTo("Bar");
     }
     
