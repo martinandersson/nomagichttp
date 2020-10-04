@@ -43,8 +43,7 @@ import static java.util.Objects.requireNonNull;
  * 
  * The request handler will return the response body in the form of a
  * {@code Flow.Publisher<ByteBuffer>} to which this class subscribes a
- * {@link ResponseToChannelWriter}. The response subscriber will write the
- * response head- and body to the channel.
+ * {@link ResponseToChannelWriter}.
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  */
