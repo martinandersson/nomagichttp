@@ -24,13 +24,13 @@ import static org.assertj.core.api.Assertions.assertThat;
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  */
-class RequestErrorTest
+class ExceptionHandlingTest
 {
     Server server;
     
     @BeforeAll
     static void setLogging() {
-        Logging.setLevel(RequestErrorTest.class, ALL);
+        Logging.setLevel(ExceptionHandlingTest.class, ALL);
     }
     
     @AfterEach
