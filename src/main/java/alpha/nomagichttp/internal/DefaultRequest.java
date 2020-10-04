@@ -96,14 +96,22 @@ final class DefaultRequest implements Request
         }
         
         Body b = bodyView;
-        return b != null ? b : (bodyView = new DefaultBody());
+        return b != null ? b : (bodyView = new DefaultBody(headers(), bodySource));
     }
     
-    private final class DefaultBody implements Request.Body
+    private static final class DefaultBody implements Request.Body
     {
+        private final HttpHeaders headers;
+        private final Flow.Publisher<PooledByteBufferHolder> source;
+        
+        DefaultBody(HttpHeaders headers, Flow.Publisher<PooledByteBufferHolder> source) {
+            this.headers = headers;
+            this.source = source;
+        }
+        
         @Override
         public CompletionStage<String> toText() {
-            Charset charset = contentType(headers())
+            Charset charset = contentType(headers)
                     .filter(m -> m.type().equals("text"))
                     .map(MediaType::parameters)
                     .map(p -> p.get("charset"))
@@ -148,7 +156,7 @@ final class DefaultRequest implements Request
         
         @Override
         public void subscribe(Flow.Subscriber<? super PooledByteBufferHolder> subscriber) {
-            bodySource.subscribe(subscriber);
+            source.subscribe(subscriber);
         }
     }
 }
