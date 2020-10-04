@@ -1,14 +1,21 @@
 package alpha.nomagichttp.internal;
 
 import alpha.nomagichttp.handler.Handler;
+import alpha.nomagichttp.message.PooledByteBufferHolder;
+import alpha.nomagichttp.message.Response;
 import alpha.nomagichttp.message.Responses;
 import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.Flow;
 
+import static alpha.nomagichttp.handler.Handlers.GET;
 import static alpha.nomagichttp.handler.Handlers.POST;
 import static alpha.nomagichttp.internal.ClientOperations.CRLF;
-import static alpha.nomagichttp.route.Routes.route;
+import static java.lang.String.join;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
@@ -52,6 +59,48 @@ class DetailedEndToEndTest extends AbstractEndToEndTest
         } finally {
             client().closeConnection();
         }
+    }
+    
+    /**
+     * Handler subscribes to an empty message body which immediately completes.
+     */
+    @Test
+    void subscribe_to_empty_body() throws IOException, InterruptedException {
+        Handler h = GET().apply(req -> {
+            final CompletableFuture<Response> res = new CompletableFuture<>();
+            final List<String> signals = new ArrayList<>();
+            
+            req.body().subscribe(new Flow.Subscriber<>() {
+                public void onSubscribe(Flow.Subscription subscription) {
+                    signals.add("onSubscribe"); }
+                
+                public void onNext(PooledByteBufferHolder item) {
+                    signals.add("onNext");
+                    item.release(); }
+                
+                public void onError(Throwable throwable) {
+                    signals.add("onError"); }
+                
+                public void onComplete() {
+                    signals.add("onComplete");
+                    res.complete(Responses.ok(join(" ", signals)));
+                }
+            });
+            
+            return res;
+        });
+        
+        addHandler("/empty-body", h);
+        
+        String req = "GET /empty-body HTTP/1.1" + CRLF + CRLF,
+               res = client().writeRead(req, "onComplete");
+        
+        assertThat(res).isEqualTo(
+            "HTTP/1.1 200 OK" + CRLF +
+            "Content-Type: text/plain; charset=utf-8" + CRLF +
+            "Content-Length: 22" + CRLF + CRLF +
+            
+            "onSubscribe onComplete");
     }
     
     // TODO: Autodiscard request body test. Handler should be able to respond with no body.
