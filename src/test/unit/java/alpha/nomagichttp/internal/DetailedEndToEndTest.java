@@ -29,7 +29,7 @@ class DetailedEndToEndTest extends AbstractEndToEndTest
         Handler echo = POST().apply(req ->
                 req.body().toText().thenApply(Responses::ok));
         
-        server().getRouteRegistry().add(route("/restart", echo));
+        addHandler("/restart", echo);
         
         final String reqHead =
                 "POST /restart HTTP/1.1" + CRLF +

@@ -1,6 +1,7 @@
 package alpha.nomagichttp.internal;
 
 import alpha.nomagichttp.Server;
+import alpha.nomagichttp.handler.Handler;
 import alpha.nomagichttp.test.Logging;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
@@ -16,7 +17,8 @@ import static java.lang.System.Logger.Level.ALL;
  * server's port.<p>
  * 
  * The server has only one "/" route with a NOOP handler. Each test must manage
- * its own route(s) and handler(s) using the server's route registry.<p>
+ * its own route(s) and handler(s) using the server's route registry (or
+ * provided convenience method {@code addHandler()}).<p>
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  * 
@@ -52,5 +54,9 @@ abstract class AbstractEndToEndTest
     
     public static ClientOperations client() {
         return client;
+    }
+    
+    public static void addHandler(String route, Handler handler) {
+        server().getRouteRegistry().add(route(route, handler));
     }
 }

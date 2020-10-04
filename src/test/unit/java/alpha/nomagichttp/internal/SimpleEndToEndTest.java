@@ -35,7 +35,7 @@ class SimpleEndToEndTest extends AbstractEndToEndTest
         Handler handler = GET().run(() ->
                 System.out.println("Hello, World!"));
         
-        server().getRouteRegistry().add(route("/hello-console", handler));
+        addHandler("/hello-console", handler);
         
         String req = "GET /hello-console HTTP/1.1" + CRLF + CRLF + CRLF;
         String res = client().writeRead(req);
@@ -50,7 +50,7 @@ class SimpleEndToEndTest extends AbstractEndToEndTest
         Handler handler = GET().supply(() ->
                 ok("Hello World!").asCompletedStage());
         
-        server().getRouteRegistry().add(route("/hello-response", handler));
+        addHandler("/hello-response", handler);
         
         String req =
             "GET /hello-response HTTP/1.1" + CRLF +
@@ -101,7 +101,7 @@ class SimpleEndToEndTest extends AbstractEndToEndTest
         Handler echo = POST().apply(req ->
                 req.body().toText().thenApply(name -> ok("Hello " + name + "!")));
         
-        server().getRouteRegistry().add(route("/greet-body", echo));
+        addHandler("/greet-body", echo);
         
         String req =
             "POST /greet-body HTTP/1.1" + CRLF +
@@ -128,7 +128,7 @@ class SimpleEndToEndTest extends AbstractEndToEndTest
             return b.noBody().asCompletedStage();
         });
         
-        server().getRouteRegistry().add(route("/echo-headers", echo));
+        addHandler("/echo-headers", echo);
         
         String req =
             "GET /echo-headers HTTP/1.1" + CRLF +
@@ -156,7 +156,7 @@ class SimpleEndToEndTest extends AbstractEndToEndTest
                           .thenApply(n -> Long.toString(n))
                           .thenApply(Responses::ok));
         
-        server().getRouteRegistry().add(route("/small-file", saver));
+        addHandler("/small-file", saver);
         
         final String reqHead =
             "POST /small-file HTTP/1.1" + CRLF +
