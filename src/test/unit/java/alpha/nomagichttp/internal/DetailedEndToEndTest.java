@@ -32,14 +32,14 @@ class DetailedEndToEndTest extends AbstractEndToEndTest
         addHandler("/restart", echo);
         
         final String reqHead =
-                "POST /restart HTTP/1.1" + CRLF +
-                        "Accept: text/plain; charset=utf-8" + CRLF +
-                        "Content-Length: 3" + CRLF + CRLF;
+            "POST /restart HTTP/1.1" + CRLF +
+            "Accept: text/plain; charset=utf-8" + CRLF +
+            "Content-Length: 3" + CRLF + CRLF;
         
         final String resHead =
-                "HTTP/1.1 200 OK" + CRLF +
-                        "Content-Type: text/plain; charset=utf-8" + CRLF +
-                        "Content-Length: 3" + CRLF + CRLF;
+            "HTTP/1.1 200 OK" + CRLF +
+            "Content-Type: text/plain; charset=utf-8" + CRLF +
+            "Content-Length: 3" + CRLF + CRLF;
         
         client().openConnection();
         
