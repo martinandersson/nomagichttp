@@ -163,7 +163,9 @@ class SimpleEndToEndTest
             "Content-Length: 0" + CRLF + CRLF);
     }
     
-    /** Performs two requests in a row .*/
+    /**
+     * Performs two requests in a row.
+     */
     @Test
     void exchange_restart() throws IOException, InterruptedException {
         // Echo request body as-is
