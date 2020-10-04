@@ -21,6 +21,7 @@ import static java.lang.System.Logger.Level.ALL;
  * @author Martin Andersson (webmaster at martinandersson.com)
  * 
  * @see SimpleEndToEndTest
+ * @see DetailedEndToEndTest
  */
 abstract class AbstractEndToEndTest
 {
