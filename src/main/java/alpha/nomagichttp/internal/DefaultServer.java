@@ -54,7 +54,9 @@ public final class DefaultServer implements Server
     // Good info on async groups:
     // https://openjdk.java.net/projects/nio/resources/AsynchronousIo.html
     
-    /** Global count of active servers. */
+    /**
+     * Global count of active servers.
+     */
     private static final AtomicInteger SERVER_COUNT = new AtomicInteger();
     private static AsynchronousChannelGroup group;
     
@@ -84,8 +86,8 @@ public final class DefaultServer implements Server
     private int port;
     
     public DefaultServer(RouteRegistry routes, ServerConfig config, Iterable<Supplier<? extends ExceptionHandler>> onError) {
-        this.routes   = requireNonNull(routes);
-        this.config   = requireNonNull(config);
+        this.routes = requireNonNull(routes);
+        this.config = requireNonNull(config);
         
         // Collectors.toUnmodifiableList() does not document RandomAccess
         List<Supplier<? extends ExceptionHandler>> l
