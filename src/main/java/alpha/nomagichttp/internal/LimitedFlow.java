@@ -1,9 +1,12 @@
 package alpha.nomagichttp.internal;
 
 import alpha.nomagichttp.message.PooledByteBufferHolder;
+import alpha.nomagichttp.util.Subscribers;
+import alpha.nomagichttp.util.Subscriptions;
 
 import java.util.concurrent.Flow;
 
+import static alpha.nomagichttp.util.Subscriptions.CanOnlyBeCancelled;
 import static java.lang.Long.MAX_VALUE;
 import static java.lang.System.Logger;
 import static java.lang.System.Logger.Level.DEBUG;
@@ -12,14 +15,14 @@ import static java.lang.System.Logger.Level.WARNING;
 /**
  * A {@code Flow.Processor} with certain characteristics:
  * <ol>
- *   <li>Throttles actual upstream demand to just one bytebuffer at a time no
- *       matter the demand received from downstream. A new bytebuffer will only
- *       be requested from upstream immediately after the downstream has
- *       released the previous one.</li>
+ *   <li>Throttles actual upstream demand to just one bytebuffer at a time even
+ *       if the demand received from downstream is greater. A new bytebuffer
+ *       will only be requested from upstream immediately after the downstream
+ *       has released the previous one.</li>
  *   <li>Limits the total number of bytes pushed given a specified length and
  *       will - as soon as the length is reached; cancel upstream's subscription
  *       and complete downstream's subscriber.</li>
- *   <li>Only ever allow one downstream subscriber.</li>
+ *   <li>One-time use only. Re-use results in {@code IllegalStateException}.</li>
  * </ol>
  * 
  * @implNote
@@ -73,14 +76,7 @@ final class LimitedFlow implements
     
     @Override
     public void onSubscribe(Flow.Subscription subscription) {
-        // TODO: LimitedFlow is exposed through the Request.Body API, we can not
-        //       trust application code to behave. In order to convert
-        //       "best-effort" fails into rock-solid requirements, take
-        //       subscriber/subscription reference management out from
-        //       AbstractUnicastPublisher to separate class shared by superclass
-        //       of LimitedFlow.
-        
-        // Best effort only, upstream not volatile
+        // Best effort only, no locks or volatiles (our code base uses a single thread)
         if (upstream != null) {
             subscription.cancel();
             // https://github.com/reactive-streams/reactive-streams-jvm/issues/495
@@ -125,10 +121,7 @@ final class LimitedFlow implements
             processing = false;
             
             if (desire() == 0) {
-                upstream.cancel();
-                upstream = null;
-                downstream.onComplete();
-                downstream = null;
+                finish();
             } else {
                 tryRequest();
             }
@@ -147,15 +140,22 @@ final class LimitedFlow implements
         downstream.onComplete();
     }
     
+    // Synchronizing with finish(), because may be used by different threads
+    // from untrustworthy application code.
     @Override
-    public void subscribe(Flow.Subscriber<? super PooledByteBufferHolder> subscriber) {
-        // Best effort only, upstream not volatile
-        if (upstream == null) {
-            // https://github.com/reactive-streams/reactive-streams-jvm/issues/495
-            throw new IllegalStateException("Nothing more to publish.");
+    public synchronized void subscribe(Flow.Subscriber<? super PooledByteBufferHolder> subscriber) {
+        if (downstream != null) {
+            CanOnlyBeCancelled tmp = Subscriptions.canOnlyBeCancelled();
+            subscriber.onSubscribe(tmp);
+            if (!tmp.isCancelled()) {
+                String msg = downstream == Subscribers.noop() ?
+                        "The message body bytes has already been subscribed/consumed." :
+                        "Another subscription is already active.";
+                subscriber.onError(new IllegalStateException(msg));
+            }
+        } else {
+            (downstream = subscriber).onSubscribe(new Subscription());
         }
-        
-        (downstream = subscriber).onSubscribe(new Subscription());
     }
     
     private long desire() {
@@ -172,6 +172,13 @@ final class LimitedFlow implements
             // https://github.com/reactive-streams/reactive-streams-jvm/blob/v1.0.3/README.md#3-subscription-code
             upstream.request(1);
         }
+    }
+    
+    private synchronized void finish() {
+        upstream.cancel();
+        upstream = Subscriptions.noop();
+        downstream.onComplete();
+        downstream = Subscribers.noop();
     }
     
     private final class Subscription implements Flow.Subscription

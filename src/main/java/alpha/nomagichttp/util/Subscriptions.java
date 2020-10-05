@@ -85,9 +85,9 @@ public final class Subscriptions
     }
     
     /**
-     * Returns a NOOP subscription.
+     * Returns a NOOP subscription (global singleton instance).
      * 
-     * @return a NOOP subscription
+     * @return a NOOP subscription (global singleton instance)
      */
     public static Flow.Subscription noop() {
         return Noop.INSTANCE;

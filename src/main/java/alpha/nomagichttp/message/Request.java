@@ -156,9 +156,9 @@ public interface Request
      * that the server crashes when attempting to subsequently subscribe a
      * request head parser.<p>
      * 
-     * An attempt to consume the body more than once should not be done and has
-     * undefined application behavior. The default implementation does not save
-     * the bytes once they have been consumed.<p>
+     * The bytes are not saved for future re-use and an attempt to subscribe to
+     * the bytes more than once will signal an {@code IllegalStateException} to
+     * the subscriber.<p>
      * 
      * 
      * <h3>Subscribing to bytes with a {@code Flow.Subscriber}</h3>
@@ -172,16 +172,14 @@ public interface Request
      * for the subscriber to read <i>all remaining bytes</i> of each published
      * bytebuffer.<p>
      * 
-     * Only one subscriber at a time is allowed. This subscriber will receive
-     * bytebuffers orderly as they are read from the underlying channel. The
-     * subscriber may process the bytebuffers asynchronously, but only when the
+     * The subscriber will receive bytebuffers in the same order they are read
+     * from the underlying channel. The subscriber may request/demand any number
+     * of bytebuffers and even process them asynchronously, but only when the
      * bytebuffer has been {@link PooledByteBufferHolder#release() released}
      * will the next bytebuffer be published.<p>
      * 
      * Releasing the bytebuffer with bytes remaining to be read will cause the
-     * bytebuffer to be immediately re-published. This makes it possible for a
-     * subscriber to cancel his subscription and "hand-off" byte processing to
-     * another subscriber (logical framing within the body).<p>
+     * bytebuffer to be immediately re-published.<p>
      * 
      * Cancelling the subscription does not cause the bytebuffer to be released.
      * Releasing has to be done explicitly, or implicitly through an exceptional
