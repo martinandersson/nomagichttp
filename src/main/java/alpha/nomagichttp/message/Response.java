@@ -17,8 +17,8 @@ import java.util.concurrent.Flow;
  * Not before the body publisher issues a bytebuffer or completes the
  * subscription (whichever happens first) will the server call {@code
  * statusLine()} and {@code headers()} in order to get the response head. This
- * means that the implementation may internally write these values lazily, if
- * need be.<p>
+ * means that the implementation may internally set these values lazily, if need
+ * be.<p>
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  */
