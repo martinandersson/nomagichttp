@@ -6,7 +6,7 @@ import java.nio.ByteBuffer;
  * Holder of a pooled byte buffer.<p>
  * 
  * Pooling byte buffers makes a data generator able to re-use buffers for new
- * data reads instead of creating new; reducing garbage and increasing
+ * data instead of creating new buffers; reducing garbage and increasing
  * performance.<p>
  * 
  * The receiver may process the buffer synchronously or asynchronously, but the
