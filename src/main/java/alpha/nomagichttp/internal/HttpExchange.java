@@ -4,6 +4,7 @@ import alpha.nomagichttp.ExceptionHandler;
 import alpha.nomagichttp.handler.Handler;
 import alpha.nomagichttp.message.PooledByteBufferHolder;
 import alpha.nomagichttp.message.Response;
+import alpha.nomagichttp.message.Responses;
 import alpha.nomagichttp.route.Route;
 
 import java.nio.channels.AsynchronousByteChannel;
@@ -143,15 +144,16 @@ final class HttpExchange
                     if (res.mustCloseAfterWrite()) {
                         server.orderlyShutdown(child);
                         return true;
-                    } else {
-                        return false;
                     }
+                    return false;
                 });
     }
     
     private void finish(Boolean closed, Throwable t) {
         if (t != null) {
-            handleError(t);
+            alternativeResponse(t)
+                    .thenCompose(this::handleResponse)
+                    .whenComplete(this::finish);;
         } else {
             request = null;
             route = null;
@@ -167,10 +169,9 @@ final class HttpExchange
     private List<ExceptionHandler> constructed;
     private int attemptCount;
     
-    private void handleError(final Throwable t) {
+    private CompletionStage<Response> alternativeResponse(final Throwable t) {
         final List<Supplier<? extends ExceptionHandler>> factories = server.exceptionHandlers();
         final Throwable unpacked = unpackCompletionException(t);
-        CompletionStage<Response> alternative = null;
         
         if (original == null) {
             original = unpacked;
@@ -183,13 +184,7 @@ final class HttpExchange
                 LOG.log(WARNING, "Error recovery attempts depleted.");
             }
             
-            try {
-                alternative = ExceptionHandler.DEFAULT.apply(unpacked, request, route, handler);
-            } catch (Throwable next) {
-                LOG.log(ERROR, "Default exception handler failed. Will initiate orderly shutdown.", next);
-                server.orderlyShutdown(child);
-                return;
-            }
+            return callDefaultExceptionHandler(unpacked);
         } else {
             LOG.log(DEBUG, () -> "Attempting error recovery #" + attemptCount);
             
@@ -206,23 +201,21 @@ final class HttpExchange
                 }
                 
                 try {
-                    alternative = requireNonNull(h.apply(unpacked, request, route, handler));
-                    break;
+                    return requireNonNull(h.apply(unpacked, request, route, handler));
                 } catch (Throwable next) {
                     if (unpacked == next) {
                         // Handler opted out
                         continue;
                     }
                     // New fail
-                    unpacked.addSuppressed(next);
-                    handleError(next);
-                    return;
+                    next.addSuppressed(unpacked);
+                    return alternativeResponse(next);
                 }
             }
+            
+            // All handlers opted out!
+            return callDefaultExceptionHandler(unpacked);
         }
-        
-        alternative.thenCompose(this::handleResponse)
-                   .whenComplete(this::finish);
     }
     
     private static Throwable unpackCompletionException(Throwable t) {
@@ -230,5 +223,14 @@ final class HttpExchange
             return t;
         }
         return t.getCause() == null ? t : unpackCompletionException(t.getCause());
+    }
+    
+    private CompletionStage<Response> callDefaultExceptionHandler(Throwable unpacked) {
+        try {
+            return ExceptionHandler.DEFAULT.apply(unpacked, request, route, handler);
+        } catch (Throwable next) {
+            LOG.log(ERROR, "Default exception handler failed.", next);
+            return Responses.internalServerError().asCompletedStage();
+        }
     }
 }
