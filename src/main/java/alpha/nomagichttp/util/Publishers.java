@@ -47,11 +47,6 @@ public final class Publishers
         return typed;
     }
     
-    // TODO: Document
-    // Rule 2.13: Item must not be null
-    // Item is shared by all subscribers to the returned publisher and must
-    // therefore be thread-safe if many subscribers will subscribe.
-    
     /**
      * Creates a publisher that emits a single item.<p>
      * 
