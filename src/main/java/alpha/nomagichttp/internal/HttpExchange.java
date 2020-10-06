@@ -81,10 +81,10 @@ final class HttpExchange
     }
     
     void begin() {
-        RequestHeadSubscriber rhp = new RequestHeadSubscriber(server.getServerConfig().maxRequestHeadSize());
-        bytes.subscribe(rhp);
+        RequestHeadSubscriber rhs = new RequestHeadSubscriber(server.getServerConfig().maxRequestHeadSize());
+        bytes.subscribe(rhs);
         
-        rhp.asCompletionStage()
+        rhs.asCompletionStage()
            .thenAccept(this::createRequest)
            .thenCompose(Null -> handleRequest())
            .thenCompose(this::handleResponse)
