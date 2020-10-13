@@ -175,7 +175,6 @@ final class SerialTransferService<T>
      * @throws IllegalArgumentException if {@code n} is less than {@code 1}
      */
     void increaseDemand(long n) {
-        // must be NOP if finished already
         if (demand.get() == FINISHED) {
             return;
         }
@@ -201,10 +200,16 @@ final class SerialTransferService<T>
      * {@code false}. Otherwise, if this method invocation was the one to
      * effectively mark the service finished, {@code true} is returned.<p>
      * 
-     * A currently running transfer is not aborted and will run to completion.<p>
-     * 
      * For competing parties trying stop the service, only one of them will
      * succeed.<p>
+     * 
+     * A currently running transfer is not aborted and will run to
+     * completion.<p>
+     * 
+     * The effect is immediate in a single-threaded environment (no more
+     * deliveries after this method returns) but potentially delayed in a
+     * multi-threaded environment (at most one delivery "extra" may occur after
+     * this method returns).<p>
      * 
      * @return a successful flag (see javadoc)
      */
