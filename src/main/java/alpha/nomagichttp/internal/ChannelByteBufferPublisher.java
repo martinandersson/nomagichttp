@@ -47,7 +47,7 @@ final class ChannelByteBufferPublisher extends AbstractUnicastPublisher<DefaultP
      * queue of writable buffers, from which channel read operations polls.
      */
     
-    private final DefaultServer server;
+    private final DefaultServer           server;
     private final AsynchronousByteChannel channel;
     private final Deque<ByteBuffer>       readable;
     private final Queue<ByteBuffer>       writable;

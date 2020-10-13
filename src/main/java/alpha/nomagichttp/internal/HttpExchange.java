@@ -50,12 +50,12 @@ import static java.util.Objects.requireNonNull;
  */
 final class HttpExchange
 {
-    // All mutable fields in this class are not volatile nor synchronized; it is
-    // assumed that the asynchronous execution facility of the CompletionStage
-    // implementation establishes a happens-before relationship. This is
-    // certainly true for JDK's CompletableFuture which uses an
-    // Executor/ExecutorService, or at worst, a new Thread.start() for each
-    // task.
+    // All mutable fields in this class are not volatile nor is the access of
+    // them synchronized; it is assumed that the asynchronous execution facility
+    // of the CompletionStage implementation establishes a happens-before
+    // relationship. This is certainly true for JDK's CompletableFuture which
+    // uses an Executor/ExecutorService, or at worst, a new Thread.start() for
+    // each task.
     
     private static final System.Logger LOG = System.getLogger(HttpExchange.class.getPackageName());
     
@@ -99,9 +99,9 @@ final class HttpExchange
     private CompletionStage<Response> handleRequest() {
         // 1. Lookup route and handler
         // ---
-        final Route.Match match = server.getRouteRegistry().lookup(request.target());
-        route = match.route();
-        request.setPathParameters(match.parameters());
+        final Route.Match matched = server.getRouteRegistry().lookup(request.target());
+        route = matched.route();
+        request.setPathParameters(matched.parameters());
         
         handler = route.lookup(
                 request.method(),
@@ -165,6 +165,7 @@ final class HttpExchange
     }
     
     // Context for error handling
+    // TODO: Enclose all this in separate class/object
     private Throwable original;
     private List<ExceptionHandler> constructed;
     private int attemptCount;

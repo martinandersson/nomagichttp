@@ -23,33 +23,60 @@ import static alpha.nomagichttp.message.Responses.notImplemented;
 import static java.lang.System.Logger.Level.ERROR;
 
 /**
- * Handles all exceptions occurring from after the point where a client has
- * begun transmitting a request on the wire until the request handler invocation
- * has returned.<p>
+ * Handles an exception by translating it into an alternative response.<p>
  * 
- * The exception handler's job is to produce an alternative response which the
- * ordinary request handler could not provide. One simple strategy for error
- * recovery on known and expected errors is to retry another execution of the
- * request handler.<p>
+ * The server will call exception handlers only during the phase of the HTTP
+ * exchange when there is a client waiting on a response which the ordinary
+ * request handler could not successfully provide.<p>
  * 
- * If no exception handler is configured on the server, the {@link #DEFAULT}
- * will be used.<p>
+ * Specifically:<p>
  * 
- * Exception handlers are called in the same order they were configured/added to
- * the server.<p>
+ * 1) for exceptions occurring on the request thread from after the point where
+ * the server has begun receiving and parsing a request message until when the
+ * request handler invocation has returned.<p>
  * 
- * An exception handler that is unfit or unwilling to handle a particular
- * exception must re-throw the same exception instance, in which case the server
- * will call the next exception handler, eventually reaching the {@code
- * DEFAULT}. If an exception handler returns {@code null} or throws a different
- * exception, then this is considered to be a new error and the whole cycle is
- * restarted.<p>
+ * 2) for exceptions signalled to the server's subscription of the {@link
+ * Response#body() response-body} - if and only if - the response-body publisher
+ * has not yet published any bytebuffers or completed the subscription before
+ * the error was signalled. It doesn't make much sense trying to recover the
+ * situation after the point where a response has already begun transmitting
+ * back to the client.<p>
+ * 
+ * The server will <strong>not</strong> call exception handlers for errors
+ * that are not directly involved in the HTTP exchange or for errors that occur
+ * asynchronously in another thread than the request thread or for any other
+ * errors when there's already an avenue in place for the exception management.
+ * For example, low-level exceptions related to channel management and error
+ * signals raised through the {@link Request.Body} API (all methods of which
+ * either return a {@code CompletionStage} or accepts a {@code
+ * Flow.Subscriber}.<p>
+ * 
+ * For server errors caught but not passed to an exception handler, the server's
+ * strategy is usually to log the error and immediately proceed with the
+ * channel-close procedure documented in {@link
+ * Response#mustCloseAfterWrite()}.<p>
+ * 
+ * One simple strategy for error recovery on known and expected errors is to
+ * retry another execution of the request handler, for example. Another use of
+ * exception handlers is to customize the server's default error responses, for
+ * example by translating a {@code NoRouteFoundException} into an
+ * application-specific "404 Not Found" response.<p>
+ * 
+ * Any number of exception handlers can be configured. If many are configured,
+ * they will be called in the same order they were added. First handler to
+ * produce a {@code Response} breaks the call chain. The {@link #DEFAULT} will
+ * be used if no handler can handle the error or no handler is configured.<p>
+ * 
+ * An exception handler that is unwilling to handle the exception must re-throw
+ * the same exception instance which will then propagate to the next handler. If
+ * a handler returns {@code null} or throws a different exception, then this is
+ * considered to be a new error and the whole cycle is restarted.<p>
  * 
  * The server accepts a supplier of the exception handler. The supplier will be
- * called lazily upon the first invocation of the exception handler and the
- * handler instance returned from the supplier is cached throughout each unique
- * HTTP exchange. This means that the handler can safely keep state related to
- * the exchange such as a retry-counter.
+ * called lazily upon the first invocation of the handler and the handler
+ * instance returned from the supplier is cached throughout each unique HTTP
+ * exchange. This means that the handler can safely keep state related to the
+ * exchange such as a retry-counter.<p>
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  * 
@@ -88,6 +115,7 @@ public interface ExceptionHandler
      * 
      * @see ExceptionHandler
      */
+    // TODO: Do not unpack exceptions; but offer API to unpack CompletionException and ExecutionException
     CompletionStage<Response> apply(Throwable exc, Request req, Route route, Handler handler) throws Throwable;
     
     /**

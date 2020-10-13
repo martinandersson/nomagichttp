@@ -24,15 +24,17 @@ import java.util.function.BiFunction;
  * exposed through the {@link #body() method}.<p>
  * 
  * Methods on this interface that document {@code IllegalStateException} will
- * never throw the exception when accessed by a request handler. However, the
- * exception may be thrown when accessed by an {@link ExceptionHandler exception
- * handler} as these handlers may be called before all of the parts of the
- * request object has been bound.<p>
+ * never throw the exception when accessed by a <i>request handler</i>. However,
+ * the exception may be thrown when accessed by an <i>{@link ExceptionHandler
+ * exception handler}</i> as these handlers may be called earlier in time before
+ * all of the parts of the request object has been bound.<p>
  * 
  * The implementation is thread-safe.<p>
  * 
- * TODO: Once we have auto-discard, make note the handler can write a response
- * immediately without consuming the body.
+ * The request handler is not required to consume the request or its body. If
+ * there is a body present and it is not consumed then it will be silently
+ * discarded as late in the HTTP exchange process as possible, which is when the
+ * server's {@link Response#body() response-body} subscription completes.<p> 
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  * 
@@ -148,24 +150,23 @@ public interface Request
     /**
      * An API for accessing the request body, either as a high-level Java type
      * using conversion methods such as {@link #toText()} or directly consuming
-     * bytes by using the low-level {@link #subscribe(Flow.Subscriber)
+     * the message bytes by using the low-level {@link
+     * #subscribe(Flow.Subscriber)
      * subscribe(Flow.Subscriber&lt;PooledByteBufferHolder&gt;)} method.<p>
-     * 
-     * The application should consume the body, even if this entails
-     * <i>discarding</i> it. Not consuming all of the body will have the effect
-     * that the server crashes when attempting to subsequently subscribe a
-     * request head parser.<p>
      * 
      * The bytes are not saved for future re-use and an attempt to subscribe to
      * the bytes more than once will signal an {@code IllegalStateException} to
-     * the subscriber.<p>
+     * the subscriber. This is also true even if a new subscription is
+     * immediately cancelled without consuming any bytes.<p>
+     * 
+     * The implementation is thread-safe.<p>
      * 
      * 
      * <h3>Subscribing to bytes with a {@code Flow.Subscriber}</h3>
-     *
+     * 
      * The subscription will be completed as soon as the server has determined
      * that the end of the body has been reached.<p>
-     *
+     * 
      * If need be, the server will slice the last published bytebuffer to make
      * sure that the subscriber can not accidentally read past the body limit
      * into a subsequent HTTP message from the same channel. I.e., it is safe
@@ -179,43 +180,50 @@ public interface Request
      * will the next bytebuffer be published.<p>
      * 
      * Releasing the bytebuffer with bytes remaining to be read will cause the
-     * bytebuffer to be immediately re-published.<p>
+     * bytebuffer to immediately be re-published.<p>
      * 
      * Cancelling the subscription does not cause the bytebuffer to be released.
      * Releasing has to be done explicitly, or implicitly through an exceptional
-     * return of {@code Subscriber.onNext()}.<p>
+     * return of {@code Subscriber.onNext()}. An exceptional return from onNext
+     * will also void the subscription which just like {@code
+     * Subscription.cancel} [perhaps eventually] stops the publisher from
+     * publishing more items.<p>
+     * 
+     * The HTTP exchange is considered done as soon as both the server's
+     * response-body subscription <i>and</i> the application's request-body
+     * subscription have both completed. Not until then will the next HTTP
+     * message-exchange commence. This means that a request-body subscriber must
+     * ensure his subscription runs all the way to the end or is cancelled.
+     * Subscribing to the body but never complete the subscription will lead to
+     * a halt in progress for the underlying channel.<p>
+     * 
+     * However, if the server's response-body subscription completes and no
+     * request-body subscriber arrived, then the server will assume the body was
+     * intentionally ignored and proceed to discard it, after which it can not
+     * be subscribed to by the application any more.<p>
+     * 
+     * If a response must be sent back immediately but processing the
+     * request-body bytes must be delayed, then there's at least two ways of
+     * solving this. Either delay completing the server's response-body
+     * subscription or register a request-body subscriber but delay requesting
+     * items (it is safe to call the {@code Subscription} object even outside of
+     * the {@code Subscriber} context by any thread at any time).<p>
+     * 
+     * Please note that the body subscription is not considered effectively
+     * completed until the last published bytebuffer is released.<p>
      * 
      * Finally, as a word of caution; the default implementation uses
      * <i>direct</i> bytebuffers in order to support "zero-copy" transfers.
      * I.e., no data is moved into Java heap space unless the subscriber itself
      * causes this to happen. Whenever possible, always pass forward the
      * bytebuffers to the destination without reading the bytes in application
-     * code.
+     * code.<p>
+     * 
+     * The implementation is thread-safe.
      * 
      * 
      * @author Martin Andersson (webmaster at martinandersson.com)
      */
-    
-    // TODO: See beginning of javadoc. We ask the handler to consume the body or
-    //       discard it - otherwise dire consequences. A) This is not enforced,
-    //       so yes, dire consequences can happen - not good! Some type of
-    //       fail-fast from the server would be great. B) This probably also
-    //       translates to a lot of boilerplate code for some handlers; forced
-    //       to "make a decision" and write code for a body they possibly wasn't
-    //       even interested in to start with. I propose that the server
-    //       auto-discards bodies that wasn't consumed, including partial
-    //       bodies - and no logging about it (really up to the handler what he
-    //       makes out of the body or the absence of such). In fact, probably
-    //       even required behavior, to be applied after error handling. I mean,
-    //       what if the handler crashes half-way through consuming the body,
-    //       then an error handler "rescues" the situation by responding an
-    //       error code. The application would rightfully think that future HTTP
-    //       exchanges can take place as if nothing ever happened.
-    //       When should auto-discard commence? Probably something like as soon
-    //       as the response completes, that's about as much as we can wait. At
-    //       this point the server wants to restart a new exchange and he should
-    //       be able to assume that the handler was never interested in the body.
-    
     // TODO: Any heap based read of bytes must save bytes and return same subsequently
     interface Body extends Flow.Publisher<PooledByteBufferHolder>
     {

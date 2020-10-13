@@ -20,13 +20,14 @@ import java.util.function.BiConsumer;
  * to perform consumption life-cycle maintenance.<p>
  * 
  * The on-release function will receive the bytebuffer as well as a count of how
- * many bytes were read prior to releasing.
+ * many bytes were read prior to releasing.<p>
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  */
 final class DefaultPooledByteBufferHolder implements PooledByteBufferHolder
 {
-    private ByteBuffer buf, view;
+    private ByteBuffer buf;
+    private volatile ByteBuffer view;
     private final int thenRemaining;
     private final AtomicReference<BiConsumer<ByteBuffer, Integer>> onRelease;
     
@@ -75,6 +76,7 @@ final class DefaultPooledByteBufferHolder implements PooledByteBufferHolder
     }
     
     void limit(int newLimit) {
+        // Possible NPE if method is used after release; which we assume will never happen.
         view = buf.slice().limit(newLimit);
     }
 }

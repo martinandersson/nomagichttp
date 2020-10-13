@@ -14,13 +14,18 @@ import java.nio.ByteBuffer;
  * releasing buffers will possibly have the effect that the generator runs out
  * of bytebuffers to use.<p>
  * 
- * Receiving method does not have to process the buffer in a try-finally block.
- * If the receiver returns exceptionally then the buffer will be automatically
- * released. Thus, asynchronous processing should only be initiated if it is
- * guaranteed that the receiver returns normally.<p>
+ * Bytebuffer-receiving method does not have to process the buffer in a
+ * try-finally block. If the receiver returns exceptionally then the buffer will
+ * automatically be released. Thus, asynchronous processing should only be
+ * initiated if it is guaranteed that the receiver returns normally.<p>
  * 
- * Holding on to a bytebuffer reference after releasing it is not recommended.
- * Operating on a bytebuffer after release has undefined application behavior.
+ * Holding on to a bytebuffer reference after releasing it is not
+ * recommended.<p>
+ * 
+ * Operating on a bytebuffer after release has undefined application
+ * behavior.<p>
+ * 
+ * The holder-implementation is thread-safe. The bytebuffer instance is not.
  *
  * @author Martin Andersson (webmaster at martinandersson.com)
  */
@@ -38,7 +43,7 @@ public interface PooledByteBufferHolder
      * 
      * If the released bytebuffer has bytes remaining to be read, the generator
      * will immediately re-publish the bytebuffer. Otherwise, the generator is
-     * free to re-use the buffer for new data read operations.<p>
+     * free to re-use the buffer for new data storage.<p>
      * 
      * Is NOP if already released.
      */

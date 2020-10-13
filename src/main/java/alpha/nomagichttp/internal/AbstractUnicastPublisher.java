@@ -24,12 +24,12 @@ import static java.util.Objects.requireNonNull;
  * subscribe while a subscription is already active will result in an
  * {@code IllegalStateException} being signalled to the rejected subscriber.<p>
  * 
- * Subclass is allowed to produce {@code null} items which in turn will not be
- * delivered to the subscriber. However, it is important that any thread running
- * through the context of the publisher that notices a change in a condition to
- * the effect that a previously {@code null}-producing publisher might be able
- * to produce again, must call the {@link #announce()} method which will trigger
- * a new attempt to transfer an item to the subscriber.<p>
+ * Subclass is allowed to produce {@code null} items which in turn will
+ * <i>not</i> be delivered to the subscriber. However, it is important that any
+ * thread running through the context of the publisher that notices a change in
+ * a condition to the effect that a previously {@code null}-producing publisher
+ * might be able to produce again, must call the {@link #announce()} method
+ * which will trigger a new attempt to transfer an item to the subscriber.<p>
  * 
  * The transfer logic is implemented by {@link SerialTransferService} and the
  * same guarantees and semantics {@code SerialTransferService} specifies applies
@@ -38,10 +38,12 @@ import static java.util.Objects.requireNonNull;
  * is the transfer-service supplier and the subscriber is the transfer-service
  * consumer.<p>
  * 
- * This class implements {@link Closeable} and the default close-behavior is
- * to 1) complete an active subscriber and 2) reject future subscribers.
- * Subclasses who overrides {@code close()} <strong>must</strong> call through
- * to super.<p>
+ * This class does not offer an API to signal error to a subscriber. It is
+ * assumed that errors from the publisher is not meaningful to pass downstream.
+ * Instead, the publisher should log the error and {@link #close()}. The default
+ * close-behavior is to 1) <i>complete</i> an active subscriber and 2) reject
+ * future subscribers. Subclasses who overrides {@code close()}
+ * <strong>must</strong> call through to super.<p>
  * 
  * 
  * <h2>Thread Safety</h2>
@@ -146,16 +148,15 @@ abstract class AbstractUnicastPublisher<T> implements Flow.Publisher<T>, Closeab
         }
     }
     
+    // TODO: Implement close() that accepts a throwable, it is not fair to
+    //       subscribers to complete them. What if we have a body subscriber
+    //       saving a file, he will think he received all of it! As with
+    //       ResponseToChannelWriter, we might wrap the exception in another
+    //       type in order to signal to the server "call the exception handler
+    //       or not". (and update javadoc)
+    
     @Override
     public final void subscribe(Flow.Subscriber<? super T> subscriber) {
-        try {
-            subscribe0(subscriber);
-        } catch (Throwable t) {
-            subscription.set(null);
-        }
-    }
-    
-    public final void subscribe0(Flow.Subscriber<? super T> subscriber) {
         // Rule 1.9: NPE the only allowed Exception to be thrown out of this method.
         requireNonNull(subscriber);
         final Flow.Subscription witnessValue;

@@ -13,7 +13,12 @@ import static java.lang.System.Logger.Level.DEBUG;
 import static java.lang.System.Logger.Level.WARNING;
 
 /**
- * A {@code Flow.Processor} with certain characteristics:
+ * A {@link  Flow.Processor} which serves a pre-defined length of bytes from an
+ * upstream publisher to a downstream subscriber.<p>
+ * 
+ * Key characteristics have been tailored to the fact that this class serves as
+ * a broker between {@link ChannelByteBufferPublisher} and {@link
+ * Request.Body#subscribe(Flow.Subscriber)}:
  * <ol>
  *   <li>Throttles actual upstream demand to just one bytebuffer at a time even
  *       if the demand received from downstream is greater. A new bytebuffer
@@ -28,10 +33,10 @@ import static java.lang.System.Logger.Level.WARNING;
  * @implNote
  * Rate-limiting to just one bytebuffer at a time is not a "stop-and-wait"
  * protocol, because there is no "wait". The channel upstream do read ahead and
- * put available buffers in a cache/queue, from which we poll. The only overhead
- * is the "communication" in the form of method calls. A negligible cost to pay
- * for the great benefit of reducing API complexity and making the life of
- * subscribers much more easy.
+ * puts available buffers in a cache/queue, from which we poll. The only
+ * overhead is the "communication" in the form of method calls. A negligible
+ * cost to pay for the great benefit of reducing API complexity and making the
+ * life of subscribers much more easy.
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  */

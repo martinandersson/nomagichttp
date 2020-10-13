@@ -26,8 +26,8 @@ public final class Publishers
     }
     
     /**
-     * Creates an empty publisher that immediately completes new
-     * subscriptions without ever calling {@code Subscriber.onNext()}.<p>
+     * Returns an empty publisher that immediately completes new subscriptions
+     * without ever calling {@code Subscriber.onNext()}.<p>
      * 
      * Is an alternative to {@link HttpRequest.BodyPublishers#noBody()} except
      * with less CPU overhead and memory garbage.<p>
@@ -39,7 +39,7 @@ public final class Publishers
      * 
      * @param <T> type of non-existent item (inferred on call site, {@code Void} for example)
      * 
-     * @return an empty publisher
+     * @return an empty publisher (global singleton instance)
      */
     public static <T> Flow.Publisher<T> empty() {
         @SuppressWarnings("unchecked")
