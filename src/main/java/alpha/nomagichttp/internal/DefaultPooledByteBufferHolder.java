@@ -4,23 +4,15 @@ import alpha.nomagichttp.message.PooledByteBufferHolder;
 
 import java.nio.ByteBuffer;
 import java.util.concurrent.atomic.AtomicReference;
-import java.util.function.BiConsumer;
+import java.util.function.IntConsumer;
+
+import static java.util.Objects.requireNonNull;
 
 /**
- * Is a {@code PooledByteBufferHolder} with two special features for package
- * friends:<p>
- * 
- * The buffer may be limited or "sliced" so that client code doesn't
- * accidentally read past the position of where a logical message ends. This
- * obviously also makes life a bit easier for client code consuming the
- * buffer.<p>
- * 
- * The holder can be attached with joined logic that executes orderly on
- * release. This notifies any number of stakeholders and grants them the ability
- * to perform consumption life-cycle maintenance.<p>
- * 
- * The on-release function will receive the bytebuffer as well as a count of how
- * many bytes were read prior to releasing.<p>
+ * The default implementation of {@code PooledByteBufferHolder} with a special
+ * feature for package-friends: The buffer may be limited or "sliced" so that
+ * client code doesn't accidentally read past the position of where a logical
+ * message ends.
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  */
@@ -29,9 +21,9 @@ final class DefaultPooledByteBufferHolder implements PooledByteBufferHolder
     private ByteBuffer buf;
     private volatile ByteBuffer view;
     private final int thenRemaining;
-    private final AtomicReference<BiConsumer<ByteBuffer, Integer>> onRelease;
+    private final AtomicReference<IntConsumer> onRelease;
     
-    DefaultPooledByteBufferHolder(ByteBuffer buf, BiConsumer<ByteBuffer, Integer> onRelease) {
+    DefaultPooledByteBufferHolder(ByteBuffer buf, IntConsumer onRelease) {
         this.buf = view = buf;
         this.thenRemaining = buf.remaining();
         this.onRelease = new AtomicReference<>(onRelease);
@@ -44,7 +36,7 @@ final class DefaultPooledByteBufferHolder implements PooledByteBufferHolder
     
     @Override
     public void release() {
-        BiConsumer<ByteBuffer, Integer> f = onRelease.getAndSet(null);
+        IntConsumer f = onRelease.getAndSet(null);
         if (f == null) {
             return;
         }
@@ -55,24 +47,23 @@ final class DefaultPooledByteBufferHolder implements PooledByteBufferHolder
                 buf.position(buf.position() + view.position());
             }
             int read = thenRemaining - buf.remaining();
-            f.accept(buf, read);
+            f.accept(read);
         } finally {
             buf = null;
             view = null;
         }
     }
     
-    void onRelease(BiConsumer<ByteBuffer, Integer> onRelease) {
-        BiConsumer<ByteBuffer, Integer> c1 = this.onRelease.get();
+    @Override
+    public boolean onRelease(IntConsumer onRelease) {
+        requireNonNull(onRelease);
+        
+        IntConsumer c1 = this.onRelease.get();
         if (c1 == null) {
-            throw new IllegalStateException("Already released.");
+            return false;
         }
         
-        BiConsumer<ByteBuffer, Integer> c2 = c1.andThen(onRelease);
-        
-        if (!this.onRelease.compareAndSet(c1, c2)) {
-            throw new IllegalStateException("Already released or invoked concurrently.");
-        }
+        return this.onRelease.compareAndSet(c1, c1.andThen(onRelease));
     }
     
     void limit(int newLimit) {
