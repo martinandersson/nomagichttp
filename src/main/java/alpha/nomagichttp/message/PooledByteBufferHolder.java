@@ -28,8 +28,10 @@ import java.util.function.IntConsumer;
  * Operating on a bytebuffer after release has undefined application
  * behavior.<p>
  * 
- * The holder-implementation is thread-safe. The bytebuffer instance is not.
- *
+ * The holder-implementation is thread-safe. The bytebuffer instance is not.<p>
+ * 
+ * Only object identity matters for equality.
+ * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  */
 public interface PooledByteBufferHolder
