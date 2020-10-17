@@ -34,7 +34,7 @@ import java.util.function.BiFunction;
  * The request handler is not required to consume the request or its body. If
  * there is a body present and it is not consumed then it will be silently
  * discarded as late in the HTTP exchange process as possible, which is when the
- * server's {@link Response#body() response-body} subscription completes.<p> 
+ * server's {@link Response#body() response body} subscription completes.<p> 
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  * 
@@ -159,25 +159,25 @@ public interface Request
      * the subscriber. This is also true even if a new subscription is
      * immediately cancelled without consuming any bytes.<p>
      * 
-     * The implementation is thread-safe.<p>
+     * The implementation is thread-safe. In particular - and unlike the
+     * unbelievably restrictive rule §3.1 in an otherwise very "async-oriented"
+     * <a href="https://github.com/reactive-streams/reactive-streams-jvm/tree/d4d08aadf7d6b4345b2e59f756adeaafd998fec7#3-subscription-code">Reactive Streams</a>
+     * specification - methods on the {@link Flow.Subscription} instance
+     * given to the subscriber from the server when subscribing to the request
+     * body, may be called by any thread at any time.<p>
      * 
      * 
      * <h3>Subscribing to bytes with a {@code Flow.Subscriber}</h3>
      * 
-     * The subscription will be completed as soon as the server has determined
-     * that the end of the body has been reached.<p>
-     * 
-     * If need be, the server will slice the last published bytebuffer to make
-     * sure that the subscriber can not accidentally read past the body limit
-     * into a subsequent HTTP message from the same channel. I.e., it is safe
-     * for the subscriber to read <i>all remaining bytes</i> of each published
-     * bytebuffer.<p>
-     * 
      * The subscriber will receive bytebuffers in the same order they are read
-     * from the underlying channel. The subscriber may request/demand any number
-     * of bytebuffers and even process them asynchronously, but only when the
-     * bytebuffer has been {@link PooledByteBufferHolder#release() released}
-     * will the next bytebuffer be published.<p>
+     * from the underlying channel (the subscriber can not read passed the body
+     * boundary because the server will complete the subscription and possibly
+     * limit the last bytebuffer).<p>
+     * 
+     * The subscriber may request/demand any number of bytebuffers and even
+     * process them asynchronously, but only when the bytebuffer has been {@link
+     * PooledByteBufferHolder#release() released} will the next bytebuffer be
+     * published.<p>
      * 
      * Releasing the bytebuffer with bytes remaining to be read will cause the
      * bytebuffer to immediately be re-published.<p>
@@ -190,27 +190,23 @@ public interface Request
      * publishing more items.<p>
      * 
      * The HTTP exchange is considered done as soon as both the server's
-     * response-body subscription <i>and</i> the application's request-body
+     * response body subscription <i>and</i> the application's request body
      * subscription have both completed. Not until then will the next HTTP
-     * message-exchange commence. This means that a request-body subscriber must
+     * message-exchange commence. This means that a request body subscriber must
      * ensure his subscription runs all the way to the end or is cancelled.
      * Subscribing to the body but never complete the subscription will lead to
      * a halt in progress for the underlying channel.<p>
      * 
-     * However, if the server's response-body subscription completes and no
-     * request-body subscriber arrived, then the server will assume the body was
+     * However, if the server's response body subscription completes and no
+     * request body subscriber arrived, then the server will assume the body was
      * intentionally ignored and proceed to discard it, after which it can not
      * be subscribed to by the application any more.<p>
      * 
      * If a response must be sent back immediately but processing the
-     * request-body bytes must be delayed, then there's at least two ways of
-     * solving this. Either delay completing the server's response-body
-     * subscription or register a request-body subscriber but delay requesting
-     * items (it is safe to call the {@code Subscription} object even outside of
-     * the {@code Subscriber} context by any thread at any time).<p>
-     * 
-     * Please note that the body subscription is not considered effectively
-     * completed until the last published bytebuffer is released.<p>
+     * request body bytes must be delayed, then there's at least two ways of
+     * solving this. Either delay completing the server's response body
+     * subscription or register a request body subscriber but delay requesting
+     * items.<p>
      * 
      * Finally, as a word of caution; the default implementation uses
      * <i>direct</i> bytebuffers in order to support "zero-copy" transfers.
