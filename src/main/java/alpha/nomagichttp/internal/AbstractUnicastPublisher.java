@@ -66,6 +66,7 @@ import static java.util.Objects.requireNonNull;
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  */
+@Deprecated
 abstract class AbstractUnicastPublisher<T> implements Flow.Publisher<T>, Closeable
 {
     // Whenever a "rule" is referred to in source-code comments inside this file,

@@ -14,20 +14,33 @@ public final class Subscribers
     }
     
     /**
-     * Returns a NOOP subscriber (global singleton instance).
+     * Returns a NOOP subscriber (globally shared instance).
      * 
      * @param <T> type of ignored item (inferred on call site)
      * 
-     * @return a NOOP subscriber (global singleton instance)
+     * @return a NOOP subscriber (globally shared instance)
      */
     public static <T> Flow.Subscriber<T> noop() {
         @SuppressWarnings("unchecked")
-        Flow.Subscriber<T> typed = (Flow.Subscriber<T>) Noop.INSTANCE;
+        Flow.Subscriber<T> typed = (Flow.Subscriber<T>) Noop.GLOBAL;
         return typed;
     }
     
-    private enum Noop implements Flow.Subscriber<Object> {
-        INSTANCE;
+    /**
+     * Returns a new NOOP subscriber.
+     *
+     * @param <T> type of ignored item (inferred on call site)
+     *
+     * @return a new NOOP subscriber
+     */
+    public static <T> Flow.Subscriber<T> noopNew() {
+        @SuppressWarnings("unchecked")
+        Flow.Subscriber<T> typed = (Flow.Subscriber<T>) new Noop();
+        return typed;
+    }
+    
+    private static final class Noop implements Flow.Subscriber<Object> {
+        static final Noop GLOBAL = new Noop();
         
         @Override
         public void onSubscribe(Flow.Subscription subscription) {
