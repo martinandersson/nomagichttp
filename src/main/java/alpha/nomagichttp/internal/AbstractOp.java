@@ -69,7 +69,7 @@ abstract class AbstractOp<T> extends AbstractUnicastPublisher2<T>
     }
     
     @Override
-    protected final Flow.Subscription newSubscription() {
+    protected final Flow.Subscription newSubscription(Flow.Subscriber<? super T> ignored) {
         return new FromDownstreamProxy();
     }
     
