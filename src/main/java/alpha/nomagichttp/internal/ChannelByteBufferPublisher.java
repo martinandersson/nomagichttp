@@ -3,6 +3,7 @@ package alpha.nomagichttp.internal;
 import alpha.nomagichttp.message.PooledByteBufferHolder;
 import alpha.nomagichttp.message.Request;
 
+import java.io.Closeable;
 import java.nio.ByteBuffer;
 import java.nio.channels.AsynchronousByteChannel;
 import java.nio.channels.CompletionHandler;
@@ -10,10 +11,12 @@ import java.util.Deque;
 import java.util.Queue;
 import java.util.concurrent.ConcurrentLinkedDeque;
 import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.Flow;
 import java.util.stream.IntStream;
 
 import static java.lang.System.Logger.Level.DEBUG;
 import static java.lang.System.Logger.Level.ERROR;
+import static java.lang.System.Logger.Level.WARNING;
 
 /**
  * A publisher of bytebuffers read from an asynchronous byte channel (assumed to
@@ -24,7 +27,7 @@ import static java.lang.System.Logger.Level.ERROR;
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  */
-final class ChannelByteBufferPublisher extends AbstractUnicastPublisher<DefaultPooledByteBufferHolder>
+final class ChannelByteBufferPublisher implements Flow.Publisher<DefaultPooledByteBufferHolder>, Closeable
 {
     private static final System.Logger LOG = System.getLogger(ChannelByteBufferPublisher.class.getPackageName());
     
@@ -51,50 +54,61 @@ final class ChannelByteBufferPublisher extends AbstractUnicastPublisher<DefaultP
     private final Queue<ByteBuffer>       writable;
     private final SeriallyRunnable        readOp;
     private final ReadHandler             handler;
+    private final AnnounceToSubscriberAdapter<DefaultPooledByteBufferHolder> subscriber;
     
     ChannelByteBufferPublisher(DefaultServer server, AsynchronousByteChannel channel) {
-        this.server   = server;
-        this.channel  = channel;
-        this.readable = new ConcurrentLinkedDeque<>();
-        this.writable = new ConcurrentLinkedQueue<>();
-        this.readOp   = new SeriallyRunnable(this::readImpl, true);
-        this.handler  = new ReadHandler();
+        this.server     = server;
+        this.channel    = channel;
+        this.readable   = new ConcurrentLinkedDeque<>();
+        this.writable   = new ConcurrentLinkedQueue<>();
+        this.readOp     = new SeriallyRunnable(this::readImpl, true);
+        this.handler    = new ReadHandler();
+        this.subscriber = new AnnounceToSubscriberAdapter<>(this::pollReadable);
         
         IntStream.generate(() -> BUF_SIZE)
                 .limit(BUF_COUNT)
                 .mapToObj(ByteBuffer::allocateDirect)
-                .forEach(writable::add);
-        
-        readOp.run();
+                .forEach(this::putWritableLast);
     }
     
     @Override
-    protected DefaultPooledByteBufferHolder poll() {
+    public void subscribe(Flow.Subscriber<? super DefaultPooledByteBufferHolder> s) {
+        subscriber.register(s);
+    }
+    
+    private DefaultPooledByteBufferHolder pollReadable() {
         final ByteBuffer b = readable.poll();
         
         if (b == null) {
             return null;
+        } else if (!b.hasRemaining()) {
+            LOG.log(WARNING, "Empty ByteBuffer in the readable queue. Putting it back as writable.");
+            putWritableLast(b);
         } else if (b == DELAYED_CLOSE) {
+            // Channel dried up
             close();
             return null;
         }
         
-        return new DefaultPooledByteBufferHolder(b, (b2, read) -> release(b2));
+        return new DefaultPooledByteBufferHolder(b, readCountIgnored -> afterRelease(b));
     }
     
-    private void release(ByteBuffer b) {
+    private void afterRelease(ByteBuffer b) {
         if (b.hasRemaining()) {
-            readable.addFirst(b);
-            announce();
+            putReadableFirst(b);
         } else {
-            writable.add(b.clear());
-            readOp.run();
+            putWritableLast(b);
         }
     }
     
-    @Override
-    protected void failed(DefaultPooledByteBufferHolder buf) {
-        buf.release();
+    private void putReadableFirst(ByteBuffer b) {
+        readable.addFirst(b);
+        subscriber.announce();
+    }
+    
+    private void putWritableLast(ByteBuffer b) {
+        writable.add(b.clear());
+        readOp.run();
     }
     
     private void readImpl() {
@@ -116,11 +130,12 @@ final class ChannelByteBufferPublisher extends AbstractUnicastPublisher<DefaultP
     @Override
     public void close() {
         try {
-            super.close();
+            // May go to application-code which we don't thrust, hence try-finally
+            subscriber.stop();
         } finally {
             server.orderlyShutdown(channel);
-            writable.clear();
             readable.clear();
+            writable.clear();
         }
     }
     
@@ -128,31 +143,31 @@ final class ChannelByteBufferPublisher extends AbstractUnicastPublisher<DefaultP
     {
         @Override
         public void completed(Integer result, ByteBuffer buff) {
-            try {
-                switch (result) {
-                    case -1:
-                        LOG.log(DEBUG, "End of stream; other side must have closed.");
-                        server.orderlyShutdown(channel);
-                        readable.add(DELAYED_CLOSE);
-                        break;
-                    case 0:
-                        LOG.log(ERROR, "Buffer wasn't writable. Fake!");
-                        close();
-                        return;
-                    default:
-                        assert result > 0;
-                        readable.add(buff.flip());
-                        // 1. Schedule a new read operation
-                        //    (do not announce(), see note)
-                        readOp.run();
-                }
-            } finally {
-                // 2. Complete current logical run and possibly initiate a new read operation
-                readOp.complete();
+            switch (result) {
+                case -1:
+                    LOG.log(DEBUG, "End of stream; other side must have closed.");
+                    server.orderlyShutdown(channel);
+                    readable.add(DELAYED_CLOSE);
+                    writable.clear(); // <-- not really necessary
+                    break;
+                case 0:
+                    LOG.log(ERROR, "Buffer wasn't writable. Fake!");
+                    close();
+                    readOp.complete(); // <-- not really necessary
+                    return;
+                default:
+                    assert result > 0;
+                    readable.add(buff.flip());
+                    // 1. Schedule a new channel-read operation
+                    //    (do not yet announce to subscriber, see note)
+                    readOp.run();
             }
             
+            // 2. Complete current logical run and possibly initiate a new read operation
+            readOp.complete();
+            
             // 3. Announce the availability to subscriber
-            announce();
+            subscriber.announce();
             
             // Note: we have to make a choice between attempting to initiate a
             // new channel read operation first before announcing to the
@@ -196,12 +211,11 @@ final class ChannelByteBufferPublisher extends AbstractUnicastPublisher<DefaultP
         
         @Override
         public void failed(Throwable t, ByteBuffer ignored) {
-            try {
-                LOG.log(ERROR, "Channel read operation failed. Will close channel.", t);
-                close();
-            } finally {
-                readOp.complete();
-            }
+            LOG.log(ERROR, "Channel read operation failed. Will close channel.", t);
+            server.orderlyShutdown(channel);
+            subscriber.error(t);
+            close();
+            readOp.complete(); // <-- not really necessary
         }
     }
 }
