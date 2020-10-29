@@ -87,7 +87,7 @@ final class AnnounceToSubscriberAdapter<T>
      * in-between {@code error()} and {@code stop()} would still receive the
      * built-in {@code RuntimeException}.<p>
      * 
-     * Is NOP if there is no subscriber active.
+     * Is NOP if already stopped.
      */
     void stop() {
         impl.stop();
