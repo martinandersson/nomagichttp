@@ -357,16 +357,16 @@ abstract class AbstractUnicastPublisher2<T> implements Flow.Publisher<T>
         }
         
         @Override public void onSubscribe(Flow.Subscription subscription) {
-            throw new IllegalStateException(); }
+            throw new UnsupportedOperationException(); }
         
         @Override public void onNext(T item) {
-            throw new IllegalStateException(); }
+            throw new UnsupportedOperationException(); }
         
         @Override public void onError(Throwable throwable) {
-            throw new IllegalStateException(); }
+            throw new UnsupportedOperationException(); }
         
         @Override public void onComplete() {
-            throw new IllegalStateException(); }
+            throw new UnsupportedOperationException(); }
     }
     
     private final class SubscriptionProxy implements Flow.Subscription
