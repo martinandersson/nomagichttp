@@ -13,6 +13,7 @@ import java.util.function.Predicate;
 import static alpha.nomagichttp.util.Subscribers.noopNew;
 import static alpha.nomagichttp.util.Subscriptions.canOnlyBeCancelled;
 import static java.lang.System.Logger.Level.DEBUG;
+import static java.lang.System.Logger.Level.ERROR;
 import static java.util.Objects.requireNonNull;
 
 /**
@@ -46,8 +47,12 @@ import static java.util.Objects.requireNonNull;
  * never receive concurrently running terminating signals. Only one of the
  * receivers will at most receive one terminating signal.<p>
  * 
- * Exceptions from delivering a signal to the end receiver propagates to the
- * calling thread as-is and only after a possibly terminating effect (underlying
+ * Almost all exceptions from delivering a signal to the end receiver propagates
+ * to the calling thread as-is. The only exception is {@code signalError()}
+ * which catches all exceptions from the subscriber, then log- and ignores them
+ * (documented in {@link Request.Body}).<p>
+ * 
+ * Exceptions propagate only after a possibly terminating effect (underlying
  * subscription reference removed). E.g., even if {@code signalComplete()}
  * returns exceptionally then the subscriber reference will still have been
  * removed and the subscriber will never again receive any signals (assuming
@@ -200,7 +205,7 @@ abstract class AbstractUnicastPublisher2<T> implements Flow.Publisher<T>
         } else if (witness == CLOSED) {
             // Publisher called shutdown() during initialization
             if (!proxy.cancelled()) {
-                newS.onError(new RuntimeException(CLOSED_MSG));
+                signalErrorSafe(newS, new RuntimeException(CLOSED_MSG));
             }
         } else if (witness != ACCEPTING && witness != NOT_REUSABLE) {
             throw new AssertionError(
@@ -224,7 +229,7 @@ abstract class AbstractUnicastPublisher2<T> implements Flow.Publisher<T>
         Subscriptions.CanOnlyBeCancelled tmp = canOnlyBeCancelled();
         newS.onSubscribe(tmp);
         if (!tmp.isCancelled()) {
-            newS.onError(new IllegalStateException(reason));
+            signalErrorSafe(newS, new IllegalStateException(reason));
         }
     }
     
@@ -273,7 +278,7 @@ abstract class AbstractUnicastPublisher2<T> implements Flow.Publisher<T>
             return false;
         }
         
-        s.onError(t);
+        signalErrorSafe(s, t);
         return true;
     }
     
@@ -342,6 +347,16 @@ abstract class AbstractUnicastPublisher2<T> implements Flow.Publisher<T>
                 v);
         
         return sameRefAs.test(prev);
+    }
+    
+    protected void signalErrorSafe(Flow.Subscriber<?> target, Throwable t) {
+        try {
+            target.onError(t);
+        } catch (Throwable t2) {
+            LOG.log(ERROR,
+              "Subscriber.onError() returned exceptionally. " +
+              "This new error is only logged but otherwise ignored.", t2);
+        }
     }
     
     private final class IsInitializing implements Flow.Subscriber<T>

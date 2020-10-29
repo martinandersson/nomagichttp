@@ -141,7 +141,7 @@ final class AnnounceToSubscriberAdapter<T>
             if (prev != null) {
                 assert sub != null :
                   "Subscriber reference was set first, then mediator and we just read them in reverse.";
-                prev.finish(() -> sub.onError(new RuntimeException(CLOSED_MSG)));
+                prev.finish(() -> signalErrorSafe(sub, new RuntimeException(CLOSED_MSG)));
             }
         }
         
@@ -151,7 +151,7 @@ final class AnnounceToSubscriberAdapter<T>
                     new SerialTransferService<>(generator, this::signalNext));
             
             if (m == CLOSED) {
-                sub.onError(new RuntimeException(CLOSED_MSG));
+                signalErrorSafe(sub, new RuntimeException(CLOSED_MSG));
                 return Subscriptions.noop();
             }
             
