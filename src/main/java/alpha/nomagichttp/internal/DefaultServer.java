@@ -191,6 +191,9 @@ public final class DefaultServer implements Server
      *   <li>Exit the JVM</li>
      * </ol>
      * 
+     * Please note that although thread-safe, this method may block if invoked
+     * concurrently. Try not to invoke concurrently.
+     * 
      * @param child channel to close
      */
     void orderlyShutdown(Channel child) {

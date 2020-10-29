@@ -69,13 +69,12 @@ public interface PooledByteBufferHolder
      * The callback will receive the count of bytes read from the buffer prior
      * to releasing.<p>
      * 
-     * The callback will be executed <i>after</i> previously registered
-     * callbacks have executed.<p>
+     * Callbacks are executed in the order they were added; FIFO.<p>
      * 
      * Exceptions from the callback will be visible by the thread releasing the
-     * buffer and thus brake the callback chain. Further, an exception will not
-     * stop the buffer from being marked as released with the consequence that
-     * subsequently registered callbacks will never execute at all.
+     * buffer and brake the callback chain. Further, the exception will not
+     * stop the buffer from being marked as released (subsequently registered
+     * callbacks will never execute at all).
      * 
      * @param onRelease callback
      * 
