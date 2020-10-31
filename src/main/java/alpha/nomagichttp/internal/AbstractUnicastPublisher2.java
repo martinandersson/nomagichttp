@@ -306,6 +306,24 @@ abstract class AbstractUnicastPublisher2<T> implements Flow.Publisher<T>
     }
     
     /**
+     * Shutdown the publisher, only if no subscriber is active.<p>
+     * 
+     * If successful, then no more subscribers will be accepted (the "re-usable"
+     * option plays no role).<p>
+     * 
+     * Is NOP if already shutdown.<p>
+     * 
+     * Please note that a {@code false} return value means a subscriber was
+     * active and a {@code true} return value means that the method call had an
+     * effect <i>or</i> the publisher was already shutdown.
+     * 
+     * @return shutdown state (post-method invocation)
+     */
+    protected final boolean tryShutdown() {
+        return updateAndGetValueIf(v -> !isReal(v), T(CLOSED)) == CLOSED;
+    }
+    
+    /**
      * Shutdown the publisher.<p>
      * 
      * The underlying subscriber reference will be cleared and no more
