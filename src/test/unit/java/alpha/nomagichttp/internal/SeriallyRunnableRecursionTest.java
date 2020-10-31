@@ -27,7 +27,7 @@ class SeriallyRunnableRecursionTest
     @BeforeAll
     static void computeMaxRecursionLevel() {
         BoundedRunnable task = new BoundedRunnable(Integer.MAX_VALUE);
-        task.andThen(task);
+        task.andThenRun(task);
         
         try {
             task.run();
@@ -41,7 +41,7 @@ class SeriallyRunnableRecursionTest
     @Test
     void verify_test_integrity() {
         BoundedRunnable task = new BoundedRunnable(n);
-        task.andThen(task);
+        task.andThenRun(task);
         
         assertThatThrownBy(task::run)
                 .isExactlyInstanceOf(StackOverflowError.class);
@@ -52,7 +52,7 @@ class SeriallyRunnableRecursionTest
         BoundedRunnable task = new BoundedRunnable(n);
         
         SeriallyRunnable sync = new SeriallyRunnable(task);
-        task.andThen(sync);
+        task.andThenRun(sync);
         
         assertThatThrownBy(sync::run)
                 .isExactlyInstanceOf(LimitReachedException.class);
@@ -63,7 +63,7 @@ class SeriallyRunnableRecursionTest
         BoundedRunnable task = new BoundedRunnable(n);
         
         SeriallyRunnable async = new SeriallyRunnable(task, true);
-        task.andThen(() -> {
+        task.andThenRun(() -> {
             async.run();
             async.complete();
         });
@@ -81,9 +81,8 @@ class SeriallyRunnableRecursionTest
             this.max = max;
         }
         
-        BoundedRunnable andThen(Runnable andThen) {
+        void andThenRun(Runnable andThen) {
             this.andThen = andThen;
-            return this;
         }
         
         @Override
