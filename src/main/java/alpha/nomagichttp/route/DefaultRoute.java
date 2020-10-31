@@ -21,7 +21,6 @@ import static alpha.nomagichttp.message.MediaType.NOTHING_AND_ALL;
 import static alpha.nomagichttp.message.MediaType.Score.NOPE;
 import static java.lang.System.Logger;
 import static java.lang.System.Logger.Level.WARNING;
-import static java.text.MessageFormat.format;
 import static java.util.Arrays.stream;
 import static java.util.Collections.unmodifiableMap;
 import static java.util.Comparator.comparingDouble;
@@ -220,7 +219,7 @@ public final class DefaultRoute implements Route
     
     @Override
     public Handler lookup(String method, MediaType contentType, MediaType[] accepts) throws NoHandlerFoundException {
-        List<Handler> forMethod = filterByMethod(method);
+        List<Handler> forMethod = filterByMethod(method, contentType, accepts);
         
         NavigableSet<RankedHandler> candidates = null;
         Set<RankedHandler> ambiguous = null;
@@ -249,14 +248,8 @@ public final class DefaultRoute implements Route
         }
         
         if (candidates == null) {
-            String ct = "Content-Type: " + (contentType == null ?
-                    "[N/A]" : contentType);
-            
-            String ac = "Accept: " + (accepts == null || accepts.length == 0 ?
-                    "[N/A]" : stream(accepts).map(Object::toString).collect(joining(", ")));
-            
-            throw new NoHandlerFoundException(format(
-                    "No handler found matching \"{0}\" and/or \"{1}\" header in request.", ct, ac));
+            throw new NoHandlerFoundException("Media type(s) not matched,",
+                    method, this, contentType, accepts);
         }
         
         if (ambiguous != null) {
@@ -276,12 +269,12 @@ public final class DefaultRoute implements Route
      * Returns all handlers of the specified method, or crashes with a
      * {@code NoHandlerFoundException}.
      */
-    private List<Handler> filterByMethod(String method) {
+    private List<Handler> filterByMethod(String method, MediaType contentType, MediaType[] accepts) {
         final List<Handler> forMethod = handlers.get(method);
         
         if (forMethod == null) {
-            throw new NoHandlerFoundException(
-                    "No handler found for method token \"" + method + "\".");
+            throw new NoHandlerFoundException("Method not matched.",
+                    method, this, contentType, accepts);
         }
         
         assert !forMethod.isEmpty();
