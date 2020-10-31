@@ -1,5 +1,6 @@
 package alpha.nomagichttp.internal;
 
+import alpha.nomagichttp.message.Request;
 import alpha.nomagichttp.util.Subscriptions;
 
 import java.util.concurrent.Flow;
@@ -54,6 +55,11 @@ final class AnnounceToSubscriberAdapter<T>
      * calling this method will be used to execute the generator function and
      * deliver the item to the publisher.<p>
      * 
+     * If this method synchronously invokes a subscriber and the subscriber
+     * returns exceptionally, then so too will this method return exceptionally
+     * <i>and</i> without a future effect in regards to the life cycle of the
+     * adapter which remains open.<p>
+     * 
      * Is NOP if no subscriber is active or an active subscriber's demand is
      * zero.
      */
@@ -66,6 +72,9 @@ final class AnnounceToSubscriberAdapter<T>
      * 
      * It's possible to register a new subscriber even after this method
      * returns. If this is not wanted, call {@link #stop()}.<p>
+     * 
+     * If the receiving subscriber itself throws an exception, then this new
+     * exception is logged but otherwise ignored.<p>
      * 
      * Is NOP if there is no subscriber active.
      * 
@@ -81,6 +90,10 @@ final class AnnounceToSubscriberAdapter<T>
      * An active subscriber will be signalled a {@code RuntimeException} with
      * the message {@value AbstractUnicastPublisher2#CLOSED_MSG} and future
      * subscribers will be signalled {@code IllegalStateException}.<p>
+     * 
+     * If the active subscriber who receives a {@code RuntimeException} itself
+     * throws an exception, then this new exception is logged but otherwise
+     * ignored.<p>
      * 
      * It is advisable to first call {@link #error(Throwable)} in order to
      * tailor the error message. Of course, a subscriber that registers

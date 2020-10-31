@@ -272,6 +272,16 @@ abstract class AbstractUnicastPublisher2<T> implements Flow.Publisher<T>
         return true;
     }
     
+    /**
+     * Signal error, safely.<p>
+     * 
+     * If the receiver ({@code Subscriber.onError()}) itself throws an
+     * exception, then the new exception is logged but otherwise ignored. 
+     * 
+     * @param t error to signal
+     * 
+     * @return {@code true} if a subscriber is active, otherwise {@code false}
+     */
     protected final boolean signalError(Throwable t) {
         final Flow.Subscriber<? super T> s = realOrNull(removeIfNotInitializing());
         if (s == null) {
@@ -286,17 +296,13 @@ abstract class AbstractUnicastPublisher2<T> implements Flow.Publisher<T>
      * Shutdown the publisher.<p>
      * 
      * The underlying subscriber reference will be cleared and no more
-     * subscribers will be accepted (the "re-usable" option plays no role
-     * here).<p>
+     * subscribers will be accepted (the "re-usable" option plays no role).<p>
      * 
      * Is NOP if already shutdown.<p>
      * 
-     * Please note that - as usual* - this class does no signalling on its own.
-     * Subclass must ensure the subscriber is serially signalled a completion
-     * event.<p>
-     * 
-     * *Actually, a subscriber initializing in parallel will get an error
-     * signal, done by this class. But that's the only exception to the rule.
+     * Please note that subclass should serially signal a completion event to an
+     * active subscriber prior to shutting down or manually perform such a
+     * signal using the returned reference.
      * 
      * @return the current subscriber (if one is active, otherwise {@code null})
      */

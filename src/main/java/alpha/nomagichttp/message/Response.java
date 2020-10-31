@@ -75,7 +75,9 @@ public interface Response
      * channel after writing the response, otherwise {@code false}.<p>
      * 
      * The server is free to close the channel even if this method returns
-     * {@code false}.<p>
+     * {@code false}, for example if the server run into channel-related
+     * problems. If this method returns {@code true}, the channel will be
+     * closed.<p>
      * 
      * For security; If closing the client channel fails, the server will try to
      * close itself. If closing itself fails, the server will stop the JVM.

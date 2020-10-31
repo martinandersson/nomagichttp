@@ -89,8 +89,8 @@ final class SubscriptionAsStageOp extends AbstractOp<PooledByteBufferHolder>
      * exceptionally as determined by the upstream.<p>
      * 
      * The stage may never complete if C) the underlying subscription never
-     * completes, or D) any terminating method ({@code onComplete}/{@code
-     * onError}/{@code cancel} that this class delegates to returns
+     * completes, or D) any terminating method that this class delegates to
+     * ({@code Subscriber.onComplete} or {@code Subscription.cancel()}) returns
      * exceptionally.<p>
      * 
      * The cure for C is for the server to have a point in time when he gives up
@@ -101,7 +101,7 @@ final class SubscriptionAsStageOp extends AbstractOp<PooledByteBufferHolder>
      * the stage or query about its state {@code CompletableFuture.isDone()}.<p>
      * 
      * D "should" never happen as the reactive streams specification mandates
-     * that all these methods return normally (§2.13, §3.15). However, in the
+     * that all methods should return normally (§2.13, §3.15). However, in the
      * event shit does hit the fan, the exception propagates as-is, eventually
      * reaching the top layer which on the server's side is a thread running
      * through the {@code ChannelByteBufferPublisher} which logs the error and

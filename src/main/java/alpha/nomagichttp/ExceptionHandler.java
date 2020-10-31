@@ -35,8 +35,8 @@ import static java.lang.System.Logger.Level.ERROR;
  * the server has begun receiving and parsing a request message until when the
  * request handler invocation has returned.<p>
  * 
- * 2) for exceptions signalled to the server's subscription of the {@link
- * Response#body() response-body} - if and only if - the response-body publisher
+ * 2) for exceptions signalled to the server's subscriber of the {@link
+ * Response#body() response body} - if and only if - the response body publisher
  * has not yet published any bytebuffers or completed the subscription before
  * the error was signalled. It doesn't make much sense trying to recover the
  * situation after the point where a response has already begun transmitting
@@ -52,7 +52,7 @@ import static java.lang.System.Logger.Level.ERROR;
  * Flow.Subscriber}.<p>
  * 
  * For server errors caught but not passed to an exception handler, the server's
- * strategy is usually to log the error and immediately proceed with the
+ * strategy is usually to log the error and immediately perform the
  * channel-close procedure documented in {@link
  * Response#mustCloseAfterWrite()}.<p>
  * 

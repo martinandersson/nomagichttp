@@ -26,7 +26,7 @@ import static java.lang.Long.MAX_VALUE;
  * parser starts at a valid position. A potential improvement is to compute the
  * number of bytes that needs to be discarded and if this number is sufficient
  * enough; close the channel (re-establishing a new connection assumed to be
- * faster than accepting the rest of a large message we don't care about).
+ * faster than accepting the rest of a large message that we don't care about).
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  */

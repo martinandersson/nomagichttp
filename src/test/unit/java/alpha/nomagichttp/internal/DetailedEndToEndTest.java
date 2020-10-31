@@ -103,7 +103,8 @@ class DetailedEndToEndTest extends AbstractEndToEndTest
             "onSubscribe onComplete");
     }
     
-    // TODO: Autodiscard request body test. Handler should be able to respond with no body.
+    // TODO: Autodiscard request body test. Handler should be able to respond without consuming body.
+    //       Handler should be able to echo half a body, byte by byte, and full body, byte by byte
     
     // TODO: echo body LARGE! Like super large. 100MB or something. Must brake all buffer capacities, that's the point.
     //       Should go to "large" test set.
