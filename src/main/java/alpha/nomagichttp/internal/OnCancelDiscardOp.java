@@ -32,7 +32,7 @@ import static java.lang.Long.MAX_VALUE;
  */
 final class OnCancelDiscardOp extends AbstractOp<PooledByteBufferHolder>
 {
-    private volatile boolean cancelled;
+    private volatile boolean discarding;
     
     protected OnCancelDiscardOp(Flow.Publisher<? extends PooledByteBufferHolder> upstream) {
         super(upstream);
@@ -40,20 +40,36 @@ final class OnCancelDiscardOp extends AbstractOp<PooledByteBufferHolder>
     
     @Override
     protected void fromUpstreamNext(PooledByteBufferHolder item) {
-        if (cancelled) {
+        if (discarding) {
             discard(item);
             item.release();
         } else {
             item.onRelease(readCountIgnored -> {
-                if (cancelled) discard(item); });
+                if (discarding) discard(item); });
             super.fromUpstreamNext(item);
         }
     }
     
     @Override
     protected void fromDownstreamCancel() {
-        // The trick; instead of propagating cancel, propagate a request for all items
-        cancelled = true;
+        // Replace cancel signal
+        start();
+    }
+    
+    /**
+     * If no subscriber is active, shutdown the operator and start
+     * discarding.<p>
+     * 
+     * Is NOP if already discarding.
+     */
+    void discardIfNoSubscriber() {
+        if (!discarding && tryShutdown()) {
+            start();
+        }
+    }
+    
+    private void start() {
+        discarding = true;
         fromDownstreamRequest(MAX_VALUE);
     }
     
