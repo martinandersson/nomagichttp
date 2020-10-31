@@ -108,16 +108,12 @@ public final class Publishers
             public void request(long n) {
                 if (n < 1) {
                     subscriber.onError(new IllegalArgumentException());
-                } else {
-                    subscriber.onNext(item);
-                    if (!stopped) {
-                        try {
-                            subscriber.onComplete();
-                        } finally {
-                            stopped = true;
-                        }
-                    }
+                } else if (stopped) {
+                    return;
                 }
+                stopped = true;
+                subscriber.onNext(item);
+                subscriber.onComplete();
             }
             
             @Override
