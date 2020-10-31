@@ -105,6 +105,15 @@ abstract class AbstractUnicastPublisher2<T> implements Flow.Publisher<T>
                s == CLOSED;
     }
     
+    private boolean isReal(Flow.Subscriber<?> s) {
+        assert s != null;
+        return !isSentinel(s) && s.getClass() != IsInitializing.class;
+    }
+    
+    private Flow.Subscriber<T> resetFlag() {
+        return reusable ? T(ACCEPTING) : T(NOT_REUSABLE);
+    }
+    
     private final boolean reusable;
     private final AtomicReference<Flow.Subscriber<? super T>> ref;
     
@@ -221,7 +230,7 @@ abstract class AbstractUnicastPublisher2<T> implements Flow.Publisher<T>
                      "Publisher has shutdown." :
                 witness.getClass() == IsInitializing.class ?
                     "Publisher is busy installing a different subscriber." :
-             /* assert witness == someone else, someone real lol */
+             /* assert isReal(witness) */
                     "Publisher already has a subscriber.";
         
         LOG.log(DEBUG, () -> "Rejected " + newS + ". " + reason);
@@ -253,7 +262,7 @@ abstract class AbstractUnicastPublisher2<T> implements Flow.Publisher<T>
     }
     
     private boolean signalNext0(T item) {
-        final Flow.Subscriber<? super T> s = realOrNull(subscriber());
+        final Flow.Subscriber<? super T> s = realOrNull(value());
         if (s == null) {
             return false;
         }
@@ -263,7 +272,9 @@ abstract class AbstractUnicastPublisher2<T> implements Flow.Publisher<T>
     }
     
     protected final boolean signalComplete() {
-        final Flow.Subscriber<? super T> s = realOrNull(removeIfNotInitializing());
+        final Flow.Subscriber<? super T> s
+                = realOrNull(removeSubscriberIfNotInitializingOrClosed());
+        
         if (s == null) {
             return false;
         }
@@ -283,7 +294,9 @@ abstract class AbstractUnicastPublisher2<T> implements Flow.Publisher<T>
      * @return {@code true} if a subscriber is active, otherwise {@code false}
      */
     protected final boolean signalError(Throwable t) {
-        final Flow.Subscriber<? super T> s = realOrNull(removeIfNotInitializing());
+        final Flow.Subscriber<? super T> s
+                = realOrNull(removeSubscriberIfNotInitializingOrClosed());
+        
         if (s == null) {
             return false;
         }
@@ -310,25 +323,24 @@ abstract class AbstractUnicastPublisher2<T> implements Flow.Publisher<T>
         return realOrNull(ref.getAndSet(T(CLOSED)));
     }
     
-    private Flow.Subscriber<? super T> realOrNull(Flow.Subscriber<? super T> s) {
-        assert s != null;
-        return isSentinel(s) || s.getClass() == IsInitializing.class ? null : s;
+    private Flow.Subscriber<? super T> realOrNull(Flow.Subscriber<? super T> v) {
+        return isReal(v) ? v : null;
     }
     
-    private Flow.Subscriber<? super T> subscriber() {
+    private Flow.Subscriber<? super T> value() {
         return ref.get();
     }
     
-    private Flow.Subscriber<? super T> removeIfNotInitializing() {
-        return ref.getAndUpdate(s ->
-                // Do NOT remove an initializing reference, keep same
-                s != null && s.getClass() == IsInitializing.class ? s :
-                // Reset reference or end this publisher
-                reusable ? T(ACCEPTING) : T(NOT_REUSABLE));
+    private Flow.Subscriber<? super T> removeSubscriberIfNotInitializingOrClosed() {
+        return getAndUpdateValueIf(v ->
+            // If
+            v.getClass() != IsInitializing.class && v != CLOSED,
+            // Set
+            resetFlag());
     }
     
     private boolean removeSubscriberIfSameAs(final Flow.Subscriber<? super T> thisOne) {
-        Predicate<Flow.Subscriber<? super T>> sameRefAs = other -> {
+        return updateValueIf(other -> {
             assert realOrNull(thisOne) != null; // i.e. real
             
             if (other == thisOne) {
@@ -340,22 +352,37 @@ abstract class AbstractUnicastPublisher2<T> implements Flow.Publisher<T>
             if (other.getClass() != IsInitializing.class) {
                 return false; }
             
-            // Also considered same reference if the subscriber is initializing
+            // Also same reference even if he is initializing
             @SuppressWarnings("unchecked")
             IsInitializing o = (IsInitializing) other;
             return o.get() == thisOne;
-        };
-        
-        Flow.Subscriber<? super T> prev = ref.getAndUpdate(v -> sameRefAs.test(v) ?
-                // same subscriber = reset reference or end this publisher
-                reusable ? T(ACCEPTING) : T(NOT_REUSABLE) :
-                // not same = keep value
-                v);
-        
-        return sameRefAs.test(prev);
+            
+            // If above is true, set:
+        },  resetFlag());
     }
     
-    protected void signalErrorSafe(Flow.Subscriber<?> target, Throwable t) {
+    private boolean updateValueIf(
+            Predicate<Flow.Subscriber<? super T>> predicate,
+            Flow.Subscriber<? super T> newValue)
+    {
+        return getAndUpdateValueIf(predicate, newValue) != newValue;
+    }
+    
+    private Flow.Subscriber<? super T> getAndUpdateValueIf(
+            Predicate<Flow.Subscriber<? super T>> predicate,
+            Flow.Subscriber<? super T> newValue)
+    {
+        return ref.getAndUpdate(v -> predicate.test(v) ? newValue : v);
+    }
+    
+    private Flow.Subscriber<? super T> updateAndGetValueIf(
+            Predicate<Flow.Subscriber<? super T>> predicate,
+            Flow.Subscriber<? super T> newValue)
+    {
+        return ref.updateAndGet(v -> predicate.test(v) ? newValue : v);
+    }
+    
+    protected static final void signalErrorSafe(Flow.Subscriber<?> target, Throwable t) {
         try {
             target.onError(t);
         } catch (Throwable t2) {
