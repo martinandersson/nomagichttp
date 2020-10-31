@@ -31,6 +31,8 @@ final class ChannelByteBufferPublisher implements Flow.Publisher<DefaultPooledBy
 {
     private static final System.Logger LOG = System.getLogger(ChannelByteBufferPublisher.class.getPackageName());
     
+    private static final String CLOSE_MSG = " Will close channel.";
+    
     private static final int
             /** Number of bytebuffers in pool. */
             BUF_COUNT = 5,
@@ -81,11 +83,15 @@ final class ChannelByteBufferPublisher implements Flow.Publisher<DefaultPooledBy
         
         if (b == null) {
             return null;
-        } else if (!b.hasRemaining()) {
-            LOG.log(WARNING, "Empty ByteBuffer in the readable queue. Putting it back as writable.");
-            putWritableLast(b);
         } else if (b == DELAYED_CLOSE) {
             // Channel dried up
+            close();
+            return null;
+        } else if (!b.hasRemaining()) {
+            LOG.log(WARNING, () ->
+                    "Empty ByteBuffer in subscriber's queue. " +
+                    "Please do not operate on a ByteBuffer after release; can have devastating consequences." +
+                    CLOSE_MSG);
             close();
             return null;
         }
@@ -95,20 +101,38 @@ final class ChannelByteBufferPublisher implements Flow.Publisher<DefaultPooledBy
     
     private void afterRelease(ByteBuffer b) {
         if (b.hasRemaining()) {
-            putReadableFirst(b);
+            putReadableFirst(b, true);
         } else {
             putWritableLast(b);
         }
     }
     
-    private void putReadableFirst(ByteBuffer b) {
+    private void putReadableFirst(ByteBuffer b, boolean announce) {
         readable.addFirst(b);
-        subscriber.announce();
+        if (announce) {
+            subscriberAnnounce();
+        }
+    }
+    
+    private void putReadableLast(ByteBuffer b, boolean announce) {
+        readable.addLast(b);
+        if (announce) {
+            subscriberAnnounce();
+        }
     }
     
     private void putWritableLast(ByteBuffer b) {
         writable.add(b.clear());
         readOp.run();
+    }
+    
+    private void subscriberAnnounce() {
+        try {
+            subscriber.announce();
+        } catch (Throwable t) {
+            LOG.log(ERROR, () -> "Signalling subscriber failed." + CLOSE_MSG);
+            close();
+        }
     }
     
     private void readImpl() {
@@ -129,14 +153,10 @@ final class ChannelByteBufferPublisher implements Flow.Publisher<DefaultPooledBy
     
     @Override
     public void close() {
-        try {
-            // May go to application-code which we don't thrust, hence try-finally
-            subscriber.stop();
-        } finally {
-            server.orderlyShutdown(channel);
-            readable.clear();
-            writable.clear();
-        }
+        subscriber.stop();
+        server.orderlyShutdown(channel);
+        readable.clear();
+        writable.clear();
     }
     
     private final class ReadHandler implements CompletionHandler<Integer, ByteBuffer>
@@ -146,18 +166,18 @@ final class ChannelByteBufferPublisher implements Flow.Publisher<DefaultPooledBy
             switch (result) {
                 case -1:
                     LOG.log(DEBUG, "End of stream; other side must have closed.");
-                    server.orderlyShutdown(channel);
-                    readable.add(DELAYED_CLOSE);
+                    server.orderlyShutdown(channel); // <-- this we have no reason to delay lol
+                    putReadableLast(DELAYED_CLOSE, false);
                     writable.clear(); // <-- not really necessary
                     break;
                 case 0:
-                    LOG.log(ERROR, "Buffer wasn't writable. Fake!");
-                    close();
-                    readOp.complete(); // <-- not really necessary
-                    return;
+                    // We only put buffers with hasRemaining() - see AsynchronousByteChannel.read() docs
+                    Error e = new AssertionError();
+                    LOG.log(ERROR, e);
+                    throw e;
                 default:
                     assert result > 0;
-                    readable.add(buff.flip());
+                    putReadableLast(buff.flip(), false);
                     // 1. Schedule a new channel-read operation
                     //    (do not yet announce to subscriber, see note)
                     readOp.run();
@@ -167,7 +187,7 @@ final class ChannelByteBufferPublisher implements Flow.Publisher<DefaultPooledBy
             readOp.complete();
             
             // 3. Announce the availability to subscriber
-            subscriber.announce();
+            subscriberAnnounce();
             
             // Note: we have to make a choice between attempting to initiate a
             // new channel read operation first before announcing to the
@@ -211,8 +231,7 @@ final class ChannelByteBufferPublisher implements Flow.Publisher<DefaultPooledBy
         
         @Override
         public void failed(Throwable t, ByteBuffer ignored) {
-            LOG.log(ERROR, "Channel read operation failed. Will close channel.", t);
-            server.orderlyShutdown(channel);
+            LOG.log(ERROR, () -> "Channel read operation failed." + CLOSE_MSG, t);
             subscriber.error(t);
             close();
             readOp.complete(); // <-- not really necessary
