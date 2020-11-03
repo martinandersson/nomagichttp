@@ -76,6 +76,28 @@ final class ResponseToChannelWriter
         new BodySubscriber(response);
     }
     
+    /**
+     * Returns the response-to-channel write process as a stage.<p>
+     * 
+     * The returned stage completes normally when the last byte has been written
+     * to the channel.<p>
+     * 
+     * Errors passed down from the source publisher (the response) as well as
+     * errors related to the channel write operations completes the returned
+     * stage exceptionally.<p>
+     * 
+     * All channel related errors will cause the channel to be closed, prior to
+     * completing the stage.<p>
+     * 
+     * Similarly, errors passed down from the source publisher will also cause
+     * the channel to be closed prior to completing the stage, but only if bytes
+     * has already been written to the channel (message on wire is corrupt).<p>
+     * 
+     * Errors signalled and/or caught after the stage has already been completed
+     * will be logged but otherwise ignored.
+     * 
+     * @return this as a stage (supports being cast to a {@link CompletableFuture})
+     */
     CompletionStage<Void> asCompletionStage() {
         return result.minimalCompletionStage();
     }
