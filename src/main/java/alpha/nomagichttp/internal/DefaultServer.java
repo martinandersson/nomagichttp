@@ -35,15 +35,7 @@ import static java.util.stream.StreamSupport.stream;
  * A fully asynchronous implementation of {@code Server}.<p>
  * 
  * This class uses {@link AsynchronousServerSocketChannel} which provides an
- * amazing performance on many operating systems, including Windows.<p>
- * 
- * @implNote
- * When the server starts, an asynchronous server channel is opened and bound to
- * a specified port. The server channel is also known as "listener", "master"
- * and "parent".<p>
- * 
- * When the server channel accepts a new client connection, the resulting
- * channel - also known as the "child" - is handled by {@link OnAccept}.
+ * amazing performance on many operating systems, including Windows.
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  */

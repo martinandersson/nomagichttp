@@ -30,7 +30,8 @@ import static java.util.Objects.requireNonNull;
  * directly. Instead, the subscriber is operated by using protected {@code
  * signalXXX()} methods, each of which returns a boolean indicating if the
  * signal was passed to a subscriber or not. The only reason why a signal wasn't
- * routed would be because there was no active subscriber to receive it.<p>
+ * routed through would be because there was no active subscriber to receive
+ * it.<p>
  * 
  * The subscription object passed to each new subscriber will delegate all
  * call's to the subscription object returned by the abstract method {@link

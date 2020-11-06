@@ -11,14 +11,18 @@ import static java.util.Objects.requireNonNull;
 
 /**
  * Is effectively a thread-safe and lock-free publisher trait configured with a
- * generator function, pulled by the subscriber through the increase in his
- * demand.<p>
+ * generator function, in part polled by the publisher implementation {@link
+ * #announce() announcing} the availability of items and in part polled by the
+ * subscriber through the increase of his demand.<p>
+ * 
+ * Only one subscriber at a time is allowed. Rejected subscribers receive an
+ * {@code IllegalStateException}.<p>
  * 
  * The generator function is executed serially and may return {@code null},
- * which would indicate there's no items available for publication at the
- * moment ({@code null} is never passed forward to the subscriber). Anytime this
- * changes and the generator function may start yielding non-null items again,
- * then this must be {@link #announce() announced}.<p>
+ * which would indicate there's no items available for the subscriber at the
+ * moment (a future announcement is expected).<p>
+ * 
+ * This class is non-blocking and thread-safe.
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  *
