@@ -240,8 +240,8 @@ public final class DefaultServer implements Server
         
         @Override
         public void failed(Throwable t, Void noAttachment) {
-            if (t instanceof ClosedChannelException) {
-                LOG.log(DEBUG, "Channel already closed when initiating a new accept (race). Will accept no more.");
+            if (t instanceof ClosedChannelException) { // note: AsynchronousCloseException extends ClosedChannelException
+                LOG.log(DEBUG, "Channel closed. Will accept no more.");
             }
             else if (t instanceof ShutdownChannelGroupException) {
                 LOG.log(DEBUG, "Group already closed when initiating a new accept. Will accept no more.");
