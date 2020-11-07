@@ -18,7 +18,6 @@ import java.nio.channels.ShutdownChannelGroupException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.Executors;
-import java.util.concurrent.Flow;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Supplier;
 
@@ -165,7 +164,7 @@ public final class DefaultServer implements Server
      * 
      * @return exception handlers
      */
-    List<Supplier<? extends ExceptionHandler>> exceptionHandlers() {
+    List<Supplier<? extends ExceptionHandler>> getExceptionHandlers() {
         return onError;
     }
     
@@ -236,10 +235,7 @@ public final class DefaultServer implements Server
             
             // TODO: child.setOption(StandardSocketOptions.SO_KEEPALIVE, true); ??
             
-            Flow.Publisher<DefaultPooledByteBufferHolder> bytes
-                    = new ChannelByteBufferPublisher(DefaultServer.this, child);
-            
-            new HttpExchange(DefaultServer.this, child, bytes).begin();
+            new HttpExchange(DefaultServer.this, child).begin();
         }
         
         @Override
