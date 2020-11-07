@@ -32,7 +32,7 @@ final class SubscriptionAsStageOp extends AbstractOp<PooledByteBufferHolder>
     private final AtomicInteger processing;
     
     /** The upstream- or downstream's terminal event. */
-    private volatile AtomicReference<TerminationCause> terminated;
+    private final AtomicReference<TerminationCause> terminated;
     
     /** Stage completes when no items are in-flight and the subscription has terminated. */
     private final CompletableFuture<Void> result;
@@ -58,7 +58,8 @@ final class SubscriptionAsStageOp extends AbstractOp<PooledByteBufferHolder>
     SubscriptionAsStageOp(Flow.Publisher<? extends PooledByteBufferHolder> upstream) {
         super(upstream);
         processing = new AtomicInteger();
-        result = new CompletableFuture<>();
+        terminated = new AtomicReference<>(null);
+        result     = new CompletableFuture<>();
     }
     
     /**
