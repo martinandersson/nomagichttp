@@ -126,7 +126,7 @@ final class AnnounceToSubscriberAdapter<T>
         Impl(Supplier<? extends T> generator) {
             super(true);
             this.generator = requireNonNull(generator);
-            this.mediator = new AtomicReference<>();
+            this.mediator = new AtomicReference<>(null);
         }
         
         void announce() {
