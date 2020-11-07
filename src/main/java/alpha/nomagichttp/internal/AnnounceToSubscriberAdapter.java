@@ -164,7 +164,7 @@ final class AnnounceToSubscriberAdapter<T>
         
         @Override
         protected Flow.Subscription newSubscription(Flow.Subscriber<? super T> sub) {
-            SerialTransferService<T> m = mediator.getAndUpdate(v -> v == CLOSED ? T(CLOSED) :
+            SerialTransferService<T> m = mediator.updateAndGet(v -> v == CLOSED ? T(CLOSED) :
                     new SerialTransferService<>(generator, this::signalNext));
             
             if (m == CLOSED) {
