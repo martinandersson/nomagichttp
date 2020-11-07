@@ -29,7 +29,7 @@ public class GreetRequestBody
          */
         
         Handler h = POST().apply(req ->
-                req.body().toText().thenApply(name ->
+                req.body().get().toText().thenApply(name ->
                         ok("Hello, " + name + "!")));
         
         Server.with(route("/hello", h)).start(PORT);

@@ -78,7 +78,7 @@ public class RetryRequestOnError
         
         @Override
         public CompletionStage<Response> apply(
-                Throwable exc, Request req, Route route, Handler handler)
+                Throwable exc, Request req, Handler handler)
                 throws Throwable
         {
             if (!(exc instanceof SuitableForRetryException)) {
