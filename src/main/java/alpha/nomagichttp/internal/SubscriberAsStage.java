@@ -6,7 +6,7 @@ import java.util.concurrent.Flow;
 
 /**
  * A single-use subscriber that supports being viewed
- * {@link #asCompletionStage()} of a particular result.<p>
+ * {@link #asCompletionStage()} of the end result.<p>
  * 
  * If the subscriber is used more than once, it will throw an {@code
  * IllegalStateException} on the thread calling {@code onSubscribe()}. There's
@@ -20,7 +20,7 @@ interface SubscriberAsStage<T, R> extends Flow.Subscriber<T>
 {
     /**
      * The returned stage supports being cast to {@link
-     * CompletableFuture<T>}.<p>
+     * CompletableFuture<R>}.<p>
      * 
      * Converting the returned stage to a {@code CompletableFuture} and then
      * completing the future does not necessarily translate to a cancellation of
