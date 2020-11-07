@@ -12,6 +12,7 @@ import java.util.function.Consumer;
 import java.util.function.Supplier;
 
 import static java.lang.System.Logger.Level.ERROR;
+import static java.util.Objects.requireNonNull;
 
 /**
  * {@link #announce()} the availability of a {@code ByteBuffer} resource to a
@@ -34,11 +35,14 @@ import static java.lang.System.Logger.Level.ERROR;
  * With no exception to the rule: if a channel operation completes
  * exceptionally, the underlying channel will be closed using {@link
  * DefaultServer#orderlyShutdown(Channel)} before calling the {@code whenDone}
- * callback.<p>
+ * callback. Other than that, this class never closes the channel.<p>
  * 
  * This class is non-blocking and thread-safe.
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
+ * 
+ * @see #NO_MORE
+ * @see #EOS
  */
 final class AnnounceToChannel
 {
@@ -66,11 +70,17 @@ final class AnnounceToChannel
         return new AnnounceToChannel(destination, Mode.WRITE, sources, completionHandler, whenDone, server);
     }
     
-    /**
-     * The service will self-{@link #stop()} as soon as this sentinel bytebuffer
-     * is polled from the supplier.
-     */
-    static final ByteBuffer NO_MORE = ByteBuffer.allocate(0);
+    static final ByteBuffer
+            /**
+             * The service will self-{@link #stop()} as soon as this sentinel
+             * bytebuffer is polled from the supplier.
+             */
+            NO_MORE = ByteBuffer.allocate(0),
+            /**
+             * Is passed by the service to the completion handler only if in
+             * read mode and whenever the channel has reached end-of-stream.
+             */
+            EOS = ByteBuffer.allocate(0);
     
     private static final System.Logger LOG
             = System.getLogger(AnnounceToChannel.class.getPackageName());
@@ -102,14 +112,14 @@ final class AnnounceToChannel
             WhenDone whenDone,
             DefaultServer server)
     {
-        this.channel = channel;
-        this.mode = mode;
-        this.supplier = supplier;
-        this.completionHandler = completionHandler;
-        this.server = server;
+        this.channel = requireNonNull(channel);
+        this.mode = requireNonNull(mode);
+        this.supplier = requireNonNull(supplier);
+        this.completionHandler = requireNonNull(completionHandler);
+        this.server = requireNonNull(server);
+        this.whenDone = requireNonNull(whenDone);
         this.operation = new SeriallyRunnable(this::pollAndInitiate, true);
         this.handler = new Handler();
-        this.whenDone = whenDone;
         this.byteCount = 0;
         this.state = new AtomicReference<>(RUNNING);
     }
@@ -129,11 +139,10 @@ final class AnnounceToChannel
     /**
      * Stop the service.<p>
      * 
-     * This is considered a "normal" stop and if effective (i.e. a contending
-     * thread didn't {@link #stop(Throwable) stop using a throwable}), the
-     * {@code whenDone} callback will be executed without a throwable - even if
-     * a pending asynchronous operation completes exceptionally. However, this
-     * asynchronous exception if it happens may be logged.<p>
+     * This is considered a "normal" stop and if effective because a contending
+     * thread didn't {@link #stop(Throwable) stop using a throwable, the {@code
+     * whenDone} callback will be executed without a throwable - even if a
+     * pending asynchronous operation completes exceptionally.<p>
      * 
      * At most one extra bytebuffer may be polled from the supplier and used to
      * initiate a new channel operation even after this method returns.<p>
@@ -208,7 +217,7 @@ final class AnnounceToChannel
             switch (mode) {
                 case READ:  channel.read( b, b, handler); break;
                 case WRITE: channel.write(b, b, handler); break;
-                default:    throw new UnsupportedOperationException();
+                default:    throw new UnsupportedOperationException("What is this?: " + mode);
             }
         } catch (Throwable t) {
             handler.failed(t, null);
@@ -239,6 +248,8 @@ final class AnnounceToChannel
             if (r == -1) {
                 // EOS
                 stop();
+                completionHandler.accept(EOS);
+                operation.complete();
                 return;
             }
             
