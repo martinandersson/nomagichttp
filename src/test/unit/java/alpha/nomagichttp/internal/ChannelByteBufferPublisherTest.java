@@ -12,6 +12,7 @@ import java.util.concurrent.TimeoutException;
 import java.util.function.BiFunction;
 
 import static java.lang.System.Logger.Level.ALL;
+import static java.util.concurrent.Flow.Publisher;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
@@ -60,8 +61,7 @@ class ChannelByteBufferPublisherTest
         // Hopefully this goes into just 1 ByteBuffer
         CLIENT.write("ab");
         
-        LimitedFlow oneByteOnly = new LimitedFlow(1);
-        testee().subscribe(oneByteOnly);
+        Publisher<DefaultPooledByteBufferHolder> oneByteOnly = new LengthLimitedOp(1, testee());
         
         // TODO: "finisher" copy-pasted from DefaultRequest impl. DRY.
         BiFunction<byte[], Integer, String> finisher = (buf, count) ->
@@ -78,8 +78,7 @@ class ChannelByteBufferPublisherTest
         // A new subscriber subscribes and is re-issued the same bytebuffer,
         // but with a position where the first subscriber left off
         
-        oneByteOnly = new LimitedFlow(1);
-        testee().subscribe(oneByteOnly);
+        oneByteOnly = new LengthLimitedOp(1, testee());
         
         HeapSubscriber<String> s2 = new HeapSubscriber<>(finisher);
         oneByteOnly.subscribe(s2);

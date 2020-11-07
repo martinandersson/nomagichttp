@@ -98,7 +98,7 @@ class SimpleEndToEndTest extends AbstractEndToEndTest
     @Test
     void greet_requestbody() throws IOException, InterruptedException {
         Handler echo = POST().apply(req ->
-                req.body().toText().thenApply(name -> ok("Hello " + name + "!")));
+                req.body().get().toText().thenApply(name -> ok("Hello " + name + "!")));
         
         addHandler("/greet-body", echo);
         
@@ -151,7 +151,7 @@ class SimpleEndToEndTest extends AbstractEndToEndTest
                 .resolve("some-file.txt");
         
         Handler saver = POST().apply(req ->
-                req.body().toFile(file)
+                req.body().get().toFile(file)
                           .thenApply(n -> Long.toString(n))
                           .thenApply(Responses::ok));
         

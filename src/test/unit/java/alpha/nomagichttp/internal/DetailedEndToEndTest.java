@@ -34,7 +34,7 @@ class DetailedEndToEndTest extends AbstractEndToEndTest
     void exchange_restart() throws IOException, InterruptedException {
         // Echo request body as-is
         Handler echo = POST().apply(req ->
-                req.body().toText().thenApply(Responses::ok));
+                req.body().get().toText().thenApply(Responses::ok));
         
         addHandler("/restart", echo);
         
@@ -70,7 +70,7 @@ class DetailedEndToEndTest extends AbstractEndToEndTest
             final CompletableFuture<Response> res = new CompletableFuture<>();
             final List<String> signals = new ArrayList<>();
             
-            req.body().subscribe(new Flow.Subscriber<>() {
+            req.body().get().subscribe(new Flow.Subscriber<>() {
                 public void onSubscribe(Flow.Subscription subscription) {
                     signals.add("onSubscribe"); }
                 
