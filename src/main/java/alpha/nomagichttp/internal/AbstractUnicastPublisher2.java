@@ -120,7 +120,7 @@ abstract class AbstractUnicastPublisher2<T> implements Flow.Publisher<T>
     
     protected AbstractUnicastPublisher2(boolean reusable) {
         this.reusable = reusable;
-        this.ref = new AtomicReference<>(null);
+        this.ref = new AtomicReference<>(T(ACCEPTING));
     }
     
     /**
