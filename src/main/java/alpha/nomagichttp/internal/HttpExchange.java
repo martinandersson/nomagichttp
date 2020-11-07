@@ -121,9 +121,24 @@ final class HttpExchange
               // TODO: Possible recursion. Unroll.
               .whenComplete(this::finish);
         } else {
+            /*
+             * Currently seeing a lot of ClosedPublisherException here. Because
+             * a new HTTP exchange is indiscriminately started even if the other
+             * side closes after the previous exchange, making
+             * ChannelByteBufferPublisher reach EOS and consequently stop the
+             * just-arrived RequestHeadSubscriber. The problem is that we should
+             * make the connection life cycle much more solid; when is the
+             * connection persistent and when is it not. No point in starting a
+             * new exchange if we expect the connection to end. In fact, if
+             * that's the case we should actually go ahead and close the channel!
+             * Currently, if the other side never closes then we would end up
+             * having idle zombie connections (!).
+             * TODO: 1) Make connection life cycle solid and robust.
+             * TODO: 2) Implement idle timeout.
+             */
             LOG.log(DEBUG, () ->
-              "HTTP exchange finished exceptionally (" + t.getClass() +") " +
-              "and channel is closed. Assuming reason was logged already.");
+              "HTTP exchange finished exceptionally and channel is closed. " +
+              "Assuming reason was logged already.", t);
         }
     }
     

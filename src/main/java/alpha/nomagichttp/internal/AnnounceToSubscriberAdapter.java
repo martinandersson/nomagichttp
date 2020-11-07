@@ -1,5 +1,6 @@
 package alpha.nomagichttp.internal;
 
+import alpha.nomagichttp.message.ClosedPublisherException;
 import alpha.nomagichttp.message.Request;
 import alpha.nomagichttp.util.Subscriptions;
 
@@ -28,6 +29,7 @@ import static java.util.Objects.requireNonNull;
  *
  * @param <T> type of item to publish
  */
+// TODO Rename to AnnounceToSubscriber
 final class AnnounceToSubscriberAdapter<T>
 {
     private final Impl<T> impl;
@@ -91,13 +93,13 @@ final class AnnounceToSubscriberAdapter<T>
     /**
      * Do no longer accept new subscribers.<p>
      * 
-     * An active subscriber will be signalled a {@code RuntimeException} with
-     * the message {@value AbstractUnicastPublisher2#CLOSED_MSG} and future
-     * subscribers will be signalled {@code IllegalStateException}.<p>
+     * An active subscriber will be signalled a {@link ClosedPublisherException}
+     * without a message and future subscribers will be signalled an {@code
+     * IllegalStateException}.<p>
      * 
-     * If the active subscriber who receives a {@code RuntimeException} itself
-     * throws an exception, then this new exception is logged but otherwise
-     * ignored.<p>
+     * If the active subscriber who receives a {@code ClosedPublisherException}
+     * itself throws an exception, then this new exception is logged but
+     * otherwise ignored.<p>
      * 
      * It is advisable to first call {@link #error(Throwable)} in order to
      * tailor the error message. Of course, a subscriber that registers
@@ -158,7 +160,7 @@ final class AnnounceToSubscriberAdapter<T>
             if (prev != null) {
                 assert sub != null :
                   "Subscriber reference was set first, then mediator and we just read them in reverse.";
-                prev.finish(() -> signalErrorSafe(sub, new RuntimeException(CLOSED_MSG)));
+                prev.finish(() -> signalErrorSafe(sub, new ClosedPublisherException()));
             }
         }
         
@@ -168,7 +170,7 @@ final class AnnounceToSubscriberAdapter<T>
                     new SerialTransferService<>(generator, this::signalNext));
             
             if (m == CLOSED) {
-                signalErrorSafe(sub, new RuntimeException(CLOSED_MSG));
+                signalErrorSafe(sub, new ClosedPublisherException());
                 return Subscriptions.noop();
             }
             

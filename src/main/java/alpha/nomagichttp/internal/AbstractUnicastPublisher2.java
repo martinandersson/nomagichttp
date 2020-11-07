@@ -1,5 +1,6 @@
 package alpha.nomagichttp.internal;
 
+import alpha.nomagichttp.message.ClosedPublisherException;
 import alpha.nomagichttp.message.PooledByteBufferHolder;
 import alpha.nomagichttp.message.Request;
 import alpha.nomagichttp.util.Subscriptions;
@@ -82,13 +83,6 @@ abstract class AbstractUnicastPublisher2<T> implements Flow.Publisher<T>
 {
     private static final System.Logger LOG
             = System.getLogger(AbstractUnicastPublisher2.class.getPackageName());
-    
-    /**
-     * The message of a {@code RuntimeException} given to {@code
-     * Subscriber.onError()} if an asynchronous {@link #shutdown()} is called
-     * during subscriber initialization.
-     */
-    protected static final String CLOSED_MSG = "Publisher is shutting down.";
     
     private static final Flow.Subscriber<?>
             ACCEPTING    = noopNew(),
@@ -215,7 +209,7 @@ abstract class AbstractUnicastPublisher2<T> implements Flow.Publisher<T>
         } else if (witness == CLOSED) {
             // Publisher called shutdown() during initialization
             if (!proxy.cancelled()) {
-                signalErrorSafe(newS, new RuntimeException(CLOSED_MSG));
+                signalErrorSafe(newS, new ClosedPublisherException());
             }
         } else if (witness != ACCEPTING && witness != NOT_REUSABLE) {
             throw new AssertionError(
