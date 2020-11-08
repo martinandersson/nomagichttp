@@ -157,10 +157,18 @@ final class AnnounceToSubscriberAdapter<T>
             
             final Flow.Subscriber<? super T> sub = shutdown();
             
+            boolean scheduled = false;
+            
             if (prev != null) {
-                assert sub != null :
-                  "Subscriber reference was set first, then mediator and we just read them in reverse.";
-                prev.finish(() -> signalErrorSafe(sub, new ClosedPublisherException()));
+                scheduled = prev.finish(() -> {
+                    if (sub != null) {
+                        signalErrorSafe(sub, new ClosedPublisherException());
+                    }
+                });
+            }
+            
+            if (!scheduled && sub != null) {
+                signalErrorSafe(sub, new ClosedPublisherException());
             }
         }
         
