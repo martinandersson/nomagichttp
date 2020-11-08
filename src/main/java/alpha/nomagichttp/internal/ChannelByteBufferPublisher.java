@@ -171,10 +171,11 @@ final class ChannelByteBufferPublisher implements Flow.Publisher<DefaultPooledBy
                     writable.clear(); // <-- not really necessary
                     break;
                 case 0:
-                    // We only put buffers with hasRemaining() - see AsynchronousByteChannel.read() docs
-                    Error e = new AssertionError();
-                    LOG.log(ERROR, e);
-                    throw e;
+                    String msg =
+                        "AsynchronousByteChannel.read() should read at least 1 byte " +
+                        "(all our writable buffers has remaining).";
+                    LOG.log(ERROR, msg);
+                    throw new AssertionError(msg);
                 default:
                     assert result > 0;
                     putReadableLast(buff.flip(), false);
