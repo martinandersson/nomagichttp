@@ -78,6 +78,7 @@ final class HttpExchange
     
     private void initialize(RequestHead head) {
         Route.Match route = findRoute(server, head);
+        // This order is actually specified in javadoc of ExceptionHandler#apply
         request = createRequest(head, route, bytes);
         handler = findHandler(head, route);
     }
