@@ -138,11 +138,12 @@ final class HttpExchange
              * Currently, if the other side never closes then we would end up
              * having idle zombie connections (!).
              * TODO: 1) Make connection life cycle solid and robust.
+             *          (this logging statement should never happen?)
              * TODO: 2) Implement idle timeout.
              */
             LOG.log(DEBUG, () ->
-              "HTTP exchange finished exceptionally and channel is closed. " +
-              "Assuming reason was logged already.", t);
+                "HTTP exchange finished exceptionally and channel is closed. " +
+                "Assuming reason was logged already.");
         }
     }
     
