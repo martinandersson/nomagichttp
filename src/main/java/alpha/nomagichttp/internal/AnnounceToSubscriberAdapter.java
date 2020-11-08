@@ -112,6 +112,7 @@ final class AnnounceToSubscriberAdapter<T>
         impl.stop();
     }
     
+    @Deprecated
     private static final class Impl<T> extends AbstractUnicastPublisher2<T>
     {
         private static final SerialTransferService<?> CLOSED
@@ -178,6 +179,14 @@ final class AnnounceToSubscriberAdapter<T>
                     new SerialTransferService<>(generator, this::signalNext));
             
             if (m == CLOSED) {
+                // Example why this class needs to be DEPRECATED: When
+                // newSubscription() is called, the subscriber reference will
+                // already have been installed in subclass. If stop() runs
+                // concurrently with this method, then we risk sending two
+                // "closed" exceptions to the same subscriber, even in parallel!
+                // stop() could perhaps be reworked, but still, this class is a
+                // mess.
+                // TODO: Write an alternative
                 signalErrorSafe(sub, new ClosedPublisherException());
                 return Subscriptions.noop();
             }
