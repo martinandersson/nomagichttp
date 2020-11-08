@@ -248,7 +248,7 @@ public final class DefaultRoute implements Route
         }
         
         if (candidates == null) {
-            throw new NoHandlerFoundException("Media type(s) not matched,",
+            throw NoHandlerFoundException.unmatchedContentType(
                     method, this, contentType, accepts);
         }
         
@@ -273,7 +273,7 @@ public final class DefaultRoute implements Route
         final List<Handler> forMethod = handlers.get(method);
         
         if (forMethod == null) {
-            throw new NoHandlerFoundException("Method not matched.",
+            throw NoHandlerFoundException.unmatchedMethod(
                     method, this, contentType, accepts);
         }
         

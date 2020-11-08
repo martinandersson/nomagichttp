@@ -2,6 +2,10 @@ package alpha.nomagichttp.route;
 
 import alpha.nomagichttp.message.MediaType;
 
+import static java.text.MessageFormat.format;
+import static java.util.Arrays.stream;
+import static java.util.stream.Collectors.joining;
+
 /**
  * TODO: Docs
  */
@@ -9,12 +13,33 @@ import alpha.nomagichttp.message.MediaType;
 // TODO: Server should respond "501 (Not Implemented) if the method is unrecognized or not implemented by the origin server"
 public class NoHandlerFoundException extends RuntimeException
 {
+    static NoHandlerFoundException unmatchedContentType(
+            String method, Route route, MediaType contentType, MediaType[] accepts)
+    {
+        String msg = format("No handler found matching \"{0}\" and/or \"{1}\" header in request.",
+                // Arg 0
+                "Content-Type: " + (contentType == null ? "[N/A]" : contentType),
+                // Arg 1
+                "Accept: " + (accepts == null || accepts.length == 0 ? "[N/A]" :
+                        stream(accepts).map(Object::toString).collect(joining(", "))));
+        
+        return new NoHandlerFoundException(msg, method, route, contentType, accepts);
+    }
+    
+    static NoHandlerFoundException unmatchedMethod(
+            String method, Route route, MediaType contentType, MediaType[] accepts)
+    {
+        return new NoHandlerFoundException(
+                "No handler found for method token \"" + method + "\".",
+                method, route, contentType, accepts);
+    }
+    
     private final String method;
     private final Route route;
     private final MediaType contentType;
     private final MediaType[] accepts;
     
-    NoHandlerFoundException(
+    private NoHandlerFoundException(
             String message,
             String method,
             Route route,
