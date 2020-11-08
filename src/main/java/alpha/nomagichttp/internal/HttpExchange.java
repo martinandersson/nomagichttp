@@ -101,7 +101,11 @@ final class HttpExchange
     
     private void finish(Void Null, Throwable t) {
         if (t == null) {
-            // Begin new HTTP exchange
+            if (!child.isOpen()) {
+                return;
+            }
+            
+            // Else begin new HTTP exchange
             request.bodyDiscardIfNoSubscriber();
             request.bodyStage().whenComplete((Null2, t2) -> {
                 if (t2 == null) {
