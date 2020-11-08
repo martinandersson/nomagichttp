@@ -141,12 +141,12 @@ final class AnnounceToSubscriberAdapter<T>
         }
         
         void error(Throwable t) {
-            SerialTransferService<T> m = mediator.get();;
-            if (m == null || m == CLOSED) {
+            SerialTransferService<T> prev = mediator.getAndSet(null);
+            if (prev == null || prev == CLOSED) {
                 return;
             }
             
-            m.finish(() -> signalError(t));
+            prev.finish(() -> signalError(t));
         }
         
         void stop() {
