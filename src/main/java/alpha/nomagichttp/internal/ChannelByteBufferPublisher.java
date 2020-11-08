@@ -89,9 +89,9 @@ final class ChannelByteBufferPublisher implements Flow.Publisher<DefaultPooledBy
             return null;
         } else if (!b.hasRemaining()) {
             LOG.log(WARNING, () ->
-                    "Empty ByteBuffer in subscriber's queue. " +
-                    "Please do not operate on a ByteBuffer after release; can have devastating consequences." +
-                    CLOSE_MSG);
+                "Empty ByteBuffer in subscriber's queue. " +
+                "Please do not operate on a ByteBuffer after release; can have devastating consequences." +
+                CLOSE_MSG);
             close();
             return null;
         }
