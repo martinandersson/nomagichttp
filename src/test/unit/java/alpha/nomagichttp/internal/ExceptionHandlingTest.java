@@ -55,7 +55,7 @@ class ExceptionHandlingTest
     
     @Test
     void not_found_custom() throws IOException, InterruptedException {
-        ExceptionHandler custom = (exc, req, rou, han) -> {
+        ExceptionHandler custom = (exc, req, han) -> {
             if (exc instanceof NoRouteFoundException) {
                 return new ResponseBuilder()
                         .httpVersion("HTTP/1.1")
