@@ -1,7 +1,6 @@
 package alpha.nomagichttp.internal;
 
 import alpha.nomagichttp.message.ClosedPublisherException;
-import alpha.nomagichttp.message.Request;
 import alpha.nomagichttp.util.Subscriptions;
 
 import java.util.concurrent.Flow;

@@ -235,7 +235,7 @@ public final class DefaultServer implements Server
             
             // TODO: child.setOption(StandardSocketOptions.SO_KEEPALIVE, true); ??
             
-            new HttpExchange(DefaultServer.this, child).begin();
+            new HttpExchange<>(DefaultServer.this, child).begin();
         }
         
         @Override

@@ -7,6 +7,7 @@ import alpha.nomagichttp.message.Request;
 import java.io.IOException;
 import java.net.http.HttpHeaders;
 import java.nio.channels.AsynchronousFileChannel;
+import java.nio.channels.NetworkChannel;
 import java.nio.charset.Charset;
 import java.nio.file.OpenOption;
 import java.nio.file.Path;
@@ -19,33 +20,61 @@ import java.util.concurrent.CompletionStage;
 import java.util.concurrent.Flow;
 import java.util.function.BiFunction;
 
+import static alpha.nomagichttp.message.Headers.contentLength;
 import static alpha.nomagichttp.message.Headers.contentType;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.nio.file.StandardOpenOption.CREATE;
 import static java.nio.file.StandardOpenOption.TRUNCATE_EXISTING;
 import static java.nio.file.StandardOpenOption.WRITE;
+import static java.util.Optional.empty;
 import static java.util.Optional.ofNullable;
 
 final class DefaultRequest implements Request
 {
+    private static final CompletionStage<Void> COMPLETED = CompletableFuture.completedStage(null);
+    
     // Copy-pasted from AsynchronousFileChannel.NO_ATTRIBUTES
     @SuppressWarnings({"unchecked", "rawtypes"}) // generic array construction
     private static final FileAttribute<?>[] NO_ATTRIBUTES = new FileAttribute[0];
     
     private final RequestHead head;
-    private Map<String, String> pathParameters;
-    private Flow.Publisher<PooledByteBufferHolder> bodySource;
+    private final Map<String, String> pathParameters;
+    private final CompletionStage<Void> bodyStage;
+    private final Optional<Body> bodyApi;
+    private final OnCancelDiscardOp bodyDiscard;
+    private final NetworkChannel child;
     
-    DefaultRequest(RequestHead head) {
+    DefaultRequest(
+            RequestHead head,
+            Map<String, String> pathParameters,
+            Flow.Publisher<DefaultPooledByteBufferHolder> bodySource,
+            NetworkChannel child)
+    {
         this.head = head;
-    }
-    
-    void setPathParameters(Map<String, String> pathParameters) {
         this.pathParameters = pathParameters;
-    }
-    
-    void setBodySource(Flow.Publisher<PooledByteBufferHolder> source) {
-        this.bodySource = source;
+        
+        // TODO: If length is not present, then body is possibly chunked.
+        // https://tools.ietf.org/html/rfc7230#section-3.3.3
+        
+        // TODO: Server should throw BadRequestException if Content-Length is present AND Content-Encoding
+        // https://tools.ietf.org/html/rfc7230#section-3.3.2
+        
+        final long len = contentLength(head.headers()).orElse(0);
+        
+        if (len <= 0) {
+            bodyStage   = COMPLETED;
+            bodyApi     = empty();
+            bodyDiscard = null;
+        } else {
+            var bounded = new LengthLimitedOp(len, bodySource);
+            var observe = new SubscriptionAsStageOp(bounded);
+            bodyDiscard = new OnCancelDiscardOp(observe);
+            
+            bodyStage = observe.asCompletionStage();
+            bodyApi = Optional.of(new DefaultBody(headers(), bodyDiscard));
+        }
+        
+        this.child = child;
     }
     
     @Override
@@ -70,10 +99,6 @@ final class DefaultRequest implements Request
     
     @Override
     public Optional<String> paramFromPath(String name) {
-        if (pathParameters == null) {
-            throw new IllegalStateException("Path parameters not yet bound.");
-        }
-        
         return ofNullable(pathParameters.get(name));
     }
     
@@ -87,16 +112,41 @@ final class DefaultRequest implements Request
         return head.headers();
     }
     
-    private Body bodyView;
+    @Override
+    public Optional<Body> body() {
+        return bodyApi;
+    }
     
     @Override
-    public Body body() {
-        if (bodySource == null) {
-            throw new IllegalStateException("Body not yet bound.");
+    public NetworkChannel channel() {
+        return child;
+    }
+    
+    /**
+     * Returns a stage that completes when the body subscription completes.<p>
+     * 
+     * The returned stage is already completed if the request contains no body.
+     * 
+     * @return a stage that completes when the body subscription completes
+     * 
+     * @see SubscriptionAsStageOp
+     */
+    CompletionStage<Void> bodyStage() {
+        return bodyStage;
+    }
+    
+    /**
+     * If no downstream body subscriber is active, complete downstream and
+     * discard upstream.<p>
+     * 
+     * Is NOP if body is empty or already discarding.
+     */
+    void bodyDiscardIfNoSubscriber() {
+        if (body().isEmpty()) {
+            return;
         }
         
-        Body b = bodyView;
-        return b != null ? b : (bodyView = new DefaultBody(headers(), bodySource));
+        bodyDiscard.discardIfNoSubscriber();
     }
     
     private static final class DefaultBody implements Request.Body
@@ -106,7 +156,7 @@ final class DefaultRequest implements Request
         
         DefaultBody(HttpHeaders headers, Flow.Publisher<PooledByteBufferHolder> source) {
             this.headers = headers;
-            this.source = source;
+            this.source  = source;
         }
         
         @Override

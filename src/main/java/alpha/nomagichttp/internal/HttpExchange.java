@@ -1,19 +1,18 @@
 package alpha.nomagichttp.internal;
 
 import alpha.nomagichttp.ExceptionHandler;
-import alpha.nomagichttp.Server;
 import alpha.nomagichttp.handler.Handler;
 import alpha.nomagichttp.message.Response;
 import alpha.nomagichttp.message.Responses;
 import alpha.nomagichttp.route.Route;
 
 import java.nio.channels.AsynchronousByteChannel;
+import java.nio.channels.NetworkChannel;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.RandomAccess;
 import java.util.concurrent.CompletionException;
 import java.util.concurrent.CompletionStage;
-import java.util.concurrent.Flow;
 import java.util.function.Supplier;
 
 import static alpha.nomagichttp.message.Headers.accepts;
@@ -30,12 +29,12 @@ import static java.util.Objects.requireNonNull;
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  */
-final class HttpExchange
+final class HttpExchange<C extends AsynchronousByteChannel & NetworkChannel>
 {
     private static final System.Logger LOG = System.getLogger(HttpExchange.class.getPackageName());
     
     private final DefaultServer server;
-    private final AsynchronousByteChannel child;
+    private final C child;
     private final ChannelByteBufferPublisher bytes;
     
     /*
@@ -50,11 +49,11 @@ final class HttpExchange
     private Handler handler;
     private ExceptionHandlers eh;
     
-    HttpExchange(DefaultServer server, AsynchronousByteChannel child) {
+    HttpExchange(DefaultServer server, C child) {
         this(server, child, new ChannelByteBufferPublisher(server, child));
     }
     
-    private HttpExchange(DefaultServer server, AsynchronousByteChannel child, ChannelByteBufferPublisher bytes) {
+    private HttpExchange(DefaultServer server, C child, ChannelByteBufferPublisher bytes) {
         this.server  = server;
         this.child   = child;
         this.bytes   = bytes;
@@ -77,10 +76,28 @@ final class HttpExchange
     }
     
     private void initialize(RequestHead head) {
-        Route.Match route = findRoute(server, head);
+        Route.Match route = findRoute(head);
         // This order is actually specified in javadoc of ExceptionHandler#apply
-        request = createRequest(head, route, bytes);
+        request = createRequest(head, route);
         handler = findHandler(head, route);
+    }
+    
+    private Route.Match findRoute(RequestHead rh) {
+        return server.getRouteRegistry().lookup(rh.requestTarget());
+    }
+    
+    private DefaultRequest createRequest(RequestHead rh, Route.Match rm) {
+        return new DefaultRequest(rh, rm.parameters(), bytes, child);
+    }
+    
+    private static Handler findHandler(RequestHead rh, Route.Match rm) {
+        Handler h = rm.route().lookup(
+                rh.method(),
+                contentType(rh.headers()).orElse(null),
+                accepts(rh.headers()));
+        
+        LOG.log(DEBUG, () -> "Matched handler: " + h);
+        return h;
     }
     
     private CompletionStage<Response> invokeRequestHandler() {
@@ -146,26 +163,6 @@ final class HttpExchange
                 "HTTP exchange finished exceptionally and channel is closed. " +
                 "Assuming reason was logged already.");
         }
-    }
-    
-    private static Route.Match findRoute(Server s, RequestHead rh) {
-        return s.getRouteRegistry().lookup(rh.requestTarget());
-    }
-    
-    private static DefaultRequest createRequest(
-            RequestHead rh, Route.Match rm, Flow.Publisher<DefaultPooledByteBufferHolder> bytes)
-    {
-        return new DefaultRequest(rh, rm.parameters(), bytes);
-    }
-    
-    private static Handler findHandler(RequestHead rh, Route.Match rm) {
-        Handler h = rm.route().lookup(
-                rh.method(),
-                contentType(rh.headers()).orElse(null),
-                accepts(rh.headers()));
-        
-        LOG.log(DEBUG, () -> "Matched handler: " + h);
-        return h;
     }
     
     private class ExceptionHandlers {
