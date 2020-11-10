@@ -140,12 +140,9 @@ public interface Request
      * 
      * @return the request body
      * 
-     * @throws IllegalStateException
-     *           if body has not yet been bound (see {@link Request})
-     * 
      * @see Body
      */
-    Body body();
+    Optional<Body> body();
     
     /**
      * An API for accessing the request body, either as a high-level Java type
