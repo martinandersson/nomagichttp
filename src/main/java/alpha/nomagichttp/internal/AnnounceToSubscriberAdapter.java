@@ -112,7 +112,7 @@ final class AnnounceToSubscriberAdapter<T>
     }
     
     @Deprecated
-    private static final class Impl<T> extends AbstractUnicastPublisher2<T>
+    private static final class Impl<T> extends AbstractUnicastPublisher<T>
     {
         private static final SerialTransferService<?> CLOSED
                 = new SerialTransferService<>(() -> null, ignored -> {});

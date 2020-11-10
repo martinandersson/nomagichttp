@@ -22,7 +22,7 @@ import java.util.concurrent.Flow;
  * 
  * @param <T> type of item to publish
  */
-abstract class AbstractOp<T> extends AbstractUnicastPublisher2<T>
+abstract class AbstractOp<T> extends AbstractUnicastPublisher<T>
 {
     // Volatile because; set by upstream, accessed by downstream
     private volatile Flow.Subscription upstream;

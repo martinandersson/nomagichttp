@@ -79,10 +79,10 @@ import static java.util.Objects.requireNonNull;
  * 
  * @param <T> type of item to publish
  */
-abstract class AbstractUnicastPublisher2<T> implements Flow.Publisher<T>
+abstract class AbstractUnicastPublisher<T> implements Flow.Publisher<T>
 {
     private static final System.Logger LOG
-            = System.getLogger(AbstractUnicastPublisher2.class.getPackageName());
+            = System.getLogger(AbstractUnicastPublisher.class.getPackageName());
     
     private static final Flow.Subscriber<?>
             ACCEPTING    = noopNew(),
@@ -112,7 +112,7 @@ abstract class AbstractUnicastPublisher2<T> implements Flow.Publisher<T>
     private final boolean reusable;
     private final AtomicReference<Flow.Subscriber<? super T>> ref;
     
-    protected AbstractUnicastPublisher2(boolean reusable) {
+    protected AbstractUnicastPublisher(boolean reusable) {
         this.reusable = reusable;
         this.ref = new AtomicReference<>(T(ACCEPTING));
     }
