@@ -128,7 +128,7 @@ final class HttpExchange<C extends AsynchronousByteChannel & NetworkChannel>
             request.bodyStage().whenComplete((Null2, t2) -> {
                 if (t2 == null) {
                     // TODO: Possible recursion. Unroll.
-                    new HttpExchange(server, child, bytes).begin();
+                    new HttpExchange<>(server, child, bytes).begin();
                 } else if (child.isOpen()) {
                     LOG.log(WARNING, "Expected ChannelByteBufferPublisher to have closed the channel already.");
                     server.orderlyShutdown(child);
