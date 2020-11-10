@@ -175,6 +175,10 @@ final class AnnounceToSubscriberAdapter<T>
         @Override
         protected Flow.Subscription newSubscription(Flow.Subscriber<? super T> sub) {
             SerialTransferService<T> m = mediator.updateAndGet(v -> v == CLOSED ? T(CLOSED) :
+                    // TODO: See next note, this is actually also a failure.
+                    // Request.Body documents that an exception return from onNext() closes the channel!
+                    // An application-code controlled thread observing the exception here would do nothing about it.
+                    // I think we'll need an "on signal failure" callback.
                     new SerialTransferService<>(generator, this::signalNext));
             
             if (m == CLOSED) {
