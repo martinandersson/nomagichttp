@@ -2,6 +2,7 @@ package alpha.nomagichttp.largetest;
 
 import alpha.nomagichttp.handler.Handler;
 import alpha.nomagichttp.handler.Handlers;
+import alpha.nomagichttp.message.Request.Body;
 import alpha.nomagichttp.message.Responses;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -9,10 +10,12 @@ import org.junit.jupiter.params.provider.MethodSource;
 
 import java.io.IOException;
 import java.net.http.HttpResponse;
+import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.function.Supplier;
 import java.util.stream.Stream;
 
+import static java.util.concurrent.CompletableFuture.completedStage;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
@@ -25,10 +28,13 @@ import static org.assertj.core.api.Assertions.assertThat;
  */
 class TwoHundredRequestsFromSameClient extends AbstractSingleClientTest
 {
+    private static final CompletionStage<String> EMPTY = completedStage("");
+    
     @BeforeAll
     static void addHandler() {
-        Handler echo = Handlers.POST().apply(req ->
-                req.body().get().toText().thenApply(Responses::ok));
+        Handler echo = Handlers.POST().apply(req -> req.body()
+                .map(Body::toText).orElse(EMPTY)
+                .thenApply(Responses::ok));
         
         addHandler("/echo", echo);
     }
