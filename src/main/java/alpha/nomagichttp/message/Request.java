@@ -1,10 +1,10 @@
 package alpha.nomagichttp.message;
 
 import alpha.nomagichttp.ExceptionHandler;
-import alpha.nomagichttp.handler.Handler;
 
 import java.net.http.HttpHeaders;
 import java.nio.channels.AsynchronousFileChannel;
+import java.nio.channels.NetworkChannel;
 import java.nio.file.OpenOption;
 import java.nio.file.Path;
 import java.nio.file.attribute.FileAttribute;
@@ -17,17 +17,6 @@ import java.util.function.BiFunction;
 
 /**
  * An inbound HTTP request.<p>
- * 
- * The {@link Handler request handler} will be invoked as soon as the request
- * head has been fully parsed and to the extent necessarily; interpreted by the
- * server. The contents of the request body will arrive asynchronously and is
- * exposed through the {@link #body() method}.<p>
- * 
- * Methods on this interface that document {@code IllegalStateException} will
- * never throw the exception when accessed by a <i>request handler</i>. However,
- * the exception may be thrown when accessed by an <i>{@link ExceptionHandler
- * exception handler}</i> as these handlers may be called earlier in time before
- * all of the parts of the request object has been bound.<p>
  * 
  * The implementation is thread-safe.<p>
  * 
@@ -54,7 +43,7 @@ public interface Request
      *   Accept: text/plain;charset=utf-8
      * }</pre>
      * 
-     * @return the request-line method token
+     * @return the request-line method token (never {@code null} or empty)
      */
     String method();
     
@@ -90,9 +79,11 @@ public interface Request
     String httpVersion();
     
     /**
-     * Returns a parameter value, or an empty optional if value is not bound.<p>
+     * Returns a parameter value, or an empty optional if the value is not
+     * bound.<p>
      * 
-     * Suppose the server has a route with a parameter "id" declared:<p>
+     * Suppose, for example, that the server has a route with a parameter "id"
+     * declared:<p>
      * <pre>
      *   /account/{id}
      * </pre>
@@ -106,17 +97,13 @@ public interface Request
      * 
      * A resource-target "/account" without the parameter value would still
      * match the route and call the handler, but this method would then return
-     * an empty optional.
+     * an empty Optional.
      * 
      * @param name of parameter
      * 
      * @return the parameter value
      * 
-     * @throws NullPointerException
-     *           if {@code name} is {@code null}
-     * 
-     * @throws IllegalStateException
-     *           if path parameters has not yet been bound (see {@link Request})
+     * @throws NullPointerException if {@code name} is {@code null}
      */
     Optional<String> paramFromPath(String name);
     
@@ -145,59 +132,180 @@ public interface Request
     Optional<Body> body();
     
     /**
-     * An API for accessing the request body, either as a high-level Java type
-     * using conversion methods such as {@link #toText()} or directly consuming
-     * the message bytes by using the low-level {@link
-     * #subscribe(Flow.Subscriber)
-     * subscribe(Flow.Subscriber&lt;PooledByteBufferHolder&gt;)} method.<p>
+     * Returns the channel from which this request originates.
      * 
-     * The bytes are not saved for future re-use and an attempt to subscribe to
-     * the bytes more than once will signal an {@code IllegalStateException} to
-     * the subscriber. This is also true even if a new subscription is
-     * immediately cancelled without consuming any bytes.<p>
+     * @return the channel from which this request originates (never {@code null})
+     */
+    NetworkChannel channel();
+    
+    /**
+     * Is an API for accessing the request body in various forms.<p>
+     * 
+     * Utility methods (for example, {@link #toText()}), returns a {@link
+     * CompletionStage} because the request handler will be invoked and
+     * therefore have access to the Body API immediately after the server is
+     * done parsing the request head. At this point in time, not all bytes will
+     * necessarily have made it through on the network.<p>
+     * 
+     * The body bytes may be converted into any arbitrary Java type using the
+     * {@link #convert(BiFunction)} method or consumed directly "on arrival"
+     * using the {@link #subscribe(Flow.Subscriber)} method.<p>
      * 
      * The implementation is thread-safe. In particular - and unlike the
      * unbelievably restrictive rule §3.1 in an otherwise very "async-oriented"
      * <a href="https://github.com/reactive-streams/reactive-streams-jvm/tree/d4d08aadf7d6b4345b2e59f756adeaafd998fec7#3-subscription-code">Reactive Streams</a>
      * specification - methods on the {@link Flow.Subscription} instance
-     * given to the subscriber from the server when subscribing to the request
-     * body, may be called by any thread at any time.<p>
+     * given to the body subscriber may be called by any thread at any time.<p>
+     * 
+     * Some utility methods such as {@code toText()} may save the returned stage
+     * for future re-use, for example an {@link ExceptionHandler exception
+     * handler} may also be interested in accessing the request body.<p>
+     * 
+     * However, the body bytes can not be directly consumed more than once; they
+     * are not saved by the server. An attempt to {@code convert(...)} or {@code
+     * subscribe(...)} more than once will result in an {@code
+     * IllegalStateException}.<p>
+     * 
+     * Same is is also true for utility methods that "trickle down". If for
+     * example method {@code convert(...)} is used followed by {@code toText()},
+     * then the latter will complete exceptionally with an {@code
+     * IllegalStateException}.<p>
+     * 
+     * And same is also true even if a {@code Flow.Subscription} is immediately
+     * cancelled with or without actually consuming any bytes (application is
+     * assumed to ignore the body, followed by a server-side discard of it).<p>
+     * 
+     * The normal way to reject an operation would be to blow up the calling
+     * thread, even for asynchronous operations. For example, {@code
+     * ExecutorService.submit()} throws {@code RejectedExceptionException} and
+     * {@code AsynchronousByteChannel.read()} throws {@code
+     * IllegalArgumentException} - just to name a few.<p>
+     * 
+     * For good or bad, the Reactive Streams specification mandates that all
+     * exceptions are signalled through the subscriber. In order then to have a
+     * coherent API, all exceptions produced by the Body API will be delivered
+     * through the result carrier ({@code CompletionStage} and {@code
+     * Flow.Subscriber}). This also has the implication that exceptions are not
+     * documented using the standard {@code @throws} tag but rather inline with
+     * the rest of the text. The only exception to this rule is {@code
+     * NullPointerException} which will blow up the calling thread wherever
+     * warranted.<p>
+     * 
+     * In general, high-level exception types - in particular, when documented -
+     * does not close the underlying channel and so the application can chose to
+     * recover from them. The reverse is true for unexpected errors, in
+     * particular, errors that originates from the underlying channel. The
+     * safest bet for an application when attempting error recovery is to always
+     * check first if the channel is still open ({@code
+     * Request.channel().isOpen()}).<p>
      * 
      * 
      * <h3>Subscribing to bytes with a {@code Flow.Subscriber}</h3>
      * 
      * The subscriber will receive bytebuffers in the same order they are read
-     * from the underlying channel (the subscriber can not read passed the body
-     * boundary because the server will complete the subscription and possibly
-     * limit the last bytebuffer).<p>
+     * from the underlying channel. The subscriber can not read passed the
+     * message/body boundary because the server will complete the subscription
+     * before then and if need be, limit the last bytebuffer.<p>
      * 
-     * The subscriber may request/demand any number of bytebuffers and even
-     * process them asynchronously, but only when the bytebuffer has been {@link
-     * PooledByteBufferHolder#release() released} will the next bytebuffer be
-     * published.<p>
+     * <h4>Releasing</h4>
+     * 
+     * The published bytebuffers are pooled and may be processed synchronously
+     * or asynchronously. Whenever the application has finished processing
+     * a bytebuffer, it must be {@link PooledByteBufferHolder#release()
+     * released} which is a signal to the server that the bytebuffer may be
+     * re-used for new channel operations. The thread releasing may be used to
+     * immediately publish new bytebuffers to the subscriber or initiate new
+     * asynchronous operations on the underlying channel.<p>
      * 
      * Releasing the bytebuffer with bytes remaining to be read will cause the
-     * bytebuffer to immediately be re-published.<p>
+     * bytebuffer to immediately become available for re-publication (ahead of
+     * other bytebuffers already available).<p>
      * 
      * Cancelling the subscription does not cause the bytebuffer to be released.
      * Releasing has to be done explicitly, or implicitly through an exceptional
-     * return of {@code Subscriber.onNext()}. An exceptional return from onNext
-     * will also void the subscription which just like {@code
-     * Subscription.cancel} [perhaps eventually] stops the publisher from
-     * publishing more items.<p>
+     * return of {@code Subscriber.onNext()}.<p>
+     * 
+     * <h4>Processing bytebuffers</h4>
+     * 
+     * The subscriber may request/demand any number of bytebuffers. In general
+     * though, the easiest and safest approach is most likely to simply request
+     * and process one bytebuffer at a time.<p>
+     * 
+     * It is possible for the application to request and also receive new
+     * bytebuffers before the previously received bytebuffers have been
+     * released. However, awaiting a certain number of bytebuffers before
+     * processing them is strongly discouraged and may even have dire
+     * consequences. There is no support in the Body API for the application to
+     * know if a future publication of a bytebuffer is immediately available nor
+     * can the application know exactly how many bytebuffers still remains in
+     * the server's pool. Or put in other words, this practice could end up
+     * imposing unnecessary delays or even starve the server's pool of
+     * bytebuffers to use for new channel operations, causing a complete halt in
+     * progress for the underlying channel.<p>
+     * 
+     * The recommended approach is to request and process one bytebuffer at a
+     * time. This may also entail a re-designing of what would otherwise have
+     * been a synchronous approach to become an asynchronous approach instead.
+     * For example, instead of using a {@code GatheringByteChannel} which
+     * expects a {@code ByteBuffer[]}, use an {@code AsynchronousByteChannel}
+     * which expects a single {@code ByteBuffer} and when the operation's
+     * completion handler is called, release the bytebuffer and request a new
+     * bytebuffer from the subscription. Please also note that blocking the
+     * request thread is never a good idea to begin with and hurts
+     * scalability!<p>
+     * 
+     * Unfortunately, the Reactive Stream specification calls this approach an
+     * "inherently inefficient 'stop-and-wait' protocol". Well, this is plain
+     * wrong. The bytebuffers are pooled and cached upstream already. Requesting
+     * a bytebuffer is essentially the same as polling a stupidly fast queue of
+     * available bytebuffers and there simply does not exist - surprise surprise
+     * - a good reason to engage in "premature optimization".<p>
+     * 
+     * Speaking of optimization; the default implementation uses <i>direct</i>
+     * bytebuffers in order to support "zero-copy" transfers. I.e., no data is
+     * moved into Java heap space unless the subscriber itself causes this to
+     * happen. Whenever possible, always pass forward the bytebuffers to the
+     * destination without reading the bytes in application code!<p>
+     * 
+     * <h4>Thread Semantics</h4>
+     * 
+     * All signals to the subscriber are executed serially with a happens-before
+     * relationship. Assuming the class data is not accessed by foreign threads
+     * outside of the delivery of these signals; no special care needs to be put
+     * in place such as volatile- and/or atomic fields.<p>
+     * 
+     * The effect of {@code Subscription.request()} - if called by the thread
+     * delivering a signal to the subscriber - will not be immediate. Instead
+     * the requested demand/value will be scheduled and then the method returns.
+     * I.e., {@code Subscriber.onSubscribe()} and {@code Subscriber.onNext()}
+     * will always complete without reentrancy and recursion.<p>
+     * 
+     * However, an asynchronous call to {@code request()} may prompt the same
+     * thread to immediately get busy delivering the next subscriber signal.<p>
+     * 
+     * {@code Subscription.cancel()} will only have an immediate effect if
+     * called by the thread running the subscriber. If called asynchronously,
+     * the effect may be eventual and the subscriber may observe a bytebuffer
+     * delivery even after the cancel method returns (at most one "extra"
+     * delivery).<p>
+     * 
+     * <h4>The HTTP exchange and body discarding</h4>
      * 
      * The HTTP exchange is considered done as soon as both the server's
      * response body subscription <i>and</i> the application's request body
      * subscription have both completed. Not until then will the next HTTP
-     * message-exchange commence. This means that a request body subscriber must
-     * ensure his subscription runs all the way to the end or is cancelled.
-     * Subscribing to the body but never complete the subscription will lead to
-     * a halt in progress for the underlying channel.<p>
+     * message-exchange commence on the same channel.<p>
      * 
-     * However, if the server's response body subscription completes and no
-     * request body subscriber arrived, then the server will assume the body was
-     * intentionally ignored and proceed to discard it, after which it can not
-     * be subscribed to by the application any more.<p>
+     * This means that a request body subscriber must ensure his subscription
+     * runs all the way to the end or is cancelled. Subscribing to the body but
+     * never completing the subscription may lead to a progress halt for the
+     * underlying channel (there is no timeout in the NoMagicHTTP library
+     * code).<p>
+     * 
+     * If the server's response body subscription completes and earliest at that
+     * point no request body subscriber has arrived, then the server will assume
+     * that the body was intentionally ignored and proceed to discard it - after
+     * which it can not be subscribed to by the application any more.<p>
      * 
      * If a response must be sent back immediately but processing the
      * request body bytes must be delayed, then there's at least two ways of
@@ -205,15 +313,40 @@ public interface Request
      * subscription or register a request body subscriber but delay requesting
      * items.<p>
      * 
-     * Finally, as a word of caution; the default implementation uses
-     * <i>direct</i> bytebuffers in order to support "zero-copy" transfers.
-     * I.e., no data is moved into Java heap space unless the subscriber itself
-     * causes this to happen. Whenever possible, always pass forward the
-     * bytebuffers to the destination without reading the bytes in application
-     * code.<p>
+     * <h4>Exception Handling</h4>
      * 
-     * The implementation is thread-safe.
+     * Exceptions thrown by the {@code Flow.Subscriber.onSubscribe()} method
+     * propagates to the calling thread, i.e., the one calling {@code
+     * Request.Body.subscribe()}. If this thread is the request thread, then
+     * standard {@link ExceptionHandler exception handling} is kicked off.<p>
      * 
+     * Exceptions thrown by the subscriber's {@code onNext()} and {@code
+     * onComplete()} methods will cause the server to log the error and perform
+     * the channel-close procedure documented in {@link
+     * Response#mustCloseAfterWrite()}. This will also void the underlying
+     * subscription and even though {@code onError()} is meant to be a vehicle
+     * for <i>publisher</i> errors, the server will still gracefully complete
+     * the subscription by signalling a {@link ClosedPublisherException}.<p>
+     * 
+     * Exceptions signalled to {@code Subscriber.onError()} indicates low-level
+     * problems with the underlying channel, meaning it's quite futile for the
+     * application to try to recover from them. The error will already have been
+     * logged by the server who also performed the channel-close procedure
+     * documented in {@code Response.mustCloseAfterWrite()}.<p>
+     * 
+     * Exceptions from {@code Subscriber.onError()} itself will be logged but
+     * otherwise ignored.<p>
+     * 
+     * Even if the server has a reaction for some observed exceptions - such as
+     * closing the channel as previously noted - this doesn't stop the exception
+     * from being propagated. For example, if the application asynchronously
+     * calls {@code Subscription.request()} from a new thread, a call which
+     * might immediately and synchronously trigger the publication of a new item
+     * delivery to {@code Subscriber.onNext()}, and if this method in turn
+     * returns exceptionally which prompts the server to intercept and close the
+     * channel, then the application code will still return exceptionally from
+     * it's call to the top-level {@code Subscription.request()} method
+     * observing the same exception instance.
      * 
      * @author Martin Andersson (webmaster at martinandersson.com)
      */
