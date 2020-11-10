@@ -19,4 +19,8 @@ public final class ClosedPublisherException extends RuntimeException {
     public ClosedPublisherException(String message) {
         super(message);
     }
+    
+    public ClosedPublisherException(Throwable cause) {
+        super(cause);
+    }
 }
