@@ -1,5 +1,6 @@
 package alpha.nomagichttp.internal;
 
+import alpha.nomagichttp.message.ClosedPublisherException;
 import alpha.nomagichttp.message.PooledByteBufferHolder;
 import alpha.nomagichttp.message.Request;
 
@@ -130,7 +131,8 @@ final class ChannelByteBufferPublisher implements Flow.Publisher<DefaultPooledBy
         try {
             subscriber.announce();
         } catch (Throwable t) {
-            LOG.log(ERROR, () -> "Signalling subscriber failed." + CLOSE_MSG);
+            LOG.log(ERROR, () -> "Signalling Subscriber.onNext() failed." + CLOSE_MSG, t);
+            subscriber.error(new ClosedPublisherException(t));
             close();
         }
     }
