@@ -3,7 +3,6 @@ package alpha.nomagichttp.internal;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.AsynchronousByteChannel;
-import java.nio.channels.Channel;
 import java.nio.channels.ClosedChannelException;
 import java.nio.channels.CompletionHandler;
 import java.nio.channels.ShutdownChannelGroupException;
@@ -11,6 +10,7 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
 
+import static java.lang.System.Logger.Level.DEBUG;
 import static java.lang.System.Logger.Level.ERROR;
 import static java.util.Objects.requireNonNull;
 
@@ -62,7 +62,7 @@ final class AnnounceToChannel
             AsynchronousByteChannel source, Supplier<? extends ByteBuffer> destinations,
             Consumer<? super ByteBuffer> completionHandler, WhenDone whenDone, DefaultServer server)
     {
-        return new AnnounceToChannel(source, Mode.READ, destinations, completionHandler,whenDone, server);
+        return new AnnounceToChannel(source, Mode.READ, destinations, completionHandler, whenDone, server);
     }
     
     static AnnounceToChannel write(
@@ -248,26 +248,19 @@ final class AnnounceToChannel
             final int r = result;
             
             if (r == -1) {
-                // EOS
-                stop();
-                completionHandler.accept(EOS);
-                operation.complete();
-                return;
-            }
-            
-            assert r >= 0;
-            
-            try {
-                byteCount = Math.addExact(byteCount, r);
-            } catch (ArithmeticException e) {
-                byteCount = Long.MAX_VALUE;
+                LOG.log(DEBUG, "End of stream; other side must have closed.");
+                server.orderlyShutdown(channel); // <-- will cause stop() to be called next run
+                buf = EOS;
+            } else {
+                try {
+                    byteCount = Math.addExact(byteCount, r);
+                } catch (ArithmeticException e) {
+                    byteCount = Long.MAX_VALUE;
+                }
             }
             
             completionHandler.accept(buf);
-            
-            // Schedule new run before completing
-            // (supplier might have more buffers or we might need to execute whenDone callback)
-            operation.run();
+            operation.run(); // <-- schedule new run; perhaps more work or execute whenDone callback
             operation.complete();
         }
         
