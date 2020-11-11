@@ -115,7 +115,7 @@ final class ChannelByteBufferPublisher implements Flow.Publisher<DefaultPooledBy
     }
     
     private void putReadableLast(ByteBuffer b) {
-        assert b.hasRemaining();
+        assert b == EOS || b.hasRemaining();
         readable.addLast(b);
         subscriberAnnounce();
     }
