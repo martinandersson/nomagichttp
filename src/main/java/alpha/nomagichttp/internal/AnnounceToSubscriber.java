@@ -102,7 +102,7 @@ final class AnnounceToSubscriber<T>
      * It is advisable to first call {@link #error(Throwable)} in order to
      * tailor the error message. Of course, a subscriber that registers
      * in-between {@code error()} and {@code stop()} would still receive the
-     * built-in {@code RuntimeException}.<p>
+     * message-less exception.<p>
      * 
      * Is NOP if already stopped.
      */

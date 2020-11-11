@@ -33,9 +33,9 @@ final class ResponseBodySubscriber implements SubscriberAsStage<ByteBuffer, Long
     // Delta kept low because server could be handling a lot of responses and
     // we don't want to keep too much garbage in memory.
     private static final int
-            /** Minimum bytebuffer demand. */
+            // Minimum bytebuffer demand.
             DEMAND_MIN = 1,
-            /** Maximum bytebuffer demand. */
+            // Maximum bytebuffer demand.
             DEMAND_MAX = 3;
     
     private final Response response;

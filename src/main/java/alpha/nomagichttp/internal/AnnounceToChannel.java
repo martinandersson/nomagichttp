@@ -27,15 +27,17 @@ import static java.util.Objects.requireNonNull;
  * 
  * The {@code whenDone} callback (constructor argument) is called exactly-once
  * whenever no more operations will be initiated (only after a pending operation
- * completes), either because 1) {@link #stop()} was called (either explicitly or
- * implicitly through using sentinel {@link #NO_MORE}), 2) an operation
- * completed exceptionally, or 3) in read mode only; end-of-stream was
+ * completes), either because 1) {@link #stop()} was called (may be implicitly
+ * called using sentinel {@link #NO_MORE} or closing the channel), 2) an
+ * operation completed exceptionally, or 3) in read mode only; end-of-stream was
  * reached.<p>
  * 
- * With no exception to the rule: if a channel operation completes
- * exceptionally, the underlying channel will be closed using {@link
- * DefaultServer#orderlyShutdown(Channel)} before calling the {@code whenDone}
- * callback. Other than that, this class never closes the channel.<p>
+ * Please note that the responsibility of this class is the channel
+ * <i>operation</i>, not the channel's life cycle itself. Over the coarse of the
+ * channel's life cycle - as far as this class is concerned - many operations
+ * can come and go. In particular note; the only two occasions when this class
+ * <i>closes</i> the channel is if a channel operation completes exceptionally
+ * or end-of-stream is reached.<p>
  * 
  * This class is non-blocking and thread-safe.
  * 
@@ -70,17 +72,17 @@ final class AnnounceToChannel
         return new AnnounceToChannel(destination, Mode.WRITE, sources, completionHandler, whenDone, server);
     }
     
-    static final ByteBuffer
-            /**
-             * The service will self-{@link #stop()} as soon as this sentinel
-             * bytebuffer is polled from the supplier.
-             */
-            NO_MORE = ByteBuffer.allocate(0),
-            /**
-             * Is passed by the service to the completion handler only if in
-             * read mode and whenever the channel has reached end-of-stream.
-             */
-            EOS = ByteBuffer.allocate(0);
+    /**
+     * The service will self-{@link #stop()} as soon as this sentinel bytebuffer
+     * is polled from the supplier.
+     */
+    static final ByteBuffer NO_MORE = ByteBuffer.allocate(0);
+    
+    /**
+     * Is passed by the service to the completion handler only if in read mode
+     * and whenever the channel has reached end-of-stream.
+     */
+    static final ByteBuffer EOS = ByteBuffer.allocate(0);
     
     private static final System.Logger LOG
             = System.getLogger(AnnounceToChannel.class.getPackageName());
@@ -140,7 +142,7 @@ final class AnnounceToChannel
      * Stop the service.<p>
      * 
      * This is considered a "normal" stop and if effective because a contending
-     * thread didn't {@link #stop(Throwable) stop using a throwable, the {@code
+     * thread didn't {@link #stop(Throwable)} stop using a throwable, the {@code
      * whenDone} callback will be executed without a throwable - even if a
      * pending asynchronous operation completes exceptionally.<p>
      * 
