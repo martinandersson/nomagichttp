@@ -209,7 +209,7 @@ final class AnnounceToChannel
         if (b == null) {
             operation.complete();
             return;
-        } else if (b == NO_MORE) {
+        } else if (b == NO_MORE || !channel.isOpen()) {
             stop();
             operation.complete();
             return;
