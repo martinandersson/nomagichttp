@@ -15,6 +15,9 @@ import java.util.concurrent.Flow;
  * GitHub issue</a>).
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
+ * 
+ * @param <T> item type of subscriber
+ * @param <R> result type of stage
  */
 interface SubscriberAsStage<T, R> extends Flow.Subscriber<T>
 {
