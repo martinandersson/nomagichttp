@@ -21,7 +21,10 @@ public class HelloWorldConsole {
          * we do not inline or statically import for learning purposes.
          */
         
-        // This handler reacts to requests using the HTTP verb/method "GET"
+        /*
+         * This handler reacts to requests using the HTTP verb/method "GET". The
+         * handler will execute a command and return "202 Accepted".
+         */
         Handler h = Handlers.GET().run(() ->
                 System.out.println("Hello, World!"));
         
