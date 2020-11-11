@@ -9,15 +9,13 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.Flow;
 
-import static java.util.Objects.requireNonNull;
-
 /**
  * Subscribes to bytebuffers that is asynchronously written to a file
  * channel.
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  */
-final class FileSubscriber implements Flow.Subscriber<PooledByteBufferHolder>
+final class FileSubscriber implements SubscriberAsStage<PooledByteBufferHolder, Long>
 {
     /*
      * Currently, subscribes to- and writes only one bytebuffer at a time. This
@@ -59,17 +57,14 @@ final class FileSubscriber implements Flow.Subscriber<PooledByteBufferHolder>
         this.result = new CompletableFuture<>();
     }
     
-    CompletionStage<Long> asCompletionStage() {
-        return result.minimalCompletionStage();
+    @Override
+    public CompletionStage<Long> asCompletionStage() {
+        return result;
     }
     
     @Override
     public void onSubscribe(Flow.Subscription subscription) {
-        requireNonNull(subscription);
-        if (this.subscription != null) {
-            throw new IllegalStateException("No support for subscriber re-use.");
-        }
-        this.subscription = subscription;
+        this.subscription = SubscriberAsStage.validate(this.subscription, subscription);
         subscription.request(1);
     }
     

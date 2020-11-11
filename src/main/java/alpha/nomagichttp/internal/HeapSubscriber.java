@@ -27,33 +27,30 @@ import static java.lang.System.Logger.Level.DEBUG;
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  */
-final class HeapSubscriber<R> implements Flow.Subscriber<PooledByteBufferHolder>
+final class HeapSubscriber<R> implements SubscriberAsStage<PooledByteBufferHolder, R>
 {
     private static final System.Logger LOG = System.getLogger(HeapSubscriber.class.getPackageName());
     
     private final BiFunction<byte[], Integer, ? extends R> finisher;
     private final ExposedByteArrayOutputStream sink;
     private final CompletableFuture<R> result;
+    private Flow.Subscription subscription;
     
     HeapSubscriber(BiFunction<byte[], Integer, ? extends R> finisher) {
         this.finisher = finisher;
         this.sink = new ExposedByteArrayOutputStream();
         this.result = new CompletableFuture<>();
+        this.subscription = null;
     }
     
-    CompletionStage<R> asCompletionStage() {
-        return result.minimalCompletionStage();
+    @Override
+    public CompletionStage<R> asCompletionStage() {
+        return result;
     }
     
     @Override
     public void onSubscribe(Flow.Subscription subscription) {
-        if (result.isDone()) {
-            subscription.cancel();
-            // This is actually breaking the specification, but we have no other choice.
-            // https://github.com/reactive-streams/reactive-streams-jvm/issues/495
-            throw new IllegalStateException("No support for subscriber re-use.");
-        }
-        
+        this.subscription = SubscriberAsStage.validate(this.subscription, subscription);
         subscription.request(MAX_VALUE);
     }
     

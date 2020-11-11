@@ -105,10 +105,7 @@ final class ResponseBodySubscriber implements SubscriberAsStage<ByteBuffer, Long
     
     @Override
     public void onSubscribe(Flow.Subscription subscription) {
-        if (this.subscription != null) {
-            throw new IllegalStateException("Subscriber can only be used once.");
-        }
-        this.subscription = subscription;
+        this.subscription = SubscriberAsStage.validate(this.subscription, subscription);
         subscription.request(requested = DEMAND_MAX);
     }
     
