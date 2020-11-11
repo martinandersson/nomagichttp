@@ -4,6 +4,8 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.Flow;
 
+import static java.util.Objects.requireNonNull;
+
 /**
  * A single-use subscriber that supports being viewed
  * {@link #asCompletionStage()} of the end result.<p>
@@ -32,4 +34,27 @@ interface SubscriberAsStage<T, R> extends Flow.Subscriber<T>
      * @return this as a completion stage
      */
     CompletionStage<R> asCompletionStage();
+    
+    /**
+     * Returns {@code argument}.<p>
+     * 
+     * This is a utility method meant to be used by the subscriber's {@code
+     * onSubscribe()} implementation.
+     * 
+     * @param field subscription instance field of subscriber
+     * @param argument subscription instance passed to {@code onSubscribe()}
+     * 
+     * @return {@code argument}
+     * 
+     * @throws NullPointerException   if {@code argument} is {@code null}
+     * @throws IllegalStateException  if {@code field} is <strong>not</strong> {@code null}
+     */
+    static Flow.Subscription validate(Flow.Subscription field, Flow.Subscription argument) {
+        requireNonNull(argument);
+        if (field != null) {
+            argument.cancel();
+            throw new IllegalStateException("No support for subscriber re-use.");
+        }
+        return argument;
+    }
 }
