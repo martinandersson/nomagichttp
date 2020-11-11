@@ -27,7 +27,7 @@ import java.util.concurrent.Executor;
  * {@code SerialExecutor} instance afterwards.<p>
  * 
  * Recursive calls to {@code execute()} from the same thread running the
- * executor is safe and will simply enqueue the action and then immediately
+ * executor are safe and will simply enqueue the action and then immediately
  * return - just like any other thread would.<p>
  * 
  * Note that if the actions submitted are long-running <i>and</i> it is expected
@@ -44,7 +44,7 @@ class SerialExecutor implements Executor
     
     SerialExecutor() {
         actions = new ConcurrentLinkedQueue<>();
-        serial = new SeriallyRunnable(this::pollAndExecute);
+        serial  = new SeriallyRunnable(this::pollAndExecute);
     }
     
     @Override

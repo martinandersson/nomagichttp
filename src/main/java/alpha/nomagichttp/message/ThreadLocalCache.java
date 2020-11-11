@@ -7,14 +7,15 @@ import java.util.function.Supplier;
 import static java.util.Objects.requireNonNull;
 
 /**
- * Super simple but highly effective and non-blocking, thread-local object store
- * of singleton objects that are evicted at the discretion of the garbage
+ * Super simple but highly efficient thread-local object store and factory of
+ * singleton objects that are evicted at the discretion of the garbage
  * collector.<p>
  * 
  * Backed by weak keys and soft values.<p>
  * 
  * Which means that keys will only stay around for as long as the key itself is
- * strongly reachable outside of this class.<p>
+ * strongly reachable outside of this class. But if the key is lost, value is
+ * lost.<p>
  * 
  * The values will be kept around at the discretion of the JVM implementation.
  * As per the JavaDoc's of {@link SoftReference}, the JVM implementation is
@@ -24,6 +25,7 @@ import static java.util.Objects.requireNonNull;
  * <h2>An example</h2>
  * <pre>{@code
  *   NumberFormat nf = ThreadLocalCache.get(NumberFormat.class, () -> {
+ *           // Thread-unique instance created only when not already cached:
  *           NumberFormat cached = NumberFormat.getInstance();
  *           cached.setMaximumFractionDigits(3);
  *           return cached;
@@ -42,7 +44,7 @@ final class ThreadLocalCache
             CACHE = ThreadLocal.withInitial(WeakHashMap::new);
     
     /**
-     * Retrieve a cached instance of the specified type, or create it.<p>
+     * Retrieve a new or cached instance of the specified type.<p>
      * 
      * The factory may return null, in which case null will be returned until
      * the factory yields a non-null result.
