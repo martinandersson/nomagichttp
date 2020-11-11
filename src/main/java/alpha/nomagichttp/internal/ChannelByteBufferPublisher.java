@@ -57,7 +57,7 @@ final class ChannelByteBufferPublisher implements Flow.Publisher<DefaultPooledBy
     private final Queue<ByteBuffer>       writable;
     private final SeriallyRunnable        readOp;
     private final ReadHandler             handler;
-    private final AnnounceToSubscriberAdapter<DefaultPooledByteBufferHolder> subscriber;
+    private final AnnounceToSubscriber<DefaultPooledByteBufferHolder> subscriber;
     
     ChannelByteBufferPublisher(DefaultServer server, AsynchronousByteChannel channel) {
         this.server     = server;
@@ -66,7 +66,7 @@ final class ChannelByteBufferPublisher implements Flow.Publisher<DefaultPooledBy
         this.writable   = new ConcurrentLinkedQueue<>();
         this.readOp     = new SeriallyRunnable(this::readImpl, true);
         this.handler    = new ReadHandler();
-        this.subscriber = new AnnounceToSubscriberAdapter<>(this::pollReadable);
+        this.subscriber = new AnnounceToSubscriber<>(this::pollReadable);
         
         IntStream.generate(() -> BUF_SIZE)
                 .limit(BUF_COUNT)

@@ -28,12 +28,11 @@ import static java.util.Objects.requireNonNull;
  *
  * @param <T> type of item to publish
  */
-// TODO Rename to AnnounceToSubscriber
-final class AnnounceToSubscriberAdapter<T>
+final class AnnounceToSubscriber<T>
 {
     private final Impl<T> impl;
     
-    protected AnnounceToSubscriberAdapter(Supplier<? extends T> generator) {
+    protected AnnounceToSubscriber(Supplier<? extends T> generator) {
         impl = new Impl<>(generator);
     }
     
