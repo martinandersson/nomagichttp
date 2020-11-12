@@ -45,44 +45,46 @@ class TwoHundredRequestsFromSameClient extends AbstractSingleClientTest
     // for parameterized tests. So we must use the name attribute instead.
     // https://github.com/gradle/gradle/issues/5975
     @ParameterizedTest(name = "small")
-    @MethodSource("small_messages")
-    void small(String msg) throws IOException, InterruptedException {
-        HttpResponse<String> res = postAndReceiveText("/echo", msg);
-        assertThat(res.statusCode()).isEqualTo(200);
-        assertThat(res.body()).isEqualTo(msg);
+    @MethodSource("small_source")
+    void small_test(String requestBody) throws IOException, InterruptedException {
+        postAndAssertResponse(requestBody);
     }
     
-    private static Stream<String> small_messages() {
-        return messages(100, 0, 10);
+    private static Stream<String> small_source() {
+        return requestBodies(100, 0, 10);
     }
     
     @ParameterizedTest(name = "big")
-    @MethodSource("big_messages")
-    void big(String msg) throws IOException, InterruptedException {
-        HttpResponse<String> res = postAndReceiveText("/echo", msg);
-        assertThat(res.statusCode()).isEqualTo(200);
-        assertThat(res.body()).isEqualTo(msg);
+    @MethodSource("big_source")
+    void big_test(String requestBody) throws IOException, InterruptedException {
+        postAndAssertResponse(requestBody);
     }
     
-    private static Stream<String> big_messages() {
+    private static Stream<String> big_source() {
         final int channelBufferPoolSize = 5 * 16 * 1_024;
-        return messages(100, channelBufferPoolSize / 2, channelBufferPoolSize * 10);
+        return requestBodies(100, channelBufferPoolSize / 2, channelBufferPoolSize * 10);
+    }
+    
+    private void postAndAssertResponse(String requestBody) throws IOException, InterruptedException {
+        HttpResponse<String> res = postAndReceiveText("/echo", requestBody);
+        assertThat(res.statusCode()).isEqualTo(200);
+        assertThat(res.body()).isEqualTo(requestBody);
     }
     
     /**
-     * Generate a stream of text messages.<p>
+     * Generate a stream of request bodies.<p>
      * 
-     * Size of the stream is specified by {@code n}. Size of each message will
+     * Size of the stream is specified by {@code n}. Size of each body text will
      * be random between {@code minLen} (inclusive) and {@code maxLen}
      * (inclusive).
      * 
      * @param n stream limit
-     * @param minLen minimum text length (inclusive)
-     * @param maxLen maximum text length (inclusive)
+     * @param minLen minimum body length (inclusive)
+     * @param maxLen maximum body length (inclusive)
      * 
-     * @return text messages
+     * @return request bodies (just text)
      */
-    private static Stream<String> messages(int n, int minLen, int maxLen) {
+    private static Stream<String> requestBodies(int n, int minLen, int maxLen) {
         Supplier<String> s = () -> {
             ThreadLocalRandom r = ThreadLocalRandom.current();
             return DataUtil.text(r.nextInt(minLen, maxLen + 1));
