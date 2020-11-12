@@ -166,7 +166,7 @@ final class HttpExchange<C extends AsynchronousByteChannel & NetworkChannel>
     }
     
     private class ExceptionHandlers {
-        private final List<Supplier<? extends ExceptionHandler>> factories;
+        private final List<Supplier<ExceptionHandler>> factories;
         private List<ExceptionHandler> constructed;
         private Throwable prev;
         private int attemptCount;

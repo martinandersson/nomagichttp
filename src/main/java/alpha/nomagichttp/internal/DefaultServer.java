@@ -72,17 +72,23 @@ public final class DefaultServer implements Server
     
     private final RouteRegistry routes;
     private final ServerConfig config;
-    private final List<Supplier<? extends ExceptionHandler>> onError;
+    private final List<Supplier<ExceptionHandler>> onError;
     private AsynchronousServerSocketChannel listener;
     private int port;
     
-    public DefaultServer(RouteRegistry routes, ServerConfig config, Iterable<Supplier<? extends ExceptionHandler>> onError) {
+    public <S extends Supplier<? extends ExceptionHandler>> DefaultServer(
+            RouteRegistry routes, ServerConfig config, Iterable<S> onError)
+    {
         this.routes = requireNonNull(routes);
         this.config = requireNonNull(config);
         
         // Collectors.toUnmodifiableList() does not document RandomAccess
-        List<Supplier<? extends ExceptionHandler>> l
-                = stream(onError.spliterator(), false).collect(toCollection(ArrayList::new));
+        List<Supplier<ExceptionHandler>> l = stream(onError.spliterator(), false)
+                .map(e -> {
+                    @SuppressWarnings("unchecked")
+                    Supplier<ExceptionHandler> eh = (Supplier<ExceptionHandler>) e;
+                    return eh; })
+                .collect(toCollection(ArrayList::new));
         
         this.onError  = unmodifiableList(l);
         this.listener = null;
@@ -164,7 +170,7 @@ public final class DefaultServer implements Server
      * 
      * @return exception handlers
      */
-    List<Supplier<? extends ExceptionHandler>> getExceptionHandlers() {
+    List<Supplier<ExceptionHandler>> getExceptionHandlers() {
         return onError;
     }
     
