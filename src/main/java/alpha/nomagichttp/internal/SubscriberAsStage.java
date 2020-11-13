@@ -7,8 +7,8 @@ import java.util.concurrent.Flow;
 import static java.util.Objects.requireNonNull;
 
 /**
- * A single-use subscriber that supports being viewed
- * {@link #asCompletionStage()} of the end result.<p>
+ * A single-use subscriber that processes items into an end-result retrievable
+ * using {@link #asCompletionStage()}.<p>
  * 
  * If the subscriber is used more than once, it will throw an {@code
  * IllegalStateException} on the thread calling {@code onSubscribe()}. There's
