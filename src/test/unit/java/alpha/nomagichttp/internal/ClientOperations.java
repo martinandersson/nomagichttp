@@ -45,6 +45,11 @@ import static org.assertj.core.api.Assertions.assertThat;
  */
 final class ClientOperations
 {
+    @FunctionalInterface
+    public interface SocketChannelSupplier {
+        SocketChannel get() throws IOException;
+    }
+    
     protected static final String CRLF = "\r\n";
     
     private static final System.Logger LOG = System.getLogger(ClientOperations.class.getPackageName());
@@ -62,11 +67,6 @@ final class ClientOperations
     ClientOperations(int port) {
         this(() -> SocketChannel.open(
                 new InetSocketAddress(getLoopbackAddress(), port)));
-    }
-    
-    @FunctionalInterface
-    public interface SocketChannelSupplier {
-        SocketChannel get() throws IOException;
     }
     
     ClientOperations(SocketChannelSupplier factory) {
