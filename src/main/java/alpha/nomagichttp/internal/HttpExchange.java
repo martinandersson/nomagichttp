@@ -118,6 +118,17 @@ final class HttpExchange<C extends AsynchronousByteChannel & NetworkChannel>
     }
     
     private void finish(Void Null, Throwable t) {
+        /*
+         * We should make the connection life cycle much more solid; when is
+         * the connection persistent and when is it not (also see RFC 2616
+         * §14.10 Connection). No point in starting a new exchange if we expect
+         * the connection to end. In fact, if that's the case we should actually
+         * go ahead and close the channel! Currently, if the other side never
+         * closes then we would end up having idle zombie connections (!).
+         * TODO: 1) Make connection life cycle solid and robust.
+         * TODO: 2) Implement idle timeout.
+         */
+        
         if (t == null) {
             if (!child.isOpen()) {
                 return;
@@ -143,22 +154,6 @@ final class HttpExchange<C extends AsynchronousByteChannel & NetworkChannel>
               // TODO: Possible recursion. Unroll.
               .whenComplete(this::finish);
         } else {
-            /*
-             * Currently seeing a lot of ClosedPublisherException here. Because
-             * a new HTTP exchange is indiscriminately started even if the other
-             * side closes after the previous exchange, making
-             * ChannelByteBufferPublisher reach EOS and consequently stop the
-             * just-arrived RequestHeadSubscriber. The problem is that we should
-             * make the connection life cycle much more solid; when is the
-             * connection persistent and when is it not. No point in starting a
-             * new exchange if we expect the connection to end. In fact, if
-             * that's the case we should actually go ahead and close the channel!
-             * Currently, if the other side never closes then we would end up
-             * having idle zombie connections (!).
-             * TODO: 1) Make connection life cycle solid and robust.
-             *          (this logging statement should never happen?)
-             * TODO: 2) Implement idle timeout.
-             */
             LOG.log(DEBUG, () ->
                 "HTTP exchange finished exceptionally and channel is closed. " +
                 "Assuming reason was logged already.");
