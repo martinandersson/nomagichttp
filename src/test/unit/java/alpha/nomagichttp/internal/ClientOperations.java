@@ -102,10 +102,10 @@ final class ClientOperations
     
     /**
      * Same as {@link #writeRead(String, String)} but with a response end
-     * hardcoded to be "\r\n".<p>
+     * hardcoded to be "\r\n\r\n".<p>
      * 
      * Useful when <i>not</i> expecting a response body, in which case the
-     * response should end with two newlines.
+     * response should end after the headers with two newlines.
      */
     String writeRead(String request) throws IOException, InterruptedException {
         return writeRead(request, CRLF + CRLF);
