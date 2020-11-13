@@ -1,6 +1,7 @@
 package alpha.nomagichttp.message;
 
 import alpha.nomagichttp.ExceptionHandler;
+import alpha.nomagichttp.Server;
 
 import java.net.http.HttpHeaders;
 import java.nio.channels.AsynchronousFileChannel;
@@ -157,12 +158,8 @@ public interface Request
      * specification - methods on the {@link Flow.Subscription} instance
      * given to the body subscriber may be called by any thread at any time.<p>
      * 
-     * Some utility methods such as {@code toText()} may save the returned stage
-     * for future re-use, for example an {@link ExceptionHandler exception
-     * handler} may also be interested in accessing the request body.<p>
-     * 
-     * However, the body bytes can not be directly consumed more than once; they
-     * are not saved by the server. An attempt to {@code convert(...)} or {@code
+     * The body bytes can not be directly consumed more than once; they are not
+     * saved by the server. An attempt to {@code convert(...)} or {@code
      * subscribe(...)} more than once will result in an {@code
      * IllegalStateException}.<p>
      * 
@@ -170,10 +167,15 @@ public interface Request
      * example method {@code convert(...)} is used followed by {@code toText()},
      * then the latter will complete exceptionally with an {@code
      * IllegalStateException}.<p>
-     * 
-     * And same is also true even if a {@code Flow.Subscription} is immediately
+     *
+     * It does not matter if a {@code Flow.Subscription} is immediately
      * cancelled with or without actually consuming any bytes (application is
      * assumed to ignore the body, followed by a server-side discard of it).<p>
+     * 
+     * However, some utility methods such as {@code toText()} may save and
+     * return the same stage for future re-use, for example by an {@link
+     * ExceptionHandler exception handler} who may also be interested in
+     * accessing the request body.<p>
      * 
      * The normal way to reject an operation would be to blow up the calling
      * thread, even for asynchronous operations. For example, {@code
@@ -213,9 +215,9 @@ public interface Request
      * or asynchronously. Whenever the application has finished processing
      * a bytebuffer, it must be {@link PooledByteBufferHolder#release()
      * released} which is a signal to the server that the bytebuffer may be
-     * re-used for new channel operations. The thread releasing may be used to
-     * immediately publish new bytebuffers to the subscriber or initiate new
-     * asynchronous operations on the underlying channel.<p>
+     * re-used for new channel operations. The thread doing the release may be
+     * used to immediately publish new bytebuffers to the subscriber or initiate
+     * new asynchronous operations on the underlying channel.<p>
      * 
      * Releasing the bytebuffer with bytes remaining to be read will cause the
      * bytebuffer to immediately become available for re-publication (ahead of
@@ -227,39 +229,43 @@ public interface Request
      * 
      * <h4>Processing bytebuffers</h4>
      * 
-     * The subscriber may request/demand any number of bytebuffers. In general
-     * though, the easiest and safest approach is most likely to simply request
-     * and process one bytebuffer at a time.<p>
+     * The subscriber may request/demand any number of bytebuffers, but may
+     * only receive the next bytebuffer after the previous one has been
+     * released.<p>
      * 
-     * It is possible for the application to request and also receive new
-     * bytebuffers before the previously received bytebuffers have been
-     * released. However, awaiting a certain number of bytebuffers before
-     * processing them is strongly discouraged and may even have dire
-     * consequences. There is no support in the Body API for the application to
-     * know if a future publication of a bytebuffer is immediately available nor
-     * can the application know exactly how many bytebuffers still remains in
-     * the server's pool. Or put in other words, this practice could end up
-     * imposing unnecessary delays or even starve the server's pool of
-     * bytebuffers to use for new channel operations, causing a complete halt in
-     * progress for the underlying channel.<p>
+     * Currently, the default implementation does only publish one bytebuffer at
+     * a time and so with this implementation, awaiting more buffers before
+     * releasing old ones will inevitably halt progress.<p>
      * 
-     * The recommended approach is to request and process one bytebuffer at a
-     * time. This may also entail a re-designing of what would otherwise have
-     * been a synchronous approach to become an asynchronous approach instead.
-     * For example, instead of using a {@code GatheringByteChannel} which
-     * expects a {@code ByteBuffer[]}, use an {@code AsynchronousByteChannel}
-     * which expects a single {@code ByteBuffer} and when the operation's
-     * completion handler is called, release the bytebuffer and request a new
-     * bytebuffer from the subscription. Please also note that blocking the
-     * request thread is never a good idea to begin with and hurts
-     * scalability!<p>
+     * In order to fully support concurrent processing of many bytebuffers
+     * without the risk of adding unnecessary delays or blockages, the Body API
+     * would also have to declare methods that the application can use to
+     * learn how many bytebuffers are immediately available and possibly also
+     * learn the size of the server's bytebuffer pool.<p>
      * 
-     * Unfortunately, the Reactive Stream specification calls this approach an
-     * "inherently inefficient 'stop-and-wait' protocol". Well, this is plain
-     * wrong. The bytebuffers are pooled and cached upstream already. Requesting
-     * a bytebuffer is essentially the same as polling a stupidly fast queue of
-     * available bytebuffers and there simply does not exist - surprise surprise
-     * - a good reason to engage in "premature optimization".<p>
+     * This is not very likely to happen. Not only will concurrent processing be
+     * a challenge for the application to implement properly with respect to
+     * byte order and message integrity, but concurrent processing could also be
+     * a sign that the processing may block the request thread (see "Threading
+     * Model" in {@link Server}) - hence the need to "collect" or buffer the
+     * bytebuffers.<p>
+     * 
+     * As an example, {@code GatheringByteChannel} expects a {@code
+     * ByteBuffer[]} but is a blocking API. Instead, submit the bytebuffers one
+     * at a time to {@code AsynchronousByteChannel}, releasing each in the
+     * completion handler.<p>
+     * 
+     * Given how the default implementation only publishes one bytebuffer at a
+     * time, there's really no difference between requesting {@code
+     * Long.MAX_VALUE} versus requesting only one bytebuffer at a time.<p>
+     * 
+     * Unfortunately, the Reactive Stream specification calls the latter
+     * approach an "inherently inefficient 'stop-and-wait' protocol". This is
+     * plain wrong. The bytebuffers are pooled and cached upstream already.
+     * Requesting a bytebuffer is essentially the same as polling a stupidly
+     * fast queue of available buffers and there simply does not exist -
+     * surprise surprise - a good reason to engage in "premature
+     * optimization".<p>
      * 
      * Speaking of optimization; the default implementation uses <i>direct</i>
      * bytebuffers in order to support "zero-copy" transfers. I.e., no data is
