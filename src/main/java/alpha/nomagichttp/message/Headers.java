@@ -107,11 +107,12 @@ public final class Headers {
         }
         
         if (values.size() == 1) {
+            final String v = values.get(0);
             try {
-                return OptionalLong.of(parseLong(values.get(0)));
+                return OptionalLong.of(parseLong(v));
             } catch (NumberFormatException e) {
                 throw new BadHeaderException(
-                        "Can not parse Content-Length into an int.", e);
+                        "Can not parse Content-Length (\"" + v + "\") into a long.", e);
             }
         }
         
