@@ -69,6 +69,29 @@ class DetailedEndToEndTest extends AbstractEndToEndTest
         }
     }
     
+    @Test
+    void discard_request_body_full() throws IOException, InterruptedException {
+        client().openConnection();
+        
+        try {
+            String req = requestWithBody(IS_BODY_EMPTY, "x".repeat(10)),
+                   res = client().writeRead(req, "false");
+            
+            assertThat(res).isEqualTo(
+                "HTTP/1.1 200 OK" + CRLF +
+                "Content-Type: text/plain; charset=utf-8" + CRLF +
+                "Content-Length: 5" + CRLF + CRLF +
+                
+                "false");
+            
+            // Handler didn't read body, so auto-discarded and therefore we
+            // should be be able to send a new request on the same connection!
+            empty_request_body();
+        } finally {
+            client().closeConnection();
+        }
+    }
+    
     private static String requestWithBody(String path, String body) {
         return "POST " + path + " HTTP/1.1" + CRLF +
                "Accept: text/plain; charset=utf-8" + CRLF +

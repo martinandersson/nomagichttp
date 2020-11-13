@@ -2,6 +2,7 @@ package alpha.nomagichttp.internal;
 
 import alpha.nomagichttp.message.PooledByteBufferHolder;
 
+import java.nio.ByteBuffer;
 import java.util.concurrent.Flow;
 
 import static java.lang.Long.MAX_VALUE;
@@ -12,13 +13,13 @@ import static java.lang.Long.MAX_VALUE;
  * logic that proceeds to discard all remaining bytes of all received
  * bytebuffers until no more bytebuffers are received from the upstream.<p>
  * 
- * With "discard" means that the bytebuffer will be cleared and then released.
- * Hence this operator should be attached <strong>after</strong> other operators
- * that modifies the bytebuffer view <strong>and</strong> after any publisher
- * that makes the subscription finite (upstream must at some point complete the
- * subscription). Otherwise we could end up clearing bytes that crosses over a
- * message boundary or end up forever discarding bytes (by definition pretty
- * pointless).<p>
+ * With "discard" means that the bytebuffer's position will be set to its limit
+ * (i.e. no more remaining bytes!) and then released. Hence this operator should
+ * be attached <strong>after</strong> other operators that modifies the
+ * bytebuffer view <strong>and</strong> after any publisher that makes the
+ * subscription finite (upstream must at some point complete the subscription).
+ * Otherwise we could end up clearing bytes that crosses over a message boundary
+ * or end up forever discarding bytes (by definition pretty pointless).<p>
  * 
  * Is used by the server's request thread to make sure that if and when the
  * application's body subscription is prematurely cancelled, the read-position
@@ -74,6 +75,7 @@ final class OnCancelDiscardOp extends AbstractOp<PooledByteBufferHolder>
     }
     
     private static void discard(PooledByteBufferHolder item) {
-        item.get().clear();
+        ByteBuffer b = item.get();
+        b.position(b.limit());
     }
 }
