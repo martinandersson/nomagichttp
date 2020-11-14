@@ -22,9 +22,6 @@ final class LengthLimitedOp extends AbstractOp<DefaultPooledByteBufferHolder>
     /** Count of bytes sent downstream (may be rolled back on release if bytes remain to be read). */
     private long sent;
     
-    /** Count of bytebuffers in-flight (last to finish kills the subscription). */
-    private long processing;
-    
     /** Downstream's outstanding demand (transformed into "one at a time" from upstream). */
     private long demand;
     
@@ -43,7 +40,6 @@ final class LengthLimitedOp extends AbstractOp<DefaultPooledByteBufferHolder>
         
         sent = 0;
         demand = 0;
-        processing = 0;
         max = length;
         serially = new SerialExecutor();
     }
@@ -59,7 +55,6 @@ final class LengthLimitedOp extends AbstractOp<DefaultPooledByteBufferHolder>
             }
             
             int target = prepare(item);
-            ++processing;
             sent += target;
             
             super.fromUpstreamNext(item);
@@ -130,7 +125,6 @@ final class LengthLimitedOp extends AbstractOp<DefaultPooledByteBufferHolder>
                 // Rollback the count of sent bytes
                 sent -= didNotRead;
                 tryRequest();
-            } else if (--processing == 0) {
                 // Last one to release perform cancel and complete
                 tryFinish();
             }
