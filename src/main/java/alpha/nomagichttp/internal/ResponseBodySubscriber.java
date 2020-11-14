@@ -72,7 +72,7 @@ final class ResponseBodySubscriber implements SubscriberAsStage<ByteBuffer, Long
      * 
      * Similarly, errors passed down from the source publisher will also cause
      * the channel to be closed prior to completing the stage, but only if bytes
-     * has already been written to the channel (message on wire is corrupt).<p>
+     * have already been written to the channel (message on wire is corrupt).<p>
      * 
      * In other words, an alternative response may be used if the channel
      * remains open after an exceptional completion.

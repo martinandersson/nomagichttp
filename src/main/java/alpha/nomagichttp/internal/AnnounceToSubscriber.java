@@ -20,9 +20,7 @@ import static java.util.Objects.requireNonNull;
  * 
  * The generator function is executed serially and may return {@code null},
  * which would indicate there's no items available for the subscriber at the
- * moment (a future announcement is expected).<p>
- * 
- * This class is non-blocking and thread-safe.
+ * moment (a future announcement is expected).
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  *
@@ -62,7 +60,7 @@ final class AnnounceToSubscriber<T>
      * If this method synchronously invokes a subscriber and the subscriber
      * returns exceptionally, then so too will this method return exceptionally
      * <i>and</i> without a future effect in regards to the life cycle of the
-     * adapter which remains open.<p>
+     * class which remains open.<p>
      * 
      * Is NOP if no subscriber is active or an active subscriber's demand is
      * zero.

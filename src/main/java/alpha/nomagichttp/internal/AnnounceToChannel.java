@@ -27,10 +27,10 @@ import static java.util.Objects.requireNonNull;
  * 
  * The {@code whenDone} callback (constructor argument) is called exactly-once
  * whenever no more operations will be initiated (only after a pending operation
- * completes), either because 1) {@link #stop()} was called (may be implicitly
- * called using sentinel {@link #NO_MORE} or closing the channel), 2) an
- * operation completed exceptionally, or 3) in read mode only; end-of-stream was
- * reached.<p>
+ * completes), either because 1) {@link #stop()} was called (stop() may also be
+ * implicitly called using sentinel {@link #NO_MORE} or closing the channel), 2)
+ * an operation completed exceptionally, or 3) in read mode only; end-of-stream
+ * was reached.<p>
  * 
  * Please note that the responsibility of this class is the channel
  * <i>operation</i>, not the channel's life cycle itself. Over the coarse of the
