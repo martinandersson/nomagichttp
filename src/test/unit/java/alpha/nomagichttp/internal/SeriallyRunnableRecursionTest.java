@@ -73,12 +73,12 @@ class SeriallyRunnableRecursionTest
     }
     
     private static class BoundedRunnable implements Runnable {
-        private final long max;
+        private final long bound;
         private Runnable andThen;
         private int runs;
         
-        BoundedRunnable(long max) {
-            this.max = max;
+        BoundedRunnable(long bound) {
+            this.bound = bound;
         }
         
         void andThenRun(Runnable andThen) {
@@ -87,7 +87,7 @@ class SeriallyRunnableRecursionTest
         
         @Override
         public void run() {
-            if (++runs == max) {
+            if (++runs == bound) {
                 throw new LimitReachedException();
             }
             
