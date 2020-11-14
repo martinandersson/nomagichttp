@@ -77,6 +77,7 @@ import static java.util.Collections.singleton;
  * @see ExceptionHandler
  * @see ServerConfig
  */
+// TODO: Rename to HttpServer
 public interface Server
 {
     /**
