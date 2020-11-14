@@ -45,8 +45,6 @@ final class OnCancelDiscardOp extends AbstractOp<PooledByteBufferHolder>
             discard(item);
             item.release();
         } else {
-            item.onRelease(readCountIgnored -> {
-                if (discarding) discard(item); });
             super.fromUpstreamNext(item);
         }
     }
