@@ -10,19 +10,25 @@ import static java.util.Arrays.stream;
 import static java.util.Objects.requireNonNull;
 import static java.util.stream.Collectors.toCollection;
 
-final class StringPublisher implements Flow.Publisher<String>
+/**
+ * Publishes a set of eagerly constructed items to each new subscriber.
+ * 
+ * @author Martin Andersson (webmaster at martinandersson.com)
+ */
+final class ReplayPublisher<T> implements Flow.Publisher<T>
 {
-    private final Queue<String> items;
+    private final Queue<T> items;
     
-    StringPublisher(String... items) {
+    @SafeVarargs
+    ReplayPublisher(T... items) {
         this.items = stream(items).collect(toCollection(ArrayDeque::new));
     }
     
     @Override
-    public void subscribe(Flow.Subscriber<? super String> subscriber) {
+    public void subscribe(Flow.Subscriber<? super T> subscriber) {
         requireNonNull(subscriber);
         
-        SerialTransferService<String> service = new SerialTransferService<>(
+        SerialTransferService<T> service = new SerialTransferService<>(
                 new NullReturningIterator<>(items.iterator())::next,
                 subscriber::onNext);
         
@@ -45,10 +51,10 @@ final class StringPublisher implements Flow.Publisher<String>
         subscriber.onSubscribe(subscription);
     }
     
-    private static class NullReturningIterator<T> implements Iterator<T> {
-        private final Iterator<T> delegate;
+    private static class NullReturningIterator<E> implements Iterator<E> {
+        private final Iterator<E> delegate;
         
-        NullReturningIterator(Iterator<T> delegate) {
+        NullReturningIterator(Iterator<E> delegate) {
             this.delegate = delegate;
         }
         
@@ -58,7 +64,7 @@ final class StringPublisher implements Flow.Publisher<String>
         }
         
         @Override
-        public T next() {
+        public E next() {
             try {
                 return delegate.next();
             } catch (NoSuchElementException e) {
