@@ -39,7 +39,8 @@ final class LengthLimitedOp extends AbstractOp<DefaultPooledByteBufferHolder>
         sent = 0;
         demand = 0;
         max = length;
-        serially = new SerialExecutor();
+        // "mayRecurse = true" as to not re-order onRelease/afterRelease callbacks
+        serially = new SerialExecutor(true);
     }
     
     @Override
