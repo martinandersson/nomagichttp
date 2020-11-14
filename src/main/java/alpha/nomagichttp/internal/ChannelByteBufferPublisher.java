@@ -104,7 +104,8 @@ final class ChannelByteBufferPublisher implements Flow.Publisher<DefaultPooledBy
     
     private void afterChannelFinished(AsynchronousByteChannel childIgnored, long byteCountIgnored, Throwable t) {
         if (t != null) {
-            close(t);
+            subscriber.error(t);
+            close();
         } // else normal completion; subscriber will be stopped when EOS is observed
     }
     
@@ -149,10 +150,5 @@ final class ChannelByteBufferPublisher implements Flow.Publisher<DefaultPooledBy
         server.orderlyShutdown(child);
         readable.clear();
         writable.clear();
-    }
-    
-    public void close(Throwable t) {
-        subscriber.error(t);
-        close();
     }
 }
