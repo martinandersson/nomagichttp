@@ -2,8 +2,6 @@ package alpha.nomagichttp.internal;
 
 import java.util.concurrent.Flow;
 
-import static java.lang.Integer.MAX_VALUE;
-
 /**
  * Restricts the total number of published bytes to a set maximum and when this
  * limit is reached, the operator will cancel the upstream and complete the
@@ -76,7 +74,7 @@ final class LengthLimitedOp extends AbstractOp<DefaultPooledByteBufferHolder>
             } else {
                 demand += n;
                 if (demand < 0) {
-                    demand = MAX_VALUE;
+                    demand = Long.MAX_VALUE;
                 }
                 tryRequest();
             }
@@ -100,7 +98,7 @@ final class LengthLimitedOp extends AbstractOp<DefaultPooledByteBufferHolder>
         try {
             desire = Math.toIntExact(max - sent);
         } catch (ArithmeticException e) {
-            desire = MAX_VALUE;
+            desire = Integer.MAX_VALUE;
         }
         
         final int remaining = item.get().remaining();
