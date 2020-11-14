@@ -33,8 +33,10 @@ class SeriallyRunnableRecursionTest
             task.run();
             throw new AssertionError("Expected SOE at some point.");
         } catch (StackOverflowError e) {
-            System.out.println("Hit StackOverflowError after: " + task.runCount());
-            System.out.println("Will target recursive depth: " + (n = multiplyExact(task.runCount(), 100)));
+            System.out.println("Hit StackOverflowError after: " +
+                    task.invocationCount());
+            System.out.println("Will target recursive depth: " +
+                    (n = multiplyExact(task.invocationCount(), 100)));
         }
     }
     
@@ -75,7 +77,7 @@ class SeriallyRunnableRecursionTest
     private static class BoundedRunnable implements Runnable {
         private final long bound;
         private Runnable andThen;
-        private int runs;
+        private int invocations;
         
         BoundedRunnable(long bound) {
             this.bound = bound;
@@ -87,15 +89,15 @@ class SeriallyRunnableRecursionTest
         
         @Override
         public void run() {
-            if (++runs == bound) {
+            if (++invocations == bound) {
                 throw new LimitReachedException();
             }
             
             andThen.run();
         }
         
-        int runCount() {
-            return runs;
+        int invocationCount() {
+            return invocations;
         }
     }
     
