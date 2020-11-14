@@ -124,10 +124,10 @@ final class LengthLimitedOp extends AbstractOp<DefaultPooledByteBufferHolder>
             if (didNotRead > 0) {
                 // Rollback the count of sent bytes
                 sent -= didNotRead;
-                tryRequest();
-                // Last one to release perform cancel and complete
-                tryFinish();
             }
+            
+            tryRequest();
+            tryFinish();
         });
     }
     
