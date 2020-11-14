@@ -26,6 +26,21 @@ class SeriallyRunnableRecursionTest
     private static long n;
     
     @BeforeAll
+    static void test_BoundedRunnable() {
+        BoundedRunnable testee = new BoundedRunnable(1, false);
+        testee.run(); // <- only one run is allowed
+        assertThatThrownBy(testee::run)
+                .isExactlyInstanceOf(LimitReachedException.class);
+        
+        testee = new BoundedRunnable(MAX_VALUE, false);
+        for (int i = 0; i < 10; ++i) testee.run(); // <-- okay, not bounded
+        
+        testee.andThenRun(testee);
+        assertThatThrownBy(testee::run)
+                .isExactlyInstanceOf(OverlapException.class);
+    }
+    
+    @BeforeAll
     static void computeMaxRecursionLevel() {
         BoundedRunnable task = new BoundedRunnable(MAX_VALUE, true);
         task.andThenRun(task);
