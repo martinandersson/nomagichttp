@@ -56,10 +56,6 @@ final class LengthLimitedOp extends AbstractOp<DefaultPooledByteBufferHolder>
             sent += target;
             
             super.fromUpstreamNext(item);
-            
-            if (sent < max) {
-                tryRequest();
-            }
         });
     }
     
