@@ -1,5 +1,8 @@
 package alpha.nomagichttp.internal;
 
+import alpha.nomagichttp.handler.Handler;
+import alpha.nomagichttp.handler.Handlers;
+import alpha.nomagichttp.message.PooledByteBufferHolder;
 import alpha.nomagichttp.message.Request;
 import alpha.nomagichttp.message.Response;
 import alpha.nomagichttp.message.Responses;
@@ -8,6 +11,7 @@ import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
 import java.util.concurrent.CompletionStage;
+import java.util.concurrent.Flow;
 import java.util.function.Function;
 
 import static alpha.nomagichttp.handler.Handlers.POST;
@@ -84,8 +88,34 @@ class DetailedEndToEndTest extends AbstractEndToEndTest
                 
                 "false");
             
-            // Handler didn't read body, so auto-discarded and therefore we
-            // should be be able to send a new request on the same connection!
+            // The "/is-body-empty" endpoint didn't read the body contents, i.e. auto-discarded.
+            // If done correctly, we should be be able to send a new request using the same connection:
+            empty_request_body();
+        } finally {
+            client().closeConnection();
+        }
+    }
+    
+    @Test
+    void discard_request_body_half() throws IOException, InterruptedException {
+        // Previous test was pretty small, so why not roll with a large body
+        final int length = 100_000,
+                  midway = length / 2;
+        
+        Handler discardMidway = Handlers.POST().accept((req) ->
+            req.body().get().subscribe(new CancelAfter(midway)));
+        
+        addHandler("/discard-midway", discardMidway);
+        client().openConnection();
+        
+        try {
+            String req = requestWithBody("/discard-midway", "x".repeat(length)),
+                   res = client().writeRead(req);
+            
+            assertThat(res).isEqualTo(
+                "HTTP/1.1 202 Accepted" + CRLF +
+                "Content-Length: 0" + CRLF + CRLF);
+            
             empty_request_body();
         } finally {
             client().closeConnection();
@@ -97,5 +127,45 @@ class DetailedEndToEndTest extends AbstractEndToEndTest
                "Accept: text/plain; charset=utf-8" + CRLF +
                "Content-Length: " + body.length() + CRLF + CRLF +
                body;
+    }
+    
+    private static class CancelAfter implements Flow.Subscriber<PooledByteBufferHolder>
+    {
+        private Flow.Subscription subscription;
+        private long read;
+        private final long target;
+        
+        CancelAfter(long byteCount) {
+            target = byteCount;
+        }
+        
+        @Override
+        public void onSubscribe(Flow.Subscription subscription) {
+            (this.subscription = subscription).request(Long.MAX_VALUE);
+        }
+        
+        @Override
+        public void onNext(PooledByteBufferHolder item) {
+            assert read < target;
+            while (item.get().hasRemaining()) {
+                item.get().get();
+                if (++read == target) {
+                   subscription.cancel();
+                   break;
+               }
+            }
+            
+            item.release();
+        }
+        
+        @Override
+        public void onError(Throwable throwable) {
+            // Empty
+        }
+        
+        @Override
+        public void onComplete() {
+            // Empty
+        }
     }
 }
