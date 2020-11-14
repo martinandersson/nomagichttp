@@ -48,6 +48,8 @@ import static java.util.Objects.requireNonNull;
  */
 final class AnnounceToChannel
 {
+    // TODO: Internalize queues and make announce(ByteBuffer)
+    
     /**
      * Called when service is stopped and/or the last operation completes.<p>
      * 
