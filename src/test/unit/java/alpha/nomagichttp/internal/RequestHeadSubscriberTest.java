@@ -1,5 +1,6 @@
 package alpha.nomagichttp.internal;
 
+import alpha.nomagichttp.message.Headers;
 import alpha.nomagichttp.message.RequestHeadParseException;
 import alpha.nomagichttp.test.Logging;
 import org.assertj.core.api.AbstractListAssert;
@@ -10,10 +11,7 @@ import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
 import java.net.http.HttpHeaders;
-import java.util.ArrayList;
-import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Flow;
@@ -344,15 +342,6 @@ class RequestHeadSubscriberTest
     }
     
     private static HttpHeaders headers(String... keyValuePairs) {
-        Map<String, List<String>> map = new LinkedHashMap<>();
-        
-        for (int i = 0; i < keyValuePairs.length - 1; i += 2) {
-            String k = keyValuePairs[i],
-                   v = keyValuePairs[i + 1];
-            
-            map.computeIfAbsent(k, k0 -> new ArrayList<>(1)).add(v);
-        }
-        
-        return HttpHeaders.of(map, (k, v) -> true);
+        return Headers.of(keyValuePairs);
     }
 }

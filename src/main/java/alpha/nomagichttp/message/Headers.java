@@ -1,7 +1,10 @@
 package alpha.nomagichttp.message;
 
 import java.net.http.HttpHeaders;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.OptionalLong;
 
@@ -10,14 +13,47 @@ import static java.lang.Long.parseLong;
 import static java.util.Arrays.stream;
 
 /**
- * Utility methods to parse String-lines of HTTP request headers into
- * higher-level Java types.
+ * Utility methods for {@link HttpHeaders}.
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  */
-public final class Headers {
+// TODO: Move to util package
+public final class Headers
+{
     private Headers() {
         // Empty
+    }
+    
+    /**
+     * Create headers out of a key-value pair array.<p>
+     * 
+     * All strings indexed with an even number is the header key. All strings
+     * indexed with an odd number is the header value.<p>
+     * 
+     * Header values may be repeated, see {@link HttpHeaders}.<p>
+     * 
+     * @param keyValuePairs header entries
+     * 
+     * @return HttpHeaders
+     * 
+     * @throws IllegalArgumentException if {@code keyValuePairs.length} is not even
+     */
+    public static HttpHeaders of(String... keyValuePairs) {
+        if (keyValuePairs.length % 2 != 0) {
+            throw new IllegalArgumentException("Please provide an even number of pairs.");
+        }
+        
+        // Order from HttpHeaders.map() isn't specified, using LinkedHashMap as a "sweet bonus"
+        Map<String, List<String>> map = new LinkedHashMap<>();
+        
+        for (int i = 0; i < keyValuePairs.length - 1; i += 2) {
+            String k = keyValuePairs[i],
+                   v = keyValuePairs[i + 1];
+            
+            map.computeIfAbsent(k, k0 -> new ArrayList<>(1)).add(v);
+        }
+        
+        return HttpHeaders.of(map, (k, v) -> true);
     }
     
     /**
