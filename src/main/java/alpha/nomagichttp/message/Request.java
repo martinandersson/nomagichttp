@@ -6,6 +6,8 @@ import alpha.nomagichttp.Server;
 import java.net.http.HttpHeaders;
 import java.nio.channels.AsynchronousFileChannel;
 import java.nio.channels.NetworkChannel;
+import java.nio.charset.IllegalCharsetNameException;
+import java.nio.charset.UnsupportedCharsetException;
 import java.nio.file.OpenOption;
 import java.nio.file.Path;
 import java.nio.file.attribute.FileAttribute;
@@ -356,16 +358,32 @@ public interface Request
      * 
      * @author Martin Andersson (webmaster at martinandersson.com)
      */
-    // TODO: Any heap based read of bytes must save bytes and return same subsequently
     interface Body extends Flow.Publisher<PooledByteBufferHolder>
     {
         /**
          * Returns the body as a string.<p>
          * 
-         * The charset used for decoding will be taken from the request headers
-         * ("Content-Type" media type parameter "charset" only if the type is
-         * "text"). If this information is not present, then UTF-8 will be
+         * The charset used for decoding will be taken from the request headers'
+         * "Content-Type" media type parameter "charset", but only if the type
+         * is "text". If this information is not present, then UTF-8 will be
          * used.<p>
+         * 
+         * Please note that UTF-8 is backwards compatible with ASCII and
+         * required by all Java virtual machines to be supported.<p>
+         * 
+         * The returned stage is cached and subsequent invocations return the
+         * same instance.<p>
+         * 
+         * Instead of this method throwing an exception, the returned stage may
+         * complete exceptionally with (but not limited to):<p> 
+         * 
+         * {@link BadHeaderException}
+         *     if headers has multiple Content-Type keys.<p>
+         * {@link IllegalCharsetNameException}
+         *     if the charset name is illegal (for example, "123").<p>
+         * {@link UnsupportedCharsetException}
+         *     if no support for the charset name is available in this instance
+         *     of the Java virtual machine.
          * 
          * @return the body as a string
          */

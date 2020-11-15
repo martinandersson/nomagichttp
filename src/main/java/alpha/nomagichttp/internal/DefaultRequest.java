@@ -18,16 +18,20 @@ import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.Flow;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.BiFunction;
+import java.util.function.Consumer;
+import java.util.function.Supplier;
 
-import static alpha.nomagichttp.message.Headers.contentLength;
-import static alpha.nomagichttp.message.Headers.contentType;
+import static alpha.nomagichttp.util.Headers.contentLength;
+import static alpha.nomagichttp.util.Headers.contentType;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.nio.file.StandardOpenOption.CREATE;
 import static java.nio.file.StandardOpenOption.TRUNCATE_EXISTING;
 import static java.nio.file.StandardOpenOption.WRITE;
 import static java.util.Optional.empty;
 import static java.util.Optional.ofNullable;
+import static java.util.concurrent.CompletableFuture.failedStage;
 
 final class DefaultRequest implements Request
 {
@@ -153,20 +157,32 @@ final class DefaultRequest implements Request
     {
         private final HttpHeaders headers;
         private final Flow.Publisher<PooledByteBufferHolder> source;
+        private final AtomicReference<CompletionStage<String>> cachedText;
         
         DefaultBody(HttpHeaders headers, Flow.Publisher<PooledByteBufferHolder> source) {
             this.headers = headers;
             this.source  = source;
+            this.cachedText = new AtomicReference<>(null);
         }
         
         @Override
         public CompletionStage<String> toText() {
-            Charset charset = contentType(headers)
-                    .filter(m -> m.type().equals("text"))
-                    .map(MediaType::parameters)
-                    .map(p -> p.get("charset"))
-                    .map(Charset::forName)
-                    .orElse(UTF_8);
+            return lazyInit(cachedText, CompletableFuture::new, v -> copyResult(mkText(), v));
+        }
+        
+        private CompletionStage<String> mkText() {
+            final Charset charset;
+            
+            try {
+                charset = contentType(headers)
+                        .filter(m -> m.type().equals("text"))
+                        .map(MediaType::parameters)
+                        .map(p -> p.get("charset"))
+                        .map(Charset::forName)
+                        .orElse(UTF_8);
+            } catch (Throwable t) {
+                 return failedStage(t);
+            }
             
             return convert((buf, count) ->
                     new String(buf, 0, count, charset));
@@ -189,7 +205,7 @@ final class DefaultRequest implements Request
                 //       (currently not possible to specify group?)
                 fs = AsynchronousFileChannel.open(file, opt, null, attrs);
             } catch (IOException e) {
-                return CompletableFuture.failedStage(e);
+                return failedStage(e);
             }
             
             FileSubscriber s = new FileSubscriber(fs);
@@ -207,6 +223,58 @@ final class DefaultRequest implements Request
         @Override
         public void subscribe(Flow.Subscriber<? super PooledByteBufferHolder> subscriber) {
             source.subscribe(subscriber);
+        }
+        
+        /**
+         * Lazily initialize the value of an atomic reference.<p>
+         * 
+         * The {@code factory} may be called multiple times when attempted
+         * updates fail due to contention among threads. However, the {@code
+         * postInit} consumer is only called once by the thread who successfully
+         * set the value.<p>
+         * 
+         * I.e. this method is useful when post-initialization of the value may
+         * be expensive but creating the value instance itself is not.
+         * 
+         * @param ref value container/store
+         * @param factory value creator
+         * @param postInit value initializer
+         * @param <V> value type
+         * @param <A> accumulation type
+         * 
+         * @return the value
+         */
+        private static <V, A extends V> V lazyInit(
+                AtomicReference<V> ref, Supplier<? extends A> factory, Consumer<? super A> postInit)
+        {
+            class Bag<T> {
+                T thing;
+            }
+            
+            Bag<A> created = new Bag<>();
+            
+            V latest = ref.updateAndGet(v -> {
+                if (v != null) {
+                    return v;
+                }
+                return created.thing = factory.get();
+            });
+            
+            if (latest == created.thing) {
+                postInit.accept(created.thing);
+            }
+            
+            return latest;
+        }
+        
+        private static <T> void copyResult(CompletionStage<T> from, CompletableFuture<T> to) {
+            from.whenComplete((val, exc) -> {
+                if (exc != null) {
+                    to.completeExceptionally(exc);
+                } else {
+                    to.complete(val);
+                }
+            });
         }
     }
 }
