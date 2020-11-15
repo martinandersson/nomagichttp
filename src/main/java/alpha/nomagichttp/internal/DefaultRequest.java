@@ -267,7 +267,7 @@ final class DefaultRequest implements Request
             return latest;
         }
         
-        private static <T> void copyResult(CompletionStage<T> from, CompletableFuture<T> to) {
+        private static <T> void copyResult(CompletionStage<? extends T> from, CompletableFuture<? super T> to) {
             from.whenComplete((val, exc) -> {
                 if (exc != null) {
                     to.completeExceptionally(exc);
