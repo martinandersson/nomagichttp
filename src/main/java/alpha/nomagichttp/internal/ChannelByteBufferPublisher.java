@@ -130,7 +130,7 @@ final class ChannelByteBufferPublisher implements Flow.Publisher<DefaultPooledBy
         try {
             subscriber.announce();
         } catch (Throwable t) {
-            LOG.log(ERROR, () -> "Signalling Subscriber.onNext() failed." + CLOSE_MSG, t);
+            LOG.log(ERROR, () -> "Signalling Subscriber.onNext() failed." + CLOSE_MSG);
             subscriber.error(new ClosedPublisherException(t));
             close();
             // Caller may be application code! (re-throw also documented in Request.Body)
