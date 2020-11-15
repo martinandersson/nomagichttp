@@ -2,13 +2,11 @@ package alpha.nomagichttp.internal;
 
 import org.junit.jupiter.api.Test;
 
-import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.concurrent.Flow;
 import java.util.function.Function;
-import java.util.function.IntConsumer;
 
 import static java.lang.Long.MAX_VALUE;
 import static java.util.Arrays.stream;
@@ -37,7 +35,7 @@ class LengthLimitedOpTest
     
     private static List<Integer> engine(long testeeMaxBytes, Integer... valuesToPublish) {
         DefaultPooledByteBufferHolder[] items = stream(valuesToPublish)
-                .map(LengthLimitedOpTest::wrapInHolder)
+                .map(PooledByteBuffers::wrap)
                 .toArray(DefaultPooledByteBufferHolder[]::new);
         
         LengthLimitedOp testee = new LengthLimitedOp(testeeMaxBytes, new ReplayPublisher<>(items));
@@ -45,12 +43,6 @@ class LengthLimitedOpTest
         final List<Integer> sink = new ArrayList<>();
         testee.subscribe(new CollectIntFromHolderSubscriber(sink));
         return sink;
-    }
-    
-    private static DefaultPooledByteBufferHolder wrapInHolder(int val) {
-        ByteBuffer singleton = ByteBuffer.allocate(4).putInt(val).flip();
-        IntConsumer doNothing = readCountIgnored -> {};
-        return new DefaultPooledByteBufferHolder(singleton, doNothing);
     }
     
     private static class CollectIntFromHolderSubscriber
