@@ -2,6 +2,7 @@ package alpha.nomagichttp.message;
 
 import alpha.nomagichttp.handler.Handler;
 import alpha.nomagichttp.route.Route;
+import alpha.nomagichttp.util.Headers;
 
 /**
  * Thrown by {@link Headers} when attempting to convert a String header value

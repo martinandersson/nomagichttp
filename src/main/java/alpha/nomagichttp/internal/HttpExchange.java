@@ -15,8 +15,8 @@ import java.util.concurrent.CompletionException;
 import java.util.concurrent.CompletionStage;
 import java.util.function.Supplier;
 
-import static alpha.nomagichttp.message.Headers.accepts;
-import static alpha.nomagichttp.message.Headers.contentType;
+import static alpha.nomagichttp.util.Headers.accepts;
+import static alpha.nomagichttp.util.Headers.contentType;
 import static java.lang.System.Logger.Level.DEBUG;
 import static java.lang.System.Logger.Level.ERROR;
 import static java.lang.System.Logger.Level.WARNING;

@@ -1,6 +1,6 @@
 package alpha.nomagichttp.internal;
 
-import alpha.nomagichttp.message.Headers;
+import alpha.nomagichttp.util.Headers;
 import alpha.nomagichttp.message.RequestHeadParseException;
 import alpha.nomagichttp.test.Logging;
 import org.assertj.core.api.AbstractListAssert;

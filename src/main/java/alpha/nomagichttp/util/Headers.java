@@ -1,4 +1,8 @@
-package alpha.nomagichttp.message;
+package alpha.nomagichttp.util;
+
+import alpha.nomagichttp.message.BadHeaderException;
+import alpha.nomagichttp.message.BadMediaTypeSyntaxException;
+import alpha.nomagichttp.message.MediaType;
 
 import java.net.http.HttpHeaders;
 import java.util.ArrayList;
@@ -8,7 +12,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.OptionalLong;
 
-import static alpha.nomagichttp.message.Strings.split;
+import static alpha.nomagichttp.util.Strings.split;
 import static java.lang.Long.parseLong;
 import static java.util.Arrays.stream;
 
@@ -17,7 +21,6 @@ import static java.util.Arrays.stream;
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  */
-// TODO: Move to util package
 public final class Headers
 {
     private Headers() {

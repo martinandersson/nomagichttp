@@ -1,5 +1,6 @@
-package alpha.nomagichttp.message;
+package alpha.nomagichttp.util;
 
+import alpha.nomagichttp.util.Strings;
 import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
