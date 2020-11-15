@@ -115,9 +115,9 @@ class ExceptionHandlingTest
         
         String res = createServerAndClient(h1, retry).writeRead(REQ_ROOT);
         assertThat(res).isEqualTo(
-                "HTTP/1.1 200 OK" + CRLF +
-                        "N: 3" + CRLF +
-                        "Content-Length: 0" + CRLF + CRLF);
+            "HTTP/1.1 200 OK" + CRLF +
+            "N: 3" + CRLF +
+            "Content-Length: 0" + CRLF + CRLF);
     }
     
     private ClientOperations createServerAndClient(ExceptionHandler... onError) throws IOException {
