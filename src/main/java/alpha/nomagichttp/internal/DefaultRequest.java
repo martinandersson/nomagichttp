@@ -38,7 +38,6 @@ final class DefaultRequest implements Request
     private static final CompletionStage<Void> COMPLETED = CompletableFuture.completedStage(null);
     
     // Copy-pasted from AsynchronousFileChannel.NO_ATTRIBUTES
-    @SuppressWarnings({"unchecked", "rawtypes"}) // generic array construction
     private static final FileAttribute<?>[] NO_ATTRIBUTES = new FileAttribute[0];
     
     private final RequestHead head;
