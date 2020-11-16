@@ -5,6 +5,8 @@ import alpha.nomagichttp.message.PooledByteBufferHolder;
 import java.io.IOException;
 import java.nio.channels.AsynchronousFileChannel;
 import java.nio.channels.CompletionHandler;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.Flow;
@@ -45,14 +47,16 @@ final class FileSubscriber implements SubscriberAsStage<PooledByteBufferHolder, 
      * more than 1 concurrent write per request is actually a good start.
      */
     
-    private final AsynchronousFileChannel file;
+    private final Path file;
+    private final AsynchronousFileChannel ch;
     private final CompletableFuture<Long> result;
     private final Writer writer;
     private Flow.Subscription subscription;
     private long bytesWritten;
     
-    FileSubscriber(AsynchronousFileChannel file) {
+    FileSubscriber(Path file, AsynchronousFileChannel ch) {
         this.file = file;
+        this.ch = ch;
         this.writer = new Writer();
         this.result = new CompletableFuture<>();
     }
@@ -70,13 +74,14 @@ final class FileSubscriber implements SubscriberAsStage<PooledByteBufferHolder, 
     
     @Override
     public void onNext(PooledByteBufferHolder item) {
-        file.write(item.get(), bytesWritten, item, writer);
+        ch.write(item.get(), bytesWritten, item, writer);
     }
     
     @Override
     public void onError(Throwable t) {
         try {
-            file.close();
+            ch.close();
+            Files.deleteIfExists(file);
         } catch (IOException next) {
             t.addSuppressed(next);
         }
@@ -86,7 +91,7 @@ final class FileSubscriber implements SubscriberAsStage<PooledByteBufferHolder, 
     @Override
     public void onComplete() {
         try {
-            file.close();
+            ch.close();
         } catch (IOException e) {
             result.completeExceptionally(e);
             return;

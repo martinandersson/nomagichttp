@@ -394,47 +394,49 @@ public interface Request
         //       "non-sensible" values.
         
         /**
-         * Save the request body to a file.<p>
+         * Save the body to a file.<p>
          * 
-         * This method is equivalent to {@link
-         * AsynchronousFileChannel#open(Path, OpenOption...)} except
-         * if {@code options} is empty, a set of {@code WRITE}, {@code CREATE}
-         * and {@code TRUNCATE_EXISTING} will be used. I.e, by default, a new
-         * file will be created or an existing file will be overwritten.<p>
-         * 
-         * {@code IOException}s thrown by the call to open a file channel is
-         * delivered through the returned {@code CompletionStage}.<p>
-         * 
-         * Option {@code READ} should not be specified.
+         * An invocation of this method behaves in exactly the same way as the
+         * invocation
+         * <pre>
+         *     body.{@link #toFile(Path,Set,FileAttribute[])
+         *       toFile}(file, opts, new FileAttribute&lt;?&gt;[0]);
+         * </pre>
+         * where {@code opts} is a {@code Set} containing the options specified to
+         * this method.
          * 
          * @param file to dump body into
          * @param options specifying how the file is opened
          * 
-         * @return the number of bytes written to file
+         * @return a stage that completes with the number of bytes written to file
          */
         CompletionStage<Long> toFile(Path file, OpenOption... options);
         
         /**
-         * Save the request body to a file.<p>
+         * Save the body to a file.<p>
          * 
-         * This method is equivalent to {@link
-         * AsynchronousFileChannel#open(Path, Set, ExecutorService, FileAttribute[])}
-         * except if {@code options} is empty, a set of {@code WRITE}, {@code
+         * This method is equivalent to
+         * <pre>
+         *     {@link AsynchronousFileChannel#open(Path,Set,ExecutorService,FileAttribute[])
+         *       AsynchronousFileChannel.open}(file, opts, null, attrs);
+         * </pre>
+         * 
+         * ...except if {@code options} is empty, a set of {@code WRITE}, {@code
          * CREATE} and {@code TRUNCATE_EXISTING} will be used. I.e, by default,
          * a new file will be created or an existing file will be
          * overwritten.<p>
          * 
-         * {@code IOException}s thrown by the call to open a file channel is
-         * delivered through the returned {@code CompletionStage}.<p>
+         * If the operation completes exceptionally, the file is removed.<p>
+         *
+         * All exceptions thrown by {@code AsynchronousFileChannel.open()} is
+         * delivered through the returned stage.<p>
          * 
-         * Option {@code READ} should not be specified.
+         * @param file    to dump body into
+         * @param options specifying how the file is opened
+         * @param attrs   an optional list of file attributes to set atomically
+         *                when creating the file
          * 
-         * @param file     to dump body into
-         * @param options  specifying how the file is opened
-         * @param attrs    an optional list of file attributes to set atomically
-         *                 when creating the file
-         * 
-         * @return the number of bytes written to file
+         * @return a stage that completes with the number of bytes written to file
          */
         CompletionStage<Long> toFile(Path file, Set<? extends OpenOption> options, FileAttribute<?>... attrs);
         

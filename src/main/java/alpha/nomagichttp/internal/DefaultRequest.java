@@ -4,7 +4,6 @@ import alpha.nomagichttp.message.MediaType;
 import alpha.nomagichttp.message.PooledByteBufferHolder;
 import alpha.nomagichttp.message.Request;
 
-import java.io.IOException;
 import java.net.http.HttpHeaders;
 import java.nio.channels.AsynchronousFileChannel;
 import java.nio.channels.NetworkChannel;
@@ -203,11 +202,11 @@ final class DefaultRequest implements Request
                 // TODO: Potentially re-use server's async group
                 //       (currently not possible to specify group?)
                 fs = AsynchronousFileChannel.open(file, opt, null, attrs);
-            } catch (IOException e) {
-                return failedStage(e);
+            } catch (Throwable t) {
+                return failedStage(t);
             }
             
-            FileSubscriber s = new FileSubscriber(fs);
+            FileSubscriber s = new FileSubscriber(file, fs);
             subscribe(s);
             return s.asCompletionStage();
         }
