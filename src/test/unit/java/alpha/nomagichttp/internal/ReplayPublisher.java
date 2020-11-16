@@ -38,7 +38,7 @@ final class ReplayPublisher<T> implements Flow.Publisher<T>
                 try {
                     service.increaseDemand(n);
                 } catch (IllegalArgumentException e) {
-                    subscriber.onError(e);
+                    service.finish(() -> subscriber.onError(e));
                 }
             }
             
