@@ -32,7 +32,7 @@ import static java.util.Objects.requireNonNull;
  * signalXXX()} methods, each of which returns a boolean indicating if the
  * signal was passed to a subscriber or not. The only reason why a signal wasn't
  * routed through would be because there was no active subscriber to receive
- * it.<p>
+ * it or the expected subscriber reference wasn't the same.<p>
  * 
  * The subscription object passed to each new subscriber will delegate all
  * call's to the subscription object returned by the abstract method {@link
@@ -84,10 +84,14 @@ abstract class AbstractUnicastPublisher<T> implements Flow.Publisher<T>
     private static final System.Logger LOG
             = System.getLogger(AbstractUnicastPublisher.class.getPackageName());
     
+    // These sentinel values may replace a real subscriber reference
     private static final Flow.Subscriber<?>
             ACCEPTING    = noopNew(),
             NOT_REUSABLE = noopNew(),
             CLOSED       = noopNew();
+    
+    // This sentinel value is only used to indicate the intended target of a subscriber
+    private static final Flow.Subscriber<?> ANYONE = noopNew();
     
     @SuppressWarnings("unchecked")
     private static <T> Flow.Subscriber<T> T(Flow.Subscriber<?> sentinel) {
@@ -133,13 +137,15 @@ abstract class AbstractUnicastPublisher<T> implements Flow.Publisher<T>
      * nature of this class - that the subscriber is still active when {@code
      * newSubscription()} is called or that the subscriber remains active
      * throughout the method invocation. Technically speaking - although
-     * unlikely - the subscriber can even be replaced (assuming publisher is
-     * re-usable) and concurrent or "out of order" invocations of {@code
-     * newSubscription()} might entail.<p>
+     * probably very unlikely - the subscriber can even be replaced (assuming
+     * publisher is re-usable) and concurrent or "out of order" invocations of
+     * {@code newSubscription()} might entail.<p>
      * 
-     * Method implementations that needs to synchronously signal the subscriber
-     * must therefore only interact with the provided subscriber reference in
-     * order to ensure that the right subscriber is signalled.<p>
+     * Given the non-serial nature of {@code newSubscription()}; in order to
+     * ensure the right subscriber is signalled, method implementations that
+     * need to synchronously signal the subscriber must only interact with the
+     * provided subscriber reference directly or use the signalling methods that
+     * accept a target-subscriber reference.<p>
      * 
      * The actual subscription object - that was already passed to the
      * subscriber before this method executes - is a proxy that delegates to the
@@ -244,14 +250,14 @@ abstract class AbstractUnicastPublisher<T> implements Flow.Publisher<T>
     }
     
     protected final boolean signalNext(T item) {
+        return signalNext(item, T(ANYONE));
+    }
+    
+    protected final boolean signalNext(T item, Flow.Subscriber<? super T> expected) {
         final boolean signalled;
         
         try {
-            signalled = signalNext0(item);
-            
-            if (!signalled && item instanceof PooledByteBufferHolder) {
-                ((PooledByteBufferHolder) item).release();
-            }
+            signalled = signalNext0(item, expected);
         } catch (Throwable t) {
             if (item instanceof PooledByteBufferHolder) {
                 ((PooledByteBufferHolder) item).release();
@@ -259,12 +265,17 @@ abstract class AbstractUnicastPublisher<T> implements Flow.Publisher<T>
             throw t;
         }
         
+        if (!signalled && item instanceof PooledByteBufferHolder) {
+            ((PooledByteBufferHolder) item).release();
+        }
+        
         return signalled;
     }
     
-    private boolean signalNext0(T item) {
+    private boolean signalNext0(T item, Flow.Subscriber<? super T> expected) {
         final Flow.Subscriber<? super T> s = realOrNull(value());
-        if (s == null) {
+        
+        if (!isSubjectExpectedOrExpectedAny(s, expected)) {
             return false;
         }
         
@@ -273,10 +284,14 @@ abstract class AbstractUnicastPublisher<T> implements Flow.Publisher<T>
     }
     
     protected final boolean signalComplete() {
+        return signalComplete(T(ANYONE));
+    }
+    
+    protected final boolean signalComplete(Flow.Subscriber<? super T> expected) {
         final Flow.Subscriber<? super T> s
                 = realOrNull(removeSubscriberIfNotInitializingOrClosed());
         
-        if (s == null) {
+        if (!isSubjectExpectedOrExpectedAny(s, expected)) {
             return false;
         }
         
@@ -286,19 +301,23 @@ abstract class AbstractUnicastPublisher<T> implements Flow.Publisher<T>
     
     /**
      * Signal error, safely.<p>
-     * 
+     *
      * If the receiver ({@code Subscriber.onError()}) itself throws an
      * exception, then the new exception is logged but otherwise ignored. 
-     * 
+     *
      * @param t error to signal
-     * 
+     *
      * @return {@code true} if a subscriber is active, otherwise {@code false}
      */
     protected final boolean signalError(Throwable t) {
+        return signalError(t, T(ANYONE));
+    }
+    
+    protected final boolean signalError(Throwable t, Flow.Subscriber<? super T> expected) {
         final Flow.Subscriber<? super T> s
                 = realOrNull(removeSubscriberIfNotInitializingOrClosed());
         
-        if (s == null) {
+        if (!isSubjectExpectedOrExpectedAny(s, expected)) {
             return false;
         }
         
@@ -348,6 +367,18 @@ abstract class AbstractUnicastPublisher<T> implements Flow.Publisher<T>
     
     private Flow.Subscriber<? super T> value() {
         return ref.get();
+    }
+    
+    private static boolean isSubjectExpectedOrExpectedAny(
+            Flow.Subscriber<?> subject, Flow.Subscriber<?> expected)
+    {
+        requireNonNull(expected);
+        
+        if (subject == null) {
+            return false;
+        }
+        
+        return subject == expected || expected == ANYONE;
     }
     
     private Flow.Subscriber<? super T> removeSubscriberIfNotInitializingOrClosed() {
