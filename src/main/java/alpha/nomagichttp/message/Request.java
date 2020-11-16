@@ -144,7 +144,7 @@ public interface Request
     /**
      * Is an API for accessing the request body in various forms.<p>
      * 
-     * Utility methods (for example, {@link #toText()}), returns a {@link
+     * High-level methods (for example, {@link #toText()}), returns a {@link
      * CompletionStage} because the request handler will be invoked and
      * therefore have access to the Body API immediately after the server is
      * done parsing the request head. At this point in time, not all bytes will
@@ -361,7 +361,7 @@ public interface Request
     interface Body extends Flow.Publisher<PooledByteBufferHolder>
     {
         /**
-         * Returns the body as a string.<p>
+         * Convert the body to a string.<p>
          * 
          * The charset used for decoding will be taken from the request headers'
          * "Content-Type" media type parameter "charset", but only if the type
@@ -385,7 +385,7 @@ public interface Request
          *     if no support for the charset name is available in this instance
          *     of the Java virtual machine.
          * 
-         * @return the body as a string
+         * @return a stage that completes with the body as a string
          */
         CompletionStage<String> toText();
         
