@@ -245,11 +245,11 @@ final class DefaultRequest implements Request
         private static <V, A extends V> V lazyInit(
                 AtomicReference<V> ref, Supplier<? extends A> factory, Consumer<? super A> postInit)
         {
-            class Bag<T> {
-                T thing;
+            class Bag {
+                A thing;
             }
             
-            Bag<A> created = new Bag<>();
+            Bag created = new Bag();
             
             V latest = ref.updateAndGet(v -> {
                 if (v != null) {
