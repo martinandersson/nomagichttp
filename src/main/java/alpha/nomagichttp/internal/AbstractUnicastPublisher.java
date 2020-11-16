@@ -132,8 +132,14 @@ abstract class AbstractUnicastPublisher<T> implements Flow.Publisher<T>
      * There is no guarantee of course - given the lock-free and asynchronous
      * nature of this class - that the subscriber is still active when {@code
      * newSubscription()} is called or that the subscriber remains active
-     * throughout the method invocation. Technically, the subscriber can even be
-     * replaced (assuming publisher is re-usable).<p>
+     * throughout the method invocation. Technically speaking - although
+     * unlikely - the subscriber can even be replaced (assuming publisher is
+     * re-usable) and concurrent or "out of order" invocations of {@code
+     * newSubscription()} might entail.<p>
+     * 
+     * Method implementations that needs to synchronously signal the subscriber
+     * must therefore only interact with the provided subscriber reference in
+     * order to ensure that the right subscriber is signalled.<p>
      * 
      * The actual subscription object - that was already passed to the
      * subscriber before this method executes - is a proxy that delegates to the
