@@ -179,16 +179,16 @@ public interface Request
      * ExceptionHandler exception handler} who may also be interested in
      * accessing the request body.<p>
      * 
-     * The normal way to reject an operation would be to blow up the calling
-     * thread, even for asynchronous operations. For example, {@code
-     * ExecutorService.submit()} throws {@code RejectedExceptionException} and
-     * {@code AsynchronousByteChannel.read()} throws {@code
-     * IllegalArgumentException} - just to name a few.<p>
+     * The normal way to reject an operation is to fail-fast and blow up the
+     * calling thread, even rejected asynchronous operations. For example,
+     * {@code ExecutorService.submit()} throws {@code
+     * RejectedExceptionException} and {@code AsynchronousByteChannel.read()}
+     * throws {@code IllegalArgumentException}.<p>
      * 
-     * For good or bad, the Reactive Streams specification mandates that all
-     * exceptions are signalled through the subscriber. In order then to have a
-     * coherent API, all exceptions produced by the Body API will be delivered
-     * through the result carrier ({@code CompletionStage} and {@code
+     * However - for good or bad - the Reactive Streams specification mandates
+     * that all exceptions are signalled through the subscriber. In order then
+     * to have a coherent API, all exceptions produced by the Body API will be
+     * delivered through the result carrier ({@code CompletionStage} and {@code
      * Flow.Subscriber}). This also has the implication that exceptions are not
      * documented using the standard {@code @throws} tag but rather inline with
      * the rest of the text. The only exception to this rule is {@code
@@ -207,7 +207,7 @@ public interface Request
      * <h3>Subscribing to bytes with a {@code Flow.Subscriber}</h3>
      * 
      * The subscriber will receive bytebuffers in the same order they are read
-     * from the underlying channel. The subscriber can not read passed the
+     * from the underlying channel. The subscriber can not read beyond the
      * message/body boundary because the server will complete the subscription
      * before then and if need be, limit the last bytebuffer.<p>
      * 
@@ -241,16 +241,16 @@ public interface Request
      * 
      * In order to fully support concurrent processing of many bytebuffers
      * without the risk of adding unnecessary delays or blockages, the Body API
-     * would also have to declare methods that the application can use to
-     * learn how many bytebuffers are immediately available and possibly also
-     * learn the size of the server's bytebuffer pool.<p>
+     * would have to declare methods that the application can use to learn how
+     * many bytebuffers are immediately available and possibly also learn the
+     * size of the server's bytebuffer pool.<p>
      * 
      * This is not very likely to happen. Not only will concurrent processing be
      * a challenge for the application to implement properly with respect to
      * byte order and message integrity, but concurrent processing could also be
-     * a sign that the processing may block the request thread (see "Threading
-     * Model" in {@link Server}) - hence the need to "collect" or buffer the
-     * bytebuffers.<p>
+     * a sign that the application's processing code may block the request
+     * thread (see "Threading Model" in {@link Server}) - hence the need to
+     * "collect" or buffer the bytebuffers.<p>
      * 
      * As an example, {@code GatheringByteChannel} expects a {@code
      * ByteBuffer[]} but is a blocking API. Instead, submit the bytebuffers one
@@ -263,11 +263,10 @@ public interface Request
      * 
      * Unfortunately, the Reactive Stream specification calls the latter
      * approach an "inherently inefficient 'stop-and-wait' protocol". This is
-     * plain wrong. The bytebuffers are pooled and cached upstream already.
-     * Requesting a bytebuffer is essentially the same as polling a stupidly
-     * fast queue of available buffers and there simply does not exist -
-     * surprise surprise - a good reason to engage in "premature
-     * optimization".<p>
+     * wrong. The bytebuffers are pooled and cached upstream already. Requesting
+     * a bytebuffer is essentially the same as polling a stupidly fast queue of
+     * available buffers and there simply does not exist - surprise surprise - a
+     * good reason to engage in "premature optimization".<p>
      * 
      * Speaking of optimization; the default implementation uses <i>direct</i>
      * bytebuffers in order to support "zero-copy" transfers. I.e., no data is
