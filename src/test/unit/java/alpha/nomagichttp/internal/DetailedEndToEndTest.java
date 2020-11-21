@@ -104,7 +104,8 @@ class DetailedEndToEndTest extends AbstractEndToEndTest
                   midway = length / 2;
         
         Handler discardMidway = Handlers.POST().accept((req) ->
-            req.body().get().subscribe(new CancelAfter(midway)));
+            req.body().get().subscribe(
+                new AfterByteTargetStop(midway, Flow.Subscription::cancel)));
         
         addHandler("/discard-midway", discardMidway);
         client().openConnection();
@@ -132,14 +133,16 @@ class DetailedEndToEndTest extends AbstractEndToEndTest
                body;
     }
     
-    private static class CancelAfter implements Flow.Subscriber<PooledByteBufferHolder>
+    private static class AfterByteTargetStop implements Flow.Subscriber<PooledByteBufferHolder>
     {
+        private final long byteTarget;
+        private final Consumer<Flow.Subscription> how;
         private Flow.Subscription subscription;
         private long read;
-        private final long target;
         
-        CancelAfter(long byteCount) {
-            target = byteCount;
+        AfterByteTargetStop(long byteTarget, Consumer<Flow.Subscription> how) {
+            this.byteTarget = byteTarget;
+            this.how = how;
         }
         
         @Override
@@ -149,14 +152,14 @@ class DetailedEndToEndTest extends AbstractEndToEndTest
         
         @Override
         public void onNext(PooledByteBufferHolder item) {
-            assert read < target;
+            assert read < byteTarget;
             ByteBuffer b = item.get();
             while (b.hasRemaining()) {
                 b.get();
-                if (++read == target) {
-                   subscription.cancel();
-                   break;
-               }
+                if (++read == byteTarget) {
+                    how.accept(subscription);
+                    break;
+                }
             }
             
             item.release();
