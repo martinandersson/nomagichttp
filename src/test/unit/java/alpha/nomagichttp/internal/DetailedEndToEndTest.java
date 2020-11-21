@@ -10,6 +10,7 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.Flow;
 import java.util.function.Function;
@@ -149,8 +150,9 @@ class DetailedEndToEndTest extends AbstractEndToEndTest
         @Override
         public void onNext(PooledByteBufferHolder item) {
             assert read < target;
-            while (item.get().hasRemaining()) {
-                item.get().get();
+            ByteBuffer b = item.get();
+            while (b.hasRemaining()) {
+                b.get();
                 if (++read == target) {
                    subscription.cancel();
                    break;
