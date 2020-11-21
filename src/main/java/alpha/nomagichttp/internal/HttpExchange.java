@@ -87,7 +87,7 @@ final class HttpExchange<C extends AsynchronousByteChannel & NetworkChannel>
     }
     
     private DefaultRequest createRequest(RequestHead rh, Route.Match rm) {
-        return new DefaultRequest(rh, rm.parameters(), bytes, child);
+        return new DefaultRequest(rh, rm.parameters(), bytes, server, child);
     }
     
     private static Handler findHandler(RequestHead rh, Route.Match rm) {
@@ -141,7 +141,7 @@ final class HttpExchange<C extends AsynchronousByteChannel & NetworkChannel>
                     // TODO: Possible recursion. Unroll.
                     new HttpExchange<>(server, child, bytes).begin();
                 } else if (child.isOpen()) {
-                    LOG.log(WARNING, "Expected ChannelByteBufferPublisher to have closed the channel already.");
+                    LOG.log(WARNING, "Expected someone to have closed the channel already.");
                     server.orderlyShutdown(child);
                 }
             });

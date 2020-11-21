@@ -79,6 +79,7 @@ class DefaultRequestTest
                 rh,
                 Map.of(),
                 Publishers.singleton(PooledByteBuffers.wrap(body, US_ASCII)),
+                Mockito.mock(DefaultServer.class),
                 Mockito.mock(NetworkChannel.class));
     }
 }

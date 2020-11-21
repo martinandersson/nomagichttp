@@ -50,6 +50,7 @@ final class DefaultRequest implements Request
             RequestHead head,
             Map<String, String> pathParameters,
             Flow.Publisher<DefaultPooledByteBufferHolder> bodySource,
+            DefaultServer server,
             NetworkChannel child)
     {
         this.head = head;
@@ -70,7 +71,8 @@ final class DefaultRequest implements Request
         } else {
             var bounded = new LengthLimitedOp(len, bodySource);
             var observe = new SubscriptionAsStageOp(bounded);
-            bodyDiscard = new OnCancelDiscardOp(observe);
+            var onError = new OnErrorCloseChannelOp<>(observe, server, child);
+            bodyDiscard = new OnCancelDiscardOp(onError);
             
             bodyStage = observe.asCompletionStage();
             bodyApi = Optional.of(new DefaultBody(headers(), bodyDiscard));
