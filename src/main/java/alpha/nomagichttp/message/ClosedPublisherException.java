@@ -12,7 +12,9 @@ package alpha.nomagichttp.message;
  * 
  * @see Request.Body
  */
-public final class ClosedPublisherException extends RuntimeException {
+public final class ClosedPublisherException extends RuntimeException
+{
+    public static final String SIGNAL_FAILURE = "Signalling Flow.Subscriber failed.";
     
     public ClosedPublisherException() {
         // Empty
@@ -24,5 +26,9 @@ public final class ClosedPublisherException extends RuntimeException {
     
     public ClosedPublisherException(Throwable cause) {
         super(cause);
+    }
+    
+    public ClosedPublisherException(String message, Throwable cause) {
+        super(message, cause);
     }
 }

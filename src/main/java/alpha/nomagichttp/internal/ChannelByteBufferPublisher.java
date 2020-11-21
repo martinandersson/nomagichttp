@@ -1,6 +1,5 @@
 package alpha.nomagichttp.internal;
 
-import alpha.nomagichttp.message.ClosedPublisherException;
 import alpha.nomagichttp.message.PooledByteBufferHolder;
 import alpha.nomagichttp.message.Request;
 
@@ -15,6 +14,7 @@ import java.util.concurrent.Flow;
 import java.util.stream.IntStream;
 
 import static alpha.nomagichttp.internal.AnnounceToChannel.EOS;
+import static alpha.nomagichttp.message.ClosedPublisherException.SIGNAL_FAILURE;
 import static java.lang.System.Logger.Level.ERROR;
 import static java.lang.System.Logger.Level.WARNING;
 
@@ -31,7 +31,8 @@ final class ChannelByteBufferPublisher implements Flow.Publisher<DefaultPooledBy
 {
     private static final System.Logger LOG = System.getLogger(ChannelByteBufferPublisher.class.getPackageName());
     
-    private static final String CLOSE_MSG = " Will close channel.";
+    // TODO: Repeated on several occurrences in code base; DRY
+    private static final String CLOSE_MSG = " Will close the channel.";
     
     private static final int
             /** Number of bytebuffers in pool. */
@@ -128,13 +129,14 @@ final class ChannelByteBufferPublisher implements Flow.Publisher<DefaultPooledBy
     
     private void subscriberAnnounce() {
         try {
-            subscriber.announce();
+            subscriber.announce(t -> {
+                if (child.isOpen()) {
+                    LOG.log(ERROR, () -> SIGNAL_FAILURE + CLOSE_MSG, t);
+                    server.orderlyShutdown(child);
+                } // else assume whoever closed the channel also logged the exception
+            });
         } catch (Throwable t) {
-            LOG.log(ERROR, () -> "Signalling Subscriber.onNext() failed." + CLOSE_MSG);
-            subscriber.error(new ClosedPublisherException(t));
             close();
-            // Caller may be application code! (re-throw also documented in Request.Body)
-            throw t;
         }
     }
     
