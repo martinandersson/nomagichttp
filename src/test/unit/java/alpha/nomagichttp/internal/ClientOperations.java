@@ -16,6 +16,7 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.atomic.AtomicBoolean;
 
+import static java.lang.System.Logger.Level.DEBUG;
 import static java.lang.System.Logger.Level.WARNING;
 import static java.net.InetAddress.getLoopbackAddress;
 import static java.nio.ByteBuffer.allocate;
@@ -169,7 +170,13 @@ final class ClientOperations
             
             ByteBuffer buff = allocate(128);
             
-            while (!sink.hasReachedEnd() && delegate.read(buff) != -1) {
+            while (!sink.hasReachedEnd()) {
+                if (delegate.read(buff) == -1) {
+                    LOG.log(DEBUG, "EOS; server closed channel, we're closing our.");
+                    delegate.close();
+                    break;
+                }
+                
                 buff.flip();
                 sink.write(buff);
                 buff.clear();
