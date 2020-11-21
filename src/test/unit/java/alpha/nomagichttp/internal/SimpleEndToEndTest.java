@@ -17,7 +17,6 @@ import static alpha.nomagichttp.internal.ClientOperations.CRLF;
 import static alpha.nomagichttp.message.Responses.ok;
 import static org.assertj.core.api.Assertions.assertThat;
 
-
 /**
  * "Simple" end-to-end tests that mimics all the examples provided in {@link
  * alpha.nomagichttp.examples} and other similar high-level use-scenarios of the
