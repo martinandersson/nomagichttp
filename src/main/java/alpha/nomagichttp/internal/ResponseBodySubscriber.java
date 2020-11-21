@@ -96,7 +96,7 @@ final class ResponseBodySubscriber implements SubscriberAsStage<ByteBuffer, Long
             result.complete(byteCount);
         } else {
             if (byteCount > 0) {
-                LOG.log(ERROR, "Failed writing all of the response to channel. Will close it.", exc);
+                LOG.log(ERROR, "Failed writing all of the response to channel. Will close the channel.", exc);
                 server.orderlyShutdown(channel);
             }
             result.completeExceptionally(exc);
