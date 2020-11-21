@@ -14,6 +14,7 @@ import java.nio.ByteBuffer;
 import java.nio.channels.Channel;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.Flow;
+import java.util.function.Consumer;
 import java.util.function.Function;
 
 import static alpha.nomagichttp.handler.Handlers.POST;
