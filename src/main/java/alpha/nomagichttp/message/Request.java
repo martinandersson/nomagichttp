@@ -200,8 +200,8 @@ public interface Request
      * recover from them. The opposite is true for unexpected errors, in
      * particular, errors that originate from the underlying channel. The safest
      * bet for an application when attempting error recovery is to always check
-     * first if the channel is still open ({@code Request.channel().isOpen()}).
-     * <p>
+     * first if {@linkplain Request#channel()
+     * Request.channel()}{@code .isOpen()}.<p>
      * 
      * 
      * <h3>Subscribing to bytes with a {@code Flow.Subscriber}</h3>
@@ -339,10 +339,8 @@ public interface Request
      * 
      * Other exceptions signalled to {@code Subscriber.onError()} that are not
      * caused by the subscriber itself can safely be assumed to indicate
-     * low-level problems with the underlying channel, meaning it's quite futile
-     * for the application to try to recover from them. The error will already
-     * have been logged by the server who also performed the channel-close
-     * procedure documented in {@code Response.mustCloseAfterWrite()}.<p>
+     * low-level problems with the underlying channel. They will also have been
+     * logged by the server followed suite by a channel closure.<p>
      * 
      * Exceptions from {@code Subscriber.onError()} will be logged but otherwise
      * ignored.<p>
