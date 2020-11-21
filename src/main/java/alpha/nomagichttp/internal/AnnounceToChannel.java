@@ -89,8 +89,8 @@ final class AnnounceToChannel
     private static final System.Logger LOG
             = System.getLogger(AnnounceToChannel.class.getPackageName());
     
-    private static final Throwable RUNNING = new Throwable(),
-                                   STOPPED = new Throwable();
+    private static final Throwable RUNNING = new Throwable("RUNNING"),
+                                   STOPPED = new Throwable("STOPPED");
     
     private enum Mode {
         READ, WRITE
