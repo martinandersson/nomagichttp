@@ -74,7 +74,7 @@ class DetailedEndToEndTest extends AbstractEndToEndTest
     }
     
     @Test
-    void discard_request_body_full() throws IOException, InterruptedException {
+    void request_body_discard_all() throws IOException, InterruptedException {
         client().openConnection();
         
         try {
@@ -97,7 +97,7 @@ class DetailedEndToEndTest extends AbstractEndToEndTest
     }
     
     @Test
-    void discard_request_body_half() throws IOException, InterruptedException {
+    void request_body_discard_half() throws IOException, InterruptedException {
         // Previous test was pretty small, so why not roll with a large body
         final int length = 100_000,
                   midway = length / 2;
