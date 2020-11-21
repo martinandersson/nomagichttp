@@ -5,10 +5,12 @@ package alpha.nomagichttp.message;
  * closing/shutting down, for example when the server closes a channel and
  * there's still a subscriber subscribing to the request body.<p>
  * 
- * Note if a subscriber subscribes to an already closed publisher it should
+ * Note that if a subscriber subscribes to an already closed publisher it should
  * immediately receive an {@code IllegalStateException}.
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
+ * 
+ * @see Request.Body
  */
 public final class ClosedPublisherException extends RuntimeException {
     

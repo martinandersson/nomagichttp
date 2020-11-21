@@ -25,16 +25,16 @@ import static java.lang.System.Logger.Level.ERROR;
 /**
  * Handles an exception by translating it into an alternative response.<p>
  * 
- * One use case for an exception handler is to deploy a simple strategy for
- * error recovery by retrying another execution of the request handler on known
- * and expected errors. Another use case would be to customize the server's
- * default error responses, for example by translating a {@code
+ * One use case could be to retry a new execution of the request handler on
+ * known and expected errors. Another use case could be to customize the
+ * server's default error responses, for example by translating a {@code
  * NoRouteFoundException} into an application-specific "404 Not Found"
  * response.<p>
  * 
  * The server will call exception handlers only during the phase of the HTTP
  * exchange when there is a client waiting on a response which the ordinary
- * request handler could not successfully provide.<p>
+ * request handler could not successfully provide and the channel remains
+ * open.<p>
  * 
  * Specifically for:<p>
  * 

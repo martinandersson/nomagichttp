@@ -180,28 +180,28 @@ public interface Request
      * accessing the request body.<p>
      * 
      * The normal way to reject an operation is to fail-fast and blow up the
-     * calling thread, even rejected asynchronous operations. For example,
-     * {@code ExecutorService.submit()} throws {@code
+     * calling thread. This is also the practice even for rejected asynchronous
+     * operations. For example, {@code ExecutorService.submit()} throws {@code
      * RejectedExceptionException} and {@code AsynchronousByteChannel.read()}
      * throws {@code IllegalArgumentException}.<p>
      * 
      * However - for good or bad - the Reactive Streams specification mandates
      * that all exceptions are signalled through the subscriber. In order then
      * to have a coherent API, all exceptions produced by the Body API will be
-     * delivered through the result carrier ({@code CompletionStage} and {@code
-     * Flow.Subscriber}). This also has the implication that exceptions are not
-     * documented using the standard {@code @throws} tag but rather inline with
-     * the rest of the text. The only exception to this rule is {@code
-     * NullPointerException} which will blow up the calling thread wherever
-     * warranted.<p>
+     * delivered through the result carrier; whether that is a {@code
+     * CompletionStage} or a {@code Flow.Subscriber}. This has the implication
+     * that exceptions from utility methods are not documented using the
+     * standard {@code @throws} tag but rather inline with the rest of the text.
+     * The only exception to this rule is {@code NullPointerException} which
+     * will blow up the calling thread wherever warranted.<p>
      * 
      * In general, high-level exception types - in particular, when documented -
      * does not close the underlying channel and so the application can chose to
-     * recover from them. The reverse is true for unexpected errors, in
-     * particular, errors that originates from the underlying channel. The
-     * safest bet for an application when attempting error recovery is to always
-     * check first if the channel is still open ({@code
-     * Request.channel().isOpen()}).<p>
+     * recover from them. The opposite is true for unexpected errors, in
+     * particular, errors that originate from the underlying channel. The safest
+     * bet for an application when attempting error recovery is to always check
+     * first if the channel is still open ({@code Request.channel().isOpen()}).
+     * <p>
      * 
      * 
      * <h3>Subscribing to bytes with a {@code Flow.Subscriber}</h3>
@@ -277,9 +277,9 @@ public interface Request
      * <h4>Thread Semantics</h4>
      * 
      * All signals to the subscriber are executed serially with a happens-before
-     * relationship. Assuming the class data is not accessed by foreign threads
-     * outside of the delivery of these signals; no special care needs to be put
-     * in place such as volatile- and/or atomic fields.<p>
+     * relationship. Assuming the subscriber's fields are not accessed by
+     * threads outside of the delivery of the signals; no special care needs to
+     * be put in place such as volatile- and/or atomic fields.<p>
      * 
      * The effect of {@code Subscription.request()} - if called by the thread
      * delivering a signal to the subscriber - will not be immediate. Instead
@@ -328,27 +328,30 @@ public interface Request
      * standard {@link ExceptionHandler exception handling} is kicked off.<p>
      * 
      * Exceptions thrown by the subscriber's {@code onNext()} and {@code
-     * onComplete()} methods will cause the server to log the error and perform
-     * the channel-close procedure documented in {@link
-     * Response#mustCloseAfterWrite()}. This will also void the underlying
-     * subscription and even though {@code onError()} is meant to be a vehicle
-     * for <i>publisher</i> errors, the server will still gracefully complete
-     * the subscription by signalling a {@link ClosedPublisherException}.<p>
+     * onComplete()} methods will be logged by the server if the channel is
+     * still open when the exceptional return occur. The server will also
+     * perform the channel-close procedure documented in {@link
+     * Response#mustCloseAfterWrite()}. The exceptional return will void the
+     * underlying subscription and even though {@code onError()} is meant to
+     * be a vehicle for <i>publisher</i> errors, the server will gracefully
+     * complete the subscription by signalling a {@link ClosedPublisherException}
+     * (caused by the subscriber exception).<p>
      * 
-     * Exceptions signalled to {@code Subscriber.onError()} indicates low-level
-     * problems with the underlying channel, meaning it's quite futile for the
-     * application to try to recover from them. The error will already have been
-     * logged by the server who also performed the channel-close procedure
-     * documented in {@code Response.mustCloseAfterWrite()}.<p>
+     * Other exceptions signalled to {@code Subscriber.onError()} that are not
+     * caused by the subscriber itself can safely be assumed to indicate
+     * low-level problems with the underlying channel, meaning it's quite futile
+     * for the application to try to recover from them. The error will already
+     * have been logged by the server who also performed the channel-close
+     * procedure documented in {@code Response.mustCloseAfterWrite()}.<p>
      * 
-     * Exceptions from {@code Subscriber.onError()} itself will be logged but
-     * otherwise ignored.<p>
+     * Exceptions from {@code Subscriber.onError()} will be logged but otherwise
+     * ignored.<p>
      * 
      * Even if the server has a reaction for some observed exceptions - such as
      * closing the channel as previously noted - this doesn't stop the exception
      * from being propagated. For example, if the application asynchronously
      * calls {@code Subscription.request()} from a new thread, a call which
-     * might immediately and synchronously trigger the publication of a new item
+     * might immediately and synchronously trigger the publication of a buffer
      * delivery to {@code Subscriber.onNext()}, and if this method in turn
      * returns exceptionally which prompts the server to intercept and close the
      * channel, then the application code will still return exceptionally from
