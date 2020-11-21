@@ -39,10 +39,6 @@ abstract class AbstractEndToEndTest
     
     @AfterAll
     static void stop() throws IOException {
-        if (client != null) {
-            client.closeConnection();
-        }
-        
         if (server != null) {
             server.stop();
         }

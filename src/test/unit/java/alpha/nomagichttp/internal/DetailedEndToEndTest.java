@@ -11,6 +11,7 @@ import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.nio.channels.Channel;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.Flow;
 import java.util.function.Function;
@@ -61,24 +62,18 @@ class DetailedEndToEndTest extends AbstractEndToEndTest
             "Content-Type: text/plain; charset=utf-8" + CRLF +
             "Content-Length: 3" + CRLF + CRLF;
         
-        client().openConnection();
-        
-        try {
+        try (Channel ch = client().openConnection()) {
             String res1 = client().writeRead(requestWithBody(ECHO_BODY, "ABC"), "ABC");
             assertThat(res1).isEqualTo(resHead + "ABC");
             
             String res2 = client().writeRead(requestWithBody(ECHO_BODY, "DEF"), "DEF");
             assertThat(res2).isEqualTo(resHead + "DEF");
-        } finally {
-            client().closeConnection();
         }
     }
     
     @Test
     void request_body_discard_all() throws IOException, InterruptedException {
-        client().openConnection();
-        
-        try {
+        try (Channel ch = client().openConnection()) {
             String req = requestWithBody(IS_BODY_EMPTY, "x".repeat(10)),
                    res = client().writeRead(req, "false");
             
@@ -92,8 +87,6 @@ class DetailedEndToEndTest extends AbstractEndToEndTest
             // The "/is-body-empty" endpoint didn't read the body contents, i.e. auto-discarded.
             // If done correctly, we should be be able to send a new request using the same connection:
             empty_request_body();
-        } finally {
-            client().closeConnection();
         }
     }
     
@@ -108,9 +101,8 @@ class DetailedEndToEndTest extends AbstractEndToEndTest
                 new AfterByteTargetStop(midway, Flow.Subscription::cancel)));
         
         addHandler("/discard-midway", discardMidway);
-        client().openConnection();
         
-        try {
+        try (Channel ch = client().openConnection()) {
             String req = requestWithBody("/discard-midway", "x".repeat(length)),
                    res = client().writeRead(req);
             
@@ -119,8 +111,6 @@ class DetailedEndToEndTest extends AbstractEndToEndTest
                 "Content-Length: 0" + CRLF + CRLF);
             
             empty_request_body();
-        } finally {
-            client().closeConnection();
         }
     }
     

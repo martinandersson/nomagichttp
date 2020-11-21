@@ -7,6 +7,7 @@ import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.http.HttpClient;
 import java.nio.ByteBuffer;
+import java.nio.channels.Channel;
 import java.nio.channels.SocketChannel;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -32,10 +33,10 @@ import static org.assertj.core.api.Assertions.assertThat;
  * Any operation taking 3 seconds or longer will cause an {@code
  * InterruptedException} to be thrown<p>
  * 
- * All channel operating methods will by default open/close a new connection
- * valid only for the span of that method call. In order to re-use a persistent
- * connection across operations, call the open- and closeConnection methods
- * manually.<p>
+ * All channel operating utility methods will by default open/close a new
+ * connection open only during the span of that method call. In order to re-use
+ * a persistent connection across operations, call {@link #openConnection()}
+ * first.<p>
  * 
  * Note: This class provides low-level access for test cases that need direct
  * control over what bytes are put on the wire and what is received. Test cases
@@ -74,15 +75,40 @@ final class ClientOperations
         this.factory = requireNonNull(factory);
     }
     
-    void openConnection() throws IOException {
+    /**
+     * Open a connection.<p>
+     * 
+     * Test code must manually close the returned channel.
+     * 
+     * @return the channel
+     * 
+     * @throws IllegalStateException if a connection is already active
+     * @throws IOException like for other weird stuff
+     */
+    Channel openConnection() throws IOException {
         if (delegate != null) {
             throw new IllegalStateException("Already opened.");
         }
         
-        delegate = factory.get();
+        Channel ch = delegate = factory.get();
+        
+        class Proxy implements Channel {
+            @Override
+            public boolean isOpen() {
+                return ch.isOpen();
+            }
+            
+            @Override
+            public void close() throws IOException {
+                delegate = null;
+                ch.close();
+            }
+        }
+        
+        return new Proxy();
     }
     
-    void closeConnection() throws IOException {
+    private void closeConnection() throws IOException {
         if (delegate != null) {
             delegate.close();
             delegate = null;
