@@ -3,7 +3,7 @@ package alpha.nomagichttp.internal;
 import alpha.nomagichttp.message.ClosedPublisherException;
 import alpha.nomagichttp.message.Request;
 
-import java.nio.channels.Channel;
+import java.nio.channels.AsynchronousSocketChannel;
 import java.util.concurrent.Flow;
 
 import static alpha.nomagichttp.message.ClosedPublisherException.SIGNAL_FAILURE;
@@ -21,13 +21,15 @@ import static java.util.Objects.requireNonNull;
 final class OnErrorCloseChannelOp<T> extends AbstractOp<T>
 {
     private final DefaultServer server;
-    private final Channel child;
+    private final AsynchronousSocketChannel child;
     
     private static final System.Logger LOG
             = System.getLogger(OnErrorCloseChannelOp.class.getPackageName());
     
     protected OnErrorCloseChannelOp(
-            Flow.Publisher<? extends T> upstream, DefaultServer server, Channel child)
+            Flow.Publisher<? extends T> upstream,
+            DefaultServer server,
+            AsynchronousSocketChannel child)
     {
         super(upstream);
         this.server = requireNonNull(server);

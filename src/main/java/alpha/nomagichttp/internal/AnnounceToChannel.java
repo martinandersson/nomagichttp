@@ -2,7 +2,7 @@ package alpha.nomagichttp.internal;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.nio.channels.AsynchronousByteChannel;
+import java.nio.channels.AsynchronousSocketChannel;
 import java.nio.channels.ClosedChannelException;
 import java.nio.channels.CompletionHandler;
 import java.nio.channels.ShutdownChannelGroupException;
@@ -57,18 +57,18 @@ final class AnnounceToChannel
      */
     @FunctionalInterface
     interface WhenDone  {
-        void accept(AsynchronousByteChannel channel, long byteCount, Throwable exc);
+        void accept(AsynchronousSocketChannel channel, long byteCount, Throwable exc);
     }
     
     static AnnounceToChannel read(
-            AsynchronousByteChannel source, Supplier<? extends ByteBuffer> destinations,
+            AsynchronousSocketChannel source, Supplier<? extends ByteBuffer> destinations,
             Consumer<? super ByteBuffer> completionHandler, WhenDone whenDone, DefaultServer server)
     {
         return new AnnounceToChannel(source, Mode.READ, destinations, completionHandler, whenDone, server);
     }
     
     static AnnounceToChannel write(
-            Supplier<? extends ByteBuffer> sources, AsynchronousByteChannel destination,
+            Supplier<? extends ByteBuffer> sources, AsynchronousSocketChannel destination,
             Consumer<? super ByteBuffer> completionHandler, WhenDone whenDone, DefaultServer server)
     {
         return new AnnounceToChannel(destination, Mode.WRITE, sources, completionHandler, whenDone, server);
@@ -97,7 +97,7 @@ final class AnnounceToChannel
     }
     
     private final AtomicReference<Throwable> state;
-    private final AsynchronousByteChannel channel;
+    private final AsynchronousSocketChannel channel;
     private final Mode mode;
     private final Supplier<? extends ByteBuffer> supplier;
     private final Consumer<? super ByteBuffer> completionHandler;
@@ -109,7 +109,7 @@ final class AnnounceToChannel
     private long byteCount;
     
     private AnnounceToChannel(
-            AsynchronousByteChannel channel,
+            AsynchronousSocketChannel channel,
             Mode mode,
             Supplier<? extends ByteBuffer> supplier,
             Consumer<? super ByteBuffer> completionHandler,

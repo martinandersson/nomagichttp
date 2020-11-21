@@ -6,6 +6,7 @@ import alpha.nomagichttp.message.Request;
 
 import java.net.http.HttpHeaders;
 import java.nio.channels.AsynchronousFileChannel;
+import java.nio.channels.AsynchronousSocketChannel;
 import java.nio.channels.NetworkChannel;
 import java.nio.charset.Charset;
 import java.nio.file.OpenOption;
@@ -51,7 +52,7 @@ final class DefaultRequest implements Request
             Map<String, String> pathParameters,
             Flow.Publisher<DefaultPooledByteBufferHolder> bodySource,
             DefaultServer server,
-            NetworkChannel child)
+            AsynchronousSocketChannel child)
     {
         this.head = head;
         this.pathParameters = pathParameters;

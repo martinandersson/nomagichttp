@@ -6,6 +6,7 @@ import alpha.nomagichttp.message.Request;
 import java.io.Closeable;
 import java.nio.ByteBuffer;
 import java.nio.channels.AsynchronousByteChannel;
+import java.nio.channels.AsynchronousSocketChannel;
 import java.util.Deque;
 import java.util.Queue;
 import java.util.concurrent.ConcurrentLinkedDeque;
@@ -19,8 +20,7 @@ import static java.lang.System.Logger.Level.ERROR;
 import static java.lang.System.Logger.Level.WARNING;
 
 /**
- * A publisher of bytebuffers read from an asynchronous byte channel (assumed to
- * not support concurrent read operations).<p>
+ * A publisher of bytebuffers read from an asynchronous byte channel.<p>
  * 
  * Many aspects of how to consume published bytebuffers has been documented in
  * {@link Request.Body} and {@link PooledByteBufferHolder}.
@@ -48,14 +48,14 @@ final class ChannelByteBufferPublisher implements Flow.Publisher<DefaultPooledBy
      * queue of writable buffers, from which channel read operations polls.
      */
     
-    private final DefaultServer           server;
-    private final AsynchronousByteChannel child;
-    private final Deque<ByteBuffer>       readable;
-    private final Queue<ByteBuffer>       writable;
+    private final DefaultServer             server;
+    private final AsynchronousSocketChannel child;
+    private final Deque<ByteBuffer>         readable;
+    private final Queue<ByteBuffer>         writable;
     private final AnnounceToSubscriber<DefaultPooledByteBufferHolder> subscriber;
-    private final AnnounceToChannel       channel;
+    private final AnnounceToChannel         channel;
     
-    ChannelByteBufferPublisher(DefaultServer server, AsynchronousByteChannel child) {
+    ChannelByteBufferPublisher(DefaultServer server, AsynchronousSocketChannel child) {
         this.server     = server;
         this.child      = child;
         this.readable   = new ConcurrentLinkedDeque<>();

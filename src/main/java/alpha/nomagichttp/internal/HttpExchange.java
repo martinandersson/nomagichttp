@@ -6,8 +6,7 @@ import alpha.nomagichttp.message.Response;
 import alpha.nomagichttp.message.Responses;
 import alpha.nomagichttp.route.Route;
 
-import java.nio.channels.AsynchronousByteChannel;
-import java.nio.channels.NetworkChannel;
+import java.nio.channels.AsynchronousSocketChannel;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.RandomAccess;
@@ -29,12 +28,12 @@ import static java.util.Objects.requireNonNull;
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  */
-final class HttpExchange<C extends AsynchronousByteChannel & NetworkChannel>
+final class HttpExchange
 {
     private static final System.Logger LOG = System.getLogger(HttpExchange.class.getPackageName());
     
     private final DefaultServer server;
-    private final C child;
+    private final AsynchronousSocketChannel child;
     private final ChannelByteBufferPublisher bytes;
     
     /*
@@ -49,11 +48,15 @@ final class HttpExchange<C extends AsynchronousByteChannel & NetworkChannel>
     private Handler handler;
     private ExceptionHandlers eh;
     
-    HttpExchange(DefaultServer server, C child) {
+    HttpExchange(DefaultServer server, AsynchronousSocketChannel child) {
         this(server, child, new ChannelByteBufferPublisher(server, child));
     }
     
-    private HttpExchange(DefaultServer server, C child, ChannelByteBufferPublisher bytes) {
+    private HttpExchange(
+            DefaultServer server,
+            AsynchronousSocketChannel child,
+            ChannelByteBufferPublisher bytes)
+    {
         this.server  = server;
         this.child   = child;
         this.bytes   = bytes;
@@ -139,7 +142,7 @@ final class HttpExchange<C extends AsynchronousByteChannel & NetworkChannel>
             request.bodyStage().whenComplete((Null2, t2) -> {
                 if (t2 == null) {
                     // TODO: Possible recursion. Unroll.
-                    new HttpExchange<>(server, child, bytes).begin();
+                    new HttpExchange(server, child, bytes).begin();
                 } else if (child.isOpen()) {
                     LOG.log(WARNING, "Expected someone to have closed the channel already.");
                     server.orderlyShutdown(child);

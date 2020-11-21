@@ -11,7 +11,6 @@ import java.net.SocketAddress;
 import java.nio.channels.AsynchronousChannelGroup;
 import java.nio.channels.AsynchronousServerSocketChannel;
 import java.nio.channels.AsynchronousSocketChannel;
-import java.nio.channels.Channel;
 import java.nio.channels.ClosedChannelException;
 import java.nio.channels.CompletionHandler;
 import java.nio.channels.ShutdownChannelGroupException;
@@ -193,13 +192,14 @@ public final class DefaultServer implements Server
      * 
      * @param child channel to close
      */
-    void orderlyShutdown(Channel child) {
+    void orderlyShutdown(AsynchronousSocketChannel child) {
         if (!child.isOpen()) {
             return;
         }
         
         try {
-            child.close();
+            // https://stackoverflow.com/a/20749656/1268003
+            child.shutdownInput().shutdownOutput().close();
             LOG.log(INFO, () -> "Closed child: " + child);
         } catch (IOException e) {
             LOG.log(ERROR, "Failed to close client channel. Will initiate orderly shutdown.", e);
@@ -241,7 +241,7 @@ public final class DefaultServer implements Server
             
             // TODO: child.setOption(StandardSocketOptions.SO_KEEPALIVE, true); ??
             
-            new HttpExchange<>(DefaultServer.this, child).begin();
+            new HttpExchange(DefaultServer.this, child).begin();
         }
         
         @Override

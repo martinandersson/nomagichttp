@@ -7,7 +7,7 @@ import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 
 import java.net.http.HttpHeaders;
-import java.nio.channels.NetworkChannel;
+import java.nio.channels.AsynchronousSocketChannel;
 import java.nio.charset.IllegalCharsetNameException;
 import java.nio.charset.UnsupportedCharsetException;
 import java.util.Map;
@@ -80,6 +80,6 @@ class DefaultRequestTest
                 Map.of(),
                 Publishers.singleton(PooledByteBuffers.wrap(body, US_ASCII)),
                 Mockito.mock(DefaultServer.class),
-                Mockito.mock(NetworkChannel.class));
+                Mockito.mock(AsynchronousSocketChannel.class));
     }
 }

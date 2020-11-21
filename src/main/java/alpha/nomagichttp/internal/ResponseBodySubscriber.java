@@ -4,6 +4,7 @@ import alpha.nomagichttp.message.Response;
 
 import java.nio.ByteBuffer;
 import java.nio.channels.AsynchronousByteChannel;
+import java.nio.channels.AsynchronousSocketChannel;
 import java.util.Deque;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
@@ -48,7 +49,7 @@ final class ResponseBodySubscriber implements SubscriberAsStage<ByteBuffer, Long
     private boolean pushedHead;
     private int requested;
     
-    ResponseBodySubscriber(Response response, AsynchronousByteChannel channel, DefaultServer server) {
+    ResponseBodySubscriber(Response response, AsynchronousSocketChannel channel, DefaultServer server) {
         this.response = requireNonNull(response);
         this.readable = new ConcurrentLinkedDeque<>();
         this.result   = new CompletableFuture<>();
@@ -91,7 +92,7 @@ final class ResponseBodySubscriber implements SubscriberAsStage<ByteBuffer, Long
         }
     }
     
-    private void whenDone(AsynchronousByteChannel channel, long byteCount, Throwable exc) {
+    private void whenDone(AsynchronousSocketChannel channel, long byteCount, Throwable exc) {
         if (exc == null) {
             result.complete(byteCount);
         } else {
