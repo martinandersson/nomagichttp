@@ -2,7 +2,6 @@ package alpha.nomagichttp.internal;
 
 import java.util.ArrayDeque;
 import java.util.Iterator;
-import java.util.NoSuchElementException;
 import java.util.Queue;
 import java.util.concurrent.Flow;
 
@@ -28,8 +27,16 @@ final class ReplayPublisher<T> implements Flow.Publisher<T>
     public void subscribe(Flow.Subscriber<? super T> subscriber) {
         requireNonNull(subscriber);
         
+        Iterator<T> it = items.iterator();
         SerialTransferService<T> service = new SerialTransferService<>(
-                new NullReturningIterator<>(items.iterator())::next,
+                () -> {
+                    if (it.hasNext()) {
+                        return it.next();
+                    } else {
+                        subscriber.onComplete();
+                        return null;
+                    }
+                },
                 subscriber::onNext);
         
         Flow.Subscription subscription = new Flow.Subscription(){
@@ -49,27 +56,5 @@ final class ReplayPublisher<T> implements Flow.Publisher<T>
         };
         
         subscriber.onSubscribe(subscription);
-    }
-    
-    private static class NullReturningIterator<E> implements Iterator<E> {
-        private final Iterator<E> delegate;
-        
-        NullReturningIterator(Iterator<E> delegate) {
-            this.delegate = delegate;
-        }
-        
-        @Override
-        public boolean hasNext() {
-            return delegate.hasNext();
-        }
-        
-        @Override
-        public E next() {
-            try {
-                return delegate.next();
-            } catch (NoSuchElementException e) {
-                return null;
-            }
-        }
     }
 }
