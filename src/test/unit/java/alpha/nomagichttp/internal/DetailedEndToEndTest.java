@@ -124,8 +124,6 @@ class DetailedEndToEndTest extends AbstractEndToEndTest
         }
     }
     
-    private static String requestWithBody(String path, String body) {
-        return "POST " + path + " HTTP/1.1" + CRLF +
     private static String requestWithBody(String requestTarget, String body) {
         return "POST " + requestTarget + " HTTP/1.1" + CRLF +
                "Accept: text/plain; charset=utf-8" + CRLF +
