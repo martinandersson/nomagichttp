@@ -64,7 +64,7 @@ final class ClientOperations
             });
     
     private final SocketChannelSupplier factory;
-    private SocketChannel delegate;
+    private SocketChannel ch;
     
     ClientOperations(int port) {
         this(() -> SocketChannel.open(
@@ -86,11 +86,11 @@ final class ClientOperations
      * @throws IOException like for other weird stuff
      */
     Channel openConnection() throws IOException {
-        if (delegate != null) {
+        if (ch != null) {
             throw new IllegalStateException("Already opened.");
         }
         
-        Channel ch = delegate = factory.get();
+        Channel ch = this.ch = factory.get();
         
         class Proxy implements Channel {
             @Override
@@ -100,7 +100,7 @@ final class ClientOperations
             
             @Override
             public void close() throws IOException {
-                delegate = null;
+                ClientOperations.this.ch = null;
                 ch.close();
             }
         }
@@ -109,9 +109,9 @@ final class ClientOperations
     }
     
     private void closeConnection() throws IOException {
-        if (delegate != null) {
-            delegate.close();
-            delegate = null;
+        if (ch != null) {
+            ch.close();
+            ch = null;
         }
     }
     
@@ -184,22 +184,22 @@ final class ClientOperations
         }, 3, SECONDS);
         
         final FiniteByteBufferSink sink = new FiniteByteBufferSink(128, responseEnd);
-        final boolean persistent = delegate != null;
+        final boolean persistent = ch != null;
         
         try {
             if (!persistent) {
                 openConnection();
             }
             
-            int r = delegate.write(wrap(request));
+            int r = ch.write(wrap(request));
             assertThat(r).isEqualTo(request.length);
             
             ByteBuffer buff = allocate(128);
             
             while (!sink.hasReachedEnd()) {
-                if (delegate.read(buff) == -1) {
+                if (ch.read(buff) == -1) {
                     LOG.log(DEBUG, "EOS; server closed channel, we're closing our.");
-                    delegate.close();
+                    ch.close();
                     break;
                 }
                 
