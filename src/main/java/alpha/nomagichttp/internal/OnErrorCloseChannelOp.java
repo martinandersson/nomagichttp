@@ -48,10 +48,19 @@ final class OnErrorCloseChannelOp<T> extends AbstractOp<T>
         try {
             action.run();
         } catch (Throwable t) {
+            /*
+              * Note, this isn't the only place where the child is closed on an
+              * exceptional signal return. See also
+              * ChannelByteBufferPublisher.subscriberAnnounce().
+              * 
+              * This class guarantees the behavior though, as not all paths to
+              * the subscriber run through the subscriberAnnounce() method.
+             */
             if (child.isOpen()) {
                 LOG.log(ERROR, SIGNAL_FAILURE + " Will close the channel.", t);
                 server.orderlyShutdown(child);
-            }
+            } // else assume whoever closed the channel also logged the exception
+            
             signalError(new ClosedPublisherException(SIGNAL_FAILURE, t));
             throw t;
         }
