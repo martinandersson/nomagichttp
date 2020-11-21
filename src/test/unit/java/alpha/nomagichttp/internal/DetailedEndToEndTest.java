@@ -115,6 +115,24 @@ class DetailedEndToEndTest extends AbstractEndToEndTest
         }
     }
     
+    @Test
+    void request_body_subscriber_crash_assert_channel_gets_closed() throws IOException, InterruptedException {
+        Handler crashAfterOneByte = Handlers.POST().accept((req) ->
+            req.body().get().subscribe(
+                new AfterByteTargetStop(1, subscriptionIgnored -> {
+                    throw new RuntimeException("Oops."); })));
+        
+        addHandler("/body-subscriber-crash", crashAfterOneByte);
+        
+        try (Channel ch = client().openConnection()) {
+            String req = requestWithBody("/body-subscriber-crash", "Hello"),
+                   res = client().writeRead(req);
+            
+            assertThat(res).isEmpty();
+            assertThat(ch.isOpen()).isFalse();
+        }
+    }
+    
     private static String requestWithBody(String requestTarget, String body) {
         return "POST " + requestTarget + " HTTP/1.1" + CRLF +
                "Accept: text/plain; charset=utf-8" + CRLF +
