@@ -19,7 +19,7 @@ import static java.lang.System.Logger.Level.DEBUG;
 //       cleared on each new read, almost like a heartbeat. So, if we don't get a single
 //       byte despite us waiting for bytes, then we timeout.
 
-final class RequestHeadSubscriber implements Flow.Subscriber<PooledByteBufferHolder>
+final class RequestHeadSubscriber implements SubscriberAsStage<PooledByteBufferHolder, RequestHead>
 {
     private static final System.Logger LOG = System.getLogger(RequestHeadSubscriber.class.getPackageName());
     
@@ -33,19 +33,21 @@ final class RequestHeadSubscriber implements Flow.Subscriber<PooledByteBufferHol
         result      = new CompletableFuture<>();
     }
     
-    CompletionStage<RequestHead> asCompletionStage() {
-        return result.minimalCompletionStage();
+    @Override
+    public CompletionStage<RequestHead> asCompletionStage() {
+        return result;
     }
     
     @Override
     public void onSubscribe(Flow.Subscription subscription) {
-        (sub = subscription).request(Long.MAX_VALUE);
+        this.subscription = SubscriberAsStage.validate(this.subscription, subscription);
+        subscription.request(Long.MAX_VALUE);
     }
     
     // Flow.Subscriber implementation
     // ---
     
-    private Flow.Subscription sub;
+    private Flow.Subscription subscription;
     private int read;
     
     @Override
@@ -55,7 +57,7 @@ final class RequestHeadSubscriber implements Flow.Subscriber<PooledByteBufferHol
         try {
             head = process(item.get());
         } catch (Throwable t) {
-            sub.cancel();
+            subscription.cancel();
             result.completeExceptionally(t);
             return;
         } finally {
@@ -63,7 +65,7 @@ final class RequestHeadSubscriber implements Flow.Subscriber<PooledByteBufferHol
         }
         
         if (head != null) {
-            sub.cancel();
+            subscription.cancel();
             result.complete(head);
         }
     }

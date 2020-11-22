@@ -53,11 +53,11 @@ abstract class AbstractSingleClientTest
         return CLIENT.send(req, BodyHandlers.discarding());
     }
     
-    protected static HttpResponse<String> postAndReceiveText(String route, String utf8) throws IOException, InterruptedException {
+    protected static HttpResponse<String> postAndReceiveText(String route, String utf8Body) throws IOException, InterruptedException {
         HttpRequest req = HttpRequest.newBuilder()
                 .setHeader("Content-Type", "text/plain; charset=utf-8")
                 .uri(URI.create(ROOT + route))
-                .POST(BodyPublishers.ofString(utf8, UTF_8))
+                .POST(BodyPublishers.ofString(utf8Body, UTF_8))
                 .build();
         
         return CLIENT.send(req, BodyHandlers.ofString(UTF_8));

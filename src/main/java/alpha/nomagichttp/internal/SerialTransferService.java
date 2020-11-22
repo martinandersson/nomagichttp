@@ -9,35 +9,24 @@ import static java.util.Objects.requireNonNull;
 
 /**
  * This class can be used as a lock-free concurrency primitive to transfer an
- * item from a supplier to a consumer for as long as:
- * <ol>
- *   <li>The item produced is not {@code null}, and</li>
- *   <li>there is consumer-demand, and</li>
- *   <li>the service (an instance of this class) hasn't been marked <i>finished</i>.</li>
- * </ol>
+ * item from a supplier to a consumer.<p>
  * 
- * Semantically speaking, the {@link #increaseDemand(long)} method can be seen
- * as a pull initiated by the downstream consumer and the {@link #tryTransfer()}
- * method can be seen as a push initiated by the upstream supplier. Of course,
- * for this transfer to actually take place, both must agree; <strong>the
- * supplier must be able to produce, and the consumer must be able to
- * receive</strong>.<p>
- * 
- * The consumer signals his receiving capability through the demand and
- * only if there is a demand will the supplier be pulled for an item and only if
- * this item is non-null will it be delivered to the consumer.<p>
+ * The consumer signals his receiving capability through raising a demand and
+ * only if there is a demand will the supplier (provided to constructor) be
+ * pulled for an item and only if this item is non-null will it be delivered to
+ * the consumer at which point both can be said to agree; supplier is able to
+ * produce and consumer is able to receive.<p>
  * 
  * Item deliveries - or "transfers" if you will - are performed <i>serially</i>
  * as part of one transaction, one at a time. Or put in other words, the
  * functional methods of the supplier and consumer are serially invoked by the
  * same thread and this operation never runs concurrently.<p>
  * 
- * Transfers will repeat for as long as they are successful (supplier and
- * consumer does not throw exception). This means that a thread initiating a
- * transfer may be used to not just deliver one item but many. Time-sensitive
- * applications that can not afford a thread being blocked for long must
- * cap/throttle either one or both of the supplier and consumer (through his
- * demand).
+ * Transfers will repeat for as long as they are successful. This means that a
+ * thread initiating a transfer may be used to not just deliver one item but
+ * many. Time-sensitive applications that can not afford a thread being blocked
+ * for long must cap/throttle either one or both of the supplier and consumer
+ * (through his demand).
  * 
  * 
  * <h2>Threading Model</h2>
@@ -46,7 +35,7 @@ import static java.util.Objects.requireNonNull;
  * package-private methods of this class (thread identify does not matter).<p>
  * 
  * This class does <i>not</i> manage background tasks to ensure progress. It is
- * therefore important that the supplier-side calls the {@code tryTransfer}
+ * therefore important that the supplier-side calls the {@link #tryTransfer()}
  * method anytime a condition changes to the effect a previously null-producing
  * supplier could maybe start yielding non-null items again. Failure to do so
  * could mean progress is forever not made until the next time the consumer
@@ -76,6 +65,9 @@ import static java.util.Objects.requireNonNull;
  * cease to bother about demand completely. At this point, the service is
  * regarded as effectively unbounded and the demand will never decrease again
  * moving forward.<p>
+ * 
+ * If a supplier produces a {@code null} item, then this aborts the transfer
+ * attempt but does not count against the demand.
  * 
  * 
  * <h2>Error Handling</h2>
@@ -175,7 +167,6 @@ final class SerialTransferService<T>
      * @throws IllegalArgumentException if {@code n} is less than {@code 1}
      */
     void increaseDemand(long n) {
-        // must be NOP if finished already
         if (demand.get() == FINISHED) {
             return;
         }
@@ -201,10 +192,16 @@ final class SerialTransferService<T>
      * {@code false}. Otherwise, if this method invocation was the one to
      * effectively mark the service finished, {@code true} is returned.<p>
      * 
-     * A currently running transfer is not aborted and will run to completion.<p>
-     * 
      * For competing parties trying stop the service, only one of them will
      * succeed.<p>
+     * 
+     * A currently running transfer is not aborted and will run to
+     * completion.<p>
+     * 
+     * The effect is immediate in a single-threaded environment (no more
+     * deliveries after this method returns) but potentially delayed in a
+     * multi-threaded environment (at most one delivery "extra" may occur after
+     * this method returns).<p>
      * 
      * @return a successful flag (see javadoc)
      */

@@ -1,5 +1,6 @@
 package alpha.nomagichttp.handler;
 
+import alpha.nomagichttp.ExceptionHandler;
 import alpha.nomagichttp.message.MediaType;
 import alpha.nomagichttp.message.Request;
 import alpha.nomagichttp.message.Response;
@@ -222,7 +223,9 @@ import java.util.function.Function;
  * 
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
+ * @see ExceptionHandler
  */
+// TODO: Rename to RequestHandler
 public interface Handler
 {
     /**

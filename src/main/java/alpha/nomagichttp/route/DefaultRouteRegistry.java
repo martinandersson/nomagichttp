@@ -54,7 +54,6 @@ public class DefaultRouteRegistry implements RouteRegistry
                 .filter(Objects::nonNull)
                 .findAny();
         
-        return m.orElseThrow(() -> new NoRouteFoundException(
-                "No route matches this request-target: " + requestTarget));
+        return m.orElseThrow(() -> new NoRouteFoundException(requestTarget));
     }
 }

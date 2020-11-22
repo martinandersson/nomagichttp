@@ -11,8 +11,8 @@ import alpha.nomagichttp.message.Responses;
 import alpha.nomagichttp.route.AmbiguousNoHandlerFoundException;
 import alpha.nomagichttp.route.NoHandlerFoundException;
 import alpha.nomagichttp.route.NoRouteFoundException;
-import alpha.nomagichttp.route.Route;
 
+import java.util.concurrent.CompletionException;
 import java.util.concurrent.CompletionStage;
 
 import static alpha.nomagichttp.message.Responses.badRequest;
@@ -23,33 +23,79 @@ import static alpha.nomagichttp.message.Responses.notImplemented;
 import static java.lang.System.Logger.Level.ERROR;
 
 /**
- * Handles all exceptions occurring from after the point where a client has
- * begun transmitting a request on the wire until the request handler invocation
- * has returned.<p>
+ * Handles an exception by translating it into an alternative response.<p>
  * 
- * The exception handler's job is to produce an alternative response which the
- * ordinary request handler could not provide. One simple strategy for error
- * recovery on known and expected errors is to retry another execution of the
- * request handler.<p>
+ * One use case could be to retry a new execution of the request handler on
+ * known and expected errors. Another use case could be to customize the
+ * server's default error responses, for example by translating a {@code
+ * NoRouteFoundException} into an application-specific "404 Not Found"
+ * response.<p>
  * 
- * If no exception handler is configured on the server, the {@link #DEFAULT}
- * will be used.<p>
+ * The server will call exception handlers only during the phase of the HTTP
+ * exchange when there is a client waiting on a response which the ordinary
+ * request handler could not successfully provide and the channel remains
+ * open.<p>
  * 
- * Exception handlers are called in the same order they were configured/added to
- * the server.<p>
+ * Specifically for:<p>
  * 
- * An exception handler that is unfit or unwilling to handle a particular
- * exception must re-throw the same exception instance, in which case the server
- * will call the next exception handler, eventually reaching the {@code
- * DEFAULT}. If an exception handler returns {@code null} or throws a different
- * exception, then this is considered to be a new error and the whole cycle is
- * restarted.<p>
+ * 1) Exceptions occurring on the request thread from after the point when the
+ * server has begun receiving and parsing a request message until when the
+ * request handler invocation has returned.<p>
  * 
- * The server accepts a supplier of the exception handler. The supplier will be
- * called lazily upon the first invocation of the exception handler and the
+ * 2) Exceptions that completed the response stage returned from the request
+ * handler.<p>
+ * 
+ * 3) Exceptions signalled to the server's subscriber of the {@link
+ * Response#body() response body} - if and only if - the body publisher has not
+ * yet published any bytebuffers before the error was signalled. It doesn't make
+ * much sense trying to recover the situation after the point where a response
+ * has already begun transmitting back to the client.<p>
+ * 
+ * The server will <strong>not</strong> call exception handlers for errors
+ * that are not directly involved in the HTTP exchange or for errors that occur
+ * asynchronously in another thread than the request thread or for any other
+ * errors when there's already an avenue in place for the exception management.
+ * For example, low-level exceptions related to channel management and error
+ * signals raised through the {@link Request.Body} API (all methods of which
+ * either return a {@code CompletionStage} or accepts a {@code
+ * Flow.Subscriber}.<p>
+ * 
+ * For server errors caught but not propagated to an exception handler, the
+ * server's strategy is usually to log the error and immediately close the
+ * client's channel according to the procedure documented in {@link
+ * Response#mustCloseAfterWrite()}.<p>
+ * 
+ * Any number of exception handlers can be configured. If many are configured,
+ * they will be called in the same order they were added. First handler to
+ * produce a {@code Response} breaks the call chain. The {@link #DEFAULT} will
+ * be used if no handler can handle the error or no handler is configured.<p>
+ * 
+ * An exception handler that is unwilling to handle the exception must re-throw
+ * the same exception instance which will then propagate to the next handler. If
+ * a handler throws a different exception, then this is considered to be a new
+ * error and the whole cycle is restarted.<p>
+ * 
+ * Super simple example:
+ * <pre>{@code
+ *     ExceptionHandler eh = (t, r, h) -> {
+ *         try {
+ *             throw t;
+ *         } catch (ExpectedException e) {
+ *             return someResponse();
+ *         } catch (AnotherExpectedException e) {
+ *             return anotherResponse();
+ *         }
+ *         // else automagically re-thrown and propagated throughout the chain
+ *     };
+ * }</pre>
+ * 
+ * The server accepts a {@code Supplier} of the exception handler. The supplier
+ * will be called lazily upon the first invocation of the handler and the
  * handler instance returned from the supplier is cached throughout each unique
- * HTTP exchange. This means that the handler can safely keep state related to
- * the exchange such as a retry-counter.
+ * HTTP exchange. This means that at the discretion of the application, the
+ * supplier can return a global singleton applying static logic, or it can
+ * return a new instance which in turn can safely keep state related to the HTTP
+ * exchange such as a retry-counter.<p>
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  * 
@@ -61,34 +107,56 @@ public interface ExceptionHandler
     /**
      * Handles an exception by producing a client response.<p>
      * 
-     * The first argument will always be non-null. The rest of the arguments may
-     * be null or non-null depending on how much progress was made in the HTTP
+     * The first argument - the {@code Throwable} - will always be non-null. The
+     * other two arguments - a {@code Request} and a {@code Handler} - may be
+     * null or non-null depending on how much progress was made in the HTTP
      * exchange before the error occurred.<p>
      * 
-     * For example, if {@code exc} is a {@link NoHandlerFoundException} then all
-     * arguments to the left of {@code handler} will be non-null but {@code
-     * handler} will be null (because it was never successfully resolved).<p>
-     *
-     * The final step of the exchange is for the server to invoke the request
-     * handler, and so all arguments will be non-null for all errors thrown by
-     * the request handler.<p>
+     * A little bit simplified; the server's procedure is to always first build
+     * a request object, which is then used to invoke the request handler
+     * with.<p>
      * 
-     * If the original error is a {@code CompletionException}, then the server
-     * will attempt to recursively unpack the cause which is then passed to the
-     * exception handler.
+     * So, if the request argument is null, then the request handler argument
+     * will absolutely also be null (the server never got so far as to find
+     * and/or call the request handler).<p>
      * 
-     * @param exc the error (never null)
-     * @param req request object (may be null)
-     * @param route route object (may be null)
-     * @param handler handler object (may be null)
+     * If the request argument is not null, then the request handler argument
+     * may or may not be null. If the request handler is not null, then the
+     * "fault" of the error is most likely the request handlers' since the very
+     * next thing the server do after having found the request handler is to
+     * call it.<p>
+     * 
+     * However, the true nature of the error can only be determined by looking
+     * into the error object itself, which also might reveal what to expect from
+     * the arguments. For example, if {@code t} is a {@link
+     * NoHandlerFoundException}, then the request object was built and
+     * subsequently passed to the exception handler, but since the request
+     * handler wasn't found then obviously the request handler argument is going
+     * to be null.<p>
+     * 
+     * It is a design goal of this library to have each exception type provide
+     * whatever API necessary to investigate and possibly resolve the error.
+     * For example, {@code NoRouteFoundException} provides the request-target
+     * for which no route was found. As another example, {@link
+     * NoHandlerFoundException} provides all the input parameters that goes into
+     * finding a request handler, such as the request's method token- and media
+     * types.<p>
+     * 
+     * If the original error is a {@link CompletionException}, then the server
+     * will attempt to recursively unpack the cause which is what will get
+     * passed to the exception handler.
+     * 
+     * @param t the error (never null)
+     * @param r request object (may be null)
+     * @param h request handler object (may be null)
      * 
      * @return a client response
      * 
-     * @throws Throwable may be same {@code exc} or a new one
+     * @throws Throwable may be same {@code t} or a new one
      * 
      * @see ExceptionHandler
      */
-    CompletionStage<Response> apply(Throwable exc, Request req, Route route, Handler handler) throws Throwable;
+    CompletionStage<Response> apply(Throwable t, Request r, Handler h) throws Throwable;
     
     /**
      * Is the default exception handler used by the server if no other exception
@@ -131,8 +199,10 @@ public interface ExceptionHandler
      *   </tr>
      *   <tr>
      *     <th scope="row"> {@link BadMediaTypeSyntaxException} </th>
-     *     <td> If handler argument is null, then {@link Responses#badRequest()},
-     *          otherwise {@link Responses#internalServerError()}</td>
+     *     <td> If handler argument is null, then {@link Responses#badRequest()}
+     *          (fault assumed to be the clients'), otherwise {@link
+     *          Responses#internalServerError()} (fault assumed to be the
+     *          request handlers')</td>
      *   </tr>
      *   <tr>
      *     <th scope="row"> <i>{@code Everything else}</i> </th>
@@ -144,12 +214,13 @@ public interface ExceptionHandler
      * Please note that each of these responses will also close the client
      * channel (see {@link Response#mustCloseAfterWrite()}).
      */
-    ExceptionHandler DEFAULT = (exc, req, route, handler) -> {
-        System.getLogger(ExceptionHandler.class.getPackageName()).log(ERROR, exc);
+    ExceptionHandler DEFAULT = (t, r, h) -> {
+        System.getLogger(ExceptionHandler.class.getPackageName())
+                .log(ERROR, "Default exception handler received:", t);
         
         final Response res;
         try {
-            throw exc;
+            throw t;
         } catch (BadHeaderException | RequestHeadParseException e) {
             res = badRequest();
         } catch (NoRouteFoundException e) {
@@ -159,8 +230,8 @@ public interface ExceptionHandler
         } catch (NoHandlerFoundException | AmbiguousNoHandlerFoundException e) {
             res = notImplemented();
         } catch (BadMediaTypeSyntaxException e) {
-            res = handler == null ? badRequest() : internalServerError();
-        } catch (Throwable t) {
+            res = h == null ? badRequest() : internalServerError();
+        } catch (Throwable unhandledDefaultCase) {
             res = internalServerError();
         }
         

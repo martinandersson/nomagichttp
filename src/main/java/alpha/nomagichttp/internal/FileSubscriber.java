@@ -5,54 +5,83 @@ import alpha.nomagichttp.message.PooledByteBufferHolder;
 import java.io.IOException;
 import java.nio.channels.AsynchronousFileChannel;
 import java.nio.channels.CompletionHandler;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.Flow;
 
-import static java.lang.Long.MAX_VALUE;
-
 /**
- * Subscribes to bytebuffers that is asynchronously written to a file channel.
- * On each write operation completion, the bytebuffer is released.
+ * Subscribes to bytebuffers that is asynchronously written to a file
+ * channel.
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  */
-final class FileSubscriber implements Flow.Subscriber<PooledByteBufferHolder>
+final class FileSubscriber implements SubscriberAsStage<PooledByteBufferHolder, Long>
 {
-    private final AsynchronousFileChannel file;
+    /*
+     * Currently, subscribes to- and writes only one bytebuffer at a time. This
+     * makes keeping track of the file position pretty simple.
+     * 
+     * AsynchronousFileChannel does allow multiple write operations to be
+     * outstanding, but I'd say it's doubtful if having multiple write
+     * operations running concurrently would yield a performance gain,
+     * especially in the light of our environment where the source is a network
+     * channel which we can pretty much assume is always going to send us stuff
+     * in a slower pace than one local write operation.
+     * 
+     * Even if the network channel would outrun the single operation, past
+     * experience has told me personally that concurrent disk I/O yields very
+     * little in performance gain and can sometimes even be detrimental.
+     * 
+     * Okay, so performance tests and/or sound research could potentially hint a
+     * performance boost using concurrent writes. I would still be hesitant to
+     * implement it. Because having 1 request spur N number of concurrent
+     * server-side processes is always a pretty dangerous path to take. The
+     * server is already running requests in parallel, perhaps even a large
+     * number of them.
+     * 
+     * In fact, ideally, we would love to know and set a limit to the level of
+     * "optimal disk concurrency" and then implement a strategy to distribute
+     * our resources fairly amongst file-receiving requests. Refusing to spur
+     * more than 1 concurrent write per request is actually a good start.
+     */
+    
+    private final Path file;
+    private final AsynchronousFileChannel ch;
     private final CompletableFuture<Long> result;
     private final Writer writer;
-    private volatile long bytesWritten;
+    private Flow.Subscription subscription;
+    private long bytesWritten;
     
-    FileSubscriber(AsynchronousFileChannel file) {
+    FileSubscriber(Path file, AsynchronousFileChannel ch) {
         this.file = file;
+        this.ch = ch;
         this.writer = new Writer();
         this.result = new CompletableFuture<>();
     }
     
-    CompletionStage<Long> asCompletionStage() {
-        return result.minimalCompletionStage();
+    @Override
+    public CompletionStage<Long> asCompletionStage() {
+        return result;
     }
     
     @Override
     public void onSubscribe(Flow.Subscription subscription) {
-        if (result.isDone()) {
-            subscription.cancel();
-            throw new IllegalStateException("No support for subscriber re-use.");
-        }
-        
-        subscription.request(MAX_VALUE);
+        this.subscription = SubscriberAsStage.validate(this.subscription, subscription);
+        subscription.request(1);
     }
     
     @Override
     public void onNext(PooledByteBufferHolder item) {
-        file.write(item.get(), bytesWritten, item, writer);
+        ch.write(item.get(), bytesWritten, item, writer);
     }
     
     @Override
     public void onError(Throwable t) {
         try {
-            file.close();
+            ch.close();
+            Files.deleteIfExists(file);
         } catch (IOException next) {
             t.addSuppressed(next);
         }
@@ -62,7 +91,7 @@ final class FileSubscriber implements Flow.Subscriber<PooledByteBufferHolder>
     @Override
     public void onComplete() {
         try {
-            file.close();
+            ch.close();
         } catch (IOException e) {
             result.completeExceptionally(e);
             return;
@@ -70,23 +99,19 @@ final class FileSubscriber implements Flow.Subscriber<PooledByteBufferHolder>
         result.complete(bytesWritten);
     }
     
-    private class Writer implements CompletionHandler<Integer, PooledByteBufferHolder> {
-        
+    private class Writer implements CompletionHandler<Integer, PooledByteBufferHolder>
+    {
         @Override
         public void completed(Integer result, PooledByteBufferHolder item) {
-            long bw = bytesWritten;
-            bw += result;
-            bytesWritten = bw;
+            bytesWritten += result;
             item.release();
+            subscription.request(1);
         }
         
         @Override
         public void failed(Throwable t, PooledByteBufferHolder item) {
-            try {
-                result.completeExceptionally(t);
-            } finally {
-                item.release();
-            }
+            item.release();
+            result.completeExceptionally(t);
         }
     }
 }

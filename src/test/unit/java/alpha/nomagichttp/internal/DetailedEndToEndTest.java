@@ -1,21 +1,24 @@
 package alpha.nomagichttp.internal;
 
 import alpha.nomagichttp.handler.Handler;
+import alpha.nomagichttp.handler.Handlers;
 import alpha.nomagichttp.message.PooledByteBufferHolder;
+import alpha.nomagichttp.message.Request;
 import alpha.nomagichttp.message.Response;
 import alpha.nomagichttp.message.Responses;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.concurrent.CompletableFuture;
+import java.nio.ByteBuffer;
+import java.nio.channels.Channel;
+import java.util.concurrent.CompletionStage;
 import java.util.concurrent.Flow;
+import java.util.function.Consumer;
+import java.util.function.Function;
 
-import static alpha.nomagichttp.handler.Handlers.GET;
 import static alpha.nomagichttp.handler.Handlers.POST;
 import static alpha.nomagichttp.internal.ClientOperations.CRLF;
-import static java.lang.String.join;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
@@ -27,84 +30,156 @@ import static org.assertj.core.api.Assertions.assertThat;
  */
 class DetailedEndToEndTest extends AbstractEndToEndTest
 {
-    /**
-     * Performs two requests in a row.
-     */
+    private static final String
+            IS_BODY_EMPTY = "/is-body-empty",
+            ECHO_BODY     = "/echo-body";
+    
+    @BeforeAll
+    static void installHandlers() {
+        Function<Request, CompletionStage<Response>>
+                isBodyEmpty = req -> Responses.ok(String.valueOf(req.body().isEmpty())).asCompletedStage(),
+                echoBody    = req -> req.body().get().toText().thenApply(Responses::ok);
+        
+        addHandler(IS_BODY_EMPTY, POST().apply(isBodyEmpty));
+        addHandler(ECHO_BODY,     POST().apply(echoBody));
+    }
+    
     @Test
-    void exchange_restart() throws IOException, InterruptedException {
-        // Echo request body as-is
-        Handler echo = POST().apply(req ->
-                req.body().toText().thenApply(Responses::ok));
+    void empty_request_body() throws IOException, InterruptedException {
+        String res = client().writeRead(requestWithBody(IS_BODY_EMPTY, ""), "true");
         
-        addHandler("/restart", echo);
-        
-        final String reqHead =
-            "POST /restart HTTP/1.1" + CRLF +
-            "Accept: text/plain; charset=utf-8" + CRLF +
-            "Content-Length: 3" + CRLF + CRLF;
-        
+        assertThat(res).isEqualTo(
+            "HTTP/1.1 200 OK" + CRLF +
+            "Content-Type: text/plain; charset=utf-8" + CRLF +
+            "Content-Length: 4" + CRLF + CRLF +
+            
+            "true");
+    }
+    
+    @Test
+    void connection_reuse() throws IOException, InterruptedException {
         final String resHead =
             "HTTP/1.1 200 OK" + CRLF +
             "Content-Type: text/plain; charset=utf-8" + CRLF +
             "Content-Length: 3" + CRLF + CRLF;
         
-        client().openConnection();
-        
-        try {
-            String res1 = client().writeRead(reqHead + "ABC", "ABC");
+        try (Channel ch = client().openConnection()) {
+            String res1 = client().writeRead(requestWithBody(ECHO_BODY, "ABC"), "ABC");
             assertThat(res1).isEqualTo(resHead + "ABC");
             
-            String res2 = client().writeRead(reqHead + "DEF", "DEF");
+            String res2 = client().writeRead(requestWithBody(ECHO_BODY, "DEF"), "DEF");
             assertThat(res2).isEqualTo(resHead + "DEF");
-        } finally {
-            client().closeConnection();
         }
     }
     
-    /**
-     * Handler subscribes to an empty message body which immediately completes.
-     */
     @Test
-    void subscribe_to_empty_body() throws IOException, InterruptedException {
-        Handler h = GET().apply(req -> {
-            final CompletableFuture<Response> res = new CompletableFuture<>();
-            final List<String> signals = new ArrayList<>();
+    void request_body_discard_all() throws IOException, InterruptedException {
+        try (Channel ch = client().openConnection()) {
+            String req = requestWithBody(IS_BODY_EMPTY, "x".repeat(10)),
+                   res = client().writeRead(req, "false");
             
-            req.body().subscribe(new Flow.Subscriber<>() {
-                public void onSubscribe(Flow.Subscription subscription) {
-                    signals.add("onSubscribe"); }
+            assertThat(res).isEqualTo(
+                "HTTP/1.1 200 OK" + CRLF +
+                "Content-Type: text/plain; charset=utf-8" + CRLF +
+                "Content-Length: 5" + CRLF + CRLF +
                 
-                public void onNext(PooledByteBufferHolder item) {
-                    signals.add("onNext");
-                    item.release(); }
-                
-                public void onError(Throwable throwable) {
-                    signals.add("onError"); }
-                
-                public void onComplete() {
-                    signals.add("onComplete");
-                    res.complete(Responses.ok(join(" ", signals)));
-                }
-            });
+                "false");
             
-            return res;
-        });
-        
-        addHandler("/empty-body", h);
-        
-        String req = "GET /empty-body HTTP/1.1" + CRLF + CRLF,
-               res = client().writeRead(req, "onComplete");
-        
-        assertThat(res).isEqualTo(
-            "HTTP/1.1 200 OK" + CRLF +
-            "Content-Type: text/plain; charset=utf-8" + CRLF +
-            "Content-Length: 22" + CRLF + CRLF +
-            
-            "onSubscribe onComplete");
+            // The "/is-body-empty" endpoint didn't read the body contents, i.e. auto-discarded.
+            // If done correctly, we should be be able to send a new request using the same connection:
+            empty_request_body();
+        }
     }
     
-    // TODO: Autodiscard request body test. Handler should be able to respond with no body.
+    @Test
+    void request_body_discard_half() throws IOException, InterruptedException {
+        // Previous test was pretty small, so why not roll with a large body
+        final int length = 100_000,
+                  midway = length / 2;
+        
+        Handler discardMidway = Handlers.POST().accept((req) ->
+            req.body().get().subscribe(
+                new AfterByteTargetStop(midway, Flow.Subscription::cancel)));
+        
+        addHandler("/discard-midway", discardMidway);
+        
+        try (Channel ch = client().openConnection()) {
+            String req = requestWithBody("/discard-midway", "x".repeat(length)),
+                   res = client().writeRead(req);
+            
+            assertThat(res).isEqualTo(
+                "HTTP/1.1 202 Accepted" + CRLF +
+                "Content-Length: 0" + CRLF + CRLF);
+            
+            empty_request_body();
+        }
+    }
     
-    // TODO: echo body LARGE! Like super large. 100MB or something. Must brake all buffer capacities, that's the point.
-    //       Should go to "large" test set.
+    @Test
+    void request_body_subscriber_crash_assert_channel_gets_closed() throws IOException, InterruptedException {
+        Handler crashAfterOneByte = Handlers.POST().accept((req) ->
+            req.body().get().subscribe(
+                new AfterByteTargetStop(1, subscriptionIgnored -> {
+                    throw new RuntimeException("Oops."); })));
+        
+        addHandler("/body-subscriber-crash", crashAfterOneByte);
+        
+        try (Channel ch = client().openConnection()) {
+            String req = requestWithBody("/body-subscriber-crash", "Hello"),
+                   res = client().writeRead(req);
+            
+            assertThat(res).isEmpty();
+            assertThat(ch.isOpen()).isFalse();
+        }
+    }
+    
+    private static String requestWithBody(String requestTarget, String body) {
+        return "POST " + requestTarget + " HTTP/1.1" + CRLF +
+               "Accept: text/plain; charset=utf-8" + CRLF +
+               "Content-Length: " + body.length() + CRLF + CRLF +
+               body;
+    }
+    
+    private static class AfterByteTargetStop implements Flow.Subscriber<PooledByteBufferHolder>
+    {
+        private final long byteTarget;
+        private final Consumer<Flow.Subscription> how;
+        private Flow.Subscription subscription;
+        private long read;
+        
+        AfterByteTargetStop(long byteTarget, Consumer<Flow.Subscription> how) {
+            this.byteTarget = byteTarget;
+            this.how = how;
+        }
+        
+        @Override
+        public void onSubscribe(Flow.Subscription subscription) {
+            (this.subscription = subscription).request(Long.MAX_VALUE);
+        }
+        
+        @Override
+        public void onNext(PooledByteBufferHolder item) {
+            assert read < byteTarget;
+            ByteBuffer b = item.get();
+            while (b.hasRemaining()) {
+                b.get();
+                if (++read == byteTarget) {
+                    how.accept(subscription);
+                    break;
+                }
+            }
+            
+            item.release();
+        }
+        
+        @Override
+        public void onError(Throwable throwable) {
+            // Empty
+        }
+        
+        @Override
+        public void onComplete() {
+            // Empty
+        }
+    }
 }

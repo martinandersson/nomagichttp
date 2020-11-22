@@ -21,17 +21,17 @@ public class HelloWorldConsole {
          * we do not inline or statically import for learning purposes.
          */
         
-        // This handler reacts to requests using the HTTP verb/method "GET"
+        // This handler reacts to requests using the HTTP verb/method "GET".
+        // The handler will execute a command and return "202 Accepted".
         Handler h = Handlers.GET().run(() ->
                 System.out.println("Hello, World!"));
         
-        // The handler is bound to the server root "/"
-        // (can be shared across many routes!)
+        // We bind the handler to the server root "/".
+        // (The handler can be shared across many routes!)
         Route r = Routes.route("/", h);
         
         // Not supplying a port makes the system pick one
-        Server s = Server.with(r);
-        s.start();
+        Server s = Server.with(r).start();
         
         System.out.println("Listening on port " + s.getPort() + ".");
     }

@@ -26,8 +26,8 @@ public final class Publishers
     }
     
     /**
-     * Creates an empty publisher that immediately completes new
-     * subscriptions without ever calling {@code Subscriber.onNext()}.<p>
+     * Returns an empty publisher that immediately completes new subscriptions
+     * without ever calling {@code Subscriber.onNext()}.<p>
      * 
      * Is an alternative to {@link HttpRequest.BodyPublishers#noBody()} except
      * with less CPU overhead and memory garbage.<p>
@@ -39,7 +39,7 @@ public final class Publishers
      * 
      * @param <T> type of non-existent item (inferred on call site, {@code Void} for example)
      * 
-     * @return an empty publisher
+     * @return an empty publisher (global singleton instance)
      */
     public static <T> Flow.Publisher<T> empty() {
         @SuppressWarnings("unchecked")
@@ -108,16 +108,12 @@ public final class Publishers
             public void request(long n) {
                 if (n < 1) {
                     subscriber.onError(new IllegalArgumentException());
-                } else {
-                    subscriber.onNext(item);
-                    if (!stopped) {
-                        try {
-                            subscriber.onComplete();
-                        } finally {
-                            stopped = true;
-                        }
-                    }
+                } else if (stopped) {
+                    return;
                 }
+                stopped = true;
+                subscriber.onNext(item);
+                subscriber.onComplete();
             }
             
             @Override

@@ -11,14 +11,12 @@ import java.net.SocketAddress;
 import java.nio.channels.AsynchronousChannelGroup;
 import java.nio.channels.AsynchronousServerSocketChannel;
 import java.nio.channels.AsynchronousSocketChannel;
-import java.nio.channels.Channel;
 import java.nio.channels.ClosedChannelException;
 import java.nio.channels.CompletionHandler;
 import java.nio.channels.ShutdownChannelGroupException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.Executors;
-import java.util.concurrent.Flow;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Supplier;
 
@@ -35,15 +33,7 @@ import static java.util.stream.StreamSupport.stream;
  * A fully asynchronous implementation of {@code Server}.<p>
  * 
  * This class uses {@link AsynchronousServerSocketChannel} which provides an
- * amazing performance on many operating systems, including Windows.<p>
- * 
- * @implNote
- * When the server starts, an asynchronous server channel is opened and bound to
- * a specified port. The server channel is also known as "listener", "master"
- * and "parent".<p>
- * 
- * When the server channel accepts a new client connection, the resulting
- * channel - also known as the "child" - is handled by {@link OnAccept}.
+ * amazing performance on many operating systems, including Windows.
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  */
@@ -81,17 +71,23 @@ public final class DefaultServer implements Server
     
     private final RouteRegistry routes;
     private final ServerConfig config;
-    private final List<Supplier<? extends ExceptionHandler>> onError;
+    private final List<Supplier<ExceptionHandler>> onError;
     private AsynchronousServerSocketChannel listener;
     private int port;
     
-    public DefaultServer(RouteRegistry routes, ServerConfig config, Iterable<Supplier<? extends ExceptionHandler>> onError) {
+    public <S extends Supplier<? extends ExceptionHandler>> DefaultServer(
+            RouteRegistry routes, ServerConfig config, Iterable<S> onError)
+    {
         this.routes = requireNonNull(routes);
         this.config = requireNonNull(config);
         
         // Collectors.toUnmodifiableList() does not document RandomAccess
-        List<Supplier<? extends ExceptionHandler>> l
-                = stream(onError.spliterator(), false).collect(toCollection(ArrayList::new));
+        List<Supplier<ExceptionHandler>> l = stream(onError.spliterator(), false)
+                .map(e -> {
+                    @SuppressWarnings("unchecked")
+                    Supplier<ExceptionHandler> eh = (Supplier<ExceptionHandler>) e;
+                    return eh; })
+                .collect(toCollection(ArrayList::new));
         
         this.onError  = unmodifiableList(l);
         this.listener = null;
@@ -173,7 +169,7 @@ public final class DefaultServer implements Server
      * 
      * @return exception handlers
      */
-    List<Supplier<? extends ExceptionHandler>> exceptionHandlers() {
+    List<Supplier<ExceptionHandler>> getExceptionHandlers() {
         return onError;
     }
     
@@ -191,15 +187,19 @@ public final class DefaultServer implements Server
      *   <li>Exit the JVM</li>
      * </ol>
      * 
+     * Please note that although thread-safe, this method may block if invoked
+     * concurrently. Try not to invoke concurrently.
+     * 
      * @param child channel to close
      */
-    void orderlyShutdown(Channel child) {
+    void orderlyShutdown(AsynchronousSocketChannel child) {
         if (!child.isOpen()) {
             return;
         }
         
         try {
-            child.close();
+            // https://stackoverflow.com/a/20749656/1268003
+            child.shutdownInput().shutdownOutput().close();
             LOG.log(INFO, () -> "Closed child: " + child);
         } catch (IOException e) {
             LOG.log(ERROR, "Failed to close client channel. Will initiate orderly shutdown.", e);
@@ -241,16 +241,13 @@ public final class DefaultServer implements Server
             
             // TODO: child.setOption(StandardSocketOptions.SO_KEEPALIVE, true); ??
             
-            Flow.Publisher<DefaultPooledByteBufferHolder> bytes
-                    = new ChannelByteBufferPublisher(DefaultServer.this, child);
-            
-            new HttpExchange(DefaultServer.this, child, bytes).begin();
+            new HttpExchange(DefaultServer.this, child).begin();
         }
         
         @Override
         public void failed(Throwable t, Void noAttachment) {
-            if (t instanceof ClosedChannelException) {
-                LOG.log(DEBUG, "Channel already closed when initiating a new accept (race). Will accept no more.");
+            if (t instanceof ClosedChannelException) { // note: AsynchronousCloseException extends ClosedChannelException
+                LOG.log(DEBUG, "Channel closed. Will accept no more.");
             }
             else if (t instanceof ShutdownChannelGroupException) {
                 LOG.log(DEBUG, "Group already closed when initiating a new accept. Will accept no more.");

@@ -1,4 +1,4 @@
-package alpha.nomagichttp.message;
+package alpha.nomagichttp.util;
 
 import java.util.ArrayList;
 import java.util.List;

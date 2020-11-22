@@ -7,6 +7,7 @@ import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.http.HttpClient;
 import java.nio.ByteBuffer;
+import java.nio.channels.Channel;
 import java.nio.channels.SocketChannel;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -16,6 +17,7 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.atomic.AtomicBoolean;
 
+import static java.lang.System.Logger.Level.DEBUG;
 import static java.lang.System.Logger.Level.WARNING;
 import static java.net.InetAddress.getLoopbackAddress;
 import static java.nio.ByteBuffer.allocate;
@@ -31,10 +33,10 @@ import static org.assertj.core.api.Assertions.assertThat;
  * Any operation taking 3 seconds or longer will cause an {@code
  * InterruptedException} to be thrown<p>
  * 
- * All channel operating methods will by default open/close a new connection
- * valid only for the span of that method call. In order to re-use a persistent
- * connection across operations, call the open- and closeConnection methods
- * manually.<p>
+ * All channel operating utility methods will by default open/close a new
+ * connection open only during the span of that method call. In order to re-use
+ * a persistent connection across operations, call {@link #openConnection()}
+ * first.<p>
  * 
  * Note: This class provides low-level access for test cases that need direct
  * control over what bytes are put on the wire and what is received. Test cases
@@ -45,46 +47,71 @@ import static org.assertj.core.api.Assertions.assertThat;
  */
 final class ClientOperations
 {
+    @FunctionalInterface
+    public interface SocketChannelSupplier {
+        SocketChannel get() throws IOException;
+    }
+    
     protected static final String CRLF = "\r\n";
     
     private static final System.Logger LOG = System.getLogger(ClientOperations.class.getPackageName());
     
     private static final ScheduledExecutorService SCHEDULER
             = Executors.newSingleThreadScheduledExecutor(r -> {
-                Thread t = new Thread(r);
-                t.setDaemon(true);
-                return t;
+                  Thread t = new Thread(r);
+                  t.setDaemon(true);
+                  return t;
             });
     
     private final SocketChannelSupplier factory;
-    private SocketChannel delegate;
+    private SocketChannel ch;
     
     ClientOperations(int port) {
         this(() -> SocketChannel.open(
                 new InetSocketAddress(getLoopbackAddress(), port)));
     }
     
-    @FunctionalInterface
-    public interface SocketChannelSupplier {
-        SocketChannel get() throws IOException;
-    }
-    
     ClientOperations(SocketChannelSupplier factory) {
         this.factory = requireNonNull(factory);
     }
     
-    void openConnection() throws IOException {
-        if (delegate != null) {
+    /**
+     * Open a connection.<p>
+     * 
+     * Test code must manually close the returned channel.
+     * 
+     * @return the channel
+     * 
+     * @throws IllegalStateException if a connection is already active
+     * @throws IOException like for other weird stuff
+     */
+    Channel openConnection() throws IOException {
+        if (ch != null) {
             throw new IllegalStateException("Already opened.");
         }
         
-        delegate = factory.get();
+        Channel ch = this.ch = factory.get();
+        
+        class Proxy implements Channel {
+            @Override
+            public boolean isOpen() {
+                return ch.isOpen();
+            }
+            
+            @Override
+            public void close() throws IOException {
+                ClientOperations.this.ch = null;
+                ch.close();
+            }
+        }
+        
+        return new Proxy();
     }
     
-    void closeConnection() throws IOException {
-        if (delegate != null) {
-            delegate.close();
-            delegate = null;
+    private void closeConnection() throws IOException {
+        if (ch != null) {
+            ch.close();
+            ch = null;
         }
     }
     
@@ -102,10 +129,10 @@ final class ClientOperations
     
     /**
      * Same as {@link #writeRead(String, String)} but with a response end
-     * hardcoded to be "\r\n".<p>
+     * hardcoded to be "\r\n\r\n".<p>
      * 
      * Useful when <i>not</i> expecting a response body, in which case the
-     * response should end with two newlines.
+     * response should end after the headers with two newlines.
      */
     String writeRead(String request) throws IOException, InterruptedException {
         return writeRead(request, CRLF + CRLF);
@@ -157,19 +184,25 @@ final class ClientOperations
         }, 3, SECONDS);
         
         final FiniteByteBufferSink sink = new FiniteByteBufferSink(128, responseEnd);
-        final boolean persistent = delegate != null;
+        final boolean persistent = ch != null;
         
         try {
             if (!persistent) {
                 openConnection();
             }
             
-            int r = delegate.write(wrap(request));
+            int r = ch.write(wrap(request));
             assertThat(r).isEqualTo(request.length);
             
             ByteBuffer buff = allocate(128);
             
-            while (!sink.hasReachedEnd() && delegate.read(buff) != -1) {
+            while (!sink.hasReachedEnd()) {
+                if (ch.read(buff) == -1) {
+                    LOG.log(DEBUG, "EOS; server closed channel, we're closing our.");
+                    ch.close();
+                    break;
+                }
+                
                 buff.flip();
                 sink.write(buff);
                 buff.clear();

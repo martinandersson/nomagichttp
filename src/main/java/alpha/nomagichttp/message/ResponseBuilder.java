@@ -300,5 +300,16 @@ public final class ResponseBuilder
         public Flow.Publisher<ByteBuffer> body() {
             return body;
         }
+        
+        @Override
+        public boolean mustCloseAfterWrite() {
+            return mustCloseAfterWrite;
+        }
+        
+        @Override
+        public String toString() {
+            // TODO: Just reuse statusLine() whenever this class has been redesigned
+            return httpVersion + " " + statusCode + " " + reasonPhrase;
+        }
     }
 }

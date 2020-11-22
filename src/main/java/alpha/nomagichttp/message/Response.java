@@ -1,5 +1,7 @@
 package alpha.nomagichttp.message;
 
+import alpha.nomagichttp.ExceptionHandler;
+
 import java.nio.ByteBuffer;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
@@ -21,6 +23,8 @@ import java.util.concurrent.Flow;
  * be.<p>
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
+ * 
+ * @see ExceptionHandler
  */
 // TODO: Require immutable; a response-object should be able to be re-used.
 public interface Response
@@ -74,8 +78,9 @@ public interface Response
      * Returns {@code true} if the server must close the underlying client
      * channel after writing the response, otherwise {@code false}.<p>
      * 
-     * The server is free to close the channel even if this method returns
-     * {@code false}.<p>
+     * The server is always free to close the channel even if this method
+     * returns {@code false}, for example if the server run into channel-related
+     * problems.<p>
      * 
      * For security; If closing the client channel fails, the server will try to
      * close itself. If closing itself fails, the server will stop the JVM.
@@ -86,6 +91,7 @@ public interface Response
      * @return {@code true} if the server must close the underlying client
      * channel, otherwise {@code false}
      */
+    // TODO: Param that acceps mayInterruptResponseBodySubscriberOtherwiseWeWillWantForHim
     default boolean mustCloseAfterWrite() {
         return false;
     }

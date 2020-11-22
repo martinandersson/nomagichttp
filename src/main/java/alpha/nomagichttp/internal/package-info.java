@@ -26,5 +26,21 @@
  * any given time. Also describe how the group is shared with read/write
  * operations of the children, et cetera. Only specifics; generally speaking
  * the thread model should be described somewhere else.
+ *
+ * 
+ * <h3>Operators, aka Flow Processors</h3>
+ * 
+ * The operators in this package does not implement the {@code Flow.Processor}
+ * interface. These operators are more of a trait or a feature that is added to
+ * an upstream publisher by using the decorator pattern. Instead of external
+ * subscription at some point of time in the future, the upstream has to be
+ * passed as a constructor argument to which the operator immediately
+ * subscribes.<p>
+ * 
+ * Utilizing the decorator pattern instead of implementing {@code
+ * Flow.Processor} also makes it perfectly clear that the operators can <i>only
+ * act as a subscriber once</i>. It also reduces the operator's public API and
+ * even makes the implementation simpler in terms of upstream reference
+ * management.
  */
 package alpha.nomagichttp.internal;

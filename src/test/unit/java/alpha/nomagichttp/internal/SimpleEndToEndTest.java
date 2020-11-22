@@ -17,7 +17,6 @@ import static alpha.nomagichttp.internal.ClientOperations.CRLF;
 import static alpha.nomagichttp.message.Responses.ok;
 import static org.assertj.core.api.Assertions.assertThat;
 
-
 /**
  * "Simple" end-to-end tests that mimics all the examples provided in {@link
  * alpha.nomagichttp.examples} and other similar high-level use-scenarios of the
@@ -98,7 +97,7 @@ class SimpleEndToEndTest extends AbstractEndToEndTest
     @Test
     void greet_requestbody() throws IOException, InterruptedException {
         Handler echo = POST().apply(req ->
-                req.body().toText().thenApply(name -> ok("Hello " + name + "!")));
+                req.body().get().toText().thenApply(name -> ok("Hello " + name + "!")));
         
         addHandler("/greet-body", echo);
         
@@ -151,7 +150,7 @@ class SimpleEndToEndTest extends AbstractEndToEndTest
                 .resolve("some-file.txt");
         
         Handler saver = POST().apply(req ->
-                req.body().toFile(file)
+                req.body().get().toFile(file)
                           .thenApply(n -> Long.toString(n))
                           .thenApply(Responses::ok));
         

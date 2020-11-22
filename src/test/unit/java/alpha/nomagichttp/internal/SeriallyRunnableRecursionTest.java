@@ -3,6 +3,7 @@ package alpha.nomagichttp.internal;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
+import static java.lang.Integer.MAX_VALUE;
 import static java.lang.Math.multiplyExact;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
@@ -25,45 +26,65 @@ class SeriallyRunnableRecursionTest
     private static long n;
     
     @BeforeAll
+    static void test_BoundedRunnable() {
+        BoundedRunnable testee = new BoundedRunnable(1, false);
+        testee.run(); // <- only one run is allowed
+        assertThatThrownBy(testee::run)
+                .isExactlyInstanceOf(LimitReachedException.class);
+        
+        testee = new BoundedRunnable(MAX_VALUE, false);
+        for (int i = 0; i < 10; ++i) testee.run(); // <-- okay, not bounded
+        
+        testee.andThenRun(testee);
+        assertThatThrownBy(testee::run)
+                .isExactlyInstanceOf(OverlapException.class);
+    }
+    
+    @BeforeAll
     static void computeMaxRecursionLevel() {
-        BoundedRunnable task = new BoundedRunnable(Integer.MAX_VALUE);
-        task.andThen(task);
+        BoundedRunnable task = new BoundedRunnable(MAX_VALUE, true);
+        task.andThenRun(task);
         
         try {
             task.run();
             throw new AssertionError("Expected SOE at some point.");
         } catch (StackOverflowError e) {
-            System.out.println("Hit StackOverflowError after: " + task.runCount());
-            System.out.println("Will target recursive depth: " + (n = multiplyExact(task.runCount(), 100)));
+            System.out.println("Hit StackOverflowError after: " +
+                    task.invocationCount());
+            System.out.println("Will target recursive depth: " +
+                    (n = multiplyExact(task.invocationCount(), 100)));
         }
     }
     
+    // Having the task run itself causes StackOverflowError...
     @Test
     void verify_test_integrity() {
-        BoundedRunnable task = new BoundedRunnable(n);
-        task.andThen(task);
+        BoundedRunnable task = new BoundedRunnable(n, true);
+        task.andThenRun(task);
         
         assertThatThrownBy(task::run)
                 .isExactlyInstanceOf(StackOverflowError.class);
     }
     
+    // ...but wrapped in SeriallyRunnable, no longer - instead we hit the limit!
     @Test
     void synchronous_noStackOverflowError() {
-        BoundedRunnable task = new BoundedRunnable(n);
+        BoundedRunnable task = new BoundedRunnable(n, false);
         
         SeriallyRunnable sync = new SeriallyRunnable(task);
-        task.andThen(sync);
+        task.andThenRun(sync);
         
         assertThatThrownBy(sync::run)
                 .isExactlyInstanceOf(LimitReachedException.class);
     }
     
+    // Same is true also in async mode
     @Test
     void asynchronous_noStackOverflowError() {
-        BoundedRunnable task = new BoundedRunnable(n);
+        BoundedRunnable task = new BoundedRunnable(n, false);
         
         SeriallyRunnable async = new SeriallyRunnable(task, true);
-        task.andThen(() -> {
+        task.andThenRun(() -> {
             async.run();
             async.complete();
         });
@@ -72,35 +93,63 @@ class SeriallyRunnableRecursionTest
                 .isExactlyInstanceOf(LimitReachedException.class);
     }
     
+    /**
+     * Accepts a {@code bound} which limits how many times the runnable can run
+     * before crashing with a {@code LimitReachedException}. Further, {@code
+     * acceptOverlap} if set to true, will cause a call overlapping with another
+     * call to blow up with an {@code OverlapException} (i.e. strict
+     * serialization; no recursion and no concurrency).<p>
+     * 
+     * Note: this class is not thread-safe and is expected to run in a
+     * single-threaded test.
+     */
     private static class BoundedRunnable implements Runnable {
-        private final long max;
+        private final long bound;
+        private final boolean acceptOverlap;
         private Runnable andThen;
-        private int runs;
+        private int invocations;
+        private int level;
         
-        BoundedRunnable(long max) {
-            this.max = max;
+        BoundedRunnable(long bound, boolean acceptOverlap) {
+            this.bound = bound;
+            this.acceptOverlap = acceptOverlap;
+            this.andThen = () -> {};
         }
         
-        BoundedRunnable andThen(Runnable andThen) {
+        void andThenRun(Runnable andThen) {
             this.andThen = andThen;
-            return this;
         }
         
         @Override
         public void run() {
-            if (++runs == max) {
+            try {
+                if (++level > 1 && !acceptOverlap) {
+                    throw new OverlapException();
+                }
+                run0();
+            } finally {
+                --level;
+            }
+        }
+        
+        public void run0() {
+            if (++invocations > bound) {
                 throw new LimitReachedException();
             }
             
             andThen.run();
         }
         
-        int runCount() {
-            return runs;
+        int invocationCount() {
+            return invocations;
         }
     }
     
     private static class LimitReachedException extends RuntimeException {
+        // Empty
+    }
+    
+    private static class OverlapException extends RuntimeException {
         // Empty
     }
 }

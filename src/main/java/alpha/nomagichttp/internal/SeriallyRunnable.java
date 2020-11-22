@@ -7,7 +7,7 @@ import static java.util.Objects.requireNonNull;
 /**
  * Decorates a {@code Runnable} called "the delegate" with the ability to
  * <i>{@code run}</i> serially despite recursive calls to this class from the
- * the delegate itself or concurrent calls to this class by other threads.<p>
+ * delegate itself or concurrent calls to this class by other threads.<p>
  * 
  * If a party (self or another thread) calls <i>{@code run}</i> when already
  * running, then the invocation will immediately schedule a new run to be
@@ -279,7 +279,7 @@ final class SeriallyRunnable implements Runnable
         
         if (RUNNING.get()) {
             if (recursivelyCompleted) {
-                throw new IllegalStateException("complete() called more than only once.");
+                throw new IllegalStateException("complete() called more than once.");
             }
             
             recursivelyCompleted = true;

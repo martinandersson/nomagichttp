@@ -77,6 +77,7 @@ import static java.util.Collections.singleton;
  * @see ExceptionHandler
  * @see ServerConfig
  */
+// TODO: Rename to HttpServer
 public interface Server
 {
     /**
@@ -151,8 +152,8 @@ public interface Server
      * 
      * @throws NullPointerException if any argument is {@code null}
      */
-    static Server with(ServerConfig config, Iterable<? extends Route> routes,
-                       Iterable<Supplier<? extends ExceptionHandler>> onError)
+    static <S extends Supplier<? extends ExceptionHandler>> Server with(
+            ServerConfig config, Iterable<? extends Route> routes, Iterable<S> onError)
     {
         RouteRegistry reg = new DefaultRouteRegistry();
         routes.forEach(reg::add);
