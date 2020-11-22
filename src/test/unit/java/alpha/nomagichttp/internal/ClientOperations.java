@@ -207,10 +207,6 @@ final class ClientOperations
                 buff.flip();
                 sink.write(buff);
                 buff.clear();
-                
-                if (Thread.interrupted()) { // clear flag
-                    throw new InterruptedException();
-                }
             }
             
             return sink.toByteArray();
