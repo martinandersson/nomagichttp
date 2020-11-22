@@ -3,12 +3,9 @@ package alpha.nomagichttp.internal;
 import alpha.nomagichttp.message.Response;
 
 import java.nio.ByteBuffer;
-import java.nio.channels.AsynchronousByteChannel;
 import java.nio.channels.AsynchronousSocketChannel;
-import java.util.Deque;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
-import java.util.concurrent.ConcurrentLinkedDeque;
 import java.util.concurrent.Flow;
 
 import static alpha.nomagichttp.internal.AnnounceToChannel.NO_MORE;
@@ -40,7 +37,6 @@ final class ResponseBodySubscriber implements SubscriberAsStage<ByteBuffer, Long
             DEMAND_MAX = 3;
     
     private final Response response;
-    private final Deque<ByteBuffer> readable;
     private final AnnounceToChannel channel;
     private final CompletableFuture<Long> result;
     private final DefaultServer server;
@@ -51,11 +47,9 @@ final class ResponseBodySubscriber implements SubscriberAsStage<ByteBuffer, Long
     
     ResponseBodySubscriber(Response response, AsynchronousSocketChannel channel, DefaultServer server) {
         this.response = requireNonNull(response);
-        this.readable = new ConcurrentLinkedDeque<>();
         this.result   = new CompletableFuture<>();
         this.server   = requireNonNull(server);
-        this.channel  = AnnounceToChannel.write(
-                readable::poll, channel, this::completed, this::whenDone, server);
+        this.channel  = AnnounceToChannel.write(channel, server, this::whenDone);
     }
     
     /**
@@ -85,13 +79,6 @@ final class ResponseBodySubscriber implements SubscriberAsStage<ByteBuffer, Long
         return result;
     }
     
-    private void completed(ByteBuffer buf) {
-        if (buf.hasRemaining()) {
-            readable.addFirst(buf);
-            channel.announce();
-        }
-    }
-    
     private void whenDone(AsynchronousSocketChannel channel, long byteCount, Throwable exc) {
         if (exc == null) {
             result.complete(byteCount);
@@ -111,7 +98,7 @@ final class ResponseBodySubscriber implements SubscriberAsStage<ByteBuffer, Long
     }
     
     @Override
-    public void onNext(ByteBuffer body) {
+    public void onNext(ByteBuffer bodyPart) {
         if (result.isDone()) {
             subscription.cancel();
             return;
@@ -121,15 +108,14 @@ final class ResponseBodySubscriber implements SubscriberAsStage<ByteBuffer, Long
             pushHead();
         }
         
-        if (!body.hasRemaining()) {
+        if (!bodyPart.hasRemaining()) {
             LOG.log(DEBUG, "Received a ByteBuffer with no bytes remaining. Will assume we're done.");
             onComplete();
             subscription.cancel();
             return;
         }
         
-        readable.add(body);
-        channel.announce();
+        channel.announce(bodyPart);
         
         if (--requested == DEMAND_MIN) {
             requested = DEMAND_MAX;
@@ -151,18 +137,16 @@ final class ResponseBodySubscriber implements SubscriberAsStage<ByteBuffer, Long
         if (!pushedHead) {
             pushHead();
         }
-        readable.add(NO_MORE);
-        channel.announce();
+        channel.announce(NO_MORE);
     }
     
     private void pushHead() {
         final String line = response.statusLine() + CRLF,
-                vals = join(CRLF, response.headers()),
-                head = line + (vals.isEmpty() ? CRLF : vals + CRLF + CRLF);
+                     vals = join(CRLF, response.headers()),
+                     head = line + (vals.isEmpty() ? CRLF : vals + CRLF + CRLF);
         
-        ByteBuffer buf = ByteBuffer.wrap(head.getBytes(US_ASCII));
-        readable.add(buf);
+        ByteBuffer b = ByteBuffer.wrap(head.getBytes(US_ASCII));
         pushedHead = true;
-        channel.announce();
+        channel.announce(b);
     }
 }

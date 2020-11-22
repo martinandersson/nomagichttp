@@ -4,85 +4,97 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.AsynchronousSocketChannel;
 import java.nio.channels.ClosedChannelException;
-import java.nio.channels.CompletionHandler;
 import java.nio.channels.ShutdownChannelGroupException;
+import java.util.Deque;
+import java.util.Queue;
+import java.util.concurrent.ConcurrentLinkedDeque;
+import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
-import java.util.function.Supplier;
 
+import static java.lang.Long.MAX_VALUE;
+import static java.lang.Math.addExact;
 import static java.lang.System.Logger.Level.DEBUG;
 import static java.lang.System.Logger.Level.ERROR;
+import static java.util.Locale.ROOT;
 import static java.util.Objects.requireNonNull;
 
 /**
- * {@link #announce()} the availability of a {@code ByteBuffer} resource to a
- * channel read- or write operation.<p>
+ * A service used to {@link #announce(ByteBuffer) announce} the availability of
+ * bytebuffer resources to a channel's read- or write operations.<p>
  * 
- * The channel is assumed to not support concurrent operations and so will be
- * operated serially.<p>
+ * The first operation will commence whenever the first bytebuffer is announced.
+ * New operations will be initiated for as long as bytebuffers are available
+ * until the service is stopped.<p>
  * 
- * The supplier function (constructor argument) is executed serially and may
- * return {@code null}, which would indicate there's no bytebuffer available for
- * the channel at the moment (a future announcement is expected).<p>
+ * The service stops when {@link #stop()} is called. {@code stop()} may be
+ * called implicitly by announcing the bytebuffer sentinel {@link #NO_MORE} or
+ * closing the channel.<p>
  * 
- * The {@code whenDone} callback (constructor argument) is called exactly-once
- * whenever no more operations will be initiated (only after a pending operation
- * completes), either because 1) {@link #stop()} was called (stop() may also be
- * implicitly called using sentinel {@link #NO_MORE} or closing the channel), 2)
- * an operation completed exceptionally, or 3) in read mode only; end-of-stream
- * was reached.<p>
+ * The service also stops on all channel failures or applicable for read mode
+ * only; whenever end-of-stream is reached.<p>
  * 
- * Please note that the responsibility of this class is the channel
- * <i>operation</i>, not the channel's life cycle itself. Over the coarse of the
- * channel's life cycle - as far as this class is concerned - many operations
- * can come and go. In particular note; the only two occasions when this class
- * <i>closes</i> the channel is if a channel operation completes exceptionally
- * or end-of-stream is reached.<p>
+ * Read mode specifies an {@code onComplete} callback which is invoked with the
+ * container bytebuffer after each operation completes. The buffer will have
+ * already been flipped and is therefore ready to be consumed as-is. The last
+ * bytebuffer to reach the callback may be the sentinel value {@link #EOS}.<p>
  * 
- * This class is non-blocking and thread-safe.
+ * The {@link WhenDone#accept(AsynchronousSocketChannel, long, Throwable)
+ * whenDone} callback executes exactly-once whenever the last pending operation
+ * completes.<p>
+ * 
+ * Please note that the responsibility of this class is to manage a particular
+ * type of channel <i>operations</i> (read or write) for as long as the service
+ * remains running, not the channel's life cycle itself. In particular note; the
+ * only two occasions when this class <i>closes</i> the channel is if a channel
+ * operation completes exceptionally or end-of-stream is reached.<p>
+ * 
+ * This class is thread-safe and non-blocking.
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
- * 
- * @see #NO_MORE
- * @see #EOS
  */
 final class AnnounceToChannel
 {
-    // TODO: Internalize queues and make announce(ByteBuffer)
-    
-    /**
-     * Called when service is stopped and/or the last operation completes.<p>
-     * 
-     * The provided {@code byteCount} is capped at {@code Long.MAX_VALUE}.
-     */
     @FunctionalInterface
     interface WhenDone  {
+        /**
+         * Called when the last operation completes.
+         * 
+         * @param channel
+         *     the underlying channel (so that client code doesn't have to save the reference)
+         * @param byteCount
+         *     total number of bytes that was either read or written (capped at {@code Long.MAX_VALUE})
+         * @param exc only non-null if there was a problem
+         */
         void accept(AsynchronousSocketChannel channel, long byteCount, Throwable exc);
     }
     
     static AnnounceToChannel read(
-            AsynchronousSocketChannel source, Supplier<? extends ByteBuffer> destinations,
-            Consumer<? super ByteBuffer> completionHandler, WhenDone whenDone, DefaultServer server)
+            AsynchronousSocketChannel source,
+            Consumer<? super ByteBuffer> onComplete,
+            DefaultServer server,
+            WhenDone whenDone)
     {
-        return new AnnounceToChannel(source, Mode.READ, destinations, completionHandler, whenDone, server);
+        return new AnnounceToChannel(Mode.READ, source, onComplete, server, whenDone);
     }
     
     static AnnounceToChannel write(
-            Supplier<? extends ByteBuffer> sources, AsynchronousSocketChannel destination,
-            Consumer<? super ByteBuffer> completionHandler, WhenDone whenDone, DefaultServer server)
+            AsynchronousSocketChannel destination,
+            DefaultServer server,
+            WhenDone whenDone)
     {
-        return new AnnounceToChannel(destination, Mode.WRITE, sources, completionHandler, whenDone, server);
+        return new AnnounceToChannel(Mode.WRITE, destination, null, server, whenDone);
     }
     
     /**
      * The service will self-{@link #stop()} as soon as this sentinel bytebuffer
-     * is polled from the supplier.
+     * is announced and make its way to an initiating operation.
      */
     static final ByteBuffer NO_MORE = ByteBuffer.allocate(0);
     
     /**
-     * Is passed by the service to the completion handler only if in read mode
-     * and whenever the channel has reached end-of-stream.
+     * Applicable for read mode only: passed to the {@code onComplete} callback
+     * when the channel has reached end-of-stream.
      */
     static final ByteBuffer EOS = ByteBuffer.allocate(0);
     
@@ -93,50 +105,72 @@ final class AnnounceToChannel
                                    STOPPED = new Throwable("STOPPED");
     
     private enum Mode {
-        READ, WRITE
+        READ, WRITE;
+        
+        @Override
+        public String toString() {
+            return name().charAt(0) + name().toLowerCase(ROOT).substring(1);
+        }
     }
     
-    private final AtomicReference<Throwable> state;
-    private final AsynchronousSocketChannel channel;
     private final Mode mode;
-    private final Supplier<? extends ByteBuffer> supplier;
-    private final Consumer<? super ByteBuffer> completionHandler;
+    private final AsynchronousSocketChannel channel;
+    private final Consumer<? super ByteBuffer> onComplete;
     private final DefaultServer server;
+    
     private final SeriallyRunnable operation;
     private final Handler handler;
+    private final Queue<ByteBuffer> buffers;
+    private final AtomicReference<Throwable> state;
     
     private WhenDone whenDone;
     private long byteCount;
     
     private AnnounceToChannel(
-            AsynchronousSocketChannel channel,
             Mode mode,
-            Supplier<? extends ByteBuffer> supplier,
-            Consumer<? super ByteBuffer> completionHandler,
-            WhenDone whenDone,
-            DefaultServer server)
+            AsynchronousSocketChannel channel,
+            Consumer<? super ByteBuffer> onComplete,
+            DefaultServer server,
+            WhenDone whenDone)
     {
-        this.channel = requireNonNull(channel);
-        this.mode = requireNonNull(mode);
-        this.supplier = requireNonNull(supplier);
-        this.completionHandler = requireNonNull(completionHandler);
-        this.server = requireNonNull(server);
-        this.whenDone = requireNonNull(whenDone);
+        this.mode       = requireNonNull(mode);
+        this.channel    = requireNonNull(channel);
+        this.onComplete = onComplete != null ? onComplete : ignored -> {};
+        this.server     = requireNonNull(server);
+        this.whenDone   = requireNonNull(whenDone);
+        
         this.operation = new SeriallyRunnable(this::pollAndInitiate, true);
-        this.handler = new Handler();
+        this.handler   = new Handler();
+        this.buffers   = mode == Mode.READ ?
+                new ConcurrentLinkedQueue<>() : new ConcurrentLinkedDeque<>();
+        
         this.byteCount = 0;
         this.state = new AtomicReference<>(RUNNING);
     }
     
     /**
-     * Announce the presumed availability of a bytebuffer free to use for the
-     * next channel operation.<p>
+     * Announce the availability of a bytebuffer free to use for a future
+     * channel operation.<p>
      * 
-     * The thread calling this method may be used to initiate the next channel
-     * operation. But, the channel operation either completes immediately or is
-     * asynchronous, so this method will not block.
+     * If the current mode is {@code read}, then the bytebuffer will be cleared
+     * (it's assumed that we may use all of it).<p>
+     * 
+     * Bytebuffers will be used up in the order they are announced.<p>
+     * 
+     * While the bytebuffer is not used it will be sitting in an unbounded
+     * queue. It's therefore a good idea to cap or otherwise throttle how many
+     * bytebuffers are announced.
      */
-    void announce() {
+    void announce(ByteBuffer buf) {
+        if (mode == Mode.READ) {
+            buf.clear();
+        }
+        
+        if (buf != NO_MORE && !buf.hasRemaining()) {
+            throw new IllegalArgumentException("Buffer has no storage capacity available.");
+        }
+        
+        buffers.add(buf);
         operation.run();
     }
     
@@ -148,8 +182,10 @@ final class AnnounceToChannel
      * whenDone} callback will be executed without a throwable - even if a
      * pending asynchronous operation completes exceptionally.<p>
      * 
-     * At most one extra bytebuffer may be polled from the supplier and used to
-     * initiate a new channel operation even after this method returns.<p>
+     * The effect is immediate if called from a read operation's {@code
+     * onComplete} callback. Otherwise, due to the asynchronous nature of this
+     * class, the effect may be delayed with at most one extra operation
+     * initiated.<p>
      * 
      * Is NOP if already stopped.
      *
@@ -201,12 +237,13 @@ final class AnnounceToChannel
     
     private void pollAndInitiate() {
         if (state.get() != RUNNING) {
+            buffers.clear();
             executeCallbackOnce();
-            operation.complete(); // <-- not really necessary
+            operation.complete();
             return;
         }
         
-        final ByteBuffer b = supplier.get();
+        final ByteBuffer b = buffers.poll();
         
         if (b == null) {
             operation.complete();
@@ -243,7 +280,7 @@ final class AnnounceToChannel
         }
     }
     
-    private final class Handler implements CompletionHandler<Integer, ByteBuffer>
+    private final class Handler implements java.nio.channels.CompletionHandler<Integer, ByteBuffer>
     {
         @Override
         public void completed(Integer result, ByteBuffer buf) {
@@ -251,17 +288,25 @@ final class AnnounceToChannel
             
             if (r == -1) {
                 LOG.log(DEBUG, "End of stream; other side must have closed.");
+                // TODO: Not sure I want to close the entire channel here, perhaps only shutdown input if anything
                 server.orderlyShutdown(channel); // <-- will cause stop() to be called next run
                 buf = EOS;
             } else {
                 try {
-                    byteCount = Math.addExact(byteCount, r);
+                    byteCount = addExact(byteCount, r);
                 } catch (ArithmeticException e) {
-                    byteCount = Long.MAX_VALUE;
+                    byteCount = MAX_VALUE;
                 }
             }
             
-            completionHandler.accept(buf);
+            if (mode == Mode.READ) {
+                buf.flip();
+            } else if (buf.hasRemaining()) {
+                LOG.log(DEBUG, () -> mode + " operation didn't read all of the buffer, adding back as head of queue.");
+                ((Deque<ByteBuffer>) buffers).addFirst(buf);
+            }
+            
+            onComplete.accept(buf);
             operation.run(); // <-- schedule new run; perhaps more work or execute whenDone callback
             operation.complete();
         }
@@ -277,7 +322,7 @@ final class AnnounceToChannel
                     if (!failedBecauseChannelWasAlreadyClosed(exc)) {
                         loggedStack = true;
                         LOG.log(ERROR, () ->
-                            "Unknown channel failure and service already stopped normally; " +
+                            mode + " operation failed and service already stopped normally; " +
                             "can not propagate the error anywhere.", exc);
                     } // else channel was effectively closed AND service stopped already, really not a problem then
                 } else {
@@ -287,11 +332,10 @@ final class AnnounceToChannel
             }
             
             if (channel.isOpen()) {
-                final String msg = "Channel operation failed and channel is still open, will close it.";
                 if (loggedStack) {
-                    LOG.log(ERROR, msg);
+                    LOG.log(ERROR, "Will close the channel.");
                 } else {
-                    LOG.log(ERROR, msg, exc);
+                    LOG.log(ERROR, () -> mode + " operation failed and channel is still open, will close it.", exc);
                 }
                 server.orderlyShutdown(channel);
             } // else assume reason for closing has been logged already

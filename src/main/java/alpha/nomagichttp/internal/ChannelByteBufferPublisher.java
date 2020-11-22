@@ -5,12 +5,9 @@ import alpha.nomagichttp.message.Request;
 
 import java.io.Closeable;
 import java.nio.ByteBuffer;
-import java.nio.channels.AsynchronousByteChannel;
 import java.nio.channels.AsynchronousSocketChannel;
 import java.util.Deque;
-import java.util.Queue;
 import java.util.concurrent.ConcurrentLinkedDeque;
-import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.Flow;
 import java.util.stream.IntStream;
 
@@ -20,7 +17,7 @@ import static java.lang.System.Logger.Level.ERROR;
 import static java.lang.System.Logger.Level.WARNING;
 
 /**
- * A publisher of bytebuffers read from an asynchronous byte channel.<p>
+ * A publisher of bytebuffers read from an asynchronous socket channel.<p>
  * 
  * Many aspects of how to consume published bytebuffers has been documented in
  * {@link Request.Body} and {@link PooledByteBufferHolder}.
@@ -29,7 +26,8 @@ import static java.lang.System.Logger.Level.WARNING;
  */
 final class ChannelByteBufferPublisher implements Flow.Publisher<DefaultPooledByteBufferHolder>, Closeable
 {
-    private static final System.Logger LOG = System.getLogger(ChannelByteBufferPublisher.class.getPackageName());
+    private static final System.Logger LOG
+            = System.getLogger(ChannelByteBufferPublisher.class.getPackageName());
     
     // TODO: Repeated on several occurrences in code base; DRY
     private static final String CLOSE_MSG = " Will close the channel.";
@@ -41,17 +39,18 @@ final class ChannelByteBufferPublisher implements Flow.Publisher<DefaultPooledBy
             BUF_SIZE = 16 * 1_024;
     
     /*
-     * When a bytebuffer has been read from the channel, it will be put in a
+     * Works like this:
+     * 
+     * 1) When a bytebuffer has been read from the channel, it will be put in a
      * queue of readable bytebuffers, from which the subscriber polls.
      * 
-     * When the subscriber releases a bytebuffer, the buffer will be put in a
-     * queue of writable buffers, from which channel read operations polls.
+     * 2) When the subscriber releases a bytebuffer, the buffer will be given
+     * back to the channel for new read operations.
      */
     
     private final DefaultServer             server;
     private final AsynchronousSocketChannel child;
     private final Deque<ByteBuffer>         readable;
-    private final Queue<ByteBuffer>         writable;
     private final AnnounceToSubscriber<DefaultPooledByteBufferHolder> subscriber;
     private final AnnounceToChannel         channel;
     
@@ -59,15 +58,14 @@ final class ChannelByteBufferPublisher implements Flow.Publisher<DefaultPooledBy
         this.server     = server;
         this.child      = child;
         this.readable   = new ConcurrentLinkedDeque<>();
-        this.writable   = new ConcurrentLinkedQueue<>();
         this.subscriber = new AnnounceToSubscriber<>(this::pollReadable);
         this.channel    = AnnounceToChannel.read(
-                child, writable::poll, this::afterChannelOp, this::afterChannelFinished, server);
+                child, this::putReadableLast, server, this::afterChannelFinished);
         
         IntStream.generate(() -> BUF_SIZE)
                 .limit(BUF_COUNT)
                 .mapToObj(ByteBuffer::allocateDirect)
-                .forEach(this::putWritableLast);
+                .forEach(channel::announce);
     }
     
     private DefaultPooledByteBufferHolder pollReadable() {
@@ -95,15 +93,11 @@ final class ChannelByteBufferPublisher implements Flow.Publisher<DefaultPooledBy
         if (b.hasRemaining()) {
             putReadableFirst(b);
         } else {
-            putWritableLast(b);
+            channel.announce(b);
         }
     }
     
-    private void afterChannelOp(ByteBuffer b) {
-        putReadableLast(b.flip());
-    }
-    
-    private void afterChannelFinished(AsynchronousByteChannel childIgnored, long byteCountIgnored, Throwable t) {
+    private void afterChannelFinished(AsynchronousSocketChannel ignored1, long ignored2, Throwable t) {
         if (t != null) {
             subscriber.error(t);
             close();
@@ -120,11 +114,6 @@ final class ChannelByteBufferPublisher implements Flow.Publisher<DefaultPooledBy
         assert b == EOS || b.hasRemaining();
         readable.addLast(b);
         subscriberAnnounce();
-    }
-    
-    private void putWritableLast(ByteBuffer b) {
-        writable.add(b.clear());
-        channel.announce();
     }
     
     private void subscriberAnnounce() {
@@ -151,6 +140,5 @@ final class ChannelByteBufferPublisher implements Flow.Publisher<DefaultPooledBy
         channel.stop();
         server.orderlyShutdown(child);
         readable.clear();
-        writable.clear();
     }
 }
