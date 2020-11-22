@@ -91,6 +91,7 @@ final class ClientOperations
         }
         
         Channel ch = this.ch = factory.get();
+        assert this.ch.isBlocking();
         
         class Proxy implements Channel {
             @Override
