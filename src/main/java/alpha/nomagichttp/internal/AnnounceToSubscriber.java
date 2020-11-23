@@ -87,9 +87,9 @@ final class AnnounceToSubscriber<T>
      * deliver the item to the publisher.<p>
      * 
      * If this method synchronously invokes a subscriber and the subscriber
-     * returns exceptionally, then 1) {@code onError} is called, 2) subscriber
-     * is signalled a {@link ClosedPublisherException}, 3) this class {@link
-     * #stop() self-stop} and 4) the exception is re-thrown.<p>
+     * returns exceptionally, then 1) the provided {@code onError} is called,
+     * 2) subscriber is signalled a {@link ClosedPublisherException}, 3) this
+     * class {@link #stop() self-stop} and 4) the exception is re-thrown.<p>
      * 
      * Is NOP if no subscriber is active or an active subscriber's demand is
      * zero.
