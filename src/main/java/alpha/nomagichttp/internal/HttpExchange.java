@@ -111,9 +111,14 @@ final class HttpExchange
         r.body().subscribe(rbs);
         return rbs.asCompletionStage()
                   .thenRun(() -> {
-                      if (r.mustCloseAfterWrite()) {
+                      if (r.mustCloseAfterWrite() && (
+                              child.isOpenForReading() ||
+                              child.isOpenForWriting() ||
+                              child.delegate().isOpen()) )
+                      {
                           // TODO: Need to implement mustCloseAfterWrite( "mayInterrupt" param )
                           //       This will kill any ongoing subscription
+                          LOG.log(DEBUG, "Response wants us to close the child, will close.");
                           bytes.close();
                           child.orderlyClose();
                       }
