@@ -142,6 +142,14 @@ public interface Request
     NetworkChannel channel();
     
     /**
+     * Returns {@code true} if the channel from which this request originates is
+     * open for reading, otherwise {@code false}.
+     * 
+     * @return see javadoc
+     */
+    boolean channelIsOpenForReading();
+    
+    /**
      * Is an API for accessing the request body in various forms.<p>
      * 
      * High-level methods (for example, {@link #toText()}), returns a {@link
@@ -169,15 +177,15 @@ public interface Request
      * example method {@code convert(...)} is used followed by {@code toText()},
      * then the latter will complete exceptionally with an {@code
      * IllegalStateException}.<p>
-     *
+     * 
      * It does not matter if a {@code Flow.Subscription} is immediately
      * cancelled with or without actually consuming any bytes (application is
      * assumed to ignore the body, followed by a server-side discard of it).<p>
      * 
-     * However, some utility methods such as {@code toText()} may save and
-     * return the same stage for future re-use, for example by an {@link
-     * ExceptionHandler exception handler} who may also be interested in
-     * accessing the request body.<p>
+     * Some utility methods such as {@code toText()} does save the result and
+     * will return the same stage on future invocations. This may for example
+     * by useful to an {@link ExceptionHandler exception handler} also
+     * interested in accessing the result.<p>
      * 
      * The normal way to reject an operation is to fail-fast and blow up the
      * calling thread. This is also the practice even for rejected asynchronous
@@ -196,12 +204,12 @@ public interface Request
      * will blow up the calling thread wherever warranted.<p>
      * 
      * In general, high-level exception types - in particular, when documented -
-     * does not close the underlying channel and so the application can chose to
-     * recover from them. The opposite is true for unexpected errors, in
-     * particular, errors that originate from the underlying channel. The safest
-     * bet for an application when attempting error recovery is to always check
-     * first if {@linkplain Request#channel()
-     * Request.channel()}{@code .isOpen()}.<p>
+     * does not close the underlying channel's read stream and so the
+     * application can chose to recover from them. The opposite is true for
+     * unexpected errors, in particular, errors that originate from the
+     * channel's read operation. The safest bet for an application when
+     * attempting error recovery is to always check first if {@link
+     * Request#channelIsOpenForReading()}.<p>
      * 
      * 
      * <h3>Subscribing to bytes with a {@code Flow.Subscriber}</h3>
@@ -252,10 +260,10 @@ public interface Request
      * thread (see "Threading Model" in {@link Server}) - hence the need to
      * "collect" or buffer the bytebuffers.<p>
      * 
-     * As an example, {@code GatheringByteChannel} expects a {@code
-     * ByteBuffer[]} but is a blocking API. Instead, submit the bytebuffers one
-     * at a time to {@code AsynchronousByteChannel}, releasing each in the
-     * completion handler.<p>
+     * For example, {@code GatheringByteChannel} expects a {@code ByteBuffer[]}
+     * but is a blocking API. Instead, submit the bytebuffers one at a time to
+     * {@code AsynchronousByteChannel}, releasing each in the completion
+     * handler.<p>
      * 
      * Given how the default implementation only publishes one bytebuffer at a
      * time, there's really no difference between requesting {@code
@@ -328,33 +336,34 @@ public interface Request
      * standard {@link ExceptionHandler exception handling} is kicked off.<p>
      * 
      * Exceptions thrown by the subscriber's {@code onNext()} and {@code
-     * onComplete()} methods will be logged by the server if the channel is
-     * still open when the exceptional return occur. The server will also
-     * perform the channel-close procedure documented in {@link
-     * Response#mustCloseAfterWrite()}. The exceptional return will void the
-     * underlying subscription and even though {@code onError()} is meant to
-     * be a vehicle for <i>publisher</i> errors, the server will gracefully
-     * complete the subscription by signalling a {@link ClosedPublisherException}
-     * (caused by the subscriber exception).<p>
+     * onComplete()} methods will be logged by the server if the channel's read
+     * stream is still open when the exceptional return occur. The server will
+     * also perform a similar close procedure documented in {@link
+     * Response#mustCloseAfterWrite()}, but for the read stream only (an ongoing
+     * response will complete). The exceptional return will void the underlying
+     * subscription and even though {@code onError()} is meant to be a vehicle
+     * for <i>publisher</i> errors, the server will gracefully complete the
+     * subscription by signalling a {@link ClosedPublisherException} (caused by
+     * the subscriber exception).<p>
      * 
      * Other exceptions signalled to {@code Subscriber.onError()} that are not
      * caused by the subscriber itself can safely be assumed to indicate
      * low-level problems with the underlying channel. They will also have been
-     * logged by the server followed suite by a channel closure.<p>
+     * logged by the server followed suite by read-stream closure.<p>
      * 
      * Exceptions from {@code Subscriber.onError()} will be logged but otherwise
      * ignored.<p>
      * 
      * Even if the server has a reaction for some observed exceptions - such as
-     * closing the channel as previously noted - this doesn't stop the exception
-     * from being propagated. For example, if the application asynchronously
-     * calls {@code Subscription.request()} from a new thread, a call which
-     * might immediately and synchronously trigger the publication of a buffer
-     * delivery to {@code Subscriber.onNext()}, and if this method in turn
-     * returns exceptionally which prompts the server to intercept and close the
-     * channel, then the application code will still return exceptionally from
-     * it's call to the top-level {@code Subscription.request()} method
-     * observing the same exception instance.
+     * closing the read stream as previously noted - this doesn't stop the
+     * exception from being propagated. For example, if the application
+     * asynchronously calls {@code Subscription.request()} from a new thread, a
+     * call which might immediately and synchronously trigger the publication of
+     * a buffer delivery to {@code Subscriber.onNext()}, and if this method in
+     * turn returns exceptionally which prompts the server to intercept and
+     * close the stream, then the application code will still return
+     * exceptionally from it's call to the top-level {@code
+     * Subscription.request()} method observing the same exception instance.
      * 
      * @author Martin Andersson (webmaster at martinandersson.com)
      */
