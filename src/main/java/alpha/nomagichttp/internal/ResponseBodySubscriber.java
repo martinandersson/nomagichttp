@@ -3,7 +3,6 @@ package alpha.nomagichttp.internal;
 import alpha.nomagichttp.message.Response;
 
 import java.nio.ByteBuffer;
-import java.nio.channels.AsynchronousSocketChannel;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.Flow;
@@ -17,7 +16,7 @@ import static java.nio.charset.StandardCharsets.US_ASCII;
 import static java.util.Objects.requireNonNull;
 
 /**
- * Writes a {@link Response} to the client channel.
+ * Writes a {@link Response} to the child channel.
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  */
@@ -39,17 +38,15 @@ final class ResponseBodySubscriber implements SubscriberAsStage<ByteBuffer, Long
     private final Response response;
     private final AnnounceToChannel channel;
     private final CompletableFuture<Long> result;
-    private final DefaultServer server;
     
     private Flow.Subscription subscription;
     private boolean pushedHead;
     private int requested;
     
-    ResponseBodySubscriber(Response response, AsynchronousSocketChannel channel, DefaultServer server) {
+    ResponseBodySubscriber(Response response, ChannelOperations child) {
         this.response = requireNonNull(response);
         this.result   = new CompletableFuture<>();
-        this.server   = requireNonNull(server);
-        this.channel  = AnnounceToChannel.write(channel, server, this::whenDone);
+        this.channel  = AnnounceToChannel.write(child, this::afterChannelFinished);
     }
     
     /**
@@ -62,33 +59,21 @@ final class ResponseBodySubscriber implements SubscriberAsStage<ByteBuffer, Long
      * errors related to the channel write operations completes the returned
      * stage exceptionally.<p>
      * 
-     * All channel related errors will cause the channel to be closed, prior to
-     * completing the stage.<p>
+     * All channel related errors will cause the channel's output stream to be
+     * closed, prior to completing the stage.<p>
      * 
      * Similarly, errors passed down from the source publisher will also cause
-     * the channel to be closed prior to completing the stage, but only if bytes
-     * have already been written to the channel (message on wire is corrupt).<p>
-     * 
-     * In other words, an alternative response may be used if the channel
-     * remains open after an exceptional completion.
+     * the channel's output stream to be closed prior to completing the stage,
+     * but only if bytes have already been written to the channel (message on
+     * wire is corrupt). Or in other words, an alternative response may be used
+     * if the channel's output stream remains open after an exceptional
+     * completion.<p>
      * 
      * @return the response-body-to-channel write process as a stage
      */
     @Override
     public CompletionStage<Long> asCompletionStage() {
         return result;
-    }
-    
-    private void whenDone(AsynchronousSocketChannel channel, long byteCount, Throwable exc) {
-        if (exc == null) {
-            result.complete(byteCount);
-        } else {
-            if (byteCount > 0) {
-                LOG.log(ERROR, "Failed writing all of the response to channel. Will close the channel.", exc);
-                server.orderlyShutdown(channel);
-            }
-            result.completeExceptionally(exc);
-        }
     }
     
     @Override
@@ -148,5 +133,17 @@ final class ResponseBodySubscriber implements SubscriberAsStage<ByteBuffer, Long
         ByteBuffer b = ByteBuffer.wrap(head.getBytes(US_ASCII));
         pushedHead = true;
         channel.announce(b);
+    }
+    
+    private void afterChannelFinished(ChannelOperations child, long byteCount, Throwable exc) {
+        if (exc == null) {
+            result.complete(byteCount);
+        } else {
+            if (byteCount > 0) {
+                LOG.log(ERROR, "Failed writing all of the response to channel. Will close the output stream.", exc);
+                child.orderlyShutdownOutput();
+            }
+            result.completeExceptionally(exc);
+        }
     }
 }
