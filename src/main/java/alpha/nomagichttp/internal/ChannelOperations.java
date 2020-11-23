@@ -171,9 +171,8 @@ final class ChannelOperations
     }
     
     /**
-     * Returns {@code true} for as long as this API hasn't been used to
-     * successfully call {@link AsynchronousSocketChannel#shutdownInput()},
-     * otherwise {@code false}.<p>
+     * Returns {@code true} if we may assume that the underlying connection's
+     * input stream is open, otherwise {@code false}.<p>
      * 
      * Note: This method does not probe the current connection status. There's
      * no such support in the AsynchronousSocketChannel API. But as long as our
@@ -183,13 +182,16 @@ final class ChannelOperations
      * @return see javadoc
      */
     boolean isOpenForReading() {
-        return !readShutdown;
+        if (!readShutdown) {
+            // We think reading is open but doesn't hurt probing a little bit more:
+            return ch.isOpen();
+        }
+        return false;
     }
     
     /**
-     * Returns {@code true} for as long as this API hasn't been used to
-     * successfully call {@link AsynchronousSocketChannel#shutdownOutput()},
-     * otherwise {@code false}.<p>
+     * Returns {@code true} if we may assume that the underlying connection's
+     * input stream is open, otherwise {@code false}.<p>
      *
      * Note: This method does not probe the current connection status. There's
      * no such support in the AsynchronousSocketChannel API. But as long as our
@@ -199,6 +201,9 @@ final class ChannelOperations
      * @return see javadoc
      */
     boolean isOpenForWriting() {
-        return !writeShutdown;
+        if (!writeShutdown) {
+            return ch.isOpen();
+        }
+        return false;
     }
 }
