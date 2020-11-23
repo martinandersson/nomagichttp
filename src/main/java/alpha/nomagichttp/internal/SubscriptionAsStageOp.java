@@ -89,8 +89,8 @@ final class SubscriptionAsStageOp extends AbstractOp<PooledByteBufferHolder>
      * the equation; the returned stage will only complete normally or
      * exceptionally as determined by the upstream.<p>
      * 
-     * The stage may never complete if C) the underlying subscription never
-     * completes, or D) any terminating method that this class delegates to
+     * The stage may never complete if C) the application's subscriber never
+     * arrives, or D) any terminating method that this class delegates to
      * ({@code Subscriber.onComplete} or {@code Subscription.cancel()}) returns
      * exceptionally.<p>
      * 
@@ -106,9 +106,9 @@ final class SubscriptionAsStageOp extends AbstractOp<PooledByteBufferHolder>
      * event shit does hit the fan, the exception propagates as-is, eventually
      * reaching the top layer which on the server's side is a thread running
      * through the {@code ChannelByteBufferPublisher} which logs the error and
-     * closes the channel. So as long as no thread is <i>blocked</i> waiting on
-     * the returned stage, then a stage that never completes is simply not a
-     * problem.
+     * closes the channel's read stream. So as long as no thread is
+     * <i>blocked</i> waiting on the returned stage, then a stage that never
+     * completes is simply not a problem.
      * 
      * @return a stage bound to the life-cycle of the singleton subscription
      */
