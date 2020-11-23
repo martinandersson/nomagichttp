@@ -226,14 +226,26 @@ final class ClientOperations
         }
     }
     
+    /**
+     * Read until end-of-stream.
+     * 
+     * @return what's left in the channel's read stream
+     *
+     * @throws ClosedByInterruptException if operation takes longer than 3 seconds
+     * @throws IOException for other weird reasons lol
+     */
+    byte[] drain() throws IOException {
+        return writeRead(new byte[0], null);
+    }
+    
     private static class FiniteByteBufferSink {
         private final ByteArrayOutputStream delegate;
-        private final byte[] eos;
+        private final byte[] terminator;
         private int matched;
         
-        FiniteByteBufferSink(int initialSize, byte[] endOfSink) {
-            delegate = new ByteArrayOutputStream(initialSize);
-            eos = endOfSink;
+        FiniteByteBufferSink(int initialSize, byte[] terminator) {
+            this.delegate = new ByteArrayOutputStream(initialSize);
+            this.terminator = terminator;
             matched = 0;
         }
         
@@ -259,7 +271,11 @@ final class ClientOperations
         }
         
         private void memorize(byte b) {
-            if (b == eos[matched]) {
+            if (terminator == null) {
+                return;
+            }
+            
+            if (b == terminator[matched]) {
                 ++matched;
             } else {
                 matched = 0;
@@ -267,7 +283,11 @@ final class ClientOperations
         }
         
         boolean hasReachedEnd() {
-            return matched == eos.length;
+            if (terminator == null) {
+                return false;
+            }
+            
+            return matched == terminator.length;
         }
         
         byte[] toByteArray() {
