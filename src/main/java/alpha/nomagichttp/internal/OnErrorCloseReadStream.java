@@ -17,14 +17,14 @@ import static java.util.Objects.requireNonNull;
  * 
  * @see Request.Body
  */
-final class OnErrorCloseChannelOp<T> extends AbstractOp<T>
+final class OnErrorCloseReadStream<T> extends AbstractOp<T>
 {
     private final ChannelOperations child;
     
     private static final System.Logger LOG
-            = System.getLogger(OnErrorCloseChannelOp.class.getPackageName());
+            = System.getLogger(OnErrorCloseReadStream.class.getPackageName());
     
-    protected OnErrorCloseChannelOp(Flow.Publisher<? extends T> upstream, ChannelOperations child) {
+    protected OnErrorCloseReadStream(Flow.Publisher<? extends T> upstream, ChannelOperations child) {
         super(upstream);
         this.child  = requireNonNull(child);
     }

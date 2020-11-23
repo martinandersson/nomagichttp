@@ -70,7 +70,7 @@ final class DefaultRequest implements Request
         } else {
             var bounded = new LengthLimitedOp(len, bodySource);
             var observe = new SubscriptionAsStageOp(bounded);
-            var onError = new OnErrorCloseChannelOp<>(observe, child);
+            var onError = new OnErrorCloseReadStream<>(observe, child);
             bodyDiscard = new OnCancelDiscardOp(onError);
             
             bodyStage = observe.asCompletionStage();
