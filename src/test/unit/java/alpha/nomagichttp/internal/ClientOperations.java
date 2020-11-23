@@ -200,7 +200,7 @@ final class ClientOperations
             
             while (!sink.hasReachedEnd()) {
                 if (ch.read(buff) == -1) {
-                    LOG.log(DEBUG, "EOS; server closed channel, we're closing our.");
+                    LOG.log(DEBUG, "EOS; server closed channel's read stream. Closing our channel.");
                     ch.close();
                     break;
                 }
