@@ -54,7 +54,7 @@ final class OnErrorCloseReadStream<T> extends AbstractOp<T>
             if (child.isOpenForReading()) {
                 LOG.log(ERROR, SIGNAL_FAILURE + " Will close the channel's read stream.", t);
                 child.orderlyShutdownInput();
-            } // else assume whoever closed the channel also logged the exception
+            } // else assume whoever closed the stream also logged the exception
             
             signalError(new ClosedPublisherException(SIGNAL_FAILURE, t));
             throw t;
