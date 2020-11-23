@@ -44,7 +44,7 @@ final class ChannelOperations
     }
     
     /**
-     * Shutdown the child connection's input stream.<p>
+     * Shutdown the channel's input stream.<p>
      * 
      * If this operation fails or effectively terminates the connection (output
      * stream also shutdown), then this method propagates to {@link
@@ -67,7 +67,7 @@ final class ChannelOperations
             return;
         } catch (Throwable t) {
             LOG.log(ERROR,
-                "Failed to shutdown child connection's input stream. " +
+                "Failed to shutdown child channel's input stream. " +
                 "Will close channel (reduce security risk).", t);
             orderlyClose();
             return;
@@ -79,7 +79,7 @@ final class ChannelOperations
     }
     
     /**
-     * Shutdown the child connection's output stream.<p>
+     * Shutdown the channel's output stream.<p>
      *
      * If this operation fails or effectively terminates the connection (input
      * stream also shutdown), then this method propagates to {@link
@@ -102,7 +102,7 @@ final class ChannelOperations
             return;
         } catch (Throwable t) {
             LOG.log(ERROR,
-                "Failed to shutdown child connection's output stream. " +
+                "Failed to shutdown child channel's output stream. " +
                 "Will close channel (reduce security risk).", t);
             orderlyClose();
             return;
@@ -114,7 +114,7 @@ final class ChannelOperations
     }
     
     /**
-     * End the child channel's connection and then close the channel.<p>
+     * End the channel's connection and then close the channel.<p>
      * 
      * In order to reduce the security risk of leaving open phantom channels
      * behind, the following sequential closing-procedure will take place which
@@ -151,14 +151,14 @@ final class ChannelOperations
             readShutdown = true;
         } catch (Throwable t) {
             // Fine, other peer will eventually receive "broken pipe" error or whatever
-            LOG.log(DEBUG, "Failed to shutdown child connection's input stream.", t);
+            LOG.log(DEBUG, "Failed to shutdown child channel's input stream.", t);
         }
         
         try {
             ch.shutdownOutput();
             writeShutdown = true;
         } catch (Throwable t) {
-            LOG.log(DEBUG, "Failed to shutdown child connection's output stream.", t);
+            LOG.log(DEBUG, "Failed to shutdown child channel's output stream.", t);
         }
         
         try {
@@ -171,8 +171,8 @@ final class ChannelOperations
     }
     
     /**
-     * Returns {@code true} if we may assume that the underlying connection's
-     * input stream is open, otherwise {@code false}.<p>
+     * Returns {@code true} if we may assume that the underlying channel's input
+     * stream is open, otherwise {@code false}.<p>
      * 
      * Note: This method does not probe the current connection status. There's
      * no such support in the AsynchronousSocketChannel API. But as long as our
@@ -190,8 +190,8 @@ final class ChannelOperations
     }
     
     /**
-     * Returns {@code true} if we may assume that the underlying connection's
-     * input stream is open, otherwise {@code false}.<p>
+     * Returns {@code true} if we may assume that the underlying channel's input
+     * stream is open, otherwise {@code false}.<p>
      *
      * Note: This method does not probe the current connection status. There's
      * no such support in the AsynchronousSocketChannel API. But as long as our

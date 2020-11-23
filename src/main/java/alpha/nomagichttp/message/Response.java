@@ -85,8 +85,8 @@ public interface Response
      * For security; If closing the child channel fails, the server will try to
      * close itself. If closing itself fails, the server will stop the JVM.<p>
      * 
-     * The in- and output streams of the channel's connection will shutdown
-     * first before channel closure.
+     * The channel's in- and output streams will shutdown first before channel
+     * closure.
      * 
      * @implSpec
      * The default implementation returns @code false}.
