@@ -39,7 +39,8 @@ import static java.util.stream.StreamSupport.stream;
  */
 public final class DefaultServer implements Server
 {
-    private static final System.Logger LOG = System.getLogger(DefaultServer.class.getPackageName());
+    private static final System.Logger LOG
+            = System.getLogger(DefaultServer.class.getPackageName());
     
     // Good info on async groups:
     // https://openjdk.java.net/projects/nio/resources/AsynchronousIo.html
@@ -144,6 +145,15 @@ public final class DefaultServer implements Server
         }
     }
     
+    void stopOrElseJVMExit() {
+        try {
+            stop();
+        } catch (Throwable t) {
+            LOG.log(ERROR, "Failed to close server. Will exit application (reduce security risk).", t);
+            System.exit(1);
+        }
+    }
+    
     @Override
     public synchronized int getPort() throws IllegalStateException {
         if (listener == null || !listener.isOpen()) {
@@ -173,58 +183,6 @@ public final class DefaultServer implements Server
         return onError;
     }
     
-    /**
-     * Initiate an orderly shutdown of the specified child.<p>
-     * 
-     * If the child is not open, this method is NOP.<p>
-     * 
-     * If the child is open, the following sequential procedure will take place
-     * which progresses only if the previous step failed:
-     * 
-     * <ol>
-     *   <li>Close the child</li>
-     *   <li>Close the server</li>
-     *   <li>Exit the JVM</li>
-     * </ol>
-     * 
-     * Please note that although thread-safe, this method may block if invoked
-     * concurrently. Try not to invoke concurrently.
-     * 
-     * @param child channel to close
-     */
-    void orderlyShutdown(AsynchronousSocketChannel child) {
-        if (!child.isOpen()) {
-            return;
-        }
-        
-        try {
-            // https://stackoverflow.com/a/20749656/1268003
-            child.shutdownInput().shutdownOutput().close();
-            LOG.log(INFO, () -> "Closed child: " + child);
-        } catch (IOException e) {
-            LOG.log(ERROR, "Failed to close client channel. Will initiate orderly shutdown.", e);
-            stopOrElseJVMExit();
-        }
-    }
-    
-    private void stopOrElseJVMExit() {
-        try {
-            stop();
-        } catch (Throwable t) {
-            LOG.log(ERROR, "Failed to close server. Will exit application (reduce security risk).", t);
-            System.exit(1);
-        }
-    }
-    
-    /**
-     * Handles the completion of a listener accept operation.<p>
-     * 
-     * The way this class handles an accepted channel (the client connection) is
-     * to setup an asynchronous and continuous flow of anticipated {@link
-     * HttpExchange HTTP exchanges}.<p>
-     * 
-     * @author Martin Andersson (webmaster at martinandersson.com)
-     */
     private class OnAccept implements CompletionHandler<AsynchronousSocketChannel, Void>
     {
         @Override
