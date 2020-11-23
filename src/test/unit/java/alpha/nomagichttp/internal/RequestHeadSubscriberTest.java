@@ -1,8 +1,8 @@
 package alpha.nomagichttp.internal;
 
-import alpha.nomagichttp.util.Headers;
 import alpha.nomagichttp.message.RequestHeadParseException;
 import alpha.nomagichttp.test.Logging;
+import alpha.nomagichttp.util.Headers;
 import org.assertj.core.api.AbstractListAssert;
 import org.assertj.core.api.ObjectAssert;
 import org.junit.jupiter.api.AfterAll;
@@ -43,8 +43,10 @@ class RequestHeadSubscriberTest
     
     CompletionStage<RequestHead> testee() throws Throwable {
         if (testee == null) {
-            Flow.Publisher<DefaultPooledByteBufferHolder> bytes
-                    = new ChannelByteBufferPublisher(mock(DefaultServer.class), SERVER.accept());
+            ChannelOperations ops = new ChannelOperations(
+                    SERVER.accept(), mock(DefaultServer.class));
+            
+            Flow.Publisher<DefaultPooledByteBufferHolder> bytes = new ChannelByteBufferPublisher(ops);
             
             RequestHeadSubscriber rhp = new RequestHeadSubscriber(MAX_VALUE);
             bytes.subscribe(rhp);

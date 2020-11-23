@@ -46,7 +46,10 @@ class ChannelByteBufferPublisherTest
     
     ChannelByteBufferPublisher testee() throws Throwable {
         if (testee == null) {
-            testee = new ChannelByteBufferPublisher(mock(DefaultServer.class), SERVER.accept());
+            ChannelOperations ops = new ChannelOperations(
+                    SERVER.accept(), mock(DefaultServer.class));
+            
+            testee = new ChannelByteBufferPublisher(ops);
         }
         
         return testee;
