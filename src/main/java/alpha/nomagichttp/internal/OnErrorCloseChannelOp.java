@@ -3,7 +3,6 @@ package alpha.nomagichttp.internal;
 import alpha.nomagichttp.message.ClosedPublisherException;
 import alpha.nomagichttp.message.Request;
 
-import java.nio.channels.AsynchronousSocketChannel;
 import java.util.concurrent.Flow;
 
 import static alpha.nomagichttp.message.ClosedPublisherException.SIGNAL_FAILURE;
@@ -11,8 +10,8 @@ import static java.lang.System.Logger.Level.ERROR;
 import static java.util.Objects.requireNonNull;
 
 /**
- * On downstream signal failure; log the exception and close the channel, then
- * pass the exception back to subscriber.
+ * On downstream signal failure; log the exception and close the channels read
+ * stream, then pass the exception back to subscriber.
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  * 
@@ -20,19 +19,13 @@ import static java.util.Objects.requireNonNull;
  */
 final class OnErrorCloseChannelOp<T> extends AbstractOp<T>
 {
-    private final DefaultServer server;
-    private final AsynchronousSocketChannel child;
+    private final ChannelOperations child;
     
     private static final System.Logger LOG
             = System.getLogger(OnErrorCloseChannelOp.class.getPackageName());
     
-    protected OnErrorCloseChannelOp(
-            Flow.Publisher<? extends T> upstream,
-            DefaultServer server,
-            AsynchronousSocketChannel child)
-    {
+    protected OnErrorCloseChannelOp(Flow.Publisher<? extends T> upstream, ChannelOperations child) {
         super(upstream);
-        this.server = requireNonNull(server);
         this.child  = requireNonNull(child);
     }
     
@@ -51,16 +44,16 @@ final class OnErrorCloseChannelOp<T> extends AbstractOp<T>
             action.run();
         } catch (Throwable t) {
             /*
-              * Note, this isn't the only place where the child is closed on an
-              * exceptional signal return. See also
+              * Note, this isn't the only place where the read stream is closed
+              * on an exceptional signal return. See also
               * ChannelByteBufferPublisher.subscriberAnnounce().
               * 
               * This class guarantees the behavior though, as not all paths to
               * the subscriber run through the subscriberAnnounce() method.
              */
-            if (child.isOpen()) {
-                LOG.log(ERROR, SIGNAL_FAILURE + " Will close the channel.", t);
-                server.orderlyShutdown(child);
+            if (child.isOpenForReading()) {
+                LOG.log(ERROR, SIGNAL_FAILURE + " Will close the channel's read stream.", t);
+                child.orderlyShutdownInput();
             } // else assume whoever closed the channel also logged the exception
             
             signalError(new ClosedPublisherException(SIGNAL_FAILURE, t));

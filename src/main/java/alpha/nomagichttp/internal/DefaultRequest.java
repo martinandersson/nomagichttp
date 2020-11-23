@@ -6,7 +6,6 @@ import alpha.nomagichttp.message.Request;
 
 import java.net.http.HttpHeaders;
 import java.nio.channels.AsynchronousFileChannel;
-import java.nio.channels.AsynchronousSocketChannel;
 import java.nio.channels.NetworkChannel;
 import java.nio.charset.Charset;
 import java.nio.file.OpenOption;
@@ -45,14 +44,13 @@ final class DefaultRequest implements Request
     private final CompletionStage<Void> bodyStage;
     private final Optional<Body> bodyApi;
     private final OnCancelDiscardOp bodyDiscard;
-    private final NetworkChannel child;
+    private final ChannelOperations child;
     
     DefaultRequest(
             RequestHead head,
             Map<String, String> pathParameters,
             Flow.Publisher<DefaultPooledByteBufferHolder> bodySource,
-            DefaultServer server,
-            AsynchronousSocketChannel child)
+            ChannelOperations child)
     {
         this.head = head;
         this.pathParameters = pathParameters;
@@ -72,7 +70,7 @@ final class DefaultRequest implements Request
         } else {
             var bounded = new LengthLimitedOp(len, bodySource);
             var observe = new SubscriptionAsStageOp(bounded);
-            var onError = new OnErrorCloseChannelOp<>(observe, server, child);
+            var onError = new OnErrorCloseChannelOp<>(observe, child);
             bodyDiscard = new OnCancelDiscardOp(onError);
             
             bodyStage = observe.asCompletionStage();
@@ -124,7 +122,12 @@ final class DefaultRequest implements Request
     
     @Override
     public NetworkChannel channel() {
-        return child;
+        return child.delegate();
+    }
+    
+    @Override
+    public boolean channelIsOpenForReading() {
+        return child.isOpenForReading();
     }
     
     /**
