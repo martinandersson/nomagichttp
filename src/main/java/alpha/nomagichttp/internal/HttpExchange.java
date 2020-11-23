@@ -6,7 +6,6 @@ import alpha.nomagichttp.message.Response;
 import alpha.nomagichttp.message.Responses;
 import alpha.nomagichttp.route.Route;
 
-import java.nio.channels.AsynchronousSocketChannel;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.RandomAccess;
@@ -33,7 +32,7 @@ final class HttpExchange
     private static final System.Logger LOG = System.getLogger(HttpExchange.class.getPackageName());
     
     private final DefaultServer server;
-    private final AsynchronousSocketChannel child;
+    private final ChannelOperations child;
     private final ChannelByteBufferPublisher bytes;
     
     /*
@@ -48,13 +47,13 @@ final class HttpExchange
     private Handler handler;
     private ExceptionHandlers eh;
     
-    HttpExchange(DefaultServer server, AsynchronousSocketChannel child) {
-        this(server, child, new ChannelByteBufferPublisher(server, child));
+    HttpExchange(DefaultServer server, ChannelOperations child) {
+        this(server, child, new ChannelByteBufferPublisher(child));
     }
     
     private HttpExchange(
             DefaultServer server,
-            AsynchronousSocketChannel child,
+            ChannelOperations child,
             ChannelByteBufferPublisher bytes)
     {
         this.server  = server;
@@ -90,7 +89,7 @@ final class HttpExchange
     }
     
     private DefaultRequest createRequest(RequestHead rh, Route.Match rm) {
-        return new DefaultRequest(rh, rm.parameters(), bytes, server, child);
+        return new DefaultRequest(rh, rm.parameters(), bytes, child);
     }
     
     private static Handler findHandler(RequestHead rh, Route.Match rm) {
@@ -108,7 +107,7 @@ final class HttpExchange
     }
     
     private CompletionStage<Void> writeResponseToChannel(Response r) {
-        ResponseBodySubscriber rbs = new ResponseBodySubscriber(r, child, server);
+        ResponseBodySubscriber rbs = new ResponseBodySubscriber(r, child);
         r.body().subscribe(rbs);
         return rbs.asCompletionStage()
                   .thenRun(() -> {
@@ -116,11 +115,12 @@ final class HttpExchange
                           // TODO: Need to implement mustCloseAfterWrite( "mayInterrupt" param )
                           //       This will kill any ongoing subscription
                           bytes.close();
+                          child.orderlyClose();
                       }
                   });
     }
     
-    private void finish(Void Null, Throwable t) {
+    private void finish(Void Null, Throwable exc) {
         /*
          * We should make the connection life cycle much more solid; when is
          * the connection persistent and when is it not (also see RFC 2616
@@ -132,8 +132,8 @@ final class HttpExchange
          * TODO: 2) Implement idle timeout.
          */
         
-        if (t == null) {
-            if (!child.isOpen()) {
+        if (exc == null) {
+            if (!child.delegate().isOpen()) {
                 return;
             }
             
@@ -143,16 +143,17 @@ final class HttpExchange
                 if (t2 == null) {
                     // TODO: Possible recursion. Unroll.
                     new HttpExchange(server, child, bytes).begin();
-                } else if (child.isOpen()) {
-                    LOG.log(WARNING, "Expected someone to have closed the channel already.");
-                    server.orderlyShutdown(child);
+                } else if (child.isOpenForReading()) {
+                    // See SubscriberAsStageOp.asCompletionStage(); t2 can only be an upstream error
+                    LOG.log(WARNING, "Expected someone to have closed the channel's read stream already.");
+                    child.orderlyShutdownInput();
                 }
             });
-        } else if (child.isOpen())  {
+        } else if (child.isOpenForWriting())  {
             if (eh == null) {
                 eh = new ExceptionHandlers();
             }
-            eh.resolve(t)
+            eh.resolve(exc)
               .thenCompose(this::writeResponseToChannel)
               // TODO: Possible recursion. Unroll.
               .whenComplete(this::finish);
