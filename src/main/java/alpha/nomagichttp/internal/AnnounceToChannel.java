@@ -2,7 +2,6 @@ package alpha.nomagichttp.internal;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.nio.channels.AsynchronousSocketChannel;
 import java.nio.channels.ClosedChannelException;
 import java.nio.channels.ShutdownChannelGroupException;
 import java.util.Deque;
@@ -29,27 +28,28 @@ import static java.util.Objects.requireNonNull;
  * 
  * The service stops when {@link #stop()} is called. {@code stop()} may be
  * called implicitly by announcing the bytebuffer sentinel {@link #NO_MORE} or
- * closing the channel.<p>
+ * closing the channel's stream in use.<p>
  * 
- * The service also stops on all channel failures or applicable for read mode
+ * The service also stops on all channel failures or, applicable for read mode
  * only; whenever end-of-stream is reached.<p>
  * 
  * Read mode specifies an {@code onComplete} callback which is invoked with the
  * container bytebuffer after each operation completes. The buffer will have
  * already been flipped and is therefore ready to be consumed as-is. The last
- * bytebuffer to reach the callback may be the sentinel value {@link #EOS}.<p>
+ * bytebuffer to reach the callback may not be the last bytebuffer(s) announced
+ * but may have been replaced with the sentinel value {@link #EOS}.<p>
  * 
- * The {@link WhenDone#accept(AsynchronousSocketChannel, long, Throwable)
- * whenDone} callback executes exactly-once whenever the last pending operation
+ * The {@link WhenDone#accept(ChannelOperations, long, Throwable) whenDone}
+ * callback executes exactly-once whenever the last pending operation
  * completes.<p>
  * 
  * Please note that the responsibility of this class is to manage a particular
  * type of channel <i>operations</i> (read or write) for as long as the service
  * remains running, not the channel's life cycle itself. In particular note; the
- * only two occasions when this class <i>closes</i> the channel is if a channel
- * operation completes exceptionally or end-of-stream is reached.<p>
+ * only two occasions when this class closes the channel's stream in use is if a
+ * channel operation completes exceptionally or end-of-stream is reached.<p>
  * 
- * This class is thread-safe and non-blocking.
+ * This class is thread-safe and mostly non-blocking (closing stream may block).
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  */
@@ -66,24 +66,22 @@ final class AnnounceToChannel
          *     total number of bytes that was either read or written (capped at {@code Long.MAX_VALUE})
          * @param exc only non-null if there was a problem
          */
-        void accept(AsynchronousSocketChannel channel, long byteCount, Throwable exc);
+        void accept(ChannelOperations channel, long byteCount, Throwable exc);
     }
     
     static AnnounceToChannel read(
-            AsynchronousSocketChannel source,
+            ChannelOperations source,
             Consumer<? super ByteBuffer> onComplete,
-            DefaultServer server,
             WhenDone whenDone)
     {
-        return new AnnounceToChannel(Mode.READ, source, onComplete, server, whenDone);
+        return new AnnounceToChannel(Mode.READ, source, onComplete, whenDone);
     }
     
     static AnnounceToChannel write(
-            AsynchronousSocketChannel destination,
-            DefaultServer server,
+            ChannelOperations destination,
             WhenDone whenDone)
     {
-        return new AnnounceToChannel(Mode.WRITE, destination, null, server, whenDone);
+        return new AnnounceToChannel(Mode.WRITE, destination, null, whenDone);
     }
     
     /**
@@ -114,9 +112,8 @@ final class AnnounceToChannel
     }
     
     private final Mode mode;
-    private final AsynchronousSocketChannel channel;
+    private final ChannelOperations channel;
     private final Consumer<? super ByteBuffer> onComplete;
-    private final DefaultServer server;
     
     private final SeriallyRunnable operation;
     private final Handler handler;
@@ -128,15 +125,13 @@ final class AnnounceToChannel
     
     private AnnounceToChannel(
             Mode mode,
-            AsynchronousSocketChannel channel,
+            ChannelOperations channel,
             Consumer<? super ByteBuffer> onComplete,
-            DefaultServer server,
             WhenDone whenDone)
     {
         this.mode       = requireNonNull(mode);
         this.channel    = requireNonNull(channel);
         this.onComplete = onComplete != null ? onComplete : ignored -> {};
-        this.server     = requireNonNull(server);
         this.whenDone   = requireNonNull(whenDone);
         
         this.operation = new SeriallyRunnable(this::pollAndInitiate, true);
@@ -248,7 +243,7 @@ final class AnnounceToChannel
         if (b == null) {
             operation.complete();
             return;
-        } else if (b == NO_MORE || !channel.isOpen()) {
+        } else if (b == NO_MORE || !isStreamOpen()) {
             stop();
             operation.complete();
             return;
@@ -256,8 +251,8 @@ final class AnnounceToChannel
         
         try {
             switch (mode) {
-                case READ:  channel.read( b, b, handler); break;
-                case WRITE: channel.write(b, b, handler); break;
+                case READ:  channel.delegate().read( b, b, handler); break;
+                case WRITE: channel.delegate().write(b, b, handler); break;
                 default:    throw new UnsupportedOperationException("What is this?: " + mode);
             }
         } catch (Throwable t) {
@@ -280,6 +275,21 @@ final class AnnounceToChannel
         }
     }
     
+    private boolean isStreamOpen() {
+        return mode == Mode.READ ?
+                channel.isOpenForReading() :
+                channel.isOpenForWriting();
+    }
+    
+    private void closeStream() {
+        if (mode == Mode.READ) {
+            channel.orderlyShutdownInput();
+        } else {
+            assert mode == Mode.WRITE;
+            channel.orderlyShutdownOutput();
+        }
+    }
+    
     private final class Handler implements java.nio.channels.CompletionHandler<Integer, ByteBuffer>
     {
         @Override
@@ -287,9 +297,9 @@ final class AnnounceToChannel
             final int r = result;
             
             if (r == -1) {
-                LOG.log(DEBUG, "End of stream; other side must have closed.");
-                // TODO: Not sure I want to close the entire channel here, perhaps only shutdown input if anything
-                server.orderlyShutdown(channel); // <-- will cause stop() to be called next run
+                assert mode == Mode.READ;
+                LOG.log(DEBUG, "End of stream; other side must have closed. Will close channel's input stream.");
+                closeStream(); // <-- will cause stop() to be called next run
                 buf = EOS;
             } else {
                 try {
@@ -302,6 +312,7 @@ final class AnnounceToChannel
             if (mode == Mode.READ) {
                 buf.flip();
             } else if (buf.hasRemaining()) {
+                assert mode == Mode.WRITE;
                 LOG.log(DEBUG, () -> mode + " operation didn't read all of the buffer, adding back as head of queue.");
                 ((Deque<ByteBuffer>) buffers).addFirst(buf);
             }
@@ -331,13 +342,13 @@ final class AnnounceToChannel
                 }
             }
             
-            if (channel.isOpen()) {
+            if (isStreamOpen()) {
                 if (loggedStack) {
-                    LOG.log(ERROR, "Will close the channel.");
+                    LOG.log(ERROR, "Will close connection's used stream.");
                 } else {
-                    LOG.log(ERROR, () -> mode + " operation failed and channel is still open, will close it.", exc);
+                    LOG.log(ERROR, () -> mode + " operation failed and channel's used stream is still open, will close it.", exc);
                 }
-                server.orderlyShutdown(channel);
+                closeStream();
             } // else assume reason for closing has been logged already
             
             operation.run();
