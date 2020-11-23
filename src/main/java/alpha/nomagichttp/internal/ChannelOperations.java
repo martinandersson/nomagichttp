@@ -13,7 +13,8 @@ import static java.util.Objects.requireNonNull;
  * An extension API for {@code AsynchronousSocketChannel}, presumably the
  * child.<p>
  * 
- * This class is thread-safe but may be blocking due to the Java APIs used.
+ * This class is thread-safe but may in part be blocking due to the Java APIs
+ * used.
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  */
