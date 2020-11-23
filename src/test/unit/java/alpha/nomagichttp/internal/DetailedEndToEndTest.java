@@ -116,7 +116,7 @@ class DetailedEndToEndTest extends AbstractEndToEndTest
     }
     
     @Test
-    void request_body_subscriber_crash_assert_channel_gets_closed() throws IOException, InterruptedException {
+    void request_body_subscriber_crash() throws IOException {
         Handler crashAfterOneByte = Handlers.POST().accept((req) ->
             req.body().get().subscribe(
                 new AfterByteTargetStop(1, subscriptionIgnored -> {
@@ -128,8 +128,33 @@ class DetailedEndToEndTest extends AbstractEndToEndTest
             String req = requestWithBody("/body-subscriber-crash", "Hello"),
                    res = client().writeRead(req);
             
-            assertThat(res).isEmpty();
+            assertThat(res).isEqualTo(
+                "HTTP/1.1 500 Internal Server Error" + CRLF +
+                "Content-Length: 0" + CRLF + CRLF);
+            
+            assertThat(client().drain()).isEmpty();
             assertThat(ch.isOpen()).isFalse();
+            
+            /*
+             * What just happened?
+             * 
+             * 1) On the server side, OnErrorCloseReadStream caught the error
+             * and closed the input stream. Not the output stream and not the
+             * child channel.
+             * 
+             * 2) Error propagates and eventually hits the default exception
+             * handler, which produces Responses.internalServerError() which
+             * specifies "mustCloseAfterWrite()".
+             * 
+             * 2) HttpExchange notices the request to close and calls
+             * ChannelOperations.orderlyClose() which before closing the child
+             * first shuts down the input- and output streams.
+             * 
+             * 3) This then gives our client an EOS to which we react by closing
+             * the channel on our side. See ClientOperations.writeRead().
+             * 
+             * TODO: When we have a ConnectionLifeCycleTest, make reference.
+             */
         }
     }
     
