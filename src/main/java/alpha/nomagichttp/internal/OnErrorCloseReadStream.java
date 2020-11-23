@@ -10,12 +10,13 @@ import static java.lang.System.Logger.Level.ERROR;
 import static java.util.Objects.requireNonNull;
 
 /**
- * On downstream signal failure; log the exception and close the channels read
- * stream, then pass the exception back to subscriber.
+ * On downstream signal failure; 1) log the exception and close the channel's
+ * read stream, 2) pass the exception back to subscriber's {@code onError()} and
+ * lastly 3) re-throw the exception.<p>
+ * 
+ * This behavior is specified by {@link Request.Body}.
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
- * 
- * @see Request.Body
  */
 final class OnErrorCloseReadStream<T> extends AbstractOp<T>
 {
