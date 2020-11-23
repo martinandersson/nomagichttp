@@ -5,7 +5,6 @@ import alpha.nomagichttp.message.Request;
 
 import java.io.Closeable;
 import java.nio.ByteBuffer;
-import java.nio.channels.AsynchronousSocketChannel;
 import java.util.Deque;
 import java.util.concurrent.ConcurrentLinkedDeque;
 import java.util.concurrent.Flow;
@@ -30,7 +29,7 @@ final class ChannelByteBufferPublisher implements Flow.Publisher<DefaultPooledBy
             = System.getLogger(ChannelByteBufferPublisher.class.getPackageName());
     
     // TODO: Repeated on several occurrences in code base; DRY
-    private static final String CLOSE_MSG = " Will close the channel.";
+    private static final String CLOSE_MSG = " Will close the channel's read stream.";
     
     private static final int
             /** Number of bytebuffers in pool. */
@@ -48,19 +47,17 @@ final class ChannelByteBufferPublisher implements Flow.Publisher<DefaultPooledBy
      * back to the channel for new read operations.
      */
     
-    private final DefaultServer             server;
-    private final AsynchronousSocketChannel child;
-    private final Deque<ByteBuffer>         readable;
+    private final ChannelOperations child;
+    private final Deque<ByteBuffer> readable;
     private final AnnounceToSubscriber<DefaultPooledByteBufferHolder> subscriber;
-    private final AnnounceToChannel         channel;
+    private final AnnounceToChannel channel;
     
-    ChannelByteBufferPublisher(DefaultServer server, AsynchronousSocketChannel child) {
-        this.server     = server;
+    ChannelByteBufferPublisher(ChannelOperations child) {
         this.child      = child;
         this.readable   = new ConcurrentLinkedDeque<>();
         this.subscriber = new AnnounceToSubscriber<>(this::pollReadable);
         this.channel    = AnnounceToChannel.read(
-                child, this::putReadableLast, server, this::afterChannelFinished);
+                child, this::putReadableLast, this::afterChannelFinished);
         
         IntStream.generate(() -> BUF_SIZE)
                 .limit(BUF_COUNT)
@@ -97,7 +94,7 @@ final class ChannelByteBufferPublisher implements Flow.Publisher<DefaultPooledBy
         }
     }
     
-    private void afterChannelFinished(AsynchronousSocketChannel ignored1, long ignored2, Throwable t) {
+    private void afterChannelFinished(ChannelOperations ignored1, long ignored2, Throwable t) {
         if (t != null) {
             subscriber.error(t);
             close();
@@ -118,11 +115,11 @@ final class ChannelByteBufferPublisher implements Flow.Publisher<DefaultPooledBy
     
     private void subscriberAnnounce() {
         try {
-            subscriber.announce(t -> {
-                if (child.isOpen()) {
-                    LOG.log(ERROR, () -> SIGNAL_FAILURE + CLOSE_MSG, t);
-                    server.orderlyShutdown(child);
-                } // else assume whoever closed the channel also logged the exception
+            subscriber.announce(exc -> {
+                if (child.isOpenForReading()) {
+                    LOG.log(ERROR, () -> SIGNAL_FAILURE + CLOSE_MSG, exc);
+                    child.orderlyShutdownInput();
+                } // else assume whoever closed the stream also logged the exception
             });
         } catch (Throwable t) {
             close();
@@ -138,7 +135,7 @@ final class ChannelByteBufferPublisher implements Flow.Publisher<DefaultPooledBy
     public void close() {
         subscriber.stop();
         channel.stop();
-        server.orderlyShutdown(child);
+        child.orderlyShutdownInput();
         readable.clear();
     }
 }
