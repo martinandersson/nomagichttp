@@ -45,7 +45,7 @@ class DetailedEndToEndTest extends AbstractEndToEndTest
     }
     
     @Test
-    void empty_request_body() throws IOException, InterruptedException {
+    void empty_request_body() throws IOException {
         String res = client().writeRead(requestWithBody(IS_BODY_EMPTY, ""), "true");
         
         assertThat(res).isEqualTo(
@@ -57,7 +57,7 @@ class DetailedEndToEndTest extends AbstractEndToEndTest
     }
     
     @Test
-    void connection_reuse() throws IOException, InterruptedException {
+    void connection_reuse() throws IOException {
         final String resHead =
             "HTTP/1.1 200 OK" + CRLF +
             "Content-Type: text/plain; charset=utf-8" + CRLF +
@@ -73,7 +73,7 @@ class DetailedEndToEndTest extends AbstractEndToEndTest
     }
     
     @Test
-    void request_body_discard_all() throws IOException, InterruptedException {
+    void request_body_discard_all() throws IOException {
         try (Channel ch = client().openConnection()) {
             String req = requestWithBody(IS_BODY_EMPTY, "x".repeat(10)),
                    res = client().writeRead(req, "false");
@@ -92,7 +92,7 @@ class DetailedEndToEndTest extends AbstractEndToEndTest
     }
     
     @Test
-    void request_body_discard_half() throws IOException, InterruptedException {
+    void request_body_discard_half() throws IOException {
         // Previous test was pretty small, so why not roll with a large body
         final int length = 100_000,
                   midway = length / 2;

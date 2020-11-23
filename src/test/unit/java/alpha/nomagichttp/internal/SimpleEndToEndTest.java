@@ -29,7 +29,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 class SimpleEndToEndTest extends AbstractEndToEndTest
 {
     @Test
-    void helloworld_console() throws IOException, InterruptedException {
+    void helloworld_console() throws IOException {
         Handler handler = GET().run(() ->
                 System.out.println("Hello, World!"));
         
@@ -44,7 +44,7 @@ class SimpleEndToEndTest extends AbstractEndToEndTest
     }
     
     @Test
-    void helloworld_response() throws IOException, InterruptedException {
+    void helloworld_response() throws IOException {
         Handler handler = GET().supply(() ->
                 ok("Hello World!").asCompletedStage());
         
@@ -65,7 +65,7 @@ class SimpleEndToEndTest extends AbstractEndToEndTest
     }
     
     @Test
-    void greet_pathparam() throws IOException, InterruptedException {
+    void greet_pathparam() throws IOException {
         Handler echo = GET().apply(request -> {
             String name = request.paramFromPath("name").get();
             String text = "Hello " + name + "!";
@@ -95,7 +95,7 @@ class SimpleEndToEndTest extends AbstractEndToEndTest
     // TODO: greet_queryparameter() (but this needs to be implemented first lol)
     
     @Test
-    void greet_requestbody() throws IOException, InterruptedException {
+    void greet_requestbody() throws IOException {
         Handler echo = POST().apply(req ->
                 req.body().get().toText().thenApply(name -> ok("Hello " + name + "!")));
         
@@ -119,7 +119,7 @@ class SimpleEndToEndTest extends AbstractEndToEndTest
     }
     
     @Test
-    void echo_headers() throws IOException, InterruptedException {
+    void echo_headers() throws IOException {
         Handler echo = GET().apply(req -> {
             ResponseBuilder b = ResponseBuilder.ok();
             req.headers().map().forEach(b::header);
@@ -143,7 +143,7 @@ class SimpleEndToEndTest extends AbstractEndToEndTest
     }
     
     @Test
-    void post_small_file() throws IOException, InterruptedException {
+    void post_small_file() throws IOException {
         // 1. Save to new file
         // ---
         Path file = Files.createTempDirectory("nomagic")
