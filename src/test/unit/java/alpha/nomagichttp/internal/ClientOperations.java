@@ -8,6 +8,7 @@ import java.net.InetSocketAddress;
 import java.net.http.HttpClient;
 import java.nio.ByteBuffer;
 import java.nio.channels.Channel;
+import java.nio.channels.ClosedByInterruptException;
 import java.nio.channels.SocketChannel;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -124,7 +125,7 @@ final class ClientOperations
      * 
      * @param text to write
      */
-    void write(String text) throws IOException, InterruptedException {
+    void write(String text) throws IOException {
         writeRead(text, "");
     }
     
@@ -135,7 +136,7 @@ final class ClientOperations
      * Useful when <i>not</i> expecting a response body, in which case the
      * response should end after the headers with two newlines.
      */
-    String writeRead(String request) throws IOException, InterruptedException {
+    String writeRead(String request) throws IOException {
         return writeRead(request, CRLF + CRLF);
     }
     
@@ -147,7 +148,7 @@ final class ClientOperations
      * 
      * Please note that UTF-8 is backwards compatible with ASCII.
      */
-    String writeRead(String request, String responseEnd) throws IOException, InterruptedException {
+    String writeRead(String request, String responseEnd) throws IOException {
         byte[] bytes = writeRead(
                 request.getBytes(US_ASCII),
                 responseEnd.getBytes(US_ASCII));
@@ -170,10 +171,10 @@ final class ClientOperations
      * 
      * @return the response
      * 
-     * @throws IOException for some reason
-     * @throws InterruptedException for some reason
+     * @throws ClosedByInterruptException if operation takes longer than 3 seconds
+     * @throws IOException for other weird reasons lol
      */
-    byte[] writeRead(byte[] request, byte[] responseEnd) throws IOException, InterruptedException {
+    byte[] writeRead(byte[] request, byte[] responseEnd) throws IOException {
         final Thread worker = Thread.currentThread();
         final AtomicBoolean communicating = new AtomicBoolean(true);
         
