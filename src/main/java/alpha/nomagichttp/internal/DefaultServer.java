@@ -206,7 +206,7 @@ public final class DefaultServer implements Server
         @Override
         public void failed(Throwable t, Void noAttachment) {
             if (t instanceof ClosedChannelException) { // note: AsynchronousCloseException extends ClosedChannelException
-                LOG.log(DEBUG, "Channel closed. Will accept no more.");
+                LOG.log(DEBUG, "Listening channel aka parent closed. Will accept no more.");
             }
             else if (t instanceof ShutdownChannelGroupException) {
                 LOG.log(DEBUG, "Group already closed when initiating a new accept. Will accept no more.");
