@@ -34,7 +34,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  */
-class ExceptionHandlingTest
+class ErrorHandlingTest
 {
     private static final String
             REQ_ROOT      = "GET / HTTP/1.1"    + CRLF + CRLF + CRLF,
@@ -44,7 +44,7 @@ class ExceptionHandlingTest
     
     @BeforeAll
     static void setLogging() {
-        Logging.setLevel(ExceptionHandlingTest.class, ALL);
+        Logging.setLevel(ErrorHandlingTest.class, ALL);
     }
     
     @AfterEach
