@@ -1,6 +1,7 @@
 package alpha.nomagichttp.route;
 
-import alpha.nomagichttp.handler.Handler;
+import alpha.nomagichttp.handler.DefaultRequestHandler;
+import alpha.nomagichttp.handler.RequestHandler;
 import alpha.nomagichttp.handler.HandlerBuilder;
 import alpha.nomagichttp.message.MediaType;
 import org.junit.jupiter.api.Test;
@@ -28,7 +29,8 @@ class RouteBuilderInvalidHandlerTest
         
         assertThatThrownBy(() -> testee.handler(noop()))
                 .isExactlyInstanceOf(HandlerCollisionException.class)
-                .hasMessage("An equivalent handler has already been added: DefaultHandler{method=\"GET\", consumes=\"<nothing and all>\", produces=\"*/*\"}");
+                .hasMessage("An equivalent handler has already been added: " +
+                        DefaultRequestHandler.class.getSimpleName() + "{method=\"GET\", consumes=\"<nothing and all>\", produces=\"*/*\"}");
     }
     
     @Test
@@ -41,7 +43,7 @@ class RouteBuilderInvalidHandlerTest
                 .hasMessage("All other meta data being equal; if there's a consumes <nothing> then <nothing and all> is effectively equal to */*.");
     }
     
-    private Handler create(MediaType consumes) {
+    private RequestHandler create(MediaType consumes) {
         return new HandlerBuilder("GET")
                 .consumes(consumes)
                 .producesAll()

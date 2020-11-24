@@ -18,7 +18,7 @@ import static alpha.nomagichttp.message.Responses.accepted;
 import static java.util.Objects.requireNonNull;
 
 /**
- * Builds the default implementation of {@link Handler}.<p>
+ * Builds the default implementation of {@link RequestHandler}.<p>
  * 
  * This class guides the user through a series of steps along the process of
  * building a handler.<p>
@@ -126,12 +126,12 @@ public final class HandlerBuilder
             super(prev);
         }
         
-        public Handler run(Runnable logic) {
+        public RequestHandler run(Runnable logic) {
             requireNonNull(logic);
             return accept(requestIgnored -> logic.run());
         }
         
-        public Handler accept(Consumer<Request> logic) {
+        public RequestHandler accept(Consumer<Request> logic) {
             requireNonNull(logic);
             return apply(req -> {
                 logic.accept(req);
@@ -139,13 +139,13 @@ public final class HandlerBuilder
             });
         }
         
-        public Handler supply(Supplier<CompletionStage<Response>> logic) {
+        public RequestHandler supply(Supplier<CompletionStage<Response>> logic) {
             requireNonNull(logic);
             return apply(requestIgnored -> logic.get());
         }
         
-        public Handler apply(Function<Request, CompletionStage<Response>> logic) {
-            return new DefaultHandler(
+        public RequestHandler apply(Function<Request, CompletionStage<Response>> logic) {
+            return new DefaultRequestHandler(
                     prev.prev.method,
                     prev.prev.consumes,
                     prev.produces,

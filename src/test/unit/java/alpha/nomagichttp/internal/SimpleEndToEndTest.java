@@ -1,6 +1,6 @@
 package alpha.nomagichttp.internal;
 
-import alpha.nomagichttp.handler.Handler;
+import alpha.nomagichttp.handler.RequestHandler;
 import alpha.nomagichttp.message.ResponseBuilder;
 import alpha.nomagichttp.message.Responses;
 import alpha.nomagichttp.route.Route;
@@ -30,7 +30,7 @@ class SimpleEndToEndTest extends AbstractEndToEndTest
 {
     @Test
     void helloworld_console() throws IOException {
-        Handler handler = GET().run(() ->
+        RequestHandler handler = GET().run(() ->
                 System.out.println("Hello, World!"));
         
         addHandler("/hello-console", handler);
@@ -45,7 +45,7 @@ class SimpleEndToEndTest extends AbstractEndToEndTest
     
     @Test
     void helloworld_response() throws IOException {
-        Handler handler = GET().supply(() ->
+        RequestHandler handler = GET().supply(() ->
                 ok("Hello World!").asCompletedStage());
         
         addHandler("/hello-response", handler);
@@ -66,7 +66,7 @@ class SimpleEndToEndTest extends AbstractEndToEndTest
     
     @Test
     void greet_pathparam() throws IOException {
-        Handler echo = GET().apply(request -> {
+        RequestHandler echo = GET().apply(request -> {
             String name = request.paramFromPath("name").get();
             String text = "Hello " + name + "!";
             return ok(text).asCompletedStage();
@@ -96,7 +96,7 @@ class SimpleEndToEndTest extends AbstractEndToEndTest
     
     @Test
     void greet_requestbody() throws IOException {
-        Handler echo = POST().apply(req ->
+        RequestHandler echo = POST().apply(req ->
                 req.body().get().toText().thenApply(name -> ok("Hello " + name + "!")));
         
         addHandler("/greet-body", echo);
@@ -120,7 +120,7 @@ class SimpleEndToEndTest extends AbstractEndToEndTest
     
     @Test
     void echo_headers() throws IOException {
-        Handler echo = GET().apply(req -> {
+        RequestHandler echo = GET().apply(req -> {
             ResponseBuilder b = ResponseBuilder.ok();
             req.headers().map().forEach(b::header);
             return b.noBody().asCompletedStage();
@@ -149,7 +149,7 @@ class SimpleEndToEndTest extends AbstractEndToEndTest
         Path file = Files.createTempDirectory("nomagic")
                 .resolve("some-file.txt");
         
-        Handler saver = POST().apply(req ->
+        RequestHandler saver = POST().apply(req ->
                 req.body().get().toFile(file)
                           .thenApply(n -> Long.toString(n))
                           .thenApply(Responses::ok));

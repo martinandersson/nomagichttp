@@ -1,7 +1,7 @@
 package alpha.nomagichttp.internal;
 
 import alpha.nomagichttp.Server;
-import alpha.nomagichttp.handler.Handler;
+import alpha.nomagichttp.handler.RequestHandler;
 import alpha.nomagichttp.test.Logging;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
@@ -52,7 +52,7 @@ abstract class AbstractEndToEndTest
         return client;
     }
     
-    public static void addHandler(String route, Handler handler) {
+    public static void addHandler(String route, RequestHandler handler) {
         server().getRouteRegistry().add(route(route, handler));
     }
 }

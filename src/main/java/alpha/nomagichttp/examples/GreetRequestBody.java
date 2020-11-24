@@ -1,7 +1,7 @@
 package alpha.nomagichttp.examples;
 
 import alpha.nomagichttp.Server;
-import alpha.nomagichttp.handler.Handler;
+import alpha.nomagichttp.handler.RequestHandler;
 
 import java.io.IOException;
 
@@ -28,7 +28,7 @@ public class GreetRequestBody
          * a CompletionStage<String>, mapped by this handler into a greeting.
          */
         
-        Handler h = POST().apply(req ->
+        RequestHandler h = POST().apply(req ->
                 req.body().get().toText().thenApply(name ->
                         ok("Hello, " + name + "!")));
         

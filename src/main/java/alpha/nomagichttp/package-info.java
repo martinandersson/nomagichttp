@@ -15,8 +15,8 @@
  * 
  * A central component is a {@link alpha.nomagichttp.route.Route Route} (the
  * "resource" or "request-target"), to which at least one request {@link
- * alpha.nomagichttp.handler.Handler Handler} must be added. The handler is
- * responsible for processing a {@link alpha.nomagichttp.message.Request
+ * alpha.nomagichttp.handler.RequestHandler Handler} must be added. The handler
+ * is responsible for processing a {@link alpha.nomagichttp.message.Request
  * Request} into a {@link alpha.nomagichttp.message.Response Response}<p>
  * 
  * Once the route has been setup it can be added to a {@link
@@ -42,7 +42,7 @@
  * This library provides <i>default</i> implementations, often built through a
  * <i>builder</i>. For example {@link alpha.nomagichttp.route.DefaultRoute
  * DefaultRoute}, built by {@link alpha.nomagichttp.route.RouteBuilder
- * RouteBuilder}. {@link alpha.nomagichttp.handler.DefaultHandler
+ * RouteBuilder}. {@link alpha.nomagichttp.handler.DefaultRequestHandler
  * DefaultHandler} built by {@link alpha.nomagichttp.handler.HandlerBuilder
  * HandlerBuilder}, and so forth.<p>
  * 

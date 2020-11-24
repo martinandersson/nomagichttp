@@ -1,6 +1,6 @@
 package alpha.nomagichttp;
 
-import alpha.nomagichttp.handler.Handler;
+import alpha.nomagichttp.handler.RequestHandler;
 import alpha.nomagichttp.internal.DefaultServer;
 import alpha.nomagichttp.message.Request;
 import alpha.nomagichttp.message.Response;
@@ -19,8 +19,9 @@ import static java.util.Collections.singleton;
 
 /**
  * A server receives HTTP {@link Request requests}, routes these to a {@link
- * Route route} and then calls a qualified {@link Handler handler} of that route
- * to process the request into a {@link Response response}.<p>
+ * Route route} and then calls a qualified {@link RequestHandler request
+ * handler} of that route to process the request into a {@link Response
+ * response}.<p>
  * 
  * Even though a server without any routes is a legal variant, at least one must
  * be added to its {@link #getRouteRegistry() route registry} in order for the

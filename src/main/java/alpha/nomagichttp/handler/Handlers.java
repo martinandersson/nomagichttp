@@ -16,7 +16,7 @@ import alpha.nomagichttp.message.MediaType;
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  * 
- * @see Handler
+ * @see RequestHandler
  */
 public final class Handlers
 {
@@ -73,9 +73,9 @@ public final class Handlers
         return new HandlerBuilder(method).consumesNothingAndAll().producesAll();
     }
     
-    public static Handler noop() {
+    public static RequestHandler noop() {
         return NOOP;
     }
     
-    private static final Handler NOOP = GET().run(() -> {});
+    private static final RequestHandler NOOP = GET().run(() -> {});
 }

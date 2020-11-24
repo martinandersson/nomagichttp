@@ -1,7 +1,7 @@
 package alpha.nomagichttp.largetest;
 
 import alpha.nomagichttp.Server;
-import alpha.nomagichttp.handler.Handler;
+import alpha.nomagichttp.handler.RequestHandler;
 import alpha.nomagichttp.handler.Handlers;
 import org.junit.jupiter.api.BeforeAll;
 
@@ -40,7 +40,7 @@ abstract class AbstractSingleClientTest
         CLIENT = HttpClient.newHttpClient();
     }
     
-    protected static void addHandler(String route, Handler handler) {
+    protected static void addHandler(String route, RequestHandler handler) {
         SERVER.getRouteRegistry().add(route(route, handler));
     }
     

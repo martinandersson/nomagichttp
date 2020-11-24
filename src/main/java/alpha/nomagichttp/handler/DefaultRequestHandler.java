@@ -15,11 +15,11 @@ import static java.text.MessageFormat.format;
 import static java.util.Objects.requireNonNull;
 
 /**
- * Default implementation of {@link Handler}.
+ * Default implementation of {@link RequestHandler}.
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  */
-public final class DefaultHandler implements Handler
+public final class DefaultRequestHandler implements RequestHandler
 {
     private final String method;
     private final MediaType consumes;
@@ -27,7 +27,7 @@ public final class DefaultHandler implements Handler
     private final Function<Request, CompletionStage<Response>> logic;
     private final int hash;
     
-    DefaultHandler(
+    DefaultRequestHandler(
             String method,
             MediaType consumes,
             MediaType produces,
@@ -75,11 +75,11 @@ public final class DefaultHandler implements Handler
             return false;
         }
         
-        if (DefaultHandler.class != obj.getClass()) {
+        if (DefaultRequestHandler.class != obj.getClass()) {
             return false;
         }
         
-        DefaultHandler other = (DefaultHandler) obj;
+        DefaultRequestHandler other = (DefaultRequestHandler) obj;
         
         return this.method.equals(other.method) &&
                this.consumes.equals(other.consumes) &&
@@ -93,7 +93,7 @@ public final class DefaultHandler implements Handler
                 .add("consumes=\"" + consumes + "\"")
                 .add("produces=\"" + produces + "\"");
         
-        return DefaultHandler.class.getSimpleName() + '{' + contents + '}';
+        return DefaultRequestHandler.class.getSimpleName() + '{' + contents + '}';
     }
     
     private static MediaType validateConsumes(MediaType consumes) {

@@ -1,6 +1,6 @@
 package alpha.nomagichttp.route;
 
-import alpha.nomagichttp.handler.Handler;
+import alpha.nomagichttp.handler.RequestHandler;
 
 import java.util.Set;
 
@@ -9,14 +9,14 @@ import static java.util.Objects.requireNonNull;
 
 // TODO: Document
 public final class AmbiguousNoHandlerFoundException extends RuntimeException {
-    private final Set<Handler> ambiguous;
+    private final Set<RequestHandler> ambiguous;
     
-    AmbiguousNoHandlerFoundException(Set<Handler> ambiguous, String message) {
+    AmbiguousNoHandlerFoundException(Set<RequestHandler> ambiguous, String message) {
         super(message);
         this.ambiguous = unmodifiableSet(requireNonNull(ambiguous));
     }
     
-    public Set<Handler> ambiguous() {
+    public Set<RequestHandler> ambiguous() {
         return ambiguous;
     }
 }

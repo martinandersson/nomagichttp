@@ -1,6 +1,6 @@
 package alpha.nomagichttp.route;
 
-import alpha.nomagichttp.handler.Handler;
+import alpha.nomagichttp.handler.RequestHandler;
 import alpha.nomagichttp.message.MediaType;
 import alpha.nomagichttp.message.Request;
 
@@ -98,7 +98,7 @@ public class RouteBuilder
     private final List<SegmentBuilder> segments;
     // Memorize what param names we have already used
     private final Set<String> params;
-    private final Set<Handler> handlers;
+    private final Set<RequestHandler> handlers;
     
     /**
      * Constructs a {@code RouteBuilder} initialized with a segment.
@@ -165,12 +165,12 @@ public class RouteBuilder
     private static final Set<MediaType> SPECIAL = Set.of(NOTHING, NOTHING_AND_ALL, ALL);
     
     // TODO: Docs
-    public RouteBuilder handler(Handler first, Handler... more) {
+    public RouteBuilder handler(RequestHandler first, RequestHandler... more) {
         if (SPECIAL.contains(first.consumes())) {
             Set<MediaType> specials = handlers.stream()
                     .filter(h -> h.method().equals(first.method()))
                     .filter(h -> h.produces().equals(first.produces()))
-                    .map(Handler::consumes)
+                    .map(RequestHandler::consumes)
                     .filter(SPECIAL::contains)
                     .collect(toCollection(HashSet::new));
             

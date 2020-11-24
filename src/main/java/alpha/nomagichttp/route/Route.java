@@ -1,7 +1,7 @@
 package alpha.nomagichttp.route;
 
 import alpha.nomagichttp.Server;
-import alpha.nomagichttp.handler.Handler;
+import alpha.nomagichttp.handler.RequestHandler;
 import alpha.nomagichttp.message.MediaType;
 
 import java.util.Map;
@@ -27,7 +27,7 @@ import java.util.Map;
  * registered route for the server. Which one of the route's possibly many
  * handlers to handle the request is determined based on the method token - in
  * this example "GET" - and if present, the "Accept" and "Content-Type" headers.
- * Read more on this in the javadoc of {@linkplain Handler}<p>
+ * Read more on this in the javadoc of {@linkplain RequestHandler}<p>
  * 
  * Routes are added to a {@link RouteRegistry registry} which is added to the
  * {@link Server server}.<p>
@@ -73,7 +73,7 @@ public interface Route
      * @return a match if this route matches the specified {@code requestTarget},
      *         otherwise {@code null}
      * 
-     * @see Handler
+     * @see RequestHandler
      */
     Match matches(String requestTarget);
     
@@ -89,7 +89,7 @@ public interface Route
      * @throws NullPointerException     if {@code method} is {@code null}
      * @throws NoHandlerFoundException  if no handler was found
      */
-    Handler lookup(String method, MediaType contentType, MediaType[] accepts) throws NoHandlerFoundException;
+    RequestHandler lookup(String method, MediaType contentType, MediaType[] accepts) throws NoHandlerFoundException;
     
     /**
      * Returns the route identity.

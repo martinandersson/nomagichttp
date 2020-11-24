@@ -1,7 +1,7 @@
 package alpha.nomagichttp.examples;
 
 import alpha.nomagichttp.Server;
-import alpha.nomagichttp.handler.Handler;
+import alpha.nomagichttp.handler.RequestHandler;
 import alpha.nomagichttp.handler.Handlers;
 import alpha.nomagichttp.route.Route;
 import alpha.nomagichttp.route.Routes;
@@ -23,7 +23,7 @@ public class HelloWorldConsole {
         
         // This handler reacts to requests using the HTTP verb/method "GET".
         // The handler will execute a command and return "202 Accepted".
-        Handler h = Handlers.GET().run(() ->
+        RequestHandler h = Handlers.GET().run(() ->
                 System.out.println("Hello, World!"));
         
         // We bind the handler to the server root "/".

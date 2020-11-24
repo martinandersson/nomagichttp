@@ -1,6 +1,6 @@
 package alpha.nomagichttp.route;
 
-import alpha.nomagichttp.handler.Handler;
+import alpha.nomagichttp.handler.RequestHandler;
 
 /**
  * Utility method to construct the default implementation of {@link Route}.
@@ -27,7 +27,7 @@ public final class Routes
      * 
      * @return a route
      */
-    public static Route route(String path, Handler first, Handler... more) {
+    public static Route route(String path, RequestHandler first, RequestHandler... more) {
         return new RouteBuilder(path).handler(first, more).build();
     }
 }

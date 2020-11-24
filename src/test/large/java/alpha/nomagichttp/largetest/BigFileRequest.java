@@ -1,6 +1,6 @@
 package alpha.nomagichttp.largetest;
 
-import alpha.nomagichttp.handler.Handler;
+import alpha.nomagichttp.handler.RequestHandler;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
@@ -27,7 +27,7 @@ class BigFileRequest extends AbstractSingleClientTest
         FILE = Files.createTempDirectory("nomagic")
                 .resolve("50MB.bin");
         
-        Handler saver = POST().apply(req -> req.body().get().toFile(FILE)
+        RequestHandler saver = POST().apply(req -> req.body().get().toFile(FILE)
                 .thenApply(n -> ok().header("Received", Long.toString(n)).noBody()));
         
         addHandler("/file", saver);

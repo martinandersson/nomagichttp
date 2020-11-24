@@ -1,6 +1,6 @@
 package alpha.nomagichttp;
 
-import alpha.nomagichttp.handler.Handler;
+import alpha.nomagichttp.handler.RequestHandler;
 import alpha.nomagichttp.message.BadHeaderException;
 import alpha.nomagichttp.message.BadMediaTypeSyntaxException;
 import alpha.nomagichttp.message.MaxRequestHeadSizeExceededException;
@@ -156,7 +156,7 @@ public interface ExceptionHandler
      * 
      * @see ExceptionHandler
      */
-    CompletionStage<Response> apply(Throwable t, Request r, Handler h) throws Throwable;
+    CompletionStage<Response> apply(Throwable t, Request r, RequestHandler h) throws Throwable;
     
     /**
      * Is the default exception handler used by the server if no other exception

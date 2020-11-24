@@ -1,7 +1,7 @@
 package alpha.nomagichttp.examples;
 
 import alpha.nomagichttp.Server;
-import alpha.nomagichttp.handler.Handler;
+import alpha.nomagichttp.handler.RequestHandler;
 import alpha.nomagichttp.handler.Handlers;
 import alpha.nomagichttp.message.Responses;
 import alpha.nomagichttp.route.RouteBuilder;
@@ -25,7 +25,7 @@ public class GreetPathParam
         // Optional<String>. Which means that our route matches a request
         // targeting "/hello/John" as well as a request targeting "/hello".
         
-        Handler h = Handlers.GET().apply(request -> {
+        RequestHandler h = Handlers.GET().apply(request -> {
             String name = request.paramFromPath("name").get(),
                    text = "Hello, " + name + "!";
             

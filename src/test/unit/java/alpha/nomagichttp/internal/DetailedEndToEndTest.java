@@ -1,6 +1,6 @@
 package alpha.nomagichttp.internal;
 
-import alpha.nomagichttp.handler.Handler;
+import alpha.nomagichttp.handler.RequestHandler;
 import alpha.nomagichttp.handler.Handlers;
 import alpha.nomagichttp.message.PooledByteBufferHolder;
 import alpha.nomagichttp.message.Request;
@@ -97,7 +97,7 @@ class DetailedEndToEndTest extends AbstractEndToEndTest
         final int length = 100_000,
                   midway = length / 2;
         
-        Handler discardMidway = Handlers.POST().accept((req) ->
+        RequestHandler discardMidway = Handlers.POST().accept((req) ->
             req.body().get().subscribe(
                 new AfterByteTargetStop(midway, Flow.Subscription::cancel)));
         
@@ -117,7 +117,7 @@ class DetailedEndToEndTest extends AbstractEndToEndTest
     
     @Test
     void request_body_subscriber_crash() throws IOException {
-        Handler crashAfterOneByte = Handlers.POST().accept((req) ->
+        RequestHandler crashAfterOneByte = Handlers.POST().accept((req) ->
             req.body().get().subscribe(
                 new AfterByteTargetStop(1, subscriptionIgnored -> {
                     throw new RuntimeException("Oops."); })));

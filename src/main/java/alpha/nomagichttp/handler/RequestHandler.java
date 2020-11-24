@@ -206,7 +206,7 @@ import java.util.function.Function;
  * 
  * There is no library-provided scope mechanism. Normal rules concerning
  * reachability of Java references applies. Effectively, this means that
- * {@link DefaultHandler} can be regarded as "singleton" or
+ * {@link DefaultRequestHandler} can be regarded as "singleton" or
  * "application-scoped". A custom implementation can choose to create a new
  * logic instance for each request since the {@link #logic()} method is invoked
  * anew for each request.
@@ -226,8 +226,7 @@ import java.util.function.Function;
  * 
  * @see ExceptionHandler
  */
-// TODO: Rename to RequestHandler
-public interface Handler
+public interface RequestHandler
 {
     /**
      * Returns the method token of the request this handler handles.<p>
@@ -236,7 +235,7 @@ public interface Handler
      * 
      * @return the method token (never {@code null})
      * 
-     * @see Handler
+     * @see RequestHandler
      */
     String method();
     
@@ -248,7 +247,7 @@ public interface Handler
      * 
      * @return the media type (never {@code null})
      * 
-     * @see Handler
+     * @see RequestHandler
      */
     MediaType consumes();
     
@@ -260,7 +259,7 @@ public interface Handler
      * 
      * @return the media type his handler produces (never {@code null})
      * 
-     * @see Handler
+     * @see RequestHandler
      */
     MediaType produces();
     
@@ -272,7 +271,7 @@ public interface Handler
      * 
      * @return the processing logic (never {@code null})
      * 
-     * @see Handler
+     * @see RequestHandler
      */
     Function<Request, CompletionStage<Response>> logic();
     

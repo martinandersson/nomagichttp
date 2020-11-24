@@ -3,7 +3,7 @@ package alpha.nomagichttp.examples;
 import alpha.nomagichttp.ExceptionHandler;
 import alpha.nomagichttp.Server;
 import alpha.nomagichttp.ServerConfig;
-import alpha.nomagichttp.handler.Handler;
+import alpha.nomagichttp.handler.RequestHandler;
 import alpha.nomagichttp.message.Request;
 import alpha.nomagichttp.message.Response;
 import alpha.nomagichttp.route.Route;
@@ -36,7 +36,7 @@ public class RetryRequestOnError
     private static final int PORT = 8080;
     
     public static void main(String... ignored) throws IOException {
-        Handler h = GET().supply(new MyUnstableResponseSupplier());
+        RequestHandler h = GET().supply(new MyUnstableResponseSupplier());
         Route r = route("/", h);
         
         // The server accepts a factory/supplier of the exception handler because
@@ -78,7 +78,7 @@ public class RetryRequestOnError
         
         @Override
         public CompletionStage<Response> apply(
-                Throwable exc, Request req, Handler handler)
+                Throwable exc, Request req, RequestHandler handler)
                 throws Throwable
         {
             if (!(exc instanceof SuitableForRetryException)) {

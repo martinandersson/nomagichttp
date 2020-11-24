@@ -2,7 +2,7 @@ package alpha.nomagichttp.internal;
 
 import alpha.nomagichttp.ExceptionHandler;
 import alpha.nomagichttp.Server;
-import alpha.nomagichttp.handler.Handler;
+import alpha.nomagichttp.handler.RequestHandler;
 import alpha.nomagichttp.handler.Handlers;
 import alpha.nomagichttp.message.Response;
 import alpha.nomagichttp.message.ResponseBuilder;
@@ -100,7 +100,7 @@ class ExceptionHandlingTest
     {
         AtomicInteger c = new AtomicInteger();
         
-        Handler h1 = Handlers.GET().supply(() -> {
+        RequestHandler h1 = Handlers.GET().supply(() -> {
             if (c.incrementAndGet() < 3) {
                 return response.get();
             }
@@ -124,7 +124,7 @@ class ExceptionHandlingTest
         return createServerAndClient(noop(), onError);
     }
     
-    private ClientOperations createServerAndClient(Handler handler, ExceptionHandler... onError) throws IOException {
+    private ClientOperations createServerAndClient(RequestHandler handler, ExceptionHandler... onError) throws IOException {
         Iterable<Route> r = singleton(route("/", handler));
         
         Iterable<Supplier<ExceptionHandler>> eh = stream(onError)

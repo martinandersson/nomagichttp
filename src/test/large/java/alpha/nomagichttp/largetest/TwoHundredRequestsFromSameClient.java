@@ -1,6 +1,6 @@
 package alpha.nomagichttp.largetest;
 
-import alpha.nomagichttp.handler.Handler;
+import alpha.nomagichttp.handler.RequestHandler;
 import alpha.nomagichttp.handler.Handlers;
 import alpha.nomagichttp.message.Request.Body;
 import alpha.nomagichttp.message.Responses;
@@ -32,7 +32,7 @@ class TwoHundredRequestsFromSameClient extends AbstractSingleClientTest
     
     @BeforeAll
     static void addHandler() {
-        Handler echo = Handlers.POST().apply(req -> req.body()
+        RequestHandler echo = Handlers.POST().apply(req -> req.body()
                 .map(Body::toText).orElse(EMPTY)
                 .thenApply(Responses::ok));
         

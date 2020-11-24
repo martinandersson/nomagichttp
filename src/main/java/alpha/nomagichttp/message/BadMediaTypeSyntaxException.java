@@ -1,6 +1,6 @@
 package alpha.nomagichttp.message;
 
-import alpha.nomagichttp.handler.Handler;
+import alpha.nomagichttp.handler.RequestHandler;
 import alpha.nomagichttp.route.Route;
 
 import static java.text.MessageFormat.format;
@@ -19,8 +19,8 @@ import static java.text.MessageFormat.format;
  * Depending on the origin, a route-level exception handler may observe the
  * presence of different non-null argument values. If the error originates from
  * server code, the exception handler will only have access to the {@link Route}
- * and the {@link Request}, but not the {@link Handler}. If the error originates
- * from the application code post-handler invocation, then also the
+ * and the {@link Request}, but not the {@link RequestHandler}. If the error
+ * originates from the application code post-handler invocation, then also the
  * request-handler argument will be non-null.
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)

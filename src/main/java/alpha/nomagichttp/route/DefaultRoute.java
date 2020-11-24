@@ -1,6 +1,6 @@
 package alpha.nomagichttp.route;
 
-import alpha.nomagichttp.handler.Handler;
+import alpha.nomagichttp.handler.RequestHandler;
 import alpha.nomagichttp.message.MediaRange;
 import alpha.nomagichttp.message.MediaType;
 
@@ -43,17 +43,17 @@ public final class DefaultRoute implements Route
     private final List<Segment> segments;
     private final String identity;
     // TODO: Consider replacing value type with array[]
-    private final Map<String, List<Handler>> handlers;
+    private final Map<String, List<RequestHandler>> handlers;
     
     
-    DefaultRoute(List<SegmentBuilder> segments, Set<Handler> handlers) {
+    DefaultRoute(List<SegmentBuilder> segments, Set<RequestHandler> handlers) {
         if (handlers.isEmpty()) {
             throw new IllegalStateException("No handlers.");
         }
         
         this.segments = segments.stream().map(SegmentBuilder::build).collect(toList());
         this.identity = computeIdentity();
-        this.handlers = handlers.stream().collect(groupingBy(Handler::method));
+        this.handlers = handlers.stream().collect(groupingBy(RequestHandler::method));
     }
     
     private String computeIdentity() {
@@ -218,13 +218,13 @@ public final class DefaultRoute implements Route
     }
     
     @Override
-    public Handler lookup(String method, MediaType contentType, MediaType[] accepts) throws NoHandlerFoundException {
-        List<Handler> forMethod = filterByMethod(method, contentType, accepts);
+    public RequestHandler lookup(String method, MediaType contentType, MediaType[] accepts) throws NoHandlerFoundException {
+        List<RequestHandler> forMethod = filterByMethod(method, contentType, accepts);
         
         NavigableSet<RankedHandler> candidates = null;
         Set<RankedHandler> ambiguous = null;
         
-        for (Handler h : forMethod) {
+        for (RequestHandler h : forMethod) {
             if (!filterByContentType(h, contentType)) {
                 continue;
             }
@@ -257,7 +257,7 @@ public final class DefaultRoute implements Route
             candidates.removeAll(ambiguous);
             
             if (candidates.isEmpty()) {
-                Set<Handler> unwrapped = ambiguous.stream().map(RankedHandler::handler).collect(toSet());
+                Set<RequestHandler> unwrapped = ambiguous.stream().map(RankedHandler::handler).collect(toSet());
                 throw new AmbiguousNoHandlerFoundException(unwrapped, "Ambiguous: " + unwrapped);
             }
         }
@@ -269,8 +269,8 @@ public final class DefaultRoute implements Route
      * Returns all handlers of the specified method, or crashes with a
      * {@code NoHandlerFoundException}.
      */
-    private List<Handler> filterByMethod(String method, MediaType contentType, MediaType[] accepts) {
-        final List<Handler> forMethod = handlers.get(method);
+    private List<RequestHandler> filterByMethod(String method, MediaType contentType, MediaType[] accepts) {
+        final List<RequestHandler> forMethod = handlers.get(method);
         
         if (forMethod == null) {
             throw NoHandlerFoundException.unmatchedMethod(
@@ -285,7 +285,7 @@ public final class DefaultRoute implements Route
      * Returns {@code true} if the specified handler consumes the specified
      * content-type, otherwise {@code false}.
      */
-    private static boolean filterByContentType(Handler handler, MediaType contentType) {
+    private static boolean filterByContentType(RequestHandler handler, MediaType contentType) {
         final MediaType consumes = handler.consumes();
         
         if (consumes == NOTHING_AND_ALL) {
@@ -314,7 +314,7 @@ public final class DefaultRoute implements Route
      */
     // TODO: Should probably instead of using Q of the most specific type use
     //       the greatest Q of any compatible type discovered?
-    private static RankedHandler filterByAccept(Handler handler, MediaType[] accepts) {
+    private static RankedHandler filterByAccept(RequestHandler handler, MediaType[] accepts) {
         final MediaType produces = handler.produces();
         
         if (accepts == null || accepts.length == 0) {
@@ -429,13 +429,13 @@ public final class DefaultRoute implements Route
         
         private final double rank;
         
-        private final Handler handler;
+        private final RequestHandler handler;
         
         private final int specificityOfProduces,
                           specificityOfConsumes,
                           hash;
         
-        RankedHandler(double /* quality: */ rank, Handler handler) {
+        RankedHandler(double /* quality: */ rank, RequestHandler handler) {
             this.rank = rank;
             this.handler = handler;
             this.specificityOfProduces = handler.produces().specificity();
@@ -455,7 +455,7 @@ public final class DefaultRoute implements Route
             return specificityOfConsumes;
         }
         
-        public Handler handler() {
+        public RequestHandler handler() {
             return handler;
         }
         

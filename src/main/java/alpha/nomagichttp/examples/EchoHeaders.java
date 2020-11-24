@@ -1,7 +1,7 @@
 package alpha.nomagichttp.examples;
 
 import alpha.nomagichttp.Server;
-import alpha.nomagichttp.handler.Handler;
+import alpha.nomagichttp.handler.RequestHandler;
 import alpha.nomagichttp.message.Response;
 import alpha.nomagichttp.message.ResponseBuilder;
 
@@ -20,7 +20,7 @@ public class EchoHeaders
     private static final int PORT = 8080;
     
     public static void main(String... ignored) throws IOException {
-        Handler h = GET().apply(req -> {
+        RequestHandler h = GET().apply(req -> {
             // The response builder allows setting any arbitrary status-line.
             // The static method "ResponseBuilder.ok()" returns a builder with
             // the status-line already populated.

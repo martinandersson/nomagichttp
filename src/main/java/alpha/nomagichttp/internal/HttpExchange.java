@@ -1,7 +1,7 @@
 package alpha.nomagichttp.internal;
 
 import alpha.nomagichttp.ExceptionHandler;
-import alpha.nomagichttp.handler.Handler;
+import alpha.nomagichttp.handler.RequestHandler;
 import alpha.nomagichttp.message.Response;
 import alpha.nomagichttp.message.Responses;
 import alpha.nomagichttp.route.Route;
@@ -44,7 +44,7 @@ final class HttpExchange
      */
     
     private DefaultRequest request;
-    private Handler handler;
+    private RequestHandler handler;
     private ExceptionHandlers eh;
     
     HttpExchange(DefaultServer server, ChannelOperations child) {
@@ -81,7 +81,7 @@ final class HttpExchange
         Route.Match route = findRoute(head);
         // This order is actually specified in javadoc of ExceptionHandler#apply
         request = createRequest(head, route);
-        handler = findHandler(head, route);
+        handler = findRequestHandler(head, route);
     }
     
     private Route.Match findRoute(RequestHead rh) {
@@ -92,8 +92,8 @@ final class HttpExchange
         return new DefaultRequest(rh, rm.parameters(), bytes, child);
     }
     
-    private static Handler findHandler(RequestHead rh, Route.Match rm) {
-        Handler h = rm.route().lookup(
+    private static RequestHandler findRequestHandler(RequestHead rh, Route.Match rm) {
+        RequestHandler h = rm.route().lookup(
                 rh.method(),
                 contentType(rh.headers()).orElse(null),
                 accepts(rh.headers()));
