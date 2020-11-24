@@ -45,7 +45,7 @@ final class HttpExchange
     
     private DefaultRequest request;
     private RequestHandler handler;
-    private ExceptionHandlers eh;
+    private ErrorHandlers eh;
     
     HttpExchange(DefaultServer server, ChannelOperations child) {
         this(server, child, new ChannelByteBufferPublisher(child));
@@ -156,7 +156,7 @@ final class HttpExchange
             });
         } else if (child.isOpenForWriting())  {
             if (eh == null) {
-                eh = new ExceptionHandlers();
+                eh = new ErrorHandlers();
             }
             eh.resolve(exc)
               .thenCompose(this::writeResponseToChannel)
@@ -169,13 +169,13 @@ final class HttpExchange
         }
     }
     
-    private class ExceptionHandlers {
+    private class ErrorHandlers {
         private final List<Supplier<ErrorHandler>> factories;
         private List<ErrorHandler> constructed;
         private Throwable prev;
         private int attemptCount;
         
-        ExceptionHandlers() {
+        ErrorHandlers() {
             this.factories = server.getErrorHandlers();
             this.constructed = null;
             this.attemptCount = 0;
