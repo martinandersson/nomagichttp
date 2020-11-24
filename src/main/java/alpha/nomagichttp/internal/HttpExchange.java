@@ -1,6 +1,6 @@
 package alpha.nomagichttp.internal;
 
-import alpha.nomagichttp.ExceptionHandler;
+import alpha.nomagichttp.ErrorHandler;
 import alpha.nomagichttp.handler.RequestHandler;
 import alpha.nomagichttp.message.Response;
 import alpha.nomagichttp.message.Responses;
@@ -79,7 +79,7 @@ final class HttpExchange
     
     private void initialize(RequestHead head) {
         Route.Match route = findRoute(head);
-        // This order is actually specified in javadoc of ExceptionHandler#apply
+        // This order is actually specified in javadoc of ErrorHandler#apply
         request = createRequest(head, route);
         handler = findRequestHandler(head, route);
     }
@@ -170,8 +170,8 @@ final class HttpExchange
     }
     
     private class ExceptionHandlers {
-        private final List<Supplier<ExceptionHandler>> factories;
-        private List<ExceptionHandler> constructed;
+        private final List<Supplier<ErrorHandler>> factories;
+        private List<ErrorHandler> constructed;
         private Throwable prev;
         private int attemptCount;
         
@@ -205,17 +205,17 @@ final class HttpExchange
         
         private CompletionStage<Response> usingDefault(Throwable t) {
             try {
-                return ExceptionHandler.DEFAULT.apply(t, request, handler);
+                return ErrorHandler.DEFAULT.apply(t, request, handler);
             } catch (Throwable next) {
                 // Do not next.addSuppressed(unpacked); the first thing DEFAULT did was to log unpacked.
-                LOG.log(ERROR, "Default exception handler failed.", next);
+                LOG.log(ERROR, "Default error handler failed.", next);
                 return Responses.internalServerError().asCompletedStage();
             }
         }
         
         private CompletionStage<Response> usingHandlers(Throwable t) {
             for (int i = 0; i < factories.size(); ++i) {
-                final ExceptionHandler h = cacheOrNew(i);
+                final ErrorHandler h = cacheOrNew(i);
                 try {
                     return requireNonNull(h.apply(t, request, handler));
                 } catch (Throwable next) {
@@ -230,8 +230,8 @@ final class HttpExchange
             return usingDefault(t);
         }
         
-        private ExceptionHandler cacheOrNew(int handlerIndex) {
-            final ExceptionHandler h;
+        private ErrorHandler cacheOrNew(int handlerIndex) {
+            final ErrorHandler h;
             
             if (constructed == null) {
                 constructed = new ArrayList<>();

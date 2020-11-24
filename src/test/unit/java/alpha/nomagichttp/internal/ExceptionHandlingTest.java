@@ -1,6 +1,6 @@
 package alpha.nomagichttp.internal;
 
-import alpha.nomagichttp.ExceptionHandler;
+import alpha.nomagichttp.ErrorHandler;
 import alpha.nomagichttp.Server;
 import alpha.nomagichttp.handler.RequestHandler;
 import alpha.nomagichttp.handler.Handlers;
@@ -30,7 +30,7 @@ import static java.util.stream.Collectors.toList;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * End-to-end tests of a server with exception handlers.
+ * End-to-end tests of a server with error handlers.
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  */
@@ -64,7 +64,7 @@ class ExceptionHandlingTest
     
     @Test
     void not_found_custom() throws IOException, InterruptedException {
-        ExceptionHandler custom = (exc, req, han) -> {
+        ErrorHandler custom = (exc, req, han) -> {
             if (exc instanceof NoRouteFoundException) {
                 return new ResponseBuilder()
                         .httpVersion("HTTP/1.1")
@@ -111,7 +111,7 @@ class ExceptionHandlingTest
                     .asCompletedStage();
         });
         
-        ExceptionHandler retry = (t, r, h2) -> h2.logic().apply(r);
+        ErrorHandler retry = (t, r, h2) -> h2.logic().apply(r);
         
         String res = createServerAndClient(h1, retry).writeRead(REQ_ROOT);
         assertThat(res).isEqualTo(
@@ -120,15 +120,15 @@ class ExceptionHandlingTest
             "Content-Length: 0" + CRLF + CRLF);
     }
     
-    private ClientOperations createServerAndClient(ExceptionHandler... onError) throws IOException {
+    private ClientOperations createServerAndClient(ErrorHandler... onError) throws IOException {
         return createServerAndClient(noop(), onError);
     }
     
-    private ClientOperations createServerAndClient(RequestHandler handler, ExceptionHandler... onError) throws IOException {
+    private ClientOperations createServerAndClient(RequestHandler handler, ErrorHandler... onError) throws IOException {
         Iterable<Route> r = singleton(route("/", handler));
         
-        Iterable<Supplier<ExceptionHandler>> eh = stream(onError)
-                .map(e -> (Supplier<ExceptionHandler>) () -> e)
+        Iterable<Supplier<ErrorHandler>> eh = stream(onError)
+                .map(e -> (Supplier<ErrorHandler>) () -> e)
                 .collect(toList());
     
         server = Server.with(DEFAULT, r, eh).start();

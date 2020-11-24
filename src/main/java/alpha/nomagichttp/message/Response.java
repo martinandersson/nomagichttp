@@ -1,6 +1,6 @@
 package alpha.nomagichttp.message;
 
-import alpha.nomagichttp.ExceptionHandler;
+import alpha.nomagichttp.ErrorHandler;
 
 import java.nio.ByteBuffer;
 import java.util.concurrent.CompletableFuture;
@@ -24,7 +24,7 @@ import java.util.concurrent.Flow;
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  * 
- * @see ExceptionHandler
+ * @see ErrorHandler
  */
 // TODO: Require immutable; a response-object should be able to be re-used.
 public interface Response

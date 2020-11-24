@@ -1,6 +1,6 @@
 package alpha.nomagichttp.message;
 
-import alpha.nomagichttp.ExceptionHandler;
+import alpha.nomagichttp.ErrorHandler;
 import alpha.nomagichttp.Server;
 
 import java.net.http.HttpHeaders;
@@ -184,8 +184,8 @@ public interface Request
      * 
      * Some utility methods such as {@code toText()} does save the result and
      * will return the same stage on future invocations. This may for example
-     * by useful to an {@link ExceptionHandler exception handler} also
-     * interested in accessing the result.<p>
+     * by useful to an {@link ErrorHandler error handler} also interested in
+     * accessing the result.<p>
      * 
      * The normal way to reject an operation is to fail-fast and blow up the
      * calling thread. This is also the practice even for rejected asynchronous
@@ -333,7 +333,7 @@ public interface Request
      * Exceptions thrown by the {@code Flow.Subscriber.onSubscribe()} method
      * propagates to the calling thread, i.e., the one calling {@code
      * Request.Body.subscribe()}. If this thread is the request thread, then
-     * standard {@link ExceptionHandler exception handling} is kicked off.<p>
+     * standard {@link ErrorHandler error handling} is kicked off.<p>
      * 
      * Exceptions thrown by the subscriber's {@code onNext()} and {@code
      * onComplete()} methods will be logged by the server if the channel's read

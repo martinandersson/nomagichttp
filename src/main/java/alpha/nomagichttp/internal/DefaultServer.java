@@ -1,6 +1,6 @@
 package alpha.nomagichttp.internal;
 
-import alpha.nomagichttp.ExceptionHandler;
+import alpha.nomagichttp.ErrorHandler;
 import alpha.nomagichttp.Server;
 import alpha.nomagichttp.ServerConfig;
 import alpha.nomagichttp.route.RouteRegistry;
@@ -72,21 +72,21 @@ public final class DefaultServer implements Server
     
     private final RouteRegistry routes;
     private final ServerConfig config;
-    private final List<Supplier<ExceptionHandler>> onError;
+    private final List<Supplier<ErrorHandler>> onError;
     private AsynchronousServerSocketChannel listener;
     private int port;
     
-    public <S extends Supplier<? extends ExceptionHandler>> DefaultServer(
+    public <S extends Supplier<? extends ErrorHandler>> DefaultServer(
             RouteRegistry routes, ServerConfig config, Iterable<S> onError)
     {
         this.routes = requireNonNull(routes);
         this.config = requireNonNull(config);
         
         // Collectors.toUnmodifiableList() does not document RandomAccess
-        List<Supplier<ExceptionHandler>> l = stream(onError.spliterator(), false)
+        List<Supplier<ErrorHandler>> l = stream(onError.spliterator(), false)
                 .map(e -> {
                     @SuppressWarnings("unchecked")
-                    Supplier<ExceptionHandler> eh = (Supplier<ExceptionHandler>) e;
+                    Supplier<ErrorHandler> eh = (Supplier<ErrorHandler>) e;
                     return eh; })
                 .collect(toCollection(ArrayList::new));
         
@@ -174,12 +174,13 @@ public final class DefaultServer implements Server
     }
     
     /**
-     * Returns an unmodifiable {@code List} of exception handlers which
-     * implements {@code RandomAccess}
+     * Returns an unmodifiable {@code List} of error handlers.<p>
      * 
-     * @return exception handlers
+     * The returned list implements {@code RandomAccess}.
+     * 
+     * @return error handlers
      */
-    List<Supplier<ExceptionHandler>> getExceptionHandlers() {
+    List<Supplier<ErrorHandler>> getExceptionHandlers() {
         return onError;
     }
     

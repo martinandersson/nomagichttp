@@ -23,7 +23,7 @@ import static alpha.nomagichttp.message.Responses.notImplemented;
 import static java.lang.System.Logger.Level.ERROR;
 
 /**
- * Handles an exception by translating it into an alternative response.<p>
+ * Handles a {@code Throwable} by translating it into an alternative response.<p>
  * 
  * One use case could be to retry a new execution of the request handler on
  * known and expected errors. Another use case could be to customize the
@@ -31,7 +31,7 @@ import static java.lang.System.Logger.Level.ERROR;
  * NoRouteFoundException} into an application-specific "404 Not Found"
  * response.<p>
  * 
- * The server will call exception handlers only during the phase of the HTTP
+ * The server will call error handlers only during the phase of the HTTP
  * exchange when there is a client waiting on a response which the ordinary
  * request handler could not successfully provide and the channel remains
  * open.<p>
@@ -51,8 +51,8 @@ import static java.lang.System.Logger.Level.ERROR;
  * much sense trying to recover the situation after the point where a response
  * has already begun transmitting back to the client.<p>
  * 
- * The server will <strong>not</strong> call exception handlers for errors
- * that are not directly involved in the HTTP exchange or for errors that occur
+ * The server will <strong>not</strong> call error handlers for errors that are
+ * not directly involved in the HTTP exchange or for errors that occur
  * asynchronously in another thread than the request thread or for any other
  * errors when there's already an avenue in place for the exception management.
  * For example, low-level exceptions related to channel management and error
@@ -60,24 +60,24 @@ import static java.lang.System.Logger.Level.ERROR;
  * either return a {@code CompletionStage} or accepts a {@code
  * Flow.Subscriber}.<p>
  * 
- * For server errors caught but not propagated to an exception handler, the
- * server's strategy is usually to log the error and immediately close the
- * client's channel according to the procedure documented in {@link
+ * For server errors caught but not propagated to an error handler, the server's
+ * strategy is usually to log the error and immediately close the client's
+ * channel according to the procedure documented in {@link
  * Response#mustCloseAfterWrite()}.<p>
  * 
- * Any number of exception handlers can be configured. If many are configured,
- * they will be called in the same order they were added. First handler to
- * produce a {@code Response} breaks the call chain. The {@link #DEFAULT} will
- * be used if no handler can handle the error or no handler is configured.<p>
+ * Any number of error handlers can be configured. If many are configured, they
+ * will be called in the same order they were added. First handler to produce a
+ * {@code Response} breaks the call chain. The {@link #DEFAULT} will be used if
+ * no handler can handle the error or no handler is configured.<p>
  * 
- * An exception handler that is unwilling to handle the exception must re-throw
- * the same exception instance which will then propagate to the next handler. If
- * a handler throws a different exception, then this is considered to be a new
+ * An error handler that is unwilling to handle the exception must re-throw the
+ * same throwable instance which will then propagate to the next handler. If a
+ * handler throws a different throwable, then this is considered to be a new
  * error and the whole cycle is restarted.<p>
  * 
  * Super simple example:
  * <pre>{@code
- *     ExceptionHandler eh = (t, r, h) -> {
+ *     ErrorHandler eh = (t, r, h) -> {
  *         try {
  *             throw t;
  *         } catch (ExpectedException e) {
@@ -89,20 +89,20 @@ import static java.lang.System.Logger.Level.ERROR;
  *     };
  * }</pre>
  * 
- * The server accepts a {@code Supplier} of the exception handler. The supplier
- * will be called lazily upon the first invocation of the handler and the
- * handler instance returned from the supplier is cached throughout each unique
- * HTTP exchange. This means that at the discretion of the application, the
- * supplier can return a global singleton applying static logic, or it can
- * return a new instance which in turn can safely keep state related to the HTTP
- * exchange such as a retry-counter.<p>
+ * The server accepts a {@code Supplier} of the error handler. The supplier will
+ * be called lazily upon the first invocation of the handler and the handler
+ * instance returned from the supplier is cached throughout each unique HTTP
+ * exchange. This means that at the discretion of the application, the supplier
+ * can return a global singleton applying static logic, or it can return a new
+ * instance which in turn can safely keep state related to the HTTP exchange
+ * such as a retry-counter.<p>
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  * 
  * @see ServerConfig#maxErrorRecoveryAttempts() 
  */
 @FunctionalInterface
-public interface ExceptionHandler
+public interface ErrorHandler
 {
     /**
      * Handles an exception by producing a client response.<p>
@@ -130,9 +130,9 @@ public interface ExceptionHandler
      * into the error object itself, which also might reveal what to expect from
      * the arguments. For example, if {@code t} is a {@link
      * NoHandlerFoundException}, then the request object was built and
-     * subsequently passed to the exception handler, but since the request
-     * handler wasn't found then obviously the request handler argument is going
-     * to be null.<p>
+     * subsequently passed to the error handler, but since the request handler
+     * wasn't found then obviously the request handler argument is going to be
+     * null.<p>
      * 
      * It is a design goal of this library to have each exception type provide
      * whatever API necessary to investigate and possibly resolve the error.
@@ -144,7 +144,7 @@ public interface ExceptionHandler
      * 
      * If the original error is a {@link CompletionException}, then the server
      * will attempt to recursively unpack the cause which is what will get
-     * passed to the exception handler.
+     * passed to the error handler.
      * 
      * @param t the error (never null)
      * @param r request object (may be null)
@@ -154,17 +154,17 @@ public interface ExceptionHandler
      * 
      * @throws Throwable may be same {@code t} or a new one
      * 
-     * @see ExceptionHandler
+     * @see ErrorHandler
      */
     CompletionStage<Response> apply(Throwable t, Request r, RequestHandler h) throws Throwable;
     
     /**
-     * Is the default exception handler used by the server if no other exception
-     * handler has been provided or is applicable.<p>
+     * Is the default error handler used by the server if no other handler has
+     * been provided or is applicable.<p>
      * 
-     * The default exception handler will immediately log the exception, then
+     * The default error handler will immediately log the exception, then
      * proceed to return a response according to the following table.
-     *
+     * 
      * <table class="striped">
      *   <thead>
      *   <tr>
@@ -214,9 +214,9 @@ public interface ExceptionHandler
      * Please note that each of these responses will also close the client
      * channel (see {@link Response#mustCloseAfterWrite()}).
      */
-    ExceptionHandler DEFAULT = (t, r, h) -> {
-        System.getLogger(ExceptionHandler.class.getPackageName())
-                .log(ERROR, "Default exception handler received:", t);
+    ErrorHandler DEFAULT = (t, r, h) -> {
+        System.getLogger(ErrorHandler.class.getPackageName())
+                .log(ERROR, "Default error handler received:", t);
         
         final Response res;
         try {

@@ -49,12 +49,12 @@ public interface ServerConfig {
      * Returns the max number of attempts at recovering a failed request.<p>
      * 
      * This configuration has an effect only if the application has provided one
-     * or more exception handlers to the server.<p>
+     * or more error handlers to the server.<p>
      * 
-     * When all tries have been exhausted, the {@link ExceptionHandler#DEFAULT
-     * default exception handler} will be called with the original exception.<p>
+     * When all tries have been exhausted, the {@link ErrorHandler#DEFAULT
+     * default error handler} will be called with the original exception.<p>
      * 
-     * Successfully invoking an exception handler (handler returns a response or
+     * Successfully invoking an error handler (handler returns a response or
      * throws a <i>different</i> exception instance) counts as one attempt.<p>
      * 
      * This configuration value will be polled at the start of each recovery
@@ -65,7 +65,7 @@ public interface ServerConfig {
      * 
      * @return max number of attempts
      * 
-     * @see ExceptionHandler
+     * @see ErrorHandler
      */
     default int maxErrorRecoveryAttempts() {
         return 5;

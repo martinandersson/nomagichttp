@@ -16,11 +16,11 @@ import static java.text.MessageFormat.format;
  * Application-provided request handlers can also provoke this exception when
  * building handlers and responses.<p>
  * 
- * Depending on the origin, a route-level exception handler may observe the
- * presence of different non-null argument values. If the error originates from
- * server code, the exception handler will only have access to the {@link Route}
- * and the {@link Request}, but not the {@link RequestHandler}. If the error
- * originates from the application code post-handler invocation, then also the
+ * Depending on the origin, a route-level error handler may observe the presence
+ * of different non-null argument values. If the error originates from server
+ * code, the error handler will only have access to the {@link Route} and the
+ * {@link Request}, but not the {@link RequestHandler}. If the error originates
+ * from the application code post-handler invocation, then also the
  * request-handler argument will be non-null.
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)

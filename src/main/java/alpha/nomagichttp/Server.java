@@ -75,7 +75,7 @@ import static java.util.Collections.singleton;
  * @author Martin Andersson (webmaster at martinandersson.com)
  * 
  * @see Route
- * @see ExceptionHandler
+ * @see ErrorHandler
  * @see ServerConfig
  */
 // TODO: Rename to HttpServer
@@ -130,14 +130,14 @@ public interface Server
      * 
      * @param config   of server
      * @param routes   of server
-     * @param onError  exception handler
+     * @param onError  error handler
      * 
      * @return an instance of {@link DefaultServer}
      * 
      * @throws NullPointerException if any argument is {@code null}
      */
     static Server with(ServerConfig config, Iterable<? extends Route> routes,
-                       Supplier<? extends ExceptionHandler> onError)
+                       Supplier<? extends ErrorHandler> onError)
     {
         return with(config, routes, singleton(onError));
     }
@@ -147,13 +147,13 @@ public interface Server
      * 
      * @param config   of server
      * @param routes   of server
-     * @param onError  exception handlers
+     * @param onError  error handlers
      * 
      * @return an instance of {@link DefaultServer}
      * 
      * @throws NullPointerException if any argument is {@code null}
      */
-    static <S extends Supplier<? extends ExceptionHandler>> Server with(
+    static <S extends Supplier<? extends ErrorHandler>> Server with(
             ServerConfig config, Iterable<? extends Route> routes, Iterable<S> onError)
     {
         RouteRegistry reg = new DefaultRouteRegistry();
