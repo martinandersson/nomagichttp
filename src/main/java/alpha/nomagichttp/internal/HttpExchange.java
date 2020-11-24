@@ -176,7 +176,7 @@ final class HttpExchange
         private int attemptCount;
         
         ExceptionHandlers() {
-            this.factories = server.getExceptionHandlers();
+            this.factories = server.getErrorHandlers();
             this.constructed = null;
             this.attemptCount = 0;
         }

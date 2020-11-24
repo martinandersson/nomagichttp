@@ -180,7 +180,7 @@ public final class DefaultServer implements Server
      * 
      * @return error handlers
      */
-    List<Supplier<ErrorHandler>> getExceptionHandlers() {
+    List<Supplier<ErrorHandler>> getErrorHandlers() {
         return onError;
     }
     
