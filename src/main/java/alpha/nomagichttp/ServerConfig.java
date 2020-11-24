@@ -1,5 +1,6 @@
 package alpha.nomagichttp;
 
+import alpha.nomagichttp.handler.ErrorHandler;
 import alpha.nomagichttp.message.MaxRequestHeadSizeExceededException;
 
 /**

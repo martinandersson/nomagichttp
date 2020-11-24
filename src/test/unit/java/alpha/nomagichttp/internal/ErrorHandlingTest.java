@@ -1,6 +1,6 @@
 package alpha.nomagichttp.internal;
 
-import alpha.nomagichttp.ErrorHandler;
+import alpha.nomagichttp.handler.ErrorHandler;
 import alpha.nomagichttp.Server;
 import alpha.nomagichttp.handler.RequestHandler;
 import alpha.nomagichttp.handler.Handlers;

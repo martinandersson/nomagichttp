@@ -1,6 +1,5 @@
 package alpha.nomagichttp.handler;
 
-import alpha.nomagichttp.ErrorHandler;
 import alpha.nomagichttp.message.MediaType;
 import alpha.nomagichttp.message.Request;
 import alpha.nomagichttp.message.Response;

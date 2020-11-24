@@ -1,6 +1,6 @@
 package alpha.nomagichttp.message;
 
-import alpha.nomagichttp.ErrorHandler;
+import alpha.nomagichttp.handler.ErrorHandler;
 import alpha.nomagichttp.Server;
 
 import java.net.http.HttpHeaders;

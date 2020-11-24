@@ -1,6 +1,6 @@
-package alpha.nomagichttp;
+package alpha.nomagichttp.handler;
 
-import alpha.nomagichttp.handler.RequestHandler;
+import alpha.nomagichttp.ServerConfig;
 import alpha.nomagichttp.message.BadHeaderException;
 import alpha.nomagichttp.message.BadMediaTypeSyntaxException;
 import alpha.nomagichttp.message.MaxRequestHeadSizeExceededException;

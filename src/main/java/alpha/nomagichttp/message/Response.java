@@ -1,6 +1,6 @@
 package alpha.nomagichttp.message;
 
-import alpha.nomagichttp.ErrorHandler;
+import alpha.nomagichttp.handler.ErrorHandler;
 
 import java.nio.ByteBuffer;
 import java.util.concurrent.CompletableFuture;
