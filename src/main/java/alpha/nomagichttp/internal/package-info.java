@@ -3,8 +3,8 @@
  * 
  * The only public type in this package is {@link
  * alpha.nomagichttp.internal.DefaultServer}, which is used by the {@link
- * alpha.nomagichttp.Server} interface as the default implementation. All other
- * types in this package can therefore be regarded as an implementation
+ * alpha.nomagichttp.HttpServer} interface as the default implementation. All
+ * other types in this package can therefore be regarded as an implementation
  * detail.<p>
  * 
  * Similar to types found in other packages, implementations of the API provided

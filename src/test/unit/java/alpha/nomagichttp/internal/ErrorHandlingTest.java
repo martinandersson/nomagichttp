@@ -1,7 +1,7 @@
 package alpha.nomagichttp.internal;
 
 import alpha.nomagichttp.handler.ErrorHandler;
-import alpha.nomagichttp.Server;
+import alpha.nomagichttp.HttpServer;
 import alpha.nomagichttp.handler.RequestHandler;
 import alpha.nomagichttp.handler.Handlers;
 import alpha.nomagichttp.message.Response;
@@ -40,7 +40,7 @@ class ErrorHandlingTest
             REQ_ROOT      = "GET / HTTP/1.1"    + CRLF + CRLF + CRLF,
             REQ_NOT_FOUND = "GET /404 HTTP/1.1" + CRLF + CRLF + CRLF;
     
-    Server server;
+    HttpServer server;
     
     @BeforeAll
     static void setLogging() {
@@ -131,7 +131,7 @@ class ErrorHandlingTest
                 .map(e -> (Supplier<ErrorHandler>) () -> e)
                 .collect(toList());
     
-        server = Server.with(DEFAULT, r, eh).start();
+        server = HttpServer.with(DEFAULT, r, eh).start();
         return new ClientOperations(server.getPort());
     }
 }

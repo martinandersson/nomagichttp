@@ -79,8 +79,7 @@ import static java.util.Collections.singleton;
  * @see ErrorHandler
  * @see ServerConfig
  */
-// TODO: Rename to HttpServer
-public interface Server
+public interface HttpServer
 {
     /**
      * Builds a server using the {@linkplain ServerConfig#DEFAULT default
@@ -92,7 +91,7 @@ public interface Server
      * 
      * @throws NullPointerException if {@code route} is {@code null}
      */
-    static Server with(Route... routes) {
+    static HttpServer with(Route... routes) {
         return with(ServerConfig.DEFAULT, List.of(routes));
     }
     
@@ -106,7 +105,7 @@ public interface Server
      * 
      * @throws NullPointerException if any argument is {@code null}
      */
-    static Server with(ServerConfig config, Route... routes) {
+    static HttpServer with(ServerConfig config, Route... routes) {
         return with(config, List.of(routes));
     }
     
@@ -120,7 +119,7 @@ public interface Server
      * 
      * @throws NullPointerException if any argument is {@code null}
      */
-    static Server with(ServerConfig config, Iterable<? extends Route> routes) {
+    static HttpServer with(ServerConfig config, Iterable<? extends Route> routes) {
         RouteRegistry reg = new DefaultRouteRegistry();
         routes.forEach(reg::add);
         return new DefaultServer(reg, config, List.of());
@@ -137,8 +136,8 @@ public interface Server
      * 
      * @throws NullPointerException if any argument is {@code null}
      */
-    static Server with(ServerConfig config, Iterable<? extends Route> routes,
-                       Supplier<? extends ErrorHandler> onError)
+    static HttpServer with(ServerConfig config, Iterable<? extends Route> routes,
+                           Supplier<? extends ErrorHandler> onError)
     {
         return with(config, routes, singleton(onError));
     }
@@ -154,7 +153,7 @@ public interface Server
      * 
      * @throws NullPointerException if any argument is {@code null}
      */
-    static <S extends Supplier<? extends ErrorHandler>> Server with(
+    static <S extends Supplier<? extends ErrorHandler>> HttpServer with(
             ServerConfig config, Iterable<? extends Route> routes, Iterable<S> onError)
     {
         RouteRegistry reg = new DefaultRouteRegistry();
@@ -192,7 +191,7 @@ public interface Server
     //       interface. This change will also impact contract of start(null)
     //       which is specified to be equivalent to this method.
     
-    default Server start() throws IOException {
+    default HttpServer start() throws IOException {
         return start(null);
     }
     
@@ -215,7 +214,7 @@ public interface Server
      * 
      * @see InetAddress
      */
-    default Server start(int port) throws IOException  {
+    default HttpServer start(int port) throws IOException  {
         return start(new InetSocketAddress(port));
     }
     
@@ -239,7 +238,7 @@ public interface Server
      * 
      * @see InetAddress
      */
-    default Server start(String hostname, int port) throws IOException {
+    default HttpServer start(String hostname, int port) throws IOException {
         return start(new InetSocketAddress(hostname, port));
     }
     
@@ -259,7 +258,7 @@ public interface Server
      *
      * @see InetAddress
      */
-    Server start(SocketAddress address) throws IOException;
+    HttpServer start(SocketAddress address) throws IOException;
     
     /**
      * Stop the server.<p>

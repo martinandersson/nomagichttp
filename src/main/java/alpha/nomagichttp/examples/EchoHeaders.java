@@ -1,6 +1,6 @@
 package alpha.nomagichttp.examples;
 
-import alpha.nomagichttp.Server;
+import alpha.nomagichttp.HttpServer;
 import alpha.nomagichttp.handler.RequestHandler;
 import alpha.nomagichttp.message.Response;
 import alpha.nomagichttp.message.ResponseBuilder;
@@ -35,7 +35,7 @@ public class EchoHeaders
             return res.asCompletedStage();
         });
         
-        Server.with(route("/echo", h)).start(PORT);
+        HttpServer.with(route("/echo", h)).start(PORT);
         System.out.println("Listening on port " + PORT + ".");
     }
 }

@@ -1,6 +1,6 @@
 package alpha.nomagichttp.examples;
 
-import alpha.nomagichttp.Server;
+import alpha.nomagichttp.HttpServer;
 import alpha.nomagichttp.handler.RequestHandler;
 import alpha.nomagichttp.handler.Handlers;
 import alpha.nomagichttp.route.Route;
@@ -31,7 +31,7 @@ public class HelloWorldConsole {
         Route r = Routes.route("/", h);
         
         // Not supplying a port makes the system pick one
-        Server s = Server.with(r).start();
+        HttpServer s = HttpServer.with(r).start();
         
         System.out.println("Listening on port " + s.getPort() + ".");
     }

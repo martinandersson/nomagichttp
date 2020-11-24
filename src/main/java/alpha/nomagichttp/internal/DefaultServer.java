@@ -1,7 +1,7 @@
 package alpha.nomagichttp.internal;
 
 import alpha.nomagichttp.handler.ErrorHandler;
-import alpha.nomagichttp.Server;
+import alpha.nomagichttp.HttpServer;
 import alpha.nomagichttp.ServerConfig;
 import alpha.nomagichttp.route.RouteRegistry;
 
@@ -37,7 +37,7 @@ import static java.util.stream.StreamSupport.stream;
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  */
-public final class DefaultServer implements Server
+public final class DefaultServer implements HttpServer
 {
     private static final System.Logger LOG
             = System.getLogger(DefaultServer.class.getPackageName());
@@ -95,7 +95,7 @@ public final class DefaultServer implements Server
     }
     
     @Override
-    public synchronized Server start(SocketAddress address) throws IOException {
+    public synchronized HttpServer start(SocketAddress address) throws IOException {
         if (listener != null) {
             throw new IllegalStateException("Already running.");
         }

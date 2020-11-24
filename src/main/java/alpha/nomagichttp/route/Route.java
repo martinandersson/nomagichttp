@@ -1,6 +1,6 @@
 package alpha.nomagichttp.route;
 
-import alpha.nomagichttp.Server;
+import alpha.nomagichttp.HttpServer;
 import alpha.nomagichttp.handler.RequestHandler;
 import alpha.nomagichttp.message.MediaType;
 
@@ -30,7 +30,7 @@ import java.util.Map;
  * Read more on this in the javadoc of {@linkplain RequestHandler}<p>
  * 
  * Routes are added to a {@link RouteRegistry registry} which is added to the
- * {@link Server server}.<p>
+ * {@link HttpServer server}.<p>
  * 
  * When routing a request, the server will first find the route using {@link
  * RouteRegistry#lookup(String)}, then find the handler using {@link

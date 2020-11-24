@@ -20,8 +20,8 @@
  * Request} into a {@link alpha.nomagichttp.message.Response Response}<p>
  * 
  * Once the route has been setup it can be added to a {@link
- * alpha.nomagichttp.Server Server}. The default server implementation does not
- * use selector threads or any other type of polling. It is completely
+ * alpha.nomagichttp.HttpServer Server}. The default server implementation does
+ * not use selector threads or any other type of polling. It is completely
  * non-blocking and "proactive" for maximum performance across all operating
  * systems that runs Java.<p>
  * 

@@ -1,6 +1,6 @@
 package alpha.nomagichttp.internal;
 
-import alpha.nomagichttp.Server;
+import alpha.nomagichttp.HttpServer;
 import alpha.nomagichttp.handler.RequestHandler;
 import alpha.nomagichttp.test.Logging;
 import org.junit.jupiter.api.AfterAll;
@@ -27,13 +27,13 @@ import static java.lang.System.Logger.Level.ALL;
  */
 abstract class AbstractEndToEndTest
 {
-    private static Server server;
+    private static HttpServer server;
     private static ClientOperations client;
     
     @BeforeAll
     static void start() throws IOException {
         Logging.setLevel(SimpleEndToEndTest.class, ALL);
-        server = Server.with(route("/", noop())).start();
+        server = HttpServer.with(route("/", noop())).start();
         client = new ClientOperations(server.getPort());
     }
     
@@ -44,7 +44,7 @@ abstract class AbstractEndToEndTest
         }
     }
     
-    public static Server server() {
+    public static HttpServer server() {
         return server;
     }
     

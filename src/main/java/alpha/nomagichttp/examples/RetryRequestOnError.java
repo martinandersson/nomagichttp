@@ -1,7 +1,7 @@
 package alpha.nomagichttp.examples;
 
 import alpha.nomagichttp.handler.ErrorHandler;
-import alpha.nomagichttp.Server;
+import alpha.nomagichttp.HttpServer;
 import alpha.nomagichttp.ServerConfig;
 import alpha.nomagichttp.handler.RequestHandler;
 import alpha.nomagichttp.message.Request;
@@ -43,7 +43,7 @@ public class RetryRequestOnError
         // a new instance of the error handler will be used for each failed request.
         Supplier<ErrorHandler> retrier = MyExponentialRetrier::new;
         
-        Server.with(ServerConfig.DEFAULT, singleton(r), retrier).start(PORT);
+        HttpServer.with(ServerConfig.DEFAULT, singleton(r), retrier).start(PORT);
         System.out.println("Listening on port " + PORT + ".");
     }
     

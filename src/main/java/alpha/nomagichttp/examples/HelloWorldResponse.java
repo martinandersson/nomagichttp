@@ -1,6 +1,6 @@
 package alpha.nomagichttp.examples;
 
-import alpha.nomagichttp.Server;
+import alpha.nomagichttp.HttpServer;
 import alpha.nomagichttp.handler.RequestHandler;
 import alpha.nomagichttp.handler.Handlers;
 import alpha.nomagichttp.message.Response;
@@ -32,7 +32,7 @@ public class HelloWorldResponse
         
         RequestHandler handler = Handlers.GET().supply(() -> answer);
         
-        Server.with(route("/", handler)).start(PORT);
+        HttpServer.with(route("/", handler)).start(PORT);
         System.out.println("Listening on port " + PORT + ".");
     }
 }

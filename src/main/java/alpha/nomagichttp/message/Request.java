@@ -1,7 +1,7 @@
 package alpha.nomagichttp.message;
 
 import alpha.nomagichttp.handler.ErrorHandler;
-import alpha.nomagichttp.Server;
+import alpha.nomagichttp.HttpServer;
 
 import java.net.http.HttpHeaders;
 import java.nio.channels.AsynchronousFileChannel;
@@ -257,7 +257,7 @@ public interface Request
      * a challenge for the application to implement properly with respect to
      * byte order and message integrity, but concurrent processing could also be
      * a sign that the application's processing code may block the request
-     * thread (see "Threading Model" in {@link Server}) - hence the need to
+     * thread (see "Threading Model" in {@link HttpServer}) - hence the need to
      * "collect" or buffer the bytebuffers.<p>
      * 
      * For example, {@code GatheringByteChannel} expects a {@code ByteBuffer[]}

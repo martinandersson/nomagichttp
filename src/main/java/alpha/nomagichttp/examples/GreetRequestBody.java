@@ -1,6 +1,6 @@
 package alpha.nomagichttp.examples;
 
-import alpha.nomagichttp.Server;
+import alpha.nomagichttp.HttpServer;
 import alpha.nomagichttp.handler.RequestHandler;
 
 import java.io.IOException;
@@ -32,7 +32,7 @@ public class GreetRequestBody
                 req.body().get().toText().thenApply(name ->
                         ok("Hello, " + name + "!")));
         
-        Server.with(route("/hello", h)).start(PORT);
+        HttpServer.with(route("/hello", h)).start(PORT);
         System.out.println("Listening on port " + PORT + ".");
     }
 }

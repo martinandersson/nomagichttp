@@ -1,6 +1,6 @@
 package alpha.nomagichttp.examples;
 
-import alpha.nomagichttp.Server;
+import alpha.nomagichttp.HttpServer;
 import alpha.nomagichttp.handler.RequestHandler;
 import alpha.nomagichttp.handler.Handlers;
 import alpha.nomagichttp.message.Responses;
@@ -32,7 +32,7 @@ public class GreetPathParam
             return Responses.ok(text).asCompletedStage();
         });
         
-        Server.with(r.handler(h).build()).start(PORT);
+        HttpServer.with(r.handler(h).build()).start(PORT);
         System.out.println("Listening on port " + PORT + ".");
     }
 }
