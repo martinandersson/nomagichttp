@@ -185,12 +185,6 @@ public interface HttpServer
      * @see InetAddress
      */
     
-    // TODO: This method should start on a hostname and port as specified in
-    //       server configuration. Only if not present in the server
-    //       configuration will it use a system-picked port on loopback
-    //       interface. This change will also impact contract of start(null)
-    //       which is specified to be equivalent to this method.
-    
     default HttpServer start() throws IOException {
         return start(null);
     }
