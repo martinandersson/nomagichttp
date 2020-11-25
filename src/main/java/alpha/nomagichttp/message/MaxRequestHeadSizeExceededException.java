@@ -1,6 +1,6 @@
 package alpha.nomagichttp.message;
 
-import alpha.nomagichttp.ServerConfig;
+import alpha.nomagichttp.HttpServer;
 
 /**
  * Thrown by the server if the size of an inbound request head exceeds the
@@ -8,7 +8,7 @@ import alpha.nomagichttp.ServerConfig;
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  * 
- * @see ServerConfig#maxRequestHeadSize()
+ * @see HttpServer.Config#maxRequestHeadSize()
  */
 public final class MaxRequestHeadSizeExceededException extends RuntimeException {
     // Empty

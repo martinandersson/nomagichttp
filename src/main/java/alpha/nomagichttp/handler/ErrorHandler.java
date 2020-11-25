@@ -1,6 +1,6 @@
 package alpha.nomagichttp.handler;
 
-import alpha.nomagichttp.ServerConfig;
+import alpha.nomagichttp.HttpServer;
 import alpha.nomagichttp.message.BadHeaderException;
 import alpha.nomagichttp.message.BadMediaTypeSyntaxException;
 import alpha.nomagichttp.message.MaxRequestHeadSizeExceededException;
@@ -99,7 +99,7 @@ import static java.lang.System.Logger.Level.ERROR;
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  * 
- * @see ServerConfig#maxErrorRecoveryAttempts() 
+ * @see HttpServer.Config#maxErrorRecoveryAttempts() 
  */
 @FunctionalInterface
 public interface ErrorHandler

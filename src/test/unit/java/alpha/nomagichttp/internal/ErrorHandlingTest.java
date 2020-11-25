@@ -18,7 +18,7 @@ import java.util.concurrent.CompletionStage;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Supplier;
 
-import static alpha.nomagichttp.ServerConfig.DEFAULT;
+import static alpha.nomagichttp.HttpServer.Config.DEFAULT;
 import static alpha.nomagichttp.handler.Handlers.noop;
 import static alpha.nomagichttp.internal.ClientOperations.CRLF;
 import static alpha.nomagichttp.route.Routes.route;

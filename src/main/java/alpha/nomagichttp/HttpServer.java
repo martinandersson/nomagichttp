@@ -3,6 +3,7 @@ package alpha.nomagichttp;
 import alpha.nomagichttp.handler.ErrorHandler;
 import alpha.nomagichttp.handler.RequestHandler;
 import alpha.nomagichttp.internal.DefaultServer;
+import alpha.nomagichttp.message.MaxRequestHeadSizeExceededException;
 import alpha.nomagichttp.message.Request;
 import alpha.nomagichttp.message.Response;
 import alpha.nomagichttp.route.DefaultRouteRegistry;
@@ -58,8 +59,8 @@ import static java.util.Collections.singleton;
  * All servers running in the same JVM share a common pool of threads (aka
  * "request threads"). The pool handles I/O completion events and executes
  * application-provided entities such as the request- and error handlers. The
- * pool size is fixed and set to the value of {@link
- * ServerConfig#threadPoolSize()} at the time of the first server start.<p>
+ * pool size is fixed and set to the value of {@link Config#threadPoolSize()} at
+ * the time of the first server start.<p>
  * 
  * It is absolutely crucial that the application does not block a request
  * thread, for example by synchronously waiting on an I/O result. The request
@@ -78,7 +79,7 @@ import static java.util.Collections.singleton;
 public interface HttpServer
 {
     /**
-     * Builds a server using the {@linkplain ServerConfig#DEFAULT default
+     * Builds a server using the {@linkplain Config#DEFAULT default
      * configuration}.<p>
      * 
      * @param routes of server
@@ -88,7 +89,7 @@ public interface HttpServer
      * @throws NullPointerException if {@code route} is {@code null}
      */
     static HttpServer with(Route... routes) {
-        return with(ServerConfig.DEFAULT, List.of(routes));
+        return with(Config.DEFAULT, List.of(routes));
     }
     
     /**
@@ -101,7 +102,7 @@ public interface HttpServer
      * 
      * @throws NullPointerException if any argument is {@code null}
      */
-    static HttpServer with(ServerConfig config, Route... routes) {
+    static HttpServer with(Config config, Route... routes) {
         return with(config, List.of(routes));
     }
     
@@ -115,7 +116,7 @@ public interface HttpServer
      * 
      * @throws NullPointerException if any argument is {@code null}
      */
-    static HttpServer with(ServerConfig config, Iterable<? extends Route> routes) {
+    static HttpServer with(Config config, Iterable<? extends Route> routes) {
         RouteRegistry reg = new DefaultRouteRegistry();
         routes.forEach(reg::add);
         return new DefaultServer(reg, config, List.of());
@@ -132,7 +133,7 @@ public interface HttpServer
      * 
      * @throws NullPointerException if any argument is {@code null}
      */
-    static HttpServer with(ServerConfig config,
+    static HttpServer with(Config config,
                            Iterable<? extends Route> routes,
                            Supplier<? extends ErrorHandler> eh)
     {
@@ -151,7 +152,7 @@ public interface HttpServer
      * @throws NullPointerException if any argument is {@code null}
      */
     static <S extends Supplier<? extends ErrorHandler>> HttpServer with(
-            ServerConfig config,
+            Config config,
             Iterable<? extends Route> routes,
             Iterable<S> eh)
     {
@@ -293,5 +294,95 @@ public interface HttpServer
      *
      * @return the server's configuration (never {@code null})
      */
-    ServerConfig getServerConfig();
+    Config getServerConfig();
+    
+    /**
+     * Server configuration.<p>
+     * 
+     * The implementation is thread-safe.<p>
+     * 
+     * The implementation used if none is specified is {@link #DEFAULT}.
+     * 
+     * @author Martin Andersson (webmaster at martinandersson.com
+     */
+    interface Config
+    {
+        /**
+         * Values used:<p>
+         * 
+         * Max request head size = 8 000 <br>
+         * Max error recovery attempts = 5 <br>
+         * Thread pool-size = {@code Runtime.getRuntime().availableProcessors()}
+         */
+        Config DEFAULT = new Config(){};
+        
+        /**
+         * Returns the max number of bytes processed while parsing a request
+         * head before giving up.<p>
+         * 
+         * Once the limit has been exceeded, a {@link
+         * MaxRequestHeadSizeExceededException} will be thrown.<p>
+         * 
+         * This configuration value will be polled at the start of each new request.
+         * 
+         * @implSpec
+         * The default implementation is equivalent to:
+         * <pre>{@code
+         *     return 8_000;
+         * }</pre>
+         * 
+         * This corresponds to <a
+         * href="https://tools.ietf.org/html/rfc7230#section-3.1.1">section 3.1.1 in
+         * RFC 7230</a> as well as <a
+         * href="https://stackoverflow.com/a/8623061/1268003">common practice</a>.
+         * 
+         * @return number of request head bytes processed before exception is thrown
+         */
+        default int maxRequestHeadSize() {
+            return 8_000;
+        }
+        
+        /**
+         * Returns the max number of attempts at recovering a failed request.<p>
+         * 
+         * This configuration has an effect only if the application has provided one
+         * or more error handlers to the server.<p>
+         * 
+         * When all tries have been exhausted, the {@link ErrorHandler#DEFAULT
+         * default error handler} will be called with the original exception.<p>
+         * 
+         * Successfully invoking an error handler (handler returns a response or
+         * throws a <i>different</i> exception instance) counts as one attempt.<p>
+         * 
+         * This configuration value will be polled at the start of each recovery
+         * attempt.
+         * 
+         * @implSpec
+         * The default implementation returns {@code 5}.
+         * 
+         * @return max number of attempts
+         * 
+         * @see ErrorHandler
+         */
+        default int maxErrorRecoveryAttempts() {
+            return 5;
+        }
+        
+        /**
+         * Returns the number of request threads that should be allocated for
+         * executing HTTP exchanges (such as calling the application-provided
+         * request- and error handlers).<p>
+         * 
+         * For a runtime change of this value to have an effect, all server
+         * instances must restart.
+         * 
+         * @implSpec
+         * The default implementation returns {@link Runtime#availableProcessors()}.
+         * 
+         * @return thread pool size
+         */
+        default int threadPoolSize() {
+            return Runtime.getRuntime().availableProcessors();
+        }
+    }
 }

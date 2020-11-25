@@ -1,7 +1,6 @@
 package alpha.nomagichttp.internal;
 
 import alpha.nomagichttp.HttpServer;
-import alpha.nomagichttp.ServerConfig;
 import alpha.nomagichttp.handler.ErrorHandler;
 import alpha.nomagichttp.route.RouteRegistry;
 
@@ -71,13 +70,13 @@ public final class DefaultServer implements HttpServer
     }
     
     private final RouteRegistry routes;
-    private final ServerConfig config;
+    private final Config config;
     private final List<Supplier<ErrorHandler>> onError; // TODO: Rename to errorHandlers
     private AsynchronousServerSocketChannel listener;
     private InetSocketAddress addr;
     
     public <S extends Supplier<? extends ErrorHandler>> DefaultServer(
-            RouteRegistry routes, ServerConfig config, Iterable<S> onError)
+            RouteRegistry routes, Config config, Iterable<S> onError)
     {
         this.routes = requireNonNull(routes);
         this.config = requireNonNull(config);
@@ -169,7 +168,7 @@ public final class DefaultServer implements HttpServer
     }
     
     @Override
-    public ServerConfig getServerConfig() {
+    public Config getServerConfig() {
         return config;
     }
     
