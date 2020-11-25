@@ -36,7 +36,7 @@ abstract class AbstractSingleClientTest
         SERVER = HttpServer.with(route("/", Handlers.noop()));
         SERVER.start();
         
-        ROOT = "http://localhost:" + SERVER.getPort();
+        ROOT = "http://localhost:" + SERVER.getLocalAddress().getPort();
         CLIENT = HttpClient.newHttpClient();
     }
     

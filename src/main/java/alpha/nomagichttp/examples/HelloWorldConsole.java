@@ -33,6 +33,6 @@ public class HelloWorldConsole {
         // Not supplying a port makes the system pick one
         HttpServer s = HttpServer.with(r).start();
         
-        System.out.println("Listening on port " + s.getPort() + ".");
+        System.out.println("Listening on port " + s.getLocalAddress().getPort() + ".");
     }
 }

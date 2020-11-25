@@ -130,8 +130,8 @@ class ErrorHandlingTest
         Iterable<Supplier<ErrorHandler>> eh = stream(onError)
                 .map(e -> (Supplier<ErrorHandler>) () -> e)
                 .collect(toList());
-    
+        
         server = HttpServer.with(DEFAULT, r, eh).start();
-        return new ClientOperations(server.getPort());
+        return new ClientOperations(server.getLocalAddress().getPort());
     }
 }

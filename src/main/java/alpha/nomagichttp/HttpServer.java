@@ -13,6 +13,7 @@ import java.io.IOException;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
+import java.nio.channels.AsynchronousServerSocketChannel;
 import java.util.List;
 import java.util.function.Supplier;
 
@@ -163,7 +164,10 @@ public interface HttpServer
      * on the loopback address (IPv4 127.0.0.1, IPv6 ::1).<p>
      * 
      * This method is useful for inter-process communication on the same machine
-     * or to start a server in a test environment.
+     * or to start a server in a test environment.<p>
+     * 
+     * The port can be retrieved using {@link #getLocalAddress()}{@code
+     * .getPort()}.
      * 
      * @implSpec
      * The default implementation is equivalent to:
@@ -257,22 +261,24 @@ public interface HttpServer
     /**
      * Stop the server.<p>
      * 
-     * This method is NOP if server is already stopped.<p>
+     * All currently running HTTP exchanges will be allowed to complete.<p>
      * 
-     * All currently running HTTP exchanges will be allowed to complete.
+     * This method is NOP if server is already stopped.<p>
      * 
      * @throws IOException if an I/O error occurs
      */
     void stop() throws IOException;
     
     /**
-     * Returns the port used by the server.
+     * Returns the socket address that the server is listening on.
      * 
      * @return the port used by the server
      * 
      * @throws IllegalStateException if server is not running
+     * 
+     * @see AsynchronousServerSocketChannel#getLocalAddress() 
      */
-    int getPort() throws IllegalStateException;
+    InetSocketAddress getLocalAddress() throws IllegalStateException;
     
     /**
      * Returns the server's route registry.

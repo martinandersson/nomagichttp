@@ -34,7 +34,7 @@ abstract class AbstractEndToEndTest
     static void start() throws IOException {
         Logging.setLevel(SimpleEndToEndTest.class, ALL);
         server = HttpServer.with(route("/", noop())).start();
-        client = new ClientOperations(server.getPort());
+        client = new ClientOperations(server.getLocalAddress().getPort());
     }
     
     @AfterAll

@@ -1,8 +1,8 @@
 package alpha.nomagichttp.internal;
 
-import alpha.nomagichttp.handler.ErrorHandler;
 import alpha.nomagichttp.HttpServer;
 import alpha.nomagichttp.ServerConfig;
+import alpha.nomagichttp.handler.ErrorHandler;
 import alpha.nomagichttp.route.RouteRegistry;
 
 import java.io.IOException;
@@ -72,9 +72,9 @@ public final class DefaultServer implements HttpServer
     
     private final RouteRegistry routes;
     private final ServerConfig config;
-    private final List<Supplier<ErrorHandler>> onError;
+    private final List<Supplier<ErrorHandler>> onError; // TODO: Rename to errorHandlers
     private AsynchronousServerSocketChannel listener;
-    private int port;
+    private InetSocketAddress addr;
     
     public <S extends Supplier<? extends ErrorHandler>> DefaultServer(
             RouteRegistry routes, ServerConfig config, Iterable<S> onError)
@@ -115,7 +115,7 @@ public final class DefaultServer implements HttpServer
         LOG.log(INFO, () -> "Opened server channel: " + listener);
         
         try {
-            port = ((InetSocketAddress) listener.getLocalAddress()).getPort();
+            addr = ((InetSocketAddress) listener.getLocalAddress());
             listener.accept(null, new OnAccept());
         } catch (Throwable t) {
             stop();
@@ -155,12 +155,12 @@ public final class DefaultServer implements HttpServer
     }
     
     @Override
-    public synchronized int getPort() throws IllegalStateException {
+    public synchronized InetSocketAddress getLocalAddress() throws IllegalStateException {
         if (listener == null || !listener.isOpen()) {
             throw new IllegalStateException("Server is not running.");
         }
         
-        return port;
+        return addr;
     }
     
     @Override
