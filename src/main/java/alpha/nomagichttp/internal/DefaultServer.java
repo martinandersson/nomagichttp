@@ -168,7 +168,7 @@ public final class DefaultServer implements HttpServer
     }
     
     @Override
-    public Config getServerConfig() {
+    public Config getConfig() {
         return config;
     }
     

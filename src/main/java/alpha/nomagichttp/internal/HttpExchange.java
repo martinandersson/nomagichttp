@@ -66,7 +66,7 @@ final class HttpExchange
     
     void begin() {
         RequestHeadSubscriber rhs = new RequestHeadSubscriber(
-                server.getServerConfig().maxRequestHeadSize());
+                server.getConfig().maxRequestHeadSize());
         
         bytes.subscribe(rhs);
         
@@ -194,7 +194,7 @@ final class HttpExchange
                 return usingDefault(unpacked);
             }
             
-            if (++attemptCount > server.getServerConfig().maxErrorRecoveryAttempts()) {
+            if (++attemptCount > server.getConfig().maxErrorRecoveryAttempts()) {
                 LOG.log(WARNING, "Error recovery attempts depleted, will use default handler.");
                 return usingDefault(unpacked);
             }

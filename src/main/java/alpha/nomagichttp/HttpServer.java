@@ -294,7 +294,7 @@ public interface HttpServer
      *
      * @return the server's configuration (never {@code null})
      */
-    Config getServerConfig();
+    Config getConfig();
     
     /**
      * Server configuration.<p>
