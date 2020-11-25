@@ -51,8 +51,9 @@ import static java.util.Collections.singleton;
  * 
  * <h3>Threading Model</h3>
  * 
- * The server instance is thread-safe and fully non-blocking once it is
- * running.<p>
+ * The server instance is thread-safe. It is also fully non-blocking once it is
+ * running but life-cycle methods such as {@code start}/{@code stop} may
+ * block.<p>
  * 
  * All servers running in the same JVM share a common pool of threads (aka
  * "request threads"). The pool handles I/O completion events and executes
