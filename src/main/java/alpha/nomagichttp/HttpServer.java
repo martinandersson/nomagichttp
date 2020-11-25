@@ -188,7 +188,8 @@ public interface HttpServer
     
     /**
      * Make the server listen for new client connections on the specified port
-     * on the wildcard address ("any local address").
+     * on the wildcard address (also known as "any local address" and "the
+     * unspecified address").
      * 
      * @implSpec
      * The default implementation is equivalent to:
