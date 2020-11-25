@@ -19,26 +19,22 @@ import java.util.function.Supplier;
 import static java.util.Collections.singleton;
 
 /**
- * A server receives HTTP {@link Request requests}, routes these to a {@link
- * Route route} and then calls a qualified {@link RequestHandler request
- * handler} of that route to process the request into a {@link Response
- * response}.<p>
- * 
- * Even though a server without any routes is a legal variant, at least one must
- * be added to its {@link #getRouteRegistry() route registry} in order for the
- * server to do meaningful work.<p>
+ * Listens on a port for HTTP {@link Request requests} targeting a specific
+ * {@link Route route} which contains at least one {@link RequestHandler request
+ * handler} which processes the request into a {@link Response response}.<p>
  * 
  * This interface declares static <i>{@code with}</i> methods that construct
- * and return the default implementation {@link DefaultServer}. Then, what
- * remains is to use any of the {@code start} methods to start the server on an
- * address.<p>
+ * and return the default implementation {@link DefaultServer}. Once the server
+ * has been constructed, it needs to <i>{@code start}</i>.<p>
+ * 
+ * Routes can be dynamically added and removed from the server using its {@link
+ * #getRouteRegistry() route registry}.<p>
  * 
  * The server's function is to provide port- and channel management, parse
  * an inbound request head and resolve which handler of a route is qualified to
- * handle the request. The server will not apply or validate HTTP semantics once
- * the handler has been called. The handler is in complete control over how it
- * interprets the request headers- and body as well as what headers and body it
- * responds.
+ * handle the request. Once the handler has been invoked, it has total freedom
+ * in regards to how it interprets the request headers- and body as well as what
+ * headers and body it responds.
  * 
  * 
  * <h3>Server Life-Cycle</h3>
@@ -54,10 +50,11 @@ import static java.util.Collections.singleton;
  * 
  * <h3>Threading Model</h3>
  * 
- * The server instance is thread-safe.<p>
+ * The server instance is thread-safe and fully non-blocking once it is
+ * running.<p>
  * 
- * The server uses only one pool of threads (many times referred to as "request
- * threads"). This pool handles I/O completion events and executes
+ * All servers running in the same JVM share a common pool of threads (aka
+ * "request threads"). The pool handles I/O completion events and executes
  * application-provided entities such as the request- and error handlers. The
  * pool size is fixed and set to the value of {@link
  * ServerConfig#threadPoolSize()} at the time of the first server start.<p>
@@ -70,14 +67,11 @@ import static java.util.Collections.singleton;
  * of available threads making the server unable to make progress with tasks
  * such as accepting new client connections or processing other requests.<p>
  * 
- * Servers started on different ports all share the same underlying thread pool.
- * 
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  * 
  * @see Route
- * @see ErrorHandler
- * @see ServerConfig
+ * @see RequestHandler
  */
 public interface HttpServer
 {
@@ -128,45 +122,48 @@ public interface HttpServer
     /**
      * Builds a server.<p>
      * 
-     * @param config   of server
-     * @param routes   of server
-     * @param onError  error handler
+     * @param config  of server
+     * @param routes  of server
+     * @param eh      error handler
      * 
      * @return an instance of {@link DefaultServer}
      * 
      * @throws NullPointerException if any argument is {@code null}
      */
-    static HttpServer with(ServerConfig config, Iterable<? extends Route> routes,
-                           Supplier<? extends ErrorHandler> onError)
+    static HttpServer with(ServerConfig config,
+                           Iterable<? extends Route> routes,
+                           Supplier<? extends ErrorHandler> eh)
     {
-        return with(config, routes, singleton(onError));
+        return with(config, routes, singleton(eh));
     }
     
     /**
      * Builds a server.<p>
      * 
-     * @param config   of server
-     * @param routes   of server
-     * @param onError  error handlers
+     * @param config  of server
+     * @param routes  of server
+     * @param eh      error handlers
      * 
      * @return an instance of {@link DefaultServer}
      * 
      * @throws NullPointerException if any argument is {@code null}
      */
     static <S extends Supplier<? extends ErrorHandler>> HttpServer with(
-            ServerConfig config, Iterable<? extends Route> routes, Iterable<S> onError)
+            ServerConfig config,
+            Iterable<? extends Route> routes,
+            Iterable<S> eh)
     {
         RouteRegistry reg = new DefaultRouteRegistry();
         routes.forEach(reg::add);
-        return new DefaultServer(reg, config, onError);
+        return new DefaultServer(reg, config, eh);
     }
     
     /**
-     * Makes the server listen for new HTTP connections on a system-picked port
+     * Make the server listen for new client connections on a system-picked port
      * on the loopback address (IPv4 127.0.0.1, IPv6 ::1).<p>
      * 
-     * This method is useful for inter-process communication or to start a
-     * server in a test environment.
+     * This method is useful for inter-process communication on the same machine
+     * or to start a server in a test environment.
      * 
      * @implSpec
      * The default implementation is equivalent to:
@@ -179,7 +176,7 @@ public interface HttpServer
      * 
      * @return a bound server-socket channel
      * 
-     * @throws IllegalStateException if server is already running
+     * @throws IllegalStateException if the server is already running
      * @throws IOException if an I/O error occurs
      * 
      * @see InetAddress
@@ -190,7 +187,7 @@ public interface HttpServer
     }
     
     /**
-     * Makes the server listen for new HTTP connections on a specified port
+     * Make the server listen for new client connections on the specified port
      * on the wildcard address ("any local address").
      * 
      * @implSpec
@@ -208,13 +205,14 @@ public interface HttpServer
      * 
      * @see InetAddress
      */
+    
     default HttpServer start(int port) throws IOException  {
         return start(new InetSocketAddress(port));
     }
     
     /**
-     * Makes the server listen for new HTTP connections on a specified hostnamé
-     * and port.
+     * Make the server listen for new client connections on the specified
+     * hostname and port.
      * 
      * @implSpec
      * The default implementation is equivalent to:
@@ -237,9 +235,10 @@ public interface HttpServer
     }
     
     /**
-     * Makes the server listen for new HTTP connections on a specified address.
+     * Make the server listen for new client connections on the specified
+     * address.
      * 
-     * Passing in {@code null} as address is equivalent to {@link #start()}
+     * Passing in {@code null} for address is equivalent to {@link #start()}
      * without any arguments, i.e. a system-picked port will be used on the
      * loopback address.
      * 
