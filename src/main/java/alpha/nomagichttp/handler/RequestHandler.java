@@ -81,9 +81,9 @@ import static java.util.Objects.requireNonNull;
  * Or, more simply:
  * 
  * <pre>{@code
- *     import static alpha.nomagichttp.handlers.GET;
+ *     import static alpha.nomagichttp.RequestHandlers.GET;
  *     ...
- *     Handler handler = GET().run(() -> System.out.println("Hello, World!"));
+ *     RequestHandler h = GET().run(() -> System.out.println("Hello, World!"));
  * }</pre>
  * 
  * 
