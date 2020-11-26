@@ -4,7 +4,7 @@ import alpha.nomagichttp.handler.RequestHandler;
 import alpha.nomagichttp.message.MediaType;
 import org.junit.jupiter.api.Test;
 
-import static alpha.nomagichttp.handler.Handlers.noop;
+import static alpha.nomagichttp.handler.RequestHandlers.noop;
 import static alpha.nomagichttp.message.MediaType.ALL;
 import static alpha.nomagichttp.message.MediaType.NOTHING;
 import static alpha.nomagichttp.message.MediaType.NOTHING_AND_ALL;

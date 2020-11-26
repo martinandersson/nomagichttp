@@ -9,7 +9,7 @@ import java.net.http.HttpResponse;
 import java.nio.file.Files;
 import java.nio.file.Path;
 
-import static alpha.nomagichttp.handler.Handlers.POST;
+import static alpha.nomagichttp.handler.RequestHandlers.POST;
 import static alpha.nomagichttp.message.ResponseBuilder.ok;
 import static org.assertj.core.api.Assertions.assertThat;
 

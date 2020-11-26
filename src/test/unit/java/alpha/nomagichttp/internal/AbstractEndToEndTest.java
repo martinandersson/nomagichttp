@@ -8,7 +8,7 @@ import org.junit.jupiter.api.BeforeAll;
 
 import java.io.IOException;
 
-import static alpha.nomagichttp.handler.Handlers.noop;
+import static alpha.nomagichttp.handler.RequestHandlers.noop;
 import static alpha.nomagichttp.route.Routes.route;
 import static java.lang.System.Logger.Level.ALL;
 

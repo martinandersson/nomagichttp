@@ -1,7 +1,7 @@
 package alpha.nomagichttp.largetest;
 
 import alpha.nomagichttp.handler.RequestHandler;
-import alpha.nomagichttp.handler.Handlers;
+import alpha.nomagichttp.handler.RequestHandlers;
 import alpha.nomagichttp.message.Responses;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -22,7 +22,7 @@ class BigTextRequest extends AbstractSingleClientTest
 {
     @BeforeAll
     static void addHandler() {
-        RequestHandler echo = Handlers.POST().apply(req ->
+        RequestHandler echo = RequestHandlers.POST().apply(req ->
                 req.body().get().toText().thenApply(Responses::ok));
         
         addHandler("/echo", echo);

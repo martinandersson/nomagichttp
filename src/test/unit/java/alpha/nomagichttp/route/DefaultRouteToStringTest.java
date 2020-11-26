@@ -2,7 +2,7 @@ package alpha.nomagichttp.route;
 
 import org.junit.jupiter.api.Test;
 
-import static alpha.nomagichttp.handler.Handlers.noop;
+import static alpha.nomagichttp.handler.RequestHandlers.noop;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**

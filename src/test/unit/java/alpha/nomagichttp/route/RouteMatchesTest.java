@@ -7,7 +7,7 @@ import org.mockito.Mockito;
 import java.util.Map;
 import java.util.logging.Handler;
 
-import static alpha.nomagichttp.handler.Handlers.noop;
+import static alpha.nomagichttp.handler.RequestHandlers.noop;
 import static java.util.Arrays.stream;
 import static java.util.Map.of;
 import static java.util.logging.Level.WARNING;

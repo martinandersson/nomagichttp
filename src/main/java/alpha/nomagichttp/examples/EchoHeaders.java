@@ -7,7 +7,7 @@ import alpha.nomagichttp.message.ResponseBuilder;
 
 import java.io.IOException;
 
-import static alpha.nomagichttp.handler.Handlers.GET;
+import static alpha.nomagichttp.handler.RequestHandlers.GET;
 import static alpha.nomagichttp.route.Routes.route;
 
 /**

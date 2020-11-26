@@ -124,7 +124,7 @@ import static java.util.Objects.requireNonNull;
  * MediaType#ALL} ("*&#47;*").<p>
  * 
  * The handler may declare that he doesn't care at all whether or not the
- * "Content-Type" is provided or what value it possibly has: {@link
+ * "Content-Type" is provided or what value it might have: {@link
  * MediaType#NOTHING_AND_ALL}.<p>
  * 
  * 

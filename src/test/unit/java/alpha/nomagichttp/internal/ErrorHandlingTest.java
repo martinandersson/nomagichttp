@@ -3,7 +3,7 @@ package alpha.nomagichttp.internal;
 import alpha.nomagichttp.handler.ErrorHandler;
 import alpha.nomagichttp.HttpServer;
 import alpha.nomagichttp.handler.RequestHandler;
-import alpha.nomagichttp.handler.Handlers;
+import alpha.nomagichttp.handler.RequestHandlers;
 import alpha.nomagichttp.message.Response;
 import alpha.nomagichttp.message.ResponseBuilder;
 import alpha.nomagichttp.route.NoRouteFoundException;
@@ -19,7 +19,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Supplier;
 
 import static alpha.nomagichttp.HttpServer.Config.DEFAULT;
-import static alpha.nomagichttp.handler.Handlers.noop;
+import static alpha.nomagichttp.handler.RequestHandlers.noop;
 import static alpha.nomagichttp.internal.ClientOperations.CRLF;
 import static alpha.nomagichttp.route.Routes.route;
 import static java.lang.System.Logger.Level.ALL;
@@ -100,7 +100,7 @@ class ErrorHandlingTest
     {
         AtomicInteger c = new AtomicInteger();
         
-        RequestHandler h1 = Handlers.GET().supply(() -> {
+        RequestHandler h1 = RequestHandlers.GET().supply(() -> {
             if (c.incrementAndGet() < 3) {
                 return response.get();
             }

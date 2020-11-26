@@ -36,21 +36,14 @@
  * inside a route is really necessary, then the application has to provide it's
  * own handler implementation or reconstruct the route.<p>
  * 
- * {@code Route}, {@code RequestHandler}, {@code Request}, {@code Response} and
- * even the {@code HttpServer} are interfaces, of which any implementation can
- * be used as long as the contract is honored.<p>
- * 
- * This library provides <i>default</i> implementations, often built through a
- * <i>builder</i>. For example {@link alpha.nomagichttp.route.DefaultRoute
- * DefaultRoute}, built by {@link alpha.nomagichttp.route.RouteBuilder
- * RouteBuilder}. {@link alpha.nomagichttp.handler.DefaultRequestHandler
- * DefaultRequestHandler} built by {@link
- * alpha.nomagichttp.handler.HandlerBuilder HandlerBuilder}, and so forth.<p>
- * 
- * Commonly, there's also a convenient API on top of the builders meant for
- * static import in order to easily implement common use-cases, for example
- * {@link alpha.nomagichttp.handler.Handlers#GET() Handlers.GET()} and {@link
- * alpha.nomagichttp.message.Responses#ok() Responses.ok()}.
+ * Entities such as {@code RequestHandler} and {@code Response} are often built
+ * using a builder, retrievable from a static method, for example {@link
+ * alpha.nomagichttp.handler.RequestHandler#newBuilder(java.lang.String)
+ * RequestHandler.newBuilder()}. The builder gives a fine-grained control over
+ * the build. Commonly, there's also a convenient API meant for static import in
+ * order to easily implement common use-cases, for example {@link
+ * alpha.nomagichttp.handler.RequestHandlers#GET() RequestHandlers.GET()} and
+ * {@link alpha.nomagichttp.message.Responses#ok() Responses.ok()}.
  * 
  * 
  * <h3>Examples</h3>

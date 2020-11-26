@@ -2,7 +2,7 @@ package alpha.nomagichttp.largetest;
 
 import alpha.nomagichttp.HttpServer;
 import alpha.nomagichttp.handler.RequestHandler;
-import alpha.nomagichttp.handler.Handlers;
+import alpha.nomagichttp.handler.RequestHandlers;
 import org.junit.jupiter.api.BeforeAll;
 
 import java.io.IOException;
@@ -33,7 +33,7 @@ abstract class AbstractSingleClientTest
     
     @BeforeAll
     static void setup() throws IOException {
-        SERVER = HttpServer.with(route("/", Handlers.noop()));
+        SERVER = HttpServer.with(route("/", RequestHandlers.noop()));
         SERVER.start();
         
         ROOT = "http://localhost:" + SERVER.getLocalAddress().getPort();

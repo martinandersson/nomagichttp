@@ -11,8 +11,8 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 
-import static alpha.nomagichttp.handler.Handlers.GET;
-import static alpha.nomagichttp.handler.Handlers.POST;
+import static alpha.nomagichttp.handler.RequestHandlers.GET;
+import static alpha.nomagichttp.handler.RequestHandlers.POST;
 import static alpha.nomagichttp.internal.ClientOperations.CRLF;
 import static alpha.nomagichttp.message.Responses.ok;
 import static org.assertj.core.api.Assertions.assertThat;

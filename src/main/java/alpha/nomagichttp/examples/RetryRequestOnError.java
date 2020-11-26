@@ -14,7 +14,7 @@ import java.util.concurrent.CompletionStage;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Supplier;
 
-import static alpha.nomagichttp.handler.Handlers.GET;
+import static alpha.nomagichttp.handler.RequestHandlers.GET;
 import static alpha.nomagichttp.message.Responses.ok;
 import static alpha.nomagichttp.route.Routes.route;
 import static java.time.LocalTime.now;
