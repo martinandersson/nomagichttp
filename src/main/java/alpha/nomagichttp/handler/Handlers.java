@@ -18,6 +18,7 @@ import alpha.nomagichttp.message.MediaType;
  * 
  * @see RequestHandler
  */
+// TODO: Rename to RequestHandlers
 public final class Handlers
 {
     private Handlers() {
@@ -33,9 +34,9 @@ public final class Handlers
      * @return an almost complete HandlerBuilder
      * 
      * @see Handlers
-     * @see HandlerBuilder
+     * @see RequestHandler.Builder
      */
-    public static HandlerBuilder.LastStep GET() {
+    public static RequestHandler.Builder.LastStep GET() {
         return method("GET");
     }
     
@@ -48,9 +49,9 @@ public final class Handlers
      * @return an almost complete HandlerBuilder
      *
      * @see Handlers
-     * @see HandlerBuilder
+     * @see RequestHandler.Builder
      */
-    public static HandlerBuilder.LastStep POST() {
+    public static RequestHandler.Builder.LastStep POST() {
         return method("POST");
     }
     
@@ -63,14 +64,16 @@ public final class Handlers
      * @return an almost complete HandlerBuilder
      *
      * @see Handlers
-     * @see HandlerBuilder
+     * @see RequestHandler.Builder
      */
-    public static HandlerBuilder.LastStep PUT() {
+    public static RequestHandler.Builder.LastStep PUT() {
         return method("PUT");
     }
     
-    public static HandlerBuilder.LastStep method(String method) {
-        return new HandlerBuilder(method).consumesNothingAndAll().producesAll();
+    public static RequestHandler.Builder.LastStep method(String method) {
+        return new DefaultRequestHandler.Builder(method)
+                .consumesNothingAndAll()
+                .producesAll();
     }
     
     public static RequestHandler noop() {

@@ -10,7 +10,9 @@ import java.util.StringJoiner;
 import java.util.concurrent.CompletionStage;
 import java.util.function.Function;
 
-import static alpha.nomagichttp.message.MediaType.*;
+import static alpha.nomagichttp.message.MediaType.ALL;
+import static alpha.nomagichttp.message.MediaType.NOTHING;
+import static alpha.nomagichttp.message.MediaType.NOTHING_AND_ALL;
 import static java.text.MessageFormat.format;
 import static java.util.Objects.requireNonNull;
 
@@ -22,8 +24,7 @@ import static java.util.Objects.requireNonNull;
 final class DefaultRequestHandler implements RequestHandler
 {
     private final String method;
-    private final MediaType consumes;
-    private final MediaType produces;
+    private final MediaType consumes, produces;
     private final Function<Request, CompletionStage<Response>> logic;
     private final int hash;
     
@@ -121,6 +122,31 @@ final class DefaultRequestHandler implements RequestHandler
             throw new IllegalArgumentException(format(
                     "Handler's producing media type must not be \"{0}\". Maybe try \"{1}\"?",
                     invalid, ALL));
+        }
+    }
+    
+    /**
+     * Default implementation of {@link RequestHandler.Builder}.
+     * 
+     * @author Martin Andersson (webmaster at martinandersson.com)
+     */
+    static class Builder implements RequestHandler.Builder {
+        private final String m;
+        
+        Builder(String method) {
+            m = requireNonNull(method);
+        }
+        
+        @Override
+        public NextStep consumes(MediaType c) {
+            requireNonNull(c);
+            return p -> {
+                requireNonNull(p);
+                return l-> {
+                    requireNonNull(l);
+                    return new DefaultRequestHandler(m, c, p, l);
+                };
+            };
         }
     }
 }

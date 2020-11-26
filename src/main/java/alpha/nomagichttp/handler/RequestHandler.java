@@ -9,15 +9,28 @@ import alpha.nomagichttp.route.NoHandlerFoundException;
 import alpha.nomagichttp.route.Route;
 
 import java.util.concurrent.CompletionStage;
+import java.util.function.Consumer;
 import java.util.function.Function;
+import java.util.function.Supplier;
+
+import static alpha.nomagichttp.message.MediaType.ALL;
+import static alpha.nomagichttp.message.MediaType.NOTHING;
+import static alpha.nomagichttp.message.MediaType.NOTHING_AND_ALL;
+import static alpha.nomagichttp.message.MediaType.TEXT_PLAIN;
+import static alpha.nomagichttp.message.MediaType.parse;
+import static alpha.nomagichttp.message.Responses.accepted;
+import static java.util.Objects.requireNonNull;
 
 /**
  * Holder of a request-to-response {@link #logic() function} (the "logic
  * instance") coupled together with meta-data describing the handler.<p>
  * 
+ * A request handler can be built using {@link #newBuilder(String)} or other
+ * static methods in {@link Builder}.<p>
+ * 
  * The meta-data consists of a HTTP {@link #method() method} token and
  * {@link #consumes() consumes}/{@link #produces() produces} media types. This
- * information is only used as inputs for a handler-lookup algorithm when the
+ * information is only used as filtering inputs for a lookup algorithm when the
  * server has matched a request against a {@link Route} and needs to select
  * which handler of the route to call.<p>
  * 
@@ -26,17 +39,15 @@ import java.util.function.Function;
  * interprets the request headers- and body as well as what headers and body are
  * sent back.<p>
  * 
- * The default implementation can be built by using {@link HandlerBuilder} and
- * static methods in {@link Handlers}.
- * 
  * 
  * <h3>Handler Selection</h3>
  * 
- * The procedure to select which handler of a route to call, is pretty straight
- * forward: weed out all handlers that does not qualify and then call the one
- * with media types preferred by the client and most {@link
- * MediaType#specificity() specific} - details will be discussed throughout
- * subsequent sections.<p>
+ * When the server selects which handler of a route to call, it first weeds out
+ * all handlers that does not qualify based on request headers and the handler's
+ * meta-data. If there's still many of them that quality, the handler with media
+ * types preferred by the client and with greatest {@link
+ * MediaType#specificity() specificity} will be used. More details will be
+ * discussed throughout subsequent sections.<p>
  * 
  * A {@link NoHandlerFoundException} is thrown if no handler can be matched.<p>
  * 
@@ -59,9 +70,9 @@ import java.util.function.Function;
  * 
  * For example:
  * <pre>{@code
- *     import static alpha.nomagichttp.handler.HandlerBuilder.GET;
+ *     import static alpha.nomagichttp.handler.RequestHandler.Builder.GET;
  *     ...
- *     Handler handler = GET()
+ *     RequestHandler h = GET()
  *             .consumesNothingAndAll()
  *             .producesAll()
  *             .run(() -> System.out.println("Hello, World!"));
@@ -228,6 +239,17 @@ import java.util.function.Function;
 public interface RequestHandler
 {
     /**
+     * Creates a new {@code RequestHandler} builder.
+     * 
+     * @return a builder with the {@code method} set
+     * 
+     * @throws NullPointerException if {@code method} is {@code null}
+     */
+    static Builder newBuilder(String method) {
+        return new DefaultRequestHandler.Builder(method);
+    }
+    
+    /**
      * Returns the method token of the request this handler handles.<p>
      * 
      * For example "GET and "POST".
@@ -285,4 +307,236 @@ public interface RequestHandler
      */
     @Override
     String toString();
+    
+    /**
+     * Builder of {@link RequestHandler}.<p>
+     * 
+     * Each method returns an immutable builder instance which can be used as a
+     * template for new builds.<p>
+     * 
+     * The builder will guide the user through a series of steps along the
+     * process of building a handler.<p>
+     * 
+     * The first step is the constructor which requires an HTTP method such as
+     * "GET", "POST" or anything else - it's just a string after all
+     * (case-sensitive). The builder will then expose methods that specifies
+     * what media type the handler consumes followed by what media type it
+     * produces, for example "text/plain". The last step will be to specify the
+     * logic of the handler.<p>
+     * 
+     * Ultimately, the logic is a {@code Function<Request,
+     * CompletionStage<Response>>}, but the builder exposes adapter methods
+     * which accepts a variety of functional types depending on the needs of the
+     * application.<p>
+     * 
+     * {@code run()} receives a no-args {@link Runnable} which represents logic
+     * that does not need to access the request object and has no need to
+     * customize the "202 Accepted" response sent back to the client. This
+     * flavor is useful for handlers that will accept all requests as a command
+     * to initiate processes on the server.<p>
+     * 
+     * {@code accept()} is very much similar to {@code run()}, except the logic
+     * is represented by a {@link Consumer} who will receive the request object
+     * and can therefore read meaningful data out of it.<p>
+     * 
+     * {@code supply()} receives a {@link Supplier} which represents logic that
+     * is not interested in the request object but does have the need to return
+     * a fully customizable response.<p>
+     * 
+     * {@code apply()} receives a {@link Function} which has access to the
+     * request object <i>and</i> returns a fully customizable response.
+     * 
+     * @author Martin Andersson (webmaster at martinandersson.com)
+     */
+    interface Builder
+    {
+        /**
+         * Returns a builder with HTTP method set to "GET".
+         * 
+         * @return a builder with HTTP method set to "GET"
+         */
+        static Builder GET() {
+            return newBuilder("GET");
+        }
+        
+        /**
+         * Returns a builder with HTTP method set to "HEAD".
+         * 
+         * @return a builder with HTTP method set to "HEAD"
+         */
+        static Builder HEAD() {
+            return newBuilder("HEAD");
+        }
+        
+        /**
+         * Returns a builder with HTTP method set to "POST".
+         * 
+         * @return a builder with HTTP method set to "POST"
+         */
+        static Builder POST() {
+            return newBuilder("POST");
+        }
+        
+        /**
+         * Returns a builder with HTTP method set to "PUT".
+         * 
+         * @return a builder with HTTP method set to "PUT"
+         */
+        static Builder PUT() {
+            return newBuilder("PUT");
+        }
+        
+        /**
+         * Returns a builder with HTTP method set to "DELETE".
+         * 
+         * @return a builder with HTTP method set to "DELETE"
+         */
+        static Builder DELETE() {
+            return newBuilder("DELETE");
+        }
+        
+        /**
+         * Set consumption media type to {@link MediaType#NOTHING}.
+         * 
+         * @return the next step
+         */
+        default NextStep consumesNothing() {
+            return consumes(NOTHING);
+        }
+        
+        /**
+         * Set consumption media type to {@link MediaType#ALL}.
+         * 
+         * @return the next step
+         */
+        default NextStep consumesAll() {
+            return consumes(ALL);
+        }
+        
+        /**
+         * Set consumption media type to {@link MediaType#NOTHING_AND_ALL}.
+         * 
+         * @return the next step
+         */
+        default NextStep consumesNothingAndAll() {
+            return consumes(NOTHING_AND_ALL);
+        }
+        
+        /**
+         * Set consumption media type to {@link MediaType#TEXT_PLAIN}.
+         * 
+         * @return the next step
+         */
+        default NextStep consumesTextPlain() {
+            return consumes(TEXT_PLAIN);
+        }
+        
+        /**
+         * Parse and set consumption {@code mediaType}.
+         * 
+         * @return the next step
+         * @param mediaType to set
+         * @see MediaType#parse(CharSequence) 
+         */
+        default NextStep consumes(String mediaType) {
+            return consumes(parse(mediaType));
+        }
+        
+        /**
+         * Set consumption media type.
+         * 
+         * @return the next step
+         * @param mediaType to set
+         * @throws NullPointerException if {@code mediaType} is {@code null}
+         */
+        NextStep consumes(MediaType mediaType);
+        
+        interface NextStep
+        {
+            /**
+             * Set producing media type to {@link MediaType#ALL}.
+             * 
+             * @return the last step
+             */
+            default LastStep producesAll() {
+                return produces(ALL);
+            }
+            
+            /**
+             * Set producing media type to {@link MediaType#TEXT_PLAIN}.
+             * 
+             * @return the last step
+             */
+            default LastStep producesTextPlain() {
+                return produces(TEXT_PLAIN);
+            }
+            
+            /**
+             * Parse and set producing {@code mediaType}.
+             * 
+             * @return the last step
+             * @param mediaType to set
+             * @see MediaType#parse(CharSequence)
+             */
+            default LastStep produces(String mediaType) {
+                return produces(parse(mediaType));
+            }
+            
+            /**
+             * Set producing media type.
+             * 
+             * @return the last step
+             * @param mediaType to set
+             * @throws NullPointerException if {@code mediaType} is {@code null}
+             */
+            LastStep produces(MediaType mediaType);
+        }
+        
+        interface LastStep
+        {
+            /**
+             * Delegate handler's logic to a runnable.
+             * 
+             * @param logic delegate
+             * @return a new request handler
+             */
+            default RequestHandler run(Runnable logic) {
+                requireNonNull(logic);
+                return accept(requestIgnored -> logic.run());
+            }
+            
+            /**
+             * Delegate handler's logic to a consumer of the request.
+             *
+             * @param logic delegate
+             * @return a new request handler
+             */
+            default RequestHandler accept(Consumer<Request> logic) {
+                requireNonNull(logic);
+                return apply(req -> {
+                    logic.accept(req);
+                    return accepted().asCompletedStage();
+                });
+            }
+            
+            /**
+             * Delegate handler's logic to a supplier of the response.
+             *
+             * @param logic delegate
+             * @return a new request handler
+             */
+            default RequestHandler supply(Supplier<CompletionStage<Response>> logic) {
+                requireNonNull(logic);
+                return apply(requestIgnored -> logic.get());
+            }
+            
+            /**
+             * Set handler's logic.
+             *
+             * @param logic to call
+             * @return a new request handler
+             */
+            RequestHandler apply(Function<Request, CompletionStage<Response>> logic);
+        }
+    }
 }

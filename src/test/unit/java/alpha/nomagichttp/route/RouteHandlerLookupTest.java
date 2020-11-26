@@ -1,7 +1,6 @@
 package alpha.nomagichttp.route;
 
 import alpha.nomagichttp.handler.RequestHandler;
-import alpha.nomagichttp.handler.HandlerBuilder;
 import alpha.nomagichttp.message.MediaType;
 import org.junit.jupiter.api.Test;
 
@@ -9,8 +8,8 @@ import java.util.Set;
 
 import static alpha.nomagichttp.message.MediaType.ALL;
 import static alpha.nomagichttp.message.MediaType.NOTHING;
-import static alpha.nomagichttp.message.MediaType.TEXT_PLAIN;
 import static alpha.nomagichttp.message.MediaType.NOTHING_AND_ALL;
+import static alpha.nomagichttp.message.MediaType.TEXT_PLAIN;
 import static alpha.nomagichttp.message.MediaType.parse;
 import static java.util.Arrays.stream;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -259,7 +258,7 @@ class RouteHandlerLookupTest
     }
     
     private RequestHandler create(MediaType consumes, MediaType produces) {
-        RequestHandler h = new HandlerBuilder("GET")
+        RequestHandler h = RequestHandler.Builder.GET()
                 .consumes(consumes)
                 .produces(produces)
                 .run(() -> {});

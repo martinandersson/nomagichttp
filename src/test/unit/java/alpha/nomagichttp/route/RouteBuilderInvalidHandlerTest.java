@@ -1,14 +1,13 @@
 package alpha.nomagichttp.route;
 
 import alpha.nomagichttp.handler.RequestHandler;
-import alpha.nomagichttp.handler.HandlerBuilder;
 import alpha.nomagichttp.message.MediaType;
 import org.junit.jupiter.api.Test;
 
+import static alpha.nomagichttp.handler.Handlers.noop;
 import static alpha.nomagichttp.message.MediaType.ALL;
 import static alpha.nomagichttp.message.MediaType.NOTHING;
 import static alpha.nomagichttp.message.MediaType.NOTHING_AND_ALL;
-import static alpha.nomagichttp.handler.Handlers.noop;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
@@ -43,7 +42,7 @@ class RouteBuilderInvalidHandlerTest
     }
     
     private RequestHandler create(MediaType consumes) {
-        return new HandlerBuilder("GET")
+        return RequestHandler.Builder.GET()
                 .consumes(consumes)
                 .producesAll()
                 .run(() -> {});
