@@ -26,7 +26,7 @@ import java.util.function.Function;
  * interprets the request headers- and body as well as what headers and body are
  * sent back.<p>
  * 
- * THe default implementation can be built by using {@link HandlerBuilder} and
+ * The default implementation can be built by using {@link HandlerBuilder} and
  * static methods in {@link Handlers}.
  * 
  * 
@@ -211,14 +211,14 @@ import java.util.function.Function;
  * anew for each request.
  * 
  * 
- * <h3>Thread safety and identity</h3>
+ * <h3>Thread safety and object equality</h3>
  * 
  * The implementation must be thread-safe, both the handler itself and the logic
  * instance it returns. The server will invoke the handler concurrently for
  * parallel inbound requests targeting the same handler.<p>
  * 
- * The identity of a handler is fully based on its method token, consumes- and
- * produces media types. The logic instance plays no part in this role.
+ * Equality of handlers is fully based on method tokens, consumes- and produces
+ * media types. The logic instances plays no part.
  * 
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
@@ -275,13 +275,10 @@ public interface RequestHandler
     Function<Request, CompletionStage<Response>> logic();
     
     /**
-     * Returns this represented as a String.<p>
-     * 
-     * The returned String should uniquely identify the handler as it may be
-     * used for logging purposes and inside exception messages.<p>
+     * Returns this represented as a string.<p>
      * 
      * There's probably not much sense in marshalling the logic instance
-     * together with the returned String given how the logic does not
+     * together with the returned string given how the logic does not
      * participate in the identity of the handler.
      * 
      * @return this represented as a String (never {@code null})

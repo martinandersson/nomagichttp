@@ -30,8 +30,8 @@ import static java.util.Objects.requireNonNull;
  * The HandlerBuilder instance will then expose methods that specifies what
  * media-type the handler consumes.<p>
  * 
- * Once the consumes media-type has been specified, the next step is to specify
- * what media-type the handler produces.<p>
+ * Once the consumption media-type has been specified, the next step is to
+ * specify what media-type the handler produces.<p>
  * 
  * The last step will be to specify the logic of the handler. The adapter
  * methods offered by this class to do so, comes in many flavors which accepts
