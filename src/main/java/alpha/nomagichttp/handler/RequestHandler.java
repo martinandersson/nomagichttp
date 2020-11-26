@@ -25,8 +25,8 @@ import static java.util.Objects.requireNonNull;
  * Holder of a request-to-response {@link #logic() function} (the "logic
  * instance") coupled together with meta-data describing the handler.<p>
  * 
- * A request handler can be built using {@link #newBuilder(String)} or other
- * static methods in {@link Builder}.<p>
+ * A {@code RequestHandler} can be built using {@link #newBuilder(String)} or
+ * other static methods found in {@link Builder} and {@link RequestHandlers}.<p>
  * 
  * The meta-data consists of a HTTP {@link #method() method} token and
  * {@link #consumes() consumes}/{@link #produces() produces} media types. This
@@ -216,15 +216,15 @@ import static java.util.Objects.requireNonNull;
  * 
  * There is no library-provided scope mechanism. Normal rules concerning
  * reachability of Java references applies. Effectively, this means that
- * {@link DefaultRequestHandler} can be regarded as "singleton" or
- * "application-scoped". A custom implementation can choose to create a new
- * logic instance for each request since the {@link #logic()} method is invoked
- * anew for each request.
+ * the implementation built using {@link #newBuilder(String)} can be regarded as
+ * a "singleton" or "application-scoped". A custom implementation can choose to
+ * create a new logic instance for each request since the {@link #logic()}
+ * method is invoked anew for each request.
  * 
  * 
  * <h3>Thread safety and object equality</h3>
  * 
- * The implementation must be thread-safe, both the handler itself and the logic
+ * The implementation is thread-safe, both the handler itself and the logic
  * instance it returns. The server will invoke the handler concurrently for
  * parallel inbound requests targeting the same handler.<p>
  * 
@@ -239,7 +239,9 @@ import static java.util.Objects.requireNonNull;
 public interface RequestHandler
 {
     /**
-     * Creates a new {@code RequestHandler} builder.
+     * Creates a new {@code RequestHandler} builder.<p>
+     * 
+     * The method is any string, case-sensitive. For example, "GET" and "POST".
      * 
      * @return a builder with the {@code method} set
      * 
@@ -311,18 +313,21 @@ public interface RequestHandler
     /**
      * Builder of {@link RequestHandler}.<p>
      * 
-     * Each method returns an immutable builder instance which can be used as a
-     * template for new builds.<p>
+     * Each method returns an immutable builder instance which can be used
+     * repeatedly as a template for new builds.<p>
      * 
      * The builder will guide the user through a series of steps along the
      * process of building a handler.<p>
      * 
-     * The first step is the constructor which requires an HTTP method such as
-     * "GET", "POST" or anything else - it's just a string after all
-     * (case-sensitive). The builder will then expose methods that specifies
-     * what media type the handler consumes followed by what media type it
-     * produces, for example "text/plain". The last step will be to specify the
-     * logic of the handler.<p>
+     * The first step is the constructor which requires an HTTP method. Static
+     * methods for HTTP-standardized methods exists in the form of {@link
+     * #GET()}, {@link #POST()} and so on.<p> 
+     * 
+     * The next step is to specify what media type the handler consumes followed
+     * by what media type it produces, for example "text/plain".<p>
+     * 
+     * The last step will be to specify the logic of the handler. The last step
+     * is also what builds a new handler instance.<p>
      * 
      * Ultimately, the logic is a {@code Function<Request,
      * CompletionStage<Response>>}, but the builder exposes adapter methods

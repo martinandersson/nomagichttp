@@ -36,7 +36,7 @@ import java.util.function.BiFunction;
 public interface Request
 {
     /**
-     * Returns the request-line's method token, such as "GET" or "POST".<p>
+     * Returns the request-line's method token.<p>
      * 
      * In the following example, the method is "GET":
      * <pre>{@code
