@@ -1,6 +1,5 @@
 package alpha.nomagichttp.route;
 
-import alpha.nomagichttp.handler.DefaultRequestHandler;
 import alpha.nomagichttp.handler.RequestHandler;
 import alpha.nomagichttp.handler.HandlerBuilder;
 import alpha.nomagichttp.message.MediaType;
@@ -30,7 +29,7 @@ class RouteBuilderInvalidHandlerTest
         assertThatThrownBy(() -> testee.handler(noop()))
                 .isExactlyInstanceOf(HandlerCollisionException.class)
                 .hasMessage("An equivalent handler has already been added: " +
-                        DefaultRequestHandler.class.getSimpleName() + "{method=\"GET\", consumes=\"<nothing and all>\", produces=\"*/*\"}");
+                        "DefaultRequestHandler{method=\"GET\", consumes=\"<nothing and all>\", produces=\"*/*\"}");
     }
     
     @Test

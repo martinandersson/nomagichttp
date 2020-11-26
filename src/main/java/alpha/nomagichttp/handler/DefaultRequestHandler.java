@@ -19,7 +19,7 @@ import static java.util.Objects.requireNonNull;
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  */
-public final class DefaultRequestHandler implements RequestHandler
+final class DefaultRequestHandler implements RequestHandler
 {
     private final String method;
     private final MediaType consumes;
