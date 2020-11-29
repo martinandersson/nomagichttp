@@ -302,6 +302,6 @@ public interface Response
          * @throws IllegalStateException
          *             if HTTP version or reason phrase has not been set
          */
-        Builder build();
+        Response build();
     }
 }
