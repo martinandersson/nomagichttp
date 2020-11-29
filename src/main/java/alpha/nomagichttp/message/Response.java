@@ -15,25 +15,25 @@ import java.util.concurrent.Flow;
 import java.util.function.Supplier;
 
 /**
- * A response contains a {@link #statusLine() statusLine}, {@link #headers()
- * headers} and an optional {@link #body() body}.<p>
- * 
- * A {@code Response} can be built using {@link #newBuilder()} or other static
- * methods found in {@link Response.Builder} and {@link Responses}.<p>
+ * A {@code Response} contains a {@link #statusLine() statusLine}, {@link
+ * #headers() headers} and an optional {@link #body() body}. It can be built
+ * using {@link #newBuilder()} or other static methods found in {@link
+ * Response.Builder} and {@link Responses}.<p>
  * 
  * The content of the request head (status-line and headers) will be written
  * to the client verbatim/unaltered; i.e. casing will be preserved, yes, even
- * space characters. Header order is preserved (FIFO), even for duplicated
- * headers who may become interlaced with other headers if this is how the
- * Builder API is used. The content is encoded into bytes using
- * {@link StandardCharsets#US_ASCII US_ASCII}<p>
+ * space characters. The content is encoded into bytes using {@link
+ * StandardCharsets#US_ASCII US_ASCII}<p>
  * 
- * The implementation is immutable and can safely be re-used sequentially over
- * time to the same client as well as shared concurrently to different
- * clients.<p>
+ * Header order is preserved (FIFO). Duplicated header names will be grouped and
+ * inserted at the first occurrence.<p>
  * 
- * The implementation does not necessarily implement {@code hashCode()} and
- * {@code equals()}.
+ * The {@code Response} implementation is immutable and can safely be re-used
+ * sequentially over time to the same client as well as shared concurrently to
+ * different clients.<p>
+ * 
+ * The {@code Response} implementation does not necessarily implement {@code
+ * hashCode()} and {@code equals()}.
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  * 
