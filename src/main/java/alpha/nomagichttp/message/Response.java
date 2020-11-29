@@ -193,7 +193,7 @@ public interface Response
         Builder statusCode(int statusCode);
         
         /**
-         * Set reason phrase for this response. If not set, will default to
+         * Set reason phrase for this response. If never set, will default to
          * "Unknown".
          *
          * @throws NullPointerException if {@code reasonPhrase} is {@code null}
@@ -260,7 +260,7 @@ public interface Response
         Builder contentLenght(long value);
         
         /**
-         * Set a message body.<p>
+         * Set a message body. If never set, will default to an empty body.<p>
          * 
          * The published bytebuffers must not be modified after being published
          * to the subscriber.<p>

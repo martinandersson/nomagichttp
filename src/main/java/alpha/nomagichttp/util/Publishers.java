@@ -7,13 +7,10 @@ import static alpha.nomagichttp.util.Subscriptions.CanOnlyBeCancelled;
 import static java.util.Objects.requireNonNull;
 
 /**
- * Utility class for constructing instances of {@link Flow.Publisher}.<p>
+ * Utility class for constructing thread-safe {@link Flow.Publisher}s.<p>
  * 
- * Please note that the JDK has some pretty neat utilities in
- * {@link HttpRequest.BodyPublishers}.<p>
- * 
- * All publishers created by this class will not - and could not even
- * realistically - enforce <a
+ * Publishers created by this class will not - and could not even realistically
+ * - enforce <a
  * href="https://github.com/reactive-streams/reactive-streams-jvm/blob/v1.0.3/README.md">
  * Reactive Streams §2.12</a>. I.e., subscribers can be re-used.<p>
  * 
