@@ -122,9 +122,9 @@ public interface Response
      * methods that build a complete response can be found in {@link
      * Responses}.<p>
      * 
-     * The builder can be used to modify per-response state. Each method returns
-     * a new builder instance representing the new state which can be used
-     * repeatedly as a template for new builds.<p>
+     * The builder can be used as a template to modify per-response state. Each
+     * method returns a new builder instance representing the new state (the
+     * state of old builder references are unaffected).<p>
      * 
      * HTTP version and status code must be set or {@link #build()} will fail.
      * The reason phrase if not set will default to "Unknown". Headers and the
