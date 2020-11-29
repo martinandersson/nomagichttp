@@ -315,7 +315,7 @@ public interface Response
          * @return a response
          * 
          * @throws IllegalStateException
-         *             if HTTP version or reason phrase has not been set
+         *             if HTTP version or status code has not been set
          */
         Response build();
     }
