@@ -23,8 +23,10 @@ import java.util.function.Supplier;
  * 
  * The content of the request head (status-line and headers) will be written
  * to the client verbatim/unaltered; i.e. casing will be preserved, yes, even
- * space characters. The content is encoded into bytes using {@link
- * StandardCharsets#US_ASCII US_ASCII}<p>
+ * space characters. Header order is preserved (FIFO), even for duplicated
+ * headers who may become interlaced with other headers if this is how the
+ * Builder API is used. The content is encoded into bytes using
+ * {@link StandardCharsets#US_ASCII US_ASCII}<p>
  * 
  * The implementation is immutable and can safely be re-used sequentially over
  * time to the same client as well as shared concurrently to different
@@ -133,9 +135,12 @@ public interface Response
      * The reason phrase if not set will default to "Unknown". Headers and the
      * body are optional.<p>
      * 
-     * Header key and values are taken at face value, concatenated using a colon
-     * followed by a space ": ". Headers may be duplicated (repeated in request
-     * head).<p>
+     * Header key and values are taken at face value (case-sensitive),
+     * concatenated using a colon followed by a space ": ". Adding many values
+     * to the same header name replicates the name across multiple rows in the
+     * response. It does <strong>not</strong> join the values on the same row.
+     * If this is desired, first join multiple values and then pass it to the
+     * builder as one.<p>
      * 
      * The implementation is thread-safe.<p>
      * 
@@ -203,20 +208,22 @@ public interface Response
         Builder reasonPhrase(String reasonPhrase);
         
         /**
-         * Add headers to this response.<p>
+         * Add header(s) to this response.<p>
          *
          * Iterating the {@code String[]} must alternate between header- names
          * and values. To add several values to the same name then the same
-         * name must be supplied with each new value.
-         *
+         * name must be supplied with each additional value.
+         * 
          * @param name of header
          * @param value of header
          * @param morePairs of headers
-         *
+         * 
          * @return a builder
          *
-         * @throws NullPointerException if any argument is {@code null}
-         * @throws IllegalArgumentException if {@code morePairs.length} is odd
+         * @throws NullPointerException
+         *             if any argument or array element is {@code null}
+         * @throws IllegalArgumentException
+         *             if {@code morePairs.length} is odd
          */
         Builder addHeaders(String name, String value, String... morePairs);
         
@@ -294,8 +301,9 @@ public interface Response
         /**
          * Builds the response.<p>
          * 
-         * If the state remains the same, then this method may return the same
-         * response object on subsequent calls.<p>
+         * This method is likely to return the same response object on
+         * subsequent calls, but it's advisable to rather store the built {@code
+         * Response} object instead of the builder.<p>
          * 
          * @return a response
          * 

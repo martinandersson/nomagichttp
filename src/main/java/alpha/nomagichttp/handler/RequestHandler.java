@@ -356,6 +356,11 @@ public interface RequestHandler
      * {@code apply()} receives a {@link Function} which has access to the
      * request object <i>and</i> returns a fully customizable response.
      * 
+     * The implementation is thread-safe.<p>
+     * 
+     * The implementation does not necessarily implement {@code hashCode()} and
+     * {@code equals()}.
+     * 
      * @author Martin Andersson (webmaster at martinandersson.com)
      */
     interface Builder
