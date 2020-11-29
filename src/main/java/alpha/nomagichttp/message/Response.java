@@ -294,6 +294,18 @@ public interface Response
         Builder body(Flow.Publisher<ByteBuffer> body);
         
         /**
+         * Set the {@code must-close-after-write} setting. If never set, will
+         * default to false.
+         * 
+         * @param enabled true or false
+         * 
+         * @return a builder
+         * 
+         * @see Response#mustCloseAfterWrite()
+         */
+        Builder mustCloseAfterWrite(boolean enabled);
+        
+        /**
          * Builds the response.<p>
          * 
          * This method is likely to return the same response object on
