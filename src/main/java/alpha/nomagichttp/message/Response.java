@@ -76,6 +76,26 @@ public interface Response
     Flow.Publisher<ByteBuffer> body();
     
     /**
+     * Returns {@code true} if the server must close the underlying client
+     * channel after writing the response, otherwise {@code false}.<p>
+     * 
+     * The server is always free to close the channel even if this method
+     * returns {@code false}, for example if the server run into channel-related
+     * problems.<p>
+     * 
+     * For security; If closing the client channel fails, the server will try to
+     * stop itself. If stopping itself fails, the server will exit the JVM.<p>
+     * 
+     * The channel's in- and output streams will shutdown first before channel
+     * closure.
+     * 
+     * @return {@code true} if the server must close the underlying client
+     * channel, otherwise {@code false}
+     */
+    // TODO: Param that accepts mayInterruptRequestBodySubscriberOtherwiseWeWillWantForHim
+    boolean mustCloseAfterWrite();
+    
+    /**
      * Returns this response object boxed in a completed stage.<p>
      * 
      * Useful for synchronous request handler implementations that are able to
@@ -91,31 +111,6 @@ public interface Response
      */
     default CompletionStage<Response> asCompletedStage() {
         return CompletableFuture.completedStage(this);
-    }
-    
-    /**
-     * Returns {@code true} if the server must close the underlying client
-     * channel after writing the response, otherwise {@code false}.<p>
-     * 
-     * The server is always free to close the channel even if this method
-     * returns {@code false}, for example if the server run into channel-related
-     * problems.<p>
-     * 
-     * For security; If closing the client channel fails, the server will try to
-     * stop itself. If stopping itself fails, the server will exit the JVM.<p>
-     * 
-     * The channel's in- and output streams will shutdown first before channel
-     * closure.
-     * 
-     * @implSpec
-     * The default implementation returns @code false}.
-     * 
-     * @return {@code true} if the server must close the underlying client
-     * channel, otherwise {@code false}
-     */
-    // TODO: Param that accepts mayInterruptRequestBodySubscriberOtherwiseWeWillWantForHim
-    default boolean mustCloseAfterWrite() {
-        return false;
     }
     
     /**
