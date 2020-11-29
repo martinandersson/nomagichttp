@@ -61,7 +61,11 @@ if (JavaVersion.current() < JavaVersion.VERSION_11) {
 }
 
 tasks.withType(JavaCompile) {
-    options.compilerArgs.addAll(['--release', '11', '-Xlint:unchecked', '-Xdiags:verbose'])
+    options.compilerArgs.addAll([
+        '--release', '11',
+        '-Xlint:unchecked',
+        '-Xlint:deprecation',
+        '-Xdiags:verbose'])
 }
 
 test {
