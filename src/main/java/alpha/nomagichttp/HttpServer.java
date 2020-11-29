@@ -59,8 +59,9 @@ import static java.util.Collections.singleton;
  * All servers running in the same JVM share a common pool of threads (aka
  * "request threads"). The pool handles I/O completion events and executes
  * application-provided entities such as the request- and error handlers. The
- * pool size is fixed and set to the value of {@link Config#threadPoolSize()} at
- * the time of the first server start.<p>
+ * request thread also subscribes to the response body. The pool size is fixed
+ * and set to the value of {@link Config#threadPoolSize()} at the time of the
+ * first server start.<p>
  * 
  * It is absolutely crucial that the application does not block a request
  * thread, for example by synchronously waiting on an I/O result. The request
@@ -68,8 +69,7 @@ import static java.util.Collections.singleton;
  * long-lived tasks should execute somewhere else. Blocking the request thread
  * will have a negative impact on scalability and could at worse starve the pool
  * of available threads making the server unable to make progress with tasks
- * such as accepting new client connections or processing other requests.<p>
- * 
+ * such as accepting new client connections or processing other requests.
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  * 

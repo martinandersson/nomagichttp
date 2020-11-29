@@ -7,7 +7,15 @@ import static java.net.http.HttpRequest.BodyPublisher;
 import static java.net.http.HttpRequest.BodyPublishers;
 
 /**
- * Factory methods for {@link Response}.
+ * Utility methods for building complete {@link Response}s.<p>
+ * 
+ * For a more fine-grained control, use {@link Response#newBuilder()} or
+ * semi-populated builders such as {@link Response.Builder#ok()} and {@link
+ * Response.Builder#accepted()}.<p>
+ * 
+ * <strong>WARNING:</strong> Using {@link BodyPublishers} to create the response
+ * body may not be thread-safe where thread-safety matters or may block the HTTP
+ * server thread. See {@link Response.Builder#body(Flow.Publisher)}.
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  */

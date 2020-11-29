@@ -241,7 +241,12 @@ public interface RequestHandler
     /**
      * Creates a new {@code RequestHandler} builder.<p>
      * 
-     * The method is any string, case-sensitive. For example, "GET" and "POST".
+     * The method is any string, case-sensitive. For example, "GET" and
+     * "POST".<p>
+     * 
+     * Builders with standardized methods is already available using static
+     * methods in the builder interface, such as {@link Builder#GET()}, {@link
+     * Builder#POST()} etc.
      * 
      * @return a builder with the {@code method} set
      * 
