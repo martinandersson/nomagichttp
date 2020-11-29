@@ -155,10 +155,7 @@ public interface Response
          * @return a builder
          */
         static Builder ok() {
-            // TODO: Save references somewhere
-            return newBuilder().httpVersion("HTTP/1.1")
-                               .statusCode(200)
-                               .reasonPhrase("OK");
+            return BuilderCache.OK;
         }
         
         /**
@@ -170,11 +167,10 @@ public interface Response
          * @return a builder
          */
         static Builder accepted() {
-            // TODO: Save references somewhere
-            return newBuilder().httpVersion("HTTP/1.1")
-                               .statusCode(202)
-                               .reasonPhrase("Accepted");
+            return BuilderCache.ACCEPTED;
         }
+        
+        // TODO: Basically all other codes in the standard lol
         
         /**
          * Set HTTP version for this response.
@@ -319,4 +315,17 @@ public interface Response
          */
         Response build();
     }
+}
+
+final class BuilderCache
+{
+    private static final Response.Builder HTTP_1_1 = Response.newBuilder().httpVersion("HTTP/1.1");
+    
+    private BuilderCache() {
+        // Empty
+    }
+    
+    static final Response.Builder
+            OK       = HTTP_1_1.statusCode(200).reasonPhrase("OK"),
+            ACCEPTED = HTTP_1_1.statusCode(202).reasonPhrase("Accepted");
 }
