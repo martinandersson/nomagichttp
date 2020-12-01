@@ -1,7 +1,6 @@
 package alpha.nomagichttp.util;
 
 import java.util.concurrent.Flow;
-import java.util.function.Consumer;
 
 /**
  * Utility class for constructing instances of {@link Flow.Subscriber}.
@@ -10,9 +9,6 @@ import java.util.function.Consumer;
  */
 public final class Subscribers
 {
-    private static final Flow.Subscriber<?> NOOP
-            = new Delegating<>(null, null, null, null);
-    
     private Subscribers() {
         // Empty
     }
@@ -26,7 +22,7 @@ public final class Subscribers
      */
     public static <T> Flow.Subscriber<T> noop() {
         @SuppressWarnings("unchecked")
-        Flow.Subscriber<T> typed = (Flow.Subscriber<T>) NOOP;
+        Flow.Subscriber<T> typed = (Flow.Subscriber<T>) Noop.GLOBAL;
         return typed;
     }
     
@@ -38,46 +34,32 @@ public final class Subscribers
      * @return a new NOOP subscriber
      */
     public static <T> Flow.Subscriber<T> noopNew() {
-        return new Delegating<>(null, null, null, null);
+        @SuppressWarnings("unchecked")
+        Flow.Subscriber<T> typed = (Flow.Subscriber<T>) new Noop();
+        return typed;
     }
     
-    private static class Delegating<T> implements Flow.Subscriber<T>
-    {
-        private final Consumer<Flow.Subscription> subscribe;
-        private final Consumer<T> next;
-        private final Consumer<Throwable> error;
-        private final Runnable complete;
-        
-        Delegating(
-                Consumer<Flow.Subscription> subscribe,
-                Consumer<T> next,
-                Consumer<Throwable> error,
-                Runnable complete)
-        {
-            this.subscribe = subscribe != null ? subscribe : ignored -> {};
-            this.next      = next      != null ? next      : ignored -> {};
-            this.error     = error     != null ? error     : ignored -> {};
-            this.complete  = complete  != null ? complete  : () -> {};
-        }
+    private static final class Noop implements Flow.Subscriber<Object> {
+        static final Noop GLOBAL = new Noop();
         
         @Override
         public void onSubscribe(Flow.Subscription subscription) {
-            subscribe.accept(subscription);
-        }
-        
-        @Override
-        public void onNext(T item) {
-            next.accept(item);
+            // Empty
         }
         
         @Override
         public void onError(Throwable throwable) {
-            error.accept(throwable);
+            // Empty
         }
         
         @Override
         public void onComplete() {
-            complete.run();
+            // Empty
+        }
+        
+        @Override
+        public void onNext(Object item) {
+            // Empty
         }
     }
 }
