@@ -43,4 +43,20 @@ final class PublishersTest
                 Signal.Subscribe.class,
                 Signal.Complete.class);
     }
+    
+    @Test
+    void just_nothing_with_cancellation() {
+        CollectingSubscriber<Object> s = new CollectingSubscriber<>(Request.NOTHING()){
+            @Override
+            public void onSubscribe(Flow.Subscription subscription) {
+                subscription.cancel();
+                super.onSubscribe(subscription);
+            }
+        };
+        
+        Publishers.just().subscribe(s);
+        
+        assertThat(s.signals()).containsExactly(
+                Signal.Subscribe.class); // but no complete, because we cancelled!
+    }
 }
