@@ -2,6 +2,7 @@ package alpha.nomagichttp.internal;
 
 import alpha.nomagichttp.message.ClosedPublisherException;
 import alpha.nomagichttp.message.PooledByteBufferHolder;
+import alpha.nomagichttp.util.SerialTransferService;
 
 import java.util.concurrent.Flow;
 import java.util.function.Consumer;

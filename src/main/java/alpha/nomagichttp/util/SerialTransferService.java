@@ -1,6 +1,4 @@
-package alpha.nomagichttp.internal;
-
-import alpha.nomagichttp.util.SeriallyRunnable;
+package alpha.nomagichttp.util;
 
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Consumer;
@@ -111,7 +109,7 @@ import static java.util.Objects.requireNonNull;
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  */
-final class SerialTransferService<T>
+public final class SerialTransferService<T>
 {
     private static final int FINISHED = -1;
     
@@ -134,7 +132,7 @@ final class SerialTransferService<T>
      * 
      * @throws NullPointerException if {@code from} or {@code to} is {@code null}
      */
-    SerialTransferService(Supplier<? extends T> from, Consumer<? super T> to) {
+    public SerialTransferService(Supplier<? extends T> from, Consumer<? super T> to) {
         this(ignored -> from.get(), to, null);
     }
     
@@ -146,7 +144,7 @@ final class SerialTransferService<T>
      * 
      * @throws NullPointerException if {@code from} or {@code to} is {@code null}
      */
-    SerialTransferService(Function<SerialTransferService<T>, ? extends T> from, Consumer<? super T> to) {
+    public SerialTransferService(Function<SerialTransferService<T>, ? extends T> from, Consumer<? super T> to) {
         this(from, to, null);
     }
     
@@ -163,7 +161,7 @@ final class SerialTransferService<T>
      *
      * @throws NullPointerException if {@code from} or {@code to} is {@code null}
      */
-    SerialTransferService(Supplier<? extends T> from, Consumer<? super T> to, Runnable beforeFirstDelivery) {
+    public SerialTransferService(Supplier<? extends T> from, Consumer<? super T> to, Runnable beforeFirstDelivery) {
         this(ignored -> from.get(), to, beforeFirstDelivery);
     }
     
@@ -180,7 +178,7 @@ final class SerialTransferService<T>
      * 
      * @throws NullPointerException if {@code from} or {@code to} is {@code null}
      */
-    SerialTransferService(Function<SerialTransferService<T>, ? extends T> from, Consumer<? super T> to, Runnable beforeFirstDelivery) {
+    public SerialTransferService(Function<SerialTransferService<T>, ? extends T> from, Consumer<? super T> to, Runnable beforeFirstDelivery) {
         this.from   = requireNonNull(from);
         this.to     = requireNonNull(to);
         this.before = beforeFirstDelivery;
@@ -198,7 +196,7 @@ final class SerialTransferService<T>
      * 
      * @throws IllegalArgumentException if {@code n} is less than {@code 1}
      */
-    void increaseDemand(long n) {
+    public void increaseDemand(long n) {
         if (demand.get() == FINISHED) {
             return;
         }
@@ -237,7 +235,7 @@ final class SerialTransferService<T>
      * 
      * @return a successful flag (see javadoc)
      */
-    boolean finish() {
+    public boolean finish() {
         long curr; boolean success = false;
         while ((curr = demand.get()) != FINISHED && !(success = demand.compareAndSet(curr, FINISHED))) {
             // try again
@@ -262,7 +260,7 @@ final class SerialTransferService<T>
      * 
      * @throws NullPointerException if {@code andThen} is {@code null}
      */
-    boolean finish(Runnable andThen) {
+    public boolean finish(Runnable andThen) {
         requireNonNull(andThen);
         final boolean success = finish();
         if (success) {
@@ -286,7 +284,7 @@ final class SerialTransferService<T>
      * 
      * @see SerialTransferService
      */
-    void tryTransfer() {
+    public void tryTransfer() {
         transferSerially.run();
     }
     

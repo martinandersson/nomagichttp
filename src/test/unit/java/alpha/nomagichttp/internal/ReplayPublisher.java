@@ -1,5 +1,7 @@
 package alpha.nomagichttp.internal;
 
+import alpha.nomagichttp.util.SerialTransferService;
+
 import java.util.ArrayDeque;
 import java.util.Iterator;
 import java.util.Queue;
