@@ -1,4 +1,4 @@
-package alpha.nomagichttp.internal;
+package alpha.nomagichttp.util;
 
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -179,7 +179,7 @@ import static java.util.Objects.requireNonNull;
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  */
-final class SeriallyRunnable implements Runnable
+public final class SeriallyRunnable implements Runnable
 {
     private static final ThreadLocal<Boolean> RUNNING = ThreadLocal.withInitial(() -> false);
     
@@ -194,11 +194,11 @@ final class SeriallyRunnable implements Runnable
             BEGIN = 2,
             AGAIN = 3;
     
-    SeriallyRunnable(Runnable delegate) {
+    public SeriallyRunnable(Runnable delegate) {
         this(delegate, false);
     }
     
-    SeriallyRunnable(Runnable delegate, boolean async) {
+    public SeriallyRunnable(Runnable delegate, boolean async) {
         this.delegate = requireNonNull(delegate);
         this.async = async;
         this.state = new AtomicInteger(END);

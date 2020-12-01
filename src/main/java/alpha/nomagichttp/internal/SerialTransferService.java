@@ -1,5 +1,7 @@
 package alpha.nomagichttp.internal;
 
+import alpha.nomagichttp.util.SeriallyRunnable;
+
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Consumer;
 import java.util.function.Function;
