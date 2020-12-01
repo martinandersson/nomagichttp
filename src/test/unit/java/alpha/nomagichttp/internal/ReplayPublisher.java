@@ -29,11 +29,11 @@ final class ReplayPublisher<T> implements Flow.Publisher<T>
         
         Iterator<T> it = items.iterator();
         SerialTransferService<T> service = new SerialTransferService<>(
-                () -> {
+                s -> {
                     if (it.hasNext()) {
                         return it.next();
                     } else {
-                        subscriber.onComplete();
+                        s.finish(subscriber::onComplete);
                         return null;
                     }
                 },
