@@ -2,6 +2,7 @@ package alpha.nomagichttp.internal;
 
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Consumer;
+import java.util.function.Function;
 import java.util.function.Supplier;
 
 import static java.lang.Long.MAX_VALUE;
@@ -112,7 +113,7 @@ final class SerialTransferService<T>
 {
     private static final int FINISHED = -1;
     
-    private final Supplier<? extends T> from;
+    private final Function<SerialTransferService<T>, ? extends T> from;
     private final Consumer<? super T> to;
     private final AtomicLong demand;
     // #before is safely published through volatile init and subsequent read of
@@ -132,7 +133,36 @@ final class SerialTransferService<T>
      * @throws NullPointerException if {@code from} or {@code to} is {@code null}
      */
     SerialTransferService(Supplier<? extends T> from, Consumer<? super T> to) {
+        this(ignored -> from.get(), to, null);
+    }
+    
+    /**
+     * Constructs a {@code SerialTransferService}.
+     * 
+     * @param from  item supplier (will receive {@code this} service as argument)
+     * @param to    item consumer
+     * 
+     * @throws NullPointerException if {@code from} or {@code to} is {@code null}
+     */
+    SerialTransferService(Function<SerialTransferService<T>, ? extends T> from, Consumer<? super T> to) {
         this(from, to, null);
+    }
+    
+    /**
+     * Constructs a {@code SerialTransferService}.
+     *
+     * The before-first-delivery callback is called exactly once, serially
+     * within the scope of the first delivery just before the consumer receives
+     * the item.
+     *
+     * @param from  item supplier
+     * @param to    item consumer
+     * @param beforeFirstDelivery callback (optional; may be {@code null})
+     *
+     * @throws NullPointerException if {@code from} or {@code to} is {@code null}
+     */
+    SerialTransferService(Supplier<? extends T> from, Consumer<? super T> to, Runnable beforeFirstDelivery) {
+        this(ignored -> from.get(), to, beforeFirstDelivery);
     }
     
     /**
@@ -142,13 +172,13 @@ final class SerialTransferService<T>
      * within the scope of the first delivery just before the consumer receives
      * the item.
      * 
-     * @param from  item supplier
+     * @param from  item supplier (will receive {@code this} service as argument)
      * @param to    item consumer
-     * @param beforeFirstDelivery callback (optional, may be {@code null})
+     * @param beforeFirstDelivery callback (optional; may be {@code null})
      * 
      * @throws NullPointerException if {@code from} or {@code to} is {@code null}
      */
-    SerialTransferService(Supplier<? extends T> from, Consumer<? super T> to, Runnable beforeFirstDelivery) {
+    SerialTransferService(Function<SerialTransferService<T>, ? extends T> from, Consumer<? super T> to, Runnable beforeFirstDelivery) {
         this.from   = requireNonNull(from);
         this.to     = requireNonNull(to);
         this.before = beforeFirstDelivery;
@@ -272,7 +302,7 @@ final class SerialTransferService<T>
             return;
         }
         
-        final T item = from.get();
+        final T item = from.apply(this);
         if (item == null) {
             // Supplier is out, we're out
             return;
