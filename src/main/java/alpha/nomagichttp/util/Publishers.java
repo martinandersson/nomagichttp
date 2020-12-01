@@ -167,6 +167,16 @@ public final class Publishers
             requireNonNull(subscriber);
             
             Iterator<? extends T> it = items.iterator();
+            
+            if (!it.hasNext()) {
+                CanOnlyBeCancelled tmp = Subscriptions.canOnlyBeCancelled();
+                subscriber.onSubscribe(tmp);
+                if (!tmp.isCancelled()) {
+                    subscriber.onComplete();
+                }
+                return;
+            }
+            
             SerialTransferService<T> service = new SerialTransferService<>(
                     s -> {
                         if (it.hasNext()) {

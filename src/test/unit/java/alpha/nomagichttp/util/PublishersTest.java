@@ -6,6 +6,7 @@ import java.util.Collection;
 import java.util.concurrent.Flow;
 
 import static alpha.nomagichttp.util.CollectingSubscriber.Request;
+import static alpha.nomagichttp.util.CollectingSubscriber.Signal;
 import static alpha.nomagichttp.util.CollectingSubscriber.drain;
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -27,8 +28,19 @@ final class PublishersTest
     }
     
     @Test
-    void just() {
+    void just_one_two() {
         Collection<String> items = drain(Publishers.just("one", "two"));
         assertThat(items).containsExactly("one", "two");
+    }
+    
+    @Test
+    void just_nothing() {
+        CollectingSubscriber<Object> s = new CollectingSubscriber<>(Request.NOTHING());
+        
+        Publishers.just().subscribe(s);
+        
+        assertThat(s.signals()).containsExactly(
+                Signal.Subscribe.class,
+                Signal.Complete.class);
     }
 }
