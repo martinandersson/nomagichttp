@@ -9,6 +9,12 @@ import static java.util.Collections.unmodifiableCollection;
 
 final class CollectingSubscriber<T> implements Flow.Subscriber<T>
 {
+    static <T> Collection<T> drain(Flow.Publisher<? extends T> publisher) {
+        CollectingSubscriber<T> s = new CollectingSubscriber<>();
+        publisher.subscribe(s);
+        return s.items();
+    }
+    
     private final Collection<T> items, unmod;
     private final long request;
     
