@@ -1,6 +1,8 @@
 package alpha.nomagichttp.util;
 
 import java.net.http.HttpRequest;
+import java.util.Iterator;
+import java.util.List;
 import java.util.concurrent.Flow;
 
 import static alpha.nomagichttp.util.Subscriptions.CanOnlyBeCancelled;
@@ -67,6 +69,33 @@ public final class Publishers
         return new Singleton<>(item);
     }
     
+    /**
+     * Creates a {@code Flow.Publisher} that publishes the given {@code items}
+     * to each new subscriber.
+     * 
+     * @param items to publish
+     * @param <T> type of item
+     * 
+     * @return a publisher
+     */
+    @SafeVarargs
+    public static <T> Flow.Publisher<T> just(T... items) {
+        return new ItemPublisher<T>(items);
+    }
+    
+    /**
+     * Creates a {@code Flow.Publisher} that publishes the given {@code items}
+     * to each new subscriber.
+     * 
+     * @param items to publish
+     * @param <T> type of item
+     *
+     * @return a publisher
+     */
+    public static <T> Flow.Publisher<T> just(Iterable<? extends T> items) {
+        return new ItemPublisher<T>(items);
+    }
+    
     private enum Empty implements Flow.Publisher<Void> {
         INSTANCE;
         
@@ -117,6 +146,55 @@ public final class Publishers
             public void cancel() {
                 stopped = true;
             }
+        }
+    }
+    
+    private static final class ItemPublisher<T> implements Flow.Publisher<T>
+    {
+        private final Iterable<? extends T> items;
+        
+        @SafeVarargs
+        ItemPublisher(T... items) {
+            this(List.of(items));
+        }
+        
+        ItemPublisher(Iterable<? extends T> items) {
+            this.items = requireNonNull(items);
+        }
+        
+        @Override
+        public void subscribe(Flow.Subscriber<? super T> subscriber) {
+            requireNonNull(subscriber);
+            
+            Iterator<? extends T> it = items.iterator();
+            SerialTransferService<T> service = new SerialTransferService<>(
+                    s -> {
+                        if (it.hasNext()) {
+                            return it.next();
+                        } else {
+                            s.finish(subscriber::onComplete);
+                            return null;
+                        }
+                    },
+                    subscriber::onNext);
+            
+            Flow.Subscription subscription = new Flow.Subscription(){
+                @Override
+                public void request(long n) {
+                    try {
+                        service.increaseDemand(n);
+                    } catch (IllegalArgumentException e) {
+                        service.finish(() -> subscriber.onError(e));
+                    }
+                }
+                
+                @Override
+                public void cancel() {
+                    service.finish();
+                }
+            };
+            
+            subscriber.onSubscribe(subscription);
         }
     }
 }
