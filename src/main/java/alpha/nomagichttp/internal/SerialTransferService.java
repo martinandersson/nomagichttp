@@ -228,10 +228,10 @@ final class SerialTransferService<T>
      * A currently running transfer is not aborted and will run to
      * completion.<p>
      * 
-     * The effect is immediate in a single-threaded environment (no more
-     * deliveries after this method returns) but potentially delayed in a
-     * multi-threaded environment (at most one delivery "extra" may occur after
-     * this method returns).<p>
+     * The effect is immediate if called synchronously from inside the service
+     * itself (item supplier or consumer) but potentially delayed if called
+     * asynchronously (at most one delivery "extra" may occur after this method
+     * has returned).<p>
      * 
      * @return a successful flag (see javadoc)
      */
