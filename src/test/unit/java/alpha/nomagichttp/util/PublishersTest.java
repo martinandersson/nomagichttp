@@ -2,8 +2,10 @@ package alpha.nomagichttp.util;
 
 import org.junit.jupiter.api.Test;
 
+import java.util.Collection;
 import java.util.concurrent.Flow;
 
+import static alpha.nomagichttp.util.CollectingSubscriber.drain;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
@@ -21,5 +23,11 @@ final class PublishersTest
         assertThat(s.items()).containsExactly("hello");
         p.subscribe(s);
         assertThat(s.items()).containsExactly("hello", "hello");
+    }
+    
+    @Test
+    void just() {
+        Collection<String> items = drain(Publishers.just("one", "two"));
+        assertThat(items).containsExactly("one", "two");
     }
 }
