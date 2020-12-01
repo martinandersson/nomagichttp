@@ -205,9 +205,15 @@ public final class SerialTransferService<T>
             throw new IllegalArgumentException("Less than 1: " + n);
         }
         
-        long prev = demand.getAndUpdate(c ->
+        long prev = demand.getAndUpdate(v -> {
+            if (v == FINISHED || v == MAX_VALUE) {
                 // keep flags unmodified
-                c == FINISHED || c == MAX_VALUE ? c : c + 1);
+                return v;
+            }
+            long r = v + n;
+            // Cap at MAX_VALUE
+            return r < 0 ? MAX_VALUE : r;
+        });
         
         // shouldn't matter but if we have no reason to tryTransfer() why bother
         if (prev != FINISHED) {
