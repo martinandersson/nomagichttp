@@ -8,10 +8,10 @@ import java.util.stream.Collectors;
 import static java.lang.Long.MAX_VALUE;
 import static java.util.stream.Collectors.toList;
 
-class CollectingSubscriber<T> implements Flow.Subscriber<T>
+class MemorizingSubscriber<T> implements Flow.Subscriber<T>
 {
     static <T> Collection<T> drain(Flow.Publisher<? extends T> publisher) {
-        CollectingSubscriber<T> s = new CollectingSubscriber<>(Request.IMMEDIATELY_MAX());
+        MemorizingSubscriber<T> s = new MemorizingSubscriber<>(Request.IMMEDIATELY_MAX());
         publisher.subscribe(s);
         return s.items();
     }
@@ -81,7 +81,7 @@ class CollectingSubscriber<T> implements Flow.Subscriber<T>
     private final Collection<Signal> signals;
     private final Request strategy;
     
-    CollectingSubscriber(Request strategy) {
+    MemorizingSubscriber(Request strategy) {
         this.signals = new ConcurrentLinkedQueue<>();
         this.strategy = strategy;
     }

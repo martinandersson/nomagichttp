@@ -5,9 +5,9 @@ import org.junit.jupiter.api.Test;
 import java.util.Collection;
 import java.util.concurrent.Flow;
 
-import static alpha.nomagichttp.util.CollectingSubscriber.Request;
-import static alpha.nomagichttp.util.CollectingSubscriber.Signal;
-import static alpha.nomagichttp.util.CollectingSubscriber.drain;
+import static alpha.nomagichttp.util.MemorizingSubscriber.Request;
+import static alpha.nomagichttp.util.MemorizingSubscriber.Signal;
+import static alpha.nomagichttp.util.MemorizingSubscriber.drain;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
@@ -20,7 +20,7 @@ final class PublishersTest
     @Test
     void singleton() {
         Flow.Publisher<String> p = Publishers.singleton("hello");
-        CollectingSubscriber<String> s = new CollectingSubscriber<>(Request.IMMEDIATELY_MAX());
+        MemorizingSubscriber<String> s = new MemorizingSubscriber<>(Request.IMMEDIATELY_MAX());
         p.subscribe(s);
         assertThat(s.items()).containsExactly("hello");
         p.subscribe(s);
@@ -35,7 +35,7 @@ final class PublishersTest
     
     @Test
     void just_nothing() {
-        CollectingSubscriber<Object> s = new CollectingSubscriber<>(Request.NOTHING());
+        MemorizingSubscriber<Object> s = new MemorizingSubscriber<>(Request.NOTHING());
         
         Publishers.just().subscribe(s);
         
@@ -46,7 +46,7 @@ final class PublishersTest
     
     @Test
     void just_nothing_with_cancellation() {
-        CollectingSubscriber<Object> s = new CollectingSubscriber<>(Request.NOTHING()){
+        MemorizingSubscriber<Object> s = new MemorizingSubscriber<>(Request.NOTHING()){
             @Override
             public void onSubscribe(Flow.Subscription subscription) {
                 subscription.cancel();
