@@ -3,9 +3,9 @@ package alpha.nomagichttp.util;
 import java.util.Collection;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.Flow;
+import java.util.stream.Collectors;
 
 import static java.lang.Long.MAX_VALUE;
-import static java.util.Collections.unmodifiableCollection;
 
 final class CollectingSubscriber<T> implements Flow.Subscriber<T>
 {
@@ -15,7 +15,43 @@ final class CollectingSubscriber<T> implements Flow.Subscriber<T>
         return s.items();
     }
     
-    private final Collection<T> items, unmod;
+    static abstract class Signal {
+        static final class Subscribe extends Signal {
+            // Empty
+        }
+        
+        static final class Next extends Signal {
+            private final Object t;
+            
+            Next(Object t) {
+                this.t = t;
+            }
+            
+            <T> T item() {
+                @SuppressWarnings("unchecked")
+                T typed = (T) t;
+                return typed;
+            }
+        }
+        
+        static final class Error extends Signal {
+            private final Throwable e;
+            
+            Error(Throwable e) {
+                this.e = e;
+            }
+            
+            Throwable error() {
+                return e;
+            }
+        }
+        
+        static final class Complete extends Signal {
+            // Empty
+        }
+    }
+    
+    private final Collection<Signal> signals;
     private final long request;
     
     CollectingSubscriber() {
@@ -23,32 +59,35 @@ final class CollectingSubscriber<T> implements Flow.Subscriber<T>
     }
     
     CollectingSubscriber(long request) {
-        this.items   = new ConcurrentLinkedQueue<>();
-        this.unmod   = unmodifiableCollection(items);
+        this.signals = new ConcurrentLinkedQueue<>();
         this.request = request;
     }
     
     Collection<T> items() {
-        return unmod;
+        return signals.stream()
+                .filter(s -> s instanceof Signal.Next)
+                .map(s -> ((Signal.Next) s).<T>item())
+                .collect(Collectors.toUnmodifiableList());
     }
     
     @Override
     public void onSubscribe(Flow.Subscription subscription) {
+        signals.add(new Signal.Subscribe());
         subscription.request(request);
     }
     
     @Override
     public void onNext(T item) {
-        items.add(item);
+        signals.add(new Signal.Next(item));
     }
     
     @Override
     public void onError(Throwable throwable) {
-        throw new AssertionError(throwable);
+        signals.add(new Signal.Error(throwable));
     }
     
     @Override
     public void onComplete() {
-        // Empty
+        signals.add(new Signal.Complete());
     }
 }
