@@ -5,6 +5,7 @@ import org.junit.jupiter.api.Test;
 import java.util.Collection;
 import java.util.concurrent.Flow;
 
+import static alpha.nomagichttp.util.CollectingSubscriber.Request;
 import static alpha.nomagichttp.util.CollectingSubscriber.drain;
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -18,7 +19,7 @@ final class PublishersTest
     @Test
     void singleton() {
         Flow.Publisher<String> p = Publishers.singleton("hello");
-        CollectingSubscriber<String> s = new CollectingSubscriber<>();
+        CollectingSubscriber<String> s = new CollectingSubscriber<>(Request.IMMEDIATELY_MAX());
         p.subscribe(s);
         assertThat(s.items()).containsExactly("hello");
         p.subscribe(s);
