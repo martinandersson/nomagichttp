@@ -4,22 +4,22 @@ import java.util.Collection;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.Flow;
 
-import static java.lang.Integer.MAX_VALUE;
+import static java.lang.Long.MAX_VALUE;
 import static java.util.Collections.unmodifiableCollection;
 
 final class CollectingSubscriber<T> implements Flow.Subscriber<T>
 {
     private final Collection<T> items, unmod;
-    private final int demand;
+    private final long request;
     
     CollectingSubscriber() {
         this(MAX_VALUE);
     }
     
-    CollectingSubscriber(int demand) {
-        this.items  = new ConcurrentLinkedQueue<>();
-        this.unmod  = unmodifiableCollection(items);
-        this.demand = demand;
+    CollectingSubscriber(long request) {
+        this.items   = new ConcurrentLinkedQueue<>();
+        this.unmod   = unmodifiableCollection(items);
+        this.request = request;
     }
     
     Collection<T> items() {
@@ -28,7 +28,7 @@ final class CollectingSubscriber<T> implements Flow.Subscriber<T>
     
     @Override
     public void onSubscribe(Flow.Subscription subscription) {
-        subscription.request(demand);
+        subscription.request(request);
     }
     
     @Override
