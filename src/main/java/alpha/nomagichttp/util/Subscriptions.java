@@ -1,18 +1,9 @@
 package alpha.nomagichttp.util;
 
-import java.net.http.HttpRequest;
 import java.util.concurrent.Flow;
 
 /**
- * Utility class for constructing instances of {@link Flow.Subscription}.<p>
- * 
- * Please note that the JDK has some pretty neat utilities in
- * {@link HttpRequest.BodyPublishers}.<p>
- * 
- * All publishers created by this class will not - and could not even
- * realistically - enforce <a
- * href="https://github.com/reactive-streams/reactive-streams-jvm/blob/v1.0.3/README.md">
- * Reactive Streams §2.12</a>. I.e., subscribers can be re-used.<p>
+ * Utility class for constructing instances of {@link Flow.Subscription}.
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  */
@@ -23,32 +14,34 @@ public final class Subscriptions
     }
     
     /**
-     * Returns a subscription with all NOP methods except {@code cancel()} which
-     * moves the state of the subscription to cancelled, retrievable using
-     * method {@code isCancelled()}.<p>
+     * Returns a subscription where the {@code request()} method implementation
+     * is NOP. The cancelled state can be queried using method {@code
+     * isCancelled()}.<p>
      * 
-     * Useful for publishers who need to <strong>immediately signal error to a
-     * new subscriber</strong> but who also - for better or worse - desire to
-     * comply with the following rules of an <a
-     * href="https://github.com/reactive-streams/reactive-streams-jvm/issues/487">
-     * overzealous Reactive Streams specification</a>:
+     * This class is useful to specification-compliant publisher implementations
+     * that need to <i>immediately signal a completion signal to a new
+     * subscriber</i>, for example because the subscriber is rejected or the
+     * publisher is empty.<p>
+     * 
+     * A few aspects of the Reactive Streams specification comes into play (
+     * <a href="https://github.com/reactive-streams/reactive-streams-jvm/issues/487">GitHub issue</a>):
      * 
      * <ol>
-     *   <li>Rule §1.9 mandates that the publisher <i>always</i> hands over a
-     *       subscription instance to the subscriber. So, there's that; one
-     *       needs to exist.</li>
-     *   <li>Of course, the subscriber has no idea about future intentions of
-     *       the publisher and is free to <i>cancel</i> the subscription. And if
-     *       the subscriber does cancel the subscription, rules §1.8 and §3.12
-     *       mandates that all signals must stop - obviously the sooner the
-     *       better.</li>
+     *   <li>Rule §1.9 requires the publisher to <i>always</i> call {@code
+     *       Subscriber.onSubscribe()} with a subscription object.</li>
+     *   <li>The subscriber has no idea about future intentions of the publisher
+     *       and is free to immediately <i>cancel</i> the received subscription
+     *       object.</li>
+     *    <li>If the subscriber does cancel the subscription, the publisher must
+     *       stop interacting with the subscriber - obviously the sooner the
+     *       better (§1.8, §3.12).</li>
      * </ol>
      * 
      * Example publisher implementation:
      * <pre>{@code
      *   @Override
      *   public void subscribe(Flow.Subscriber<? super T> subscriber) {
-     *       if (someBadStateIsTrue) {
+     *       if (mustReject) {
      *           CanOnlyBeCancelled temp = Subscriptions.canOnlyBeCancelled();
      *           subscriber.onSubscribe(temp);
      *           if (!temp.isCancelled()) {
@@ -59,18 +52,20 @@ public final class Subscriptions
      *       }
      *   }
      * }</pre>
-     *
+     * 
      * Note, it still isn't possible to be fully compliant with the
-     * specification because rule 3.9
+     * specification because rule §3.9
      * stipulates that a call to {@code Subscription.request} from the
-     * subscriber must prompt an immediate {@code IllegalArgumentException} to
-     * be <i>signalled downstream</i> (not thrown). Which, is a "terminal" event
-     * (rule §1.7) and so, the publisher would no longer have the right to signal the
-     * original error. The current design favors simplicity and leaves the
-     * {@code request()} method NOP.<p>
+     * subscriber with a bad value must prompt an immediate {@code
+     * IllegalArgumentException} to be signalled back (not thrown), which is a
+     * "terminal" event (§1.7) and so, the publisher would in this case no
+     * longer have the right to signal the originally intended event. The
+     * current design favors simplicity and leaves the {@code request()} method
+     * NOP.<p>
      * 
      * @return a subscription that can only be cancelled
      */
+    // TODO: Suppress IllegalArgumentException but do deliver IllegalStateException
     public static CanOnlyBeCancelled canOnlyBeCancelled() {
         return new CanOnlyBeCancelled() {
             private volatile boolean cancelled;
