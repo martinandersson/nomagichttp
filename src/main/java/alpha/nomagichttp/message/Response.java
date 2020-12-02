@@ -5,6 +5,7 @@ import alpha.nomagichttp.handler.RequestHandler;
 import alpha.nomagichttp.util.Publishers;
 import alpha.nomagichttp.util.SafeBodyPublishers;
 
+import java.net.http.HttpHeaders;
 import java.net.http.HttpRequest;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
@@ -25,8 +26,8 @@ import java.util.function.Supplier;
  * space characters. The content is encoded into bytes using {@link
  * StandardCharsets#US_ASCII US_ASCII}<p>
  * 
- * Header order is preserved (FIFO). Duplicated header names will be grouped and
- * inserted at the first occurrence.<p>
+ * Header order FIFO is preserved (unless documented otherwise). Duplicated
+ * header names will be grouped and inserted at the first occurrence.<p>
  * 
  * The {@code Response} implementation is immutable and can safely be re-used
  * sequentially over time to the same client as well as shared concurrently to
@@ -123,8 +124,11 @@ public interface Response
      * Responses}.<p>
      * 
      * The builder can be used as a template to modify per-response state. Each
-     * method returns a new builder instance representing the new state (the
-     * state of old builder references are unaffected).<p>
+     * method returns a new builder instance representing the new state. Similar
+     * to intermediate operations on a JDK {@code Stream}, these builder methods
+     * does <i>not</i> change the state of previous builders. The API should be
+     * used in a fluent style with references saved and re-used only for
+     * templating.<p>
      * 
      * HTTP version and status code must be set or {@link #build()} will fail.
      * The reason phrase if not set will default to "Unknown". Headers and the
@@ -149,10 +153,10 @@ public interface Response
         /**
          * Returns a builder already populated with a status-line
          * "HTTP/1.1 200 OK".<p>
-         *
+         * 
          * What remains is to set headers and the message body.
-         *
-         * @return a builder
+         * 
+         * @return a new builder representing the new state
          */
         static Builder ok() {
             return BuilderCache.OK;
@@ -161,10 +165,10 @@ public interface Response
         /**
          * Returns a builder already populated with a status-line
          * "HTTP/1.1 202 Accepted".<p>
-         *
+         * 
          * What remains is to set headers and the message body.
-         *
-         * @return a builder
+         * 
+         * @return a new builder representing the new state
          */
         static Builder accepted() {
             return BuilderCache.ACCEPTED;
@@ -173,43 +177,107 @@ public interface Response
         // TODO: Basically all other codes in the standard lol
         
         /**
-         * Set HTTP version for this response.
-         *
+         * Set HTTP version.
+         * 
          * @throws NullPointerException if {@code httpVersion} is {@code null}
-         *
-         * @return a builder
+         * 
+         * @return a new builder representing the new state
          */
         Builder httpVersion(String httpVersion);
         
         /**
-         * Set status code for this response.
-         *
-         * @return a builder
+         * Set status code.
+         * 
+         * @return a new builder representing the new state
          */
         Builder statusCode(int statusCode);
         
         /**
-         * Set reason phrase for this response. If never set, will default to
-         * "Unknown".
-         *
+         * Set reason phrase. If never set, will default to "Unknown".
+         * 
          * @throws NullPointerException if {@code reasonPhrase} is {@code null}
-         *
-         * @return a builder
+         * 
+         * @return a new builder representing the new state
          */
         Builder reasonPhrase(String reasonPhrase);
+        
+        /**
+         * Set a header. This overwrites all previously set values for the given
+         * name.
+         * 
+         * @param name of header
+         * @param value of header
+         * 
+         * @return a new builder representing the new state
+         * 
+         * @throws NullPointerException if any argument is {@code null}
+         */
+        Builder header(String name, String value);
+        
+        /**
+         * Set the "Content-Type" header.<p>
+         * 
+         * Please note that changing the Content-Type ought to be followed by a
+         * new response body.
+         * 
+         * @param type media type
+         * 
+         * @return a new builder representing the new state
+         * 
+         * @throws NullPointerException if {@code type} is {@code null}
+         */
+        Builder contentType(MediaType type);
+        
+        /**
+         * Set the "Content-Length" header.<p>
+         * 
+         * Please note that changing the Content-Length ought to be followed by
+         * a new response body.
+         * 
+         * @param value content length
+         * 
+         * @return a new builder representing the new state
+         */
+        Builder contentLenght(long value);
+        
+        /**
+         * Remove all previously set values for the given header name.
+         * 
+         * @param name of the header
+         * 
+         * @return a new builder representing the new state
+         */
+        Builder removeHeader(String name);
+        
+        /**
+         * Add a header to this response. If the header is already present then
+         * it will be repeated in the response.
+         * 
+         * @param name of the header
+         * @param value of the header
+         * 
+         * @return a new builder representing the new state
+         * 
+         * @throws NullPointerException
+         *             if any argument or array element is {@code null}
+         */
+        Builder addHeader(String name, String value);
         
         /**
          * Add header(s) to this response.<p>
          *
          * Iterating the {@code String[]} must alternate between header- names
          * and values. To add several values to the same name then the same
-         * name must be supplied with each additional value.
+         * name must be supplied with each additional value.<p>
+         * 
+         * The results are undefined if the {@code String[]} is modified before
+         * the response has been built.
          * 
          * @param name of header
          * @param value of header
          * @param morePairs of headers
          * 
-         * @return a builder
+         * @return a new builder representing the new state
          *
          * @throws NullPointerException
          *             if any argument or array element is {@code null}
@@ -219,46 +287,22 @@ public interface Response
         Builder addHeaders(String name, String value, String... morePairs);
         
         /**
-         * Set header name- and value pair for this response. This overwrites
-         * all previously set values for name.
+         * Add all headers from the given {@code HttpHeaders}.<p>
          * 
-         * @param name of header
-         * @param value of header
+         * The implementation may use {@code HttpHeaders.map()} which does not
+         * provide any guarantee with regard to the ordering of its entries.
          * 
-         * @return a builder
+         * @param headers to add
          * 
-         * @throws NullPointerException if any argument is {@code null}
+         * @return a new builder representing the new state
+         * 
+         * @throws NullPointerException if {@code headers} is {@code null}
          */
-        Builder header(String name, String value);
+        Builder addHeaders(HttpHeaders headers);
         
         /**
-         * Set the "Content-Type" header for this response.<p>
-         * 
-         * Please note that changing the Content-Type ought to be followed by a
-         * new response body.
-         * 
-         * @param type media type
-         * 
-         * @return a builder
-         * 
-         * @throws NullPointerException if {@code type} is {@code null}
-         */
-        Builder contentType(MediaType type);
-        
-        /**
-         * Set the "Content-Length" header for this response.<p>
-         * 
-         * Please note that changing the Content-Length ought to be followed by
-         * a new response body.
-         * 
-         * @param value content length
-         *
-         * @return this (for chaining/fluency)
-         */
-        Builder contentLenght(long value);
-        
-        /**
-         * Set a message body. If never set, will default to an empty body.<p>
+         * Set a message body. If never set, will default to an empty body and
+         * set "Content-Length: 0".<p>
          * 
          * The published bytebuffers must not be modified after being published
          * to the subscriber.<p>
@@ -283,7 +327,7 @@ public interface Response
          * reasons, consider using an alternative util in {@link Publishers} or
          * {@link SafeBodyPublishers}<p>
          * 
-         * @return a builder
+         * @return a new builder representing the new state
          * 
          * @throws NullPointerException if {@code body} is {@code null}
          */
@@ -295,7 +339,7 @@ public interface Response
          * 
          * @param enabled true or false
          * 
-         * @return a builder
+         * @return a new builder representing the new state
          * 
          * @see Response#mustCloseAfterWrite()
          */

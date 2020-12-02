@@ -1,5 +1,6 @@
 package alpha.nomagichttp.message;
 
+import java.net.http.HttpHeaders;
 import java.nio.ByteBuffer;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
@@ -78,7 +79,19 @@ final class DefaultResponse implements Response
             Flow.Publisher<ByteBuffer> body;
             Boolean mustCloseAfterWrite;
             
+            void removeHeader(String name) {
+                assert name != null;
+                
+                if (headers == null) {
+                    return;
+                }
+                headers.remove(name);
+            }
+            
             void addHeader(boolean clearFirst, String name, String value) {
+                assert name != null;
+                assert value != null;
+                
                 List<String> v = getOrCreateHeaders()
                         .computeIfAbsent(name, k -> new ArrayList<>(1));
                 
@@ -132,6 +145,30 @@ final class DefaultResponse implements Response
         }
         
         @Override
+        public Response.Builder contentType(MediaType type) {
+            requireNonNull(type, "type");
+            return addHeaders("Content-Type", type.toString());
+        }
+        
+        @Override
+        public Response.Builder contentLenght(long value) {
+            return addHeaders("Content-Length", Long.toString(value));
+        }
+        
+        @Override
+        public Response.Builder removeHeader(String name) {
+            requireNonNull(name, "name");
+            return new Builder(this, s -> s.removeHeader(name));
+        }
+        
+        @Override
+        public Response.Builder addHeader(String name, String value) {
+            requireNonNull(name, "name");
+            requireNonNull(value, "value");
+            return new Builder(this, s -> s.addHeader(false, name, value));
+        }
+        
+        @Override
         public Response.Builder addHeaders(String name, String value, String... morePairs) {
             requireNonNull(name, "name");
             requireNonNull(value, "value");
@@ -157,14 +194,11 @@ final class DefaultResponse implements Response
         }
         
         @Override
-        public Response.Builder contentType(MediaType type) {
-            requireNonNull(type, "type");
-            return addHeaders("Content-Type", type.toString());
-        }
-        
-        @Override
-        public Response.Builder contentLenght(long value) {
-            return addHeaders("Content-Length", Long.toString(value));
+        public Response.Builder addHeaders(HttpHeaders headers) {
+            requireNonNull(headers, "headers");
+            return new Builder(this, s ->
+                    headers.map().forEach((name, values) ->
+                            values.forEach(v -> s.addHeader(false, name, v))));
         }
         
         @Override
@@ -227,6 +261,7 @@ final class DefaultResponse implements Response
                 s.reasonPhrase = "Unknown"; }
             
             if (s.body == null) {
+                s.addHeader(true, "Content-Length", "0");
                 s.body = empty(); }
             
             if (s.mustCloseAfterWrite == null) {
