@@ -1,11 +1,10 @@
 package alpha.nomagichttp.internal;
 
-import alpha.nomagichttp.handler.ErrorHandler;
 import alpha.nomagichttp.HttpServer;
+import alpha.nomagichttp.handler.ErrorHandler;
 import alpha.nomagichttp.handler.RequestHandler;
 import alpha.nomagichttp.handler.RequestHandlers;
 import alpha.nomagichttp.message.Response;
-import alpha.nomagichttp.message.ResponseBuilder;
 import alpha.nomagichttp.route.NoRouteFoundException;
 import alpha.nomagichttp.route.Route;
 import alpha.nomagichttp.test.Logging;
@@ -55,7 +54,7 @@ class ErrorHandlingTest
     }
     
     @Test
-    void not_found_default() throws IOException, InterruptedException {
+    void not_found_default() throws IOException {
         String res = createServerAndClient().writeRead(REQ_NOT_FOUND);
         assertThat(res).isEqualTo(
             "HTTP/1.1 404 Not Found" + CRLF +
@@ -63,15 +62,15 @@ class ErrorHandlingTest
     }
     
     @Test
-    void not_found_custom() throws IOException, InterruptedException {
+    void not_found_custom() throws IOException {
         ErrorHandler custom = (exc, req, han) -> {
             if (exc instanceof NoRouteFoundException) {
-                return new ResponseBuilder()
+                return Response.newBuilder()
                         .httpVersion("HTTP/1.1")
                         .statusCode(123)
                         .reasonPhrase("Custom Not Found!")
-                        .mustCloseAfterWrite()
-                        .noBody()
+                        .mustCloseAfterWrite(true)
+                        .build()
                         .asCompletedStage();
             }
             throw exc;
@@ -105,9 +104,9 @@ class ErrorHandlingTest
                 return response.get();
             }
             
-            return ResponseBuilder.ok()
+            return Response.Builder.ok()
                     .header("N", Integer.toString(c.get()))
-                    .noBody()
+                    .build()
                     .asCompletedStage();
         });
         

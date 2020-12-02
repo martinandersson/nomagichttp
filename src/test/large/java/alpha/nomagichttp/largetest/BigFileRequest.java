@@ -10,7 +10,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 
 import static alpha.nomagichttp.handler.RequestHandlers.POST;
-import static alpha.nomagichttp.message.ResponseBuilder.ok;
+import static alpha.nomagichttp.message.Response.Builder.ok;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
@@ -28,7 +28,7 @@ class BigFileRequest extends AbstractSingleClientTest
                 .resolve("50MB.bin");
         
         RequestHandler saver = POST().apply(req -> req.body().get().toFile(FILE)
-                .thenApply(n -> ok().header("Received", Long.toString(n)).noBody()));
+                .thenApply(n -> ok().header("Received", Long.toString(n)).build()));
         
         addHandler("/file", saver);
     }

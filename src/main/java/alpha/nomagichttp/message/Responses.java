@@ -1,5 +1,7 @@
 package alpha.nomagichttp.message;
 
+import alpha.nomagichttp.util.SafeBodyPublishers;
+
 import java.nio.ByteBuffer;
 import java.util.concurrent.Flow;
 
@@ -15,7 +17,8 @@ import static java.net.http.HttpRequest.BodyPublishers;
  * 
  * <strong>WARNING:</strong> Using {@link BodyPublishers} to create the response
  * body may not be thread-safe where thread-safety matters or may block the HTTP
- * server thread. See {@link Response.Builder#body(Flow.Publisher)}.
+ * server thread. Consider using {@link SafeBodyPublishers} instead. See
+ * {@link Response.Builder#body(Flow.Publisher)}.
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  */
@@ -31,7 +34,7 @@ public final class Responses
      * @return a "200 OK"-response with no body
      */
     public static Response ok() {
-        return OK;
+        return Cache.OK;
     }
     
     /**
@@ -94,10 +97,11 @@ public final class Responses
      * @return a "200 OK"-response with an arbitrary body
      */
     public static Response ok(MediaType contentType, Flow.Publisher<ByteBuffer> body, long length) {
-        return ResponseBuilder.ok()
+        return Response.Builder.ok()
                 .contentType(contentType)
                 .contentLenght(length)
-                .body(body);
+                .body(body)
+                .build();
     }
     
     /**
@@ -106,79 +110,89 @@ public final class Responses
      * @return a "202 Accepted"-response with no body
      */
     public static Response accepted() {
-        return ACCEPTED;
+        return Cache.ACCEPTED;
     }
     
     /**
-     * Returns a "400 Bad Request"-response with no body.
-     *
+     * Returns a "400 Bad Request"-response with no body.<p>
+     * 
+     * The response will {@linkplain Response#mustCloseAfterWrite() close the
+     * client channel} after having been sent.
+     * 
      * @return a "400 Bad Request"-response with no body
      */
     public static Response badRequest() {
-        return new ResponseBuilder()
-                .httpVersion("HTTP/1.1")
-                .statusCode(400)
-                .reasonPhrase("Bad Request")
-                .mustCloseAfterWrite()
-                .noBody();
+        return Cache.BAD_REQUEST;
     }
     
     /**
-     * Returns a "404 Not Found"-response with no body.
-     *
+     * Returns a "404 Not Found"-response with no body.<p>
+     * 
+     * The response will {@linkplain Response#mustCloseAfterWrite() close the
+     * client channel} after having been sent.
+     * 
      * @return a "404 Not Found"-response with no body
      */
     public static Response notFound() {
-        return new ResponseBuilder()
-                .httpVersion("HTTP/1.1")
-                .statusCode(404)
-                .reasonPhrase("Not Found")
-                .mustCloseAfterWrite()
-                .noBody();
+        return Cache.NOT_FOUND;
     }
     
     /**
-     * Returns a "413 Entity Too Large"-response with no body.
-     *
+     * Returns a "413 Entity Too Large"-response with no body.<p>
+     * 
+     * The response will {@linkplain Response#mustCloseAfterWrite() close the
+     * client channel} after having been sent.
+     * 
      * @return a "413 Entity Too Large"-response with no body
      */
     public static Response entityTooLarge() {
-        return new ResponseBuilder()
-                .httpVersion("HTTP/1.1")
-                .statusCode(413)
-                .reasonPhrase("Entity Too Large")
-                .mustCloseAfterWrite()
-                .noBody();
+        return Cache.ENTITY_TOO_LARGE;
     }
     
     /**
-     * Returns a "500 Internal Server Error"-response with no body.
-     *
+     * Returns a "500 Internal Server Error"-response with no body.<p>
+     * 
+     * The response will {@linkplain Response#mustCloseAfterWrite() close the
+     * client channel} after having been sent.
+     * 
      * @return a "500 Internal Server Error"-response with no body
      */
     public static Response internalServerError() {
-        return new ResponseBuilder()
-                .httpVersion("HTTP/1.1")
-                .statusCode(500)
-                .reasonPhrase("Internal Server Error")
-                .mustCloseAfterWrite()
-                .noBody();
+        return Cache.INTERNAL_SERVER_ERROR;
     }
     
     /**
-     * Returns a "501 Not Implemented"-response with no body.
-     *
+     * Returns a "501 Not Implemented"-response with no body.<p>
+     * 
+     * The response will {@linkplain Response#mustCloseAfterWrite() close the
+     * client channel} after having been sent.
+     * 
      * @return a "501 Not Implemented"-response with no body
      */
     public static Response notImplemented() {
-        return new ResponseBuilder()
-                .httpVersion("HTTP/1.1")
-                .statusCode(501)
-                .reasonPhrase("Not Implemented")
-                .mustCloseAfterWrite()
-                .noBody();
+        return Cache.NOT_IMPLEMENTED;
     }
     
-    private static final Response OK = ResponseBuilder.ok().noBody();
-    private static final Response ACCEPTED = ResponseBuilder.accepted().noBody();
+    /**
+     * Pre-built response objects with no payloads (message body).
+     */
+    private static final class Cache {
+        static final Response
+                OK                    = Response.Builder.ok().build(),
+                ACCEPTED              = Response.Builder.accepted().build(),
+                BAD_REQUEST           = respondThenClose(400, "Bad Request"),
+                NOT_FOUND             = respondThenClose(404, "Not Found"),
+                ENTITY_TOO_LARGE      = respondThenClose(413, "Entity Too Large"),
+                INTERNAL_SERVER_ERROR = respondThenClose(500, "Internal Server Error"),
+                NOT_IMPLEMENTED       = respondThenClose(501, "Not Implemented");
+        
+        private static Response respondThenClose(int code, String phrase) {
+            return Response.newBuilder()
+                    .httpVersion("HTTP/1.1")
+                    .statusCode(code)
+                    .reasonPhrase(phrase)
+                    .mustCloseAfterWrite(true)
+                    .build();
+        }
+    }
 }

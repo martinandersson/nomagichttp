@@ -1,7 +1,7 @@
 package alpha.nomagichttp.internal;
 
 import alpha.nomagichttp.handler.RequestHandler;
-import alpha.nomagichttp.message.ResponseBuilder;
+import alpha.nomagichttp.message.Response;
 import alpha.nomagichttp.message.Responses;
 import alpha.nomagichttp.route.Route;
 import alpha.nomagichttp.route.RouteBuilder;
@@ -120,11 +120,10 @@ class SimpleEndToEndTest extends AbstractEndToEndTest
     
     @Test
     void echo_headers() throws IOException {
-        RequestHandler echo = GET().apply(req -> {
-            ResponseBuilder b = ResponseBuilder.ok();
-            req.headers().map().forEach(b::header);
-            return b.noBody().asCompletedStage();
-        });
+        RequestHandler echo = GET().apply(req -> Response.Builder.ok()
+                .addHeaders(req.headers())
+                .build()
+                .asCompletedStage());
         
         addHandler("/echo-headers", echo);
         
@@ -138,7 +137,6 @@ class SimpleEndToEndTest extends AbstractEndToEndTest
         assertThat(res).isEqualTo(
             "HTTP/1.1 200 OK" + CRLF +
             "Accept: text/plain; charset=utf-8" + CRLF +
-            "Content-Length: 0" + CRLF +
             "Content-Length: 0" + CRLF + CRLF);
     }
     
