@@ -1,10 +1,13 @@
 package alpha.nomagichttp.message;
 
-import alpha.nomagichttp.handler.ErrorHandler;
 import alpha.nomagichttp.HttpServer;
+import alpha.nomagichttp.handler.ErrorHandler;
+import alpha.nomagichttp.util.Publishers;
 
 import java.net.http.HttpHeaders;
+import java.nio.channels.AsynchronousByteChannel;
 import java.nio.channels.AsynchronousFileChannel;
+import java.nio.channels.GatheringByteChannel;
 import java.nio.channels.NetworkChannel;
 import java.nio.charset.IllegalCharsetNameException;
 import java.nio.charset.UnsupportedCharsetException;
@@ -21,12 +24,12 @@ import java.util.function.BiFunction;
 /**
  * An inbound HTTP request.<p>
  * 
- * The implementation is thread-safe.<p>
- * 
  * The request handler is not required to consume the request or its body. If
  * there is a body present and it is not consumed then it will be silently
  * discarded as late in the HTTP exchange process as possible, which is when the
- * server's {@link Response#body() response body} subscription completes.<p> 
+ * server's {@link Response#body() response body} subscription completes.<p>
+ * 
+ * The implementation is thread-safe and non-blocking.
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  * 
@@ -150,7 +153,8 @@ public interface Request
     boolean channelIsOpenForReading();
     
     /**
-     * Is an API for accessing the request body in various forms.<p>
+     * Is a thread-safe and non-blocking API for accessing the request body in
+     * various forms.<p>
      * 
      * High-level methods (for example, {@link #toText()}), returns a {@link
      * CompletionStage} because the request handler will be invoked and
@@ -161,12 +165,6 @@ public interface Request
      * The body bytes may be converted into any arbitrary Java type using the
      * {@link #convert(BiFunction)} method or consumed directly "on arrival"
      * using the {@link #subscribe(Flow.Subscriber)} method.<p>
-     * 
-     * The implementation is thread-safe. In particular - and unlike the
-     * unbelievably restrictive rule §3.1 in an otherwise very "async-oriented"
-     * <a href="https://github.com/reactive-streams/reactive-streams-jvm/tree/d4d08aadf7d6b4345b2e59f756adeaafd998fec7#3-subscription-code">Reactive Streams</a>
-     * specification - methods on the {@link Flow.Subscription} instance
-     * given to the body subscriber may be called by any thread at any time.<p>
      * 
      * The body bytes can not be directly consumed more than once; they are not
      * saved by the server. An attempt to {@code convert(...)} or {@code
@@ -182,9 +180,9 @@ public interface Request
      * cancelled with or without actually consuming any bytes (application is
      * assumed to ignore the body, followed by a server-side discard of it).<p>
      * 
-     * Some utility methods such as {@code toText()} does save the result and
-     * will return the same stage on future invocations. This may for example
-     * by useful to an {@link ErrorHandler error handler} also interested in
+     * Some utility methods such as {@code toText()} cache the result and will
+     * return the same stage on future invocations. This may for example by
+     * useful to an {@link ErrorHandler error handler} also interested in
      * accessing the result.<p>
      * 
      * The normal way to reject an operation is to fail-fast and blow up the
@@ -193,15 +191,17 @@ public interface Request
      * RejectedExceptionException} and {@code AsynchronousByteChannel.read()}
      * throws {@code IllegalArgumentException}.<p>
      * 
-     * However - for good or bad - the Reactive Streams specification mandates
-     * that all exceptions are signalled through the subscriber. In order then
-     * to have a coherent API, all exceptions produced by the Body API will be
-     * delivered through the result carrier; whether that is a {@code
-     * CompletionStage} or a {@code Flow.Subscriber}. This has the implication
-     * that exceptions from utility methods are not documented using the
-     * standard {@code @throws} tag but rather inline with the rest of the text.
-     * The only exception to this rule is {@code NullPointerException} which
-     * will blow up the calling thread wherever warranted.<p>
+     * However - for good or bad - the <a
+     * href="https://github.com/reactive-streams/reactive-streams-jvm/blob/v1.0.3/README.md">
+     * Reactive Streams</a> specification mandates that all exceptions are
+     * signalled through the subscriber. In order then to have a coherent API,
+     * all exceptions produced by the Body API will be delivered through the
+     * result carrier; whether that is a {@code CompletionStage} or a {@code
+     * Flow.Subscriber}. This has the implication that exceptions from utility
+     * methods are not documented using the standard {@code @throws} tag but
+     * rather inline with the rest of the text. The only exception to this rule
+     * is {@code NullPointerException} which will blow up the calling thread
+     * wherever warranted.<p>
      * 
      * In general, high-level exception types - in particular, when documented -
      * does not close the underlying channel's read stream and so the
@@ -214,6 +214,12 @@ public interface Request
      * 
      * <h3>Subscribing to bytes with a {@code Flow.Subscriber}</h3>
      * 
+     * Almost all of the same {@code Flow.Publisher} semantics specified in the
+     * javadoc of {@link Publishers} applies to the {@code Body} as a publisher
+     * as well. The only exception is that the body does not support subscriber
+     * reuse, simply because the body can not be subscribed to more than
+     * once.<p>
+     * 
      * The subscriber will receive bytebuffers in the same order they are read
      * from the underlying channel. The subscriber can not read beyond the
      * message/body boundary because the server will complete the subscription
@@ -225,9 +231,8 @@ public interface Request
      * or asynchronously. Whenever the application has finished processing
      * a bytebuffer, it must be {@link PooledByteBufferHolder#release()
      * released} which is a signal to the server that the bytebuffer may be
-     * re-used for new channel operations. The thread doing the release may be
-     * used to immediately publish new bytebuffers to the subscriber or initiate
-     * new asynchronous operations on the underlying channel.<p>
+     * reused for new channel operations. The thread doing the release may be
+     * used to immediately publish new bytebuffers to the subscriber.<p>
      * 
      * Releasing the bytebuffer with bytes remaining to be read will cause the
      * bytebuffer to immediately become available for re-publication (ahead of
@@ -239,13 +244,10 @@ public interface Request
      * 
      * <h4>Processing bytebuffers</h4>
      * 
-     * The subscriber may request/demand any number of bytebuffers, but may
+     * The subscriber may request/demand any number of bytebuffers, but will
      * only receive the next bytebuffer after the previous one has been
-     * released.<p>
-     * 
-     * Currently, the default implementation does only publish one bytebuffer at
-     * a time and so with this implementation, awaiting more buffers before
-     * releasing old ones will inevitably halt progress.<p>
+     * released. So, awaiting more buffers before releasing old ones will
+     * inevitably halt progress.<p>
      * 
      * In order to fully support concurrent processing of many bytebuffers
      * without the risk of adding unnecessary delays or blockages, the Body API
@@ -256,53 +258,27 @@ public interface Request
      * This is not very likely to happen. Not only will concurrent processing be
      * a challenge for the application to implement properly with respect to
      * byte order and message integrity, but concurrent processing could also be
-     * a sign that the application's processing code may block the request
-     * thread (see "Threading Model" in {@link HttpServer}) - hence the need to
-     * "collect" or buffer the bytebuffers.<p>
+     * a sign that the application's processing code would have blocked the
+     * request thread (see "Threading Model" in {@link HttpServer}) - hence the
+     * need to "collect" or buffer the bytebuffers. For example, {@link
+     * GatheringByteChannel} expects a {@code ByteBuffer[]} but is a blocking
+     * API. Instead, submit the bytebuffers one at a time to {@link
+     * AsynchronousByteChannel}, releasing each in the completion handler.<p>
      * 
-     * For example, {@code GatheringByteChannel} expects a {@code ByteBuffer[]}
-     * but is a blocking API. Instead, submit the bytebuffers one at a time to
-     * {@code AsynchronousByteChannel}, releasing each in the completion
-     * handler.<p>
-     * 
-     * Given how the default implementation only publishes one bytebuffer at a
-     * time, there's really no difference between requesting {@code
-     * Long.MAX_VALUE} versus requesting only one bytebuffer at a time.<p>
-     * 
-     * Unfortunately, the Reactive Stream specification calls the latter
-     * approach an "inherently inefficient 'stop-and-wait' protocol". This is
-     * wrong. The bytebuffers are pooled and cached upstream already. Requesting
-     * a bytebuffer is essentially the same as polling a stupidly fast queue of
-     * available buffers and there simply does not exist - surprise surprise - a
-     * good reason to engage in "premature optimization".<p>
+     * Given how only one bytebuffer at a time is published, there's really no
+     * difference between requesting {@code Long.MAX_VALUE} versus requesting
+     * one at a time. Unfortunately, the Reactive Stream specification calls the
+     * latter approach an "inherently inefficient 'stop-and-wait' protocol".
+     * This is wrong. The bytebuffers are pooled and cached upstream already.
+     * Requesting a bytebuffer is essentially the same as polling a stupidly
+     * fast queue of buffers and there simply does not exist - surprise surprise
+     * - a good reason to engage in "premature optimization".<p>
      * 
      * Speaking of optimization; the default implementation uses <i>direct</i>
      * bytebuffers in order to support "zero-copy" transfers. I.e., no data is
      * moved into Java heap space unless the subscriber itself causes this to
      * happen. Whenever possible, always pass forward the bytebuffers to the
      * destination without reading the bytes in application code!<p>
-     * 
-     * <h4>Thread Semantics</h4>
-     * 
-     * All signals to the subscriber are executed serially with a happens-before
-     * relationship. Assuming the subscriber's fields are not accessed by
-     * threads outside of the delivery of the signals; no special care needs to
-     * be put in place such as volatile- and/or atomic fields.<p>
-     * 
-     * The effect of {@code Subscription.request()} - if called by the thread
-     * delivering a signal to the subscriber - will not be immediate. Instead
-     * the requested demand/value will be scheduled and then the method returns.
-     * I.e., {@code Subscriber.onSubscribe()} and {@code Subscriber.onNext()}
-     * will always complete without reentrancy and recursion.<p>
-     * 
-     * However, an asynchronous call to {@code request()} may prompt the same
-     * thread to immediately get busy delivering the next subscriber signal.<p>
-     * 
-     * {@code Subscription.cancel()} will only have an immediate effect if
-     * called by the thread running the subscriber. If called asynchronously,
-     * the effect may be eventual and the subscriber may observe a bytebuffer
-     * delivery even after the cancel method returns (at most one "extra"
-     * delivery).<p>
      * 
      * <h4>The HTTP exchange and body discarding</h4>
      * 
@@ -330,40 +306,30 @@ public interface Request
      * 
      * <h4>Exception Handling</h4>
      * 
+     * The {@code Body} as a publisher follows the same exception semantics
+     * specified in the javadoc of {@link Publishers}, decorated with some added
+     * behavior on top.<p>
+     * 
      * Exceptions thrown by the {@code Flow.Subscriber.onSubscribe()} method
      * propagates to the calling thread, i.e., the one calling {@code
-     * Request.Body.subscribe()}. If this thread is the request thread, then
-     * standard {@link ErrorHandler error handling} is kicked off.<p>
+     * Body.subscribe()}. If this thread is the HTTP server's request thread,
+     * then standard {@link ErrorHandler error handling} is kicked off.<p>
      * 
      * Exceptions thrown by the subscriber's {@code onNext()} and {@code
      * onComplete()} methods will be logged by the server if the channel's read
      * stream is still open when the exceptional return occur. The server will
-     * also perform a similar close procedure documented in {@link
-     * Response#mustCloseAfterWrite()}, but for the read stream only (an ongoing
-     * response will complete). The exceptional return will void the underlying
-     * subscription and even though {@code onError()} is meant to be a vehicle
-     * for <i>publisher</i> errors, the server will gracefully complete the
-     * subscription by signalling a {@link ClosedPublisherException} (caused by
-     * the subscriber exception).<p>
+     * also close the read stream using a similar procedure documented in {@link
+     * Response#mustCloseAfterWrite()} (the write stream remains untouched so
+     * that a response in-flight can complete).<p>
      * 
-     * Other exceptions signalled to {@code Subscriber.onError()} that are not
-     * caused by the subscriber itself can safely be assumed to indicate
+     * Exceptions signalled to {@code Subscriber.onError()} that are not
+     * <i>caused by</i> the subscriber itself can safely be assumed to indicate
      * low-level problems with the underlying channel. They will also have been
-     * logged by the server followed suite by read-stream closure.<p>
-     * 
-     * Exceptions from {@code Subscriber.onError()} will be logged but otherwise
-     * ignored.<p>
+     * logged by the HTTP server followed suite by read-stream closure.<p>
      * 
      * Even if the server has a reaction for some observed exceptions - such as
      * closing the read stream as previously noted - this doesn't stop the
-     * exception from being propagated. For example, if the application
-     * asynchronously calls {@code Subscription.request()} from a new thread, a
-     * call which might immediately and synchronously trigger the publication of
-     * a buffer delivery to {@code Subscriber.onNext()}, and if this method in
-     * turn returns exceptionally which prompts the server to intercept and
-     * close the stream, then the application code will still return
-     * exceptionally from it's call to the top-level {@code
-     * Subscription.request()} method observing the same exception instance.
+     * exception from being propagated as specified by {@link Publishers}.
      * 
      * @author Martin Andersson (webmaster at martinandersson.com)
      */
