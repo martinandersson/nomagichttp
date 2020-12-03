@@ -3,6 +3,7 @@ package alpha.nomagichttp.internal;
 import alpha.nomagichttp.message.ClosedPublisherException;
 import alpha.nomagichttp.message.PooledByteBufferHolder;
 import alpha.nomagichttp.message.Request;
+import alpha.nomagichttp.util.Publishers;
 import alpha.nomagichttp.util.Subscriptions;
 
 import java.util.Queue;
@@ -153,7 +154,7 @@ abstract class AbstractUnicastPublisher<T> implements Flow.Publisher<T>
      * items could have spawned an asynchronous but immediate item delivery
      * which in turn would - surprisingly enough for the publisher - not have
      * been delivered because the reference was still initializing. Secondly, as
-     * documented in {@link Request.Body}; if requesting from the subscriber
+     * documented in {@link Publishers}; if requesting from the subscriber
      * context (in this case; {@code Subscriber.onSubscribe()}), the thread must
      * return immediately without reentrancy or recursion.<p>
      * 
