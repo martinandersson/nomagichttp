@@ -98,7 +98,6 @@ import static java.util.Objects.requireNonNull;
 public final class Publishers
 {
     private Publishers() {
-        Collections.
         // Empty
     }
     
