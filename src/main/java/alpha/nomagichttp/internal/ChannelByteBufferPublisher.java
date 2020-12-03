@@ -83,10 +83,11 @@ final class ChannelByteBufferPublisher implements Flow.Publisher<DefaultPooledBy
             return null;
         }
         
-        return new DefaultPooledByteBufferHolder(b, readCountIgnored -> afterSubscriber(b));
+        return new DefaultPooledByteBufferHolder(
+                b, readCountIgnored -> afterSubscriberPipeline(b));
     }
     
-    private void afterSubscriber(ByteBuffer b) {
+    private void afterSubscriberPipeline(ByteBuffer b) {
         if (b.hasRemaining()) {
             putReadableFirst(b);
         } else {
