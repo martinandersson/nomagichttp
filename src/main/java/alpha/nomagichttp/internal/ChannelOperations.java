@@ -191,8 +191,8 @@ final class ChannelOperations
     }
     
     /**
-     * Returns {@code true} if we may assume that the underlying channel's input
-     * stream is open, otherwise {@code false}.<p>
+     * Returns {@code true} if we may assume that the underlying channel's
+     * output stream is open, otherwise {@code false}.<p>
      *
      * Note: This method does not probe the current connection status. There's
      * no such support in the AsynchronousSocketChannel API. But as long as our
