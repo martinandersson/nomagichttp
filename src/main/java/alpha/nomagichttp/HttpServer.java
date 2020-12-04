@@ -116,6 +116,7 @@ public interface HttpServer
      * 
      * @throws NullPointerException if any given argument is {@code null}
      */
+    // TODO: Remove Supplier type. ErrorHandler instance will use exchange-associated object store for state.
     @SafeVarargs
     static HttpServer with(Config config,
                            Iterable<? extends Route> routes,
