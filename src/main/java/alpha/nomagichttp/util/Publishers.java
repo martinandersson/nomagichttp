@@ -7,6 +7,8 @@ import java.net.http.HttpRequest;
 import java.util.Iterator;
 import java.util.List;
 import java.util.concurrent.Flow;
+import java.util.function.Consumer;
+import java.util.function.Function;
 
 import static alpha.nomagichttp.util.Subscriptions.CanOnlyBeCancelled;
 import static alpha.nomagichttp.util.Subscriptions.TurnOnProxy;
@@ -132,75 +134,47 @@ public final class Publishers
      * 
      * The publisher will emit the items immediately upon receiving subscriber
      * demand and does not limit how many subscriptions at a time can be active.
-     * Thus, either the publisher should be used by only one subscriber at a
-     * time or the items should be thread-safe.<p>
-     * 
-     * According to
-     * <a href="https://github.com/reactive-streams/reactive-streams-jvm/blob/v1.0.3/README.md">
-     * Reactive Streams §2.13</a>, a published item must not be {@code null}.
-     * This method does not eagerly validate the {@code items} array but if the
-     * publisher does come across a {@code null} item while in the process of
-     * publishing to a subscriber, the publisher will at that point terminate
-     * the subscription and all future subscriptions with a
-     * {@link ClosedPublisherException} caused by a
-     * {@code NullPointerException}.<p>
+     * Thus, either care should be exercised so that the publisher is only used
+     * by one subscriber at a time or the items should be thread-safe.<p>
      * 
      * The given {@code items} may be empty which would return an empty
-     * publisher that immediately completes all subscriptions. The difference
-     * between an empty publisher from this method and {@link #empty()} is that
-     * this method returns a new publisher instance.<p>
+     * publisher that immediately completes each new subscription. The
+     * difference between an empty publisher from this method and {@link
+     * #empty()} is that this method returns a new publisher instance.<p>
      * 
      * @param items to publish
      * @param <T> type of item
      * 
      * @return a new publisher
      * 
-     * @throws NullPointerException if {@code items} is {@code null}
+     * @throws NullPointerException
+     *             if {@code items} or any element thereof is {@code null}
+     *             (<a href="https://github.com/reactive-streams/reactive-streams-jvm/blob/v1.0.3/README.md">
+     *             Reactive Streams §2.13</a>)
      */
     @SafeVarargs
     public static <T> Flow.Publisher<T> just(T... items) {
-        return new ItemPublisher<T>(items);
-    }
-    
-    /**
-     * Is equivalent to {@link #just(Object[])}.<p>
-     * 
-     * The order of items published is the same order they are returned by the
-     * specified iterable's iterator. The behavior of this operation is
-     * undefined if the iterable is modified while the operation is in progress.
-     * 
-     * @param items to publish
-     * @param <T> type of item
-     *
-     * @return a new publisher
-     *
-     * @throws NullPointerException if {@code items} is {@code null}
-     */
-    public static <T> Flow.Publisher<T> just(Iterable<? extends T> items) {
-        return new ItemPublisher<T>(items);
+        return new ItemPublisher<>(items);
     }
     
     private static final class ItemPublisher<T> implements Flow.Publisher<T>
     {
         private final Iterable<? extends T> items;
-        private volatile Throwable exc;
         
         @SafeVarargs
         ItemPublisher(T... items) {
+            // Documented to disallow null
             this(List.of(items));
         }
         
-        ItemPublisher(Iterable<? extends T> items) {
+        private ItemPublisher(Iterable<? extends T> items) {
             this.items = requireNonNull(items);
-            this.exc   = null;
         }
         
         @Override
         public void subscribe(Flow.Subscriber<? super T> s) {
-            // TODO: Refactor, make smaller
             requireNonNull(s);
-            
-            Iterator<? extends T> it = items.iterator();
+            final Iterator<? extends T> it = items.iterator();
             
             if (!it.hasNext()) {
                 CanOnlyBeCancelled tmp = Subscriptions.canOnlyBeCancelled();
@@ -211,49 +185,53 @@ public final class Publishers
                 return;
             }
             
-            Throwable e1 = exc;
-            if (e1 != null) {
-                Subscribers.signalErrorSafe(s, e1);
-                return;
+            TurnOnProxy proxy = Subscriptions.turnOnProxy();
+            Subscribers.signalOnSubscribeOrTerminate(s, proxy);
+            if (!proxy.isCancelled()) {
+                proxy.activate(newSubscription(it, s));
             }
-            
-            SerialTransferService<T> service = new SerialTransferService<>(
-                    self -> {
-                        if (it.hasNext()) {
-                            T t = it.next();
-                            if (t == null) {
-                                final Throwable e2 = exc = new ClosedPublisherException(new NullPointerException());
-                                self.finish(() -> Subscribers.signalErrorSafe(s, e2));
-                            }
-                            return t;
-                        } else {
-                            self.finish(s::onComplete);
-                            return null;
-                        }
-                    },
-                    s::onNext);
-            
-            Flow.Subscription subscription = new Flow.Subscription(){
+        }
+        
+        private Flow.Subscription newSubscription(
+                Iterator<? extends T> it, Flow.Subscriber<? super T> subsc)
+        {
+            return new Flow.Subscription() {
+                private final SerialTransferService<T> delegate = newService(it, subsc);
+                
                 @Override
                 public void request(long n) {
                     try {
-                        service.increaseDemand(n);
-                    } catch (IllegalArgumentException e3) {
-                        service.finish(() -> Subscribers.signalErrorSafe(s, e3));
+                        delegate.increaseDemand(n);
+                    } catch (IllegalArgumentException e) {
+                        delegate.finish(() -> Subscribers.signalErrorSafe(subsc, e));
                     }
                 }
                 
                 @Override
                 public void cancel() {
-                    service.finish();
+                    delegate.finish();
+                }
+            };
+        }
+        
+        private SerialTransferService<T> newService(
+                Iterator<? extends T> it, Flow.Subscriber<? super T> subsc)
+        {
+            Function<SerialTransferService<T>, ? extends T> generator = self -> {
+                if (it.hasNext()) {
+                    T t = it.next();
+                    assert t != null;
+                    return t;
+                } else {
+                    self.finish(subsc::onComplete);
+                    return null;
                 }
             };
             
-            TurnOnProxy proxy = Subscriptions.turnOnProxy();
-            Subscribers.signalOnSubscribeOrTerminate(s, proxy);
-            if (!proxy.isCancelled()) {
-                proxy.activate(subscription);
-            }
+            Consumer<? super T> receiver = item ->
+                    Subscribers.signalNextOrTerminate(subsc, item);
+            
+            return new SerialTransferService<>(generator, receiver);
         }
     }
 }
