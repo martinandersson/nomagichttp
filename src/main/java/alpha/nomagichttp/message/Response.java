@@ -324,7 +324,7 @@ public interface Response
          * </a>). Further, some JDK-provided types block, such as
          * {@link HttpRequest.BodyPublishers#ofFile(Path)} and {@link
          * HttpRequest.BodyPublishers#ofInputStream(Supplier)}. For these
-         * reasons, consider using an alternative util in {@link Publishers} or
+         * reasons, consider using an alternative from {@link Publishers} or
          * {@link SafeBodyPublishers}<p>
          * 
          * @return a new builder representing the new state
