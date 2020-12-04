@@ -22,10 +22,8 @@ import static alpha.nomagichttp.handler.RequestHandlers.noop;
 import static alpha.nomagichttp.internal.ClientOperations.CRLF;
 import static alpha.nomagichttp.route.Routes.route;
 import static java.lang.System.Logger.Level.ALL;
-import static java.util.Arrays.stream;
 import static java.util.Collections.singleton;
 import static java.util.concurrent.CompletableFuture.failedFuture;
-import static java.util.stream.Collectors.toList;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
@@ -119,16 +117,20 @@ class ErrorHandlingTest
             "Content-Length: 0" + CRLF + CRLF);
     }
     
-    private ClientOperations createServerAndClient(ErrorHandler... onError) throws IOException {
+    private ClientOperations createServerAndClient() throws IOException {
+        return createServerAndClient(null);
+    }
+    
+    private ClientOperations createServerAndClient(ErrorHandler onError) throws IOException {
         return createServerAndClient(noop(), onError);
     }
     
-    private ClientOperations createServerAndClient(RequestHandler handler, ErrorHandler... onError) throws IOException {
+    private ClientOperations createServerAndClient(RequestHandler handler, ErrorHandler onError) throws IOException {
         Iterable<Route> r = singleton(route("/", handler));
         
-        Iterable<Supplier<ErrorHandler>> eh = stream(onError)
-                .map(e -> (Supplier<ErrorHandler>) () -> e)
-                .collect(toList());
+        @SuppressWarnings("unchecked")
+        Supplier<ErrorHandler>[] eh = onError == null ?
+                new Supplier[0] : new Supplier[]{ () -> onError };
         
         server = HttpServer.with(DEFAULT, r, eh).start();
         return new ClientOperations(server.getLocalAddress().getPort());

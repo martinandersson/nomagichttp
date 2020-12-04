@@ -16,9 +16,8 @@ import java.net.InetSocketAddress;
 import java.net.SocketAddress;
 import java.nio.channels.AsynchronousServerSocketChannel;
 import java.util.List;
+import java.util.concurrent.CompletionStage;
 import java.util.function.Supplier;
-
-import static java.util.Collections.singleton;
 
 /**
  * Listens on a port for HTTP {@link Request requests} targeting a specific
@@ -89,7 +88,7 @@ public interface HttpServer
      * @throws NullPointerException if {@code route} is {@code null}
      */
     static HttpServer with(Route... routes) {
-        return with(Config.DEFAULT, List.of(routes));
+        return with(Config.DEFAULT, routes);
     }
     
     /**
@@ -100,7 +99,7 @@ public interface HttpServer
      * 
      * @return an instance of {@link DefaultServer}
      * 
-     * @throws NullPointerException if any argument is {@code null}
+     * @throws NullPointerException if any given argument is {@code null}
      */
     static HttpServer with(Config config, Route... routes) {
         return with(config, List.of(routes));
@@ -109,52 +108,18 @@ public interface HttpServer
     /**
      * Builds a server.<p>
      * 
-     * @param config of server
-     * @param routes of server
-     * 
-     * @return an instance of {@link DefaultServer}
-     * 
-     * @throws NullPointerException if any argument is {@code null}
-     */
-    static HttpServer with(Config config, Iterable<? extends Route> routes) {
-        RouteRegistry reg = new DefaultRouteRegistry();
-        routes.forEach(reg::add);
-        return new DefaultServer(reg, config, List.of());
-    }
-    
-    /**
-     * Builds a server.<p>
-     * 
      * @param config  of server
      * @param routes  of server
-     * @param eh      error handler
+     * @param eh      error handler(s)
      * 
      * @return an instance of {@link DefaultServer}
      * 
-     * @throws NullPointerException if any argument is {@code null}
+     * @throws NullPointerException if any given argument is {@code null}
      */
+    @SafeVarargs
     static HttpServer with(Config config,
                            Iterable<? extends Route> routes,
-                           Supplier<? extends ErrorHandler> eh)
-    {
-        return with(config, routes, singleton(eh));
-    }
-    
-    /**
-     * Builds a server.<p>
-     * 
-     * @param config  of server
-     * @param routes  of server
-     * @param eh      error handlers
-     * 
-     * @return an instance of {@link DefaultServer}
-     * 
-     * @throws NullPointerException if any argument is {@code null}
-     */
-    static <S extends Supplier<? extends ErrorHandler>> HttpServer with(
-            Config config,
-            Iterable<? extends Route> routes,
-            Iterable<S> eh)
+                           Supplier<? extends ErrorHandler>... eh)
     {
         RouteRegistry reg = new DefaultRouteRegistry();
         routes.forEach(reg::add);

@@ -23,10 +23,10 @@ import static java.lang.System.Logger.Level.DEBUG;
 import static java.lang.System.Logger.Level.ERROR;
 import static java.lang.System.Logger.Level.INFO;
 import static java.net.InetAddress.getLoopbackAddress;
+import static java.util.Arrays.stream;
 import static java.util.Collections.unmodifiableList;
 import static java.util.Objects.requireNonNull;
 import static java.util.stream.Collectors.toCollection;
-import static java.util.stream.StreamSupport.stream;
 
 /**
  * A fully asynchronous implementation of {@code Server}.<p>
@@ -75,14 +75,17 @@ public final class DefaultServer implements HttpServer
     private AsynchronousServerSocketChannel listener;
     private InetSocketAddress addr;
     
-    public <S extends Supplier<? extends ErrorHandler>> DefaultServer(
-            RouteRegistry routes, Config config, Iterable<S> onError)
+    @SafeVarargs
+    public DefaultServer(
+            RouteRegistry routes,
+            Config config,
+            Supplier<? extends ErrorHandler>... onError)
     {
         this.routes = requireNonNull(routes);
         this.config = requireNonNull(config);
         
         // Collectors.toUnmodifiableList() does not document RandomAccess
-        List<Supplier<ErrorHandler>> l = stream(onError.spliterator(), false)
+        List<Supplier<ErrorHandler>> l = stream(onError)
                 .map(e -> {
                     @SuppressWarnings("unchecked")
                     Supplier<ErrorHandler> eh = (Supplier<ErrorHandler>) e;
