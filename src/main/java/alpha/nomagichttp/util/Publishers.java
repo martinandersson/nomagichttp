@@ -9,6 +9,7 @@ import java.util.List;
 import java.util.concurrent.Flow;
 
 import static alpha.nomagichttp.util.Subscriptions.CanOnlyBeCancelled;
+import static alpha.nomagichttp.util.Subscriptions.TurnOnProxy;
 import static java.util.Objects.requireNonNull;
 
 /**
@@ -25,16 +26,14 @@ import static java.util.Objects.requireNonNull;
  * The Reactive Streams specification requires the publisher to signal the
  * subscriber serially (happens-before relationship between signals). The
  * specification defines a serial signal as being "non-overlapping". At the same
- * time, the specification allow synchronous recursion (§3.3) which by
- * definition is overlapping otherwise it wouldn't recurse. This class'
- * publishers will signal the subscriber strictly serially with zero
- * overlapping, i.e. no synchronous recursion. More concretely; a thread running
- * through {@code Subscriber.onSubscribe()}/{@code onNext()} which synchronously
- * calls {@code Subscription.request()} will always immediately return even if
- * more items are available. Not until the current subscriber call returns will
- * the subscriber receive more items. However, an asynchronous call to {@code
- * request()} by a thread which does not have a subscriber method on it's stack
- * may be used for immediate item delivery to the subscriber.<p>
+ * time, the specification allow recursion (§3.2, §3.3) which by definition is
+ * overlapping otherwise it wouldn't recurse. This class' publishers will signal
+ * the subscriber strictly serially with zero overlapping, i.e. no subscriber
+ * reentrancy. More concretely; a thread running through {@code
+ * Subscriber.onSubscribe()}/{@code onNext()} which synchronously calls {@code
+ * Subscription.request()} will always immediately return even if more items are
+ * available. Not until the current subscriber call returns will the subscriber
+ * receive more items.<p>
  * 
  * The otherwise very async-oriented specification also mandates that the {@code
  * Subscription} object is only called by the same thread executing a method of
@@ -61,11 +60,15 @@ import static java.util.Objects.requireNonNull;
  * 
  * <h3>Exception Semantics</h3>
  * 
- * Exceptions thrown by {@code Subscriber.onSubscribe()}, {@code onNext()} and
- * {@code onComplete()} propagates to the calling thread - after having been
- * forwarded to {@code Subscriber.onError()} as the <i>cause</i> of a {@link
+ * Exceptions thrown by {@code Subscriber.onSubscribe()} and {@code onNext()}
+ * propagates to the calling thread - after having been forwarded to {@code
+ * Subscriber.onError()} as the <i>cause</i> of a {@link
  * ClosedPublisherException}. Having said that, the subscription is voided and
  * the publisher will no longer interact with the subscriber that failed.<p>
+ * 
+ * Exceptions from {@code Subscriber.onComplete()} will also propagate to the
+ * calling thread but is <i>not</i> first sent to {@code onError()} (there's no
+ * need; subscription already terminated).<p>
  * 
  * Exceptions from {@code Subscriber.onError()} will be logged but otherwise
  * ignored.<p>
@@ -87,9 +90,12 @@ import static java.util.Objects.requireNonNull;
  * help explain why the {@code OneShotPublisher} example given in the javadoc of
  * {@link Flow} happened to forget about it. However that might be, this class'
  * publishers - in favor of specification compliance - will always call {@code
- * onSubscribe()} first. This class' publishers will even monitor the
- * subscription object and if the subscriber happens to cancel the subscription
- * no more signals will follow (§1.8, §3.12).<p>
+ * onSubscribe()} first albeit with a temporary subscription object if the
+ * intent is to immediate terminate the subscription. The subscription object
+ * will still be monitored and if the subscriber happens to cancel the
+ * subscription no more signals will follow (§1.8, §3.12). Requesting demand
+ * from the temporary subscription is NOP (see {@link
+ * Subscriptions#canOnlyBeCancelled()}).<p>
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  * 
@@ -151,15 +157,16 @@ public final class Publishers
      * <a href="https://github.com/reactive-streams/reactive-streams-jvm/blob/v1.0.3/README.md">
      * Reactive Streams §2.13</a>, a published item must not be {@code null}.
      * This method does not eagerly validate the {@code items} array but if the
-     * publisher does come across a {@code null} item while publishing to a
-     * subscriber, the publisher will at that point terminate the subscription
-     * and all future subscriptions with a {@link ClosedPublisherException}
-     * caused by {@code NullPointerException}.
+     * publisher does come across a {@code null} item while in the process of
+     * publishing to a subscriber, the publisher will at that point terminate
+     * the subscription and all future subscriptions with a
+     * {@link ClosedPublisherException} caused by a
+     * {@code NullPointerException}.<p>
      *
      * The given {@code items} may be empty which would return an empty
      * publisher that immediately completes all subscriptions. The difference
-     * between this empty publisher and {@link #empty()} is that this method
-     * returns a new publisher instance.<p>
+     * between an empty publisher from this method and {@link #empty()} is that
+     * this method returns a new publisher instance.<p>
      * 
      * @param items to publish
      * @param <T> type of item
@@ -178,8 +185,7 @@ public final class Publishers
      * 
      * The order of items published is the same order they are returned by the
      * specified iterable's iterator. The behavior of this operation is
-     * undefined if the specified iterable is modified while the operation is in
-     * progress.
+     * undefined if the iterable is modified while the operation is in progress.
      * 
      * @param items to publish
      * @param <T> type of item
@@ -261,50 +267,50 @@ public final class Publishers
         }
         
         @Override
-        public void subscribe(Flow.Subscriber<? super T> subscriber) {
+        public void subscribe(Flow.Subscriber<? super T> s) {
             // TODO: Refactor, make smaller
-            requireNonNull(subscriber);
+            requireNonNull(s);
             
             Iterator<? extends T> it = items.iterator();
             
             if (!it.hasNext()) {
                 CanOnlyBeCancelled tmp = Subscriptions.canOnlyBeCancelled();
-                subscriber.onSubscribe(tmp);
+                Subscribers.signalOnSubscribeOrTerminate(s, tmp);
                 if (!tmp.isCancelled()) {
-                    subscriber.onComplete();
+                    s.onComplete();
                 }
                 return;
             }
             
-            Throwable e = exc;
-            if (e != null) {
-                Subscribers.signalErrorSafe(subscriber, e);
+            Throwable e1 = exc;
+            if (e1 != null) {
+                Subscribers.signalErrorSafe(s, e1);
                 return;
             }
             
             SerialTransferService<T> service = new SerialTransferService<>(
-                    s -> {
+                    self -> {
                         if (it.hasNext()) {
                             T t = it.next();
                             if (t == null) {
-                                final Throwable e = exc = new ClosedPublisherException(new NullPointerException());
-                                s.finish(() -> Subscribers.signalErrorSafe(subscriber, e));
+                                final Throwable e2 = exc = new ClosedPublisherException(new NullPointerException());
+                                self.finish(() -> Subscribers.signalErrorSafe(s, e2));
                             }
                             return t;
                         } else {
-                            s.finish(subscriber::onComplete);
+                            self.finish(s::onComplete);
                             return null;
                         }
                     },
-                    subscriber::onNext);
+                    s::onNext);
             
             Flow.Subscription subscription = new Flow.Subscription(){
                 @Override
                 public void request(long n) {
                     try {
                         service.increaseDemand(n);
-                    } catch (IllegalArgumentException e) {
-                        service.finish(() -> Subscribers.signalErrorSafe(subscriber, e));
+                    } catch (IllegalArgumentException e3) {
+                        service.finish(() -> Subscribers.signalErrorSafe(s, e3));
                     }
                 }
                 
@@ -314,9 +320,11 @@ public final class Publishers
                 }
             };
             
-            // TODO: Delay synchronous calls to request(), must not recurse (overlapping)
-            // Perhaps reuse Proxy-switch tech in AbstractUnicastPublisher
-            subscriber.onSubscribe(subscription);
+            TurnOnProxy proxy = Subscriptions.turnOnProxy();
+            Subscribers.signalOnSubscribeOrTerminate(s, proxy);
+            if (!proxy.isCancelled()) {
+                proxy.activate(subscription);
+            }
         }
     }
 }
