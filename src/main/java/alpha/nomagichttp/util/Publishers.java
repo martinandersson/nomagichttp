@@ -125,26 +125,6 @@ public final class Publishers
     }
     
     /**
-     * Creates a publisher that emits a single item.<p>
-     * 
-     * 
-     * The publisher will emit the item immediately upon subscriber subscription
-     * and does not limit how many subscriptions at a time can be active. Thus,
-     * the item should be thread-safe.<p>
-     * 
-     * @param item the singleton item
-     * @param <T> type of item
-     * 
-     * @return an empty publisher
-     * 
-     * @throws NullPointerException if {@code item} is {@code null}
-     */
-    public static <T> Flow.Publisher<T> singleton(T item) {
-        // TODO: Change away from Singleton to ItemPublisher
-        return new Singleton<>(item);
-    }
-    
-    /**
      * Creates a {@code Flow.Publisher} that publishes the given {@code items}
      * to each new subscriber.<p>
      * 
@@ -162,7 +142,7 @@ public final class Publishers
      * the subscription and all future subscriptions with a
      * {@link ClosedPublisherException} caused by a
      * {@code NullPointerException}.<p>
-     *
+     * 
      * The given {@code items} may be empty which would return an empty
      * publisher that immediately completes all subscriptions. The difference
      * between an empty publisher from this method and {@link #empty()} is that
@@ -207,46 +187,6 @@ public final class Publishers
             subscriber.onSubscribe(tmp);
             if (!tmp.isCancelled()) {
                 subscriber.onComplete();
-            }
-        }
-    }
-    
-    private static class Singleton<T> implements Flow.Publisher<T> {
-        private final T item;
-        
-        Singleton(T item) {
-            this.item = requireNonNull(item);
-        }
-        
-        @Override
-        public void subscribe(Flow.Subscriber<? super T> subscriber) {
-            subscriber.onSubscribe(new Subscription(subscriber));
-        }
-        
-        private class Subscription implements Flow.Subscription {
-            private final Flow.Subscriber<? super T> subscriber;
-            private volatile boolean stopped;
-            
-            Subscription(Flow.Subscriber<? super T> subscriber) {
-                this.subscriber = subscriber;
-                this.stopped = false;
-            }
-            
-            @Override
-            public void request(long n) {
-                if (n < 1) {
-                    subscriber.onError(new IllegalArgumentException());
-                } else if (stopped) {
-                    return;
-                }
-                stopped = true;
-                subscriber.onNext(item);
-                subscriber.onComplete();
-            }
-            
-            @Override
-            public void cancel() {
-                stopped = true;
             }
         }
     }

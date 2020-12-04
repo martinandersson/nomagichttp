@@ -18,13 +18,13 @@ import static org.assertj.core.api.Assertions.assertThat;
 final class PublishersTest
 {
     @Test
-    void singleton() {
-        Flow.Publisher<String> p = Publishers.singleton("hello");
+    void just_one_repeat() {
+        Flow.Publisher<String> p = Publishers.just("one");
         MemorizingSubscriber<String> s = new MemorizingSubscriber<>(Request.IMMEDIATELY_MAX());
         p.subscribe(s);
-        assertThat(s.items()).containsExactly("hello");
+        assertThat(s.items()).containsExactly("one");
         p.subscribe(s);
-        assertThat(s.items()).containsExactly("hello", "hello");
+        assertThat(s.items()).containsExactly("one", "one");
     }
     
     @Test
