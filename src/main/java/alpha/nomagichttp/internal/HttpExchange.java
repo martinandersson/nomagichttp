@@ -150,21 +150,29 @@ final class HttpExchange
                     new HttpExchange(server, child, bytes).begin();
                 } else if (child.isOpenForReading()) {
                     // See SubscriberAsStageOp.asCompletionStage(); t2 can only be an upstream error
-                    LOG.log(WARNING, "Expected someone to have closed the channel's read stream already.");
+                    LOG.log(WARNING, "Expected someone to have closed the child channel's read stream already.");
                     child.orderlyShutdownInput();
                 }
             });
+            
+            return;
+        }
+        
+        final Throwable unpacked = unpackCompletionException(exc);
+        
+        if (unpacked instanceof RequestHeadSubscriber.ClientAbortedException) {
+            LOG.log(DEBUG, "Child channel aborted the HTTP exchange, will not begin a new one.");
         } else if (child.isOpenForWriting())  {
             if (eh == null) {
                 eh = new ErrorHandlers();
             }
-            eh.resolve(exc)
+            eh.resolve(unpacked)
               .thenCompose(this::writeResponseToChannel)
               // TODO: Possible recursion. Unroll.
               .whenComplete(this::finish);
         } else {
             LOG.log(DEBUG, () ->
-                "HTTP exchange finished exceptionally and channel is closed. " +
+                "HTTP exchange finished exceptionally and child channel is closed for writing. " +
                 "Assuming reason was logged already.");
         }
     }
@@ -182,25 +190,23 @@ final class HttpExchange
         }
         
         CompletionStage<Response> resolve(Throwable t) {
-            final Throwable unpacked = unpackCompletionException(t);
-            
             if (prev != null) {
-                assert prev != unpacked;
-                unpacked.addSuppressed(prev);
+                assert prev != t;
+                t.addSuppressed(prev);
             }
-            prev = unpacked;
+            prev = t;
             
             if (factories.isEmpty()) {
-                return usingDefault(unpacked);
+                return usingDefault(t);
             }
             
             if (++attemptCount > server.getConfig().maxErrorRecoveryAttempts()) {
                 LOG.log(WARNING, "Error recovery attempts depleted, will use default handler.");
-                return usingDefault(unpacked);
+                return usingDefault(t);
             }
             
             LOG.log(DEBUG, () -> "Attempting error recovery #" + attemptCount);
-            return usingHandlers(unpacked);
+            return usingHandlers(t);
         }
         
         private CompletionStage<Response> usingDefault(Throwable t) {
@@ -221,7 +227,7 @@ final class HttpExchange
                 } catch (Throwable next) {
                     if (t != next) {
                         // New fail
-                        return resolve(next);
+                        return resolve(unpackCompletionException(next));
                     } // else continue; Handler opted out
                 }
             }
