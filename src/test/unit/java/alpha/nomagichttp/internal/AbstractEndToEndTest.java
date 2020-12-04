@@ -28,10 +28,10 @@ import static org.assertj.core.api.Assertions.assertThat;
  * its own route(s) and handler(s) using the server's route registry (or
  * provided convenience method {@code addHandler()}).<p>
  * 
- * It's a good baseline to assume all HTTP exchanges completed normally. And so,
- * this class will assert after each test method that the default exception
- * handler was never called with an exception. This check can be skipped using
- * {@code doNotAssertNormalFinish()}.
+ * It's arguably a good baseline to assume that all HTTP exchanges completes
+ * normally. And so, this class will assert after each test method that the
+ * default exception handler was never called with an exception. This check can
+ * be skipped using {@code doNotAssertNormalFinish()}.
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  * 

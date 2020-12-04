@@ -117,6 +117,8 @@ class DetailedEndToEndTest extends AbstractEndToEndTest
     
     @Test
     void request_body_subscriber_crash() throws IOException {
+        doNotAssertNormalFinish();
+        
         RequestHandler crashAfterOneByte = RequestHandlers.POST().accept(req ->
             req.body().get().subscribe(
                 new AfterByteTargetStop(1, subscriptionIgnored -> {

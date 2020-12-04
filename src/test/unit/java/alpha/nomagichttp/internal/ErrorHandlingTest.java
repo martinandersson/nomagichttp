@@ -36,8 +36,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 class ErrorHandlingTest
 {
     private static final String
-            REQ_ROOT      = "GET / HTTP/1.1"    + CRLF + CRLF + CRLF,
-            REQ_NOT_FOUND = "GET /404 HTTP/1.1" + CRLF + CRLF + CRLF;
+            REQ_ROOT      = "GET / HTTP/1.1"    + CRLF + CRLF,
+            REQ_NOT_FOUND = "GET /404 HTTP/1.1" + CRLF + CRLF;
     
     HttpServer server;
     
