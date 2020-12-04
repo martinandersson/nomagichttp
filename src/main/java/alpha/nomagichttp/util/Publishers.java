@@ -103,6 +103,8 @@ import static java.util.Objects.requireNonNull;
  */
 public final class Publishers
 {
+    private static final Flow.Publisher<?> EMPTY = just();
+    
     private Publishers() {
         // Empty
     }
@@ -120,7 +122,7 @@ public final class Publishers
      */
     public static <T> Flow.Publisher<T> empty() {
         @SuppressWarnings("unchecked")
-        Flow.Publisher<T> typed = (Flow.Publisher<T>) Empty.INSTANCE;
+        Flow.Publisher<T> typed = (Flow.Publisher<T>) EMPTY;
         return typed;
     }
     
@@ -176,19 +178,6 @@ public final class Publishers
      */
     public static <T> Flow.Publisher<T> just(Iterable<? extends T> items) {
         return new ItemPublisher<T>(items);
-    }
-    
-    private enum Empty implements Flow.Publisher<Void> {
-        INSTANCE;
-        
-        @Override
-        public void subscribe(Flow.Subscriber<? super Void> subscriber) {
-            CanOnlyBeCancelled tmp = Subscriptions.canOnlyBeCancelled();
-            subscriber.onSubscribe(tmp);
-            if (!tmp.isCancelled()) {
-                subscriber.onComplete();
-            }
-        }
     }
     
     private static final class ItemPublisher<T> implements Flow.Publisher<T>
