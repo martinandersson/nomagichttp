@@ -3,6 +3,7 @@ package alpha.nomagichttp.internal;
 import alpha.nomagichttp.message.ClosedPublisherException;
 import alpha.nomagichttp.message.PooledByteBufferHolder;
 import alpha.nomagichttp.util.SerialTransferService;
+import alpha.nomagichttp.util.Subscribers;
 
 import java.util.concurrent.Flow;
 import java.util.function.Consumer;
@@ -177,7 +178,7 @@ final class AnnounceToSubscriber<T>
             }
             
             s.attachment().finish(() ->
-                    signalErrorSafe(s, new ClosedPublisherException()));
+                    Subscribers.signalErrorSafe(s, new ClosedPublisherException()));
         }
         
         private void ifPresent(Consumer<SubscriberWithAttachment<T, SerialTransferService<T>>> action) {
@@ -212,7 +213,7 @@ final class AnnounceToSubscriber<T>
                 // Attempt to terminate subscription
                 if (!signalError(t, s)) {
                     // stale subscription, still need to communicate error to our guy
-                    signalErrorSafe(s, t);
+                    Subscribers.signalErrorSafe(s, t);
                 }
             });
         }

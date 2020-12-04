@@ -4,6 +4,7 @@ import alpha.nomagichttp.message.ClosedPublisherException;
 import alpha.nomagichttp.message.PooledByteBufferHolder;
 import alpha.nomagichttp.message.Request;
 import alpha.nomagichttp.util.Publishers;
+import alpha.nomagichttp.util.Subscribers;
 import alpha.nomagichttp.util.Subscriptions;
 
 import java.util.concurrent.Flow;
@@ -13,7 +14,6 @@ import java.util.function.Predicate;
 import static alpha.nomagichttp.util.Subscribers.noopNew;
 import static alpha.nomagichttp.util.Subscriptions.canOnlyBeCancelled;
 import static java.lang.System.Logger.Level.DEBUG;
-import static java.lang.System.Logger.Level.ERROR;
 import static java.util.Objects.requireNonNull;
 
 /**
@@ -197,7 +197,7 @@ abstract class AbstractUnicastPublisher<T> implements Flow.Publisher<T>
         
         try {
             // Initialize subscriber
-            newS.onSubscribe(proxy);
+            Subscribers.signalOnSubscribeOrTerminate(newS, proxy);
         } catch (Throwable t) {
             // Attempt rollback (publisher could have closed or subscriber cancelled)
             boolean ignored = ref.compareAndSet(wrapper, T(ACCEPTING));
@@ -213,7 +213,7 @@ abstract class AbstractUnicastPublisher<T> implements Flow.Publisher<T>
         } else if (witness == CLOSED) {
             // Publisher called shutdown() during initialization
             if (!proxy.isCancelled()) {
-                signalErrorSafe(newS, new ClosedPublisherException());
+                Subscribers.signalErrorSafe(newS, new ClosedPublisherException());
             }
         } else if (witness != ACCEPTING && witness != NOT_REUSABLE) {
             throw new AssertionError("During initialization, only reset was expected. Saw: " + witness);
@@ -236,7 +236,7 @@ abstract class AbstractUnicastPublisher<T> implements Flow.Publisher<T>
         Subscriptions.CanOnlyBeCancelled tmp = canOnlyBeCancelled();
         newS.onSubscribe(tmp);
         if (!tmp.isCancelled()) {
-            signalErrorSafe(newS, new IllegalStateException(reason));
+            Subscribers.signalErrorSafe(newS, new IllegalStateException(reason));
         }
     }
     
@@ -373,7 +373,7 @@ abstract class AbstractUnicastPublisher<T> implements Flow.Publisher<T>
             return false;
         }
         
-        signalErrorSafe(s, t);
+        Subscribers.signalErrorSafe(s, t);
         return true;
     }
     
@@ -402,7 +402,7 @@ abstract class AbstractUnicastPublisher<T> implements Flow.Publisher<T>
             return false;
         }
         
-        signalErrorSafe(expected, t);
+        Subscribers.signalErrorSafe(expected, t);
         return true;
     }
     
@@ -503,16 +503,6 @@ abstract class AbstractUnicastPublisher<T> implements Flow.Publisher<T>
             Flow.Subscriber<? super T> newValue)
     {
         return ref.updateAndGet(v -> predicate.test(v) ? newValue : v);
-    }
-    
-    protected static final void signalErrorSafe(Flow.Subscriber<?> target, Throwable t) {
-        try {
-            target.onError(t);
-        } catch (Throwable t2) {
-            LOG.log(ERROR,
-              "Subscriber.onError() returned exceptionally. " +
-              "This new error is only logged but otherwise ignored.", t2);
-        }
     }
     
     private final class IsInitializing implements Flow.Subscriber<T>
