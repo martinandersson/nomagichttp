@@ -35,8 +35,8 @@ class SimpleEndToEndTest extends AbstractEndToEndTest
         
         addHandler("/hello-console", handler);
         
-        String req = "GET /hello-console HTTP/1.1" + CRLF + CRLF + CRLF;
-        String res = client().writeRead(req);
+        String req = "GET /hello-console HTTP/1.1" + CRLF + CRLF + CRLF,
+               res = client().writeRead(req);
         
         assertThat(res).isEqualTo(
             "HTTP/1.1 202 Accepted" + CRLF +
