@@ -58,7 +58,7 @@ public final class Subscribers
      * @param target to signal
      * @param subscription to pass along
      */
-    protected static void signalOnSubscribeOrTerminate(
+    public static void signalOnSubscribeOrTerminate(
             Flow.Subscriber<?> target, Flow.Subscription subscription)
     {
         try {
@@ -82,7 +82,7 @@ public final class Subscribers
      * @param item to pass along
      * @param <T> type of item
      */
-    protected static <T> void signalNextOrTerminate(Flow.Subscriber<? super T> target, T item) {
+    public static <T> void signalNextOrTerminate(Flow.Subscriber<? super T> target, T item) {
         try {
             target.onNext(item);
         } catch (Throwable t) {
@@ -101,7 +101,7 @@ public final class Subscribers
      * @param target to signal
      * @param throwable to pass along
      */
-    protected static void signalErrorSafe(Flow.Subscriber<?> target, Throwable throwable) {
+    public static void signalErrorSafe(Flow.Subscriber<?> target, Throwable throwable) {
         try {
             target.onError(throwable);
         } catch (Throwable t) {
