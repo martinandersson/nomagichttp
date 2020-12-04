@@ -19,8 +19,11 @@ import static java.util.Objects.requireNonNull;
  * availability of items and also polled by the subscriber through the increase
  * of his demand.<p>
  * 
- * Only one subscriber at a time is allowed but many may come and go over time.
- * Rejected subscribers receive an {@code IllegalStateException}.<p>
+ * Only one subscriber at a time is allowed but many may come and go over time
+ * if and only if a previous subscriber cancelled his subscription. This class
+ * assumes that the publisher represents a never-ending flow of items and so can
+ * only be stoppable from the publisher's side exceptionally. Rejected
+ * subscribers receive an {@code IllegalStateException}.<p>
  * 
  * The generator function may return {@code null} which would indicate there's
  * no items available for the current subscriber at the moment (a future
