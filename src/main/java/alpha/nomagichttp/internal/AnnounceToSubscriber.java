@@ -317,5 +317,11 @@ final class AnnounceToSubscriber<T>
         public void onComplete() {
             d.onComplete();
         }
+        
+        @Override
+        public String toString() {
+            return MutableSubscriberWithAttachment.class.getSimpleName() +
+                    '{' + "d=" + d + '}';
+        }
     }
 }
