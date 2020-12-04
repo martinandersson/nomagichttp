@@ -1,6 +1,6 @@
 package alpha.nomagichttp.message;
 
-import alpha.nomagichttp.util.SafeBodyPublishers;
+import alpha.nomagichttp.util.BetterBodyPublishers;
 
 import java.nio.ByteBuffer;
 import java.util.concurrent.Flow;
@@ -17,7 +17,7 @@ import static java.net.http.HttpRequest.BodyPublishers;
  * 
  * <strong>WARNING:</strong> Using {@link BodyPublishers} to create the response
  * body may not be thread-safe where thread-safety matters or may block the HTTP
- * server thread. Consider using {@link SafeBodyPublishers} instead. See
+ * server thread. Consider using {@link BetterBodyPublishers} instead. See
  * {@link Response.Builder#body(Flow.Publisher)}.
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)

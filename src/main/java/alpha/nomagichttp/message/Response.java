@@ -3,7 +3,7 @@ package alpha.nomagichttp.message;
 import alpha.nomagichttp.handler.ErrorHandler;
 import alpha.nomagichttp.handler.RequestHandler;
 import alpha.nomagichttp.util.Publishers;
-import alpha.nomagichttp.util.SafeBodyPublishers;
+import alpha.nomagichttp.util.BetterBodyPublishers;
 
 import java.net.http.HttpHeaders;
 import java.net.http.HttpRequest;
@@ -325,7 +325,7 @@ public interface Response
          * {@link HttpRequest.BodyPublishers#ofFile(Path)} and {@link
          * HttpRequest.BodyPublishers#ofInputStream(Supplier)}. For these
          * reasons, consider using an alternative from {@link Publishers} or
-         * {@link SafeBodyPublishers}<p>
+         * {@link BetterBodyPublishers}<p>
          * 
          * @return a new builder representing the new state
          * 

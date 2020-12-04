@@ -21,9 +21,9 @@ import java.util.concurrent.Flow;
  * 
  * @see Response.Builder#body(Flow.Publisher) 
  */
-public final class SafeBodyPublishers
+public final class BetterBodyPublishers
 {
-    private SafeBodyPublishers() {
+    private BetterBodyPublishers() {
         // Empty
     }
     
