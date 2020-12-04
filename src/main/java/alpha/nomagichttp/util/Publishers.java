@@ -106,12 +106,7 @@ public final class Publishers
      * without ever calling {@code Subscriber.onNext()}.<p>
      * 
      * Is an alternative to {@link HttpRequest.BodyPublishers#noBody()} except
-     * with less CPU overhead and memory garbage.<p>
-     * 
-     * Please note that the publisher will always call {@code
-     * Subscriber.onSubscribe} first with a NOP-subscription that responds only
-     * to a cancellation request and if the subscription is synchronously
-     * cancelled, the publisher will <i>not</i> raise the completion signal.
+     * with less CPU overhead and memory garbage.
      * 
      * @param <T> type of non-existent item (inferred on call site, {@code Void} for example)
      * 
@@ -126,10 +121,6 @@ public final class Publishers
     /**
      * Creates a publisher that emits a single item.<p>
      * 
-     * According to <a
-     * href="https://github.com/reactive-streams/reactive-streams-jvm/blob/v1.0.3/README.md">
-     * Reactive Streams §2.13</a>, the item can not be null and this method will
-     * fail immediately if the item provided is null.<p>
      * 
      * The publisher will emit the item immediately upon subscriber subscription
      * and does not limit how many subscriptions at a time can be active. Thus,
@@ -149,12 +140,33 @@ public final class Publishers
     
     /**
      * Creates a {@code Flow.Publisher} that publishes the given {@code items}
-     * to each new subscriber.
+     * to each new subscriber.<p>
+     * 
+     * The publisher will emit the items immediately upon receiving subscriber
+     * demand and does not limit how many subscriptions at a time can be active.
+     * Thus, either the publisher should be used by only one subscriber at a
+     * time or the items should be thread-safe.<p>
+     * 
+     * According to
+     * <a href="https://github.com/reactive-streams/reactive-streams-jvm/blob/v1.0.3/README.md">
+     * Reactive Streams §2.13</a>, a published item must not be {@code null}.
+     * This method does not eagerly validate the {@code items} array but if the
+     * publisher does come across a {@code null} item while publishing to a
+     * subscriber, the publisher will at that point terminate the subscription
+     * and all future subscriptions with a {@link ClosedPublisherException}
+     * caused by {@code NullPointerException}.
+     *
+     * The given {@code items} may be empty which would return an empty
+     * publisher that immediately completes all subscriptions. The difference
+     * between this empty publisher and {@link #empty()} is that this method
+     * returns a new publisher instance.<p>
      * 
      * @param items to publish
      * @param <T> type of item
      * 
-     * @return a publisher
+     * @return a new publisher
+     * 
+     * @throws NullPointerException if {@code items} is {@code null}
      */
     @SafeVarargs
     public static <T> Flow.Publisher<T> just(T... items) {
@@ -162,13 +174,19 @@ public final class Publishers
     }
     
     /**
-     * Creates a {@code Flow.Publisher} that publishes the given {@code items}
-     * to each new subscriber.
+     * Is equivalent to {@link #just(Object[])}.<p>
+     * 
+     * The order of items published is the same order they are returned by the
+     * specified iterable's iterator. The behavior of this operation is
+     * undefined if the specified iterable is modified while the operation is in
+     * progress.
      * 
      * @param items to publish
      * @param <T> type of item
      *
-     * @return a publisher
+     * @return a new publisher
+     *
+     * @throws NullPointerException if {@code items} is {@code null}
      */
     public static <T> Flow.Publisher<T> just(Iterable<? extends T> items) {
         return new ItemPublisher<T>(items);
@@ -230,6 +248,7 @@ public final class Publishers
     private static final class ItemPublisher<T> implements Flow.Publisher<T>
     {
         private final Iterable<? extends T> items;
+        private volatile Throwable exc;
         
         @SafeVarargs
         ItemPublisher(T... items) {
@@ -238,6 +257,7 @@ public final class Publishers
         
         ItemPublisher(Iterable<? extends T> items) {
             this.items = requireNonNull(items);
+            this.exc   = null;
         }
         
         @Override
@@ -256,10 +276,21 @@ public final class Publishers
                 return;
             }
             
+            Throwable e = exc;
+            if (e != null) {
+                Subscribers.signalErrorSafe(subscriber, e);
+                return;
+            }
+            
             SerialTransferService<T> service = new SerialTransferService<>(
                     s -> {
                         if (it.hasNext()) {
-                            return it.next();
+                            T t = it.next();
+                            if (t == null) {
+                                final Throwable e = exc = new ClosedPublisherException(new NullPointerException());
+                                s.finish(() -> Subscribers.signalErrorSafe(subscriber, e));
+                            }
+                            return t;
                         } else {
                             s.finish(subscriber::onComplete);
                             return null;
@@ -273,7 +304,7 @@ public final class Publishers
                     try {
                         service.increaseDemand(n);
                     } catch (IllegalArgumentException e) {
-                        service.finish(() -> subscriber.onError(e));
+                        service.finish(() -> Subscribers.signalErrorSafe(subscriber, e));
                     }
                 }
                 
