@@ -71,4 +71,44 @@ class DefaultResponseBuilderTest
         assertThat(b1.build().statusLine()).isEqualTo(" 1 ");
         assertThat(b2.build().statusLine()).isEqualTo(" 2 ");
     }
+    
+    @Test
+    void header_addHeader_single() {
+        Response r = Response.Builder.ok().addHeaders("k", "v").build();
+        assertThat(r.headers()).containsExactly(
+            "k: v",
+            "Content-Length: 0");
+    }
+    
+    @Test
+    void header_addHeaders_multi() {
+        Response r = Response.Builder.ok()
+                .header(    "k", "v1")
+                .addHeader( "k", "v2")
+                .addHeaders("k", "v3",
+                            "k", "v4")
+                .build();
+        
+        assertThat(r.headers()).containsExactly(
+                "k: v1",
+                "k: v2",
+                "k: v3",
+                "k: v4",
+                "Content-Length: 0");
+    }
+    
+    @Test
+    void header_removeHeader() {
+        Response r = Response.Builder.ok().header("k", "v").removeHeader("k").build();
+        assertThat(r.headers()).containsExactly(
+            "Content-Length: 0");
+    }
+    
+    @Test
+    void header_replace() {
+        Response r = Response.Builder.ok().header("k", "v1").header("k", "v2").build();
+        assertThat(r.headers()).containsExactly(
+                "k: v2",
+                "Content-Length: 0");
+    }
 }
