@@ -199,9 +199,9 @@ final class AnnounceToSubscriber<T>
             MutableSubscriberWithAttachment<T, SerialTransferService<T>> s
                     = new MutableSubscriberWithAttachment<>(subscriber);
             
-            s.attachment(new SerialTransferService<>(generator, item -> {
-                signalNext(item, s);
-            }));
+            s.attachment(new SerialTransferService<>(
+                    generator,
+                    item -> signalNext(item, s)));
             
             return s;
         }
