@@ -34,7 +34,7 @@ final class PublishersTest
     }
     
     @Test
-    void just_nothing() {
+    void just_empty() {
         MemorizingSubscriber<Object> s = new MemorizingSubscriber<>(Request.NOTHING());
         
         Publishers.just().subscribe(s);
@@ -45,7 +45,7 @@ final class PublishersTest
     }
     
     @Test
-    void just_nothing_with_cancellation() {
+    void just_empty_with_cancellation() {
         MemorizingSubscriber<Object> s = new MemorizingSubscriber<>(Request.NOTHING()){
             @Override
             public void onSubscribe(Flow.Subscription subscription) {
