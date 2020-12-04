@@ -6,8 +6,6 @@ import alpha.nomagichttp.message.Request;
 import alpha.nomagichttp.util.Publishers;
 import alpha.nomagichttp.util.Subscriptions;
 
-import java.util.Queue;
-import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.Flow;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Predicate;
@@ -195,7 +193,7 @@ abstract class AbstractUnicastPublisher<T> implements Flow.Publisher<T>
         final Flow.Subscriber<? super T> newS = wrapper.get();
         
         LOG.log(DEBUG, () -> getClass().getSimpleName() + " has a new subscriber: " + newS);
-        SubscriptionProxy proxy = new SubscriptionProxy(newS);
+        Subscriptions.TurnOnProxy proxy = new OnCancelResetReference(newS);
         
         try {
             // Initialize subscriber
@@ -214,7 +212,7 @@ abstract class AbstractUnicastPublisher<T> implements Flow.Publisher<T>
             proxy.activate(newSubscription(newS));
         } else if (witness == CLOSED) {
             // Publisher called shutdown() during initialization
-            if (!proxy.cancelled()) {
+            if (!proxy.isCancelled()) {
                 signalErrorSafe(newS, new ClosedPublisherException());
             }
         } else if (witness != ACCEPTING && witness != NOT_REUSABLE) {
@@ -542,57 +540,19 @@ abstract class AbstractUnicastPublisher<T> implements Flow.Publisher<T>
             throw new UnsupportedOperationException(); }
     }
     
-    private final class SubscriptionProxy implements Flow.Subscription
+    private final class OnCancelResetReference extends Subscriptions.TurnOnProxy
     {
         private final Flow.Subscriber<? super T> owner;
-        private volatile Flow.Subscription delegate;
-        private final Queue<Long> delayedDemand;
-        private boolean cancelled;
         
-        SubscriptionProxy(Flow.Subscriber<? super T> owner) {
+        OnCancelResetReference(Flow.Subscriber<? super T> owner) {
             assert owner.getClass() != IsInitializing.class;
             this.owner = owner;
-            this.delegate = null;
-            this.delayedDemand = new ConcurrentLinkedQueue<>();
-        }
-        
-        void activate(Flow.Subscription d) {
-            delegate = d;
-            drainRequestSignalsTo(d);
-        }
-        
-        boolean cancelled() {
-            return cancelled;
-        }
-        
-        @Override
-        public void request(long n) {
-            Flow.Subscription d;
-            if ((d = delegate) != null) {
-                // we have a reference so proxy is activated and the delegate is used
-                d.request(n);
-            } else {
-                // enqueue the demand
-                delayedDemand.add(n);
-                if ((d = delegate) != null) {
-                    // but can still activate concurrently so drain what we've just added
-                    drainRequestSignalsTo(d);
-                }
-            }
-        }
-        
-        private void drainRequestSignalsTo(Flow.Subscription ref) {
-            Long v;
-            while ((v = delayedDemand.poll()) != null) {
-                ref.request(v);
-            }
         }
         
         @Override
         public void cancel() {
-            cancelled = true;
             if (removeSubscriberIfSameAs(owner)) {
-                delegate.cancel();
+                super.cancel();
             }
         }
     }
