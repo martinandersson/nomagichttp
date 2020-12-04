@@ -77,9 +77,9 @@ import static java.lang.System.Logger.Level.ERROR;
  * 
  * Super simple example:
  * <pre>{@code
- *     ErrorHandler eh = (t, r, h) -> {
+ *     ErrorHandler eh = (thr, req, rh) -> {
  *         try {
- *             throw t;
+ *             throw thr;
  *         } catch (ExpectedException e) {
  *             return someResponse();
  *         } catch (AnotherExpectedException e) {
@@ -214,13 +214,13 @@ public interface ErrorHandler
      * Please note that each of these responses will also close the client
      * channel (see {@link Response#mustCloseAfterWrite()}).
      */
-    ErrorHandler DEFAULT = (t, r, h) -> {
+    ErrorHandler DEFAULT = (thr, req, rh) -> {
         System.getLogger(ErrorHandler.class.getPackageName())
-                .log(ERROR, "Default error handler received:", t);
+                .log(ERROR, "Default error handler received:", thr);
         
         final Response res;
         try {
-            throw t;
+            throw thr;
         } catch (BadHeaderException | RequestHeadParseException e) {
             res = badRequest();
         } catch (NoRouteFoundException e) {
@@ -230,7 +230,7 @@ public interface ErrorHandler
         } catch (NoHandlerFoundException | AmbiguousNoHandlerFoundException e) {
             res = notImplemented();
         } catch (BadMediaTypeSyntaxException e) {
-            res = h == null ? badRequest() : internalServerError();
+            res = rh == null ? badRequest() : internalServerError();
         } catch (Throwable unhandledDefaultCase) {
             res = internalServerError();
         }
