@@ -107,10 +107,10 @@ public interface ErrorHandler
     /**
      * Handles an exception by producing a client response.<p>
      * 
-     * The first argument - the {@code Throwable} - will always be non-null. The
-     * other two arguments - a {@code Request} and a {@code Handler} - may be
-     * null or non-null depending on how much progress was made in the HTTP
-     * exchange before the error occurred.<p>
+     * The first argument ({@code Throwable}) will always be non-null. The
+     * succeeding two arguments ({@code Request} and {@code RequestHandler})
+     * may be null or non-null depending on how much progress was made in the
+     * HTTP exchange before the error occurred.<p>
      * 
      * A little bit simplified; the server's procedure is to always first build
      * a request object, which is then used to invoke the request handler
@@ -128,7 +128,7 @@ public interface ErrorHandler
      * 
      * However, the true nature of the error can only be determined by looking
      * into the error object itself, which also might reveal what to expect from
-     * the arguments. For example, if {@code t} is a {@link
+     * the succeeding arguments. For example, if {@code thr} is a {@link
      * NoHandlerFoundException}, then the request object was built and
      * subsequently passed to the error handler, but since the request handler
      * wasn't found then obviously the request handler argument is going to be
@@ -146,17 +146,17 @@ public interface ErrorHandler
      * will attempt to recursively unpack the cause which is what will get
      * passed to the error handler.
      * 
-     * @param t the error (never null)
-     * @param r request object (may be null)
-     * @param h request handler object (may be null)
+     * @param thr the error (never null)
+     * @param req request object (may be null)
+     * @param rh  request handler object (may be null)
      * 
      * @return a client response
      * 
-     * @throws Throwable may be same {@code t} or a new one
+     * @throws Throwable may be {@code thr} or a new one
      * 
      * @see ErrorHandler
      */
-    CompletionStage<Response> apply(Throwable t, Request r, RequestHandler h) throws Throwable;
+    CompletionStage<Response> apply(Throwable thr, Request req, RequestHandler rh) throws Throwable;
     
     /**
      * Is the default error handler used by the server if no other handler has
