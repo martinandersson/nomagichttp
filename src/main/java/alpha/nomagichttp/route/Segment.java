@@ -4,24 +4,24 @@ import java.util.List;
 import java.util.RandomAccess;
 
 /**
- * Represents an immutable segment of a route.<p>
+ * Is a segment of a route's path.<p>
  * 
- * The only reason why a route may need to split up into segments is if the
- * route has declared path parameters. Path parameters "belong" to the segment
- * declared right before the parameters.<p>
+ * The route's path may be comprised of one or multiple segments. What makes the
+ * difference is path parameters which finalizes the segment they belong to. If
+ * the route's path continues being built after a path parameter has been
+ * declared then the remainder of the path belongs to one or more other
+ * segments. The types {@code Segment} and {@code Segment.Builder} are technical
+ * details that is not visible to the application developer when using {@link
+ * Route#newBuilder()}.<p>
  * 
- * For example, route "/abc/{param1}/def/{param2}" consists of two segments.
- * The first segment "/abc" is associated with "param1" and segment "/def" is
- * associated with "param2".<p>
+ * Segments are immutable and thread-safe.<p>
  * 
- * Route "/{param1}/{param2}" has only one segment ("/") with two parameters.<p>
- * 
- * Implementations must <i>not</i> override {@code hashCode()} and
- * {@code equals()}. Segments are identity-based.<p>
+ * Segments are identity based. Implementations must <i>not</i> override {@code
+ * hashCode()} and {@code equals()}.<p>
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  * 
- * @see SegmentBuilder
+ * @see Segment.Builder
  */
 interface Segment
 {
@@ -29,7 +29,8 @@ interface Segment
      * Returns {@code true} if this segment is the first segment of the route,
      * otherwise {@code false}.<p>
      * 
-     * The first segment could also be the <i>only</i> part of a route.<p>
+     * The first segment of the route could also be the <i>only</i> part of a
+     * route.<p>
      * 
      * @return {@code true} if this segment is the first segment of the route,
      *         otherwise {@code false}
