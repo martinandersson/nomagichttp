@@ -25,8 +25,8 @@ import static java.util.Objects.requireNonNull;
  * Holder of a request-to-response {@link #logic() function} (the "logic
  * instance") coupled together with meta-data describing the handler.<p>
  * 
- * A {@code RequestHandler} can be built using {@link #newBuilder(String)} or
- * other static methods found in {@link Builder} and {@link RequestHandlers}.<p>
+ * A {@code RequestHandler} can be built using {@link #builder(String)} or other
+ * static methods found in {@link Builder} and {@link RequestHandlers}.<p>
  * 
  * The meta-data consists of a HTTP {@link #method() method} token and
  * {@link #consumes() consumes}/{@link #produces() produces} media types. This
@@ -215,9 +215,9 @@ import static java.util.Objects.requireNonNull;
  * <h3>Scopes</h3>
  * 
  * There is no library-provided scope mechanism. Normal rules concerning
- * reachability of Java references applies. Effectively, this means that
- * the implementation built using {@link #newBuilder(String)} can be regarded as
- * a "singleton" or "application-scoped". A custom implementation can choose to
+ * reachability of Java references applies. Effectively, this means that the
+ * implementation built using {@link #builder(String)} can be regarded as a
+ * "singleton" or "application-scoped". A custom implementation can choose to
  * create a new logic instance for each request since the {@link #logic()}
  * method is invoked anew for each request.
  * 
@@ -252,7 +252,7 @@ public interface RequestHandler
      * 
      * @throws NullPointerException if {@code method} is {@code null}
      */
-    static Builder newBuilder(String method) {
+    static Builder builder(String method) {
         return new DefaultRequestHandler.Builder(method);
     }
     
@@ -371,7 +371,7 @@ public interface RequestHandler
          * @return a builder with HTTP method set to "GET"
          */
         static Builder GET() {
-            return newBuilder("GET");
+            return builder("GET");
         }
         
         /**
@@ -380,7 +380,7 @@ public interface RequestHandler
          * @return a builder with HTTP method set to "HEAD"
          */
         static Builder HEAD() {
-            return newBuilder("HEAD");
+            return builder("HEAD");
         }
         
         /**
@@ -389,7 +389,7 @@ public interface RequestHandler
          * @return a builder with HTTP method set to "POST"
          */
         static Builder POST() {
-            return newBuilder("POST");
+            return builder("POST");
         }
         
         /**
@@ -398,7 +398,7 @@ public interface RequestHandler
          * @return a builder with HTTP method set to "PUT"
          */
         static Builder PUT() {
-            return newBuilder("PUT");
+            return builder("PUT");
         }
         
         /**
@@ -407,7 +407,7 @@ public interface RequestHandler
          * @return a builder with HTTP method set to "DELETE"
          */
         static Builder DELETE() {
-            return newBuilder("DELETE");
+            return builder("DELETE");
         }
         
         /**

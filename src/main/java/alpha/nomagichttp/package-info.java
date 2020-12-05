@@ -38,8 +38,8 @@
  * 
  * Entities such as {@code RequestHandler} and {@code Response} are often built
  * using a builder, retrievable from a static method, for example {@link
- * alpha.nomagichttp.handler.RequestHandler#newBuilder(java.lang.String)
- * RequestHandler.newBuilder()}. The builder gives a fine-grained control over
+ * alpha.nomagichttp.handler.RequestHandler#builder(java.lang.String)
+ * RequestHandler.builder()}. The builder gives a fine-grained control over
  * the build. Commonly, there's also a convenient API meant for static import in
  * order to easily implement common use-cases, for example {@link
  * alpha.nomagichttp.handler.RequestHandlers#GET() RequestHandlers.GET()} and

@@ -8,9 +8,9 @@ package alpha.nomagichttp.handler;
  * thing that matters when determining what requests the handler can handle is
  * the request's resource-target (route) and HTTP method.<p>
  * 
- * For a more fine-grained control, use {@link
- * RequestHandler#newBuilder(String)} or the static utility methods provided in
- * the builder interface such as {@link RequestHandler.Builder#GET()} and {@link
+ * For a more fine-grained control, use {@link RequestHandler#builder(String)}
+ * or the static utility methods provided in the builder interface such as
+ * {@link RequestHandler.Builder#GET()} and {@link
  * RequestHandler.Builder#POST()}.
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
@@ -82,7 +82,7 @@ public final class RequestHandlers
     }
     
     private static RequestHandler.Builder.LastStep method(String method) {
-        return RequestHandler.newBuilder(method)
+        return RequestHandler.builder(method)
                 .consumesNothingAndAll()
                 .producesAll();
     }
