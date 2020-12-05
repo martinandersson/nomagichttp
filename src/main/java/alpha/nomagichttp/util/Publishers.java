@@ -93,10 +93,10 @@ import static java.util.Objects.requireNonNull;
  * {@link Flow} happened to forget about it. However that might be, this class'
  * publishers - in favor of specification compliance - will always call {@code
  * onSubscribe()} first albeit with a temporary subscription object if the
- * intent is to immediate terminate the subscription. The subscription object
- * will still be monitored and if the subscriber happens to cancel the
- * subscription no more signals will follow (§1.8, §3.12). Requesting demand
- * from the temporary subscription is NOP (see {@link
+ * intent is to immediate terminate the subscription. The temporary
+ * subscription object will still be monitored and if the subscriber happens to
+ * cancel the subscription no more signals will follow (§1.8, §3.12). Requesting
+ * demand from the temporary subscription is NOP (see {@link
  * Subscriptions#canOnlyBeCancelled()}).<p>
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)

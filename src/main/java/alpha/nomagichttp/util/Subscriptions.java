@@ -39,7 +39,7 @@ public final class Subscriptions
      *       and is free to immediately <i>cancel</i> the received subscription
      *       object.</li>
      *    <li>If the subscriber does cancel the subscription, the publisher must
-     *       stop interacting with the subscriber - obviously the sooner the
+     *       stop interacting with the subscriber, obviously the sooner the
      *       better (§1.8, §3.12).</li>
      * </ol>
      * 
