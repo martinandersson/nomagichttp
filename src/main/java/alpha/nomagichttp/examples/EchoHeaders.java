@@ -20,7 +20,7 @@ public class EchoHeaders
     
     public static void main(String... ignored) throws IOException {
         RequestHandler h = GET().apply(req -> {
-            // Response.newBuilder() allows setting any arbitrary status-line,
+            // Response.builder() allows setting any arbitrary status-line,
             // headers and body. The builder class has static methods that
             // return builders pre-populated with commonly used status-lines.
             Response.Builder b = Response.Builder.ok(); // 200 OK
