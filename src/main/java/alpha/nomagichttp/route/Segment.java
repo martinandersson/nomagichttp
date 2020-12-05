@@ -83,4 +83,59 @@ interface Segment
      */
     @Override
     String toString();
+    
+    /**
+     * Builder of {@link Segment}.<p>
+     * 
+     * The implementation does not have to be thread-safe or implement any of
+     * {@code hashCode()} and {@code equals()}.
+     * 
+     * @author Martin Andersson (webmaster at martinandersson.com)
+     */
+    interface Builder
+    {
+        /**
+         * Expand this segment with an additional piece.
+         * 
+         * @param value of the extension
+         * 
+         * @throws IllegalStateException
+         *           if parameters have been added
+         * 
+         * @throws NullPointerException
+         *           if {@code value} is {@code null}
+         * 
+         * @throws IllegalArgumentException
+         *           if {@code value} is not valid, see {@linkplain RouteBuilder}
+         */
+        void append(String value);
+        
+        /**
+         * Declare a parameter.
+         * 
+         * The segment builder can not guard against duplicated parameter names
+         * in the route. This is the responsibility of the {@link RouteBuilder}.
+         * 
+         * @param name parameter name
+         * 
+         * @throws NullPointerException if {@code name} is {@code null}
+         */
+        void addParam(String name);
+        
+        /**
+         * Returns {@code true} if this builder has parameters declared,
+         * {@code false} otherwise.
+         *
+         * @return {@code true} if this builder has parameters added,
+         *         {@code false} otherwise
+         */
+        boolean hasParams();
+        
+        /**
+         * Build a new {@code Segment}.
+         * 
+         * @return a new {@code Segment}
+         */
+        Segment build();
+    }
 }

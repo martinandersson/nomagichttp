@@ -18,6 +18,7 @@ import static java.util.Objects.requireNonNull;
  * 
  * @see Segment
  */
+@Deprecated // use Segment.newBuilder()
 final class SegmentBuilder {
     
     private final boolean isFirst;
