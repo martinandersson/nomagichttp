@@ -60,47 +60,47 @@ interface Segment
     /**
      * Returns the value of this segment.<p>
      * 
-     * The first segment is the only one with a value allowed to be only a
-     * forward slash ('/') character. The value of subsequent segments will have
-     * more characters.<p>
+     * The first segment is the only segment with a value allowed to be
+     * <i>only</i> a single forward slash ('/') character.<p>
      * 
-     * The value always starts with '/'. Segments that are not the first segment
-     * of the route also never ends with '/'.<p>
+     * The value always start with '/'. Non-first segments never ends with
+     * '/'.<p>
      * 
-     * Examples of valid segment values:
+     * A few examples of valid values:
      * <pre>
      *   /
      *   /abc
      *   /def/xyz
      * </pre>
      * 
-     * Examples of invalid values (which this method never returns):
+     * Examples of invalid values (never returned by this method):
      * <pre>
-     *   ""     (the empty String)
-     *   " "    (a blank String
+     *   ""     (the empty string)
+     *   " "    (a blank string)
      *   //     (effectively a blank segment)
-     *   /abc/  (value never ends with a forward slash)
+     *   /abc/  (ends with a forward slash)
      * </pre>
      * 
-     * @return segment value (never {@code null} or the empty string)
+     * @return the value of this segment
      */
     String value();
     
     /**
-     * Returns an unmodifiable list of path parameters associated with this
+     * Returns an unmodifiable list of path parameter names declared on this
      * segment.<p>
      * 
      * The returned list implements {@link RandomAccess}.
      * 
-     * @return an unmodifiable list of path parameters associated with this segment
+     * @return an unmodifiable list of path parameter names declared on this
+     * segment
      */
     List<String> params();
     
     /**
-     * Returns the segment value followed by parameter names enclosed in curly
-     * brackets. For example, "/segment/{param-name}".
+     * Returns the segment value concatenated with declared parameter names
+     * enclosed in curly brackets. For example, "/segment/{param-name}".
      * 
-     * @return the segment value followed by parameter names
+     * @return the segment value concatenated with declared parameter names
      */
     @Override
     String toString();
