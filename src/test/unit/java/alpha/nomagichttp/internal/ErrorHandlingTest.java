@@ -63,7 +63,7 @@ class ErrorHandlingTest
     void not_found_custom() throws IOException {
         ErrorHandler custom = (exc, req, han) -> {
             if (exc instanceof NoRouteFoundException) {
-                return Response.newBuilder()
+                return Response.builder()
                         .httpVersion("HTTP/1.1")
                         .statusCode(123)
                         .reasonPhrase("Custom Not Found!")

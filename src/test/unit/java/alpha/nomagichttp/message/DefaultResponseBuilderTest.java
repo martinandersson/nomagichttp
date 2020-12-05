@@ -16,7 +16,7 @@ class DefaultResponseBuilderTest
 {
     @Test
     void happy_path() {
-        Response r = Response.newBuilder()
+        Response r = Response.builder()
                 .httpVersion("HTTP/1.1")
                 .statusCode(200)
                 .reasonPhrase("OK")
@@ -29,7 +29,7 @@ class DefaultResponseBuilderTest
     
     @Test
     void no_httpVersion_IllegalArgumentException() {
-        Response.Builder b = Response.newBuilder()
+        Response.Builder b = Response.builder()
                 //.httpVersion("HTTP/1.1")
                 .statusCode(200)
                 .reasonPhrase("OK");
@@ -41,7 +41,7 @@ class DefaultResponseBuilderTest
     
     @Test
     void no_statusCode_IllegalArgumentException() {
-        Response.Builder b = Response.newBuilder()
+        Response.Builder b = Response.builder()
                 .httpVersion("HTTP/1.1")
                 //.statusCode(200)
                 .reasonPhrase("OK");
@@ -53,7 +53,7 @@ class DefaultResponseBuilderTest
     
     @Test
     void no_reasonPhrase_Unknown() {
-        Response r = Response.newBuilder()
+        Response r = Response.builder()
                 .httpVersion("HTTP/1.1")
                 .statusCode(200)
                 //.reasonPhrase("OK")
@@ -64,7 +64,7 @@ class DefaultResponseBuilderTest
     
     @Test
     void future_changes_does_not_affect_old_builders() {
-        Response.Builder b0 = Response.newBuilder().httpVersion("").reasonPhrase(""),
+        Response.Builder b0 = Response.builder().httpVersion("").reasonPhrase(""),
                          b1 = b0.statusCode(1),
                          b2 = b1.statusCode(2);
         

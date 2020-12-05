@@ -11,7 +11,7 @@ import static java.net.http.HttpRequest.BodyPublishers;
 /**
  * Utility methods for building complete {@link Response}s.<p>
  * 
- * For a more fine-grained control, use {@link Response#newBuilder()} or
+ * For a more fine-grained control, use {@link Response#builder()} or
  * semi-populated builders such as {@link Response.Builder#ok()} and {@link
  * Response.Builder#accepted()}.<p>
  * 
@@ -187,7 +187,7 @@ public final class Responses
                 NOT_IMPLEMENTED       = respondThenClose(501, "Not Implemented");
         
         private static Response respondThenClose(int code, String phrase) {
-            return Response.newBuilder()
+            return Response.builder()
                     .httpVersion("HTTP/1.1")
                     .statusCode(code)
                     .reasonPhrase(phrase)

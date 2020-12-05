@@ -18,7 +18,7 @@ import java.util.function.Supplier;
 /**
  * A {@code Response} contains a {@link #statusLine() statusLine}, {@link
  * #headers() headers} and an optional {@link #body() body}. It can be built
- * using {@link #newBuilder()} or other static methods found in {@link
+ * using a {@link #builder()} or other static methods found in {@link
  * Response.Builder} and {@link Responses}.<p>
  * 
  * The content of the request head (status-line and headers) will be written
@@ -26,7 +26,7 @@ import java.util.function.Supplier;
  * space characters. The content is encoded into bytes using {@link
  * StandardCharsets#US_ASCII US_ASCII}<p>
  * 
- * Header order FIFO is preserved (unless documented otherwise). Duplicated
+ * Header order (FIFO) is preserved (unless documented otherwise). Duplicated
  * header names will be grouped and inserted at the first occurrence.<p>
  * 
  * The {@code Response} implementation is immutable and can safely be re-used
@@ -48,7 +48,7 @@ public interface Response
      * 
      * @return a builder (doesn't have to be a new instance)
      */
-    static Builder newBuilder() {
+    static Builder builder() {
         return DefaultResponse.Builder.ROOT;
     }
     
@@ -363,7 +363,7 @@ public interface Response
 
 final class BuilderCache
 {
-    private static final Response.Builder HTTP_1_1 = Response.newBuilder().httpVersion("HTTP/1.1");
+    private static final Response.Builder HTTP_1_1 = Response.builder().httpVersion("HTTP/1.1");
     
     private BuilderCache() {
         // Empty
