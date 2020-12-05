@@ -31,7 +31,8 @@ interface Segment
      * As long as path parameters have <i>not</i> been declared, the segment can
      * keep being extended using {@link Segment.Builder#append(String)}.
      * 
-     * @param value    the initial piece (a segment can not be empty)
+     * @param str      the initial {@link #value() string value} (a segment can
+     *                 not be empty)
      * @param isFirst  {@code true} if the segment being built is the first
      *                 segment of the route
      * 
@@ -41,8 +42,8 @@ interface Segment
      * @throws IllegalArgumentException
      *           if {@code value} is not valid, see {@linkplain RouteBuilder}
      */
-    static Segment.Builder newBuilder(String value, boolean isFirst) {
-        return new DefaultSegment.Builder(value, isFirst);
+    static Segment.Builder newBuilder(String str, boolean isFirst) {
+        return new DefaultSegment.Builder(str, isFirst);
     }
     
     /**
@@ -58,22 +59,22 @@ interface Segment
     boolean isFirst();
     
     /**
-     * Returns the value of this segment.<p>
+     * Returns the string value of this segment.<p>
      * 
-     * The first segment is the only segment with a value allowed to be
-     * <i>only</i> a single forward slash ('/') character.<p>
+     * The first segment of a route is the only segment with a string value
+     * allowed to be <i>only</i> a single forward slash ('/') character.<p>
      * 
-     * The value always start with '/'. Non-first segments never ends with
-     * '/'.<p>
+     * The string value always start with '/'. Non-first segments never ends
+     * with '/'.<p>
      * 
-     * A few examples of valid values:
+     * A few examples of valid string values:
      * <pre>
      *   /
      *   /abc
      *   /def/xyz
      * </pre>
      * 
-     * Examples of invalid values (never returned by this method):
+     * Examples of invalid string values (never returned by this method):
      * <pre>
      *   ""     (the empty string)
      *   " "    (a blank string)
@@ -81,7 +82,7 @@ interface Segment
      *   /abc/  (ends with a forward slash)
      * </pre>
      * 
-     * @return the value of this segment
+     * @return the string value of this segment
      */
     String value();
     
@@ -97,8 +98,9 @@ interface Segment
     List<String> params();
     
     /**
-     * Returns the segment value concatenated with declared parameter names
-     * enclosed in curly brackets. For example, "/segment/{param-name}".
+     * Returns the {@linkplain #value() string value} concatenated with declared
+     * parameter names enclosed in curly brackets. For example,
+     * "/segment/{param-name}".
      * 
      * @return the segment value concatenated with declared parameter names
      */
@@ -116,12 +118,14 @@ interface Segment
     interface Builder
     {
         /**
-         * Expand this segment with an additional piece.
+         * Append {@code str} to the segment's current {@linkplain #value()
+         * string value}. Operation only allowed if no path parameters have been
+         * declared.
          * 
-         * @param value of the extension
+         * @param str value to append
          * 
          * @throws IllegalStateException
-         *           if parameters have been added
+         *           if parameters have been declared
          * 
          * @throws NullPointerException
          *           if {@code value} is {@code null}
@@ -129,15 +133,15 @@ interface Segment
          * @throws IllegalArgumentException
          *           if {@code value} is not valid, see {@linkplain RouteBuilder}
          */
-        void append(String value);
+        void append(String str);
         
         /**
-         * Declare a parameter.
+         * Declare a path parameter.
          * 
          * The segment builder can not guard against duplicated parameter names
          * in the route. This is the responsibility of the {@link RouteBuilder}.
          * 
-         * @param name parameter name
+         * @param name of parameter (any string)
          * 
          * @throws NullPointerException if {@code name} is {@code null}
          */
