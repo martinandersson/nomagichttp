@@ -12,7 +12,7 @@ import java.util.RandomAccess;
  * declared then the remainder of the path belongs to one or more other
  * segments. The types {@code Segment} and {@code Segment.Builder} are technical
  * details that is not visible to the application developer when using {@link
- * Route#newBuilder()}.<p>
+ * Route#builder()}.<p>
  * 
  * Segments are immutable and thread-safe.<p>
  * 
@@ -42,7 +42,7 @@ interface Segment
      * @throws IllegalArgumentException
      *           if {@code value} is not valid, see {@linkplain RouteBuilder}
      */
-    static Segment.Builder newBuilder(String str, boolean isFirst) {
+    static Segment.Builder builder(String str, boolean isFirst) {
         return new DefaultSegment.Builder(str, isFirst);
     }
     

@@ -109,7 +109,7 @@ public class RouteBuilder
      *           if {@code segment} is not valid (see {@linkplain RouteBuilder})
      */
     public RouteBuilder(final String segment) {
-        Segment.Builder root = Segment.newBuilder(segment, true);
+        Segment.Builder root = Segment.builder(segment, true);
         
         segments = new ArrayList<>();
         segments.add(root);
@@ -156,7 +156,7 @@ public class RouteBuilder
             last.append(segment);
         }
         else {
-            segments.add(Segment.newBuilder(segment, false));
+            segments.add(Segment.builder(segment, false));
         }
         
         return this;
