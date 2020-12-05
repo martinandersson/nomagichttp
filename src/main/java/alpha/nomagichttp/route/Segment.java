@@ -26,6 +26,26 @@ import java.util.RandomAccess;
 interface Segment
 {
     /**
+     * Creates a {@link Segment.Builder}.<p>
+     * 
+     * As long as path parameters have <i>not</i> been declared, the segment can
+     * keep being extended using {@link Segment.Builder#append(String)}.
+     * 
+     * @param value    the initial piece (a segment can not be empty)
+     * @param isFirst  {@code true} if the segment being built is the first
+     *                 segment of the route
+     * 
+     * @throws NullPointerException
+     *           if {@code value} is {@code null}
+     * 
+     * @throws IllegalArgumentException
+     *           if {@code value} is not valid, see {@linkplain RouteBuilder}
+     */
+    static Segment.Builder newBuilder(String value, boolean isFirst) {
+        return new DefaultSegment.Builder(value, isFirst);
+    }
+    
+    /**
      * Returns {@code true} if this segment is the first segment of the route,
      * otherwise {@code false}.<p>
      * 
