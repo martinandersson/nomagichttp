@@ -46,12 +46,12 @@ public final class DefaultRoute implements Route
     private final Map<String, List<RequestHandler>> handlers;
     
     
-    DefaultRoute(List<SegmentBuilder> segments, Set<RequestHandler> handlers) {
+    DefaultRoute(List<Segment.Builder> segments, Set<RequestHandler> handlers) {
         if (handlers.isEmpty()) {
             throw new IllegalStateException("No handlers.");
         }
         
-        this.segments = segments.stream().map(SegmentBuilder::build).collect(toList());
+        this.segments = segments.stream().map(Segment.Builder::build).collect(toList());
         this.identity = computeIdentity();
         this.handlers = handlers.stream().collect(groupingBy(RequestHandler::method));
     }

@@ -110,7 +110,7 @@ final class DefaultSegment implements Segment
         private static void requireFirstCharIsSlash(String str) {
             if (!str.startsWith("/")) {
                 throw new IllegalArgumentException(
-                        "A segment must start with a \"/\" character. Got: \"" + str + "\".");
+                        "A segment (or a piece thereof) must start with a \"/\" character. Got: \"" + str + "\"");
             }
         }
         

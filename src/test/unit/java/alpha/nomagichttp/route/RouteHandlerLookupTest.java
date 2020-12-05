@@ -4,6 +4,8 @@ import alpha.nomagichttp.handler.RequestHandler;
 import alpha.nomagichttp.message.MediaType;
 import org.junit.jupiter.api.Test;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Set;
 
 import static alpha.nomagichttp.message.MediaType.ALL;
@@ -226,10 +228,6 @@ class RouteHandlerLookupTest
         // So we keep adding more preferred handlers (the "given type" in RFC),
         // and the same request gets routed to the new handlers accordingly.
         
-        // But first; proof that the old handlers remain in the same builder instance.
-        assertThatThrownBy(() -> create(NOTHING_AND_ALL, parse("text/plain")))
-                .isExactlyInstanceOf(HandlerCollisionException.class);
-        
         target = create(NOTHING_AND_ALL, parse("text/html;level=2"));
         assertThat(exec(null, accepts)).isSameAs(target);
         
@@ -251,7 +249,7 @@ class RouteHandlerLookupTest
     
     
     
-    final RouteBuilder builder = new RouteBuilder("/blabla");
+    final List<RequestHandler> handlers = new ArrayList<>();
     
     private RequestHandler create(String consumes, String produces) {
         return create(parse(consumes), parse(produces));
@@ -263,7 +261,7 @@ class RouteHandlerLookupTest
                 .produces(produces)
                 .run(() -> {});
         
-        builder.handler(h);
+        handlers.add(h);
         return h;
     }
     
@@ -278,6 +276,8 @@ class RouteHandlerLookupTest
     }
     
     private RequestHandler exec(String method, MediaType contentType, MediaType... accepts) {
-        return builder.build().lookup(method, contentType, accepts);
+        RouteBuilder b = new RouteBuilder("/blabla");
+        handlers.forEach(b::handler);
+        return b.build().lookup(method, contentType, accepts);
     }
 }

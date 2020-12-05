@@ -95,7 +95,7 @@ import static java.util.stream.Collectors.toCollection;
  */
 public class RouteBuilder
 {
-    private final List<SegmentBuilder> segments;
+    private final List<Segment.Builder> segments;
     // Memorize what param names we have already used
     private final Set<String> params;
     private final Set<RequestHandler> handlers;
@@ -109,7 +109,7 @@ public class RouteBuilder
      *           if {@code segment} is not valid (see {@linkplain RouteBuilder})
      */
     public RouteBuilder(final String segment) {
-        SegmentBuilder root = new SegmentBuilder(segment, true);
+        Segment.Builder root = Segment.newBuilder(segment, true);
         
         segments = new ArrayList<>();
         segments.add(root);
@@ -149,14 +149,14 @@ public class RouteBuilder
     
     // TODO: Docs
     public RouteBuilder concat(final String segment) {
-        SegmentBuilder last = segments.get(segments.size() - 1);
+        Segment.Builder last = segments.get(segments.size() - 1);
     
         // If no params were registered for the last part, keep building on it.
         if (!last.hasParams()) {
-            last.concat(segment);
+            last.append(segment);
         }
         else {
-            segments.add(new SegmentBuilder(segment, false));
+            segments.add(Segment.newBuilder(segment, false));
         }
         
         return this;

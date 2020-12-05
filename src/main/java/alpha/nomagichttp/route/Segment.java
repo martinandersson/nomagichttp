@@ -160,6 +160,8 @@ interface Segment
          * Build a new {@code Segment}.
          * 
          * @return a new {@code Segment}
+         * 
+         * @throws IllegalStateException if already built
          */
         Segment build();
     }

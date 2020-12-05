@@ -18,7 +18,7 @@ class RouteBuilderInvalidInputTest
     void segment_can_not_be_empty_ctor() {
         assertThatThrownBy(() -> new RouteBuilder(""))
                 .isExactlyInstanceOf(IllegalArgumentException.class)
-                .hasMessage("A segment must start with a \"/\" character. Got: \"\"");
+                .hasMessage("A segment (or a piece thereof) must start with a \"/\" character. Got: \"\"");
     }
     
     @Test
@@ -27,7 +27,7 @@ class RouteBuilderInvalidInputTest
         
         assertThatThrownBy(() -> rb.concat(""))
                 .isExactlyInstanceOf(IllegalArgumentException.class)
-                .hasMessage("A segment must start with a \"/\" character. Got: \"\"");
+                .hasMessage("A segment (or a piece thereof) must start with a \"/\" character. Got: \"\"");
     }
     
     @Test
@@ -36,14 +36,14 @@ class RouteBuilderInvalidInputTest
         
         assertThatThrownBy(() -> rb.concat("/"))
                 .isExactlyInstanceOf(IllegalArgumentException.class)
-                .hasMessage("Segment must contain more than just a forward slash.");
+                .hasMessage("Segment (or a piece thereof) must contain more than just a forward slash character.");
     }
     
     @Test
     void segment_must_start_with_slash_ctor() {
         assertThatThrownBy(() -> new RouteBuilder("x"))
                 .isExactlyInstanceOf(IllegalArgumentException.class)
-                .hasMessage("A segment must start with a \"/\" character. Got: \"x\"");
+                .hasMessage("A segment (or a piece thereof) must start with a \"/\" character. Got: \"x\"");
     }
     
     @Test
@@ -52,14 +52,14 @@ class RouteBuilderInvalidInputTest
         
         assertThatThrownBy(() -> rb.concat("x"))
                 .isExactlyInstanceOf(IllegalArgumentException.class)
-                .hasMessage("A segment must start with a \"/\" character. Got: \"x\"");
+                .hasMessage("A segment (or a piece thereof) must start with a \"/\" character. Got: \"x\"");
     }
     
     @Test
     void segment_can_not_be_two_slashes_ctor() {
         assertThatThrownBy(() -> new RouteBuilder("//"))
                 .isExactlyInstanceOf(IllegalArgumentException.class)
-                .hasMessage("Segment must contain more than just forward slash(es).");
+                .hasMessage("Segment (or a piece thereof) must contain more than just forward slash(es).");
     }
     
     @Test
@@ -68,14 +68,14 @@ class RouteBuilderInvalidInputTest
         
         assertThatThrownBy(() -> rb.concat("//"))
                 .isExactlyInstanceOf(IllegalArgumentException.class)
-                .hasMessage("Segment must contain more than just forward slash(es).");
+                .hasMessage("Segment (or a piece thereof) must contain more than just forward slash(es).");
     }
     
     @Test
     void segment_can_not_have_two_trailing_slashes_ctor() {
         assertThatThrownBy(() -> new RouteBuilder("/a//"))
                 .isExactlyInstanceOf(IllegalArgumentException.class)
-                .hasMessage("Multiple trailing forward slashes in segment: \"/a//\"");
+                .hasMessage("Multiple trailing forward slashes in segment (or a piece thereof): \"/a//\"");
     }
     
     @Test
@@ -84,7 +84,7 @@ class RouteBuilderInvalidInputTest
     
         assertThatThrownBy(() -> rb.concat("/a//"))
                 .isExactlyInstanceOf(IllegalArgumentException.class)
-                .hasMessage("Multiple trailing forward slashes in segment: \"/a//\"");
+                .hasMessage("Multiple trailing forward slashes in segment (or a piece thereof): \"/a//\"");
     }
     
     @Test
