@@ -23,12 +23,12 @@ import static java.util.Objects.requireNonNull;
 
 /**
  * Holder of a request-to-response {@link #logic() function} (the "logic
- * instance") coupled together with meta-data describing the handler.<p>
+ * instance") coupled together with metadata describing the handler.<p>
  * 
  * A {@code RequestHandler} can be built using {@link #builder(String)} or other
  * static methods found in {@link Builder} and {@link RequestHandlers}.<p>
  * 
- * The meta-data consists of a HTTP {@link #method() method} token and
+ * The metadata consists of a HTTP {@link #method() method} token and
  * {@link #consumes() consumes}/{@link #produces() produces} media types. This
  * information is only used as filtering inputs for a lookup algorithm when the
  * server has matched a request against a {@link Route} and needs to select
@@ -44,7 +44,7 @@ import static java.util.Objects.requireNonNull;
  * 
  * When the server selects which handler of a route to call, it first weeds out
  * all handlers that does not qualify based on request headers and the handler's
- * meta-data. If there's still many of them that quality, the handler with media
+ * metadata. If there's still many of them that quality, the handler with media
  * types preferred by the client and with greatest {@link
  * MediaType#specificity() specificity} will be used. More details will be
  * discussed throughout subsequent sections.<p>
