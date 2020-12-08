@@ -30,6 +30,7 @@ final class DefaultResponse implements Response
     
     private DefaultResponse(
             String statusLine,
+            // Is unmodifiable
             Iterable<String> headers,
             Flow.Publisher<ByteBuffer> body,
             boolean mustCloseAfterWrite)

@@ -29,7 +29,7 @@ import java.util.function.Supplier;
  * Header order (FIFO) is preserved (unless documented otherwise). Duplicated
  * header names will be grouped and inserted at the first occurrence.<p>
  * 
- * The {@code Response} implementation is immutable and can safely be re-used
+ * The {@code Response} implementation is immutable and can safely be reused
  * sequentially over time to the same client as well as shared concurrently to
  * different clients.<p>
  * 
@@ -38,6 +38,7 @@ import java.util.function.Supplier;
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  * 
+ * @see Response.Builder
  * @see RequestHandler
  * @see ErrorHandler
  */
@@ -63,9 +64,9 @@ public interface Response
     String statusLine();
     
     /**
-     * Returns the headers (possibly empty).
+     * Returns the headers.
      * 
-     * @return the headers (possibly empty)
+     * @return the headers (unmodifiable and possibly empty)
      */
     Iterable<String> headers();
     
@@ -118,17 +119,15 @@ public interface Response
      * Builder of a {@link Response}.<p>
      * 
      * The builder type declares static methods that return builders already
-     * populated with common status-lines such as {@link #ok()} and {@link
+     * populated with common status lines such as {@link #ok()} and {@link
      * #accepted()}, what remains is to customize headers and the body. Static
      * methods that build a complete response can be found in {@link
      * Responses}.<p>
      * 
      * The builder can be used as a template to modify per-response state. Each
-     * method returns a new builder instance representing the new state. Similar
-     * to intermediate operations on a JDK {@code Stream}, these builder methods
-     * does <i>not</i> change the state of previous builders. The API should be
-     * used in a fluent style with references saved and re-used only for
-     * templating.<p>
+     * method returns a new builder instance representing the new state. The API
+     * should be used in a fluent style with references saved and reused only
+     * for templating.<p>
      * 
      * HTTP version and status code must be set or {@link #build()} will fail.
      * The reason phrase if not set will default to "Unknown". Headers and the
@@ -348,9 +347,7 @@ public interface Response
         /**
          * Builds the response.<p>
          * 
-         * This method is likely to return the same response object on
-         * subsequent calls, but it's advisable to rather store the built {@code
-         * Response} object instead of the builder.<p>
+         * The returned response may be a cached object if previously built.<p>
          * 
          * @return a response
          * 

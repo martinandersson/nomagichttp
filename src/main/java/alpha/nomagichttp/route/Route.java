@@ -10,8 +10,8 @@ import java.util.Map;
 /**
  * A {@code Route} is "a target resource upon which to apply semantics"
  * (<a href="https://tools.ietf.org/html/rfc7230#section-5.1">RFC 7230 §5.1</a>).
- * It can be built using a {@link #builder()} or other static methods found in
- * {@link Routes}.<p>
+ * It can be built using a {@link #builder(String)} or other static methods
+ * found in {@link Routes}.<p>
  * 
  * The route is associated with one or more <i>request handlers</i>. In HTTP
  * parlance, handlers are also known as different "representations" of the
@@ -32,9 +32,9 @@ import java.util.Map;
  * value "now". The value can be retrieved using {@link
  * Request#paramFromQuery(String)}.<p>
  * 
- * The route may declare named path parameters that acts like a dynamic
- * segment whose value is given by the client through the path and retrievable
- * using {@link Request#paramFromPath(String) request}.<p>
+ * The route may declare named path parameters which act like a dynamic segment
+ * whose value is given by the client through the path, then retrievable using
+ * {@link Request#paramFromPath(String) request}.<p>
  * 
  * Both query- and path parameters are optional and they can not be specified
  * as required. The request handler is free to interpret the presence, absence
@@ -59,8 +59,8 @@ import java.util.Map;
  *   /users/123/items/456
  * </pre>
  * 
- * The only difference being whether or not parameter values are present in the
- * request object.<p>
+ * The only difference between these request paths is which parameter values
+ * will become present in the request object.<p>
  * 
  * Route collision- and ambiguity is detected at build-time and will fail-fast.
  * For example, the route {@code "/where/{param}"} can not be added to an HTTP

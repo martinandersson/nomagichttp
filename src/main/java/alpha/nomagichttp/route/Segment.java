@@ -16,8 +16,8 @@ import java.util.RandomAccess;
  * 
  * Segments are immutable and thread-safe.<p>
  * 
- * Segments are identity based. Implementations must <i>not</i> override {@code
- * hashCode()} and {@code equals()}.<p>
+ * Segments are identity based. The implementation does <i>not</i> override
+ * {@code hashCode()} and {@code equals()}.<p>
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  * 
@@ -110,8 +110,8 @@ interface Segment
     /**
      * Builder of {@link Segment}.<p>
      * 
-     * The implementation does not have to be thread-safe or implement any of
-     * {@code hashCode()} and {@code equals()}.
+     * The builder is not thread-safe and is intended to be used as a throw-away
+     * object.
      * 
      * @author Martin Andersson (webmaster at martinandersson.com)
      */
