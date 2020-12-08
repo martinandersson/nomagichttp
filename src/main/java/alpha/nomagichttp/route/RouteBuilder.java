@@ -93,6 +93,7 @@ import static java.util.stream.Collectors.toCollection;
  * 
  * @author Martin Andersson (mandersson at martinandersson.com)
  */
+@Deprecated // use Route.Builder
 public class RouteBuilder
 {
     private final List<Segment.Builder> segments;

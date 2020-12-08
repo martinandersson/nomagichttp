@@ -77,6 +77,44 @@ import java.util.Map;
 public interface Route
 {
     /**
+     * Returns a {@code Route} builder.<p>
+     * 
+     * The most simplest route that can be built is the root without path
+     * parameters:
+     * 
+     * <pre>{@code
+     *     Route r = Route.builder("/").handler(...).build();
+     * }</pre>
+     * 
+     * Alternatively, import static {@code Routes.route()}, then:
+     * <pre>{@code
+     *     Route r = route("/", ...).build();
+     * }</pre>
+     * 
+     * Please note that segment values given to this method as well as the
+     * {@code Builder.append()} method doesn't have to be split. These are
+     * equivalent:
+     * 
+     * <pre>{@code
+     *    Route.builder("/a").append("/b")...
+     *    Route.builder("/a/b")...
+     * }</pre>
+     * 
+     * @param segment initial seed (may be a single forward slash character)
+     * 
+     * @return a new builder
+     * 
+     * @throws NullPointerException
+     *             if {@code segment} is {@code null}
+     * 
+     * @throws IllegalArgumentException
+     *             if {@code segment} doesn't start with a forward slash
+     */
+    static Route.Builder builder(String segment) {
+        return new DefaultRoute.Builder(segment);
+    }
+    
+    /**
      * Returns a match if this route matches the specified {@code requestTarget},
      * otherwise {@code null}.<p>
      * 
@@ -167,5 +205,103 @@ public interface Route
          * @return path parameters (never null)
          */
         Map<String, String> parameters();
+    }
+    
+    /**
+     * Builder of a {@link Route}.<p>
+     * 
+     * Example: 
+     * <pre>{@code 
+     *     Route r = Route.builder("/users")
+     *                    .param("user-id")
+     *                    .append("/items")
+     *                    .param("item-id")
+     *                    .handler(...)
+     *                    .build();
+     *     
+     *     String i = r.identity(); // "/users/items"
+     *     String s = r.toString(); // "/users/{user-id}/items/{item-id}"
+     * }</pre>
+     * 
+     * A valid segment value is any string which starts with a forward slash
+     * character ('/'). Only the root can be a string whose contents is a single
+     * forward slash. All other segment values must have content following the
+     * forward slash. A segment value may contain many forward slash boundaries,
+     * for example {@code "/a/b/c"}. Trailing forward slash characters will be
+     * truncated.<p>
+     * 
+     * A valid parameter name is any string, even the empty string. The only
+     * requirement is that it has to be unique for the route. The HTTP server's
+     * chief purpose of the name is to use it as a key in a parameter map data
+     * structure. Please note that the name is specified to participate in the
+     * {@link Route#toString()} result.<p>
+     * 
+     * The builder is not thread-safe and is intended to be used as a throw-away
+     * object. Each of the setter methods modifies the state of the builder and
+     * returns the same instance.<p>
+     * 
+     * The implementation does not necessarily implement {@code hashCode()} and
+     * {@code equals()}.
+     * 
+     * @author Martin Andersson (webmaster at martinandersson.com)
+     * 
+     * @see Route
+     */
+    interface Builder
+    {
+        /**
+         * Declare one or many named path parameters.
+         * 
+         * @param firstName  first name
+         * @param moreNames  optionally more names
+         * 
+         * @return this (for chaining/fluency)
+         * 
+         * @throws NullPointerException
+         *             if anyone of the provided names is {@code null}
+         * 
+         * @throws IllegalStateException
+         *             if an equivalent parameter name has already been added
+         */
+        Route.Builder param(String firstName, String... moreNames);
+        
+        /**
+         * Append another segment.
+         * 
+         * @param segment to append
+         * 
+         * @return this (for chaining/fluency)
+         * 
+         * @throws NullPointerException
+         *             if {@code segment} is {@code null}
+         * 
+         * @throws IllegalArgumentException
+         *             if {@code segment} does not start with a forward slash,
+         *             or has a length of just 1 character
+         */
+        Route.Builder append(final String segment);
+        
+        /**
+         * Add a request handler.
+         * 
+         * @param first  first request handler
+         * @param more   optionally more handlers
+         * 
+         * @throws HandlerCollisionException
+         *             if an equivalent handler has already been added
+         * 
+         * @return this (for chaining/fluency)
+         * 
+         * @see RequestHandler
+         */
+        Route.Builder handler(RequestHandler first, RequestHandler... more);
+        
+        /**
+         * Returns a new {@code Route} built from the current state of this
+         * builder.
+         * 
+         * @return a new {@code Route}
+         */
+        Route build();
     }
 }
