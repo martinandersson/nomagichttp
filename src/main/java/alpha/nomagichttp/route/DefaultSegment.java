@@ -17,8 +17,8 @@ final class DefaultSegment implements Segment
     
     DefaultSegment(boolean isFirst, String value, List<String> params) {
         this.isFirst = isFirst;
-        this.value = value;
-        this.params = unmodifiableList(params);
+        this.value   = value;
+        this.params  = unmodifiableList(params);
     }
     
     @Override
