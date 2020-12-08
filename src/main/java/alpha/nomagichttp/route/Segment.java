@@ -6,12 +6,12 @@ import java.util.RandomAccess;
 /**
  * Is a segment of a route's path.<p>
  * 
- * The route's path may be comprised of one or multiple segments. What makes the
- * difference is path parameters which finalizes the segment they belong to. If
- * the route's path continues being built after a path parameter has been
- * declared then the remainder of the path belongs to one or more other
- * segments. The types {@code Segment} and {@code Segment.Builder} are technical
- * details that is not visible to the application developer when using {@link
+ * The route's path may be comprised of just one or multiple segments. What
+ * makes the difference is path parameters which finalizes the segment they
+ * belong to. Path parameters work as segment boundaries.<p>
+ * 
+ * The types {@code Segment} and {@code Segment.Builder} are technical details
+ * that is not visible to the application developer when using {@link
  * Route#builder()}.<p>
  * 
  * Segments are immutable and thread-safe.<p>
