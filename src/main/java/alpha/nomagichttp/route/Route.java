@@ -62,10 +62,10 @@ import java.util.Map;
  * The only difference between these request paths is which parameter values
  * will be present in the request object.<p>
  * 
- * Route collision- and ambiguity is detected at build-time and will fail-fast.
- * For example, the route {@code "/where/{param}"} can not be added to an HTTP
- * server which already has {@code "/where"} registered. This would crash with a
- * {@link RouteCollisionException}. TODO: Add ref to AmbiguousRouteCollisionException<p>
+ * Route collision- and ambiguity is detected at build-time and will fail-fast
+ * with a {@link RouteCollisionException}. For example, the route {@code
+ * "/where"} can not be added to an HTTP server which already has {@code
+ * "/where/{param}"} registered (parameters are optional).<p>
  * 
  * The implementation is thread-safe.
  * 

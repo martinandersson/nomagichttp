@@ -10,8 +10,9 @@ package alpha.nomagichttp.route;
  * @author Martin Andersson (webmaster at martinandersson.com)
  * 
  * @see Route
+ * @see AmbiguousRouteCollisionException
  */
-public final class RouteCollisionException extends RuntimeException {
+public class RouteCollisionException extends RuntimeException {
     public RouteCollisionException(String message) {
         super(message);
     }
