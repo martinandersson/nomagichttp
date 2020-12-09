@@ -2,6 +2,7 @@ package alpha.nomagichttp.message;
 
 import alpha.nomagichttp.HttpServer;
 import alpha.nomagichttp.handler.ErrorHandler;
+import alpha.nomagichttp.route.Route;
 import alpha.nomagichttp.util.Publishers;
 
 import java.net.http.HttpHeaders;
@@ -33,6 +34,7 @@ import java.util.function.BiFunction;
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  * 
+ * @see Route
  * @see <a href="https://tools.ietf.org/html/rfc7230#section-3.1.1">RFC 7230 §3.1.1</a>
  * @see <a href="https://tools.ietf.org/html/rfc7230#section-3.3">RFC 7230 §3.3</a>
  */
@@ -49,7 +51,7 @@ public interface Request
      *   Accept: text/plain;charset=utf-8
      * }</pre>
      * 
-     * @return the request-line method token (never {@code null} or empty)
+     * @return the request-line's method token (never {@code null} or empty)
      */
     String method();
     
@@ -74,7 +76,7 @@ public interface Request
      *
      * In the following example, the HTTP version is "HTTP/1.1":
      * <pre>{@code
-     *   GET /hello.txt HTTP/1.1
+     *   GET /hello.txt?query=value HTTP/1.1
      *   User-Agent: curl/7.16.3 libcurl/7.16.3 OpenSSL/0.9.7l zlib/1.2.3
      *   Host: www.example.com
      *   Accept: text/plain;charset=utf-8

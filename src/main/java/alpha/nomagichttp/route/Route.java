@@ -301,6 +301,8 @@ public interface Route
          * builder.
          * 
          * @return a new {@code Route}
+         * 
+         * @throws IllegalStateException if no handlers have been added
          */
         Route build();
     }
