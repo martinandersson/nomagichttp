@@ -16,9 +16,9 @@ import java.io.IOException;
 public class HelloWorldConsole {
     public static void main(String... ignored) throws IOException {
         /*
-         * Utility methods from utility classes (Handlers, Routes, ...) cater
-         * for "simple" use cases and should often be statically imported. Here,
-         * we do not inline or statically import for learning purposes.
+         * Utility methods from utility classes (RequestHandlers, Routes, ...)
+         * cater for "simple" use cases and should often be statically imported.
+         * Here, we do not inline or statically import for learning purposes.
          */
         
         // This handler reacts to requests using the HTTP verb/method "GET".
