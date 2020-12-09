@@ -4,7 +4,6 @@ import alpha.nomagichttp.handler.RequestHandler;
 import alpha.nomagichttp.message.Response;
 import alpha.nomagichttp.message.Responses;
 import alpha.nomagichttp.route.Route;
-import alpha.nomagichttp.route.RouteBuilder;
 import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
