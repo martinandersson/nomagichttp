@@ -4,6 +4,7 @@ import alpha.nomagichttp.handler.RequestHandler;
 import alpha.nomagichttp.message.MediaRange;
 import alpha.nomagichttp.message.MediaType;
 
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -16,17 +17,21 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.TreeSet;
 
+import static alpha.nomagichttp.message.MediaType.ALL;
 import static alpha.nomagichttp.message.MediaType.NOTHING;
 import static alpha.nomagichttp.message.MediaType.NOTHING_AND_ALL;
 import static alpha.nomagichttp.message.MediaType.Score.NOPE;
 import static java.lang.System.Logger;
 import static java.lang.System.Logger.Level.WARNING;
+import static java.text.MessageFormat.format;
 import static java.util.Arrays.stream;
 import static java.util.Collections.unmodifiableMap;
 import static java.util.Comparator.comparingDouble;
 import static java.util.Comparator.comparingInt;
+import static java.util.Objects.requireNonNull;
 import static java.util.stream.Collectors.groupingBy;
 import static java.util.stream.Collectors.joining;
+import static java.util.stream.Collectors.toCollection;
 import static java.util.stream.Collectors.toList;
 import static java.util.stream.Collectors.toSet;
 
@@ -507,6 +512,96 @@ public final class DefaultRoute implements Route
                       "prod=" + handler.produces(),
                       "rank=" + rank) +
                     "}";
+        }
+    }
+    
+    /**
+     * Default implementation of {@code Route.Builder}.
+     * 
+     * @author Martin Andersson (webmaster at martinandersson.com)
+     */
+    static final class Builder implements Route.Builder
+    {
+        private final List<Segment.Builder> segments;
+        // Memorize what param names we have already used
+        private final Set<String> params;
+        private final Set<RequestHandler> handlers;
+        
+        Builder(String segment) {
+            Segment.Builder root = Segment.builder(segment, true);
+            
+            segments = new ArrayList<>();
+            segments.add(root);
+            
+            params   = new HashSet<>();
+            handlers = new HashSet<>();
+        }
+        
+        @Override
+        public Route.Builder param(String firstName, String... moreNames) {
+            if (!params.add(firstName)) {
+                throw new IllegalArgumentException(
+                        "Duplicate parameter name: \"" + firstName + "\"");
+            }
+            
+            segments.get(segments.size() - 1).addParam(firstName);
+            
+            if (moreNames.length > 0) {
+                stream(moreNames).forEach(this::param);
+            }
+            
+            return this;
+        }
+        
+        @Override
+        public Route.Builder append(String segment) {
+            Segment.Builder last = segments.get(segments.size() - 1);
+            
+            // If no params were registered for the last part, keep building on it.
+            if (!last.hasParams()) {
+                last.append(segment);
+            }
+            else {
+                segments.add(Segment.builder(segment, false));
+            }
+            
+            return this;
+        }
+        
+        private static final Set<MediaType> SPECIAL = Set.of(NOTHING, NOTHING_AND_ALL, ALL);
+        
+        @Override
+        public Route.Builder handler(RequestHandler first, RequestHandler... more) {
+            if (SPECIAL.contains(first.consumes())) {
+                Set<MediaType> specials = handlers.stream()
+                        .filter(h -> h.method().equals(first.method()))
+                        .filter(h -> h.produces().equals(first.produces()))
+                        .map(RequestHandler::consumes)
+                        .filter(SPECIAL::contains)
+                        .collect(toCollection(HashSet::new));
+                
+                specials.add(first.consumes());
+                
+                if (specials.equals(SPECIAL)) {
+                    throw new HandlerCollisionException(format(
+                            "All other meta data being equal; if there''s a consumes {0} then {1} is effectively equal to {2}.",
+                            NOTHING, NOTHING_AND_ALL, ALL));
+                }
+            }
+            
+            if (!handlers.add(requireNonNull(first))) {
+                throw new HandlerCollisionException(
+                        "An equivalent handler has already been added: " + first);
+            }
+            
+            stream(more).forEach(this::handler);
+            
+            return this;
+        }
+        
+        @Override
+        public Route build() {
+            return new DefaultRoute(segments, handlers);
         }
     }
 }
