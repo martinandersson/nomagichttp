@@ -60,7 +60,7 @@ import java.util.Map;
  * </pre>
  * 
  * The only difference between these request paths is which parameter values
- * will become present in the request object.<p>
+ * will be present in the request object.<p>
  * 
  * Route collision- and ambiguity is detected at build-time and will fail-fast.
  * For example, the route {@code "/where/{param}"} can not be added to an HTTP

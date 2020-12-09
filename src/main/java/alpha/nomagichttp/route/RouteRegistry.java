@@ -1,7 +1,13 @@
 package alpha.nomagichttp.route;
 
+import alpha.nomagichttp.HttpServer;
+
 /**
  * Provides thread-safe operations over a group of routes.<p>
+ * 
+ * This type is constructed internally by {@link HttpServer} factory methods.
+ * Once the server has been built, the registry can be retrieved using {@link
+ * HttpServer#getRouteRegistry()}.
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  * 
