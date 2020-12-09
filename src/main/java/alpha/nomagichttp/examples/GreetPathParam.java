@@ -26,8 +26,8 @@ public class GreetPathParam
         // targeting "/hello/John" as well as a request targeting "/hello".
         
         RequestHandler h = RequestHandlers.GET().apply(request -> {
-            String name = request.paramFromPath("name").get(),
-                   text = "Hello, " + name + "!";
+            String name = request.paramFromPath("name").get();
+            String text = "Hello, " + name + "!";
             
             return Responses.ok(text).asCompletedStage();
         });
