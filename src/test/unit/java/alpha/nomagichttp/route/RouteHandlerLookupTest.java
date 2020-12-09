@@ -276,7 +276,7 @@ class RouteHandlerLookupTest
     }
     
     private RequestHandler exec(String method, MediaType contentType, MediaType... accepts) {
-        RouteBuilder b = new RouteBuilder("/blabla");
+        Route.Builder b = Route.builder("/blabla");
         handlers.forEach(b::handler);
         return b.build().lookup(method, contentType, accepts);
     }

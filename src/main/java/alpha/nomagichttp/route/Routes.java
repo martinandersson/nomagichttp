@@ -19,7 +19,7 @@ public final class Routes
      * Builds a route with the specifies handlers registered.<p>
      * 
      * The route has no declared path parameters. For this need, use {@link
-     * RouteBuilder} directly.
+     * Route#builder(String)} directly.
      * 
      * @param path   route path, for example "/hello"
      * @param first  required handler
@@ -28,6 +28,6 @@ public final class Routes
      * @return a route
      */
     public static Route route(String path, RequestHandler first, RequestHandler... more) {
-        return new RouteBuilder(path).handler(first, more).build();
+        return Route.builder(path).handler(first, more).build();
     }
 }

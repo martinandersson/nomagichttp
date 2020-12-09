@@ -4,6 +4,7 @@ import alpha.nomagichttp.HttpServer;
 import alpha.nomagichttp.handler.RequestHandler;
 import alpha.nomagichttp.handler.RequestHandlers;
 import alpha.nomagichttp.message.Responses;
+import alpha.nomagichttp.route.Route;
 import alpha.nomagichttp.route.RouteBuilder;
 
 import java.io.IOException;
@@ -19,7 +20,7 @@ public class GreetPathParam
     
     public static void main(String... ignored) throws IOException {
         // Use builder classes for more control such as declaring path parameters
-        RouteBuilder r = new RouteBuilder("/hello").param("name");
+        Route.Builder r = Route.builder("/hello").param("name");
         
         // Parameters are always optional and Request.paramFromPath() returns an
         // Optional<String>. Which means that our route matches a request

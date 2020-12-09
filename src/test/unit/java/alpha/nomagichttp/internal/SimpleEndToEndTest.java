@@ -72,7 +72,7 @@ class SimpleEndToEndTest extends AbstractEndToEndTest
             return ok(text).asCompletedStage();
         });
         
-        Route route = new RouteBuilder("/greet-param").param("name")
+        Route route = Route.builder("/greet-param").param("name")
                 .handler(echo)
                 .build();
         

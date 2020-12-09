@@ -19,7 +19,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
  */
 class RouteBuilderInvalidHandlerTest
 {
-    RouteBuilder testee = new RouteBuilder("/");
+    Route.Builder testee = Route.builder("/");
     
     @Test
     void already_added() {

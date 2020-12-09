@@ -14,23 +14,23 @@ class DefaultRouteToStringTest
 {
     @Test
     void all() {
-        builder("/").expect("/");
-        builder("/abc").expect("/abc");
-        builder("/a/b/c").expect("/a/b/c");
+        init("/").expect("/");
+        init("/abc").expect("/abc");
+        init("/a/b/c").expect("/a/b/c");
         
-        builder("/").param("one").concat("/a").param("two", "three").concat("/b").param("four")
+        init("/").param("one").append("/a").param("two", "three").append("/b").param("four")
                 .expect("/{one}/a/{two}/{three}/b/{four}");
     }
     
-    RouteBuilder builder;
+    Route.Builder builder;
     
-    DefaultRouteToStringTest builder(String segment) {
-         builder = new RouteBuilder(segment);
+    DefaultRouteToStringTest init(String segment) {
+         builder = Route.builder(segment);
          return this;
     }
     
-    DefaultRouteToStringTest concat(String segment) {
-        builder.concat(segment);
+    DefaultRouteToStringTest append(String segment) {
+        builder.append(segment);
         return this;
     }
     

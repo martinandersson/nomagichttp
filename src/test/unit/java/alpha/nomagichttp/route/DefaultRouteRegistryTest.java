@@ -30,7 +30,7 @@ class DefaultRouteRegistryTest
     @Test
     void only_identity_matters() {
         Route r1 = route("/", noop()),
-              r2 = new RouteBuilder("/")
+              r2 = Route.builder("/")
                       .param("only-identity-matters")
                       .handler(noop())
                       .build();
@@ -45,7 +45,7 @@ class DefaultRouteRegistryTest
     @Disabled
     @Test
     void ambiguous() {
-        Route r1 = new RouteBuilder("/")
+        Route r1 = Route.builder("/")
                        .param("p")
                        .handler(noop())
                        .build(),
