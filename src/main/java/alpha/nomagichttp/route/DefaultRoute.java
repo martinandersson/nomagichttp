@@ -45,7 +45,18 @@ public final class DefaultRoute implements Route
     // TODO: Consider replacing value type with array[]
     private final Map<String, List<RequestHandler>> handlers;
     
-    
+    /**
+     * Constructs a {@code DefaultRoute}.
+     * 
+     * The given arguments does not necessarily have to be unmodifiable as the
+     * collections will be copied. 
+     * 
+     * @param segments  each will be built by this constructor
+     * @param handlers  of the route
+     * 
+     * @throws NullPointerException   if any argument is {@code null}
+     * @throws IllegalStateException  if {@code handlers} is empty
+     */
     DefaultRoute(List<Segment.Builder> segments, Set<RequestHandler> handlers) {
         if (handlers.isEmpty()) {
             throw new IllegalStateException("No handlers.");
