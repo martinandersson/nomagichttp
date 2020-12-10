@@ -7,7 +7,6 @@ import alpha.nomagichttp.message.MediaType;
 import java.util.Set;
 
 import static java.util.Collections.unmodifiableSet;
-import static java.util.Objects.requireNonNull;
 
 /**
  * Thrown by the HTTP server if the {@link RequestHandler} resolution process
@@ -44,10 +43,20 @@ public final class AmbiguousNoHandlerFoundException extends NoHandlerFoundExcept
             MediaType[] accepts)
     {
         super(message, method, route, contentType, accepts);
-        this.ambiguous = unmodifiableSet(requireNonNull(ambiguous));
+        
+        if (ambiguous.isEmpty()) {
+            throw new IllegalArgumentException("No ambiguous candidates.");
+        }
+        
+        this.ambiguous = unmodifiableSet(ambiguous);
     }
     
-    public Set<RequestHandler> ambiguous() {
+    /**
+     * Returns all ambiguous candidates that qualified.
+     * 
+     * @return all ambiguous candidates that qualified (never {@code null} or empty)
+     */
+    public Set<RequestHandler> candidates() {
         return ambiguous;
     }
 }
