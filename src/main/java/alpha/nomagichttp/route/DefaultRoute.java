@@ -283,8 +283,7 @@ public final class DefaultRoute implements Route
     }
     
     /**
-     * Returns all handlers of the specified method, or crashes with a
-     * {@code NoHandlerFoundException}.
+     * Returns all handlers of the specified method, or throws {@code NoHandlerFoundException}.
      */
     private List<RequestHandler> filterByMethod(String method, MediaType contentType, MediaType[] accepts) {
         final List<RequestHandler> forMethod = handlers.get(method);
