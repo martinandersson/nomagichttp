@@ -25,6 +25,8 @@ public class DefaultRouteRegistry implements RouteRegistry
                     "The specified route \"{0}\" is equivalent to an already added route \"{1}\".",
                     route, old));
         }
+        
+        testForAmbiguity(route);
     }
     
     @Override
@@ -55,5 +57,20 @@ public class DefaultRouteRegistry implements RouteRegistry
                 .findAny();
         
         return m.orElseThrow(() -> new NoRouteFoundException(requestTarget));
+    }
+    
+    private void testForAmbiguity(Route route) {
+        map.forEach((i, r) -> {
+            if (r == route) {
+                return;
+            }
+            
+            if (r.matches(route.identity()) != null) {
+                remove(route);
+                throw new AmbiguousRouteCollisionException(format(
+                    "Route \"{0}\" is effectively equivalent to an already added route \"{1}\".",
+                    route, r));
+            }
+        });
     }
 }

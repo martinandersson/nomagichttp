@@ -1,6 +1,5 @@
 package alpha.nomagichttp.route;
 
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 
 import static alpha.nomagichttp.handler.RequestHandlers.noop;
@@ -42,23 +41,19 @@ class DefaultRouteRegistryTest
                 .hasMessage("The specified route \"/{p}\" is equivalent to an already added route \"/\".");
     }
     
-    // Currently fails. This feature is not implemented.
-    @Disabled
     @Test
     void ambiguous() {
         Route r1 = Route.builder("/")
                        .param("p")
                        .handler(noop())
                        .build(),
-              r2 = route("/segment", noop());
+              // If request path comes in as "/s", which route would it match? Ambiguous!
+              r2 = route("/s", noop());
         
         testee.add(r1);
         assertThatThrownBy(() -> testee.add(r2))
                 // We want AmbiguousRouteCollisionException? (extends RouteCollisionException)
-                .isExactlyInstanceOf(RouteCollisionException.class)
-                .hasMessage("Message to be defined.");
-        
-        // On the implementation, just test-match all routes against the id of the new guy.
-        // No route should match the id, then we have a problem!
+                .isExactlyInstanceOf(AmbiguousRouteCollisionException.class)
+                .hasMessage("Route \"/s\" is effectively equivalent to an already added route \"/{p}\".");
     }
 }
