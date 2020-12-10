@@ -21,6 +21,7 @@ import static alpha.nomagichttp.message.MediaType.ALL;
 import static alpha.nomagichttp.message.MediaType.NOTHING;
 import static alpha.nomagichttp.message.MediaType.NOTHING_AND_ALL;
 import static alpha.nomagichttp.message.MediaType.Score.NOPE;
+import static alpha.nomagichttp.route.AmbiguousNoHandlerFoundException.createAmbiguousEx;
 import static java.lang.System.Logger;
 import static java.lang.System.Logger.Level.WARNING;
 import static java.text.MessageFormat.format;
@@ -274,7 +275,7 @@ public final class DefaultRoute implements Route
             
             if (candidates.isEmpty()) {
                 Set<RequestHandler> unwrapped = ambiguous.stream().map(RankedHandler::handler).collect(toSet());
-                throw new AmbiguousNoHandlerFoundException(unwrapped, "Ambiguous: " + unwrapped);
+                throw createAmbiguousEx(unwrapped, method, this, contentType, accepts);
             }
         }
         
