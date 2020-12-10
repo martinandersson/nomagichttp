@@ -22,7 +22,7 @@ public class DefaultRouteRegistry implements RouteRegistry
         Route old;
         if ((old = map.putIfAbsent(route.identity(), route)) != null) {
             throw new RouteCollisionException(format(
-                    "The specified route \"{0}\" is equivalent to an already added route \"{1}\".",
+                    "Route \"{0}\" is equivalent to an already added route \"{1}\".",
                     route, old));
         }
         

@@ -23,7 +23,7 @@ class DefaultRouteRegistryTest
         testee.add(r1);
         assertThatThrownBy(() -> testee.add(r2))
                 .isExactlyInstanceOf(RouteCollisionException.class)
-                .hasMessage("The specified route \"/\" is equivalent to an already added route \"/\".");
+                .hasMessage("Route \"/\" is equivalent to an already added route \"/\".");
     }
     
     @Test
@@ -38,7 +38,7 @@ class DefaultRouteRegistryTest
         testee.add(r1);
         assertThatThrownBy(() -> testee.add(r2))
                 .isExactlyInstanceOf(RouteCollisionException.class)
-                .hasMessage("The specified route \"/{p}\" is equivalent to an already added route \"/\".");
+                .hasMessage("Route \"/{p}\" is equivalent to an already added route \"/\".");
     }
     
     @Test
