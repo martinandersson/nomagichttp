@@ -18,7 +18,7 @@ public class DefaultRouteRegistry implements RouteRegistry
     private final ConcurrentMap<String, Route> map = new ConcurrentHashMap<>();
     
     @Override
-    public void add(Route route) throws RouteCollisionException {
+    public void add(Route route) {
         Route old;
         if ((old = map.putIfAbsent(route.identity(), route)) != null) {
             throw new RouteCollisionException(format(
@@ -33,7 +33,7 @@ public class DefaultRouteRegistry implements RouteRegistry
     }
     
     @Override
-    public Route.Match lookup(String requestTarget) throws NoRouteFoundException {
+    public Route.Match lookup(String requestTarget) {
         int query = requestTarget.indexOf('?');
         
         // Strip the query part

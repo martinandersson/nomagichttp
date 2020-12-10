@@ -31,7 +31,7 @@ public interface RouteRegistry
      * 
      * @see Route
      */
-    void add(Route route) throws RouteCollisionException;
+    void add(Route route);
     
     /**
      * Remove a route.
@@ -81,5 +81,5 @@ public interface RouteRegistry
      * @throws NullPointerException   if {@code requestTarget} is {@code null}
      * @throws NoRouteFoundException  if no route was found
      */
-    Route.Match lookup(String requestTarget) throws NoRouteFoundException;
+    Route.Match lookup(String requestTarget);
 }
