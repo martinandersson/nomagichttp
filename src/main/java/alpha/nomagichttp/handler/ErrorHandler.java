@@ -222,11 +222,11 @@ public interface ErrorHandler
             throw thr;
         } catch (BadHeaderException | RequestHeadParseException e) {
             res = badRequest();
-        } catch (NoRouteFoundException e) {
+        } catch (NoRouteFoundException e) { // + AmbiguousRouteCollisionException
             res = notFound();
         } catch (MaxRequestHeadSizeExceededException e) {
             res = entityTooLarge();
-        } catch (NoHandlerFoundException | AmbiguousNoHandlerFoundException e) {
+        } catch (NoHandlerFoundException e) { // + AmbiguousNoHandlerFoundException
             res = notImplemented();
         } catch (BadMediaTypeSyntaxException e) {
             res = rh == null ? badRequest() : internalServerError();
