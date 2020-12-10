@@ -13,9 +13,10 @@ import alpha.nomagichttp.HttpServer;
  * 
  * @see Route
  */
-public interface RouteRegistry {
+public interface RouteRegistry
+{
     /**
-     * Add a route to this registry.
+     * Add a route.
      * 
      * @param route to add
      * 
@@ -25,17 +26,15 @@ public interface RouteRegistry {
      * @throws RouteCollisionException
      *           if an equivalent route has already been added
      * 
+     * @throws AmbiguousRouteCollisionException
+     *           if an effectively equivalent route has already been added
+     * 
      * @see Route
      */
-    default void add(Route route) throws RouteCollisionException {
-        add(route, route.identity());
-    }
-    
-    // TODO: Document
-    void add(Route route, String identity) throws RouteCollisionException;
+    void add(Route route) throws RouteCollisionException;
     
     /**
-     * Remove a route from this registry.
+     * Remove a route.
      * 
      * @param route to remove
      * 
@@ -49,9 +48,9 @@ public interface RouteRegistry {
     }
     
     /**
-     * Remove a route from this registry using a specified route identity.
+     * Remove a route using a specified route identity.
      * 
-     * @param routeIdentity route identity
+     * @param id route identity
      * 
      * @return the route if successful (route was added before), otherwise
      *         {@code null} (the route is unknown)
@@ -60,7 +59,7 @@ public interface RouteRegistry {
      * 
      * @see Route
      */
-    Route remove(String routeIdentity);
+    Route remove(String id);
     
     /**
      * Lookup a route given a specified request-target.<p>

@@ -18,9 +18,9 @@ public class DefaultRouteRegistry implements RouteRegistry
     private final ConcurrentMap<String, Route> map = new ConcurrentHashMap<>();
     
     @Override
-    public void add(Route route, String identity) throws RouteCollisionException {
+    public void add(Route route) throws RouteCollisionException {
         Route old;
-        if ((old = map.putIfAbsent(identity, route)) != null) {
+        if ((old = map.putIfAbsent(route.identity(), route)) != null) {
             throw new RouteCollisionException(format(
                     "The specified route \"{0}\" is equivalent to an already added route \"{1}\".",
                     route, old));
@@ -28,8 +28,8 @@ public class DefaultRouteRegistry implements RouteRegistry
     }
     
     @Override
-    public Route remove(String routeIdentity) {
-        return map.remove(routeIdentity);
+    public Route remove(String id) {
+        return map.remove(id);
     }
     
     @Override
