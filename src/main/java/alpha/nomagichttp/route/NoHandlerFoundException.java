@@ -7,10 +7,12 @@ import static java.util.Arrays.stream;
 import static java.util.stream.Collectors.joining;
 
 /**
- * TODO: Docs
+ * Thrown by the HTTP server if the {@link RequestHandler} resolution process
+ * does not find a qualified handler. The response produced by {@link
+ * ErrorHandler#DEFAULT} is "501 Not Implemented".
+ * 
+ * @author Martin Andersson (webmaster at martinandersson.com)
  */
-// https://www.w3.org/Protocols/rfc2616/rfc2616-sec5.html#sec5.1.1
-// TODO: Server should respond "501 (Not Implemented) if the method is unrecognized or not implemented by the origin server"
 public class NoHandlerFoundException extends RuntimeException
 {
     static NoHandlerFoundException unmatchedContentType(
