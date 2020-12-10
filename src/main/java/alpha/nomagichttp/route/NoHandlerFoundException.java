@@ -55,9 +55,8 @@ public class NoHandlerFoundException extends RuntimeException
         this.method = method;
         // DefaultRoute passes <this> as c-tor arg
         this.route = route;
-        // Both of these can be null or empty
         this.contentType = contentType;
-        this.accepts = accepts;
+        this.accepts = accepts == null ? new MediaType[0] : accepts;
     }
     
     /**
@@ -90,7 +89,7 @@ public class NoHandlerFoundException extends RuntimeException
     /**
      * Returns the "Accept" request header value(s)
      * 
-     * @return Accept (may be {@code null} or empty)
+     * @return Accept (may be empty, never {@code null})
      */
     public MediaType[] accepts() {
         return accepts;
