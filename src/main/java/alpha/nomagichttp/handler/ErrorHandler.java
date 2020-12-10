@@ -129,10 +129,9 @@ public interface ErrorHandler
      * However, the true nature of the error can only be determined by looking
      * into the error object itself, which also might reveal what to expect from
      * the succeeding arguments. For example, if {@code thr} is a {@link
-     * NoHandlerFoundException}, then the request object was built and
-     * subsequently passed to the error handler, but since the request handler
-     * wasn't found then obviously the request handler argument is going to be
-     * null.<p>
+     * NoHandlerFoundException}, then the request object was built and will not
+     * be null, but since the request handler wasn't found then obviously the
+     * request handler argument is going to be null.<p>
      * 
      * It is a design goal of this library to have each exception type provide
      * whatever API necessary to investigate and possibly resolve the error.

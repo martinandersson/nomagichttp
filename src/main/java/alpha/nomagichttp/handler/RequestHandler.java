@@ -57,8 +57,8 @@ import static java.util.Objects.requireNonNull;
  * both consume "text/plain" and differs only in their producing media type.
  * They would both match a "GET" request with header "Content-Type: text/plain"
  * and "Accept: *&#47;*". For this request, the matched handlers are
- * "ambiguous". When the handler resolution ends ambiguously, a
- * {@link AmbiguousNoHandlerFoundException} is thrown<p>
+ * ambiguous. When the handler resolution ends ambiguously, a {@link
+ * AmbiguousNoHandlerFoundException} is thrown<p>
  * 
  * It isn't possible to add completely equivalent handlers to a route as
  * this would immediately fail-fast with a {@link HandlerCollisionException}.<p>
