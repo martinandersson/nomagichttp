@@ -52,7 +52,6 @@ class DefaultRouteRegistryTest
         
         testee.add(r1);
         assertThatThrownBy(() -> testee.add(r2))
-                // We want AmbiguousRouteCollisionException? (extends RouteCollisionException)
                 .isExactlyInstanceOf(AmbiguousRouteCollisionException.class)
                 .hasMessage("Route \"/s\" is effectively equivalent to an already added route \"/{p}\".");
     }
