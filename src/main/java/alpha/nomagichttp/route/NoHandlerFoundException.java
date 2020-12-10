@@ -43,7 +43,7 @@ public class NoHandlerFoundException extends RuntimeException
     private final MediaType contentType;
     private final MediaType[] accepts;
     
-    private NoHandlerFoundException(
+    protected NoHandlerFoundException(
             String message,
             String method,
             Route route,

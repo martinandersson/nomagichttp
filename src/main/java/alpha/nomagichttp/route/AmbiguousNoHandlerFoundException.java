@@ -2,13 +2,13 @@ package alpha.nomagichttp.route;
 
 import alpha.nomagichttp.handler.ErrorHandler;
 import alpha.nomagichttp.handler.RequestHandler;
+import alpha.nomagichttp.message.MediaType;
 
 import java.util.Set;
 
 import static java.util.Collections.unmodifiableSet;
 import static java.util.Objects.requireNonNull;
 
-public final class AmbiguousNoHandlerFoundException extends RuntimeException {
 /**
  * Thrown by the HTTP server if the {@link RequestHandler} resolution process
  * ends ambiguously. The response produced by {@link ErrorHandler#DEFAULT}
@@ -16,10 +16,34 @@ public final class AmbiguousNoHandlerFoundException extends RuntimeException {
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  */
+public final class AmbiguousNoHandlerFoundException extends NoHandlerFoundException {
     private final Set<RequestHandler> ambiguous;
     
-    AmbiguousNoHandlerFoundException(Set<RequestHandler> ambiguous, String message) {
-        super(message);
+    static AmbiguousNoHandlerFoundException createAmbiguousEx(
+            Set<RequestHandler> ambiguous,
+            String method,
+            Route route,
+            MediaType contentType,
+            MediaType[] accepts)
+    {
+        return new AmbiguousNoHandlerFoundException(
+                "Ambiguous: " + ambiguous,
+                ambiguous,
+                method,
+                route,
+                contentType,
+                accepts);
+    }
+    
+    private AmbiguousNoHandlerFoundException(
+            String message,
+            Set<RequestHandler> ambiguous,
+            String method,
+            Route route,
+            MediaType contentType,
+            MediaType[] accepts)
+    {
+        super(message, method, route, contentType, accepts);
         this.ambiguous = unmodifiableSet(requireNonNull(ambiguous));
     }
     
