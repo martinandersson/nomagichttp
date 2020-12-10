@@ -235,7 +235,7 @@ public final class DefaultRoute implements Route
     }
     
     @Override
-    public RequestHandler lookup(String method, MediaType contentType, MediaType[] accepts) throws NoHandlerFoundException {
+    public RequestHandler lookup(String method, MediaType contentType, MediaType[] accepts) {
         List<RequestHandler> forMethod = filterByMethod(method, contentType, accepts);
         
         NavigableSet<RankedHandler> candidates = null;

@@ -155,7 +155,7 @@ public interface Route
      * @throws NoHandlerFoundException
      *             if no handler matching the criteria can be found
      */
-    RequestHandler lookup(String method, MediaType contentType, MediaType[] accepts) throws NoHandlerFoundException;
+    RequestHandler lookup(String method, MediaType contentType, MediaType[] accepts);
     
     /**
      * Returns the route identity.
