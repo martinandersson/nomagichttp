@@ -28,17 +28,18 @@ class DefaultRouteRegistryTest
     }
     
     @Test
-    void only_identity_matters() {
+    void route_collision_2() {
         Route r1 = route("/", noop()),
               r2 = Route.builder("/")
-                      .param("only-identity-matters")
+                      // Has same ID because params doesn't participate.
+                      .param("p")
                       .handler(noop())
                       .build();
         
         testee.add(r1);
         assertThatThrownBy(() -> testee.add(r2))
                 .isExactlyInstanceOf(RouteCollisionException.class)
-                .hasMessage("The specified route \"/{only-identity-matters}\" is equivalent to an already added route \"/\".");
+                .hasMessage("The specified route \"/{p}\" is equivalent to an already added route \"/\".");
     }
     
     // Currently fails. This feature is not implemented.
