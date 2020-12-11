@@ -88,7 +88,7 @@ import java.util.Map;
  *   <li>Finally, all remaining segments that are not interpreted as a path
  *       parameter value must match a route exactly and in order. In particular,
  *       note that route-matching is case-sensitive and characters such as "+"
- *       and "*" has no special meaning, they will be matched literally.</li>
+ *       and "*" has no special meaning, they will be compared literally.</li>
  * </ul>
  * 
  * The implementation is thread-safe.
