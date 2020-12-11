@@ -45,13 +45,15 @@ public interface Request
     /**
      * Returns the request-line's method token.<p>
      * 
-     * In the following example, the method is "GET":
+     * Given this request:
      * <pre>{@code
      *   GET /hello.txt HTTP/1.1
      *   User-Agent: curl/7.16.3 libcurl/7.16.3 OpenSSL/0.9.7l zlib/1.2.3
      *   Host: www.example.com
      *   Accept: text/plain;charset=utf-8
      * }</pre>
+     * 
+     * The returned value is "GET".
      * 
      * @return the request-line's method token (never {@code null} or empty)
      */
@@ -60,8 +62,7 @@ public interface Request
     /**
      * Returns the request-line's resource-target.<p>
      * 
-     * In the following example, the resource-target is
-     * "/where?q=now#fragment":
+     * Given this request:
      * <pre>{@code
      *   GET /where?q=now#fragment HTTP/1.1
      *   User-Agent: curl/7.16.3 libcurl/7.16.3 OpenSSL/0.9.7l zlib/1.2.3
@@ -69,7 +70,9 @@ public interface Request
      *   Accept: text/plain;charset=utf-8
      * }</pre>
      * 
-     * The returned value is raw; not normalized and not URL decoded (aka.
+     * The returned value is "/where?q=now#fragment".<p>
+     * 
+     * The returned value is not normalized and not URL decoded (aka.
      * percent-decoded). Decoded parameter values can be retrieved from
      * {@link #paramFromPath(String)} and {@link #paramFromQuery(String)}. There
      * is no API-support to retrieve the fragment separately as it is
@@ -84,14 +87,16 @@ public interface Request
     /**
      * Returns the request-line's HTTP version.<p>
      * 
-     * In the following example, the HTTP version is "HTTP/1.1":
+     * Given this request:
      * <pre>{@code
      *   GET /hello.txt?query=value HTTP/1.1
      *   User-Agent: curl/7.16.3 libcurl/7.16.3 OpenSSL/0.9.7l zlib/1.2.3
      *   Host: www.example.com
      *   Accept: text/plain;charset=utf-8
      * }</pre>
-     *
+     * 
+     * The returned value is "HTTP/1.1".
+     * 
      * @return the request-line's HTTP version
      */
     String httpVersion();
