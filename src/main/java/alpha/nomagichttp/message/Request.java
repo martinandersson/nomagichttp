@@ -73,7 +73,7 @@ public interface Request
     
     /**
      * Returns the request-line's HTTP version.<p>
-     *
+     * 
      * In the following example, the HTTP version is "HTTP/1.1":
      * <pre>{@code
      *   GET /hello.txt?query=value HTTP/1.1
@@ -150,7 +150,7 @@ public interface Request
      * Returns {@code true} if the channel from which this request originates is
      * open for reading, otherwise {@code false}.
      * 
-     * @return see javadoc
+     * @return see JavaDoc
      */
     boolean channelIsOpenForReading();
     

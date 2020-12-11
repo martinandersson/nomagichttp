@@ -239,7 +239,7 @@ public final class SerialTransferService<T>
      * asynchronously (at most one delivery "extra" may occur after this method
      * has returned).<p>
      * 
-     * @return a successful flag (see javadoc)
+     * @return a successful flag (see JavaDoc)
      */
     public boolean finish() {
         long curr; boolean success = false;
@@ -262,7 +262,7 @@ public final class SerialTransferService<T>
      * 
      * @param andThen callback
      * 
-     * @return a successful flag (see javadoc)
+     * @return a successful flag (see JavaDoc)
      * 
      * @throws NullPointerException if {@code andThen} is {@code null}
      */

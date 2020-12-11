@@ -32,9 +32,9 @@ import java.util.Map;
  * value "now". The value can be retrieved using {@link
  * Request#paramFromQuery(String)}.<p>
  * 
- * The route may declare named path parameters which act like a dynamic segment
- * whose value is given by the client through the path, then retrievable using
- * {@link Request#paramFromPath(String) request}.<p>
+ * The route may declare named path parameters which act like a wildcard segment
+ * whose dynamic value is given by the client through the request path, then
+ * retrievable using {@link Request#paramFromPath(String)}.<p>
  * 
  * Both query- and path parameters are optional and they can not be specified
  * as required. The request handler is free to interpret the presence, absence
@@ -91,9 +91,9 @@ public interface Route
      *     Route r = route("/", ...).build();
      * }</pre>
      * 
-     * Please note that segment values given to this method as well as the
-     * {@code Builder.append()} method doesn't have to be split. These are
-     * equivalent:
+     * Please note that the value given to this method as well as the {@link
+     * Builder#append(String)} method may in turn contain many segments. These
+     * are equivalent:
      * 
      * <pre>{@code
      *    Route.builder("/a").append("/b")...
@@ -226,9 +226,9 @@ public interface Route
      * A valid segment value is any string which starts with a forward slash
      * character ('/'). Only the root can be a string whose contents is a single
      * forward slash. All other segment values must have content following the
-     * forward slash. A segment value may contain many forward slash boundaries,
-     * for example {@code "/a/b/c"}. Trailing forward slash characters will be
-     * truncated.<p>
+     * forward slash. A specified segment value may contain many forward slash
+     * separators, for example {@code "/a/b/c"}. Trailing forward slash
+     * characters will be truncated.<p>
      * 
      * A valid parameter name is any string, even the empty string. The only
      * requirement is that it has to be unique for the route. The HTTP server's

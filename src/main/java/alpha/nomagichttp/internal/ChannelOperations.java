@@ -180,7 +180,7 @@ final class ChannelOperations
      * API is the only API used to end the connection (or close the channel)
      * then the returned boolean should tell the truth.
      * 
-     * @return see javadoc
+     * @return see JavaDoc
      */
     boolean isOpenForReading() {
         if (!readShutdown) {
@@ -199,7 +199,7 @@ final class ChannelOperations
      * API is the only API used to end the connection (or close the channel)
      * then the returned boolean should tell the truth.
      *
-     * @return see javadoc
+     * @return see JavaDoc
      */
     boolean isOpenForWriting() {
         if (!writeShutdown) {
