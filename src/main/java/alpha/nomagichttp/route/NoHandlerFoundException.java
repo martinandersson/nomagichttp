@@ -1,5 +1,7 @@
 package alpha.nomagichttp.route;
 
+import alpha.nomagichttp.handler.ErrorHandler;
+import alpha.nomagichttp.handler.RequestHandler;
 import alpha.nomagichttp.message.MediaType;
 
 import static java.text.MessageFormat.format;
@@ -7,10 +9,12 @@ import static java.util.Arrays.stream;
 import static java.util.stream.Collectors.joining;
 
 /**
- * TODO: Docs
+ * Thrown by the HTTP server if the {@link RequestHandler} resolution process
+ * does not find a qualified handler. The response produced by {@link
+ * ErrorHandler#DEFAULT} is "501 Not Implemented".
+ * 
+ * @author Martin Andersson (webmaster at martinandersson.com)
  */
-// https://www.w3.org/Protocols/rfc2616/rfc2616-sec5.html#sec5.1.1
-// TODO: Server should respond "501 (Not Implemented) if the method is unrecognized or not implemented by the origin server"
 public class NoHandlerFoundException extends RuntimeException
 {
     static NoHandlerFoundException unmatchedContentType(
@@ -39,7 +43,7 @@ public class NoHandlerFoundException extends RuntimeException
     private final MediaType contentType;
     private final MediaType[] accepts;
     
-    private NoHandlerFoundException(
+    protected NoHandlerFoundException(
             String message,
             String method,
             Route route,
@@ -51,9 +55,8 @@ public class NoHandlerFoundException extends RuntimeException
         this.method = method;
         // DefaultRoute passes <this> as c-tor arg
         this.route = route;
-        // Both of these can be null or empty
         this.contentType = contentType;
-        this.accepts = accepts;
+        this.accepts = accepts == null ? new MediaType[0] : accepts;
     }
     
     /**
@@ -86,7 +89,7 @@ public class NoHandlerFoundException extends RuntimeException
     /**
      * Returns the "Accept" request header value(s)
      * 
-     * @return Accept (may be {@code null} or empty)
+     * @return Accept (may be empty, never {@code null})
      */
     public MediaType[] accepts() {
         return accepts;

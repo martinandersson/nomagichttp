@@ -10,24 +10,25 @@ import java.util.StringJoiner;
 import java.util.concurrent.CompletionStage;
 import java.util.function.Function;
 
-import static alpha.nomagichttp.message.MediaType.*;
+import static alpha.nomagichttp.message.MediaType.ALL;
+import static alpha.nomagichttp.message.MediaType.NOTHING;
+import static alpha.nomagichttp.message.MediaType.NOTHING_AND_ALL;
 import static java.text.MessageFormat.format;
 import static java.util.Objects.requireNonNull;
 
 /**
- * Default implementation of {@link Handler}.
+ * Default implementation of {@link RequestHandler}.
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  */
-public final class DefaultHandler implements Handler
+final class DefaultRequestHandler implements RequestHandler
 {
     private final String method;
-    private final MediaType consumes;
-    private final MediaType produces;
+    private final MediaType consumes, produces;
     private final Function<Request, CompletionStage<Response>> logic;
     private final int hash;
     
-    DefaultHandler(
+    DefaultRequestHandler(
             String method,
             MediaType consumes,
             MediaType produces,
@@ -75,11 +76,11 @@ public final class DefaultHandler implements Handler
             return false;
         }
         
-        if (DefaultHandler.class != obj.getClass()) {
+        if (DefaultRequestHandler.class != obj.getClass()) {
             return false;
         }
         
-        DefaultHandler other = (DefaultHandler) obj;
+        DefaultRequestHandler other = (DefaultRequestHandler) obj;
         
         return this.method.equals(other.method) &&
                this.consumes.equals(other.consumes) &&
@@ -93,7 +94,7 @@ public final class DefaultHandler implements Handler
                 .add("consumes=\"" + consumes + "\"")
                 .add("produces=\"" + produces + "\"");
         
-        return DefaultHandler.class.getSimpleName() + '{' + contents + '}';
+        return DefaultRequestHandler.class.getSimpleName() + '{' + contents + '}';
     }
     
     private static MediaType validateConsumes(MediaType consumes) {
@@ -121,6 +122,31 @@ public final class DefaultHandler implements Handler
             throw new IllegalArgumentException(format(
                     "Handler's producing media type must not be \"{0}\". Maybe try \"{1}\"?",
                     invalid, ALL));
+        }
+    }
+    
+    /**
+     * Default implementation of {@link RequestHandler.Builder}.
+     * 
+     * @author Martin Andersson (webmaster at martinandersson.com)
+     */
+    static class Builder implements RequestHandler.Builder {
+        private final String m;
+        
+        Builder(String method) {
+            m = requireNonNull(method);
+        }
+        
+        @Override
+        public NextStep consumes(MediaType c) {
+            requireNonNull(c);
+            return p -> {
+                requireNonNull(p);
+                return l-> {
+                    requireNonNull(l);
+                    return new DefaultRequestHandler(m, c, p, l);
+                };
+            };
         }
     }
 }

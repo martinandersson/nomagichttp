@@ -77,7 +77,7 @@ class DefaultRequestTest
         return new DefaultRequest(
                 rh,
                 Map.of(),
-                Publishers.singleton(PooledByteBuffers.wrap(body, US_ASCII)),
+                Publishers.just(PooledByteBuffers.wrap(body, US_ASCII)),
                 Mockito.mock(ChannelOperations.class));
     }
 }

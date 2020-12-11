@@ -8,6 +8,7 @@ import java.util.List;
 import java.util.concurrent.Flow;
 import java.util.function.Function;
 
+import static alpha.nomagichttp.util.Publishers.just;
 import static java.lang.Long.MAX_VALUE;
 import static java.util.Arrays.stream;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -38,7 +39,7 @@ class LengthLimitedOpTest
                 .map(PooledByteBuffers::wrap)
                 .toArray(DefaultPooledByteBufferHolder[]::new);
         
-        LengthLimitedOp testee = new LengthLimitedOp(testeeMaxBytes, new ReplayPublisher<>(items));
+        LengthLimitedOp testee = new LengthLimitedOp(testeeMaxBytes, just(items));
         
         final List<Integer> sink = new ArrayList<>();
         testee.subscribe(new CollectIntFromHolderSubscriber(sink));

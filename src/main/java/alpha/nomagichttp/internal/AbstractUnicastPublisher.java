@@ -3,10 +3,10 @@ package alpha.nomagichttp.internal;
 import alpha.nomagichttp.message.ClosedPublisherException;
 import alpha.nomagichttp.message.PooledByteBufferHolder;
 import alpha.nomagichttp.message.Request;
+import alpha.nomagichttp.util.Publishers;
+import alpha.nomagichttp.util.Subscribers;
 import alpha.nomagichttp.util.Subscriptions;
 
-import java.util.Queue;
-import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.Flow;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Predicate;
@@ -14,7 +14,6 @@ import java.util.function.Predicate;
 import static alpha.nomagichttp.util.Subscribers.noopNew;
 import static alpha.nomagichttp.util.Subscriptions.canOnlyBeCancelled;
 import static java.lang.System.Logger.Level.DEBUG;
-import static java.lang.System.Logger.Level.ERROR;
 import static java.util.Objects.requireNonNull;
 
 /**
@@ -153,7 +152,7 @@ abstract class AbstractUnicastPublisher<T> implements Flow.Publisher<T>
      * items could have spawned an asynchronous but immediate item delivery
      * which in turn would - surprisingly enough for the publisher - not have
      * been delivered because the reference was still initializing. Secondly, as
-     * documented in {@link Request.Body}; if requesting from the subscriber
+     * documented in {@link Publishers}; if requesting from the subscriber
      * context (in this case; {@code Subscriber.onSubscribe()}), the thread must
      * return immediately without reentrancy or recursion.<p>
      * 
@@ -194,11 +193,11 @@ abstract class AbstractUnicastPublisher<T> implements Flow.Publisher<T>
         final Flow.Subscriber<? super T> newS = wrapper.get();
         
         LOG.log(DEBUG, () -> getClass().getSimpleName() + " has a new subscriber: " + newS);
-        SubscriptionProxy proxy = new SubscriptionProxy(newS);
+        Subscriptions.TurnOnProxy proxy = new OnCancelResetReference(newS);
         
         try {
             // Initialize subscriber
-            newS.onSubscribe(proxy);
+            Subscribers.signalOnSubscribeOrTerminate(newS, proxy);
         } catch (Throwable t) {
             // Attempt rollback (publisher could have closed or subscriber cancelled)
             boolean ignored = ref.compareAndSet(wrapper, T(ACCEPTING));
@@ -213,8 +212,8 @@ abstract class AbstractUnicastPublisher<T> implements Flow.Publisher<T>
             proxy.activate(newSubscription(newS));
         } else if (witness == CLOSED) {
             // Publisher called shutdown() during initialization
-            if (!proxy.cancelled()) {
-                signalErrorSafe(newS, new ClosedPublisherException());
+            if (!proxy.isCancelled()) {
+                Subscribers.signalErrorSafe(newS, new ClosedPublisherException());
             }
         } else if (witness != ACCEPTING && witness != NOT_REUSABLE) {
             throw new AssertionError("During initialization, only reset was expected. Saw: " + witness);
@@ -237,7 +236,7 @@ abstract class AbstractUnicastPublisher<T> implements Flow.Publisher<T>
         Subscriptions.CanOnlyBeCancelled tmp = canOnlyBeCancelled();
         newS.onSubscribe(tmp);
         if (!tmp.isCancelled()) {
-            signalErrorSafe(newS, new IllegalStateException(reason));
+            Subscribers.signalErrorSafe(newS, new IllegalStateException(reason));
         }
     }
     
@@ -374,7 +373,7 @@ abstract class AbstractUnicastPublisher<T> implements Flow.Publisher<T>
             return false;
         }
         
-        signalErrorSafe(s, t);
+        Subscribers.signalErrorSafe(s, t);
         return true;
     }
     
@@ -403,7 +402,7 @@ abstract class AbstractUnicastPublisher<T> implements Flow.Publisher<T>
             return false;
         }
         
-        signalErrorSafe(expected, t);
+        Subscribers.signalErrorSafe(expected, t);
         return true;
     }
     
@@ -506,16 +505,6 @@ abstract class AbstractUnicastPublisher<T> implements Flow.Publisher<T>
         return ref.updateAndGet(v -> predicate.test(v) ? newValue : v);
     }
     
-    protected static final void signalErrorSafe(Flow.Subscriber<?> target, Throwable t) {
-        try {
-            target.onError(t);
-        } catch (Throwable t2) {
-            LOG.log(ERROR,
-              "Subscriber.onError() returned exceptionally. " +
-              "This new error is only logged but otherwise ignored.", t2);
-        }
-    }
-    
     private final class IsInitializing implements Flow.Subscriber<T>
     {
         private final Flow.Subscriber<? super T> who;
@@ -541,57 +530,19 @@ abstract class AbstractUnicastPublisher<T> implements Flow.Publisher<T>
             throw new UnsupportedOperationException(); }
     }
     
-    private final class SubscriptionProxy implements Flow.Subscription
+    private final class OnCancelResetReference extends Subscriptions.TurnOnProxy
     {
         private final Flow.Subscriber<? super T> owner;
-        private volatile Flow.Subscription delegate;
-        private final Queue<Long> delayedDemand;
-        private boolean cancelled;
         
-        SubscriptionProxy(Flow.Subscriber<? super T> owner) {
+        OnCancelResetReference(Flow.Subscriber<? super T> owner) {
             assert owner.getClass() != IsInitializing.class;
             this.owner = owner;
-            this.delegate = null;
-            this.delayedDemand = new ConcurrentLinkedQueue<>();
-        }
-        
-        void activate(Flow.Subscription d) {
-            delegate = d;
-            drainRequestSignalsTo(d);
-        }
-        
-        boolean cancelled() {
-            return cancelled;
-        }
-        
-        @Override
-        public void request(long n) {
-            Flow.Subscription d;
-            if ((d = delegate) != null) {
-                // we have a reference so proxy is activated and the delegate is used
-                d.request(n);
-            } else {
-                // enqueue the demand
-                delayedDemand.add(n);
-                if ((d = delegate) != null) {
-                    // but can still activate concurrently so drain what we've just added
-                    drainRequestSignalsTo(d);
-                }
-            }
-        }
-        
-        private void drainRequestSignalsTo(Flow.Subscription ref) {
-            Long v;
-            while ((v = delayedDemand.poll()) != null) {
-                ref.request(v);
-            }
         }
         
         @Override
         public void cancel() {
-            cancelled = true;
             if (removeSubscriberIfSameAs(owner)) {
-                delegate.cancel();
+                super.cancel();
             }
         }
     }

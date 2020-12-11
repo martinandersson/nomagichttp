@@ -1,18 +1,13 @@
 package alpha.nomagichttp.util;
 
-import java.net.http.HttpRequest;
+import java.util.Queue;
+import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.Flow;
 
+import static java.util.Objects.requireNonNull;
+
 /**
- * Utility class for constructing instances of {@link Flow.Subscription}.<p>
- * 
- * Please note that the JDK has some pretty neat utilities in
- * {@link HttpRequest.BodyPublishers}.<p>
- * 
- * All publishers created by this class will not - and could not even
- * realistically - enforce <a
- * href="https://github.com/reactive-streams/reactive-streams-jvm/blob/v1.0.3/README.md">
- * Reactive Streams §2.12</a>. I.e., subscribers can be re-used.<p>
+ * Utility class for constructing instances of {@link Flow.Subscription}.
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  */
@@ -23,54 +18,64 @@ public final class Subscriptions
     }
     
     /**
-     * Returns a subscription with all NOP methods except {@code cancel()} which
-     * moves the state of the subscription to cancelled, retrievable using
-     * method {@code isCancelled()}.<p>
+     * Returns a subscription where the {@code request()} method implementation
+     * is NOP. The cancelled state can be queried using method {@code
+     * isCancelled()}.<p>
      * 
-     * Useful for publishers who need to <strong>immediately signal error to a
-     * new subscriber</strong> but who also - for better or worse - desire to
-     * comply with the following rules of an <a
-     * href="https://github.com/reactive-streams/reactive-streams-jvm/issues/487">
-     * overzealous Reactive Streams specification</a>:
+     * This class is useful to
+     * <a href="https://github.com/reactive-streams/reactive-streams-jvm/blob/v1.0.3/README.md">
+     * Reactive Streams</a> specification-compliant publisher implementations
+     * that need to <i>immediately signal a completion signal to a new
+     * subscriber</i>, for example because the subscriber is rejected or the
+     * publisher is empty.<p>
+     * 
+     * A few aspects of the Reactive Streams specification comes into play (
+     * <a href="https://github.com/reactive-streams/reactive-streams-jvm/issues/487">GitHub issue</a>):
      * 
      * <ol>
-     *   <li>Rule §1.9 mandates that the publisher <i>always</i> hands over a
-     *       subscription instance to the subscriber. So, there's that; one
-     *       needs to exist.</li>
-     *   <li>Of course, the subscriber has no idea about future intentions of
-     *       the publisher and is free to <i>cancel</i> the subscription. And if
-     *       the subscriber does cancel the subscription, rules §1.8 and §3.12
-     *       mandates that all signals must stop - obviously the sooner the
-     *       better.</li>
+     *   <li>Rule §1.9 requires the publisher to <i>always</i> call {@code
+     *       Subscriber.onSubscribe()} with a subscription object.</li>
+     *   <li>The subscriber has no idea about future intentions of the publisher
+     *       and is free to immediately <i>cancel</i> the received subscription
+     *       object.</li>
+     *    <li>If the subscriber does cancel the subscription, the publisher must
+     *       stop interacting with the subscriber, obviously the sooner the
+     *       better (§1.8, §3.12).</li>
      * </ol>
      * 
-     * Example publisher implementation:
+     * Example {@code Publisher.subscribe()} implementation (with semantics
+     * as specified in {@link Publishers}):
      * <pre>{@code
      *   @Override
-     *   public void subscribe(Flow.Subscriber<? super T> subscriber) {
-     *       if (someBadStateIsTrue) {
+     *   public void subscribe(Flow.Subscriber<? super T> s) {
+     *       if (mustReject) {
      *           CanOnlyBeCancelled temp = Subscriptions.canOnlyBeCancelled();
-     *           subscriber.onSubscribe(temp);
+     *           Subscribers.signalOnSubscribeOrTerminate(s, temp);
      *           if (!temp.isCancelled()) {
-     *               subscriber.onError(new IllegalStateException());
+     *               Subscribers.signalErrorSafe(s, new IllegalStateException("rejected"));
      *           }
      *       } else {
-     *           subscriber.onSubscribe(new MyRealSubscription());
+     *           TurnOnProxy proxy = Subscriptions.turnOnProxy();
+     *           Subscribers.signalOnSubscribeOrTerminate(s, proxy);
+     *           if (!proxy.isCancelled()) {
+     *               proxy.activate(new MyRealSubscription());
+     *           }
      *       }
      *   }
      * }</pre>
-     *
+     * 
      * Note, it still isn't possible to be fully compliant with the
-     * specification because rule 3.9
-     * stipulates that a call to {@code Subscription.request} from the
-     * subscriber must prompt an immediate {@code IllegalArgumentException} to
-     * be <i>signalled downstream</i> (not thrown). Which, is a "terminal" event
-     * (rule §1.7) and so, the publisher would no longer have the right to signal the
-     * original error. The current design favors simplicity and leaves the
+     * specification. §3.9 stipulates that a call to {@code
+     * Subscription.request} from the subscriber with a bad value <i>must</i>
+     * prompt an immediate {@code IllegalArgumentException} to be signalled back
+     * (not thrown), which is a "terminal" event (§1.7) and so, the publisher
+     * would in this case no longer have the right to signal the originally
+     * intended event. The current design favors simplicity and leaves the
      * {@code request()} method NOP.<p>
      * 
      * @return a subscription that can only be cancelled
      */
+    // TODO: Suppress IllegalArgumentException but do deliver IllegalStateException
     public static CanOnlyBeCancelled canOnlyBeCancelled() {
         return new CanOnlyBeCancelled() {
             private volatile boolean cancelled;
@@ -80,8 +85,118 @@ public final class Subscriptions
         };
     }
     
+    /**
+     * A subscription object with a NOP {@code request()} method implementation.
+     * The cancelled state can be queried using {@code isCancelled()}.<p>
+     *
+     * @see #canOnlyBeCancelled()
+     */
     public interface CanOnlyBeCancelled extends Flow.Subscription {
+        /**
+         * Returns {@code true} if this subscription has been cancelled,
+         * otherwise {@code false}.
+         *
+         * @return {@code true} if this subscription has been cancelled,
+         * otherwise {@code false}
+         */
         boolean isCancelled();
+    }
+    
+    /**
+     * Returns a dormant subscription object that delegates to a delegate only
+     * after {@link TurnOnProxy#activate(Flow.Subscription)} is called. The
+     * cancelled state can be queried using {@link
+     * TurnOnProxy#isCancelled()}.<p>
+     * 
+     * Useful for publisher implementations that wish to supply a dormant
+     * subscription to {@code Subscriber.onSubscribe()}. This eliminates the
+     * risk of subscriber reentrancy or other surprises that could have been a
+     * result of an immediately request for demand; for example, demand from a
+     * subscriber which hasn't yet been fully installed on the publisher's
+     * side.<p>
+     * 
+     * See {@link #canOnlyBeCancelled()} for an example.
+     * 
+     * @return a dormant subscription that can be activated
+     */
+    public static TurnOnProxy turnOnProxy() {
+        class NotSpecialized extends TurnOnProxy {}
+        return new NotSpecialized();
+    }
+    
+    /**
+     * A dormant subscription object that delegates to a delegate only after
+     * {@link #activate(Flow.Subscription)} is called. The cancelled state
+     * can be queried using {@link #isCancelled()}.
+     * 
+     * @see #turnOnProxy() 
+     */
+    public static abstract class TurnOnProxy implements Flow.Subscription
+    {
+        private final Queue<Long> delayedDemand = new ConcurrentLinkedQueue<>();
+        private volatile Flow.Subscription delegate;
+        private boolean cancelled;
+        
+        /**
+         * Activate the proxy; all future interactions will be delegated to the
+         * given delegate. Any demand that was requested during proxy
+         * dormancy will be synchronously drained and pushed to the delegate by
+         * this operation.<p>
+         * 
+         * Please note that it is advisable to first check the {@link
+         * #isCancelled() cancelled} state before activating the proxy. 
+         * 
+         * @param delegate delegate
+         * 
+         * @throws NullPointerException if {@code d} is {@code null}
+         */
+        public final void activate(final Flow.Subscription delegate) {
+            this.delegate = requireNonNull(delegate);
+            drainRequestSignalsTo(delegate);
+        }
+        
+        /**
+         * Returns {@code true} if this subscription has been cancelled,
+         * otherwise {@code false}.
+         *
+         * @return {@code true} if this subscription has been cancelled,
+         * otherwise {@code false}
+         */
+        public final boolean isCancelled() {
+            return cancelled;
+        }
+        
+        @Override
+        public final void request(long n) {
+            Flow.Subscription d;
+            if ((d = delegate) != null) {
+                // we have a reference so proxy is activated and the delegate is used
+                d.request(n);
+            } else {
+                // enqueue the demand
+                delayedDemand.add(n);
+                if ((d = delegate) != null) {
+                    // but can still activate concurrently so drain what we've just added
+                    drainRequestSignalsTo(d);
+                }
+            }
+        }
+        
+        @Override
+        public void cancel() {
+            cancelled = true;
+            Flow.Subscription d = delegate;
+            if (d != null) {
+                d.cancel();
+            }
+        }
+        
+        private void drainRequestSignalsTo(Flow.Subscription d) {
+            Long v;
+            while ((v = delayedDemand.poll()) != null) {
+                d.request(v);
+            }
+        }
     }
     
     /**

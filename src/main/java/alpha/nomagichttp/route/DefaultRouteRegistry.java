@@ -18,22 +18,24 @@ public class DefaultRouteRegistry implements RouteRegistry
     private final ConcurrentMap<String, Route> map = new ConcurrentHashMap<>();
     
     @Override
-    public void add(Route route, String identity) throws RouteCollisionException {
+    public void add(Route route) {
         Route old;
-        if ((old = map.putIfAbsent(identity, route)) != null) {
+        if ((old = map.putIfAbsent(route.identity(), route)) != null) {
             throw new RouteCollisionException(format(
-                    "The specified route \"{0}\" is equivalent to an already added route \"{1}\".",
+                    "Route \"{0}\" is equivalent to an already added route \"{1}\".",
                     route, old));
         }
+        
+        testForAmbiguity(route);
     }
     
     @Override
-    public Route remove(String routeIdentity) {
-        return map.remove(routeIdentity);
+    public Route remove(String id) {
+        return map.remove(id);
     }
     
     @Override
-    public Route.Match lookup(String requestTarget) throws NoRouteFoundException {
+    public Route.Match lookup(String requestTarget) {
         int query = requestTarget.indexOf('?');
         
         // Strip the query part
@@ -55,5 +57,20 @@ public class DefaultRouteRegistry implements RouteRegistry
                 .findAny();
         
         return m.orElseThrow(() -> new NoRouteFoundException(requestTarget));
+    }
+    
+    private void testForAmbiguity(Route route) {
+        map.forEach((i, r) -> {
+            if (r == route) {
+                return;
+            }
+            
+            if (r.matches(route.identity()) != null) {
+                remove(route);
+                throw new AmbiguousRouteCollisionException(format(
+                    "Route \"{0}\" is effectively equivalent to an already added route \"{1}\".",
+                    route, r));
+            }
+        });
     }
 }

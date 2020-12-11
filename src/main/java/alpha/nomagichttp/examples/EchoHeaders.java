@@ -1,13 +1,12 @@
 package alpha.nomagichttp.examples;
 
-import alpha.nomagichttp.Server;
-import alpha.nomagichttp.handler.Handler;
+import alpha.nomagichttp.HttpServer;
+import alpha.nomagichttp.handler.RequestHandler;
 import alpha.nomagichttp.message.Response;
-import alpha.nomagichttp.message.ResponseBuilder;
 
 import java.io.IOException;
 
-import static alpha.nomagichttp.handler.Handlers.GET;
+import static alpha.nomagichttp.handler.RequestHandlers.GET;
 import static alpha.nomagichttp.route.Routes.route;
 
 /**
@@ -20,22 +19,18 @@ public class EchoHeaders
     private static final int PORT = 8080;
     
     public static void main(String... ignored) throws IOException {
-        Handler h = GET().apply(req -> {
-            // The response builder allows setting any arbitrary status-line.
-            // The static method "ResponseBuilder.ok()" returns a builder with
-            // the status-line already populated.
-            ResponseBuilder b = ResponseBuilder.ok();
+        RequestHandler h = GET().apply(req -> {
+            // Response.builder() allows setting any arbitrary status-line,
+            // headers and body. The builder class has static methods that
+            // return builders pre-populated with commonly used status-lines.
+            Response.Builder b = Response.Builder.ok(); // 200 OK
             
-            // Copy all request headers to the response headers
-            req.headers().map().forEach(b::header);
-            
-            // The body is the last part and also builds/finalizes the response object
-            Response res = b.noBody();
-            
-            return res.asCompletedStage();
+            return b.addHeaders(req.headers())
+                    .build()
+                    .asCompletedStage();
         });
         
-        Server.with(route("/echo", h)).start(PORT);
+        HttpServer.with(route("/echo", h)).start(PORT);
         System.out.println("Listening on port " + PORT + ".");
     }
 }

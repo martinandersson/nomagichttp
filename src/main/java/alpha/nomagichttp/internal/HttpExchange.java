@@ -1,7 +1,7 @@
 package alpha.nomagichttp.internal;
 
-import alpha.nomagichttp.ExceptionHandler;
-import alpha.nomagichttp.handler.Handler;
+import alpha.nomagichttp.handler.ErrorHandler;
+import alpha.nomagichttp.handler.RequestHandler;
 import alpha.nomagichttp.message.Response;
 import alpha.nomagichttp.message.Responses;
 import alpha.nomagichttp.route.Route;
@@ -44,8 +44,8 @@ final class HttpExchange
      */
     
     private DefaultRequest request;
-    private Handler handler;
-    private ExceptionHandlers eh;
+    private RequestHandler handler;
+    private ErrorHandlers eh;
     
     HttpExchange(DefaultServer server, ChannelOperations child) {
         this(server, child, new ChannelByteBufferPublisher(child));
@@ -66,7 +66,7 @@ final class HttpExchange
     
     void begin() {
         RequestHeadSubscriber rhs = new RequestHeadSubscriber(
-                server.getServerConfig().maxRequestHeadSize());
+                server.getConfig().maxRequestHeadSize());
         
         bytes.subscribe(rhs);
         
@@ -79,9 +79,9 @@ final class HttpExchange
     
     private void initialize(RequestHead head) {
         Route.Match route = findRoute(head);
-        // This order is actually specified in javadoc of ExceptionHandler#apply
+        // This order is actually specified in javadoc of ErrorHandler#apply
         request = createRequest(head, route);
-        handler = findHandler(head, route);
+        handler = findRequestHandler(head, route);
     }
     
     private Route.Match findRoute(RequestHead rh) {
@@ -92,8 +92,8 @@ final class HttpExchange
         return new DefaultRequest(rh, rm.parameters(), bytes, child);
     }
     
-    private static Handler findHandler(RequestHead rh, Route.Match rm) {
-        Handler h = rm.route().lookup(
+    private static RequestHandler findRequestHandler(RequestHead rh, Route.Match rm) {
+        RequestHandler h = rm.route().lookup(
                 rh.method(),
                 contentType(rh.headers()).orElse(null),
                 accepts(rh.headers()));
@@ -150,78 +150,84 @@ final class HttpExchange
                     new HttpExchange(server, child, bytes).begin();
                 } else if (child.isOpenForReading()) {
                     // See SubscriberAsStageOp.asCompletionStage(); t2 can only be an upstream error
-                    LOG.log(WARNING, "Expected someone to have closed the channel's read stream already.");
+                    LOG.log(WARNING, "Expected someone to have closed the child channel's read stream already.");
                     child.orderlyShutdownInput();
                 }
             });
+            
+            return;
+        }
+        
+        final Throwable unpacked = unpackCompletionException(exc);
+        
+        if (unpacked instanceof RequestHeadSubscriber.ClientAbortedException) {
+            LOG.log(DEBUG, "Child channel aborted the HTTP exchange, will not begin a new one.");
         } else if (child.isOpenForWriting())  {
             if (eh == null) {
-                eh = new ExceptionHandlers();
+                eh = new ErrorHandlers();
             }
-            eh.resolve(exc)
+            eh.resolve(unpacked)
               .thenCompose(this::writeResponseToChannel)
               // TODO: Possible recursion. Unroll.
               .whenComplete(this::finish);
         } else {
             LOG.log(DEBUG, () ->
-                "HTTP exchange finished exceptionally and channel is closed. " +
+                "HTTP exchange finished exceptionally and child channel is closed for writing. " +
                 "Assuming reason was logged already.");
         }
     }
     
-    private class ExceptionHandlers {
-        private final List<Supplier<ExceptionHandler>> factories;
-        private List<ExceptionHandler> constructed;
+    private class ErrorHandlers {
+        private final List<Supplier<ErrorHandler>> factories;
+        private List<ErrorHandler> constructed;
         private Throwable prev;
         private int attemptCount;
         
-        ExceptionHandlers() {
-            this.factories = server.getExceptionHandlers();
+        ErrorHandlers() {
+            this.factories = server.getErrorHandlers();
             this.constructed = null;
             this.attemptCount = 0;
         }
         
         CompletionStage<Response> resolve(Throwable t) {
-            final Throwable unpacked = unpackCompletionException(t);
-            
             if (prev != null) {
-                assert prev != unpacked;
-                unpacked.addSuppressed(prev);
+                assert prev != t;
+                t.addSuppressed(prev);
             }
-            prev = unpacked;
+            prev = t;
             
             if (factories.isEmpty()) {
-                return usingDefault(unpacked);
+                return usingDefault(t);
             }
             
-            if (++attemptCount > server.getServerConfig().maxErrorRecoveryAttempts()) {
+            if (++attemptCount > server.getConfig().maxErrorRecoveryAttempts()) {
                 LOG.log(WARNING, "Error recovery attempts depleted, will use default handler.");
-                return usingDefault(unpacked);
+                return usingDefault(t);
             }
             
             LOG.log(DEBUG, () -> "Attempting error recovery #" + attemptCount);
-            return usingHandlers(unpacked);
+            return usingHandlers(t);
         }
         
         private CompletionStage<Response> usingDefault(Throwable t) {
             try {
-                return ExceptionHandler.DEFAULT.apply(t, request, handler);
+                return ErrorHandler.DEFAULT.apply(t, request, handler);
             } catch (Throwable next) {
                 // Do not next.addSuppressed(unpacked); the first thing DEFAULT did was to log unpacked.
-                LOG.log(ERROR, "Default exception handler failed.", next);
+                LOG.log(ERROR, "Default error handler failed.", next);
                 return Responses.internalServerError().asCompletedStage();
             }
         }
         
         private CompletionStage<Response> usingHandlers(Throwable t) {
             for (int i = 0; i < factories.size(); ++i) {
-                final ExceptionHandler h = cacheOrNew(i);
+                final ErrorHandler h = cacheOrNew(i);
                 try {
                     return requireNonNull(h.apply(t, request, handler));
                 } catch (Throwable next) {
                     if (t != next) {
                         // New fail
-                        return resolve(next);
+                        return resolve(unpackCompletionException(next));
                     } // else continue; Handler opted out
                 }
             }
@@ -230,8 +236,8 @@ final class HttpExchange
             return usingDefault(t);
         }
         
-        private ExceptionHandler cacheOrNew(int handlerIndex) {
-            final ExceptionHandler h;
+        private ErrorHandler cacheOrNew(int handlerIndex) {
+            final ErrorHandler h;
             
             if (constructed == null) {
                 constructed = new ArrayList<>();

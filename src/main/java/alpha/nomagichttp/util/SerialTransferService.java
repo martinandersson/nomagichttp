@@ -1,7 +1,8 @@
-package alpha.nomagichttp.internal;
+package alpha.nomagichttp.util;
 
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Consumer;
+import java.util.function.Function;
 import java.util.function.Supplier;
 
 import static java.lang.Long.MAX_VALUE;
@@ -108,11 +109,11 @@ import static java.util.Objects.requireNonNull;
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  */
-final class SerialTransferService<T>
+public final class SerialTransferService<T>
 {
     private static final int FINISHED = -1;
     
-    private final Supplier<? extends T> from;
+    private final Function<SerialTransferService<T>, ? extends T> from;
     private final Consumer<? super T> to;
     private final AtomicLong demand;
     // #before is safely published through volatile init and subsequent read of
@@ -131,8 +132,37 @@ final class SerialTransferService<T>
      * 
      * @throws NullPointerException if {@code from} or {@code to} is {@code null}
      */
-    SerialTransferService(Supplier<? extends T> from, Consumer<? super T> to) {
+    public SerialTransferService(Supplier<? extends T> from, Consumer<? super T> to) {
+        this(ignored -> from.get(), to, null);
+    }
+    
+    /**
+     * Constructs a {@code SerialTransferService}.
+     * 
+     * @param from  item supplier (will receive {@code this} service as argument)
+     * @param to    item consumer
+     * 
+     * @throws NullPointerException if {@code from} or {@code to} is {@code null}
+     */
+    public SerialTransferService(Function<SerialTransferService<T>, ? extends T> from, Consumer<? super T> to) {
         this(from, to, null);
+    }
+    
+    /**
+     * Constructs a {@code SerialTransferService}.
+     *
+     * The before-first-delivery callback is called exactly once, serially
+     * within the scope of the first delivery just before the consumer receives
+     * the item.
+     *
+     * @param from  item supplier
+     * @param to    item consumer
+     * @param beforeFirstDelivery callback (optional; may be {@code null})
+     *
+     * @throws NullPointerException if {@code from} or {@code to} is {@code null}
+     */
+    public SerialTransferService(Supplier<? extends T> from, Consumer<? super T> to, Runnable beforeFirstDelivery) {
+        this(ignored -> from.get(), to, beforeFirstDelivery);
     }
     
     /**
@@ -142,13 +172,13 @@ final class SerialTransferService<T>
      * within the scope of the first delivery just before the consumer receives
      * the item.
      * 
-     * @param from  item supplier
+     * @param from  item supplier (will receive {@code this} service as argument)
      * @param to    item consumer
-     * @param beforeFirstDelivery callback (optional, may be {@code null})
+     * @param beforeFirstDelivery callback (optional; may be {@code null})
      * 
      * @throws NullPointerException if {@code from} or {@code to} is {@code null}
      */
-    SerialTransferService(Supplier<? extends T> from, Consumer<? super T> to, Runnable beforeFirstDelivery) {
+    public SerialTransferService(Function<SerialTransferService<T>, ? extends T> from, Consumer<? super T> to, Runnable beforeFirstDelivery) {
         this.from   = requireNonNull(from);
         this.to     = requireNonNull(to);
         this.before = beforeFirstDelivery;
@@ -166,7 +196,7 @@ final class SerialTransferService<T>
      * 
      * @throws IllegalArgumentException if {@code n} is less than {@code 1}
      */
-    void increaseDemand(long n) {
+    public void increaseDemand(long n) {
         if (demand.get() == FINISHED) {
             return;
         }
@@ -175,9 +205,15 @@ final class SerialTransferService<T>
             throw new IllegalArgumentException("Less than 1: " + n);
         }
         
-        long prev = demand.getAndUpdate(c ->
+        long prev = demand.getAndUpdate(v -> {
+            if (v == FINISHED || v == MAX_VALUE) {
                 // keep flags unmodified
-                c == FINISHED || c == MAX_VALUE ? c : c + 1);
+                return v;
+            }
+            long r = v + n;
+            // Cap at MAX_VALUE
+            return r < 0 ? MAX_VALUE : r;
+        });
         
         // shouldn't matter but if we have no reason to tryTransfer() why bother
         if (prev != FINISHED) {
@@ -198,14 +234,14 @@ final class SerialTransferService<T>
      * A currently running transfer is not aborted and will run to
      * completion.<p>
      * 
-     * The effect is immediate in a single-threaded environment (no more
-     * deliveries after this method returns) but potentially delayed in a
-     * multi-threaded environment (at most one delivery "extra" may occur after
-     * this method returns).<p>
+     * The effect is immediate if called synchronously from inside the service
+     * itself (item supplier or consumer) but potentially delayed if called
+     * asynchronously (at most one delivery "extra" may occur after this method
+     * has returned).<p>
      * 
      * @return a successful flag (see javadoc)
      */
-    boolean finish() {
+    public boolean finish() {
         long curr; boolean success = false;
         while ((curr = demand.get()) != FINISHED && !(success = demand.compareAndSet(curr, FINISHED))) {
             // try again
@@ -230,7 +266,7 @@ final class SerialTransferService<T>
      * 
      * @throws NullPointerException if {@code andThen} is {@code null}
      */
-    boolean finish(Runnable andThen) {
+    public boolean finish(Runnable andThen) {
         requireNonNull(andThen);
         final boolean success = finish();
         if (success) {
@@ -254,7 +290,7 @@ final class SerialTransferService<T>
      * 
      * @see SerialTransferService
      */
-    void tryTransfer() {
+    public void tryTransfer() {
         transferSerially.run();
     }
     
@@ -272,7 +308,7 @@ final class SerialTransferService<T>
             return;
         }
         
-        final T item = from.get();
+        final T item = from.apply(this);
         if (item == null) {
             // Supplier is out, we're out
             return;

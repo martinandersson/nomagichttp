@@ -1,5 +1,6 @@
 package alpha.nomagichttp.internal;
 
+import alpha.nomagichttp.message.ClosedPublisherException;
 import alpha.nomagichttp.message.PooledByteBufferHolder;
 import alpha.nomagichttp.message.Request;
 
@@ -16,10 +17,14 @@ import static java.lang.System.Logger.Level.ERROR;
 import static java.lang.System.Logger.Level.WARNING;
 
 /**
- * A publisher of bytebuffers read from an asynchronous socket channel.<p>
+ * A unicast publisher of bytebuffers read from an asynchronous socket
+ * channel.<p>
  * 
  * Many aspects of how to consume published bytebuffers has been documented in
- * {@link Request.Body} and {@link PooledByteBufferHolder}.
+ * {@link Request.Body} and {@link PooledByteBufferHolder}.<p>
+ * 
+ * When the channel's end-of-stream is reached, the active subscriber will be
+ * signalled a {@link ClosedPublisherException} with the message "EOS".
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  */
@@ -72,6 +77,7 @@ final class ChannelByteBufferPublisher implements Flow.Publisher<DefaultPooledBy
             return null;
         } else if (b == EOS) {
             // Channel dried up
+            subscriber.error(new ClosedPublisherException("EOS"));
             close();
             return null;
         } else if (!b.hasRemaining()) {
@@ -83,10 +89,11 @@ final class ChannelByteBufferPublisher implements Flow.Publisher<DefaultPooledBy
             return null;
         }
         
-        return new DefaultPooledByteBufferHolder(b, readCountIgnored -> afterSubscriber(b));
+        return new DefaultPooledByteBufferHolder(
+                b, readCountIgnored -> afterSubscriberPipeline(b));
     }
     
-    private void afterSubscriber(ByteBuffer b) {
+    private void afterSubscriberPipeline(ByteBuffer b) {
         if (b.hasRemaining()) {
             putReadableFirst(b);
         } else {

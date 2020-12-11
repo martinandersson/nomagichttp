@@ -1,8 +1,8 @@
 package alpha.nomagichttp.examples;
 
-import alpha.nomagichttp.Server;
-import alpha.nomagichttp.handler.Handler;
-import alpha.nomagichttp.handler.Handlers;
+import alpha.nomagichttp.HttpServer;
+import alpha.nomagichttp.handler.RequestHandler;
+import alpha.nomagichttp.handler.RequestHandlers;
 import alpha.nomagichttp.route.Route;
 import alpha.nomagichttp.route.Routes;
 
@@ -16,14 +16,14 @@ import java.io.IOException;
 public class HelloWorldConsole {
     public static void main(String... ignored) throws IOException {
         /*
-         * Utility methods from utility classes (Handlers, Routes, ...) cater
-         * for "simple" use cases and should often be statically imported. Here,
-         * we do not inline or statically import for learning purposes.
+         * Utility methods from utility classes (RequestHandlers, Routes, ...)
+         * cater for "simple" use cases and should often be statically imported.
+         * Here, we do not inline or statically import for learning purposes.
          */
         
         // This handler reacts to requests using the HTTP verb/method "GET".
         // The handler will execute a command and return "202 Accepted".
-        Handler h = Handlers.GET().run(() ->
+        RequestHandler h = RequestHandlers.GET().run(() ->
                 System.out.println("Hello, World!"));
         
         // We bind the handler to the server root "/".
@@ -31,8 +31,8 @@ public class HelloWorldConsole {
         Route r = Routes.route("/", h);
         
         // Not supplying a port makes the system pick one
-        Server s = Server.with(r).start();
+        HttpServer s = HttpServer.with(r).start();
         
-        System.out.println("Listening on port " + s.getPort() + ".");
+        System.out.println("Listening on port " + s.getLocalAddress().getPort() + ".");
     }
 }

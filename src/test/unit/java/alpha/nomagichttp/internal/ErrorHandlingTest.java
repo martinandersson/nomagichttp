@@ -1,11 +1,10 @@
 package alpha.nomagichttp.internal;
 
-import alpha.nomagichttp.ExceptionHandler;
-import alpha.nomagichttp.Server;
-import alpha.nomagichttp.handler.Handler;
-import alpha.nomagichttp.handler.Handlers;
+import alpha.nomagichttp.HttpServer;
+import alpha.nomagichttp.handler.ErrorHandler;
+import alpha.nomagichttp.handler.RequestHandler;
+import alpha.nomagichttp.handler.RequestHandlers;
 import alpha.nomagichttp.message.Response;
-import alpha.nomagichttp.message.ResponseBuilder;
 import alpha.nomagichttp.route.NoRouteFoundException;
 import alpha.nomagichttp.route.Route;
 import alpha.nomagichttp.test.Logging;
@@ -18,33 +17,31 @@ import java.util.concurrent.CompletionStage;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Supplier;
 
-import static alpha.nomagichttp.ServerConfig.DEFAULT;
-import static alpha.nomagichttp.handler.Handlers.noop;
+import static alpha.nomagichttp.HttpServer.Config.DEFAULT;
+import static alpha.nomagichttp.handler.RequestHandlers.noop;
 import static alpha.nomagichttp.internal.ClientOperations.CRLF;
 import static alpha.nomagichttp.route.Routes.route;
 import static java.lang.System.Logger.Level.ALL;
-import static java.util.Arrays.stream;
 import static java.util.Collections.singleton;
 import static java.util.concurrent.CompletableFuture.failedFuture;
-import static java.util.stream.Collectors.toList;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * End-to-end tests of a server with exception handlers.
+ * End-to-end tests of a server with error handlers.
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  */
-class ExceptionHandlingTest
+class ErrorHandlingTest
 {
     private static final String
-            REQ_ROOT      = "GET / HTTP/1.1"    + CRLF + CRLF + CRLF,
-            REQ_NOT_FOUND = "GET /404 HTTP/1.1" + CRLF + CRLF + CRLF;
+            REQ_ROOT      = "GET / HTTP/1.1"    + CRLF + CRLF,
+            REQ_NOT_FOUND = "GET /404 HTTP/1.1" + CRLF + CRLF;
     
-    Server server;
+    HttpServer server;
     
     @BeforeAll
     static void setLogging() {
-        Logging.setLevel(ExceptionHandlingTest.class, ALL);
+        Logging.setLevel(ErrorHandlingTest.class, ALL);
     }
     
     @AfterEach
@@ -55,7 +52,7 @@ class ExceptionHandlingTest
     }
     
     @Test
-    void not_found_default() throws IOException, InterruptedException {
+    void not_found_default() throws IOException {
         String res = createServerAndClient().writeRead(REQ_NOT_FOUND);
         assertThat(res).isEqualTo(
             "HTTP/1.1 404 Not Found" + CRLF +
@@ -63,15 +60,15 @@ class ExceptionHandlingTest
     }
     
     @Test
-    void not_found_custom() throws IOException, InterruptedException {
-        ExceptionHandler custom = (exc, req, han) -> {
+    void not_found_custom() throws IOException {
+        ErrorHandler custom = (exc, req, han) -> {
             if (exc instanceof NoRouteFoundException) {
-                return new ResponseBuilder()
+                return Response.builder()
                         .httpVersion("HTTP/1.1")
                         .statusCode(123)
                         .reasonPhrase("Custom Not Found!")
-                        .mustCloseAfterWrite()
-                        .noBody()
+                        .mustCloseAfterWrite(true)
+                        .build()
                         .asCompletedStage();
             }
             throw exc;
@@ -100,18 +97,18 @@ class ExceptionHandlingTest
     {
         AtomicInteger c = new AtomicInteger();
         
-        Handler h1 = Handlers.GET().supply(() -> {
+        RequestHandler h1 = RequestHandlers.GET().supply(() -> {
             if (c.incrementAndGet() < 3) {
                 return response.get();
             }
             
-            return ResponseBuilder.ok()
+            return Response.Builder.ok()
                     .header("N", Integer.toString(c.get()))
-                    .noBody()
+                    .build()
                     .asCompletedStage();
         });
         
-        ExceptionHandler retry = (t, r, h2) -> h2.logic().apply(r);
+        ErrorHandler retry = (t, r, h2) -> h2.logic().apply(r);
         
         String res = createServerAndClient(h1, retry).writeRead(REQ_ROOT);
         assertThat(res).isEqualTo(
@@ -120,18 +117,22 @@ class ExceptionHandlingTest
             "Content-Length: 0" + CRLF + CRLF);
     }
     
-    private ClientOperations createServerAndClient(ExceptionHandler... onError) throws IOException {
+    private ClientOperations createServerAndClient() throws IOException {
+        return createServerAndClient(null);
+    }
+    
+    private ClientOperations createServerAndClient(ErrorHandler onError) throws IOException {
         return createServerAndClient(noop(), onError);
     }
     
-    private ClientOperations createServerAndClient(Handler handler, ExceptionHandler... onError) throws IOException {
+    private ClientOperations createServerAndClient(RequestHandler handler, ErrorHandler onError) throws IOException {
         Iterable<Route> r = singleton(route("/", handler));
         
-        Iterable<Supplier<ExceptionHandler>> eh = stream(onError)
-                .map(e -> (Supplier<ExceptionHandler>) () -> e)
-                .collect(toList());
-    
-        server = Server.with(DEFAULT, r, eh).start();
-        return new ClientOperations(server.getPort());
+        @SuppressWarnings("unchecked")
+        Supplier<ErrorHandler>[] eh = onError == null ?
+                new Supplier[0] : new Supplier[]{ () -> onError };
+        
+        server = HttpServer.with(DEFAULT, r, eh).start();
+        return new ClientOperations(server.getLocalAddress().getPort());
     }
 }

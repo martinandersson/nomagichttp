@@ -7,7 +7,7 @@ import org.mockito.Mockito;
 import java.util.Map;
 import java.util.logging.Handler;
 
-import static alpha.nomagichttp.handler.Handlers.noop;
+import static alpha.nomagichttp.handler.RequestHandlers.noop;
 import static java.util.Arrays.stream;
 import static java.util.Map.of;
 import static java.util.logging.Level.WARNING;
@@ -22,11 +22,11 @@ import static org.mockito.ArgumentMatchers.argThat;
  */
 class RouteMatchesTest
 {
-    RouteBuilder builder;
+    Route.Builder builder;
     
     @Test
     void simple_match_1() {
-        builder = new RouteBuilder("/");
+        builder = Route.builder("/");
         
         assertMatches("/", of());
         
@@ -35,7 +35,7 @@ class RouteMatchesTest
     
     @Test
     void simple_match_2() {
-        builder = new RouteBuilder("/a/b/c");
+        builder = Route.builder("/a/b/c");
         
         assertMatches("/a/b/c", of());
         
@@ -53,25 +53,25 @@ class RouteMatchesTest
     
     @Test
     void simple_match_single_slash_tolerant_1() {
-        builder = new RouteBuilder("/a/"); // <--slash
+        builder = Route.builder("/a/"); // <--slash
         assertMatches("/a", of());         // <-- no slash
     }
     
     @Test
     void simple_match_single_slash_tolerant_2() {
-        builder = new RouteBuilder("/a"); // <-- no slash
+        builder = Route.builder("/a"); // <-- no slash
         assertMatches("/a/", of());       // <-- slash
     }
     
     @Test
     void simple_match_single_slash_tolerant_3() {
-        builder = new RouteBuilder("/a/"); // <-- slash
+        builder = Route.builder("/a/"); // <-- slash
         assertMatches("/a/", of());        // <-- slash
     }
     
     @Test
     void simple_match_no_slash_tolerant() {
-        builder = new RouteBuilder("/a");
+        builder = Route.builder("/a");
         assertMatches("a", of());          // <-- no slash at all
     }
     
@@ -80,20 +80,20 @@ class RouteMatchesTest
     // (see beginning of DefaultRoute.matches())
     @Test
     void one_segment_no_param_1() {
-        builder = new RouteBuilder("/");
+        builder = Route.builder("/");
         assertMatchesNull("//", "///", "////");
     }
     
     @Test
     void one_segment_no_param_2() {
-        builder = new RouteBuilder("/a");
+        builder = Route.builder("/a");
         assertMatchesNull("/a//", "/a///", "/a////");
     }
     
     // With a param, the algorithm can't optimize and will become "slash tolerant" again
     @Test
     void one_segment_one_param_1() {
-        builder = new RouteBuilder("/").param("x");
+        builder = Route.builder("/").param("x");
         assertMatches("//",   of());
         assertMatches("///",  of());
         assertMatches("////", of());
@@ -101,7 +101,7 @@ class RouteMatchesTest
     
     @Test
     void one_segment_one_param_2() {
-        builder = new RouteBuilder("/a").param("x");
+        builder = Route.builder("/a").param("x");
         assertMatches("/a/",   of());
         assertMatches("/a//",  of());
         assertMatches("/a///", of());
@@ -115,7 +115,7 @@ class RouteMatchesTest
     
     @Test
     void param_one() {
-        builder = new RouteBuilder("/").param("p1");
+        builder = Route.builder("/").param("p1");
         
         assertMatches("/v1", of("p1", "v1"));
         assertMatches("/",   of()); // <-- params are always optional!
@@ -125,7 +125,7 @@ class RouteMatchesTest
     
     @Test
     void param_two_serially() {
-        builder = new RouteBuilder("/").param("p1", "p2");
+        builder = Route.builder("/").param("p1", "p2");
         
         assertMatches("/v1/v2", of("p1", "v1", "p2", "v2"));
         assertMatches("/v1",    of("p1", "v1"));
@@ -136,7 +136,7 @@ class RouteMatchesTest
     
     @Test
     void param_three_serially() {
-        builder = new RouteBuilder("/").param("p1", "p2", "p3");
+        builder = Route.builder("/").param("p1", "p2", "p3");
         
         assertMatches("/v1/v2/v3", of("p1", "v1", "p2", "v2", "p3", "v3"));
         assertMatches("/v1/v2",    of("p1", "v1", "p2", "v2"));
@@ -148,7 +148,7 @@ class RouteMatchesTest
     
     @Test
     void param_one_declared_first() {
-        builder = new RouteBuilder("/").param("param").concat("/blabla");
+        builder = Route.builder("/").param("param").append("/blabla");
         
         assertMatches("/value/blabla", of("param", "value"));
         assertMatches("/blabla",       of());
@@ -163,7 +163,7 @@ class RouteMatchesTest
     
     @Test
     void param_two_declared_first() {
-        builder = new RouteBuilder("/").param("p1", "p2").concat("/blabla");
+        builder = Route.builder("/").param("p1", "p2").append("/blabla");
         
         assertMatches("/v1/v2/blabla", of("p1", "v1", "p2", "v2"));
         assertMatches("/v1/blabla",    of("p1", "v1"));
@@ -176,7 +176,7 @@ class RouteMatchesTest
     
     @Test
     void param_one_middle() {
-        builder = new RouteBuilder("/a").param("p").concat("/b");
+        builder = Route.builder("/a").param("p").append("/b");
         
         assertMatches("/a/v/b", of("p", "v"));
         assertMatches("/a/ /b", of("p", " "));
@@ -194,7 +194,7 @@ class RouteMatchesTest
     
     @Test
     void param_one_last() {
-        builder = new RouteBuilder("/a").param("p");
+        builder = Route.builder("/a").param("p");
         
         assertMatches("/a/v", of("p", "v"));
         assertMatches("/a",   of());
@@ -207,7 +207,7 @@ class RouteMatchesTest
     
     @Test
     void param_two_last() {
-        builder = new RouteBuilder("/a").param("p1", "p2");
+        builder = Route.builder("/a").param("p1", "p2");
         
         assertMatches("/a/v1/v2", of("p1", "v1", "p2", "v2"));
         assertMatches("/a/v1",    of("p1", "v1"));
@@ -221,11 +221,11 @@ class RouteMatchesTest
     
     @Test
     void mixed() {
-        builder = new RouteBuilder("/")
+        builder = Route.builder("/")
                 .param("p1")
-                .concat("/a").concat("/b")
+                .append("/a").append("/b")
                 .param("p2", "p3")
-                .concat("/c");
+                .append("/c");
         
         assertMatches("/v1/a/b/v2/v3/c", of("p1", "v1", "p2", "v2", "p3", "v3"));
         
@@ -248,7 +248,7 @@ class RouteMatchesTest
     
     @Test
     void param_name_empty() {
-        builder = new RouteBuilder("/").param("");
+        builder = Route.builder("/").param("");
         
         assertMatches("/v1", of("", "v1"));
         assertMatches("/",   of());
@@ -258,7 +258,7 @@ class RouteMatchesTest
     
     @Test
     void param_name_blank() {
-        builder = new RouteBuilder("/").param(" ");
+        builder = Route.builder("/").param(" ");
         
         assertMatches("/v1", of(" ", "v1"));
         assertMatches("/",   of());
@@ -268,7 +268,7 @@ class RouteMatchesTest
     
     @Test
     void param_name_blank_and_empty() {
-        builder = new RouteBuilder("/").param(" ", "");
+        builder = Route.builder("/").param(" ", "");
         
         assertMatches("/v1/v2", of(" ", "v1", "", "v2"));
         assertMatches("/v1",    of(" ", "v1"));
@@ -279,7 +279,7 @@ class RouteMatchesTest
     
     @Test
     void param_name_slash() {
-        builder = new RouteBuilder("/a").param("/").concat("/c");
+        builder = Route.builder("/a").param("/").append("/c");
         
         assertMatches("/a/v1/c", of("/", "v1"));
         assertMatches("/a/c",    of());
@@ -294,7 +294,7 @@ class RouteMatchesTest
     //       should perhaps be specified exactly somewhere.
     @Test
     void unknown_parameter_values() {
-        builder = new RouteBuilder("/a").param("p1").concat("/b");
+        builder = Route.builder("/a").param("p1").append("/b");
         assertMatches("/a/v1/b", of("p1", "v1"));
         
         Handler handler = Mockito.mock(Handler.class);

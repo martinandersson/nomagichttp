@@ -1,6 +1,6 @@
 package alpha.nomagichttp.message;
 
-import alpha.nomagichttp.handler.Handler;
+import alpha.nomagichttp.handler.RequestHandler;
 import alpha.nomagichttp.route.Route;
 
 import java.util.Collections;
@@ -40,7 +40,7 @@ import static java.util.stream.Collectors.joining;
  * On the server-side, both {@code MediaType} and {@code MediaRange} can be used
  * to specify what a {@code Handler} consumes and/or produces, in order to
  * participate in the handler selection process. Please read the javadoc of
- * {@link Handler} to learn more on that.<p>
+ * {@link RequestHandler} to learn more on that.<p>
  * 
  * Many commonly used media types are available as public static constants in
  * this class. Missing one? Let us know!<p>
@@ -109,7 +109,7 @@ public class MediaType
      * 
      * <strong>Not</strong> valid as a handler's producing media type.
      * 
-     * @see Handler
+     * @see RequestHandler
      */
     public static final MediaType NOTHING
             = new MediaType("<nothing>", null, null, Map.of()) {};
@@ -122,7 +122,7 @@ public class MediaType
      * 
      * <strong>Not</strong> valid as a handler's producing media type.
      * 
-     * @see Handler
+     * @see RequestHandler
      */
     public static final MediaType NOTHING_AND_ALL
             = new MediaType("<nothing and all>", null, null, Map.of()) {};
@@ -135,7 +135,7 @@ public class MediaType
      * A handler that declares this media type as producing is still free to not
      * respond a message body.
      * 
-     * @see Handler
+     * @see RequestHandler
      */
     public static final MediaType ALL = parse("*/*");
     
@@ -395,7 +395,7 @@ public class MediaType
      * @return a compatibility score of <i>this</i> media type compared with the
      *         specified {@code other}
      * 
-     * @see Handler
+     * @see RequestHandler
      */
     public final Score compatibility(MediaType other) {
         BiFunction<String, String, Score> typeScore = (a, b) ->

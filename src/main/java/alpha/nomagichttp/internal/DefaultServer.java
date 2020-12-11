@@ -1,8 +1,7 @@
 package alpha.nomagichttp.internal;
 
-import alpha.nomagichttp.ExceptionHandler;
-import alpha.nomagichttp.Server;
-import alpha.nomagichttp.ServerConfig;
+import alpha.nomagichttp.HttpServer;
+import alpha.nomagichttp.handler.ErrorHandler;
 import alpha.nomagichttp.route.RouteRegistry;
 
 import java.io.IOException;
@@ -24,10 +23,10 @@ import static java.lang.System.Logger.Level.DEBUG;
 import static java.lang.System.Logger.Level.ERROR;
 import static java.lang.System.Logger.Level.INFO;
 import static java.net.InetAddress.getLoopbackAddress;
+import static java.util.Arrays.stream;
 import static java.util.Collections.unmodifiableList;
 import static java.util.Objects.requireNonNull;
 import static java.util.stream.Collectors.toCollection;
-import static java.util.stream.StreamSupport.stream;
 
 /**
  * A fully asynchronous implementation of {@code Server}.<p>
@@ -37,7 +36,7 @@ import static java.util.stream.StreamSupport.stream;
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  */
-public final class DefaultServer implements Server
+public final class DefaultServer implements HttpServer
 {
     private static final System.Logger LOG
             = System.getLogger(DefaultServer.class.getPackageName());
@@ -71,22 +70,25 @@ public final class DefaultServer implements Server
     }
     
     private final RouteRegistry routes;
-    private final ServerConfig config;
-    private final List<Supplier<ExceptionHandler>> onError;
+    private final Config config;
+    private final List<Supplier<ErrorHandler>> onError; // TODO: Rename to errorHandlers
     private AsynchronousServerSocketChannel listener;
-    private int port;
+    private InetSocketAddress addr;
     
-    public <S extends Supplier<? extends ExceptionHandler>> DefaultServer(
-            RouteRegistry routes, ServerConfig config, Iterable<S> onError)
+    @SafeVarargs
+    public DefaultServer(
+            RouteRegistry routes,
+            Config config,
+            Supplier<? extends ErrorHandler>... onError)
     {
         this.routes = requireNonNull(routes);
         this.config = requireNonNull(config);
         
         // Collectors.toUnmodifiableList() does not document RandomAccess
-        List<Supplier<ExceptionHandler>> l = stream(onError.spliterator(), false)
+        List<Supplier<ErrorHandler>> l = stream(onError)
                 .map(e -> {
                     @SuppressWarnings("unchecked")
-                    Supplier<ExceptionHandler> eh = (Supplier<ExceptionHandler>) e;
+                    Supplier<ErrorHandler> eh = (Supplier<ErrorHandler>) e;
                     return eh; })
                 .collect(toCollection(ArrayList::new));
         
@@ -95,7 +97,7 @@ public final class DefaultServer implements Server
     }
     
     @Override
-    public synchronized Server start(SocketAddress address) throws IOException {
+    public synchronized HttpServer start(SocketAddress address) throws IOException {
         if (listener != null) {
             throw new IllegalStateException("Already running.");
         }
@@ -115,7 +117,7 @@ public final class DefaultServer implements Server
         LOG.log(INFO, () -> "Opened server channel: " + listener);
         
         try {
-            port = ((InetSocketAddress) listener.getLocalAddress()).getPort();
+            addr = ((InetSocketAddress) listener.getLocalAddress());
             listener.accept(null, new OnAccept());
         } catch (Throwable t) {
             stop();
@@ -155,12 +157,12 @@ public final class DefaultServer implements Server
     }
     
     @Override
-    public synchronized int getPort() throws IllegalStateException {
+    public synchronized InetSocketAddress getLocalAddress() throws IllegalStateException {
         if (listener == null || !listener.isOpen()) {
             throw new IllegalStateException("Server is not running.");
         }
         
-        return port;
+        return addr;
     }
     
     @Override
@@ -169,17 +171,18 @@ public final class DefaultServer implements Server
     }
     
     @Override
-    public ServerConfig getServerConfig() {
+    public Config getConfig() {
         return config;
     }
     
     /**
-     * Returns an unmodifiable {@code List} of exception handlers which
-     * implements {@code RandomAccess}
+     * Returns an unmodifiable {@code List} of error handlers.<p>
      * 
-     * @return exception handlers
+     * The returned list implements {@code RandomAccess}.
+     * 
+     * @return error handlers
      */
-    List<Supplier<ExceptionHandler>> getExceptionHandlers() {
+    List<Supplier<ErrorHandler>> getErrorHandlers() {
         return onError;
     }
     

@@ -1,17 +1,24 @@
 package alpha.nomagichttp.message;
 
 /**
- * Signalled by a {@code Flow.Publisher} to an active subscriber when
- * closing/shutting down, for example when the server closes a channel and
- * there's still a subscriber subscribing to the request body.<p>
+ * Signalled by a {@code Flow.Publisher} to an active subscriber when the
+ * subscription is early terminated or the publisher was/is terminating.<p>
  * 
- * Note that if a subscriber subscribes to an already closed publisher it should
- * immediately receive an {@code IllegalStateException}.
+ * An example of the former would be an illegally encountered state related to
+ * the subscription alone which terminates the subscription but leaves the
+ * publisher still useful to other subscribers. An example of the latter would
+ * be a lasting error related to the publisher which terminates all current and
+ * future subscriptions.<p>
+ * 
+ * If the publisher terminates unexpectedly, then all future subscribers receive
+ * a {@code ClosedPublisherException} as well. If the publisher terminates in a
+ * controlled manner - for example a publisher may only support being subscribed
+ * to once - then future subscribers receive an {@code IllegalStateException}.
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
- * 
- * @see Request.Body
  */
+// TODO: Seeing this when I run echo_headers example. Why? Fix.
+// TODO: Move to util package. Enforce publisher can not be resubscribed.
 public final class ClosedPublisherException extends RuntimeException
 {
     public static final String SIGNAL_FAILURE = "Signalling Flow.Subscriber failed.";

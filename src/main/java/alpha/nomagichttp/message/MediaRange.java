@@ -1,6 +1,6 @@
 package alpha.nomagichttp.message;
 
-import alpha.nomagichttp.handler.Handler;
+import alpha.nomagichttp.handler.RequestHandler;
 
 import java.text.NumberFormat;
 import java.util.Map;
@@ -15,9 +15,9 @@ import java.util.Map;
  * what it is that he is sending to the recipient.<p>
  * 
  * Both {@link MediaType} and {@code MediaRange} can be used to specify what a
- * {@link Handler} consumes and/or produces, in order to participate in handler
- * selection with the small caveat that the handler can not specify a quality
- * value other than 1.<p>
+ * {@link RequestHandler} consumes and/or produces, in order to participate in
+ * handler selection with the small caveat that the handler can not specify a
+ * quality value other than 1.<p>
  * 
  * 
  * <h4>Type and subtype wildcard</h4>

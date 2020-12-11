@@ -2,7 +2,7 @@ package alpha.nomagichttp.route;
 
 import org.junit.jupiter.api.Test;
 
-import static alpha.nomagichttp.handler.Handlers.noop;
+import static alpha.nomagichttp.handler.RequestHandlers.noop;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
@@ -14,23 +14,23 @@ class DefaultRouteIdentityTest
 {
     @Test
     void all() {
-        builder("/").expect("/");
-        builder("/abc").expect("/abc");
-        builder("/a/b/c").expect("/a/b/c");
+        init("/").expect("/");
+        init("/abc").expect("/abc");
+        init("/a/b/c").expect("/a/b/c");
         
-        builder("/").param("one").concat("/a").param("two", "three").concat("/b").param("four")
+        init("/").param("one").append("/a").param("two", "three").append("/b").param("four")
                 .expect("/a/b");
     }
     
-    RouteBuilder builder;
+    Route.Builder builder;
     
-    DefaultRouteIdentityTest builder(String segment) {
-         builder = new RouteBuilder(segment);
+    DefaultRouteIdentityTest init(String segment) {
+         builder = Route.builder(segment);
          return this;
     }
     
-    DefaultRouteIdentityTest concat(String segment) {
-        builder.concat(segment);
+    DefaultRouteIdentityTest append(String segment) {
+        builder.append(segment);
         return this;
     }
     

@@ -4,32 +4,54 @@ import java.util.List;
 import java.util.RandomAccess;
 
 /**
- * Represents an immutable segment of a route.<p>
+ * Is a segment of a route's path.<p>
  * 
- * The only reason why a route may need to split up into segments is if the
- * route has declared path parameters. Path parameters "belong" to the segment
- * declared right before the parameters.<p>
+ * The route's path may be comprised of just one or multiple segments. What
+ * makes the difference is path parameters which finalizes the segment they
+ * belong to. Path parameters work as segment boundaries.<p>
  * 
- * For example, route "/abc/{param1}/def/{param2}" consists of two segments.
- * The first segment "/abc" is associated with "param1" and segment "/def" is
- * associated with "param2".<p>
+ * The types {@code Segment} and {@code Segment.Builder} are technical details
+ * that is not visible to the application developer when using {@link
+ * Route#builder()}.<p>
  * 
- * Route "/{param1}/{param2}" has only one segment ("/") with two parameters.<p>
+ * Segments are immutable and thread-safe.<p>
  * 
- * Implementations must <i>not</i> override {@code hashCode()} and
- * {@code equals()}. Segments are identity-based.<p>
+ * Segments are identity based. The implementation does <i>not</i> override
+ * {@code hashCode()} and {@code equals()}.<p>
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  * 
- * @see SegmentBuilder
+ * @see Segment.Builder
  */
 interface Segment
 {
     /**
+     * Creates a {@link Segment.Builder}.<p>
+     * 
+     * As long as path parameters have <i>not</i> been declared, the segment can
+     * keep being extended using {@link Segment.Builder#append(String)}.
+     * 
+     * @param str      the initial {@link #value() string value} (a segment can
+     *                 not be empty)
+     * @param isFirst  {@code true} if the segment being built is the first
+     *                 segment of the route
+     * 
+     * @throws NullPointerException
+     *           if {@code value} is {@code null}
+     * 
+     * @throws IllegalArgumentException
+     *           if {@code value} is not valid, see {@linkplain RouteBuilder}
+     */
+    static Segment.Builder builder(String str, boolean isFirst) {
+        return new DefaultSegment.Builder(str, isFirst);
+    }
+    
+    /**
      * Returns {@code true} if this segment is the first segment of the route,
      * otherwise {@code false}.<p>
      * 
-     * The first segment could also be the <i>only</i> part of a route.<p>
+     * The first segment of the route could also be the <i>only</i> part of a
+     * route.<p>
      * 
      * @return {@code true} if this segment is the first segment of the route,
      *         otherwise {@code false}
@@ -37,50 +59,110 @@ interface Segment
     boolean isFirst();
     
     /**
-     * Returns the value of this segment.<p>
+     * Returns the string value of this segment.<p>
      * 
-     * The first segment is the only one with a value allowed to be only a
-     * forward slash ('/') character. The value of subsequent segments will have
-     * more characters.<p>
+     * The first segment of a route is the only segment with a string value
+     * allowed to be <i>only</i> a single forward slash ('/') character.<p>
      * 
-     * The value always starts with '/'. Segments that are not the first segment
-     * of the route also never ends with '/'.<p>
+     * The string value always start with '/'. Non-first segments never ends
+     * with '/'.<p>
      * 
-     * Examples of valid segment values:
+     * A few examples of valid string values:
      * <pre>
      *   /
      *   /abc
      *   /def/xyz
      * </pre>
      * 
-     * Examples of invalid values (which this method never returns):
+     * Examples of invalid string values (never returned by this method):
      * <pre>
-     *   ""     (the empty String)
-     *   " "    (a blank String
+     *   ""     (the empty string)
+     *   " "    (a blank string)
      *   //     (effectively a blank segment)
-     *   /abc/  (value never ends with a forward slash)
+     *   /abc/  (ends with a forward slash)
      * </pre>
      * 
-     * @return segment value (never {@code null} or the empty string)
+     * @return the string value of this segment
      */
     String value();
     
     /**
-     * Returns an unmodifiable list of path parameters associated with this
+     * Returns an unmodifiable list of path parameter names declared on this
      * segment.<p>
      * 
      * The returned list implements {@link RandomAccess}.
      * 
-     * @return an unmodifiable list of path parameters associated with this segment
+     * @return an unmodifiable list of path parameter names declared on this
+     * segment
      */
     List<String> params();
     
     /**
-     * Returns the segment value followed by parameter names enclosed in curly
-     * brackets. For example, "/segment/{param-name}".
+     * Returns the {@linkplain #value() string value} concatenated with declared
+     * parameter names enclosed in curly brackets. For example,
+     * "/segment/{param-name}".
      * 
-     * @return the segment value followed by parameter names
+     * @return the segment value concatenated with declared parameter names
      */
     @Override
     String toString();
+    
+    /**
+     * Builder of {@link Segment}.<p>
+     * 
+     * The builder is not thread-safe and is intended to be used as a throw-away
+     * object.
+     * 
+     * @author Martin Andersson (webmaster at martinandersson.com)
+     */
+    interface Builder
+    {
+        /**
+         * Append {@code str} to the segment's current {@linkplain #value()
+         * string value}. Operation only allowed if no path parameters have been
+         * declared.
+         * 
+         * @param str value to append
+         * 
+         * @throws IllegalStateException
+         *           if parameters have been declared
+         * 
+         * @throws NullPointerException
+         *           if {@code value} is {@code null}
+         * 
+         * @throws IllegalArgumentException
+         *           if {@code value} is not valid, see {@linkplain RouteBuilder}
+         */
+        void append(String str);
+        
+        /**
+         * Declare a path parameter.
+         * 
+         * The segment builder can not guard against duplicated parameter names
+         * in the route. This is the responsibility of the {@link RouteBuilder}.
+         * 
+         * @param name of parameter (any string)
+         * 
+         * @throws NullPointerException if {@code name} is {@code null}
+         */
+        void addParam(String name);
+        
+        /**
+         * Returns {@code true} if this builder has parameters declared,
+         * {@code false} otherwise.
+         *
+         * @return {@code true} if this builder has parameters added,
+         *         {@code false} otherwise
+         */
+        boolean hasParams();
+        
+        /**
+         * Build a new {@code Segment}.
+         * 
+         * @return a new {@code Segment}
+         * 
+         * @throws IllegalStateException if already built
+         */
+        Segment build();
+    }
 }

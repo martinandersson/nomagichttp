@@ -1,9 +1,8 @@
 package alpha.nomagichttp.examples;
 
-import alpha.nomagichttp.ExceptionHandler;
-import alpha.nomagichttp.Server;
-import alpha.nomagichttp.ServerConfig;
-import alpha.nomagichttp.handler.Handler;
+import alpha.nomagichttp.handler.ErrorHandler;
+import alpha.nomagichttp.HttpServer;
+import alpha.nomagichttp.handler.RequestHandler;
 import alpha.nomagichttp.message.Request;
 import alpha.nomagichttp.message.Response;
 import alpha.nomagichttp.route.Route;
@@ -15,7 +14,7 @@ import java.util.concurrent.CompletionStage;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Supplier;
 
-import static alpha.nomagichttp.handler.Handlers.GET;
+import static alpha.nomagichttp.handler.RequestHandlers.GET;
 import static alpha.nomagichttp.message.Responses.ok;
 import static alpha.nomagichttp.route.Routes.route;
 import static java.time.LocalTime.now;
@@ -25,25 +24,25 @@ import static java.util.concurrent.TimeUnit.MILLISECONDS;
 import static java.util.function.Function.identity;
 
 /**
- * Retries failed requests by invoking the same request handler again.
+ * Deals with failed requests by invoking the same request handler again.
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  * 
- * @see ExceptionHandler
+ * @see ErrorHandler
  */
 public class RetryRequestOnError
 {
     private static final int PORT = 8080;
     
     public static void main(String... ignored) throws IOException {
-        Handler h = GET().supply(new MyUnstableResponseSupplier());
+        RequestHandler h = GET().supply(new MyUnstableResponseSupplier());
         Route r = route("/", h);
         
-        // The server accepts a factory/supplier of the exception handler because
-        // a new instance of the exception handler will be used for each failed request.
-        Supplier<ExceptionHandler> retrier = MyExponentialRetrier::new;
+        // The server accepts a factory/supplier of the error handler because
+        // a new instance of the error handler will be used for each failed request.
+        Supplier<ErrorHandler> retrier = MyExponentialRetrier::new;
         
-        Server.with(ServerConfig.DEFAULT, singleton(r), retrier).start(PORT);
+        HttpServer.with(HttpServer.Config.DEFAULT, singleton(r), retrier).start(PORT);
         System.out.println("Listening on port " + PORT + ".");
     }
     
@@ -73,18 +72,18 @@ public class RetryRequestOnError
      * Retries a failed request by calling the request handler up to three times,
      * using an exponentially increased delay between each retry.
      */
-    private static class MyExponentialRetrier implements ExceptionHandler {
+    private static class MyExponentialRetrier implements ErrorHandler {
         private int retries;
         
         @Override
         public CompletionStage<Response> apply(
-                Throwable exc, Request req, Handler handler)
+                Throwable exc, Request req, RequestHandler handler)
                 throws Throwable
         {
             if (!(exc instanceof SuitableForRetryException)) {
                 // Any exception we can not handle should be re-thrown and will
-                // propagate through the chain of exception handlers, eventually
-                // reaching ExceptionHandler.DEFAULT.
+                // propagate through the chain of error handlers, eventually
+                // reaching ErrorHandler.DEFAULT.
                 throw exc;
             }
             
@@ -94,7 +93,7 @@ public class RetryRequestOnError
             }
             
             final int delay = 40 * (int) Math.pow(++retries, 2);
-            System.out.println("Exception handler will retry #" + retries + " after delay (ms): " + delay);
+            System.out.println("Error handler will retry #" + retries + " after delay (ms): " + delay);
             
             // Alternatively:
             // return CompletableFuture.runAsync(() -> {}, delayedExecutor(delay, MILLISECONDS))

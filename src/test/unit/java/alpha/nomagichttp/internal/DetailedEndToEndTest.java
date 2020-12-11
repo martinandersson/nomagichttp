@@ -1,7 +1,7 @@
 package alpha.nomagichttp.internal;
 
-import alpha.nomagichttp.handler.Handler;
-import alpha.nomagichttp.handler.Handlers;
+import alpha.nomagichttp.handler.RequestHandler;
+import alpha.nomagichttp.handler.RequestHandlers;
 import alpha.nomagichttp.message.PooledByteBufferHolder;
 import alpha.nomagichttp.message.Request;
 import alpha.nomagichttp.message.Response;
@@ -17,7 +17,7 @@ import java.util.concurrent.Flow;
 import java.util.function.Consumer;
 import java.util.function.Function;
 
-import static alpha.nomagichttp.handler.Handlers.POST;
+import static alpha.nomagichttp.handler.RequestHandlers.POST;
 import static alpha.nomagichttp.internal.ClientOperations.CRLF;
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -97,7 +97,7 @@ class DetailedEndToEndTest extends AbstractEndToEndTest
         final int length = 100_000,
                   midway = length / 2;
         
-        Handler discardMidway = Handlers.POST().accept((req) ->
+        RequestHandler discardMidway = RequestHandlers.POST().accept((req) ->
             req.body().get().subscribe(
                 new AfterByteTargetStop(midway, Flow.Subscription::cancel)));
         
@@ -117,7 +117,9 @@ class DetailedEndToEndTest extends AbstractEndToEndTest
     
     @Test
     void request_body_subscriber_crash() throws IOException {
-        Handler crashAfterOneByte = Handlers.POST().accept((req) ->
+        doNotAssertNormalFinish();
+        
+        RequestHandler crashAfterOneByte = RequestHandlers.POST().accept(req ->
             req.body().get().subscribe(
                 new AfterByteTargetStop(1, subscriptionIgnored -> {
                     throw new RuntimeException("Oops."); })));

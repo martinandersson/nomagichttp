@@ -2,6 +2,8 @@ package alpha.nomagichttp.internal;
 
 import alpha.nomagichttp.message.ClosedPublisherException;
 import alpha.nomagichttp.message.PooledByteBufferHolder;
+import alpha.nomagichttp.util.SerialTransferService;
+import alpha.nomagichttp.util.Subscribers;
 
 import java.util.concurrent.Flow;
 import java.util.function.Consumer;
@@ -17,8 +19,11 @@ import static java.util.Objects.requireNonNull;
  * availability of items and also polled by the subscriber through the increase
  * of his demand.<p>
  * 
- * Only one subscriber at a time is allowed but many may come and go over time.
- * Rejected subscribers receive an {@code IllegalStateException}.<p>
+ * Only one subscriber at a time is allowed but many may come and go over time
+ * if and only if a previous subscriber cancelled his subscription. This class
+ * assumes that the publisher represents a never-ending flow of items and so can
+ * only be stoppable from the publisher's side exceptionally. Rejected
+ * subscribers receive an {@code IllegalStateException}.<p>
  * 
  * The generator function may return {@code null} which would indicate there's
  * no items available for the current subscriber at the moment (a future
@@ -176,7 +181,7 @@ final class AnnounceToSubscriber<T>
             }
             
             s.attachment().finish(() ->
-                    signalErrorSafe(s, new ClosedPublisherException()));
+                    Subscribers.signalErrorSafe(s, new ClosedPublisherException()));
         }
         
         private void ifPresent(Consumer<SubscriberWithAttachment<T, SerialTransferService<T>>> action) {
@@ -194,9 +199,9 @@ final class AnnounceToSubscriber<T>
             MutableSubscriberWithAttachment<T, SerialTransferService<T>> s
                     = new MutableSubscriberWithAttachment<>(subscriber);
             
-            s.attachment(new SerialTransferService<>(generator, item -> {
-                signalNext(item, s);
-            }));
+            s.attachment(new SerialTransferService<>(
+                    generator,
+                    item -> signalNext(item, s)));
             
             return s;
         }
@@ -211,7 +216,7 @@ final class AnnounceToSubscriber<T>
                 // Attempt to terminate subscription
                 if (!signalError(t, s)) {
                     // stale subscription, still need to communicate error to our guy
-                    signalErrorSafe(s, t);
+                    Subscribers.signalErrorSafe(s, t);
                 }
             });
         }
@@ -311,6 +316,12 @@ final class AnnounceToSubscriber<T>
         @Override
         public void onComplete() {
             d.onComplete();
+        }
+        
+        @Override
+        public String toString() {
+            return MutableSubscriberWithAttachment.class.getSimpleName() +
+                    '{' + "d=" + d + '}';
         }
     }
 }

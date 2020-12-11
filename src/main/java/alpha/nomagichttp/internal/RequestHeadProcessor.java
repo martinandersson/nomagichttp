@@ -112,6 +112,7 @@ final class RequestHeadProcessor
     
     RequestHeadProcessor() {
         token = new StringBuilder();
+        read = 0;
         prev = curr = Character.MIN_VALUE;
         step = this::parseMethod;
         completed = null;
@@ -123,6 +124,17 @@ final class RequestHeadProcessor
         step.run();
         prev = curr;
         return completed;
+    }
+    
+    /**
+     * Returns {@code true} if at least one byte has been processed, otherwise
+     * {@code false}.
+     * 
+     * @return {@code true} if at least one byte has been processed, otherwise
+     * {@code false}
+     */
+    boolean hasStarted() {
+        return read > 0;
     }
     
     private String method;

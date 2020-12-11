@@ -1,8 +1,8 @@
 package alpha.nomagichttp.examples;
 
-import alpha.nomagichttp.Server;
-import alpha.nomagichttp.handler.Handler;
-import alpha.nomagichttp.handler.Handlers;
+import alpha.nomagichttp.HttpServer;
+import alpha.nomagichttp.handler.RequestHandler;
+import alpha.nomagichttp.handler.RequestHandlers;
 import alpha.nomagichttp.message.Response;
 import alpha.nomagichttp.message.Responses;
 
@@ -30,9 +30,9 @@ public class HelloWorldResponse
         CompletionStage<Response> answer
                 = Responses.ok("Hello, World!").asCompletedStage();
         
-        Handler handler = Handlers.GET().supply(() -> answer);
+        RequestHandler handler = RequestHandlers.GET().supply(() -> answer);
         
-        Server.with(route("/", handler)).start(PORT);
+        HttpServer.with(route("/", handler)).start(PORT);
         System.out.println("Listening on port " + PORT + ".");
     }
 }

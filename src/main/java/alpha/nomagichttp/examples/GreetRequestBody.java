@@ -1,11 +1,11 @@
 package alpha.nomagichttp.examples;
 
-import alpha.nomagichttp.Server;
-import alpha.nomagichttp.handler.Handler;
+import alpha.nomagichttp.HttpServer;
+import alpha.nomagichttp.handler.RequestHandler;
 
 import java.io.IOException;
 
-import static alpha.nomagichttp.handler.Handlers.POST;
+import static alpha.nomagichttp.handler.RequestHandlers.POST;
 import static alpha.nomagichttp.message.Responses.ok;
 import static alpha.nomagichttp.route.Routes.route;
 
@@ -28,11 +28,11 @@ public class GreetRequestBody
          * a CompletionStage<String>, mapped by this handler into a greeting.
          */
         
-        Handler h = POST().apply(req ->
+        RequestHandler h = POST().apply(req ->
                 req.body().get().toText().thenApply(name ->
                         ok("Hello, " + name + "!")));
         
-        Server.with(route("/hello", h)).start(PORT);
+        HttpServer.with(route("/hello", h)).start(PORT);
         System.out.println("Listening on port " + PORT + ".");
     }
 }
