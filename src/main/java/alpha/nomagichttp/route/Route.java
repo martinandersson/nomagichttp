@@ -70,16 +70,26 @@ import java.util.Map;
  * "/where"} can not be added to an HTTP server which already has {@code
  * "/where/{param}"} registered (parameters are optional).<p>
  * 
- * In order to process the request path and find a matching route, the path will
- * first be split into segments using the forward slash character as a
- * separator, then each segment will be decoded as if using {@link
- * URLDecoder#decode(String, Charset) URLDecoder.decode(segment,
- * StandardCharsets.UTF_8)} <i>except</i> the plus sign ('+') is <i>not</i>
- * converted to a space character and remains the same. The empty path is
- * replaced with "/" and dot-segments (".", "..") are normalized as if using
- * {@link  URI#normalize()}. In particular, note that route-matching is
- * case-sensitive and characters such as "+" and "*" has no special meaning,
- * they will be matched literally.<p>
+ * In order to process the request path and find a matching route, the following
+ * steps are applied:
+ * 
+ * <ul>
+ *   <li>All trailing forward slashes in the path are truncated. The
+ *       <i>resource</i> in URI may be a file, directory, whatever - makes no
+ *       difference.</li>
+ *   <li>The empty path will be replaced with "/".</li>
+ *   <li>The path is split into segments using the forward slash character as a
+ *       separator, then each segment will be decoded as if using
+ *       {@link URLDecoder#decode(String, Charset) URLDecoder.decode(segment, StandardCharsets.UTF_8)}
+ *       <i>except</i> the plus sign ('+') is <i>not</i> converted to a space
+ *       character and remains the same.</li>
+ *   <li>Dot-segments (".", "..") are normalized as if using
+ *       {@link URI#normalize()}</li>
+ *   <li>Finally, all remaining segments that are not interpreted as a path
+ *       parameter value must match a route exactly and in order. In particular,
+ *       note that route-matching is case-sensitive and characters such as "+"
+ *       and "*" has no special meaning, they will be matched literally.</li>
+ * </ul>
  * 
  * The implementation is thread-safe.
  * 
@@ -241,8 +251,8 @@ public interface Route
      * character ('/'). Only the root can be a string whose contents is a single
      * forward slash. All other segment values must have content following the
      * forward slash. A specified segment value may contain many forward slash
-     * separators, for example {@code "/a/b/c"}. Trailing forward slash
-     * characters will be truncated.<p>
+     * separators, for example {@code "/a/b/c"}. All trailing forward slash
+     * characters will be removed (see {@link Route}).<p>
      * 
      * A valid parameter name is any string, even the empty string. The only
      * requirement is that it has to be unique for the route. The HTTP server's
