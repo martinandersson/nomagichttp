@@ -5,6 +5,9 @@ import alpha.nomagichttp.handler.RequestHandler;
 import alpha.nomagichttp.message.MediaType;
 import alpha.nomagichttp.message.Request;
 
+import java.net.URI;
+import java.net.URLDecoder;
+import java.nio.charset.Charset;
 import java.util.Map;
 
 /**
@@ -66,6 +69,17 @@ import java.util.Map;
  * with a {@link RouteCollisionException}. For example, the route {@code
  * "/where"} can not be added to an HTTP server which already has {@code
  * "/where/{param}"} registered (parameters are optional).<p>
+ * 
+ * In order to process the request path and find a matching route, the path will
+ * first be split into segments using the forward slash character as a
+ * separator, then each segment will be decoded as if using {@link
+ * URLDecoder#decode(String, Charset) URLDecoder.decode(segment,
+ * StandardCharsets.UTF_8)} <i>except</i> the plus sign ('+') is <i>not</i>
+ * converted to a space character and remains the same. The empty path is
+ * replaced with "/" and dot-segments (".", "..") are normalized as if using
+ * {@link  URI#normalize()}. In particular, note that route-matching is
+ * case-sensitive and characters such as "+" and "*" has no special meaning,
+ * they will be matched literally.<p>
  * 
  * The implementation is thread-safe.
  * 

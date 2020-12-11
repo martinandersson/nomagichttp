@@ -5,11 +5,13 @@ import alpha.nomagichttp.handler.ErrorHandler;
 import alpha.nomagichttp.route.Route;
 import alpha.nomagichttp.util.Publishers;
 
+import java.net.URLDecoder;
 import java.net.http.HttpHeaders;
 import java.nio.channels.AsynchronousByteChannel;
 import java.nio.channels.AsynchronousFileChannel;
 import java.nio.channels.GatheringByteChannel;
 import java.nio.channels.NetworkChannel;
+import java.nio.charset.Charset;
 import java.nio.charset.IllegalCharsetNameException;
 import java.nio.charset.UnsupportedCharsetException;
 import java.nio.file.OpenOption;
@@ -57,16 +59,24 @@ public interface Request
     
     /**
      * Returns the request-line's resource-target.<p>
-     *
+     * 
      * In the following example, the resource-target is
-     * "/hello.txt?query=value":
+     * "/where?q=now#fragment":
      * <pre>{@code
-     *   GET /hello.txt?query=value HTTP/1.1
+     *   GET /where?q=now#fragment HTTP/1.1
      *   User-Agent: curl/7.16.3 libcurl/7.16.3 OpenSSL/0.9.7l zlib/1.2.3
      *   Host: www.example.com
      *   Accept: text/plain;charset=utf-8
      * }</pre>
-     *
+     * 
+     * The returned value is raw; not normalized and not URL decoded (aka.
+     * percent-decoded). Decoded parameter values can be retrieved from
+     * {@link #paramFromPath(String)} and {@link #paramFromQuery(String)}. There
+     * is no API-support to retrieve the fragment separately as it is
+     * "dereferenced solely by the user agent" (
+     * <a href="https://tools.ietf.org/html/rfc3986#section-3.5">RFC 3986 §3.5</a>
+     * ) and so shouldn't have been sent to the HTTP server in the first place.
+     * 
      * @return the request-line's resource-target
      */
     String target();
@@ -87,39 +97,118 @@ public interface Request
     String httpVersion();
     
     /**
-     * Returns a parameter value, or an empty optional if the value is not
-     * bound.<p>
+     * Returns a decoded path parameter value.<p>
      * 
-     * Suppose, for example, that the server has a route with a parameter "id"
-     * declared:<p>
+     * Suppose that the HTTP server has a route registered which accepts a
+     * parameter "who":<p>
      * <pre>
-     *   /account/{id}
+     *   /hello/{who}
      * </pre>
      * 
-     * For the following request, {@code paramFromPath("id")} would return
-     * "123":
+     * For the following request, {@code paramFromPath("who")} will return "John
+     * Doe":
      * <pre>
-     *   GET /account/123 HTTP/1.1
+     *   GET /hello/John%20Doe HTTP/1.1
      *   ...
      * </pre>
      * 
-     * A resource-target "/account" without the parameter value would still
-     * match the route and call the handler, but this method would then return
-     * an empty Optional.
+     * The returned value will be URL decoded (aka. percent-decoded) as if using
+     * {@link URLDecoder#decode(String, Charset) URLDecoder.decode(segment,
+     * StandardCharsets.UTF_8)} <i>except</i> the plus sign ('+') is <i>not</i>
+     * converted to a space character and remains the same.<p>
      * 
-     * @param name of parameter
+     * The returned value is exactly what the client provided (after decoding).
+     * I.e., there is no API support for so called "matrix variables" (nor are
+     * they standardized). Such constructs can be implemented in application
+     * code.<p>
      * 
-     * @return the parameter value
+     * @param name of path parameter (case sensitive)
      * 
-     * @throws NullPointerException if {@code name} is {@code null}
+     * @return the path parameter value
+     * 
+     * @throws NullPointerException
+     *             if {@code name} is {@code null}
+     * 
+     * @throws IllegalArgumentException
+     *             if the decoder encounters illegal characters
      */
     Optional<String> paramFromPath(String name);
     
     /**
-     * Throws UnsupportedOperationException (query parameters are not yet
-     * implemented).
+     * Returns a raw path parameter value.<p>
+     * 
+     * An invocation of this method behaves in exactly the same way as the
+     * invocation
+     * <pre>
+     *     request.{@link #paramFromPath(String) paramFromPath}(name);
+     * </pre>
+     * except without decoding the value.
+     * 
+     * @param name of path parameter (case sensitive)
+     * 
+     * @return the path parameter value
+     * 
+     * @throws NullPointerException if {@code name} is {@code null}
+     */
+    Optional<String> paramFromPathRaw(String name);
+    
+    /**
+     * Returns a decoded query parameter value.<p>
+     * 
+     * For the following request, {@code paramFromQuery("who")} will return
+     * "John Doe":
+     * <pre>
+     *   GET /hello?who=John%20Doe HTTP/1.1
+     *   ...
+     * </pre>
+     * 
+     * The returned value will be URL decoded (aka. percent-decoded) as if using
+     * {@link URLDecoder#decode(String, Charset) URLDecoder.decode(segment,
+     * StandardCharsets.UTF_8)} <i>except</i> the plus sign ('+') is <i>not</i>
+     * converted to a space character and remains the same.<p>
+     * 
+     * @param name of query parameter (case sensitive)
+     * 
+     * @return the query parameter value
+     * 
+     * @throws NullPointerException
+     *             if {@code name} is {@code null}
+     * 
+     * @throws IllegalArgumentException
+     *             if the decoder encounters illegal characters
      */
     Optional<String> paramFromQuery(String name);
+    
+    /**
+     * Returns a raw query parameter value.<p>
+     * 
+     * An invocation of this method behaves in exactly the same way as the
+     * invocation
+     * <pre>
+     *     request.{@link #paramFromQuery(String) paramFromQuery}(name);
+     * </pre>
+     * except without decoding the value.<p>
+     * 
+     * This method is useful when need be to decode the query value manually,
+     * for example when receiving data from a browser submitting an HTML form
+     * using the "GET" method. The default encoding the browser uses will be
+     * <a href="https://www.w3.org/TR/html401/interact/forms.html#h-17.13.4.1">
+     * application/x-www-form-urlencoded</a> which escape space characters using
+     * the plus character ('+').<p>
+     * 
+     * Example:
+     * <pre>{@code
+     *     String received = req.paramFromQueryRaw("name");
+     *     String formdata = java.net.URLDecoder.decode(received, StandardCharsets.UTF_8);
+     * }</pre>
+     * 
+     * @param name of query parameter (case sensitive)
+     * 
+     * @return the query parameter value
+     * 
+     * @throws NullPointerException if {@code name} is {@code null}
+     */
+    Optional<String> paramFromQueryRaw(String name);
     
     /**
      * Returns the HTTP headers.

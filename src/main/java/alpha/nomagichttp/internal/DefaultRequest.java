@@ -106,7 +106,17 @@ final class DefaultRequest implements Request
     }
     
     @Override
+    public Optional<String> paramFromPathRaw(String name) {
+        throw new AbstractMethodError("Implement me.");
+    }
+    
+    @Override
     public Optional<String> paramFromQuery(String name) {
+        throw new AbstractMethodError("Implement me.");
+    }
+    
+    @Override
+    public Optional<String> paramFromQueryRaw(String name) {
         throw new AbstractMethodError("Implement me.");
     }
     
