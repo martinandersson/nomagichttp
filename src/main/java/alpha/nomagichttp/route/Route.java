@@ -19,7 +19,7 @@ import java.util.Map;
  * The route is associated with one or more <i>request handlers</i>. In HTTP
  * parlance, handlers are also known as different "representations" of the
  * resource. Which handler specifically to invoke for the request is determined
- * by qualifying metadata and specificity, as detailed in the javadoc of {@link
+ * by qualifying metadata and specificity, as detailed in the Javadoc of {@link
  * RequestHandler}.<p>
  * 
  * Suppose the HTTP server receives this request (
@@ -70,32 +70,35 @@ import java.util.Map;
  * "/where"} can not be added to an HTTP server which already has {@code
  * "/where/{param}"} registered (parameters are optional).<p>
  * 
- * In order to process the request path and find a matching route, the following
- * steps are applied:
+ * In order to find a matching route, the following steps are applied to the
+ * request path:
  * 
  * <ul>
- *   <li>All trailing forward slashes in the path are truncated. The
- *       <i>resource</i> in URI may be a file, directory, whatever - makes no
- *       difference.</li>
+ *   <li>All trailing forward slashes are truncated. A trailing slash is usually
+ *       used to separate a file from a directory. This practice tends to forget
+ *       that the "R" in URI stands for <i>resource</i>. Be that a file,
+ *       directory, whatever - makes no difference.</li>
  *   <li>The empty path will be replaced with "/".</li>
  *   <li>The path is split into segments using the forward slash character as a
  *       separator, then each segment will be decoded as if using
  *       {@link URLDecoder#decode(String, Charset) URLDecoder.decode(segment, StandardCharsets.UTF_8)}
  *       <i>except</i> the plus sign ('+') is <i>not</i> converted to a space
- *       character and remains the same.</li>
+ *       character and remains the same (standard
+ *       <a href="https://tools.ietf.org/html/rfc3986#section-2.1">RFC 3986</a> behavior).</li>
  *   <li>Dot-segments (".", "..") are normalized as if using
- *       {@link URI#normalize()}</li>
+ *       {@link URI#normalize()} (basically "." is removed and ".." removes the
+ *       previous segment)</li>
  *   <li>Finally, all remaining segments that are not interpreted as a path
- *       parameter value must match a route exactly and in order. In particular,
- *       note that route-matching is case-sensitive and characters such as "+"
- *       and "*" has no special meaning, they will be compared literally.</li>
+ *       parameter value must match a route's identity exactly and in order. In
+ *       particular, note that route-matching is case-sensitive and characters
+ *       such as "+" and "*" has no special meaning, they will be compared
+ *       literally.</li>
  * </ul>
  * 
  * The implementation is thread-safe.
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  * 
- * @see Route.Builder
  * @see RouteRegistry
  */
 public interface Route

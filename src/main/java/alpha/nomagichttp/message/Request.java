@@ -277,13 +277,14 @@ public interface Request
      * assumed to ignore the body, followed by a server-side discard of it).<p>
      * 
      * Some utility methods such as {@code toText()} cache the result and will
-     * return the same stage on future invocations. This may for example by
+     * return the same stage on future invocations. This may for example be
      * useful to an {@link ErrorHandler error handler} also interested in
      * accessing the result.<p>
      * 
      * The normal way to reject an operation is to fail-fast and blow up the
-     * calling thread. This is also the practice even for rejected asynchronous
-     * operations. For example, {@code ExecutorService.submit()} throws {@code
+     * calling thread. This is also common practice even for rejected
+     * <i>asynchronous</i> operations. For example,
+     * {@code ExecutorService.submit()} throws {@code
      * RejectedExceptionException} and {@code AsynchronousByteChannel.read()}
      * throws {@code IllegalArgumentException}.<p>
      * 
@@ -295,13 +296,13 @@ public interface Request
      * result carrier; whether that is a {@code CompletionStage} or a {@code
      * Flow.Subscriber}. This has the implication that exceptions from utility
      * methods are not documented using the standard {@code @throws} tag but
-     * rather inline with the rest of the text. The only exception to this rule
-     * is {@code NullPointerException} which will blow up the calling thread
-     * wherever warranted.<p>
+     * rather inline with the rest of the JavaDoc. The only exception to this
+     * rule is {@code NullPointerException} which will blow up the calling
+     * thread wherever warranted.<p>
      * 
      * In general, high-level exception types - in particular, when documented -
      * does not close the underlying channel's read stream and so the
-     * application can chose to recover from them. The opposite is true for
+     * application can choose to recover from them. The opposite is true for
      * unexpected errors, in particular, errors that originate from the
      * channel's read operation. The safest bet for an application when
      * attempting error recovery is to always check first if {@link
@@ -403,7 +404,7 @@ public interface Request
      * <h4>Exception Handling</h4>
      * 
      * The {@code Body} as a publisher follows the same exception semantics
-     * specified in the javadoc of {@link Publishers}, decorated with some added
+     * specified in the JavaDoc of {@link Publishers}, decorated with some added
      * behavior on top.<p>
      * 
      * Exceptions thrown by the {@code Flow.Subscriber.onSubscribe()} method
