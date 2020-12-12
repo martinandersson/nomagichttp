@@ -121,6 +121,11 @@ final class DefaultRequest implements Request
     }
     
     @Override
+    public Parameters parameters() {
+        throw new AbstractMethodError("Implement me.");
+    }
+    
+    @Override
     public HttpHeaders headers() {
         return head.headers();
     }

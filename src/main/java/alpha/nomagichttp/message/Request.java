@@ -17,12 +17,15 @@ import java.nio.charset.UnsupportedCharsetException;
 import java.nio.file.OpenOption;
 import java.nio.file.Path;
 import java.nio.file.attribute.FileAttribute;
+import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Flow;
 import java.util.function.BiFunction;
+import java.util.stream.Stream;
 
 /**
  * An inbound HTTP request.<p>
@@ -72,11 +75,10 @@ public interface Request
      * 
      * The returned value is "/where?q=now#fragment".<p>
      * 
-     * The returned value is not normalized and not URL decoded (aka.
-     * percent-decoded). Decoded parameter values can be retrieved from
-     * {@link #paramFromPath(String)} and {@link #paramFromQuery(String)}. There
-     * is no API-support to retrieve the fragment separately as it is
-     * "dereferenced solely by the user agent" (
+     * The returned value is raw; not normalized and not URL decoded (aka.
+     * percent-decoded). Decoded parameter values can be retrieved using {@link
+     * Request#parameters()}. There is no API-support to retrieve the fragment
+     * separately as it is "dereferenced solely by the user agent" (
      * <a href="https://tools.ietf.org/html/rfc3986#section-3.5">RFC 3986 §3.5</a>
      * ) and so shouldn't have been sent to the HTTP server in the first place.
      * 
@@ -137,6 +139,7 @@ public interface Request
      * @throws IllegalArgumentException
      *             if the decoder encounters illegal characters
      */
+    @Deprecated
     Optional<String> paramFromPath(String name);
     
     /**
@@ -155,6 +158,7 @@ public interface Request
      * 
      * @throws NullPointerException if {@code name} is {@code null}
      */
+    @Deprecated
     Optional<String> paramFromPathRaw(String name);
     
     /**
@@ -182,6 +186,7 @@ public interface Request
      * @throws IllegalArgumentException
      *             if the decoder encounters illegal characters
      */
+    @Deprecated
     Optional<String> paramFromQuery(String name);
     
     /**
@@ -213,7 +218,17 @@ public interface Request
      * 
      * @throws NullPointerException if {@code name} is {@code null}
      */
+    @Deprecated
     Optional<String> paramFromQueryRaw(String name);
+    
+    /**
+     * Returns a parameters API bound to this request.<p>
+     *
+     * @return a parameters API bound to this request
+     *
+     * @see Parameters
+     */
+    Parameters parameters();
     
     /**
      * Returns the HTTP headers.
@@ -225,9 +240,9 @@ public interface Request
     HttpHeaders headers();
     
     /**
-     * Returns the request body.<p>
+     * Returns a body API bound to this request.<p>
      * 
-     * @return the request body
+     * @return a body API bound to this request
      * 
      * @see Body
      */
@@ -247,6 +262,271 @@ public interface Request
      * @return see JavaDoc
      */
     boolean channelIsOpenForReading();
+    
+    /**
+     * Is a thread-safe and non-blocking API for accessing request path- and
+     * query parameter values in various forms.<p>
+     * 
+     * Any client-given request path (a component of {@link Request#target()}
+     * may contain segments interpreted by the HTTP server as a path parameter
+     * value and/or an URL search part, aka. query string (see {@link
+     * Route}).<p>
+     * 
+     * Both query- and path parameters are optional and they can not be
+     * specified as required. The request handler is free to interpret the
+     * absence, presence and value of parameters however it sees fit.<p>
+     * 
+     * A path parameter value will be assumed to end with a space- or forward
+     * slash character ('/').<p>
+     * 
+     * A query parameter value will be assumed to end with a space- or ampersand
+     * ('&') character. In particular, please note that the semicolon (';') has
+     * no special meaning; it will <i>not</i> be processed as a separator (
+     * contrary to <a href="https://www.w3.org/TR/1999/REC-html401-19991224/appendix/notes.html#h-B.2.2">
+     * W3</a>, we argue that magic is the trouble).<p>
+     * 
+     * The exact structure of the query string is not standardized (
+     * <a href="https://en.wikipedia.org/wiki/Query_string">Wikipedia</a>). The
+     * NoMagicHTTP library supports repeated query keys, all values of which
+     * will be collected in the order they appear.<p>
+     * 
+     * Tokens (path parameter values, query keys/values) are not interpreted or
+     * parsed by the HTTP server. In particular, please note that there is no
+     * API-support for so called <i>path matrix variables</i> (nor is this magic
+     * standardized) and appending brackets ("[]") to the query key has no
+     * special meaning; it will simply become part of the query key itself.<p>
+     * 
+     * If embedding multiple query values into one key entry is desired, then
+     * splitting and parsing the value with whatever delimiting character you
+     * choose is pretty straight forward:
+     * 
+     * <pre>{@code
+     *     // "?numbers=1,2,3"
+     *     // WARNING: This ignores the presence of repeated entries
+     *     String[] vals = request.parameters()
+     *                            .queryFirst("numbers")
+     *                            .get()
+     *                            .split(",");
+     *     int[] ints = Arrays.stream(vals)
+     *                        .mapToInt(Integer::parseInt)
+     *                        .toArray();
+     * }</pre>
+     * 
+     * Instead of using a non-standardized separator, it's far more straight
+     * forward and fool-proof (number separator is actually dependent on
+     * regional format) to rely on repetition instead:
+     * 
+     * <pre>{@code
+     *     // "?number=1&number=2&number=3"
+     *     int[] ints = request.parameters()
+     *                         .queryStream("number")
+     *                         .mapToInt(Integer::parseInt)
+     *                         .toArray();
+     * }</pre>
+     * 
+     * Methods in the Parameters API will normally URL decode (aka.
+     * percent-decode) parameter values as if using {@link
+     * URLDecoder#decode(String, Charset) URLDecoder.decode(segment,
+     * StandardCharsets.UTF_8)} <i>except</i> the plus sign ('+') is <i>not</i>
+     * converted to a space character and remains the same. If this is not
+     * desired, use methods that carries the suffix "raw". The raw/non-decoded
+     * version is useful when need be to decode query values manually, for
+     * example when receiving data from a browser submitting an HTML form using
+     * the "GET" method. The default encoding the browser uses will be
+     * <a href="https://www.w3.org/TR/html401/interact/forms.html#h-17.13.4.1">
+     * application/x-www-form-urlencoded</a> which escapes space characters
+     * using the plus character ('+').<p>
+     * 
+     * <pre>{@code
+     *     String nondecoded = request.parameters().queryFirstRaw("q");
+     *     // '+' is replaced with ' '
+     *     String formdata = java.net.URLDecoder.decode(nondecoded, StandardCharsets.UTF_8);
+     * }</pre>
+     * 
+     * @author Martin Andersson (webmaster at martinandersson.com)
+     */
+    interface Parameters
+    {
+        /**
+         * Returns a decoded path parameter value.<p>
+         * 
+         * Suppose that the HTTP server has a route registered which accepts a
+         * parameter "who":<p>
+         * <pre>
+         *   /hello/{who}
+         * </pre>
+         * 
+         * Given this request:
+         * <pre>
+         *   GET /hello/John%20Doe HTTP/1.1
+         *   ...
+         * </pre>
+         * 
+         * {@code request.parameters().path("who")} will return "John Doe".
+         * 
+         * @param name of path parameter (case sensitive)
+         * 
+         * @return the path parameter value
+         * 
+         * @throws NullPointerException
+         *             if {@code name} is {@code null}
+         * 
+         * @throws IllegalArgumentException
+         *             if the decoder encounters illegal characters
+         */
+        Optional<String> path(String name);
+        
+        /**
+         * Returns a non-decoded path parameter value.
+         * 
+         * @param name of path parameter (case sensitive)
+         * 
+         * @return the path parameter value (not decoded)
+         * 
+         * @throws NullPointerException if {@code name} is {@code null}
+         * 
+         * @see #path(String) 
+         */
+        Optional<String> pathRaw(String name);
+        
+        /**
+         * Returns a decoded query parameter value (first occurrence).<p>
+         * 
+         * Given this request:
+         * <pre>
+         *   GET /hello?who=John%20Doe HTTP/1.1
+         *   ...
+         * </pre>
+         * 
+         * {@code request.parameters().queryFirst("who")} will return "John
+         * Doe".
+         * 
+         * @param key of query parameter (case sensitive)
+         * 
+         * @return the query parameter value (first occurrence)
+         * 
+         * @throws NullPointerException
+         *             if {@code name} is {@code null}
+         * 
+         * @throws IllegalArgumentException
+         *             if the decoder encounters illegal characters
+         */
+        Optional<String> queryFirst(String key);
+        
+        /**
+         * Returns a non-decoded query parameter value (first occurrence).<p>
+         * 
+         * @param key of query parameter (case sensitive)
+         * 
+         * @return the query parameter value (not decoded)
+         * 
+         * @throws NullPointerException if {@code key} is {@code null}
+         * 
+         * @see #queryFirst(String)
+         */
+        Optional<String> queryFirstRaw(String key);
+        
+        /**
+         * Returns a stream of decoded query parameter values.<p>
+         * 
+         * The returned stream's encounter order follows the order in which the
+         * repeated query keys appeared in the client-provided query string.
+         * 
+         * @param key of query parameter (case sensitive)
+         * 
+         * @return a stream of decoded query parameter values
+         * 
+         * @throws NullPointerException
+         *             if {@code key} is {@code null}
+         * 
+         * @throws IllegalArgumentException
+         *             if the decoder encounters illegal characters
+         * 
+         * @see Parameters
+         */
+        Stream<String> queryStream(String key);
+        
+        /**
+         * Returns a stream of non-decoded query parameter values.<p>
+         * 
+         * The returned stream's encounter order follows the order in which the
+         * repeated query keys appeared in the client-provided query string.
+         * 
+         * @param key of query parameter (case sensitive)
+         * 
+         * @return a stream of non-decoded query parameter values
+         * 
+         * @throws NullPointerException if {@code key} is {@code null}
+         * 
+         * @see Parameters
+         */
+        Stream<String> queryStreamRaw(String key);
+        
+        /**
+         * Returns a list of decoded query parameter values.<p>
+         * 
+         * The returned list's iteration order follows the order in which the
+         * repeated query keys appeared in the client-provided query string.
+         * 
+         * @param key of query parameter (case sensitive)
+         * 
+         * @return a list of decoded query parameter values (unmodifiable)
+         * 
+         * @throws NullPointerException
+         *             if {@code key} is {@code null}
+         * 
+         * @throws IllegalArgumentException
+         *             if the decoder encounters illegal characters
+         * 
+         * @see Parameters
+         */
+        List<String> queryList(String key);
+        
+        /**
+         * Returns a list of non-decoded query parameter values.<p>
+         * 
+         * The returned list's iteration order follows the order in which the
+         * repeated query keys appeared in the client-provided query string.
+         * 
+         * @param key of query parameter (case sensitive)
+         * 
+         * @return a list of non-decoded query parameter values (unmodifiable)
+         * 
+         * @throws NullPointerException if {@code key} is {@code null}
+         * 
+         * @see Parameters
+         */
+        List<String> queryListRaw(String key);
+        
+        /**
+         * Returns a map of query key to decoded parameter values.<p>
+         * 
+         * The returned map's iteration order follows the order in which the
+         * query keys appeared in the client-provided query string. Same is true
+         * for the associated list of the values.<p>
+         * 
+         * @return a map of query key to decoded parameter values (unmodifiable)
+         *
+         * @throws IllegalArgumentException
+         *             if the decoder encounters illegal characters
+         * 
+         * @see Parameters
+         */
+        Map<String, List<String>> queryMap();
+        
+        /**
+         * Returns a map of query key to non-decoded parameter values.<p>
+         * 
+         * The returned map's iteration order follows the order in which the
+         * query keys appeared in the client-provided query string. Same is true
+         * for the associated list of the values.<p>
+         * 
+         * @return a map of query key to non-decoded parameter values (unmodifiable)
+         * 
+         * @see Parameters
+         */
+        Map<String, List<String>> queryMapRaw();
+    }
     
     /**
      * Is a thread-safe and non-blocking API for accessing the request body in

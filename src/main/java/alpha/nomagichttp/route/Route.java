@@ -31,18 +31,13 @@ import java.util.Map;
  * 
  * The request-target "/where?q=now" has a <i>path</i> component and a query
  * component. The path "/where" will match a route in the HTTP server with the
- * same identity. The query "?q=now" specifies one "q"-named parameter with
- * value "now". The value can be retrieved using {@link
- * Request#paramFromQuery(String)}.<p>
+ * same identity. The query "?q=now" specifies a "q"-named parameter with the
+ * value "now".<p>
  * 
  * The route may declare named path parameters which act like a wildcard segment
- * whose dynamic value is given by the client through the request path, then
- * retrievable using {@link Request#paramFromPath(String)}.<p>
- * 
- * Both query- and path parameters are optional and they can not be specified
- * as required. The request handler is free to interpret the presence, absence
- * and value of parameters however it sees fit. A path parameter value will be
- * assumed to end with a space- or forward slash character ('/').<p>
+ * whose dynamic value is given by the client through the request path.  Both
+ * query- and path parameters are optional and they can not be specified as
+ * required. Their values may be retrieved using {@link Request#parameters()}<p>
  * 
  * The route identity starts with a forward slash and consists of all its
  * segments joined without path parameter names. For example - using curly
