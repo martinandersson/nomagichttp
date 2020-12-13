@@ -226,14 +226,14 @@ final class RequestTarget
             c2 = str.indexOf('+');
         
         if (c2 == -1) {
-            // No plus characters, then this works just fine
+            // No plus characters? JDK-decode the entire string
             return URLDecoder.decode(str, UTF_8);
         }
         
         Stream.Builder<String> b = Stream.builder();
         
         do {
-            // Otherwise, skip plus characters before decoding..
+            // Otherwise, skip plus characters and decode the chunks in-between..
             String s = str.substring(c1, c2);
             b.add(URLDecoder.decode(s, UTF_8));
             c1 = c2 + 1;
@@ -243,7 +243,7 @@ final class RequestTarget
             }
         } while (c1 < str.length());
         
-        // ..and add them back later
+        // ..and then add the plus characters back
         return b.build().collect(joining("+"));
     }
     
