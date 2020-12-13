@@ -265,7 +265,7 @@ public interface Request
     
     /**
      * Is a thread-safe and non-blocking API for accessing request path- and
-     * query parameter values in various forms.<p>
+     * query parameter values.<p>
      * 
      * Any client-given request path (a component of {@link Request#target()}
      * may contain segments interpreted by the HTTP server as a path parameter
@@ -409,6 +409,7 @@ public interface Request
          *             if {@code name} is {@code null}
          * 
          * @throws IllegalArgumentException
+         *             if a query entry does not have at least one '=' character, or
          *             if the decoder encounters illegal characters
          */
         Optional<String> queryFirst(String key);
@@ -441,6 +442,7 @@ public interface Request
          *             if {@code key} is {@code null}
          * 
          * @throws IllegalArgumentException
+         *             if a query entry does not have at least one '=' character, or
          *             if the decoder encounters illegal characters
          * 
          * @see Parameters
@@ -460,6 +462,9 @@ public interface Request
          *         decoded/unescaped)
          * 
          * @throws NullPointerException if {@code keyRaw} is {@code null}
+         *
+         * @throws IllegalArgumentException
+         *             if a query entry does not have at least one '=' character
          * 
          * @see Parameters
          */
@@ -479,8 +484,9 @@ public interface Request
          * 
          * @throws NullPointerException
          *             if {@code key} is {@code null}
-         * 
+         *
          * @throws IllegalArgumentException
+         *             if a query entry does not have at least one '=' character, or
          *             if the decoder encounters illegal characters
          * 
          * @see Parameters
@@ -500,6 +506,9 @@ public interface Request
          *         decoded/unescaped)
          * 
          * @throws NullPointerException if {@code keyRaw} is {@code null}
+         *
+         * @throws IllegalArgumentException
+         *             if a query entry does not have at least one '=' character
          * 
          * @see Parameters
          */
@@ -515,8 +524,9 @@ public interface Request
          * 
          * @return an unmodifiable map of query key to parameter values
          *         (percent-decoded)
-         * 
+         *
          * @throws IllegalArgumentException
+         *             if a query entry does not have at least one '=' character, or
          *             if the decoder encounters illegal characters
          * 
          * @see Parameters
@@ -533,6 +543,9 @@ public interface Request
          * 
          * @return an unmodifiable map of raw query key to raw parameter values
          *         (not decoded/escaped)
+         *
+         * @throws IllegalArgumentException
+         *             if a query entry does not have at least one '=' character
          * 
          * @see Parameters
          */

@@ -83,9 +83,9 @@ import java.util.Map;
  *       <i>except</i> the plus sign ('+') is <i>not</i> converted to a space
  *       character and remains the same (standard
  *       <a href="https://tools.ietf.org/html/rfc3986#section-2.1">RFC 3986</a> behavior).</li>
- *   <li>Dot-segments (".", "..") are normalized as if using
- *       {@link URI#normalize()} (basically "." is removed and ".." removes the
- *       previous segment)</li>
+ *   <li>Dot-segments (".", "..") are normalized as defined by step 1 and 2 in
+ *       Javadoc of {@link URI#normalize()} (basically "." is removed and ".."
+ *       removes the previous segment)</li>
  *   <li>Finally, all remaining segments that are not interpreted as a path
  *       parameter value must match a route's identity exactly and in order. In
  *       particular, note that route-matching is case-sensitive and characters
@@ -98,6 +98,8 @@ import java.util.Map;
  * @author Martin Andersson (webmaster at martinandersson.com)
  * 
  * @see RouteRegistry
+ * @see Route.Builder
+ * @see Request.Parameters
  */
 public interface Route
 {
@@ -248,12 +250,21 @@ public interface Route
      *     String s = r.toString(); // "/users/{user-id}/items/{item-id}"
      * }</pre>
      * 
-     * A valid segment value is any string which starts with a forward slash
-     * character ('/'). Only the root can be a string whose contents is a single
-     * forward slash. All other segment values must have content following the
-     * forward slash. A specified segment value may contain many forward slash
-     * separators, for example {@code "/a/b/c"}. All trailing forward slash
-     * characters will be removed (see {@link Route}).<p>
+     * Segment values provided to a builder is validated accordingly:
+     * <ul>
+     *   <li>Must start with a forward slash character ('/').</li>
+     *   <li>Only the root may end with a forward slash character (see
+     *       {@link Route}).</li>
+     *   <li>Can not contain a forward slash following another forward slash
+     *       (empty segments not supported, see {@link Route}).</li>
+     *   <li>Only the root can be a string whose content is a single
+     *       forward slash. All other segment values must have content
+     *       following the forward slash.</li>
+     * </ul>
+     * 
+     * Please note that a specified segment value may contain many forward slash
+     * separators as long as this yields separate and distinct segments, for
+     * example {@code "/a/b/c"}.<p>
      * 
      * A valid parameter name is any string, even the empty string. The only
      * requirement is that it has to be unique for the route. The HTTP server's
