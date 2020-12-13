@@ -12,7 +12,7 @@ import java.util.RandomAccess;
  * 
  * The types {@code Segment} and {@code Segment.Builder} are technical details
  * that is not visible to the application developer when using {@link
- * Route#builder()}.<p>
+ * Route#builder(String)}.<p>
  * 
  * Segments are immutable and thread-safe.<p>
  * 
@@ -40,7 +40,7 @@ interface Segment
      *           if {@code value} is {@code null}
      * 
      * @throws IllegalArgumentException
-     *           if {@code value} is not valid, see {@linkplain RouteBuilder}
+     *           if {@code value} is not valid, see {@linkplain Route.Builder}
      */
     static Segment.Builder builder(String str, boolean isFirst) {
         return new DefaultSegment.Builder(str, isFirst);
@@ -131,7 +131,7 @@ interface Segment
          *           if {@code value} is {@code null}
          * 
          * @throws IllegalArgumentException
-         *           if {@code value} is not valid, see {@linkplain RouteBuilder}
+         *           if {@code value} is not valid, see {@linkplain Route.Builder}
          */
         void append(String str);
         
@@ -139,7 +139,7 @@ interface Segment
          * Declare a path parameter.
          * 
          * The segment builder can not guard against duplicated parameter names
-         * in the route. This is the responsibility of the {@link RouteBuilder}.
+         * in the route. This is the responsibility of the {@link Route.Builder}.
          * 
          * @param name of parameter (any string)
          * 

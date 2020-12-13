@@ -111,7 +111,7 @@ public final class DefaultRoute implements Route
      * If not all segments are found, {@code null} is returned.<p>
      * 
      * If all segments are found, then this route can be assumed to match the
-     * provided request-target and the indices will be used as a offset for the
+     * provided request-target and the indices will be used as offsets for the
      * operation that extracts parameter values.
      * 
      * @return all segment indices in the provided request-target

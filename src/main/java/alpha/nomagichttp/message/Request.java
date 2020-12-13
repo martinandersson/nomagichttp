@@ -313,8 +313,8 @@ public interface Request
      * }</pre>
      * 
      * Instead of using a non-standardized separator, it's far more straight
-     * forward and fool-proof (number separator is actually dependent on
-     * regional format) to rely on repetition instead:
+     * forward and fool-proof (number separator would be dependent on regional
+     * format) to rely on repetition instead:
      * 
      * <pre>{@code
      *     // "?number=1&number=2&number=3"
@@ -325,19 +325,21 @@ public interface Request
      * }</pre>
      * 
      * Methods in the Parameters API will normally URL decode (aka.
-     * percent-decode) parameter values as if using {@link
-     * URLDecoder#decode(String, Charset) URLDecoder.decode(segment,
-     * StandardCharsets.UTF_8)} <i>except</i> the plus sign ('+') is <i>not</i>
-     * converted to a space character and remains the same. If this is not
-     * desired, use methods that carries the suffix "raw". The raw/non-decoded
-     * version is useful when need be to decode query values manually, for
-     * example when receiving data from a browser submitting an HTML form using
-     * the "GET" method. The default encoding the browser uses will be
+     * percent-decode) inbound tokens (query keys, path- and query parameter
+     * values) as if using {@link URLDecoder#decode(String, Charset)
+     * URLDecoder.decode(segment, StandardCharsets.UTF_8)} <i>except</i> the
+     * plus sign ('+') is <i>not</i> converted to a space character and remains
+     * the same. If this is not desired, use methods that carries the suffix
+     * "raw". The raw version is useful when need be to unescape values using a
+     * different strategy, for example when receiving a query string from a
+     * browser submitting an HTML form using the "GET" method. The default
+     * encoding the browser uses will be
      * <a href="https://www.w3.org/TR/html401/interact/forms.html#h-17.13.4.1">
      * application/x-www-form-urlencoded</a> which escapes space characters
      * using the plus character ('+').<p>
      * 
      * <pre>{@code
+     *     // Note: key needs to be in its raw form
      *     String nondecoded = request.parameters().queryFirstRaw("q");
      *     // '+' is replaced with ' '
      *     String formdata = java.net.URLDecoder.decode(nondecoded, StandardCharsets.UTF_8);
@@ -348,7 +350,7 @@ public interface Request
     interface Parameters
     {
         /**
-         * Returns a decoded path parameter value.<p>
+         * Returns a path parameter value (percent-decoded).<p>
          * 
          * Suppose that the HTTP server has a route registered which accepts a
          * parameter "who":<p>
@@ -366,22 +368,19 @@ public interface Request
          * 
          * @param name of path parameter (case sensitive)
          * 
-         * @return the path parameter value
+         * @return the path parameter value (percent-decoded)
          * 
          * @throws NullPointerException
          *             if {@code name} is {@code null}
-         * 
-         * @throws IllegalArgumentException
-         *             if the decoder encounters illegal characters
          */
         Optional<String> path(String name);
         
         /**
-         * Returns a non-decoded path parameter value.
+         * Returns a raw path parameter value (not decoded/unescaped).
          * 
          * @param name of path parameter (case sensitive)
          * 
-         * @return the path parameter value (not decoded)
+         * @return the raw path parameter value (not decoded/unescaped)
          * 
          * @throws NullPointerException if {@code name} is {@code null}
          * 
@@ -390,20 +389,21 @@ public interface Request
         Optional<String> pathRaw(String name);
         
         /**
-         * Returns a decoded query parameter value (first occurrence).<p>
+         * Returns a query parameter value (first occurrence,
+         * percent-decoded).<p>
          * 
          * Given this request:
          * <pre>
-         *   GET /hello?who=John%20Doe HTTP/1.1
+         *   GET /hello?who=John%20Doe&who=other HTTP/1.1
          *   ...
          * </pre>
          * 
          * {@code request.parameters().queryFirst("who")} will return "John
          * Doe".
          * 
-         * @param key of query parameter (case sensitive)
+         * @param key of query parameter (case sensitive, not encoded/escaped)
          * 
-         * @return the query parameter value (first occurrence)
+         * @return the query parameter value (first occurrence, percent-decoded)
          * 
          * @throws NullPointerException
          *             if {@code name} is {@code null}
@@ -414,27 +414,28 @@ public interface Request
         Optional<String> queryFirst(String key);
         
         /**
-         * Returns a non-decoded query parameter value (first occurrence).<p>
+         * Returns a raw query parameter value (first occurrence, not
+         * decoded/unescaped).<p>
          * 
-         * @param key of query parameter (case sensitive)
+         * @param keyRaw of query parameter (case sensitive, encoded/escaped)
          * 
-         * @return the query parameter value (not decoded)
+         * @return the raw query parameter value (not decoded/unescaped)
          * 
-         * @throws NullPointerException if {@code key} is {@code null}
+         * @throws NullPointerException if {@code keyRaw} is {@code null}
          * 
          * @see #queryFirst(String)
          */
-        Optional<String> queryFirstRaw(String key);
+        Optional<String> queryFirstRaw(String keyRaw);
         
         /**
-         * Returns a stream of decoded query parameter values.<p>
+         * Returns a new stream of query parameter values (percent-decoded).<p>
          * 
          * The returned stream's encounter order follows the order in which the
          * repeated query keys appeared in the client-provided query string.
          * 
-         * @param key of query parameter (case sensitive)
+         * @param key of query parameter (case sensitive, not encoded/escaped)
          * 
-         * @return a stream of decoded query parameter values
+         * @return a new stream of query parameter values (percent-decoded)
          * 
          * @throws NullPointerException
          *             if {@code key} is {@code null}
@@ -447,30 +448,34 @@ public interface Request
         Stream<String> queryStream(String key);
         
         /**
-         * Returns a stream of non-decoded query parameter values.<p>
+         * Returns a new stream of raw query parameter values (not
+         * decoded/unescaped).<p>
          * 
          * The returned stream's encounter order follows the order in which the
          * repeated query keys appeared in the client-provided query string.
          * 
-         * @param key of query parameter (case sensitive)
+         * @param keyRaw of query parameter (case sensitive, encoded/escaped)
          * 
-         * @return a stream of non-decoded query parameter values
+         * @return a new stream of raw query parameter values (not
+         *         decoded/unescaped)
          * 
-         * @throws NullPointerException if {@code key} is {@code null}
+         * @throws NullPointerException if {@code keyRaw} is {@code null}
          * 
          * @see Parameters
          */
-        Stream<String> queryStreamRaw(String key);
+        Stream<String> queryStreamRaw(String keyRaw);
         
         /**
-         * Returns a list of decoded query parameter values.<p>
+         * Returns an unmodifiable list of query parameter values
+         * (percent-decoded).<p>
          * 
          * The returned list's iteration order follows the order in which the
          * repeated query keys appeared in the client-provided query string.
          * 
-         * @param key of query parameter (case sensitive)
+         * @param key of query parameter (case sensitive, not encoded/escaped)
          * 
-         * @return a list of decoded query parameter values (unmodifiable)
+         * @return an unmodifiable list of query parameter values
+         *         (percent-decoded)
          * 
          * @throws NullPointerException
          *             if {@code key} is {@code null}
@@ -483,30 +488,34 @@ public interface Request
         List<String> queryList(String key);
         
         /**
-         * Returns a list of non-decoded query parameter values.<p>
+         * Returns an unmodifiable list of raw query parameter values (not
+         * decoded/unescaped).<p>
          * 
          * The returned list's iteration order follows the order in which the
          * repeated query keys appeared in the client-provided query string.
          * 
-         * @param key of query parameter (case sensitive)
+         * @param keyRaw of query parameter (case sensitive, encoded/escaped)
          * 
-         * @return a list of non-decoded query parameter values (unmodifiable)
+         * @return an unmodifiable list of raw query parameter values (not
+         *         decoded/unescaped)
          * 
-         * @throws NullPointerException if {@code key} is {@code null}
+         * @throws NullPointerException if {@code keyRaw} is {@code null}
          * 
          * @see Parameters
          */
-        List<String> queryListRaw(String key);
+        List<String> queryListRaw(String keyRaw);
         
         /**
-         * Returns a map of query key to decoded parameter values.<p>
+         * Returns an unmodifiable map of query key to parameter values
+         * (percent-decoded).<p>
          * 
          * The returned map's iteration order follows the order in which the
          * query keys appeared in the client-provided query string. Same is true
          * for the associated list of the values.<p>
          * 
-         * @return a map of query key to decoded parameter values (unmodifiable)
-         *
+         * @return an unmodifiable map of query key to parameter values
+         *         (percent-decoded)
+         * 
          * @throws IllegalArgumentException
          *             if the decoder encounters illegal characters
          * 
@@ -515,13 +524,15 @@ public interface Request
         Map<String, List<String>> queryMap();
         
         /**
-         * Returns a map of query key to non-decoded parameter values.<p>
+         * Returns an unmodifiable map of raw query key to raw parameter values
+         * (not decoded/escaped).<p>
          * 
          * The returned map's iteration order follows the order in which the
          * query keys appeared in the client-provided query string. Same is true
          * for the associated list of the values.<p>
          * 
-         * @return a map of query key to non-decoded parameter values (unmodifiable)
+         * @return an unmodifiable map of raw query key to raw parameter values
+         *         (not decoded/escaped)
          * 
          * @see Parameters
          */

@@ -69,14 +69,17 @@ import java.util.Map;
  * request path:
  * 
  * <ul>
+ *   <li>Clustered forward slashes are reduced to just one. Empty segments are
+ *       not supported and will consequently be discarded.</li>
  *   <li>All trailing forward slashes are truncated. A trailing slash is usually
- *       used to separate a file from a directory. This practice tends to forget
- *       that the "R" in URI stands for <i>resource</i>. Be that a file,
- *       directory, whatever - makes no difference.</li>
+ *       used to separate a file from a directory. However, "R" in URI stands
+ *       for <i>resource</i>. Be that a file, directory, whatever - makes no
+ *       difference.</li>
  *   <li>The empty path will be replaced with "/".</li>
  *   <li>The path is split into segments using the forward slash character as a
- *       separator, then each segment will be decoded as if using
- *       {@link URLDecoder#decode(String, Charset) URLDecoder.decode(segment, StandardCharsets.UTF_8)}
+ *       separator.</li>
+ *   <li>Each segment will be percent-decoded as if using {@link
+ *       URLDecoder#decode(String, Charset) URLDecoder.decode(segment, StandardCharsets.UTF_8)}
  *       <i>except</i> the plus sign ('+') is <i>not</i> converted to a space
  *       character and remains the same (standard
  *       <a href="https://tools.ietf.org/html/rfc3986#section-2.1">RFC 3986</a> behavior).</li>
