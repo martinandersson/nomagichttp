@@ -64,19 +64,21 @@ final class RequestTarget
         String parse = rt.isEmpty() ? "/" : rt;
         assert !parse.isBlank() : "RequestHeadProcessor should not give us a blank string.";
         
+        final int skip = parse.startsWith("/") ? 1 : 0;
+        
         // Find query- and fragment indices
-        int q = parse.indexOf('?', 1),
-            f = parse.indexOf('#', q == -1 ? 1 : q + 1);
+        int q = parse.indexOf('?', skip),
+            f = parse.indexOf('#', q == -1 ? skip : q + 1);
         
         // Extract path component..
         final String path;
         if (q == -1 && f == -1) {
-            path = parse.substring(1);
+            path = parse.substring(skip);
         } else if (q != -1) {
-            path = parse.substring(1, q);
+            path = parse.substring(skip, q);
         } else {
             assert f != -1;
-            path = parse.substring(1, f);
+            path = parse.substring(skip, f);
         }
         
         // ..into tokens that we normalize
@@ -175,6 +177,10 @@ final class RequestTarget
     }
     
     private Map<String, List<String>> parseQuery() {
+        if (query.isEmpty()) {
+            return Map.of();
+        }
+        
         Map<String, List<String>> m = new LinkedHashMap<>();
         
         String[] pairs = query.split("&");
