@@ -9,12 +9,10 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.RandomAccess;
-import java.util.stream.Stream;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.util.Collections.unmodifiableList;
 import static java.util.Collections.unmodifiableMap;
-import static java.util.stream.Collectors.joining;
 import static java.util.stream.Collectors.toCollection;
 import static java.util.stream.Collectors.toMap;
 
@@ -225,29 +223,14 @@ final class RequestTarget
     }
     
     private static String percentDecode(String str) {
-        int c1 = 0,
-            c2 = str.indexOf('+');
-        
-        if (c2 == -1) {
+        final int p = str.indexOf('+');
+        if (p == -1) {
             // No plus characters? JDK-decode the entire string
             return URLDecoder.decode(str, UTF_8);
+        } else {
+            // Else decode chunks in-between
+            return percentDecode(str.substring(0, p)) + "+" + percentDecode(str.substring(p + 1));
         }
-        
-        Stream.Builder<String> b = Stream.builder();
-        
-        do {
-            // Otherwise, skip plus characters and decode the chunks in-between..
-            String s = str.substring(c1, c2);
-            b.add(URLDecoder.decode(s, UTF_8));
-            c1 = c2 + 1;
-            c2 = str.indexOf('+', c1);
-            if (c2 == -1) {
-                c2 = str.length();
-            }
-        } while (c1 < str.length());
-        
-        // ..and then add the plus characters back
-        return b.build().collect(joining("+"));
     }
     
     private static List<String> percentDecode(Collection<String> strings) {

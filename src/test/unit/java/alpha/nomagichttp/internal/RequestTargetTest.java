@@ -6,7 +6,6 @@ import java.util.List;
 import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
  * Small tests of {@link RequestTarget}.
@@ -155,6 +154,78 @@ class RequestTargetTest
         expSegDec();
         expQryRaw(e("a", "", ""));
         expQryDec(e("a", "", ""));
+    }
+    
+    @Test
+    void plus_sign_is_left_alone_1() {
+        init("/+");
+        expSegRaw("+");
+        expSegDec("+");
+        expQryRaw();
+        expQryDec();
+    }
+    
+    @Test
+    void plus_sign_is_left_alone_2() {
+        init("/+%20+");
+        expSegRaw("+%20+");
+        expSegDec("+ +");
+        expQryRaw();
+        expQryDec();
+    }
+    
+    @Test
+    void plus_sign_is_left_alone_3() {
+        init("/++");
+        expSegRaw("++");
+        expSegDec("++");
+        expQryRaw();
+        expQryDec();
+    }
+    
+    @Test
+    void plus_sign_is_left_alone_4() {
+        init("/+++");
+        expSegRaw("+++");
+        expSegDec("+++");
+        expQryRaw();
+        expQryDec();
+    }
+    
+    @Test
+    void plus_sign_is_left_alone_5() {
+        init("/a+");
+        expSegRaw("a+");
+        expSegDec("a+");
+        expQryRaw();
+        expQryDec();
+    }
+    
+    @Test
+    void plus_sign_is_left_alone_6() {
+        init("/+a");
+        expSegRaw("+a");
+        expSegDec("+a");
+        expQryRaw();
+        expQryDec();
+    }
+    
+    @Test
+    void plus_sign_is_left_alone_7() {
+        init("/a+b");
+        expSegRaw("a+b");
+        expSegDec("a+b");
+        expQryRaw();
+        expQryDec();
+    }
+    
+    @Test
+    void plus_sign_is_left_alone_8() {
+        init("/%20a%20+%20b%20");
+        expSegRaw("%20a%20+%20b%20");
+        expSegDec(" a + b ");
+        expQryRaw();
+        expQryDec();
     }
     
     
