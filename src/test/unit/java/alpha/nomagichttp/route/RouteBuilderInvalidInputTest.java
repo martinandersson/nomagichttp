@@ -60,7 +60,7 @@ class RouteBuilderInvalidInputTest
     void segment_can_not_be_two_slashes_ctor() {
         assertThatThrownBy(() -> builder("//"))
                 .isExactlyInstanceOf(IllegalArgumentException.class)
-                .hasMessage("Segment (or a piece thereof) must contain more than just forward slash(es).");
+                .hasMessage("Empty segments not supported.");
     }
     
     @Test
@@ -76,7 +76,7 @@ class RouteBuilderInvalidInputTest
     void segment_can_not_have_two_trailing_slashes_ctor() {
         assertThatThrownBy(() -> builder("/a//"))
                 .isExactlyInstanceOf(IllegalArgumentException.class)
-                .hasMessage("Multiple trailing forward slashes in segment (or a piece thereof): \"/a//\"");
+                .hasMessage("Empty segments not supported.");
     }
     
     @Test
@@ -85,7 +85,7 @@ class RouteBuilderInvalidInputTest
     
         assertThatThrownBy(() -> rb.append("/a//"))
                 .isExactlyInstanceOf(IllegalArgumentException.class)
-                .hasMessage("Multiple trailing forward slashes in segment (or a piece thereof): \"/a//\"");
+                .hasMessage("Segment (or a piece thereof) must contain more than just forward slash(es).");
     }
     
     @Test

@@ -95,21 +95,23 @@ final class DefaultSegment implements Segment
         }
         
         private void append(String str, boolean acceptSingleSlash) {
+            // TODO Inline all these
             requireFirstCharIsSlash(str);
             
             if (!acceptSingleSlash) {
                 requireNotSingleSlash(str);
+                requireDoesNotEndWithSlash(str);
             }
             
-            requireNotTwoSlashes(str);
-            String clean = tryRemoveSlashEnding(str, false);
+            requireNoEmptySegments(str);
             
-            this.value.append(clean);
+            this.value.append(str);
         }
         
         private static void requireFirstCharIsSlash(String str) {
             if (!str.startsWith("/")) {
                 throw new IllegalArgumentException(
+                        // TODO: Remove "or a piece thereof"
                         "A segment (or a piece thereof) must start with a \"/\" character. Got: \"" + str + "\"");
             }
         }
@@ -121,6 +123,21 @@ final class DefaultSegment implements Segment
             }
         }
         
+        private static void requireDoesNotEndWithSlash(String str) {
+            if (str.endsWith("/")) {
+                throw new IllegalArgumentException(
+                        // TODO: Change to "Segment must not end with a forward slash character."
+                        "Segment (or a piece thereof) must contain more than just forward slash(es).");
+            }
+        }
+        
+        private static void requireNoEmptySegments(String str) {
+            if (str.contains("//")) {
+                throw new IllegalArgumentException("Empty segments not supported.");
+            }
+        }
+        
+        // TODO: Delete
         private static void requireNotTwoSlashes(String str) {
             if (str.equals("//")) {
                 throw new IllegalArgumentException(
