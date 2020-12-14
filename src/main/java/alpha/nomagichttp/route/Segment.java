@@ -37,10 +37,10 @@ interface Segment
      *                 segment of the route
      * 
      * @throws NullPointerException
-     *           if {@code value} is {@code null}
+     *           if {@code str} is {@code null}
      * 
      * @throws IllegalArgumentException
-     *           if {@code value} is not valid, see {@linkplain Route.Builder}
+     *           if {@code str} is not valid, see {@linkplain Route.Builder}
      */
     static Segment.Builder builder(String str, boolean isFirst) {
         return new DefaultSegment.Builder(str, isFirst);
@@ -128,10 +128,10 @@ interface Segment
          *           if parameters have been declared
          * 
          * @throws NullPointerException
-         *           if {@code value} is {@code null}
+         *           if {@code str} is {@code null}
          * 
          * @throws IllegalArgumentException
-         *           if {@code value} is not valid, see {@linkplain Route.Builder}
+         *           if {@code str} is not valid, see {@linkplain Route.Builder}
          */
         void append(String str);
         

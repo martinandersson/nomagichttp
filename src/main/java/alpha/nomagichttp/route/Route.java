@@ -135,7 +135,7 @@ public interface Route
      *             if {@code segment} is {@code null}
      * 
      * @throws IllegalArgumentException
-     *             if {@code segment} doesn't start with a forward slash
+     *             see {@link Route.Builder}
      */
     static Route.Builder builder(String segment) {
         return new DefaultRoute.Builder(segment);
@@ -253,18 +253,19 @@ public interface Route
      * Segment values provided to a builder is validated accordingly:
      * <ul>
      *   <li>Must start with a forward slash character ('/').</li>
-     *   <li>Only the root may end with a forward slash character (see
-     *       {@link Route}).</li>
-     *   <li>Can not contain a forward slash following another forward slash
-     *       (empty segments not supported, see {@link Route}).</li>
+     *   <li>Only the root may also end with a forward slash character (see
+     *       {@link Route#builder(String)}).</li>
      *   <li>Only the root can be a string whose content is a single
      *       forward slash. All other segment values must have content
      *       following the forward slash.</li>
+     *   <li>Can not contain a forward slash following another forward slash
+     *       (empty segments not supported, see {@link Route}). The segment may
+     *       be comprised of other segments, as long as this yields separate and
+     *       valid segments, for example "/a/b/c".</li>
      * </ul>
      * 
-     * Please note that a specified segment value may contain many forward slash
-     * separators as long as this yields separate and distinct segments, for
-     * example {@code "/a/b/c"}.<p>
+     * A specified invalid segment value will cause the builder to throw an
+     * {@code IllegalArgumentException}.<p>
      * 
      * A valid parameter name is any string, even the empty string. The only
      * requirement is that it has to be unique for the route. The HTTP server's
@@ -312,8 +313,7 @@ public interface Route
          *             if {@code segment} is {@code null}
          * 
          * @throws IllegalArgumentException
-         *             if {@code segment} does not start with a forward slash,
-         *             or has a length of just 1 character
+         *             see {@link Route.Builder}
          */
         Route.Builder append(final String segment);
         
@@ -338,7 +338,8 @@ public interface Route
          * 
          * @return a new {@code Route}
          * 
-         * @throws IllegalStateException if no handlers have been added
+         * @throws IllegalStateException
+         *             if no handlers have been added
          */
         Route build();
     }
