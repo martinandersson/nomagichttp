@@ -287,8 +287,8 @@ public interface Request
      * 
      * The exact structure of the query string is not standardized (
      * <a href="https://en.wikipedia.org/wiki/Query_string">Wikipedia</a>). The
-     * NoMagicHTTP library supports repeated query keys, all values of which
-     * will be collected in the order they appear.<p>
+     * NoMagicHTTP library supports repeated query keys and query keys with no
+     * value (will be mapped to the empty string "").<p>
      * 
      * Tokens (path parameter values, query keys/values) are not interpreted or
      * parsed by the HTTP server. In particular, please note that there is no
@@ -409,7 +409,6 @@ public interface Request
          *             if {@code name} is {@code null}
          * 
          * @throws IllegalArgumentException
-         *             if a query entry does not have at least one '=' character, or
          *             if the decoder encounters illegal characters
          */
         Optional<String> queryFirst(String key);
@@ -442,7 +441,6 @@ public interface Request
          *             if {@code key} is {@code null}
          * 
          * @throws IllegalArgumentException
-         *             if a query entry does not have at least one '=' character, or
          *             if the decoder encounters illegal characters
          * 
          * @see Parameters
@@ -462,9 +460,6 @@ public interface Request
          *         decoded/unescaped)
          * 
          * @throws NullPointerException if {@code keyRaw} is {@code null}
-         *
-         * @throws IllegalArgumentException
-         *             if a query entry does not have at least one '=' character
          * 
          * @see Parameters
          */
@@ -486,7 +481,6 @@ public interface Request
          *             if {@code key} is {@code null}
          *
          * @throws IllegalArgumentException
-         *             if a query entry does not have at least one '=' character, or
          *             if the decoder encounters illegal characters
          * 
          * @see Parameters
@@ -506,9 +500,6 @@ public interface Request
          *         decoded/unescaped)
          * 
          * @throws NullPointerException if {@code keyRaw} is {@code null}
-         *
-         * @throws IllegalArgumentException
-         *             if a query entry does not have at least one '=' character
          * 
          * @see Parameters
          */
@@ -526,7 +517,6 @@ public interface Request
          *         (percent-decoded)
          *
          * @throws IllegalArgumentException
-         *             if a query entry does not have at least one '=' character, or
          *             if the decoder encounters illegal characters
          * 
          * @see Parameters
@@ -543,9 +533,6 @@ public interface Request
          * 
          * @return an unmodifiable map of raw query key to raw parameter values
          *         (not decoded/escaped)
-         *
-         * @throws IllegalArgumentException
-         *             if a query entry does not have at least one '=' character
          * 
          * @see Parameters
          */
