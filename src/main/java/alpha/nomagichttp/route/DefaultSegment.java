@@ -95,41 +95,37 @@ final class DefaultSegment implements Segment
         }
         
         private void append(String str, boolean acceptSingleSlash) {
-            // TODO Inline all these
-            requireFirstCharIsSlash(str);
-            
+            mustStartWithSlash(str);
             if (!acceptSingleSlash) {
-                requireNotSingleSlash(str);
-                requireDoesNotEndWithSlash(str);
+                mustContainMoreThanSlash(str);
+                mustNotEndWithSlash(str);
             }
-            
-            requireNoEmptySegments(str);
-            
+            mustNotContainEmptySegments(str);
             this.value.append(str);
         }
         
-        private static void requireFirstCharIsSlash(String str) {
+        private static void mustStartWithSlash(String str) {
             if (!str.startsWith("/")) {
                 throw new IllegalArgumentException(
                         "Segment must start with a forward slash character.");
             }
         }
         
-        private static void requireNotSingleSlash(String str) {
+        private static void mustContainMoreThanSlash(String str) {
             if (str.equals("/")) {
                 throw new IllegalArgumentException(
                         "Segment must contain more than just a forward slash character.");
             }
         }
         
-        private static void requireDoesNotEndWithSlash(String str) {
+        private static void mustNotEndWithSlash(String str) {
             if (str.endsWith("/")) {
                 throw new IllegalArgumentException(
                         "Segment must not end with a forward slash character.");
             }
         }
         
-        private static void requireNoEmptySegments(String str) {
+        private static void mustNotContainEmptySegments(String str) {
             if (str.contains("//")) {
                 throw new IllegalArgumentException("Segment is empty.");
             }
