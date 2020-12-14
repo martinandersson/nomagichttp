@@ -187,12 +187,9 @@ final class RequestTarget
         
         for (String p : pairs) {
             int i = p.indexOf('=');
-            if (i == -1) {
-                throw new IllegalArgumentException(
-                        "Query entry \"" + p + "\" has no '=' character.");
-            }
-            String k = p.substring(0, i),
-                   v = p.substring(i + 1);
+            // note: value may be the empty string!
+            String k = p.substring(0, i == -1 ? p.length(): i),
+                   v = i == -1 ? "" : p.substring(i + 1);
             
             List<String> l = m.computeIfAbsent(k, ignored -> new ArrayList<>(1));
             l.add(v);
