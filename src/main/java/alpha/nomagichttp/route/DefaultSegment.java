@@ -134,37 +134,5 @@ final class DefaultSegment implements Segment
                 throw new IllegalArgumentException("Segment is empty.");
             }
         }
-        
-        // TODO: Delete
-        private static void requireNotTwoSlashes(String str) {
-            if (str.equals("//")) {
-                throw new IllegalArgumentException(
-                        "Segment (or a piece thereof) must contain more than just forward slash(es).");
-            }
-        }
-        
-        private static String tryRemoveSlashEnding(final String str, boolean allOfThem) {
-            if (str.length() < 2 || !str.endsWith("/")) {
-                return str;
-            }
-            
-            final String cut = str.substring(0, str.length() - 1);
-            
-            // If the cut still has a trailing '/', maybe remove them too;
-            //   1) For developers we don't - no magic!
-            //   2) For input from HTTP we must be tolerant, so we do.
-            if (cut.length() > 1 && cut.endsWith("/")) {
-                if (allOfThem) {
-                    // TODO: Unroll into a while-loop or something instead of recursion.
-                    return tryRemoveSlashEnding(cut, true);
-                }
-                else {
-                    throw new IllegalArgumentException(
-                            "Multiple trailing forward slashes in segment (or a piece thereof): \"" + str + "\"");
-                }
-            }
-            
-            return cut;
-        }
     }
 }
