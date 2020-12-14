@@ -19,7 +19,7 @@ class RouteBuilderInvalidInputTest
     void segment_can_not_be_empty_ctor() {
         assertThatThrownBy(() -> Route.builder(""))
                 .isExactlyInstanceOf(IllegalArgumentException.class)
-                .hasMessage("A segment (or a piece thereof) must start with a \"/\" character. Got: \"\"");
+                .hasMessage("Segment must start with a forward slash character.");
     }
     
     @Test
@@ -28,7 +28,7 @@ class RouteBuilderInvalidInputTest
         
         assertThatThrownBy(() -> rb.append(""))
                 .isExactlyInstanceOf(IllegalArgumentException.class)
-                .hasMessage("A segment (or a piece thereof) must start with a \"/\" character. Got: \"\"");
+                .hasMessage("Segment must start with a forward slash character.");
     }
     
     @Test
@@ -37,14 +37,14 @@ class RouteBuilderInvalidInputTest
         
         assertThatThrownBy(() -> rb.append("/"))
                 .isExactlyInstanceOf(IllegalArgumentException.class)
-                .hasMessage("Segment (or a piece thereof) must contain more than just a forward slash character.");
+                .hasMessage("Segment must contain more than just a forward slash character.");
     }
     
     @Test
     void segment_must_start_with_slash_ctor() {
         assertThatThrownBy(() -> builder("x"))
                 .isExactlyInstanceOf(IllegalArgumentException.class)
-                .hasMessage("A segment (or a piece thereof) must start with a \"/\" character. Got: \"x\"");
+                .hasMessage("Segment must start with a forward slash character.");
     }
     
     @Test
@@ -53,14 +53,14 @@ class RouteBuilderInvalidInputTest
         
         assertThatThrownBy(() -> rb.append("x"))
                 .isExactlyInstanceOf(IllegalArgumentException.class)
-                .hasMessage("A segment (or a piece thereof) must start with a \"/\" character. Got: \"x\"");
+                .hasMessage("Segment must start with a forward slash character.");
     }
     
     @Test
     void segment_can_not_be_two_slashes_ctor() {
         assertThatThrownBy(() -> builder("//"))
                 .isExactlyInstanceOf(IllegalArgumentException.class)
-                .hasMessage("Empty segments not supported.");
+                .hasMessage("Segment is empty.");
     }
     
     @Test
@@ -69,14 +69,14 @@ class RouteBuilderInvalidInputTest
         
         assertThatThrownBy(() -> rb.append("//"))
                 .isExactlyInstanceOf(IllegalArgumentException.class)
-                .hasMessage("Segment (or a piece thereof) must contain more than just forward slash(es).");
+                .hasMessage("Segment must not end with a forward slash character.");
     }
     
     @Test
     void segment_can_not_have_two_trailing_slashes_ctor() {
         assertThatThrownBy(() -> builder("/a//"))
                 .isExactlyInstanceOf(IllegalArgumentException.class)
-                .hasMessage("Empty segments not supported.");
+                .hasMessage("Segment is empty.");
     }
     
     @Test
@@ -85,7 +85,7 @@ class RouteBuilderInvalidInputTest
     
         assertThatThrownBy(() -> rb.append("/a//"))
                 .isExactlyInstanceOf(IllegalArgumentException.class)
-                .hasMessage("Segment (or a piece thereof) must contain more than just forward slash(es).");
+                .hasMessage("Segment must not end with a forward slash character.");
     }
     
     @Test
