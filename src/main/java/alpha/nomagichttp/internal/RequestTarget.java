@@ -43,19 +43,15 @@ final class RequestTarget
      *   <li>Dot-segments (".", "..") are normalized.</li>
      * </ul>
      * 
-     * Path segments will be percent-decoded eagerly (needs to be compared with
-     * route segments). Query key- and values will only be percent-decoded when
-     * accessed by application code.
+     * Parsing of the query string as well as percent-decoding tokens (path
+     * segments, query key- and values happens lazily and will take place upon
+     * first external access).
      * 
      * @param rt raw request target as read from the request-line
      * 
      * @return a complex type representing the input
      * 
-     * @throws NullPointerException
-     *             if {@code rt} is {@code null}
-     * 
-     * @throws IllegalArgumentException
-     *             if the decoder encounters illegal characters
+     * @throws NullPointerException if {@code rt} is {@code null}
      */
     static RequestTarget parse(final String rt) {
         // At the very least, we're parsing a "/"
@@ -115,8 +111,8 @@ final class RequestTarget
     
     private final String rtRaw;
     private final String query;
-    private final List<String>
-            segmentsNotPercentDecoded, segmentsPercentDecoded;
+    private final List<String> segmentsNotPercentDecoded;
+    private List<String> segmentsPercentDecoded;
     private Map<String, List<String>>
             queryMapNotPercentDecoded, queryMapPercentDecoded;
     
@@ -127,7 +123,10 @@ final class RequestTarget
         this.query = query;
         assert !query.startsWith("?");
         this.segmentsNotPercentDecoded = unmodifiableList(segmentsNotPercentDecoded);
-        this.segmentsPercentDecoded = percentDecode(segmentsNotPercentDecoded);
+        
+        this.segmentsPercentDecoded = null;
+        this.queryMapNotPercentDecoded = null;
+        this.queryMapPercentDecoded = null;
     }
     
     /**
@@ -158,7 +157,8 @@ final class RequestTarget
      * @return normalized and percent-decoded segments
      */
     List<String> segmentsPercentDecoded() {
-        return segmentsPercentDecoded;
+        List<String> s = segmentsPercentDecoded;
+        return s != null ? s : (segmentsPercentDecoded = percentDecode(segmentsNotPercentDecoded()));
     }
     
     /**
