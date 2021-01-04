@@ -42,6 +42,7 @@ interface Segment
      * @throws IllegalArgumentException
      *           if {@code str} is not valid, see {@linkplain Route.Builder}
      */
+    @Deprecated // To be removed
     static Segment.Builder builder(String str, boolean isFirst) {
         return new DefaultSegment.Builder(str, isFirst);
     }
@@ -56,6 +57,7 @@ interface Segment
      * @return {@code true} if this segment is the first segment of the route,
      *         otherwise {@code false}
      */
+    @Deprecated // To be removed
     boolean isFirst();
     
     /**
