@@ -2,18 +2,15 @@ package alpha.nomagichttp.internal;
 
 import alpha.nomagichttp.route.Route;
 
-import java.net.URLDecoder;
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.RandomAccess;
 
-import static java.nio.charset.StandardCharsets.UTF_8;
+import static alpha.nomagichttp.internal.PercentDecoder.decode;
 import static java.util.Collections.unmodifiableList;
 import static java.util.Collections.unmodifiableMap;
-import static java.util.stream.Collectors.toCollection;
 import static java.util.stream.Collectors.toMap;
 
 /**
@@ -158,7 +155,7 @@ final class RequestTarget
      */
     List<String> segmentsPercentDecoded() {
         List<String> s = segmentsPercentDecoded;
-        return s != null ? s : (segmentsPercentDecoded = percentDecode(segmentsNotPercentDecoded()));
+        return s != null ? s : (segmentsPercentDecoded = decode(segmentsNotPercentDecoded()));
     }
     
     /**
@@ -214,31 +211,11 @@ final class RequestTarget
     
     private Map<String, List<String>> decodeMap() {
         Map<String, List<String>> m = queryMapNotPercentDecoded().entrySet().stream().collect(toMap(
-                e -> percentDecode(e.getKey()),
-                e -> percentDecode(e.getValue()),
+                e -> decode(e.getKey()),
+                e -> decode(e.getValue()),
                 (ign,ored) -> { throw new AssertionError("Insufficient JDK API"); },
                 LinkedHashMap::new));
         
         return unmodifiableMap(m);
-    }
-    
-    private static String percentDecode(String str) {
-        final int p = str.indexOf('+');
-        if (p == -1) {
-            // No plus characters? JDK-decode the entire string
-            return URLDecoder.decode(str, UTF_8);
-        } else {
-            // Else decode chunks in-between
-            return percentDecode(str.substring(0, p)) + "+" + percentDecode(str.substring(p + 1));
-        }
-    }
-    
-    private static List<String> percentDecode(Collection<String> strings) {
-        // Collectors.toUnmodifiableList() does not document RandomAccess
-        List<String> l = strings.stream()
-                .map(RequestTarget::percentDecode)
-                .collect(toCollection(ArrayList::new));
-        
-        return unmodifiableList(l);
     }
 }
