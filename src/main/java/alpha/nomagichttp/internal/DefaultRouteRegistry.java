@@ -36,6 +36,11 @@ public class DefaultRouteRegistry implements RouteRegistry
     }
     
     @Override
+    public boolean remove(Route route) {
+        return remove(route.identity()) != null;
+    }
+    
+    @Override
     public Route remove(String id) {
         return map.remove(id);
     }

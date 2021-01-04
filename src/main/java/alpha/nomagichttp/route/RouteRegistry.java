@@ -53,9 +53,7 @@ public interface RouteRegistry
      * 
      * @throws NullPointerException if {@code route} is {@code null}
      */
-    default boolean remove(Route route) {
-        return remove(route.identity()) != null;
-    }
+    boolean remove(Route route);
     
     /**
      * Remove a route using a specified route identity.
