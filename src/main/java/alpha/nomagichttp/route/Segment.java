@@ -49,28 +49,15 @@ interface Segment
     boolean isFirst();
     
     /**
-     * Returns the string value of this segment.<p>
+     * Returns the string value of this segment without a leading forward slash
+     * ('/') character.<p>
      * 
-     * The first segment of a route is the only segment with a string value
-     * allowed to be <i>only</i> a single forward slash ('/') character.<p>
+     * The first segment of a route (the root) is the only segment allowed to
+     * have a value which is the empty string. All other segments must have
+     * contents.<p>
      * 
-     * The string value always start with '/'. Non-first segments never ends
-     * with '/'.<p>
-     * 
-     * A few examples of valid string values:
-     * <pre>
-     *   /
-     *   /abc
-     *   /def/xyz
-     * </pre>
-     * 
-     * Examples of invalid string values (never returned by this method):
-     * <pre>
-     *   ""     (the empty string)
-     *   " "    (a blank string)
-     *   //     (effectively a blank segment)
-     *   /abc/  (ends with a forward slash)
-     * </pre>
+     * For example, the route "/a/b/c".{@linkplain Route#segments() segments()}
+     * will yield all the following segment values: "", "a", "b" and "c".
      * 
      * @return the string value of this segment
      */
