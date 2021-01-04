@@ -165,6 +165,10 @@ public interface Route
      * 
      * @see RequestHandler
      */
+    // TODO: See JavaDoc. Define behavior more exact. Also rename parameter to "path".
+    // https://tools.ietf.org/html/rfc3986#section-3.4
+    // TODO: HTTP server split RT into segments and can then walk a tree of routes to find the match.
+    @Deprecated // To be removed
     Match matches(String requestTarget);
     
     /**
@@ -209,6 +213,7 @@ public interface Route
     /**
      * A route matched against a request.
      */
+    @Deprecated // To be deleted
     interface Match {
         /**
          * Returns the matched route.<p>

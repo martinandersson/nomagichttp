@@ -153,6 +153,7 @@ final class RequestTarget
      * 
      * @return normalized and percent-decoded segments
      */
+    @Deprecated // Going to percent decode in RouteRegistry.lookup()/Match instead
     List<String> segmentsPercentDecoded() {
         List<String> s = segmentsPercentDecoded;
         return s != null ? s : (segmentsPercentDecoded = decode(segmentsNotPercentDecoded()));

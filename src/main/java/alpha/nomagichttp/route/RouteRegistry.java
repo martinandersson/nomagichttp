@@ -81,5 +81,6 @@ public interface RouteRegistry
      * @throws NullPointerException   if {@code requestTarget} is {@code null}
      * @throws NoRouteFoundException  if no route was found
      */
+    @Deprecated // use lookup(Iterable<String>) instead
     Route.Match lookup(String requestTarget);
 }
