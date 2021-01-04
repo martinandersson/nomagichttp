@@ -170,6 +170,15 @@ public interface Route
     Match matches(String requestTarget);
     
     /**
+     * Returns all the segments of this route.<p>
+     * 
+     * The iteration order starts at the root.
+     * 
+     * @return all the segments of this route
+     */
+    Iterable<Segment> segments();
+    
+    /**
      * Lookup a handler given a specified {@code method} and media types.
      * 
      * @param method       method ("GET", "POST", ...)
