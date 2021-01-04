@@ -80,7 +80,7 @@ final class Tree<V>
         }
     }
     
-    void clear(Iterable<String> keySegments) {
+    boolean clear(Iterable<String> keySegments) {
         final Iterator<String> it = keySegments.iterator();
         
         Node<V> n = root;
@@ -88,13 +88,15 @@ final class Tree<V>
             n = n.next(it.next());
             if (n == null) {
                 // Branch doesn't extend further, job done
-                return;
+                return false;
             }
         }
         
         if (n.clear()) {
             cleanup.run();
+            return true;
         }
+        return false;
     }
     
     /**
