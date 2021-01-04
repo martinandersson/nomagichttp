@@ -1,12 +1,16 @@
 package alpha.nomagichttp.route;
 
 import alpha.nomagichttp.HttpServer;
+import alpha.nomagichttp.message.Request;
+
+import java.util.Optional;
 
 /**
- * Provides thread-safe operations over a group of routes.<p>
+ * Provides thread-safe operations over a group of routes. Also known in other
+ * corners of the internet as a "router".<p>
  * 
- * This type is constructed internally by {@link HttpServer} factory methods.
- * Once the server has been built, the registry can be retrieved using {@link
+ * This type is constructed internally by the {@link HttpServer}. Once the
+ * server has been built, the registry can be retrieved using {@link
  * HttpServer#getRouteRegistry()}.
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
@@ -34,7 +38,13 @@ public interface RouteRegistry
     void add(Route route);
     
     /**
-     * Remove a route.
+     * Remove a route.<p>
+     * 
+     * The route's ongoing requests and exchanges will run to completion and
+     * will not be aborted. Only when all active connections against the route
+     * has closed will the route effectively not be in use anymore. However, the
+     * route will not be <i>discoverable</i> for new lookup operations once this
+     * method has returned.
      * 
      * @param route to remove
      * 
