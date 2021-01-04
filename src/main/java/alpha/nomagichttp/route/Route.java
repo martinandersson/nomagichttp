@@ -30,25 +30,23 @@ import java.util.Map;
  * }</pre>
  * 
  * The request-target "/where?q=now" has a <i>path</i> component and a query
- * component. The path "/where" will match a route in the HTTP server with the
- * same identity. The query "?q=now" specifies a "q"-named parameter with the
- * value "now".<p>
+ * component. The path "/where" will match a route in the HTTP server which
+ * declares exactly one segment "where". The query "?q=now" specifies a
+ * "q"-named parameter with the value "now".<p>
  * 
  * The route may declare named path parameters which act like a wildcard segment
- * whose dynamic value is given by the client through the request path.  Both
+ * whose dynamic value is given by the client through the request path. Both
  * query- and path parameters are optional and they can not be specified as
  * required. Their values may be retrieved using {@link Request#parameters()}<p>
  * 
- * The route identity starts with a forward slash and consists of all its
- * segments joined without path parameter names. For example - using curly
- * braces ("{}") syntax for notation purposes only - this route:
+ * Using curly braces ("{}") syntax for notation purposes only, suppose we have
+ * a route made up of two segments and two path parameters:
  * 
  * <pre>
  *   /users/{user-id}/items/{item-id}
  * </pre>
  * 
- * Has identity {@code "/users/items"}. It will become the match for all of the
- * following request paths:
+ * This route will be a match for all of the following request paths:
  * 
  * <pre>
  *   /users/items
@@ -120,7 +118,7 @@ public interface Route
      * 
      * Please note that the value given to this method as well as the {@link
      * Builder#append(String)} method may in turn contain many segments. These
-     * are equivalent:
+     * calls are equivalent:
      * 
      * <pre>{@code
      *    Route.builder("/a").append("/b")...
@@ -195,6 +193,7 @@ public interface Route
      * 
      * @see Route
      */
+    @Deprecated // To be removed
     String identity();
     
     /**
@@ -251,7 +250,6 @@ public interface Route
      *                    .handler(...)
      *                    .build();
      *     
-     *     String i = r.identity(); // "/users/items"
      *     String s = r.toString(); // "/users/{user-id}/items/{item-id}"
      * }</pre>
      * 
@@ -265,8 +263,7 @@ public interface Route
      *       following the forward slash.</li>
      *   <li>Can not contain a forward slash following another forward slash
      *       (empty segments not supported, see {@link Route}). The segment may
-     *       be comprised of other segments, as long as this yields separate and
-     *       valid segments, for example "/a/b/c".</li>
+     *       be comprised of other segments, for example "/a/b/c".</li>
      * </ul>
      * 
      * A specified invalid segment value will cause the builder to throw an
