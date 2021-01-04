@@ -85,7 +85,7 @@ import java.util.Map;
  *       Javadoc of {@link URI#normalize()} (basically "." is removed and ".."
  *       removes the previous segment)</li>
  *   <li>Finally, all remaining segments that are not interpreted as a path
- *       parameter value must match a route's identity exactly and in order. In
+ *       parameter value must match a route's segments exactly and in order. In
  *       particular, note that route-matching is case-sensitive and characters
  *       such as "+" and "*" has no special meaning, they will be compared
  *       literally.</li>
