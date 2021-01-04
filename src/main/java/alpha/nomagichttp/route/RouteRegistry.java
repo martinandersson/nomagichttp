@@ -40,11 +40,11 @@ public interface RouteRegistry
     /**
      * Remove a route.<p>
      * 
-     * The route's ongoing requests and exchanges will run to completion and
-     * will not be aborted. Only when all active connections against the route
-     * has closed will the route effectively not be in use anymore. However, the
-     * route will not be <i>discoverable</i> for new lookup operations once this
-     * method has returned.
+     * The route's currently active requests and exchanges will run to
+     * completion and will not be aborted. Only when all active connections
+     * against the route have closed will the route effectively not be in use
+     * anymore. However, the route will not be <i>discoverable</i> for new
+     * lookup operations once this method has returned.
      * 
      * @param route to remove
      * 
