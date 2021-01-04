@@ -4,15 +4,8 @@ import java.util.List;
 import java.util.RandomAccess;
 
 /**
- * Is a segment of a route's path.<p>
- * 
- * The route's path may be comprised of just one or multiple segments. What
- * makes the difference is path parameters which finalizes the segment they
- * belong to. Path parameters work as segment boundaries.<p>
- * 
- * The types {@code Segment} and {@code Segment.Builder} are technical details
- * that is not visible to the application developer when using {@link
- * Route#builder(String)}.<p>
+ * Is a segment of a route's path; essentially just a string (the segment value)
+ * with optional path parameters.<p>
  * 
  * Segments are immutable and thread-safe.<p>
  * 
@@ -20,16 +13,11 @@ import java.util.RandomAccess;
  * {@code hashCode()} and {@code equals()}.<p>
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
- * 
- * @see Segment.Builder
  */
 interface Segment
 {
     /**
-     * Creates a {@link Segment.Builder}.<p>
-     * 
-     * As long as path parameters have <i>not</i> been declared, the segment can
-     * keep being extended using {@link Segment.Builder#append(String)}.
+     * Creates a {@link Segment.Builder}.
      * 
      * @param str      the initial {@link #value() string value} (a segment can
      *                 not be empty)
@@ -117,6 +105,7 @@ interface Segment
      * 
      * @author Martin Andersson (webmaster at martinandersson.com)
      */
+    @Deprecated // To be removed
     interface Builder
     {
         /**
