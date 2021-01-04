@@ -93,4 +93,54 @@ public interface RouteRegistry
      */
     @Deprecated // use lookup(Iterable<String>) instead
     Route.Match lookup(String requestTarget);
+    
+    /**
+     * Match the path segments from a request path against a route.<p>
+     * 
+     * Note: The given segments are not percent-decoded. This is done by the
+     * route registry implementation before comparing starts with the segments
+     * of registered routes. Both non-decoded and decoded parameter values will
+     * be accessible in the returned match object.
+     * 
+     * @param pathSegments from request path (normalized but not percent-decoded)
+     * 
+     * @return a match (never {@code null})
+     * 
+     * @throws NullPointerException
+     *             if {@code v} is {@code null}
+     * 
+     * @throws NoRouteFoundException 
+     *             if a route can not be found
+     * 
+     * @throws AmbiguousRouteCollisionException
+     *             if more than one route match the segments (this is truly
+     *             exceptional and should be regarded as a bug; {@link
+     *             RouteRegistry#add(Route) failed to fail-fast})
+     */
+    Match lookup(Iterable<String> pathSegments);
+    
+    /**
+     * A match of a route.
+     * 
+     * @author Martin Andersson (webmaster at martinandersson.com)
+     */
+    interface Match
+    {
+        /**
+         * Returns the matched route.
+         *
+         * @return the matched route (never {@code null})
+         */
+        Route route();
+        
+        /**
+         * Equivalent to {@link Request.Parameters#path(String)}.
+         */
+        Optional<String> pathParam(String name);
+        
+        /**
+         * Equivalent to {@link Request.Parameters#pathRaw(String)}.
+         */
+        Optional<String> pathParamRaw(String name);
+    }
 }

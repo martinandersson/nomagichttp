@@ -1,4 +1,10 @@
-package alpha.nomagichttp.route;
+package alpha.nomagichttp.internal;
+
+import alpha.nomagichttp.route.AmbiguousRouteCollisionException;
+import alpha.nomagichttp.route.NoRouteFoundException;
+import alpha.nomagichttp.route.Route;
+import alpha.nomagichttp.route.RouteCollisionException;
+import alpha.nomagichttp.route.RouteRegistry;
 
 import java.util.Objects;
 import java.util.Optional;
@@ -57,6 +63,11 @@ public class DefaultRouteRegistry implements RouteRegistry
                 .findAny();
         
         return m.orElseThrow(() -> new NoRouteFoundException(requestTarget));
+    }
+    
+    @Override
+    public Match lookup(Iterable<String> pathSegments) {
+        return null;
     }
     
     private void testForAmbiguity(Route route) {
