@@ -69,6 +69,7 @@ public interface RouteRegistry
      * 
      * @see Route
      */
+    @Deprecated // To be removed
     Route remove(String id);
     
     /**
