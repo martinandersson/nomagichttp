@@ -1,5 +1,9 @@
-package alpha.nomagichttp.route;
+package alpha.nomagichttp.internal;
 
+import alpha.nomagichttp.route.AmbiguousRouteCollisionException;
+import alpha.nomagichttp.route.Route;
+import alpha.nomagichttp.route.RouteCollisionException;
+import alpha.nomagichttp.route.RouteRegistry;
 import org.junit.jupiter.api.Test;
 
 import static alpha.nomagichttp.handler.RequestHandlers.noop;
