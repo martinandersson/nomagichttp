@@ -26,6 +26,7 @@ import static java.lang.System.Logger;
 import static java.lang.System.Logger.Level.WARNING;
 import static java.text.MessageFormat.format;
 import static java.util.Arrays.stream;
+import static java.util.Collections.unmodifiableList;
 import static java.util.Collections.unmodifiableMap;
 import static java.util.Comparator.comparingDouble;
 import static java.util.Comparator.comparingInt;
@@ -33,8 +34,8 @@ import static java.util.Objects.requireNonNull;
 import static java.util.stream.Collectors.groupingBy;
 import static java.util.stream.Collectors.joining;
 import static java.util.stream.Collectors.toCollection;
-import static java.util.stream.Collectors.toList;
 import static java.util.stream.Collectors.toSet;
+import static java.util.stream.Collectors.toUnmodifiableList;
 
 /**
  * Default implementation of {@link Route}.
@@ -54,21 +55,21 @@ public final class DefaultRoute implements Route
     /**
      * Constructs a {@code DefaultRoute}.
      * 
-     * The given arguments does not necessarily have to be unmodifiable as the
-     * collections will be copied. 
+     * The given arguments does not have to be unmodifiable as the collections
+     * will be copied. 
      * 
-     * @param segments  each will be built by this constructor
+     * @param segments  of the route
      * @param handlers  of the route
      * 
      * @throws NullPointerException   if any argument is {@code null}
      * @throws IllegalStateException  if {@code handlers} is empty
      */
-    DefaultRoute(List<Segment.Builder> segments, Set<RequestHandler> handlers) {
+    private DefaultRoute(List<MutableSegment> segments, Set<RequestHandler> handlers) {
         if (handlers.isEmpty()) {
             throw new IllegalStateException("No handlers.");
         }
         
-        this.segments = segments.stream().map(Segment.Builder::build).collect(toList());
+        this.segments = segments.stream().collect(toUnmodifiableList());
         this.identity = computeIdentity();
         this.handlers = handlers.stream().collect(groupingBy(RequestHandler::method));
     }
@@ -527,19 +528,23 @@ public final class DefaultRoute implements Route
      */
     static final class Builder implements Route.Builder
     {
-        private final List<Segment.Builder> segments;
-        // Memorize what param names we have already used
+        private static final int INITIAL_CAPACITY = 3;
+        
+        private final List<MutableSegment> segments;
         private final Set<String> params;
         private final Set<RequestHandler> handlers;
         
         Builder(String segment) {
-            Segment.Builder root = Segment.builder(segment, true);
-            
-            segments = new ArrayList<>();
-            segments.add(root);
-            
+            segments = new ArrayList<>(INITIAL_CAPACITY);
             params   = new HashSet<>();
             handlers = new HashSet<>();
+            
+            // all route paths start with the root
+            segments.add(new MutableSegment(""));
+            
+            if (!segment.equals("/")) {
+                append(segment);
+            }
         }
         
         @Override
@@ -549,6 +554,7 @@ public final class DefaultRoute implements Route
                         "Duplicate parameter name: \"" + firstName + "\"");
             }
             
+            // add param to the segment defined last
             segments.get(segments.size() - 1).addParam(firstName);
             
             if (moreNames.length > 0) {
@@ -560,14 +566,22 @@ public final class DefaultRoute implements Route
         
         @Override
         public Route.Builder append(String segment) {
-            Segment.Builder last = segments.get(segments.size() - 1);
-            
-            // If no params were registered for the last part, keep building on it.
-            if (!last.hasParams()) {
-                last.append(segment);
+            if (!segment.startsWith("/")) {
+                throw new IllegalArgumentException("Segment must start with a forward slash.");
             }
-            else {
-                segments.add(Segment.builder(segment, false));
+            
+            if (segment.length() > 1 && segment.endsWith("/")) {
+                throw new IllegalArgumentException("Segment must not end with a forward slash character.");
+            }
+            
+            String[] vals = segment.substring(1).split("/");
+            assert vals.length > 0;
+            
+            for (String s : vals) {
+                if (s.isEmpty()) {
+                    throw new IllegalArgumentException("Empty segment.");
+                }
+                segments.add(new MutableSegment(s));
             }
             
             return this;
@@ -608,5 +622,41 @@ public final class DefaultRoute implements Route
         public Route build() {
             return new DefaultRoute(segments, handlers);
         }
+    }
+    
+    private static class MutableSegment implements Segment
+    {
+        private final String val;
+        private final List<String> params;
+        
+        MutableSegment(String val) {
+            this.val = val;
+            this.params = new ArrayList<>(0);
+        }
+        
+        void addParam(String param) {
+            params.add(param);
+        }
+        
+        @Override
+        public boolean isFirst() {
+            // TODO: Remove
+            throw new UnsupportedOperationException();
+        }
+        
+        @Override
+        public String value() {
+            return val;
+        }
+        
+        private List<String> unmod;
+        
+        @Override
+        public List<String> params() {
+            List<String> u = unmod;
+            return u != null ? u : (unmod = unmodifiableList(params));
+        }
+        
+        // TODO: Implement toString
     }
 }
