@@ -9,6 +9,7 @@ import static java.util.Objects.requireNonNull;
 import static java.util.stream.Collectors.joining;
 import static java.util.stream.Collectors.toCollection;
 
+@Deprecated // To be removed
 final class DefaultSegment implements Segment
 {
     private final boolean isFirst;
