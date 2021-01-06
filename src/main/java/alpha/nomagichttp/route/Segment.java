@@ -64,8 +64,9 @@ interface Segment
     String value();
     
     /**
-     * Returns an unmodifiable list of path parameter names declared on this
-     * segment.<p>
+     * Returns an unmodifiable list of path parameter names associated with this
+     * segment. Each name returned is unique not just for this segment but also
+     * for the route to which the segment belongs.<p>
      * 
      * The returned list implements {@link RandomAccess}.
      * 

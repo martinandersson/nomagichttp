@@ -22,7 +22,7 @@ import java.util.Map;
  * by qualifying metadata and specificity, as detailed in the Javadoc of {@link
  * RequestHandler}.<p>
  * 
- * Suppose the HTTP server receives this request (
+ * Suppose the HTTP server receives this request (copy-pasted from
  * <a href="https://tools.ietf.org/html/rfc7230#section-5.3.1">RFC 7230 §5.3.1</a>):<p>
  * <pre>{@code
  *   GET /where?q=now HTTP/1.1
@@ -116,13 +116,28 @@ public interface Route
      *     Route r = route("/", ...).build();
      * }</pre>
      * 
-     * Please note that the value given to this method as well as the {@link
-     * Builder#append(String)} method may in turn contain many segments. These
+     * The value given to this method as well as the {@link
+     * Builder#append(String)} method may be comprised of many segments. These
      * calls are equivalent:
      * 
      * <pre>{@code
-     *    Route.builder("/a").append("/b")...
-     *    Route.builder("/a/b")...
+     *    Route.builder("/a").append("/b").append("/c/d")...
+     *    Route.builder("/a/b/c/d")...
+     * }</pre>
+     * 
+     * The only reason why a route's path may have to be split across different
+     * append calls is to be able to insert wildcard segments aka path
+     * parameters:
+     * 
+     * <pre>{@code
+     *     Route r = Route.builder("/users")
+     *                    .param("user-id")
+     *                    .append("/items")
+     *                    .param("item-id")
+     *                    .handler(...)
+     *                    .build();
+     *
+     *     String s = r.toString(); // "/users/{user-id}/items/{item-id}"
      * }</pre>
      * 
      * @param segment initial seed (may be a single forward slash character)
@@ -250,39 +265,43 @@ public interface Route
     /**
      * Builder of a {@link Route}.<p>
      * 
-     * Example: 
-     * <pre>{@code 
-     *     Route r = Route.builder("/users")
-     *                    .param("user-id")
-     *                    .append("/items")
-     *                    .param("item-id")
-     *                    .handler(...)
-     *                    .build();
-     *     
-     *     String s = r.toString(); // "/users/{user-id}/items/{item-id}"
+     * A valid segment is any non-empty character sequence that follows a
+     * forward slash character ('/'). If the character sequence contains yet
+     * another forward slash character, then this defines the boundary for a new
+     * segment contained within the given string value. Only the method
+     * {@link Route#builder(String)} can accept the empty root ("/").<p>
+     * 
+     * These are all not just valid but effectively builds a route of the same
+     * path:
+     * <pre>{@code
+     *   Route.builder("/").append("/a/b")
+     *   Route.builder("/a").append("/b")
+     *   Route.builder("/a/b")
      * }</pre>
      * 
-     * Segment values provided to a builder is validated accordingly:
-     * <ul>
-     *   <li>Must start with a forward slash character ('/').</li>
-     *   <li>Only the root may also end with a forward slash character (see
-     *       {@link Route#builder(String)}).</li>
-     *   <li>Only the root can be a string whose content is a single
-     *       forward slash. All other segment values must have content
-     *       following the forward slash.</li>
-     *   <li>Can not contain a forward slash following another forward slash
-     *       (empty segments not supported, see {@link Route}). The segment may
-     *       be comprised of other segments, for example "/a/b/c".</li>
-     * </ul>
+     * The segment value can be anything but a forward slash. Even cat emojis
+     * are valid but not necessarily API friendly (client must be mindful
+     * about percent-decoding and have an affinity for small furry animals):
+     * <pre>{@code
+     *   Route.builder("/ (=^・・^=)")
+     * }</pre>
      * 
-     * A specified invalid segment value will cause the builder to throw an
-     * {@code IllegalArgumentException}.<p>
+     * Not valid:
+     * <pre>{@code
+     *   Route.builder("") // doesn't start with forward slash
+     *   Route.builder("/a/") // empty segment
+     *   Route.builder("/a").append("/") // empty segment
+     * }</pre>
      * 
-     * A valid parameter name is any string, even the empty string. The only
-     * requirement is that it has to be unique for the route. The HTTP server's
-     * chief purpose of the name is to use it as a key in a parameter map data
+     * An invalid segment will cause an {@code IllegalArgumentException} to be
+     * thrown.<p>
+     * 
+     * A valid parameter name is any string with any content as long as it is a
+     * unique parameter name for the route. After all, the only purpose of this
+     * string is for the HTTP server to use it as a key in a parameter map data
      * structure. Please note that the name is specified to participate in the
-     * {@link Route#toString()} result.<p>
+     * {@link Route#toString()} result so perhaps the name shouldn't be too
+     * weird like an empty string "" or "null".<p>
      * 
      * The builder is not thread-safe and is intended to be used as a throw-away
      * object. Each of the setter methods modifies the state of the builder and
