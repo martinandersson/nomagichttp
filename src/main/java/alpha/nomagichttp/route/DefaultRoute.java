@@ -235,6 +235,11 @@ public final class DefaultRoute implements Route
     }
     
     @Override
+    public Iterable<Segment> segments() {
+        return segments;
+    }
+    
+    @Override
     public RequestHandler lookup(String method, MediaType contentType, MediaType[] accepts) {
         List<RequestHandler> forMethod = filterByMethod(method, contentType, accepts);
         
