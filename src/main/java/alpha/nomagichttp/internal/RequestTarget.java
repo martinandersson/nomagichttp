@@ -17,6 +17,12 @@ import static java.util.stream.Collectors.toMap;
  * Consists of path segments and query key/value pairs; as split and parsed
  * from a raw request-target string.<p>
  * 
+ * The query maps returned by this class is unmodifiable and retain the same
+ * iteration order as the query keys were declared in the query string.<p>
+ * 
+ * All lists returned by this class is unmodifiable and implements {@link
+ * RandomAccess}.
+ * 
  * The implementation is thread-safe and non-blocking.<p>
  * 
  * See sections "3.3 Path",
@@ -136,9 +142,7 @@ final class RequestTarget
     }
     
     /**
-     * Returns normalized but possibly escaped segments.<p>
-     * 
-     * The returned list implements RandomAccess and is unmodifiable.
+     * Returns normalized but possibly escaped segments.
      * 
      * @return normalized but possibly escaped segments
      */
@@ -147,23 +151,19 @@ final class RequestTarget
     }
     
     /**
-     * Returns normalized and percent-decoded segments.<p>
-     * 
-     * The returned list implements RandomAccess and is unmodifiable.
+     * Returns normalized and percent-decoded segments.
      * 
      * @return normalized and percent-decoded segments
      */
     @Deprecated // Going to percent decode in RouteRegistry.lookup()/Match instead
+    // TODO: Remove
     List<String> segmentsPercentDecoded() {
         List<String> s = segmentsPercentDecoded;
         return s != null ? s : (segmentsPercentDecoded = decode(segmentsNotPercentDecoded()));
     }
     
     /**
-     * Returns possibly escaped query entries.<p>
-     * 
-     * The returned map and list values are unmodifiable. In addition, the list
-     * values implement RandomAccess.
+     * Returns possibly escaped query entries.
      * 
      * @return normalized but possibly escaped query entries
      */
@@ -198,10 +198,7 @@ final class RequestTarget
     }
     
     /**
-     * Returns normalized and percent-decoded query entries.<p>
-     * 
-     * The returned map and list values are unmodifiable. In addition, the list
-     * values implement RandomAccess.
+     * Returns normalized and percent-decoded query entries.
      * 
      * @return normalized and percent-decoded query entries
      */
