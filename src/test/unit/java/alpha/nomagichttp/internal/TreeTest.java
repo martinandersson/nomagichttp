@@ -5,6 +5,7 @@ import org.junit.jupiter.api.Test;
 import static alpha.nomagichttp.internal.Tree.entry;
 import static java.util.List.of;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
  * Small tests for {@link Tree}.
@@ -14,6 +15,22 @@ import static org.assertj.core.api.Assertions.assertThat;
 class TreeTest
 {
     private final Tree<String> testee = new Tree<>();
+    
+    @Test
+    void first_key_segment_is_always_the_empty_string_1() {
+        // Pass no key segments at all
+        assertThatThrownBy(() -> testee.setIfAbsent(of(), null, null))
+                .isExactlyInstanceOf(IllegalArgumentException.class)
+                .hasMessage("First key segment must be the empty String (root).");
+    }
+    
+    @Test
+    void first_key_segment_is_always_the_empty_string_2() {
+        // Let first key segment not be the empty string
+        assertThatThrownBy(() -> testee.setIfAbsent(of("crash"), null, null))
+                .isExactlyInstanceOf(IllegalArgumentException.class)
+                .hasMessage("First key segment must be the empty String (root).");
+    }
     
     @Test
     void set_root() {
