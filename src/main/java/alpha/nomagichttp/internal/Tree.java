@@ -8,6 +8,7 @@ import java.util.Collections;
 import java.util.Deque;
 import java.util.Iterator;
 import java.util.Map;
+import java.util.NoSuchElementException;
 import java.util.SortedMap;
 import java.util.TreeMap;
 import java.util.concurrent.ConcurrentHashMap;
@@ -16,15 +17,43 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.function.Consumer;
+import java.util.function.Predicate;
 import java.util.stream.Stream;
 
 import static java.util.Objects.requireNonNull;
 
 /**
- * A tree structure that expand branches on demand. No node in the tree store
- * its key. Instead, the node's position defines the key which is effectively
- * distributed across the branch. All descendants of a node share a common key
- * prefix and the root is the only node associated with an empty key.
+ * A concurrent tree structure that prunes dead nodes without using background
+ * threads and absolutely minimal locking. No node in the tree store its key.
+ * Instead, the node's position defines the key which is effectively split into
+ * segments and distributed across the branch. All descendants of a node share a
+ * common key prefix and the root is the only node associated with an empty
+ * key.<p>
+ * 
+ * Suppose we have a quote unquote "normal" flat map with these entries:
+ * <pre>
+ *   "/"             -> some object V
+ *   "/hello"        -> some object V
+ *   "/hello/world"  -> some object V
+ *   "/whatever/else -> some object V
+ * </pre>
+ * 
+ * This works fine if keys used to lookup the values are static. But it doesn't
+ * work for dynamic keys since the {@code Map} interface does not support us
+ * giving an arbitrary meaning to a sub-portion of the key. For example, with a
+ * {@code Map}, I couldn't store an object under "/a/?/c" and have the object
+ * easily retrievable using any char sequence value for the middle segment of
+ * the key. This problem is only partially solved by {@code NavigableMap}. With
+ * a navigable map, we would have to recursively navigate sub maps most likely
+ * leading to very complex code.<p>
+ * 
+ * With this class, the client add and remove entries using an iterable of
+ * segments of the final key, for example ["", "hello", "world"], or ["",
+ * "whatever", "else"]. These entries are then stored in the tree under "" ->
+ * "hello" -> "world" and "" -> "whatever" -> "else" respectively. When it comes
+ * to lookup, the client walk branches of the tree segment by segment and can
+ * now pretty easily deduce final key values (if at all needed) and execute
+ * arbitrary logic per segment visited.
  * 
  * @param <V> type of the node's associated value
  * 
@@ -32,20 +61,44 @@ import static java.util.Objects.requireNonNull;
  */
 final class Tree<V>
 {
+    // Implementation design; see javadoc of Tree.NodeImpl
+    
+    interface Node<V> {
+        /**
+         * Returns this node's value, or {@code null} if not present.
+         * 
+         * @return this node's value, or {@code null} if not present
+         */
+        V get();
+        
+        /**
+         * Traverse to the next node.
+         * 
+         * @param segment sub-key
+         * 
+         * @return the next node (or {@code null} if branch doesn't extend further)
+         */
+        Node<V> next(String segment);
+    }
+    
     private static final Deque<?> EMPTY = new ArrayDeque<>(0);
     
-    private static <V> Deque<Node<V>> empty() {
+    private static <V> Deque<NodeImpl<V>> empty() {
         @SuppressWarnings("unchecked")
-        Deque<Node<V>> typed = (Deque<Node<V>>) EMPTY;
+        Deque<NodeImpl<V>> typed = (Deque<NodeImpl<V>>) EMPTY;
         return typed;
     }
     
-    private final Node<V> root;
+    private final NodeImpl<V> root;
     private final SeriallyRunnable cleanup;
     
     Tree() {
-        root = new Node<>(null);
+        root = new NodeImpl<>(null);
         cleanup = new SeriallyRunnable(root::prune);
+    }
+    
+    Node<V> root() {
+        return root;
     }
     
     void setIfAbsent(Iterable<String> keySegments, V v) {
@@ -53,37 +106,39 @@ final class Tree<V>
     }
     
     void setIfAbsent(Iterable<String> keySegments, V v, Consumer<V> otherwise) {
-        final Iterator<String> it = keySegments.iterator();
-        final Deque<Node<V>> release = it.hasNext() ? new ArrayDeque<>() : empty();
-        
-        Node<V> n = root;
-        while (it.hasNext())  {
-            final String s = it.next();
-            Node<V> c;
-            for (;;) {
-                c = n.nextOrCreate(s);
-                try {
-                    c.reserve();
-                    break;
-                } catch (StaleBranchException e) {
-                    // Retry
-                }
-            }
-            release.add(c);
-            n = c;
-        }
-        
+        final Iterator<String> it = readAwayRoot(keySegments.iterator());
+        final Deque<NodeImpl<V>> release = it.hasNext() ? new ArrayDeque<>() : empty();
         try {
+            NodeImpl<V> n = root;
+            while (it.hasNext())  {
+                final String s = it.next();
+                NodeImpl<V> c;
+                for (;;) {
+                    c = n.nextOrCreate(s);
+                    try {
+                        c.reserve();
+                        break;
+                    } catch (StaleBranchException e) {
+                        // Retry
+                    }
+                }
+                release.add(c);
+                n = c;
+            }
             n.setIfAbsent(v, otherwise);
         } finally {
-            release.descendingIterator().forEachRemaining(Node::unreserve);
+            release.descendingIterator().forEachRemaining(NodeImpl::unreserve);
         }
     }
     
     boolean clear(Iterable<String> keySegments) {
-        final Iterator<String> it = keySegments.iterator();
+        return clearIf(keySegments, ignored -> true);
+    }
+    
+    boolean clearIf(Iterable<String> keySegments, Predicate<V> test) {
+        final Iterator<String> it = readAwayRoot(keySegments.iterator());
         
-        Node<V> n = root;
+        NodeImpl<V> n = root;
         while (it.hasNext())  {
             n = n.next(it.next());
             if (n == null) {
@@ -92,7 +147,7 @@ final class Tree<V>
             }
         }
         
-        if (n.clear()) {
+        if (n.clearIf(test)) {
             cleanup.run();
             return true;
         }
@@ -115,10 +170,22 @@ final class Tree<V>
         SortedMap<String, V> m = new TreeMap<>();
         root.entryStream("", delimiter, "").forEach(e -> {
             if (m.putIfAbsent(e.getKey(), e.getValue()) != null) {
-                throw new IllegalStateException("Duplicated path/key: " + e.getKey());
+                throw new AssertionError("Duplicated path/key: " + e.getKey());
             }
         });
         return Collections.unmodifiableMap(m);
+    }
+    
+    private Iterator<String> readAwayRoot(Iterator<String> keySegments) {
+        try {
+            if (!"".equals(keySegments.next())) {
+                throw new NoSuchElementException();
+            }
+        } catch (NoSuchElementException e) {
+            throw new IllegalArgumentException(
+                    "First key segment must be the empty String (root).");
+        }
+        return keySegments;
     }
     
     /**
@@ -141,22 +208,22 @@ final class Tree<V>
      * {@code ConcurrentHashMap} sub-component. Similarly, these monitors are
      * not expected to be contended or to be held for very long.<p>
      * 
-     * Most importantly, traversing the tree uses no locks imposed by this class
-     * and does not generally block (at the discretion of the {@code
-     * ConcurrentHashMap} sub-component).
+     * Most importantly, traversing the tree uses no mutually exclusive lock
+     * imposed by this class and does not generally block (at the discretion of
+     * the {@code ConcurrentHashMap} sub-component).
      * 
      * @author Martin Andersson (webmaster at martinandersson.com)
      */
-    private static class Node<V>
+    private static class NodeImpl<V> implements Node<V>
     {
         private final AtomicReference<V> val;
         // Does not allow null to be used as key or value
-        private final ConcurrentMap<String, Node<V>> children;
+        private final ConcurrentMap<String, NodeImpl<V>> children;
         // Used only for accessing the orphan flag
         private final Lock read, write;
         private boolean orphan;
         
-        Node(V v) {
+        NodeImpl(V v) {
             val = new AtomicReference<>(v);
             children = new ConcurrentHashMap<>();
             
@@ -193,7 +260,8 @@ final class Tree<V>
             read.unlock();
         }
         
-        V get() {
+        @Override
+        public V get() {
             return val.get();
         }
         
@@ -220,7 +288,8 @@ final class Tree<V>
          *
          * @return the child node or {@code null} if it does not exist
          */
-        Node<V> next(String segment) {
+        @Override
+        public NodeImpl<V> next(String segment) {
             return children.get(segment);
         }
         
@@ -232,18 +301,32 @@ final class Tree<V>
          *
          * @return the child node (never {@code null})
          */
-        Node<V> nextOrCreate(String segment) {
-            return children.computeIfAbsent(segment, keyIgnored -> new Node<>(null));
+        NodeImpl<V> nextOrCreate(String segment) {
+            return children.computeIfAbsent(segment, keyIgnored -> new NodeImpl<>(null));
         }
         
         /**
-         * Remove the node's value.
-         *
+         * Remove the node's value but only if the current held value passes the
+         * provided predicate.
+         * 
+         * @param test predicate
+         * 
          * @return {@code true} if operation had an effect (value was previously
          *         set), otherwise {@code false}
          */
-        boolean clear() {
-            return val.getAndSet(null) != null;
+        boolean clearIf(Predicate<V> test) {
+            boolean[] cleared = new boolean[1];
+            
+            val.getAndUpdate(v -> {
+                if (v != null && test.test(v)) {
+                    cleared[0] = true;
+                    return null;
+                }
+                cleared[0] = false;
+                return v;
+            });
+            
+            return cleared[0];
         }
         
         /**
@@ -259,13 +342,13 @@ final class Tree<V>
          * memory leak.<p>
          * 
          * It is imperative that a branch-expanding operation also {@link
-         * #reserve()} each node it creates. See {@link Node}.
+         * #reserve()} each node it creates. See {@link NodeImpl}.
          * 
          * @return {@code true} if this node is an orphan after having
          *         recursively pruned all children depth-first
          */
         boolean prune() {
-            children.values().removeIf(Node::prune);
+            children.values().removeIf(NodeImpl::prune);
             
             if (!write.tryLock()) {
                 return false;

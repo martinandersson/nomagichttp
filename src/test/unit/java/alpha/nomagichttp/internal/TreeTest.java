@@ -25,7 +25,7 @@ class TreeTest
     
     @Test
     void level_one() {
-        testee.setIfAbsent(of("blabla"), "value");
+        testee.setIfAbsent(of("", "blabla"), "value");
         
         assertThat(testee.toMap("/")).containsExactly(
                 entry("/", null),
@@ -34,10 +34,10 @@ class TreeTest
     
     @Test
     void lots_of_them() {
-        testee.setIfAbsent(of("a", "b", "c"), "v3");
-        testee.setIfAbsent(of("a", "b"), "v2");
-        testee.setIfAbsent(of("a"), "v1");
-        testee.setIfAbsent(of("a", "d"), "v4");
+        testee.setIfAbsent(of("", "a", "b", "c"), "v3");
+        testee.setIfAbsent(of("", "a", "b"), "v2");
+        testee.setIfAbsent(of("", "a"), "v1");
+        testee.setIfAbsent(of("", "a", "d"), "v4");
         
         assertThat(testee.toMap("/")).containsExactly(
                 entry("/", null),
@@ -49,14 +49,14 @@ class TreeTest
     
     @Test
     void pruning() {
-        testee.setIfAbsent(of("a", "b"), "v1");
+        testee.setIfAbsent(of("", "a", "b"), "v1");
         
         assertThat(testee.toMap("/")).containsExactly(
                 entry("/", null),
                 entry("/a", null),
                 entry("/a/b", "v1"));
         
-        testee.clear(of("trigger pruning"));
+        testee.clear(of("", "trigger pruning"));
         
         // No difference, last node had a value
         assertThat(testee.toMap("/")).containsExactly(
@@ -64,7 +64,7 @@ class TreeTest
                 entry("/a", null),
                 entry("/a/b", "v1"));
         
-        testee.clear(of("a", "b"));
+        testee.clear(of("", "a", "b"));
         
         // This time the entire branch is wiped clean
         assertThat(testee.toMap("/")).containsExactly(
