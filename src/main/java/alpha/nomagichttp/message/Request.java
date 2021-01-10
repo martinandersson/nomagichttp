@@ -324,9 +324,9 @@ public interface Request
      *                         .toArray();
      * }</pre>
      * 
-     * Methods in the Parameters API will normally URL decode (aka.
-     * percent-decode) inbound tokens (query keys, path- and query parameter
-     * values) as if using {@link URLDecoder#decode(String, Charset)
+     * Methods in the Parameters API that does not carry the "raw" suffix will
+     * URL decode (aka. percent-decode) the tokens (query keys, path- and query
+     * parameter values) as if using {@link URLDecoder#decode(String, Charset)
      * URLDecoder.decode(segment, StandardCharsets.UTF_8)} <i>except</i> the
      * plus sign ('+') is <i>not</i> converted to a space character and remains
      * the same. If this is not desired, use methods that carries the suffix

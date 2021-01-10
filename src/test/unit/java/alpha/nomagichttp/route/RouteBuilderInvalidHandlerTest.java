@@ -11,9 +11,9 @@ import static alpha.nomagichttp.message.MediaType.NOTHING_AND_ALL;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
- * Provokes {@code HandlerCollisionException} from {@code RouteBuilder}.<p>
+ * Provokes {@code HandlerCollisionException} from {@code Route.Builder}.<p>
  * 
- * For the inverse (what builds a valid route)m see {@link RouteMatchesTest}.
+ * For the inverse (what builds a valid route), see {@link RouteMatchesTest}.
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  */

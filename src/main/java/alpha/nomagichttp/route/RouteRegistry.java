@@ -96,10 +96,13 @@ public interface RouteRegistry
     /**
      * Match the path segments from a request path against a route.<p>
      * 
-     * Note: The given segments are not percent-decoded. This is done by the
-     * route registry implementation before comparing starts with the segments
-     * of registered routes. Both non-decoded and decoded parameter values will
-     * be accessible in the returned match object.
+     * Note 1: The given segments must not be percent-decoded. Decoding is done
+     * by the route registry implementation before comparing starts with the
+     * segments of registered routes. Both non-decoded and decoded parameter
+     * values will be accessible in the returned match object.<p>
+     * 
+     * Note 2: Empty strings must be normalized away. The root "/" can be
+     * matched by specifying an empty iterable.
      * 
      * @param pathSegments from request path (normalized but not percent-decoded)
      * 

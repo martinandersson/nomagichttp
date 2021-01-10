@@ -2,10 +2,10 @@ package alpha.nomagichttp.route;
 
 /**
  * Thrown by {@link RouteRegistry} when an attempt is made to register a route
- * which could shadow an already registered route.<p>
+ * which could have hidden an already registered route.<p>
  * 
- * For example, the route {@code "/segment"} is effectively equivalent to {@code
- * "/{param}"} because a request target "/segment" would have matched both.
+ * For example, the route {@code "/where"} is effectively equivalent to {@code
+ * "/{param}"} because a request target "/where" would have matched both.
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  *

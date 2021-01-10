@@ -76,11 +76,11 @@ interface Segment
     List<String> params();
     
     /**
-     * Returns the {@linkplain #value() string value} concatenated with declared
-     * parameter names enclosed in curly brackets. For example,
-     * "/segment/{param-name}".
+     * Returns the {@linkplain #value()} prefixed with '/' followed by parameter
+     * names (if present) enclosed in curly brackets and prefixed with '/'. For
+     * example, "/segment/{param-name}".
      * 
-     * @return the segment value concatenated with declared parameter names
+     * @return see Javadoc
      */
     @Override
     String toString();
