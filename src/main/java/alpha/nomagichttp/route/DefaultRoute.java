@@ -657,6 +657,15 @@ public final class DefaultRoute implements Route
             return u != null ? u : (unmod = unmodifiableList(params));
         }
         
-        // TODO: Implement toString
+        @Override
+        public String toString() {
+            String v = "/" + value();
+            
+            if (!params.isEmpty()) {
+                v += params.stream().collect(joining("}/{", "/", "}"));
+            }
+            
+            return v;
+        }
     }
 }
