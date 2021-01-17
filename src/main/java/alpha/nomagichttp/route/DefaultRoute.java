@@ -22,6 +22,7 @@ import static alpha.nomagichttp.message.MediaType.NOTHING;
 import static alpha.nomagichttp.message.MediaType.NOTHING_AND_ALL;
 import static alpha.nomagichttp.message.MediaType.Score.NOPE;
 import static alpha.nomagichttp.route.AmbiguousNoHandlerFoundException.createAmbiguousEx;
+import static java.lang.String.join;
 import static java.lang.System.Logger;
 import static java.lang.System.Logger.Level.WARNING;
 import static java.text.MessageFormat.format;
@@ -392,7 +393,8 @@ public final class DefaultRoute implements Route
     
     @Override
     public String toString() {
-        return segments.stream().map(Object::toString).collect(joining());
+        String str = segments.stream().map(Segment::toString).collect(joining());
+        return str.startsWith("//") ? str.substring(1) : str;
     }
     
     private static String ensureSingleSlashWrap(String path) {
@@ -513,7 +515,7 @@ public final class DefaultRoute implements Route
     
         @Override
         public String toString() {
-            return "{" + String.join(", ",
+            return "{" + join(", ",
                       "cons=" + handler.consumes(),
                       "prod=" + handler.produces(),
                       "rank=" + rank) +
@@ -662,7 +664,7 @@ public final class DefaultRoute implements Route
             String v = "/" + value();
             
             if (!params.isEmpty()) {
-                v += params.stream().collect(joining("}/{", "/", "}"));
+                v += "/{" + join("}/{", params) + "}";
             }
             
             return v;
