@@ -1,59 +1,60 @@
 package alpha.nomagichttp.internal;
 
-import alpha.nomagichttp.util.SeriallyRunnable;
-
 import java.util.AbstractMap;
 import java.util.ArrayDeque;
-import java.util.Collections;
 import java.util.Deque;
 import java.util.Iterator;
 import java.util.Map;
+import java.util.NavigableMap;
 import java.util.NoSuchElementException;
+import java.util.Objects;
 import java.util.SortedMap;
 import java.util.TreeMap;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.ConcurrentNavigableMap;
+import java.util.concurrent.ConcurrentSkipListMap;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
+import java.util.function.BooleanSupplier;
 import java.util.function.Consumer;
+import java.util.function.Function;
 import java.util.function.Predicate;
+import java.util.function.Supplier;
+import java.util.function.UnaryOperator;
 import java.util.stream.Stream;
 
+import static java.lang.Character.MAX_VALUE;
+import static java.util.Collections.unmodifiableMap;
 import static java.util.Objects.requireNonNull;
+import static java.util.function.Function.identity;
 
 /**
- * A concurrent tree structure that prunes dead nodes without using background
- * threads and absolutely minimal locking. No node in the tree store its key.
- * Instead, the node's position defines the key which is effectively split into
- * segments and distributed across the branch. All descendants of a node share a
- * common key prefix and the root is the only node associated with an empty
- * key.<p>
+ * A concurrent tree structure. No node in the tree store its key. Instead, the
+ * node's position defines the key which is effectively split into segments and
+ * distributed across the branch. All descendants of a node share a common key
+ * prefix and the root is the only node whose prefix is the empty key (because
+ * it has no parent).<p>
  * 
- * Suppose we have a quote unquote "normal" flat map with these entries:
- * <pre>
- *   "/"             -> some object V
- *   "/hello"        -> some object V
- *   "/hello/world"  -> some object V
- *   "/whatever/else -> some object V
- * </pre>
+ * With this class, the client will add-, remove- and lookup entries by
+ * traversing the tree, one segment/node at a time. Traversing the tree is done
+ * in a <i>reading</i> or <i>writing</i> mode. The API is different for each.
+ * The split has two major benefits. Firstly, the api will be more easy to use
+ * as it will be trimmed to the intent of the traversing operation. The split
+ * also makes it possible for the tree implementation to perform a few
+ * optimizations, such as not unnecessarily reserving a node for a reading
+ * thread which makes the read operation faster and also doesn't rollback or
+ * hinder a concurrently running prune operation on the same branch (the node
+ * values are accessed using atomic semantics, so read values are never
+ * stale).<p>
  * 
- * This works fine if keys used to lookup the values are static. But it doesn't
- * work for dynamic keys since the {@code Map} interface does not support us
- * giving an arbitrary meaning to a sub-portion of the key. For example, with a
- * {@code Map}, I couldn't store an object under "/a/?/c" and have the object
- * easily retrievable using any char sequence value for the middle segment of
- * the key. This problem is only partially solved by {@code NavigableMap}. With
- * a navigable map, we would have to recursively navigate sub maps most likely
- * leading to very complex code.<p>
+ * TODO: Give example.<p>
  * 
- * With this class, the client add and remove entries using an iterable of
- * segments of the final key, for example ["", "hello", "world"], or ["",
- * "whatever", "else"]. These entries are then stored in the tree under "" ->
- * "hello" -> "world" and "" -> "whatever" -> "else" respectively. When it comes
- * to lookup, the client walk branches of the tree segment by segment and can
- * now pretty easily deduce final key values (if at all needed) and execute
- * arbitrary logic per segment visited.
+ * Segment keys can never be an empty string or {@code null}. The node value may
+ * be {@code null} and if it is, the node will be eligible for being removed
+ * from the tree, given it has no descendants carrying a value; also known as
+ * "pruning". Pruning operations are transparently done by incoming writing
+ * threads after having set a {@code null} value.
  * 
  * @param <V> type of the node's associated value
  * 
@@ -63,7 +64,7 @@ final class Tree<V>
 {
     // Implementation design; see javadoc of Tree.NodeImpl
     
-    interface Node<V> {
+    interface ReadNode<V> {
         /**
          * Returns this node's value, or {@code null} if not present.
          * 
@@ -75,70 +76,202 @@ final class Tree<V>
          * Traverse to the next node.
          * 
          * @param segment sub-key
-         * 
          * @return the next node (or {@code null} if branch doesn't extend further)
+         * @throws IllegalArgumentException if {@code segment} is empty
          */
-        Node<V> next(String segment);
+        ReadNode<V> next(String segment);
     }
+    
+    interface WriteNode<V> {
+        /**
+         * Set this node's value.
+         * 
+         * @param v value
+         * @return old value
+         */
+        V set(V v);
+        
+        /**
+         * Set the node's value, if absent (i.e. {@code null}).<p>
+         *
+         * @param v new value
+         * @throws NullPointerException if {@code v} is {@code null}
+         * @return operation success flag
+         */
+        default boolean setIfAbsent(V v) {
+            requireNonNull(v);
+            return setIf(v, Objects::isNull);
+        }
+        
+        /**
+         * Set the node's value, if given predicate returns {@code true} for the
+         * old value.<p>
+         * 
+         * @param v new value (may be {@code null})
+         * @param test old value predicate
+         * @return operation success flag
+         */
+        boolean setIf(V v, Predicate<? super V> test);
+        
+        /**
+         * Returns {@code true} if there's any first-level children of this node
+         * whose key starts with the given prefix.<p>
+         * 
+         * This method is useful when algorithmically enforcing a set of
+         * variants of children.<p>
+         * 
+         * In the following example, by using the empty string as prefix, we
+         * test for the presence of any children at all, thus enforcing a
+         * 1-child contract for the node:
+         * <pre>{@code
+         *   WriteNode<?> n = ...
+         *   WriteNode<?> c = n.nextOrCreateIf(":pathParamName", () -> !n.hasChildren(""));
+         *   if (c == null) {
+         *       throw new IllegalArgumentException(
+         *           "Segment already set; path parameters are exclusive.");
+         *   }
+         * }</pre>
+         * 
+         * By further specializing the prefix, it is possible to test for the
+         * presence of a specific range of children, which is completely up to
+         * the client to decide.
+         * 
+         * @param segmentPrefix segment prefix
+         * @return {@code true} if this node has any children whose key starts
+         *         with the given prefix, otherwise {@code false}
+         * @throws NullPointerException if {@code segmentPrefix} is {@code null}
+         */
+        boolean hasChildren(String segmentPrefix);
+        
+        /**
+         * Traverse the tree to a child node, creating the child if it does not
+         * exist.
+         * 
+         * @param segment value
+         * @return the child node (never {@code null})
+         * @throws NullPointerException if {@code segment} is {@code null}
+         * @throws IllegalArgumentException if {@code segment} is the empty string
+         */
+        default WriteNode<V> nextOrCreate(String segment) {
+            return nextOrCreateIf(segment, () -> true);
+        }
+        
+        /**
+         * Traverse the tree to a child node, creating the child if it does not
+         * exist and the given {@code condition} returns {@code true}.
+         *
+         * @param segment value
+         * @return the child node (never {@code null})
+         * @throws NullPointerException if {@code segment} or {@code condition} is {@code null}
+         * @throws IllegalArgumentException if {@code segment} is the empty string
+         * @see #hasChildren(String) 
+         */
+        WriteNode<V> nextOrCreateIf(String segment, BooleanSupplier condition);
+    }
+    
+    private static final int INITIAL_CAPACITY = 3;
     
     private static final Deque<?> EMPTY = new ArrayDeque<>(0);
     
-    private static <V> Deque<NodeImpl<V>> empty() {
+    private static <V> Deque<V> empty() {
         @SuppressWarnings("unchecked")
-        Deque<NodeImpl<V>> typed = (Deque<NodeImpl<V>>) EMPTY;
+        Deque<V> typed = (Deque<V>) EMPTY;
         return typed;
     }
     
+    /** Is {@code true} if current writing thread needs to prune the tree. */
+    private static final ThreadLocal<Boolean> CLEAN = ThreadLocal.withInitial(() -> false);
+    
     private final NodeImpl<V> root;
-    private final SeriallyRunnable cleanup;
+    /** Is {@code true} while tree is being pruned (any other thread need not bother). */
+    private final AtomicBoolean cleaning;
     
     Tree() {
         root = new NodeImpl<>(null);
-        cleanup = new SeriallyRunnable(root::prune);
+        cleaning = new AtomicBoolean(false);
     }
     
-    Node<V> root() {
+    /**
+     * Traverse the tree in read mode.
+     * 
+     * @return the root (never {@code null})
+     */
+    ReadNode<V> read() {
         return root;
     }
     
-    void setIfAbsent(Iterable<String> keySegments, V v) {
-        setIfAbsent(keySegments, v, null);
+    /**
+     * Traverse the tree in write mode.<p>
+     * 
+     * The given {@code digger} is first feed the root node, then, feed whatever
+     * node is returned from the digger, until the digger returns {@code
+     * null} (write operation done).<p>
+     * 
+     * Node values may be arbitrary set along the path, at the discretion of the
+     * client. However, setting {@code null} along the path and then continue
+     * digging may yield worse performance versus using multiple walk
+     * operations. For bulk operations, it's recommended to walk the tree
+     * repeatedly for each node targeted.<p>
+     * 
+     * Digger must only dig one level at a time. Undefined application behavior
+     * if it doesn't.
+     * 
+     * @param digger function which returns the next node to traverse
+     */
+    void write(UnaryOperator<WriteNode<V>> digger) {
+        Deque<WriteNode<V>> release = empty();
+        
+        try {
+            WriteNode<V> n = root;
+            while ((n = digger.apply(n)) != null)  {
+                if (release.isEmpty()) {
+                    release = new ArrayDeque<>(INITIAL_CAPACITY);
+                }
+                release.add(n);
+            }
+        } finally {
+            release.descendingIterator().forEachRemaining(n -> {
+                @SuppressWarnings("unchecked")
+                NodeImpl<V> typed = (NodeImpl<V>) n;
+                typed.unreserve();
+            });
+            tryPruningTree();
+        }
     }
     
-    void setIfAbsent(Iterable<String> keySegments, V v, Consumer<V> otherwise) {
-        final Iterator<String> it = readAwayRoot(keySegments.iterator());
-        final Deque<NodeImpl<V>> release = it.hasNext() ? new ArrayDeque<>() : empty();
-        try {
-            NodeImpl<V> n = root;
-            while (it.hasNext())  {
-                final String s = it.next();
-                NodeImpl<V> c;
-                for (;;) {
-                    c = n.nextOrCreate(s);
-                    try {
-                        c.reserve();
-                        break;
-                    } catch (StaleBranchException e) {
-                        // Retry
-                    }
+    boolean setIfAbsent(Iterable<String> keySegments, V v) {
+        final Iterator<String> it = discardRoot(keySegments.iterator());
+        if (!it.hasNext()) {
+            return root.setIfAbsent(v);
+        } else {
+            boolean[] success = new boolean[1];
+            write(n -> {
+                final String s;
+                try {
+                    s = it.next();
+                } catch (NoSuchElementException e) {
+                    // Node found, set val and return
+                    success[0] = n.setIfAbsent(v);
+                    return null;
                 }
-                release.add(c);
-                n = c;
-            }
-            n.setIfAbsent(v, otherwise);
-        } finally {
-            release.descendingIterator().forEachRemaining(NodeImpl::unreserve);
+                return n.nextOrCreate(s);
+            });
+            tryPruningTree();
+            return success[0];
         }
     }
     
     boolean clear(Iterable<String> keySegments) {
-        return clearIf(keySegments, ignored -> true);
+        return clearIf(keySegments, presentValIgnored -> true);
     }
     
     boolean clearIf(Iterable<String> keySegments, Predicate<V> test) {
-        final Iterator<String> it = readAwayRoot(keySegments.iterator());
+        final Iterator<String> it = discardRoot(keySegments.iterator());
         
-        NodeImpl<V> n = root;
+        // This is cheating as we use read mode to eventually set null,
+        // however, we don't need to reserve the nodes since we won't set a
+        // value we can not afford to orphan/make unreachable
+        ReadNode<V> n = root;
         while (it.hasNext())  {
             n = n.next(it.next());
             if (n == null) {
@@ -147,36 +280,29 @@ final class Tree<V>
             }
         }
         
-        if (n.clearIf(test)) {
-            cleanup.run();
+        if (((NodeImpl<V>) n).setIf(null, test)) {
+            tryPruningTree();
             return true;
         }
         return false;
     }
     
-    /**
-     * Flatten the tree and dump all node values; designed for tests only.<p>
-     * 
-     * Note that for as long as a particular branch has not been pruned, a map
-     * entry - or the entire branch for that matter - may map to a {@code null}
-     * value.
-     * 
-     * @param delimiter used to join all key segments
-     * 
-     * @return a map of the tree
-     */
-    Map<String, V> toMap(CharSequence delimiter) {
-        // https://bugs.openjdk.java.net/browse/JDK-8148463
-        SortedMap<String, V> m = new TreeMap<>();
-        root.entryStream("", delimiter, "").forEach(e -> {
-            if (m.putIfAbsent(e.getKey(), e.getValue()) != null) {
-                throw new AssertionError("Duplicated path/key: " + e.getKey());
+    private void tryPruningTree() {
+        // Clean tree only if branch was flagged dirty and no cleanup job is already running
+        if (!CLEAN.get()) {
+            return;
+        }
+        CLEAN.set(false);
+        if (cleaning.compareAndSet(false, true)) {
+            try {
+                root.prune();
+            } finally {
+                cleaning.set(false);
             }
-        });
-        return Collections.unmodifiableMap(m);
+        }
     }
     
-    private Iterator<String> readAwayRoot(Iterator<String> keySegments) {
+    private Iterator<String> discardRoot(Iterator<String> keySegments) {
         try {
             if (!"".equals(keySegments.next())) {
                 throw new NoSuchElementException();
@@ -189,49 +315,154 @@ final class Tree<V>
     }
     
     /**
+     * FOR TESTS ONLY: Find the given node in the tree and compute its assembled
+     * key.
+     * 
+     * @param delimiter used to join all key segments
+     * @param n target node
+     * 
+     * @return the node's final key
+     * 
+     * @throws NoSuchElementException if node can not be found
+     */
+    String extractKey(CharSequence delimiter, ReadNode<?> n) {
+        return root.entryStreamGraph("", delimiter, "", identity())
+                .filter(e -> e.getValue().equals(n))
+                .map(Map.Entry::getKey)
+                .findFirst().get();
+    }
+    
+    /**
+     * FOR TESTS ONLY: Flatten the tree and dump all node values.<p>
+     * 
+     * Note that for as long as a particular branch has not been pruned, a map
+     * entry - or the entire branch for that matter - may map to a {@code null}
+     * value.
+     * 
+     * @param delimiter used to join all key segments
+     * 
+     * @return a map of the tree
+     */
+    Map<String, V> toMap(CharSequence delimiter) {
+        // https://bugs.openjdk.java.net/browse/JDK-8148463
+        SortedMap<String, V> m = new TreeMap<>();
+        root.entryStreamGraph("", delimiter, "", ReadNode::get).forEach(e -> {
+            if (m.putIfAbsent(e.getKey(), e.getValue()) != null) {
+                throw new AssertionError("Duplicated path/key: " + e.getKey());
+            }
+        });
+        return unmodifiableMap(m);
+    }
+    
+    /**
      * A node is associated with an arbitrary value and may have descendant
      * children nodes keyed by a string. Each child may in turn contain
      * children, effectively making up a tree.<p>
      * 
      * A tree is built upon demand when being traversed using the method {@link
-     * #nextOrCreate(String)}. Each node returned from this method must be
-     * {@link #reserve() reserved} until the enclosing operation has completed
-     * at which point all the reserved nodes must be {@link #unreserve()
-     * unreserved} (ideally in reversed order). This will ensure that a
-     * concurrently running {@link #prune() pruning} operation does not delete
-     * the link to a reserved node which would otherwise have made the node
-     * unreachable.<p>
+     * #nextOrCreate(String)}. Each node returned from this method is
+     * immediately {@link #reserve() reserved} until the enclosing operation has
+     * completed at which point all the reserved nodes must be
+     * {@link #unreserve() unreserved} (ideally in reversed order). This will
+     * ensure that a concurrently running {@link #prune() pruning} operation
+     * does not delete the link to a reserved node which would otherwise have
+     * made the node (and its value) unreachable.<p>
      * 
      * Reserving a node and setting its value generally do not block and if it
      * does the block is expected to be minuscule. Creating a child node as well
      * as pruning is subject to synchronized monitors as used internally by a
-     * {@code ConcurrentHashMap} sub-component. Similarly, these monitors are
-     * not expected to be contended or to be held for very long.<p>
+     * {@code ConcurrentMap} sub-component. Similarly, these monitors are not
+     * expected to be contended or to be held for very long.<p>
      * 
-     * Most importantly, traversing the tree uses no mutually exclusive lock
-     * imposed by this class and does not generally block (at the discretion of
-     * the {@code ConcurrentHashMap} sub-component).
+     * Most importantly, traversing the tree uses no <i>mutually exclusive</i>
+     * locks imposed by this class and does not generally block (at the
+     * discretion of the {@code ConcurrentMap} sub-component).
      * 
      * @author Martin Andersson (webmaster at martinandersson.com)
      */
-    private static class NodeImpl<V> implements Node<V>
+    private static class NodeImpl<V> implements ReadNode<V>, WriteNode<V>
     {
-        private final AtomicReference<V> val;
+        private final AtomicReference<V> v;
         // Does not allow null to be used as key or value
-        private final ConcurrentMap<String, NodeImpl<V>> children;
+        private final ConcurrentNavigableMap<String, NodeImpl<V>> kids;
         // Used only for accessing the orphan flag
         private final Lock read, write;
         private boolean orphan;
         
         NodeImpl(V v) {
-            val = new AtomicReference<>(v);
-            children = new ConcurrentHashMap<>();
+            this.v = new AtomicReference<>(v);
+            this.kids = new ConcurrentSkipListMap<>();
             
             ReentrantReadWriteLock l = new ReentrantReadWriteLock();
             read = l.readLock();
             write = l.writeLock();
             
             orphan = false;
+        }
+        
+        // Read interface
+        // ----
+        
+        @Override
+        public V get() {
+            return v.get();
+        }
+        
+        @Override
+        public NodeImpl<V> next(String segment) {
+            return kids.get(requireNotNullOrEmpty(segment));
+        }
+        
+        // Write interface
+        // ----
+        
+        @Override
+        public V set(V v) {
+            V o = this.v.getAndSet(v);
+            if (o != null && v == null) {
+                CLEAN.set(true);
+            }
+            return o;
+        }
+        
+        @Override
+        public boolean setIf(V v, Predicate<? super V> test) {
+            V o1 = this.v.getAndUpdate(o2 -> test.test(o2) ? v : o2);
+            if (o1 != null && v == null) {
+                CLEAN.set(true);
+            }
+            return o1 != v;
+        }
+        
+        @Override
+        public boolean hasChildren(String segmentPrefix) {
+            prune();
+            return !subMapFrom(kids, segmentPrefix).isEmpty();
+        }
+        
+        @Override
+        public NodeImpl<V> nextOrCreateIf(String segment, BooleanSupplier condition) {
+            requireNotNullOrEmpty(segment);
+            requireNonNull(condition);
+            
+            NodeImpl<V> c;
+            for (;;) {
+                c = kids.computeIfAbsent(segment, keyIgnored ->
+                        condition.getAsBoolean() ? new NodeImpl<>(null) : null);
+                
+                if (c == null) {
+                    return null;
+                }
+                
+                try {
+                    c.reserve();
+                    break;
+                } catch (StaleBranchException e) {
+                    // Retry
+                }
+            }
+            
+            return c;
         }
         
         /**
@@ -248,7 +479,7 @@ final class Tree<V>
          * @throws StaleBranchException
          *             if a pruning operation has removed the link to this node
          */
-        void reserve() throws StaleBranchException {
+        private void reserve() throws StaleBranchException {
             read.lock();
             if (orphan) {
                 read.unlock();
@@ -260,74 +491,8 @@ final class Tree<V>
             read.unlock();
         }
         
-        @Override
-        public V get() {
-            return val.get();
-        }
-        
-        /**
-         * Set the node's value, if absent.<p>
-         * 
-         * @param v value to associate with node
-         * @param otherwise invoked with old value if not successful
-         * 
-         * @throws NullPointerException if {@code v} is {@code null}
-         */
-        void setIfAbsent(V v, Consumer<V> otherwise) {
-            requireNonNull(v);
-            V o;
-            if ((o = val.compareAndExchange(null, v)) != null && otherwise != null) {
-                otherwise.accept(o);
-            }
-        }
-        
-        /**
-         * Traverse the tree to a child node.
-         *
-         * @param segment value
-         *
-         * @return the child node or {@code null} if it does not exist
-         */
-        @Override
-        public NodeImpl<V> next(String segment) {
-            return children.get(segment);
-        }
-        
-        /**
-         * Traverse the tree to a child node, creating the child if it does not
-         * exist.
-         *
-         * @param segment value
-         *
-         * @return the child node (never {@code null})
-         */
-        NodeImpl<V> nextOrCreate(String segment) {
-            return children.computeIfAbsent(segment, keyIgnored -> new NodeImpl<>(null));
-        }
-        
-        /**
-         * Remove the node's value but only if the current held value passes the
-         * provided predicate.
-         * 
-         * @param test predicate
-         * 
-         * @return {@code true} if operation had an effect (value was previously
-         *         set), otherwise {@code false}
-         */
-        boolean clearIf(Predicate<V> test) {
-            boolean[] cleared = new boolean[1];
-            
-            val.getAndUpdate(v -> {
-                if (v != null && test.test(v)) {
-                    cleared[0] = true;
-                    return null;
-                }
-                cleared[0] = false;
-                return v;
-            });
-            
-            return cleared[0];
-        }
+        // API for enclosing tree
+        // ----
         
         /**
          * Will delete the link to all children nodes that has no associated
@@ -342,41 +507,83 @@ final class Tree<V>
          * memory leak.<p>
          * 
          * It is imperative that a branch-expanding operation also {@link
-         * #reserve()} each node it creates. See {@link NodeImpl}.
+         * #reserve()} each node that it creates. See {@link NodeImpl}.
          * 
          * @return {@code true} if this node is an orphan after having
          *         recursively pruned all children depth-first
          */
         boolean prune() {
-            children.values().removeIf(NodeImpl::prune);
+            kids.values().removeIf(NodeImpl::prune);
             
             if (!write.tryLock()) {
                 return false;
             }
             
             try {
-                return (orphan = children.isEmpty() && val.get() == null);
+                orphan = kids.isEmpty() && v.get() == null;
+                return orphan;
             } finally {
                 write.unlock();
             }
         }
         
-        Stream<Map.Entry<String, V>> entryStream(String prefix, CharSequence delimiter, String key) {
+        Stream<NodeImpl<V>> entryStreamFlat(String segment, String... moreSegments) {
+            var b = nextAccept(segment, Stream::builder, null);
+            for (String s : moreSegments) {
+                b = nextAccept(s, Stream::builder, b);
+            }
+            return b == null ? Stream.empty() : b.build();
+        }
+        
+        private <T extends Consumer<? super NodeImpl<V>>> T nextAccept(
+                String segment,
+                Supplier<T> supplier,
+                T consumer)
+        {
+            NodeImpl<V> n = next(segment);
+            if (n != null) {
+                if (consumer == null) {
+                    consumer = supplier.get();
+                }
+                consumer.accept(n);
+            }
+            return consumer;
+        }
+        
+        <R> Stream<Map.Entry<String, R>> entryStreamGraph(
+                String prefix,
+                CharSequence delimiter,
+                String key,
+                Function<NodeImpl<V>, ? extends R> mapper)
+        {
             final String path = prefix + delimiter + key;
             
-            Stream<Map.Entry<String, V>>
-                    self = Stream.of(entry(path, get())),
-                    kids = children.entrySet().stream().flatMap(e ->
-                            e.getValue().entryStream(key.isEmpty() ? "" : path, delimiter, e.getKey()));
+            Stream<Map.Entry<String, R>>
+                    self = Stream.of(entry(path, mapper.apply(this))),
+                    kids = this.kids.entrySet().stream().flatMap(e ->
+                            e.getValue().entryStreamGraph(key.isEmpty() ? "" : path, delimiter, e.getKey(), mapper));
             
             return Stream.concat(self, kids);
         }
+        
+        @Override
+        public String toString() {
+            return NodeImpl.class.getName() +
+                    "{v=" + get() + ", children.size()=" + kids.size() + "}";
+        }
+    }
+    
+    private static String requireNotNullOrEmpty(String segment) {
+        if (segment.isEmpty()) {
+            throw new IllegalArgumentException("Segment value is empty.");
+        }
+        return segment;
     }
     
     /**
      * The node has been made orphaned by a pruning operation and is no longer
-     * part of an active branch. Client code catching this exception should
-     * re-acquire or re-create the node upon which it attempted to operate.
+     * part of an active branch. Code catching this exception should re-acquire
+     * or re-create the node upon which it attempted to operate.
      */
     private static class StaleBranchException extends Exception {
         // Empty
@@ -394,5 +601,62 @@ final class Tree<V>
      */
     static <K, V> Map.Entry<K, V> entry(K k, V v) {
         return new AbstractMap.SimpleImmutableEntry<>(k, v);
+    }
+    
+    // https://stackoverflow.com/a/65825999/1268003
+    private static <V> NavigableMap<String, V> subMapFrom(
+            NavigableMap<String, V> map, String keyPrefix)
+    {
+        final String fromKey = keyPrefix, toKey; // undefined
+        
+        // Alias
+        String p = keyPrefix;
+        
+        if (p.isEmpty()) {
+            // No need for a sub map
+            return map;
+        }
+        
+        // ("ab" + MAX_VALUE + MAX_VALUE + ...) returns index 1
+        final int i = lastIndexOfNonMaxChar(p);
+        
+        if (i == -1) {
+            // Prefix is all MAX_VALUE through and through, so grab rest of map
+            return map.tailMap(p, true);
+        }
+        
+        if (i < p.length() - 1) {
+            // Target char for bumping is not last char; cut out the residue
+            // ("ab" + MAX_VALUE + MAX_VALUE + ...) becomes "ab"
+            p = p.substring(0, i + 1);
+        }
+        toKey = bumpChar(p, i);
+        
+        return map.subMap(fromKey, true, toKey, false);
+    }
+    
+    private static int lastIndexOfNonMaxChar(String str) {
+        int i = str.length();
+        
+        // Walk backwards, while we have a valid index
+        while (--i >= 0) {
+            if (str.charAt(i) < MAX_VALUE) {
+                return i;
+            }
+        }
+        
+        return -1;
+    }
+    
+    private static String bumpChar(String str, int pos) {
+        assert !str.isEmpty();
+        assert pos >= 0 && pos < str.length();
+        
+        final char c = str.charAt(pos);
+        assert c < MAX_VALUE;
+        
+        StringBuilder b = new StringBuilder(str);
+        b.setCharAt(pos, (char) (c + 1));
+        return b.toString();
     }
 }

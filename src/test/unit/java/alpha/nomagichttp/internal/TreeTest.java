@@ -2,6 +2,11 @@ package alpha.nomagichttp.internal;
 
 import org.junit.jupiter.api.Test;
 
+import java.util.Iterator;
+import java.util.List;
+import java.util.function.Function;
+import java.util.stream.Stream;
+
 import static alpha.nomagichttp.internal.Tree.entry;
 import static java.util.List.of;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -19,7 +24,7 @@ class TreeTest
     @Test
     void first_key_segment_is_always_the_empty_string_1() {
         // Pass no key segments at all
-        assertThatThrownBy(() -> testee.setIfAbsent(of(), null, null))
+        assertThatThrownBy(() -> testee.setIfAbsent(of(), null))
                 .isExactlyInstanceOf(IllegalArgumentException.class)
                 .hasMessage("First key segment must be the empty String (root).");
     }
@@ -27,7 +32,7 @@ class TreeTest
     @Test
     void first_key_segment_is_always_the_empty_string_2() {
         // Let first key segment not be the empty string
-        assertThatThrownBy(() -> testee.setIfAbsent(of("crash"), null, null))
+        assertThatThrownBy(() -> testee.setIfAbsent(of("crash"), null))
                 .isExactlyInstanceOf(IllegalArgumentException.class)
                 .hasMessage("First key segment must be the empty String (root).");
     }
@@ -86,5 +91,20 @@ class TreeTest
         // This time the entire branch is wiped clean
         assertThat(testee.toMap("/")).containsExactly(
                 entry("/", null));
+    }
+    
+    @Test
+    void write_read() {
+        Iterable<String> path = List.of("a", "b");
+        Iterator<String> w = path.iterator();
+        testee.write(n -> {
+            if (w.hasNext()) {
+                return n.nextOrCreate(w.next());
+            }
+            n.set("value");
+            return null;
+        });
+        
+        assertThat(testee.read().next("a").next("b").get()).isEqualTo("value");
     }
 }
