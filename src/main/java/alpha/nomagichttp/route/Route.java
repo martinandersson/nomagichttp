@@ -1,6 +1,5 @@
 package alpha.nomagichttp.route;
 
-import alpha.nomagichttp.handler.ErrorHandler;
 import alpha.nomagichttp.handler.RequestHandler;
 import alpha.nomagichttp.message.MediaType;
 import alpha.nomagichttp.message.Request;
@@ -8,13 +7,12 @@ import alpha.nomagichttp.message.Request;
 import java.net.URI;
 import java.net.URLDecoder;
 import java.nio.charset.Charset;
-import java.util.Map;
 
 /**
  * A {@code Route} is "a target resource upon which to apply semantics"
  * (<a href="https://tools.ietf.org/html/rfc7230#section-5.1">RFC 7230 §5.1</a>).
- * It can be built using a {@link #builder(String)} or other static methods
- * found in {@link Routes}.<p>
+ * It can be built using a {@link #builder(String)}. Shortcut factory methods
+ * exist in {@link Routes}.<p>
  * 
  * The route is associated with one or more <i>request handlers</i>. In HTTP
  * parlance, handlers are also known as different "representations" of the
@@ -22,46 +20,95 @@ import java.util.Map;
  * by qualifying metadata and specificity, as detailed in the Javadoc of {@link
  * RequestHandler}.<p>
  * 
- * Suppose the HTTP server receives this request (copy-pasted from
+ * A request will match exactly one or no route in the {@link RouteRegistry}
+ * held by the HTTP server. Your users will not suffer from unintended surprises
+ * and there are no complex and hard to understand priority rules to learn.
+ * Attempting to add a route to a route registry which already has an
+ * equivalent route registered will throw a {@link RouteCollisionException}.<p>
+ * 
+ * An example of a request (copy-pasted from
  * <a href="https://tools.ietf.org/html/rfc7230#section-5.3.1">RFC 7230 §5.3.1</a>):<p>
  * <pre>{@code
  *   GET /where?q=now HTTP/1.1
  *   Host: www.example.com
  * }</pre>
  * 
- * The request-target "/where?q=now" has a <i>path</i> component and a query
- * component. The path "/where" will match a route in the HTTP server which
- * declares exactly one segment "where". The query "?q=now" specifies a
- * "q"-named parameter with the value "now".<p>
+ * The request-target "/where?q=now" has a path component and a query component.
+ * The path "/where" will match a route which declares exactly one segment
+ * "where". The query "?q=now" specifies a "q"-named parameter with the value
+ * "now".<p>
  * 
  * The route may declare named path parameters which act like a wildcard segment
- * whose dynamic value is given by the client through the request path. Both
- * query- and path parameters are optional and they can not be specified as
- * required. Their values may be retrieved using {@link Request#parameters()}<p>
+ * whose dynamic value is given by the client through the request path. Path-
+ * and query parameters may be retrieved using {@link Request#parameters()}<p>
  * 
- * Using curly braces ("{}") syntax for notation purposes only, suppose we have
- * a route made up of two segments and two path parameters:
+ * Path parameters come in two specialized forms; single-segment and
+ * catch-all.<p>
  * 
- * <pre>
- *   /users/{user-id}/items/{item-id}
- * </pre>
- * 
- * This route will be a match for all of the following request paths:
+ * Single-segment path parameters match anything until the next '/' or the path
+ * end. They are denoted using the prefix ':'. A request path must carry a value
+ * for the segment in order to match with a route that has declared a
+ * single-segment path parameter. They can not be configured as optional.
  * 
  * <pre>
- *   /users/items
- *   /users/123/items
- *   /users/items/456
- *   /users/123/items/456
+ *   Route registered: /user/:id
+ *   
+ *   Request path:
+ *   /user/123            match, id = 123
+ *   /user/foo            match, id = foo
+ *   /user                no match (missing segment value)
+ *   /user/foo/profile    no match (unknown segment "profile")
  * </pre>
  * 
- * The only difference between these request paths is which parameter values
- * will be present in the request object.<p>
+ * Within the route registry, path parameters are mutually exclusive for that
+ * segment position. For example, you can not at the same time register both
+ * {@code "/user/new"} and {@code "/user/:id"}, or {@code "/user/:id"} and
+ * {@code "/user/:something-else"}. It is possible to have any number of routes
+ * registered at the same time, as long as their segments builds a distinct
+ * branch. For example:
  * 
- * Route collision- and ambiguity is detected at build-time and will fail-fast
- * with a {@link RouteCollisionException}. For example, the route {@code
- * "/where"} can not be added to an HTTP server which already has {@code
- * "/where/{param}"} registered (parameters are optional).<p>
+ * <pre>
+ *   /user                   respond "404 Bad Request, missing id"
+ *   /user/:id               respond available options "file, ..."
+ *   /user/:uid/file/:fid    respond specified user file
+ * </pre>
+ * 
+ * The previous example also demonstrates that just because two or more routes
+ * are located on the same hierarchical branch, the path parameter names they
+ * declare may still be different. A path parameter name is only required to be
+ * unique for a specific {@code Route} object. The last route from the previous
+ * example could have just as well been expressed as {@code
+ * "/user/:id/file/:fid"} and added to the same registry. But, this route can
+ * not at all be constructed: {@code "/user/:id/file/:id"} (duplicated name!)<p> 
+ * 
+ * Catch-all path parameters match everything until the path end. They must
+ * therefore be the last segment defined, nothing else may follow. They are
+ * denoted using the prefix '*'. Catch-all parameters are effectively optional
+ * since they match everything from a given position, including nothing at all.
+ * For consistency, the value when retrieved will always begin with '/'. On the
+ * contrary, single-segment parameter values will never begin with '/' as these
+ * are truncated from the request path (see the subsequently documented
+ * normalization procedure).
+ * 
+ * <pre>
+ *   Route registered: /src/*filepath
+ * 
+ *   /src                    match, filepath = "/"
+ *   /src/                   match, filepath = "/"
+ *   /src/subdir             match, filepath = "/subdir"
+ *   /src/subdir/file.txt    match, filepath = "/subdir/file.txt"
+ * </pre>
+ * 
+ * As previously noted, single-segment parameters can build a route hierarchy.
+ * For example, you can have both {@code "/user"} and {@code "/user/:id"}
+ * registered in the same registry at the same time. But this is not true for
+ * catch-all. You can not register {@code "/src"} and {@code "/src/*filepath"}
+ * in the same registry at the same time. This would result in a {@link
+ * RouteCollisionException}. It is possible to mix both parameter styles, e.g.
+ * {@code "/:drive/*filepath"}.<p>
+ * 
+ * Query parameters are always optional, they can not be used to distinguish one
+ * route from another.<p>
  * 
  * In order to find a matching route, the following steps are applied to the
  * request path:
@@ -113,85 +160,57 @@ public interface Route
      * 
      * Alternatively, import static {@code Routes.route()}, then:
      * <pre>{@code
-     *     Route r = route("/", ...).build();
+     *     Route r = route("/", ...);
      * }</pre>
      * 
-     * The value given to this method as well as the {@link
-     * Builder#append(String)} method may be comprised of many segments. These
-     * calls are equivalent:
+     * The value given to this method as well as {@link Builder#append(String)}
+     * is a pattern that may declare many segments including path parameters, as
+     * long as these are delimited using a '/'. The pattern is a shortcut for
+     * using explicit builder methods to accomplish the same result. All of
+     * these expressions builds a route of the same path,
+     * {@code "/files/:user/*filepath"}:
      * 
      * <pre>{@code
-     *    Route.builder("/a").append("/b").append("/c/d")...
-     *    Route.builder("/a/b/c/d")...
+     *    Route.builder("/").append("files").paramSingle("user").paramCatchAll("filepath")...
+     *    Route.builder("/files").append(":user/*filepath")...
+     *    Route.builder("/files/:user/*filepath")...
      * }</pre>
      * 
-     * The only reason why a route's path may have to be split across different
-     * append calls is to be able to insert wildcard segments aka path
-     * parameters:
+     * Technical jargon, just to have it stated: '/' serves as a segment
+     * delimiter. Any leading or trailing '/' in the pattern will be discarded
+     * and thus never become part of a static segment value or parameter name.
+     * Only the root segment may be the empty string. Clustered '/' will throw
+     * an {@code IllegalArgumentException}. For details related to individual
+     * components, see {@link Route.Builder}.
      * 
-     * <pre>{@code
-     *     Route r = Route.builder("/users")
-     *                    .param("user-id")
-     *                    .append("/items")
-     *                    .param("item-id")
-     *                    .handler(...)
-     *                    .build();
-     *
-     *     String s = r.toString(); // "/users/{user-id}/items/{item-id}"
-     * }</pre>
-     * 
-     * @param segment initial seed (may be a single forward slash character)
+     * @param pattern to parse
      * 
      * @return a new builder
      * 
      * @throws NullPointerException
-     *             if {@code segment} is {@code null}
+     *             if {@code pattern} is {@code null}
      * 
      * @throws IllegalArgumentException
-     *             see {@link Route.Builder}
+     *             if a static segment value is effectively empty
+     *
+     * @throws IllegalStateException
+     *             if parameter names are repeated
      */
-    static Route.Builder builder(String segment) {
-        return new DefaultRoute.Builder(segment);
+    static Route.Builder builder(String pattern) {
+        return new DefaultRoute.Builder(pattern);
     }
     
     /**
-     * Returns a match if this route matches the specified {@code requestTarget},
-     * otherwise {@code null}.<p>
+     * Returns all segments of this route.<p>
      * 
-     * If there is no such route registered with the HTTP server, a {@link
-     * NoRouteFoundException} is thrown, which is translated by {@link
-     * ErrorHandler#DEFAULT} into a "404 Not Found" response.<p>
-     * 
-     * The request-target passed to this method must have the trailing query
-     * part - if present - cut off.<p>
-     * 
-     * The HTTP server does not interpret the fragment part and it is undefined
-     * whether or not it is included as part of the given request-target. The
-     * fragment "is dereferenced solely by the user agent" (<a
-     * href="https://tools.ietf.org/html/rfc3986#section-3.5">RFC 3986 §3.5</a>)
-     * and so shouldn't have been sent to the server in the first place.
-     * 
-     * @param requestTarget  request-target
-     * 
-     * @return a match if this route matches the specified {@code requestTarget},
-     *         otherwise {@code null}
-     * 
-     * @see RequestHandler
-     */
-    // TODO: See JavaDoc. Define behavior more exact. Also rename parameter to "path".
-    // https://tools.ietf.org/html/rfc3986#section-3.4
-    // TODO: HTTP server split RT into segments and can then walk a tree of routes to find the match.
-    @Deprecated // To be removed
-    Match matches(String requestTarget);
-    
-    /**
-     * Returns all the segments of this route.<p>
-     * 
-     * The iteration order starts at the root.
+     * All routes are implicitly a descendant of the root which is never
+     * returned from this method, i.e., an empty string. The segment value
+     * follows the pattern specified in {@link #builder(String)}. For example,
+     * ["files", ":user", "*filepath"].
      * 
      * @return all the segments of this route
      */
-    Iterable<Segment> segments();
+    Iterable<String> segments();
     
     /**
      * Lookup a handler given a specified {@code method} and media types.
@@ -211,97 +230,39 @@ public interface Route
     RequestHandler lookup(String method, MediaType contentType, MediaType[] accepts);
     
     /**
-     * Returns the route identity.
+     * Returns '/' concatenated with '/'-joined {@link #segments()}.<p>
      * 
-     * @return the route identity (never {@code null} or empty)
+     * The string returned from this method can be feed to {@link
+     * #builder(String)} in order to reconstruct a new route with a different
+     * set of handlers.
      * 
-     * @see Route
-     */
-    @Deprecated // To be removed
-    String identity();
-    
-    /**
-     * Returns all segments joined with named parameter values.<p>
-     * 
-     * Path parameter names will be enclosed within "/{}".<p>
-     * 
-     * For example, if route has segment "/A" + "my-param" + segment "/B", then
-     * the returned String will be "/A/{my-param}/B".
-     * 
-     * @return all segments joined with named parameter values
+     * @return joined segments
      */
     @Override
     String toString();
     
     /**
-     * A route matched against a request.
-     */
-    @Deprecated // To be deleted
-    interface Match {
-        /**
-         * Returns the matched route.<p>
-         * 
-         * The returned reference is the same object as the one invoked to
-         * produce the match.
-         * 
-         * @return the matched route
-         */
-        Route route();
-        
-        /**
-         * Returns path parameters which have been extracted from the
-         * request-target.<p>
-         * 
-         * The returned map is empty if the route has no path parameters
-         * declared or none was provided in the request-target.<p>
-         * 
-         * The returned map is unmodifiable.
-         * 
-         * @return path parameters (never null)
-         */
-        Map<String, String> parameters();
-    }
-    
-    /**
      * Builder of a {@link Route}.<p>
      * 
-     * A valid segment is any non-empty character sequence that follows a
-     * forward slash character ('/'). If the character sequence contains yet
-     * another forward slash character, then this defines the boundary for a new
-     * segment contained within the given string value. Only the method
-     * {@link Route#builder(String)} can accept the empty root ("/").<p>
+     * A valid route segment is any non-empty character sequence excluding '/'.<p>
      * 
-     * These are all not just valid but effectively builds a route of the same
-     * path:
+     * The segment value can be anything, really. Even cat emojis are valid but
+     * not necessarily API friendly (client must be mindful about
+     * percent-decoding and also have an affinity for small furry animals):
      * <pre>{@code
-     *   Route.builder("/").append("/a/b")
-     *   Route.builder("/a").append("/b")
-     *   Route.builder("/a/b")
+     *   Roue cat = Route.builder("/ (=^・・^=)").handler(...).build();
      * }</pre>
      * 
-     * The segment value can be anything but a forward slash. Even cat emojis
-     * are valid but not necessarily API friendly (client must be mindful
-     * about percent-decoding and have an affinity for small furry animals):
-     * <pre>{@code
-     *   Route.builder("/ (=^・・^=)")
-     * }</pre>
-     * 
-     * Not valid:
-     * <pre>{@code
-     *   Route.builder("") // doesn't start with forward slash
-     *   Route.builder("/a/") // empty segment
-     *   Route.builder("/a").append("/") // empty segment
-     * }</pre>
-     * 
-     * An invalid segment will cause an {@code IllegalArgumentException} to be
-     * thrown.<p>
-     * 
-     * A valid parameter name is any string with any content as long as it is a
-     * unique parameter name for the route. After all, the only purpose of this
-     * string is for the HTTP server to use it as a key in a parameter map data
-     * structure. Please note that the name is specified to participate in the
-     * {@link Route#toString()} result so perhaps the name shouldn't be too
-     * weird like an empty string "" or "null".<p>
+     * A valid parameter name is also any string with any content as long as it
+     * is a unique parameter name for the route. After all, the only purpose of
+     * this string is for the HTTP server to use it as a key in a map. Please be
+     * mindful that if you really need to include a '/' in the parameter name,
+     * then the parameter must be declared explicitly using a param***() builder
+     * method. The pattern consuming methods {@link #builder(String)} and
+     * {@link #append(String)} would interpret the '/' character as starting a
+     * new segment. Same logic applies for parameter names which are the empty
+     * string (""). Although not invalid, really weird parameter names should
+     * simply be avoided.<p>
      * 
      * The builder is not thread-safe and is intended to be used as a throw-away
      * object. Each of the setter methods modifies the state of the builder and
@@ -317,47 +278,47 @@ public interface Route
     interface Builder
     {
         /**
-         * Declare one or many named path parameters.
+         * Declare a single-segment path parameter.
          * 
-         * @param firstName  first name
-         * @param moreNames  optionally more names
-         * 
+         * @param name of parameter
          * @return this (for chaining/fluency)
-         * 
-         * @throws NullPointerException
-         *             if anyone of the provided names is {@code null}
-         * 
-         * @throws IllegalStateException
-         *             if an equivalent parameter name has already been added
+         * @throws NullPointerException if {@code name} is {@code null} 
+         * @throws IllegalStateException if the same name has already been used
          */
-        Route.Builder param(String firstName, String... moreNames);
+        Route.Builder paramSingle(String name);
         
         /**
-         * Append another segment.
+         * Declare a catch-all path parameter.<p>
          * 
-         * @param segment to append
+         * No other segments or parameters may follow.
          * 
+         * @param name of parameter
          * @return this (for chaining/fluency)
-         * 
-         * @throws NullPointerException
-         *             if {@code segment} is {@code null}
-         * 
-         * @throws IllegalArgumentException
-         *             see {@link Route.Builder}
+         * @throws NullPointerException if {@code name} is {@code null}
+         * @throws IllegalStateException if the same name has already been used
          */
-        Route.Builder append(final String segment);
+        Route.Builder paramCatchAll(String name);
         
         /**
-         * Add a request handler.
+         * Append another pattern.
+         * 
+         * @param pattern to append
+         * @return this (for chaining/fluency)
+         * @throws NullPointerException if {@code pattern} is {@code null}
+         * @throws IllegalArgumentException see {@link Route.Builder}
+         * @throws IllegalStateException if parameter names are repeated
+         * 
+         * @see Route#builder(String) 
+         */
+        Route.Builder append(String pattern);
+        
+        /**
+         * Add request handler(s).
          * 
          * @param first  first request handler
          * @param more   optionally more handlers
-         * 
-         * @throws HandlerCollisionException
-         *             if an equivalent handler has already been added
-         * 
+         * @throws HandlerCollisionException if an equivalent handler has already been added
          * @return this (for chaining/fluency)
-         * 
          * @see RequestHandler
          */
         Route.Builder handler(RequestHandler first, RequestHandler... more);
@@ -367,9 +328,7 @@ public interface Route
          * builder.
          * 
          * @return a new {@code Route}
-         * 
-         * @throws IllegalStateException
-         *             if no handlers have been added
+         * @throws IllegalStateException if no handlers have been added
          */
         Route build();
     }
