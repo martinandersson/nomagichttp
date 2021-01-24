@@ -7,6 +7,7 @@ import alpha.nomagichttp.route.RouteCollisionException;
 import alpha.nomagichttp.route.RouteRegistry;
 import org.junit.jupiter.api.Test;
 
+import java.util.AbstractMap;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -190,6 +191,31 @@ class DefaultRouteRegistryTest
                 "xxx");
     }
     
+    // Bug fix
+    // ----
+    
+    /**
+     * 2021-01-24: Registry's add-operation didn't return the catch-all child
+     * node from the digger back to the tree's walk method implementation,
+     * meaning that the child got reserved but never unreserved, meaning that
+     * the node could never be pruned. My mistake, it was actually well
+     * documented that the digger must only dig one level at a time.
+     */
+    @Test
+    void bug_catch_all_child_not_unreserved() {
+        Route r = route("*p", noop());
+        
+        testee.add(r);
+        assertThat(dump()).containsExactly(
+                // root: null -> "*": route object
+                entry("/", null), entry("/*", r));
+        
+        testee.remove(r);
+        assertThat(dump()).containsExactly(
+                // only root! (before fix this also had the "*" node, albeit with a null value)
+                entry("/", null));
+    }
+    
     // Private API
     // ----
     
@@ -229,5 +255,24 @@ class DefaultRouteRegistryTest
     
     private static Iterable<String> toSegments(String path) {
         return RequestTarget.parse(path).segmentsNotPercentDecoded();
+    }
+    
+    private Map<String, Route> dump() {
+        return ((DefaultRouteRegistry) testee).dump();
+    }
+    
+    /**
+     * Returns a {@code Map.Entry} that is immutable and allow null values,
+     *
+     * @param k key
+     * @param v value
+     * @param <K> type of key
+     * @param <V> type of value
+     *
+     * @return a map entry
+     */
+    // TODO: Copy-pasted from Tree, DRY
+    private static <K, V> Map.Entry<K, V> entry(K k, V v) {
+        return new AbstractMap.SimpleImmutableEntry<>(k, v);
     }
 }

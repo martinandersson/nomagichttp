@@ -60,8 +60,8 @@ public class DefaultRouteRegistry implements RouteRegistry
                 // no more segments to traverse, register route in current node
                 // (this code is racing with the next synchronized block,
                 //    this block be like: don't set a route in current node if there's a catch-all child route; collision between the two
-                //    next block is the same thing in reverse, don't set a catch-all child if there's a parent
-                //    lock not expected to be contended)
+                //    next block is the same thing in reverse, don't set a catch-all child if current has a route
+                //    lock (current node) not expected to be contended)
                 synchronized (n) {
                     setRouteIfAbsentGiven(thatNoCatchAllChildExist(n), n, r);
                 }
