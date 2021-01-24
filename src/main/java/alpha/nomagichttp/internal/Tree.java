@@ -131,11 +131,11 @@ final class Tree<V>
         }
         
         /**
-         * Returns {@code true} if this node a child keyed by the given segment,
-         * otherwise {@code false}.
+         * Returns {@code true} if this node has a child keyed by the given
+         * segment, otherwise {@code false}.
          * 
-         * @return {@code true} if this node a child keyed by the given segment,
-         *          * otherwise {@code false}
+         * @return {@code true} if this node has a child keyed by the given
+         *          * segment, otherwise {@code false}
          * 
          * @see #hasChildrenKeyedByPrefix(String)
          * 
