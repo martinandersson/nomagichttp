@@ -104,127 +104,9 @@ public interface Request
     String httpVersion();
     
     /**
-     * Returns a decoded path parameter value.<p>
-     * 
-     * Suppose that the HTTP server has a route registered which accepts a
-     * parameter "who":<p>
-     * <pre>
-     *   /hello/{who}
-     * </pre>
-     * 
-     * For the following request, {@code paramFromPath("who")} will return "John
-     * Doe":
-     * <pre>
-     *   GET /hello/John%20Doe HTTP/1.1
-     *   ...
-     * </pre>
-     * 
-     * The returned value will be URL decoded (aka. percent-decoded) as if using
-     * {@link URLDecoder#decode(String, Charset) URLDecoder.decode(segment,
-     * StandardCharsets.UTF_8)} <i>except</i> the plus sign ('+') is <i>not</i>
-     * converted to a space character and remains the same.<p>
-     * 
-     * The returned value is exactly what the client provided (after decoding).
-     * I.e., there is no API support for so called "matrix variables" (nor are
-     * they standardized). Such constructs can be implemented in application
-     * code.<p>
-     * 
-     * @param name of path parameter (case sensitive)
-     * 
-     * @return the path parameter value
-     * 
-     * @throws NullPointerException
-     *             if {@code name} is {@code null}
-     * 
-     * @throws IllegalArgumentException
-     *             if the decoder encounters illegal characters
-     */
-    @Deprecated
-    Optional<String> paramFromPath(String name);
-    
-    /**
-     * Returns a raw path parameter value.<p>
-     * 
-     * An invocation of this method behaves in exactly the same way as the
-     * invocation
-     * <pre>
-     *     request.{@link #paramFromPath(String) paramFromPath}(name);
-     * </pre>
-     * except without decoding the value.
-     * 
-     * @param name of path parameter (case sensitive)
-     * 
-     * @return the path parameter value
-     * 
-     * @throws NullPointerException if {@code name} is {@code null}
-     */
-    @Deprecated
-    Optional<String> paramFromPathRaw(String name);
-    
-    /**
-     * Returns a decoded query parameter value.<p>
-     * 
-     * For the following request, {@code paramFromQuery("who")} will return
-     * "John Doe":
-     * <pre>
-     *   GET /hello?who=John%20Doe HTTP/1.1
-     *   ...
-     * </pre>
-     * 
-     * The returned value will be URL decoded (aka. percent-decoded) as if using
-     * {@link URLDecoder#decode(String, Charset) URLDecoder.decode(segment,
-     * StandardCharsets.UTF_8)} <i>except</i> the plus sign ('+') is <i>not</i>
-     * converted to a space character and remains the same.<p>
-     * 
-     * @param name of query parameter (case sensitive)
-     * 
-     * @return the query parameter value
-     * 
-     * @throws NullPointerException
-     *             if {@code name} is {@code null}
-     * 
-     * @throws IllegalArgumentException
-     *             if the decoder encounters illegal characters
-     */
-    @Deprecated
-    Optional<String> paramFromQuery(String name);
-    
-    /**
-     * Returns a raw query parameter value.<p>
-     * 
-     * An invocation of this method behaves in exactly the same way as the
-     * invocation
-     * <pre>
-     *     request.{@link #paramFromQuery(String) paramFromQuery}(name);
-     * </pre>
-     * except without decoding the value.<p>
-     * 
-     * This method is useful when need be to decode the query value manually,
-     * for example when receiving data from a browser submitting an HTML form
-     * using the "GET" method. The default encoding the browser uses will be
-     * <a href="https://www.w3.org/TR/html401/interact/forms.html#h-17.13.4.1">
-     * application/x-www-form-urlencoded</a> which escape space characters using
-     * the plus character ('+').<p>
-     * 
-     * Example:
-     * <pre>{@code
-     *     String received = req.paramFromQueryRaw("name");
-     *     String formdata = java.net.URLDecoder.decode(received, StandardCharsets.UTF_8);
-     * }</pre>
-     * 
-     * @param name of query parameter (case sensitive)
-     * 
-     * @return the query parameter value
-     * 
-     * @throws NullPointerException if {@code name} is {@code null}
-     */
-    @Deprecated
-    Optional<String> paramFromQueryRaw(String name);
-    
-    /**
-     * Returns a parameters API bound to this request.<p>
+     * Returns a parameters API object bound to this request.<p>
      *
-     * @return a parameters API bound to this request
+     * @return a parameters API object bound to this request
      *
      * @see Parameters
      */
@@ -240,9 +122,9 @@ public interface Request
     HttpHeaders headers();
     
     /**
-     * Returns a body API bound to this request.<p>
+     * Returns a body API object bound to this request.
      * 
-     * @return a body API bound to this request
+     * @return a body API object bound to this request
      * 
      * @see Body
      */
@@ -272,12 +154,11 @@ public interface Request
      * value and/or an URL search part, aka. query string (see {@link
      * Route}).<p>
      * 
-     * Both query- and path parameters are optional and they can not be
-     * specified as required. The request handler is free to interpret the
-     * absence, presence and value of parameters however it sees fit.<p>
-     * 
-     * A path parameter value will be assumed to end with a space- or forward
-     * slash character ('/').<p>
+     * Path parameters come in two forms; single- and catch-all. The former is
+     * required in order for the route to have been matched, the latter is
+     * optional but the server will make sure the value is always present and
+     * begins with a '/'. Query parameters are always optional. Read more in
+     * {@link Route}.<p>
      * 
      * A query parameter value will be assumed to end with a space- or ampersand
      * ('&') character. In particular, please note that the semicolon (';') has
@@ -355,7 +236,7 @@ public interface Request
          * Suppose that the HTTP server has a route registered which accepts a
          * parameter "who":<p>
          * <pre>
-         *   /hello/{who}
+         *   /hello/:who
          * </pre>
          * 
          * Given this request:
@@ -364,7 +245,11 @@ public interface Request
          *   ...
          * </pre>
          * 
-         * {@code request.parameters().path("who")} will return "John Doe".
+         * {@code request.parameters().path("who")} will return "John Doe".<p>
+         * 
+         * This method never returns the empty string. {@code null} would only
+         * be returned if the given name is different from what the route
+         * declared.
          * 
          * @param name of path parameter (case sensitive)
          * 
@@ -373,20 +258,25 @@ public interface Request
          * @throws NullPointerException
          *             if {@code name} is {@code null}
          */
-        Optional<String> path(String name);
+        String path(String name);
         
         /**
-         * Returns a raw path parameter value (not decoded/unescaped).
+         * Returns a raw path parameter value (not decoded/unescaped).<p>
+         * 
+         * This method never returns the empty string. {@code null} would only
+         * be returned if the given name is different from what the route
+         * declared.
          * 
          * @param name of path parameter (case sensitive)
          * 
          * @return the raw path parameter value (not decoded/unescaped)
          * 
-         * @throws NullPointerException if {@code name} is {@code null}
+         * @throws NullPointerException
+         *             if {@code name} is {@code null}
          * 
          * @see #path(String) 
          */
-        Optional<String> pathRaw(String name);
+        String pathRaw(String name);
         
         /**
          * Returns a query parameter value (first occurrence,
@@ -563,7 +453,7 @@ public interface Request
      * then the latter will complete exceptionally with an {@code
      * IllegalStateException}.<p>
      * 
-     * It does not matter if a {@code Flow.Subscription} is immediately
+     * And, it does not matter if a {@code Flow.Subscription} is immediately
      * cancelled with or without actually consuming any bytes (application is
      * assumed to ignore the body, followed by a server-side discard of it).<p>
      * 
@@ -573,7 +463,7 @@ public interface Request
      * accessing the result.<p>
      * 
      * The normal way to reject an operation is to fail-fast and blow up the
-     * calling thread. This is also common practice even for rejected
+     * calling thread. This is also common practice for rejected
      * <i>asynchronous</i> operations. For example,
      * {@code ExecutorService.submit()} throws {@code
      * RejectedExceptionException} and {@code AsynchronousByteChannel.read()}
@@ -603,7 +493,7 @@ public interface Request
      * <h3>Subscribing to bytes with a {@code Flow.Subscriber}</h3>
      * 
      * Almost all of the same {@code Flow.Publisher} semantics specified in the
-     * javadoc of {@link Publishers} applies to the {@code Body} as a publisher
+     * JavaDoc of {@link Publishers} applies to the {@code Body} as a publisher
      * as well. The only exception is that the body does not support subscriber
      * reuse, simply because the body can not be subscribed to more than
      * once.<p>

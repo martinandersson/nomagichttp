@@ -16,12 +16,12 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
+import java.util.function.BinaryOperator;
 import java.util.function.BooleanSupplier;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
-import java.util.function.UnaryOperator;
 import java.util.stream.Stream;
 
 import static java.lang.Character.MAX_VALUE;
@@ -39,14 +39,13 @@ import static java.util.function.Function.identity;
  * With this class, the client will add-, remove- and lookup entries by
  * traversing the tree, one segment/node at a time. Traversing the tree is done
  * in a <i>reading</i> or <i>writing</i> mode. The API is different for each.
- * The split has two major benefits. Firstly, the api will be more easy to use
- * as it will be trimmed to the intent of the traversing operation. The split
- * also makes it possible for the tree implementation to perform a few
- * optimizations, such as not unnecessarily reserving a node for a reading
- * thread which makes the read operation faster and also doesn't rollback or
- * hinder a concurrently running prune operation on the same branch (the node
- * values are accessed using atomic semantics, so read values are never
- * stale).<p>
+ * The split has two benefits. Firstly, the api will be more easy to use as it
+ * will be trimmed to the intent of the traversing operation. The split also
+ * makes it possible for the tree implementation to perform a few optimizations,
+ * such as not unnecessarily reserving a node for a reading thread which makes
+ * the read operation faster and also doesn't rollback or hinder a concurrently
+ * running prune operation on the same branch (the node values are accessed
+ * using atomic semantics, so read values are never stale).<p>
  * 
  * TODO: Give example.<p>
  * 
@@ -84,6 +83,13 @@ final class Tree<V>
     
     interface WriteNode<V> {
         /**
+         * Returns this node's value, or {@code null} if not present.
+         *
+         * @return this node's value, or {@code null} if not present
+         */
+        V get();
+        
+        /**
          * Set this node's value.
          * 
          * @param v value
@@ -95,11 +101,9 @@ final class Tree<V>
          * Set the node's value, if absent (i.e. {@code null}).<p>
          *
          * @param v new value
-         * @throws NullPointerException if {@code v} is {@code null}
-         * @return operation success flag
+         * @return old value
          */
-        default boolean setIfAbsent(V v) {
-            requireNonNull(v);
+        default V setIfAbsent(V v) {
             return setIf(v, Objects::isNull);
         }
         
@@ -107,64 +111,118 @@ final class Tree<V>
          * Set the node's value, if given predicate returns {@code true} for the
          * old value.<p>
          * 
-         * @param v new value (may be {@code null})
+         * @param v new value
          * @param test old value predicate
-         * @return operation success flag
+         * @return old value
          */
-        boolean setIf(V v, Predicate<? super V> test);
+        V setIf(V v, Predicate<? super V> test);
+        
+        /**
+         * Returns {@code true} if this node has no children, otherwise {@code
+         * false}.
+         * 
+         * @return {@code true} if this node has no children,
+         *         otherwise {@code false}
+         * 
+         * @see #hasChildrenKeyedByPrefix(String)
+         */
+        default boolean hasNoChildren() {
+            return !hasChildrenKeyedByPrefix("");
+        }
+        
+        /**
+         * Returns {@code true} if this node a child keyed by the given segment,
+         * otherwise {@code false}.
+         * 
+         * @return {@code true} if this node a child keyed by the given segment,
+         *          * otherwise {@code false}
+         * 
+         * @see #hasChildrenKeyedByPrefix(String)
+         * 
+         * @throws NullPointerException if {@code segment} is {@code null}
+         */
+        boolean hasChild(String segment);
+        
+        /**
+         * Returns the child keyed by the given segment.<p>
+         * 
+         * This method is intended only to be used as a method to check if a
+         * child exists, potentially failing the write operation if it do - at
+         * the discretion of the client, but with access to said node for
+         * inclusion in a potential error message. Traversing the tree further
+         * must always be done using one of the {@code
+         * WriteNode.nextOrCreate**()} methods. Do not invoke {@link
+         * ReadNode#next(String)} on the returned object.<p>
+         * 
+         * Technically, the behavior of this method is different from {@code
+         * ReadNode.next()} in that it will prune the tree first (to give a more
+         * accurate answer whether or not the child exist). The behavior is also
+         * different from {@code WriteNode.nextOrCreate**()} in that this method
+         * will not reserve the returned node, e.g. block concurrent prune
+         * operations from running. Again, the intent is to potentially fail the
+         * write operation if this method returns a non-null value, not to
+         * traverse the tree any further.<p>
+         * 
+         * @param segment of child
+         * 
+         * @return child node, or {@code null} if it does not exist
+         * 
+         * @throws NullPointerException if {@code segment} is {@code null}
+         */
+        ReadNode<V> getChild(String segment);
         
         /**
          * Returns {@code true} if there's any first-level children of this node
          * whose key starts with the given prefix.<p>
          * 
-         * This method is useful when algorithmically enforcing a set of
-         * variants of children.<p>
+         * This method is useful from inside a condition argument passed to
+         * {@link #nextOrCreateIf(String, BooleanSupplier)} when
+         * algorithmically enforcing a set of variants of children. For example,
+         * perhaps the next tree node should not be created if there's already a
+         * certain range of other nodes in there.
          * 
-         * In the following example, by using the empty string as prefix, we
-         * test for the presence of any children at all, thus enforcing a
-         * 1-child contract for the node:
-         * <pre>{@code
-         *   WriteNode<?> n = ...
-         *   WriteNode<?> c = n.nextOrCreateIf(":pathParamName", () -> !n.hasChildren(""));
-         *   if (c == null) {
-         *       throw new IllegalArgumentException(
-         *           "Segment already set; path parameters are exclusive.");
-         *   }
-         * }</pre>
+         * @param prefix of key segment
          * 
-         * By further specializing the prefix, it is possible to test for the
-         * presence of a specific range of children, which is completely up to
-         * the client to decide.
-         * 
-         * @param segmentPrefix segment prefix
          * @return {@code true} if this node has any children whose key starts
          *         with the given prefix, otherwise {@code false}
-         * @throws NullPointerException if {@code segmentPrefix} is {@code null}
+         * 
+         * @throws NullPointerException if {@code prefix} is {@code null}
          */
-        boolean hasChildren(String segmentPrefix);
+        boolean hasChildrenKeyedByPrefix(String prefix);
         
         /**
          * Traverse the tree to a child node, creating the child if it does not
          * exist.
          * 
          * @param segment value
+         * 
          * @return the child node (never {@code null})
-         * @throws NullPointerException if {@code segment} is {@code null}
-         * @throws IllegalArgumentException if {@code segment} is the empty string
+         * 
+         * @throws NullPointerException
+         *             if {@code segment} is {@code null}
+         * 
+         * @throws IllegalArgumentException
+         *             if {@code segment} is the empty string
          */
         default WriteNode<V> nextOrCreate(String segment) {
             return nextOrCreateIf(segment, () -> true);
         }
         
         /**
-         * Traverse the tree to a child node, creating the child if it does not
-         * exist and the given {@code condition} returns {@code true}.
+         * Possibly traverse the tree to a child node, creating the child if it
+         * does not exist and the given {@code condition} returns {@code true}.
          *
          * @param segment value
-         * @return the child node (never {@code null})
-         * @throws NullPointerException if {@code segment} or {@code condition} is {@code null}
-         * @throws IllegalArgumentException if {@code segment} is the empty string
-         * @see #hasChildren(String) 
+         * @param condition whether or not to create a non-existent child
+         * 
+         * @return the child node ({@code null} if child does not exist and
+         *         condition banned the child from being created)
+         * 
+         * @throws NullPointerException
+         *             if {@code segment} or {@code condition} is {@code null}
+         * 
+         * @throws IllegalArgumentException
+         *             if {@code segment} is the empty string
          */
         WriteNode<V> nextOrCreateIf(String segment, BooleanSupplier condition);
     }
@@ -183,7 +241,7 @@ final class Tree<V>
     private static final ThreadLocal<Boolean> CLEAN = ThreadLocal.withInitial(() -> false);
     
     private final NodeImpl<V> root;
-    /** Is {@code true} while tree is being pruned (any other thread need not bother). */
+    /** Is {@code true} while tree is being pruned (any other thread asking to start need not bother). */
     private final AtomicBoolean cleaning;
     
     Tree() {
@@ -203,9 +261,16 @@ final class Tree<V>
     /**
      * Traverse the tree in write mode.<p>
      * 
-     * The given {@code digger} is first feed the root node, then, feed whatever
-     * node is returned from the digger, until the digger returns {@code
-     * null} (write operation done).<p>
+     * The first iteration of the given {@code digger} is feed null as first
+     * argument and the tree's root node as second argument, then, the digger
+     * will receive the root as the first argument and whatever the digger
+     * returned from the first iteration as the second argument. I.e. first
+     * argument is the previous node and the second argument is the current
+     * node, and, the digger will keep being invoked until it decides that it is
+     * done and returns null.<p>
+     * 
+     * Digger must only dig one level at a time. Undefined application behavior
+     * if it doesn't.<p>
      * 
      * Node values may be arbitrary set along the path, at the discretion of the
      * client. However, setting {@code null} along the path and then continue
@@ -213,17 +278,19 @@ final class Tree<V>
      * operations. For bulk operations, it's recommended to walk the tree
      * repeatedly for each node targeted.<p>
      * 
-     * Digger must only dig one level at a time. Undefined application behavior
-     * if it doesn't.
+     * The tree implementation does not synchronize on the monitor of nodes.
+     * The nodes may be used as mutually exclusive locks at the discretion of
+     * the client.
      * 
      * @param digger function which returns the next node to traverse
      */
-    void write(UnaryOperator<WriteNode<V>> digger) {
+    void write(BinaryOperator<WriteNode<V>> digger) {
         Deque<WriteNode<V>> release = empty();
         
         try {
-            WriteNode<V> n = root;
-            while ((n = digger.apply(n)) != null)  {
+            WriteNode<V> p = null, n = root;
+            while ((n = digger.apply(p, n)) != null)  {
+                p = n;
                 if (release.isEmpty()) {
                     release = new ArrayDeque<>(INITIAL_CAPACITY);
                 }
@@ -239,34 +306,36 @@ final class Tree<V>
         }
     }
     
-    boolean setIfAbsent(Iterable<String> keySegments, V v) {
-        final Iterator<String> it = discardRoot(keySegments.iterator());
+    V setIfAbsent(Iterable<String> keySegments, V v) {
+        final Iterator<String> it = keySegments.iterator();
         if (!it.hasNext()) {
             return root.setIfAbsent(v);
         } else {
-            boolean[] success = new boolean[1];
-            write(n -> {
+            Object[] old = new Object[1];
+            write((ignored, n) -> {
                 final String s;
                 try {
                     s = it.next();
                 } catch (NoSuchElementException e) {
                     // Node found, set val and return
-                    success[0] = n.setIfAbsent(v);
+                    old[0] = n.setIfAbsent(v);
                     return null;
                 }
                 return n.nextOrCreate(s);
             });
             tryPruningTree();
-            return success[0];
+            @SuppressWarnings("unchecked")
+            V o = (V) old[0];
+            return o;
         }
     }
     
     boolean clear(Iterable<String> keySegments) {
-        return clearIf(keySegments, presentValIgnored -> true);
+        return clearIf(keySegments, ignored -> true);
     }
     
     boolean clearIf(Iterable<String> keySegments, Predicate<V> test) {
-        final Iterator<String> it = discardRoot(keySegments.iterator());
+        final Iterator<String> it = keySegments.iterator();
         
         // This is cheating as we use read mode to eventually set null,
         // however, we don't need to reserve the nodes since we won't set a
@@ -280,7 +349,7 @@ final class Tree<V>
             }
         }
         
-        if (((NodeImpl<V>) n).setIf(null, test)) {
+        if (((NodeImpl<V>) n).setIf(null, test) != null) {
             tryPruningTree();
             return true;
         }
@@ -300,18 +369,6 @@ final class Tree<V>
                 cleaning.set(false);
             }
         }
-    }
-    
-    private Iterator<String> discardRoot(Iterator<String> keySegments) {
-        try {
-            if (!"".equals(keySegments.next())) {
-                throw new NoSuchElementException();
-            }
-        } catch (NoSuchElementException e) {
-            throw new IllegalArgumentException(
-                    "First key segment must be the empty String (root).");
-        }
-        return keySegments;
     }
     
     /**
@@ -426,18 +483,30 @@ final class Tree<V>
         }
         
         @Override
-        public boolean setIf(V v, Predicate<? super V> test) {
+        public V setIf(V v, Predicate<? super V> test) {
             V o1 = this.v.getAndUpdate(o2 -> test.test(o2) ? v : o2);
             if (o1 != null && v == null) {
                 CLEAN.set(true);
             }
-            return o1 != v;
+            return o1;
         }
         
         @Override
-        public boolean hasChildren(String segmentPrefix) {
+        public boolean hasChild(String segment) {
             prune();
-            return !subMapFrom(kids, segmentPrefix).isEmpty();
+            return kids.containsKey(segment);
+        }
+        
+        @Override
+        public ReadNode<V> getChild(String segment) {
+            prune();
+            return kids.get(segment);
+        }
+        
+        @Override
+        public boolean hasChildrenKeyedByPrefix(String prefix) {
+            prune();
+            return !subMapFrom(kids, prefix).isEmpty();
         }
         
         @Override
@@ -497,8 +566,8 @@ final class Tree<V>
         /**
          * Will delete the link to all children nodes that has no associated
          * value and who themselves have no children. The algorithm works
-         * recursively and depth-first, returning {@code true} if this node
-         * has no value and no children.<p>
+         * recursively depth-first, returning {@code true} if this node has no
+         * value and no children.<p>
          * 
          * This is semantically equivalent to pruning the branch of a tree (or
          * the entire tree if pruning starts at the root) by removing

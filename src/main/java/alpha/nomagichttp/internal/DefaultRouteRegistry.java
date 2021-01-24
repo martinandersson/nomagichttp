@@ -1,92 +1,366 @@
 package alpha.nomagichttp.internal;
 
-import alpha.nomagichttp.route.AmbiguousRouteCollisionException;
 import alpha.nomagichttp.route.NoRouteFoundException;
 import alpha.nomagichttp.route.Route;
 import alpha.nomagichttp.route.RouteCollisionException;
 import alpha.nomagichttp.route.RouteRegistry;
 
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.Map;
 import java.util.Objects;
-import java.util.Optional;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
+import java.util.function.Consumer;
+import java.util.stream.Stream;
+import java.util.stream.StreamSupport;
 
 import static java.text.MessageFormat.format;
+import static java.util.stream.Collectors.toList;
 
 /**
- * Default implementation of {@link RouteRegistry}.
- *
+ * Default implementation of {@link RouteRegistry}. Similar in nature to many
+ * other "router" implementations; the internally used data structure is a tree
+ * <p>
+ * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  */
 public class DefaultRouteRegistry implements RouteRegistry
 {
-    /** Does not allow null keys or values. */
-    private final ConcurrentMap<String, Route> map = new ConcurrentHashMap<>();
+    private static final char SINGLE_C = ':',
+                              CATCH_C  = '*';
+    
+    private static final String SINGLE_S = ":",
+                                CATCH_S  = "*";
+    
+    /*
+     * Implementation note:
+     * 
+     * Route objects are stored in the tree as node values. Static segment
+     * values will be keyed as-is, single path parameters will be keyed using
+     * ":" as key and catch-all path parameters will be keyed using '*'. User
+     * provided path parameter names are not stored in the tree, they are
+     * irrelevant, it is the route's hierarchical position in the tree that is
+     * relevant. The names are only used when constructing the Match object (if
+     * there was a match, of course). I.e., route
+     * "/user/:id/file/*filepath" will be stored as:
+     * 
+     *   root -> "user" -> ":" -> "file" -> "*" -> route object
+     * 
+     * When looking up a route given a request path, it's only a matter of
+     * reading the hierarchy using the path segments until we've reached our
+     * position. If that position has a route stored, then it's a match.
+     */
+    
+    private final Tree<Route> tree = new Tree<>();
     
     @Override
-    public void add(Route route) {
-        Route old;
-        if ((old = map.putIfAbsent(route.identity(), route)) != null) {
-            throw new RouteCollisionException(format(
-                    "Route \"{0}\" is equivalent to an already added route \"{1}\".",
-                    route, old));
-        }
-        
-        testForAmbiguity(route);
-    }
-    
-    @Override
-    public boolean remove(Route route) {
-        return remove(route.identity()) != null;
-    }
-    
-    @Override
-    public Route remove(String id) {
-        return map.remove(id);
-    }
-    
-    @Override
-    public Route.Match lookup(String requestTarget) {
-        int query = requestTarget.indexOf('?');
-        
-        // Strip the query part
-        String rt = query == -1 ?
-                requestTarget : requestTarget.substring(0, query);
-        
-        // TODO: A performance improvement would be to memoize a tree of segments.
-        //       Request comes in, its target is immediately split into segments
-        //       which are provided to lookup(), then we traverse the tree to find
-        //       the route. Type Segment would probably have to be made public and
-        //       Route exposes all his segments. This would also make the type
-        //       system easier to understand. Route.matches() is basically an
-        //       algorithm embedded into what otherwise could be a simple value
-        //       type of segments (which it sort of is already).
-        
-        Optional<Route.Match> m = map.values().stream()
-                .map(r -> r.matches(rt))
-                .filter(Objects::nonNull)
-                .findAny();
-        
-        return m.orElseThrow(() -> new NoRouteFoundException(requestTarget));
-    }
-    
-    @Override
-    public Match lookup(Iterable<String> pathSegments) {
-        return null;
-    }
-    
-    private void testForAmbiguity(Route route) {
-        map.forEach((i, r) -> {
-            if (r == route) {
-                return;
-            }
-            
-            if (r.matches(route.identity()) != null) {
-                remove(route);
-                throw new AmbiguousRouteCollisionException(format(
-                    "Route \"{0}\" is effectively equivalent to an already added route \"{1}\".",
-                    route, r));
+    public void add(Route r) {
+        Iterator<String> it = r.segments().iterator();
+        tree.write((p, n) -> {
+            if (!it.hasNext()) {
+                // no more segments to traverse, register route in current node
+                // (this code is racing with the next synchronized block,
+                //    this block be like: don't set a route in current node if there's a catch-all child route; collision between the two
+                //    next block is the same thing in reverse, don't set a catch-all child if there's a parent
+                //    lock not expected to be contended)
+                synchronized (n) {
+                    setRouteIfAbsentGiven(thatNoCatchAllChildExist(n), n, r);
+                }
+                // job done
+                return null;
+            } else {
+                // possibly dig deeper
+                final String s = it.next();
+                switch (s.charAt(0)) {
+                    case SINGLE_C:
+                        // single path param segment; get- or create exclusive child using key ':'
+                        return createExclusiveChild(n, SINGLE_S, s);
+                    case CATCH_C:
+                        assert !it.hasNext();
+                        // same, except we use key '*' and set the route immediately
+                        synchronized (n) {
+                            Tree.WriteNode<Route> c = createExclusiveChild(n, CATCH_S, s);
+                            setRouteIfAbsentGiven(thatNodeHasNoRoute(n), c, r);
+                        }
+                        // job done
+                        return null;
+                    default:
+                        // static segment value; get- or create a normal child using user segment as key
+                        return createNormalChild(n, s);
+                }
             }
         });
+    }
+    
+    private static void setRouteIfAbsentGiven(
+            Consumer<Route> someConditionAcceptingRouteValue,
+            Tree.WriteNode<Route> target,
+            Route newGuy)
+    {
+        Route oldGuy = target.setIf(newGuy, v -> {
+            if (v != null) {
+                // Someone's there already, abort
+                return false;
+            }
+            
+            // May fail if the condition doesn't like us to proceed
+            someConditionAcceptingRouteValue.accept(newGuy);
+            
+            // Everything's cool
+            return true;
+        });
+        
+        if (oldGuy != null) {
+            throw collisionExc(newGuy, oldGuy);
+        }
+    }
+    
+    private static Consumer<Route> thatNoCatchAllChildExist(Tree.WriteNode<Route> node) {
+        return newGuy -> {
+            for (;;) {
+                Tree.ReadNode<Route> c = node.getChild(CATCH_S);
+                if (c == null) {
+                    // Okay, catch-all child does not exist
+                    break;
+                }
+                // The bastard exist, but only a problem if he has a route set
+                Route childGuy = c.get();
+                if (childGuy != null) {
+                    throw collisionExc(newGuy, childGuy);
+                }
+                // else retry (should happen extremely rarely, but possible)
+            }
+        };
+    }
+    
+    private static Consumer<Route> thatNodeHasNoRoute(Tree.WriteNode<Route> node) {
+        return childGuy -> {
+            Route currentGuy = node.get();
+            if (currentGuy != null) {
+                throw collisionExc(childGuy, currentGuy);
+            }
+        };
+    }
+    
+    private static Tree.WriteNode<Route> createExclusiveChild(
+            Tree.WriteNode<Route> parent, String key, String userSegment)
+    {
+        Tree.WriteNode<Route> c = parent.nextOrCreateIf(key,
+                // Path parameters (by type) are exclusive; can't have any other children
+                parent::hasNoChildren);
+        
+        return requireChildWasCreated(c, userSegment);
+    }
+    
+    private static Tree.WriteNode<Route> createNormalChild(
+            Tree.WriteNode<Route> parent, String key)
+    {
+        Tree.WriteNode<Route> c = parent.nextOrCreateIf(key, () ->
+                // Static segment values only blend with each other and doesn't like weirdos
+                !parent.hasChild(SINGLE_S) && !parent.hasChild(CATCH_S));
+        
+        return requireChildWasCreated(c, key);
+    }
+    
+    private static Tree.WriteNode<Route> requireChildWasCreated(
+            Tree.WriteNode<Route> c, String userSegment)
+    {
+        if (c == null) {
+            throw new RouteCollisionException(
+                    "Hierarchical position of \"" + userSegment + "\" is occupied with non-compatible type.");
+        }
+        return c;
+    }
+    
+    private static RouteCollisionException collisionExc(Route first, Route second) {
+        return new RouteCollisionException(format(
+                "Route \"{0}\" is equivalent to an already added route \"{1}\".",
+                first, second));
+    }
+    
+    @Override
+    public boolean remove(Route r) {
+        Iterable<String> noParamNames = stream(r.segments())
+                .map(s -> s.startsWith(SINGLE_S) ? SINGLE_S :
+                          s.startsWith(CATCH_S)  ? CATCH_S  :
+                          s)
+                .collect(toList());
+        
+        return tree.clearIf(noParamNames, v -> Objects.equals(v, r));
+    }
+    
+    @Override
+    public Match lookup(Iterable<String> rawSegments) {
+        Iterable<String> decoded = stream(rawSegments)
+                .map(PercentDecoder::decode)
+                .collect(toList());
+        
+        Tree.ReadNode<Route> n = findNodeFromSegments(decoded);
+        
+        if (n == null) {
+            throw new NoRouteFoundException(decoded);
+        }
+        
+        // check node's value for a route
+        Route r;
+        if ((r = n.get()) != null) {
+            return DefaultMatch.of(r, rawSegments, decoded);
+        }
+        
+        // nothing was there? check for a catch-all child
+        n = n.next(CATCH_S);
+        
+        if (n == null) {
+            throw new NoRouteFoundException(decoded);
+        }
+        
+        if ((r = n.get()) != null) {
+            return DefaultMatch.of(r, rawSegments, decoded);
+        }
+        
+        throw new NoRouteFoundException(decoded);
+    }
+    
+    private Tree.ReadNode<Route> findNodeFromSegments(Iterable<String> decoded) {
+        Tree.ReadNode<Route> n = tree.read();
+        for (String s : decoded) {
+            Tree.ReadNode<Route> c = n.next(s);
+            if (c != null) {
+                // Segment found, on to next
+                n = c;
+                continue;
+            }
+            c = n.next(SINGLE_S);
+            if (c != null) {
+                // Segment will be read as value to single path param, on to next
+                n = c;
+                continue;
+            }
+            // Catch-all or no match, in both cases we're done here
+            n = n.next(CATCH_S);
+            break;
+        }
+        return n;
+    }
+    
+    // Package-private only for tests
+    static class DefaultMatch implements Match
+    {
+        private final Route route;
+        private final Map<String, String> paramsRaw, paramsDec;
+        
+        static DefaultMatch of(Route route, Iterable<String> rawSrc, Iterable<String> decSrc) {
+            // We need to map "request/path/segments" to "route/:path/*parameters"
+            Iterator<String>    decIt  = decSrc.iterator(),
+                                segIt  = route.segments().iterator();
+            Map<String, String> rawMap = Map.of(),
+                                decMap = Map.of();
+            
+            String catchAllKey = null;
+            
+            for (String r : rawSrc) {
+                 String d = decIt.next();
+                
+                if (catchAllKey == null) {
+                    // Catch-all not activated, consume next route segment
+                    String s = segIt.next();
+                    
+                    switch (s.charAt(0)) {
+                        case SINGLE_C:
+                            // Single path param goes to map
+                            String k = s.substring(1),
+                                   o = (rawMap = mk(rawMap)).put(k, r);
+                            assert o == null;
+                                   o = (decMap = mk(decMap)).put(k, d);
+                            assert o == null;
+                            break;
+                        case CATCH_C:
+                            // Toggle catch-all phase with this segment as seed
+                            catchAllKey = s.substring(1);
+                            (rawMap = mk(rawMap)).put(catchAllKey, '/' + r);
+                            (decMap = mk(decMap)).put(catchAllKey, '/' + d);
+                            break;
+                        default:
+                            // Static segments we're not interested in
+                            break;
+                    }
+                } else {
+                    // Consume all remaining request segments as catch-all
+                    rawMap.merge(catchAllKey, '/' + r, String::concat);
+                    decMap.merge(catchAllKey, '/' + d, String::concat);
+                }
+            }
+            
+            // We're done with the request path, but route may still have a catch-all segment in there
+            if (segIt.hasNext()) {
+                String s = segIt.next();
+                assert s.startsWith("*");
+                assert !segIt.hasNext();
+                assert catchAllKey == null;
+                catchAllKey = s.substring(1);
+            }
+            
+            // We could have toggled to catch-all, but no path segment was consumed for it, and
+            if (catchAllKey != null && !rawMap.containsKey(catchAllKey)) {
+                // route JavaDoc promises to default with a '/'
+                (rawMap = mk(rawMap)).put(catchAllKey, "/");
+                (decMap = mk(decMap)).put(catchAllKey, "/");
+            }
+            
+            assert !decIt.hasNext();
+            return new DefaultMatch(route, rawMap, decMap);
+        }
+        
+        private static <K, V> Map<K, V> mk(Map<K, V> map) {
+            return map.isEmpty() ? new HashMap<>() : map;
+        }
+        
+        private DefaultMatch(Route route, Map<String, String> paramsRaw, Map<String, String> paramsDec) {
+            this.route = route;
+            this.paramsRaw = paramsRaw;
+            this.paramsDec = paramsDec;
+        }
+        
+        @Override
+        public Route route() {
+            return route;
+        }
+        
+        @Override
+        public String pathParam(String name) {
+            return paramsDec.get(name);
+        }
+        
+        @Override
+        public String pathParamRaw(String name) {
+            return paramsRaw.get(name);
+        }
+        
+        /**
+         * FOR TESTS ONLY:  Returns the internal map holding raw path parameter
+         * values.
+         * 
+         * @return the internal map holding raw path parameter values
+         */
+        Map<String, String> mapRaw() {
+            return paramsRaw;
+        }
+        
+        Map<String, String> mapDec() {
+            return paramsDec;
+        }
+    }
+    
+    private static <T> Stream<T> stream(Iterable<T> it) {
+        return StreamSupport.stream(it.spliterator(), false);
+    }
+    
+    /**
+     * FOR TESTS ONLY: Shortcut for {@link Tree#toMap(CharSequence)} using "/"
+     * as key-segment delimiter.
+     *
+     * @return all registered routes
+     */
+    Map<String, Route> dump() {
+        return tree.toMap("/");
     }
 }

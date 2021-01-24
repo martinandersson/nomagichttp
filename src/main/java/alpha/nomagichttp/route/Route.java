@@ -42,8 +42,7 @@ import java.nio.charset.Charset;
  * whose dynamic value is given by the client through the request path. Path-
  * and query parameters may be retrieved using {@link Request#parameters()}<p>
  * 
- * Path parameters come in two specialized forms; single-segment and
- * catch-all.<p>
+ * Path parameters come in two forms; single-segment and catch-all.<p>
  * 
  * Single-segment path parameters match anything until the next '/' or the path
  * end. They are denoted using the prefix ':'. A request path must carry a value
@@ -60,35 +59,39 @@ import java.nio.charset.Charset;
  *   /user/foo/profile    no match (unknown segment "profile")
  * </pre>
  * 
- * Within the route registry, path parameters are mutually exclusive for that
- * segment position. For example, you can not at the same time register both
- * {@code "/user/new"} and {@code "/user/:id"}, or {@code "/user/:id"} and
- * {@code "/user/:something-else"}. It is possible to have any number of routes
- * registered at the same time, as long as their segments builds a distinct
- * branch. For example:
+ * Within the route registry, path parameters (both single-segment and
+ * catch-all) are mutually exclusive for that segment position. For example, you
+ * can not at the same time register a route {@code "/user/new"} and a route
+ * {@code "/user/:id"}, or {@code "/user/:id"} and {@code
+ * "/user/:something-else"}.<p>
  * 
+ * Static- and single segment path parameters may have any number of descendant
+ * routes on the same hierarchical branch. In the following example, we register
+ * three different routes in order to better guide the client:
  * <pre>
  *   /user                   respond "404 Bad Request, missing id"
- *   /user/:id               respond available options "file, ..."
+ *   /user/:id               respond options available for the user, "file, ..."
  *   /user/:uid/file/:fid    respond specified user file
  * </pre>
  * 
  * The previous example also demonstrates that just because two or more routes
  * are located on the same hierarchical branch, the path parameter names they
  * declare may still be different. A path parameter name is only required to be
- * unique for a specific {@code Route} object. The last route from the previous
- * example could have just as well been expressed as {@code
- * "/user/:id/file/:fid"} and added to the same registry. But, this route can
- * not at all be constructed: {@code "/user/:id/file/:id"} (duplicated name!)<p> 
+ * unique for a specific {@code Route} object. The last route could have just as
+ * well been expressed as {@code "/user/:id/file/:fid"} and added to the same
+ * registry. But, this route can never be constructed: {@code
+ * "/user/:id/file/:id"} (duplicated name!)<p> 
  * 
  * Catch-all path parameters match everything until the path end. They must
- * therefore be the last segment defined, nothing else may follow. They are
- * denoted using the prefix '*'. Catch-all parameters are effectively optional
- * since they match everything from a given position, including nothing at all.
- * For consistency, the value when retrieved will always begin with '/'. On the
- * contrary, single-segment parameter values will never begin with '/' as these
- * are truncated from the request path (see the subsequently documented
- * normalization procedure).
+ * therefore be the last segment defined. They are denoted using the prefix
+ * '*'.<p>
+ * 
+ * Catch-all parameters are effectively optional since they match everything
+ * from a given position, including nothing at all. For consistency, the
+ * value when retrieved will always begin with a '/', even if the client didn't
+ * provide a value in the request path. On the contrary, single-segment
+ * parameter values will never begin with '/' as these are truncated from the
+ * request path (see the subsequently documented normalization procedure).
  * 
  * <pre>
  *   Route registered: /src/*filepath
@@ -98,17 +101,22 @@ import java.nio.charset.Charset;
  *   /src/subdir             match, filepath = "/subdir"
  *   /src/subdir/file.txt    match, filepath = "/subdir/file.txt"
  * </pre>
+ *
+ * It is possible to mix both parameter styles, e.g. {@code
+ * "/:drive/*filepath"}.<p>
  * 
- * As previously noted, single-segment parameters can build a route hierarchy.
- * For example, you can have both {@code "/user"} and {@code "/user/:id"}
- * registered in the same registry at the same time. But this is not true for
- * catch-all. You can not register {@code "/src"} and {@code "/src/*filepath"}
- * in the same registry at the same time. This would result in a {@link
- * RouteCollisionException}. It is possible to mix both parameter styles, e.g.
- * {@code "/:drive/*filepath"}.<p>
+ * As previously noted, static- and single segment parameters can build a route
+ * hierarchy. For example, you can have {@code "/admin"}, {@code "/user"},
+ * {@code "/user/:id"} and {@code "/user/:id/avatar"} all registered at the same
+ * time in the same registry. But this is not true for catch-all since it
+ * matches everything including no value at all. You can not register {@code
+ * "/src"} and {@code "/src/*filepath"} in the same registry at the same time.
+ * Failure to register a route with the registry causes a {@link
+ * RouteCollisionException} to be thrown.<p>
  * 
  * Query parameters are always optional, they can not be used to distinguish one
- * route from another.<p>
+ * route from another, nor do they affect how a route is matched against a
+ * request path.<p>
  * 
  * In order to find a matching route, the following steps are applied to the
  * request path:
@@ -138,7 +146,8 @@ import java.nio.charset.Charset;
  *       literally.</li>
  * </ul>
  * 
- * The implementation is thread-safe.
+ * The implementation is thread-safe and does not necessarily implement {@code
+ * hashCode()} and {@code equals()}.
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  * 
@@ -165,10 +174,11 @@ public interface Route
      * 
      * The value given to this method as well as {@link Builder#append(String)}
      * is a pattern that may declare many segments including path parameters, as
-     * long as these are delimited using a '/'. The pattern is a shortcut for
-     * using explicit builder methods to accomplish the same result. All of
-     * these expressions builds a route of the same path,
-     * {@code "/files/:user/*filepath"}:
+     * long as these are delimited using a '/'. The pattern will be split and
+     * each element will be consumed as either a static segment or a path
+     * parameter name. The pattern is a shortcut for using explicit builder
+     * methods to accomplish the same result. All of these expressions builds a
+     * route of the same path ({@code "/files/:user/*filepath"}):
      * 
      * <pre>{@code
      *    Route.builder("/").append("files").paramSingle("user").paramCatchAll("filepath")...
@@ -178,10 +188,10 @@ public interface Route
      * 
      * Technical jargon, just to have it stated: '/' serves as a segment
      * delimiter. Any leading or trailing '/' in the pattern will be discarded
-     * and thus never become part of a static segment value or parameter name.
-     * Only the root segment may be the empty string. Clustered '/' will throw
-     * an {@code IllegalArgumentException}. For details related to individual
-     * components, see {@link Route.Builder}.
+     * (at most one) and thus never become part of a static segment value or
+     * parameter name. Only the root segment may be the empty string. Clustered
+     * '/' will throw an {@code IllegalArgumentException}. For details related
+     * to individual components, see {@link Route.Builder}.
      * 
      * @param pattern to parse
      * 
@@ -191,10 +201,11 @@ public interface Route
      *             if {@code pattern} is {@code null}
      * 
      * @throws IllegalArgumentException
-     *             if a static segment value is effectively empty
-     *
+     *             if a static segment value is empty
+     * 
      * @throws IllegalStateException
-     *             if parameter names are repeated
+     *             if parameter names are repeated, or
+     *             if a catch-all parameter is not the last segment
      */
     static Route.Builder builder(String pattern) {
         return new DefaultRoute.Builder(pattern);
@@ -244,29 +255,38 @@ public interface Route
     /**
      * Builder of a {@link Route}.<p>
      * 
-     * A valid route segment is any non-empty character sequence excluding '/'.<p>
+     * A valid static segment value can be any character sequence as long as it
+     * is not empty and does not include a '/' (the slash will be interpreted by
+     * {@link #builder(String)} and {@link #append(String)} as a separator).<p>
      * 
-     * The segment value can be anything, really. Even cat emojis are valid but
-     * not necessarily API friendly (client must be mindful about
-     * percent-decoding and also have an affinity for small furry animals):
+     * For example, a route can look like a cat emoji:
      * <pre>{@code
-     *   Roue cat = Route.builder("/ (=^・・^=)").handler(...).build();
+     *   Rout cat = Route.builder("/ (=^・・^=)").handler(...).build();
      * }</pre>
      * 
-     * A valid parameter name is also any string with any content as long as it
-     * is a unique parameter name for the route. After all, the only purpose of
-     * this string is for the HTTP server to use it as a key in a map. Please be
-     * mindful that if you really need to include a '/' in the parameter name,
-     * then the parameter must be declared explicitly using a param***() builder
-     * method. The pattern consuming methods {@link #builder(String)} and
-     * {@link #append(String)} would interpret the '/' character as starting a
-     * new segment. Same logic applies for parameter names which are the empty
-     * string (""). Although not invalid, really weird parameter names should
-     * simply be avoided.<p>
+     * Parameter names can similarly be anything, as long as it is a unique name
+     * for the route. The only purpose of the name is for the HTTP server to use
+     * it as a key in a map.<p>
+     * 
+     * The pattern consuming methods will take (and remove) the first char - if
+     * it is a ':' or '*' - as an indicator of the parameter type. The {@code
+     * param***()} builder methods accept the given string at face value.
+     * <pre>{@code
+     *   Route.builder("/:user")                    Access using request.parameters().path("user")
+     *   Route.builder("/").paramSingle('user')     Same as above
+     *   Route.builder("/").paramSingle(':user')    WARNING! request.parameters().path(":user")
+     *   Route.builder("/").paramSingle('/user')    WARNING! request.parameters().path("/user")
+     * }</pre>
+     * 
+     * Please be mindful that pushing through weird parameter names by using an
+     * explicit parameter method instead of a pattern may break the ability to
+     * reconstruct the route by using its {@link #toString()} result as a
+     * pattern for a new route.<p>
      * 
      * The builder is not thread-safe and is intended to be used as a throw-away
      * object. Each of the setter methods modifies the state of the builder and
-     * returns the same instance.<p>
+     * returns the same instance. Modifying the builder after the route has been
+     * built has undefined application behavior.<p>
      * 
      * The implementation does not necessarily implement {@code hashCode()} and
      * {@code equals()}.
@@ -293,9 +313,15 @@ public interface Route
          * No other segments or parameters may follow.
          * 
          * @param name of parameter
+         * 
          * @return this (for chaining/fluency)
-         * @throws NullPointerException if {@code name} is {@code null}
-         * @throws IllegalStateException if the same name has already been used
+         * 
+         * @throws NullPointerException
+         *             if {@code name} is {@code null}
+         * 
+         * @throws IllegalStateException
+         *             if the same name has already been used, or
+         *             if a catch-all parameter has already been specified
          */
         Route.Builder paramCatchAll(String name);
         
@@ -303,10 +329,18 @@ public interface Route
          * Append another pattern.
          * 
          * @param pattern to append
+         * 
          * @return this (for chaining/fluency)
-         * @throws NullPointerException if {@code pattern} is {@code null}
-         * @throws IllegalArgumentException see {@link Route.Builder}
-         * @throws IllegalStateException if parameter names are repeated
+         * 
+         * @throws NullPointerException
+         *             if {@code pattern} is {@code null}
+         * 
+         * @throws IllegalArgumentException
+         *             if a static segment value is empty
+         * 
+         * @throws IllegalStateException
+         *             if parameter names are repeated, or
+         *             if a catch-all parameter is not the last segment
          * 
          * @see Route#builder(String) 
          */
@@ -317,8 +351,12 @@ public interface Route
          * 
          * @param first  first request handler
          * @param more   optionally more handlers
-         * @throws HandlerCollisionException if an equivalent handler has already been added
+         * 
+         * @throws HandlerCollisionException
+         *             if an equivalent handler has already been added
+         * 
          * @return this (for chaining/fluency)
+         * 
          * @see RequestHandler
          */
         Route.Builder handler(RequestHandler first, RequestHandler... more);
@@ -328,6 +366,7 @@ public interface Route
          * builder.
          * 
          * @return a new {@code Route}
+         * 
          * @throws IllegalStateException if no handlers have been added
          */
         Route build();

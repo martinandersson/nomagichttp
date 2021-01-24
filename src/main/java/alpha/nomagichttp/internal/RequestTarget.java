@@ -115,7 +115,6 @@ final class RequestTarget
     private final String rtRaw;
     private final String query;
     private final List<String> segmentsNotPercentDecoded;
-    private List<String> segmentsPercentDecoded;
     private Map<String, List<String>>
             queryMapNotPercentDecoded, queryMapPercentDecoded;
     
@@ -127,7 +126,6 @@ final class RequestTarget
         assert !query.startsWith("?");
         this.segmentsNotPercentDecoded = unmodifiableList(segmentsNotPercentDecoded);
         
-        this.segmentsPercentDecoded = null;
         this.queryMapNotPercentDecoded = null;
         this.queryMapPercentDecoded = null;
     }
@@ -148,18 +146,6 @@ final class RequestTarget
      */
     List<String> segmentsNotPercentDecoded() {
         return segmentsNotPercentDecoded;
-    }
-    
-    /**
-     * Returns normalized and percent-decoded segments.
-     * 
-     * @return normalized and percent-decoded segments
-     */
-    @Deprecated // Going to percent decode in RouteRegistry.lookup()/Match instead
-    // TODO: Remove
-    List<String> segmentsPercentDecoded() {
-        List<String> s = segmentsPercentDecoded;
-        return s != null ? s : (segmentsPercentDecoded = decode(segmentsNotPercentDecoded()));
     }
     
     /**

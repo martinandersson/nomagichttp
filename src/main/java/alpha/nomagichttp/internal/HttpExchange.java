@@ -4,7 +4,7 @@ import alpha.nomagichttp.handler.ErrorHandler;
 import alpha.nomagichttp.handler.RequestHandler;
 import alpha.nomagichttp.message.Response;
 import alpha.nomagichttp.message.Responses;
-import alpha.nomagichttp.route.Route;
+import alpha.nomagichttp.route.RouteRegistry;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -13,6 +13,7 @@ import java.util.concurrent.CompletionException;
 import java.util.concurrent.CompletionStage;
 import java.util.function.Supplier;
 
+import static alpha.nomagichttp.internal.RequestTarget.parse;
 import static alpha.nomagichttp.util.Headers.accepts;
 import static alpha.nomagichttp.util.Headers.contentType;
 import static java.lang.System.Logger.Level.DEBUG;
@@ -77,23 +78,24 @@ final class HttpExchange
            .whenComplete(this::finish);
     }
     
-    private void initialize(RequestHead head) {
-        Route.Match route = findRoute(head);
+    private void initialize(RequestHead h) {
+        RequestTarget t = parse(h.requestTarget());
+        RouteRegistry.Match m = findRoute(t);
         // This order is actually specified in javadoc of ErrorHandler#apply
-        request = createRequest(head, route);
-        handler = findRequestHandler(head, route);
+        request = createRequest(h, t, m);
+        handler = findRequestHandler(h, m);
     }
     
-    private Route.Match findRoute(RequestHead rh) {
-        return server.getRouteRegistry().lookup(rh.requestTarget());
+    private RouteRegistry.Match findRoute(RequestTarget t) {
+        return server.getRouteRegistry().lookup(t.segmentsNotPercentDecoded());
     }
     
-    private DefaultRequest createRequest(RequestHead rh, Route.Match rm) {
-        return new DefaultRequest(rh, rm.parameters(), bytes, child);
+    private DefaultRequest createRequest(RequestHead h, RequestTarget t, RouteRegistry.Match m) {
+        return new DefaultRequest(h, t, m, bytes, child);
     }
     
-    private static RequestHandler findRequestHandler(RequestHead rh, Route.Match rm) {
-        RequestHandler h = rm.route().lookup(
+    private static RequestHandler findRequestHandler(RequestHead rh, RouteRegistry.Match m) {
+        RequestHandler h = m.route().lookup(
                 rh.method(),
                 contentType(rh.headers()).orElse(null),
                 accepts(rh.headers()));

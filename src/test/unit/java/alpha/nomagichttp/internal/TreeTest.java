@@ -4,8 +4,6 @@ import org.junit.jupiter.api.Test;
 
 import java.util.Iterator;
 import java.util.List;
-import java.util.function.Function;
-import java.util.stream.Stream;
 
 import static alpha.nomagichttp.internal.Tree.entry;
 import static java.util.List.of;
@@ -22,33 +20,22 @@ class TreeTest
     private final Tree<String> testee = new Tree<>();
     
     @Test
-    void first_key_segment_is_always_the_empty_string_1() {
-        // Pass no key segments at all
-        assertThatThrownBy(() -> testee.setIfAbsent(of(), null))
+    void empty_segment() {
+        assertThatThrownBy(() -> testee.setIfAbsent(of(""), "blabla"))
                 .isExactlyInstanceOf(IllegalArgumentException.class)
-                .hasMessage("First key segment must be the empty String (root).");
-    }
-    
-    @Test
-    void first_key_segment_is_always_the_empty_string_2() {
-        // Let first key segment not be the empty string
-        assertThatThrownBy(() -> testee.setIfAbsent(of("crash"), null))
-                .isExactlyInstanceOf(IllegalArgumentException.class)
-                .hasMessage("First key segment must be the empty String (root).");
+                .hasMessage("Segment value is empty.");
     }
     
     @Test
     void set_root() {
-        testee.setIfAbsent(of(""), "value");
-        
+        testee.setIfAbsent(of(), "value");
         assertThat(testee.toMap("/")).containsExactly(
                 entry("/", "value"));
     }
     
     @Test
     void level_one() {
-        testee.setIfAbsent(of("", "blabla"), "value");
-        
+        testee.setIfAbsent(of("blabla"), "value");
         assertThat(testee.toMap("/")).containsExactly(
                 entry("/", null),
                 entry("/blabla", "value"));
@@ -56,10 +43,10 @@ class TreeTest
     
     @Test
     void lots_of_them() {
-        testee.setIfAbsent(of("", "a", "b", "c"), "v3");
-        testee.setIfAbsent(of("", "a", "b"), "v2");
-        testee.setIfAbsent(of("", "a"), "v1");
-        testee.setIfAbsent(of("", "a", "d"), "v4");
+        testee.setIfAbsent(of("a", "b", "c"), "v3");
+        testee.setIfAbsent(of("a", "b"), "v2");
+        testee.setIfAbsent(of("a"), "v1");
+        testee.setIfAbsent(of("a", "d"), "v4");
         
         assertThat(testee.toMap("/")).containsExactly(
                 entry("/", null),
@@ -71,24 +58,25 @@ class TreeTest
     
     @Test
     void pruning() {
-        testee.setIfAbsent(of("", "a", "b"), "v1");
+        testee.setIfAbsent(of("a"), "v1");
+        testee.setIfAbsent(of("a", "b"), "v2");
         
         assertThat(testee.toMap("/")).containsExactly(
                 entry("/", null),
-                entry("/a", null),
-                entry("/a/b", "v1"));
+                entry("/a", "v1"),
+                entry("/a/b", "v2"));
         
-        testee.clear(of("", "trigger pruning"));
+        testee.clear(of("a"));
         
-        // No difference, last node had a value
+        // Branch still kept
         assertThat(testee.toMap("/")).containsExactly(
                 entry("/", null),
                 entry("/a", null),
-                entry("/a/b", "v1"));
+                entry("/a/b", "v2"));
         
-        testee.clear(of("", "a", "b"));
+        testee.clear(of("a", "b"));
         
-        // This time the entire branch is wiped clean
+        // This time the entire branch was pruned/wiped clean
         assertThat(testee.toMap("/")).containsExactly(
                 entry("/", null));
     }
@@ -97,7 +85,7 @@ class TreeTest
     void write_read() {
         Iterable<String> path = List.of("a", "b");
         Iterator<String> w = path.iterator();
-        testee.write(n -> {
+        testee.write((p, n) -> {
             if (w.hasNext()) {
                 return n.nextOrCreate(w.next());
             }

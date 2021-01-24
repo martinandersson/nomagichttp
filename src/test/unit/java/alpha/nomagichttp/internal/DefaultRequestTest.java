@@ -9,7 +9,6 @@ import org.mockito.Mockito;
 import java.net.http.HttpHeaders;
 import java.nio.charset.IllegalCharsetNameException;
 import java.nio.charset.UnsupportedCharsetException;
-import java.util.Map;
 
 import static alpha.nomagichttp.util.Headers.of;
 import static java.nio.charset.StandardCharsets.US_ASCII;
@@ -76,7 +75,8 @@ class DefaultRequestTest
         
         return new DefaultRequest(
                 rh,
-                Map.of(),
+                RequestTarget.parse("/"),
+                null,
                 Publishers.just(PooledByteBuffers.wrap(body, US_ASCII)),
                 Mockito.mock(ChannelOperations.class));
     }
