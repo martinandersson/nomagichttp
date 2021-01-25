@@ -16,12 +16,12 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
-import java.util.function.BinaryOperator;
 import java.util.function.BooleanSupplier;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
+import java.util.function.UnaryOperator;
 import java.util.stream.Stream;
 
 import static java.lang.Character.MAX_VALUE;
@@ -237,16 +237,22 @@ final class Tree<V>
         return typed;
     }
     
-    /** Is {@code true} if current writing thread needs to prune the tree. */
-    private static final ThreadLocal<Boolean> CLEAN = ThreadLocal.withInitial(() -> false);
+    private final NodeImpl root;
     
-    private final NodeImpl<V> root;
+    /** Is {@code true} if current writing thread needs to prune the tree. */
+    private final ThreadLocal<Boolean> clean;
+    
     /** Is {@code true} while tree is being pruned (any other thread asking to start need not bother). */
     private final AtomicBoolean cleaning;
     
+    /** Writer thread walking the tree reserves its path, unreleasing before return. */
+    private final ThreadLocal<Deque<NodeImpl>> release;
+    
     Tree() {
-        root = new NodeImpl<>(null);
+        root = new NodeImpl(null);
+        clean = ThreadLocal.withInitial(() -> false);
         cleaning = new AtomicBoolean(false);
+        release = ThreadLocal.withInitial(ArrayDeque::new);
     }
     
     /**
@@ -261,16 +267,12 @@ final class Tree<V>
     /**
      * Traverse the tree in write mode.<p>
      * 
-     * The first iteration of the given {@code digger} is feed null as first
-     * argument and the tree's root node as second argument, then, the digger
-     * will receive the root as the first argument and whatever the digger
-     * returned from the first iteration as the second argument. I.e. first
-     * argument is the previous node and the second argument is the current
-     * node, and, the digger will keep being invoked until it decides that it is
-     * done and returns null.<p>
+     * The first invocation of the given {@code digger} receives the tree's root
+     * node as argument, then, the digger will be re-executed with whichever
+     * node it returned previously until the digger decides that the operation
+     * is done and returns null.<p>
      * 
-     * Digger must only dig one level at a time. Undefined application behavior
-     * if it doesn't.<p>
+     * The digger is free to dig only one or many levels at a time.<p>
      * 
      * Node values may be arbitrary set along the path, at the discretion of the
      * client. However, setting {@code null} along the path and then continue
@@ -284,25 +286,15 @@ final class Tree<V>
      * 
      * @param digger function which returns the next node to traverse
      */
-    void write(BinaryOperator<WriteNode<V>> digger) {
-        Deque<WriteNode<V>> release = empty();
-        
+    void write(UnaryOperator<WriteNode<V>> digger) {
         try {
-            WriteNode<V> p = null, n = root;
-            while ((n = digger.apply(p, n)) != null)  {
-                p = n;
-                if (release.isEmpty()) {
-                    release = new ArrayDeque<>(INITIAL_CAPACITY);
-                }
-                release.add(n);
-            }
+            for (WriteNode<V> n = root; n != null; n = digger.apply(n))
+                ; // Empty
         } finally {
-            release.descendingIterator().forEachRemaining(n -> {
-                @SuppressWarnings("unchecked")
-                NodeImpl<V> typed = (NodeImpl<V>) n;
-                typed.unreserve();
-            });
-            tryPruningTree();
+            Deque<NodeImpl> visited = release.get();
+            while (!visited.isEmpty()) {
+                visited.pollLast().unreserve();
+            }
         }
     }
     
@@ -312,7 +304,7 @@ final class Tree<V>
             return root.setIfAbsent(v);
         } else {
             Object[] old = new Object[1];
-            write((ignored, n) -> {
+            write(n -> {
                 final String s;
                 try {
                     s = it.next();
@@ -349,7 +341,7 @@ final class Tree<V>
             }
         }
         
-        if (((NodeImpl<V>) n).setIf(null, test) != null) {
+        if (((NodeImpl) n).setIf(null, test) != null) {
             tryPruningTree();
             return true;
         }
@@ -358,10 +350,10 @@ final class Tree<V>
     
     private void tryPruningTree() {
         // Clean tree only if branch was flagged dirty and no cleanup job is already running
-        if (!CLEAN.get()) {
+        if (!clean.get()) {
             return;
         }
-        CLEAN.set(false);
+        clean.set(false);
         if (cleaning.compareAndSet(false, true)) {
             try {
                 root.prune();
@@ -437,11 +429,11 @@ final class Tree<V>
      * 
      * @author Martin Andersson (webmaster at martinandersson.com)
      */
-    private static class NodeImpl<V> implements ReadNode<V>, WriteNode<V>
+    private class NodeImpl implements ReadNode<V>, WriteNode<V>
     {
         private final AtomicReference<V> v;
         // Does not allow null to be used as key or value
-        private final ConcurrentNavigableMap<String, NodeImpl<V>> kids;
+        private final ConcurrentNavigableMap<String, NodeImpl> kids;
         // Used only for accessing the orphan flag
         private final Lock read, write;
         private boolean orphan;
@@ -466,7 +458,7 @@ final class Tree<V>
         }
         
         @Override
-        public NodeImpl<V> next(String segment) {
+        public NodeImpl next(String segment) {
             return kids.get(requireNotNullOrEmpty(segment));
         }
         
@@ -477,7 +469,7 @@ final class Tree<V>
         public V set(V v) {
             V o = this.v.getAndSet(v);
             if (o != null && v == null) {
-                CLEAN.set(true);
+                clean.set(true);
             }
             return o;
         }
@@ -486,7 +478,7 @@ final class Tree<V>
         public V setIf(V v, Predicate<? super V> test) {
             V o1 = this.v.getAndUpdate(o2 -> test.test(o2) ? v : o2);
             if (o1 != null && v == null) {
-                CLEAN.set(true);
+                clean.set(true);
             }
             return o1;
         }
@@ -510,14 +502,14 @@ final class Tree<V>
         }
         
         @Override
-        public NodeImpl<V> nextOrCreateIf(String segment, BooleanSupplier condition) {
+        public NodeImpl nextOrCreateIf(String segment, BooleanSupplier condition) {
             requireNotNullOrEmpty(segment);
             requireNonNull(condition);
             
-            NodeImpl<V> c;
+            NodeImpl c;
             for (;;) {
                 c = kids.computeIfAbsent(segment, keyIgnored ->
-                        condition.getAsBoolean() ? new NodeImpl<>(null) : null);
+                        condition.getAsBoolean() ? new NodeImpl(null) : null);
                 
                 if (c == null) {
                     return null;
@@ -525,6 +517,7 @@ final class Tree<V>
                 
                 try {
                     c.reserve();
+                    release.get().add(c);
                     break;
                 } catch (StaleBranchException e) {
                     // Retry
@@ -549,6 +542,7 @@ final class Tree<V>
          *             if a pruning operation has removed the link to this node
          */
         private void reserve() throws StaleBranchException {
+            assert this != root;
             read.lock();
             if (orphan) {
                 read.unlock();
@@ -557,6 +551,7 @@ final class Tree<V>
         }
         
         void unreserve() {
+            assert this != root;
             read.unlock();
         }
         
@@ -596,7 +591,7 @@ final class Tree<V>
             }
         }
         
-        Stream<NodeImpl<V>> entryStreamFlat(String segment, String... moreSegments) {
+        Stream<NodeImpl> entryStreamFlat(String segment, String... moreSegments) {
             var b = nextAccept(segment, Stream::builder, null);
             for (String s : moreSegments) {
                 b = nextAccept(s, Stream::builder, b);
@@ -604,12 +599,12 @@ final class Tree<V>
             return b == null ? Stream.empty() : b.build();
         }
         
-        private <T extends Consumer<? super NodeImpl<V>>> T nextAccept(
+        private <T extends Consumer<? super NodeImpl>> T nextAccept(
                 String segment,
                 Supplier<T> supplier,
                 T consumer)
         {
-            NodeImpl<V> n = next(segment);
+            NodeImpl n = next(segment);
             if (n != null) {
                 if (consumer == null) {
                     consumer = supplier.get();
@@ -623,7 +618,7 @@ final class Tree<V>
                 String prefix,
                 CharSequence delimiter,
                 String key,
-                Function<NodeImpl<V>, ? extends R> mapper)
+                Function<NodeImpl, ? extends R> mapper)
         {
             final String path = prefix + delimiter + key;
             

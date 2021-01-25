@@ -195,11 +195,23 @@ class DefaultRouteRegistryTest
     // ----
     
     /**
-     * 2021-01-24: Registry's add-operation didn't return the catch-all child
-     * node from the digger back to the tree's walk method implementation,
-     * meaning that the child got reserved but never unreserved, meaning that
-     * the node could never be pruned. My mistake, it was actually well
-     * documented that the digger must only dig one level at a time.
+     * 2021-01-24:
+     * Old implementation of Tree.walk() was unreleasing nodes only as they were
+     * explicitly returned from the digger. This put a requirement on the digger
+     * to only dig one level at a time, returning all child nodes it created to
+     * the walk() method.
+     * 
+     * The DefaultRouteRegistry.add() however may create (and implicitly
+     * reserve) a catch-all child without ever returning the child node from the
+     * digger. The consequence was that the newly minted node was never
+     * unreleased and therefore never subject to be pruned off of the tree.
+     * 
+     * Instead of changing the registry implementation, the fix was to remove
+     * the requirement from the Tree implementation. Each parent node will now
+     * automagically add the child node to a thread local deque of reserved
+     * nodes which is polled and unreleased by the walk() method before
+     * returning. This gives the digger a complete freedom to dig the tree
+     * however it pleases without any gotchas.
      */
     @Test
     void bug_catch_all_child_not_unreserved() {
@@ -207,12 +219,12 @@ class DefaultRouteRegistryTest
         
         testee.add(r);
         assertThat(dump()).containsExactly(
-                // root: null -> "*": route object
+                // two nodes in the tree; the parent root "/" (value null) and the child "*" (value route)
                 entry("/", null), entry("/*", r));
         
-        testee.remove(r);
+        assertThat(testee.remove(r)).isTrue();
         assertThat(dump()).containsExactly(
-                // only root! (before fix this also had the "*" node, albeit with a null value)
+                // only root! (before fix the map also had the "*" node in it, albeit with a null value)
                 entry("/", null));
     }
     

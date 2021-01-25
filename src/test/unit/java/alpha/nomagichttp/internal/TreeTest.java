@@ -85,7 +85,7 @@ class TreeTest
     void write_read() {
         Iterable<String> path = List.of("a", "b");
         Iterator<String> w = path.iterator();
-        testee.write((p, n) -> {
+        testee.write(n -> {
             if (w.hasNext()) {
                 return n.nextOrCreate(w.next());
             }

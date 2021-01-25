@@ -55,7 +55,7 @@ public class DefaultRouteRegistry implements RouteRegistry
     @Override
     public void add(Route r) {
         Iterator<String> it = r.segments().iterator();
-        tree.write((p, n) -> {
+        tree.write(n -> {
             if (!it.hasNext()) {
                 // no more segments to traverse, register route in current node
                 // (this code is racing with the next synchronized block,
