@@ -17,9 +17,9 @@ public class GreetParameter
         
         // We note:
         // 1) Single path parameters are required for matching the route.
-        //    Parameters().path(key) will always return a non-empty string.
+        //    parameters().path(key) will always return a non-empty string.
         // 2) Query parameters are optional for every request.
-        //    Parameters().queryFirst(key) returns an Optional of the first occurred value.
+        //    parameters().queryFirst(key) returns an Optional of the first occurred value.
         
         // Example requests:
         //   "/hello/John"        >   Hello John!
