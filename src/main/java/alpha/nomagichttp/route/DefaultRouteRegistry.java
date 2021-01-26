@@ -22,11 +22,11 @@ import static java.util.stream.Collectors.toList;
  */
 public final class DefaultRouteRegistry implements RouteRegistry
 {
-    private static final char SINGLE_C = ':',
-                              CATCH_C  = '*';
+    private static final char COLON_CH = ':',    // key for single- path params
+                              ASTERISK_CH = '*'; // key for catch-all path params
     
-    private static final String SINGLE_S = ":",
-                                CATCH_S  = "*";
+    private static final String COLON_STR = ":",
+                                ASTERISK_STR = "*";
     
     /*
      * Implementation note:
@@ -68,14 +68,14 @@ public final class DefaultRouteRegistry implements RouteRegistry
                 // possibly dig deeper
                 final String s = it.next();
                 switch (s.charAt(0)) {
-                    case SINGLE_C:
+                    case COLON_CH:
                         // single path param segment; get- or create exclusive child using key ':'
-                        return createExclusiveChild(n, SINGLE_S, s);
-                    case CATCH_C:
+                        return createExclusiveChild(n, COLON_STR, s);
+                    case ASTERISK_CH:
                         assert !it.hasNext();
                         // same, except we use key '*' and set the route immediately
                         synchronized (n) {
-                            Tree.WriteNode<Route> c = createExclusiveChild(n, CATCH_S, s);
+                            Tree.WriteNode<Route> c = createExclusiveChild(n, ASTERISK_STR, s);
                             setRouteIfAbsentGiven(thatNodeHasNoRoute(n), c, r);
                         }
                         // job done
@@ -114,7 +114,7 @@ public final class DefaultRouteRegistry implements RouteRegistry
     private static Consumer<Route> thatNoCatchAllChildExist(Tree.WriteNode<Route> node) {
         return newGuy -> {
             for (;;) {
-                Tree.ReadNode<Route> c = node.getChild(CATCH_S);
+                Tree.ReadNode<Route> c = node.getChild(ASTERISK_STR);
                 if (c == null) {
                     // Okay, catch-all child does not exist
                     break;
@@ -153,7 +153,7 @@ public final class DefaultRouteRegistry implements RouteRegistry
     {
         Tree.WriteNode<Route> c = parent.nextOrCreateIf(key, () ->
                 // Static segment values only blend with each other and doesn't like weirdos
-                !parent.hasChild(SINGLE_S) && !parent.hasChild(CATCH_S));
+                !parent.hasChild(COLON_STR) && !parent.hasChild(ASTERISK_STR));
         
         return requireChildWasCreated(c, key);
     }
@@ -177,8 +177,8 @@ public final class DefaultRouteRegistry implements RouteRegistry
     @Override
     public boolean remove(Route r) {
         Iterable<String> noParamNames = stream(r.segments())
-                .map(s -> s.startsWith(SINGLE_S) ? SINGLE_S :
-                          s.startsWith(CATCH_S)  ? CATCH_S  :
+                .map(s -> s.startsWith(COLON_STR) ? COLON_STR :
+                          s.startsWith(ASTERISK_STR)  ? ASTERISK_STR  :
                           s)
                 .collect(toList());
         
@@ -204,7 +204,7 @@ public final class DefaultRouteRegistry implements RouteRegistry
         }
         
         // nothing was there? check for a catch-all child
-        n = n.next(CATCH_S);
+        n = n.next(ASTERISK_STR);
         
         if (n == null) {
             throw new NoRouteFoundException(decoded);
@@ -226,14 +226,14 @@ public final class DefaultRouteRegistry implements RouteRegistry
                 n = c;
                 continue;
             }
-            c = n.next(SINGLE_S);
+            c = n.next(COLON_STR);
             if (c != null) {
                 // Segment will be read as value to single path param, on to next
                 n = c;
                 continue;
             }
             // Catch-all or no match, in both cases we're done here
-            n = n.next(CATCH_S);
+            n = n.next(ASTERISK_STR);
             break;
         }
         return n;
@@ -262,7 +262,7 @@ public final class DefaultRouteRegistry implements RouteRegistry
                     String s = segIt.next();
                     
                     switch (s.charAt(0)) {
-                        case SINGLE_C:
+                        case COLON_CH:
                             // Single path param goes to map
                             String k = s.substring(1),
                                    o = (rawMap = mk(rawMap)).put(k, r);
@@ -270,7 +270,7 @@ public final class DefaultRouteRegistry implements RouteRegistry
                                    o = (decMap = mk(decMap)).put(k, d);
                             assert o == null;
                             break;
-                        case CATCH_C:
+                        case ASTERISK_CH:
                             // Toggle catch-all phase with this segment as seed
                             catchAllKey = s.substring(1);
                             (rawMap = mk(rawMap)).put(catchAllKey, '/' + r);
