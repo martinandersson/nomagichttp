@@ -4,6 +4,7 @@ import alpha.nomagichttp.route.NoRouteFoundException;
 import alpha.nomagichttp.route.Route;
 import alpha.nomagichttp.route.RouteCollisionException;
 import alpha.nomagichttp.route.RouteRegistry;
+import alpha.nomagichttp.route.Tree;
 
 import java.util.HashMap;
 import java.util.Iterator;
