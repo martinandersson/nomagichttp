@@ -2,7 +2,6 @@ package alpha.nomagichttp.internal;
 
 import alpha.nomagichttp.HttpServer;
 import alpha.nomagichttp.handler.ErrorHandler;
-import alpha.nomagichttp.route.Route;
 import alpha.nomagichttp.route.RouteRegistry;
 
 import java.io.IOException;
@@ -79,14 +78,11 @@ public final class DefaultServer implements HttpServer
     @SafeVarargs
     public DefaultServer(
             Config config,
-            Iterable<? extends Route> routes,
+            RouteRegistry registry,
             Supplier<? extends ErrorHandler>... onError)
     {
         this.config = requireNonNull(config);
-        
-        RouteRegistry r = new DefaultRouteRegistry();
-        routes.forEach(r::add);
-        this.registry = r;
+        this.registry = requireNonNull(registry);
         
         // Collectors.toUnmodifiableList() does not document RandomAccess
         List<Supplier<ErrorHandler>> l = stream(onError)

@@ -2,6 +2,7 @@ package alpha.nomagichttp;
 
 import alpha.nomagichttp.handler.ErrorHandler;
 import alpha.nomagichttp.handler.RequestHandler;
+import alpha.nomagichttp.internal.DefaultRouteRegistry;
 import alpha.nomagichttp.internal.DefaultServer;
 import alpha.nomagichttp.message.MaxRequestHeadSizeExceededException;
 import alpha.nomagichttp.message.Request;
@@ -120,7 +121,9 @@ public interface HttpServer
                            Iterable<? extends Route> routes,
                            Supplier<? extends ErrorHandler>... eh)
     {
-        return new DefaultServer(config, routes, eh);
+        RouteRegistry registry = new DefaultRouteRegistry();
+        routes.forEach(registry::add);
+        return new DefaultServer(config, registry, eh);
     }
     
     /**
