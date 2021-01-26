@@ -1,27 +1,28 @@
 package alpha.nomagichttp.route;
 
-import static java.util.Objects.requireNonNull;
+import static java.util.stream.Collectors.joining;
+import static java.util.stream.StreamSupport.stream;
 
 /**
  * TODO: Docs
  * 
- * @see RouteRegistry#lookup(String) 
+ * @see RouteRegistry#lookup(Iterable) 
  */
 public class NoRouteFoundException extends RuntimeException
 {
-    private final String rt;
+    private final String path;
     
-    public NoRouteFoundException(String requestTarget) {
-        super("No route matches this request-target: " + requestTarget);
-        rt = requireNonNull(requestTarget);
+    public NoRouteFoundException(Iterable<String> pathSegments) {
+        this.path = "/" + stream(pathSegments.spliterator(), false).collect(joining("/"));
     }
     
     /**
-     * Returns the request target for which no configured {@link Route} was found.
+     * Returns the request path for which no {@link Route} was found.
      * 
-     * @return the request target (never {@code null})
+     * @return the request path for which no {@link Route} was found
+     *         (never {@code null} or the empty string)
      */
-    public String requestTarget() {
-        return rt;
+    public String path() {
+        return path;
     }
 }

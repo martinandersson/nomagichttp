@@ -64,7 +64,7 @@ class RequestHeadSubscriberTest
             "User-Agent: curl/7.16.3 libcurl/7.16.3 OpenSSL/0.9.7l zlib/1.2.3\r\n" + // <-- CR ignored
             "Host: www.example.com\n" +
             "Accept: text/plain;charset=utf-8\n\r\n";  // <-- CR ignored
-    
+        
         CLIENT.write(request);
         
         assertHead().containsExactly(
@@ -77,8 +77,7 @@ class RequestHeadSubscriberTest
     @Test
     void happypath_headers_no() throws Throwable {
         // any whitespace between tokens (except for HTTP version) is a delimiter
-        String request = "GET\t/hello.txt\tHTTP/1.1\r\n\r\n";
-        CLIENT.write(request);
+        CLIENT.write("GET\t/hello.txt\tHTTP/1.1\r\n\r\n");
         assertHead().containsExactly("GET", "/hello.txt", "HTTP/1.1", headers());
     }
     
@@ -87,8 +86,7 @@ class RequestHeadSubscriberTest
     
     @Test
     void method_leading_whitespace_ignored() throws Throwable {
-        String request = "\r\n \t \r\n GET /hello.txt HTTP/1.1\r\n\n";
-        CLIENT.write(request);
+        CLIENT.write("\r\n \t \r\n GET /hello.txt HTTP/1.1\r\n\n");
         assertHead().containsExactly("GET", "/hello.txt", "HTTP/1.1", headers());
     }
     

@@ -6,7 +6,6 @@ import alpha.nomagichttp.internal.DefaultServer;
 import alpha.nomagichttp.message.MaxRequestHeadSizeExceededException;
 import alpha.nomagichttp.message.Request;
 import alpha.nomagichttp.message.Response;
-import alpha.nomagichttp.route.DefaultRouteRegistry;
 import alpha.nomagichttp.route.Route;
 import alpha.nomagichttp.route.RouteRegistry;
 
@@ -16,7 +15,6 @@ import java.net.InetSocketAddress;
 import java.net.SocketAddress;
 import java.nio.channels.AsynchronousServerSocketChannel;
 import java.util.List;
-import java.util.concurrent.CompletionStage;
 import java.util.function.Supplier;
 
 /**
@@ -122,9 +120,7 @@ public interface HttpServer
                            Iterable<? extends Route> routes,
                            Supplier<? extends ErrorHandler>... eh)
     {
-        RouteRegistry reg = new DefaultRouteRegistry();
-        routes.forEach(reg::add);
-        return new DefaultServer(reg, config, eh);
+        return new DefaultServer(config, routes, eh);
     }
     
     /**

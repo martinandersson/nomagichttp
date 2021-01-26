@@ -90,14 +90,13 @@ import static java.util.Objects.requireNonNull;
  * initialize even when the publisher has no intention to give the subscriber
  * any items. It can be argued that the rule is counterintuitive which might
  * help explain why the {@code OneShotPublisher} example given in the javadoc of
- * {@link Flow} happened to forget about it. However that might be, this class'
- * publishers - in favor of specification compliance - will always call {@code
- * onSubscribe()} first albeit with a temporary subscription object if the
- * intent is to immediate terminate the subscription. The temporary
- * subscription object will still be monitored and if the subscriber happens to
- * cancel the subscription no more signals will follow (§1.8, §3.12). Requesting
- * demand from the temporary subscription is NOP (see {@link
- * Subscriptions#canOnlyBeCancelled()}).<p>
+ * {@link Flow} just happened to forget about it. However that might be, this
+ * class' publishers - in favor of specification compliance - will always call
+ * {@code onSubscribe()} first and if the intent is to immediately terminate the
+ * subscription, the subscription object will be a temporary dummy. The dummy
+ * will still be monitored and if the subscriber happens to cancel the
+ * subscription no more signals will follow (§1.8, §3.12). Requesting demand
+ * from the dummy is NOP (see {@link Subscriptions#canOnlyBeCancelled()}).<p>
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  * 

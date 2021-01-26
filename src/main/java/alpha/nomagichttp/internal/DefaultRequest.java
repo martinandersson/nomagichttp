@@ -3,6 +3,7 @@ package alpha.nomagichttp.internal;
 import alpha.nomagichttp.message.MediaType;
 import alpha.nomagichttp.message.PooledByteBufferHolder;
 import alpha.nomagichttp.message.Request;
+import alpha.nomagichttp.route.RouteRegistry;
 
 import java.net.http.HttpHeaders;
 import java.nio.channels.AsynchronousFileChannel;
@@ -11,6 +12,7 @@ import java.nio.charset.Charset;
 import java.nio.file.OpenOption;
 import java.nio.file.Path;
 import java.nio.file.attribute.FileAttribute;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
@@ -21,6 +23,7 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.BiFunction;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
+import java.util.stream.Stream;
 
 import static alpha.nomagichttp.util.Headers.contentLength;
 import static alpha.nomagichttp.util.Headers.contentType;
@@ -29,7 +32,6 @@ import static java.nio.file.StandardOpenOption.CREATE;
 import static java.nio.file.StandardOpenOption.TRUNCATE_EXISTING;
 import static java.nio.file.StandardOpenOption.WRITE;
 import static java.util.Optional.empty;
-import static java.util.Optional.ofNullable;
 import static java.util.concurrent.CompletableFuture.failedStage;
 
 final class DefaultRequest implements Request
@@ -40,7 +42,8 @@ final class DefaultRequest implements Request
     private static final FileAttribute<?>[] NO_ATTRIBUTES = new FileAttribute[0];
     
     private final RequestHead head;
-    private final Map<String, String> pathParameters;
+    private final RequestTarget paramsQuery;
+    private final RouteRegistry.Match paramsPath;
     private final CompletionStage<Void> bodyStage;
     private final Optional<Body> bodyApi;
     private final OnCancelDiscardOp bodyDiscard;
@@ -48,12 +51,14 @@ final class DefaultRequest implements Request
     
     DefaultRequest(
             RequestHead head,
-            Map<String, String> pathParameters,
+            RequestTarget paramsQuery,
+            RouteRegistry.Match paramsPath,
             Flow.Publisher<DefaultPooledByteBufferHolder> bodySource,
             ChannelOperations child)
     {
         this.head = head;
-        this.pathParameters = pathParameters;
+        this.paramsQuery = paramsQuery;
+        this.paramsPath = paramsPath;
         
         // TODO: If length is not present, then body is possibly chunked.
         // https://tools.ietf.org/html/rfc7230#section-3.3.3
@@ -100,14 +105,12 @@ final class DefaultRequest implements Request
         return DefaultRequest.class.getSimpleName() + "{head=" + head + ", body=?}";
     }
     
-    @Override
-    public Optional<String> paramFromPath(String name) {
-        return ofNullable(pathParameters.get(name));
-    }
+    private Parameters params;
     
     @Override
-    public Optional<String> paramFromQuery(String name) {
-        throw new AbstractMethodError("Implement me.");
+    public Parameters parameters() {
+        Parameters p = params;
+        return p != null ? p : (params = new DefaultParameters(paramsPath, paramsQuery));
     }
     
     @Override
@@ -279,6 +282,68 @@ final class DefaultRequest implements Request
                     to.complete(val);
                 }
             });
+        }
+    }
+    
+    private static final class DefaultParameters implements Parameters
+    {
+        private final RouteRegistry.Match p;
+        private final Map<String, List<String>> q, qRaw;
+        
+        DefaultParameters(RouteRegistry.Match paramsPath, RequestTarget paramsQuery) {
+            p = paramsPath;
+            q = paramsQuery.queryMapPercentDecoded();
+            qRaw = paramsQuery.queryMapNotPercentDecoded();
+        }
+        
+        @Override
+        public String path(String name) {
+            return p.pathParam(name);
+        }
+        
+        @Override
+        public String pathRaw(String name) {
+            return p.pathParamRaw(name);
+        }
+        
+        @Override
+        public Optional<String> queryFirst(String key) {
+            return queryStream(key).findFirst();
+        }
+        
+        @Override
+        public Optional<String> queryFirstRaw(String key) {
+            return queryStreamRaw(key).findFirst();
+        }
+        
+        @Override
+        public Stream<String> queryStream(String key) {
+            return queryList(key).stream();
+        }
+    
+        @Override
+        public Stream<String> queryStreamRaw(String key) {
+            return queryListRaw(key).stream();
+        }
+        
+        @Override
+        public List<String> queryList(String key) {
+            return queryMap().getOrDefault(key, List.of());
+        }
+        
+        @Override
+        public List<String> queryListRaw(String key) {
+            return queryMapRaw().getOrDefault(key, List.of());
+        }
+        
+        @Override
+        public Map<String, List<String>> queryMap() {
+            return q;
+        }
+    
+        @Override
+        public Map<String, List<String>> queryMapRaw() {
+            return qRaw;
         }
     }
 }

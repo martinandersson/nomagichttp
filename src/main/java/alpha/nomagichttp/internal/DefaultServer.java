@@ -2,6 +2,7 @@ package alpha.nomagichttp.internal;
 
 import alpha.nomagichttp.HttpServer;
 import alpha.nomagichttp.handler.ErrorHandler;
+import alpha.nomagichttp.route.Route;
 import alpha.nomagichttp.route.RouteRegistry;
 
 import java.io.IOException;
@@ -69,20 +70,23 @@ public final class DefaultServer implements HttpServer
         group = null;
     }
     
-    private final RouteRegistry routes;
     private final Config config;
+    private final RouteRegistry registry;
     private final List<Supplier<ErrorHandler>> onError; // TODO: Rename to errorHandlers
     private AsynchronousServerSocketChannel listener;
     private InetSocketAddress addr;
     
     @SafeVarargs
     public DefaultServer(
-            RouteRegistry routes,
             Config config,
+            Iterable<? extends Route> routes,
             Supplier<? extends ErrorHandler>... onError)
     {
-        this.routes = requireNonNull(routes);
         this.config = requireNonNull(config);
+        
+        RouteRegistry r = new DefaultRouteRegistry();
+        routes.forEach(r::add);
+        this.registry = r;
         
         // Collectors.toUnmodifiableList() does not document RandomAccess
         List<Supplier<ErrorHandler>> l = stream(onError)
@@ -167,7 +171,7 @@ public final class DefaultServer implements HttpServer
     
     @Override
     public RouteRegistry getRouteRegistry() {
-        return routes;
+        return registry;
     }
     
     @Override

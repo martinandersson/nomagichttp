@@ -5,22 +5,27 @@ import alpha.nomagichttp.handler.ErrorHandler;
 import alpha.nomagichttp.route.Route;
 import alpha.nomagichttp.util.Publishers;
 
+import java.net.URLDecoder;
 import java.net.http.HttpHeaders;
 import java.nio.channels.AsynchronousByteChannel;
 import java.nio.channels.AsynchronousFileChannel;
 import java.nio.channels.GatheringByteChannel;
 import java.nio.channels.NetworkChannel;
+import java.nio.charset.Charset;
 import java.nio.charset.IllegalCharsetNameException;
 import java.nio.charset.UnsupportedCharsetException;
 import java.nio.file.OpenOption;
 import java.nio.file.Path;
 import java.nio.file.attribute.FileAttribute;
+import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Flow;
 import java.util.function.BiFunction;
+import java.util.stream.Stream;
 
 /**
  * An inbound HTTP request.<p>
@@ -43,7 +48,7 @@ public interface Request
     /**
      * Returns the request-line's method token.<p>
      * 
-     * In the following example, the method is "GET":
+     * Given this request:
      * <pre>{@code
      *   GET /hello.txt HTTP/1.1
      *   User-Agent: curl/7.16.3 libcurl/7.16.3 OpenSSL/0.9.7l zlib/1.2.3
@@ -51,75 +56,61 @@ public interface Request
      *   Accept: text/plain;charset=utf-8
      * }</pre>
      * 
+     * The returned value is "GET".
+     * 
      * @return the request-line's method token (never {@code null} or empty)
      */
     String method();
     
     /**
      * Returns the request-line's resource-target.<p>
-     *
-     * In the following example, the resource-target is
-     * "/hello.txt?query=value":
+     * 
+     * Given this request:
      * <pre>{@code
-     *   GET /hello.txt?query=value HTTP/1.1
+     *   GET /where?q=now#fragment HTTP/1.1
      *   User-Agent: curl/7.16.3 libcurl/7.16.3 OpenSSL/0.9.7l zlib/1.2.3
      *   Host: www.example.com
      *   Accept: text/plain;charset=utf-8
      * }</pre>
-     *
+     * 
+     * The returned value is "/where?q=now#fragment".<p>
+     * 
+     * The returned value is raw; not normalized and not URL decoded (aka.
+     * percent-decoded). Decoded parameter values can be retrieved using {@link
+     * Request#parameters()}. There is no API-support to retrieve the fragment
+     * separately as it is "dereferenced solely by the user agent" (
+     * <a href="https://tools.ietf.org/html/rfc3986#section-3.5">RFC 3986 §3.5</a>
+     * ) and so shouldn't have been sent to the HTTP server in the first place.
+     * 
      * @return the request-line's resource-target
      */
     String target();
     
     /**
      * Returns the request-line's HTTP version.<p>
-     *
-     * In the following example, the HTTP version is "HTTP/1.1":
+     * 
+     * Given this request:
      * <pre>{@code
      *   GET /hello.txt?query=value HTTP/1.1
      *   User-Agent: curl/7.16.3 libcurl/7.16.3 OpenSSL/0.9.7l zlib/1.2.3
      *   Host: www.example.com
      *   Accept: text/plain;charset=utf-8
      * }</pre>
-     *
+     * 
+     * The returned value is "HTTP/1.1".
+     * 
      * @return the request-line's HTTP version
      */
     String httpVersion();
     
     /**
-     * Returns a parameter value, or an empty optional if the value is not
-     * bound.<p>
-     * 
-     * Suppose, for example, that the server has a route with a parameter "id"
-     * declared:<p>
-     * <pre>
-     *   /account/{id}
-     * </pre>
-     * 
-     * For the following request, {@code paramFromPath("id")} would return
-     * "123":
-     * <pre>
-     *   GET /account/123 HTTP/1.1
-     *   ...
-     * </pre>
-     * 
-     * A resource-target "/account" without the parameter value would still
-     * match the route and call the handler, but this method would then return
-     * an empty Optional.
-     * 
-     * @param name of parameter
-     * 
-     * @return the parameter value
-     * 
-     * @throws NullPointerException if {@code name} is {@code null}
+     * Returns a parameters API object bound to this request.<p>
+     *
+     * @return a parameters API object bound to this request
+     *
+     * @see Parameters
      */
-    Optional<String> paramFromPath(String name);
-    
-    /**
-     * Throws UnsupportedOperationException (query parameters are not yet
-     * implemented).
-     */
-    Optional<String> paramFromQuery(String name);
+    Parameters parameters();
     
     /**
      * Returns the HTTP headers.
@@ -131,9 +122,9 @@ public interface Request
     HttpHeaders headers();
     
     /**
-     * Returns the request body.<p>
+     * Returns a body API object bound to this request.
      * 
-     * @return the request body
+     * @return a body API object bound to this request
      * 
      * @see Body
      */
@@ -150,9 +141,293 @@ public interface Request
      * Returns {@code true} if the channel from which this request originates is
      * open for reading, otherwise {@code false}.
      * 
-     * @return see javadoc
+     * @return see JavaDoc
      */
     boolean channelIsOpenForReading();
+    
+    /**
+     * Is a thread-safe and non-blocking API for accessing request path- and
+     * query parameter values.<p>
+     * 
+     * Any client-given request path (a component of {@link Request#target()}
+     * may contain segments interpreted by the HTTP server as a path parameter
+     * value and/or an URL search part, aka. query string (see {@link
+     * Route}).<p>
+     * 
+     * Path parameters come in two forms; single- and catch-all. The former is
+     * required in order for the route to have been matched, the latter is
+     * optional but the server will make sure the value is always present and
+     * begins with a '/'. Query parameters are always optional. Read more in
+     * {@link Route}.<p>
+     * 
+     * A query parameter value will be assumed to end with a space- or ampersand
+     * ('&') character. In particular, please note that the semicolon (';') has
+     * no special meaning; it will <i>not</i> be processed as a separator (
+     * contrary to <a href="https://www.w3.org/TR/1999/REC-html401-19991224/appendix/notes.html#h-B.2.2">
+     * W3</a>, we argue that magic is the trouble).<p>
+     * 
+     * The exact structure of the query string is not standardized (
+     * <a href="https://en.wikipedia.org/wiki/Query_string">Wikipedia</a>). The
+     * NoMagicHTTP library supports repeated query keys and query keys with no
+     * value (will be mapped to the empty string "").<p>
+     * 
+     * Tokens (path parameter values, query keys/values) are not interpreted or
+     * parsed by the HTTP server. In particular, please note that there is no
+     * API-support for so called <i>path matrix variables</i> (nor is this magic
+     * standardized) and appending brackets ("[]") to the query key has no
+     * special meaning; it will simply become part of the query key itself.<p>
+     * 
+     * If embedding multiple query values into one key entry is desired, then
+     * splitting and parsing the value with whatever delimiting character you
+     * choose is pretty straight forward:
+     * 
+     * <pre>{@code
+     *     // "?numbers=1,2,3"
+     *     // WARNING: This ignores the presence of repeated entries
+     *     String[] vals = request.parameters()
+     *                            .queryFirst("numbers")
+     *                            .get()
+     *                            .split(",");
+     *     int[] ints = Arrays.stream(vals)
+     *                        .mapToInt(Integer::parseInt)
+     *                        .toArray();
+     * }</pre>
+     * 
+     * Instead of using a non-standardized separator, it's far more straight
+     * forward and fool-proof (number separator would be dependent on regional
+     * format) to rely on repetition instead:
+     * 
+     * <pre>{@code
+     *     // "?number=1&number=2&number=3"
+     *     int[] ints = request.parameters()
+     *                         .queryStream("number")
+     *                         .mapToInt(Integer::parseInt)
+     *                         .toArray();
+     * }</pre>
+     * 
+     * Methods in the Parameters API that does not carry the "raw" suffix will
+     * URL decode (aka. percent-decode) the tokens (query keys, path- and query
+     * parameter values) as if using {@link URLDecoder#decode(String, Charset)
+     * URLDecoder.decode(segment, StandardCharsets.UTF_8)} <i>except</i> the
+     * plus sign ('+') is <i>not</i> converted to a space character and remains
+     * the same. If this is not desired, use methods that carries the suffix
+     * "raw". The raw version is useful when need be to unescape values using a
+     * different strategy, for example when receiving a query string from a
+     * browser submitting an HTML form using the "GET" method. The default
+     * encoding the browser uses will be
+     * <a href="https://www.w3.org/TR/html401/interact/forms.html#h-17.13.4.1">
+     * application/x-www-form-urlencoded</a> which escapes space characters
+     * using the plus character ('+').<p>
+     * 
+     * <pre>{@code
+     *     // Note: key needs to be in its raw form
+     *     String nondecoded = request.parameters().queryFirstRaw("q");
+     *     // '+' is replaced with ' '
+     *     String formdata = java.net.URLDecoder.decode(nondecoded, StandardCharsets.UTF_8);
+     * }</pre>
+     * 
+     * @author Martin Andersson (webmaster at martinandersson.com)
+     */
+    interface Parameters
+    {
+        /**
+         * Returns a path parameter value (percent-decoded).<p>
+         * 
+         * Suppose that the HTTP server has a route registered which accepts a
+         * parameter "who":<p>
+         * <pre>
+         *   /hello/:who
+         * </pre>
+         * 
+         * Given this request:
+         * <pre>
+         *   GET /hello/John%20Doe HTTP/1.1
+         *   ...
+         * </pre>
+         * 
+         * {@code request.parameters().path("who")} will return "John Doe".<p>
+         * 
+         * This method never returns the empty string. {@code null} would only
+         * be returned if the given name is different from what the route
+         * declared.
+         * 
+         * @param name of path parameter (case sensitive)
+         * 
+         * @return the path parameter value (percent-decoded)
+         * 
+         * @throws NullPointerException
+         *             if {@code name} is {@code null}
+         */
+        String path(String name);
+        
+        /**
+         * Returns a raw path parameter value (not decoded/unescaped).<p>
+         * 
+         * This method never returns the empty string. {@code null} would only
+         * be returned if the given name is different from what the route
+         * declared.
+         * 
+         * @param name of path parameter (case sensitive)
+         * 
+         * @return the raw path parameter value (not decoded/unescaped)
+         * 
+         * @throws NullPointerException
+         *             if {@code name} is {@code null}
+         * 
+         * @see #path(String) 
+         */
+        String pathRaw(String name);
+        
+        /**
+         * Returns a query parameter value (first occurrence,
+         * percent-decoded).<p>
+         * 
+         * Given this request:
+         * <pre>
+         *   GET /hello?who=John%20Doe&who=other HTTP/1.1
+         *   ...
+         * </pre>
+         * 
+         * {@code request.parameters().queryFirst("who")} will return "John
+         * Doe".
+         * 
+         * @param key of query parameter (case sensitive, not encoded/escaped)
+         * 
+         * @return the query parameter value (first occurrence, percent-decoded)
+         * 
+         * @throws NullPointerException
+         *             if {@code name} is {@code null}
+         * 
+         * @throws IllegalArgumentException
+         *             if the decoder encounters illegal characters
+         */
+        Optional<String> queryFirst(String key);
+        
+        /**
+         * Returns a raw query parameter value (first occurrence, not
+         * decoded/unescaped).<p>
+         * 
+         * @param keyRaw of query parameter (case sensitive, encoded/escaped)
+         * 
+         * @return the raw query parameter value (not decoded/unescaped)
+         * 
+         * @throws NullPointerException if {@code keyRaw} is {@code null}
+         * 
+         * @see #queryFirst(String)
+         */
+        Optional<String> queryFirstRaw(String keyRaw);
+        
+        /**
+         * Returns a new stream of query parameter values (percent-decoded).<p>
+         * 
+         * The returned stream's encounter order follows the order in which the
+         * repeated query keys appeared in the client-provided query string.
+         * 
+         * @param key of query parameter (case sensitive, not encoded/escaped)
+         * 
+         * @return a new stream of query parameter values (percent-decoded)
+         * 
+         * @throws NullPointerException
+         *             if {@code key} is {@code null}
+         * 
+         * @throws IllegalArgumentException
+         *             if the decoder encounters illegal characters
+         * 
+         * @see Parameters
+         */
+        Stream<String> queryStream(String key);
+        
+        /**
+         * Returns a new stream of raw query parameter values (not
+         * decoded/unescaped).<p>
+         * 
+         * The returned stream's encounter order follows the order in which the
+         * repeated query keys appeared in the client-provided query string.
+         * 
+         * @param keyRaw of query parameter (case sensitive, encoded/escaped)
+         * 
+         * @return a new stream of raw query parameter values (not
+         *         decoded/unescaped)
+         * 
+         * @throws NullPointerException if {@code keyRaw} is {@code null}
+         * 
+         * @see Parameters
+         */
+        Stream<String> queryStreamRaw(String keyRaw);
+        
+        /**
+         * Returns an unmodifiable list of query parameter values
+         * (percent-decoded).<p>
+         * 
+         * The returned list's iteration order follows the order in which the
+         * repeated query keys appeared in the client-provided query string.
+         * 
+         * @param key of query parameter (case sensitive, not encoded/escaped)
+         * 
+         * @return an unmodifiable list of query parameter values
+         *         (percent-decoded)
+         * 
+         * @throws NullPointerException
+         *             if {@code key} is {@code null}
+         *
+         * @throws IllegalArgumentException
+         *             if the decoder encounters illegal characters
+         * 
+         * @see Parameters
+         */
+        List<String> queryList(String key);
+        
+        /**
+         * Returns an unmodifiable list of raw query parameter values (not
+         * decoded/unescaped).<p>
+         * 
+         * The returned list's iteration order follows the order in which the
+         * repeated query keys appeared in the client-provided query string.
+         * 
+         * @param keyRaw of query parameter (case sensitive, encoded/escaped)
+         * 
+         * @return an unmodifiable list of raw query parameter values (not
+         *         decoded/unescaped)
+         * 
+         * @throws NullPointerException if {@code keyRaw} is {@code null}
+         * 
+         * @see Parameters
+         */
+        List<String> queryListRaw(String keyRaw);
+        
+        /**
+         * Returns an unmodifiable map of query key to parameter values
+         * (percent-decoded).<p>
+         * 
+         * The returned map's iteration order follows the order in which the
+         * query keys appeared in the client-provided query string. Same is true
+         * for the associated list of the values.<p>
+         * 
+         * @return an unmodifiable map of query key to parameter values
+         *         (percent-decoded)
+         *
+         * @throws IllegalArgumentException
+         *             if the decoder encounters illegal characters
+         * 
+         * @see Parameters
+         */
+        Map<String, List<String>> queryMap();
+        
+        /**
+         * Returns an unmodifiable map of raw query key to raw parameter values
+         * (not decoded/escaped).<p>
+         * 
+         * The returned map's iteration order follows the order in which the
+         * query keys appeared in the client-provided query string. Same is true
+         * for the associated list of the values.<p>
+         * 
+         * @return an unmodifiable map of raw query key to raw parameter values
+         *         (not decoded/escaped)
+         * 
+         * @see Parameters
+         */
+        Map<String, List<String>> queryMapRaw();
+    }
     
     /**
      * Is a thread-safe and non-blocking API for accessing the request body in
@@ -178,18 +453,19 @@ public interface Request
      * then the latter will complete exceptionally with an {@code
      * IllegalStateException}.<p>
      * 
-     * It does not matter if a {@code Flow.Subscription} is immediately
+     * And, it does not matter if a {@code Flow.Subscription} is immediately
      * cancelled with or without actually consuming any bytes (application is
      * assumed to ignore the body, followed by a server-side discard of it).<p>
      * 
      * Some utility methods such as {@code toText()} cache the result and will
-     * return the same stage on future invocations. This may for example by
+     * return the same stage on future invocations. This may for example be
      * useful to an {@link ErrorHandler error handler} also interested in
      * accessing the result.<p>
      * 
      * The normal way to reject an operation is to fail-fast and blow up the
-     * calling thread. This is also the practice even for rejected asynchronous
-     * operations. For example, {@code ExecutorService.submit()} throws {@code
+     * calling thread. This is also common practice for rejected
+     * <i>asynchronous</i> operations. For example,
+     * {@code ExecutorService.submit()} throws {@code
      * RejectedExceptionException} and {@code AsynchronousByteChannel.read()}
      * throws {@code IllegalArgumentException}.<p>
      * 
@@ -201,13 +477,13 @@ public interface Request
      * result carrier; whether that is a {@code CompletionStage} or a {@code
      * Flow.Subscriber}. This has the implication that exceptions from utility
      * methods are not documented using the standard {@code @throws} tag but
-     * rather inline with the rest of the text. The only exception to this rule
-     * is {@code NullPointerException} which will blow up the calling thread
-     * wherever warranted.<p>
+     * rather inline with the rest of the JavaDoc. The only exception to this
+     * rule is {@code NullPointerException} which will blow up the calling
+     * thread wherever warranted.<p>
      * 
      * In general, high-level exception types - in particular, when documented -
      * does not close the underlying channel's read stream and so the
-     * application can chose to recover from them. The opposite is true for
+     * application can choose to recover from them. The opposite is true for
      * unexpected errors, in particular, errors that originate from the
      * channel's read operation. The safest bet for an application when
      * attempting error recovery is to always check first if {@link
@@ -217,7 +493,7 @@ public interface Request
      * <h3>Subscribing to bytes with a {@code Flow.Subscriber}</h3>
      * 
      * Almost all of the same {@code Flow.Publisher} semantics specified in the
-     * javadoc of {@link Publishers} applies to the {@code Body} as a publisher
+     * JavaDoc of {@link Publishers} applies to the {@code Body} as a publisher
      * as well. The only exception is that the body does not support subscriber
      * reuse, simply because the body can not be subscribed to more than
      * once.<p>
@@ -309,7 +585,7 @@ public interface Request
      * <h4>Exception Handling</h4>
      * 
      * The {@code Body} as a publisher follows the same exception semantics
-     * specified in the javadoc of {@link Publishers}, decorated with some added
+     * specified in the JavaDoc of {@link Publishers}, decorated with some added
      * behavior on top.<p>
      * 
      * Exceptions thrown by the {@code Flow.Subscriber.onSubscribe()} method

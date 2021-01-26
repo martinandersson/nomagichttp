@@ -7,7 +7,7 @@ import alpha.nomagichttp.handler.RequestHandler;
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  * 
- * @see RouteBuilder
+ * @see Route.Builder
  */
 public final class Routes
 {
@@ -18,16 +18,13 @@ public final class Routes
     /**
      * Builds a route with the specifies handlers registered.<p>
      * 
-     * The route has no declared path parameters. For this need, use {@link
-     * Route#builder(String)} directly.
-     * 
-     * @param path   route path, for example "/hello"
-     * @param first  required handler
-     * @param more   optionally more handlers
+     * @param pattern  feed to {@link Route#builder(String)}
+     * @param first    required handler
+     * @param more     optionally more handlers
      * 
      * @return a route
      */
-    public static Route route(String path, RequestHandler first, RequestHandler... more) {
-        return Route.builder(path).handler(first, more).build();
+    public static Route route(String pattern, RequestHandler first, RequestHandler... more) {
+        return Route.builder(pattern).handler(first, more).build();
     }
 }

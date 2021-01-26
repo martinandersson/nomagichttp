@@ -6,10 +6,7 @@ import alpha.nomagichttp.message.MediaType;
 
 import java.util.ArrayList;
 import java.util.Comparator;
-import java.util.HashMap;
 import java.util.HashSet;
-import java.util.Iterator;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.NavigableSet;
@@ -22,18 +19,14 @@ import static alpha.nomagichttp.message.MediaType.NOTHING;
 import static alpha.nomagichttp.message.MediaType.NOTHING_AND_ALL;
 import static alpha.nomagichttp.message.MediaType.Score.NOPE;
 import static alpha.nomagichttp.route.AmbiguousNoHandlerFoundException.createAmbiguousEx;
-import static java.lang.System.Logger;
-import static java.lang.System.Logger.Level.WARNING;
+import static java.lang.String.join;
 import static java.text.MessageFormat.format;
 import static java.util.Arrays.stream;
-import static java.util.Collections.unmodifiableMap;
 import static java.util.Comparator.comparingDouble;
 import static java.util.Comparator.comparingInt;
 import static java.util.Objects.requireNonNull;
 import static java.util.stream.Collectors.groupingBy;
-import static java.util.stream.Collectors.joining;
 import static java.util.stream.Collectors.toCollection;
-import static java.util.stream.Collectors.toList;
 import static java.util.stream.Collectors.toSet;
 
 /**
@@ -43,199 +36,42 @@ import static java.util.stream.Collectors.toSet;
  */
 public final class DefaultRoute implements Route
 {
-    private static final Logger LOG = System.getLogger(DefaultRoute.class.getPackageName());
-    
     // TODO: Consider replacing with array[]
-    private final List<Segment> segments;
-    private final String identity;
+    private final List<String> segments;
     // TODO: Consider replacing value type with array[]
     private final Map<String, List<RequestHandler>> handlers;
     
     /**
-     * Constructs a {@code DefaultRoute}.
+     * Constructs a {@code DefaultRoute}.<p>
      * 
-     * The given arguments does not necessarily have to be unmodifiable as the
-     * collections will be copied. 
+     * The segments are assumed to have been validated already (by the builder).
      * 
-     * @param segments  each will be built by this constructor
+     * @param segments  of the route
      * @param handlers  of the route
      * 
      * @throws NullPointerException   if any argument is {@code null}
      * @throws IllegalStateException  if {@code handlers} is empty
      */
-    DefaultRoute(List<Segment.Builder> segments, Set<RequestHandler> handlers) {
+    private DefaultRoute(List<String> segments, Set<RequestHandler> handlers) {
         if (handlers.isEmpty()) {
             throw new IllegalStateException("No handlers.");
         }
         
-        this.segments = segments.stream().map(Segment.Builder::build).collect(toList());
-        this.identity = computeIdentity();
+        this.segments = segments;
         this.handlers = handlers.stream().collect(groupingBy(RequestHandler::method));
     }
     
-    private String computeIdentity() {
-        String withoutRoot = segments.stream()
-                .map(Segment::value)
-                .filter(v -> v.length() > 1)
-                .collect(joining());
-        
-        return withoutRoot.isEmpty() ? "/" : withoutRoot;
+    @Override
+    public Iterable<String> segments() {
+        return segments;
     }
     
     @Override
-    public Match matches(final String requestTarget) {
-        final String parse = ensureSingleSlashWrap(requestTarget);
-        
-        // If we have only one segment with no params, then all of it must match.
-        if (segments.size() == 1 && segments.get(0).params().isEmpty()) {
-            String seg = ensureSingleSlashWrap(segments.get(0).value());
-            return parse.equals(seg) ? new DefaultMatch(Map.of()) : null;
-        }
-        
-        LinkedHashMap<Segment, Integer> indices = segmentIndices(parse);
-        if (indices == null) {
-            return null;
-        }
-        
-        Map<String, String> params = extractParameters(parse, indices);
-        if (params == null) {
-            return null;
-        }
-        
-        return new DefaultMatch(params);
-    }
-    
-    /**
-     * Find all segment indices in the provided request-target.<p>
-     * 
-     * If not all segments are found, {@code null} is returned.<p>
-     * 
-     * If all segments are found, then this route can be assumed to match the
-     * provided request-target and the indices will be used as a offset for the
-     * operation that extracts parameter values.
-     * 
-     * @return all segment indices in the provided request-target
-     */
-    private LinkedHashMap<Segment, Integer> segmentIndices(String parse) {
-        LinkedHashMap<Segment, Integer> indices = null;
-        Segment last = null;
-        
-        for (Segment seg : segments) {
-            // Start from the last hit. For two reasons:
-            //   1) No need to search the input string all over again.
-            //   2) It's actually required that the segments follow each other orderly.
-            int from = last == null ? 0 :
-                    indices.get(last) + last.value().length();
-            
-            // If last segment was root "/", push back the position by 1 (all segments starts with '/')
-            if (last != null && last.isFirst()) {
-                from--;
-            }
-            
-            last = seg;
-            
-            // Need slash ending, otherwise route "/blabla" could match request-target "/blabla-more".
-            int indexOf = parse.indexOf(ensureSingleSlashWrap(seg.value()), from);
-            
-            if (indexOf == -1) {
-                // All segments must match.
-                return null;
-            }
-            
-            // Match found, save position.
-            if (indices == null) {
-                indices = new LinkedHashMap<>();
-            }
-            indices.put(seg, indexOf);
-        }
-        
-        assert indices != null;
-        return indices;
-    }
-    
-    /**
-     * Extract path parameters from the request-target.<p>
-     * 
-     * Values will be extracted after each segment but before the next one
-     * starts.<p>
-     * 
-     * This method may return {@code null} in the event a trailing segment was
-     * discovered which is not a recognized parameter - in which case this route
-     * is not a match.
-     * 
-     * @return parameter name to value (modifiable)
-     */
-    private static Map<String, String> extractParameters(String parse, LinkedHashMap<Segment, Integer> indices) {
-        final Map<String, String> paramToValue = new HashMap<>();
-        
-        Iterator<Map.Entry<Segment, Integer>>
-                current = indices.entrySet().iterator(),
-                peek    = indices.entrySet().iterator();
-        
-        peek.next();
-        
-        while (current.hasNext()) {
-            Map.Entry<Segment, Integer>
-                    c = current.next(),
-                    p = peek.hasNext() ? peek.next() : null;
-            
-            // TODO: Probably want to refactor into an extractSegmentValues()
-            
-            Segment s = c.getKey();
-            List<String> paramNames = s.params();
-            
-            if (paramNames.isEmpty()) {
-                // Segment has no params associated, skip
-                continue;
-            }
-            
-            // Start extracting param values from position after segment
-            int from = c.getValue() + s.value().length(),
-                // Stop extracting at the next segment start or end of input if this is the last segment
-                to   = p == null ? parse.length() : p.getValue();
-            
-            if (to < from) {
-                // Next segment starts immediately after root, can not extract params.
-                continue;
-            }
-            
-            // This is the piece that we need to extract param values from.
-            final String input = parse.substring(from, to);
-            
-            // input can have trailing and ending forward slashes, yielding the empty string.
-            // Filter them out.
-            Iterator<String> values = stream(input.split("/"))
-                    .filter(s0 -> !s0.isEmpty())
-                    .iterator();
-            
-            // Values now map in order. We log the presence of unknown values.
-            for (String k : paramNames) {
-                if (!values.hasNext()) {
-                    // Param is optional and value not provided
-                    continue;
-                }
-                paramToValue.put(k, values.next());
-            }
-            
-            if (values.hasNext()) {
-                if (!current.hasNext()) {
-                    // No more segments and no more params to parse,
-                    // so the next "value" is an unrecognized segment
-                    return null;
-                }
-                else {
-                    // There's still more segments to be evaluated,
-                    // so remaining values are unknown param values to the current segment
-                    LOG.log(WARNING, () -> "Segment \"" + s + "\" received unknown parameter value(s).");
-                }
-            }
-        }
-        
-        return unmodifiableMap(paramToValue);
-    }
-    
-    @Override
-    public RequestHandler lookup(String method, MediaType contentType, MediaType[] accepts) {
+    public RequestHandler lookup(
+            String method,
+            MediaType contentType,
+            MediaType[] accepts)
+    {
         List<RequestHandler> forMethod = filterByMethod(method, contentType, accepts);
         
         NavigableSet<RankedHandler> candidates = null;
@@ -283,25 +119,33 @@ public final class DefaultRoute implements Route
     }
     
     /**
-     * Returns all handlers of the specified method, or throws {@code NoHandlerFoundException}.
+     * Return all handlers of the specified method, or throws
+     * {@code NoHandlerFoundException}.
      */
-    private List<RequestHandler> filterByMethod(String method, MediaType contentType, MediaType[] accepts) {
-        final List<RequestHandler> forMethod = handlers.get(method);
+    private List<RequestHandler> filterByMethod(
+            String method,
+            MediaType contentType,
+            MediaType[] accepts)
+    {
+        final List<RequestHandler> rh = handlers.get(method);
         
-        if (forMethod == null) {
+        if (rh == null) {
             throw NoHandlerFoundException.unmatchedMethod(
                     method, this, contentType, accepts);
         }
         
-        assert !forMethod.isEmpty();
-        return forMethod;
+        assert !rh.isEmpty();
+        return rh;
     }
     
     /**
      * Returns {@code true} if the specified handler consumes the specified
      * content-type, otherwise {@code false}.
      */
-    private static boolean filterByContentType(RequestHandler handler, MediaType contentType) {
+    private static boolean filterByContentType(
+            RequestHandler handler,
+            MediaType contentType)
+    {
         final MediaType consumes = handler.consumes();
         
         if (consumes == NOTHING_AND_ALL) {
@@ -356,80 +200,8 @@ public final class DefaultRoute implements Route
     }
     
     @Override
-    public String identity() {
-        return identity;
-    }
-    
-    @Override
-    public int hashCode() {
-        return identity.hashCode();
-    }
-    
-    @Override
-    public boolean equals(Object obj) {
-        if (this == obj) {
-            return true;
-        }
-        
-        if (obj == null) {
-            return false;
-        }
-        
-        if (DefaultRoute.class != obj.getClass()) {
-            return false;
-        }
-        
-        DefaultRoute that = (DefaultRoute) obj;
-        
-        return this.identity.equals(that.identity);
-    }
-    
-    @Override
     public String toString() {
-        return segments.stream().map(Object::toString).collect(joining());
-    }
-    
-    private static String ensureSingleSlashWrap(String path) {
-        if (path.isEmpty()) {
-            return "/";
-        }
-        
-        if (path.equals("/") || path.equals("//")) {
-            return path;
-        }
-        
-        if (!path.startsWith("/")) {
-            path = "/" + path;
-        }
-        
-        if (!path.endsWith("/")) {
-            path += "/";
-        }
-        
-        return path;
-    }
-    
-    private final class DefaultMatch implements Route.Match {
-        private final Map<String, String> params;
-        
-        /**
-         * Constructs a {@code DefaultMap}.<p>
-         * 
-         * @param params from path (assumed to be unmodifiable)
-         */
-        DefaultMatch(Map<String, String> params) {
-            this.params = params;
-        }
-        
-        @Override
-        public Route route() {
-            return DefaultRoute.this;
-        }
-    
-        @Override
-        public Map<String, String> parameters() {
-            return params;
-        }
+        return '/' + join("/", segments);
     }
     
     /**
@@ -507,7 +279,7 @@ public final class DefaultRoute implements Route
     
         @Override
         public String toString() {
-            return "{" + String.join(", ",
+            return "{" + join(", ",
                       "cons=" + handler.consumes(),
                       "prod=" + handler.produces(),
                       "rank=" + rank) +
@@ -522,50 +294,90 @@ public final class DefaultRoute implements Route
      */
     static final class Builder implements Route.Builder
     {
-        private final List<Segment.Builder> segments;
-        // Memorize what param names we have already used
+        private static final int  INITIAL_CAPACITY = 3;
+        private static final char SINGLE = ':',
+                                  CATCH_ALL = '*';
+        
+        private final List<String> segments;
         private final Set<String> params;
         private final Set<RequestHandler> handlers;
+        private boolean catchAllSet;
         
-        Builder(String segment) {
-            Segment.Builder root = Segment.builder(segment, true);
-            
-            segments = new ArrayList<>();
-            segments.add(root);
-            
+        Builder(String pattern) {
+            segments = new ArrayList<>(INITIAL_CAPACITY);
             params   = new HashSet<>();
             handlers = new HashSet<>();
+            catchAllSet = false;
+            
+            if (!pattern.equals("/")) {
+                append(pattern);
+            }
         }
         
         @Override
-        public Route.Builder param(String firstName, String... moreNames) {
-            if (!params.add(firstName)) {
-                throw new IllegalArgumentException(
-                        "Duplicate parameter name: \"" + firstName + "\"");
+        public Route.Builder paramSingle(String name) {
+            return addParam(SINGLE, name);
+        }
+        
+        @Override
+        public Route.Builder paramCatchAll(String name) {
+            addParam(CATCH_ALL, name);
+            catchAllSet = true;
+            return this;
+        }
+        
+        private Route.Builder addParam(char prefix, String name) {
+            requireCatchAllNotSet();
+            if (!params.add(name)) {
+                throw new IllegalStateException(
+                        "Duplicated parameter name: \"" + name + "\"");
+            }
+            segments.add(prefix + name);
+            return this;
+        }
+        
+        @Override
+        public Route.Builder append(String p) {
+            if (p.endsWith("//")) {
+                throw new IllegalArgumentException("Static segment value is empty.");
             }
             
-            segments.get(segments.size() - 1).addParam(firstName);
+            if (p.startsWith("/")) {
+                p = p.substring(1);
+            }
             
-            if (moreNames.length > 0) {
-                stream(moreNames).forEach(this::param);
+            String[] tokens = p.split("/");
+            
+            if (tokens.length == 0) {
+                throw new IllegalArgumentException("Static segment value is empty.");
+            }
+            
+            for (String t : tokens) {
+                if (t.isEmpty()) {
+                    throw new IllegalArgumentException("Static segment value is empty.");
+                }
+                switch (t.charAt(0)) {
+                    case SINGLE:
+                        paramSingle(t.substring(1));
+                        break;
+                    case CATCH_ALL:
+                        paramCatchAll(t.substring(1));
+                        break;
+                    default:
+                        requireCatchAllNotSet();
+                        segments.add(t);
+                        break;
+                }
             }
             
             return this;
         }
         
-        @Override
-        public Route.Builder append(String segment) {
-            Segment.Builder last = segments.get(segments.size() - 1);
-            
-            // If no params were registered for the last part, keep building on it.
-            if (!last.hasParams()) {
-                last.append(segment);
+        private void requireCatchAllNotSet() {
+            if (catchAllSet) {
+                throw new IllegalStateException(
+                        "Catch-all path parameter must be the last segment.");
             }
-            else {
-                segments.add(Segment.builder(segment, false));
-            }
-            
-            return this;
         }
         
         private static final Set<MediaType> SPECIAL = Set.of(NOTHING, NOTHING_AND_ALL, ALL);

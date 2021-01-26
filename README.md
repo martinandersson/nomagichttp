@@ -92,16 +92,17 @@ Hello, World!
 
 [3-1]: src/main/java/alpha/nomagichttp/examples/HelloWorldResponse.java
 
-### Greet using name from path parameter
+### Greet using name from request path
 
-This example will greet the user with a name taken from a path parameter.
+This example registers two routes in order to respond a greeting with a name
+taken from a path- or query parameter.
 
-See code: [src/main/java/.../GreetPathParam.java][4-1]
+See code: [src/main/java/.../GreetParameter.java][4-1]
 
 Run:
 
 ```console
-foo@bar:~$ java --class-path=$JAR $PKG.GreetPathParam
+foo@bar:~$ java --class-path=$JAR $PKG.GreetParameter
 Listening on port 8080.
 ```
 
@@ -111,12 +112,18 @@ In a new terminal, run:
 foo@bar:~$ curl -i localhost:8080/hello/John
 HTTP/1.1 200 OK
 Content-Type: text/plain; charset=utf-8
-Content-Length: 12
+Content-Length: 11
 
-Hello, John!
+Hello John!
 ```
 
-[4-1]: src/main/java/alpha/nomagichttp/examples/GreetPathParam.java
+Alternatively, you may pass the name as a query parameter:
+
+```console
+foo@bar:~$ curl -i localhost:8080/hello?name=John
+```
+
+[4-1]: src/main/java/alpha/nomagichttp/examples/GreetParameter.java
 
 ### Greet using name from request body
 
