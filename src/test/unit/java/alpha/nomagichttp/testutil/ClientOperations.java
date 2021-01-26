@@ -35,14 +35,14 @@ import static org.assertj.core.api.Assertions.assertThat;
  * InterruptedException} to be thrown<p>
  * 
  * All channel operating utility methods will by default open/close a new
- * connection open only during the span of that method call. In order to re-use
- * a persistent connection across operations, call {@link #openConnection()}
- * first.<p>
+ * connection for each method call into this class. In order to re-use a
+ * persistent connection across method calls, first invoke {@link
+ * #openConnection()} .<p>
  * 
  * Note: This class provides low-level access for test cases that need direct
- * control over what bytes are put on the wire and what is received. Test cases
- * that operate on a higher "HTTP exchange semantics kind of layer" should use a
- * real client such as JDK's {@link HttpClient} instead.
+ * control over what bytes are put on the wire and monitor what is received.
+ * Test cases that operate on a higher "HTTP exchange semantics kind of layer"
+ * should use a real client such as JDK's {@link HttpClient} instead.
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  */

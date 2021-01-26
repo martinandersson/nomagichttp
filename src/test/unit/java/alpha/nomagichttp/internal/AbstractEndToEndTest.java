@@ -25,9 +25,9 @@ import static org.assertj.core.api.Assertions.assertThat;
  * Will setup a {@code server()} and a {@code client()} configured with the
  * server's port.<p>
  * 
- * The server has only one "/" route with a NOOP handler. Each test must manage
- * its own route(s) and handler(s) using the server's route registry (or
- * provided convenience method {@code addHandler()}).<p>
+ * The server has only one route "/" registered with a NOOP handler. Each test
+ * must add its own route(s) and handler(s) using the server's route registry
+ * (or provided convenience method {@code addHandler()}).<p>
  * 
  * It's arguably a good baseline to assume that all HTTP exchanges completes
  * normally. And so, this class will assert after each test method that the
