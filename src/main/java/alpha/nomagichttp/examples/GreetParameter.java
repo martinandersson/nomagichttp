@@ -22,9 +22,9 @@ public class GreetParameter
         //    parameters().queryFirst(key) returns an Optional of the first occurred value.
         
         // Example requests:
-        //   "/hello/John"        >   Hello John!
-        //   "/hello?name=John"   >   Hello John!
-        //   "/hello"             >   400 Bad Request
+        // "/hello/John"         Hello John!
+        // "/hello?name=John"    Hello John!
+        // "/hello"              400 Bad Request
         
         app.add("/hello/:name", GET().apply(req -> {
             String name = req.parameters().path("name");
