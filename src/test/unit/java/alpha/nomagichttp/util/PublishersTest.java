@@ -1,13 +1,14 @@
 package alpha.nomagichttp.util;
 
+import alpha.nomagichttp.testutil.MemorizingSubscriber;
 import org.junit.jupiter.api.Test;
 
 import java.util.Collection;
 import java.util.concurrent.Flow;
 
-import static alpha.nomagichttp.util.MemorizingSubscriber.Request;
-import static alpha.nomagichttp.util.MemorizingSubscriber.Signal;
-import static alpha.nomagichttp.util.MemorizingSubscriber.drain;
+import static alpha.nomagichttp.testutil.MemorizingSubscriber.Request;
+import static alpha.nomagichttp.testutil.MemorizingSubscriber.Signal;
+import static alpha.nomagichttp.testutil.MemorizingSubscriber.drain;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**

@@ -1,4 +1,4 @@
-package alpha.nomagichttp.util;
+package alpha.nomagichttp.testutil;
 
 import java.util.Collection;
 import java.util.concurrent.ConcurrentLinkedQueue;
@@ -8,26 +8,26 @@ import java.util.stream.Collectors;
 import static java.lang.Long.MAX_VALUE;
 import static java.util.stream.Collectors.toList;
 
-class MemorizingSubscriber<T> implements Flow.Subscriber<T>
+public class MemorizingSubscriber<T> implements Flow.Subscriber<T>
 {
-    static <T> Collection<T> drain(Flow.Publisher<? extends T> publisher) {
+    public static <T> Collection<T> drain(Flow.Publisher<? extends T> publisher) {
         MemorizingSubscriber<T> s = new MemorizingSubscriber<>(Request.IMMEDIATELY_MAX());
         publisher.subscribe(s);
         return s.items();
     }
     
-    static class Request {
+    public static class Request {
         private static final Request NOTHING = new Request(-1);
         
-        static Request NOTHING() {
+        public static Request NOTHING() {
             return NOTHING;
         }
         
-        static Request IMMEDIATELY_N(long value) {
+        public static Request IMMEDIATELY_N(long value) {
             return new Request(value);
         }
         
-        static Request IMMEDIATELY_MAX() {
+        public static Request IMMEDIATELY_MAX() {
             return new Request(MAX_VALUE);
         }
         
@@ -42,8 +42,8 @@ class MemorizingSubscriber<T> implements Flow.Subscriber<T>
         }
     }
     
-    static abstract class Signal {
-        static final class Subscribe extends Signal {
+    public static abstract class Signal {
+        public static final class Subscribe extends Signal {
             // Empty
         }
         
@@ -61,7 +61,7 @@ class MemorizingSubscriber<T> implements Flow.Subscriber<T>
             }
         }
         
-        static final class Error extends Signal {
+        public static final class Error extends Signal {
             private final Throwable e;
             
             Error(Throwable e) {
@@ -73,7 +73,7 @@ class MemorizingSubscriber<T> implements Flow.Subscriber<T>
             }
         }
         
-        static final class Complete extends Signal {
+        public static final class Complete extends Signal {
             // Empty
         }
     }
@@ -81,17 +81,17 @@ class MemorizingSubscriber<T> implements Flow.Subscriber<T>
     private final Collection<Signal> signals;
     private final Request strategy;
     
-    MemorizingSubscriber(Request strategy) {
+    public MemorizingSubscriber(Request strategy) {
         this.signals = new ConcurrentLinkedQueue<>();
         this.strategy = strategy;
     }
     
-    Collection<Class<?>> signals() {
+    public Collection<Class<?>> signals() {
         return signals.stream().map(Signal::getClass)
                                .collect(toList());
     }
     
-    Collection<T> items() {
+    public Collection<T> items() {
         return signals.stream().filter(s -> s instanceof Signal.Next)
                                .map(s -> ((Signal.Next) s).<T>item())
                                .collect(Collectors.toUnmodifiableList());
