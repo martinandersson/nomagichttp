@@ -1,10 +1,5 @@
 package alpha.nomagichttp.route;
 
-import alpha.nomagichttp.route.NoRouteFoundException;
-import alpha.nomagichttp.route.Route;
-import alpha.nomagichttp.route.RouteCollisionException;
-import alpha.nomagichttp.route.RouteRegistry;
-import alpha.nomagichttp.route.Tree;
 import alpha.nomagichttp.util.PercentDecoder;
 
 import java.util.HashMap;
@@ -25,7 +20,7 @@ import static java.util.stream.Collectors.toList;
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  */
-public class DefaultRouteRegistry implements RouteRegistry
+public final class DefaultRouteRegistry implements RouteRegistry
 {
     private static final char SINGLE_C = ':',
                               CATCH_C  = '*';

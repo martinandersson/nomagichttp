@@ -12,9 +12,9 @@ import java.nio.file.Path;
 
 import static alpha.nomagichttp.handler.RequestHandlers.GET;
 import static alpha.nomagichttp.handler.RequestHandlers.POST;
-import static alpha.nomagichttp.testutil.ClientOperations.CRLF;
 import static alpha.nomagichttp.message.Responses.ok;
 import static alpha.nomagichttp.route.Routes.route;
+import static alpha.nomagichttp.testutil.ClientOperations.CRLF;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
@@ -78,8 +78,8 @@ class SimpleEndToEndTest extends AbstractEndToEndTest
             return ok(text).asCompletedStage();
         }));
         
-        server().getRouteRegistry().add(fromPath);
-        server().getRouteRegistry().add(fromQuery);
+        server().add(fromPath)
+                .add(fromQuery);
         
         String req1 =
             "GET /hello/John HTTP/1.1" + CRLF +

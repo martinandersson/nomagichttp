@@ -2,6 +2,7 @@ package alpha.nomagichttp.internal;
 
 import alpha.nomagichttp.HttpServer;
 import alpha.nomagichttp.handler.ErrorHandler;
+import alpha.nomagichttp.route.Route;
 import alpha.nomagichttp.route.RouteRegistry;
 
 import java.io.IOException;
@@ -157,6 +158,17 @@ public final class DefaultServer implements HttpServer
     }
     
     @Override
+    public HttpServer add(Route route) {
+        getRouteRegistry().add(route);
+        return this;
+    }
+    
+    @Override
+    public boolean remove(Route route) {
+        return getRouteRegistry().remove(route);
+    }
+    
+    @Override
     public synchronized InetSocketAddress getLocalAddress() throws IllegalStateException {
         if (listener == null || !listener.isOpen()) {
             throw new IllegalStateException("Server is not running.");
@@ -165,8 +177,7 @@ public final class DefaultServer implements HttpServer
         return addr;
     }
     
-    @Override
-    public RouteRegistry getRouteRegistry() {
+    RouteRegistry getRouteRegistry() {
         return registry;
     }
     

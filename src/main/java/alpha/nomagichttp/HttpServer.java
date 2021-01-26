@@ -2,12 +2,13 @@ package alpha.nomagichttp;
 
 import alpha.nomagichttp.handler.ErrorHandler;
 import alpha.nomagichttp.handler.RequestHandler;
-import alpha.nomagichttp.route.DefaultRouteRegistry;
 import alpha.nomagichttp.internal.DefaultServer;
 import alpha.nomagichttp.message.MaxRequestHeadSizeExceededException;
 import alpha.nomagichttp.message.Request;
 import alpha.nomagichttp.message.Response;
+import alpha.nomagichttp.route.DefaultRouteRegistry;
 import alpha.nomagichttp.route.Route;
+import alpha.nomagichttp.route.RouteCollisionException;
 import alpha.nomagichttp.route.RouteRegistry;
 
 import java.io.IOException;
@@ -27,8 +28,8 @@ import java.util.function.Supplier;
  * and return the default implementation {@link DefaultServer}. Once the server
  * has been constructed, it needs to <i>{@code start}</i>.<p>
  * 
- * Routes can be dynamically added and removed from the server using its {@link
- * #getRouteRegistry() route registry}.<p>
+ * Routes can be dynamically added and removed using {@link #add(Route)} and
+ * {@link #remove(Route)}.<p>
  * 
  * The server's function is to provide port- and channel management, parse
  * an inbound request head and resolve which handler of a route is qualified to
@@ -237,6 +238,48 @@ public interface HttpServer
     void stop() throws IOException;
     
     /**
+     * Add a route.<p>
+     * 
+     * The server delegates the call to it's {@link RouteRegistry} component.
+     * 
+     * @param  route to add
+     * @return {@code this} (for chaining/fluency)
+     * 
+     * @throws NullPointerException
+     *             if {@code route} is {@code null}
+     * 
+     * @throws RouteCollisionException
+     *             if an equivalent route has already been added
+     * 
+     * @see Route
+     */
+    HttpServer add(Route route);
+    
+    /**
+     * Remove a route.<p>
+     * 
+     * The route's currently active requests and exchanges will run to
+     * completion and will not be aborted. Only when all active connections
+     * against the route have closed will the route effectively not be in use
+     * anymore. However, the route is guaranteed to not be <i>discoverable</i>
+     * for <i>new</i> lookup operations once this method has returned.<p>
+     * 
+     * In order for the route to be removed, the current route in the registry
+     * occupying the same path position must be {@code equal} to the given route
+     * using {@code Route.equals(Object)}. Currently, route equality is not
+     * specified and the default implementation has not overridden the equals
+     * method. I.e., the route provided must be the same instance.
+     * 
+     * @param route to remove
+     * 
+     * @return {@code true} if successful (route was added before), otherwise
+     *         {@code false} (the route is unknown)
+     *
+     * @throws NullPointerException if {@code route} is {@code null}
+     */
+    boolean remove(Route route);
+    
+    /**
      * Returns the socket address that the server is listening on.
      * 
      * @return the port used by the server
@@ -246,13 +289,6 @@ public interface HttpServer
      * @see AsynchronousServerSocketChannel#getLocalAddress() 
      */
     InetSocketAddress getLocalAddress() throws IllegalStateException;
-    
-    /**
-     * Returns the server's route registry.
-     * 
-     * @return the server's route registry (never {@code null})
-     */
-    RouteRegistry getRouteRegistry();
     
     /**
      * Returns the server's configuration.

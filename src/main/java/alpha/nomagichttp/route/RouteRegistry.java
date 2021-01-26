@@ -1,15 +1,20 @@
 package alpha.nomagichttp.route;
 
 import alpha.nomagichttp.HttpServer;
+import alpha.nomagichttp.internal.DefaultServer;
 import alpha.nomagichttp.message.Request;
 
 /**
  * Provides thread-safe operations over a group of routes. Also known in other
  * corners of the internet as a "router".<p>
  * 
- * This type is constructed internally by the {@link HttpServer}. Once the
- * server has been built, the registry can be retrieved using {@link
- * HttpServer#getRouteRegistry()}.
+ * The {@link DefaultRouteRegistry} is constructed by {@code HttpServer.with()}
+ * methods and passed to the {@link DefaultServer}. Shortcuts for adding and
+ * removing routes delegating straight to the server's registry have been added
+ * to the {@link HttpServer} interface.<p>
+ * 
+ * If need be to replace the default route-lookup strategy; manually create a
+ * {@code DefaultServer} and give it a custom route registry of your choice.
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  * 
@@ -33,19 +38,7 @@ public interface RouteRegistry
     void add(Route route);
     
     /**
-     * Remove a route.<p>
-     * 
-     * The route's currently active requests and exchanges will run to
-     * completion and will not be aborted. Only when all active connections
-     * against the route have closed will the route effectively not be in use
-     * anymore. However, the route is guaranteed to not be <i>discoverable</i>
-     * for <i>new</i> lookup operations once this method has returned.<p>
-     * 
-     * In order for the route to be removed, the current route in the registry
-     * occupying the same path position must be {@code equal} to the given route
-     * using {@code Route.equals(Object)}. Currently, route equality is not
-     * specified and the default implementation has not overridden the equals
-     * method. I.e., the route provided must be the same instance.
+     * Remove a route.
      * 
      * @param route to remove
      * 
@@ -53,6 +46,8 @@ public interface RouteRegistry
      *         {@code false} (the route is unknown)
      * 
      * @throws NullPointerException if {@code route} is {@code null}
+     * 
+     * @see HttpServer#remove(Route) 
      */
     boolean remove(Route route);
     

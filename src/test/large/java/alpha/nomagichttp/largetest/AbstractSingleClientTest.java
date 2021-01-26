@@ -41,7 +41,7 @@ abstract class AbstractSingleClientTest
     }
     
     protected static void addHandler(String route, RequestHandler handler) {
-        SERVER.getRouteRegistry().add(route(route, handler));
+        SERVER.add(route(route, handler));
     }
     
     protected static HttpResponse<Void> postBytes(String route, byte[] bytes) throws IOException, InterruptedException {

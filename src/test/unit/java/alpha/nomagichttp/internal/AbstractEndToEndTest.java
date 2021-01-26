@@ -89,8 +89,9 @@ abstract class AbstractEndToEndTest
         return client;
     }
     
+    // TODO: Remove once we have HttpServer.add(Route) (and remove note in JavaDoc on top)
     public static void addHandler(String route, RequestHandler handler) {
-        server().getRouteRegistry().add(route(route, handler));
+        server().add(route(route, handler));
     }
     
     public void doNotAssertNormalFinish() {
