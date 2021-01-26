@@ -31,7 +31,7 @@ public class HelloWorldConsole {
         Route r = Routes.route("/", h);
         
         // Not supplying a port makes the system pick one
-        HttpServer s = HttpServer.with(r).start();
+        HttpServer s = HttpServer.with().add(r).start();
         
         System.out.println("Listening on port " + s.getLocalAddress().getPort() + ".");
     }

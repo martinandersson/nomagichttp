@@ -1,7 +1,7 @@
 package alpha.nomagichttp.examples;
 
-import alpha.nomagichttp.handler.ErrorHandler;
 import alpha.nomagichttp.HttpServer;
+import alpha.nomagichttp.handler.ErrorHandler;
 import alpha.nomagichttp.handler.RequestHandler;
 import alpha.nomagichttp.message.Request;
 import alpha.nomagichttp.message.Response;
@@ -18,7 +18,6 @@ import static alpha.nomagichttp.handler.RequestHandlers.GET;
 import static alpha.nomagichttp.message.Responses.ok;
 import static alpha.nomagichttp.route.Routes.route;
 import static java.time.LocalTime.now;
-import static java.util.Collections.singleton;
 import static java.util.concurrent.CompletableFuture.delayedExecutor;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
 import static java.util.function.Function.identity;
@@ -42,7 +41,7 @@ public class RetryRequestOnError
         // a new instance of the error handler will be used for each failed request.
         Supplier<ErrorHandler> retrier = MyExponentialRetrier::new;
         
-        HttpServer.with(HttpServer.Config.DEFAULT, singleton(r), retrier).start(PORT);
+        HttpServer.with(HttpServer.Config.DEFAULT, retrier).add(r).start(PORT);
         System.out.println("Listening on port " + PORT + ".");
     }
     

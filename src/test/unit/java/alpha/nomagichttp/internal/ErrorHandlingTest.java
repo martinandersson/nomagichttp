@@ -20,10 +20,9 @@ import java.util.function.Supplier;
 
 import static alpha.nomagichttp.HttpServer.Config.DEFAULT;
 import static alpha.nomagichttp.handler.RequestHandlers.noop;
-import static alpha.nomagichttp.testutil.ClientOperations.CRLF;
 import static alpha.nomagichttp.route.Routes.route;
+import static alpha.nomagichttp.testutil.ClientOperations.CRLF;
 import static java.lang.System.Logger.Level.ALL;
-import static java.util.Collections.singleton;
 import static java.util.concurrent.CompletableFuture.failedFuture;
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -127,13 +126,13 @@ class ErrorHandlingTest
     }
     
     private ClientOperations createServerAndClient(RequestHandler handler, ErrorHandler onError) throws IOException {
-        Iterable<Route> r = singleton(route("/", handler));
+        Route r = route("/", handler);
         
         @SuppressWarnings("unchecked")
         Supplier<ErrorHandler>[] eh = onError == null ?
                 new Supplier[0] : new Supplier[]{ () -> onError };
         
-        server = HttpServer.with(DEFAULT, r, eh).start();
+        server = HttpServer.with(DEFAULT, eh).add(r).start();
         return new ClientOperations(server.getLocalAddress().getPort());
     }
 }

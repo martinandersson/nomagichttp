@@ -16,7 +16,6 @@ import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
 import java.nio.channels.AsynchronousServerSocketChannel;
-import java.util.List;
 import java.util.function.Supplier;
 
 /**
@@ -78,53 +77,27 @@ import java.util.function.Supplier;
 public interface HttpServer
 {
     /**
-     * Builds a server using the {@linkplain Config#DEFAULT default
-     * configuration}.<p>
-     * 
-     * @param routes of server
+     * Create a server using {@linkplain Config#DEFAULT default configuration}.
      * 
      * @return an instance of {@link DefaultServer}
-     * 
-     * @throws NullPointerException if {@code route} is {@code null}
      */
-    static HttpServer with(Route... routes) {
-        return with(Config.DEFAULT, routes);
+    static HttpServer with() {
+        return with(Config.DEFAULT);
     }
     
     /**
-     * Builds a server.<p>
+     * Create a server.<p>
      * 
      * @param config of server
-     * @param routes of server
+     * @param eh     error handler(s)
      * 
      * @return an instance of {@link DefaultServer}
      * 
      * @throws NullPointerException if any given argument is {@code null}
      */
-    static HttpServer with(Config config, Route... routes) {
-        return with(config, List.of(routes));
-    }
-    
-    /**
-     * Builds a server.<p>
-     * 
-     * @param config  of server
-     * @param routes  of server
-     * @param eh      error handler(s)
-     * 
-     * @return an instance of {@link DefaultServer}
-     * 
-     * @throws NullPointerException if any given argument is {@code null}
-     */
-    // TODO: Remove Supplier type. ErrorHandler instance will use exchange-associated object store for state.
     @SafeVarargs
-    static HttpServer with(Config config,
-                           Iterable<? extends Route> routes,
-                           Supplier<? extends ErrorHandler>... eh)
-    {
-        RouteRegistry registry = new DefaultRouteRegistry();
-        routes.forEach(registry::add);
-        return new DefaultServer(config, registry, eh);
+    static HttpServer with(Config config, Supplier<? extends ErrorHandler>... eh) {
+        return new DefaultServer(config, new DefaultRouteRegistry(), eh);
     }
     
     /**

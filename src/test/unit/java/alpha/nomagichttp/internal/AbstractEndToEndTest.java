@@ -56,7 +56,7 @@ abstract class AbstractEndToEndTest
             return ErrorHandler.DEFAULT.apply(t, r, h);
         };
         
-        server = HttpServer.with(DEFAULT, singleton(route("/", noop())), collect).start();
+        server = HttpServer.with(DEFAULT, collect).add(route("/", noop())).start();
         client = new ClientOperations(server.getLocalAddress().getPort());
     }
     

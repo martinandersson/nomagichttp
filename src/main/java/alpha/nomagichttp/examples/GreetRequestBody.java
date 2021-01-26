@@ -32,7 +32,7 @@ public class GreetRequestBody
                 req.body().get().toText().thenApply(name ->
                         ok("Hello, " + name + "!")));
         
-        HttpServer.with(route("/hello", h)).start(PORT);
+        HttpServer.with().add(route("/hello", h)).start(PORT);
         System.out.println("Listening on port " + PORT + ".");
     }
 }
