@@ -1,6 +1,7 @@
 package alpha.nomagichttp.internal;
 
 import alpha.nomagichttp.handler.RequestHandler;
+import alpha.nomagichttp.message.Request;
 import alpha.nomagichttp.message.Response;
 import alpha.nomagichttp.message.Responses;
 import alpha.nomagichttp.route.Route;
@@ -9,11 +10,14 @@ import org.junit.jupiter.api.Test;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.concurrent.CompletionStage;
+import java.util.function.Function;
 
 import static alpha.nomagichttp.handler.RequestHandlers.GET;
 import static alpha.nomagichttp.handler.RequestHandlers.POST;
 import static alpha.nomagichttp.internal.ClientOperations.CRLF;
 import static alpha.nomagichttp.message.Responses.ok;
+import static alpha.nomagichttp.route.Routes.route;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
@@ -64,34 +68,41 @@ class SimpleEndToEndTest extends AbstractEndToEndTest
     }
     
     @Test
-    void greet_pathparam() throws IOException {
-        RequestHandler echo = GET().apply(request -> {
-            String name = request.paramFromPath("name").get();
+    void greet_param() throws IOException {
+        Route fromPath = route("/hello/:name", GET().apply(req -> {
+            String name = req.parameters().path("name");
             String text = "Hello " + name + "!";
             return ok(text).asCompletedStage();
-        });
+        }));
         
-        Route route = Route.builder("/greet-param").param("name")
-                .handler(echo)
-                .build();
+        Route fromQuery = route("/hello", GET().apply(req -> {
+            String name = req.parameters().queryFirst("name").get();
+            String text = "Hello " + name + "!";
+            return ok(text).asCompletedStage();
+        }));
         
-        server().getRouteRegistry().add(route);
+        server().getRouteRegistry().add(fromPath);
+        server().getRouteRegistry().add(fromQuery);
         
-        String req =
-            "GET /greet-param/John HTTP/1.1" + CRLF +
+        String req1 =
+            "GET /hello/John HTTP/1.1" + CRLF +
             "Accept: text/plain; charset=utf-8" + CRLF + CRLF;
         
-        String res = client().writeRead(req, "John!");
+        String req2 =
+            "GET /hello?name=John HTTP/1.1" + CRLF +
+            "Accept: text/plain; charset=utf-8" + CRLF + CRLF;
         
-        assertThat(res).isEqualTo(
+        String res1 = client().writeRead(req1, "John!");
+        assertThat(res1).isEqualTo(
             "HTTP/1.1 200 OK" + CRLF +
             "Content-Type: text/plain; charset=utf-8" + CRLF +
             "Content-Length: 11" + CRLF + CRLF +
             
             "Hello John!");
+        
+        String res2 = client().writeRead(req2, "John!");
+        assertThat(res2).isEqualTo(res1);
     }
-    
-    // TODO: greet_queryparameter() (but this needs to be implemented first lol)
     
     @Test
     void greet_requestbody() throws IOException {
