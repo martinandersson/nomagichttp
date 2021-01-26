@@ -18,7 +18,7 @@ import java.util.function.Consumer;
 import java.util.function.Function;
 
 import static alpha.nomagichttp.handler.RequestHandlers.POST;
-import static alpha.nomagichttp.internal.ClientOperations.CRLF;
+import static alpha.nomagichttp.testutil.ClientOperations.CRLF;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**

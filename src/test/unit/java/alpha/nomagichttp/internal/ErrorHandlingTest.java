@@ -7,6 +7,7 @@ import alpha.nomagichttp.handler.RequestHandlers;
 import alpha.nomagichttp.message.Response;
 import alpha.nomagichttp.route.NoRouteFoundException;
 import alpha.nomagichttp.route.Route;
+import alpha.nomagichttp.testutil.ClientOperations;
 import alpha.nomagichttp.testutil.Logging;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
@@ -19,7 +20,7 @@ import java.util.function.Supplier;
 
 import static alpha.nomagichttp.HttpServer.Config.DEFAULT;
 import static alpha.nomagichttp.handler.RequestHandlers.noop;
-import static alpha.nomagichttp.internal.ClientOperations.CRLF;
+import static alpha.nomagichttp.testutil.ClientOperations.CRLF;
 import static alpha.nomagichttp.route.Routes.route;
 import static java.lang.System.Logger.Level.ALL;
 import static java.util.Collections.singleton;

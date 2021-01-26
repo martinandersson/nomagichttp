@@ -1,7 +1,6 @@
 package alpha.nomagichttp.internal;
 
 import alpha.nomagichttp.handler.RequestHandler;
-import alpha.nomagichttp.message.Request;
 import alpha.nomagichttp.message.Response;
 import alpha.nomagichttp.message.Responses;
 import alpha.nomagichttp.route.Route;
@@ -10,12 +9,10 @@ import org.junit.jupiter.api.Test;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.concurrent.CompletionStage;
-import java.util.function.Function;
 
 import static alpha.nomagichttp.handler.RequestHandlers.GET;
 import static alpha.nomagichttp.handler.RequestHandlers.POST;
-import static alpha.nomagichttp.internal.ClientOperations.CRLF;
+import static alpha.nomagichttp.testutil.ClientOperations.CRLF;
 import static alpha.nomagichttp.message.Responses.ok;
 import static alpha.nomagichttp.route.Routes.route;
 import static org.assertj.core.api.Assertions.assertThat;

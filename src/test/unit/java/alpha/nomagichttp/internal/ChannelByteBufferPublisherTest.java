@@ -1,5 +1,6 @@
 package alpha.nomagichttp.internal;
 
+import alpha.nomagichttp.testutil.ClientOperations;
 import alpha.nomagichttp.testutil.Logging;
 import alpha.nomagichttp.testutil.TestServer;
 import org.junit.jupiter.api.AfterAll;
