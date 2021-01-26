@@ -33,7 +33,7 @@ public class GreetParameter
             return ok(text).asCompletedStage();
         }));
         
-        HttpServer.with().add(fromPath).add(fromQuery).start(PORT);
+        HttpServer.create().add(fromPath).add(fromQuery).start(PORT);
         System.out.println("Listening on port " + PORT + ".");
     }
 }

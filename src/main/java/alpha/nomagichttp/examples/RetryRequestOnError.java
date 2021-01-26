@@ -41,7 +41,7 @@ public class RetryRequestOnError
         // a new instance of the error handler will be used for each failed request.
         Supplier<ErrorHandler> retrier = MyExponentialRetrier::new;
         
-        HttpServer.with(HttpServer.Config.DEFAULT, retrier).add(r).start(PORT);
+        HttpServer.create(HttpServer.Config.DEFAULT, retrier).add(r).start(PORT);
         System.out.println("Listening on port " + PORT + ".");
     }
     

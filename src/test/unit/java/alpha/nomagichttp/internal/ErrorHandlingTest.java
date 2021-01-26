@@ -132,7 +132,7 @@ class ErrorHandlingTest
         Supplier<ErrorHandler>[] eh = onError == null ?
                 new Supplier[0] : new Supplier[]{ () -> onError };
         
-        server = HttpServer.with(DEFAULT, eh).add(r).start();
+        server = HttpServer.create(DEFAULT, eh).add(r).start();
         return new ClientOperations(server.getLocalAddress().getPort());
     }
 }

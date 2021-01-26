@@ -18,7 +18,6 @@ import static alpha.nomagichttp.HttpServer.Config.DEFAULT;
 import static alpha.nomagichttp.handler.RequestHandlers.noop;
 import static alpha.nomagichttp.route.Routes.route;
 import static java.lang.System.Logger.Level.ALL;
-import static java.util.Collections.singleton;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
@@ -56,7 +55,7 @@ abstract class AbstractEndToEndTest
             return ErrorHandler.DEFAULT.apply(t, r, h);
         };
         
-        server = HttpServer.with(DEFAULT, collect).add(route("/", noop())).start();
+        server = HttpServer.create(DEFAULT, collect).add(route("/", noop())).start();
         client = new ClientOperations(server.getLocalAddress().getPort());
     }
     

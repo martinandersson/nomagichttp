@@ -32,7 +32,7 @@ public class HelloWorldResponse
         
         RequestHandler handler = RequestHandlers.GET().supply(() -> answer);
         
-        HttpServer.with().add(route("/", handler)).start(PORT);
+        HttpServer.create().add(route("/", handler)).start(PORT);
         System.out.println("Listening on port " + PORT + ".");
     }
 }

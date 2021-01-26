@@ -23,7 +23,7 @@ import java.util.function.Supplier;
  * {@link Route route} which contains at least one {@link RequestHandler request
  * handler} which processes the request into a {@link Response response}.<p>
  * 
- * This interface declares static <i>{@code with}</i> methods that construct
+ * This interface declares static <i>{@code create}</i> methods that construct
  * and return the default implementation {@link DefaultServer}. Once the server
  * has been constructed, it needs to <i>{@code start}</i>.<p>
  * 
@@ -81,8 +81,8 @@ public interface HttpServer
      * 
      * @return an instance of {@link DefaultServer}
      */
-    static HttpServer with() {
-        return with(Config.DEFAULT);
+    static HttpServer create() {
+        return create(Config.DEFAULT);
     }
     
     /**
@@ -96,7 +96,7 @@ public interface HttpServer
      * @throws NullPointerException if any given argument is {@code null}
      */
     @SafeVarargs
-    static HttpServer with(Config config, Supplier<? extends ErrorHandler>... eh) {
+    static HttpServer create(Config config, Supplier<? extends ErrorHandler>... eh) {
         return new DefaultServer(config, new DefaultRouteRegistry(), eh);
     }
     

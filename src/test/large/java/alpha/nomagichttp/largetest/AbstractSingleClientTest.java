@@ -33,7 +33,7 @@ abstract class AbstractSingleClientTest
     
     @BeforeAll
     static void setup() throws IOException {
-        SERVER = HttpServer.with().add(route("/", RequestHandlers.noop()));
+        SERVER = HttpServer.create().add(route("/", RequestHandlers.noop()));
         SERVER.start();
         
         ROOT = "http://localhost:" + SERVER.getLocalAddress().getPort();

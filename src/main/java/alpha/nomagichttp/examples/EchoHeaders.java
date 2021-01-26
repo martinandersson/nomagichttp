@@ -30,7 +30,7 @@ public class EchoHeaders
                     .asCompletedStage();
         });
         
-        HttpServer.with().add(route("/echo", h)).start(PORT);
+        HttpServer.create().add(route("/echo", h)).start(PORT);
         System.out.println("Listening on port " + PORT + ".");
     }
 }

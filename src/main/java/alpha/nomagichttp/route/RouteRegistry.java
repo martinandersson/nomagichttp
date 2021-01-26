@@ -8,10 +8,10 @@ import alpha.nomagichttp.message.Request;
  * Provides thread-safe operations over a group of routes. Also known in other
  * corners of the internet as a "router".<p>
  * 
- * The {@link DefaultRouteRegistry} is constructed by {@code HttpServer.with()}
- * methods and passed to the {@link DefaultServer}. Shortcuts for adding and
- * removing routes delegating straight to the server's registry have been added
- * to the {@link HttpServer} interface.<p>
+ * The {@link DefaultRouteRegistry} is constructed by {@code
+ * HttpServer.create()} and passed to the {@link DefaultServer}. Shortcuts for
+ * adding and removing routes delegating straight to the server's registry have
+ * been added to the {@link HttpServer} interface.<p>
  * 
  * If need be to replace the default route-lookup strategy; manually create a
  * {@code DefaultServer} and give it a custom route registry of your choice.
