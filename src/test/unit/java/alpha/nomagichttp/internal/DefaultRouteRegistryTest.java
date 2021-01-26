@@ -14,7 +14,7 @@ import java.util.Map;
 import java.util.stream.Stream;
 
 import static alpha.nomagichttp.handler.RequestHandlers.noop;
-import static alpha.nomagichttp.internal.PercentDecoder.decode;
+import static alpha.nomagichttp.util.PercentDecoder.decode;
 import static alpha.nomagichttp.route.Routes.route;
 import static java.util.Arrays.stream;
 import static org.assertj.core.api.Assertions.assertThat;

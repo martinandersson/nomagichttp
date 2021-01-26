@@ -1,4 +1,4 @@
-package alpha.nomagichttp.internal;
+package alpha.nomagichttp.util;
 
 import alpha.nomagichttp.route.Route;
 
@@ -16,13 +16,13 @@ import static java.util.Collections.unmodifiableList;
  * 
  * @see Route
  */
-final class PercentDecoder
+public final class PercentDecoder
 {
     private PercentDecoder() {
         // Empty
     }
     
-    static String decode(String str) {
+    public static String decode(String str) {
         final int p = str.indexOf('+');
         if (p == -1) {
             // No plus characters? JDK-decode the entire string
@@ -42,7 +42,7 @@ final class PercentDecoder
      *
      * @return the result
      */
-    static List<String> decode(Iterable<String> strings) {
+    public static List<String> decode(Iterable<String> strings) {
         List<String> l = new ArrayList<>();
         strings.forEach(s -> l.add(decode(s)));
         return unmodifiableList(l);

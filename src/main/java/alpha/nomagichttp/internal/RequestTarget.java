@@ -8,7 +8,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.RandomAccess;
 
-import static alpha.nomagichttp.internal.PercentDecoder.decode;
+import static alpha.nomagichttp.util.PercentDecoder.decode;
 import static java.util.Collections.unmodifiableList;
 import static java.util.Collections.unmodifiableMap;
 import static java.util.stream.Collectors.toMap;
