@@ -7,9 +7,9 @@ import alpha.nomagichttp.message.MaxRequestHeadSizeExceededException;
 import alpha.nomagichttp.message.Request;
 import alpha.nomagichttp.message.Response;
 import alpha.nomagichttp.route.DefaultRouteRegistry;
+import alpha.nomagichttp.route.HandlerCollisionException;
 import alpha.nomagichttp.route.Route;
 import alpha.nomagichttp.route.RouteCollisionException;
-import alpha.nomagichttp.route.RouteRegistry;
 
 import java.io.IOException;
 import java.net.InetAddress;
@@ -211,9 +211,47 @@ public interface HttpServer
     void stop() throws IOException;
     
     /**
-     * Add a route.<p>
+     * Build a route and add it to the server.
      * 
-     * The server delegates the call to it's {@link RouteRegistry} component.
+     * @implSpec
+     * The default implementation is equivalent to:
+     * <pre>
+     *     Route r = {@link Route}.{@link Route#builder(String)
+     *               builder}(pattern).{@link Route.Builder#handler(RequestHandler, RequestHandler...)
+     *               handler}(first, more).{@link Route.Builder#build()
+     *               build}();
+     *     return add(r);
+     * </pre>
+     * 
+     * @param pattern of route path
+     * @param first   request handler
+     * @param more    optionally more request handlers
+     * 
+     * @return {@code this} (for chaining/fluency)
+     * 
+     * @throws NullPointerException
+     *             if any argument is {@code null}
+     * 
+     * @throws IllegalArgumentException
+     *             if a static segment value is empty
+     * 
+     * @throws IllegalStateException
+     *             if parameter names are repeated in the pattern, or
+     *             if a catch-all parameter is not the last segment
+     * 
+     * @throws HandlerCollisionException
+     *             if not all handlers are unique
+     * 
+     * @throws RouteCollisionException
+     *             if an equivalent route has already been added
+     */
+    default HttpServer add(String pattern, RequestHandler first, RequestHandler... more) {
+        Route r = Route.builder(pattern).handler(first, more).build();
+        return add(r);
+    }
+    
+    /**
+     * Add a route.
      * 
      * @param  route to add
      * @return {@code this} (for chaining/fluency)

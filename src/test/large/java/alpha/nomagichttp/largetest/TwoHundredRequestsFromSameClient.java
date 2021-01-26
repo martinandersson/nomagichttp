@@ -36,7 +36,7 @@ class TwoHundredRequestsFromSameClient extends AbstractSingleClientTest
                 .map(Body::toText).orElse(EMPTY)
                 .thenApply(Responses::ok));
         
-        addHandler("/echo", echo);
+        server().add("/echo", echo);
     }
     
     // Default name would have been msg argument, which is a super huge string!

@@ -6,7 +6,6 @@ import alpha.nomagichttp.handler.RequestHandler;
 import alpha.nomagichttp.handler.RequestHandlers;
 import alpha.nomagichttp.message.Response;
 import alpha.nomagichttp.route.NoRouteFoundException;
-import alpha.nomagichttp.route.Route;
 import alpha.nomagichttp.testutil.ClientOperations;
 import alpha.nomagichttp.testutil.Logging;
 import org.junit.jupiter.api.AfterEach;
@@ -20,7 +19,6 @@ import java.util.function.Supplier;
 
 import static alpha.nomagichttp.HttpServer.Config.DEFAULT;
 import static alpha.nomagichttp.handler.RequestHandlers.noop;
-import static alpha.nomagichttp.route.Routes.route;
 import static alpha.nomagichttp.testutil.ClientOperations.CRLF;
 import static java.lang.System.Logger.Level.ALL;
 import static java.util.concurrent.CompletableFuture.failedFuture;
@@ -126,13 +124,11 @@ class ErrorHandlingTest
     }
     
     private ClientOperations createServerAndClient(RequestHandler handler, ErrorHandler onError) throws IOException {
-        Route r = route("/", handler);
-        
         @SuppressWarnings("unchecked")
         Supplier<ErrorHandler>[] eh = onError == null ?
                 new Supplier[0] : new Supplier[]{ () -> onError };
         
-        server = HttpServer.create(DEFAULT, eh).add(r).start();
+        server = HttpServer.create(DEFAULT, eh).add("/", handler).start();
         return new ClientOperations(server.getLocalAddress().getPort());
     }
 }

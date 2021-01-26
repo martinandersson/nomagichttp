@@ -7,7 +7,6 @@ import alpha.nomagichttp.message.Response;
 import java.io.IOException;
 
 import static alpha.nomagichttp.handler.RequestHandlers.GET;
-import static alpha.nomagichttp.route.Routes.route;
 
 /**
  * Echoes the requests headers.
@@ -30,7 +29,7 @@ public class EchoHeaders
                     .asCompletedStage();
         });
         
-        HttpServer.create().add(route("/echo", h)).start(PORT);
+        HttpServer.create().add("/echo", h).start(PORT);
         System.out.println("Listening on port " + PORT + ".");
     }
 }

@@ -9,8 +9,6 @@ import alpha.nomagichttp.message.Responses;
 import java.io.IOException;
 import java.util.concurrent.CompletionStage;
 
-import static alpha.nomagichttp.route.Routes.route;
-
 /**
  * Responds "Hello, World!" to the client.
  *
@@ -32,7 +30,7 @@ public class HelloWorldResponse
         
         RequestHandler handler = RequestHandlers.GET().supply(() -> answer);
         
-        HttpServer.create().add(route("/", handler)).start(PORT);
+        HttpServer.create().add("/", handler).start(PORT);
         System.out.println("Listening on port " + PORT + ".");
     }
 }

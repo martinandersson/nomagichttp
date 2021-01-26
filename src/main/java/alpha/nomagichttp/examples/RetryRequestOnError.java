@@ -5,7 +5,6 @@ import alpha.nomagichttp.handler.ErrorHandler;
 import alpha.nomagichttp.handler.RequestHandler;
 import alpha.nomagichttp.message.Request;
 import alpha.nomagichttp.message.Response;
-import alpha.nomagichttp.route.Route;
 
 import java.io.IOException;
 import java.time.format.DateTimeFormatter;
@@ -16,7 +15,6 @@ import java.util.function.Supplier;
 
 import static alpha.nomagichttp.handler.RequestHandlers.GET;
 import static alpha.nomagichttp.message.Responses.ok;
-import static alpha.nomagichttp.route.Routes.route;
 import static java.time.LocalTime.now;
 import static java.util.concurrent.CompletableFuture.delayedExecutor;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
@@ -35,13 +33,12 @@ public class RetryRequestOnError
     
     public static void main(String... ignored) throws IOException {
         RequestHandler h = GET().supply(new MyUnstableResponseSupplier());
-        Route r = route("/", h);
         
         // The server accepts a factory/supplier of the error handler because
         // a new instance of the error handler will be used for each failed request.
         Supplier<ErrorHandler> retrier = MyExponentialRetrier::new;
         
-        HttpServer.create(HttpServer.Config.DEFAULT, retrier).add(r).start(PORT);
+        HttpServer.create(HttpServer.Config.DEFAULT, retrier).add("/", h).start(PORT);
         System.out.println("Listening on port " + PORT + ".");
     }
     

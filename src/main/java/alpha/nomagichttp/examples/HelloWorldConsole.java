@@ -3,8 +3,6 @@ package alpha.nomagichttp.examples;
 import alpha.nomagichttp.HttpServer;
 import alpha.nomagichttp.handler.RequestHandler;
 import alpha.nomagichttp.handler.RequestHandlers;
-import alpha.nomagichttp.route.Route;
-import alpha.nomagichttp.route.Routes;
 
 import java.io.IOException;
 
@@ -27,11 +25,9 @@ public class HelloWorldConsole {
                 System.out.println("Hello, World!"));
         
         // We bind the handler to the server root "/".
-        // (The handler can be shared across many routes!)
-        Route r = Routes.route("/", h);
-        
-        // Not supplying a port makes the system pick one
-        HttpServer s = HttpServer.create().add(r).start();
+        // The handler can be shared across many routes!
+        // Not supplying a port makes the system pick one.
+        HttpServer s = HttpServer.create().add("/", h).start();
         
         System.out.println("Listening on port " + s.getLocalAddress().getPort() + ".");
     }

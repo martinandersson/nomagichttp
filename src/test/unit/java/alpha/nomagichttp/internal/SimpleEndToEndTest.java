@@ -3,7 +3,6 @@ package alpha.nomagichttp.internal;
 import alpha.nomagichttp.handler.RequestHandler;
 import alpha.nomagichttp.message.Response;
 import alpha.nomagichttp.message.Responses;
-import alpha.nomagichttp.route.Route;
 import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
@@ -13,7 +12,6 @@ import java.nio.file.Path;
 import static alpha.nomagichttp.handler.RequestHandlers.GET;
 import static alpha.nomagichttp.handler.RequestHandlers.POST;
 import static alpha.nomagichttp.message.Responses.ok;
-import static alpha.nomagichttp.route.Routes.route;
 import static alpha.nomagichttp.testutil.ClientOperations.CRLF;
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -33,7 +31,7 @@ class SimpleEndToEndTest extends AbstractEndToEndTest
         RequestHandler handler = GET().run(() ->
                 System.out.println("Hello, World!"));
         
-        addHandler("/hello-console", handler);
+        server().add("/hello-console", handler);
         
         String req = "GET /hello-console HTTP/1.1" + CRLF + CRLF,
                res = client().writeRead(req);
@@ -48,7 +46,7 @@ class SimpleEndToEndTest extends AbstractEndToEndTest
         RequestHandler handler = GET().supply(() ->
                 ok("Hello World!").asCompletedStage());
         
-        addHandler("/hello-response", handler);
+        server().add("/hello-response", handler);
         
         String req =
             "GET /hello-response HTTP/1.1" + CRLF +
@@ -66,20 +64,17 @@ class SimpleEndToEndTest extends AbstractEndToEndTest
     
     @Test
     void greet_param() throws IOException {
-        Route fromPath = route("/hello/:name", GET().apply(req -> {
+        server().add("/hello/:name", GET().apply(req -> {
             String name = req.parameters().path("name");
             String text = "Hello " + name + "!";
             return ok(text).asCompletedStage();
         }));
-        
-        Route fromQuery = route("/hello", GET().apply(req -> {
+    
+        server().add("/hello", GET().apply(req -> {
             String name = req.parameters().queryFirst("name").get();
             String text = "Hello " + name + "!";
             return ok(text).asCompletedStage();
         }));
-        
-        server().add(fromPath)
-                .add(fromQuery);
         
         String req1 =
             "GET /hello/John HTTP/1.1" + CRLF +
@@ -106,7 +101,7 @@ class SimpleEndToEndTest extends AbstractEndToEndTest
         RequestHandler echo = POST().apply(req ->
                 req.body().get().toText().thenApply(name -> ok("Hello " + name + "!")));
         
-        addHandler("/greet-body", echo);
+        server().add("/greet-body", echo);
         
         String req =
             "POST /greet-body HTTP/1.1" + CRLF +
@@ -132,7 +127,7 @@ class SimpleEndToEndTest extends AbstractEndToEndTest
                 .build()
                 .asCompletedStage());
         
-        addHandler("/echo-headers", echo);
+        server().add("/echo-headers", echo);
         
         String req =
             "GET /echo-headers HTTP/1.1" + CRLF +
@@ -159,7 +154,7 @@ class SimpleEndToEndTest extends AbstractEndToEndTest
                           .thenApply(n -> Long.toString(n))
                           .thenApply(Responses::ok));
         
-        addHandler("/small-file", saver);
+        server().add("/small-file", saver);
         
         final String reqHead =
             "POST /small-file HTTP/1.1" + CRLF +

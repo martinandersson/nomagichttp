@@ -30,7 +30,7 @@ class BigFileRequest extends AbstractSingleClientTest
         RequestHandler saver = POST().apply(req -> req.body().get().toFile(FILE)
                 .thenApply(n -> ok().header("Received", Long.toString(n)).build()));
         
-        addHandler("/file", saver);
+        server().add("/file", saver);
     }
     
     @Test

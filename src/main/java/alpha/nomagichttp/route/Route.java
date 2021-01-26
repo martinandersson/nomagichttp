@@ -1,5 +1,6 @@
 package alpha.nomagichttp.route;
 
+import alpha.nomagichttp.HttpServer;
 import alpha.nomagichttp.handler.RequestHandler;
 import alpha.nomagichttp.message.MediaType;
 import alpha.nomagichttp.message.Request;
@@ -11,8 +12,9 @@ import java.nio.charset.Charset;
 /**
  * A {@code Route} is "a target resource upon which to apply semantics"
  * (<a href="https://tools.ietf.org/html/rfc7230#section-5.1">RFC 7230 §5.1</a>).
- * It can be built using a {@link #builder(String)}. Shortcut factory methods
- * exist in {@link Routes}.<p>
+ * It can be built using a {@link #builder(String)}. There's also a convenient
+ * shortcut which both builds and add the route; {@link
+ * HttpServer#add(String, RequestHandler, RequestHandler...)}.<p>
  * 
  * The route is associated with one or more <i>request handlers</i>. In HTTP
  * parlance, handlers are also known as different "representations" of the
@@ -204,7 +206,7 @@ public interface Route
      *             if a static segment value is empty
      * 
      * @throws IllegalStateException
-     *             if parameter names are repeated, or
+     *             if parameter names are repeated in the pattern, or
      *             if a catch-all parameter is not the last segment
      */
     static Route.Builder builder(String pattern) {

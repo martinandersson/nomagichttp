@@ -20,7 +20,7 @@
  * alpha.nomagichttp.message.Request Request} into a {@link
  * alpha.nomagichttp.message.Response Response}<p>
  * 
- * Once the route has been setup it can be added to an {@link
+ * Once the route has been built it can be added to an {@link
  * alpha.nomagichttp.HttpServer HttpServer}. The default server implementation
  * does not use selector threads (event polling) or any other type of blocking
  * techniques. It responds to native system events with zero blocking for

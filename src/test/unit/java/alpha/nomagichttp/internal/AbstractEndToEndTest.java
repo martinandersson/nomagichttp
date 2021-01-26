@@ -2,7 +2,6 @@ package alpha.nomagichttp.internal;
 
 import alpha.nomagichttp.HttpServer;
 import alpha.nomagichttp.handler.ErrorHandler;
-import alpha.nomagichttp.handler.RequestHandler;
 import alpha.nomagichttp.testutil.ClientOperations;
 import alpha.nomagichttp.testutil.Logging;
 import org.junit.jupiter.api.AfterAll;
@@ -16,7 +15,6 @@ import java.util.function.Supplier;
 
 import static alpha.nomagichttp.HttpServer.Config.DEFAULT;
 import static alpha.nomagichttp.handler.RequestHandlers.noop;
-import static alpha.nomagichttp.route.Routes.route;
 import static java.lang.System.Logger.Level.ALL;
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -24,9 +22,9 @@ import static org.assertj.core.api.Assertions.assertThat;
  * Will setup a {@code server()} and a {@code client()} configured with the
  * server's port.<p>
  * 
- * The server has only one route "/" registered with a NOOP handler. Each test
- * must add its own route(s) and handler(s) using the server's route registry
- * (or provided convenience method {@code addHandler()}).<p>
+ * The server has only one route "/" registered with a NOOP handler. Most
+ * likely, each test will be interested in adding its own routes and
+ * handlers.<p>
  * 
  * It's arguably a good baseline to assume that all HTTP exchanges completes
  * normally. And so, this class will assert after each test method that the
@@ -55,7 +53,7 @@ abstract class AbstractEndToEndTest
             return ErrorHandler.DEFAULT.apply(t, r, h);
         };
         
-        server = HttpServer.create(DEFAULT, collect).add(route("/", noop())).start();
+        server = HttpServer.create(DEFAULT, collect).add("/", noop()).start();
         client = new ClientOperations(server.getLocalAddress().getPort());
     }
     
@@ -86,11 +84,6 @@ abstract class AbstractEndToEndTest
     
     public static ClientOperations client() {
         return client;
-    }
-    
-    // TODO: Remove once we have HttpServer.add(Route) (and remove note in JavaDoc on top)
-    public static void addHandler(String route, RequestHandler handler) {
-        server().add(route(route, handler));
     }
     
     public void doNotAssertNormalFinish() {

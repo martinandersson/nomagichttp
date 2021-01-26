@@ -40,8 +40,8 @@ class DetailedEndToEndTest extends AbstractEndToEndTest
                 isBodyEmpty = req -> Responses.ok(String.valueOf(req.body().isEmpty())).asCompletedStage(),
                 echoBody    = req -> req.body().get().toText().thenApply(Responses::ok);
         
-        addHandler(IS_BODY_EMPTY, POST().apply(isBodyEmpty));
-        addHandler(ECHO_BODY,     POST().apply(echoBody));
+        server().add(IS_BODY_EMPTY, POST().apply(isBodyEmpty));
+        server().add(ECHO_BODY,     POST().apply(echoBody));
     }
     
     @Test
@@ -101,7 +101,7 @@ class DetailedEndToEndTest extends AbstractEndToEndTest
             req.body().get().subscribe(
                 new AfterByteTargetStop(midway, Flow.Subscription::cancel)));
         
-        addHandler("/discard-midway", discardMidway);
+        server().add("/discard-midway", discardMidway);
         
         try (Channel ch = client().openConnection()) {
             String req = requestWithBody("/discard-midway", "x".repeat(length)),
@@ -124,7 +124,7 @@ class DetailedEndToEndTest extends AbstractEndToEndTest
                 new AfterByteTargetStop(1, subscriptionIgnored -> {
                     throw new RuntimeException("Oops."); })));
         
-        addHandler("/body-subscriber-crash", crashAfterOneByte);
+        server().add("/body-subscriber-crash", crashAfterOneByte);
         
         try (Channel ch = client().openConnection()) {
             String req = requestWithBody("/body-subscriber-crash", "Hello"),

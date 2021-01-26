@@ -7,7 +7,6 @@ import java.io.IOException;
 
 import static alpha.nomagichttp.handler.RequestHandlers.POST;
 import static alpha.nomagichttp.message.Responses.ok;
-import static alpha.nomagichttp.route.Routes.route;
 
 /**
  * Greets the user using the request body as name.
@@ -32,7 +31,7 @@ public class GreetRequestBody
                 req.body().get().toText().thenApply(name ->
                         ok("Hello, " + name + "!")));
         
-        HttpServer.create().add(route("/hello", h)).start(PORT);
+        HttpServer.create().add("/hello", h).start(PORT);
         System.out.println("Listening on port " + PORT + ".");
     }
 }
