@@ -1,10 +1,5 @@
-package alpha.nomagichttp.internal;
+package alpha.nomagichttp.route;
 
-
-import alpha.nomagichttp.route.NoRouteFoundException;
-import alpha.nomagichttp.route.Route;
-import alpha.nomagichttp.route.RouteCollisionException;
-import alpha.nomagichttp.route.RouteRegistry;
 import org.junit.jupiter.api.Test;
 
 import java.util.AbstractMap;
@@ -14,9 +9,11 @@ import java.util.Map;
 import java.util.stream.Stream;
 
 import static alpha.nomagichttp.handler.RequestHandlers.noop;
-import static alpha.nomagichttp.util.PercentDecoder.decode;
 import static alpha.nomagichttp.route.Routes.route;
+import static alpha.nomagichttp.util.PercentDecoder.decode;
 import static java.util.Arrays.stream;
+import static java.util.function.Predicate.not;
+import static java.util.stream.Collectors.toList;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
@@ -266,7 +263,9 @@ class DefaultRouteRegistryTest
     }
     
     private static Iterable<String> toSegments(String path) {
-        return RequestTarget.parse(path).segmentsNotPercentDecoded();
+        return stream(path.split("/"))
+                .filter(not(String::isEmpty))
+                .collect(toList());
     }
     
     private Map<String, Route> dump() {

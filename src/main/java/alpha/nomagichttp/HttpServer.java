@@ -2,7 +2,7 @@ package alpha.nomagichttp;
 
 import alpha.nomagichttp.handler.ErrorHandler;
 import alpha.nomagichttp.handler.RequestHandler;
-import alpha.nomagichttp.internal.DefaultRouteRegistry;
+import alpha.nomagichttp.route.DefaultRouteRegistry;
 import alpha.nomagichttp.internal.DefaultServer;
 import alpha.nomagichttp.message.MaxRequestHeadSizeExceededException;
 import alpha.nomagichttp.message.Request;
