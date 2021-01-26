@@ -44,7 +44,7 @@ class ChannelByteBufferPublisherTest
         SERVER.close();
     }
     
-    ChannelByteBufferPublisher testee() throws Throwable {
+    ChannelByteBufferPublisher testee() throws InterruptedException {
         if (testee == null) {
             ChannelOperations ops = new ChannelOperations(
                     SERVER.accept(), mock(DefaultServer.class));
@@ -60,7 +60,7 @@ class ChannelByteBufferPublisherTest
      * and same source bytebuffer (assuming testee's buffer size is >= 2 bytes).
      */
     @Test
-    void switch_subscriber_midway() throws Throwable {
+    void switch_subscriber_midway() throws IOException, InterruptedException, TimeoutException, ExecutionException {
         // Hopefully this goes into just 1 ByteBuffer
         CLIENT.write("ab");
         

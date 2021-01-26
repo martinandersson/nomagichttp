@@ -8,6 +8,7 @@ import java.nio.channels.AsynchronousSocketChannel;
 import java.nio.channels.CompletionHandler;
 import java.nio.channels.SocketChannel;
 import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.CompletionException;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -67,7 +68,7 @@ final class TestServer implements Closeable
                 new InetSocketAddress(getLoopbackAddress(), port));
     }
     
-    AsynchronousSocketChannel accept() throws Throwable {
+    AsynchronousSocketChannel accept() throws InterruptedException, CompletionException {
         final AsynchronousSocketChannel ch;
         
         try {
@@ -82,13 +83,13 @@ final class TestServer implements Closeable
         return ch;
     }
     
-    private void tryThrowAcceptExc(Throwable suppressed) throws Throwable {
+    private void tryThrowAcceptExc(Throwable suppressed) throws CompletionException {
         Throwable t = acceptExc.getAndSet(null);
         if (t != null) {
             if (suppressed != null) {
                 t.addSuppressed(suppressed);
             }
-            throw t;
+            throw new CompletionException(t);
         }
     }
     
