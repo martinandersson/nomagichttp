@@ -7,6 +7,8 @@ import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 
 import java.net.http.HttpHeaders;
+import java.nio.ByteBuffer;
+import java.nio.charset.Charset;
 import java.nio.charset.IllegalCharsetNameException;
 import java.nio.charset.UnsupportedCharsetException;
 
@@ -77,7 +79,12 @@ class DefaultRequestTest
                 rh,
                 RequestTarget.parse("/"),
                 null,
-                Publishers.just(PooledByteBuffers.wrap(body, US_ASCII)),
+                Publishers.just(wrap(body, US_ASCII)),
                 Mockito.mock(ChannelOperations.class));
+    }
+    
+    private static DefaultPooledByteBufferHolder wrap(String val, Charset charset) {
+        ByteBuffer b = ByteBuffer.wrap(val.getBytes(charset));
+        return new DefaultPooledByteBufferHolder(b, ignored -> {});
     }
 }
