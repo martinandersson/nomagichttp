@@ -1,4 +1,4 @@
-package alpha.nomagichttp.internal;
+package alpha.nomagichttp.test;
 
 import java.io.Closeable;
 import java.io.IOException;
@@ -31,21 +31,21 @@ import static java.util.concurrent.TimeUnit.SECONDS;
  * @author Martin Andersson (webmaster at martinandersson.com)
  */
 // TODO: Rename to something else
-final class TestServer implements Closeable
+public final class TestServer implements Closeable
 {
     private AsynchronousServerSocketChannel listener;
     private int port;
     private final BlockingQueue<AsynchronousSocketChannel> accepted;
     private final AtomicReference<Throwable> acceptExc;
     
-    TestServer() {
+    public TestServer() {
         listener = null;
         port = 0;
         accepted = new LinkedBlockingQueue<>();
         acceptExc = new AtomicReference<>();
     }
     
-    void start() throws IOException {
+    public void start() throws IOException {
         listener = AsynchronousServerSocketChannel.open()
                 .bind(new InetSocketAddress(getLoopbackAddress(), 0));
         
@@ -63,12 +63,12 @@ final class TestServer implements Closeable
         });
     }
     
-    SocketChannel newClient() throws IOException {
+    public SocketChannel newClient() throws IOException {
         return SocketChannel.open(
                 new InetSocketAddress(getLoopbackAddress(), port));
     }
     
-    AsynchronousSocketChannel accept() throws InterruptedException, CompletionException {
+    public AsynchronousSocketChannel accept() throws InterruptedException, CompletionException {
         final AsynchronousSocketChannel ch;
         
         try {
