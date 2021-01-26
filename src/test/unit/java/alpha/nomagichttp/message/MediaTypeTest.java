@@ -1,6 +1,6 @@
 package alpha.nomagichttp.message;
 
-import alpha.nomagichttp.test.Logging;
+import alpha.nomagichttp.testutil.Logging;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 

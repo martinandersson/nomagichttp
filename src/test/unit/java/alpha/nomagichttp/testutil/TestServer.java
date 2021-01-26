@@ -1,4 +1,4 @@
-package alpha.nomagichttp.test;
+package alpha.nomagichttp.testutil;
 
 import java.io.Closeable;
 import java.io.IOException;

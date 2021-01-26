@@ -7,7 +7,7 @@ import alpha.nomagichttp.handler.RequestHandlers;
 import alpha.nomagichttp.message.Response;
 import alpha.nomagichttp.route.NoRouteFoundException;
 import alpha.nomagichttp.route.Route;
-import alpha.nomagichttp.test.Logging;
+import alpha.nomagichttp.testutil.Logging;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;

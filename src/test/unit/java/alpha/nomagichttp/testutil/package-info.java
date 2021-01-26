@@ -4,4 +4,4 @@
  * packages contain test classes and only test classes. The purpose is to make
  * it easier for developers to locate test files vs. utilities.
  */
-package alpha.nomagichttp.test;
+package alpha.nomagichttp.testutil;

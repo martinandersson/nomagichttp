@@ -3,7 +3,7 @@ package alpha.nomagichttp.internal;
 import alpha.nomagichttp.HttpServer;
 import alpha.nomagichttp.handler.ErrorHandler;
 import alpha.nomagichttp.handler.RequestHandler;
-import alpha.nomagichttp.test.Logging;
+import alpha.nomagichttp.testutil.Logging;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
