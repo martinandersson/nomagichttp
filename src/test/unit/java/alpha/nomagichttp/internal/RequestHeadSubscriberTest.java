@@ -3,7 +3,7 @@ package alpha.nomagichttp.internal;
 import alpha.nomagichttp.message.RequestHeadParseException;
 import alpha.nomagichttp.testutil.ClientOperations;
 import alpha.nomagichttp.testutil.Logging;
-import alpha.nomagichttp.testutil.TestServer;
+import alpha.nomagichttp.testutil.SkeletonServer;
 import alpha.nomagichttp.util.Headers;
 import org.assertj.core.api.AbstractListAssert;
 import org.assertj.core.api.ObjectAssert;
@@ -27,14 +27,14 @@ import static org.mockito.Mockito.mock;
 
 class RequestHeadSubscriberTest
 {
-    private static TestServer SERVER;
+    private static SkeletonServer SERVER;
     private static ClientOperations CLIENT;
     private CompletionStage<RequestHead> testee;
     
     @BeforeAll
     static void beforeAll() throws IOException {
         Logging.setLevel(RequestHeadSubscriber.class, ALL);
-        SERVER = new TestServer();
+        SERVER = new SkeletonServer();
         SERVER.start();
         CLIENT = new ClientOperations(SERVER::newClient);
     }

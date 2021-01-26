@@ -2,7 +2,7 @@ package alpha.nomagichttp.internal;
 
 import alpha.nomagichttp.testutil.ClientOperations;
 import alpha.nomagichttp.testutil.Logging;
-import alpha.nomagichttp.testutil.TestServer;
+import alpha.nomagichttp.testutil.SkeletonServer;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -29,14 +29,14 @@ class ChannelByteBufferPublisherTest
     // TODO: Most of this plumbing is copy-pasted from RequestHeadSubscriberTest.
     //       DRY; refactor to common superclass or something.
     
-    private static TestServer SERVER;
+    private static SkeletonServer SERVER;
     private static ClientOperations CLIENT;
     private ChannelByteBufferPublisher testee;
     
     @BeforeAll
     static void beforeAll() throws IOException {
         Logging.setLevel(ChannelByteBufferPublisher.class, ALL);
-        SERVER = new TestServer();
+        SERVER = new SkeletonServer();
         SERVER.start();
         CLIENT = new ClientOperations(SERVER::newClient);
     }
