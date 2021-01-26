@@ -168,15 +168,6 @@ public final class DefaultServer implements HttpServer
         return getRouteRegistry().remove(route);
     }
     
-    @Override
-    public synchronized InetSocketAddress getLocalAddress() throws IllegalStateException {
-        if (listener == null || !listener.isOpen()) {
-            throw new IllegalStateException("Server is not running.");
-        }
-        
-        return addr;
-    }
-    
     RouteRegistry getRouteRegistry() {
         return registry;
     }
@@ -184,6 +175,15 @@ public final class DefaultServer implements HttpServer
     @Override
     public Config getConfig() {
         return config;
+    }
+    
+    @Override
+    public synchronized InetSocketAddress getLocalAddress() throws IllegalStateException {
+        if (listener == null || !listener.isOpen()) {
+            throw new IllegalStateException("Server is not running.");
+        }
+        
+        return addr;
     }
     
     /**

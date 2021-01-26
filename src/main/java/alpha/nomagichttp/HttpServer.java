@@ -280,6 +280,13 @@ public interface HttpServer
     boolean remove(Route route);
     
     /**
+     * Returns the server's configuration.
+     *
+     * @return the server's configuration (never {@code null})
+     */
+    Config getConfig();
+    
+    /**
      * Returns the socket address that the server is listening on.
      * 
      * @return the port used by the server
@@ -289,13 +296,6 @@ public interface HttpServer
      * @see AsynchronousServerSocketChannel#getLocalAddress() 
      */
     InetSocketAddress getLocalAddress() throws IllegalStateException;
-    
-    /**
-     * Returns the server's configuration.
-     *
-     * @return the server's configuration (never {@code null})
-     */
-    Config getConfig();
     
     /**
      * Server configuration.<p>
