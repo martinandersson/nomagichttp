@@ -830,17 +830,20 @@ public interface Request
          * Unlike {@link #getAny(String)} where the {@code ClassCastException}
          * is immediate for non-null and assignment-incompatible types, this
          * method should generally be considered unsafe as the
-         * ClassCastException may be delayed (known as "heap pollution").
+         * ClassCastException is delayed (known as "heap pollution").
          * 
          * <pre>{@code
          *   // Given
          *   request.attributes().set("name", "my string");
          *   
+         *   // Okay
+         *   Optional<String> str = request.attributes().getOptAny("name");
+         *   
          *   // No ClassCastException!
-         *   Optional<DateTimeFormatter> opt = request.attributes().getOptAny("name");
+         *   Optional<DateTimeFormatter> poison = request.attributes().getOptAny("name");
          *   
          *   // Let's give the problem to someone else in the future
-         *   anotherDestination(opt);
+         *   anotherDestination(poison);
          * }</pre>
          * 
          * @param name of attribute
