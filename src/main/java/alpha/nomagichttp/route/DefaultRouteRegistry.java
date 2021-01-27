@@ -15,8 +15,8 @@ import static java.util.stream.Collectors.toList;
 
 /**
  * Default implementation of {@link RouteRegistry}. Similar in nature to many
- * other "router" implementations; the internally used data structure is a tree
- * <p>
+ * other "router" implementations; the internally used data structure is a
+ * concurrent tree with great performance characteristics.<p>
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  */

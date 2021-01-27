@@ -48,11 +48,15 @@ import java.util.function.Supplier;
  * server instances must {@link #stop()}.
  * 
  * 
- * <h3>Threading Model</h3>
+ * <h3>Thread Safety and Threading Model</h3>
  * 
- * The server instance is thread-safe. It is also fully non-blocking once it is
- * running but life-cycle methods such as {@code start}/{@code stop} may
- * block.<p>
+ * The server instance is fully thread-safe. Life-cycle methods {@code start}
+ * and {@code stop} may block and should understandably not be invoked at a high
+ * rate. The server also functions as a route registry, to which you {@code add}
+ * and {@code remove} routes. These methods are highly concurrent but may impose
+ * minuscule blocks at the discretion of the implementation. Most importantly,
+ * looking up a route - as is done on every inbound request - never blocks and
+ * features great performance no matter the size of the registry.<p>
  * 
  * All servers running in the same JVM share a common pool of threads (aka
  * "request threads"). The pool handles I/O completion events and executes

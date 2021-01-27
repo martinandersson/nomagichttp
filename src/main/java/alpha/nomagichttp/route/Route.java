@@ -64,8 +64,7 @@ import java.nio.charset.Charset;
  * Within the route registry, path parameters (both single-segment and
  * catch-all) are mutually exclusive for that segment position. For example, you
  * can not at the same time register a route {@code "/user/new"} and a route
- * {@code "/user/:id"}, or {@code "/user/:id"} and {@code
- * "/user/:something-else"}.<p>
+ * {@code "/user/:id"}, or {@code "/user/:id"} and {@code "/user/:blabla"}.<p>
  * 
  * Static- and single segment path parameters may have any number of descendant
  * routes on the same hierarchical branch. In the following example, we register
@@ -108,17 +107,17 @@ import java.nio.charset.Charset;
  * "/:drive/*filepath"}.<p>
  * 
  * As previously noted, static- and single segment parameters can build a route
- * hierarchy. For example, you can have {@code "/admin"}, {@code "/user"},
- * {@code "/user/:id"} and {@code "/user/:id/avatar"} all registered at the same
- * time in the same registry. But this is not true for catch-all since it
- * matches everything including no value at all. You can not register {@code
- * "/src"} and {@code "/src/*filepath"} in the same registry at the same time.
- * Failure to register a route with the registry causes a {@link
- * RouteCollisionException} to be thrown.<p>
+ * hierarchy. Or in other words, a route position may have a parent route. For
+ * example, you can have {@code "/user"}, {@code "/user/:id"} and {@code
+ * "/user/:id/avatar"} all registered at the same time in the same registry. But
+ * this is not true for catch-all since it matches everything including no value
+ * at all. You can not register {@code "/src"} and {@code "/src/*filepath"} in
+ * the same registry at the same time. Failure to register a route with the
+ * registry causes a {@link RouteCollisionException} to be thrown.<p>
  * 
  * Query parameters are always optional, they can not be used to distinguish one
- * route from another, nor do they affect how a route is matched against a
- * request path.<p>
+ * route from another, nor do they affect how a request path is matched against
+ * a route.<p>
  * 
  * In order to find a matching route, the following steps are applied to the
  * request path:
