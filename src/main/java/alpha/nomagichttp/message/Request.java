@@ -134,6 +134,16 @@ public interface Request
     Optional<Body> body();
     
     /**
+     * Returns an attributes API bound to this request.<p>
+     * 
+     * Attributes are application-provided objects associated with the request
+     * for passing data through the request object and across boundaries.
+     * 
+     * @return an attributes API object bound to this request
+     */
+    Attributes attributes();
+    
+    /**
      * Returns the channel from which this request originates.
      * 
      * @return the channel from which this request originates (never {@code null})
@@ -720,5 +730,126 @@ public interface Request
          * @return the result from applying the function {@code f}
          */
         <R> CompletionStage<R> convert(BiFunction<byte[], Integer, R> f);
+    }
+    
+    /**
+     * Is an API for accessing objects associated with a particular request.
+     * Useful when passing data across boundaries, such as from a request
+     * handler to an error handler.<p>
+     * 
+     * <pre>{@code
+     *   // In a request handler
+     *   request.attributes().set("stuff", new MyClass());
+     *   // Somewhere else
+     *   MyClass obj = request.attributes().getAny("stuff");
+     * }</pre>
+     * 
+     * The implementation is thread-safe.<p>
+     * 
+     * The NoMagicHTTP library may use the attribute object in the future as a
+     * means of communication, for example as a store of information related to
+     * the characteristics of a request. If so, the names used will start with
+     * "alpha.nomagichttp.". Applications are encouraged to avoid using this
+     * prefix in their names.
+     * 
+     * @author Martin Andersson (webmaster at martinandersson.com)
+     */
+    interface Attributes
+    {
+        /**
+         * Returns the value of the named attribute as an object.
+         * 
+         * @param name of attribute
+         * 
+         * @return the value of the named attribute as an object (may be {@code null})
+         * 
+         * @throws NullPointerException if {@code name} is {@code null}
+         */
+        Object get(String name);
+        
+        /**
+         * Set the value of the named attribute.<p>
+         * 
+         * @param value of attribute (may be {@code null})
+         * 
+         * @return the old value (may be {@code null})
+         *
+         * @throws NullPointerException if {@code name} is {@code null}
+         */
+        Object set(String name, Object value);
+        
+        /**
+         * Returns the value of the named attribute cast to V.
+         * 
+         * This method is equivalent to:
+         * <pre>{@code
+         *   V v = (V) request.attributes().get(name);
+         * }</pre>
+         * 
+         * Except the cast is implicit and the type is inferred by the Java
+         * compiler. The call site will still blow up with a {@code
+         * ClassCastException} if a non-null object can not be cast to the
+         * inferred type.
+         * 
+         * <pre>{@code
+         *   // Given
+         *   request.attributes().set("name", "my string");
+         *   
+         *   // Okay
+         *   String str = request.attributes().getAny("name");
+         *   
+         *   // ClassCastException
+         *   DateTimeFormatter oops = request.attributes().getAny("name");
+         * }</pre>
+         * 
+         * @param name of attribute
+         *
+         * @return the value of the named attribute as an object (may be {@code null})
+         *
+         * @throws NullPointerException if {@code name} is {@code null}
+         */
+        <V> V getAny(String name);
+        
+        /**
+         * Returns the value of the named attribute described as an Optional of
+         * an object.<p>
+         * 
+         * @param name of attribute
+         * 
+         * @return the value of the named attribute described as an Optional of
+         *         an object (never {@code null} but possibly empty)
+         *
+         * @throws NullPointerException if {@code name} is {@code null}
+         */
+        Optional<Object> getOpt(String name);
+        
+        /**
+         * Returns the value of the named attribute described as an Optional of
+         * V.<p>
+         * 
+         * Unlike {@link #getAny(String)} where the {@code ClassCastException}
+         * is immediate for non-null and assignment-incompatible types, this
+         * method should generally be considered unsafe as the
+         * ClassCastException may be delayed (known as "heap pollution").
+         * 
+         * <pre>{@code
+         *   // Given
+         *   request.attributes().set("name", "my string");
+         *   
+         *   // No ClassCastException!
+         *   Optional<DateTimeFormatter> opt = request.attributes().getOptAny("name");
+         *   
+         *   // Let's give the problem to someone else in the future
+         *   anotherDestination(opt);
+         * }</pre>
+         * 
+         * @param name of attribute
+         *
+         * @return the value of the named attribute described as an Optional of
+         *         V (never {@code null} but possibly empty)
+         *
+         * @throws NullPointerException if {@code name} is {@code null}
+         */
+        <V> Optional<V> getOptAny(String name);
     }
 }

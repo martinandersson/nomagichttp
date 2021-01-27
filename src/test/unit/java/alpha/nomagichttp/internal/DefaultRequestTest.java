@@ -11,10 +11,12 @@ import java.nio.ByteBuffer;
 import java.nio.charset.Charset;
 import java.nio.charset.IllegalCharsetNameException;
 import java.nio.charset.UnsupportedCharsetException;
+import java.util.Optional;
 
 import static alpha.nomagichttp.util.Headers.of;
 import static java.nio.charset.StandardCharsets.US_ASCII;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
  * Small tests of {@link DefaultRequest}.
@@ -23,6 +25,9 @@ import static org.assertj.core.api.Assertions.assertThat;
  */
 class DefaultRequestTest
 {
+    // Body
+    // ----
+    
     @Test
     void body_toText_happyPath() {
         Request req = createRequest(of(
@@ -68,6 +73,39 @@ class DefaultRequestTest
                 .isExactlyInstanceOf(UnsupportedCharsetException.class);
     }
     
+    // Attributes
+    // ----
+    
+    @Test
+    void attributes_set_get() {
+        Request r = createEmptyRequest();
+        Object o = r.attributes().set("msg", "hello");
+        assertThat(o).isNull();
+        String n = r.attributes().getAny("msg");
+        assertThat(n).isEqualTo("hello");
+    }
+    
+    @Test
+    void class_cast_exception_immediate() {
+        Request r = createEmptyRequest();
+        r.attributes().set("int", 123);
+        
+        assertThatThrownBy(() -> {
+            String crash = r.attributes().getAny("int");
+        }).isExactlyInstanceOf(ClassCastException.class);
+    }
+    
+    @Test
+    void class_cast_exception_delayed() {
+        Request r = createEmptyRequest();
+        r.attributes().set("int", 123);
+        Optional<String> opt = r.attributes().getOptAny("int");
+        
+        assertThatThrownBy(() -> {
+            String crash = opt.get();
+        }).isExactlyInstanceOf(ClassCastException.class);
+    }
+    
     private static DefaultRequest createRequest(HttpHeaders headers, String body) {
         RequestHead rh = new RequestHead(
                 "test-method",
@@ -81,6 +119,10 @@ class DefaultRequestTest
                 null,
                 Publishers.just(wrap(body, US_ASCII)),
                 Mockito.mock(ChannelOperations.class));
+    }
+    
+    private static DefaultRequest createEmptyRequest() {
+        return createRequest(of(), "");
     }
     
     private static DefaultPooledByteBufferHolder wrap(String val, Charset charset) {

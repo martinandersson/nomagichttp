@@ -18,6 +18,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Flow;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.BiFunction;
@@ -32,6 +33,7 @@ import static java.nio.file.StandardOpenOption.CREATE;
 import static java.nio.file.StandardOpenOption.TRUNCATE_EXISTING;
 import static java.nio.file.StandardOpenOption.WRITE;
 import static java.util.Optional.empty;
+import static java.util.Optional.ofNullable;
 import static java.util.concurrent.CompletableFuture.failedStage;
 
 final class DefaultRequest implements Request
@@ -48,6 +50,7 @@ final class DefaultRequest implements Request
     private final Optional<Body> bodyApi;
     private final OnCancelDiscardOp bodyDiscard;
     private final ChannelOperations child;
+    private final Attributes attributes;
     
     DefaultRequest(
             RequestHead head,
@@ -83,6 +86,7 @@ final class DefaultRequest implements Request
         }
         
         this.child = child;
+        this.attributes = new DefaultAttributes();
     }
     
     @Override
@@ -121,6 +125,11 @@ final class DefaultRequest implements Request
     @Override
     public Optional<Body> body() {
         return bodyApi;
+    }
+    
+    @Override
+    public Attributes attributes() {
+        return attributes;
     }
     
     @Override
@@ -344,6 +353,48 @@ final class DefaultRequest implements Request
         @Override
         public Map<String, List<String>> queryMapRaw() {
             return qRaw;
+        }
+    }
+    
+    private static final class DefaultAttributes implements Attributes
+    {
+        // does not allow null as key or value
+        private final Map<String, Object> map = new ConcurrentHashMap<>();
+        
+        @Override
+        public Object get(String name) {
+            return map.get(name);
+        }
+        
+        @Override
+        public Object set(String name, Object value) {
+            return map.put(name, value);
+        }
+        
+        @Override
+        public <V> V getAny(String name) {
+            return this.<V>map().get(name);
+        }
+        
+        @Override
+        public Optional<Object> getOpt(String name) {
+            return ofNullable(get(name));
+        }
+        
+        @Override
+        public <V> Optional<V> getOptAny(String name) {
+            return ofNullable(this.<V>map().get(name));
+        }
+        
+        private <V> Map<String, V> map() {
+            @SuppressWarnings("unchecked")
+            Map<String, V> m = (Map<String, V>) map;
+            return m;
+        }
+        
+        @Override
+        public String toString() {
+            return map.toString();
         }
     }
 }
