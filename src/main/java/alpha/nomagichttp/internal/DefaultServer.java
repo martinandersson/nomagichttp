@@ -164,6 +164,11 @@ public final class DefaultServer implements HttpServer
     }
     
     @Override
+    public Route remove(String pattern) {
+        return getRouteRegistry().remove(pattern);
+    }
+    
+    @Override
     public boolean remove(Route route) {
         return getRouteRegistry().remove(route);
     }

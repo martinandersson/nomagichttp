@@ -187,6 +187,41 @@ class DefaultRouteRegistryTest
                 "xxx");
     }
     
+    // Remove
+    // ----
+    
+    @Test
+    void remove_reference() {
+        Route r = noopRoute("/download/:user/*filepath");
+        testee.add(r);
+        assertThat(testee.remove(r)).isTrue();
+        assertThat(dump()).containsOnlyKeys("/");
+    }
+    
+    @Test
+    void remove_pattern_names_yes() {
+        Route r = noopRoute("/download/:user/*filepath");
+        testee.add(r);
+        assertThat(testee.remove("/download/:user/*filepath")).isSameAs(r);
+        assertThat(dump()).containsOnlyKeys("/");
+    }
+    
+    @Test
+    void remove_pattern_names_no() {
+        Route r = noopRoute("/download/:user/*filepath");
+        testee.add(r);
+        assertThat(testee.remove("/download/:/*")).isSameAs(r); // <-- empty
+        assertThat(dump()).containsOnlyKeys("/");
+    }
+    
+    @Test
+    void remove_pattern_names_duplicated() {
+        Route r = noopRoute("/download/:user/*filepath");
+        testee.add(r);
+        assertThat(testee.remove("/download/:bla/*bla")).isSameAs(r); // <-- duplicated
+        assertThat(dump()).containsOnlyKeys("/");
+    }
+    
     // Bug fix
     // ----
     

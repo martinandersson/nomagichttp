@@ -39,6 +39,23 @@ public interface RouteRegistry
     
     /**
      * Remove a route.
+     *
+     * @param pattern of route to remove
+     *
+     * @return the route removed ({@code null} if non-existent)
+     *
+     * @throws IllegalArgumentException
+     *             if a static segment value is empty
+     *
+     * @throws IllegalStateException
+     *             if a catch-all parameter is not the last segment
+     * 
+     * @see HttpServer#remove(String) 
+     */
+    Route remove(String pattern);
+    
+    /**
+     * Remove a route.
      * 
      * @param route to remove
      * 

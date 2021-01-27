@@ -273,6 +273,35 @@ public interface HttpServer
     /**
      * Remove a route.<p>
      * 
+     * This method is similar to {@link #remove(Route)}, except any route no
+     * matter its identity found at the hierarchical position will be removed.
+     * The pattern provided is the same path-describing pattern provided to
+     * methods such as {@link #add(String, RequestHandler, RequestHandler...)}
+     * and {@link Route#builder(String)}, except path parameter names can be
+     * anything, they simply do not matter. Other than that, the pattern will go
+     * through the same normalization and validation routine.<p>
+     * 
+     * For example:
+     * <pre>{@code
+     *   server.add("/download/:user/*filepath", ...);
+     *   server.remove("/download/:/*"); // or "/download/:bla/*bla", doesn't matter
+     * }</pre>
+     * 
+     * @param pattern of route to remove
+     * 
+     * @return the route removed ({@code null} if non-existent)
+     * 
+     * @throws IllegalArgumentException
+     *             if a static segment value is empty
+     * 
+     * @throws IllegalStateException
+     *             if a catch-all parameter is not the last segment
+     */
+    Route remove(String pattern);
+    
+    /**
+     * Remove a route.<p>
+     * 
      * The route's currently active requests and exchanges will run to
      * completion and will not be aborted. Only when all active connections
      * against the route have closed will the route effectively not be in use
@@ -280,16 +309,18 @@ public interface HttpServer
      * for <i>new</i> lookup operations once this method has returned.<p>
      * 
      * In order for the route to be removed, the current route in the registry
-     * occupying the same path position must be {@code equal} to the given route
-     * using {@code Route.equals(Object)}. Currently, route equality is not
-     * specified and the default implementation has not overridden the equals
-     * method. I.e., the route provided must be the same instance.
+     * occupying the same hierarchical position must be {@code equal} to the
+     * given route using {@code Route.equals(Object)}. Currently, route equality
+     * is not specified and the default implementation has not overridden the
+     * equals method. I.e., the route provided must be the same instance.<p>
+     * 
+     * In order to remove any route at the targeted position, use {@link
+     * #remove(String) instead}.
      * 
      * @param route to remove
      * 
-     * @return {@code true} if successful (route was added before), otherwise
-     *         {@code false} (the route is unknown)
-     *
+     * @return {@code true} if successful, otherwise {@code false}
+     * 
      * @throws NullPointerException if {@code route} is {@code null}
      */
     boolean remove(Route route);

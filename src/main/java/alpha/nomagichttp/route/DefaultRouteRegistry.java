@@ -175,14 +175,24 @@ public final class DefaultRouteRegistry implements RouteRegistry
     }
     
     @Override
+    public Route remove(String pattern) {
+        Iterable<String>  seg = new SegmentsBuilder(true).append(pattern).asIterable(),
+                          pos = noParamNames(seg);
+        return tree.clear(pos);
+    }
+    
+    @Override
     public boolean remove(Route r) {
-        Iterable<String> noParamNames = stream(r.segments())
+        Iterable<String> pos = noParamNames(r.segments());
+        return tree.clearIf(pos, v -> Objects.equals(v, r)) != null;
+    }
+    
+    private static Iterable<String> noParamNames(Iterable<String> segments) {
+        return stream(segments)
                 .map(s -> s.startsWith(COLON_STR) ? COLON_STR :
-                          s.startsWith(ASTERISK_STR)  ? ASTERISK_STR  :
+                          s.startsWith(ASTERISK_STR) ? ASTERISK_STR :
                           s)
                 .collect(toList());
-        
-        return tree.clearIf(noParamNames, v -> Objects.equals(v, r));
     }
     
     @Override
