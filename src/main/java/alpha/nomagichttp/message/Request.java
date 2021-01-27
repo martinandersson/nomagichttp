@@ -105,7 +105,10 @@ public interface Request
     
     /**
      * Returns a parameters API object bound to this request.<p>
-     *
+     * 
+     * Path- and query parameters are provided by the client through the request
+     * path and can not be modified by the application.
+     * 
      * @return a parameters API object bound to this request
      *
      * @see Parameters
@@ -146,8 +149,8 @@ public interface Request
     boolean channelIsOpenForReading();
     
     /**
-     * Is a thread-safe and non-blocking API for accessing request path- and
-     * query parameter values.<p>
+     * Is a thread-safe and non-blocking API for accessing immutable request
+     * path- and query parameter values.<p>
      * 
      * Any client-given request path (a component of {@link Request#target()}
      * may contain segments interpreted by the HTTP server as a path parameter
