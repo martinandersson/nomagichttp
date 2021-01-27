@@ -4,7 +4,6 @@ import alpha.nomagichttp.handler.RequestHandler;
 import alpha.nomagichttp.message.MediaRange;
 import alpha.nomagichttp.message.MediaType;
 
-import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
@@ -37,7 +36,7 @@ import static java.util.stream.Collectors.toSet;
 public final class DefaultRoute implements Route
 {
     // TODO: Consider replacing with array[]
-    private final List<String> segments;
+    private final Iterable<String> segments;
     // TODO: Consider replacing value type with array[]
     private final Map<String, List<RequestHandler>> handlers;
     
@@ -52,7 +51,7 @@ public final class DefaultRoute implements Route
      * @throws NullPointerException   if any argument is {@code null}
      * @throws IllegalStateException  if {@code handlers} is empty
      */
-    private DefaultRoute(List<String> segments, Set<RequestHandler> handlers) {
+    private DefaultRoute(Iterable<String> segments, Set<RequestHandler> handlers) {
         if (handlers.isEmpty()) {
             throw new IllegalStateException("No handlers.");
         }
@@ -294,20 +293,12 @@ public final class DefaultRoute implements Route
      */
     static final class Builder implements Route.Builder
     {
-        private static final int  INITIAL_CAPACITY = 3;
-        private static final char SINGLE = ':',
-                                  CATCH_ALL = '*';
-        
-        private final List<String> segments;
-        private final Set<String> params;
+        private final SegmentsBuilder segments;
         private final Set<RequestHandler> handlers;
-        private boolean catchAllSet;
         
         Builder(String pattern) {
-            segments = new ArrayList<>(INITIAL_CAPACITY);
-            params   = new HashSet<>();
+            segments = new SegmentsBuilder();
             handlers = new HashSet<>();
-            catchAllSet = false;
             
             if (!pattern.equals("/")) {
                 append(pattern);
@@ -316,68 +307,20 @@ public final class DefaultRoute implements Route
         
         @Override
         public Route.Builder paramSingle(String name) {
-            return addParam(SINGLE, name);
+            segments.paramSingle(name);
+            return this;
         }
         
         @Override
         public Route.Builder paramCatchAll(String name) {
-            addParam(CATCH_ALL, name);
-            catchAllSet = true;
-            return this;
-        }
-        
-        private Route.Builder addParam(char prefix, String name) {
-            requireCatchAllNotSet();
-            if (!params.add(name)) {
-                throw new IllegalStateException(
-                        "Duplicated parameter name: \"" + name + "\"");
-            }
-            segments.add(prefix + name);
+            segments.paramCatchAll(name);
             return this;
         }
         
         @Override
         public Route.Builder append(String p) {
-            if (p.endsWith("//")) {
-                throw new IllegalArgumentException("Static segment value is empty.");
-            }
-            
-            if (p.startsWith("/")) {
-                p = p.substring(1);
-            }
-            
-            String[] tokens = p.split("/");
-            
-            if (tokens.length == 0) {
-                throw new IllegalArgumentException("Static segment value is empty.");
-            }
-            
-            for (String t : tokens) {
-                if (t.isEmpty()) {
-                    throw new IllegalArgumentException("Static segment value is empty.");
-                }
-                switch (t.charAt(0)) {
-                    case SINGLE:
-                        paramSingle(t.substring(1));
-                        break;
-                    case CATCH_ALL:
-                        paramCatchAll(t.substring(1));
-                        break;
-                    default:
-                        requireCatchAllNotSet();
-                        segments.add(t);
-                        break;
-                }
-            }
-            
+            segments.append(p);
             return this;
-        }
-        
-        private void requireCatchAllNotSet() {
-            if (catchAllSet) {
-                throw new IllegalStateException(
-                        "Catch-all path parameter must be the last segment.");
-            }
         }
         
         private static final Set<MediaType> SPECIAL = Set.of(NOTHING, NOTHING_AND_ALL, ALL);
@@ -413,7 +356,7 @@ public final class DefaultRoute implements Route
         
         @Override
         public Route build() {
-            return new DefaultRoute(segments, handlers);
+            return new DefaultRoute(segments.asIterable(), handlers);
         }
     }
 }
