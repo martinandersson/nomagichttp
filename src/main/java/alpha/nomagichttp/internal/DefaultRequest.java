@@ -19,6 +19,7 @@ import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.Flow;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.BiFunction;
@@ -359,7 +360,7 @@ final class DefaultRequest implements Request
     private static final class DefaultAttributes implements Attributes
     {
         // does not allow null as key or value
-        private final Map<String, Object> map = new ConcurrentHashMap<>();
+        private final ConcurrentMap<String, Object> map = new ConcurrentHashMap<>();
         
         @Override
         public Object get(String name) {
@@ -373,7 +374,7 @@ final class DefaultRequest implements Request
         
         @Override
         public <V> V getAny(String name) {
-            return this.<V>map().get(name);
+            return this.<V>asMapAny().get(name);
         }
         
         @Override
@@ -383,12 +384,18 @@ final class DefaultRequest implements Request
         
         @Override
         public <V> Optional<V> getOptAny(String name) {
-            return ofNullable(this.<V>map().get(name));
+            return ofNullable(getAny(name));
         }
         
-        private <V> Map<String, V> map() {
+        @Override
+        public ConcurrentMap<String, Object> asMap() {
+            return map;
+        }
+        
+        @Override
+        public <V> ConcurrentMap<String, V> asMapAny() {
             @SuppressWarnings("unchecked")
-            Map<String, V> m = (Map<String, V>) map;
+            ConcurrentMap<String, V> m = (ConcurrentMap<String, V>) map;
             return m;
         }
         

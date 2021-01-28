@@ -22,6 +22,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.CompletionStage;
+import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Flow;
 import java.util.function.BiFunction;
@@ -802,8 +803,10 @@ public interface Request
          *   DateTimeFormatter oops = request.attributes().getAny("name");
          * }</pre>
          * 
+         * @param <V>  value type (explicitly provided on call site or inferred 
+         *             by Java compiler)
          * @param name of attribute
-         *
+         * 
          * @return the value of the named attribute as an object (may be {@code null})
          *
          * @throws NullPointerException if {@code name} is {@code null}
@@ -846,13 +849,43 @@ public interface Request
          *   anotherDestination(poison);
          * }</pre>
          * 
+         * @param <V>  value type (explicitly provided on call site or inferred 
+         *             by Java compiler)
          * @param name of attribute
-         *
+         * 
          * @return the value of the named attribute described as an Optional of
          *         V (never {@code null} but possibly empty)
-         *
+         * 
          * @throws NullPointerException if {@code name} is {@code null}
          */
         <V> Optional<V> getOptAny(String name);
+        
+        /**
+         * Returns a modifiable map view of the attributes. Changes to the map
+         * are reflected in the attributes, and vice-versa.
+         * 
+         * @return a modifiable map view of the attributes
+         */
+        ConcurrentMap<String, Object> asMap();
+        
+        /**
+         * Returns a modifiable map view of the attributes. Changes to the map
+         * are reflected in the attributes, and vice-versa.<p>
+         * 
+         * Unlike {@link #getOptAny(String)}, using this method does not lead to
+         * heap pollution if you immediately use the returned map to work with
+         * the values directly. For example: 
+         * 
+         * <pre>{@code
+         *   int v = req.attributes().<Integer>asMapAny()
+         *                   .merge("request.counter", 1, Integer::sum);
+         * }</pre>
+         * 
+         * @param <V> value type (explicitly provided on call site or inferred 
+         *            by Java compiler)
+         * 
+         * @return a modifiable map view of the attributes
+         */
+        <V> ConcurrentMap<String, V> asMapAny();
     }
 }
