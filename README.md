@@ -205,11 +205,9 @@ Content-Length: 0
 
 In the server terminal, you should see text similar to this:
 ```console
-Request handler received a request 18:57:09.403 and will crash!
+Request handler received a request 15:19:58.780 and will crash!
 Error handler will retry #1 after delay (ms): 40
-Request handler received a request 18:57:09.456 and will crash!
-Error handler will retry #2 after delay (ms): 160
-Request handler received a request 18:57:09.627 and will return 200 OK.
+Request handler received a request 15:19:58.827 and will return 200 OK
 ```
 
 [7-1]: src/main/java/alpha/nomagichttp/examples/RetryRequestOnError.java
