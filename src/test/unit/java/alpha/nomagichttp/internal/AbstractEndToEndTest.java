@@ -11,9 +11,7 @@ import org.junit.jupiter.api.BeforeAll;
 import java.io.IOException;
 import java.util.Collection;
 import java.util.concurrent.ConcurrentLinkedQueue;
-import java.util.function.Supplier;
 
-import static alpha.nomagichttp.HttpServer.Config.DEFAULT;
 import static alpha.nomagichttp.handler.RequestHandlers.noop;
 import static java.lang.System.Logger.Level.ALL;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -48,12 +46,12 @@ abstract class AbstractEndToEndTest
     private static void start() throws IOException {
         Logging.setLevel(SimpleEndToEndTest.class, ALL);
         
-        Supplier<ErrorHandler> collect = () -> (t, r, h) -> {
+        ErrorHandler collect = (t, r, h) -> {
             errors.add(t);
-            return ErrorHandler.DEFAULT.apply(t, r, h);
+            throw t;
         };
         
-        server = HttpServer.create(DEFAULT, collect).add("/", noop()).start();
+        server = HttpServer.create(collect).add("/", noop()).start();
         client = new ClientOperations(server.getLocalAddress().getPort());
     }
     

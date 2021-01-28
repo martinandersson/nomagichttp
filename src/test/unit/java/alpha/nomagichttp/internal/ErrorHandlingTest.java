@@ -17,7 +17,6 @@ import java.util.concurrent.CompletionStage;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Supplier;
 
-import static alpha.nomagichttp.HttpServer.Config.DEFAULT;
 import static alpha.nomagichttp.handler.RequestHandlers.noop;
 import static alpha.nomagichttp.testutil.ClientOperations.CRLF;
 import static java.lang.System.Logger.Level.ALL;
@@ -124,11 +123,11 @@ class ErrorHandlingTest
     }
     
     private ClientOperations createServerAndClient(RequestHandler handler, ErrorHandler onError) throws IOException {
-        @SuppressWarnings("unchecked")
-        Supplier<ErrorHandler>[] eh = onError == null ?
-                new Supplier[0] : new Supplier[]{ () -> onError };
+        ErrorHandler[] eh = onError == null ?
+                new ErrorHandler[0] :
+                new ErrorHandler[]{ onError };
         
-        server = HttpServer.create(DEFAULT, eh).add("/", handler).start();
+        server = HttpServer.create(eh).add("/", handler).start();
         return new ClientOperations(server.getLocalAddress().getPort());
     }
 }
