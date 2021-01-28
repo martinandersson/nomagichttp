@@ -12,13 +12,11 @@ import java.io.IOException;
  * @author Martin Andersson (webmaster at martinandersson.com)
  */
 public class HelloWorldConsole {
+    
+    // In the real world, expressions are often inlined and utility methods statically imported.
+    // In the examples, we often choose to be verbose for learning purposes.
+    
     public static void main(String... ignored) throws IOException {
-        /*
-         * Utility methods from utility classes (RequestHandlers, Routes, ...)
-         * cater for "simple" use cases and should often be statically imported.
-         * Here, we do not inline or statically import for learning purposes.
-         */
-        
         // This handler reacts to requests using the HTTP verb/method "GET".
         // The handler will execute a command and return "202 Accepted".
         RequestHandler h = RequestHandlers.GET().run(() ->
