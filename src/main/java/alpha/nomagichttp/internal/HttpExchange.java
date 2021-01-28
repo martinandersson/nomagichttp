@@ -6,12 +6,8 @@ import alpha.nomagichttp.message.Response;
 import alpha.nomagichttp.message.Responses;
 import alpha.nomagichttp.route.RouteRegistry;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.RandomAccess;
 import java.util.concurrent.CompletionException;
 import java.util.concurrent.CompletionStage;
-import java.util.function.Supplier;
 
 import static alpha.nomagichttp.internal.RequestTarget.parse;
 import static alpha.nomagichttp.util.Headers.accepts;
@@ -180,14 +176,10 @@ final class HttpExchange
     }
     
     private class ErrorHandlers {
-        private final List<Supplier<ErrorHandler>> factories;
-        private List<ErrorHandler> constructed;
         private Throwable prev;
         private int attemptCount;
         
         ErrorHandlers() {
-            this.factories = server.getErrorHandlers();
-            this.constructed = null;
             this.attemptCount = 0;
         }
         
@@ -198,7 +190,7 @@ final class HttpExchange
             }
             prev = t;
             
-            if (factories.isEmpty()) {
+            if (server.getErrorHandlers().isEmpty()) {
                 return usingDefault(t);
             }
             
@@ -222,8 +214,7 @@ final class HttpExchange
         }
         
         private CompletionStage<Response> usingHandlers(Throwable t) {
-            for (int i = 0; i < factories.size(); ++i) {
-                final ErrorHandler h = cacheOrNew(i);
+            for (ErrorHandler h : server.getErrorHandlers()) {
                 try {
                     return requireNonNull(h.apply(t, request, handler));
                 } catch (Throwable next) {
@@ -233,26 +224,8 @@ final class HttpExchange
                     } // else continue; Handler opted out
                 }
             }
-            
             // All handlers opted out
             return usingDefault(t);
-        }
-        
-        private ErrorHandler cacheOrNew(int handlerIndex) {
-            final ErrorHandler h;
-            
-            if (constructed == null) {
-                constructed = new ArrayList<>();
-            }
-            
-            assert factories instanceof RandomAccess;
-            if (constructed.size() < handlerIndex + 1) {
-                constructed.add(h = factories.get(handlerIndex).get());
-            } else {
-                h = constructed.get(handlerIndex);
-            }
-            
-            return h;
         }
     }
     

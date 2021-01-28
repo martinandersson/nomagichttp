@@ -1,6 +1,7 @@
 package alpha.nomagichttp.handler;
 
 import alpha.nomagichttp.HttpServer;
+import alpha.nomagichttp.examples.RetryRequestOnError;
 import alpha.nomagichttp.message.BadHeaderException;
 import alpha.nomagichttp.message.BadMediaTypeSyntaxException;
 import alpha.nomagichttp.message.MaxRequestHeadSizeExceededException;
@@ -8,7 +9,6 @@ import alpha.nomagichttp.message.Request;
 import alpha.nomagichttp.message.RequestHeadParseException;
 import alpha.nomagichttp.message.Response;
 import alpha.nomagichttp.message.Responses;
-import alpha.nomagichttp.route.AmbiguousNoHandlerFoundException;
 import alpha.nomagichttp.route.NoHandlerFoundException;
 import alpha.nomagichttp.route.NoRouteFoundException;
 
@@ -33,8 +33,8 @@ import static java.lang.System.Logger.Level.ERROR;
  * 
  * The server will call error handlers only during the phase of the HTTP
  * exchange when there is a client waiting on a response which the ordinary
- * request handler could not successfully provide and the channel remains
- * open.<p>
+ * request handler could not successfully provide and only if the channel
+ * remains open at the time of the error.<p>
  * 
  * Specifically for:<p>
  * 
@@ -42,10 +42,10 @@ import static java.lang.System.Logger.Level.ERROR;
  * server has begun receiving and parsing a request message until when the
  * request handler invocation has returned.<p>
  * 
- * 2) Exceptions that completed the response stage returned from the request
- * handler.<p>
+ * 2) Exceptions that completes exceptionally the response {@code
+ * CompletionStage} returned from the request handler.<p>
  * 
- * 3) Exceptions signalled to the server's subscriber of the {@link
+ * 3) Exceptions signalled to the server's {@code Flow.Subscriber} of the {@link
  * Response#body() response body} - if and only if - the body publisher has not
  * yet published any bytebuffers before the error was signalled. It doesn't make
  * much sense trying to recover the situation after the point where a response
@@ -60,7 +60,7 @@ import static java.lang.System.Logger.Level.ERROR;
  * either return a {@code CompletionStage} or accepts a {@code
  * Flow.Subscriber}.<p>
  * 
- * For server errors caught but not propagated to an error handler, the server's
+ * For errors caught but not propagated to an error handler, the server's
  * strategy is usually to log the error and immediately close the client's
  * channel according to the procedure documented in {@link
  * Response#mustCloseAfterWrite()}.<p>
@@ -77,29 +77,27 @@ import static java.lang.System.Logger.Level.ERROR;
  * 
  * Super simple example:
  * <pre>{@code
- *     ErrorHandler eh = (thr, req, rh) -> {
+ *     ErrorHandler eh = (throwable, request, requestHandler) -> {
  *         try {
- *             throw thr;
+ *             throw throwable;
  *         } catch (ExpectedException e) {
- *             return someResponse();
+ *             return alternativeResponse();
  *         } catch (AnotherExpectedException e) {
- *             return anotherResponse();
+ *             return anotherAlternativeResponse();
  *         }
  *         // else automagically re-thrown and propagated throughout the chain
  *     };
  * }</pre>
  * 
- * The server accepts a {@code Supplier} of the error handler. The supplier will
- * be called lazily upon the first invocation of the handler and the handler
- * instance returned from the supplier is cached throughout each unique HTTP
- * exchange. This means that at the discretion of the application, the supplier
- * can return a global singleton applying static logic, or it can return a new
- * instance which in turn can safely keep state related to the HTTP exchange
- * such as a retry-counter.<p>
+ * If there is a request available when the error handler is called, then the
+ * {@link Request#attributes() request attributes} is a good place to store
+ * state that needs to be passed between handler invocations, such as an error
+ * retry counter (see example {@link RetryRequestOnError}).
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  * 
  * @see HttpServer.Config#maxErrorRecoveryAttempts() 
+ * @see ErrorHandler#apply(Throwable, Request, RequestHandler) 
  */
 @FunctionalInterface
 public interface ErrorHandler
@@ -118,7 +116,7 @@ public interface ErrorHandler
      * 
      * So, if the request argument is null, then the request handler argument
      * will absolutely also be null (the server never got so far as to find
-     * and/or call the request handler).<p>
+     * and/or invoke the request handler).<p>
      * 
      * If the request argument is not null, then the request handler argument
      * may or may not be null. If the request handler is not null, then the
@@ -133,17 +131,15 @@ public interface ErrorHandler
      * be null, but since the request handler wasn't found then obviously the
      * request handler argument is going to be null.<p>
      * 
-     * It is a design goal of this library to have each exception type provide
-     * whatever API necessary to investigate and possibly resolve the error.
-     * For example, {@code NoRouteFoundException} provides the request-target
-     * for which no route was found. As another example, {@link
-     * NoHandlerFoundException} provides all the input parameters that goes into
-     * finding a request handler, such as the request's method token- and media
-     * types.<p>
+     * It is a design goal of the NoMagicHTTP library to have each exception
+     * type provide whatever API necessary to investigate and possibly resolve
+     * the error. For example, {@code NoRouteFoundException} provides the path
+     * for which no route was found, which could potentially be used by the
+     * application as a basis for a redirect.<p>
      * 
-     * If the original error is a {@link CompletionException}, then the server
-     * will attempt to recursively unpack the cause which is what will get
-     * passed to the error handler.
+     * If the error which the server caught is a {@link CompletionException},
+     * then the server will attempt to recursively unpack a non-null cause and
+     * pass the cause to the error handler instead.
      * 
      * @param thr the error (never null)
      * @param req request object (may be null)
@@ -159,7 +155,7 @@ public interface ErrorHandler
     
     /**
      * Is the default error handler used by the server if no other handler has
-     * been provided or is applicable.<p>
+     * been provided or no error handler handled the error.<p>
      * 
      * The default error handler will immediately log the exception, then
      * proceed to return a response according to the following table.
@@ -190,10 +186,6 @@ public interface ErrorHandler
      *   </tr>
      *   <tr>
      *     <th scope="row"> {@link NoHandlerFoundException} </th>
-     *     <td> {@link Responses#notImplemented()} </td>
-     *   </tr>
-     *   <tr>
-     *     <th scope="row"> {@link AmbiguousNoHandlerFoundException} </th>
      *     <td> {@link Responses#notImplemented()} </td>
      *   </tr>
      *   <tr>

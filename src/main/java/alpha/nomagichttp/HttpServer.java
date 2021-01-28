@@ -16,7 +16,6 @@ import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
 import java.nio.channels.AsynchronousServerSocketChannel;
-import java.util.function.Supplier;
 
 /**
  * Listens on a port for HTTP {@link Request requests} targeting a specific
@@ -83,10 +82,15 @@ public interface HttpServer
     /**
      * Create a server using {@linkplain Config#DEFAULT default configuration}.
      * 
+     * @param eh error handler(s)
+     * 
      * @return an instance of {@link DefaultServer}
+     * 
+     * @throws NullPointerException
+     *             if {@code eh} or an element therein is {@code null}
      */
-    static HttpServer create() {
-        return create(Config.DEFAULT);
+    static HttpServer create(ErrorHandler... eh) {
+        return create(Config.DEFAULT, eh);
     }
     
     /**
@@ -97,10 +101,10 @@ public interface HttpServer
      * 
      * @return an instance of {@link DefaultServer}
      * 
-     * @throws NullPointerException if any given argument is {@code null}
+     * @throws NullPointerException
+     *             if any given argument or element is {@code null}
      */
-    @SafeVarargs
-    static HttpServer create(Config config, Supplier<? extends ErrorHandler>... eh) {
+    static HttpServer create(Config config, ErrorHandler... eh) {
         return new DefaultServer(config, new DefaultRouteRegistry(), eh);
     }
     
