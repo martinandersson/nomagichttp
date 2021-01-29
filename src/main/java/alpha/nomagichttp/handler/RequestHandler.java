@@ -332,30 +332,36 @@ public interface RequestHandler
      * The next step is to specify what media type the handler consumes followed
      * by what media type it produces, for example "text/plain".<p>
      * 
-     * The last step will be to specify the logic of the handler. The last step
-     * is also what builds a new handler instance.<p>
+     * The last step will be to specify the {@link RequestHandler#logic() logic}
+     * of the handler. The last step is also what builds a new handler
+     * instance.<p>
      * 
      * Ultimately, the logic is a {@code Function<Request,
-     * CompletionStage<Response>>}, but the builder exposes adapter methods
-     * which accepts a variety of functional types depending on the needs of the
-     * application.<p>
+     * CompletionStage<Response>>}, but for convenience, the builder provides
+     * some adapter methods which receives a variety of arguments adapted into
+     * the final request-processing {@code Function}, accordingly:<p>
      * 
-     * {@code run()} receives a no-args {@link Runnable} which represents logic
-     * that does not need to access the request object and has no need to
-     * customize the "202 Accepted" response sent back to the client. This
-     * flavor is useful for handlers that will accept all requests as a command
-     * to initiate processes on the server.<p>
+     * <strong>{@code respond()}</strong> receives an already built response
+     * object which is immediately and indiscriminately returned for each
+     * handled request. A great option for static resources!<p> 
      * 
-     * {@code accept()} is very much similar to {@code run()}, except the logic
-     * is represented by a {@link Consumer} who will receive the request object
-     * and can therefore read meaningful data out of it.<p>
+     * <strong>{@code run()}</strong> receives a no-args {@link Runnable} which
+     * represents logic that does not need to access the request object and has
+     * no need to customize the "202 Accepted" response sent back to the client.
+     * This flavor is useful for handlers that will accept all requests as a
+     * command to initiate processes on the server.<p>
      * 
-     * {@code supply()} receives a {@link Supplier} which represents logic that
-     * is not interested in the request object but does have the need to return
-     * a fully customizable response.<p>
+     * <strong>{@code accept()}</strong> is very much similar to {@code run()},
+     * except the logic is represented by a {@link Consumer} who will receive
+     * the request object and can therefore read meaningful data out of it.<p>
      * 
-     * {@code apply()} receives a {@link Function} which has access to the
-     * request object <i>and</i> returns a fully customizable response.
+     * <strong>{@code supply()}</strong> receives a {@link Supplier} which
+     * represents logic that is not interested in the request object but does
+     * have the need to return a fully customizable response.<p>
+     * 
+     * <strong>{@code apply()}</strong> receives a {@link Function} which has
+     * access to the request object <i>and</i> returns a fully customizable
+     * response.<p>
      * 
      * The implementation is thread-safe.<p>
      * 
@@ -511,10 +517,24 @@ public interface RequestHandler
         interface LastStep
         {
             /**
+             * Delegate handler's logic to a static response.
+             * 
+             * @param response what each request should get in response
+             * @return a new request handler
+             * @throws NullPointerException if {@code response} is {@code null}
+             * @see Builder
+             */
+            default RequestHandler respond(Response response) {
+                return supply(response::completedStage);
+            }
+            
+            /**
              * Delegate handler's logic to a runnable.
              * 
              * @param logic delegate
              * @return a new request handler
+             * @throws NullPointerException if {@code logic} is {@code null}
+             * @see Builder
              */
             default RequestHandler run(Runnable logic) {
                 requireNonNull(logic);
@@ -526,6 +546,8 @@ public interface RequestHandler
              *
              * @param logic delegate
              * @return a new request handler
+             * @throws NullPointerException if {@code logic} is {@code null}
+             * @see Builder
              */
             default RequestHandler accept(Consumer<Request> logic) {
                 requireNonNull(logic);
@@ -540,6 +562,8 @@ public interface RequestHandler
              *
              * @param logic delegate
              * @return a new request handler
+             * @throws NullPointerException if {@code logic} is {@code null}
+             * @see Builder
              */
             default RequestHandler supply(Supplier<CompletionStage<Response>> logic) {
                 requireNonNull(logic);
@@ -551,6 +575,7 @@ public interface RequestHandler
              *
              * @param logic to call
              * @return a new request handler
+             * @throws NullPointerException if {@code logic} is {@code null}
              */
             RequestHandler apply(Function<Request, CompletionStage<Response>> logic);
         }
