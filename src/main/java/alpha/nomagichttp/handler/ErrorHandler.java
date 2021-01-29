@@ -226,6 +226,6 @@ public interface ErrorHandler
             res = internalServerError();
         }
         
-        return res.asCompletedStage();
+        return res.completedStage();
     };
 }

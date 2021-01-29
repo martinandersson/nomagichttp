@@ -26,7 +26,7 @@ public class EchoHeaders
             
             return b.addHeaders(req.headers())
                     .build()
-                    .asCompletedStage();
+                    .completedStage();
         });
         
         HttpServer.create().add("/echo", h).start(PORT);

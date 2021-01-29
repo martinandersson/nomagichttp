@@ -66,7 +66,7 @@ class ErrorHandlingTest
                         .reasonPhrase("Custom Not Found!")
                         .mustCloseAfterWrite(true)
                         .build()
-                        .asCompletedStage();
+                        .completedStage();
             }
             throw exc;
         };
@@ -102,7 +102,7 @@ class ErrorHandlingTest
             return Response.Builder.ok()
                     .header("N", Integer.toString(c.get()))
                     .build()
-                    .asCompletedStage();
+                    .completedStage();
         });
         
         ErrorHandler retry = (t, r, h2) -> h2.logic().apply(r);

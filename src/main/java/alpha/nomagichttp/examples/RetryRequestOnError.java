@@ -59,7 +59,7 @@ public class RetryRequestOnError
             }
             
             System.out.println(" and will return 200 OK");
-            return ok().asCompletedStage();
+            return ok().completedStage();
         }
     }
     

@@ -22,11 +22,11 @@ public class HelloWorldResponse
         /*
          * The API is asynchronous and handlers return to the server a
          * CompletionStage<Response>. If the response can be created immediately
-         * by the handler without blocking, use Response.asCompletedStage().
+         * by the handler without blocking, use Response.completedStage().
          */
         
         CompletionStage<Response> answer
-                = Responses.ok("Hello, World!").asCompletedStage();
+                = Responses.ok("Hello, World!").completedStage();
         
         RequestHandler handler = RequestHandlers.GET().supply(() -> answer);
         

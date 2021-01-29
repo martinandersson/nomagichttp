@@ -29,14 +29,14 @@ public class GreetParameter
         app.add("/hello/:name", GET().apply(req -> {
             String name = req.parameters().path("name");
             String text = "Hello " + name + "!";
-            return ok(text).asCompletedStage();
+            return ok(text).completedStage();
         }));
         
         app.add("/hello", GET().apply(req -> req.parameters()
                 .queryFirst("name")
                 .map(str -> ok("Hello " + str))
                 .orElseGet(Responses::badRequest)
-                .asCompletedStage()));
+                .completedStage()));
         
         app.start(PORT);
         System.out.println("Listening on port " + PORT + ".");

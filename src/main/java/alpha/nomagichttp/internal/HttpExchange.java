@@ -209,7 +209,7 @@ final class HttpExchange
             } catch (Throwable next) {
                 // Do not next.addSuppressed(unpacked); the first thing DEFAULT did was to log unpacked.
                 LOG.log(ERROR, "Default error handler failed.", next);
-                return Responses.internalServerError().asCompletedStage();
+                return Responses.internalServerError().completedStage();
             }
         }
         

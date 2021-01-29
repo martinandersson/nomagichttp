@@ -112,7 +112,7 @@ public interface Response
      * 
      * @return this response object boxed in a completed stage
      */
-    default CompletionStage<Response> asCompletedStage() {
+    default CompletionStage<Response> completedStage() {
         return CompletableFuture.completedStage(this);
     }
     

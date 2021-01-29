@@ -531,7 +531,7 @@ public interface RequestHandler
                 requireNonNull(logic);
                 return apply(req -> {
                     logic.accept(req);
-                    return accepted().asCompletedStage();
+                    return accepted().completedStage();
                 });
             }
             

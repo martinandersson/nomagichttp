@@ -44,7 +44,7 @@ class SimpleEndToEndTest extends AbstractEndToEndTest
     @Test
     void helloworld_response() throws IOException {
         RequestHandler handler = GET().supply(() ->
-                ok("Hello World!").asCompletedStage());
+                ok("Hello World!").completedStage());
         
         server().add("/hello-response", handler);
         
@@ -67,13 +67,13 @@ class SimpleEndToEndTest extends AbstractEndToEndTest
         server().add("/hello/:name", GET().apply(req -> {
             String name = req.parameters().path("name");
             String text = "Hello " + name + "!";
-            return ok(text).asCompletedStage();
+            return ok(text).completedStage();
         }));
     
         server().add("/hello", GET().apply(req -> {
             String name = req.parameters().queryFirst("name").get();
             String text = "Hello " + name + "!";
-            return ok(text).asCompletedStage();
+            return ok(text).completedStage();
         }));
         
         String req1 =
@@ -125,7 +125,7 @@ class SimpleEndToEndTest extends AbstractEndToEndTest
         RequestHandler echo = GET().apply(req -> Response.Builder.ok()
                 .addHeaders(req.headers())
                 .build()
-                .asCompletedStage());
+                .completedStage());
         
         server().add("/echo-headers", echo);
         
