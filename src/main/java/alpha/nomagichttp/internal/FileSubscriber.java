@@ -28,7 +28,7 @@ final class FileSubscriber implements SubscriberAsStage<PooledByteBufferHolder, 
      * operations running concurrently would yield a performance gain,
      * especially in the light of our environment where the source is a network
      * channel which we can pretty much assume is always going to send us stuff
-     * in a slower pace than one local write operation.
+     * in a slower pace than using a single local write operation.
      * 
      * Even if the network channel would outrun the single operation, past
      * experience has told me personally that concurrent disk I/O yields very
@@ -44,7 +44,8 @@ final class FileSubscriber implements SubscriberAsStage<PooledByteBufferHolder, 
      * In fact, ideally, we would love to know and set a limit to the level of
      * "optimal disk concurrency" and then implement a strategy to distribute
      * our resources fairly amongst file-receiving requests. Refusing to spur
-     * more than 1 concurrent write per request is actually a good start.
+     * more than 1 concurrent write per request is what I consider to be a good
+     * start.
      */
     
     private final Path file;
@@ -90,6 +91,15 @@ final class FileSubscriber implements SubscriberAsStage<PooledByteBufferHolder, 
     
     @Override
     public void onComplete() {
+        if (bytesWritten == 0) {
+            try {
+                Files.deleteIfExists(file);
+            } catch (IOException e) {
+                result.completeExceptionally(e);
+                return;
+            }
+        }
+        
         try {
             ch.close();
         } catch (IOException e) {

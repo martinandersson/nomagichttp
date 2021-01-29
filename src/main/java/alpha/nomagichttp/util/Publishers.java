@@ -51,7 +51,8 @@ import static java.util.Objects.requireNonNull;
  * advantages. For the subscriber developer, there will be no {@code
  * StackOverflowError} gotchas and weird recommendations in the
  * specification "to invoke Subscription methods at the very end of any signal
- * processing" can safely be ignored.<p>
+ * processing" can safely be ignored. Feel free to focus on writing code with no
+ * worries.<p>
  * 
  * The only thing a subscriber developer should be mindful about is the
  * following: {@code Subscription.cancel()} is only guaranteed to have an
@@ -94,9 +95,10 @@ import static java.util.Objects.requireNonNull;
  * class' publishers - in favor of specification compliance - will always call
  * {@code onSubscribe()} first and if the intent is to immediately terminate the
  * subscription, the subscription object will be a temporary dummy. The dummy
- * will still be monitored and if the subscriber happens to cancel the
- * subscription no more signals will follow (§1.8, §3.12). Requesting demand
- * from the dummy is NOP (see {@link Subscriptions#canOnlyBeCancelled()}).<p>
+ * will still be monitored and if {@code cancel()} is called on the dummy, then
+ * the subscription will not receive the completion signal (§1.8, §3.12).
+ * Requesting demand from the dummy is NOP (see {@link
+ * Subscriptions#canOnlyBeCancelled()}).<p>
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  * 

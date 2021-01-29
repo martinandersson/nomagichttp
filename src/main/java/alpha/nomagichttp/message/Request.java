@@ -132,7 +132,7 @@ public interface Request
      * 
      * @see Body
      */
-    Optional<Body> body();
+    Body body();
     
     /**
      * Returns an attributes API bound to this request.<p>
@@ -457,14 +457,19 @@ public interface Request
      * {@link #convert(BiFunction)} method or consumed directly "on arrival"
      * using the {@link #subscribe(Flow.Subscriber)} method.<p>
      * 
+     * If the body {@link #isEmpty()}, {@code subscribe()} completes the subscription
+     * immediately. {@code toText()} completes immediately with an empty string.
+     * {@code toFile()} completes immediately with 0 bytes. {@code convert()}
+     * immediately invokes its given function with an empty byte array.<p>
+     * 
      * The body bytes can not be directly consumed more than once; they are not
-     * saved by the server. An attempt to {@code convert(...)} or {@code
-     * subscribe(...)} more than once will result in an {@code
+     * saved by the server. An attempt to {@code convert()} or {@code
+     * subscribe()} more than once will result in an {@code
      * IllegalStateException}.<p>
      * 
      * Same is is also true for utility methods that "trickle down". If for
-     * example method {@code convert(...)} is used followed by {@code toText()},
-     * then the latter will complete exceptionally with an {@code
+     * example {@code convert()} is used followed by {@code toText()}, then the
+     * latter will complete exceptionally with an {@code
      * IllegalStateException}.<p>
      * 
      * And, it does not matter if a {@code Flow.Subscription} is immediately
@@ -693,8 +698,10 @@ public interface Request
          * a new file will be created or an existing file will be
          * overwritten.<p>
          * 
-         * If the operation completes exceptionally, the file is removed.<p>
-         *
+         * If the returned stage completes with 0 bytes, then the file will not
+         * have been created. If the file is created but the operation completes
+         * exceptionally, then the file is removed.<p>
+         * 
          * All exceptions thrown by {@code AsynchronousFileChannel.open()} is
          * delivered through the returned stage.<p>
          * 
@@ -731,6 +738,17 @@ public interface Request
          * @return the result from applying the function {@code f}
          */
         <R> CompletionStage<R> convert(BiFunction<byte[], Integer, R> f);
+        
+        /**
+         * Returns {@code true} if the request contains no body, otherwise
+         * {@code false}.
+         * 
+         * @return {@code true} if the request contains no body,
+         *         otherwise {@code false}
+         * 
+         * @see Body
+         */
+        boolean isEmpty();
     }
     
     /**

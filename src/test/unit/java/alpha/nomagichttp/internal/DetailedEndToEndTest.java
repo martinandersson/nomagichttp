@@ -38,7 +38,7 @@ class DetailedEndToEndTest extends AbstractEndToEndTest
     static void installHandlers() {
         Function<Request, CompletionStage<Response>>
                 isBodyEmpty = req -> Responses.ok(String.valueOf(req.body().isEmpty())).completedStage(),
-                echoBody    = req -> req.body().get().toText().thenApply(Responses::ok);
+                echoBody    = req -> req.body().toText().thenApply(Responses::ok);
         
         server().add(IS_BODY_EMPTY, POST().apply(isBodyEmpty));
         server().add(ECHO_BODY,     POST().apply(echoBody));
@@ -98,7 +98,7 @@ class DetailedEndToEndTest extends AbstractEndToEndTest
                   midway = length / 2;
         
         RequestHandler discardMidway = RequestHandlers.POST().accept((req) ->
-            req.body().get().subscribe(
+            req.body().subscribe(
                 new AfterByteTargetStop(midway, Flow.Subscription::cancel)));
         
         server().add("/discard-midway", discardMidway);
@@ -120,7 +120,7 @@ class DetailedEndToEndTest extends AbstractEndToEndTest
         doNotAssertNormalFinish();
         
         RequestHandler crashAfterOneByte = RequestHandlers.POST().accept(req ->
-            req.body().get().subscribe(
+            req.body().subscribe(
                 new AfterByteTargetStop(1, subscriptionIgnored -> {
                     throw new RuntimeException("Oops."); })));
         

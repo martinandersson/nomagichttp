@@ -99,7 +99,7 @@ class SimpleEndToEndTest extends AbstractEndToEndTest
     @Test
     void greet_requestbody() throws IOException {
         RequestHandler echo = POST().apply(req ->
-                req.body().get().toText().thenApply(name -> ok("Hello " + name + "!")));
+                req.body().toText().thenApply(name -> ok("Hello " + name + "!")));
         
         server().add("/greet-body", echo);
         
@@ -150,7 +150,7 @@ class SimpleEndToEndTest extends AbstractEndToEndTest
                 .resolve("some-file.txt");
         
         RequestHandler saver = POST().apply(req ->
-                req.body().get().toFile(file)
+                req.body().toFile(file)
                           .thenApply(n -> Long.toString(n))
                           .thenApply(Responses::ok));
         

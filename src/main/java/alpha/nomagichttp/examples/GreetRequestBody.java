@@ -28,7 +28,7 @@ public class GreetRequestBody
          */
         
         RequestHandler h = POST().apply(req ->
-                req.body().get().toText().thenApply(name ->
+                req.body().toText().thenApply(name ->
                         ok("Hello, " + name + "!")));
         
         HttpServer.create().add("/hello", h).start(PORT);
