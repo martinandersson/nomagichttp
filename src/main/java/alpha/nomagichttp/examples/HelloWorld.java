@@ -21,9 +21,9 @@ public class HelloWorld {
         
         // All requests coming in to the server expects a Response in return
         // (Response is thread-safe and so should be cached when possible)
-        Response answer = Responses.ok("Hello World!");
+        Response answer = Responses.text("Hello World!");
         
-        // This handler handles requests of the verb/method GET
+        // Handles requests of the verb/method GET
         RequestHandler handler = RequestHandlers.GET().respond(answer);
         
         // The real contents of the server are resources, addressed by a request path.

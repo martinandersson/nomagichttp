@@ -46,8 +46,8 @@ public final class Responses
      * 
      * @return a "200 OK"-response with a text body
      */
-    public static Response ok(String textPlain) {
-        return ok("text/plain; charset=utf-8", BodyPublishers.ofString(textPlain));
+    public static Response text(String textPlain) {
+        return text("text/plain; charset=utf-8", BodyPublishers.ofString(textPlain));
     }
     
     /**
@@ -58,8 +58,8 @@ public final class Responses
      * 
      * @return a "200 OK"-response with an arbitrary body
      */
-    public static Response ok(String contentType, BodyPublisher body) {
-        return ok(MediaType.parse(contentType), body, body.contentLength());
+    public static Response text(String contentType, BodyPublisher body) {
+        return text(MediaType.parse(contentType), body, body.contentLength());
     }
     
     /**
@@ -70,8 +70,8 @@ public final class Responses
      * 
      * @return a "200 OK"-response with an arbitrary body
      */
-    public static Response ok(MediaType contentType, BodyPublisher body) {
-        return ok(contentType, body, body.contentLength());
+    public static Response text(MediaType contentType, BodyPublisher body) {
+        return text(contentType, body, body.contentLength());
     }
     
     /**
@@ -83,8 +83,8 @@ public final class Responses
      *
      * @return a "200 OK"-response with an arbitrary body
      */
-    public static Response ok(String contentType, Flow.Publisher<ByteBuffer> body, long length) {
-        return ok(MediaType.parse(contentType), body, length);
+    public static Response text(String contentType, Flow.Publisher<ByteBuffer> body, long length) {
+        return text(MediaType.parse(contentType), body, length);
     }
     
     /**
@@ -96,7 +96,7 @@ public final class Responses
      *
      * @return a "200 OK"-response with an arbitrary body
      */
-    public static Response ok(MediaType contentType, Flow.Publisher<ByteBuffer> body, long length) {
+    public static Response text(MediaType contentType, Flow.Publisher<ByteBuffer> body, long length) {
         return Response.Builder.ok()
                 .contentType(contentType)
                 .contentLenght(length)

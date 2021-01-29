@@ -37,8 +37,8 @@ class DetailedEndToEndTest extends AbstractEndToEndTest
     @BeforeAll
     static void installHandlers() {
         Function<Request, CompletionStage<Response>>
-                isBodyEmpty = req -> Responses.ok(String.valueOf(req.body().isEmpty())).completedStage(),
-                echoBody    = req -> req.body().toText().thenApply(Responses::ok);
+                isBodyEmpty = req -> Responses.text(String.valueOf(req.body().isEmpty())).completedStage(),
+                echoBody    = req -> req.body().toText().thenApply(Responses::text);
         
         server().add(IS_BODY_EMPTY, POST().apply(isBodyEmpty));
         server().add(ECHO_BODY,     POST().apply(echoBody));

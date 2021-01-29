@@ -5,7 +5,7 @@ import alpha.nomagichttp.HttpServer;
 import java.io.IOException;
 
 import static alpha.nomagichttp.handler.RequestHandlers.POST;
-import static alpha.nomagichttp.message.Responses.ok;
+import static alpha.nomagichttp.message.Responses.text;
 
 /**
  * Responds a greeting using a name taken from the request body.
@@ -29,7 +29,7 @@ public class GreetBody
         
         app.add("/hello", POST().apply(req ->
                 req.body().toText().thenApply(name ->
-                        ok("Hello, " + name + "!"))));
+                        text("Hello, " + name + "!"))));
         
         app.start(PORT);
         System.out.println("Listening on port " + PORT + ".");

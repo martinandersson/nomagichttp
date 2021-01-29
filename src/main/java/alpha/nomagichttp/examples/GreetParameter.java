@@ -6,7 +6,7 @@ import java.io.IOException;
 
 import static alpha.nomagichttp.handler.RequestHandlers.GET;
 import static alpha.nomagichttp.message.Responses.badRequest;
-import static alpha.nomagichttp.message.Responses.ok;
+import static alpha.nomagichttp.message.Responses.text;
 
 /**
  * Responds a greeting using a name taken from a path- or query parameter.
@@ -41,14 +41,14 @@ public class GreetParameter
         
         app.add("/hello/:name", GET().apply(req -> {
             String name = req.parameters().path("name");
-            String text = "Hello " + name + "!";
-            return ok(text).completedStage();
+            String msg  = "Hello " + name + "!";
+            return text(msg).completedStage();
         }));
         
         app.add("/hello", GET().apply(req ->
                 req.parameters()
                    .queryFirst("name")
-                   .map(str -> ok("Hello " + str))
+                   .map(str -> text("Hello " + str))
                    .orElse(badRequest())
                    .completedStage()));
         

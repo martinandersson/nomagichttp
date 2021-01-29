@@ -11,7 +11,7 @@ import java.nio.file.Path;
 
 import static alpha.nomagichttp.handler.RequestHandlers.GET;
 import static alpha.nomagichttp.handler.RequestHandlers.POST;
-import static alpha.nomagichttp.message.Responses.ok;
+import static alpha.nomagichttp.message.Responses.text;
 import static alpha.nomagichttp.testutil.ClientOperations.CRLF;
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -43,10 +43,8 @@ class SimpleEndToEndTest extends AbstractEndToEndTest
     
     @Test
     void helloworld_response() throws IOException {
-        RequestHandler handler = GET().supply(() ->
-                ok("Hello World!").completedStage());
-        
-        server().add("/hello-response", handler);
+        server().add("/hello-response",
+                GET().respond(text("Hello World!")));
         
         String req =
             "GET /hello-response HTTP/1.1" + CRLF +
@@ -67,13 +65,13 @@ class SimpleEndToEndTest extends AbstractEndToEndTest
         server().add("/hello/:name", GET().apply(req -> {
             String name = req.parameters().path("name");
             String text = "Hello " + name + "!";
-            return ok(text).completedStage();
+            return text(text).completedStage();
         }));
     
         server().add("/hello", GET().apply(req -> {
             String name = req.parameters().queryFirst("name").get();
             String text = "Hello " + name + "!";
-            return ok(text).completedStage();
+            return text(text).completedStage();
         }));
         
         String req1 =
@@ -99,7 +97,7 @@ class SimpleEndToEndTest extends AbstractEndToEndTest
     @Test
     void greet_requestbody() throws IOException {
         RequestHandler echo = POST().apply(req ->
-                req.body().toText().thenApply(name -> ok("Hello " + name + "!")));
+                req.body().toText().thenApply(name -> text("Hello " + name + "!")));
         
         server().add("/greet-body", echo);
         
@@ -152,7 +150,7 @@ class SimpleEndToEndTest extends AbstractEndToEndTest
         RequestHandler saver = POST().apply(req ->
                 req.body().toFile(file)
                           .thenApply(n -> Long.toString(n))
-                          .thenApply(Responses::ok));
+                          .thenApply(Responses::text));
         
         server().add("/small-file", saver);
         

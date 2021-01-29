@@ -28,7 +28,7 @@ class TwoHundredRequestsFromSameClient extends AbstractSingleClientTest
     @BeforeAll
     static void addHandler() {
         RequestHandler echo = RequestHandlers.POST().apply(req ->
-                req.body().toText().thenApply(Responses::ok));
+                req.body().toText().thenApply(Responses::text));
         
         server().add("/echo", echo);
     }
