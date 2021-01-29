@@ -9,11 +9,11 @@ import static alpha.nomagichttp.handler.RequestHandlers.POST;
 import static alpha.nomagichttp.message.Responses.ok;
 
 /**
- * Greets the user using the request body as name.
+ * Responds a greeting using a name taken from the request body.
  *
  * @author Martin Andersson (webmaster at martinandersson.com)
  */
-public class GreetRequestBody
+public class GreetBody
 {
     private static final int PORT = 8080;
     

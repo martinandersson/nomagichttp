@@ -101,12 +101,12 @@ foo@bar:~$ curl -i localhost:8080/hello?name=John
 
 This example will greet the user with a name taken as being the request body.
 
-See code: [src/main/java/.../GreetRequestBody.java][4-1]
+See code: [src/main/java/.../GreetBody.java][4-1]
 
 Run:
 
 ```console
-foo@bar:~$ java --class-path=$JAR $PKG.GreetRequestBody
+foo@bar:~$ java --class-path=$JAR $PKG.GreetBody
 Listening on port 8080.
 ```
 
@@ -121,7 +121,7 @@ Content-Length: 12
 Hello, John!
 ```
 
-[4-1]: src/main/java/alpha/nomagichttp/examples/GreetRequestBody.java
+[4-1]: src/main/java/alpha/nomagichttp/examples/GreetBody.java
 
 ### Echo request headers
 
