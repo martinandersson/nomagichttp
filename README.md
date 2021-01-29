@@ -38,66 +38,38 @@ PKG=alpha.nomagichttp.examples
 [1-1]: src/main/java/alpha/nomagichttp/package-info.java
 [1-2]: https://docs.oracle.com/en/java/javase/12/tools/java.html#GUID-3B1CE181-CD30-4178-9602-230B800D4FAE__USINGSOURCE-FILEMODETOLAUNCHSINGLE--B5E57618
 
-### Hello World - Console
+### Hello World
 
-This example will make the server print "Hello, World!" in the console.
+This example will make the server respond with a static "Hello World!" message.
 
-See code: [src/main/java/.../HelloWorldConsole.java][2-1]
+See code: [src/main/java/.../HelloWorld.java][2-1]
 
 Run:
 
 ```console
-foo@bar:~$ java --class-path=$JAR $PKG.HelloWorldConsole
+foo@bar:~$ java --class-path=$JAR $PKG.HelloWorld
 Listening on port 52063.
 ```
 
-Take note of the port and in a new terminal window, run:
+Make a request to the port in a new terminal window:
 
 ```console
-foo@bar:~$ curl -i localhost:52063
-HTTP/1.1 202 Accepted
-Content-Length: 0
-```
-
-The text message is printed in the first terminal window.
-
-[2-1]: src/main/java/alpha/nomagichttp/examples/HelloWorldConsole.java
-
-### Hello World - Response
-
-This example will make the server respond with "Hello, World!" in the message
-body returned to the client.
-
-See code: [src/main/java/.../HelloWorldResponse.java][3-1]
-
-Run:
-
-```console
-foo@bar:~$ java --class-path=$JAR $PKG.HelloWorldResponse
-Listening on port 8080.
-```
-
-Unlike the previous example, this version has hardcoded port 8080.
-
-In a new terminal, run:
-
-```console
-foo@bar:~$ curl -i localhost:8080
+foo@bar:~$ curl -i localhost:52063/hello
 HTTP/1.1 200 OK
 Content-Type: text/plain; charset=utf-8
-Content-Length: 13
+Content-Length: 12
 
-Hello, World!
+Hello World!
 ```
 
-[3-1]: src/main/java/alpha/nomagichttp/examples/HelloWorldResponse.java
+[2-1]: src/main/java/alpha/nomagichttp/examples/HelloWorld.java
 
 ### Greet using name from request path
 
 This example registers two routes in order to respond a greeting with a name
 taken from a path- or query parameter.
 
-See code: [src/main/java/.../GreetParameter.java][4-1]
+See code: [src/main/java/.../GreetParameter.java][3-1]
 
 Run:
 
@@ -123,13 +95,13 @@ Alternatively, you may pass the name as a query parameter:
 foo@bar:~$ curl -i localhost:8080/hello?name=John
 ```
 
-[4-1]: src/main/java/alpha/nomagichttp/examples/GreetParameter.java
+[3-1]: src/main/java/alpha/nomagichttp/examples/GreetParameter.java
 
 ### Greet using name from request body
 
 This example will greet the user with a name taken as being the request body.
 
-See code: [src/main/java/.../GreetRequestBody.java][5-1]
+See code: [src/main/java/.../GreetRequestBody.java][4-1]
 
 Run:
 
@@ -149,13 +121,13 @@ Content-Length: 12
 Hello, John!
 ```
 
-[5-1]: src/main/java/alpha/nomagichttp/examples/GreetRequestBody.java
+[4-1]: src/main/java/alpha/nomagichttp/examples/GreetRequestBody.java
 
 ### Echo request headers
 
 This example echoes back the request headers.
 
-See code: [src/main/java/.../EchoHeaders.java][6-1]
+See code: [src/main/java/.../EchoHeaders.java][5-1]
 
 Run:
 
@@ -179,14 +151,14 @@ User-Agent: curl/7.68.0
 Content-Length: 0
 ```
 
-[6-1]: src/main/java/alpha/nomagichttp/examples/EchoHeaders.java
+[5-1]: src/main/java/alpha/nomagichttp/examples/EchoHeaders.java
 
 ### Retry request on error
 
 This example demonstrates error handling and will re-execute the request handler
 on a particular known exception.
 
-See code: [src/main/java/.../RetryRequestOnError.java][7-1]
+See code: [src/main/java/.../RetryRequestOnError.java][6-1]
 
 Run:
 
@@ -210,4 +182,4 @@ Error handler will retry #1 after delay (ms): 40
 Request handler received a request 15:19:58.827 and will return 200 OK
 ```
 
-[7-1]: src/main/java/alpha/nomagichttp/examples/RetryRequestOnError.java
+[6-1]: src/main/java/alpha/nomagichttp/examples/RetryRequestOnError.java
