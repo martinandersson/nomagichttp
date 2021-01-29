@@ -1,9 +1,10 @@
 package alpha.nomagichttp.message;
 
+import alpha.nomagichttp.HttpServer;
 import alpha.nomagichttp.handler.ErrorHandler;
 import alpha.nomagichttp.handler.RequestHandler;
-import alpha.nomagichttp.util.Publishers;
 import alpha.nomagichttp.util.BetterBodyPublishers;
+import alpha.nomagichttp.util.Publishers;
 
 import java.net.http.HttpHeaders;
 import java.net.http.HttpRequest;
@@ -111,6 +112,8 @@ public interface Response
      * }</pre>
      * 
      * @return this response object boxed in a completed stage
+     * 
+     * @see HttpServer
      */
     default CompletionStage<Response> completedStage() {
         return CompletableFuture.completedStage(this);
