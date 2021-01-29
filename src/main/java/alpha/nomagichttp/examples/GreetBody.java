@@ -1,7 +1,6 @@
 package alpha.nomagichttp.examples;
 
 import alpha.nomagichttp.HttpServer;
-import alpha.nomagichttp.handler.RequestHandler;
 
 import java.io.IOException;
 
@@ -18,6 +17,7 @@ public class GreetBody
     private static final int PORT = 8080;
     
     public static void main(String... ignored) throws IOException {
+        HttpServer app = HttpServer.create();
         
         /*
          * The handler is invoked as soon as the server has parsed a request
@@ -27,11 +27,11 @@ public class GreetBody
          * a CompletionStage<String>, mapped by this handler into a greeting.
          */
         
-        RequestHandler h = POST().apply(req ->
+        app.add("/hello", POST().apply(req ->
                 req.body().toText().thenApply(name ->
-                        ok("Hello, " + name + "!")));
+                        ok("Hello, " + name + "!"))));
         
-        HttpServer.create().add("/hello", h).start(PORT);
+        app.start(PORT);
         System.out.println("Listening on port " + PORT + ".");
     }
 }
