@@ -466,8 +466,7 @@ public interface Request
      * 
      * Some utility methods such as {@code toText()} cache the result and will
      * return the same stage on future invocations. This may for example be
-     * useful to an {@link ErrorHandler error handler} also interested in
-     * accessing the result.<p>
+     * useful when retrying processing logic of the same request.<p>
      * 
      * The normal way to reject an operation is to fail-fast and blow up the
      * calling thread. This is also common practice for rejected
