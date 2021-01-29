@@ -1,5 +1,7 @@
 package alpha.nomagichttp.internal;
 
+import alpha.nomagichttp.message.Request;
+
 import java.io.IOException;
 import java.nio.channels.AsynchronousSocketChannel;
 import java.nio.channels.ClosedChannelException;
@@ -18,10 +20,10 @@ import static java.util.Objects.requireNonNull;
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  */
-final class ChannelOperations
+final class DefaultChannelOperations implements Request.ChannelOperations
 {
     private static final System.Logger LOG
-            = System.getLogger(ChannelOperations.class.getPackageName());
+            = System.getLogger(DefaultChannelOperations.class.getPackageName());
     
     private final AsynchronousSocketChannel ch;
     private final DefaultServer server;
@@ -29,7 +31,7 @@ final class ChannelOperations
     private volatile boolean readShutdown,
                              writeShutdown;
     
-    ChannelOperations(AsynchronousSocketChannel delegate, DefaultServer server) {
+    DefaultChannelOperations(AsynchronousSocketChannel delegate, DefaultServer server) {
         this.ch = requireNonNull(delegate);
         this.server = requireNonNull(server);
         readShutdown = writeShutdown = false;
@@ -40,7 +42,8 @@ final class ChannelOperations
      * 
      * @return the underlying channel this API delegates to
      */
-    AsynchronousSocketChannel delegate() {
+    @Override
+    public AsynchronousSocketChannel get() {
         return ch;
     }
     
@@ -182,7 +185,8 @@ final class ChannelOperations
      * 
      * @return see JavaDoc
      */
-    boolean isOpenForReading() {
+    @Override
+    public boolean isOpenForReading() {
         if (!readShutdown) {
             // We think reading is open but doesn't hurt probing a little bit more:
             return ch.isOpen();

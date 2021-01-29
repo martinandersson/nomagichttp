@@ -8,7 +8,6 @@ import alpha.nomagichttp.util.Publishers;
 
 import java.net.http.HttpHeaders;
 import java.nio.channels.AsynchronousFileChannel;
-import java.nio.channels.NetworkChannel;
 import java.nio.charset.Charset;
 import java.nio.file.OpenOption;
 import java.nio.file.Path;
@@ -60,7 +59,7 @@ final class DefaultRequest implements Request
             RequestTarget paramsQuery,
             RouteRegistry.Match paramsPath,
             Flow.Publisher<DefaultPooledByteBufferHolder> bodySource,
-            ChannelOperations child)
+            DefaultChannelOperations child)
     {
         this.head = head;
         this.paramsQuery = paramsQuery;
@@ -136,13 +135,8 @@ final class DefaultRequest implements Request
     }
     
     @Override
-    public NetworkChannel channel() {
-        return child.delegate();
-    }
-    
-    @Override
-    public boolean channelIsOpenForReading() {
-        return child.isOpenForReading();
+    public ChannelOperations channel() {
+        return child;
     }
     
     /**

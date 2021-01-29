@@ -46,7 +46,7 @@ class RequestHeadSubscriberTest
     
     CompletionStage<RequestHead> testee() throws InterruptedException {
         if (testee == null) {
-            ChannelOperations ops = new ChannelOperations(
+            DefaultChannelOperations ops = new DefaultChannelOperations(
                     SERVER.accept(), mock(DefaultServer.class));
             
             Flow.Publisher<DefaultPooledByteBufferHolder> bytes = new ChannelByteBufferPublisher(ops);

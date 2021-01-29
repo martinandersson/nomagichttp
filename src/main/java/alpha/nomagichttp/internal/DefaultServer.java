@@ -202,7 +202,7 @@ public final class DefaultServer implements HttpServer
             
             // TODO: child.setOption(StandardSocketOptions.SO_KEEPALIVE, true); ??
             
-            ChannelOperations ops = new ChannelOperations(child, DefaultServer.this);
+            DefaultChannelOperations ops = new DefaultChannelOperations(child, DefaultServer.this);
             new HttpExchange(DefaultServer.this, ops).begin();
         }
         

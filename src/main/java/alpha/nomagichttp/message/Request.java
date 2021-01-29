@@ -26,6 +26,7 @@ import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Flow;
 import java.util.function.BiFunction;
+import java.util.function.Supplier;
 import java.util.stream.Stream;
 
 /**
@@ -144,20 +145,7 @@ public interface Request
      */
     Attributes attributes();
     
-    /**
-     * Returns the channel from which this request originates.
-     * 
-     * @return the channel from which this request originates (never {@code null})
-     */
-    NetworkChannel channel();
-    
-    /**
-     * Returns {@code true} if the channel from which this request originates is
-     * open for reading, otherwise {@code false}.
-     * 
-     * @return see JavaDoc
-     */
-    boolean channelIsOpenForReading();
+    ChannelOperations channel();
     
     /**
      * Is a thread-safe and non-blocking API for accessing immutable request
@@ -506,7 +494,7 @@ public interface Request
      * unexpected errors, in particular, errors that originate from the
      * channel's read operation. The safest bet for an application when
      * attempting error recovery is to always check first if {@link
-     * Request#channelIsOpenForReading()}.<p>
+     * ChannelOperations#isOpenForReading() request.channel().isOpenForReading()}.<p>
      * 
      * 
      * <h3>Subscribing to bytes with a {@code Flow.Subscriber}</h3>
@@ -905,5 +893,30 @@ public interface Request
          * @return a modifiable map view of the attributes
          */
         <V> ConcurrentMap<String, V> asMapAny();
+    }
+    
+    /**
+     * An API for management of the channel from which a request originates.
+     * 
+     * @author Martin Andersson (webmaster at martinandersson.com)
+     */
+    interface ChannelOperations extends Supplier<NetworkChannel>
+    {
+        /**
+         * Returns the actual Java channel instance.
+         * 
+         * @return the actual Java channel instance (never {@code null})
+         */
+        @Override
+        NetworkChannel get();
+        
+        /**
+         * Returns {@code true} if the channel is open for reading, otherwise
+         * {@code false}.
+         * 
+         * @return {@code true} if the channel is open for reading,
+         *         otherwise {@code false}
+         */
+        boolean isOpenForReading();
     }
 }

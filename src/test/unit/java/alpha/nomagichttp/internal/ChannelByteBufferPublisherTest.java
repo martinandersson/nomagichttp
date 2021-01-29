@@ -48,7 +48,7 @@ class ChannelByteBufferPublisherTest
     
     ChannelByteBufferPublisher testee() throws InterruptedException {
         if (testee == null) {
-            ChannelOperations ops = new ChannelOperations(
+            DefaultChannelOperations ops = new DefaultChannelOperations(
                     SERVER.accept(), mock(DefaultServer.class));
             
             testee = new ChannelByteBufferPublisher(ops);

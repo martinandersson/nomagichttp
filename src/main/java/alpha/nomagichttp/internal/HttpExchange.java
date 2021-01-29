@@ -29,7 +29,7 @@ final class HttpExchange
     private static final System.Logger LOG = System.getLogger(HttpExchange.class.getPackageName());
     
     private final DefaultServer server;
-    private final ChannelOperations child;
+    private final DefaultChannelOperations child;
     private final ChannelByteBufferPublisher bytes;
     
     /*
@@ -44,13 +44,13 @@ final class HttpExchange
     private RequestHandler handler;
     private ErrorHandlers eh;
     
-    HttpExchange(DefaultServer server, ChannelOperations child) {
+    HttpExchange(DefaultServer server, DefaultChannelOperations child) {
         this(server, child, new ChannelByteBufferPublisher(child));
     }
     
     private HttpExchange(
             DefaultServer server,
-            ChannelOperations child,
+            DefaultChannelOperations child,
             ChannelByteBufferPublisher bytes)
     {
         this.server  = server;
@@ -112,7 +112,7 @@ final class HttpExchange
                       if (r.mustCloseAfterWrite() && (
                               child.isOpenForReading() ||
                               child.isOpenForWriting() ||
-                              child.delegate().isOpen()) )
+                              child.get().isOpen()) )
                       {
                           // TODO: Need to implement mustCloseAfterWrite( "mayInterrupt" param )
                           //       This will kill any ongoing subscription
@@ -136,7 +136,7 @@ final class HttpExchange
          */
         
         if (exc == null) {
-            if (!child.delegate().isOpen()) {
+            if (!child.get().isOpen()) {
                 return;
             }
             
