@@ -23,29 +23,30 @@ import static java.util.Objects.requireNonNull;
 
 /**
  * Holder of a request-to-response {@link #logic() function} (the "logic
- * instance") coupled together with metadata describing the handler.<p>
- * 
- * A {@code RequestHandler} can be built using {@link #builder(String)} or other
- * static methods found in {@link Builder} and {@link RequestHandlers}.<p>
+ * instance") coupled together with metadata describing semantics of the
+ * function.<p>
  * 
  * The metadata consists of a HTTP {@link #method() method} token and
  * {@link #consumes() consumes}/{@link #produces() produces} media types. This
- * information is only used as filtering inputs for a lookup algorithm when the
- * server has matched a request against a {@link Route} and needs to select
- * which handler of the route to call.<p>
+ * information is only used as filters for a lookup algorithm when the server
+ * has matched a request against a {@link Route} and needs to select which
+ * handler of the route to process the request.<p>
  * 
  * The server applies no HTTP semantics to the message exchange once the handler
  * has been selected. The handler logic is in full control over how it
  * interprets the request headers- and body as well as what headers and body are
  * sent back.<p>
+ *
+ * A {@code RequestHandler} can be built using {@link #builder(String)} or other
+ * static methods found in {@link Builder} and {@link RequestHandlers}.<p>
  * 
  * 
  * <h3>Handler Selection</h3>
  * 
  * When the server selects which handler of a route to call, it first weeds out
  * all handlers that does not qualify based on request headers and the handler's
- * metadata. If there's still many of them that quality, the handler with media
- * types preferred by the client and with greatest {@link
+ * metadata. If there's still many of them that qualifies, the handler with
+ * media types preferred by the client and with greatest {@link
  * MediaType#specificity() specificity} will be used. More details will be
  * discussed throughout subsequent sections.<p>
  * 
@@ -78,10 +79,10 @@ import static java.util.Objects.requireNonNull;
  *             .run(() -> System.out.println("Hello, World!"));
  * }</pre>
  * 
- * Or, more simply:
+ * Or, use a utility method to accomplish the same thing:
  * 
  * <pre>{@code
- *     import static alpha.nomagichttp.RequestHandlers.GET;
+ *     import static alpha.nomagichttp.handler.RequestHandlers.GET;
  *     ...
  *     RequestHandler h = GET().run(() -> System.out.println("Hello, World!"));
  * }</pre>

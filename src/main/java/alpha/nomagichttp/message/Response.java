@@ -27,7 +27,8 @@ import java.util.function.Supplier;
  * StandardCharsets#US_ASCII US_ASCII}<p>
  * 
  * Header order (FIFO) is preserved (unless documented otherwise). Duplicated
- * header names will be grouped and inserted at the first occurrence.<p>
+ * header names will be grouped together and inserted at the occurrence of the
+ * first value.<p>
  * 
  * The {@code Response} implementation is immutable and can safely be reused
  * sequentially over time to the same client as well as shared concurrently to
