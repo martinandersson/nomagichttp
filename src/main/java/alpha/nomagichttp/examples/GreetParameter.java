@@ -1,13 +1,18 @@
 package alpha.nomagichttp.examples;
 
 import alpha.nomagichttp.HttpServer;
-import alpha.nomagichttp.message.Responses;
 
 import java.io.IOException;
 
 import static alpha.nomagichttp.handler.RequestHandlers.GET;
+import static alpha.nomagichttp.message.Responses.badRequest;
 import static alpha.nomagichttp.message.Responses.ok;
 
+/**
+ * Responds a greeting using a name taken from a path- or query parameter.
+ * 
+ * @author Martin Andersson (webmaster at martinandersson.com)
+ */
 public class GreetParameter
 {
     private static final int PORT = 8080;
@@ -16,10 +21,18 @@ public class GreetParameter
         HttpServer app = HttpServer.create();
         
         // We note:
-        // 1) Single path parameters are required for matching the route.
+        // 
+        // 1) Single path parameters are required for matching the route,
         //    parameters().path(key) will always return a non-empty string.
-        // 2) Query parameters are optional for every request.
+        // 
+        // 2) Query parameters are optional for every request,
         //    parameters().queryFirst(key) returns an Optional of the first occurred value.
+        // 
+        // 3) The HTTP server is fully asynchronous which is great for web applications
+        //    which often rely heavily on external I/O resources for request processing.
+        //    And so the RequestHandler returns a CompletionStage<Response> to the server.
+        //    When the response object can be created immediately without blocking, use
+        //    Response.completedStage() to wrap it in an already completed stage.
         
         // Example requests:
         // "/hello/John"         Hello John!
@@ -32,11 +45,12 @@ public class GreetParameter
             return ok(text).completedStage();
         }));
         
-        app.add("/hello", GET().apply(req -> req.parameters()
-                .queryFirst("name")
-                .map(str -> ok("Hello " + str))
-                .orElseGet(Responses::badRequest)
-                .completedStage()));
+        app.add("/hello", GET().apply(req ->
+                req.parameters()
+                   .queryFirst("name")
+                   .map(str -> ok("Hello " + str))
+                   .orElse(badRequest())
+                   .completedStage()));
         
         app.start(PORT);
         System.out.println("Listening on port " + PORT + ".");
