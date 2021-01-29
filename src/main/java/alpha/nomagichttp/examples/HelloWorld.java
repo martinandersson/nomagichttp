@@ -20,7 +20,7 @@ public class HelloWorld {
         HttpServer app = HttpServer.create();
         
         // All requests coming in to the server expects a Response in return
-        // (Response is thread-safe and so should be cached when possible)
+        // (Response is thread-safe and so can be cached when possible)
         Response answer = Responses.text("Hello World!");
         
         // Handles requests of the verb/method GET
