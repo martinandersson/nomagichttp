@@ -55,7 +55,7 @@ public class RetryRequestOnError
                 System.out.println(" and will crash!");
                 // This example is synchronous but the outcome would have been the
                 // same if the returned CompletionStage completed exceptionally.
-                throw new SuitableForRetryException();
+                throw new OptimisticLockException();
             }
             
             System.out.println(" and will return 200 OK");
@@ -69,10 +69,11 @@ public class RetryRequestOnError
         public CompletionStage<Response>
                 apply(Throwable thr, Request req, RequestHandler rh) throws Throwable
         {
-            // Handle only SuitableForRetryException, otherwise propagate to server's default handler
+            // Handle known exception suitable for retry,
+            // otherwise propagate to server's default handler
             try {
                 throw thr;
-            } catch (SuitableForRetryException e) {
+            } catch (OptimisticLockException e) {
                 // Bump retry counter
                 int attempt = req.attributes().<Integer>asMapAny()
                         .merge("retry.counter", 1, Integer::sum);
@@ -104,7 +105,7 @@ public class RetryRequestOnError
         }
     }
     
-    private static class SuitableForRetryException extends RuntimeException {
+    private static class OptimisticLockException extends RuntimeException {
         // Empty
     }
 }
