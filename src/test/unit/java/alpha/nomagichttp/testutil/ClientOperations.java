@@ -1,4 +1,4 @@
-package alpha.nomagichttp.internal;
+package alpha.nomagichttp.testutil;
 
 import alpha.nomagichttp.message.Char;
 
@@ -35,25 +35,25 @@ import static org.assertj.core.api.Assertions.assertThat;
  * InterruptedException} to be thrown<p>
  * 
  * All channel operating utility methods will by default open/close a new
- * connection open only during the span of that method call. In order to re-use
- * a persistent connection across operations, call {@link #openConnection()}
- * first.<p>
+ * connection for each method call into this class. In order to re-use a
+ * persistent connection across method calls, first invoke {@link
+ * #openConnection()} .<p>
  * 
  * Note: This class provides low-level access for test cases that need direct
- * control over what bytes are put on the wire and what is received. Test cases
- * that operate on a higher "HTTP exchange semantics kind of layer" should use a
- * real client such as JDK's {@link HttpClient} instead.
+ * control over what bytes are put on the wire and monitor what is received.
+ * Test cases that operate on a higher "HTTP exchange semantics kind of layer"
+ * should use a real client such as JDK's {@link HttpClient} instead.
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  */
-final class ClientOperations
+public final class ClientOperations
 {
     @FunctionalInterface
     public interface SocketChannelSupplier {
         SocketChannel get() throws IOException;
     }
     
-    protected static final String CRLF = "\r\n";
+    public static final String CRLF = "\r\n";
     
     private static final System.Logger LOG = System.getLogger(ClientOperations.class.getPackageName());
     
@@ -67,12 +67,12 @@ final class ClientOperations
     private final SocketChannelSupplier factory;
     private SocketChannel ch;
     
-    ClientOperations(int port) {
+    public ClientOperations(int port) {
         this(() -> SocketChannel.open(
                 new InetSocketAddress(getLoopbackAddress(), port)));
     }
     
-    ClientOperations(SocketChannelSupplier factory) {
+    public ClientOperations(SocketChannelSupplier factory) {
         this.factory = requireNonNull(factory);
     }
     
@@ -86,7 +86,7 @@ final class ClientOperations
      * @throws IllegalStateException if a connection is already active
      * @throws IOException like for other weird stuff
      */
-    Channel openConnection() throws IOException {
+    public Channel openConnection() throws IOException {
         if (ch != null) {
             throw new IllegalStateException("Already opened.");
         }
@@ -125,7 +125,7 @@ final class ClientOperations
      * 
      * @param text to write
      */
-    void write(String text) throws IOException {
+    public void write(String text) throws IOException {
         writeRead(text, "");
     }
     
@@ -136,7 +136,7 @@ final class ClientOperations
      * Useful when <i>not</i> expecting a response body, in which case the
      * response should end after the headers with two newlines.
      */
-    String writeRead(String request) throws IOException {
+    public String writeRead(String request) throws IOException {
         return writeRead(request, CRLF + CRLF);
     }
     
@@ -148,7 +148,7 @@ final class ClientOperations
      * 
      * Please note that UTF-8 is backwards compatible with ASCII.
      */
-    String writeRead(String request, String responseEnd) throws IOException {
+    public String writeRead(String request, String responseEnd) throws IOException {
         byte[] bytes = writeRead(
                 request.getBytes(US_ASCII),
                 responseEnd.getBytes(US_ASCII));
@@ -174,7 +174,7 @@ final class ClientOperations
      * @throws ClosedByInterruptException if operation takes longer than 3 seconds
      * @throws IOException for other weird reasons lol
      */
-    byte[] writeRead(byte[] request, byte[] responseEnd) throws IOException {
+    public byte[] writeRead(byte[] request, byte[] responseEnd) throws IOException {
         final Thread worker = Thread.currentThread();
         final AtomicBoolean communicating = new AtomicBoolean(true);
         
@@ -234,7 +234,7 @@ final class ClientOperations
      * @throws ClosedByInterruptException if operation takes longer than 3 seconds
      * @throws IOException for other weird reasons lol
      */
-    byte[] drain() throws IOException {
+    public byte[] drain() throws IOException {
         return writeRead(new byte[0], null);
     }
     

@@ -2,7 +2,6 @@ package alpha.nomagichttp.largetest;
 
 import alpha.nomagichttp.handler.RequestHandler;
 import alpha.nomagichttp.handler.RequestHandlers;
-import alpha.nomagichttp.message.Request.Body;
 import alpha.nomagichttp.message.Responses;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -10,12 +9,10 @@ import org.junit.jupiter.params.provider.MethodSource;
 
 import java.io.IOException;
 import java.net.http.HttpResponse;
-import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.function.Supplier;
 import java.util.stream.Stream;
 
-import static java.util.concurrent.CompletableFuture.completedStage;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
@@ -28,15 +25,12 @@ import static org.assertj.core.api.Assertions.assertThat;
  */
 class TwoHundredRequestsFromSameClient extends AbstractSingleClientTest
 {
-    private static final CompletionStage<String> EMPTY = completedStage("");
-    
     @BeforeAll
     static void addHandler() {
-        RequestHandler echo = RequestHandlers.POST().apply(req -> req.body()
-                .map(Body::toText).orElse(EMPTY)
-                .thenApply(Responses::ok));
+        RequestHandler echo = RequestHandlers.POST().apply(req ->
+                req.body().toText().thenApply(Responses::text));
         
-        addHandler("/echo", echo);
+        server().add("/echo", echo);
     }
     
     // Default name would have been msg argument, which is a super huge string!

@@ -14,20 +14,15 @@ import java.nio.channels.AsynchronousSocketChannel;
 import java.nio.channels.ClosedChannelException;
 import java.nio.channels.CompletionHandler;
 import java.nio.channels.ShutdownChannelGroupException;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.function.Supplier;
 
 import static java.lang.System.Logger.Level.DEBUG;
 import static java.lang.System.Logger.Level.ERROR;
 import static java.lang.System.Logger.Level.INFO;
 import static java.net.InetAddress.getLoopbackAddress;
-import static java.util.Arrays.stream;
-import static java.util.Collections.unmodifiableList;
 import static java.util.Objects.requireNonNull;
-import static java.util.stream.Collectors.toCollection;
 
 /**
  * A fully asynchronous implementation of {@code Server}.<p>
@@ -72,31 +67,18 @@ public final class DefaultServer implements HttpServer
     
     private final Config config;
     private final RouteRegistry registry;
-    private final List<Supplier<ErrorHandler>> onError; // TODO: Rename to errorHandlers
+    private final List<ErrorHandler> eh;
     private AsynchronousServerSocketChannel listener;
     private InetSocketAddress addr;
     
-    @SafeVarargs
     public DefaultServer(
             Config config,
-            Iterable<? extends Route> routes,
-            Supplier<? extends ErrorHandler>... onError)
+            RouteRegistry registry,
+            ErrorHandler... eh)
     {
         this.config = requireNonNull(config);
-        
-        RouteRegistry r = new DefaultRouteRegistry();
-        routes.forEach(r::add);
-        this.registry = r;
-        
-        // Collectors.toUnmodifiableList() does not document RandomAccess
-        List<Supplier<ErrorHandler>> l = stream(onError)
-                .map(e -> {
-                    @SuppressWarnings("unchecked")
-                    Supplier<ErrorHandler> eh = (Supplier<ErrorHandler>) e;
-                    return eh; })
-                .collect(toCollection(ArrayList::new));
-        
-        this.onError  = unmodifiableList(l);
+        this.registry = requireNonNull(registry);
+        this.eh  = List.of(eh);
         this.listener = null;
     }
     
@@ -161,16 +143,22 @@ public final class DefaultServer implements HttpServer
     }
     
     @Override
-    public synchronized InetSocketAddress getLocalAddress() throws IllegalStateException {
-        if (listener == null || !listener.isOpen()) {
-            throw new IllegalStateException("Server is not running.");
-        }
-        
-        return addr;
+    public HttpServer add(Route route) {
+        getRouteRegistry().add(route);
+        return this;
     }
     
     @Override
-    public RouteRegistry getRouteRegistry() {
+    public Route remove(String pattern) {
+        return getRouteRegistry().remove(pattern);
+    }
+    
+    @Override
+    public boolean remove(Route route) {
+        return getRouteRegistry().remove(route);
+    }
+    
+    RouteRegistry getRouteRegistry() {
         return registry;
     }
     
@@ -179,15 +167,23 @@ public final class DefaultServer implements HttpServer
         return config;
     }
     
+    @Override
+    public synchronized InetSocketAddress getLocalAddress() throws IllegalStateException {
+        if (listener == null || !listener.isOpen()) {
+            throw new IllegalStateException("Server is not running.");
+        }
+        
+        return addr;
+    }
+    
     /**
-     * Returns an unmodifiable {@code List} of error handlers.<p>
-     * 
-     * The returned list implements {@code RandomAccess}.
+     * Returns an unmodifiable {@code RandomAccess} {@code List} of error
+     * handlers.
      * 
      * @return error handlers
      */
-    List<Supplier<ErrorHandler>> getErrorHandlers() {
-        return onError;
+    List<ErrorHandler> getErrorHandlers() {
+        return eh;
     }
     
     private class OnAccept implements CompletionHandler<AsynchronousSocketChannel, Void>
@@ -206,7 +202,7 @@ public final class DefaultServer implements HttpServer
             
             // TODO: child.setOption(StandardSocketOptions.SO_KEEPALIVE, true); ??
             
-            ChannelOperations ops = new ChannelOperations(child, DefaultServer.this);
+            DefaultChannelOperations ops = new DefaultChannelOperations(child, DefaultServer.this);
             new HttpExchange(DefaultServer.this, ops).begin();
         }
         

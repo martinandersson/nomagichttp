@@ -6,12 +6,8 @@ import alpha.nomagichttp.message.Response;
 import alpha.nomagichttp.message.Responses;
 import alpha.nomagichttp.route.RouteRegistry;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.RandomAccess;
 import java.util.concurrent.CompletionException;
 import java.util.concurrent.CompletionStage;
-import java.util.function.Supplier;
 
 import static alpha.nomagichttp.internal.RequestTarget.parse;
 import static alpha.nomagichttp.util.Headers.accepts;
@@ -33,7 +29,7 @@ final class HttpExchange
     private static final System.Logger LOG = System.getLogger(HttpExchange.class.getPackageName());
     
     private final DefaultServer server;
-    private final ChannelOperations child;
+    private final DefaultChannelOperations child;
     private final ChannelByteBufferPublisher bytes;
     
     /*
@@ -48,13 +44,13 @@ final class HttpExchange
     private RequestHandler handler;
     private ErrorHandlers eh;
     
-    HttpExchange(DefaultServer server, ChannelOperations child) {
+    HttpExchange(DefaultServer server, DefaultChannelOperations child) {
         this(server, child, new ChannelByteBufferPublisher(child));
     }
     
     private HttpExchange(
             DefaultServer server,
-            ChannelOperations child,
+            DefaultChannelOperations child,
             ChannelByteBufferPublisher bytes)
     {
         this.server  = server;
@@ -116,7 +112,7 @@ final class HttpExchange
                       if (r.mustCloseAfterWrite() && (
                               child.isOpenForReading() ||
                               child.isOpenForWriting() ||
-                              child.delegate().isOpen()) )
+                              child.get().isOpen()) )
                       {
                           // TODO: Need to implement mustCloseAfterWrite( "mayInterrupt" param )
                           //       This will kill any ongoing subscription
@@ -140,7 +136,7 @@ final class HttpExchange
          */
         
         if (exc == null) {
-            if (!child.delegate().isOpen()) {
+            if (!child.get().isOpen()) {
                 return;
             }
             
@@ -180,14 +176,10 @@ final class HttpExchange
     }
     
     private class ErrorHandlers {
-        private final List<Supplier<ErrorHandler>> factories;
-        private List<ErrorHandler> constructed;
         private Throwable prev;
         private int attemptCount;
         
         ErrorHandlers() {
-            this.factories = server.getErrorHandlers();
-            this.constructed = null;
             this.attemptCount = 0;
         }
         
@@ -198,7 +190,7 @@ final class HttpExchange
             }
             prev = t;
             
-            if (factories.isEmpty()) {
+            if (server.getErrorHandlers().isEmpty()) {
                 return usingDefault(t);
             }
             
@@ -217,13 +209,12 @@ final class HttpExchange
             } catch (Throwable next) {
                 // Do not next.addSuppressed(unpacked); the first thing DEFAULT did was to log unpacked.
                 LOG.log(ERROR, "Default error handler failed.", next);
-                return Responses.internalServerError().asCompletedStage();
+                return Responses.internalServerError().completedStage();
             }
         }
         
         private CompletionStage<Response> usingHandlers(Throwable t) {
-            for (int i = 0; i < factories.size(); ++i) {
-                final ErrorHandler h = cacheOrNew(i);
+            for (ErrorHandler h : server.getErrorHandlers()) {
                 try {
                     return requireNonNull(h.apply(t, request, handler));
                 } catch (Throwable next) {
@@ -233,26 +224,8 @@ final class HttpExchange
                     } // else continue; Handler opted out
                 }
             }
-            
             // All handlers opted out
             return usingDefault(t);
-        }
-        
-        private ErrorHandler cacheOrNew(int handlerIndex) {
-            final ErrorHandler h;
-            
-            if (constructed == null) {
-                constructed = new ArrayList<>();
-            }
-            
-            assert factories instanceof RandomAccess;
-            if (constructed.size() < handlerIndex + 1) {
-                constructed.add(h = factories.get(handlerIndex).get());
-            } else {
-                h = constructed.get(handlerIndex);
-            }
-            
-            return h;
         }
     }
     

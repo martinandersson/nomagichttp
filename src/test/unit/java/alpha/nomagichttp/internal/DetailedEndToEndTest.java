@@ -18,7 +18,7 @@ import java.util.function.Consumer;
 import java.util.function.Function;
 
 import static alpha.nomagichttp.handler.RequestHandlers.POST;
-import static alpha.nomagichttp.internal.ClientOperations.CRLF;
+import static alpha.nomagichttp.testutil.ClientOperations.CRLF;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
@@ -37,11 +37,11 @@ class DetailedEndToEndTest extends AbstractEndToEndTest
     @BeforeAll
     static void installHandlers() {
         Function<Request, CompletionStage<Response>>
-                isBodyEmpty = req -> Responses.ok(String.valueOf(req.body().isEmpty())).asCompletedStage(),
-                echoBody    = req -> req.body().get().toText().thenApply(Responses::ok);
+                isBodyEmpty = req -> Responses.text(String.valueOf(req.body().isEmpty())).completedStage(),
+                echoBody    = req -> req.body().toText().thenApply(Responses::text);
         
-        addHandler(IS_BODY_EMPTY, POST().apply(isBodyEmpty));
-        addHandler(ECHO_BODY,     POST().apply(echoBody));
+        server().add(IS_BODY_EMPTY, POST().apply(isBodyEmpty));
+        server().add(ECHO_BODY,     POST().apply(echoBody));
     }
     
     @Test
@@ -98,10 +98,10 @@ class DetailedEndToEndTest extends AbstractEndToEndTest
                   midway = length / 2;
         
         RequestHandler discardMidway = RequestHandlers.POST().accept((req) ->
-            req.body().get().subscribe(
+            req.body().subscribe(
                 new AfterByteTargetStop(midway, Flow.Subscription::cancel)));
         
-        addHandler("/discard-midway", discardMidway);
+        server().add("/discard-midway", discardMidway);
         
         try (Channel ch = client().openConnection()) {
             String req = requestWithBody("/discard-midway", "x".repeat(length)),
@@ -120,11 +120,11 @@ class DetailedEndToEndTest extends AbstractEndToEndTest
         doNotAssertNormalFinish();
         
         RequestHandler crashAfterOneByte = RequestHandlers.POST().accept(req ->
-            req.body().get().subscribe(
+            req.body().subscribe(
                 new AfterByteTargetStop(1, subscriptionIgnored -> {
                     throw new RuntimeException("Oops."); })));
         
-        addHandler("/body-subscriber-crash", crashAfterOneByte);
+        server().add("/body-subscriber-crash", crashAfterOneByte);
         
         try (Channel ch = client().openConnection()) {
             String req = requestWithBody("/body-subscriber-crash", "Hello"),

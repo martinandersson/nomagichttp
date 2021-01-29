@@ -1,11 +1,12 @@
-package alpha.nomagichttp.internal;
+package alpha.nomagichttp.route;
 
+import alpha.nomagichttp.route.Tree;
 import org.junit.jupiter.api.Test;
 
 import java.util.Iterator;
 import java.util.List;
 
-import static alpha.nomagichttp.internal.Tree.entry;
+import static alpha.nomagichttp.route.Tree.entry;
 import static java.util.List.of;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;

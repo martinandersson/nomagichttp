@@ -1,11 +1,10 @@
 package alpha.nomagichttp.examples;
 
-import alpha.nomagichttp.handler.ErrorHandler;
 import alpha.nomagichttp.HttpServer;
+import alpha.nomagichttp.handler.ErrorHandler;
 import alpha.nomagichttp.handler.RequestHandler;
 import alpha.nomagichttp.message.Request;
 import alpha.nomagichttp.message.Response;
-import alpha.nomagichttp.route.Route;
 
 import java.io.IOException;
 import java.time.format.DateTimeFormatter;
@@ -16,9 +15,7 @@ import java.util.function.Supplier;
 
 import static alpha.nomagichttp.handler.RequestHandlers.GET;
 import static alpha.nomagichttp.message.Responses.ok;
-import static alpha.nomagichttp.route.Routes.route;
 import static java.time.LocalTime.now;
-import static java.util.Collections.singleton;
 import static java.util.concurrent.CompletableFuture.delayedExecutor;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
 import static java.util.function.Function.identity;
@@ -35,76 +32,80 @@ public class RetryRequestOnError
     private static final int PORT = 8080;
     
     public static void main(String... ignored) throws IOException {
-        RequestHandler h = GET().supply(new MyUnstableResponseSupplier());
-        Route r = route("/", h);
+        // A very unstable request handler
+        RequestHandler rh = GET().supply(new MyUnstableResponseSupplier());
         
-        // The server accepts a factory/supplier of the error handler because
-        // a new instance of the error handler will be used for each failed request.
-        Supplier<ErrorHandler> retrier = MyExponentialRetrier::new;
+        // The savior
+        ErrorHandler eh = new MyRequestRetrier();
         
-        HttpServer.with(HttpServer.Config.DEFAULT, singleton(r), retrier).start(PORT);
+        HttpServer.create(eh).add("/", rh).start(PORT);
         System.out.println("Listening on port " + PORT + ".");
     }
     
-    // This response supplier will succeed only every third request.
-    // This example is synchronous but the outcome would have been the same if
-    // the returned CompletionStage completed exceptionally.
+    // This response supplier will succeed only every other invocation.
     private static class MyUnstableResponseSupplier implements Supplier<CompletionStage<Response>> {
-        // In the real world a request counter should probably be of type LongAdder
-        private final AtomicLong requestCount = new AtomicLong();
+        private final AtomicLong n = new AtomicLong();
         
         @Override
         public CompletionStage<Response> get() {
             System.out.print("Request handler received a request " +
                     DateTimeFormatter.ofPattern("HH:mm:ss.SSS").format(now()));
             
-            if (requestCount.incrementAndGet() % 3 != 0) {
+            if (n.incrementAndGet() % 2 != 0) {
                 System.out.println(" and will crash!");
-                throw new SuitableForRetryException();
+                // This example is synchronous but the outcome would have been the
+                // same if the returned CompletionStage completed exceptionally.
+                throw new OptimisticLockException();
             }
             
             System.out.println(" and will return 200 OK");
-            return ok().asCompletedStage();
+            return ok().completedStage();
         }
     }
     
-    /**
-     * Retries a failed request by calling the request handler up to three times,
-     * using an exponentially increased delay between each retry.
-     */
-    private static class MyExponentialRetrier implements ErrorHandler {
-        private int retries;
-        
+    // Retries failed requests a maximum of three times, using an exponentially increased delay
+    private static class MyRequestRetrier implements ErrorHandler {
         @Override
-        public CompletionStage<Response> apply(
-                Throwable exc, Request req, RequestHandler handler)
-                throws Throwable
+        public CompletionStage<Response>
+                apply(Throwable thr, Request req, RequestHandler rh) throws Throwable
         {
-            if (!(exc instanceof SuitableForRetryException)) {
-                // Any exception we can not handle should be re-thrown and will
-                // propagate through the chain of error handlers, eventually
-                // reaching ErrorHandler.DEFAULT.
-                throw exc;
+            // Handle known exception suitable for retry,
+            // otherwise propagate to server's default handler
+            try {
+                throw thr;
+            } catch (OptimisticLockException e) {
+                // Bump retry counter
+                int attempt = req.attributes().<Integer>asMapAny()
+                        .merge("retry.counter", 1, Integer::sum);
+                
+                if (attempt > 3) {
+                    System.out.println("Retried three times already, giving up!");
+                    throw e; // same as thr
+                }
+                
+                int ms = delay(attempt);
+                System.out.println("Error handler will retry #" + attempt + " after delay (ms): " + ms);
+                
+                return retry(rh, req, ms);
             }
-            
-            if (retries == 3) {
-                System.out.println("Retried three times already, giving up.");
-                throw exc;
-            }
-            
-            final int delay = 40 * (int) Math.pow(++retries, 2);
-            System.out.println("Error handler will retry #" + retries + " after delay (ms): " + delay);
-            
+        }
+        
+        private int delay(int attempt) {
+            return 40 * (int) Math.pow(attempt, 2);
+        }
+        
+        private static CompletionStage<Response> retry(RequestHandler rh, Request req, int delay) {
             // Alternatively:
             // return CompletableFuture.runAsync(() -> {}, delayedExecutor(delay, MILLISECONDS))
             //         .thenCompose(Void -> handler.logic().apply(req));
-            return CompletableFuture.supplyAsync(() ->
-                        handler.logic().apply(req), delayedExecutor(delay, MILLISECONDS))
+            return CompletableFuture.supplyAsync(
+                        () -> rh.logic().apply(req),
+                        delayedExecutor(delay, MILLISECONDS))
                     .thenCompose(identity());
         }
     }
     
-    private static class SuitableForRetryException extends RuntimeException {
+    private static class OptimisticLockException extends RuntimeException {
         // Empty
     }
 }

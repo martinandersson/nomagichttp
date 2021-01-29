@@ -23,9 +23,9 @@ class BigTextRequest extends AbstractSingleClientTest
     @BeforeAll
     static void addHandler() {
         RequestHandler echo = RequestHandlers.POST().apply(req ->
-                req.body().get().toText().thenApply(Responses::ok));
+                req.body().toText().thenApply(Responses::text));
         
-        addHandler("/echo", echo);
+        server().add("/echo", echo);
     }
     
     @Test

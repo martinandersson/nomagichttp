@@ -1,7 +1,9 @@
 package alpha.nomagichttp.internal;
 
 import alpha.nomagichttp.message.RequestHeadParseException;
-import alpha.nomagichttp.test.Logging;
+import alpha.nomagichttp.testutil.ClientOperations;
+import alpha.nomagichttp.testutil.Logging;
+import alpha.nomagichttp.testutil.SkeletonServer;
 import alpha.nomagichttp.util.Headers;
 import org.assertj.core.api.AbstractListAssert;
 import org.assertj.core.api.ObjectAssert;
@@ -15,6 +17,7 @@ import java.util.List;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Flow;
+import java.util.concurrent.TimeoutException;
 
 import static java.lang.Integer.MAX_VALUE;
 import static java.lang.System.Logger.Level.ALL;
@@ -24,14 +27,14 @@ import static org.mockito.Mockito.mock;
 
 class RequestHeadSubscriberTest
 {
-    private static TestServer SERVER;
+    private static SkeletonServer SERVER;
     private static ClientOperations CLIENT;
     private CompletionStage<RequestHead> testee;
     
     @BeforeAll
     static void beforeAll() throws IOException {
         Logging.setLevel(RequestHeadSubscriber.class, ALL);
-        SERVER = new TestServer();
+        SERVER = new SkeletonServer();
         SERVER.start();
         CLIENT = new ClientOperations(SERVER::newClient);
     }
@@ -41,9 +44,9 @@ class RequestHeadSubscriberTest
         SERVER.close();
     }
     
-    CompletionStage<RequestHead> testee() throws Throwable {
+    CompletionStage<RequestHead> testee() throws InterruptedException {
         if (testee == null) {
-            ChannelOperations ops = new ChannelOperations(
+            DefaultChannelOperations ops = new DefaultChannelOperations(
                     SERVER.accept(), mock(DefaultServer.class));
             
             Flow.Publisher<DefaultPooledByteBufferHolder> bytes = new ChannelByteBufferPublisher(ops);
@@ -58,7 +61,9 @@ class RequestHeadSubscriberTest
     }
     
     @Test
-    void happypath_headers_yes() throws Throwable {
+    void happypath_headers_yes() throws
+            IOException, InterruptedException, ExecutionException, TimeoutException
+    {
         String request =
             "GET /hello.txt HTTP/1.1\n" +
             "User-Agent: curl/7.16.3 libcurl/7.16.3 OpenSSL/0.9.7l zlib/1.2.3\r\n" + // <-- CR ignored
@@ -75,7 +80,9 @@ class RequestHeadSubscriberTest
     }
     
     @Test
-    void happypath_headers_no() throws Throwable {
+    void happypath_headers_no() throws
+            IOException, InterruptedException, ExecutionException, TimeoutException
+    {
         // any whitespace between tokens (except for HTTP version) is a delimiter
         CLIENT.write("GET\t/hello.txt\tHTTP/1.1\r\n\r\n");
         assertHead().containsExactly("GET", "/hello.txt", "HTTP/1.1", headers());
@@ -85,7 +92,9 @@ class RequestHeadSubscriberTest
     // ------
     
     @Test
-    void method_leading_whitespace_ignored() throws Throwable {
+    void method_leading_whitespace_ignored() throws
+            IOException, InterruptedException, ExecutionException, TimeoutException
+    {
         CLIENT.write("\r\n \t \r\n GET /hello.txt HTTP/1.1\r\n\n");
         assertHead().containsExactly("GET", "/hello.txt", "HTTP/1.1", headers());
     }
@@ -94,14 +103,18 @@ class RequestHeadSubscriberTest
     // --------------
     
     @Test
-    void requesttarget_leading_whitespace_ignored() throws Throwable {
+    void requesttarget_leading_whitespace_ignored() throws
+            IOException, InterruptedException, ExecutionException, TimeoutException
+    {
         String request = "GET\r \t/hello.txt HTTP/1.1\n\n";
         CLIENT.write(request);
         assertHead().containsExactly("GET", "/hello.txt", "HTTP/1.1", headers());
     }
     
     @Test
-    void requesttarget_leading_whitespace_linefeed_illegal() throws Throwable {
+    void requesttarget_leading_whitespace_linefeed_illegal() throws
+            IOException, TimeoutException, InterruptedException
+    {
         String p1 = "GET ", p2 = "\n/hel....";
         CLIENT.write(p1 + p2);
         waitForCompletion();
@@ -116,14 +129,18 @@ class RequestHeadSubscriberTest
     // ------------
     
     @Test
-    void httpversion_leading_whitespace_ignored() throws Throwable {
+    void httpversion_leading_whitespace_ignored() throws
+            IOException, InterruptedException, ExecutionException, TimeoutException
+    {
         String request = "GET /hello.txt \tHTTP/1.1\n\n";
         CLIENT.write(request);
         assertHead().containsExactly("GET", "/hello.txt", "HTTP/1.1", headers());
     }
     
     @Test
-    void httpversion_leading_whitespace_linefeed_illegal() throws Throwable {
+    void httpversion_leading_whitespace_linefeed_illegal() throws
+            IOException, TimeoutException, InterruptedException
+    {
         String p1 = "GET /hello.txt ", p2 = "\nHTTP....";
         CLIENT.write(p1 + p2);
         waitForCompletion();
@@ -135,7 +152,9 @@ class RequestHeadSubscriberTest
     }
     
     @Test
-    void httpversion_illegal_linebreak() throws Throwable {
+    void httpversion_illegal_linebreak() throws
+            IOException, TimeoutException, InterruptedException
+    {
         // CR serves as a delimiter ("any whitespace") between method and
         // request-target. But for the HTTP version token, which is waiting on
         // a newline to be his delimiter, then it is required that if CR is
@@ -153,7 +172,9 @@ class RequestHeadSubscriberTest
     }
     
     @Test
-    void httpversion_illegal_whitespace_in_token() throws Throwable {
+    void httpversion_illegal_whitespace_in_token() throws
+            IOException, TimeoutException, InterruptedException
+    {
         String p1 = "GET /hello.txt HT", p2 = " TP/1....";
         CLIENT.write(p1 + p2);
         waitForCompletion();
@@ -168,7 +189,9 @@ class RequestHeadSubscriberTest
     // ----------
     
     @Test
-    void header_key_space_name_1a() throws Throwable {
+    void header_key_space_name_1a() throws
+            IOException, TimeoutException, InterruptedException
+    {
         String p1 =
             "A B C\n" +
             "Has", p2 = " Space: blabla\n\n"; // <-- space added in key/name
@@ -183,7 +206,9 @@ class RequestHeadSubscriberTest
     }
     
     @Test
-    void header_key_space_name_1b() throws Throwable {
+    void header_key_space_name_1b() throws
+            IOException, TimeoutException, InterruptedException
+    {
         String p1 =
             "A B C\n" +
             "Has", p2 = "\nSpace: blabla\n\n"; // <-- space as LF
@@ -198,7 +223,9 @@ class RequestHeadSubscriberTest
     }
     
     @Test
-    void header_key_space_name_2() throws Throwable {
+    void header_key_space_name_2() throws
+            IOException, TimeoutException, InterruptedException
+    {
         String p1 =
             "A B C\n" +
             "Has-Space", p2 = " : blabla\n\n"; // <-- space added before colon
@@ -213,7 +240,9 @@ class RequestHeadSubscriberTest
     }
     
     @Test
-    void header_key_space_name_3() throws Throwable {
+    void header_key_space_name_3() throws
+            IOException, TimeoutException, InterruptedException
+    {
         String p1 =
             "A B C\n", p2 =
             " Has-Space: blabla\n\n"; // <-- space added before key/name
@@ -231,7 +260,9 @@ class RequestHeadSubscriberTest
     // ------------
     
     @Test
-    void header_value_folded_normal() throws Throwable {
+    void header_value_folded_normal() throws
+            IOException, InterruptedException, ExecutionException, TimeoutException
+    {
         String request =
             "A B C\n" +
             "Key: Line 1\n" +
@@ -248,7 +279,9 @@ class RequestHeadSubscriberTest
     
     // Empty keys are valid, but here "Line 1" is considered a folded value.
     @Test
-    void header_value_folded_breakImmediately() throws Throwable {
+    void header_value_folded_breakImmediately() throws
+            IOException, InterruptedException, ExecutionException, TimeoutException
+    {
         String request =
             "A B C\n" +
             "Key:   \n" +
@@ -263,7 +296,9 @@ class RequestHeadSubscriberTest
     }
     
     @Test
-    void header_value_folded_we_thought_but_head_ended_instead() throws Throwable {
+    void header_value_folded_we_thought_but_head_ended_instead() throws
+            IOException, InterruptedException, ExecutionException, TimeoutException
+    {
         String request =
             "A B C\n" +
             "Key:\n" +
@@ -277,7 +312,9 @@ class RequestHeadSubscriberTest
     }
     
     @Test
-    void header_value_empty_singleton_1() throws Throwable {
+    void header_value_empty_singleton_1() throws
+            IOException, InterruptedException, ExecutionException, TimeoutException
+    {
         String request =
             "A B C\n" +
             "Key:\n\n";
@@ -290,7 +327,9 @@ class RequestHeadSubscriberTest
     }
     
     @Test
-    void header_value_empty_singleton_2() throws Throwable {
+    void header_value_empty_singleton_2() throws
+            IOException, InterruptedException, ExecutionException, TimeoutException
+    {
         String request =
             "A B C\n" +
             "Key:   \n\n"; // <-- trailing whitespace..
@@ -303,7 +342,9 @@ class RequestHeadSubscriberTest
     }
     
     @Test
-    void header__value_empty_enclosed() throws Throwable {
+    void header__value_empty_enclosed() throws
+            IOException, InterruptedException, ExecutionException, TimeoutException
+    {
         String request =
             "A B C\n" +
             "First: Has value\n" +
@@ -321,18 +362,21 @@ class RequestHeadSubscriberTest
             "Second", ""));
     }
     
-    private AbstractListAssert<?, List<?>, Object, ObjectAssert<Object>> assertHead()
-            throws Throwable
+    private AbstractListAssert<?, List<?>, Object, ObjectAssert<Object>>
+            assertHead() throws InterruptedException, ExecutionException, TimeoutException
     {
         return assertThat(actual()).extracting(
-                RequestHead::method, RequestHead::requestTarget, RequestHead::httpVersion, RequestHead::headers);
+                RequestHead::method,
+                RequestHead::requestTarget,
+                RequestHead::httpVersion,
+                RequestHead::headers);
     }
     
-    private RequestHead actual() throws Throwable {
+    private RequestHead actual() throws InterruptedException, TimeoutException, ExecutionException {
         return testee().toCompletableFuture().get(2, SECONDS);
     }
     
-    private void waitForCompletion() throws Throwable {
+    private void waitForCompletion() throws InterruptedException, TimeoutException {
         try {
             actual();
         }

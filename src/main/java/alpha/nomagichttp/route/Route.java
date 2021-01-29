@@ -1,5 +1,6 @@
 package alpha.nomagichttp.route;
 
+import alpha.nomagichttp.HttpServer;
 import alpha.nomagichttp.handler.RequestHandler;
 import alpha.nomagichttp.message.MediaType;
 import alpha.nomagichttp.message.Request;
@@ -11,8 +12,9 @@ import java.nio.charset.Charset;
 /**
  * A {@code Route} is "a target resource upon which to apply semantics"
  * (<a href="https://tools.ietf.org/html/rfc7230#section-5.1">RFC 7230 §5.1</a>).
- * It can be built using a {@link #builder(String)}. Shortcut factory methods
- * exist in {@link Routes}.<p>
+ * It can be built using a {@link #builder(String)}. There's also a convenient
+ * shortcut which both builds and add the route; {@link
+ * HttpServer#add(String, RequestHandler, RequestHandler...)}.<p>
  * 
  * The route is associated with one or more <i>request handlers</i>. In HTTP
  * parlance, handlers are also known as different "representations" of the
@@ -62,8 +64,7 @@ import java.nio.charset.Charset;
  * Within the route registry, path parameters (both single-segment and
  * catch-all) are mutually exclusive for that segment position. For example, you
  * can not at the same time register a route {@code "/user/new"} and a route
- * {@code "/user/:id"}, or {@code "/user/:id"} and {@code
- * "/user/:something-else"}.<p>
+ * {@code "/user/:id"}, or {@code "/user/:id"} and {@code "/user/:blabla"}.<p>
  * 
  * Static- and single segment path parameters may have any number of descendant
  * routes on the same hierarchical branch. In the following example, we register
@@ -106,17 +107,17 @@ import java.nio.charset.Charset;
  * "/:drive/*filepath"}.<p>
  * 
  * As previously noted, static- and single segment parameters can build a route
- * hierarchy. For example, you can have {@code "/admin"}, {@code "/user"},
- * {@code "/user/:id"} and {@code "/user/:id/avatar"} all registered at the same
- * time in the same registry. But this is not true for catch-all since it
- * matches everything including no value at all. You can not register {@code
- * "/src"} and {@code "/src/*filepath"} in the same registry at the same time.
- * Failure to register a route with the registry causes a {@link
- * RouteCollisionException} to be thrown.<p>
+ * hierarchy. Or in other words, a route position may have a parent route. For
+ * example, you can have {@code "/user"}, {@code "/user/:id"} and {@code
+ * "/user/:id/avatar"} all registered at the same time in the same registry. But
+ * this is not true for catch-all since it matches everything including no value
+ * at all. You can not register {@code "/src"} and {@code "/src/*filepath"} in
+ * the same registry at the same time. Failure to register a route with the
+ * registry causes a {@link RouteCollisionException} to be thrown.<p>
  * 
  * Query parameters are always optional, they can not be used to distinguish one
- * route from another, nor do they affect how a route is matched against a
- * request path.<p>
+ * route from another, nor do they affect how a request path is matched against
+ * a route.<p>
  * 
  * In order to find a matching route, the following steps are applied to the
  * request path:
@@ -204,7 +205,7 @@ public interface Route
      *             if a static segment value is empty
      * 
      * @throws IllegalStateException
-     *             if parameter names are repeated, or
+     *             if parameter names are repeated in the pattern, or
      *             if a catch-all parameter is not the last segment
      */
     static Route.Builder builder(String pattern) {

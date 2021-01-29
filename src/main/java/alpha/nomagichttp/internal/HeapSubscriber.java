@@ -80,9 +80,15 @@ final class HeapSubscriber<R> implements SubscriberAsStage<PooledByteBufferHolde
         result.completeExceptionally(t);
     }
     
+    private static final byte[] EMPTY = new byte[0];
+    
     @Override
     public void onComplete() {
-        R product = finisher.apply(sink.buffer(), sink.count());
+        final int len = sink.count();
+        final R product = len == 0 ?
+                finisher.apply(EMPTY, 0) :
+                finisher.apply(sink.buffer(), len);
+        
         result.complete(product);
     }
     

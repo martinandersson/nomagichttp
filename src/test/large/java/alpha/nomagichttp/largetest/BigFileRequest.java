@@ -27,10 +27,10 @@ class BigFileRequest extends AbstractSingleClientTest
         FILE = Files.createTempDirectory("nomagic")
                 .resolve("50MB.bin");
         
-        RequestHandler saver = POST().apply(req -> req.body().get().toFile(FILE)
+        RequestHandler saver = POST().apply(req -> req.body().toFile(FILE)
                 .thenApply(n -> ok().header("Received", Long.toString(n)).build()));
         
-        addHandler("/file", saver);
+        server().add("/file", saver);
     }
     
     @Test

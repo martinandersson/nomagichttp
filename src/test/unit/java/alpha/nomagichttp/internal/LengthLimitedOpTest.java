@@ -2,6 +2,7 @@ package alpha.nomagichttp.internal;
 
 import org.junit.jupiter.api.Test;
 
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
@@ -36,7 +37,7 @@ class LengthLimitedOpTest
     
     private static List<Integer> engine(long testeeMaxBytes, Integer... valuesToPublish) {
         DefaultPooledByteBufferHolder[] items = stream(valuesToPublish)
-                .map(PooledByteBuffers::wrap)
+                .map(LengthLimitedOpTest::wrap)
                 .toArray(DefaultPooledByteBufferHolder[]::new);
         
         LengthLimitedOp testee = new LengthLimitedOp(testeeMaxBytes, just(items));
@@ -86,5 +87,10 @@ class LengthLimitedOpTest
         public void onComplete() {
             // Empty
         }
+    }
+    
+    private static DefaultPooledByteBufferHolder wrap(int val) {
+        ByteBuffer b = ByteBuffer.allocate(4).putInt(val).flip();
+        return new DefaultPooledByteBufferHolder(b, ignored -> {});
     }
 }

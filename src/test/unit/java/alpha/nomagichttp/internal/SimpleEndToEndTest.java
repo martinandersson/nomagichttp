@@ -1,23 +1,18 @@
 package alpha.nomagichttp.internal;
 
 import alpha.nomagichttp.handler.RequestHandler;
-import alpha.nomagichttp.message.Request;
 import alpha.nomagichttp.message.Response;
 import alpha.nomagichttp.message.Responses;
-import alpha.nomagichttp.route.Route;
 import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.concurrent.CompletionStage;
-import java.util.function.Function;
 
 import static alpha.nomagichttp.handler.RequestHandlers.GET;
 import static alpha.nomagichttp.handler.RequestHandlers.POST;
-import static alpha.nomagichttp.internal.ClientOperations.CRLF;
-import static alpha.nomagichttp.message.Responses.ok;
-import static alpha.nomagichttp.route.Routes.route;
+import static alpha.nomagichttp.message.Responses.text;
+import static alpha.nomagichttp.testutil.ClientOperations.CRLF;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
@@ -36,7 +31,7 @@ class SimpleEndToEndTest extends AbstractEndToEndTest
         RequestHandler handler = GET().run(() ->
                 System.out.println("Hello, World!"));
         
-        addHandler("/hello-console", handler);
+        server().add("/hello-console", handler);
         
         String req = "GET /hello-console HTTP/1.1" + CRLF + CRLF,
                res = client().writeRead(req);
@@ -48,10 +43,8 @@ class SimpleEndToEndTest extends AbstractEndToEndTest
     
     @Test
     void helloworld_response() throws IOException {
-        RequestHandler handler = GET().supply(() ->
-                ok("Hello World!").asCompletedStage());
-        
-        addHandler("/hello-response", handler);
+        server().add("/hello-response",
+                GET().respond(text("Hello World!")));
         
         String req =
             "GET /hello-response HTTP/1.1" + CRLF +
@@ -69,20 +62,17 @@ class SimpleEndToEndTest extends AbstractEndToEndTest
     
     @Test
     void greet_param() throws IOException {
-        Route fromPath = route("/hello/:name", GET().apply(req -> {
+        server().add("/hello/:name", GET().apply(req -> {
             String name = req.parameters().path("name");
             String text = "Hello " + name + "!";
-            return ok(text).asCompletedStage();
+            return text(text).completedStage();
         }));
-        
-        Route fromQuery = route("/hello", GET().apply(req -> {
+    
+        server().add("/hello", GET().apply(req -> {
             String name = req.parameters().queryFirst("name").get();
             String text = "Hello " + name + "!";
-            return ok(text).asCompletedStage();
+            return text(text).completedStage();
         }));
-        
-        server().getRouteRegistry().add(fromPath);
-        server().getRouteRegistry().add(fromQuery);
         
         String req1 =
             "GET /hello/John HTTP/1.1" + CRLF +
@@ -107,9 +97,9 @@ class SimpleEndToEndTest extends AbstractEndToEndTest
     @Test
     void greet_requestbody() throws IOException {
         RequestHandler echo = POST().apply(req ->
-                req.body().get().toText().thenApply(name -> ok("Hello " + name + "!")));
+                req.body().toText().thenApply(name -> text("Hello " + name + "!")));
         
-        addHandler("/greet-body", echo);
+        server().add("/greet-body", echo);
         
         String req =
             "POST /greet-body HTTP/1.1" + CRLF +
@@ -133,9 +123,9 @@ class SimpleEndToEndTest extends AbstractEndToEndTest
         RequestHandler echo = GET().apply(req -> Response.Builder.ok()
                 .addHeaders(req.headers())
                 .build()
-                .asCompletedStage());
+                .completedStage());
         
-        addHandler("/echo-headers", echo);
+        server().add("/echo-headers", echo);
         
         String req =
             "GET /echo-headers HTTP/1.1" + CRLF +
@@ -158,11 +148,11 @@ class SimpleEndToEndTest extends AbstractEndToEndTest
                 .resolve("some-file.txt");
         
         RequestHandler saver = POST().apply(req ->
-                req.body().get().toFile(file)
+                req.body().toFile(file)
                           .thenApply(n -> Long.toString(n))
-                          .thenApply(Responses::ok));
+                          .thenApply(Responses::text));
         
-        addHandler("/small-file", saver);
+        server().add("/small-file", saver);
         
         final String reqHead =
             "POST /small-file HTTP/1.1" + CRLF +

@@ -15,6 +15,7 @@ import java.util.OptionalLong;
 import static alpha.nomagichttp.util.Strings.split;
 import static java.lang.Long.parseLong;
 import static java.util.Arrays.stream;
+import static java.util.Collections.emptyMap;
 
 /**
  * Utility methods for {@link HttpHeaders}.
@@ -23,6 +24,9 @@ import static java.util.Arrays.stream;
  */
 public final class Headers
 {
+    private static final HttpHeaders EMPTY
+            = HttpHeaders.of(emptyMap(), (ign,ored) -> false);
+    
     private Headers() {
         // Empty
     }
@@ -42,6 +46,10 @@ public final class Headers
      * @throws IllegalArgumentException if {@code keyValuePairs.length} is not even
      */
     public static HttpHeaders of(String... keyValuePairs) {
+        if (keyValuePairs.length == 0) {
+            return EMPTY;
+        }
+        
         if (keyValuePairs.length % 2 != 0) {
             throw new IllegalArgumentException("Please provide an even number of pairs.");
         }

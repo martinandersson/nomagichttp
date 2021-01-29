@@ -1,9 +1,10 @@
 package alpha.nomagichttp.message;
 
+import alpha.nomagichttp.HttpServer;
 import alpha.nomagichttp.handler.ErrorHandler;
 import alpha.nomagichttp.handler.RequestHandler;
-import alpha.nomagichttp.util.Publishers;
 import alpha.nomagichttp.util.BetterBodyPublishers;
+import alpha.nomagichttp.util.Publishers;
 
 import java.net.http.HttpHeaders;
 import java.net.http.HttpRequest;
@@ -27,7 +28,8 @@ import java.util.function.Supplier;
  * StandardCharsets#US_ASCII US_ASCII}<p>
  * 
  * Header order (FIFO) is preserved (unless documented otherwise). Duplicated
- * header names will be grouped and inserted at the first occurrence.<p>
+ * header names will be grouped together and inserted at the occurrence of the
+ * first value.<p>
  * 
  * The {@code Response} implementation is immutable and can safely be reused
  * sequentially over time to the same client as well as shared concurrently to
@@ -110,8 +112,10 @@ public interface Response
      * }</pre>
      * 
      * @return this response object boxed in a completed stage
+     * 
+     * @see HttpServer
      */
-    default CompletionStage<Response> asCompletedStage() {
+    default CompletionStage<Response> completedStage() {
         return CompletableFuture.completedStage(this);
     }
     

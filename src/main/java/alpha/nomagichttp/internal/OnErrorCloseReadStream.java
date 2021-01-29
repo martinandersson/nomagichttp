@@ -20,12 +20,12 @@ import static java.util.Objects.requireNonNull;
  */
 final class OnErrorCloseReadStream<T> extends AbstractOp<T>
 {
-    private final ChannelOperations child;
+    private final DefaultChannelOperations child;
     
     private static final System.Logger LOG
             = System.getLogger(OnErrorCloseReadStream.class.getPackageName());
     
-    protected OnErrorCloseReadStream(Flow.Publisher<? extends T> upstream, ChannelOperations child) {
+    protected OnErrorCloseReadStream(Flow.Publisher<? extends T> upstream, DefaultChannelOperations child) {
         super(upstream);
         this.child  = requireNonNull(child);
     }

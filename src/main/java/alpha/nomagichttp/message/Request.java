@@ -22,9 +22,11 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.CompletionStage;
+import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Flow;
 import java.util.function.BiFunction;
+import java.util.function.Supplier;
 import java.util.stream.Stream;
 
 /**
@@ -105,7 +107,10 @@ public interface Request
     
     /**
      * Returns a parameters API object bound to this request.<p>
-     *
+     * 
+     * Path- and query parameters are provided by the client through the request
+     * path and can not be modified by the application.
+     * 
      * @return a parameters API object bound to this request
      *
      * @see Parameters
@@ -128,26 +133,23 @@ public interface Request
      * 
      * @see Body
      */
-    Optional<Body> body();
+    Body body();
     
     /**
-     * Returns the channel from which this request originates.
+     * Returns an attributes API bound to this request.<p>
      * 
-     * @return the channel from which this request originates (never {@code null})
-     */
-    NetworkChannel channel();
-    
-    /**
-     * Returns {@code true} if the channel from which this request originates is
-     * open for reading, otherwise {@code false}.
+     * Attributes are application-provided objects associated with the request
+     * for passing data through the request object and across boundaries.
      * 
-     * @return see JavaDoc
+     * @return an attributes API object bound to this request
      */
-    boolean channelIsOpenForReading();
+    Attributes attributes();
+    
+    ChannelOperations channel();
     
     /**
-     * Is a thread-safe and non-blocking API for accessing request path- and
-     * query parameter values.<p>
+     * Is a thread-safe and non-blocking API for accessing immutable request
+     * path- and query parameter values.<p>
      * 
      * Any client-given request path (a component of {@link Request#target()}
      * may contain segments interpreted by the HTTP server as a path parameter
@@ -443,14 +445,19 @@ public interface Request
      * {@link #convert(BiFunction)} method or consumed directly "on arrival"
      * using the {@link #subscribe(Flow.Subscriber)} method.<p>
      * 
+     * If the body {@link #isEmpty()}, {@code subscribe()} completes the subscription
+     * immediately. {@code toText()} completes immediately with an empty string.
+     * {@code toFile()} completes immediately with 0 bytes. {@code convert()}
+     * immediately invokes its given function with an empty byte array.<p>
+     * 
      * The body bytes can not be directly consumed more than once; they are not
-     * saved by the server. An attempt to {@code convert(...)} or {@code
-     * subscribe(...)} more than once will result in an {@code
+     * saved by the server. An attempt to {@code convert()} or {@code
+     * subscribe()} more than once will result in an {@code
      * IllegalStateException}.<p>
      * 
      * Same is is also true for utility methods that "trickle down". If for
-     * example method {@code convert(...)} is used followed by {@code toText()},
-     * then the latter will complete exceptionally with an {@code
+     * example {@code convert()} is used followed by {@code toText()}, then the
+     * latter will complete exceptionally with an {@code
      * IllegalStateException}.<p>
      * 
      * And, it does not matter if a {@code Flow.Subscription} is immediately
@@ -487,7 +494,7 @@ public interface Request
      * unexpected errors, in particular, errors that originate from the
      * channel's read operation. The safest bet for an application when
      * attempting error recovery is to always check first if {@link
-     * Request#channelIsOpenForReading()}.<p>
+     * ChannelOperations#isOpenForReading() request.channel().isOpenForReading()}.<p>
      * 
      * 
      * <h3>Subscribing to bytes with a {@code Flow.Subscriber}</h3>
@@ -679,8 +686,10 @@ public interface Request
          * a new file will be created or an existing file will be
          * overwritten.<p>
          * 
-         * If the operation completes exceptionally, the file is removed.<p>
-         *
+         * If the returned stage completes with 0 bytes, then the file will not
+         * have been created. If the file is created but the operation completes
+         * exceptionally, then the file is removed.<p>
+         * 
          * All exceptions thrown by {@code AsynchronousFileChannel.open()} is
          * delivered through the returned stage.<p>
          * 
@@ -717,5 +726,197 @@ public interface Request
          * @return the result from applying the function {@code f}
          */
         <R> CompletionStage<R> convert(BiFunction<byte[], Integer, R> f);
+        
+        /**
+         * Returns {@code true} if the request contains no body, otherwise
+         * {@code false}.
+         * 
+         * @return {@code true} if the request contains no body,
+         *         otherwise {@code false}
+         * 
+         * @see Body
+         */
+        boolean isEmpty();
+    }
+    
+    /**
+     * Is an API for accessing objects associated with a particular request.
+     * Useful when passing data across boundaries, such as from a request
+     * handler to an error handler.<p>
+     * 
+     * <pre>{@code
+     *   // In a request handler
+     *   request.attributes().set("stuff", new MyClass());
+     *   // Somewhere else
+     *   MyClass obj = request.attributes().getAny("stuff");
+     * }</pre>
+     * 
+     * The implementation is thread-safe.<p>
+     * 
+     * The NoMagicHTTP library may use the attribute object in the future as a
+     * means of communication, for example as a store of information related to
+     * the characteristics of a request. If so, the names used will start with
+     * "alpha.nomagichttp.". Applications are encouraged to avoid using this
+     * prefix in their names.
+     * 
+     * @author Martin Andersson (webmaster at martinandersson.com)
+     */
+    interface Attributes
+    {
+        /**
+         * Returns the value of the named attribute as an object.
+         * 
+         * @param name of attribute
+         * 
+         * @return the value of the named attribute as an object (may be {@code null})
+         * 
+         * @throws NullPointerException if {@code name} is {@code null}
+         */
+        Object get(String name);
+        
+        /**
+         * Set the value of the named attribute.<p>
+         * 
+         * @param value of attribute (may be {@code null})
+         * 
+         * @return the old value (may be {@code null})
+         *
+         * @throws NullPointerException if {@code name} is {@code null}
+         */
+        Object set(String name, Object value);
+        
+        /**
+         * Returns the value of the named attribute cast to V.
+         * 
+         * This method is equivalent to:
+         * <pre>{@code
+         *   V v = (V) request.attributes().get(name);
+         * }</pre>
+         * 
+         * Except the cast is implicit and the type is inferred by the Java
+         * compiler. The call site will still blow up with a {@code
+         * ClassCastException} if a non-null object can not be cast to the
+         * inferred type.
+         * 
+         * <pre>{@code
+         *   // Given
+         *   request.attributes().set("name", "my string");
+         *   
+         *   // Okay
+         *   String str = request.attributes().getAny("name");
+         *   
+         *   // ClassCastException
+         *   DateTimeFormatter oops = request.attributes().getAny("name");
+         * }</pre>
+         * 
+         * @param <V>  value type (explicitly provided on call site or inferred 
+         *             by Java compiler)
+         * @param name of attribute
+         * 
+         * @return the value of the named attribute as an object (may be {@code null})
+         *
+         * @throws NullPointerException if {@code name} is {@code null}
+         */
+        <V> V getAny(String name);
+        
+        /**
+         * Returns the value of the named attribute described as an Optional of
+         * an object.<p>
+         * 
+         * @param name of attribute
+         * 
+         * @return the value of the named attribute described as an Optional of
+         *         an object (never {@code null} but possibly empty)
+         *
+         * @throws NullPointerException if {@code name} is {@code null}
+         */
+        Optional<Object> getOpt(String name);
+        
+        /**
+         * Returns the value of the named attribute described as an Optional of
+         * V.<p>
+         * 
+         * Unlike {@link #getAny(String)} where the {@code ClassCastException}
+         * is immediate for non-null and assignment-incompatible types, this
+         * method should generally be considered unsafe as the
+         * ClassCastException is delayed (known as "heap pollution").
+         * 
+         * <pre>{@code
+         *   // Given
+         *   request.attributes().set("name", "my string");
+         *   
+         *   // Okay
+         *   Optional<String> str = request.attributes().getOptAny("name");
+         *   
+         *   // No ClassCastException!
+         *   Optional<DateTimeFormatter> poison = request.attributes().getOptAny("name");
+         *   
+         *   // Let's give the problem to someone else in the future
+         *   anotherDestination(poison);
+         * }</pre>
+         * 
+         * @param <V>  value type (explicitly provided on call site or inferred 
+         *             by Java compiler)
+         * @param name of attribute
+         * 
+         * @return the value of the named attribute described as an Optional of
+         *         V (never {@code null} but possibly empty)
+         * 
+         * @throws NullPointerException if {@code name} is {@code null}
+         */
+        <V> Optional<V> getOptAny(String name);
+        
+        /**
+         * Returns a modifiable map view of the attributes. Changes to the map
+         * are reflected in the attributes, and vice-versa.
+         * 
+         * @return a modifiable map view of the attributes
+         */
+        ConcurrentMap<String, Object> asMap();
+        
+        /**
+         * Returns a modifiable map view of the attributes. Changes to the map
+         * are reflected in the attributes, and vice-versa.<p>
+         * 
+         * Unlike {@link #getOptAny(String)}, using this method does not lead to
+         * heap pollution if you immediately use the returned map to work with
+         * the values directly. For example: 
+         * 
+         * <pre>{@code
+         *   int v = req.attributes().<Integer>asMapAny()
+         *                   .merge("request.counter", 1, Integer::sum);
+         * }</pre>
+         * 
+         * @param <V> value type (explicitly provided on call site or inferred 
+         *            by Java compiler)
+         * 
+         * @return a modifiable map view of the attributes
+         */
+        <V> ConcurrentMap<String, V> asMapAny();
+    }
+    
+    /**
+     * An API for management of the channel from which a request originates.
+     * 
+     * @author Martin Andersson (webmaster at martinandersson.com)
+     */
+    interface ChannelOperations extends Supplier<NetworkChannel>
+    {
+        /**
+         * Returns the actual Java channel instance.
+         * 
+         * @return the actual Java channel instance (never {@code null})
+         */
+        @Override
+        NetworkChannel get();
+        
+        /**
+         * Returns {@code true} if the channel is open for reading, otherwise
+         * {@code false}.
+         * 
+         * @return {@code true} if the channel is open for reading,
+         *         otherwise {@code false}
+         */
+        boolean isOpenForReading();
     }
 }

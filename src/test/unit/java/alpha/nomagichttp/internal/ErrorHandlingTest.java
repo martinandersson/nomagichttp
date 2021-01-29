@@ -6,8 +6,8 @@ import alpha.nomagichttp.handler.RequestHandler;
 import alpha.nomagichttp.handler.RequestHandlers;
 import alpha.nomagichttp.message.Response;
 import alpha.nomagichttp.route.NoRouteFoundException;
-import alpha.nomagichttp.route.Route;
-import alpha.nomagichttp.test.Logging;
+import alpha.nomagichttp.testutil.ClientOperations;
+import alpha.nomagichttp.testutil.Logging;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -17,12 +17,9 @@ import java.util.concurrent.CompletionStage;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Supplier;
 
-import static alpha.nomagichttp.HttpServer.Config.DEFAULT;
 import static alpha.nomagichttp.handler.RequestHandlers.noop;
-import static alpha.nomagichttp.internal.ClientOperations.CRLF;
-import static alpha.nomagichttp.route.Routes.route;
+import static alpha.nomagichttp.testutil.ClientOperations.CRLF;
 import static java.lang.System.Logger.Level.ALL;
-import static java.util.Collections.singleton;
 import static java.util.concurrent.CompletableFuture.failedFuture;
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -69,7 +66,7 @@ class ErrorHandlingTest
                         .reasonPhrase("Custom Not Found!")
                         .mustCloseAfterWrite(true)
                         .build()
-                        .asCompletedStage();
+                        .completedStage();
             }
             throw exc;
         };
@@ -105,7 +102,7 @@ class ErrorHandlingTest
             return Response.Builder.ok()
                     .header("N", Integer.toString(c.get()))
                     .build()
-                    .asCompletedStage();
+                    .completedStage();
         });
         
         ErrorHandler retry = (t, r, h2) -> h2.logic().apply(r);
@@ -126,13 +123,11 @@ class ErrorHandlingTest
     }
     
     private ClientOperations createServerAndClient(RequestHandler handler, ErrorHandler onError) throws IOException {
-        Iterable<Route> r = singleton(route("/", handler));
+        ErrorHandler[] eh = onError == null ?
+                new ErrorHandler[0] :
+                new ErrorHandler[]{ onError };
         
-        @SuppressWarnings("unchecked")
-        Supplier<ErrorHandler>[] eh = onError == null ?
-                new Supplier[0] : new Supplier[]{ () -> onError };
-        
-        server = HttpServer.with(DEFAULT, r, eh).start();
+        server = HttpServer.create(eh).add("/", handler).start();
         return new ClientOperations(server.getLocalAddress().getPort());
     }
 }

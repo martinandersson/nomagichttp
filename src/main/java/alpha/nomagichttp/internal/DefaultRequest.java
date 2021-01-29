@@ -4,10 +4,10 @@ import alpha.nomagichttp.message.MediaType;
 import alpha.nomagichttp.message.PooledByteBufferHolder;
 import alpha.nomagichttp.message.Request;
 import alpha.nomagichttp.route.RouteRegistry;
+import alpha.nomagichttp.util.Publishers;
 
 import java.net.http.HttpHeaders;
 import java.nio.channels.AsynchronousFileChannel;
-import java.nio.channels.NetworkChannel;
 import java.nio.charset.Charset;
 import java.nio.file.OpenOption;
 import java.nio.file.Path;
@@ -18,6 +18,8 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.Flow;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.BiFunction;
@@ -31,12 +33,14 @@ import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.nio.file.StandardOpenOption.CREATE;
 import static java.nio.file.StandardOpenOption.TRUNCATE_EXISTING;
 import static java.nio.file.StandardOpenOption.WRITE;
-import static java.util.Optional.empty;
+import static java.util.Objects.requireNonNull;
+import static java.util.Optional.ofNullable;
+import static java.util.concurrent.CompletableFuture.completedStage;
 import static java.util.concurrent.CompletableFuture.failedStage;
 
 final class DefaultRequest implements Request
 {
-    private static final CompletionStage<Void> COMPLETED = CompletableFuture.completedStage(null);
+    private static final CompletionStage<Void> COMPLETED = completedStage(null);
     
     // Copy-pasted from AsynchronousFileChannel.NO_ATTRIBUTES
     private static final FileAttribute<?>[] NO_ATTRIBUTES = new FileAttribute[0];
@@ -45,16 +49,17 @@ final class DefaultRequest implements Request
     private final RequestTarget paramsQuery;
     private final RouteRegistry.Match paramsPath;
     private final CompletionStage<Void> bodyStage;
-    private final Optional<Body> bodyApi;
+    private final Body bodyApi;
     private final OnCancelDiscardOp bodyDiscard;
     private final ChannelOperations child;
+    private final Attributes attributes;
     
     DefaultRequest(
             RequestHead head,
             RequestTarget paramsQuery,
             RouteRegistry.Match paramsPath,
             Flow.Publisher<DefaultPooledByteBufferHolder> bodySource,
-            ChannelOperations child)
+            DefaultChannelOperations child)
     {
         this.head = head;
         this.paramsQuery = paramsQuery;
@@ -70,7 +75,7 @@ final class DefaultRequest implements Request
         
         if (len <= 0) {
             bodyStage   = COMPLETED;
-            bodyApi     = empty();
+            bodyApi     = DefaultBody.empty(headers());
             bodyDiscard = null;
         } else {
             var bounded = new LengthLimitedOp(len, bodySource);
@@ -79,10 +84,11 @@ final class DefaultRequest implements Request
             bodyDiscard = new OnCancelDiscardOp(onError);
             
             bodyStage = observe.asCompletionStage();
-            bodyApi = Optional.of(new DefaultBody(headers(), bodyDiscard));
+            bodyApi = DefaultBody.of(headers(), bodyDiscard);
         }
         
         this.child = child;
+        this.attributes = new DefaultAttributes();
     }
     
     @Override
@@ -119,18 +125,18 @@ final class DefaultRequest implements Request
     }
     
     @Override
-    public Optional<Body> body() {
+    public Body body() {
         return bodyApi;
     }
     
     @Override
-    public NetworkChannel channel() {
-        return child.delegate();
+    public Attributes attributes() {
+        return attributes;
     }
     
     @Override
-    public boolean channelIsOpenForReading() {
-        return child.isOpenForReading();
+    public ChannelOperations channel() {
+        return child;
     }
     
     /**
@@ -166,7 +172,20 @@ final class DefaultRequest implements Request
         private final Flow.Publisher<PooledByteBufferHolder> source;
         private final AtomicReference<CompletionStage<String>> cachedText;
         
-        DefaultBody(HttpHeaders headers, Flow.Publisher<PooledByteBufferHolder> source) {
+        static Request.Body empty(HttpHeaders headers) {
+            // Even an empty body must still validate the arguments,
+            // for example toText() may complete with IllegalCharsetNameException.
+            requireNonNull(headers);
+            return new DefaultBody(headers, null);
+        }
+        
+        static Request.Body of(HttpHeaders headers, Flow.Publisher<PooledByteBufferHolder> source) {
+            requireNonNull(headers);
+            requireNonNull(source);
+            return new DefaultBody(headers, source);
+        }
+        
+        private DefaultBody(HttpHeaders headers, Flow.Publisher<PooledByteBufferHolder> source) {
             this.headers = headers;
             this.source  = source;
             this.cachedText = new AtomicReference<>(null);
@@ -229,7 +248,16 @@ final class DefaultRequest implements Request
         
         @Override
         public void subscribe(Flow.Subscriber<? super PooledByteBufferHolder> subscriber) {
-            source.subscribe(subscriber);
+            if (isEmpty()) {
+                Publishers.<PooledByteBufferHolder>empty().subscribe(subscriber);
+            } else {
+                source.subscribe(subscriber);
+            }
+        }
+        
+        @Override
+        public boolean isEmpty() {
+            return source == null;
         }
         
         /**
@@ -344,6 +372,54 @@ final class DefaultRequest implements Request
         @Override
         public Map<String, List<String>> queryMapRaw() {
             return qRaw;
+        }
+    }
+    
+    private static final class DefaultAttributes implements Attributes
+    {
+        // does not allow null as key or value
+        private final ConcurrentMap<String, Object> map = new ConcurrentHashMap<>();
+        
+        @Override
+        public Object get(String name) {
+            return map.get(name);
+        }
+        
+        @Override
+        public Object set(String name, Object value) {
+            return map.put(name, value);
+        }
+        
+        @Override
+        public <V> V getAny(String name) {
+            return this.<V>asMapAny().get(name);
+        }
+        
+        @Override
+        public Optional<Object> getOpt(String name) {
+            return ofNullable(get(name));
+        }
+        
+        @Override
+        public <V> Optional<V> getOptAny(String name) {
+            return ofNullable(getAny(name));
+        }
+        
+        @Override
+        public ConcurrentMap<String, Object> asMap() {
+            return map;
+        }
+        
+        @Override
+        public <V> ConcurrentMap<String, V> asMapAny() {
+            @SuppressWarnings("unchecked")
+            ConcurrentMap<String, V> m = (ConcurrentMap<String, V>) map;
+            return m;
+        }
+        
+        @Override
+        public String toString() {
+            return map.toString();
         }
     }
 }

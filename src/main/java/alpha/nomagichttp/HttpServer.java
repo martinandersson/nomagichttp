@@ -6,28 +6,28 @@ import alpha.nomagichttp.internal.DefaultServer;
 import alpha.nomagichttp.message.MaxRequestHeadSizeExceededException;
 import alpha.nomagichttp.message.Request;
 import alpha.nomagichttp.message.Response;
+import alpha.nomagichttp.route.DefaultRouteRegistry;
+import alpha.nomagichttp.route.HandlerCollisionException;
 import alpha.nomagichttp.route.Route;
-import alpha.nomagichttp.route.RouteRegistry;
+import alpha.nomagichttp.route.RouteCollisionException;
 
 import java.io.IOException;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
 import java.nio.channels.AsynchronousServerSocketChannel;
-import java.util.List;
-import java.util.function.Supplier;
 
 /**
  * Listens on a port for HTTP {@link Request requests} targeting a specific
  * {@link Route route} which contains at least one {@link RequestHandler request
  * handler} which processes the request into a {@link Response response}.<p>
  * 
- * This interface declares static <i>{@code with}</i> methods that construct
+ * This interface declares static <i>{@code create}</i> methods that construct
  * and return the default implementation {@link DefaultServer}. Once the server
  * has been constructed, it needs to <i>{@code start}</i>.<p>
  * 
- * Routes can be dynamically added and removed from the server using its {@link
- * #getRouteRegistry() route registry}.<p>
+ * Routes can be dynamically added and removed using {@link #add(Route)} and
+ * {@link #remove(Route)}.<p>
  * 
  * The server's function is to provide port- and channel management, parse
  * an inbound request head and resolve which handler of a route is qualified to
@@ -47,11 +47,15 @@ import java.util.function.Supplier;
  * server instances must {@link #stop()}.
  * 
  * 
- * <h3>Threading Model</h3>
+ * <h3>Thread Safety and Threading Model</h3>
  * 
- * The server instance is thread-safe. It is also fully non-blocking once it is
- * running but life-cycle methods such as {@code start}/{@code stop} may
- * block.<p>
+ * The server instance is fully thread-safe. Life-cycle methods {@code start}
+ * and {@code stop} may block and should understandably not be invoked at a high
+ * rate. The server also functions as a route registry, to which you {@code add}
+ * and {@code remove} routes. These methods are highly concurrent but may impose
+ * minuscule blocks at the discretion of the implementation. Most importantly,
+ * looking up a route - as is done on every inbound request - never blocks and
+ * features great performance no matter the size of the registry.<p>
  * 
  * All servers running in the same JVM share a common pool of threads (aka
  * "request threads"). The pool handles I/O completion events and executes
@@ -76,51 +80,32 @@ import java.util.function.Supplier;
 public interface HttpServer
 {
     /**
-     * Builds a server using the {@linkplain Config#DEFAULT default
-     * configuration}.<p>
+     * Create a server using {@linkplain Config#DEFAULT default configuration}.
      * 
-     * @param routes of server
+     * @param eh error handler(s)
      * 
      * @return an instance of {@link DefaultServer}
      * 
-     * @throws NullPointerException if {@code route} is {@code null}
+     * @throws NullPointerException
+     *             if {@code eh} or an element therein is {@code null}
      */
-    static HttpServer with(Route... routes) {
-        return with(Config.DEFAULT, routes);
+    static HttpServer create(ErrorHandler... eh) {
+        return create(Config.DEFAULT, eh);
     }
     
     /**
-     * Builds a server.<p>
+     * Create a server.<p>
      * 
      * @param config of server
-     * @param routes of server
+     * @param eh     error handler(s)
      * 
      * @return an instance of {@link DefaultServer}
      * 
-     * @throws NullPointerException if any given argument is {@code null}
+     * @throws NullPointerException
+     *             if any given argument or element is {@code null}
      */
-    static HttpServer with(Config config, Route... routes) {
-        return with(config, List.of(routes));
-    }
-    
-    /**
-     * Builds a server.<p>
-     * 
-     * @param config  of server
-     * @param routes  of server
-     * @param eh      error handler(s)
-     * 
-     * @return an instance of {@link DefaultServer}
-     * 
-     * @throws NullPointerException if any given argument is {@code null}
-     */
-    // TODO: Remove Supplier type. ErrorHandler instance will use exchange-associated object store for state.
-    @SafeVarargs
-    static HttpServer with(Config config,
-                           Iterable<? extends Route> routes,
-                           Supplier<? extends ErrorHandler>... eh)
-    {
-        return new DefaultServer(config, routes, eh);
+    static HttpServer create(Config config, ErrorHandler... eh) {
+        return new DefaultServer(config, new DefaultRouteRegistry(), eh);
     }
     
     /**
@@ -234,6 +219,124 @@ public interface HttpServer
     void stop() throws IOException;
     
     /**
+     * Build a route and add it to the server.
+     * 
+     * @implSpec
+     * The default implementation is equivalent to:
+     * <pre>
+     *     Route r = {@link Route}.{@link Route#builder(String)
+     *               builder}(pattern).{@link Route.Builder#handler(RequestHandler, RequestHandler...)
+     *               handler}(first, more).{@link Route.Builder#build()
+     *               build}();
+     *     return add(r);
+     * </pre>
+     * 
+     * @param pattern of route path
+     * @param first   request handler
+     * @param more    optionally more request handlers
+     * 
+     * @return {@code this} (for chaining/fluency)
+     * 
+     * @throws NullPointerException
+     *             if any argument is {@code null}
+     * 
+     * @throws IllegalArgumentException
+     *             if a static segment value is empty
+     * 
+     * @throws IllegalStateException
+     *             if parameter names are repeated in the pattern, or
+     *             if a catch-all parameter is not the last segment
+     * 
+     * @throws HandlerCollisionException
+     *             if not all handlers are unique
+     * 
+     * @throws RouteCollisionException
+     *             if an equivalent route has already been added
+     */
+    default HttpServer add(String pattern, RequestHandler first, RequestHandler... more) {
+        Route r = Route.builder(pattern).handler(first, more).build();
+        return add(r);
+    }
+    
+    /**
+     * Add a route.
+     * 
+     * @param  route to add
+     * @return {@code this} (for chaining/fluency)
+     * 
+     * @throws NullPointerException
+     *             if {@code route} is {@code null}
+     * 
+     * @throws RouteCollisionException
+     *             if an equivalent route has already been added
+     * 
+     * @see Route
+     */
+    HttpServer add(Route route);
+    
+    /**
+     * Remove a route.<p>
+     * 
+     * This method is similar to {@link #remove(Route)}, except any route no
+     * matter its identity found at the hierarchical position will be removed.
+     * The pattern provided is the same path-describing pattern provided to
+     * methods such as {@link #add(String, RequestHandler, RequestHandler...)}
+     * and {@link Route#builder(String)}, except path parameter names can be
+     * anything, they simply do not matter. Other than that, the pattern will go
+     * through the same normalization and validation routine.<p>
+     * 
+     * For example:
+     * <pre>{@code
+     *   server.add("/download/:user/*filepath", ...);
+     *   server.remove("/download/:/*"); // or "/download/:bla/*bla", doesn't matter
+     * }</pre>
+     * 
+     * @param pattern of route to remove
+     * 
+     * @return the route removed ({@code null} if non-existent)
+     * 
+     * @throws IllegalArgumentException
+     *             if a static segment value is empty
+     * 
+     * @throws IllegalStateException
+     *             if a catch-all parameter is not the last segment
+     */
+    Route remove(String pattern);
+    
+    /**
+     * Remove a route.<p>
+     * 
+     * The route's currently active requests and exchanges will run to
+     * completion and will not be aborted. Only when all active connections
+     * against the route have closed will the route effectively not be in use
+     * anymore. However, the route is guaranteed to not be <i>discoverable</i>
+     * for <i>new</i> lookup operations once this method has returned.<p>
+     * 
+     * In order for the route to be removed, the current route in the registry
+     * occupying the same hierarchical position must be {@code equal} to the
+     * given route using {@code Route.equals(Object)}. Currently, route equality
+     * is not specified and the default implementation has not overridden the
+     * equals method. I.e., the route provided must be the same instance.<p>
+     * 
+     * In order to remove any route at the targeted position, use {@link
+     * #remove(String) instead}.
+     * 
+     * @param route to remove
+     * 
+     * @return {@code true} if successful, otherwise {@code false}
+     * 
+     * @throws NullPointerException if {@code route} is {@code null}
+     */
+    boolean remove(Route route);
+    
+    /**
+     * Returns the server's configuration.
+     *
+     * @return the server's configuration (never {@code null})
+     */
+    Config getConfig();
+    
+    /**
      * Returns the socket address that the server is listening on.
      * 
      * @return the port used by the server
@@ -243,20 +346,6 @@ public interface HttpServer
      * @see AsynchronousServerSocketChannel#getLocalAddress() 
      */
     InetSocketAddress getLocalAddress() throws IllegalStateException;
-    
-    /**
-     * Returns the server's route registry.
-     * 
-     * @return the server's route registry (never {@code null})
-     */
-    RouteRegistry getRouteRegistry();
-    
-    /**
-     * Returns the server's configuration.
-     *
-     * @return the server's configuration (never {@code null})
-     */
-    Config getConfig();
     
     /**
      * Server configuration.<p>

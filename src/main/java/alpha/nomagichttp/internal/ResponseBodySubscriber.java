@@ -43,7 +43,7 @@ final class ResponseBodySubscriber implements SubscriberAsStage<ByteBuffer, Long
     private boolean pushedHead;
     private int requested;
     
-    ResponseBodySubscriber(Response response, ChannelOperations child) {
+    ResponseBodySubscriber(Response response, DefaultChannelOperations child) {
         this.response = requireNonNull(response);
         this.result   = new CompletableFuture<>();
         this.channel  = AnnounceToChannel.write(child, this::afterChannelFinished);
@@ -135,7 +135,7 @@ final class ResponseBodySubscriber implements SubscriberAsStage<ByteBuffer, Long
         channel.announce(b);
     }
     
-    private void afterChannelFinished(ChannelOperations child, long byteCount, Throwable exc) {
+    private void afterChannelFinished(DefaultChannelOperations child, long byteCount, Throwable exc) {
         if (exc == null) {
             result.complete(byteCount);
         } else {

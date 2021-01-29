@@ -1,4 +1,4 @@
-package alpha.nomagichttp.internal;
+package alpha.nomagichttp.testutil;
 
 import java.io.Closeable;
 import java.io.IOException;
@@ -8,6 +8,7 @@ import java.nio.channels.AsynchronousSocketChannel;
 import java.nio.channels.CompletionHandler;
 import java.nio.channels.SocketChannel;
 import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.CompletionException;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -17,34 +18,35 @@ import static java.util.concurrent.TimeUnit.SECONDS;
 /**
  * A dual-sided facade of an {@code AsynchronousServerSocketChannel}.<p>
  * 
- * The test first {@code start()} the server which will internally open and bind
- * a new listening server channel. The test then calls {@code newClient()} which
- * will open and return a socket channel connected to the server channel's port.
- * The test then calls {@code accept()} which returns the server's accepted
- * socket channel. At this point, the test will have access to both channels on
- * both sides.<p>
+ * The test case first {@code start()} the server which will internally open and
+ * bind a listening server channel. The test then calls {@code newClient()}
+ * which will open and return a [client] socket channel connected to the
+ * listening channel's port. The test then calls {@code accept()} which returns
+ * the [server] listening channel's accepted socket channel. At this point, the
+ * test will have access to both channels on both sides.<p>
  * 
- * The purpose of this class is to be able to test byte processors which depends
- * on the child connection.
+ * Other than creating a client channel and leaking the server channel, this
+ * <i>skeleton</i> class has no other logic. The purpose of this class is to be
+ * able to test byte processors and other internal components that depends on
+ * the child connection.
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  */
-// TODO: Rename to something else
-final class TestServer implements Closeable
+public final class SkeletonServer implements Closeable
 {
     private AsynchronousServerSocketChannel listener;
     private int port;
     private final BlockingQueue<AsynchronousSocketChannel> accepted;
     private final AtomicReference<Throwable> acceptExc;
     
-    TestServer() {
+    public SkeletonServer() {
         listener = null;
         port = 0;
         accepted = new LinkedBlockingQueue<>();
         acceptExc = new AtomicReference<>();
     }
     
-    void start() throws IOException {
+    public void start() throws IOException {
         listener = AsynchronousServerSocketChannel.open()
                 .bind(new InetSocketAddress(getLoopbackAddress(), 0));
         
@@ -62,12 +64,12 @@ final class TestServer implements Closeable
         });
     }
     
-    SocketChannel newClient() throws IOException {
+    public SocketChannel newClient() throws IOException {
         return SocketChannel.open(
                 new InetSocketAddress(getLoopbackAddress(), port));
     }
     
-    AsynchronousSocketChannel accept() throws Throwable {
+    public AsynchronousSocketChannel accept() throws InterruptedException, CompletionException {
         final AsynchronousSocketChannel ch;
         
         try {
@@ -82,13 +84,13 @@ final class TestServer implements Closeable
         return ch;
     }
     
-    private void tryThrowAcceptExc(Throwable suppressed) throws Throwable {
+    private void tryThrowAcceptExc(Throwable suppressed) throws CompletionException {
         Throwable t = acceptExc.getAndSet(null);
         if (t != null) {
             if (suppressed != null) {
                 t.addSuppressed(suppressed);
             }
-            throw t;
+            throw new CompletionException(t);
         }
     }
     

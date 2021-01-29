@@ -1,4 +1,4 @@
-package alpha.nomagichttp.test;
+package alpha.nomagichttp.testutil;
 
 import java.io.OutputStream;
 import java.io.PrintWriter;

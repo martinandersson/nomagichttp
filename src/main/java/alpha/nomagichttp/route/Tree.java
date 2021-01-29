@@ -1,4 +1,4 @@
-package alpha.nomagichttp.internal;
+package alpha.nomagichttp.route;
 
 import java.util.AbstractMap;
 import java.util.ArrayDeque;
@@ -322,11 +322,11 @@ final class Tree<V>
         }
     }
     
-    boolean clear(Iterable<String> keySegments) {
+    V clear(Iterable<String> keySegments) {
         return clearIf(keySegments, ignored -> true);
     }
     
-    boolean clearIf(Iterable<String> keySegments, Predicate<V> test) {
+    V clearIf(Iterable<String> keySegments, Predicate<V> test) {
         final Iterator<String> it = keySegments.iterator();
         
         // This is cheating as we use read mode to eventually set null,
@@ -337,15 +337,15 @@ final class Tree<V>
             n = n.next(it.next());
             if (n == null) {
                 // Branch doesn't extend further, job done
-                return false;
+                return null;
             }
         }
         
-        if (((NodeImpl) n).setIf(null, test) != null) {
+        V v = ((NodeImpl) n).setIf(null, test);
+        if (v != null) {
             tryPruningTree();
-            return true;
         }
-        return false;
+        return v;
     }
     
     private void tryPruningTree() {
