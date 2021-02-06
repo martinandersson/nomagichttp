@@ -129,7 +129,7 @@ import static java.util.Objects.requireNonNull;
  * MediaType#NOTHING_AND_ALL}.<p>
  * 
  * 
- * <h4>Qualify handler with producing media type (content negotiation)</h4>
+ * <h4>Qualify handler with producing media type (proactive content negotiation)</h4>
  * 
  * The "Accept" header of a request indicates what media type(s) the client is
  * willing to accept as response body. Each such media type - or "media range"
@@ -179,18 +179,17 @@ import static java.util.Objects.requireNonNull;
  * <h4>Media type parameters</h4>
  * 
  * Media type parameters are only evaluated if they are specified on the
- * handler-side and then they must all match.<p>
+ * handler-side where they act like a filter; they must all match. A handler
+ * that does not declare media type parameters implicitly handles any
+ * combination of parameters including none at all.<p>
  * 
  * Adding parameters increases the handler's specificity.<p>
- * 
- * A handler that does not declare media type parameters implicitly handles any
- * combination of parameters including none at all.<p>
  * 
  * This makes it possible to be very specific and narrow down what requests a
  * handler handles and possibly have other handlers be more generic;
  * consuming/producing any combination of parameters.<p>
  * 
- * For example, if client sends a request with a content-type/accept value
+ * For example, if client sends a request with a Content-Type/Accept value
  * "text/plain; charset=utf-8", then this matches a handler consuming/producing
  * "text/plain; charset=utf-8" and it also matches a handler consuming/producing
  * "text/plain". If both of these handlers are registered with the route, then

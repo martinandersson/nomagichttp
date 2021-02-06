@@ -139,7 +139,8 @@ import java.nio.charset.Charset;
  *       <a href="https://tools.ietf.org/html/rfc3986#section-2.1">RFC 3986</a> behavior).</li>
  *   <li>Dot-segments (".", "..") are normalized as defined by step 1 and 2 in
  *       Javadoc of {@link URI#normalize()} (basically "." is removed and ".."
- *       removes the previous segment)</li>
+ *       removes the previous segment, also see <a href="https://tools.ietf.org/html/rfc7231#section-9.1">
+ *       RFC 7231 §9.1</a>)</li>
  *   <li>Finally, all remaining segments that are not interpreted as a path
  *       parameter value must match a route's segments exactly and in order. In
  *       particular, note that route-matching is case-sensitive and characters

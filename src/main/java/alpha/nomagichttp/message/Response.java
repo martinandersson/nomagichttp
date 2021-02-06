@@ -125,8 +125,8 @@ public interface Response
      * The builder type declares static methods that return builders already
      * populated with common status lines such as {@link #ok()} and {@link
      * #accepted()}, what remains is to customize headers and the body. Static
-     * methods that build a complete response can be found in {@link
-     * Responses}.<p>
+     * methods that build a complete response can be found in
+     * {@link Responses}.<p>
      * 
      * The builder can be used as a template to modify per-response state. Each
      * method returns a new builder instance representing the new state. The API
