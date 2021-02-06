@@ -27,7 +27,7 @@ public class HelloWorld {
         RequestHandler handler = RequestHandlers.GET().respond(answer);
         
         // The real contents of the server are resources, addressed by a request path.
-        // (just as with Response, the handler too is thread-safe and can be shared)
+        // (just as with Response, the handler too is immutable and can be shared)
         app.add("/hello", handler);
         
         // If we don't supply a port number, the system will pick one.
