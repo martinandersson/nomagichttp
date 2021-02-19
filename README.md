@@ -14,11 +14,11 @@ deliver killer JavaDocs, developer joy and productivity.
 
 **WARNING:** This project is fresh out of the oven and probably not very useful
 at the moment. An HTTP compatibility matrix can be inferred from the author's
-notes and planned future work in [PLANNING.md][0-1].
+notes and planned future work in [POA.md][0-1].
 
 Please become an early contributor and join the fight to rid the world of magic!
 
-[0-1]: PLANNING.md
+[0-1]: POA.md
 
 ## Getting started
 
