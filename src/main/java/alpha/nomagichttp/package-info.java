@@ -1,14 +1,15 @@
 /**
- * NoMagicHTTP is an asynchronous server-side library used to receive HTTP
- * requests and respond to them.<p>
+ * NoMagicHTTP is an asynchronous Java HTTP server. It is embedded in your
+ * application as a library with zero external configuration.<p>
  * 
- * The NoMagicHTTP library strives to offer an elegant and powerful API that is
- * just about as fast and scalable as any fully JDK-based HTTP server
- * implementation could possibly be.<p>
+ * The NoMagicHTTP server strives to offer an elegant and powerful API that is
+ * just about as fast and scalable as any fully JDK-based HTTP server could
+ * possibly be.<p>
  *
- * Best of all, this library is designed around the firmly held opinion that all
- * forms of magic are evil. Annotations and "beans" will never be a part of the
- * library, only developer joy and productivity. (TODO: link to design document).
+ * Best of all, the API is designed around the firmly held opinion that all
+ * forms of magic are evil. Annotations, "beans" and God-like "context" objects
+ * will never be a part of the server. The top priority of this project is to
+ * deliver killer JavaDocs, developer joy and productivity.
  * 
  * 
  * <h3>Architectural overview</h3>
