@@ -13,8 +13,8 @@ will never be a part of the library. The top priority of this project is to
 deliver killer JavaDocs, developer joy and productivity.
 
 **WARNING:** This project is fresh out of the oven and probably not very useful
-at the moment. An HTTP compatibility matrix can be inferred from the author's
-notes and planned future work in [POA.md][0-1].
+at the moment. The document [POA.md][0-1] details planned future work- and
+consequently, what parts of the HTTP stack have currently not been delivered.
 
 Please become an early contributor and join the fight to rid the world of magic!
 
