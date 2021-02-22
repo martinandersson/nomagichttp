@@ -5,14 +5,15 @@ plugins {
 }
 
 sourceSets {
+    // Move unit test locations from default '/test' to '/test/unit'
     test {
-        // Move unit test locations from default '/test' to 'test/unit'
         java.srcDirs = ['src/test/unit/java']
         java.outputDir = file("$buildDir/classes/java/test/unit")
         resources.srcDirs = ['src/test/unit/resources']
         output.resourcesDir = file("$buildDir/resources/test/unit")
     }
     
+    // Define large tests in '/test/large'
     largeTest {
         java.srcDirs = ['src/test/large/java']
         java.outputDir = file("$buildDir/classes/java/test/large")
@@ -34,15 +35,14 @@ repositories {
 }
 
 dependencies {
-    // Use JUnit Jupiter API for testing.
+    // Use JUnit Jupiter for testing.
     testImplementation 'org.junit.jupiter:junit-jupiter-api:5.5.1'
-    testImplementation 'org.assertj:assertj-core:3.16.1'
-    
-    testImplementation 'org.mockito:mockito-core:3.4.4'
-    
-    // Use JUnit Jupiter Engine for testing.
     testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine:5.5.1'
     
+    testImplementation 'org.assertj:assertj-core:3.16.1'
+    testImplementation 'org.mockito:mockito-core:3.4.4'
+    
+    // Used by TwoHundredRequestsFromSameClient
     largeTestImplementation 'org.junit.jupiter:junit-jupiter-params:5.5.1'
 }
 
@@ -57,7 +57,9 @@ compileJava {
 // https://github.com/gradle/gradle/issues/2510
 
 if (JavaVersion.current() < JavaVersion.VERSION_11) {
-    throw new GradleException("This project requires at least Java 11, but it's running on " + JavaVersion.current() + ".");
+    throw new GradleException(
+            "This project requires at least Java 11, " +
+            "but it's running on version ${JavaVersion.current()}.");
 }
 
 tasks.withType(JavaCompile) {
@@ -92,5 +94,6 @@ tasks.withType(Test).configureEach {
 
 jacocoTestReport {
     // Use data file not just from test but also largeTest
-    getExecutionData().setFrom(fileTree(dir: "$buildDir/jacoco", includes: ['*.exec']))
+    getExecutionData().setFrom(
+            fileTree(dir: "$buildDir/jacoco", includes: ['*.exec']))
 }
