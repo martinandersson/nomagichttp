@@ -135,7 +135,7 @@ Implemented), which is wrong.
 
 ## Stage: Pseudo-Mutable Response
 
-In preparation of multiple responses and response-modifying post-filters, we
+In preparation of multiple responses and response-modifying post actions, we
 need to open up `Response` for state-changes, except we keep the class
 immutable.
 
