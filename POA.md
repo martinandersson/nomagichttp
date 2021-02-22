@@ -21,11 +21,33 @@ possibly even contribute in areas of functionality not limited to the specific
 work item. When the group of work is complete, the branch will be merged to
 master. The master branch must always build just fine.
 
-Outline:
+## Outline
 
 [Stage: Project Enhancements](#stage-project-enhancements)  
 [Stage: HTTP Constants](#stage-http-constants)  
-[Stage: HTTP Versioning](#stage-http-versioning)
+[Stage: HTTP Versioning](#stage-http-versioning)  
+[Stage: Improved Testing](#stage-improved-testing)  
+[Stage: Improved Content Negotiation](#stage-improved-content-negotiation)  
+[Stage: Pseudo-Mutable Response](#stage-pseudo-mutable-response)  
+[Stage: Multiple Responses](#stage-multiple-responses)  
+[Stage: Connection Life-Cycle/Management](#stage-connection-life-cyclemanagement)  
+[Stage: Actions](#stage-actions)  
+[Stage: Codings, Part 1/3 (Chunked Transfer)](#stage-codings-part-13-chunked-transfer)  
+[Stage: Codings, Part 2/3 (Response Body Compression)](#stage-codings-part-23-response-body-compression)  
+[Stage: Codings, Part 3/3 (Request Body Decompression)](#stage-codings-part-33-request-body-decompression)  
+[Stage: Multipart Part 1/3 (Consuming "multipart/*")](#stage-multipart-part-13-consuming-"multipart/_")  
+[Stage: Multipart Part 2/3 (Consuming "multipart/form-data")](#stage-multipart-part-23-consuming-"multipart/form-data")  
+[Stage: Multipart Part 3/3 (Producing "multipart/byteranges")](#stage-multipart-part-33-producing-"multipart/byteranges")  
+[Stage: Consuming Form Data](#stage-consuming-form-data)  
+[Stage: Improved File Serving](#stage-improved-file-serving)  
+[Stage: Cookies](#stage-cookies)  
+[Stage: Session Management](#stage-session-management)  
+[Stage: Timeouts](#stage-timeouts)  
+[Stage: Logging](#stage-logging)  
+[Stage: Misc](#stage-misc)  
+[Upcoming](#upcoming)  
+[Not Available](#not-available)  
+[HTTP Specifications](#http-specifications)
 
 ## Stage: Project Enhancements
 
