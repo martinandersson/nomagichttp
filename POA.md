@@ -51,6 +51,8 @@ master. The master branch must always build just fine.
 
 ## Stage: Project Enhancements
 
+_Status: **In progress.**_
+
 To deliver practical usefulness, the project must publish documentation and
 artifacts.
 
