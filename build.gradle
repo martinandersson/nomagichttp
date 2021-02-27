@@ -103,8 +103,8 @@ task javadocall(type: Javadoc) {
     description = 'Generates all Javadoc API documentation (include private symbols and test classes).'
     group = 'documentation'
     
-    source = [sourceSets.main.allJava, sourceSets.test.allJava]
-    classpath = sourceSets.test.compileClasspath
+    source = [sourceSets.main.allJava, sourceSets.test.allJava, sourceSets.largeTest.allJava]
+    classpath = sourceSets.largeTest.compileClasspath
     
     options.memberLevel = JavadocMemberLevel.PRIVATE
     destinationDir = file("$buildDir/docs/javadoc-all")
