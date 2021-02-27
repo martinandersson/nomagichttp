@@ -58,9 +58,10 @@ compileJava {
 
 tasks.withType(JavaCompile) {
     options.compilerArgs.addAll([
-        '-Xlint:unchecked',
-        '-Xlint:deprecation',
-        '-Xdiags:verbose'])
+        '-Xlint',                  // Enable all warnings
+        '-Xdoclint:all/protected', // Also check JavaDoc (protected and higher)
+        '-Werror',                 // Fail on any warning
+        '-Xdiags:verbose'])        // Talk more
 }
 
 test {
