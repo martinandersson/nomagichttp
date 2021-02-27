@@ -91,3 +91,30 @@ jacocoTestReport {
     getExecutionData().setFrom(
             fileTree(dir: "$buildDir/jacoco", includes: ['*.exec']))
 }
+
+javadoc {
+    // Give javadoc description more clarity
+    // default description was "Generates Javadoc API documentation for the main source code."
+    description = 'Generates Javadoc API documentation (public symbols from main source set).'
+}
+
+// Build JavaDoc HTML for developers
+task javadocall(type: Javadoc) {
+    description = 'Generates all Javadoc API documentation (include private symbols and test classes).'
+    group = 'documentation'
+    
+    source = [sourceSets.main.allJava, sourceSets.test.allJava]
+    classpath = sourceSets.test.compileClasspath
+    
+    options.memberLevel = JavadocMemberLevel.PRIVATE
+    destinationDir = file("$buildDir/docs/javadoc-all")
+}
+
+// Add support for modern JavaDoc tags
+// https://openjdk.java.net/jeps/8068562
+tasks.withType(Javadoc) {
+    (options as StandardJavadocDocletOptions).tags(
+        'apiNote:a:API Note:',
+        'implSpec:a:Implementation Requirements:',
+        'implNote:a:Implementation Note:')
+}
