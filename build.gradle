@@ -4,6 +4,10 @@ plugins {
     id 'jacoco'
 }
 
+jar {
+    archiveVersion = '0.5-SNAPSHOT' // To be bumped by task in future
+}
+
 sourceSets {
     // Move unit test locations from default '/test' to '/test/unit'
     test {
