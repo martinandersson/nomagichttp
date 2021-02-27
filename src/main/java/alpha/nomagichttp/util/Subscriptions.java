@@ -46,7 +46,7 @@ public final class Subscriptions
      * Example {@code Publisher.subscribe()} implementation (with semantics
      * as specified in {@link Publishers}):
      * <pre>{@code
-     *   @Override
+     *   {@literal @}Override
      *   public void subscribe(Flow.Subscriber<? super T> s) {
      *       if (mustReject) {
      *           CanOnlyBeCancelled temp = Subscriptions.canOnlyBeCancelled();

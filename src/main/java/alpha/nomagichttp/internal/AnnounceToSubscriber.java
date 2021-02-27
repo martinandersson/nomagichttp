@@ -15,9 +15,9 @@ import static java.util.Objects.requireNonNull;
 /**
  * Is a thread-safe and non-blocking publisher trait driven by a generator
  * function passed to the constructor. The function is implicitly polled by the
- * publisher subclass {@link #announce(Consumer<Throwable>) announcing} the
- * availability of items and also polled by the subscriber through the increase
- * of his demand.<p>
+ * publisher subclass {@link #announce(Consumer) announcing} the availability of
+ * items and also polled by the subscriber through the increase of his
+ * demand.<p>
  * 
  * Only one subscriber at a time is allowed but many may come and go over time
  * if and only if a previous subscriber cancelled his subscription. This class

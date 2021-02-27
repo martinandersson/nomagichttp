@@ -25,7 +25,7 @@ interface SubscriberAsStage<T, R> extends Flow.Subscriber<T>
 {
     /**
      * The returned stage supports being cast to {@link
-     * CompletableFuture<R>}.<p>
+     * CompletableFuture}.<p>
      * 
      * Converting the returned stage to a {@code CompletableFuture} and then
      * completing the future does not necessarily translate to a cancellation of

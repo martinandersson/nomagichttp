@@ -19,7 +19,7 @@ import static java.util.Objects.requireNonNull;
  * strict one.<p>
  * 
  * 
- * <h3>General rules</h3>
+ * <h2>General rules</h2>
  * 
  * Citation from <a href="https://tools.ietf.org/html/rfc7230#section-3.5">RFC
  * 7230 §3.5</a>
@@ -36,7 +36,7 @@ import static java.util.Objects.requireNonNull;
  * (start-line) or ignored as leading whitespace.
  * 
  * 
- * <h3>Request-line rules</h3>
+ * <h2>Request-line rules</h2>
  *
  * Citation from <a href="https://tools.ietf.org/html/rfc7230#section-3.5">RFC
  * 7230 §3.5</a>
@@ -54,7 +54,7 @@ import static java.util.Objects.requireNonNull;
  * This processor follows the "MAY" part.
  * 
  * 
- * <h3>Header names</h3>
+ * <h2>Header names</h2>
  *
  * Citation from <a href="https://tools.ietf.org/html/rfc7230#section-3.2.4">RFC
  * 7230 §3.2.4</a>
@@ -80,7 +80,7 @@ import static java.util.Objects.requireNonNull;
  * https://stackoverflow.com/questions/50179659/what-is-considered-as-whitespace-in-http-header <p>
  * 
  *
- * <h3>Header values</h3>
+ * <h2>Header values</h2>
  *
  * Empty header values are allowed.<p>
  * 

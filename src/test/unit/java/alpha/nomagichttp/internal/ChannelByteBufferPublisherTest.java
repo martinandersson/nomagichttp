@@ -59,7 +59,8 @@ class ChannelByteBufferPublisherTest
     
     /**
      * Making sure two different subsequent subscribers can slice and share one
-     * and same source bytebuffer (assuming testee's buffer size is >= 2 bytes).
+     * and same source bytebuffer (assuming testee's buffer size is &gt;= 2
+     * bytes).
      */
     @Test
     void switch_subscriber_midway() throws IOException, InterruptedException, TimeoutException, ExecutionException {

@@ -160,7 +160,7 @@ public class MediaType
      * 
      * There is no defined syntax for parameter values. Almost all parameter
      * values will be extracted at face value, except for quoted strings which
-     * will be unquoted ("blabla" -> blabla).<p>
+     * will be unquoted ("blabla" -&gt; blabla).<p>
      * 
      * The only parameter value that will be lower cased is the "charset"
      * parameter for all "text/*" media types. I.e., treated case-insensitively
