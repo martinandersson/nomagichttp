@@ -1,3 +1,5 @@
+[![GitHub CI](https://github.com/martinandersson/nomagichttp/actions/workflows/build.yml/badge.svg)](https://github.com/martinandersson/nomagichttp/actions/workflows/build.yml)
+
 # NoMagicHTTP
 
 NoMagicHTTP is an asynchronous server-side Java library used to receive HTTP
