@@ -100,7 +100,7 @@ javadoc {
 // Build JavaDoc HTML for developers
 task javadocall(type: Javadoc) {
     title = javadoc.title + ' (for library developers)'
-    description = 'Generates all Javadoc API documentation (include private symbols and test classes).'
+    description = 'Generates all Javadoc API documentation (public+private symbols and test classes).'
     group = 'documentation'
     
     source = [sourceSets.main.allJava, sourceSets.test.allJava, sourceSets.largeTest.allJava]
