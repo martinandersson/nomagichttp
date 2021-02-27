@@ -79,7 +79,6 @@ import java.nio.channels.AsynchronousServerSocketChannel;
  */
 public interface HttpServer
 {
-    COMPILE_ERROR
     /**
      * Create a server using {@linkplain Config#DEFAULT default configuration}.
      * 
