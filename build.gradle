@@ -1,5 +1,4 @@
 plugins {
-    // TODO: Use explicit versions of each and of jacoco.toolVersion (set 0.8.6, currently using 0.8.5)
     id 'java'
     id 'jacoco'
 }
