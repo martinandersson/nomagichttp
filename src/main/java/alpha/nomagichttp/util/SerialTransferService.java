@@ -102,7 +102,7 @@ import static java.util.Objects.requireNonNull;
  * 
  * What is important is also what this class guarantees: the consumer will never
  * receive items <i>before</i> they have been requested and the consumer will
- * never receive <i>more<i/> items than what was requested.
+ * never receive <i>more</i> items than what was requested.
  * 
  * 
  * @param <T> type of item to transfer

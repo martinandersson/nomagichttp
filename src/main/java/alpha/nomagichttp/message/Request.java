@@ -163,10 +163,11 @@ public interface Request
      * {@link Route}.<p>
      * 
      * A query parameter value will be assumed to end with a space- or ampersand
-     * ('&') character. In particular, please note that the semicolon (';') has
-     * no special meaning; it will <i>not</i> be processed as a separator (
-     * contrary to <a href="https://www.w3.org/TR/1999/REC-html401-19991224/appendix/notes.html#h-B.2.2">
-     * W3</a>, we argue that magic is the trouble).<p>
+     * ('&amp;') character. In particular, please note that the semicolon
+     * ('&#59;') has no special meaning; it will <i>not</i> be processed as a
+     * separator (contrary to
+     * <a href="https://www.w3.org/TR/1999/REC-html401-19991224/appendix/notes.html#h-B.2.2">W3</a>,
+     * we argue that magic is the trouble).<p>
      * 
      * The exact structure of the query string is not standardized (
      * <a href="https://en.wikipedia.org/wiki/Query_string">Wikipedia</a>). The
@@ -285,10 +286,10 @@ public interface Request
          * percent-decoded).<p>
          * 
          * Given this request:
-         * <pre>
+         * <pre>{@code
          *   GET /hello?who=John%20Doe&who=other HTTP/1.1
          *   ...
-         * </pre>
+         * }</pre>
          * 
          * {@code request.parameters().queryFirst("who")} will return "John
          * Doe".
@@ -496,7 +497,7 @@ public interface Request
      * ChannelOperations#isOpenForReading() request.channel().isOpenForReading()}.<p>
      * 
      * 
-     * <h3>Subscribing to bytes with a {@code Flow.Subscriber}</h3>
+     * <h2>Subscribing to bytes with a {@code Flow.Subscriber}</h2>
      * 
      * Almost all of the same {@code Flow.Publisher} semantics specified in the
      * JavaDoc of {@link Publishers} applies to the {@code Body} as a publisher
@@ -509,7 +510,7 @@ public interface Request
      * message/body boundary because the server will complete the subscription
      * before then and if need be, limit the last bytebuffer.<p>
      * 
-     * <h4>Releasing</h4>
+     * <h3>Releasing</h3>
      * 
      * The published bytebuffers are pooled and may be processed synchronously
      * or asynchronously. Whenever the application has finished processing
@@ -526,7 +527,7 @@ public interface Request
      * Releasing has to be done explicitly, or implicitly through an exceptional
      * return of {@code Subscriber.onNext()}.<p>
      * 
-     * <h4>Processing bytebuffers</h4>
+     * <h3>Processing bytebuffers</h3>
      * 
      * The subscriber may request/demand any number of bytebuffers, but will
      * only receive the next bytebuffer after the previous one has been
@@ -564,7 +565,7 @@ public interface Request
      * happen. Whenever possible, always pass forward the bytebuffers to the
      * destination without reading the bytes in application code!<p>
      * 
-     * <h4>The HTTP exchange and body discarding</h4>
+     * <h3>The HTTP exchange and body discarding</h3>
      * 
      * The HTTP exchange is considered done as soon as both the server's
      * response body subscription <i>and</i> the application's request body
@@ -588,7 +589,7 @@ public interface Request
      * subscription or register a request body subscriber but delay requesting
      * items.<p>
      * 
-     * <h4>Exception Handling</h4>
+     * <h3>Exception Handling</h3>
      * 
      * The {@code Body} as a publisher follows the same exception semantics
      * specified in the JavaDoc of {@link Publishers}, decorated with some added

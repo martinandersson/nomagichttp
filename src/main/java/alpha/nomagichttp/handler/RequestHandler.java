@@ -41,7 +41,7 @@ import static java.util.Objects.requireNonNull;
  * static methods found in {@link Builder} and {@link RequestHandlers}.<p>
  * 
  * 
- * <h3>Handler Selection</h3>
+ * <h2>Handler Selection</h2>
  * 
  * When the server selects which handler of a route to call, it first weeds out
  * all handlers that does not qualify based on request headers and the handler's
@@ -88,7 +88,7 @@ import static java.util.Objects.requireNonNull;
  * }</pre>
  * 
  * 
- * <h4>Qualify handler by method token</h4>
+ * <h3>Qualify handler by method token</h3>
  * 
  * The first step for the server when resolving a handler is to lookup
  * registered handlers by using the case-sensitive method token from the
@@ -104,7 +104,7 @@ import static java.util.Objects.requireNonNull;
  * }</pre>
  * 
  * 
- * <h4>Qualify handler by consuming media type</h4>
+ * <h3>Qualify handler by consuming media type</h3>
  * 
  * If an inbound request has a {@link MediaType media type} set in the
  * "Content-Type" header, then this hints that an entity-body will be attached
@@ -129,7 +129,7 @@ import static java.util.Objects.requireNonNull;
  * MediaType#NOTHING_AND_ALL}.<p>
  * 
  * 
- * <h4>Qualify handler with producing media type (proactive content negotiation)</h4>
+ * <h3>Qualify handler with producing media type (proactive content negotiation)</h3>
  * 
  * The "Accept" header of a request indicates what media type(s) the client is
  * willing to accept as response body. Each such media type - or "media range"
@@ -176,7 +176,7 @@ import static java.util.Objects.requireNonNull;
  * ("?format=json") and so called "URL suffixes" ("/my-resource.json").
  * 
  * 
- * <h4>Media type parameters</h4>
+ * <h3>Media type parameters</h3>
  * 
  * Media type parameters are only evaluated if they are specified on the
  * handler-side where they act like a filter; they must all match. A handler
@@ -212,7 +212,7 @@ import static java.util.Objects.requireNonNull;
  * which is treated case-insensitively.<p>
  * 
  * 
- * <h3>Scopes</h3>
+ * <h2>Scopes</h2>
  * 
  * There is no library-provided scope mechanism. Normal rules concerning
  * reachability of Java references applies. Effectively, this means that the
@@ -222,7 +222,7 @@ import static java.util.Objects.requireNonNull;
  * method is invoked anew for each request.
  * 
  * 
- * <h3>Thread safety and object equality</h3>
+ * <h2>Thread safety and object equality</h2>
  * 
  * The implementation is thread-safe, both the handler itself and the logic
  * instance it returns. The server will invoke the handler concurrently for

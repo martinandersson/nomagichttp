@@ -20,7 +20,7 @@ import java.util.Map;
  * quality value other than 1.<p>
  * 
  * 
- * <h4>Type and subtype wildcard</h4>
+ * <h2>Type and subtype wildcard</h2>
  * 
  * When used in the "Accept" header to drive content negotiation, both the type
  * and subtype can be a wildcard: "*&#47;*". This would indicate the client is
@@ -32,7 +32,7 @@ import java.util.Map;
  * "*&#47;wrong!".
  * 
  * 
- * <h4>Quality value</h4>
+ * <h2>Quality value</h2>
  * 
  * For requests specifying an "Accept" header; the media type parameters may be
  * followed by a special parameter "q" also known as the "quality value", also
@@ -59,7 +59,7 @@ import java.util.Map;
  * request.<p>
  * 
  * 
- * <h4>Accept extension parameters</h4>
+ * <h2>Accept extension parameters</h2>
  * 
  * For requests specifying an "Accept" header, the quality value might actually
  * be followed by yet another set of parameters known as "extension
@@ -75,7 +75,7 @@ import java.util.Map;
  * parameters.
  * 
  * 
- * <h3>Thread-safety, life-cycle and identity.</h4>
+ * <h2>Thread-safety, life-cycle and identity.</h2>
  * 
  * This class is immutable.<p>
  * 

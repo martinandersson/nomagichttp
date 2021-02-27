@@ -161,6 +161,7 @@ public interface ErrorHandler
      * proceed to return a response according to the following table.
      * 
      * <table class="striped">
+     *   <caption style="display:none">Default Handlers</caption>
      *   <thead>
      *   <tr>
      *     <th scope="col">Exception Type</th>

@@ -23,7 +23,7 @@ import static java.util.Objects.requireNonNull;
  * Reactive Streams</a> specification to a very large extent. Deviations will be
  * discussed in subsequent sections.<p>
  * 
- * <h3>Thread Semantics</h3>
+ * <h2>Thread Semantics</h2>
  * 
  * The Reactive Streams specification requires the publisher to signal the
  * subscriber serially (happens-before relationship between signals). The
@@ -61,7 +61,7 @@ import static java.util.Objects.requireNonNull;
  * consequence observe an item delivery even after the cancel method has
  * returned (at most one extra delivery).<p>
  * 
- * <h3>Exception Semantics</h3>
+ * <h2>Exception Semantics</h2>
  * 
  * Exceptions thrown by {@code Subscriber.onSubscribe()} and {@code onNext()}
  * propagates to the calling thread - after having been forwarded to {@code
@@ -76,7 +76,7 @@ import static java.util.Objects.requireNonNull;
  * Exceptions from {@code Subscriber.onError()} will be logged but otherwise
  * ignored.<p>
  * 
- * <h3>Other details</h3>
+ * <h2>Other details</h2>
  * 
  * §1.10 and §2.12 requires that a subscriber can not be reused. Not only is
  * this a very weird and unfortunate limitation, effectively putting a stop to
