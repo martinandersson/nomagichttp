@@ -92,13 +92,14 @@ jacocoTestReport {
 }
 
 javadoc {
-    // Give javadoc description more clarity
+    title = 'NoMagicHTTP ' + jar.archiveVersion.get()
     // default description was "Generates Javadoc API documentation for the main source code."
     description = 'Generates Javadoc API documentation (public symbols from main source set).'
 }
 
 // Build JavaDoc HTML for developers
 task javadocall(type: Javadoc) {
+    title = javadoc.title + ' (for library developers)'
     description = 'Generates all Javadoc API documentation (include private symbols and test classes).'
     group = 'documentation'
     
