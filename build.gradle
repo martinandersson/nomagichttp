@@ -118,3 +118,17 @@ tasks.withType(Javadoc) {
         'implSpec:a:Implementation Requirements:',
         'implNote:a:Implementation Note:')
 }
+
+// Add tasks "javadocJar" and "sourcesJar" (for IDE:s and other tooling)
+java {
+    withJavadocJar() // .jar contains HTML from the javadoc task, not javadocall
+    withSourcesJar() // contains .java source code files; no .class files or HTML
+}
+
+// ... and append version classifier to said artifacts
+javadocJar.archiveVersion = jar.archiveVersion // build/libs/nomagichttp-{archiveVersion}-javadoc.jar
+sourcesJar.archiveVersion = jar.archiveVersion // build/libs/nomagichttp-{archiveVersion}-sources.jar
+
+// withJavadocJar() added the javadoc task as a dependency on the assemble task,
+// also add the javadocall task as dependency (we want gradle build to fail if any doc task fails)
+assemble.dependsOn javadocall
