@@ -9,7 +9,10 @@ import alpha.nomagichttp.handler.RequestHandler;
  * @author Martin Andersson (webmaster at martinandersson.com)
  */
 // TODO: Make non-final (as-is other public exception types referenced by a public interface)
-public final class HandlerCollisionException extends RuntimeException {
+public final class HandlerCollisionException extends RuntimeException
+{
+    private static final long serialVersionUID = 1L;
+    
     HandlerCollisionException(String message) {
         super(message);
     }

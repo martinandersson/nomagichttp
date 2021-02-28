@@ -17,6 +17,8 @@ import static java.util.stream.Collectors.joining;
  */
 public class NoHandlerFoundException extends RuntimeException
 {
+    private static final long serialVersionUID = 1L;
+    
     static NoHandlerFoundException unmatchedContentType(
             String method, Route route, MediaType contentType, MediaType[] accepts)
     {

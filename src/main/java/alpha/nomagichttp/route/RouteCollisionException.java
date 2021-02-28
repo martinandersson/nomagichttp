@@ -8,7 +8,10 @@ package alpha.nomagichttp.route;
  * 
  * @see Route
  */
-public class RouteCollisionException extends RuntimeException {
+public class RouteCollisionException extends RuntimeException
+{
+    private static final long serialVersionUID = 1L;
+    
     /**
      * Constructs a {@code RouteCollisionException}.
      * 

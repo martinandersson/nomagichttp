@@ -10,6 +10,7 @@ package alpha.nomagichttp.message;
  */
 public final class RequestHeadParseException extends RuntimeException
 {
+    private static final long serialVersionUID = 1L;
     private final char prev, curr;
     private final int pos;
     

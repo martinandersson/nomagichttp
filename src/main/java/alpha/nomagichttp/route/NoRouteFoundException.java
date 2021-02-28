@@ -17,6 +17,8 @@ import static java.util.stream.StreamSupport.stream;
  */
 public class NoRouteFoundException extends RuntimeException
 {
+    private static final long serialVersionUID = 1L;
+    
     private final Iterable<String> segments;
     
     /**

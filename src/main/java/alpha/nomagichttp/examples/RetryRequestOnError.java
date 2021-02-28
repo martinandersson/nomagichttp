@@ -113,6 +113,8 @@ public class RetryRequestOnError
     }
     
     private static class OptimisticLockException extends RuntimeException {
+        private static final long serialVersionUID = 1L;
+        
         // Empty
     }
 }

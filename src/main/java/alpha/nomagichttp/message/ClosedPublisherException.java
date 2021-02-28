@@ -21,6 +21,8 @@ package alpha.nomagichttp.message;
 // TODO: Move to util package. Enforce publisher can not be resubscribed.
 public final class ClosedPublisherException extends RuntimeException
 {
+    private static final long serialVersionUID = 1L;
+    
     /**
      * Error message used when signalling a {@code Flow.Subscriber} failed.
      */
@@ -35,7 +37,7 @@ public final class ClosedPublisherException extends RuntimeException
     
     /**
      * Constructs a {@code ClosedPublisherException}.
-     *
+     * 
      * @param message passed as-is to {@link Throwable#Throwable(String)}
      */
     public ClosedPublisherException(String message) {
@@ -44,7 +46,7 @@ public final class ClosedPublisherException extends RuntimeException
     
     /**
      * Constructs a {@code ClosedPublisherException}.
-     *
+     * 
      * @param message  passed as-is to {@link Throwable#Throwable(String)}
      * @param cause    passed as-is to {@link Throwable#Throwable(String, Throwable)}
      */

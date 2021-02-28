@@ -15,7 +15,10 @@ import static java.util.Collections.unmodifiableSet;
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  */
-public final class AmbiguousNoHandlerFoundException extends NoHandlerFoundException {
+public final class AmbiguousNoHandlerFoundException extends NoHandlerFoundException
+{
+    private static final long serialVersionUID = 1L;
+    
     private final Set<RequestHandler> ambiguous;
     
     static AmbiguousNoHandlerFoundException createAmbiguousEx(
