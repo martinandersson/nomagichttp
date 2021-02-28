@@ -63,7 +63,8 @@ class DetailedEndToEndTest extends AbstractEndToEndTest
             "Content-Type: text/plain; charset=utf-8" + CRLF +
             "Content-Length: 3" + CRLF + CRLF;
         
-        try (Channel ch = client().openConnection()) {
+        Channel ch = client().openConnection();
+        try (ch) {
             String res1 = client().writeRead(requestWithBody(ECHO_BODY, "ABC"), "ABC");
             assertThat(res1).isEqualTo(resHead + "ABC");
             
@@ -74,7 +75,8 @@ class DetailedEndToEndTest extends AbstractEndToEndTest
     
     @Test
     void request_body_discard_all() throws IOException {
-        try (Channel ch = client().openConnection()) {
+        Channel ch = client().openConnection();
+        try (ch) {
             String req = requestWithBody(IS_BODY_EMPTY, "x".repeat(10)),
                    res = client().writeRead(req, "false");
             
@@ -103,7 +105,8 @@ class DetailedEndToEndTest extends AbstractEndToEndTest
         
         server().add("/discard-midway", discardMidway);
         
-        try (Channel ch = client().openConnection()) {
+        Channel ch = client().openConnection();
+        try (ch) {
             String req = requestWithBody("/discard-midway", "x".repeat(length)),
                    res = client().writeRead(req);
             
@@ -126,7 +129,8 @@ class DetailedEndToEndTest extends AbstractEndToEndTest
         
         server().add("/body-subscriber-crash", crashAfterOneByte);
         
-        try (Channel ch = client().openConnection()) {
+        Channel ch = client().openConnection();
+        try (ch) {
             String req = requestWithBody("/body-subscriber-crash", "Hello"),
                    res = client().writeRead(req);
             

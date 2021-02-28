@@ -146,10 +146,12 @@ class SeriallyRunnableRecursionTest
     }
     
     private static class LimitReachedException extends RuntimeException {
+        private static final long serialVersionUID = 1L;
         // Empty
     }
     
     private static class OverlapException extends RuntimeException {
+        private static final long serialVersionUID = 1L;
         // Empty
     }
 }
