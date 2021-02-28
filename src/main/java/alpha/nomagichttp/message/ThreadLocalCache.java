@@ -20,7 +20,7 @@ import static java.util.Objects.requireNonNull;
  * The values will be kept around at the discretion of the JVM implementation.
  * As per the JavaDoc's of {@link SoftReference}, the JVM implementation is
  * "encouraged to bias against clearing recently-created or recently-used soft
- * references".<p>
+ * references".
  * 
  * <h2>An example</h2>
  * <pre>{@code

@@ -16,7 +16,7 @@ import static java.util.Objects.requireNonNull;
  * Processes bytes into a request head.<p>
  * 
  * When left with a choice, this processor follows rather a lenient model than a
- * strict one.<p>
+ * strict one.
  * 
  * 
  * <h2>General rules</h2>
@@ -77,7 +77,7 @@ import static java.util.Objects.requireNonNull;
  * References: <br>
  * https://github.com/bbyars/mountebank/issues/282 <br>
  * https://stackoverflow.com/a/56047701/1268003 <br>
- * https://stackoverflow.com/questions/50179659/what-is-considered-as-whitespace-in-http-header <p>
+ * https://stackoverflow.com/questions/50179659/what-is-considered-as-whitespace-in-http-header
  * 
  *
  * <h2>Header values</h2>

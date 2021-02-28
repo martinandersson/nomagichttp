@@ -39,6 +39,9 @@ public final class SkeletonServer implements Closeable
     private final BlockingQueue<AsynchronousSocketChannel> accepted;
     private final AtomicReference<Throwable> acceptExc;
     
+    /**
+     * Constructs a {@code SkeletonServer}.
+     */
     public SkeletonServer() {
         listener = null;
         port = 0;
@@ -46,6 +49,11 @@ public final class SkeletonServer implements Closeable
         acceptExc = new AtomicReference<>();
     }
     
+    /**
+     * Start the server.
+     * 
+     * @throws IOException if an I/O error occurs
+     */
     public void start() throws IOException {
         listener = AsynchronousServerSocketChannel.open()
                 .bind(new InetSocketAddress(getLoopbackAddress(), 0));
@@ -64,12 +72,25 @@ public final class SkeletonServer implements Closeable
         });
     }
     
+    /**
+     * Open socket channel connected to the server's port.
+     * 
+     * @return the socket channel
+     * @throws IOException if an I/O error occurs
+     */
     public SocketChannel newClient() throws IOException {
         return SocketChannel.open(
                 new InetSocketAddress(getLoopbackAddress(), port));
     }
     
-    public AsynchronousSocketChannel accept() throws InterruptedException, CompletionException {
+    /**
+     * Returns the last accepted socket channel. May block for up to 3 seconds.
+     * 
+     * @return the last accepted socket channel
+     * 
+     * @throws InterruptedException if blocked for longer than 3 seconds
+     */
+    public AsynchronousSocketChannel accept() throws InterruptedException {
         final AsynchronousSocketChannel ch;
         
         try {
