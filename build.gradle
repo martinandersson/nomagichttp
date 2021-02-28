@@ -122,7 +122,10 @@ tasks.withType(Javadoc) {
     // Fail on any warning
     // https://stackoverflow.com/a/49544352/1268003
     // https://github.com/gradle/gradle/issues/2354#issuecomment-364857181
-    options.addBooleanOption('Werror', true)
+    def opt = JavaVersion.current().isCompatibleWith(JavaVersion.VERSION_15) ?
+            "Werror" : "Xwerror";
+    
+    options.addBooleanOption(opt, true)
     
     // No warnings for missed comments (can't disable only for private symbols)
     options.addBooleanOption('Xdoclint:all,-missing', true)
