@@ -17,7 +17,7 @@ import java.util.Map;
  * Both {@link MediaType} and {@code MediaRange} can be used to specify what a
  * {@link RequestHandler} consumes and/or produces, in order to participate in
  * handler selection with the small caveat that the handler can not specify a
- * quality value other than 1.<p>
+ * quality value other than 1.
  * 
  * 
  * <h2>Type and subtype wildcard</h2>
@@ -56,7 +56,7 @@ import java.util.Map;
  * When interpreting this value it will strictly be used for ranking the
  * client's acceptable media types and the value "0" will disqualify any handler
  * consuming and/or producing this media type as a candidate to handle the
- * request.<p>
+ * request.
  * 
  * 
  * <h2>Accept extension parameters</h2>
@@ -93,10 +93,26 @@ public final class MediaRange extends MediaType {
         this.quality = quality;
     }
     
+    /**
+     * Returns the quality value.<p>
+     * 
+     * The returned value is any value between 0 and 1 (inclusive), default 1.
+     * 
+     * @return the quality value
+     * 
+     * @see MediaRange
+     */
     public double quality() {
         return quality;
     }
     
+    /**
+     * Overridden to append the "q"-value.
+     * 
+     * @return a normalized string
+     * 
+     * @see MediaType#toStringNormalized() 
+     */
     public String toStringNormalized() {
         return super.toStringNormalized() + "; q=" + nf().format(quality);
     }

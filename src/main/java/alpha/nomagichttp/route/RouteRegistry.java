@@ -114,11 +114,17 @@ public interface RouteRegistry
         
         /**
          * Equivalent to {@link Request.Parameters#path(String)}.
+         * 
+         * @param name of path parameter (case sensitive)
+         * @return the path parameter value (percent-decoded)
          */
         String pathParam(String name);
         
         /**
          * Equivalent to {@link Request.Parameters#pathRaw(String)}.
+         * 
+         * @param name of path parameter (case sensitive)
+         * @return the raw path parameter value (not decoded/unescaped)
          */
         String pathParamRaw(String name);
     }

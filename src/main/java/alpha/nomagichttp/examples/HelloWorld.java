@@ -13,8 +13,16 @@ import java.io.IOException;
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  */
-public class HelloWorld {
-    public static void main(String... ignored) throws IOException {
+public class HelloWorld
+{
+    /**
+     * Application entry point.
+     *
+     * @param args ignored
+     *
+     * @throws IOException If an I/O error occurs
+     */
+    public static void main(String... args) throws IOException {
         // In the real world, expressions are often inlined and utility methods statically imported.
         // In the examples, we often choose to be verbose for learning purposes.
         HttpServer app = HttpServer.create();

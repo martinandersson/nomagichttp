@@ -8,7 +8,7 @@
  * detail.<p>
  * 
  * Similar to types found in other packages, implementations of the API provided
- * by this package also use the "Default" name-prefix.<p>
+ * by this package also use the "Default" name-prefix.
  * 
  * 
  * <h2>HTTP server patterns</h2>

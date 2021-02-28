@@ -21,7 +21,7 @@ import static java.util.Objects.requireNonNull;
  * Publishers produced by this class follows the <a
  * href="https://github.com/reactive-streams/reactive-streams-jvm/blob/v1.0.3/README.md">
  * Reactive Streams</a> specification to a very large extent. Deviations will be
- * discussed in subsequent sections.<p>
+ * discussed in subsequent sections.
  * 
  * <h2>Thread Semantics</h2>
  * 
@@ -59,7 +59,7 @@ import static java.util.Objects.requireNonNull;
  * immediate effect if called by the thread running the subscriber. If called
  * asynchronously, the effect may be eventual and the subscriber may as a
  * consequence observe an item delivery even after the cancel method has
- * returned (at most one extra delivery).<p>
+ * returned (at most one extra delivery).
  * 
  * <h2>Exception Semantics</h2>
  * 
@@ -74,7 +74,7 @@ import static java.util.Objects.requireNonNull;
  * need; subscription already terminated).<p>
  * 
  * Exceptions from {@code Subscriber.onError()} will be logged but otherwise
- * ignored.<p>
+ * ignored.
  * 
  * <h2>Other details</h2>
  * 

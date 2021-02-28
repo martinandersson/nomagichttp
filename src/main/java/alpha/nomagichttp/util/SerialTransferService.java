@@ -55,7 +55,7 @@ import static java.util.Objects.requireNonNull;
  * 
  * Just to have it stated unless not already obvious: This class is
  * thread-safe and so too is the supplier and consumer as long as they are not
- * also accessed outside the control of this class.<p>
+ * also accessed outside the control of this class.
  * 
  * 
  * <h2>Demand</h2>

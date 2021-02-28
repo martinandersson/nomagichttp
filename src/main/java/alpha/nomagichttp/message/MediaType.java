@@ -43,7 +43,7 @@ import static java.util.stream.Collectors.joining;
  * {@link RequestHandler} to learn more on that.<p>
  * 
  * Many commonly used media types are available as public static constants in
- * this class. Missing one? Let us know!<p>
+ * this class. Missing one? Let us know!
  * 
  * 
  * <h2>Type and subtype</h2>
@@ -192,6 +192,8 @@ public class MediaType
      *             a parameter has been specified more than once, or
      *             a parameter was named "q"/"Q" and it was not the last parameter declared,
      *             and so forth
+     * 
+     * @return a parsed media type (never {@code null})
      */
     public static MediaType parse(final CharSequence text) {
         // First part is type/subtype, possibly followed by ;params
@@ -436,6 +438,9 @@ public class MediaType
         return q >= 1. ? PERFECT : WORKS;
     }
     
+    /**
+     * Compatibility score; how much compatible are two media types?
+     */
     public enum Score {
         /** Non-compatible or Q-param = 0. */
         NOPE,
@@ -525,10 +530,26 @@ public class MediaType
                this.params.equals(that.params);
     }
     
+    /**
+     * Returns the same string instance used when this media type was parsed.<p>
+     * 
+     * Except for sentinel values which were not constructed through parsing.
+     * Sentinel values uses a placeholder value instead, enclosed in diamond
+     * brackets, e.g. &lt;nothing and all&gt;.
+     * 
+     * @return the same string instance used when this media type was parsed,
+     *         or &lt;sentinel&gt;
+     */
     public final String toString() {
         return text;
     }
     
+    /**
+     * Returns a normalized string of the format "type" + "/" + subtype,
+     * possibly followed by "; q=" + value.<p>
+     * 
+     * @return a normalized string
+     */
     public String toStringNormalized() {
         String s = type + "/" + subtype;
         

@@ -36,9 +36,9 @@ import static java.util.Objects.requireNonNull;
  * has been selected. The handler logic is in full control over how it
  * interprets the request headers- and body as well as what headers and body are
  * sent back.<p>
- *
+ * 
  * A {@code RequestHandler} can be built using {@link #builder(String)} or other
- * static methods found in {@link Builder} and {@link RequestHandlers}.<p>
+ * static methods found in {@link Builder} and {@link RequestHandlers}.
  * 
  * 
  * <h2>Handler Selection</h2>
@@ -87,7 +87,6 @@ import static java.util.Objects.requireNonNull;
  *     RequestHandler h = GET().run(() -> System.out.println("Hello, World!"));
  * }</pre>
  * 
- * 
  * <h3>Qualify handler by method token</h3>
  * 
  * The first step for the server when resolving a handler is to lookup
@@ -102,7 +101,6 @@ import static java.util.Objects.requireNonNull;
  *   Host: www.example.com
  *   Accept: text/plain;charset=utf-8
  * }</pre>
- * 
  * 
  * <h3>Qualify handler by consuming media type</h3>
  * 
@@ -126,8 +124,7 @@ import static java.util.Objects.requireNonNull;
  * 
  * The handler may declare that he doesn't care at all whether or not the
  * "Content-Type" is provided or what value it might have: {@link
- * MediaType#NOTHING_AND_ALL}.<p>
- * 
+ * MediaType#NOTHING_AND_ALL}.
  * 
  * <h3>Qualify handler with producing media type (proactive content negotiation)</h3>
  * 
@@ -175,7 +172,6 @@ import static java.util.Objects.requireNonNull;
  * There is no library-provided support for magical request parameters
  * ("?format=json") and so called "URL suffixes" ("/my-resource.json").
  * 
- * 
  * <h3>Media type parameters</h3>
  * 
  * Media type parameters are only evaluated if they are specified on the
@@ -209,7 +205,7 @@ import static java.util.Objects.requireNonNull;
  * names and values. The order of parameters does not matter. Parameter names
  * are case-insensitive but almost all parameter values are case-sensitive. The
  * only exception is the "charset" parameter value for all "text/*" media types
- * which is treated case-insensitively.<p>
+ * which is treated case-insensitively.
  * 
  * 
  * <h2>Scopes</h2>
@@ -248,16 +244,19 @@ public interface RequestHandler
      * methods in the builder interface, such as {@link Builder#GET()}, {@link
      * Builder#POST()} etc.
      * 
+     * @param method token qualifier
+     * 
      * @return a builder with the {@code method} set
      * 
      * @throws NullPointerException if {@code method} is {@code null}
      */
+    // TODO: More strict definition of method; throw IllegalArgumentException if blank
     static Builder builder(String method) {
         return new DefaultRequestHandler.Builder(method);
     }
     
     /**
-     * Returns the method token of the request this handler handles.<p>
+     * Returns the handler's method token qualifier.<p>
      * 
      * For example "GET and "POST".
      * 
@@ -324,9 +323,10 @@ public interface RequestHandler
      * The builder will guide the user through a series of steps along the
      * process of building a handler.<p>
      * 
-     * The first step is the constructor which requires an HTTP method. Static
-     * methods for HTTP-standardized methods exists in the form of {@link
-     * #GET()}, {@link #POST()} and so on.<p> 
+     * The first step is the {@link RequestHandler#builder(String)} constructor
+     * which requires an HTTP method. Static methods for HTTP-standardized
+     * methods exists in the form of {@link #GET()}, {@link #POST()} and so
+     * on.<p> 
      * 
      * The next step is to specify what media type the handler consumes followed
      * by what media type it produces, for example "text/plain".<p>
@@ -472,6 +472,9 @@ public interface RequestHandler
          */
         NextStep consumes(MediaType mediaType);
         
+        /**
+         * An API specific for selecting producing media type qualifier.
+         */
         interface NextStep
         {
             /**
@@ -512,7 +515,10 @@ public interface RequestHandler
              */
             LastStep produces(MediaType mediaType);
         }
-        
+    
+        /**
+         * An API specific for specifying the request handler logic.
+         */
         interface LastStep
         {
             /**

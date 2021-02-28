@@ -22,6 +22,15 @@ public final class PercentDecoder
         // Empty
     }
     
+    /**
+     * Percent-decode the given string.<p>
+     * 
+     * Adheres to the contract specified in {@link Route}.
+     * 
+     * @param str string to decode (non-null)
+     * @return a decoded string
+     * @throws NullPointerException if {@code str} is {@code null}
+     */
     public static String decode(String str) {
         final int p = str.indexOf('+');
         if (p == -1) {
@@ -35,12 +44,16 @@ public final class PercentDecoder
     
     /**
      * Percent decode all given strings.<p>
-     *
+     * 
+     * Adheres to the contract specified in {@link Route}.<p>
+     * 
      * The returned list implements RandomAccess and is unmodifiable.
      *
      * @param strings to decode 
-     *
      * @return the result
+     * 
+     * @throws NullPointerException
+     *             if {@code strings} or any element thereof is {@code null}
      */
     public static List<String> decode(Iterable<String> strings) {
         List<String> l = new ArrayList<>();

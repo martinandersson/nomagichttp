@@ -87,7 +87,7 @@ public final class Subscriptions
     
     /**
      * A subscription object with a NOP {@code request()} method implementation.
-     * The cancelled state can be queried using {@code isCancelled()}.<p>
+     * The cancelled state can be queried using {@code isCancelled()}.
      *
      * @see #canOnlyBeCancelled()
      */

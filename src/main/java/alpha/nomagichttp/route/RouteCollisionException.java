@@ -9,6 +9,11 @@ package alpha.nomagichttp.route;
  * @see Route
  */
 public class RouteCollisionException extends RuntimeException {
+    /**
+     * Constructs a {@code RouteCollisionException}.
+     * 
+     * @param message passed as-is to {@link Throwable#Throwable(String)}
+     */
     public RouteCollisionException(String message) {
         super(message);
     }

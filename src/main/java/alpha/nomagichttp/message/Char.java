@@ -7,18 +7,26 @@ import static java.util.Locale.ROOT;
 import static java.util.stream.Collectors.toMap;
 
 /**
- * Utility enumeration of HTTP-relevant char values.
+ * Utility enumeration of char values relevant for the HTTP protocol.
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  */
 public enum Char {
+    /** The tab character {@code \t}. */
     TAB             ('\t', "\\t"),
+    /** The backspace character {@code \b}. */
     BACKSPACE       ('\b', "\\b"),
+    /** The line feed character {@code \n}. */
     LINE_FEED       ('\n', "\\n"),
+    /** The carriage return character "{@code \r}. */
     CARRIAGE_RETURN ('\r', "\\r"),
+    /** The form feed character {@code \f}. */
     FORM_FEED       ('\f', "\\f"),
+    /** The single quote character {@code \'}. */
     SINGLE_QUOTE    ('\'', "\\'"),
+    /** The double quote character {@code \"}. */
     DOUBLE_QUOTE    ('\"', "\\\""),
+    /** The backslash character {@code \\}. */
     BACKSLASH       ('\\', "\\\\");
     
     /**
@@ -42,6 +50,12 @@ public enum Char {
     private final char c;
     private final String s;
     
+    /**
+     * Constructs a {@code Char}.
+     * 
+     * @param c the backing char
+     * @param s what an escaped version of the char looks like
+     */
     Char(char c, String s) {
         this.c = c;
         this.s = s;

@@ -19,16 +19,21 @@ public class NoRouteFoundException extends RuntimeException
 {
     private final Iterable<String> segments;
     
+    /**
+     * Constructs a {@code NoRouteFoundException}.
+     * 
+     * @param pathSegments of request target (normalized- and percent-decoded)
+     */
     public NoRouteFoundException(Iterable<String> pathSegments) {
         this.segments = requireNonNull(pathSegments);
     }
     
     /**
-     * Returns normalized- and percent-decoded path segments as provided in the
-     * request target.
+     * Returns normalized- and percent-decoded path segments from the request
+     * target.
      * 
-     * @return normalized- and percent-decoded path segments as provided in the
-     *         request target
+     * @return
+     *     normalized- and percent-decoded path segments from the request target
      * 
      * @see Route
      */
