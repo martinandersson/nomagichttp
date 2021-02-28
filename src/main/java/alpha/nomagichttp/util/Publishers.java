@@ -155,18 +155,14 @@ public final class Publishers
      */
     @SafeVarargs
     public static <T> Flow.Publisher<T> just(T... items) {
-        return new ItemPublisher<>(items);
+        @SuppressWarnings("varargs")
+        List<T> l = List.of(items); // documented to disallow null
+        return new ItemPublisher<>(l);
     }
     
     private static final class ItemPublisher<T> implements Flow.Publisher<T>
     {
         private final Iterable<? extends T> items;
-        
-        @SafeVarargs
-        ItemPublisher(T... items) {
-            // Documented to disallow null
-            this(List.of(items));
-        }
         
         private ItemPublisher(Iterable<? extends T> items) {
             this.items = requireNonNull(items);
