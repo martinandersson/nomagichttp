@@ -1,7 +1,7 @@
 plugins {
     id 'java'
     id 'jacoco'
-    // Add task publishToMavenLocal; used by jitpack.io's publishing service
+    // Jitpack.io's publishing service needs the task publishToMavenLocal
     id 'maven-publish'
 }
 
@@ -143,7 +143,7 @@ java {
 assemble.dependsOn javadocall
 
 // For jitpack.io, define a publication
-group = 'com.example'
+group = 'com.alpha'
 publishing.publications {
     thisNameMakesNoDifference(MavenPublication) {
         from components.java
