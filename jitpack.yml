@@ -1,0 +1,3 @@
+# Tell Jitpack to build using Java 11 (defaults to 8)
+jdk:
+  - openjdk11
