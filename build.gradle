@@ -1,6 +1,8 @@
 plugins {
     id 'java'
     id 'jacoco'
+    // Add task publishToMavenLocal; used by jitpack.io's publishing service
+    id 'maven-publish'
 }
 
 sourceSets {
@@ -139,3 +141,17 @@ java {
 // withJavadocJar() added the javadoc task as a dependency on the assemble task,
 // also add the javadocall task as dependency (we want gradle build to fail if any doc task fails)
 assemble.dependsOn javadocall
+
+// For jitpack.io, define a publication
+group = 'com.example'
+publishing.publications {
+    thisNameMakesNoDifference(MavenPublication) {
+        from components.java
+        pom.licenses {
+            license {
+                name = 'The Apache License, Version 2.0'
+                url = 'http://www.apache.org/licenses/LICENSE-2.0.txt'
+            }
+        }
+    }
+}
