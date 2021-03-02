@@ -1,4 +1,5 @@
 [![GitHub CI](https://github.com/martinandersson/nomagichttp/actions/workflows/build.yml/badge.svg)](https://github.com/martinandersson/nomagichttp/actions/workflows/build.yml)
+[![JitPack](https://jitpack.io/v/martinandersson/nomagichttp.svg)](https://jitpack.io/#martinandersson/nomagichttp)
 
 # NoMagicHTTP
 
