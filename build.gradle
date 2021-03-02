@@ -3,10 +3,6 @@ plugins {
     id 'jacoco'
 }
 
-jar {
-    archiveVersion = '0.5-SNAPSHOT' // To be bumped by task in future
-}
-
 sourceSets {
     // Move unit test locations from default '/test' to '/test/unit'
     test {
@@ -48,6 +44,9 @@ dependencies {
     // Used by TwoHundredRequestsFromSameClient
     largeTestImplementation 'org.junit.jupiter:junit-jupiter-params:5.5.1'
 }
+
+// To be bumped by task in future or perhaps not even set in this file
+version = '0.5-SNAPSHOT'
 
 // Ensure backwards compatibility for Java 11
 // https://stackoverflow.com/a/43103038/1268003
@@ -93,7 +92,7 @@ jacocoTestReport {
 }
 
 javadoc {
-    title = 'NoMagicHTTP ' + jar.archiveVersion.get()
+    title = 'NoMagicHTTP ' + version
     // default description was "Generates Javadoc API documentation for the main source code."
     description = 'Generates Javadoc API documentation (public symbols from main source set).'
 }
@@ -136,10 +135,6 @@ java {
     withJavadocJar() // .jar contains HTML from the javadoc task, not javadocall
     withSourcesJar() // contains .java source code files; no .class files or HTML
 }
-
-// ... and append version classifier to said artifacts
-javadocJar.archiveVersion = jar.archiveVersion // build/libs/nomagichttp-{archiveVersion}-javadoc.jar
-sourcesJar.archiveVersion = jar.archiveVersion // build/libs/nomagichttp-{archiveVersion}-sources.jar
 
 // withJavadocJar() added the javadoc task as a dependency on the assemble task,
 // also add the javadocall task as dependency (we want gradle build to fail if any doc task fails)
