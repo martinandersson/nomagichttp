@@ -143,7 +143,6 @@ java {
 assemble.dependsOn javadocall
 
 // For jitpack.io, define a publication
-group = 'com.alpha'
 publishing.publications {
     thisNameMakesNoDifference(MavenPublication) {
         from components.java
