@@ -57,9 +57,8 @@ To deliver practical usefulness, the project must publish documentation and
 artifacts.
 
 - Gradle tasks for JavaDoc generation and publication.
-  Ideally we want to be able to generate JavaDoc for public consumtion (all
-  packages except `.internal`) versus docs for contributors (`.internal` +
-  private).
+  Ideally we want to be able to generate JavaDoc for public consumtion (public +
+  package access) versus docs for contributors (+ private + test classes).
 - Gradle must use specified JVM version(s) when building
 - GitHub integrations (test build against many JVM vendors)
 - Gradle task to publish a `NoMagicHTTP-0.5-SNAPSHOT.jar` somewhere
