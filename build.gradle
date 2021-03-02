@@ -1,7 +1,7 @@
 plugins {
     id 'java'
     id 'jacoco'
-    // Add task publishToMavenLocal; used by jitpack.io's publishing service
+    // Jitpack.io's publishing service needs the task publishToMavenLocal
     id 'maven-publish'
 }
 
