@@ -92,7 +92,7 @@ jacocoTestReport {
 }
 
 javadoc {
-    title = 'NoMagicHTTP ' + version
+    title = 'NoMagicHTTP ' + version + ' API'
     // default description was "Generates Javadoc API documentation for the main source code."
     description = 'Generates Javadoc API documentation (public symbols from main source set).'
 }
