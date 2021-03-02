@@ -17,6 +17,8 @@ import static java.util.stream.Collectors.joining;
  */
 public class NoHandlerFoundException extends RuntimeException
 {
+    private static final long serialVersionUID = 1L;
+    
     static NoHandlerFoundException unmatchedContentType(
             String method, Route route, MediaType contentType, MediaType[] accepts)
     {
@@ -43,7 +45,16 @@ public class NoHandlerFoundException extends RuntimeException
     private final MediaType contentType;
     private final MediaType[] accepts;
     
-    protected NoHandlerFoundException(
+    /**
+     * Constructs a {@code NoHandlerFoundException}.
+     * 
+     * @param message passed as-is to {@link Throwable#Throwable(String)}
+     * @param method of request
+     * @param route matched
+     * @param contentType of request
+     * @param accepts of request
+     */
+    public NoHandlerFoundException(
             String message,
             String method,
             Route route,

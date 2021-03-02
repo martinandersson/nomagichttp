@@ -31,7 +31,14 @@ public class RetryRequestOnError
 {
     private static final int PORT = 8080;
     
-    public static void main(String... ignored) throws IOException {
+    /**
+     * Application entry point.
+     *
+     * @param args ignored
+     *
+     * @throws IOException If an I/O error occurs
+     */
+    public static void main(String... args) throws IOException {
         // A very unstable request handler
         RequestHandler rh = GET().supply(new MyUnstableResponseSupplier());
         
@@ -106,6 +113,8 @@ public class RetryRequestOnError
     }
     
     private static class OptimisticLockException extends RuntimeException {
+        private static final long serialVersionUID = 1L;
+        
         // Empty
     }
 }

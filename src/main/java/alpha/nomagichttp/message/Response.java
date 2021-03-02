@@ -182,6 +182,8 @@ public interface Response
         /**
          * Set HTTP version.
          * 
+         * @param httpVersion value (any non-null string)
+         * 
          * @throws NullPointerException if {@code httpVersion} is {@code null}
          * 
          * @return a new builder representing the new state
@@ -191,12 +193,16 @@ public interface Response
         /**
          * Set status code.
          * 
+         * @param statusCode value (any integer value)
+         * 
          * @return a new builder representing the new state
          */
         Builder statusCode(int statusCode);
         
         /**
          * Set reason phrase. If never set, will default to "Unknown".
+         * 
+         * @param reasonPhrase value (any non-null string)
          * 
          * @throws NullPointerException if {@code reasonPhrase} is {@code null}
          * 
@@ -329,6 +335,8 @@ public interface Response
          * HttpRequest.BodyPublishers#ofInputStream(Supplier)}. For these
          * reasons, consider using an alternative from {@link Publishers} or
          * {@link BetterBodyPublishers}<p>
+         * 
+         * @param body publisher
          * 
          * @return a new builder representing the new state
          * 

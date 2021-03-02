@@ -36,12 +36,12 @@ import static java.util.Objects.requireNonNull;
  * has been selected. The handler logic is in full control over how it
  * interprets the request headers- and body as well as what headers and body are
  * sent back.<p>
- *
+ * 
  * A {@code RequestHandler} can be built using {@link #builder(String)} or other
- * static methods found in {@link Builder} and {@link RequestHandlers}.<p>
+ * static methods found in {@link Builder} and {@link RequestHandlers}.
  * 
  * 
- * <h3>Handler Selection</h3>
+ * <h2>Handler Selection</h2>
  * 
  * When the server selects which handler of a route to call, it first weeds out
  * all handlers that does not qualify based on request headers and the handler's
@@ -87,8 +87,7 @@ import static java.util.Objects.requireNonNull;
  *     RequestHandler h = GET().run(() -> System.out.println("Hello, World!"));
  * }</pre>
  * 
- * 
- * <h4>Qualify handler by method token</h4>
+ * <h3>Qualify handler by method token</h3>
  * 
  * The first step for the server when resolving a handler is to lookup
  * registered handlers by using the case-sensitive method token from the
@@ -103,8 +102,7 @@ import static java.util.Objects.requireNonNull;
  *   Accept: text/plain;charset=utf-8
  * }</pre>
  * 
- * 
- * <h4>Qualify handler by consuming media type</h4>
+ * <h3>Qualify handler by consuming media type</h3>
  * 
  * If an inbound request has a {@link MediaType media type} set in the
  * "Content-Type" header, then this hints that an entity-body will be attached
@@ -126,10 +124,9 @@ import static java.util.Objects.requireNonNull;
  * 
  * The handler may declare that he doesn't care at all whether or not the
  * "Content-Type" is provided or what value it might have: {@link
- * MediaType#NOTHING_AND_ALL}.<p>
+ * MediaType#NOTHING_AND_ALL}.
  * 
- * 
- * <h4>Qualify handler with producing media type (proactive content negotiation)</h4>
+ * <h3>Qualify handler with producing media type (proactive content negotiation)</h3>
  * 
  * The "Accept" header of a request indicates what media type(s) the client is
  * willing to accept as response body. Each such media type - or "media range"
@@ -175,8 +172,7 @@ import static java.util.Objects.requireNonNull;
  * There is no library-provided support for magical request parameters
  * ("?format=json") and so called "URL suffixes" ("/my-resource.json").
  * 
- * 
- * <h4>Media type parameters</h4>
+ * <h3>Media type parameters</h3>
  * 
  * Media type parameters are only evaluated if they are specified on the
  * handler-side where they act like a filter; they must all match. A handler
@@ -209,10 +205,10 @@ import static java.util.Objects.requireNonNull;
  * names and values. The order of parameters does not matter. Parameter names
  * are case-insensitive but almost all parameter values are case-sensitive. The
  * only exception is the "charset" parameter value for all "text/*" media types
- * which is treated case-insensitively.<p>
+ * which is treated case-insensitively.
  * 
  * 
- * <h3>Scopes</h3>
+ * <h2>Scopes</h2>
  * 
  * There is no library-provided scope mechanism. Normal rules concerning
  * reachability of Java references applies. Effectively, this means that the
@@ -222,7 +218,7 @@ import static java.util.Objects.requireNonNull;
  * method is invoked anew for each request.
  * 
  * 
- * <h3>Thread safety and object equality</h3>
+ * <h2>Thread safety and object equality</h2>
  * 
  * The implementation is thread-safe, both the handler itself and the logic
  * instance it returns. The server will invoke the handler concurrently for
@@ -248,16 +244,19 @@ public interface RequestHandler
      * methods in the builder interface, such as {@link Builder#GET()}, {@link
      * Builder#POST()} etc.
      * 
+     * @param method token qualifier
+     * 
      * @return a builder with the {@code method} set
      * 
      * @throws NullPointerException if {@code method} is {@code null}
      */
+    // TODO: More strict definition of method; throw IllegalArgumentException if blank
     static Builder builder(String method) {
         return new DefaultRequestHandler.Builder(method);
     }
     
     /**
-     * Returns the method token of the request this handler handles.<p>
+     * Returns the handler's method token qualifier.<p>
      * 
      * For example "GET and "POST".
      * 
@@ -324,9 +323,10 @@ public interface RequestHandler
      * The builder will guide the user through a series of steps along the
      * process of building a handler.<p>
      * 
-     * The first step is the constructor which requires an HTTP method. Static
-     * methods for HTTP-standardized methods exists in the form of {@link
-     * #GET()}, {@link #POST()} and so on.<p> 
+     * The first step is the {@link RequestHandler#builder(String)} constructor
+     * which requires an HTTP method. Static methods for HTTP-standardized
+     * methods exists in the form of {@link #GET()}, {@link #POST()} and so
+     * on.<p> 
      * 
      * The next step is to specify what media type the handler consumes followed
      * by what media type it produces, for example "text/plain".<p>
@@ -472,6 +472,9 @@ public interface RequestHandler
          */
         NextStep consumes(MediaType mediaType);
         
+        /**
+         * An API specific for selecting producing media type qualifier.
+         */
         interface NextStep
         {
             /**
@@ -512,7 +515,10 @@ public interface RequestHandler
              */
             LastStep produces(MediaType mediaType);
         }
-        
+    
+        /**
+         * An API specific for specifying the request handler logic.
+         */
         interface LastStep
         {
             /**

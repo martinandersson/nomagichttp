@@ -25,7 +25,7 @@ import static java.util.Objects.requireNonNull;
  * attempted to start while one was already executing. Only a maximum of 1 such
  * extra repetition will be scheduled in any given moment of time.<p>
  * 
- * For example:<p>
+ * For example:
  * <pre>{@code
  *     TODO: Give example
  * }</pre>
@@ -51,7 +51,7 @@ import static java.util.Objects.requireNonNull;
  * happens between the point in time where an object of this class was created
  * up until the first run of said object by thread B, then client code has the
  * responsibility to make sure these actions are visible to thread B executing
- * the first run.<p>
+ * the first run.
  * 
  * 
  * <h2>Modes Of Completion</h2>
@@ -61,7 +61,7 @@ import static java.util.Objects.requireNonNull;
  * By default, as soon as the run-method returns, the delegate will become
  * eligible to execute again. This is called "synchronous mode" and any attempts
  * in this mode by client code to explicitly <i>{@link #complete}</i> will
- * immediately fail.<p>
+ * immediately fail.
  * 
  * <h3>Asynchronous Mode</h3>
  * 
@@ -96,7 +96,7 @@ import static java.util.Objects.requireNonNull;
  * immediately depending on if a new run was scheduled to execute and the
  * calling thread was selected to perform the new run.<p>
  * 
- * For example:<p>
+ * For example:
  * <pre>{@code
  *     TODO: Give example of a successful async task, and
  *     TODO: Give example of a unsuccesful async task, perhaps RejectedExecutionException.
@@ -114,7 +114,7 @@ import static java.util.Objects.requireNonNull;
  * 
  * However, if you wish to have a guarantee that the delegate is never executed
  * again after a throwable, then this is rather straight forward to implement
- * given the serial nature of this class, as in the following example:<p>
+ * given the serial nature of this class, as in the following example:
  * 
  * <pre>{@code
  *     // if written to outside of SeriallyRunnable, make volatile
@@ -194,10 +194,25 @@ public final class SeriallyRunnable implements Runnable
             BEGIN = 2,
             AGAIN = 3;
     
+    /**
+     * Constructs a {@code SeriallyRunnable} executing in synchronous mode.
+     * 
+     * @param delegate which runnable to run (non-null)
+     * 
+     * @throws NullPointerException if {@code delegate} is {@code null}
+     */
     public SeriallyRunnable(Runnable delegate) {
         this(delegate, false);
     }
     
+    /**
+     * Constructs a {@code SeriallyRunnable}.
+     *
+     * @param delegate which runnable to run (non-null)
+     * @param async async mode on/off
+     * 
+     * @throws NullPointerException if {@code delegate} is {@code null}
+     */
     public SeriallyRunnable(Runnable delegate, boolean async) {
         this.delegate = requireNonNull(delegate);
         this.async = async;

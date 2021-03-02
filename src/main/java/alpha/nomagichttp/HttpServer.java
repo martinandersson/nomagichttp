@@ -36,7 +36,7 @@ import java.nio.channels.AsynchronousServerSocketChannel;
  * headers and body it responds.
  * 
  * 
- * <h3>Server Life-Cycle</h3>
+ * <h2>Server Life-Cycle</h2>
  * 
  * It is possible to start many server instances on different ports. One
  * use-case for this pattern is to expose public endpoints on one port but
@@ -47,7 +47,7 @@ import java.nio.channels.AsynchronousServerSocketChannel;
  * server instances must {@link #stop()}.
  * 
  * 
- * <h3>Thread Safety and Threading Model</h3>
+ * <h2>Thread Safety and Threading Model</h2>
  * 
  * The server instance is fully thread-safe. Life-cycle methods {@code start}
  * and {@code stop} may block and should understandably not be invoked at a high

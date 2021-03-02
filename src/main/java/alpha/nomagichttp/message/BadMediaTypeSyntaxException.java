@@ -29,6 +29,7 @@ import static java.text.MessageFormat.format;
  */
 public final class BadMediaTypeSyntaxException extends RuntimeException
 {
+    private static final long serialVersionUID = 1L;
     private static final String TEMPLATE = "Can not parse \"{0}\". {1}";
     
     BadMediaTypeSyntaxException(CharSequence parseText, String appendingMessage) {

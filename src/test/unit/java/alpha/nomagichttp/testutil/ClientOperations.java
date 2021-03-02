@@ -48,11 +48,24 @@ import static org.assertj.core.api.Assertions.assertThat;
  */
 public final class ClientOperations
 {
+    /**
+     * Client/delegate factory.
+     */
     @FunctionalInterface
     public interface SocketChannelSupplier {
+        /**
+         * Creates the client delegate.
+         * 
+         * @return the client delegate
+         * 
+         * @throws IOException if an I/O error occurs
+         */
         SocketChannel get() throws IOException;
     }
     
+    /**
+     * An HTTP newline.
+     */
     public static final String CRLF = "\r\n";
     
     private static final System.Logger LOG = System.getLogger(ClientOperations.class.getPackageName());
@@ -67,11 +80,22 @@ public final class ClientOperations
     private final SocketChannelSupplier factory;
     private SocketChannel ch;
     
+    /**
+     * Constructs a {@code ClientOperations} using a {@code SocketChannel}
+     * opened on the given port.
+     * 
+     * @param port of client channel
+     */
     public ClientOperations(int port) {
         this(() -> SocketChannel.open(
                 new InetSocketAddress(getLoopbackAddress(), port)));
     }
     
+    /**
+     * Constructs a {@code ClientOperations}.
+     * 
+     * @param factory of client
+     */
     public ClientOperations(SocketChannelSupplier factory) {
         this.factory = requireNonNull(factory);
     }
@@ -124,6 +148,7 @@ public final class ClientOperations
      * Please note that UTF-8 is backwards compatible with ASCII.
      * 
      * @param text to write
+     * @throws IOException if an I/O error occurs
      */
     public void write(String text) throws IOException {
         writeRead(text, "");
@@ -135,6 +160,10 @@ public final class ClientOperations
      * 
      * Useful when <i>not</i> expecting a response body, in which case the
      * response should end after the headers with two newlines.
+     *
+     * @param request to write
+     * @return the response
+     * @throws IOException if an I/O error occurs
      */
     public String writeRead(String request) throws IOException {
         return writeRead(request, CRLF + CRLF);
@@ -147,6 +176,13 @@ public final class ClientOperations
      * Useful when sending ASCII data and expecting an ASCII response.<p>
      * 
      * Please note that UTF-8 is backwards compatible with ASCII.
+     * 
+     * @param request to write
+     * @param responseEnd last expected chunk in response
+     * 
+     * @return the response
+     * 
+     * @throws IOException if an I/O error occurs
      */
     public String writeRead(String request, String responseEnd) throws IOException {
         byte[] bytes = writeRead(

@@ -11,5 +11,6 @@ import alpha.nomagichttp.HttpServer;
  * @see HttpServer.Config#maxRequestHeadSize()
  */
 public final class MaxRequestHeadSizeExceededException extends RuntimeException {
+    private static final long serialVersionUID = 1L;
     // Empty
 }

@@ -5,6 +5,7 @@ import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.lang.management.ManagementFactory;
 import java.lang.management.ThreadInfo;
+import java.lang.ref.ReferenceQueue;
 import java.util.Optional;
 import java.util.logging.ConsoleHandler;
 import java.util.logging.Formatter;
@@ -17,12 +18,24 @@ import static java.lang.reflect.Modifier.isStatic;
 import static java.time.temporal.ChronoUnit.MILLIS;
 import static java.util.Arrays.stream;
 
+/**
+ * Logging-utility methods.
+ * 
+ * @author Martin Andersson (webmaster at martinandersson.com)
+ */
 public final class Logging
 {
     private Logging() {
         // Empty
     }
     
+    /**
+     * Set logging level for the package of a given component.
+     * 
+     * @param component to extract package from
+     * @param level to set
+     * @throws NullPointerException if any argument is {@code null}
+     */
     public static void setLevel(Class<?> component, System.Logger.Level level) {
         final java.util.logging.Level impl = toJUL(level);
         
@@ -44,6 +57,16 @@ public final class Logging
         }
     }
     
+    /**
+     * Add handler to the logger of the package that the component belongs to.
+     * 
+     * @param component to extract package from
+     * @param handler to add
+     * 
+     * @throws NullPointerException
+     *             if {@code component} is {@code null}
+     *             (should also be the case for {@code handler})
+     */
     public static void addHandler(Class<?> component, Handler handler) {
         Logger.getLogger(component.getPackageName()).addHandler(handler);
     }

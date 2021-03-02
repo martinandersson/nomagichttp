@@ -71,6 +71,13 @@ public final class DefaultServer implements HttpServer
     private AsynchronousServerSocketChannel listener;
     private InetSocketAddress addr;
     
+    /**
+     * Constructs a {@code DefaultServer}.
+     * 
+     * @param config of server
+     * @param registry of server
+     * @param eh error handlers
+     */
     public DefaultServer(
             Config config,
             RouteRegistry registry,

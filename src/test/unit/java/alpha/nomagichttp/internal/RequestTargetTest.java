@@ -169,14 +169,16 @@ class RequestTargetTest
     
     @SafeVarargs
     private void expQryRaw(Map.Entry<String, List<String>>... entries) {
-        assertThat(testee.queryMapNotPercentDecoded())
-                .containsExactly(entries);
+        @SuppressWarnings("varargs")
+        Map.Entry<String, List<String>>[] m  = entries;
+        assertThat(testee.queryMapNotPercentDecoded()).containsExactly(m);
     }
     
     @SafeVarargs
     private void expQryDec(Map.Entry<String, List<String>>... entries) {
-        assertThat(testee.queryMapPercentDecoded())
-                .containsExactly(entries);
+        @SuppressWarnings("varargs")
+        Map.Entry<String, List<String>>[] m  = entries;
+        assertThat(testee.queryMapPercentDecoded()).containsExactly(m);
     }
     
     private static Map.Entry<String, List<String>> e(String key, String... values) {

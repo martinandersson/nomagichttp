@@ -21,9 +21,9 @@ import static java.util.Objects.requireNonNull;
  * Publishers produced by this class follows the <a
  * href="https://github.com/reactive-streams/reactive-streams-jvm/blob/v1.0.3/README.md">
  * Reactive Streams</a> specification to a very large extent. Deviations will be
- * discussed in subsequent sections.<p>
+ * discussed in subsequent sections.
  * 
- * <h3>Thread Semantics</h3>
+ * <h2>Thread Semantics</h2>
  * 
  * The Reactive Streams specification requires the publisher to signal the
  * subscriber serially (happens-before relationship between signals). The
@@ -59,9 +59,9 @@ import static java.util.Objects.requireNonNull;
  * immediate effect if called by the thread running the subscriber. If called
  * asynchronously, the effect may be eventual and the subscriber may as a
  * consequence observe an item delivery even after the cancel method has
- * returned (at most one extra delivery).<p>
+ * returned (at most one extra delivery).
  * 
- * <h3>Exception Semantics</h3>
+ * <h2>Exception Semantics</h2>
  * 
  * Exceptions thrown by {@code Subscriber.onSubscribe()} and {@code onNext()}
  * propagates to the calling thread - after having been forwarded to {@code
@@ -74,9 +74,9 @@ import static java.util.Objects.requireNonNull;
  * need; subscription already terminated).<p>
  * 
  * Exceptions from {@code Subscriber.onError()} will be logged but otherwise
- * ignored.<p>
+ * ignored.
  * 
- * <h3>Other details</h3>
+ * <h2>Other details</h2>
  * 
  * §1.10 and §2.12 requires that a subscriber can not be reused. Not only is
  * this a very weird and unfortunate limitation, effectively putting a stop to
@@ -155,18 +155,14 @@ public final class Publishers
      */
     @SafeVarargs
     public static <T> Flow.Publisher<T> just(T... items) {
-        return new ItemPublisher<>(items);
+        @SuppressWarnings("varargs")
+        List<T> l = List.of(items); // documented to disallow null
+        return new ItemPublisher<>(l);
     }
     
     private static final class ItemPublisher<T> implements Flow.Publisher<T>
     {
         private final Iterable<? extends T> items;
-        
-        @SafeVarargs
-        ItemPublisher(T... items) {
-            // Documented to disallow null
-            this(List.of(items));
-        }
         
         private ItemPublisher(Iterable<? extends T> items) {
             this.items = requireNonNull(items);

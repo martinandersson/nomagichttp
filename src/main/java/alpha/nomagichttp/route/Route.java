@@ -29,7 +29,7 @@ import java.nio.charset.Charset;
  * equivalent route registered will throw a {@link RouteCollisionException}.<p>
  * 
  * An example of a request (copy-pasted from
- * <a href="https://tools.ietf.org/html/rfc7230#section-5.3.1">RFC 7230 §5.3.1</a>):<p>
+ * <a href="https://tools.ietf.org/html/rfc7230#section-5.3.1">RFC 7230 §5.3.1</a>):
  * <pre>{@code
  *   GET /where?q=now HTTP/1.1
  *   Host: www.example.com

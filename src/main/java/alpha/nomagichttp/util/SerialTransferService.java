@@ -55,7 +55,7 @@ import static java.util.Objects.requireNonNull;
  * 
  * Just to have it stated unless not already obvious: This class is
  * thread-safe and so too is the supplier and consumer as long as they are not
- * also accessed outside the control of this class.<p>
+ * also accessed outside the control of this class.
  * 
  * 
  * <h2>Demand</h2>
@@ -102,7 +102,7 @@ import static java.util.Objects.requireNonNull;
  * 
  * What is important is also what this class guarantees: the consumer will never
  * receive items <i>before</i> they have been requested and the consumer will
- * never receive <i>more<i/> items than what was requested.
+ * never receive <i>more</i> items than what was requested.
  * 
  * 
  * @param <T> type of item to transfer

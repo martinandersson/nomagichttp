@@ -60,7 +60,7 @@ public interface Request
      * 
      * The returned value is "GET".
      * 
-     * @return the request-line's method token (never {@code null} or empty)
+     * @return the request-line's method token (never {@code null}, empty or blank)
      */
     String method();
     
@@ -145,6 +145,11 @@ public interface Request
      */
     Attributes attributes();
     
+    /**
+     * Returns a channel management API bound to this request.
+     * 
+     * @return a channel management API bound to this request
+     */
     ChannelOperations channel();
     
     /**
@@ -163,10 +168,11 @@ public interface Request
      * {@link Route}.<p>
      * 
      * A query parameter value will be assumed to end with a space- or ampersand
-     * ('&') character. In particular, please note that the semicolon (';') has
-     * no special meaning; it will <i>not</i> be processed as a separator (
-     * contrary to <a href="https://www.w3.org/TR/1999/REC-html401-19991224/appendix/notes.html#h-B.2.2">
-     * W3</a>, we argue that magic is the trouble).<p>
+     * ('&amp;') character. In particular, please note that the semicolon
+     * ('&#59;') has no special meaning; it will <i>not</i> be processed as a
+     * separator (contrary to
+     * <a href="https://www.w3.org/TR/1999/REC-html401-19991224/appendix/notes.html#h-B.2.2">W3</a>,
+     * we argue that magic is the trouble).<p>
      * 
      * The exact structure of the query string is not standardized (
      * <a href="https://en.wikipedia.org/wiki/Query_string">Wikipedia</a>). The
@@ -219,7 +225,7 @@ public interface Request
      * encoding the browser uses will be
      * <a href="https://www.w3.org/TR/html401/interact/forms.html#h-17.13.4.1">
      * application/x-www-form-urlencoded</a> which escapes space characters
-     * using the plus character ('+').<p>
+     * using the plus character ('+').
      * 
      * <pre>{@code
      *     // Note: key needs to be in its raw form
@@ -236,7 +242,7 @@ public interface Request
          * Returns a path parameter value (percent-decoded).<p>
          * 
          * Suppose that the HTTP server has a route registered which accepts a
-         * parameter "who":<p>
+         * parameter "who":
          * <pre>
          *   /hello/:who
          * </pre>
@@ -285,10 +291,10 @@ public interface Request
          * percent-decoded).<p>
          * 
          * Given this request:
-         * <pre>
+         * <pre>{@code
          *   GET /hello?who=John%20Doe&who=other HTTP/1.1
          *   ...
-         * </pre>
+         * }</pre>
          * 
          * {@code request.parameters().queryFirst("who")} will return "John
          * Doe".
@@ -493,10 +499,10 @@ public interface Request
      * unexpected errors, in particular, errors that originate from the
      * channel's read operation. The safest bet for an application when
      * attempting error recovery is to always check first if {@link
-     * ChannelOperations#isOpenForReading() request.channel().isOpenForReading()}.<p>
+     * ChannelOperations#isOpenForReading() request.channel().isOpenForReading()}.
      * 
      * 
-     * <h3>Subscribing to bytes with a {@code Flow.Subscriber}</h3>
+     * <h2>Subscribing to bytes with a {@code Flow.Subscriber}</h2>
      * 
      * Almost all of the same {@code Flow.Publisher} semantics specified in the
      * JavaDoc of {@link Publishers} applies to the {@code Body} as a publisher
@@ -507,9 +513,9 @@ public interface Request
      * The subscriber will receive bytebuffers in the same order they are read
      * from the underlying channel. The subscriber can not read beyond the
      * message/body boundary because the server will complete the subscription
-     * before then and if need be, limit the last bytebuffer.<p>
+     * before then and if need be, limit the last bytebuffer.
      * 
-     * <h4>Releasing</h4>
+     * <h3>Releasing</h3>
      * 
      * The published bytebuffers are pooled and may be processed synchronously
      * or asynchronously. Whenever the application has finished processing
@@ -524,9 +530,9 @@ public interface Request
      * 
      * Cancelling the subscription does not cause the bytebuffer to be released.
      * Releasing has to be done explicitly, or implicitly through an exceptional
-     * return of {@code Subscriber.onNext()}.<p>
+     * return of {@code Subscriber.onNext()}.
      * 
-     * <h4>Processing bytebuffers</h4>
+     * <h3>Processing bytebuffers</h3>
      * 
      * The subscriber may request/demand any number of bytebuffers, but will
      * only receive the next bytebuffer after the previous one has been
@@ -562,9 +568,9 @@ public interface Request
      * bytebuffers in order to support "zero-copy" transfers. I.e., no data is
      * moved into Java heap space unless the subscriber itself causes this to
      * happen. Whenever possible, always pass forward the bytebuffers to the
-     * destination without reading the bytes in application code!<p>
+     * destination without reading the bytes in application code!
      * 
-     * <h4>The HTTP exchange and body discarding</h4>
+     * <h3>The HTTP exchange and body discarding</h3>
      * 
      * The HTTP exchange is considered done as soon as both the server's
      * response body subscription <i>and</i> the application's request body
@@ -586,9 +592,9 @@ public interface Request
      * request body bytes must be delayed, then there's at least two ways of
      * solving this. Either delay completing the server's response body
      * subscription or register a request body subscriber but delay requesting
-     * items.<p>
+     * items.
      * 
-     * <h4>Exception Handling</h4>
+     * <h3>Exception Handling</h3>
      * 
      * The {@code Body} as a publisher follows the same exception semantics
      * specified in the JavaDoc of {@link Publishers}, decorated with some added
@@ -741,7 +747,7 @@ public interface Request
     /**
      * Is an API for accessing objects associated with a particular request.
      * Useful when passing data across boundaries, such as from a request
-     * handler to an error handler.<p>
+     * handler to an error handler.
      * 
      * <pre>{@code
      *   // In a request handler
@@ -776,10 +782,11 @@ public interface Request
         /**
          * Set the value of the named attribute.<p>
          * 
+         * @param name  of attribute (any non-null string)
          * @param value of attribute (may be {@code null})
          * 
          * @return the old value (may be {@code null})
-         *
+         * 
          * @throws NullPointerException if {@code name} is {@code null}
          */
         Object set(String name, Object value);

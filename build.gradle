@@ -1,18 +1,20 @@
 plugins {
-    // TODO: Use explicit versions of each and of jacoco.toolVersion (set 0.8.6, currently using 0.8.5)
     id 'java'
     id 'jacoco'
+    // Add task publishToMavenLocal; used by jitpack.io's publishing service
+    id 'maven-publish'
 }
 
 sourceSets {
+    // Move unit test locations from default '/test' to '/test/unit'
     test {
-        // Move unit test locations from default '/test' to 'test/unit'
         java.srcDirs = ['src/test/unit/java']
         java.outputDir = file("$buildDir/classes/java/test/unit")
         resources.srcDirs = ['src/test/unit/resources']
         output.resourcesDir = file("$buildDir/resources/test/unit")
     }
     
+    // Define large tests in '/test/large'
     largeTest {
         java.srcDirs = ['src/test/large/java']
         java.outputDir = file("$buildDir/classes/java/test/large")
@@ -34,38 +36,33 @@ repositories {
 }
 
 dependencies {
-    // Use JUnit Jupiter API for testing.
+    // Use JUnit Jupiter for testing.
     testImplementation 'org.junit.jupiter:junit-jupiter-api:5.5.1'
-    testImplementation 'org.assertj:assertj-core:3.16.1'
-    
-    testImplementation 'org.mockito:mockito-core:3.4.4'
-    
-    // Use JUnit Jupiter Engine for testing.
     testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine:5.5.1'
     
+    testImplementation 'org.assertj:assertj-core:3.16.1'
+    testImplementation 'org.mockito:mockito-core:3.4.4'
+    
+    // Used by TwoHundredRequestsFromSameClient
     largeTestImplementation 'org.junit.jupiter:junit-jupiter-params:5.5.1'
 }
 
+// To be bumped by task in future or perhaps not even set in this file
+version = '0.5-SNAPSHOT'
+
+// Ensure backwards compatibility for Java 11
+// https://stackoverflow.com/a/43103038/1268003
+// https://docs.gradle.org/6.6/release-notes.html#javacompile-release
 compileJava {
-    // TODO: Figure out this: https://stackoverflow.com/a/22326989
-    //sourceCompatibility = JavaVersion.VERSION_11
-    //targetCompatibility = JavaVersion.VERSION_11
-}
-
-// https://stackoverflow.com/a/22326989
-// https://stackoverflow.com/a/43103038
-// https://github.com/gradle/gradle/issues/2510
-
-if (JavaVersion.current() < JavaVersion.VERSION_11) {
-    throw new GradleException("This project requires at least Java 11, but it's running on " + JavaVersion.current() + ".");
+    options.release = 11
 }
 
 tasks.withType(JavaCompile) {
     options.compilerArgs.addAll([
-        '--release', '11',
-        '-Xlint:unchecked',
-        '-Xlint:deprecation',
-        '-Xdiags:verbose'])
+        '-Xlint',                  // Enable all warnings
+        '-Xdoclint:all/protected', // Also check JavaDoc (protected and higher)
+        '-Werror',                 // Fail on any warning
+        '-Xdiags:verbose'])        // Talk more
 }
 
 test {
@@ -92,5 +89,69 @@ tasks.withType(Test).configureEach {
 
 jacocoTestReport {
     // Use data file not just from test but also largeTest
-    getExecutionData().setFrom(fileTree(dir: "$buildDir/jacoco", includes: ['*.exec']))
+    getExecutionData().setFrom(
+            fileTree(dir: "$buildDir/jacoco", includes: ['*.exec']))
+}
+
+javadoc {
+    title = 'NoMagicHTTP ' + version + ' API'
+    // default description was "Generates Javadoc API documentation for the main source code."
+    description = 'Generates Javadoc API documentation (public symbols from main source set).'
+}
+
+// Build JavaDoc HTML for developers
+task javadocall(type: Javadoc) {
+    title = javadoc.title + ' (for library developers)'
+    description = 'Generates all Javadoc API documentation (public+private symbols and test classes).'
+    group = 'documentation'
+    
+    source = [sourceSets.main.allJava, sourceSets.test.allJava, sourceSets.largeTest.allJava]
+    classpath = sourceSets.largeTest.compileClasspath
+    
+    options.memberLevel = JavadocMemberLevel.PRIVATE
+    destinationDir = file("$buildDir/docs/javadoc-all")
+}
+
+tasks.withType(Javadoc) {
+    // Add support for modern JavaDoc tags
+    // https://openjdk.java.net/jeps/8068562
+    options.tags(
+        'apiNote:a:API Note:',
+        'implSpec:a:Implementation Requirements:',
+        'implNote:a:Implementation Note:')
+    
+    // Fail on any warning
+    // https://stackoverflow.com/a/49544352/1268003
+    // https://github.com/gradle/gradle/issues/2354#issuecomment-364857181
+    def opt = JavaVersion.current().isCompatibleWith(JavaVersion.VERSION_15) ?
+            "Werror" : "Xwerror";
+    
+    options.addBooleanOption(opt, true)
+    
+    // No warnings for missed comments (can't disable only for private symbols)
+    options.addBooleanOption('Xdoclint:all,-missing', true)
+}
+
+// Add tasks "javadocJar" and "sourcesJar" (for IDE:s and other tooling)
+java {
+    withJavadocJar() // .jar contains HTML from the javadoc task, not javadocall
+    withSourcesJar() // contains .java source code files; no .class files or HTML
+}
+
+// withJavadocJar() added the javadoc task as a dependency on the assemble task,
+// also add the javadocall task as dependency (we want gradle build to fail if any doc task fails)
+assemble.dependsOn javadocall
+
+// For jitpack.io, define a publication
+group = 'com.example'
+publishing.publications {
+    thisNameMakesNoDifference(MavenPublication) {
+        from components.java
+        pom.licenses {
+            license {
+                name = 'The Apache License, Version 2.0'
+                url = 'http://www.apache.org/licenses/LICENSE-2.0.txt'
+            }
+        }
+    }
 }

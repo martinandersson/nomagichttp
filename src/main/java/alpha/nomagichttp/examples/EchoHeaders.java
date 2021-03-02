@@ -16,7 +16,14 @@ public class EchoHeaders
 {
     private static final int PORT = 8080;
     
-    public static void main(String... ignored) throws IOException {
+    /**
+     * Application entry point.
+     * 
+     * @param args ignored
+     *
+     * @throws IOException If an I/O error occurs
+     */
+    public static void main(String... args) throws IOException {
         HttpServer app = HttpServer.create();
         
         app.add("/echo", GET().apply(req -> {

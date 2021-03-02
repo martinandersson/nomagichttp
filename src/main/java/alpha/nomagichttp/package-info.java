@@ -12,7 +12,7 @@
  * deliver killer JavaDocs, developer joy and productivity.
  * 
  * 
- * <h3>Architectural overview</h3>
+ * <h2>Architectural overview</h2>
  * 
  * A central component is a {@link alpha.nomagichttp.route.Route Route} (the
  * "resource" or "request-target"), to which at least one {@link

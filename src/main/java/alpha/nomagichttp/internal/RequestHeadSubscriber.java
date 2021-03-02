@@ -35,6 +35,7 @@ final class RequestHeadSubscriber implements SubscriberAsStage<PooledByteBufferH
      * @see #asCompletionStage()
      */
     static final class ClientAbortedException extends RuntimeException {
+        private static final long serialVersionUID = 1L;
         ClientAbortedException(Throwable cause) {
             super(cause);
         }
