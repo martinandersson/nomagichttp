@@ -50,6 +50,11 @@ dependencies {
 // To be bumped by task in future or perhaps not even set in this file
 version = '0.5-SNAPSHOT'
 
+wrapper {
+    gradleVersion = '6.8.3'
+    distributionType = Wrapper.DistributionType.ALL
+}
+
 // Ensure backwards compatibility for Java 11
 // https://stackoverflow.com/a/43103038/1268003
 // https://docs.gradle.org/6.6/release-notes.html#javacompile-release
