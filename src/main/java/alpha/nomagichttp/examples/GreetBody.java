@@ -36,7 +36,7 @@ public class GreetBody
         
         app.add("/hello", POST().apply(req ->
                 req.body().toText().thenApply(name ->
-                        text("Hello, " + name + "!"))));
+                        text("Hello " + name + "!"))));
         
         app.start(PORT);
         System.out.println("Listening on port " + PORT + ".");
