@@ -13,9 +13,9 @@ implementation could possibly be.
 
 Best of all, the API design is based on the firmly held principle that all forms
 of magic are evil. Annotations, "beans" and God-like "context" objects will
-never be a part of the library. The top priority of this project is killer
-JavaDocs, developer joy, and no waste of time. The only way to deliver on this
-promise was to build the server from scratch, using 100% Java.
+never be a part of the library. Top priority is killer JavaDocs, developer joy,
+and no waste of time. The only way to deliver on this promise was to build the
+server from scratch, using 100% Java.
 
 [JavaDoc is available.][0-1]
 
