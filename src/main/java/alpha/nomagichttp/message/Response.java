@@ -298,8 +298,9 @@ public interface Response
         /**
          * Add all headers from the given {@code HttpHeaders}.<p>
          * 
-         * The implementation may use {@code HttpHeaders.map()} which does not
-         * provide any guarantee with regard to the ordering of its entries.
+         * The implementation may use {@link HttpHeaders#map()} to access the
+         * header values which does not provide any guarantee with regard to the
+         * ordering of its entries.
          * 
          * @param headers to add
          * 
