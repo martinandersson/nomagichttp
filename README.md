@@ -3,55 +3,118 @@
 
 # NoMagicHTTP
 
-**An asynchronous server-side Java library used to receive HTTP requests and
+**A server-side Java library used to receive HTTP requests and
 respond to them.**
 
-The NoMagicHTTP library strives to offer an _elegant_ and powerful API that is
-just about as fast and scalable as any fully JDK-based HTTP server
+The NoMagicHTTP server is truly asynchronous and doesn't even use event polling
+or selector threads. What you get is an _elegant_ and modern API that is just
+about as fast and scalable as any fully JDK-based and cross-platform HTTP server
 implementation could possibly be.
 
-Best of all, the API is designed around the firmly held opinion that all
-forms of magic are evil. Annotations, "beans" and God-like "context" objects
-will never be a part of the library. The top priority of this project is killer
+Best of all, the API design is based on the firmly held principle that all forms
+of magic are evil. Annotations, "beans" and God-like "context" objects will
+never be a part of the library. The top priority of this project is killer
 JavaDocs, developer joy, and no waste of time. The only way to deliver on this
 promise was to build the server from scratch, using 100% Java.
 
-**WARNING:** This project is fresh out of the oven and probably not very useful
-at the moment. The document [POA.md][0-1] details planned future work- and
-consequently, what parts of the HTTP stack have currently not been delivered.
+[JavaDoc is available.][0-1]
 
-Please become an early contributor and join the fight to rid the world of magic!
+**WARNING:** This project is fresh out of the oven without proper release
+management in place and likely not very useful at the moment. The document
+[POA.md][0-2] details planned future work- and consequently, what parts of the
+HTTP stack have not yet been delivered.
 
-[0-1]: POA.md
+[0-1]: https://jitpack.io/com/github/martinandersson/nomagichttp/-SNAPSHOT/javadoc/
+[0-2]: POA.md
+
+## Minimal Example
+
+In an empty directory, create a new [Gradle][1-1] build file `build.gradle`:
+
+    plugins {
+        id 'application'
+    }
+    
+    repositories {
+        maven { url 'https://jitpack.io' }
+    }
+    
+    dependencies {
+        implementation 'com.github.martinandersson:nomagichttp:master-SNAPSHOT'
+    }
+    
+    application {
+        mainClass = 'Greeter'
+    }
+
+In subfolder `src/main/java`, put this in `Greeter.java`:
+
+    import alpha.nomagichttp.HttpServer;
+    import static alpha.nomagichttp.handler.RequestHandlers.GET;
+    import static alpha.nomagichttp.message.Responses.text;
+    
+    class Greeter {
+        public static void main(String[] args) throws java.io.IOException {
+            HttpServer.create()
+                      .add("/greeting", GET().respond(text("Hello Stranger!")))
+                      .start(8080);
+        }
+    }
+
+Make sure you are using Java 11+, then start the server:
+
+```console
+foo@bar:~$ gradle run
+> Task :run
+Mar 03, 2021 7:29:26 AM alpha.nomagichttp.internal.DefaultServer start
+INFO: Opened server channel: sun.nio.ch.UnixAsynchronousServerSocketChannelImpl[/0:0:0:0:0:0:0:0:8080]
+<=========----> 75% EXECUTING [1s]
+> :run
+```
+
+In another terminal:
+
+```console
+foo@bar:~$  curl localhost:8080/greeting
+Hello Stranger!
+```
+
+We just started the app using Gradle. Even so, the start-up time is negligible.
+In a real-world scenario where Java is used directly, the start-up time is
+pretty much instantaneous. Be prepared for uber-fast development cycles and
+running real HTTP exchanges in your test cases, _because you can_.
+
+[1-1]: https://docs.gradle.org/current/userguide/tutorial_using_tasks.html
 
 ## Getting started
 
-The intent of this project is to be primarily documented through JavaDoc of an
-API that is _discoverable_ and intuitive. A good start to read about core Java
-types and the architecture is the [package-info.java][1-1] file of
-`alpha.nomagichttp`.
+The intent of this project is to be primarily documented through [JavaDoc][0-1]
+of an API that is _discoverable_ and intuitive.
 
-Each of the following examples has a link to the source code which should be
-read as it contains helpful code commentary to introduce the NoMagicHTTP API.
+The examples provided in subsequent sections are packaged with the published JAR
+file and can be executed simply by replacing the `mainClass` value in the
+previous Gradle build file. I.e., to run the first example, do:
 
-The examples assume that Java 11+ is installed and the current working
-directory is the NoMagicHTTP project root. In addition, please run these
-commands before trying the examples:
+    application {
+        mainClass = 'alpha.nomagichttp.examples.HelloWorld'
+    }
 
-```shell
-./gradlew build
-JAR=build/libs/nomagichttp.jar
-PKG=alpha.nomagichttp.examples
-```
+For brevity, the example runs provided does not use Gradle and assume that the
+JAR file path and package have been provided by two environment variables
+instead.
 
-[1-1]: src/main/java/alpha/nomagichttp/package-info.java
-[1-2]: https://docs.oracle.com/en/java/javase/12/tools/java.html#GUID-3B1CE181-CD30-4178-9602-230B800D4FAE__USINGSOURCE-FILEMODETOLAUNCHSINGLE--B5E57618
+It is recommended to follow the links in each example as the source code
+contains useful commentary that explains the API used.
 
-### Hello World
+[2-1]: src/main/java/alpha/nomagichttp/package-info.java
 
-This example will make the server respond with a static "Hello World!" message.
+### Selecting port
 
-See code: [src/main/java/.../HelloWorld.java][2-1]
+Commonly, the server port is provided through an environment variable or
+command-line argument. If a port is not specified, the system will pick a port
+on the loopback address.
+
+See code: [src/main/java/.../HelloWorld.java][3-1]
 
 Run:
 
@@ -71,14 +134,14 @@ Content-Length: 12
 Hello World!
 ```
 
-[2-1]: src/main/java/alpha/nomagichttp/examples/HelloWorld.java
+[3-1]: src/main/java/alpha/nomagichttp/examples/HelloWorld.java
 
 ### Greet using name from request path
 
 This example registers two routes in order to respond a greeting with a name
 taken from a path- or query parameter.
 
-See code: [src/main/java/.../GreetParameter.java][3-1]
+See code: [src/main/java/.../GreetParameter.java][4-1]
 
 Run:
 
@@ -104,13 +167,13 @@ Alternatively, you may pass the name as a query parameter:
 foo@bar:~$ curl -i localhost:8080/hello?name=John
 ```
 
-[3-1]: src/main/java/alpha/nomagichttp/examples/GreetParameter.java
+[4-1]: src/main/java/alpha/nomagichttp/examples/GreetParameter.java
 
 ### Greet using name from request body
 
 This example will greet the user with a name taken as being the request body.
 
-See code: [src/main/java/.../GreetBody.java][4-1]
+See code: [src/main/java/.../GreetBody.java][5-1]
 
 Run:
 
@@ -125,18 +188,18 @@ In a new terminal, run:
 foo@bar:~$ curl -i localhost:8080/hello -d John
 HTTP/1.1 200 OK
 Content-Type: text/plain; charset=utf-8
-Content-Length: 12
+Content-Length: 11
 
-Hello, John!
+Hello John!
 ```
 
-[4-1]: src/main/java/alpha/nomagichttp/examples/GreetBody.java
+[5-1]: src/main/java/alpha/nomagichttp/examples/GreetBody.java
 
 ### Echo request headers
 
 This example echoes back the request headers.
 
-See code: [src/main/java/.../EchoHeaders.java][5-1]
+See code: [src/main/java/.../EchoHeaders.java][6-1]
 
 Run:
 
@@ -160,14 +223,14 @@ User-Agent: curl/7.68.0
 Content-Length: 0
 ```
 
-[5-1]: src/main/java/alpha/nomagichttp/examples/EchoHeaders.java
+[6-1]: src/main/java/alpha/nomagichttp/examples/EchoHeaders.java
 
 ### Retry request on error
 
 This example demonstrates error handling and will re-execute the request handler
 on a particular known exception.
 
-See code: [src/main/java/.../RetryRequestOnError.java][6-1]
+See code: [src/main/java/.../RetryRequestOnError.java][7-1]
 
 Run:
 
@@ -191,4 +254,4 @@ Error handler will retry #1 after delay (ms): 40
 Request handler received a request 15:19:58.827 and will return 200 OK
 ```
 
-[6-1]: src/main/java/alpha/nomagichttp/examples/RetryRequestOnError.java
+[7-1]: src/main/java/alpha/nomagichttp/examples/RetryRequestOnError.java
