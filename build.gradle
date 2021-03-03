@@ -130,6 +130,9 @@ tasks.withType(Javadoc) {
     
     // No warnings for missed comments (can't disable only for private symbols)
     options.addBooleanOption('Xdoclint:all,-missing', true)
+    
+    // Text to be injected as overview
+    options.overview = 'src/main/java/overview.html'
 }
 
 // Add tasks "javadocJar" and "sourcesJar" (for IDE:s and other tooling)
