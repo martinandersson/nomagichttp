@@ -8,8 +8,8 @@ respond to them.**
 
 The NoMagicHTTP server is natively asynchronous and doesn't even use event
 polling or selector threads. What you get is an _elegant_ and modern API that is
-just about as fast and scalable as any fully JDK-based and cross-platform HTTP
-server implementation could possibly be.
+just about as fast and scalable as any cross-platform JDK-based HTTP server
+implementation could possibly be.
 
 Best of all, the API design is based on the firmly held principle that all forms
 of magic are evil. Annotations, "beans" and God-like "context" objects will
