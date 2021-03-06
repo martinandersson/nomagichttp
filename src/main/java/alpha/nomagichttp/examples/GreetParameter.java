@@ -33,7 +33,7 @@ public class GreetParameter
          * 1) Single path parameters are required for matching the route,
          *    parameters().path(key) will always return a non-empty string.
          * 
-         * 2) Query parameters are optional for every request,
+         * 2) Query parameters are always optional,
          *    parameters().queryFirst(key) returns an Optional of the first occurred value.
          * 
          * 3) The HTTP server is fully asynchronous which is great for web applications
