@@ -97,7 +97,7 @@ public class RetryRequestOnError
             }
         }
         
-        private int delay(int attempt) {
+        private static int delay(int attempt) {
             return 40 * (int) Math.pow(attempt, 2);
         }
         

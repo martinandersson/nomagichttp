@@ -238,7 +238,7 @@ public class MediaType
         
         if (raw.length != 2) {
             throw new BadMediaTypeSyntaxException(text,
-                    "Expected only one forward slash in <type/subtype>.");
+                    "Expected exactly one forward slash in <type/subtype>.");
         }
         
         final String type = stripAndLowerCase(raw[0]);

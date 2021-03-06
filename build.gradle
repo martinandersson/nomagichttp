@@ -50,6 +50,10 @@ dependencies {
 // To be bumped by task in future or perhaps not even set in this file
 version = '0.5-SNAPSHOT'
 
+// By default, all compiler- and JavaDoc warnings are errors.
+// Unless environment variable HACKING=true.
+def Werror = !(System.env.HACKING ?: false).toBoolean()
+
 wrapper {
     gradleVersion = '6.8.3'
     distributionType = Wrapper.DistributionType.ALL
@@ -66,8 +70,10 @@ tasks.withType(JavaCompile) {
     options.compilerArgs.addAll([
         '-Xlint',                  // Enable all warnings
         '-Xdoclint:all/protected', // Also check JavaDoc (protected and higher)
-        '-Werror',                 // Fail on any warning
         '-Xdiags:verbose'])        // Talk more
+    
+    // Fail on any warning
+    if (Werror) options.compilerArgs.add '-Werror'
 }
 
 test {
@@ -128,10 +134,12 @@ tasks.withType(Javadoc) {
     // Fail on any warning
     // https://stackoverflow.com/a/49544352/1268003
     // https://github.com/gradle/gradle/issues/2354#issuecomment-364857181
-    def opt = JavaVersion.current().isCompatibleWith(JavaVersion.VERSION_15) ?
+    if (Werror) {
+        def opt = JavaVersion.current().isCompatibleWith(JavaVersion.VERSION_15) ?
             "Werror" : "Xwerror";
-    
-    options.addBooleanOption(opt, true)
+        
+        options.addBooleanOption(opt, true)
+    } 
     
     // No warnings for missed comments (can't disable only for private symbols)
     options.addBooleanOption('Xdoclint:all,-missing', true)
