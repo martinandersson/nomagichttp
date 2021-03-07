@@ -24,7 +24,7 @@ master. The master branch must always build just fine.
 ## Outline
 
 [Stage: Project Enhancements](#stage-project-enhancements)  
-[Stage: HTTP Constants](#stage-http-constants)  
+[__Stage: HTTP Constants__](#stage-http-constants)  
 [Stage: HTTP Versioning](#stage-http-versioning)  
 [Stage: Improved Testing](#stage-improved-testing)  
 [Stage: Improved Content Negotiation](#stage-improved-content-negotiation)  
@@ -69,6 +69,8 @@ artifacts.
 - DESIGN.md is plausible, linked from CONTRIBUTING.md
 
 ## Stage: HTTP Constants
+
+_Status: **In progress.**_
 
 Constants - even when not used by the server itself - is important for
 _discoverability_.
