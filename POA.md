@@ -23,6 +23,8 @@ master. The master branch must always build just fine.
 
 ## Outline
 
+An item ~~crossed out~~ is complete, an item in __bold__ is work in progress.
+
 [Stage: Project Enhancements](#stage-project-enhancements)  
 [Stage: HTTP Constants](#stage-http-constants)  
 [Stage: HTTP Versioning](#stage-http-versioning)  
@@ -51,22 +53,32 @@ master. The master branch must always build just fine.
 
 ## Stage: Project Enhancements
 
-_Status: **In progress.**_
+_Status: **Mostly Delivered.**_
 
 To deliver practical usefulness, the project must publish documentation and
 artifacts.
 
 - Gradle tasks for JavaDoc generation and publication.
   Ideally we want to be able to generate JavaDoc for public consumtion (public +
-  package access) versus docs for contributors (+ private + test classes).
-- Gradle must use specified JVM version(s) when building
-- GitHub integrations (test build against many JVM vendors)
+  package access) versus docs for contributors (+ private + test classes).  
+  _Result: Added tasks `javadoc` and `javadocAll`._
+- Gradle must use specified JVM version(s) when building  
+  _Result: Using recent Gradle feature to set
+  `compileJava.options.release = 11`_
+- GitHub integrations (test build against many JVM vendors)  
+  _Result: Added `build.yml` to build/test from Java 11 to 15_  
+  _Remains: GitHub should notify JitPack on successful build?_
 - Gradle task to publish a `NoMagicHTTP-0.5-SNAPSHOT.jar` somewhere
-  - Consider splitting docs into separate jar - may be pushed into future.
-- User guide (GitHub pages?) for examples and aggregated how-to's
-- README.md for super quick introduction followed by project-building how-to's
-- CONTRIBUTING.md for tech-heavy contributing how-to's
-- DESIGN.md is plausible, linked from CONTRIBUTING.md
+  - Consider splitting docs into separate jar - may be pushed into future.  
+    _Result: Using JitPack to publish binary, sources and JavaDoc_
+- User guide (GitHub pages?) for examples and aggregated how-to's  
+  _Result: Postponed_
+- README.md for super quick introduction followed by project-building how-to's  
+  _Result: Postponed_
+- CONTRIBUTING.md for tech-heavy contributing how-to's  
+  _Result: Postponed_
+- DESIGN.md is plausible, linked from CONTRIBUTING.md  
+  _Result: Postponed_
 
 ## Stage: HTTP Constants
 
