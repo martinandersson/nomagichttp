@@ -17,6 +17,8 @@ import alpha.nomagichttp.HttpConstants;
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  */
+// TODO: Replace with RequestHandler.GET(), POST(), et cetera
+//       (RequestHandler made effectively mutable)
 public final class RequestHandlers
 {
     private RequestHandlers() {
