@@ -31,7 +31,7 @@ public final class HttpConstants {
      * <a href="https://tools.ietf.org/html/rfc7231#section-4.1">RFC 7231 §4.1</a>
      * ).<p>
      * 
-     * Methods has characteristics. If it is <strong>safe</strong> (
+     * Methods have characteristics. If it is <strong>safe</strong> (
      * <a href="https://tools.ietf.org/html/rfc7231#section-4.2.1">RFC 7231 §4.2.1</a>
      * ), then the request is likely used only for information retrieval and
      * should not have any noticeable side effects on the server (GET, HEAD,
@@ -278,10 +278,8 @@ public final class HttpConstants {
         /**
          * Used by client to probe the capabilities of a server. The request
          * target may be an asterisk ("*") and applies then to the entire server
-         * in general. And that's pretty much all what is defined in
-         * <a href="https://tools.ietf.org/html/rfc7231#section-4.3.7">RFC 7231 §4.3.7</a>
-         * . Specifically, whether or not the request- and response bodies have
-         * content is not defined.<p>
+         * in general. The request and response may or may not have body
+         * contents, this depends on the implementation.<p>
          * 
          * In the following HTTP exchange, the client discovers what methods are
          * allowed for the user identified as 123:
@@ -301,7 +299,7 @@ public final class HttpConstants {
          * Future work is scheduled to have the NoMagicHTTP server automate the
          * discovery of allowed methods.<p>
          * 
-         * Ping-pong:
+         * Ping-pong example:
          * 
          * <pre>
          *   -->
@@ -339,9 +337,9 @@ public final class HttpConstants {
     }
     
     /**
-     * A status code is a three-digit integer value on the status-line of a
-     * response, giving the result of the processed request. They are classified
-     * into five groups, as indicated by the first digit:
+     * A status code is a three-digit integer value on the response status-line,
+     * giving the result of the processed request. They are classified into five
+     * groups, as indicated by the first digit:
      * 
      * <ul>
      *   <li>1XX (Informational): Alo known a interim responses, are sent before
@@ -384,7 +382,7 @@ public final class HttpConstants {
         }
         
         /**
-         * Goes with reason phrase {@value ReasonPhrase#CONTINUE}.<p>
+         * Goes with the reason phrase {@value ReasonPhrase#CONTINUE}.<p>
          * 
          * The server has received the request headers and accepted them, the
          * client may proceed to transmit the request body. Used by clients to
@@ -394,13 +392,14 @@ public final class HttpConstants {
          * 100-continue} header in the request.<p>
          * 
          * Currently, the NoMagicHTTP server does not auto-respond a 101 interim
-         * response, although future work is planned to arrange for this in a
-         * smart, transparent and configurable way.
+         * response to a waiting client, although future work is planned to
+         * arrange for this in a smart, transparent and configurable way.
          */
         public static final int ONE_HUNDRED = 100;
         
         /**
-         * Goes with reason phrase {@value ReasonPhrase#SWITCHING_PROTOCOLS}.<p>
+         * Goes with the reason phrase {@value
+         * ReasonPhrase#SWITCHING_PROTOCOLS}.<p>
          * 
          * The server accepted a protocol upgrade request from the client and
          * should also include in the {@link HeaderKey#UPGRADE Upgrade} header
@@ -426,8 +425,8 @@ public final class HttpConstants {
          * </pre>
          * 
          * Currently, the NoMagicHTTP server ignores the {@code Upgrade} header
-         * and natively supports only HTTP/1.0 and HTTP/1.1. Planned future work
-         * will also support other protocols, such as HTTP/2.
+         * and supports only HTTP/1.0 and HTTP/1.1. Planned future work will
+         * also support other protocols, such as HTTP/2.
          */
         public static final int ONE_HUNDRED_ONE = 101;
         
