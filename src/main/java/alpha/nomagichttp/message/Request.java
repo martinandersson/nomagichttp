@@ -61,7 +61,8 @@ public interface Request
      * 
      * The returned value is "GET".
      * 
-     * @return the request-line's method token (never {@code null}, empty or blank)
+     * @return the request-line's method token
+     *         (never {@code null}, empty or blank)
      * 
      * @see HttpConstants.Method
      */
@@ -88,6 +89,7 @@ public interface Request
      * ) and so shouldn't have been sent to the HTTP server in the first place.
      * 
      * @return the request-line's resource-target
+     *         (never {@code null}, empty or blank)
      */
     String target();
     
