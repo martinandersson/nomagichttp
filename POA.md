@@ -195,6 +195,7 @@ client updated while processing lengthy requests.
     responses? Sort of like an "addLast" method. Not sure I like this.
   - Add overload which accepts an unboxed/ready `Response`.
 - `Response.body()` throws exception if response is interim.
+- Add factory methods for `100 (Continue)` and `102 (Processing)`.
 
 ### Server
 
@@ -856,11 +857,11 @@ Not a completely sacked idea, but postponed indefinitely:
   If there's ever a demand for it, we'll prolly do something like
   [this](https://stackoverflow.com/a/56641911/1268003) and
   [this](https://tools.ietf.org/id/draft-wright-http-partial-upload-01.html).
+- Producing `103 (Early Hints)`.
 
 Finally - for the record - most items above _can_ be done with the NoMagicHTTP
 library. It's just that the particular feature has no first-class API support
-and the application would have to implement the functionality itself on top of
-the HTTP exchange.
+and the application would have to implement the functionality itself.
 
 ## HTTP Specifications
 
