@@ -1,5 +1,6 @@
 package alpha.nomagichttp.handler;
 
+import alpha.nomagichttp.HttpConstants;
 import alpha.nomagichttp.message.MediaType;
 import alpha.nomagichttp.message.Request;
 import alpha.nomagichttp.message.Response;
@@ -238,7 +239,7 @@ public interface RequestHandler
      * Creates a new {@code RequestHandler} builder.<p>
      * 
      * The method is any string, case-sensitive. For example, "GET" and
-     * "POST".<p>
+     * "POST". Constants are available in {@link HttpConstants.Method}.<p>
      * 
      * Builders with standardized methods is already available using static
      * methods in the builder interface, such as {@link Builder#GET()}, {@link

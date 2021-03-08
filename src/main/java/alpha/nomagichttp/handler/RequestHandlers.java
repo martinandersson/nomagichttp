@@ -1,5 +1,7 @@
 package alpha.nomagichttp.handler;
 
+import alpha.nomagichttp.HttpConstants;
+
 /**
  * Utility methods for building {@link RequestHandler}s.<p>
  * 
@@ -22,7 +24,8 @@ public final class RequestHandlers
     }
     
     /**
-     * Builds a handler responding to method "GET".<p>
+     * Builds a handler responding to method {@link HttpConstants.Method#GET
+     * GET}.<p>
      * 
      * @return a builder positioned at the last step
      * 
@@ -30,55 +33,59 @@ public final class RequestHandlers
      * @see RequestHandler.Builder
      */
     public static RequestHandler.Builder.LastStep GET() {
-        return method("GET");
+        return method(HttpConstants.Method.GET);
     }
     
     /**
-     * Builds a handler responding to method "HEAD".<p>
-     *
+     * Builds a handler responding to method {@link HttpConstants.Method#HEAD
+     * HEAD}.<p>
+     * 
      * @return a builder positioned at the last step
      *
      * @see RequestHandlers
      * @see RequestHandler.Builder
      */
     public static RequestHandler.Builder.LastStep HEAD() {
-        return method("HEAD");
+        return method(HttpConstants.Method.HEAD);
     }
     
     /**
-     * Builds a handler responding to method "POST".<p>
-     *
+     * Builds a handler responding to method {@link HttpConstants.Method#POST
+     * POST}.<p>
+     * 
      * @return a builder positioned at the last step
      *
      * @see RequestHandlers
      * @see RequestHandler.Builder
      */
     public static RequestHandler.Builder.LastStep POST() {
-        return method("POST");
+        return method(HttpConstants.Method.POST);
     }
     
     /**
-     * Builds a handler responding to method "PUT".<p>
-     *
+     * Builds a handler responding to method {@link HttpConstants.Method#PUT
+     * PUT}.<p>
+     * 
      * @return a builder positioned at the last step
-     *
+     * 
      * @see RequestHandlers
      * @see RequestHandler.Builder
      */
     public static RequestHandler.Builder.LastStep PUT() {
-        return method("PUT");
+        return method(HttpConstants.Method.PUT);
     }
     
     /**
-     * Builds a handler responding to method "DELETE".<p>
-     *
+     * Builds a handler responding to method {@link HttpConstants.Method#DELETE
+     * DELETE}.<p>
+     * 
      * @return a builder positioned at the last step
-     *
+     * 
      * @see RequestHandlers
      * @see RequestHandler.Builder
      */
     public static RequestHandler.Builder.LastStep DELETE() {
-        return method("DELETE");
+        return method(HttpConstants.Method.DELETE);
     }
     
     private static RequestHandler.Builder.LastStep method(String method) {

@@ -1,5 +1,6 @@
 package alpha.nomagichttp.message;
 
+import alpha.nomagichttp.HttpConstants;
 import alpha.nomagichttp.HttpServer;
 import alpha.nomagichttp.handler.ErrorHandler;
 import alpha.nomagichttp.route.Route;
@@ -61,6 +62,8 @@ public interface Request
      * The returned value is "GET".
      * 
      * @return the request-line's method token (never {@code null}, empty or blank)
+     * 
+     * @see HttpConstants.Method
      */
     String method();
     
