@@ -212,7 +212,7 @@ Client may announce a pause before sending the request body.
 
 - Add `HttpServer.Config.immediatelyContinueExpect100()`
   - `false` by default. Meaning that by default, application code will have an
-    opportunity to engage with a client sending a "Except: 100-continue"
+    opportunity to engage with a client sending a "Expect: 100-continue"
     request. If the application code doesn't explicitly respond a 100 (Continue)
     message to the client, then the server will automagically send the
     continue-reply as soon as the application access the request body. This
