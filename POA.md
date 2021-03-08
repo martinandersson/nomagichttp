@@ -140,6 +140,10 @@ Implemented), which is wrong.
   method was not accepted, which is translated to 405 (Method Not Allowed).
   Response should have the "Allow: " header set and populated with the route's
   registered methods.
+  - If the original request was `OPTIONS`, then the default error handler
+    returns a `204 (No Content)` response with the "Allow" header set. May be
+    disabled in configuration, `config.autoAllow()`. Handler also populates
+    the list of values with "OPTIONS" if not already set.
 - 501 should only be used when the server globally rejects a method, for example
   if TRACE is disabled by server configuration.
 - Similarly, `Route.lookup()` should also introduce specialized exceptions;
