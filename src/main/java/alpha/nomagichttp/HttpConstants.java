@@ -5,8 +5,8 @@ import alpha.nomagichttp.message.MediaType;
 /**
  * Namespace of constants related to the HTTP protocol.<p>
  * 
- * If you're looking for values to use in a {@link HeaderKey#CONTENT_TYPE
- * Content-Type} header, see {@link MediaType}.
+ * For values to use in a {@link HeaderKey#CONTENT_TYPE Content-Type} header,
+ * see {@link MediaType}.
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  */
@@ -28,16 +28,17 @@ public final class HttpConstants {
      * <a href="https://tools.ietf.org/html/rfc7231#section-4.1">RFC 7231 §4.1</a>
      * ).<p>
      * 
-     * Methods usually carries with them certain characteristics. If it is
-     * <strong>safe</strong>, then the request should not have any noticeable
-     * side effects on the server (
+     * Methods has characteristics. If it is <strong>safe</strong> (
      * <a href="https://tools.ietf.org/html/rfc7231#section-4.2.1">RFC 7231 §4.2.1</a>
-     * ). If a method is <strong>idempotent</strong>, then the request may be
-     * repeated with no change to the intended effect of the first request (
+     * ), then the request is likely used only for information retrieval and
+     * should not have any noticeable side effects on the server (GET, HEAD,
+     * OPTIONS and TRACE). If a method is <strong>idempotent</strong> (
      * <a href="https://tools.ietf.org/html/rfc7231#section-4.2.2">RFC 7231 §4.2.2</a>
-     * ). Responses to <strong>cacheable</strong> requests may be stored for
-     * future reuse (<a href="https://tools.ietf.org/html/rfc7231#section-4.2.3">RFC 7231 §4.2.3</a>
-     * ).<p>
+     * ), then the request may be repeated with no change to the intended effect
+     * of the first request (GET, HEAD, PUT, DELETE, OPTIONS and TRACE).
+     * Responses to <strong>cacheable</strong> (
+     * <a href="https://tools.ietf.org/html/rfc7231#section-4.2.3">RFC 7231 §4.2.3</a>
+     * ) requests may be stored for future reuse (GET, HEAD, and POST).<p>
      * 
      * Only {@link #TRACE} requests and responses to {@link #HEAD} have
      * specified semantics that requires a body. For all other methods, the
@@ -48,7 +49,10 @@ public final class HttpConstants {
      * usually do. The NoMagicHTTP server does not enforce an opinion. The
      * request handler is in full control over how it interprets the request and
      * what it responds. For example, you <i>can</i> respond a body to a {@code
-     * HEAD} request.
+     * HEAD} request.<p>
+     * 
+     * Unless documented otherwise, the NoMagicHTTP server does not treat any
+     * method different than the other.
      */
     public static final class Method {
         private Method() {
@@ -59,19 +63,21 @@ public final class HttpConstants {
          * Used to retrieve a server resource. The response is usually 200 (OK)
          * with a representation of the resource attached as message body.<p>
          * 
-         * Safe? Yes. Idempotent? Yes. Cacheable? Yes.
+         * The request body doesn't normally have contents.<p>
+         * 
+         * Safe? Yes. Idempotent? Yes. Response cacheable? Yes.
          * 
          * @see Method
          */
         public static final String GET = "GET";
     
         /**
-         * Same as {@link #GET}, except without the message body. Used by
-         * clients who only have an interest in the response headers, i.e. the
-         * resource metadata. For example to learn when the resource was last
-         * modified.<p>
+         * Same as {@link #GET}, except the response will leave out the message
+         * body. Used by clients who only have an interest in the response
+         * headers, i.e. the resource metadata. For example, to learn when the
+         * resource was last modified.<p>
          * 
-         * Safe? Yes. Idempotent? Yes. Cacheable? Yes.
+         * Safe? Yes. Idempotent? Yes. Response cacheable? Yes.
          *
          * @see Method
          */
@@ -113,7 +119,7 @@ public final class HttpConstants {
          * get, or the client wish to replace all of an existing [known]
          * resource, use {@link #PUT} instead.<p>
          * 
-         * Safe? No. Idempotent? No. Cacheable? Yes.
+         * Safe? No. Idempotent? No. Response cacheable? Yes.
          * 
          * @see Method
          */
@@ -148,7 +154,7 @@ public final class HttpConstants {
          * If the request wish to update only selected parts of a resource, use
          * {@link #PATCH} instead.<p>
          * 
-         * Safe? No. Idempotent? Yes. Cacheable? No.
+         * Safe? No. Idempotent? Yes. Response cacheable? No.
          * 
          * @see Method
          */
@@ -232,16 +238,100 @@ public final class HttpConstants {
          *   ]
          * </pre>
          * 
-         * Safe? No. Idempotent? No. Cacheable? No.
+         * Safe? No. Idempotent? No. Response cacheable? No.
          */
         public static final String PATCH = "PATCH";
         
+        /**
+         * Used by clients to remove [the public visibility of-] or delete (like
+         * permanently; reclaim disk space and shit) a server-side resource.<p>
+         * 
+         * The request body doesn't normally have contents. The contents of the
+         * response body is very dependent on the nature of the resource and
+         * operation. For example, <i>remove</i> is probably more likely than
+         * <i>delete</i> to return the resource, perhaps limited by resource
+         * size.<p>
+         * 
+         * It is not defined how the operation cascade to multiple
+         * representations/content-types (
+         * <a href="https://tools.ietf.org/html/rfc7231#section-4.3.5">RFC 7231 §4.3.5</a>
+         * ).<p>
+         * 
+         * Safe? No. Idempotent? Yes. Response cacheable? No.
+         */
         public static final String DELETE = "DELETE";
         
+        /**
+         * Used by client-to-proxy or proxy-to-proxy for establishing a tunnel.
+         * Most origin servers have no use of this method and doesn't implement
+         * it.<p>
+         * 
+         * The request body doesn't normally have contents.<p>
+         * 
+         * Safe? No. Idempotent? No. Response cacheable? No.
+         */
         public static final String CONNECT = "CONNECT";
         
+        /**
+         * Used by client to probe the capabilities of a server. The request
+         * target may be an asterisk ("*") and applies then to the entire server
+         * in general. And that's pretty much all what is defined in
+         * <a href="https://tools.ietf.org/html/rfc7231#section-4.3.7">RFC 7231 §4.3.7</a>
+         * . Specifically, whether or not the request- and response bodies have
+         * content is not defined.<p>
+         * 
+         * In the following HTTP exchange, the client discovers what methods are
+         * allowed for the user identified as 123:
+         * 
+         * <pre>
+         *   -->
+         *   OPTIONS /user/123 HTTP/1.1
+         *   Host: www.example.com
+         *   Content-Length: 0
+         * 
+         *   {@literal <}--
+         *   HTTP/1.1 204 No Content
+         *   Allow: OPTIONS, GET, HEAD, PATCH
+         *   Content-Length: 0
+         * </pre>
+         * 
+         * Future work is scheduled to have the NoMagicHTTP server automate the
+         * discovery of allowed methods.<p>
+         * 
+         * Ping-pong:
+         * 
+         * <pre>
+         *   -->
+         *   OPTIONS * HTTP/1.1
+         *   Host: www.example.com
+         *   Content-Length: 0
+         * 
+         *   {@literal <}--
+         *   HTTP/1.1 200 OK
+         *   Content-Length: 4
+         *   PONG
+         * </pre>
+         * 
+         * Safe? Yes. Idempotent? Yes. Response cacheable? No.
+         */
         public static final String OPTIONS = "OPTIONS";
         
+        /**
+         * Used by clients to discover the chain of intermediaries that an HTTP
+         * message passes through. The final recipient ought to reply the
+         * message received. The client can then inspect what was observed on
+         * the other side, specifically the {@link HeaderKey#VIA Via} header.
+         * The server should exclude sensitive data from the response, such as
+         * cookies with user credentials.<p>
+         * 
+         * Due to the security risk of revealing sensitive data, some HTTP
+         * applications disable the TRACE method. Future work is scheduled to
+         * have this option available in the NoMagicHTTP's configuration as
+         * well. The NoMagicHTTP server certainly has no automatic response
+         * behavior related to this method and most likely never will.<p>
+         * 
+         * Safe? Yes. Idempotent? Yes. Response cacheable? No.
+         */
         public static final String TRACE = "TRACE";
     }
     
@@ -276,6 +366,8 @@ public final class HttpConstants {
         public static final String CONTENT_TYPE = "Content-Type";
         
         public static final String IF_MATCH = "If-Match";
+    
+        public static final String VIA = "Via";
     }
     
     /**
