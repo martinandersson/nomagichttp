@@ -1,6 +1,8 @@
 package alpha.nomagichttp;
 
 import alpha.nomagichttp.message.MediaType;
+import alpha.nomagichttp.message.Response;
+import alpha.nomagichttp.message.Responses;
 
 /**
  * Namespace of constants related to the HTTP protocol.<p>
@@ -337,12 +339,98 @@ public final class HttpConstants {
     }
     
     /**
-     *
+     * A status code is a three-digit integer value on the status-line of a
+     * response, giving the result of the processed request. They are classified
+     * into five groups, as indicated by the first digit:
+     * 
+     * <ul>
+     *   <li>1XX (Informational): Alo known a interim responses, are sent before
+     *     the final response. May be used as a heart-beat or status-update
+     *     mechanism by servers processing lengthy requests.</li>
+     *   <li>2XX (Successful): The request was successfully received and
+     *     accepted.</li>
+     *   <li>3XX (Redirection): The resource is available using a different
+     *     request-target or does not need to be re-transmitted.</li>
+     *   <li>4XX (Client Error): The client fuct up. Likely due to request
+     *     syntax error or the request was rejected for whatever else
+     *     reason.</li>
+     *   <li>5XX (Server Error): The server fuct up. Likely due to inadequate
+     *     software quality, which is likely due to poor managerial
+     *     decisions.</li>
+     * </ul>
+     * 
+     * Clients are only required to understand the class of a status-code,
+     * leaving the server free to select any arbitrary subcode of that class if
+     * it so desires. IANA maintains a
+     * <a href="https://www.iana.org/assignments/http-status-codes/http-status-codes.xhtml">registry</a>
+     * with status codes. The constants provided in {@code StatusCode} is taken
+     * from
+     * <a href="https://en.wikipedia.org/wiki/List_of_HTTP_status_codes">Wikipedia</a>
+     * and includes unofficial codes such as 418 (I'm a teapot), but excludes
+     * codes only used by a particular server such as NGINX's 444 (No
+     * Response).<p>
+     * 
+     * {@link Response.Builder#build()} requires a status code to have been set,
+     * but as far as the NoMagicHTTP server and API are concerned, the value may
+     * be any integer, even if it does not belong to a known group or does not
+     * contain exactly three digits.<p>
+     * 
+     * Most applications will not need to explicitly set a status code, as it
+     * will be implicitly set by {@link Responses response factory methods}.
      */
     public static final class StatusCode {
         private StatusCode() {
             // Private
         }
+        
+        /**
+         * Goes with reason phrase {@value ReasonPhrase#CONTINUE}.<p>
+         * 
+         * The server has received the request headers and accepted them, the
+         * client may proceed to transmit the request body. Used by clients to
+         * invoke an artificial pause in order to avoid transmitting data in
+         * case the request would have been rejected anyways. The client must
+         * signal his pause by including an {@link HeaderKey#EXPECT Expect:
+         * 100-continue} header in the request.<p>
+         * 
+         * Currently, the NoMagicHTTP server does not auto-respond a 101 interim
+         * response, although future work is planned to arrange for this in a
+         * smart, transparent and configurable way.
+         */
+        public static final int ONE_HUNDRED = 100;
+        
+        /**
+         * Goes with reason phrase {@value ReasonPhrase#SWITCHING_PROTOCOLS}.<p>
+         * 
+         * The server accepted a protocol upgrade request from the client and
+         * should also include in the {@link HeaderKey#UPGRADE Upgrade} header
+         * which protocol will be used immediately after the empty line that
+         * terminates the 101 interim response.<p>
+         * 
+         * This example is an upgrade sequence for HTTP/2:
+         * 
+         * <pre>
+         *   -->
+         *   GET /index.html HTTP/1.1
+         *   Host: www.example.com
+         *   Connection: Upgrade, HTTP2-Settings
+         *   Upgrade: h2c
+         *   HTTP2-Settings: {@literal <}base64url encoding of HTTP/2 SETTINGS payload>
+         *   
+         *   {@literal <}--
+         *   HTTP/1.1 101 Switching Protocols
+         *   Connection: Upgrade
+         *   Upgrade: h2c
+         *   
+         *   [ HTTP/2 connection ...
+         * </pre>
+         * 
+         * Currently, the NoMagicHTTP server ignores the {@code Upgrade} header
+         * and natively supports only HTTP/1.0 and HTTP/1.1. Planned future work
+         * will also support other protocols, such as HTTP/2.
+         */
+        public static final int ONE_HUNDRED_ONE = 101;
+        
     }
     
     /**
