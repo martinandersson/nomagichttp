@@ -30,7 +30,7 @@ An item ~~crossed out~~ is complete, an item in __bold__ is work in progress.
 [Stage: HTTP Versioning](#stage-http-versioning)  
 [Stage: Improved Testing](#stage-improved-testing)  
 [Stage: Improved Content Negotiation](#stage-improved-content-negotiation)  
-[Stage: Pseudo-Mutable Response](#stage-pseudo-mutable-response)  
+[Stage: Pseudo-Mutable Types](#stage-pseudo-mutable-types)  
 [Stage: Multiple Responses](#stage-multiple-responses)  
 [Stage: Connection Life-Cycle/Management](#stage-connection-life-cyclemanagement)  
 [Stage: Actions](#stage-actions)  
@@ -152,7 +152,7 @@ Implemented), which is wrong.
   - and another one that signals no handler consumes the message payload,
     translated to 415 (Unsupported Media Type).
 
-## Stage: Pseudo-Mutable Response
+## Stage: Pseudo-Mutable Types
 
 In preparation of multiple responses and response-modifying post actions, we
 need to open up `Response` for state-changes, except we keep the class
@@ -167,6 +167,14 @@ immutable.
 - Move static util methods in `Response.Builder` to `Response`.
 - Anticipate lots of mutations to response so attempt make it more efficient.
   For example, cache `Response.completedStage()`.
+- Similarly, do the same for `RequestHandler` and delete `RequestHandlers`.
+  Client still uses `RequestHandler.Builder`, implicitly, because both method
+  and logic is required.
+  `RequestHandler.of("METHOD")` returns `RequestHandler.Builder` populated with
+  method. Builder asks for logic, the "next step". This always return a built
+  handler. The application can then invoke consumes/produces to change defaults.  
+  `RequestHandler.GET().apply(req -> ...).consumes(blabla).produces(blabla)`
+- Revise all builder types, perhaps we can apply the same pattern elsewhere.
 
 ## Stage: Multiple Responses
 

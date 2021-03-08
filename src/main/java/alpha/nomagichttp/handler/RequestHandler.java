@@ -370,7 +370,6 @@ public interface RequestHandler
      * 
      * @author Martin Andersson (webmaster at martinandersson.com)
      */
-    // TODO: Remove; to be replaced with effectively mutable RequestHandler
     interface Builder
     {
         /**
