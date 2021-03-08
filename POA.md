@@ -112,7 +112,8 @@ clearly state what semantics applies given the version in use.
   this option).
 - `Request.httpVersion()` returns a validated `HttpVersion`, perhaps not the
   first request of a protocol upgrade?
-- Server rejects all requests using HTTP less than 1.0.
+- Server rejects all requests using HTTP less than 1.0 (with 426 (Upgrade
+  Required)).
 - Add server config to reject HTTP/1.0 clients (false by default, docs recommend
   to enable for connection optimization)
 
@@ -210,7 +211,7 @@ doesn't finish the exchange.
 
 Client may announce a pause before sending the request body.
 
-- Add `HttpServer.Config.immediatelyContinueExpect100()`
+- Add `HttpServer.Config.autoContinueExpect100()`
   - `false` by default. Meaning that by default, application code will have an
     opportunity to engage with a client sending a "Expect: 100-continue"
     request. If the application code doesn't explicitly respond a 100 (Continue)
