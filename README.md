@@ -47,7 +47,7 @@ In an empty directory, create a new [Gradle][1-1] build file `build.gradle`:
         mainClass = 'Greeter'
     }
 
-In subfolder `src/main/java`, put this in `Greeter.java`:
+In subfolder `src/main/java`, create a new file `Greeter.java`:
 
     import alpha.nomagichttp.HttpServer;
     import static alpha.nomagichttp.handler.RequestHandlers.GET;
