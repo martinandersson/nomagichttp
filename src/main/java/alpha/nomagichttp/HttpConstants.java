@@ -449,6 +449,57 @@ public final class HttpConstants {
          * processing responses.
          */
         public static final int ONE_HUNDRED_TWO = 102;
+        
+        /**
+         * Goes with the reason phrase {@value ReasonPhrase#EARLY_HINTS}.<p>
+         * 
+         * Used to pre-flight response headers to the client before the final
+         * response. Headers on this interim response applies only to the final
+         * response, not to the interim response itself or any subsequent
+         * interim responses (of which some may be even more early hints).<p>
+         * 
+         * The following example hints the client (or an intermediary cache) to
+         * pre-load some resources that the server knows will have to be
+         * requested by the client in order to render the final view:
+         * 
+         * <pre>
+         *   -->
+         *   GET /slow/page.html HTTP/1.1
+         *   Host: www.example.com
+         *   
+         *   {@literal <}--
+         *   HTTP/1.1 103 Early Hints
+         *   Link: {@literal <}/style.css>; rel=preload; as=style
+         *   Link: {@literal <}/script.js>; rel=preload; as=script
+         *   
+         *   HTTP/1.1 200 OK
+         *   Date: Fri, 26 May 2017 10:02:11 GMT
+         *   Content-Length: 1234
+         *   Content-Type: text/html; charset=utf-8
+         *   Link: {@literal <}/style.css>; rel=preload; as=style
+         *   Link: {@literal <}/script.js>; rel=preload; as=script
+         *   
+         *   {@literal <}!doctype html>
+         *   [ ...
+         * </pre>
+         * 
+         * As <i>hints</i>, the pre-flight headers may or may not apply to the
+         * final response and they may or may not be repeated in the final
+         * response.<p> 
+         * 
+         * HTTP/2 Server Push does not obsolete early hints. In fact, early
+         * hints may even be a better option as Server Push only works for
+         * resources which the server itself has access to. Also, Server Push
+         * will force the transmission of those resources while early hints is
+         * just a hint; a client who already has the resource is not forced to
+         * request it again.<p>
+         * 
+         * There's no need to use early hints should the final response already
+         * be immediately available.
+         * 
+         * @see HeaderKey#LINK
+         */
+        public static final int ONE_HUNDRED_THREE = 103;
     }
     
     /**
