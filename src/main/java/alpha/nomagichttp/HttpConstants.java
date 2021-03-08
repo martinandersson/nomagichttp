@@ -23,8 +23,9 @@ public final class HttpConstants {
      * Commonly used methods are registered in the
      * <a href="https://www.iana.org/assignments/http-methods">IANA method registry</a>
      * which also features link to RFCs where the methods are defined. The
-     * method value is a case-sensitive string and can be anything; originally
-     * envisioned as the literal name of an object method in the back-end (
+     * method is required, but the value is a case-sensitive string and can be
+     * anything; originally envisioned as the literal name of an object method
+     * in the back-end (
      * <a href="https://tools.ietf.org/html/rfc7231#section-4.1">RFC 7231 §4.1</a>
      * ).<p>
      * 
