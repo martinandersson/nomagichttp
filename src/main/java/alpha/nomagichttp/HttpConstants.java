@@ -430,6 +430,25 @@ public final class HttpConstants {
          */
         public static final int ONE_HUNDRED_ONE = 101;
         
+        /**
+         * Goes with the reason phrase {@value ReasonPhrase#PROCESSING}.<p>
+         * 
+         * Sent as one or many interim responses for when processing of a fully
+         * received request takes time. Effectively stops a client from timing
+         * out and assuming that the request was lost. Note that for the reason
+         * of stopping timeouts alone, there is no reason to send the client a
+         * processing update while the request is in-flight.<p>
+         * 
+         * The NoMagicHTTP server does not send processing interim responses and
+         * it isn't likely to ever be supported through global configuration.
+         * A server that indiscriminately send such updates would effectively
+         * kill timeout mechanisms put in various points of the HTTP chain for a
+         * reason. A request handler that lingers and who is alive, you know,
+         * doing well, ought to update the client accordingly. However, the API
+         * will be extended in the future to support discovering/creating
+         * processing responses.
+         */
+        public static final int ONE_HUNDRED_TWO = 102;
     }
     
     /**
