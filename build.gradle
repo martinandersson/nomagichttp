@@ -111,7 +111,7 @@ javadoc {
 }
 
 // Build JavaDoc HTML for developers
-task javadocall(type: Javadoc) {
+task javadocAll(type: Javadoc) {
     title = javadoc.title + ' (for library developers)'
     description = 'Generates all Javadoc API documentation (public+private symbols and test classes).'
     group = 'documentation'
@@ -150,13 +150,13 @@ tasks.withType(Javadoc) {
 
 // Add tasks "javadocJar" and "sourcesJar" (for IDE:s and other tooling)
 java {
-    withJavadocJar() // .jar contains HTML from the javadoc task, not javadocall
+    withJavadocJar() // .jar contains HTML from the javadoc task, not javadocAll
     withSourcesJar() // contains .java source code files; no .class files or HTML
 }
 
 // withJavadocJar() added the javadoc task as a dependency on the assemble task,
-// also add the javadocall task as dependency (we want gradle build to fail if any doc task fails)
-assemble.dependsOn javadocall
+// also add the javadocAll task as dependency (we want gradle build to fail if any doc task fails)
+assemble.dependsOn javadocAll
 
 // For jitpack.io, define a publication
 publishing.publications {
