@@ -521,6 +521,18 @@ public final class HttpConstants {
          * A new resource was created.
          */
         public static final int TWO_HUNDRED_ONE = 201;
+        
+        /**
+         * {@value} {@value ReasonPhrase#ACCEPTED}.<p>
+         * 
+         * The server accepted the request for processing, but processing is
+         * still ongoing or has not yet begun.<p>
+         * 
+         * This status code is often used when a clients submit lengthy tasks or
+         * tasks that runs decoupled from the request. The client ought to have
+         * other means by which to track the task progress.
+         */
+        public static final int TWO_HUNDRED_TWO = 202;
     }
     
     /**
