@@ -514,6 +514,13 @@ public final class HttpConstants {
          * Standard code to use for successful HTTP requests.
          */
         public static final int TWO_HUNDRED = 200;
+        
+        /**
+         * {@value} {@value ReasonPhrase#CREATED}.<p>
+         * 
+         * A new resource was created.
+         */
+        public static final int TWO_HUNDRED_ONE = 201;
     }
     
     /**
