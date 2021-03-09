@@ -507,6 +507,13 @@ public final class HttpConstants {
          * @see HeaderKey#LINK
          */
         public static final int ONE_HUNDRED_THREE = 103;
+        
+        /**
+         * {@value} {@value ReasonPhrase#OK}.<p>
+         * 
+         * Standard code to use for successful HTTP requests.
+         */
+        public static final int TWO_HUNDRED = 200;
     }
     
     /**
