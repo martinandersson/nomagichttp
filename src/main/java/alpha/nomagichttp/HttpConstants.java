@@ -26,8 +26,8 @@ public final class HttpConstants {
      * <a href="https://www.iana.org/assignments/http-methods">IANA method registry</a>
      * which also features link to RFCs where the methods are defined. The
      * method is required, but the value is a case-sensitive string and can be
-     * anything; originally envisioned as the literal name of an object method
-     * in the back-end (
+     * anything. The method token was originally envisioned as the name of an
+     * object method in the back-end (
      * <a href="https://tools.ietf.org/html/rfc7231#section-4.1">RFC 7231 §4.1</a>
      * ).<p>
      * 
@@ -44,15 +44,25 @@ public final class HttpConstants {
      * ) requests may be stored for future reuse (GET, HEAD, and POST).<p>
      * 
      * Only {@link #TRACE} requests and responses to {@link #HEAD} have
-     * specified semantics that requires a body. For all other methods, the
-     * message body is optional. This includes {@link #GET} and {@link #POST} (
+     * specified semantics that requires the <i>absence</i> of a message body.
+     * For all other methods, the body is optional. This includes {@link #GET}
+     * and {@link #POST} (
      * <a href="https://tools.ietf.org/html/rfc7231#section-4.3.1">RFC 7231 §4.3.1</a>,
      * <a href="https://tools.ietf.org/html/rfc7230#section-3.3.2">RFC 7230 §3.3.2</a>
-     * ). The former doesn't usually carry a body with it, and the latter
-     * usually do. The NoMagicHTTP server does not enforce an opinion. The
-     * request handler is in full control over how it interprets the request and
-     * what it responds. For example, you <i>can</i> respond a body to a {@code
-     * HEAD} request.<p>
+     * ). {@code GET} doesn't usually carry a body with it, and {@code POST}
+     * usually do - but the inverse is not forbidden and technically possible to
+     * accomplish.<p>
+     * 
+     * The NoMagicHTTP server does not enforce message semantics unless strictly
+     * necessary. The only thing the server refuses to do is to send response
+     * bodies in return to a {@code HEAD} request. In this case, the exchange
+     * will blow up late in the process (TODO: Actually implement this and
+     * specify exception type). The reason is straightforward; any responding
+     * headers to a {@code HEAD} request applies to the fictitious would-be
+     * response, including framing headers `Content-Length` and
+     * `Transfer-Encoding`. I.e. HTTP message framing just won't work. Except
+     * for this one case, the request handler is in full control over how it
+     * interprets the request and what it responds.<p>
      * 
      * Unless documented otherwise, the NoMagicHTTP server does not treat any
      * method different than the other.
@@ -358,23 +368,21 @@ public final class HttpConstants {
      * </ul>
      * 
      * Clients are only required to understand the class of a status-code,
-     * leaving the server free to select any arbitrary subcode of that class if
-     * it so desires. IANA maintains a
+     * leaving the server free to select any subcode it so desires. IANA
+     * maintains a
      * <a href="https://www.iana.org/assignments/http-status-codes/http-status-codes.xhtml">registry</a>
-     * with status codes. The constants provided in {@code StatusCode} is taken
-     * from
+     * with status codes. The constants provided in {@code StatusCode} is
+     * derived from
      * <a href="https://en.wikipedia.org/wiki/List_of_HTTP_status_codes">Wikipedia</a>
-     * and includes unofficial codes such as 418 (I'm a teapot), but excludes
-     * codes only used by a particular server such as NGINX's 444 (No
-     * Response).<p>
+     * and includes unofficial codes such as 418 (I'm a teapot).<p>
      * 
      * {@link Response.Builder#build()} requires a status code to have been set,
      * but as far as the NoMagicHTTP server and API are concerned, the value may
      * be any integer, even if it does not belong to a known group or does not
      * contain exactly three digits.<p>
      * 
-     * Most applications will not need to explicitly set a status code, as it
-     * will be implicitly set by {@link Responses response factory methods}.
+     * Most applications will not need to set a status code explicitly, as it
+     * will be set implicitly by {@link Responses response factory methods}.
      */
     public static final class StatusCode {
         private StatusCode() {
@@ -382,7 +390,7 @@ public final class HttpConstants {
         }
         
         /**
-         * Goes with the reason phrase {@value ReasonPhrase#CONTINUE}.<p>
+         * {@value} {@value ReasonPhrase#CONTINUE}.<p>
          * 
          * The server has received the request headers and accepted them, the
          * client may proceed to transmit the request body. Used by clients to
@@ -398,8 +406,7 @@ public final class HttpConstants {
         public static final int ONE_HUNDRED = 100;
         
         /**
-         * Goes with the reason phrase {@value
-         * ReasonPhrase#SWITCHING_PROTOCOLS}.<p>
+         * {@value} {@value ReasonPhrase#SWITCHING_PROTOCOLS}.<p>
          * 
          * The server accepted a protocol upgrade request from the client and
          * should also include in the {@link HeaderKey#UPGRADE Upgrade} header
@@ -431,7 +438,7 @@ public final class HttpConstants {
         public static final int ONE_HUNDRED_ONE = 101;
         
         /**
-         * Goes with the reason phrase {@value ReasonPhrase#PROCESSING}.<p>
+         * {@value} {@value ReasonPhrase#PROCESSING}.<p>
          * 
          * Sent as one or many interim responses for when processing of a fully
          * received request takes time. Effectively stops a client from timing
@@ -451,7 +458,7 @@ public final class HttpConstants {
         public static final int ONE_HUNDRED_TWO = 102;
         
         /**
-         * Goes with the reason phrase {@value ReasonPhrase#EARLY_HINTS}.<p>
+         * {@value} {@value ReasonPhrase#EARLY_HINTS}.<p>
          * 
          * Used to pre-flight response headers to the client before the final
          * response. Headers on this interim response applies only to the final

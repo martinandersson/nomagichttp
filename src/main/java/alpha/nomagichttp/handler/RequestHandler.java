@@ -33,10 +33,11 @@ import static java.util.Objects.requireNonNull;
  * has matched a request against a {@link Route} and needs to select which
  * handler of the route to process the request.<p>
  * 
- * The server applies no HTTP semantics to the message exchange once the handler
- * has been selected. The handler logic is in full control over how it
- * interprets the request headers- and body as well as what headers and body are
- * sent back.<p>
+ * The server does not enforce HTTP semantics to the message exchange once the
+ * handler has been selected, except for refusing to send response bodies in
+ * return to a {@code HEAD} request (see {@link HttpConstants.Method}). The
+ * handler logic is in full control over how it interprets the request headers-
+ * and body as well as what headers and body are sent back.<p>
  * 
  * A {@code RequestHandler} can be built using {@link #builder(String)} or other
  * static methods found in {@link Builder} and {@link RequestHandlers}.
