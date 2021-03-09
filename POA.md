@@ -322,6 +322,13 @@ example, a pre action doing authentication can be scoped to "/admin".
     also make sure to finalize that response. Docs must be clear on this.
 - May return exceptionally, subject to standard error handling.
 
+### First action
+
+Add a post-action that blows up the HTTP exchange if response has a body and the
+request was `HEAD`. Headers applies to the fictious would-be response, including
+framing headers such as `Content-Length` and `Transfer-Encoding: chunked`. So
+including a body would effectively kill framing within the connection.
+
   .
 
 - **Post action's logic** is a
@@ -387,7 +394,7 @@ Performed through a server-added post action decorating the body. Each published
 bytebuffer = one chunk.
 
 - Add `Responses.bytes(Flow.Publisher<ByteBuffer> bytes)` and overload
-  `bytes(bytes, contentLenght)`.  
+  `bytes(bytes, contentLength)`.  
   As with Request, JavaDoc explains chunked encoding and how providing the
   length is always prefered.
 - Consider adding other "streaming" methods such as
@@ -421,13 +428,14 @@ an instance regardless of application's intended use.
 
 Armed with this capability, the post action applies chunked encoding only if:
 
-- Trailing headers for the response have been initiated or
-- `Content-Length` is not set or
-- `Transfer-Encoding` compression has been applied (see next section), and
-- HTTP version == 1.1.
+- Request method was not `HEAD` (body not expected) and
+- HTTP version == 1.1, and at least one of the following is true:
+  - Trailing headers for the response have been initiated or
+  - `Content-Length` is not set or
+  - `Transfer-Encoding` compression has been applied (see next section)
 
-The post action will also _remove_ `Content-Lenght` if it was set. The
-specification allows for both `Transfer-Encoding` and `Content-Lenght` to be
+The post action will also _remove_ `Content-Length` if it was set. The
+specification allows for both `Transfer-Encoding` and `Content-Length` to be
 present - the former overriding the latter - but the spec also recommendeds the
 client to treat this as an "error" (RFC 7230 §3.3.3). Hmm.
 
@@ -772,10 +780,8 @@ Most timeouts should probably result in a 408 (Request Timeout).
   Docs should warn for interleaving and propose this option only for
   development.
 - Configurable WARNING if  
-  (last two done in post action?)
   - HTTP/1.0 client connects, default false.
   - Outbound response has a body but no Content-Type, default true.
-  - Body in response to HEAD, default true.
 - Add JavaDoc.
 - Add user guide on how to plug in an ELK stack.
 
