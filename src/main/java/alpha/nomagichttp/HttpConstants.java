@@ -601,6 +601,17 @@ public final class HttpConstants {
          * )
          */
         public static final int TWO_HUNDRED_FIVE = 205;
+        
+        /**
+         * {@value} {@value ReasonPhrase#PARTIAL_CONTENT}.<p>
+         * 
+         * Used to serve a byte range; often resumed file downloads. The
+         * NoMagicHTTP API currently has no first-class support for byte
+         * serving. Future planned work will add this.
+         * 
+         * @see <a href="https://tools.ietf.org/html/rfc7233#section-4.1">RFC 7233 §4.1</a>
+         */
+        public static final int TWO_HUNDRED_SIX = 206;
     }
     
     /**
