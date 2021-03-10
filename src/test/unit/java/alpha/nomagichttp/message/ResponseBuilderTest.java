@@ -8,11 +8,11 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.junit.jupiter.api.Assertions.assertSame;
 
 /**
- * Small tests of {@link DefaultResponse.Builder}.
+ * Small tests of {@link Response.Builder}.
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  */
-class DefaultResponseBuilderTest
+class ResponseBuilderTest
 {
     @Test
     void happy_path() {
