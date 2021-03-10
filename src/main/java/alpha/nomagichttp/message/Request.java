@@ -123,7 +123,11 @@ public interface Request
     Parameters parameters();
     
     /**
-     * Returns the HTTP headers.
+     * Returns the HTTP headers.<p>
+     * 
+     * The order is not significant (
+     * <a href="https://tools.ietf.org/html/rfc7230#section-3.2.2">RFC 7230 §3.2.2</a>
+     * ).
      * 
      * @return the HTTP headers
      * 

@@ -30,12 +30,8 @@ import static alpha.nomagichttp.HttpConstants.StatusCode.TWO_HUNDRED_TWO;
  * 
  * The content of the request head (status-line and headers) will be written
  * to the client verbatim/unaltered; i.e. casing will be preserved, yes, even
- * space characters. The content is encoded into bytes using {@link
+ * space characters. The head is encoded into bytes using {@link
  * StandardCharsets#US_ASCII US_ASCII}<p>
- * 
- * Header order (FIFO) is preserved (unless documented otherwise). Duplicated
- * header names will be grouped together and inserted at the occurrence of the
- * first value.<p>
  * 
  * The {@code Response} implementation is immutable and can safely be reused
  * sequentially over time to the same client as well as shared concurrently to
@@ -143,8 +139,8 @@ public interface Response
      * HTTP version and status code must be set or {@link #build()} will fail.
      * The reason phrase if not set will default to {@value
      * ReasonPhrase#UNKNOWN}. Headers and body are optional. Please note that
-     * some {@linkplain HttpServer built variants may blow up} at a later
-     * point.<p>
+     * some message variants may build just fine but {@linkplain HttpServer blow
+     * up later}.<p>
      * 
      * Header key and values are taken at face value (case-sensitive),
      * concatenated using a colon followed by a space ": ". Adding many values
@@ -152,6 +148,11 @@ public interface Response
      * response. It does <strong>not</strong> join the values on the same row.
      * If this is desired, first join multiple values and then pass it to the
      * builder as one.<p>
+     * 
+     * Header order is not significant (
+     * <a href="https://tools.ietf.org/html/rfc7230#section-3.2.2">RFC 7230 §3.2.2</a>
+     * ), but will be preserved (FIFO) except for duplicated names which will be
+     * grouped together and inserted at the occurrence of the first value.<p>
      * 
      * The implementation is thread-safe.<p>
      * 
@@ -313,8 +314,8 @@ public interface Response
          * Add all headers from the given {@code HttpHeaders}.<p>
          * 
          * The implementation may use {@link HttpHeaders#map()} to access the
-         * header values which does not provide any guarantee with regard to the
-         * ordering of its entries.
+         * header values which does not provide any guarantee with regards to
+         * the ordering of its entries.
          * 
          * @param   headers to add
          * @return  a new builder representing the new state
