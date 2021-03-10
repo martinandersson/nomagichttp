@@ -861,7 +861,8 @@ Not a completely sacked idea, but postponed indefinitely:
   Most applications use their own custom scheme for "resumed upload".  
   If there's ever a demand for it, we'll prolly do something like
   [this](https://stackoverflow.com/a/56641911/1268003) and
-  [this](https://tools.ietf.org/id/draft-wright-http-partial-upload-01.html).
+  [this](https://tools.ietf.org/id/draft-wright-http-partial-upload-01.html) or
+  [this](https://web.archive.org/web/20151013212135/http://code.google.com/p/gears/wiki/ResumableHttpRequestsProposal).
 - Producing `103 (Early Hints)`.
 
 Finally - for the record - most items above _can_ be done with the NoMagicHTTP
