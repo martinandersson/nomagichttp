@@ -250,9 +250,12 @@ public interface RequestHandler
      * 
      * @return a builder with the {@code method} set
      * 
-     * @throws NullPointerException if {@code method} is {@code null}
+     * @throws NullPointerException
+     *             if {@code method} is {@code null}
+     * 
+     * @throws IllegalArgumentException
+     *             if {@code method} is non-empty or contains whitespace
      */
-    // TODO: More strict definition of method; throw IllegalArgumentException if blank
     static Builder builder(String method) {
         return new DefaultRequestHandler.Builder(method);
     }

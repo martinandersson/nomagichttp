@@ -134,7 +134,16 @@ final class DefaultRequestHandler implements RequestHandler
         private final String m;
         
         Builder(String method) {
-            m = requireNonNull(method);
+            if (method.isEmpty()) {
+                throw new IllegalArgumentException("Empty method.");
+            }
+            
+            if (method.chars().anyMatch(Character::isWhitespace)) {
+                throw new IllegalArgumentException(
+                        "Whitespace in method \"" + method + "\".");
+            }
+            
+            m = method;
         }
         
         @Override
