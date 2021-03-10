@@ -622,6 +622,15 @@ public final class HttpConstants {
          * @see <a href="https://tools.ietf.org/html/rfc4918#section-13">RFC 4918 §13</a>
          */
         public static final int TWO_HUNDRED_SEVEN = 207;
+        
+        /**
+         * {@value} {@value ReasonPhrase#ALREADY_REPORTED}.<p>
+         * 
+         * Complicated. TODO.
+         * 
+         * @see <a href="https://tools.ietf.org/html/rfc5842#section-7.1">RFC 5842 §7.1</a>
+         */
+        public static final int TWO_HUNDRED_EIGHT = 208;
     }
     
     /**
