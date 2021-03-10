@@ -529,7 +529,7 @@ public final class HttpConstants {
          * 
          * The response typically has a body; whatever was requested by {@link
          * Method#GET}. If the response does not contain a body, consider using
-         * {@link #TWO_HUNDRED_FOUR}.
+         * {@value #TWO_HUNDRED_FOUR}.
          * 
          * @see <a href="https://tools.ietf.org/html/rfc7231#section-6.3.1">RFC 7231 §6.3.1</a>
          */
@@ -555,11 +555,13 @@ public final class HttpConstants {
          * The server accepted the request for processing, but processing is
          * still ongoing or has not yet begun.<p>
          * 
-         * This status code is often used when clients submit lengthy tasks or
-         * tasks that executes at some point in the future, decoupled from the
-         * initiating request. The client ought to have other means by which to
-         * track the task status- and progress. The response body is a good
-         * candidate for passing such metadata to the client.
+         * This status code is often used when a client has submitted a lengthy
+         * task or the submitted task will execute at some point in the future;
+         * decoupled from the initiating request.<p>
+         * 
+         * The client ought to have other means by which to track the task
+         * status- and progress. The response body is a good candidate for
+         * passing such metadata to the client.
          * 
          * @see <a href="https://tools.ietf.org/html/rfc7231#section-6.3.3">RFC 7231 §6.3.3</a>
          */
@@ -834,7 +836,7 @@ public final class HttpConstants {
          * {@value} {@value ReasonPhrase#PAYLOAD_TOO_LARGE}.<p>
          * 
          * May also alternatively be used with phrase {@value
-         * ReasonPhrase#ENTITY_TOO_LARGE}, which many servers chose to use to
+         * ReasonPhrase#ENTITY_TOO_LARGE}, which many servers chose to do as to
          * not specifically single out the message body as being the offending
          * part.<p>
          * 
