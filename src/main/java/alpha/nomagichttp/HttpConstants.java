@@ -566,6 +566,15 @@ public final class HttpConstants {
         public static final int TWO_HUNDRED_TWO = 202;
         
         /**
+         * {@value} {@value ReasonPhrase#NON_AUTHORITATIVE_INFORMATION}.<p>
+         * 
+         * Complicated. TODO.
+         * 
+         * @see <a href="https://tools.ietf.org/html/rfc7231#section-6.3.4">RFC 7231 §6.3.4</a>
+         */
+        public static final int TWO_HUNDRED_THREE = 203;
+        
+        /**
          * {@value} {@value ReasonPhrase#NO_CONTENT}.<p>
          * 
          * Standard code to use for successful HTTP requests, when the response
