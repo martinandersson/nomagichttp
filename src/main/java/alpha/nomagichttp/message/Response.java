@@ -19,6 +19,7 @@ import java.util.function.Supplier;
 import static alpha.nomagichttp.HttpConstants.ReasonPhrase;
 import static alpha.nomagichttp.HttpConstants.StatusCode;
 import static alpha.nomagichttp.HttpConstants.StatusCode.TWO_HUNDRED;
+import static alpha.nomagichttp.HttpConstants.StatusCode.TWO_HUNDRED_FOUR;
 import static alpha.nomagichttp.HttpConstants.StatusCode.TWO_HUNDRED_TWO;
 
 /**
@@ -165,7 +166,7 @@ public interface Response
          * Returns a builder already populated with a status-line
          * "HTTP/1.1 200 OK".<p>
          * 
-         * What remains is to set headers and the message body.
+         * What remains is to set headers and message body.
          * 
          * @return a new builder representing the new state
          */
@@ -177,12 +178,24 @@ public interface Response
          * Returns a builder already populated with a status-line
          * "HTTP/1.1 202 Accepted".<p>
          * 
-         * What remains is to set headers and the message body.
+         * What remains is to set headers and message body.
          * 
          * @return a new builder representing the new state
          */
         static Builder accepted() {
             return BuilderCache.ACCEPTED;
+        }
+        
+        /**
+         * Returns a builder already populated with a status-line
+         * "HTTP/1.1 204 No Content".<p>
+         * 
+         * What remains is to set headers.
+         * 
+         * @return a new builder representing the new state
+         */
+        static Builder noContent() {
+            return BuilderCache.NO_CONTENT;
         }
         
         // TODO: Basically all other codes in the standard lol
@@ -375,6 +388,7 @@ final class BuilderCache
     }
     
     static final Response.Builder
-            OK       = HTTP_1_1.statusCode(TWO_HUNDRED).reasonPhrase(ReasonPhrase.OK),
-            ACCEPTED = HTTP_1_1.statusCode(TWO_HUNDRED_TWO).reasonPhrase(ReasonPhrase.ACCEPTED);
+            OK         = HTTP_1_1.statusCode(TWO_HUNDRED).reasonPhrase(ReasonPhrase.OK),
+            ACCEPTED   = HTTP_1_1.statusCode(TWO_HUNDRED_TWO).reasonPhrase(ReasonPhrase.ACCEPTED),
+            NO_CONTENT = HTTP_1_1.statusCode(TWO_HUNDRED_FOUR).reasonPhrase(ReasonPhrase.NO_CONTENT);
 }

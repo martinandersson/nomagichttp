@@ -36,13 +36,13 @@ public final class Responses
     }
     
     /**
-     * Returns a "200 OK"-response with no body.
+     * Returns a "204 OK"-response with no body.
      * 
-     * @return  a "200 OK"-response with no body
-     * @see     StatusCode#TWO_HUNDRED
+     * @return  a "204 OK"-response with no body
+     * @see     StatusCode#TWO_HUNDRED_FOUR
      */
-    public static Response ok() {
-        return Cache.OK;
+    public static Response noContent() {
+        return Cache.NO_CONTENT;
     }
     
     /**
@@ -192,8 +192,8 @@ public final class Responses
      */
     private static final class Cache {
         static final Response
-                OK                    = Response.Builder.ok().build(),
-                ACCEPTED              = Response.Builder.accepted().build(),
+                ACCEPTED              = Response.Builder.accepted().header("Content-Length", "0").build(),
+                NO_CONTENT            = Response.Builder.noContent().build(),
                 BAD_REQUEST           = respondThenClose(FOUR_HUNDRED, ReasonPhrase.BAD_REQUEST),
                 NOT_FOUND             = respondThenClose(FOUR_HUNDRED_FOUR, ReasonPhrase.NOT_FOUND),
                 ENTITY_TOO_LARGE      = respondThenClose(FOUR_HUNDRED_THIRTEEN, ReasonPhrase.ENTITY_TOO_LARGE),
@@ -205,6 +205,7 @@ public final class Responses
                     .httpVersion("HTTP/1.1")
                     .statusCode(code)
                     .reasonPhrase(phrase)
+                    .header("Content-Length", "0")
                     .mustCloseAfterWrite(true)
                     .build();
         }
