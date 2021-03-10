@@ -93,7 +93,6 @@ _discoverability_.
   - How and when (if at all) are the methods used by the NoMagicHTTP server.
   - If not used, is it expected/planned to become incorporated?
   - References to RFC:s - where are the methods defined.
-- Add most popular METHODS() to `RequestHandlers`?
 - Similarly, enums/constants for well-known:
   - Headers
   - Status codes
@@ -168,14 +167,19 @@ immutable.
 - Move static util methods in `Response.Builder` to `Response`.
 - Anticipate lots of mutations to response so attempt make it more efficient.
   For example, cache `Response.completedStage()`.
-- Similarly, do the same for `RequestHandler` and delete `RequestHandlers`.
-  Client still uses `RequestHandler.Builder`, implicitly, because both method
-  and logic is required.
-  `RequestHandler.of("METHOD")` returns `RequestHandler.Builder` populated with
+
+Similarly, do the same for `RequestHandler` and delete `RequestHandlers`.
+Client still uses `RequestHandler.Builder`, implicitly, because both method and
+logic is required.
+
+- `RequestHandler.of("METHOD")` returns `RequestHandler.Builder`, populated with
   method. Builder asks for logic, the "next step". This always return a built
   handler. The application can then invoke consumes/produces to change defaults.  
   `RequestHandler.GET().apply(req -> ...).consumes(blabla).produces(blabla)`
-- Revise all builder types, perhaps we can apply the same pattern elsewhere.
+- Add METHDOS() using method constants from `HttpConstants`.
+- Go bananas and revise all builder types, perhaps we can apply the same pattern
+  elsewhere. Ideally we scrap "builder" methods in favor of factory methods
+  returning a builder at worst, or pseudo-mutable type.
 
 ## Stage: Multiple Responses
 
