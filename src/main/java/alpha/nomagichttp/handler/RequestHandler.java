@@ -33,12 +33,6 @@ import static java.util.Objects.requireNonNull;
  * has matched a request against a {@link Route} and needs to select which
  * handler of the route to process the request.<p>
  * 
- * The server does not enforce HTTP semantics to the message exchange once the
- * handler has been selected, except for refusing to send response bodies in
- * return to a {@code HEAD} request (see {@link HttpConstants.Method}). The
- * handler logic is in full control over how it interprets the request headers-
- * and body as well as what headers and body are sent back.<p>
- * 
  * A {@code RequestHandler} can be built using {@link #builder(String)} or other
  * static methods found in {@link Builder} and {@link RequestHandlers}.
  * 
@@ -239,8 +233,9 @@ public interface RequestHandler
     /**
      * Creates a new {@code RequestHandler} builder.<p>
      * 
-     * The method is any string, case-sensitive. For example, "GET" and
-     * "POST". Constants are available in {@link HttpConstants.Method}.<p>
+     * The method is any non-empty, case-sensitive string containing no white
+     * space. For example, "GET" and "POST". Constants are available in {@link
+     * HttpConstants.Method}.<p>
      * 
      * Builders with standardized methods is already available using static
      * methods in the builder interface, such as {@link Builder#GET()}, {@link
@@ -268,6 +263,8 @@ public interface RequestHandler
      * @return the method token (never {@code null})
      * 
      * @see RequestHandler
+     * @see HttpConstants.Method
+     * @see #builder(String) 
      */
     String method();
     

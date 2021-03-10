@@ -1,5 +1,6 @@
 package alpha.nomagichttp.route;
 
+import alpha.nomagichttp.HttpConstants;
 import alpha.nomagichttp.HttpServer;
 import alpha.nomagichttp.handler.RequestHandler;
 import alpha.nomagichttp.message.MediaType;
@@ -239,6 +240,9 @@ public interface Route
      * 
      * @throws NoHandlerFoundException
      *             if no handler matching the criteria can be found
+     * 
+     * @see HttpConstants.Method
+     * @see RequestHandler.Builder#builder(String) 
      */
     RequestHandler lookup(String method, MediaType contentType, MediaType[] accepts);
     
