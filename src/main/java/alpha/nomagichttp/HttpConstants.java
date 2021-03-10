@@ -57,6 +57,7 @@ public final class HttpConstants {
          * Safe? Yes. Idempotent? Yes. Response cacheable? Yes.
          * 
          * @see Method
+         * @see <a href="https://tools.ietf.org/html/rfc7231#section-4.3.1">RFC 7231 §4.3.1</a>
          */
         public static final String GET = "GET";
         
@@ -75,6 +76,7 @@ public final class HttpConstants {
          * Safe? Yes. Idempotent? Yes. Response cacheable? Yes.
          * 
          * @see Method
+         * @see <a href="https://tools.ietf.org/html/rfc7231#section-4.3.2">RFC 7231 §4.3.2</a>
          */
         public static final String HEAD = "HEAD";
         
@@ -119,6 +121,7 @@ public final class HttpConstants {
          * Safe? No. Idempotent? No. Response cacheable? Yes.
          * 
          * @see Method
+         * @see <a href="https://tools.ietf.org/html/rfc7231#section-4.3.3">RFC 7231 §4.3.3</a>
          */
         public static final String POST = "POST";
         
@@ -154,6 +157,7 @@ public final class HttpConstants {
          * Safe? No. Idempotent? Yes. Response cacheable? No.
          * 
          * @see Method
+         * @see <a href="https://tools.ietf.org/html/rfc7231#section-4.3.4">RFC 7231 §4.3.4</a>
          */
         public static final String PUT = "PUT";
         
@@ -238,6 +242,7 @@ public final class HttpConstants {
          * Safe? No. Idempotent? No. Response cacheable? No.
          * 
          * @see Method
+         * @see <a href="https://tools.ietf.org/html/rfc5789">RFC 5789</a>
          */
         public static final String PATCH = "PATCH";
         
@@ -252,13 +257,12 @@ public final class HttpConstants {
          * size.<p>
          * 
          * It is not defined how the operation cascade to multiple
-         * representations/content-types (
-         * <a href="https://tools.ietf.org/html/rfc7231#section-4.3.5">RFC 7231 §4.3.5</a>
-         * ).<p>
+         * representations/content-types.<p>
          * 
          * Safe? No. Idempotent? Yes. Response cacheable? No.
          * 
          * @see Method
+         * @see <a href="https://tools.ietf.org/html/rfc7231#section-4.3.5">RFC 7231 §4.3.5</a>
          */
         public static final String DELETE = "DELETE";
         
@@ -274,6 +278,7 @@ public final class HttpConstants {
          * Safe? No. Idempotent? No. Response cacheable? No.
          * 
          * @see Method
+         * @see <a href="https://tools.ietf.org/html/rfc7231#section-4.3.6">RFC 7231 §4.3.6</a>
          */
         public static final String CONNECT = "CONNECT";
         
@@ -318,6 +323,7 @@ public final class HttpConstants {
          * Safe? Yes. Idempotent? Yes. Response cacheable? No.
          * 
          * @see Method
+         * @see <a href="https://tools.ietf.org/html/rfc7231#section-4.3.7">RFC 7231 §4.3.7</a>
          */
         public static final String OPTIONS = "OPTIONS";
         
@@ -342,6 +348,7 @@ public final class HttpConstants {
          * Safe? Yes. Idempotent? Yes. Response cacheable? No.
          * 
          * @see Method
+         * @see <a href="https://tools.ietf.org/html/rfc7231#section-4.3.8">RFC 7231 §4.3.8</a>
          */
         public static final String TRACE = "TRACE";
     }
@@ -402,6 +409,8 @@ public final class HttpConstants {
          * Currently, the NoMagicHTTP server does not auto-respond a 101 interim
          * response to a waiting client, although future work is planned to
          * arrange for this in a smart, transparent and configurable way.
+         * 
+         * @see <a href="https://tools.ietf.org/html/rfc7231#section-6.2.1">RFC 7231 §6.2.1</a>
          */
         public static final int ONE_HUNDRED = 100;
         
@@ -434,6 +443,8 @@ public final class HttpConstants {
          * Currently, the NoMagicHTTP server ignores the {@code Upgrade} header
          * and supports only HTTP/1.0 and HTTP/1.1. Planned future work will
          * also support other protocols, such as HTTP/2.
+         * 
+         * @see <a href="https://tools.ietf.org/html/rfc7231#section-6.2.2">RFC 7231 §6.2.2</a>
          */
         public static final int ONE_HUNDRED_ONE = 101;
         
@@ -454,6 +465,8 @@ public final class HttpConstants {
          * doing well, ought to update the client accordingly. However, the API
          * will be extended in the future to support discovering/creating
          * processing responses.
+         * 
+         * @see <a href="https://tools.ietf.org/html/rfc2518#section-10.1">RFC 2518 §10.1</a>
          */
         public static final int ONE_HUNDRED_TWO = 102;
         
@@ -505,6 +518,7 @@ public final class HttpConstants {
          * be immediately available.
          * 
          * @see HeaderKey#LINK
+         * @see <a href="https://tools.ietf.org/html/rfc8297">RFC 8297</a>
          */
         public static final int ONE_HUNDRED_THREE = 103;
         
@@ -516,6 +530,8 @@ public final class HttpConstants {
          * The response typically has a body; whatever was requested by {@link
          * Method#GET}. If the response does not contain a body, consider using
          * {@link #TWO_HUNDRED_FOUR}.
+         * 
+         * @see <a href="https://tools.ietf.org/html/rfc7231#section-6.3.1">RFC 7231 §6.3.1</a>
          */
         public static final int TWO_HUNDRED = 200;
         
@@ -529,6 +545,7 @@ public final class HttpConstants {
          * contained the entire resource.
          * 
          * @see HttpConstants.Method#POST
+         * @see <a href="https://tools.ietf.org/html/rfc7231#section-6.3.2">RFC 7231 §6.3.2</a>
          */
         public static final int TWO_HUNDRED_ONE = 201;
         
@@ -543,6 +560,8 @@ public final class HttpConstants {
          * initiating request. The client ought to have other means by which to
          * track the task status- and progress. The response body is a good
          * candidate for passing such metadata to the client.
+         * 
+         * @see <a href="https://tools.ietf.org/html/rfc7231#section-6.3.3">RFC 7231 §6.3.3</a>
          */
         public static final int TWO_HUNDRED_TWO = 202;
         
@@ -558,6 +577,7 @@ public final class HttpConstants {
          * 
          * @see HttpConstants.Method#PUT
          * @see HttpConstants.Method#PATCH
+         * @see <a href="https://tools.ietf.org/html/rfc7231#section-6.3.5">RFC 7231 §6.3.5</a>
          */
         public static final int TWO_HUNDRED_FOUR = 204;
     }
