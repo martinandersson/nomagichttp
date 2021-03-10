@@ -631,6 +631,87 @@ public final class HttpConstants {
          * @see <a href="https://tools.ietf.org/html/rfc5842#section-7.1">RFC 5842 §7.1</a>
          */
         public static final int TWO_HUNDRED_EIGHT = 208;
+        
+        /**
+         * {@value} {@value ReasonPhrase#IM_USED}.<p>
+         * 
+         * Complicated. TODO.
+         * 
+         * @see <a href="https://tools.ietf.org/html/rfc3229#section-10.4.1">RFC 3229 §10.4.1</a>
+         */
+        public static final int TWO_HUNDRED_TWENTY_SIX = 226;
+        
+        /**
+         * {@value} {@value ReasonPhrase#MULTIPLE_CHOICES}.<p>
+         * 
+         * TODO: write something
+         * 
+         * @see <a href="https://tools.ietf.org/html/rfc7231#section-6.4.1">RFC 7231 §6.4.1</a>
+         */
+        public static final int THREE_HUNDRED = 300;
+        
+        /**
+         * {@value} {@value ReasonPhrase#MOVED_PERMANENTLY}.<p>
+         * 
+         * TODO: write something
+         * 
+         * @see <a href="https://tools.ietf.org/html/rfc7231#section-6.4.2">RFC 7231 §6.4.2</a>
+         */
+        public static final int THREE_HUNDRED_ONE = 301;
+        
+        /**
+         * {@value} {@value ReasonPhrase#FOUND}.<p>
+         * 
+         * TODO: write something
+         * 
+         * @see <a href="https://tools.ietf.org/html/rfc7231#section-6.4.3">RFC 7231 §6.4.3</a>
+         */
+        public static final int THREE_HUNDRED_TWO = 302;
+        
+        /**
+         * {@value} {@value ReasonPhrase#SEE_OTHER}.<p>
+         * 
+         * TODO: write something
+         * 
+         * @see <a href="https://tools.ietf.org/html/rfc7231#section-6.4.4">RFC 7231 §6.4.4</a>
+         */
+        public static final int THREE_HUNDRED_THREE = 303;
+        
+        /**
+         * {@value} {@value ReasonPhrase#NOT_MODIFIED}.<p>
+         * 
+         * TODO: write something
+         * 
+         * @see <a href="https://tools.ietf.org/html/rfc7232#section-4.1">RFC 7232 §4.1</a>
+         */
+        public static final int THREE_HUNDRED_FOUR = 304;
+        
+        /**
+         * {@value} {@value ReasonPhrase#USE_PROXY}.<p>
+         * 
+         * TODO: write something
+         * 
+         * @see <a href="https://tools.ietf.org/html/rfc7231#section-6.4.5">RFC 7231 §6.4.5</a>
+         */
+        public static final int THREE_HUNDRED_FIVE = 305;
+        
+        /**
+         * {@value} {@value ReasonPhrase#TEMPORARY_REDIRECT}.<p>
+         * 
+         * TODO: write something
+         * 
+         * @see <a href="https://tools.ietf.org/html/rfc7231#section-6.4.7">RFC 7231 §6.4.7</a>
+         */
+        public static final int THREE_HUNDRED_SEVEN = 307;
+        
+        /**
+         * {@value} {@value ReasonPhrase#PERMANENT_REDIRECT}.<p>
+         * 
+         * TODO: write something
+         * 
+         * @see <a href="https://tools.ietf.org/html/rfc7538#section-3">RFC 7538 §3</a>
+         */
+        public static final int THREE_HUNDRED_EIGHT = 308;
     }
     
     /**
