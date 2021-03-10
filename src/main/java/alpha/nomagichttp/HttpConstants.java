@@ -978,6 +978,105 @@ public final class HttpConstants {
          * @see <a href="https://tools.ietf.org/html/rfc7725#section-3">RFC 7725 §3</a>
          */
         public static final int FOUR_HUNDRED_FIFTY_ONE = 451;
+        
+        /**
+         * {@value} {@value ReasonPhrase#INTERNAL_SERVER_ERROR}.<p>
+         * 
+         * TODO: write something
+         * 
+         * @see <a href="https://tools.ietf.org/html/rfc7231#section-6.6.1">RFC 7731 §6.6.1</a>
+         */
+        public static final int FIVE_HUNDRED = 500;
+        
+        /**
+         * {@value} {@value ReasonPhrase#NOT_IMPLEMENTED}.<p>
+         * 
+         * TODO: write something
+         * 
+         * @see <a href="https://tools.ietf.org/html/rfc7231#section-6.6.2">RFC 7731 §6.6.2</a>
+         */
+        public static final int FIVE_HUNDRED_ONE = 501;
+        
+        /**
+         * {@value} {@value ReasonPhrase#BAD_GATEWAY}.<p>
+         * 
+         * TODO: write something
+         * 
+         * @see <a href="https://tools.ietf.org/html/rfc7231#section-6.6.3">RFC 7731 §6.6.3</a>
+         */
+        public static final int FIVE_HUNDRED_TWO = 502;
+        
+        /**
+         * {@value} {@value ReasonPhrase#SERVICE_UNAVAILABLE}.<p>
+         * 
+         * TODO: write something
+         * 
+         * @see <a href="https://tools.ietf.org/html/rfc7231#section-6.6.4">RFC 7731 §6.6.4</a>
+         */
+        public static final int FIVE_HUNDRED_THREE = 503;
+        
+        /**
+         * {@value} {@value ReasonPhrase#GATEWAY_TIMEOUT}.<p>
+         * 
+         * TODO: write something
+         * 
+         * @see <a href="https://tools.ietf.org/html/rfc7231#section-6.6.5">RFC 7731 §6.6.5</a>
+         */
+        public static final int FIVE_HUNDRED_FOUR = 504;
+        
+        /**
+         * {@value} {@value ReasonPhrase#HTTP_VERSION_NOT_SUPPORTED}.<p>
+         *
+         * TODO: write something
+         *
+         * @see <a href="https://tools.ietf.org/html/rfc7231#section-6.6.6">RFC 7731 §6.6.6</a>
+         */
+        public static final int FIVE_HUNDRED_FIVE = 505;
+        
+        /**
+         * {@value} {@value ReasonPhrase#VARIANT_ALSO_NEGOTIATES}.<p>
+         * 
+         * TODO: write something
+         * 
+         * @see <a href="https://tools.ietf.org/html/rfc2295#section-8.1">RFC 2295 §8.1</a>
+         */
+        public static final int FIVE_HUNDRED_SIX = 506;
+        
+        /**
+         * {@value} {@value ReasonPhrase#INSUFFICIENT_STORAGE}.<p>
+         * 
+         * TODO: write something
+         * 
+         * @see <a href="https://tools.ietf.org/html/rfc4918#section-11.5">RFC 4918 §11.5</a>
+         */
+        public static final int FIVE_HUNDRED_SEVEN = 507;
+        
+        /**
+         * {@value} {@value ReasonPhrase#LOOP_DETECTED}.<p>
+         * 
+         * TODO: write something
+         * 
+         * @see <a href="https://tools.ietf.org/html/rfc5842#section-7.2">RFC 5842 §7.2</a>
+         */
+        public static final int FIVE_HUNDRED_EIGHT = 508;
+        
+        /**
+         * {@value} {@value ReasonPhrase#NOT_EXTENDED}.<p>
+         * 
+         * TODO: write something
+         * 
+         * @see <a href="https://tools.ietf.org/html/rfc2774#section-7">RFC 2774 §7</a>
+         */
+        public static final int FIVE_HUNDRED_TEN = 510;
+        
+        /**
+         * {@value} {@value ReasonPhrase#NETWORK_AUTHENTICATION_REQUIRED}.<p>
+         * 
+         * TODO: write something
+         * 
+         * @see <a href="https://tools.ietf.org/html/rfc6585#section-6">RFC 6585 §6</a>
+         */
+        public static final int FIVE_HUNDRED_ELEVEN = 511;
     }
     
     /**
