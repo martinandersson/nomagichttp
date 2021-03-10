@@ -712,6 +712,272 @@ public final class HttpConstants {
          * @see <a href="https://tools.ietf.org/html/rfc7538#section-3">RFC 7538 §3</a>
          */
         public static final int THREE_HUNDRED_EIGHT = 308;
+        
+        /**
+         * {@value} {@value ReasonPhrase#BAD_REQUEST}.<p>
+         * 
+         * TODO: write something
+         * 
+         * @see <a href="https://tools.ietf.org/html/rfc7231#section-6.5.1">RFC 7531 §6.5.1</a>
+         */
+        public static final int FOUR_HUNDRED = 400;
+        
+        /**
+         * {@value} {@value ReasonPhrase#UNAUTHORIZED}.<p>
+         * 
+         * TODO: write something
+         * 
+         * @see <a href="https://tools.ietf.org/html/rfc7235#section-3.1">RFC 7235 §3.1</a>
+         */
+        public static final int FOUR_HUNDRED_ONE = 401;
+        
+        /**
+         * {@value} {@value ReasonPhrase#PAYMENT_REQUIRED}.<p>
+         * 
+         * TODO: write something
+         * 
+         * @see <a href="https://tools.ietf.org/html/rfc7231#section-6.5.2">RFC 7231 §6.5.2</a>
+         */
+        public static final int FOUR_HUNDRED_TWO = 402;
+        
+        /**
+         * {@value} {@value ReasonPhrase#FORBIDDEN}.<p>
+         * 
+         * TODO: write something
+         * 
+         * @see <a href="https://tools.ietf.org/html/rfc7231#section-6.5.3">RFC 7231 §6.5.3</a>
+         */
+        public static final int FOUR_HUNDRED_THREE = 403;
+        
+        /**
+         * {@value} {@value ReasonPhrase#NOT_FOUND}.<p>
+         * 
+         * TODO: write something
+         * 
+         * @see <a href="https://tools.ietf.org/html/rfc7231#section-6.5.4">RFC 7231 §6.5.4</a>
+         */
+        public static final int FOUR_HUNDRED_FOUR = 404;
+        
+        /**
+         * {@value} {@value ReasonPhrase#METHOD_NOT_ALLOWED}.<p>
+         * 
+         * TODO: write something
+         * 
+         * @see <a href="https://tools.ietf.org/html/rfc7231#section-6.5.5">RFC 7231 §6.5.5</a>
+         */
+        public static final int FOUR_HUNDRED_FIVE = 405;
+        
+        /**
+         * {@value} {@value ReasonPhrase#NOT_ACCEPTABLE}.<p>
+         * 
+         * TODO: write something
+         * 
+         * @see <a href="https://tools.ietf.org/html/rfc7231#section-6.5.6">RFC 7231 §6.5.6</a>
+         */
+        public static final int FOUR_HUNDRED_SIX = 406;
+        
+        /**
+         * {@value} {@value ReasonPhrase#PROXY_AUTHENTICATION_REQUIRED}.<p>
+         * 
+         * TODO: write something
+         * 
+         * @see <a href="https://tools.ietf.org/html/rfc7235#section-3.2">RFC 7235 §3.2</a>
+         */
+        public static final int FOUR_HUNDRED_SEVEN = 407;
+        
+        /**
+         * {@value} {@value ReasonPhrase#REQUEST_TIMEOUT}.<p>
+         * 
+         * TODO: write something
+         * 
+         * @see <a href="https://tools.ietf.org/html/rfc7231#section-6.5.7">RFC 7231 §6.5.7</a>
+         */
+        public static final int FOUR_HUNDRED_EIGHT = 408;
+        
+        /**
+         * {@value} {@value ReasonPhrase#CONFLICT}.<p>
+         * 
+         * TODO: write something
+         * 
+         * @see <a href="https://tools.ietf.org/html/rfc7231#section-6.5.8">RFC 7231 §6.5.8</a>
+         */
+        public static final int FOUR_HUNDRED_NINE = 409;
+        
+        /**
+         * {@value} {@value ReasonPhrase#GONE}.<p>
+         * 
+         * TODO: write something
+         * 
+         * @see <a href="https://tools.ietf.org/html/rfc7231#section-6.5.9">RFC 7231 §6.5.9</a>
+         */
+        public static final int FOUR_HUNDRED_TEN = 410;
+        
+        /**
+         * {@value} {@value ReasonPhrase#LENGTH_REQUIRED}.<p>
+         * 
+         * TODO: write something
+         * 
+         * @see <a href="https://tools.ietf.org/html/rfc7231#section-6.5.10">RFC 7231 §6.5.10</a>
+         */
+        public static final int FOUR_HUNDRED_ELEVEN = 411;
+        
+        /**
+         * {@value} {@value ReasonPhrase#PRECONDITION_FAILED}.<p>
+         * 
+         * TODO: write something
+         * 
+         * @see <a href="https://tools.ietf.org/html/rfc7232#section-4.2">RFC 7232 §4.2</a>
+         */
+        public static final int FOUR_HUNDRED_TWELVE = 412;
+        
+        /**
+         * {@value} {@value ReasonPhrase#PAYLOAD_TOO_LARGE}.<p>
+         * 
+         * May also alternatively be used with phrase {@value
+         * ReasonPhrase#ENTITY_TOO_LARGE}, which many servers chose to use to
+         * not specifically single out the message body as being the offending
+         * part.<p>
+         * 
+         * TODO: write more
+         * 
+         * @see <a href="https://tools.ietf.org/html/rfc7231#section-6.5.11">RFC 7231 §6.5.11</a>
+         */
+        public static final int FOUR_HUNDRED_THIRTEEN = 413;
+        
+        /**
+         * {@value} {@value ReasonPhrase#URI_TOO_LONG}.<p>
+         * 
+         * TODO: write something
+         * 
+         * @see <a href="https://tools.ietf.org/html/rfc7231#section-6.5.12">RFC 7231 §6.5.12</a>
+         */
+        public static final int FOUR_HUNDRED_FOURTEEN = 414;
+        
+        /**
+         * {@value} {@value ReasonPhrase#UNSUPPORTED_MEDIA_TYPE}.<p>
+         * 
+         * TODO: write something
+         * 
+         * @see <a href="https://tools.ietf.org/html/rfc7231#section-6.5.13">RFC 7231 §6.5.13</a>
+         */
+        public static final int FOUR_HUNDRED_FIFTEEN = 415;
+        
+        /**
+         * {@value} {@value ReasonPhrase#RANGE_NOT_SATISFIABLE}.<p>
+         * 
+         * TODO: write something
+         * 
+         * @see <a href="https://tools.ietf.org/html/rfc7233#section-4.4">RFC 7233 §4.4</a>
+         */
+        public static final int FOUR_HUNDRED_SIXTEEN = 416;
+        
+        /**
+         * {@value} {@value ReasonPhrase#EXPECTATION_FAILED}.<p>
+         * 
+         * TODO: write something
+         * 
+         * @see <a href="https://tools.ietf.org/html/rfc7231#section-6.5.14">RFC 7231 §6.5.14</a>
+         */
+        public static final int FOUR_HUNDRED_SEVENTEEN = 417;
+        
+        /**
+         * {@value} {@value ReasonPhrase#IM_A_TEAPOT}.<p>
+         * 
+         * TODO: write something
+         * 
+         * @see <a href="https://tools.ietf.org/html/rfc7168#section-2.3.3">RFC 7168 §2.3.3</a>
+         */
+        public static final int FOUR_HUNDRED_EIGHTEEN = 418;
+        
+        /**
+         * {@value} {@value ReasonPhrase#MISDIRECTED_REQUEST}.<p>
+         * 
+         * TODO: write something
+         * 
+         * @see <a href="https://tools.ietf.org/html/rfc7540#section-9.1.2">RFC 7540 §9.1.2</a>
+         */
+        public static final int FOUR_HUNDRED_TWENTY_ONE = 421;
+        
+        /**
+         * {@value} {@value ReasonPhrase#UNPROCESSABLE_ENTITY}.<p>
+         * 
+         * TODO: write something
+         * 
+         * @see <a href="https://tools.ietf.org/html/rfc4918#section-11.2">RFC 4918 §11.2</a>
+         */
+        public static final int FOUR_HUNDRED_TWENTY_TWO = 422;
+        
+        /**
+         * {@value} {@value ReasonPhrase#LOCKED}.<p>
+         * 
+         * TODO: write something
+         * 
+         * @see <a href="https://tools.ietf.org/html/rfc4918#section-11.3">RFC 4918 §11.3</a>
+         */
+        public static final int FOUR_HUNDRED_TWENTY_THREE = 423;
+        
+        /**
+         * {@value} {@value ReasonPhrase#FAILED_DEPENDENCY}.<p>
+         * 
+         * TODO: write something
+         * 
+         * @see <a href="https://tools.ietf.org/html/rfc4918#section-11.4">RFC 4918 §11.4</a>
+         */
+        public static final int FOUR_HUNDRED_TWENTY_FOUR = 424;
+        
+        /**
+         * {@value} {@value ReasonPhrase#TOO_EARLY}.<p>
+         * 
+         * TODO: write something
+         * 
+         * @see <a href="https://tools.ietf.org/html/rfc8470#section-5.2">RFC 8470 §5.2</a>
+         */
+        public static final int FOUR_HUNDRED_TWENTY_FIVE = 425;
+        
+        /**
+         * {@value} {@value ReasonPhrase#UPGRADE_REQUIRED}.<p>
+         * 
+         * TODO: write something
+         * 
+         * @see <a href="https://tools.ietf.org/html/rfc7231#section-6.5.15">RFC 7231 §6.5.15</a>
+         */
+        public static final int FOUR_HUNDRED_TWENTY_SIX = 426;
+        
+        /**
+         * {@value} {@value ReasonPhrase#PRECONDITION_REQUIRED}.<p>
+         * 
+         * TODO: write something
+         * 
+         * @see <a href="https://tools.ietf.org/html/rfc6585#section-3">RFC 6585 §3</a>
+         */
+        public static final int FOUR_HUNDRED_TWENTY_EIGHT = 428;
+        
+        /**
+         * {@value} {@value ReasonPhrase#TOO_MANY_REQUESTS}.<p>
+         * 
+         * TODO: write something
+         * 
+         * @see <a href="https://tools.ietf.org/html/rfc6585#section-4">RFC 6585 §4</a>
+         */
+        public static final int FOUR_HUNDRED_TWENTY_NINE = 429;
+        
+        /**
+         * {@value} {@value ReasonPhrase#REQUEST_HEADER_FIELDS_TOO_LARGE}.<p>
+         * 
+         * TODO: write something
+         * 
+         * @see <a href="https://tools.ietf.org/html/rfc6585#section-5">RFC 6585 §5</a>
+         */
+        public static final int FOUR_HUNDRED_THIRTY_ONE = 431;
+        
+        /**
+         * {@value} {@value ReasonPhrase#UNAVAILABLE_FOR_LEGAL_REASONS}.<p>
+         * 
+         * TODO: write something
+         * 
+         * @see <a href="https://tools.ietf.org/html/rfc7725#section-3">RFC 7725 §3</a>
+         */
+        public static final int FOUR_HUNDRED_FIFTY_ONE = 451;
     }
     
     /**
