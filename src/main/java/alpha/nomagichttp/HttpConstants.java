@@ -612,6 +612,16 @@ public final class HttpConstants {
          * @see <a href="https://tools.ietf.org/html/rfc7233#section-4.1">RFC 7233 §4.1</a>
          */
         public static final int TWO_HUNDRED_SIX = 206;
+        
+        /**
+         * {@value} {@value ReasonPhrase#MULTI_STATUS}.<p>
+         * 
+         * Can be used to respond the status for multiple resources, as embedded
+         * in the XML representation.
+         * 
+         * @see <a href="https://tools.ietf.org/html/rfc4918#section-13">RFC 4918 §13</a>
+         */
+        public static final int TWO_HUNDRED_SEVEN = 207;
     }
     
     /**
