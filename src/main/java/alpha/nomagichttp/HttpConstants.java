@@ -589,6 +589,18 @@ public final class HttpConstants {
          * @see <a href="https://tools.ietf.org/html/rfc7231#section-6.3.5">RFC 7231 §6.3.5</a>
          */
         public static final int TWO_HUNDRED_FOUR = 204;
+        
+        /**
+         * {@value} {@value ReasonPhrase#RESET_CONTENT}.<p>
+         *
+         * "The 205 (Reset Content) status code indicates that the server has
+         * fulfilled the request and desires that the user agent reset the
+         * 'document view', which caused the request to be sent, to its original
+         * state as received from the origin server." (
+         * <a href="https://tools.ietf.org/html/rfc7231#section-6.3.6">RFC 7231 §6.3.6</a>
+         * )
+         */
+        public static final int TWO_HUNDRED_FIVE = 205;
     }
     
     /**
