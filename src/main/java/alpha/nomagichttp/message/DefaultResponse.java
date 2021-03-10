@@ -262,7 +262,6 @@ final class DefaultResponse implements Response
                 s.reasonPhrase = "Unknown"; }
             
             if (s.body == null) {
-                s.addHeader(true, "Content-Length", "0");
                 s.body = empty(); }
             
             if (s.mustCloseAfterWrite == null) {

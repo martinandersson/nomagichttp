@@ -73,8 +73,7 @@ class ErrorHandlingTest
         
         String res = createServerAndClient(custom).writeRead(REQ_NOT_FOUND);
         assertThat(res).isEqualTo(
-            "HTTP/1.1 123 Custom Not Found!" + CRLF +
-            "Content-Length: 0" + CRLF + CRLF);
+            "HTTP/1.1 123 Custom Not Found!" + CRLF + CRLF);
     }
     
     /** Request handler fails synchronously. */
@@ -90,7 +89,7 @@ class ErrorHandlingTest
     }
     
     private void firstTwoRequestsResponds(Supplier<CompletionStage<Response>> response)
-            throws IOException, InterruptedException
+            throws IOException
     {
         AtomicInteger c = new AtomicInteger();
         
@@ -101,6 +100,7 @@ class ErrorHandlingTest
             
             return Response.Builder.ok()
                     .header("N", Integer.toString(c.get()))
+                    .addHeader("Content-Length", "0")
                     .build()
                     .completedStage();
         });

@@ -239,6 +239,8 @@ user may utilize many connections. In particular, docs should clarify when do
 the connection close and under what circumstances. Future multiplexing in HTTP/2
 will most likely abstract a connection into one or many _channels_.
 
+- Default `Content-Length: 0` if no response body is set (RFC 7231 §3.3.2).  
+  Will later be moved to action.
 - Auto-close connection after final response if no `Transfer-Encoding` nor
   `Content-Length` have been set, or if `Transfer-Encoding` is set but `chunked`
   is not the last token.  
@@ -322,14 +324,6 @@ example, a pre action doing authentication can be scoped to "/admin".
     also make sure to finalize that response. Docs must be clear on this.
 - May return exceptionally, subject to standard error handling.
 
-### First action
-
-Add a post-action that blows up the HTTP exchange if response has a body and the
-request was `HEAD`. Headers applies to the fictitious would-be response,
-including framing headers such as `Content-Length` and
-`Transfer-Encoding: chunked`. So including a body would effectively kill framing
-within the connection.
-
   .
 
 - **Post action's logic** is a
@@ -352,10 +346,14 @@ within the connection.
     and most likely returns a 500 (Internal Server Error) - no other
     post-actions called!
 
-After the infrastructure is in place:
+### Library-native actions
 
-- Rewrite `Response.thenCloseChannel()` to set header `Connection: close`.
-- Add post action which reacts to the header and calls
+- DefaultServer should already default `Content-Length` to 0 for no response
+  body. Move to post action.
+- Add pre- and post-actions that rejects illegal message variants (see
+  HttpServer JavaDoc).
+- Rewrite `Response.thenCloseChannel()` to set header `Connection: close`.  
+  Add post action which reacts to the header and calls
   `Request.channel().close()`.
 
 ## Stage: Codings, Part 1/3 (Chunked Transfer)
