@@ -1080,12 +1080,213 @@ public final class HttpConstants {
     }
     
     /**
-     *
+     * "The reason-phrase element exists for the sole purpose of providing a
+     * textual description associated with the numeric status code, mostly out
+     * of deference to earlier Internet application protocols that were more
+     * frequently used with interactive text clients.  A client SHOULD ignore
+     * the reason-phrase content." (
+     * <a href="https://tools.ietf.org/html/rfc7230#section-3.1.2">RFC 7230 §3.1.2</a>
+     * )<p>
+     * 
+     * Most applications will not need to set a reason phrase explicitly, as it
+     * will be set implicitly by {@link Responses response factory methods}.
      */
     public static final class ReasonPhrase {
         private ReasonPhrase() {
             // Private
         }
+        
+        /** {@value} is the default used by NoMagicHTTP when no other phrase has been given. */
+        public static final String UNKNOWN = "Unknown";
+        
+        /** Goes with status code {@value StatusCode#ONE_HUNDRED}. */
+        public static final String CONTINUE = "Continue";
+        
+        /** Goes with status code {@value StatusCode#ONE_HUNDRED_ONE}. */
+        public static final String SWITCHING_PROTOCOLS = "Switching Protocols";
+        
+        /** Goes with status code {@value StatusCode#ONE_HUNDRED_TWO}. */
+        public static final String PROCESSING = "Processing";
+        
+        /** Goes with status code {@value StatusCode#ONE_HUNDRED_THREE}. */
+        public static final String EARLY_HINTS = "Early Hints";
+        
+        /** Goes with status code {@value StatusCode#TWO_HUNDRED}. */
+        public static final String OK = "OK";
+        
+        /** Goes with status code {@value StatusCode#TWO_HUNDRED_ONE}. */
+        public static final String CREATED = "Created";
+        
+        /** Goes with status code {@value StatusCode#TWO_HUNDRED_TWO}. */
+        public static final String ACCEPTED = "Accepted";
+        
+        /** Goes with status code {@value StatusCode#TWO_HUNDRED_THREE}. */
+        public static final String NON_AUTHORITATIVE_INFORMATION = "Non-Authoritative Information";
+        
+        /** Goes with status code {@value StatusCode#TWO_HUNDRED_FOUR}. */
+        public static final String NO_CONTENT = "No Content";
+        
+        /** Goes with status code {@value StatusCode#TWO_HUNDRED_FIVE}. */
+        public static final String RESET_CONTENT = "Reset Content";
+        
+        /** Goes with status code {@value StatusCode#TWO_HUNDRED_SIX}. */
+        public static final String PARTIAL_CONTENT = "Partial Content";
+        
+        /** Goes with status code {@value StatusCode#TWO_HUNDRED_SEVEN}. */
+        public static final String MULTI_STATUS = "Multi-Status";
+        
+        /** Goes with status code {@value StatusCode#TWO_HUNDRED_EIGHT}. */
+        public static final String ALREADY_REPORTED = "Already Reported";
+        
+        /** Goes with status code {@value StatusCode#TWO_HUNDRED_TWENTY_SIX}. */
+        public static final String IM_USED = "IM Used";
+        
+        /** Goes with status code {@value StatusCode#THREE_HUNDRED}. */
+        public static final String MULTIPLE_CHOICES = "Multiple Choices";
+        
+        /** Goes with status code {@value StatusCode#THREE_HUNDRED_ONE}. */
+        public static final String MOVED_PERMANENTLY = "Moved Permanently";
+        
+        /** Goes with status code {@value StatusCode#THREE_HUNDRED_TWO}. */
+        public static final String FOUND = "Found";
+        
+        /** Goes with status code {@value StatusCode#THREE_HUNDRED_THREE}. */
+        public static final String SEE_OTHER = "See Other";
+        
+        /** Goes with status code {@value StatusCode#THREE_HUNDRED_FOUR}. */
+        public static final String NOT_MODIFIED = "Not Modified";
+        
+        /** Goes with status code {@value StatusCode#THREE_HUNDRED_FIVE}. */
+        public static final String USE_PROXY = "Use Proxy";
+        
+        /** Goes with status code {@value StatusCode#THREE_HUNDRED_SEVEN}. */
+        public static final String TEMPORARY_REDIRECT = "Temporary Redirect";
+        
+        /** Goes with status code {@value StatusCode#THREE_HUNDRED_EIGHT}. */
+        public static final String PERMANENT_REDIRECT = "Permanent Redirect";
+        
+        /** Goes with status code {@value StatusCode#FOUR_HUNDRED}. */
+        public static final String BAD_REQUEST = "Bad Request";
+        
+        /** Goes with status code {@value StatusCode#FOUR_HUNDRED_ONE}. */
+        public static final String UNAUTHORIZED = "Unauthorized";
+        
+        /** Goes with status code {@value StatusCode#FOUR_HUNDRED_TWO}. */
+        public static final String PAYMENT_REQUIRED = "Payment Required";
+        
+        /** Goes with status code {@value StatusCode#FOUR_HUNDRED_THREE}. */
+        public static final String FORBIDDEN = "Forbidden";
+        
+        /** Goes with status code {@value StatusCode#FOUR_HUNDRED_FOUR}. */
+        public static final String NOT_FOUND = "Not Found";
+        
+        /** Goes with status code {@value StatusCode#FOUR_HUNDRED_FIVE}. */
+        public static final String METHOD_NOT_ALLOWED = "Method Not Allowed";
+        
+        /** Goes with status code {@value StatusCode#FOUR_HUNDRED_SIX}. */
+        public static final String NOT_ACCEPTABLE = "Not Acceptable";
+        
+        /** Goes with status code {@value StatusCode#FOUR_HUNDRED_SEVEN}. */
+        public static final String PROXY_AUTHENTICATION_REQUIRED = "Proxy Authentication Required";
+        
+        /** Goes with status code {@value StatusCode#FOUR_HUNDRED_EIGHT}. */
+        public static final String REQUEST_TIMEOUT = "Request Timeout";
+        
+        /** Goes with status code {@value StatusCode#FOUR_HUNDRED_NINE}. */
+        public static final String CONFLICT = "Conflict";
+        
+        /** Goes with status code {@value StatusCode#FOUR_HUNDRED_TEN}. */
+        public static final String GONE = "Gone";
+        
+        /** Goes with status code {@value StatusCode#FOUR_HUNDRED_ELEVEN}. */
+        public static final String LENGTH_REQUIRED = "Length Required";
+        
+        /** Goes with status code {@value StatusCode#FOUR_HUNDRED_TWELVE}. */
+        public static final String PRECONDITION_FAILED = "Precondition Failed";
+        
+        /** Goes with status code {@value StatusCode#FOUR_HUNDRED_THIRTEEN}. */
+        public static final String PAYLOAD_TOO_LARGE = "Payload Too Large";
+        
+        /** Goes with status code {@value StatusCode#FOUR_HUNDRED_THIRTEEN}. */
+        public static final String ENTITY_TOO_LARGE = "Entity Too Large";
+        
+        /** Goes with status code {@value StatusCode#FOUR_HUNDRED_FOURTEEN}. */
+        public static final String URI_TOO_LONG = "URI Too Long";
+        
+        /** Goes with status code {@value StatusCode#FOUR_HUNDRED_FIFTEEN}. */
+        public static final String UNSUPPORTED_MEDIA_TYPE = "Unsupported Media Type";
+        
+        /** Goes with status code {@value StatusCode#FOUR_HUNDRED_SIXTEEN}. */
+        public static final String RANGE_NOT_SATISFIABLE = "Range Not Satisfiable";
+        
+        /** Goes with status code {@value StatusCode#FOUR_HUNDRED_SEVENTEEN}. */
+        public static final String EXPECTATION_FAILED = "Expectation Failed";
+        
+        /** Goes with status code {@value StatusCode#FOUR_HUNDRED_EIGHTEEN}. */
+        public static final String IM_A_TEAPOT = "I'm a Teapot";
+        
+        /** Goes with status code {@value StatusCode#FOUR_HUNDRED_TWENTY_ONE}. */
+        public static final String MISDIRECTED_REQUEST = "Misdirected Request";
+        
+        /** Goes with status code {@value StatusCode#FOUR_HUNDRED_TWENTY_TWO}. */
+        public static final String UNPROCESSABLE_ENTITY = "Unprocessable Entity";
+        
+        /** Goes with status code {@value StatusCode#FOUR_HUNDRED_TWENTY_THREE}. */
+        public static final String LOCKED = "Locked";
+        
+        /** Goes with status code {@value StatusCode#FOUR_HUNDRED_TWENTY_FOUR}. */
+        public static final String FAILED_DEPENDENCY = "Failed Dependency";
+        
+        /** Goes with status code {@value StatusCode#FOUR_HUNDRED_TWENTY_FIVE}. */
+        public static final String TOO_EARLY = "Too Early";
+        
+        /** Goes with status code {@value StatusCode#FOUR_HUNDRED_TWENTY_SIX}. */
+        public static final String UPGRADE_REQUIRED = "Upgrade Required";
+        
+        /** Goes with status code {@value StatusCode#FOUR_HUNDRED_TWENTY_EIGHT}. */
+        public static final String PRECONDITION_REQUIRED = "Precondition Required";
+        
+        /** Goes with status code {@value StatusCode#FOUR_HUNDRED_TWENTY_NINE}. */
+        public static final String TOO_MANY_REQUESTS = "Too Many Requests";
+        
+        /** Goes with status code {@value StatusCode#FOUR_HUNDRED_THIRTY_ONE}. */
+        public static final String REQUEST_HEADER_FIELDS_TOO_LARGE = "Request Header Fields Too Large";
+        
+        /** Goes with status code {@value StatusCode#FOUR_HUNDRED_FIFTY_ONE}. */
+        public static final String UNAVAILABLE_FOR_LEGAL_REASONS = "Unavailable For Legal Reasons";
+        
+        /** Goes with status code {@value StatusCode#FIVE_HUNDRED}. */
+        public static final String INTERNAL_SERVER_ERROR = "Internal Server Error";
+        
+        /** Goes with status code {@value StatusCode#FIVE_HUNDRED_ONE}. */
+        public static final String NOT_IMPLEMENTED = "Not Implemented";
+        
+        /** Goes with status code {@value StatusCode#FIVE_HUNDRED_TWO}. */
+        public static final String BAD_GATEWAY = "Bad Gateway";
+        
+        /** Goes with status code {@value StatusCode#FIVE_HUNDRED_THREE}. */
+        public static final String SERVICE_UNAVAILABLE = "Service Unavailable";
+        
+        /** Goes with status code {@value StatusCode#FIVE_HUNDRED_FOUR}. */
+        public static final String GATEWAY_TIMEOUT = "Gateway Timeout";
+        
+        /** Goes with status code {@value StatusCode#FIVE_HUNDRED_FIVE}. */
+        public static final String HTTP_VERSION_NOT_SUPPORTED = "HTTP Version Not Supported";
+        
+        /** Goes with status code {@value StatusCode#FIVE_HUNDRED_SIX}. */
+        public static final String VARIANT_ALSO_NEGOTIATES = "Variant Also Negotiates";
+        
+        /** Goes with status code {@value StatusCode#FIVE_HUNDRED_SEVEN}. */
+        public static final String INSUFFICIENT_STORAGE = "Insufficient Storage";
+        
+        /** Goes with status code {@value StatusCode#FIVE_HUNDRED_EIGHT}. */
+        public static final String LOOP_DETECTED = "Loop Detected";
+        
+        /** Goes with status code {@value StatusCode#FIVE_HUNDRED_TEN}. */
+        public static final String NOT_EXTENDED = "Not Extended";
+        
+        /** Goes with status code {@value StatusCode#FIVE_HUNDRED_ELEVEN}. */
+        public static final String NETWORK_AUTHENTICATION_REQUIRED = "Network Authentication Required";
     }
     
     /**
