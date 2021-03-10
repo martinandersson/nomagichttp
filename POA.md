@@ -325,9 +325,10 @@ example, a pre action doing authentication can be scoped to "/admin".
 ### First action
 
 Add a post-action that blows up the HTTP exchange if response has a body and the
-request was `HEAD`. Headers applies to the fictious would-be response, including
-framing headers such as `Content-Length` and `Transfer-Encoding: chunked`. So
-including a body would effectively kill framing within the connection.
+request was `HEAD`. Headers applies to the fictitious would-be response,
+including framing headers such as `Content-Length` and
+`Transfer-Encoding: chunked`. So including a body would effectively kill framing
+within the connection.
 
   .
 

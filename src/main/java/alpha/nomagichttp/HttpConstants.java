@@ -41,31 +41,7 @@ public final class HttpConstants {
      * of the first request (GET, HEAD, PUT, DELETE, OPTIONS and TRACE).
      * Responses to <strong>cacheable</strong> (
      * <a href="https://tools.ietf.org/html/rfc7231#section-4.2.3">RFC 7231 §4.2.3</a>
-     * ) requests may be stored for future reuse (GET, HEAD, and POST).<p>
-     * 
-     * Only {@link #TRACE} requests and responses to {@link #HEAD} have
-     * specified semantics that requires the <i>absence</i> of a message body.
-     * For all other methods, the body is optional. This includes {@link #GET}
-     * and {@link #POST} (
-     * <a href="https://tools.ietf.org/html/rfc7231#section-4.3.1">RFC 7231 §4.3.1</a>,
-     * <a href="https://tools.ietf.org/html/rfc7230#section-3.3.2">RFC 7230 §3.3.2</a>
-     * ). {@code GET} doesn't usually carry a body with it, and {@code POST}
-     * usually do - but the inverse is not forbidden and technically possible to
-     * accomplish.<p>
-     * 
-     * The NoMagicHTTP server does not enforce message semantics unless strictly
-     * necessary. The only thing the server refuses to do is to send response
-     * bodies in return to a {@code HEAD} request. In this case, the exchange
-     * will blow up late in the process (TODO: Actually implement this and
-     * specify exception type). The reason is straightforward; any responding
-     * headers to a {@code HEAD} request applies to the fictitious would-be
-     * response, including framing headers `Content-Length` and
-     * `Transfer-Encoding`. I.e. HTTP message framing just won't work. Except
-     * for this one case, the request handler is in full control over how it
-     * interprets the request and what it responds.<p>
-     * 
-     * Unless documented otherwise, the NoMagicHTTP server does not treat any
-     * method different than the other.
+     * ) requests may be stored for future reuse (GET, HEAD, and POST).
      */
     public static final class Method {
         private Method() {
@@ -76,22 +52,28 @@ public final class HttpConstants {
          * Used to retrieve a server resource. The response is usually 200 (OK)
          * with a representation of the resource attached as message body.<p>
          * 
-         * The request body doesn't normally have contents.<p>
+         * The request doesn't normally have a body.<p>
          * 
          * Safe? Yes. Idempotent? Yes. Response cacheable? Yes.
          * 
          * @see Method
          */
         public static final String GET = "GET";
-    
+        
         /**
-         * Same as {@link #GET}, except the response will leave out the message
+         * Same as {@link #GET}, except the response must exclude the message
          * body. Used by clients who only have an interest in the response
          * headers, i.e. the resource metadata. For example, to learn when the
          * resource was last modified.<p>
          * 
+         * Including a body is not only uninteresting to the client, but it
+         * would also effectively kill message framing within the connection
+         * since all response headers actually applies to the fictitious
+         * would-be response, including headers such as {@code Content-Length}
+         * and {@code Transfer-Encoding: chunked}.<p>
+         * 
          * Safe? Yes. Idempotent? Yes. Response cacheable? Yes.
-         *
+         * 
          * @see Method
          */
         public static final String HEAD = "HEAD";
@@ -99,7 +81,7 @@ public final class HttpConstants {
         /**
          * Generally, the POST request is the preferred method of transmitting
          * data to a target processor on the server. Often, the request payload
-         * represents a new resource to create and the server responds with an
+         * represents a new resource to create and the server responds with a
          * {@link HeaderKey#LOCATION Location} header set which identifies the
          * new resource.<p>
          * 
@@ -124,13 +106,15 @@ public final class HttpConstants {
          * (Client Error) or 5XX (Server Error).<p>
          * 
          * It's worthwhile stressing that POST does not have to create a new
-         * resource. POST is the general method to use when submitting data in
-         * the request body. For example, it could also be used to <i>append</i>
-         * records to a log file.<p>
+         * resource. POST is the general method to use when submitting data
+         * in the request body. The data could just as well be appended to an
+         * existing resource, submitted as input to a processing algorithm, and
+         * so forth.<p>
          * 
          * If the client decides what resource identifier a new resource will
          * get, or the client wish to replace all of an existing [known]
-         * resource, use {@link #PUT} instead.<p>
+         * resource, use {@link #PUT} instead. If the client wish to replace
+         * only parts of an existing [known] resource, use {@link #PATCH}.<p>
          * 
          * Safe? No. Idempotent? No. Response cacheable? Yes.
          * 
@@ -140,7 +124,7 @@ public final class HttpConstants {
         
         /**
          * PUT is used by clients to create or replace the state of an already
-         * known resource with that of the message payload.<p>
+         * known resource with that of the message payload (body).<p>
          * 
          * For example, replacing an element in a specific collection. Repeating
          * the request will not grow the collection.<p>
@@ -252,6 +236,8 @@ public final class HttpConstants {
          * </pre>
          * 
          * Safe? No. Idempotent? No. Response cacheable? No.
+         * 
+         * @see Method
          */
         public static final String PATCH = "PATCH";
         
@@ -271,6 +257,8 @@ public final class HttpConstants {
          * ).<p>
          * 
          * Safe? No. Idempotent? Yes. Response cacheable? No.
+         * 
+         * @see Method
          */
         public static final String DELETE = "DELETE";
         
@@ -279,9 +267,13 @@ public final class HttpConstants {
          * Most origin servers have no use of this method and doesn't implement
          * it.<p>
          * 
-         * The request body doesn't normally have contents.<p>
+         * The request doesn't normally have a body. The response body must not,
+         * because the tunnel connection is supposed to begin after the response
+         * headers.<p>
          * 
          * Safe? No. Idempotent? No. Response cacheable? No.
+         * 
+         * @see Method
          */
         public static final String CONNECT = "CONNECT";
         
@@ -324,24 +316,32 @@ public final class HttpConstants {
          * </pre>
          * 
          * Safe? Yes. Idempotent? Yes. Response cacheable? No.
+         * 
+         * @see Method
          */
         public static final String OPTIONS = "OPTIONS";
         
         /**
-         * Used by clients to discover the chain of intermediaries that an HTTP
-         * message passes through. The final recipient ought to reply the
-         * message received. The client can then inspect what was observed on
-         * the other side, specifically the {@link HeaderKey#VIA Via} header.
-         * The server should exclude sensitive data from the response, such as
-         * cookies with user credentials.<p>
+         * This method echoes the request headers back to the client in a
+         * response body with {@code Content-Type: message/http}. Hence it
+         * doesn't allow the request itself to contain a request body as this
+         * wouldn't serve a purpose.<p>
          * 
-         * Due to the security risk of revealing sensitive data, some HTTP
-         * applications disable the TRACE method. Future work is scheduled to
-         * have this option available in the NoMagicHTTP's configuration as
-         * well. The NoMagicHTTP server certainly has no automatic response
-         * behavior related to this method and most likely never will.<p>
+         * Clients using TRACE are usually interested in tracing the request
+         * chain, of particular interest to this effect is the echoed {@link
+         * HeaderKey#VIA Via} header as it will list all intermediaries.
+         * 
+         * Both client and server should exclude passing sensitive data, such as
+         * cookies with user credentials. Due to the inherit security risk of
+         * leaking such sensitive data, some HTTP applications disable the TRACE
+         * method. Future work is scheduled to have this option available in the
+         * NoMagicHTTP's configuration as well. The NoMagicHTTP server certainly
+         * has no automatic response behavior related to this method and most
+         * likely never will.<p>
          * 
          * Safe? Yes. Idempotent? Yes. Response cacheable? No.
+         * 
+         * @see Method
          */
         public static final String TRACE = "TRACE";
     }
@@ -511,14 +511,24 @@ public final class HttpConstants {
         /**
          * {@value} {@value ReasonPhrase#OK}.<p>
          * 
-         * Standard code to use for successful HTTP requests.
+         * Standard code to use for successful HTTP requests.<p>
+         * 
+         * The response typically has a body; whatever was requested by {@link
+         * Method#GET}. If the response does not contain a body, consider using
+         * {@link #TWO_HUNDRED_FOUR}.
          */
         public static final int TWO_HUNDRED = 200;
         
         /**
          * {@value} {@value ReasonPhrase#CREATED}.<p>
          * 
-         * A new resource was created.
+         * A new resource was created.<p>
+         * 
+         * The response typically has a body containing the new resource. A good
+         * reason for not including the body would be if the request already
+         * contained the entire resource.
+         * 
+         * @see HttpConstants.Method#POST
          */
         public static final int TWO_HUNDRED_ONE = 201;
         
@@ -528,9 +538,11 @@ public final class HttpConstants {
          * The server accepted the request for processing, but processing is
          * still ongoing or has not yet begun.<p>
          * 
-         * This status code is often used when a clients submit lengthy tasks or
-         * tasks that runs decoupled from the request. The client ought to have
-         * other means by which to track the task progress.
+         * This status code is often used when clients submit lengthy tasks or
+         * tasks that executes at some point in the future, decoupled from the
+         * initiating request. The client ought to have other means by which to
+         * track the task status- and progress. The response body is a good
+         * candidate for passing such metadata to the client.
          */
         public static final int TWO_HUNDRED_TWO = 202;
     }
