@@ -243,15 +243,14 @@ In a new terminal, run:
 
 ```console
 foo@bar:~$ curl -i localhost:8080
-HTTP/1.1 200 OK
-Content-Length: 0
+HTTP/1.1 204 No Content
 ```
 
 In the server terminal, you should see text similar to this:
 ```console
 Request handler received a request 15:19:58.780 and will crash!
 Error handler will retry #1 after delay (ms): 40
-Request handler received a request 15:19:58.827 and will return 200 OK
+Request handler received a request 15:19:58.827 and will return 204 No Content
 ```
 
 [7-1]: src/main/java/alpha/nomagichttp/examples/RetryRequestOnError.java

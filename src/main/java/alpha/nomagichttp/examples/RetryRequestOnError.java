@@ -14,7 +14,7 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Supplier;
 
 import static alpha.nomagichttp.handler.RequestHandlers.GET;
-import static alpha.nomagichttp.message.Responses.ok;
+import static alpha.nomagichttp.message.Responses.noContent;
 import static java.time.LocalTime.now;
 import static java.util.concurrent.CompletableFuture.delayedExecutor;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
@@ -65,8 +65,8 @@ public class RetryRequestOnError
                 throw new OptimisticLockException();
             }
             
-            System.out.println(" and will return 200 OK");
-            return ok().completedStage();
+            System.out.println(" and will return 204 No Content");
+            return noContent().completedStage();
         }
     }
     
