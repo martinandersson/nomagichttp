@@ -545,6 +545,21 @@ public final class HttpConstants {
          * candidate for passing such metadata to the client.
          */
         public static final int TWO_HUNDRED_TWO = 202;
+        
+        /**
+         * {@value} {@value ReasonPhrase#NO_CONTENT}.<p>
+         * 
+         * Standard code to use for successful HTTP requests, when the response
+         * does <i>not</i> have a body. Also used as response to a {@code PUT}
+         * request if the request modified an already existing resource.<p>
+         * 
+         * If the response should contain a body, consider using
+         * {@link #TWO_HUNDRED}.
+         * 
+         * @see HttpConstants.Method#PUT
+         * @see HttpConstants.Method#PATCH
+         */
+        public static final int TWO_HUNDRED_FOUR = 204;
     }
     
     /**
