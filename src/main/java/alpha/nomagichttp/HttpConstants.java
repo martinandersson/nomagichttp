@@ -31,17 +31,30 @@ public final class HttpConstants {
      * <a href="https://tools.ietf.org/html/rfc7231#section-4.1">RFC 7231 §4.1</a>
      * ).<p>
      * 
-     * Methods have characteristics. If it is <strong>safe</strong> (
+     * Methods have characteristics. They are defined as being safe, idempotent
+     * and/or cacheable.<p>
+     * 
+     * If it is <strong>safe</strong> (
      * <a href="https://tools.ietf.org/html/rfc7231#section-4.2.1">RFC 7231 §4.2.1</a>
      * ), then the request is likely used only for information retrieval and
      * should not have any noticeable side effects on the server (GET, HEAD,
-     * OPTIONS and TRACE). If a method is <strong>idempotent</strong> (
+     * OPTIONS and TRACE).<p>
+     * 
+     * If a method is <strong>idempotent</strong> (
      * <a href="https://tools.ietf.org/html/rfc7231#section-4.2.2">RFC 7231 §4.2.2</a>
      * ), then the request may be repeated with no change to the intended effect
-     * of the first request (GET, HEAD, PUT, DELETE, OPTIONS and TRACE).
+     * of the first request (GET, HEAD, PUT, DELETE, OPTIONS and TRACE).<p>
+     * 
      * Responses to <strong>cacheable</strong> (
      * <a href="https://tools.ietf.org/html/rfc7231#section-4.2.3">RFC 7231 §4.2.3</a>
-     * ) requests may be stored for future reuse (GET, HEAD, and POST).
+     * ) requests may be stored for future reuse (GET, HEAD, and POST), given
+     * some other conditions are true (
+     * <a href="https://tools.ietf.org/html/rfc7234#section-3">RFC 7234 §3</a>).
+     * POST has the additional criterion that it needs explicit freshness
+     * information to be cached
+     * (<a href="https://tools.ietf.org/html/rfc7231#section-4.3.3">RFC 7231 §4.3.3</a>
+     * ). Most caches requires explicit freshness information for all responses
+     * no matter the request method. Most caches also don't cache POST at all.
      */
     public static final class Method {
         private Method() {
@@ -383,13 +396,24 @@ public final class HttpConstants {
      * <a href="https://en.wikipedia.org/wiki/List_of_HTTP_status_codes">Wikipedia</a>
      * and includes unofficial codes such as 418 (I'm a teapot).<p>
      * 
+     * A status code that is defined as being cacheable may be cached without
+     * explicit freshness information whereas status codes not defined as
+     * cacheable may still be cached, but requires explicit freshness
+     * information. In addition, some other conditions must also be true (
+     * <a href="https://tools.ietf.org/html/rfc7234#section-3">RFC 7234 §3</a>
+     * ). Codes defined by
+     * <a href="https://tools.ietf.org/html/rfc7231#section-6.1">RFC 7231 §6.1</a>
+     * as cacheable: 200, 203, 204, 206, 300, 301, 404, 405, 410, 414, and
+     * 501. Other status codes may well also be defined as cacheable, the
+     * current JavaDoc author simply gave up trying to find out.<p>
+     * 
      * {@link Response.Builder#build()} requires a status code to have been set,
      * but as far as the NoMagicHTTP server and API are concerned, the value may
      * be any integer, even if it does not belong to a known group or does not
      * contain exactly three digits.<p>
      * 
      * Most applications will not need to set a status code explicitly, as it
-     * will be set implicitly by {@link Responses response factory methods}.
+     * will be set by {@link Responses response factory methods}.
      */
     public static final class StatusCode {
         private StatusCode() {
