@@ -790,12 +790,15 @@ Most timeouts should probably result in a 408 (Request Timeout).
 
 ## Stage: Misc
 
-- `Host` field required in all requests.
+- CORS
+- Configuration to add `Server:` header to responses.
 - Server should set default `application/octet-stream` for missing
   `Content-Type` in request.  
   - Code that check for Content-Type can then be rewritten to assume it has been
   given.
 - Add config to disable TRACE, default false.
+- Perhaps already implemented at this point, but if not, support for the `Date`
+  header.
 - Programmatically schedule/enable caching of the request body, for example:  
   `DecodedPayload self = req.body().cache(int maxSize);`  
   Useful if a pre action wants to inspect the body and still leave it consumable
