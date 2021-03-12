@@ -189,7 +189,7 @@ public class MediaType
      * @throws NullPointerException
      *             if {@code mediaType} is {@code null}
      * 
-     * @throws BadMediaTypeSyntaxException
+     * @throws MediaTypeParseException
      *             if the specified {@code mediaType} can not be parsed, for example
      *             a parameter has been specified more than once, or
      *             a parameter was named "q"/"Q" and it was not the last parameter declared,
@@ -217,7 +217,7 @@ public class MediaType
                 qVal = OptionalDouble.of(parseDouble(qStr));
             }
             catch (NumberFormatException e) {
-                throw new BadMediaTypeSyntaxException(text,
+                throw new MediaTypeParseException(text,
                         "Non-parsable value for q-parameter.", e);
             }
         }
@@ -239,24 +239,24 @@ public class MediaType
         final String[] raw = token.split("/");
         
         if (raw.length != 2) {
-            throw new BadMediaTypeSyntaxException(text,
+            throw new MediaTypeParseException(text,
                     "Expected exactly one forward slash in <type/subtype>.");
         }
         
         final String type = stripAndLowerCase(raw[0]);
         
         if (type.isEmpty()) {
-            throw new BadMediaTypeSyntaxException(text, "Type is empty.");
+            throw new MediaTypeParseException(text, "Type is empty.");
         }
         
         final String subtype = stripAndLowerCase(raw[1]);
         
         if (subtype.isEmpty()) {
-            throw new BadMediaTypeSyntaxException(text, "Subtype is empty.");
+            throw new MediaTypeParseException(text, "Subtype is empty.");
         }
         
         if (type.equals(WILDCARD) && !subtype.equals(WILDCARD)) {
-            throw new BadMediaTypeSyntaxException(text,
+            throw new MediaTypeParseException(text,
                     "Wildcard type but not a wildcard subtype.");
         }
         
@@ -277,7 +277,7 @@ public class MediaType
             }
             
             if (params.put(nameAndValue[0], nameAndValue[1]) != null) {
-                throw new BadMediaTypeSyntaxException(text, "Duplicated parameters.");
+                throw new MediaTypeParseException(text, "Duplicated parameters.");
             }
             
             if (stopAfterQ && nameAndValue[0].equals("q")) {
@@ -292,13 +292,13 @@ public class MediaType
         int eq = token.indexOf("=");
         
         if (eq == -1) {
-            throw new BadMediaTypeSyntaxException(text, "A parameter has no assigned value.");
+            throw new MediaTypeParseException(text, "A parameter has no assigned value.");
         }
         
         String name = stripAndLowerCase(token.substring(0, eq));
         
         if (name.isEmpty()) {
-            throw new BadMediaTypeSyntaxException(text, "Empty parameter name.");
+            throw new MediaTypeParseException(text, "Empty parameter name.");
         }
         
         String value = token.substring(eq + 1).strip();
@@ -309,7 +309,7 @@ public class MediaType
         }
         
         if (value.isEmpty()) {
-            throw new BadMediaTypeSyntaxException(text, "Empty parameter value.");
+            throw new MediaTypeParseException(text, "Empty parameter value.");
         }
         
         if (type.equals("text") && name.equals("charset")) {

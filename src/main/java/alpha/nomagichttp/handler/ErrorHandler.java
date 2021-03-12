@@ -3,7 +3,7 @@ package alpha.nomagichttp.handler;
 import alpha.nomagichttp.HttpServer;
 import alpha.nomagichttp.examples.RetryRequestOnError;
 import alpha.nomagichttp.message.BadHeaderException;
-import alpha.nomagichttp.message.BadMediaTypeSyntaxException;
+import alpha.nomagichttp.message.MediaTypeParseException;
 import alpha.nomagichttp.message.MaxRequestHeadSizeExceededException;
 import alpha.nomagichttp.message.Request;
 import alpha.nomagichttp.message.RequestHeadParseException;
@@ -190,7 +190,7 @@ public interface ErrorHandler
      *     <td> {@link Responses#notImplemented()} </td>
      *   </tr>
      *   <tr>
-     *     <th scope="row"> {@link BadMediaTypeSyntaxException} </th>
+     *     <th scope="row"> {@link MediaTypeParseException} </th>
      *     <td> If handler argument is null, then {@link Responses#badRequest()}
      *          (fault assumed to be the clients'), otherwise {@link
      *          Responses#internalServerError()} (fault assumed to be the
@@ -221,7 +221,7 @@ public interface ErrorHandler
             res = entityTooLarge();
         } catch (NoHandlerFoundException e) { // + AmbiguousNoHandlerFoundException
             res = notImplemented();
-        } catch (BadMediaTypeSyntaxException e) {
+        } catch (MediaTypeParseException e) {
             res = rh == null ? badRequest() : internalServerError();
         } catch (Throwable unhandledDefaultCase) {
             res = internalServerError();
