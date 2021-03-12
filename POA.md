@@ -359,6 +359,10 @@ example, a pre action doing authentication can be scoped to "/admin".
 - Rewrite `Response.thenCloseChannel()` to set header `Connection: close`.  
   Add post action which reacts to the header and calls
   `Request.channel().close()`.
+- If not already set, automagically set `Vary: Accept` (?)
+  - If there are multiple request handlers for that resource which produces
+    different media types, and
+  - status code is 200 or 304
 
 ## Stage: Codings, Part 1/3 (Chunked Transfer)
 
@@ -816,6 +820,10 @@ Most timeouts should probably result in a 408 (Request Timeout).
   The alternative is to add `HttpServer.Config.autoHead()` with all that
   behavior baked in. Alas this config would be global and application would not
   be able to scope it to a particular resource namespace.
+- Improved security
+  - Cross-Site Scripting (XSS) (see `HeaderKey.CONTENT_SECURITY_POLICY`)
+  - Cross-Site Tracing (XST)
+  - Cross-Site Request Forgery (CSRF)
 
 ## Upcoming
 
