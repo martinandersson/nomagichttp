@@ -22,6 +22,7 @@ import static alpha.nomagichttp.HttpConstants.StatusCode;
 import static alpha.nomagichttp.HttpConstants.StatusCode.TWO_HUNDRED;
 import static alpha.nomagichttp.HttpConstants.StatusCode.TWO_HUNDRED_FOUR;
 import static alpha.nomagichttp.HttpConstants.StatusCode.TWO_HUNDRED_TWO;
+import static alpha.nomagichttp.HttpConstants.Version;
 
 /**
  * A {@code Response} contains a {@link #statusLine() statusLine}, {@link
@@ -390,7 +391,8 @@ public interface Response
 
 final class BuilderCache
 {
-    private static final Response.Builder HTTP_1_1 = Response.builder().httpVersion("HTTP/1.1");
+    private static final Response.Builder HTTP_1_1
+            = Response.builder().httpVersion(Version.HTTP_1_1);
     
     private BuilderCache() {
         // Empty

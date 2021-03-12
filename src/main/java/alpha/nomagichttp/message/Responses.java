@@ -8,11 +8,13 @@ import alpha.nomagichttp.util.BetterBodyPublishers;
 import java.nio.ByteBuffer;
 import java.util.concurrent.Flow;
 
+import static alpha.nomagichttp.HttpConstants.HeaderKey.CONTENT_LENGTH;
 import static alpha.nomagichttp.HttpConstants.StatusCode.FIVE_HUNDRED;
 import static alpha.nomagichttp.HttpConstants.StatusCode.FIVE_HUNDRED_ONE;
 import static alpha.nomagichttp.HttpConstants.StatusCode.FOUR_HUNDRED;
 import static alpha.nomagichttp.HttpConstants.StatusCode.FOUR_HUNDRED_FOUR;
 import static alpha.nomagichttp.HttpConstants.StatusCode.FOUR_HUNDRED_THIRTEEN;
+import static alpha.nomagichttp.HttpConstants.Version.HTTP_1_1;
 import static java.net.http.HttpRequest.BodyPublisher;
 import static java.net.http.HttpRequest.BodyPublishers;
 
@@ -198,7 +200,7 @@ public final class Responses
      */
     private static final class Cache {
         static final Response
-                ACCEPTED              = Response.Builder.accepted().header("Content-Length", "0").build(),
+                ACCEPTED              = Response.Builder.accepted().header(CONTENT_LENGTH, "0").build(),
                 NO_CONTENT            = Response.Builder.noContent().build(),
                 BAD_REQUEST           = respondThenClose(FOUR_HUNDRED, ReasonPhrase.BAD_REQUEST),
                 NOT_FOUND             = respondThenClose(FOUR_HUNDRED_FOUR, ReasonPhrase.NOT_FOUND),
@@ -208,10 +210,10 @@ public final class Responses
         
         private static Response respondThenClose(int code, String phrase) {
             return Response.builder()
-                    .httpVersion("HTTP/1.1")
+                    .httpVersion(HTTP_1_1)
                     .statusCode(code)
                     .reasonPhrase(phrase)
-                    .header("Content-Length", "0")
+                    .header(CONTENT_LENGTH, "0")
                     .mustCloseAfterWrite(true)
                     .build();
         }
