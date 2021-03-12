@@ -89,8 +89,7 @@ public final class Headers
      * 
      * @see HttpConstants.HeaderKey#ACCEPT
      */
-    // TODO: Rename to accept
-    public static MediaType[] accepts(HttpHeaders headers) {
+    public static MediaType[] accept(HttpHeaders headers) {
         return headers.allValues(ACCEPT).stream()
                 .flatMap(v -> stream(split(v, ',', '"')))
                 .map(MediaType::parse)
