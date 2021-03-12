@@ -301,7 +301,11 @@ public final class DefaultRoute implements Route
             handlers = new HashSet<>();
             
             if (!pattern.equals("/")) {
-                append(pattern);
+                try {
+                    append(pattern);
+                } catch (IllegalArgumentException | IllegalStateException e) {
+                    throw new RouteParseException(e);
+                }
             }
         }
         

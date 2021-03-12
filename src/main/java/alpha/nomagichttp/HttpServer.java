@@ -10,6 +10,7 @@ import alpha.nomagichttp.route.DefaultRouteRegistry;
 import alpha.nomagichttp.route.HandlerCollisionException;
 import alpha.nomagichttp.route.Route;
 import alpha.nomagichttp.route.RouteCollisionException;
+import alpha.nomagichttp.route.RouteParseException;
 
 import java.io.IOException;
 import java.net.InetAddress;
@@ -281,10 +282,8 @@ public interface HttpServer
      * @throws NullPointerException
      *             if any argument is {@code null}
      * 
-     * @throws IllegalArgumentException
-     *             if a static segment value is empty
-     * 
-     * @throws IllegalStateException
+     * @throws RouteParseException
+     *             if a static segment value is empty, or
      *             if parameter names are repeated in the pattern, or
      *             if a catch-all parameter is not the last segment
      * 
