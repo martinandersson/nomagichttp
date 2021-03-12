@@ -1,9 +1,12 @@
 package alpha.nomagichttp.route;
 
+import alpha.nomagichttp.HttpConstants;
 import alpha.nomagichttp.handler.ErrorHandler;
 import alpha.nomagichttp.handler.RequestHandler;
 import alpha.nomagichttp.message.MediaType;
 
+import static alpha.nomagichttp.HttpConstants.HeaderKey.ACCEPT;
+import static alpha.nomagichttp.HttpConstants.HeaderKey.CONTENT_TYPE;
 import static java.text.MessageFormat.format;
 import static java.util.Arrays.stream;
 import static java.util.stream.Collectors.joining;
@@ -24,9 +27,9 @@ public class NoHandlerFoundException extends RuntimeException
     {
         String msg = format("No handler found matching \"{0}\" and/or \"{1}\" header in request.",
                 // Arg 0
-                "Content-Type: " + (contentType == null ? "[N/A]" : contentType),
+                CONTENT_TYPE + ": " + (contentType == null ? "[N/A]" : contentType),
                 // Arg 1
-                "Accept: " + (accepts == null || accepts.length == 0 ? "[N/A]" :
+                ACCEPT + ": " + (accepts == null || accepts.length == 0 ? "[N/A]" :
                         stream(accepts).map(Object::toString).collect(joining(", "))));
         
         return new NoHandlerFoundException(msg, method, route, contentType, accepts);
@@ -92,6 +95,7 @@ public class NoHandlerFoundException extends RuntimeException
      * Returns the "Content-Type" request header value
      * 
      * @return Content-Type (may be {@code null})
+     * @see HttpConstants.HeaderKey#CONTENT_TYPE
      */
     public MediaType contentType() {
         return contentType;
@@ -101,6 +105,7 @@ public class NoHandlerFoundException extends RuntimeException
      * Returns the "Accept" request header value(s)
      * 
      * @return Accept (may be empty, never {@code null})
+     * @see HttpConstants.HeaderKey#ACCEPT
      */
     public MediaType[] accepts() {
         return accepts;

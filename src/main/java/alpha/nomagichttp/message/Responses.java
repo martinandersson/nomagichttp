@@ -1,5 +1,6 @@
 package alpha.nomagichttp.message;
 
+import alpha.nomagichttp.HttpConstants;
 import alpha.nomagichttp.HttpConstants.ReasonPhrase;
 import alpha.nomagichttp.HttpConstants.StatusCode;
 import alpha.nomagichttp.util.BetterBodyPublishers;
@@ -65,6 +66,7 @@ public final class Responses
      * @param   body publisher with content length
      * @return  a "200 OK"-response with an arbitrary body
      * @see     StatusCode#TWO_HUNDRED
+     * @see     HttpConstants.HeaderKey#CONTENT_TYPE
      */
     public static Response text(String contentType, BodyPublisher body) {
         return text(MediaType.parse(contentType), body, body.contentLength());
@@ -90,6 +92,8 @@ public final class Responses
      * @param   length of body (will be set as "Content-Length" header value)
      * @return  a "200 OK"-response with an arbitrary body
      * @see     StatusCode#TWO_HUNDRED
+     * @see     HttpConstants.HeaderKey#CONTENT_TYPE
+     * @see     HttpConstants.HeaderKey#CONTENT_LENGTH
      */
     public static Response text(String contentType, Flow.Publisher<ByteBuffer> body, long length) {
         return text(MediaType.parse(contentType), body, length);
@@ -103,6 +107,8 @@ public final class Responses
      * @param   length of body (will be set as "Content-Length" header value)
      * @return  a "200 OK"-response with an arbitrary body
      * @see     StatusCode#TWO_HUNDRED
+     * @see     HttpConstants.HeaderKey#CONTENT_TYPE
+     * @see     HttpConstants.HeaderKey#CONTENT_LENGTH
      */
     public static Response text(MediaType contentType, Flow.Publisher<ByteBuffer> body, long length) {
         return Response.Builder.ok()

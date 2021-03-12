@@ -131,7 +131,7 @@ public interface Request
      * 
      * @return the HTTP headers
      * 
-     * @see HttpHeaders
+     * @see HttpConstants.HeaderKey
      */
     HttpHeaders headers();
     

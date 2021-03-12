@@ -1,5 +1,6 @@
 package alpha.nomagichttp.message;
 
+import alpha.nomagichttp.HttpConstants;
 import alpha.nomagichttp.HttpServer;
 import alpha.nomagichttp.handler.ErrorHandler;
 import alpha.nomagichttp.handler.RequestHandler;
@@ -237,6 +238,7 @@ public interface Response
          * @param   value of header
          * @return  a new builder representing the new state
          * @throws  NullPointerException if any argument is {@code null}
+         * @see     HttpConstants.HeaderKey
          */
         Builder header(String name, String value);
         
@@ -249,6 +251,7 @@ public interface Response
          * @param   type media type
          * @return  a new builder representing the new state
          * @throws  NullPointerException if {@code type} is {@code null}
+         * @see     HttpConstants.HeaderKey#CONTENT_TYPE
          */
         Builder contentType(MediaType type);
         
@@ -258,9 +261,9 @@ public interface Response
          * Please note that changing the Content-Length ought to be followed by
          * a new response body.
          * 
-         * @param value content length
-         * 
-         * @return a new builder representing the new state
+         * @param   value content length
+         * @return  a new builder representing the new state
+         * @see     HttpConstants.HeaderKey#CONTENT_LENGTH
          */
         Builder contentLenght(long value);
         
@@ -284,6 +287,8 @@ public interface Response
          * 
          * @throws NullPointerException
          *             if any argument or array element is {@code null}
+         * 
+         * @see HttpConstants.HeaderKey
          */
         Builder addHeader(String name, String value);
         
@@ -307,6 +312,8 @@ public interface Response
          *             if any argument or array element is {@code null}
          * @throws IllegalArgumentException
          *             if {@code morePairs.length} is odd
+         * 
+         * @see HttpConstants.HeaderKey
          */
         Builder addHeaders(String name, String value, String... morePairs);
         
@@ -320,6 +327,7 @@ public interface Response
          * @param   headers to add
          * @return  a new builder representing the new state
          * @throws  NullPointerException if {@code headers} is {@code null}
+         * @see     HttpConstants.HeaderKey
          */
         Builder addHeaders(HttpHeaders headers);
         

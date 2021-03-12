@@ -11,6 +11,8 @@ import java.util.Map;
 import java.util.concurrent.Flow;
 import java.util.function.Consumer;
 
+import static alpha.nomagichttp.HttpConstants.HeaderKey.CONTENT_LENGTH;
+import static alpha.nomagichttp.HttpConstants.HeaderKey.CONTENT_TYPE;
 import static alpha.nomagichttp.util.Publishers.empty;
 import static java.util.Collections.emptyList;
 import static java.util.Objects.requireNonNull;
@@ -148,12 +150,12 @@ final class DefaultResponse implements Response
         @Override
         public Response.Builder contentType(MediaType type) {
             requireNonNull(type, "type");
-            return addHeaders("Content-Type", type.toString());
+            return addHeaders(CONTENT_TYPE, type.toString());
         }
         
         @Override
         public Response.Builder contentLenght(long value) {
-            return addHeaders("Content-Length", Long.toString(value));
+            return addHeaders(CONTENT_LENGTH, Long.toString(value));
         }
         
         @Override
