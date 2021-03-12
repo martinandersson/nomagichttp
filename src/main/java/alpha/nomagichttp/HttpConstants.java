@@ -106,7 +106,7 @@ public final class HttpConstants {
          * request is repeated the collection grows by 1 element each time.
          * 
          * <pre>
-         *   -->
+         *   --{@literal >}
          *   POST /user HTTP/1.1
          *   Host: www.example.com
          *   Content-Type: application/json
@@ -151,7 +151,7 @@ public final class HttpConstants {
          * from {@link #POST}:
          * 
          * <pre>
-         *   -->
+         *   --{@literal >}
          *   PUT /user/123 HTTP/1.1
          *   Host: www.example.com
          *   Content-Type: application/json
@@ -227,7 +227,7 @@ public final class HttpConstants {
          * change John's name:
          * 
          * <pre>
-         *   -->
+         *   --{@literal >}
          *   PATCH /user/123 HTTP/1.1
          *   Host: www.example.com
          *   If-Match: "3"
@@ -308,7 +308,7 @@ public final class HttpConstants {
          * allowed for the user identified as 123:
          * 
          * <pre>
-         *   -->
+         *   --{@literal >}
          *   OPTIONS /user/123 HTTP/1.1
          *   Host: www.example.com
          *   Content-Length: 0
@@ -325,7 +325,7 @@ public final class HttpConstants {
          * Ping-pong example:
          * 
          * <pre>
-         *   -->
+         *   --{@literal >}
          *   OPTIONS * HTTP/1.1
          *   Host: www.example.com
          *   Content-Length: 0
@@ -452,12 +452,12 @@ public final class HttpConstants {
          * This example is an upgrade sequence for HTTP/2:
          * 
          * <pre>
-         *   -->
+         *   --{@literal >}
          *   GET /index.html HTTP/1.1
          *   Host: www.example.com
          *   Connection: Upgrade, HTTP2-Settings
          *   Upgrade: h2c
-         *   HTTP2-Settings: {@literal <}base64url encoding of HTTP/2 SETTINGS payload>
+         *   HTTP2-Settings: {@literal <}base64url encoding of HTTP/2 SETTINGS payload{@literal >}
          *   
          *   {@literal <}--
          *   HTTP/1.1 101 Switching Protocols
@@ -510,23 +510,23 @@ public final class HttpConstants {
          * requested by the client in order to render the final view:
          * 
          * <pre>
-         *   -->
+         *   --{@literal >}
          *   GET /slow/page.html HTTP/1.1
          *   Host: www.example.com
          *   
          *   {@literal <}--
          *   HTTP/1.1 103 Early Hints
-         *   Link: {@literal <}/style.css>; rel=preload; as=style
-         *   Link: {@literal <}/script.js>; rel=preload; as=script
+         *   Link: {@literal <}/style.css{@literal >}; rel=preload; as=style
+         *   Link: {@literal <}/script.js{@literal >}; rel=preload; as=script
          *   
          *   HTTP/1.1 200 OK
          *   Date: Fri, 26 May 2017 10:02:11 GMT
          *   Content-Length: 1234
          *   Content-Type: text/html; charset=utf-8
-         *   Link: {@literal <}/style.css>; rel=preload; as=style
-         *   Link: {@literal <}/script.js>; rel=preload; as=script
+         *   Link: {@literal <}/style.css{@literal >}; rel=preload; as=style
+         *   Link: {@literal <}/script.js{@literal >}; rel=preload; as=script
          *   
-         *   {@literal <}!doctype html>
+         *   {@literal <}!doctype html{@literal >}
          *   [ ...
          * </pre>
          * 
@@ -1870,7 +1870,7 @@ public final class HttpConstants {
          * A digest of the message content.
          * 
          * <pre>
-         *   -->
+         *   --{@literal >}
          *   GET /items/123 HTTP/1.1
          *   Host: www.example.com
          *   Want-Digest: sha-256, sha-512
@@ -2143,7 +2143,7 @@ public final class HttpConstants {
         /**
          * Provides a means for serialising one or more links in HTTP headers.
          * It is semantically equivalent to the HTML
-         * <a href="https://developer.mozilla.org/en-US/docs/Web/HTML/Element/link">{@literal <}link></a>
+         * <a href="https://developer.mozilla.org/en-US/docs/Web/HTML/Element/link">{@literal <}link{@literal >}</a>
          * element, albeit with a slightly different
          * <a href="https://tools.ietf.org/html/rfc8288#section-3">syntax</a>
          * .<p>
