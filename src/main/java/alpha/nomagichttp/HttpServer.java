@@ -47,6 +47,47 @@ import java.nio.channels.AsynchronousServerSocketChannel;
  * server instances must {@link #stop()}.
  * 
  * 
+ * <h2>HTTP message semantics</h2>
+ * 
+ * Only a very few message variants are specified to <i>not</i> have a body and
+ * will be rejected by the server if they do:
+ * 
+ * <ul>
+ *   <li>{@link HttpConstants.Method#TRACE TRACE} requests (
+ *     <a href="https://tools.ietf.org/html/rfc7231#section-4.3.8">RFC 7231 §4.3.8</a>)</li>
+ *   <li>Responses to {@link HttpConstants.Method#HEAD HEAD} (
+ *     <a href="https://tools.ietf.org/html/rfc7231#section-4.3.2">RFC 7231 §4.3.8</a>)
+ *     and {@link HttpConstants.Method#CONNECT CONNECT} (
+ *     <a href="https://tools.ietf.org/html/rfc7231#section-4.3.6">RFC 7231 §4.3.6</a>)</li>
+ *   <li>Responses with a 1XX (Informational) {@link HttpConstants.StatusCode status code} (
+ *     <a href="https://tools.ietf.org/html/rfc7231#section-6.2">RFC 7231 §6.2</a>)</li>
+ * </ul>
+ * 
+ * These variants are rejected before or after the handler is resolved,
+ * depending on whether the message is a request or a response (TODO: define
+ * exc types). They <i>must</i> be rejected since including a body would kill
+ * the protocol. For example, a new virtual connection/protocol behavior is
+ * supposed to start after the response headers to a successful {@code CONNECT}
+ * request and {@code 101 (Switching Protocol)} response.<p>
+ * 
+ * For all other variants of requests and responses, the body is optional and
+ * the server does not reject the message nor does the API enforce an
+ * opinionated view. The request handler is in full control over how it
+ * interprets the request message and what response it returns.
+ * 
+ * For example, it might not be common but it <i>is</i>
+ * possible (and legit) for {@link HttpConstants.Method#GET GET} requests (
+ * <a href="https://tools.ietf.org/html/rfc7231#section-4.3.1">RFC 7231 §4.3.1</a>
+ * ) to have a body and for {@link HttpConstants.Method#POST POST} responses to
+ * not have a body (
+ * <a href="https://tools.ietf.org/html/rfc7230#section-3.3.2">RFC 7230 §3.3.2</a>
+ * ). Similarly, the {@link HttpConstants.StatusCode#TWO_HUNDRED_ONE 201
+ * (Created)} response often do have a body which "typically describes and links
+ * to the resource(s) created" (
+ * <a href="https://tools.ietf.org/html/rfc7231#section-6.3.2">RFC 7231 §6.3.2</a>
+ * ), but it's not required to. And so the list goes on.
+ * 
+ * 
  * <h2>Thread Safety and Threading Model</h2>
  * 
  * The server instance is fully thread-safe. Life-cycle methods {@code start}

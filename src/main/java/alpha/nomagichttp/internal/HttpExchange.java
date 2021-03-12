@@ -10,7 +10,7 @@ import java.util.concurrent.CompletionException;
 import java.util.concurrent.CompletionStage;
 
 import static alpha.nomagichttp.internal.RequestTarget.parse;
-import static alpha.nomagichttp.util.Headers.accepts;
+import static alpha.nomagichttp.util.Headers.accept;
 import static alpha.nomagichttp.util.Headers.contentType;
 import static java.lang.System.Logger.Level.DEBUG;
 import static java.lang.System.Logger.Level.ERROR;
@@ -94,7 +94,7 @@ final class HttpExchange
         RequestHandler h = m.route().lookup(
                 rh.method(),
                 contentType(rh.headers()).orElse(null),
-                accepts(rh.headers()));
+                accept(rh.headers()));
         
         LOG.log(DEBUG, () -> "Matched handler: " + h);
         return h;

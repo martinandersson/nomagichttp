@@ -1,5 +1,6 @@
 package alpha.nomagichttp.message;
 
+import alpha.nomagichttp.HttpConstants;
 import alpha.nomagichttp.HttpServer;
 import alpha.nomagichttp.handler.ErrorHandler;
 import alpha.nomagichttp.route.Route;
@@ -60,7 +61,10 @@ public interface Request
      * 
      * The returned value is "GET".
      * 
-     * @return the request-line's method token (never {@code null}, empty or blank)
+     * @return the request-line's method token
+     *         (never {@code null}, empty or blank)
+     * 
+     * @see HttpConstants.Method
      */
     String method();
     
@@ -85,6 +89,7 @@ public interface Request
      * ) and so shouldn't have been sent to the HTTP server in the first place.
      * 
      * @return the request-line's resource-target
+     *         (never {@code null}, empty or blank)
      */
     String target();
     
@@ -118,11 +123,15 @@ public interface Request
     Parameters parameters();
     
     /**
-     * Returns the HTTP headers.
+     * Returns the HTTP headers.<p>
+     * 
+     * The order is not significant (
+     * <a href="https://tools.ietf.org/html/rfc7230#section-3.2.2">RFC 7230 §3.2.2</a>
+     * ).
      * 
      * @return the HTTP headers
      * 
-     * @see HttpHeaders
+     * @see HttpConstants.HeaderKey
      */
     HttpHeaders headers();
     

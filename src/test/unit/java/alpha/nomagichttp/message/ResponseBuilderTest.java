@@ -8,11 +8,11 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.junit.jupiter.api.Assertions.assertSame;
 
 /**
- * Small tests of {@link DefaultResponse.Builder}.
+ * Small tests of {@link Response.Builder}.
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  */
-class DefaultResponseBuilderTest
+class ResponseBuilderTest
 {
     @Test
     void happy_path() {
@@ -75,9 +75,7 @@ class DefaultResponseBuilderTest
     @Test
     void header_addHeader_single() {
         Response r = Response.Builder.ok().addHeaders("k", "v").build();
-        assertThat(r.headers()).containsExactly(
-            "k: v",
-            "Content-Length: 0");
+        assertThat(r.headers()).containsExactly("k: v");
     }
     
     @Test
@@ -93,22 +91,18 @@ class DefaultResponseBuilderTest
                 "k: v1",
                 "k: v2",
                 "k: v3",
-                "k: v4",
-                "Content-Length: 0");
+                "k: v4");
     }
     
     @Test
     void header_removeHeader() {
         Response r = Response.Builder.ok().header("k", "v").removeHeader("k").build();
-        assertThat(r.headers()).containsExactly(
-            "Content-Length: 0");
+        assertThat(r.headers()).isEmpty();
     }
     
     @Test
     void header_replace() {
         Response r = Response.Builder.ok().header("k", "v1").header("k", "v2").build();
-        assertThat(r.headers()).containsExactly(
-                "k: v2",
-                "Content-Length: 0");
+        assertThat(r.headers()).containsExactly("k: v2");
     }
 }

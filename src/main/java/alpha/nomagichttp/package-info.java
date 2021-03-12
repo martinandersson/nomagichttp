@@ -44,7 +44,8 @@
  * the build. Commonly, there's also a convenient API meant for static import in
  * order to easily implement common use-cases, for example {@link
  * alpha.nomagichttp.handler.RequestHandlers#GET() RequestHandlers.GET()} and
- * {@link alpha.nomagichttp.message.Responses#ok() Responses.ok()}.
+ * {@link alpha.nomagichttp.message.Responses#noContent()}
+ * Responses.noContent()}.
  * 
  * 
  * <h3>Examples</h3>

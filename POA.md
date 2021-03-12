@@ -26,11 +26,11 @@ master. The master branch must always build just fine.
 An item ~~crossed out~~ is complete, an item in __bold__ is work in progress.
 
 [Stage: Project Enhancements](#stage-project-enhancements)  
-[Stage: HTTP Constants](#stage-http-constants)  
+[~~Stage: HTTP Constants~~](#stage-http-constants)  
 [Stage: HTTP Versioning](#stage-http-versioning)  
 [Stage: Improved Testing](#stage-improved-testing)  
 [Stage: Improved Content Negotiation](#stage-improved-content-negotiation)  
-[Stage: Pseudo-Mutable Response](#stage-pseudo-mutable-response)  
+[Stage: Pseudo-Mutable Types](#stage-pseudo-mutable-types)  
 [Stage: Multiple Responses](#stage-multiple-responses)  
 [Stage: Connection Life-Cycle/Management](#stage-connection-life-cyclemanagement)  
 [Stage: Actions](#stage-actions)  
@@ -80,7 +80,9 @@ artifacts.
 - DESIGN.md is plausible, linked from CONTRIBUTING.md  
   _Result: Postponed_
 
-## Stage: HTTP Constants
+## ~~Stage: HTTP Constants~~
+
+_Status: **Delivered**_
 
 Constants - even when not used by the server itself - is important for
 _discoverability_.
@@ -91,7 +93,6 @@ _discoverability_.
   - How and when (if at all) are the methods used by the NoMagicHTTP server.
   - If not used, is it expected/planned to become incorporated?
   - References to RFC:s - where are the methods defined.
-- Add most popular METHODS() to `RequestHandlers`?
 - Similarly, enums/constants for well-known:
   - Headers
   - Status codes
@@ -110,7 +111,8 @@ clearly state what semantics applies given the version in use.
   this option).
 - `Request.httpVersion()` returns a validated `HttpVersion`, perhaps not the
   first request of a protocol upgrade?
-- Server rejects all requests using HTTP less than 1.0.
+- Server rejects all requests using HTTP less than 1.0 (with 426 (Upgrade
+  Required)).
 - Add server config to reject HTTP/1.0 clients (false by default, docs recommend
   to enable for connection optimization)
 
@@ -138,6 +140,10 @@ Implemented), which is wrong.
   method was not accepted, which is translated to 405 (Method Not Allowed).
   Response should have the "Allow: " header set and populated with the route's
   registered methods.
+  - If the original request was `OPTIONS`, then the default error handler
+    returns a `204 (No Content)` response with the "Allow" header set. May be
+    disabled in configuration, `config.autoAllow()`. Handler also populates
+    the list of values with "OPTIONS" if not already set.
 - 501 should only be used when the server globally rejects a method, for example
   if TRACE is disabled by server configuration.
 - Similarly, `Route.lookup()` should also introduce specialized exceptions;
@@ -146,7 +152,7 @@ Implemented), which is wrong.
   - and another one that signals no handler consumes the message payload,
     translated to 415 (Unsupported Media Type).
 
-## Stage: Pseudo-Mutable Response
+## Stage: Pseudo-Mutable Types
 
 In preparation of multiple responses and response-modifying post actions, we
 need to open up `Response` for state-changes, except we keep the class
@@ -161,6 +167,19 @@ immutable.
 - Move static util methods in `Response.Builder` to `Response`.
 - Anticipate lots of mutations to response so attempt make it more efficient.
   For example, cache `Response.completedStage()`.
+
+Similarly, do the same for `RequestHandler` and delete `RequestHandlers`.
+Client still uses `RequestHandler.Builder`, implicitly, because both method and
+logic is required.
+
+- `RequestHandler.of("METHOD")` returns `RequestHandler.Builder`, populated with
+  method. Builder asks for logic, the "next step". This always return a built
+  handler. The application can then invoke consumes/produces to change defaults.  
+  `RequestHandler.GET().apply(req -> ...).consumes(blabla).produces(blabla)`
+- Add METHDOS() using method constants from `HttpConstants`.
+- Go bananas and revise all builder types, perhaps we can apply the same pattern
+  elsewhere. Ideally we scrap "builder" methods in favor of factory methods
+  returning a builder at worst, or pseudo-mutable type.
 
 ## Stage: Multiple Responses
 
@@ -180,6 +199,7 @@ client updated while processing lengthy requests.
     responses? Sort of like an "addLast" method. Not sure I like this.
   - Add overload which accepts an unboxed/ready `Response`.
 - `Response.body()` throws exception if response is interim.
+- Add factory methods for `100 (Continue)` and `102 (Processing)`.
 
 ### Server
 
@@ -196,9 +216,9 @@ doesn't finish the exchange.
 
 Client may announce a pause before sending the request body.
 
-- Add `HttpServer.Config.immediatelyContinueExpect100()`
+- Add `HttpServer.Config.autoContinueExpect100()`
   - `false` by default. Meaning that by default, application code will have an
-    opportunity to engage with a client sending a "Except: 100-continue"
+    opportunity to engage with a client sending a "Expect: 100-continue"
     request. If the application code doesn't explicitly respond a 100 (Continue)
     message to the client, then the server will automagically send the
     continue-reply as soon as the application access the request body. This
@@ -223,6 +243,8 @@ user may utilize many connections. In particular, docs should clarify when do
 the connection close and under what circumstances. Future multiplexing in HTTP/2
 will most likely abstract a connection into one or many _channels_.
 
+- Default `Content-Length: 0` if no response body is set (RFC 7231 §3.3.2).  
+  Will later be moved to action.
 - Auto-close connection after final response if no `Transfer-Encoding` nor
   `Content-Length` have been set, or if `Transfer-Encoding` is set but `chunked`
   is not the last token.  
@@ -328,11 +350,19 @@ example, a pre action doing authentication can be scoped to "/admin".
     and most likely returns a 500 (Internal Server Error) - no other
     post-actions called!
 
-After the infrastructure is in place:
+### Library-native actions
 
-- Rewrite `Response.thenCloseChannel()` to set header `Connection: close`.
-- Add post action which reacts to the header and calls
+- DefaultServer should already default `Content-Length` to 0 for no response
+  body. Move to post action.
+- Add pre- and post-actions that rejects illegal message variants (see
+  HttpServer JavaDoc).
+- Rewrite `Response.thenCloseChannel()` to set header `Connection: close`.  
+  Add post action which reacts to the header and calls
   `Request.channel().close()`.
+- If not already set, automagically set `Vary: Accept` (?)
+  - If there are multiple request handlers for that resource which produces
+    different media types, and
+  - status code is 200 or 304
 
 ## Stage: Codings, Part 1/3 (Chunked Transfer)
 
@@ -371,7 +401,7 @@ Performed through a server-added post action decorating the body. Each published
 bytebuffer = one chunk.
 
 - Add `Responses.bytes(Flow.Publisher<ByteBuffer> bytes)` and overload
-  `bytes(bytes, contentLenght)`.  
+  `bytes(bytes, contentLength)`.  
   As with Request, JavaDoc explains chunked encoding and how providing the
   length is always prefered.
 - Consider adding other "streaming" methods such as
@@ -405,13 +435,14 @@ an instance regardless of application's intended use.
 
 Armed with this capability, the post action applies chunked encoding only if:
 
-- Trailing headers for the response have been initiated or
-- `Content-Length` is not set or
-- `Transfer-Encoding` compression has been applied (see next section), and
-- HTTP version == 1.1.
+- Request method was not `HEAD` (body not expected) and
+- HTTP version == 1.1, and at least one of the following is true:
+  - Trailing headers for the response have been initiated or
+  - `Content-Length` is not set or
+  - `Transfer-Encoding` compression has been applied (see next section)
 
-The post action will also _remove_ `Content-Lenght` if it was set. The
-specification allows for both `Transfer-Encoding` and `Content-Lenght` to be
+The post action will also _remove_ `Content-Length` if it was set. The
+specification allows for both `Transfer-Encoding` and `Content-Length` to be
 present - the former overriding the latter - but the spec also recommendeds the
 client to treat this as an "error" (RFC 7230 §3.3.3). Hmm.
 
@@ -756,21 +787,22 @@ Most timeouts should probably result in a 408 (Request Timeout).
   Docs should warn for interleaving and propose this option only for
   development.
 - Configurable WARNING if  
-  (last two done in post action?)
   - HTTP/1.0 client connects, default false.
   - Outbound response has a body but no Content-Type, default true.
-  - Body in response to HEAD, default true.
 - Add JavaDoc.
 - Add user guide on how to plug in an ELK stack.
 
 ## Stage: Misc
 
-- `Host` field required in all requests.
+- CORS
+- Configuration to add `Server:` header to responses.
 - Server should set default `application/octet-stream` for missing
   `Content-Type` in request.  
   - Code that check for Content-Type can then be rewritten to assume it has been
   given.
 - Add config to disable TRACE, default false.
+- Perhaps already implemented at this point, but if not, support for the `Date`
+  header.
 - Programmatically schedule/enable caching of the request body, for example:  
   `DecodedPayload self = req.body().cache(int maxSize);`  
   Useful if a pre action wants to inspect the body and still leave it consumable
@@ -788,6 +820,10 @@ Most timeouts should probably result in a 408 (Request Timeout).
   The alternative is to add `HttpServer.Config.autoHead()` with all that
   behavior baked in. Alas this config would be global and application would not
   be able to scope it to a particular resource namespace.
+- Improved security
+  - Cross-Site Scripting (XSS) (see `HeaderKey.CONTENT_SECURITY_POLICY`)
+  - Cross-Site Tracing (XST)
+  - Cross-Site Request Forgery (CSRF)
 
 ## Upcoming
 
@@ -840,12 +876,13 @@ Not a completely sacked idea, but postponed indefinitely:
   Most applications use their own custom scheme for "resumed upload".  
   If there's ever a demand for it, we'll prolly do something like
   [this](https://stackoverflow.com/a/56641911/1268003) and
-  [this](https://tools.ietf.org/id/draft-wright-http-partial-upload-01.html).
+  [this](https://tools.ietf.org/id/draft-wright-http-partial-upload-01.html) or
+  [this](https://web.archive.org/web/20151013212135/http://code.google.com/p/gears/wiki/ResumableHttpRequestsProposal).
+- Producing `103 (Early Hints)`.
 
 Finally - for the record - most items above _can_ be done with the NoMagicHTTP
 library. It's just that the particular feature has no first-class API support
-and the application would have to implement the functionality itself on top of
-the HTTP exchange.
+and the application would have to implement the functionality itself.
 
 ## HTTP Specifications
 

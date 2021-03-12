@@ -1,5 +1,6 @@
 package alpha.nomagichttp.util;
 
+import alpha.nomagichttp.HttpConstants;
 import alpha.nomagichttp.message.BadHeaderException;
 import alpha.nomagichttp.message.BadMediaTypeSyntaxException;
 import alpha.nomagichttp.message.MediaType;
@@ -12,6 +13,9 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.OptionalLong;
 
+import static alpha.nomagichttp.HttpConstants.HeaderKey.ACCEPT;
+import static alpha.nomagichttp.HttpConstants.HeaderKey.CONTENT_LENGTH;
+import static alpha.nomagichttp.HttpConstants.HeaderKey.CONTENT_TYPE;
 import static alpha.nomagichttp.util.Strings.split;
 import static java.lang.Long.parseLong;
 import static java.util.Arrays.stream;
@@ -83,10 +87,10 @@ public final class Headers
      * 
      * @throws BadMediaTypeSyntaxException see {@link MediaType#parse(CharSequence)}}
      * 
-     * @see <a href="https://tools.ietf.org/html/rfc7231#section-5.3.2">RFC 7231 §5.3.2</a>
+     * @see HttpConstants.HeaderKey#ACCEPT
      */
-    public static MediaType[] accepts(HttpHeaders headers) {
-        return headers.allValues("Accept").stream()
+    public static MediaType[] accept(HttpHeaders headers) {
+        return headers.allValues(ACCEPT).stream()
                 .flatMap(v -> stream(split(v, ',', '"')))
                 .map(MediaType::parse)
                 .toArray(MediaType[]::new);
@@ -109,10 +113,10 @@ public final class Headers
      * @throws BadHeaderException
      *           if headers has multiple Content-Type keys
      * 
-     * @see <a href="https://tools.ietf.org/html/rfc7231#section-3.1.1.5">RFC 7231 §3.1.1.5</a>
+     * @see HttpConstants.HeaderKey#CONTENT_TYPE
      */
     public static Optional<MediaType> contentType(HttpHeaders headers) {
-        final List<String> values = headers.allValues("Content-Type");
+        final List<String> values = headers.allValues(CONTENT_TYPE);
         
         if (values.isEmpty()) {
             return Optional.empty();
@@ -121,7 +125,7 @@ public final class Headers
             return Optional.of(MediaType.parse(values.get(0)));
         }
         
-        throw new BadHeaderException("Multiple Content-Type values in request.");
+        throw new BadHeaderException("Multiple " + CONTENT_TYPE + " values in request.");
     }
     
     /**
@@ -144,10 +148,10 @@ public final class Headers
      *             if header value can not be parsed, or
      *             the header has multiple Content-Length keys
      * 
-     * @see <a href="https://tools.ietf.org/html/rfc7230#section-3.3.2">RFC 7230 §3.3.2</a>
+     * @see HttpConstants.HeaderKey#CONTENT_LENGTH
      */
     public static OptionalLong contentLength(HttpHeaders headers) {
-        final List<String> values = headers.allValues("Content-Length");
+        final List<String> values = headers.allValues(CONTENT_LENGTH);
         
         if (values.isEmpty()) {
             return OptionalLong.empty();
@@ -159,11 +163,11 @@ public final class Headers
                 return OptionalLong.of(parseLong(v));
             } catch (NumberFormatException e) {
                 throw new BadHeaderException(
-                        "Can not parse Content-Length (\"" + v + "\") into a long.", e);
+                        "Can not parse " + CONTENT_LENGTH + " (\"" + v + "\") into a long.", e);
             }
         }
         
         throw new BadHeaderException(
-                "Multiple Content-Length values in request.");
+                "Multiple " + CONTENT_LENGTH + " values in request.");
     }
 }

@@ -1,5 +1,6 @@
 package alpha.nomagichttp.handler;
 
+import alpha.nomagichttp.HttpConstants;
 import alpha.nomagichttp.message.MediaType;
 import alpha.nomagichttp.message.Request;
 import alpha.nomagichttp.message.Response;
@@ -31,11 +32,6 @@ import static java.util.Objects.requireNonNull;
  * information is only used as filters for a lookup algorithm when the server
  * has matched a request against a {@link Route} and needs to select which
  * handler of the route to process the request.<p>
- * 
- * The server applies no HTTP semantics to the message exchange once the handler
- * has been selected. The handler logic is in full control over how it
- * interprets the request headers- and body as well as what headers and body are
- * sent back.<p>
  * 
  * A {@code RequestHandler} can be built using {@link #builder(String)} or other
  * static methods found in {@link Builder} and {@link RequestHandlers}.
@@ -237,8 +233,9 @@ public interface RequestHandler
     /**
      * Creates a new {@code RequestHandler} builder.<p>
      * 
-     * The method is any string, case-sensitive. For example, "GET" and
-     * "POST".<p>
+     * The method is any non-empty, case-sensitive string containing no white
+     * space. For example, "GET" and "POST". Constants are available in {@link
+     * HttpConstants.Method}.<p>
      * 
      * Builders with standardized methods is already available using static
      * methods in the builder interface, such as {@link Builder#GET()}, {@link
@@ -248,9 +245,12 @@ public interface RequestHandler
      * 
      * @return a builder with the {@code method} set
      * 
-     * @throws NullPointerException if {@code method} is {@code null}
+     * @throws NullPointerException
+     *             if {@code method} is {@code null}
+     * 
+     * @throws IllegalArgumentException
+     *             if {@code method} is non-empty or contains whitespace
      */
-    // TODO: More strict definition of method; throw IllegalArgumentException if blank
     static Builder builder(String method) {
         return new DefaultRequestHandler.Builder(method);
     }
@@ -263,6 +263,8 @@ public interface RequestHandler
      * @return the method token (never {@code null})
      * 
      * @see RequestHandler
+     * @see HttpConstants.Method
+     * @see #builder(String) 
      */
     String method();
     

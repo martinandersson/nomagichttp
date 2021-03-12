@@ -42,7 +42,9 @@ abstract class AbstractSingleClientTest
         return SERVER;
     }
     
-    protected static HttpResponse<Void> postBytes(String route, byte[] bytes) throws IOException, InterruptedException {
+    protected static HttpResponse<Void> postBytes(String route, byte[] bytes)
+            throws IOException, InterruptedException
+    {
         HttpRequest req = HttpRequest.newBuilder()
                 .uri(URI.create(ROOT + route))
                 .POST(BodyPublishers.ofByteArray(bytes))
@@ -51,7 +53,9 @@ abstract class AbstractSingleClientTest
         return CLIENT.send(req, BodyHandlers.discarding());
     }
     
-    protected static HttpResponse<String> postAndReceiveText(String route, String utf8Body) throws IOException, InterruptedException {
+    protected static HttpResponse<String> postAndReceiveText(String route, String utf8Body)
+            throws IOException, InterruptedException
+    {
         HttpRequest req = HttpRequest.newBuilder()
                 .setHeader("Content-Type", "text/plain; charset=utf-8")
                 .uri(URI.create(ROOT + route))

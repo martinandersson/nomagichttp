@@ -47,7 +47,7 @@ In an empty directory, create a new [Gradle][1-1] build file `build.gradle`:
         mainClass = 'Greeter'
     }
 
-In subfolder `src/main/java`, put this in `Greeter.java`:
+In subfolder `src/main/java`, create a new file `Greeter.java`:
 
     import alpha.nomagichttp.HttpServer;
     import static alpha.nomagichttp.handler.RequestHandlers.GET;
@@ -243,15 +243,14 @@ In a new terminal, run:
 
 ```console
 foo@bar:~$ curl -i localhost:8080
-HTTP/1.1 200 OK
-Content-Length: 0
+HTTP/1.1 204 No Content
 ```
 
 In the server terminal, you should see text similar to this:
 ```console
 Request handler received a request 15:19:58.780 and will crash!
 Error handler will retry #1 after delay (ms): 40
-Request handler received a request 15:19:58.827 and will return 200 OK
+Request handler received a request 15:19:58.827 and will return 204 No Content
 ```
 
 [7-1]: src/main/java/alpha/nomagichttp/examples/RetryRequestOnError.java

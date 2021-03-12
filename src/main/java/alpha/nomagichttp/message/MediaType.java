@@ -1,5 +1,6 @@
 package alpha.nomagichttp.message;
 
+import alpha.nomagichttp.HttpConstants;
 import alpha.nomagichttp.handler.RequestHandler;
 import alpha.nomagichttp.route.Route;
 
@@ -94,6 +95,7 @@ import static java.util.stream.Collectors.joining;
  * is relevant for all but the value of the "charset" parameter of "text/*".
  * 
  * 
+ * @see HttpConstants.HeaderKey#CONTENT_TYPE
  * @author Martin Andersson (webmaster at martinandersson.com)
  */
 public class MediaType

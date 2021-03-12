@@ -1,5 +1,6 @@
 package alpha.nomagichttp.message;
 
+import alpha.nomagichttp.HttpConstants;
 import alpha.nomagichttp.HttpServer;
 import alpha.nomagichttp.handler.ErrorHandler;
 import alpha.nomagichttp.handler.RequestHandler;
@@ -16,6 +17,13 @@ import java.util.concurrent.CompletionStage;
 import java.util.concurrent.Flow;
 import java.util.function.Supplier;
 
+import static alpha.nomagichttp.HttpConstants.ReasonPhrase;
+import static alpha.nomagichttp.HttpConstants.StatusCode;
+import static alpha.nomagichttp.HttpConstants.StatusCode.TWO_HUNDRED;
+import static alpha.nomagichttp.HttpConstants.StatusCode.TWO_HUNDRED_FOUR;
+import static alpha.nomagichttp.HttpConstants.StatusCode.TWO_HUNDRED_TWO;
+import static alpha.nomagichttp.HttpConstants.Version;
+
 /**
  * A {@code Response} contains a {@link #statusLine() statusLine}, {@link
  * #headers() headers} and an optional {@link #body() body}. It can be built
@@ -24,12 +32,8 @@ import java.util.function.Supplier;
  * 
  * The content of the request head (status-line and headers) will be written
  * to the client verbatim/unaltered; i.e. casing will be preserved, yes, even
- * space characters. The content is encoded into bytes using {@link
+ * space characters. The head is encoded into bytes using {@link
  * StandardCharsets#US_ASCII US_ASCII}<p>
- * 
- * Header order (FIFO) is preserved (unless documented otherwise). Duplicated
- * header names will be grouped together and inserted at the occurrence of the
- * first value.<p>
  * 
  * The {@code Response} implementation is immutable and can safely be reused
  * sequentially over time to the same client as well as shared concurrently to
@@ -58,8 +62,9 @@ public interface Response
     /**
      * Returns the status-line.<p>
      * 
-     * The status-line consists of an HTTP-version, a status-code and a
-     * reason-phrase. For example: "HTTP/1.1 200 OK".
+     * The status-line consists of an HTTP-version, a {@linkplain
+     * StatusCode status-code} and a {@linkplain ReasonPhrase reason-phrase}.
+     * For example: "HTTP/1.1 200 OK".
      * 
      * @return the status-line
      */
@@ -123,10 +128,10 @@ public interface Response
      * Builder of a {@link Response}.<p>
      * 
      * The builder type declares static methods that return builders already
-     * populated with common status lines such as {@link #ok()} and {@link
-     * #accepted()}, what remains is to customize headers and the body. Static
-     * methods that build a complete response can be found in
-     * {@link Responses}.<p>
+     * populated with common {@linkplain #statusLine() status line}s such as
+     * {@link #ok()} and {@link #accepted()}, what remains is to customize
+     * headers and the body. Static methods that build a complete response can
+     * be found in {@link Responses}.<p>
      * 
      * The builder can be used as a template to modify per-response state. Each
      * method returns a new builder instance representing the new state. The API
@@ -134,8 +139,10 @@ public interface Response
      * for templating.<p>
      * 
      * HTTP version and status code must be set or {@link #build()} will fail.
-     * The reason phrase if not set will default to "Unknown". Headers and the
-     * body are optional.<p>
+     * The reason phrase if not set will default to {@value
+     * ReasonPhrase#UNKNOWN}. Headers and body are optional. Please note that
+     * some message variants may build just fine but {@linkplain HttpServer blow
+     * up later}.<p>
      * 
      * Header key and values are taken at face value (case-sensitive),
      * concatenated using a colon followed by a space ": ". Adding many values
@@ -143,6 +150,11 @@ public interface Response
      * response. It does <strong>not</strong> join the values on the same row.
      * If this is desired, first join multiple values and then pass it to the
      * builder as one.<p>
+     * 
+     * Header order is not significant (
+     * <a href="https://tools.ietf.org/html/rfc7230#section-3.2.2">RFC 7230 §3.2.2</a>
+     * ), but will be preserved (FIFO) except for duplicated names which will be
+     * grouped together and inserted at the occurrence of the first value.<p>
      * 
      * The implementation is thread-safe.<p>
      * 
@@ -157,7 +169,7 @@ public interface Response
          * Returns a builder already populated with a status-line
          * "HTTP/1.1 200 OK".<p>
          * 
-         * What remains is to set headers and the message body.
+         * What remains is to set headers and message body.
          * 
          * @return a new builder representing the new state
          */
@@ -169,7 +181,7 @@ public interface Response
          * Returns a builder already populated with a status-line
          * "HTTP/1.1 202 Accepted".<p>
          * 
-         * What remains is to set headers and the message body.
+         * What remains is to set headers and message body.
          * 
          * @return a new builder representing the new state
          */
@@ -177,36 +189,45 @@ public interface Response
             return BuilderCache.ACCEPTED;
         }
         
+        /**
+         * Returns a builder already populated with a status-line
+         * "HTTP/1.1 204 No Content".<p>
+         * 
+         * What remains is to set headers.
+         * 
+         * @return a new builder representing the new state
+         */
+        static Builder noContent() {
+            return BuilderCache.NO_CONTENT;
+        }
+        
         // TODO: Basically all other codes in the standard lol
         
         /**
          * Set HTTP version.
          * 
-         * @param httpVersion value (any non-null string)
-         * 
-         * @throws NullPointerException if {@code httpVersion} is {@code null}
-         * 
-         * @return a new builder representing the new state
+         * @param   httpVersion value (any non-null string)
+         * @throws  NullPointerException if {@code httpVersion} is {@code null}
+         * @return  a new builder representing the new state
          */
         Builder httpVersion(String httpVersion);
         
         /**
          * Set status code.
          * 
-         * @param statusCode value (any integer value)
-         * 
-         * @return a new builder representing the new state
+         * @param   statusCode value (any integer value)
+         * @return  a new builder representing the new state
+         * @see     StatusCode
          */
         Builder statusCode(int statusCode);
         
         /**
          * Set reason phrase. If never set, will default to "Unknown".
          * 
-         * @param reasonPhrase value (any non-null string)
-         * 
-         * @throws NullPointerException if {@code reasonPhrase} is {@code null}
-         * 
-         * @return a new builder representing the new state
+         * @param   reasonPhrase value (any non-null string)
+         * @throws  NullPointerException if {@code reasonPhrase} is {@code null}
+         * @return  a new builder representing the new state
+         * @see     ReasonPhrase
          */
         Builder reasonPhrase(String reasonPhrase);
         
@@ -214,12 +235,11 @@ public interface Response
          * Set a header. This overwrites all previously set values for the given
          * name.
          * 
-         * @param name of header
-         * @param value of header
-         * 
-         * @return a new builder representing the new state
-         * 
-         * @throws NullPointerException if any argument is {@code null}
+         * @param   name of header
+         * @param   value of header
+         * @return  a new builder representing the new state
+         * @throws  NullPointerException if any argument is {@code null}
+         * @see     HttpConstants.HeaderKey
          */
         Builder header(String name, String value);
         
@@ -229,11 +249,10 @@ public interface Response
          * Please note that changing the Content-Type ought to be followed by a
          * new response body.
          * 
-         * @param type media type
-         * 
-         * @return a new builder representing the new state
-         * 
-         * @throws NullPointerException if {@code type} is {@code null}
+         * @param   type media type
+         * @return  a new builder representing the new state
+         * @throws  NullPointerException if {@code type} is {@code null}
+         * @see     HttpConstants.HeaderKey#CONTENT_TYPE
          */
         Builder contentType(MediaType type);
         
@@ -243,9 +262,9 @@ public interface Response
          * Please note that changing the Content-Length ought to be followed by
          * a new response body.
          * 
-         * @param value content length
-         * 
-         * @return a new builder representing the new state
+         * @param   value content length
+         * @return  a new builder representing the new state
+         * @see     HttpConstants.HeaderKey#CONTENT_LENGTH
          */
         Builder contentLenght(long value);
         
@@ -269,6 +288,8 @@ public interface Response
          * 
          * @throws NullPointerException
          *             if any argument or array element is {@code null}
+         * 
+         * @see HttpConstants.HeaderKey
          */
         Builder addHeader(String name, String value);
         
@@ -292,6 +313,8 @@ public interface Response
          *             if any argument or array element is {@code null}
          * @throws IllegalArgumentException
          *             if {@code morePairs.length} is odd
+         * 
+         * @see HttpConstants.HeaderKey
          */
         Builder addHeaders(String name, String value, String... morePairs);
         
@@ -299,14 +322,13 @@ public interface Response
          * Add all headers from the given {@code HttpHeaders}.<p>
          * 
          * The implementation may use {@link HttpHeaders#map()} to access the
-         * header values which does not provide any guarantee with regard to the
-         * ordering of its entries.
+         * header values which does not provide any guarantee with regards to
+         * the ordering of its entries.
          * 
-         * @param headers to add
-         * 
-         * @return a new builder representing the new state
-         * 
-         * @throws NullPointerException if {@code headers} is {@code null}
+         * @param   headers to add
+         * @return  a new builder representing the new state
+         * @throws  NullPointerException if {@code headers} is {@code null}
+         * @see     HttpConstants.HeaderKey
          */
         Builder addHeaders(HttpHeaders headers);
         
@@ -337,11 +359,9 @@ public interface Response
          * reasons, consider using an alternative from {@link Publishers} or
          * {@link BetterBodyPublishers}<p>
          * 
-         * @param body publisher
-         * 
-         * @return a new builder representing the new state
-         * 
-         * @throws NullPointerException if {@code body} is {@code null}
+         * @param   body publisher
+         * @return  a new builder representing the new state
+         * @throws  NullPointerException if {@code body} is {@code null}
          */
         Builder body(Flow.Publisher<ByteBuffer> body);
         
@@ -349,11 +369,9 @@ public interface Response
          * Set the {@code must-close-after-write} setting. If never set, will
          * default to false.
          * 
-         * @param enabled true or false
-         * 
-         * @return a new builder representing the new state
-         * 
-         * @see Response#mustCloseAfterWrite()
+         * @param   enabled true or false
+         * @return  a new builder representing the new state
+         * @see     Response#mustCloseAfterWrite()
          */
         Builder mustCloseAfterWrite(boolean enabled);
         
@@ -373,13 +391,15 @@ public interface Response
 
 final class BuilderCache
 {
-    private static final Response.Builder HTTP_1_1 = Response.builder().httpVersion("HTTP/1.1");
+    private static final Response.Builder HTTP_1_1
+            = Response.builder().httpVersion(Version.HTTP_1_1);
     
     private BuilderCache() {
         // Empty
     }
     
     static final Response.Builder
-            OK       = HTTP_1_1.statusCode(200).reasonPhrase("OK"),
-            ACCEPTED = HTTP_1_1.statusCode(202).reasonPhrase("Accepted");
+            OK         = HTTP_1_1.statusCode(TWO_HUNDRED).reasonPhrase(ReasonPhrase.OK),
+            ACCEPTED   = HTTP_1_1.statusCode(TWO_HUNDRED_TWO).reasonPhrase(ReasonPhrase.ACCEPTED),
+            NO_CONTENT = HTTP_1_1.statusCode(TWO_HUNDRED_FOUR).reasonPhrase(ReasonPhrase.NO_CONTENT);
 }

@@ -10,7 +10,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 
 import static alpha.nomagichttp.handler.RequestHandlers.POST;
-import static alpha.nomagichttp.message.Response.Builder.ok;
+import static alpha.nomagichttp.message.Response.Builder.noContent;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
@@ -28,7 +28,7 @@ class BigFileRequest extends AbstractSingleClientTest
                 .resolve("50MB.bin");
         
         RequestHandler saver = POST().apply(req -> req.body().toFile(FILE)
-                .thenApply(n -> ok().header("Received", Long.toString(n)).build()));
+                .thenApply(n -> noContent().header("Received", Long.toString(n)).build()));
         
         server().add("/file", saver);
     }
@@ -40,7 +40,7 @@ class BigFileRequest extends AbstractSingleClientTest
         byte[] expected = DataUtil.bytes(len);
         
         HttpResponse<Void> res = postBytes("/file", expected);
-        assertThat(res.statusCode()).isEqualTo(200);
+        assertThat(res.statusCode()).isEqualTo(204);
         assertThat(res.headers().firstValue("Received")).contains(Long.toString(len));
         assertThat(Files.readAllBytes(FILE)).isEqualTo(expected);
     }
