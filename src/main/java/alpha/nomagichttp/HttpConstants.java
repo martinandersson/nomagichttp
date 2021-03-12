@@ -2625,11 +2625,51 @@ public final class HttpConstants {
     }
     
     /**
+     * Constants for HTTP version.
      * 
+     * @see <a href="https://tools.ietf.org/html/rfc7230#section-2.6">RFC 7230 §2.6</a>
      */
     public static final class Version {
         private Version() {
             // Private
         }
+        
+        /**
+         * {@value}<p>
+         * 
+         * HTTP/0.9 was never standardized and is not supported by the
+         * NoMagicHTTP server. Future work will reject clients using this
+         * protocol version.
+         */
+        public static final String HTTP_0_9 = "HTTP/0.9";
+        
+        /**
+         * {@value}<p>
+         * 
+         * <a href="https://tools.ietf.org/html/rfc1945">RFC 1945</a>
+         */
+        public static final String HTTP_1_0 = "HTTP/1.0";
+        
+        /**
+         * {@value}<p>
+         * 
+         * <a href="https://tools.ietf.org/html/rfc7230">RFC 7230</a>
+         * <a href="https://tools.ietf.org/html/rfc7231">RFC 7231</a>
+         */
+        public static final String HTTP_1_1 = "HTTP/1.1";
+        
+        /**
+         * {@value}<p>
+         * 
+         * <a href="https://tools.ietf.org/html/rfc7540">RFC 7540</a>
+         */
+        public static final String HTTP_2 = "HTTP/2";
+        
+        /**
+         * {@value}<p>
+         * 
+         * <a href="https://quicwg.org/base-drafts/draft-ietf-quic-http.html">QUIC Draft</a>
+         */
+        public static final String HTTP_3 = "HTTP/3";
     }
 }
