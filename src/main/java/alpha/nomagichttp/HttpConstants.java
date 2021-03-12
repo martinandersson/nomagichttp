@@ -1489,7 +1489,7 @@ public final class HttpConstants {
          *
          * Used in a response to a CORS request.
          *
-         * Example: {@code Access-Control-Allow-Origin: *}<p>
+         * Example: {@code Access-Control-Allow-Origin: *}
          *
          * @see #ORIGIN
          */
@@ -1867,7 +1867,7 @@ public final class HttpConstants {
         public static final String DELTA_BASE = "Delta-Base";
         
         /**
-         * A digest of the message content.<p>
+         * A digest of the message content.
          * 
          * <pre>
          *   -->
