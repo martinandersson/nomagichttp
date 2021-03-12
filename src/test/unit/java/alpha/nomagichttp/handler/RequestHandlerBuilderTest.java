@@ -21,7 +21,7 @@ class RequestHandlerBuilderTest
     void of_method_empty() {
         assertThatThrownBy(() -> RequestHandler.builder("Empty method."))
                 .isExactlyInstanceOf(IllegalArgumentException.class)
-                .hasMessage("");
+                .hasMessage("Whitespace in method \"Empty method.\".");
     }
     
     @Test
