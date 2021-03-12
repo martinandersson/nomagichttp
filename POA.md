@@ -27,7 +27,7 @@ An item ~~crossed out~~ is complete, an item in __bold__ is work in progress.
 
 [Stage: Project Enhancements](#stage-project-enhancements)  
 [~~Stage: HTTP Constants~~](#stage-http-constants)  
-[Stage: HTTP Versioning](#stage-http-versioning)  
+[__Stage: HTTP Versioning__](#stage-http-versioning)  
 [Stage: Improved Testing](#stage-improved-testing)  
 [Stage: Improved Content Negotiation](#stage-improved-content-negotiation)  
 [Stage: Pseudo-Mutable Types](#stage-pseudo-mutable-types)  
@@ -99,6 +99,8 @@ _discoverability_.
   - HTTP versions (named `HttpVersion`)
 
 ## Stage: HTTP Versioning
+
+_Status: **In progress**_
 
 The server must be in full control of which HTTP version is in use and
 `Request.httpVersion()` will reliably expose the version. HTTP version does
