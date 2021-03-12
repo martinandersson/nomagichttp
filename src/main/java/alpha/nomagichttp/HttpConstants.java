@@ -1,6 +1,8 @@
 package alpha.nomagichttp;
 
+import alpha.nomagichttp.handler.RequestHandler;
 import alpha.nomagichttp.message.MediaType;
+import alpha.nomagichttp.message.Request;
 import alpha.nomagichttp.message.Response;
 import alpha.nomagichttp.message.Responses;
 
@@ -255,6 +257,7 @@ public final class HttpConstants {
          * Safe? No. Idempotent? No. Response cacheable? No.
          * 
          * @see Method
+         * @see HeaderKey#ACCEPT_PATCH
          * @see <a href="https://tools.ietf.org/html/rfc5789">RFC 5789</a>
          */
         public static final String PATCH = "PATCH";
@@ -361,6 +364,7 @@ public final class HttpConstants {
          * Safe? Yes. Idempotent? Yes. Response cacheable? No.
          * 
          * @see Method
+         * @see HeaderKey#MAX_FORWARDS
          * @see <a href="https://tools.ietf.org/html/rfc7231#section-4.3.8">RFC 7231 §4.3.8</a>
          */
         public static final String TRACE = "TRACE";
@@ -383,8 +387,7 @@ public final class HttpConstants {
      *     syntax error or the request was rejected for whatever else
      *     reason.</li>
      *   <li>5XX (Server Error): The server fuct up. Likely due to inadequate
-     *     software quality, which is likely due to poor managerial
-     *     decisions.</li>
+     *     software quality.</li>
      * </ul>
      * 
      * Clients are only required to understand the class of a status-code,
@@ -708,6 +711,7 @@ public final class HttpConstants {
          * 
          * TODO: write something
          * 
+         * @see HeaderKey#IF_MODIFIED_SINCE
          * @see <a href="https://tools.ietf.org/html/rfc7232#section-4.1">RFC 7232 §4.1</a>
          */
         public static final int THREE_HUNDRED_FOUR = 304;
@@ -753,6 +757,7 @@ public final class HttpConstants {
          * 
          * TODO: write something
          * 
+         * @see HeaderKey#WWW_AUTHENTICATE
          * @see <a href="https://tools.ietf.org/html/rfc7235#section-3.1">RFC 7235 §3.1</a>
          */
         public static final int FOUR_HUNDRED_ONE = 401;
@@ -789,6 +794,7 @@ public final class HttpConstants {
          * 
          * TODO: write something
          * 
+         * @see HeaderKey#ALLOW
          * @see <a href="https://tools.ietf.org/html/rfc7231#section-6.5.5">RFC 7231 §6.5.5</a>
          */
         public static final int FOUR_HUNDRED_FIVE = 405;
@@ -1316,24 +1322,1310 @@ public final class HttpConstants {
     }
     
     /**
-     *
+     * Constants for header keys (also known as header field names).<p>
+     * 
+     * May be useful when reading headers {@linkplain Request#headers() from a
+     * request} or {@linkplain Response.Builder building a response}.<p>
+     * 
+     * The constants provided in this class are mostly derived from
+     * <a href="https://en.wikipedia.org/wiki/List_of_HTTP_header_fields">Wikipedia</a>.
+     * 
+     * @see <a href="https://tools.ietf.org/html/rfc7230#section-3.2">RFC 7230 §3.2</a>
      */
     public static final class HeaderKey {
         private HeaderKey() {
             // Private
         }
         
-        public static final String LOCATION = "Location";
-    
+        /**
+         * "Acceptable instance-manipulations for the request." (
+         * <a href="https://en.wikipedia.org/wiki/List_of_HTTP_header_fields">Wikipedia</a>
+         * )<p>
+         * 
+         * Example: {@code A-IM: feed}<p>
+         * 
+         * This header key is never used by the NoMagicHTTP server.
+         * 
+         * @see <a href="https://tools.ietf.org/html/rfc3229#section-10.5.3">RFC 3229 §10.5.3</a>
+         */
+        public static final String A_IM = "A-IM";
+        
+        /**
+         * Used by client when driving content/representation negotiation.<p>
+         * 
+         * Specifies what media type(s) the client accepts in response, and
+         * possibly, an ordered preference.
+         * 
+         * Example: {@code Accept: text/html}
+         * 
+         * @see RequestHandler
+         * @see #VARY
+         * @see <a href="https://tools.ietf.org/html/rfc7231#section-5.3.2">RFC 7231 §5.3.2</a>
+         */
+        public static final String ACCEPT = "Accept";
+        
+        /**
+         * "Specifies which patch document formats this server supports" (
+         * <a href="https://en.wikipedia.org/wiki/List_of_HTTP_header_fields">Wikipedia</a>
+         * )<p>
+         * 
+         * Applies to the response, not request.<p>
+         * 
+         * Example: {@code Accept-Patch: text/example;charset=utf-8}<p>
+         * 
+         * This header key is never used by the NoMagicHTTP server.
+         * 
+         * @see Method#PATCH
+         * @see <a href="https://tools.ietf.org/html/rfc5789#section-3.1">RFC 5789 §3.1</a>
+         */
+        public static final String ACCEPT_PATCH = "Accept-Patch";
+        
+        /**
+         * "What partial content range types this server supports via byte
+         * serving" (
+         * <a href="https://en.wikipedia.org/wiki/List_of_HTTP_header_fields">Wikipedia</a>
+         * )<p>
+         * 
+         * Applies to the response, not request.<p>
+         * 
+         * Example: {@code Accept-Ranges: bytes}<p>
+         * 
+         * @see #RANGE
+         * @see <a href="https://tools.ietf.org/html/rfc7233#section-2.3">RFC 7233 §2.3</a>
+         */
+        public static final String ACCEPT_RANGES = "Accept-Ranges";
+        
+        /**
+         * Used by client when driving content/representation negotiation.<p>
+         * 
+         * Specifies the acceptable media type charset, which is also possible
+         * to do with the {@link #ACCEPT} header - so, the applicability of this
+         * header is slightly confusing and not many servers bother about the
+         * {@code Accept-Charset} header, including NoMagicHTTP.
+         * 
+         * Example: {@code Accept-Charset: utf-8}
+         * 
+         * @see RequestHandler
+         * @see <a href="https://tools.ietf.org/html/rfc7231#section-5.3.3">RFC 7231 §5.3.3</a>
+         * @see <a href="https://stackoverflow.com/questions/7055849/accept-and-accept-charset-which-is-superior">StackOverflow</a>
+         */
+        public static final String ACCEPT_CHARSET = "Accept-Charset";
+        
+        /**
+         * "Acceptable version in time." (
+         * <a href="https://en.wikipedia.org/wiki/List_of_HTTP_header_fields">Wikipedia</a>
+         * )<p>
+         * 
+         * Example: {@code Accept-Datetime: Thu, 31 May 2007 20:35:00 GMT}<p>
+         * 
+         * This header key is never used by the NoMagicHTTP server.
+         * 
+         * @see <a href="https://tools.ietf.org/html/rfc7089#section-2.1.1">RFC 7089 §2.1.1</a>
+         */
+        public static final String ACCEPT_DATETIME = "Accept-Datetime";
+        
+        /**
+         * "List of acceptable encodings." (
+         * <a href="https://en.wikipedia.org/wiki/List_of_HTTP_header_fields">Wikipedia</a>
+         * )<p>
+         * 
+         * Applies to the request, not response.<p>
+         * 
+         * Example: {@code Accept-Encoding: gzip, deflate}<p>
+         * 
+         * Currently, the NoMagicHTTP server has no first-class support for
+         * compression. Work is planned to add support.
+         * 
+         * @see #CONTENT_ENCODING
+         * @see <a href="https://tools.ietf.org/html/rfc7231#section-5.3.4">RFC 7231 §5.3.4</a>
+         */
+        public static final String ACCEPT_ENCODING = "Accept-Encoding";
+        
+        /**
+         * "List of acceptable human languages for response." (
+         * <a href="https://en.wikipedia.org/wiki/List_of_HTTP_header_fields">Wikipedia</a>
+         * )<p>
+         * 
+         * Used by client when driving content/representation negotiation.<p>
+         * 
+         * Example: {@code Accept-Language: en-US}<p>
+         * 
+         * Although content negotiation is largely supported by the NoMagicHTTP
+         * server, the language is not. The request handler may react to the
+         * presence of this header if it so chooses. Please note that the
+         * specified language should never rule out a response completely, as an
+         * alternative language is better than no response at all, often solved
+         * on the client's end by means of translation software.
+         * 
+         * @see RequestHandler
+         * @see <a href="https://tools.ietf.org/html/rfc7231#section-5.3.5">RFC 7231 §5.3.5</a>
+         */
+        public static final String ACCEPT_LANGUAGE = "Accept-Language";
+        
+        /**
+         * Used by client in a CORS-preflight request.<p>
+         *
+         * Example: {@code Access-Control-Request-Method: GET}<p>
+         *
+         * @see #ORIGIN
+         * @see <a href="https://fetch.spec.whatwg.org/#http-requests">WHATWG</a>
+         */
+        public static final String ACCESS_CONTROL_REQUEST_METHOD = "Access-Control-Request-Method";
+        
+        /**
+         * Used by client in a CORS-preflight request.<p>
+         *
+         * @see #ORIGIN
+         * @see <a href="https://fetch.spec.whatwg.org/#http-requests">WHATWG</a>
+         */
+        public static final String ACCESS_CONTROL_REQUEST_HEADERS = "Access-Control-Request-Headers";
+        
+        /**
+         * "Indicates whether the response can be shared, via returning the
+         * literal value of the {@code Origin} request header (which can be
+         * {@code null}) or [@code *} in a response." (
+         * <a href="https://fetch.spec.whatwg.org/#http-responses">WHATWG</a>
+         * )<p>
+         *
+         * Used in a response to a CORS request.
+         *
+         * Example: {@code Access-Control-Allow-Origin: *}<p>
+         *
+         * @see #ORIGIN
+         */
+        public static final String ACCESS_CONTROL_ALLOW_ORIGIN = "Access-Control-Allow-Origin";
+        
+        /**
+         * "Indicates whether the response can be shared when request's
+         * credentials mode is 'include'." (
+         * <a href="https://fetch.spec.whatwg.org/#http-responses">WHATWG</a>
+         * )<p>
+         * 
+         * Used in a response to a CORS request.
+         * 
+         * @see #ORIGIN
+         */
+        public static final String ACCESS_CONTROL_ALLOW_CREDENTIALS = "Access-Control-Allow-Credentials";
+        
+        /**
+         * "Indicates which methods are supported by the response's URL for the
+         * purposes of the CORS protocol" (
+         * <a href="https://fetch.spec.whatwg.org/#http-responses">WHATWG</a>
+         * )<p>
+         * 
+         * Used in a response to a CORS-preflight request.
+         * 
+         * @see #ORIGIN
+         */
+        public static final String ACCESS_CONTROL_ALLOW_METHODS = "Access-Control-Allow-Methods";
+        
+        /**
+         * "Indicates which headers are supported by the response's URL for the
+         * purposes of the CORS protocol" (
+         * <a href="https://fetch.spec.whatwg.org/#http-responses">WHATWG</a>
+         * )<p>
+         * 
+         * Used in a response to a CORS-preflight request.
+         * 
+         * @see #ORIGIN
+         */
+        public static final String ACCESS_CONTROL_ALLOW_HEADERS = "Access-Control-Allow-Headers";
+        
+        /**
+         * "Indicates the number of seconds (5 by default) the information
+         * provided by the {@code Access-Control-Allow-Methods} and {@code
+         * Access-Control-Allow-Headers} headers can be cached." (
+         * <a href="https://fetch.spec.whatwg.org/#http-responses">WHATWG</a>
+         * )<p>
+         * 
+         * Used in a response to a CORS-preflight request.
+         * 
+         * @see #ORIGIN
+         */
+        public static final String ACCESS_CONTROL_MAX_AGE = "Access-Control-Max-Age";
+        
+        /**
+         * "Indicates which headers can be exposed as part of the response by
+         * listing their names." (
+         * <a href="https://fetch.spec.whatwg.org/#http-responses">WHATWG</a>
+         * )<p>
+         * 
+         * Used in a response to a CORS request that is not a CORS-preflight
+         * request.
+         * 
+         * @see #ORIGIN
+         */
+        public static final String ACCESS_CONTROL_EXPOSE_HEADERS = "Access-Control-Expose-Headers";
+        
+        /**
+         * "The age the object has been in a proxy cache in seconds" (
+         * <a href="https://en.wikipedia.org/wiki/List_of_HTTP_header_fields">Wikipedia</a>
+         * )<p>
+         * 
+         * Applies to the response, not request.<p>
+         * 
+         * Example: {@code Age: 12}<p>
+         * 
+         * This header key is never used by the NoMagicHTTP server.
+         * 
+         * @see <a href="https://tools.ietf.org/html/rfc7234#section-5.1">RFC 7234 §5.1</a>
+         */
+        public static final String AGE = "Age";
+        
+        /**
+         * "Valid methods for a specified resource." (
+         * <a href="https://en.wikipedia.org/wiki/List_of_HTTP_header_fields">Wikipedia</a>
+         * )<p>
+         * 
+         * Applies to the response, not request.<p>
+         * 
+         * Example: {@code Allow: GET, HEAD}<p>
+         * 
+         * Currently, this header key is not used by the NoMagicHTTP server.
+         * Planned future work will make use of this header in a response to
+         * {@value StatusCode#FOUR_HUNDRED_FIVE} (Method Not Allowed).
+         * 
+         * @see <a href="https://tools.ietf.org/html/rfc7231#section-7.4.1">RFC 7231 §7.4.1</a>
+         */
+        public static final String ALLOW = "Allow";
+        
+        /**
+         * "A server uses "Alt-Svc" header (meaning Alternative Services) to
+         * indicate that its resources can also be accessed at a different
+         * network location (host or port) or using a different protocol" (
+         * <a href="https://en.wikipedia.org/wiki/List_of_HTTP_header_fields">Wikipedia</a>
+         * )<p>
+         * 
+         * Applies to the response, not request.<p>
+         * 
+         * Example: {@code Alt-Svc: http/1.1="http2.example.com:8001"; ma=7200}<p>
+         * 
+         * This header key is never used by the NoMagicHTTP server.
+         * 
+         * @see <a href="https://tools.ietf.org/html/rfc7838#section-3">RFC 7838 §3</a>
+         */
+        public static final String ALT_SVC = "Alt-Svc";
+        
+        /**
+         * "Authentication credentials for HTTP authentication." (
+         * <a href="https://en.wikipedia.org/wiki/List_of_HTTP_header_fields">Wikipedia</a>
+         * )<p>
+         * 
+         * Applies to the request, not response.<p>
+         * 
+         * Example: {@code Authorization: Basic QWxhZGRpbjpvcGVuIHNlc2FtZQ==}<p>
+         * 
+         * Currently, the NoMagicHTTP server has no first-class support for
+         * HTTP authentication. Work is planned to add limited support.
+         * 
+         * @see <a href="https://tools.ietf.org/html/rfc7235#section-4.2">RFC 7235 §4.2</a>
+         */
+        public static final String AUTHORIZATION = "Authorization";
+        
+        /**
+         * "Used to specify directives that must be obeyed by all caching
+         * mechanisms along the request-response chain." (
+         * <a href="https://en.wikipedia.org/wiki/List_of_HTTP_header_fields">Wikipedia</a>
+         * )<p>
+         * 
+         * May be used in both request and response.<p>
+         * 
+         * Example: {@code Cache-Control: no-cache}<p>
+         * 
+         * Currently, the NoMagicHTTP server has no first-class support for
+         * constructing {@code Cache-Control} directives. This will likely be
+         * added in the near future.
+         * 
+         * @see <a href="https://tools.ietf.org/html/rfc7234#section-5.2">RFC 7234 §5.2</a>
+         */
+        public static final String CACHE_CONTROL = "Cache-Control";
+        
+        /**
+         * "Control options for the current connection and list of hop-by-hop
+         * request fields." (
+         * <a href="https://en.wikipedia.org/wiki/List_of_HTTP_header_fields">Wikipedia</a>
+         * )<p>
+         * 
+         * May be used in both request and response. For example, by client to
+         * upgrade the connection and by server to signal an upcoming closure of
+         * the connection.<p>
+         * 
+         * Example: {@code Connection: keep-alive}<p>
+         * 
+         * The header is used internally by the NoMagicHTTP server and the
+         * application should have no need to use it explicitly.
+         * 
+         * @see StatusCode#ONE_HUNDRED_ONE 101}
+         * @see <a href="https://tools.ietf.org/html/rfc7230#section-6.1">RFC 7230 §6.1</a>
+         */
+        public static final String CONNECTION = "Connection";
+        
+        /**
+         * "An opportunity to raise a 'File Download' dialogue box for a known
+         * MIME type with binary format or suggest a filename for dynamic
+         * content." (
+         * <a href="https://en.wikipedia.org/wiki/List_of_HTTP_header_fields">Wikipedia</a>
+         * )<p>
+         * 
+         * May be used in responses and {@code multipart/form-data} requests.<p>
+         * 
+         * Example: {@code Content-Disposition: attachment; filename="fname.ext"}<p>
+         * 
+         * This header key is not currently used by the NoMagicHTTP server.
+         * Planned support for improving file serving, API extensions and body
+         * decoding will make use of this header.
+         * 
+         * @see <a href="https://tools.ietf.org/html/rfc6266#section-4">RFC 6266 §4</a>
+         * @see <a href="https://tools.ietf.org/html/rfc2388#section-3">RFC 2388 §3</a>
+         */
+        public static final String CONTENT_DISPOSITION = "Content-Disposition";
+        
+        /**
+         * The type of encoding that has been applied to the
+         * content/representation (body). The recipient must decode the content
+         * in order to get at the specified {@link #CONTENT_TYPE}.
+         * 
+         * May be used in both request and response.<p>
+         * 
+         * Example: {@code Content-Encoding: gzip}<p>
+         * 
+         * Currently, the NoMagicHTTP server has no first-class support for
+         * compression. Work is planned to add support.
+         * 
+         * @see #ACCEPT_ENCODING
+         * @see #TRANSFER_ENCODING
+         * @see <a href="https://tools.ietf.org/html/rfc7231#section-3.1.2.2">RFC 7231 §3.1.2.2</a>
+         */
+        public static final String CONTENT_ENCODING = "Content-Encoding";
+        
+        /**
+         * "The natural language or languages of the intended audience for the
+         * enclosed content" (
+         * <a href="https://en.wikipedia.org/wiki/List_of_HTTP_header_fields">Wikipedia</a>
+         * )<p>
+         * 
+         * Mostly used in responses, but may be used in a request as well.<p>
+         * 
+         * Example: {@code Content-Language: da}<p>
+         * 
+         * This header key is never used by the NoMagicHTTP server.
+         * 
+         * @see <a href="https://tools.ietf.org/html/rfc7231#section-3.1.3.2">RFC 7231 §3.1.3.2</a>
+         */
+        public static final String CONTENT_LANGUAGE = "Content-Language";
+        
+        /**
+         * "The length of the request body in octets (8-bit bytes)." (
+         * <a href="https://en.wikipedia.org/wiki/List_of_HTTP_header_fields">Wikipedia</a>
+         * )<p>
+         * 
+         * May be used in both request and response.<p>
+         * 
+         * Example: {@code Content-Length: 348}<p>
+         * 
+         * The header is used internally by the NoMagicHTTP server and the
+         * application should rarely have a need to use it explicitly.
+         * 
+         * @see <a href="https://tools.ietf.org/html/rfc7230#section-3.3.2">RFC 7230 §3.3.2</a>
+         */
+        public static final String CONTENT_LENGTH = "Content-Length";
+        
+        /**
+         * An alternate location for the representation in the message
+         * payload.<p>
+         * 
+         * Mostly used in responses to indicate the URL of a resource
+         * transmitted as the result of content negotiation, but may be used in
+         * a request as well.<p>
+         * 
+         * Example: {@code Content-Location: /index.html}<p>
+         * 
+         * "Location and Content-Location are different. Location indicates the
+         * URL of a redirect, while Content-Location indicates the direct URL to
+         * use to access the resource, without further content negotiation in
+         * the future. Location is a header associated with the response, while
+         * Content-Location is associated with the data returned." (
+         * <a href="https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Content-Location">MDN Web Docs</a>
+         * )<p>
+         * 
+         * This header key is never used by the NoMagicHTTP server.
+         * 
+         * @see #LOCATION
+         * @see <a href="https://tools.ietf.org/html/rfc7231#section-3.1.4.2">RFC 7231 §3.1.4.2</a>
+         */
+        public static final String CONTENT_LOCATION = "Content-Location";
+        
+        /**
+         * "A Base64-encoded binary MD5 sum of the content" (
+         * <a href="https://en.wikipedia.org/wiki/List_of_HTTP_header_fields">Wikipedia</a>
+         * )<p>
+         * 
+         * Example: {@code Content-MD5: Q2hlY2sgSW50ZWdyaXR5IQ==}<p>
+         * 
+         * This header is never used by the NoMagicHTTP server, nor should you,
+         * as it has been removed (
+         * <a href="https://tools.ietf.org/html/rfc7231#appendix-B">RFC 7231 Appendix B</a>
+         * ). Use {@linkplain #DIGEST Digest} instead.
+         * 
+         * @see <a href="https://tools.ietf.org/html/rfc2616#section-14.15">RFC 2616 §14.15</a>
+         */
+        public static final String CONTENT_MD5 = "Content-MD5";
+        
+        /**
+         * "Where in a full body message this partial message belongs" (
+         * <a href="https://en.wikipedia.org/wiki/List_of_HTTP_header_fields">Wikipedia</a>
+         * )<p>
+         * 
+         * Intended to be used in responses, not requests.<p>
+         * 
+         * Example: {@code Content-Range: bytes 21010-47021/47022}<p>
+         * 
+         * @see #RANGE
+         * @see <a href="https://tools.ietf.org/html/rfc7233#section-4.2">RFC 7233 §4.2</a>
+         */
+        public static final String CONTENT_RANGE = "Content-Range";
+        
+        /**
+         * "The HTTP Content-Security-Policy response header allows web site
+         * administrators to control resources the user agent is allowed to load
+         * for a given page. With a few exceptions, policies mostly involve
+         * specifying server origins and script endpoints. This helps guard
+         * against cross-site scripting attacks (XSS)." (
+         * <a href="https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Content-Security-Policy">MDN Web Docs</a>
+         * )<p>
+         * 
+         * Applies to the response, not request.<p>
+         * 
+         * Currently, the NoMagicHTTP server does not use this header key.
+         * Future work might add this support.
+         */
+        public static final String CONTENT_SECURITY_POLICY = "Content-Security-Policy";
+        
+        /**
+         * Specifies the media type of the representation in the message
+         * body.<p>
+         * 
+         * May be used in both request and response.<p>
+         * 
+         * Example: {@code Content-Type: text/html; charset=utf-8}<p>
+         * 
+         * If a body is present, but no media type has been specified, then the
+         * default is binary; "application/octet-stream".<p>
+         * 
+         * Codings may be applied on top of the representation, as indicated by
+         * {@link #CONTENT_ENCODING} (end-to-end) and {@link #TRANSFER_ENCODING}
+         * (hop-by-hop).<p>
+         * 
+         * The header is used extensively by the NoMagicHTTP API when decoding
+         * and encoding HTTP messages.
+         * 
+         * @see MediaType
+         * @see <a href="https://tools.ietf.org/html/rfc7231#section-3.1.1.5">RFC 7231 §3.1.1.5</a>
+         */
         public static final String CONTENT_TYPE = "Content-Type";
         
+        /**
+         * An HTTP cookie previously sent by the server with {@link
+         * #SET_COOKIE}.<p>
+         * 
+         * Applies to the request, not response.<p>
+         * 
+         * Example: {@code Cookie: $Version=1; Skin=new;}<p>
+         * 
+         * Currently, the NoMagicHTTP server has no first-class API support for
+         * cookies. Work is planned to add support.
+         * 
+         * @see <a href="https://tools.ietf.org/html/rfc6265#section-5.4">RFC 6265 §5.4</a>
+         */
+        public static final String COOKIE = "Cookie";
+        
+        /**
+         * The date and time at which the message was originated.<p>
+         * 
+         * May be used in both request and response.<p>
+         * 
+         * Example: {@code Date: Tue, 15 Nov 1994 08:12:31 GMT}<p>
+         * 
+         * Currently, the NoMagicHTTP server has no first-class API support for
+         * the {@code Date} header. Support will likely be added.
+         * 
+         * @see <a href="https://tools.ietf.org/html/rfc7231#section-7.1.1.2">RFC 7231 §7.1.1.2</a>
+         */
+        public static final String DATE = "Date";
+        
+        /**
+         * "Specifies the delta-encoding entity tag of the response." (
+         * <a href="https://en.wikipedia.org/wiki/List_of_HTTP_header_fields">Wikipedia</a>
+         * )<p>
+         * 
+         * Example: {@code Delta-Base: "abc"}<p>
+         * 
+         * This header key is never used by the NoMagicHTTP server.
+         * 
+         * @see <a href="https://tools.ietf.org/html/rfc3229#section-10.5.1">RFC 3229 §10.5.1</a>
+         */
+        public static final String DELTA_BASE = "Delta-Base";
+        
+        /**
+         * A digest of the message content.<p>
+         * 
+         * <pre>
+         *   -->
+         *   GET /items/123 HTTP/1.1
+         *   Host: www.example.com
+         *   Want-Digest: sha-256, sha-512
+         *   
+         *   {@literal <}--
+         *   HTTP/1.1 200 OK
+         *   Content-Type: application/json
+         *   Digest: sha-256=X48E9qOokqqrvdts8nOJRJN3OWDUoyWxBf7kbu9DBPE=
+         *   
+         *   {"hello": "world"}
+         * </pre>
+         * 
+         * The NoMagicHTTP server does not currently use these headers. Support
+         * may be added in the future.<p>
+         * 
+         * @see #WANT_DIGEST
+         * @see #CONTENT_MD5
+         * @see <a href="https://stackoverflow.com/a/63466700/1268003">StackOverflow</a>
+         * @see <a href="https://datatracker.ietf.org/doc/html/draft-ietf-httpbis-digest-headers-04#section-3">IEFT Digest Draft §3</a>
+         */
+        public static final String DIGEST = "Digest";
+        
+        /**
+         * "Requests a web application to disable their tracking of a user." (
+         * <a href="https://en.wikipedia.org/wiki/List_of_HTTP_header_fields">Wikipedia</a>
+         * )<p>
+         * 
+         * Applies to the request, not response.<p>
+         * 
+         * Example: {@code DNT: 1}<p>
+         * 
+         * This header key is never used by the NoMagicHTTP server.
+         * 
+         * @see #TK
+         */
+        public static final String DNT = "DNT";
+        
+        /**
+         * "An identifier for a specific version of a resource, often a message
+         * digest" (
+         * <a href="https://en.wikipedia.org/wiki/List_of_HTTP_header_fields">Wikipedia</a>
+         * )<p>
+         * 
+         * Applies to the response, not request.<p>
+         * 
+         * Example: {@code ETag: "737060cd8c284d8af7ad3082f209582d"}<p>
+         * 
+         * Currently, the NoMagicHTTP server does not generate or read this
+         * header key. It will be used in the future as part of added support
+         * for HTTP compression and an improved file serving API.
+         * 
+         * @see #IF_MATCH
+         * @see <a href="https://tools.ietf.org/html/rfc7232#section-2.3">RFC 7232 §2.3</a>
+         */
+        public static final String ETAG = "ETag";
+        
+        /**
+         * "Indicates that particular server behaviors are required by the
+         * client." (
+         * <a href="https://en.wikipedia.org/wiki/List_of_HTTP_header_fields">Wikipedia</a>
+         * )<p>
+         * 
+         * Applies to the request, not response.<p>
+         * 
+         * Example: {@code Expect: 100-continue}
+         * 
+         * @see StatusCode#ONE_HUNDRED
+         * @see <a href="https://tools.ietf.org/html/rfc7231#section-5.1.1">RFC 7231 §5.1.1</a>
+         */
+        public static final String EXPECT = "Expect";
+        
+        /**
+         * "Gives the date/time after which the response is considered stale" (
+         * <a href="https://en.wikipedia.org/wiki/List_of_HTTP_header_fields">Wikipedia</a>
+         * )<p>
+         * 
+         * Applies to the response, not request.<p>
+         * 
+         * Example: {@code Expires: Thu, 01 Dec 1994 16:00:00 GMT}<p>
+         * 
+         * This header key is never used by the NoMagicHTTP server.
+         * 
+         * @see <a href="https://tools.ietf.org/html/rfc7234#section-5.3">RFC 7234 §5.3</a>
+         */
+        public static final String EXPIRES = "Expires";
+        
+        /**
+         * "Disclose original information of a client connecting to a web server
+         * through an HTTP proxy." (
+         * <a href="https://en.wikipedia.org/wiki/List_of_HTTP_header_fields">Wikipedia</a>
+         * )<p>
+         * 
+         * Applies to the request, not response.<p>
+         * 
+         * Supersedes {@code X-Forwarded-For}, {@code X-Forwarded-Host} and
+         * {@code X-Forwarded-Proto}.<p>
+         * 
+         * Example: {@code Forwarded: for=192.0.2.60;proto=http;by=203.0.113.43}<p>
+         * 
+         * This header key is never used by the NoMagicHTTP server.
+         * 
+         * @see <a href="https://tools.ietf.org/html/rfc7239#section-4">RFC 7239 §4</a>
+         */
+        public static final String FORWARDED = "Forwarded";
+        
+        /**
+         * "The email address of the user making the request." (
+         * <a href="https://en.wikipedia.org/wiki/List_of_HTTP_header_fields">Wikipedia</a>
+         * )<p>
+         * 
+         * Example: {@code From: user@example.com}<p>
+         * 
+         * This header key is never used by the NoMagicHTTP server.
+         * 
+         * @see <a href="https://tools.ietf.org/html/rfc7231#section-5.5.1">RFC 7231 §5.5.1</a>
+         */
+        public static final String FROM = "From";
+        
+        /**
+         * Is the domain name of the server, allowing for virtual hosting on a
+         * shared IP address (application-level routing mechanism).<p>
+         * 
+         * Example: {@code Host: en.wikipedia.org:8080}<p>
+         * 
+         * This is the only required header (since HTTP/1.1) and applies only to
+         * requests, not responses.<p>
+         * 
+         * This header key is never used by the NoMagicHTTP server.
+         * 
+         * @see <a href="https://tools.ietf.org/html/rfc7230#section-5.4">RFC 7230 §5.4</a>
+         */
+        public static final String HOST = "Host";
+        
+        /**
+         * "A request that upgrades from HTTP/1.1 to HTTP/2 MUST include exactly
+         * one HTTP2-Setting header field. The HTTP2-Settings header field is a
+         * connection-specific header field that includes parameters that govern
+         * the HTTP/2 connection, provided in anticipation of the server
+         * accepting the request to upgrade." (
+         * <a href="https://en.wikipedia.org/wiki/List_of_HTTP_header_fields">Wikipedia</a>
+         * )<p>
+         * 
+         * Example: {@code HTTP2-Settings: token64}<p>
+         * 
+         * Applies to the request, not response.<p>
+         * 
+         * Currently, the NoMagicHTTP server does not support HTTP/2, but work
+         * is planned to add support.
+         * 
+         * @see StatusCode#ONE_HUNDRED_ONE
+         * @see <a href="https://tools.ietf.org/html/rfc7540#section-3.2.1">RFC 7540 §3.2.1</a>
+         */
+        public static final String HTTP2_SETTINGS = "HTTP2-Settings";
+        
+        /**
+         * "Only perform the action if the client supplied entity matches the
+         * same entity on the server. This is mainly for methods like PUT to
+         * only update a resource if it has not been modified since the user
+         * last updated it." (
+         * <a href="https://en.wikipedia.org/wiki/List_of_HTTP_header_fields">Wikipedia</a>
+         * )<p>
+         * 
+         * Example: {@code If-Match: "737060cd8c284d8af7ad3082f209582d"}<p>
+         * 
+         * Applies to the request, not response.<p>
+         * 
+         * Currently, the NoMagicHTTP server has no first-class API support for
+         * conditional requests. This will be added in the near future through
+         * an extended API that serves static files.
+         * 
+         * @see Method#PATCH
+         * @see #ETAG
+         * @see <a href="https://tools.ietf.org/html/rfc7232#section-3.1">RFC 7232 §3.1</a>
+         */
         public static final String IF_MATCH = "If-Match";
-    
+        
+        /**
+         * "Allows a {@value StatusCode#THREE_HUNDRED_FOUR} Not Modified to be
+         * returned if content is unchanged." (
+         * <a href="https://en.wikipedia.org/wiki/List_of_HTTP_header_fields">Wikipedia</a>
+         * )<p>
+         * 
+         * Example: {@code If-Match: "737060cd8c284d8af7ad3082f209582d"}<p>
+         * 
+         * Applies to the request, not response.<p>
+         * 
+         * @see #IF_MATCH
+         * @see <a href="https://tools.ietf.org/html/rfc7232#section-3.3">RFC 7232 §3.3</a>
+         */
+        public static final String IF_MODIFIED_SINCE = "If-Modified-Since";
+        
+        /**
+         * Allows a {@value StatusCode#THREE_HUNDRED_FOUR} Not Modified to be
+         * returned if content is unchanged.<p>
+         * 
+         * Example: {@code If-None-Match: "737060cd8c284d8af7ad3082f209582d"}<p>
+         * 
+         * Applies to the request, not response.<p>
+         * 
+         * @see #IF_MATCH
+         * @see <a href="https://tools.ietf.org/html/rfc7232#section-3.2">RFC 7232 §3.2</a>
+         */
+        public static final String IF_NONE_MATCH = "If-None-Match";
+        
+        /**
+         * "If the entity is unchanged, send me the part(s) that I am missing;
+         * otherwise, send me the entire new entity." (
+         * <a href="https://en.wikipedia.org/wiki/List_of_HTTP_header_fields">Wikipedia</a>
+         * )<p>
+         * 
+         * Example: {@code If-Range: "737060cd8c284d8af7ad3082f209582d"}<p>
+         * 
+         * Applies to the request, not response.<p>
+         * 
+         * Currently, the NoMagicHTTP server has no first-class API support for
+         * conditional requests or byte serving. Both will be added in the near
+         * future through an extended API that serves static files.
+         * 
+         * @see #RANGE
+         * @see <a href="https://tools.ietf.org/html/rfc7233#section-3.2">RFC 7233 §3.2</a>
+         */
+        public static final String IF_RANGE = "If-Range";
+        
+        /**
+         * "Only send the response if the entity has not been modified since a
+         * specific time." (
+         * <a href="https://en.wikipedia.org/wiki/List_of_HTTP_header_fields">Wikipedia</a>
+         * )<p>
+         * 
+         * Example: {@code If-Unmodified-Since: Sat, 29 Oct 1994 19:43:31 GMT}<p>
+         * 
+         * Applies to the request, not response.<p>
+         * 
+         * @see #IF_MATCH
+         * @see #LAST_MODIFIED
+         * @see <a href="https://tools.ietf.org/html/rfc7232#section-3.4">RFC 7232 §3.4</a>
+         */
+        public static final String IF_UNMODIFIED_SINCE = "If-Unmodified-Since";
+        
+        /**
+         * "Instance-manipulations applied to the response." (
+         * <a href="https://en.wikipedia.org/wiki/List_of_HTTP_header_fields">Wikipedia</a>
+         * )<p>
+         * 
+         * Example: {@code IM: feed}<p>
+         * 
+         * This header key is never used by the NoMagicHTTP server.
+         * 
+         * @see <a href="https://tools.ietf.org/html/rfc3229#section-10.5.2">RFC 3229 §10.5.2</a>
+         */
+        public static final String IM = "IM";
+        
+        /**
+         * "The last modified date for the requested object" (
+         * <a href="https://en.wikipedia.org/wiki/List_of_HTTP_header_fields">Wikipedia</a>
+         * )<p>
+         * 
+         * Applies to the response, not request.<p>
+         * 
+         * Example: {@code Last-Modified: Tue, 15 Nov 1994 12:45:26 GMT}<p>
+         * 
+         * Currently, the NoMagicHTTP server does not use this header key.
+         * Planned work for improved file serving will make use of it.
+         * 
+         * @see #IF_MODIFIED_SINCE
+         * @see <a href="https://tools.ietf.org/html/rfc7232#section-2.2">RFC 7232 §2.2</a>
+         */
+        public static final String LAST_MODIFIED = "Last-Modified";
+        
+        /**
+         * Provides a means for serialising one or more links in HTTP headers.
+         * It is semantically equivalent to the HTML
+         * <a href="https://developer.mozilla.org/en-US/docs/Web/HTML/Element/link">{@literal <}link></a>
+         * element, albeit with a slightly different
+         * <a href="https://tools.ietf.org/html/rfc8288#section-3">syntax</a>
+         * .<p>
+         * 
+         * Applies to the response, not request.<p>
+         * 
+         * Example: {@code Link: </feed>; rel="alternate"}<p>
+         * 
+         * This header key is never used by the NoMagicHTTP server.
+         * 
+         * @see StatusCode#ONE_HUNDRED_THREE
+         */
+        public static final String LINK = "Link";
+        
+        /**
+         * "Used in redirection, or when a new resource has been created." (
+         * <a href="https://en.wikipedia.org/wiki/List_of_HTTP_header_fields">Wikipedia</a>
+         * )<p>
+         * 
+         * Applies to the response, not request.<p>
+         * 
+         * Example: {@code Location: http://www.w3.org/pub/WWW/People.html}<p>
+         * 
+         * This header key is never used by the NoMagicHTTP server.
+         * 
+         * @see Method#POST
+         * @see #CONTENT_LOCATION
+         * @see <a href="https://tools.ietf.org/html/rfc7231#section-7.1.2">RFC 7231 §7.1.2</a>
+         */
+        public static final String LOCATION = "Location";
+        
+        /**
+         * "Limit the number of times the message can be forwarded through
+         * proxies or gateways." (
+         * <a href="https://en.wikipedia.org/wiki/List_of_HTTP_header_fields">Wikipedia</a>
+         * )<p>
+         * 
+         * Example: {@code Max-Forwards: 10}<p>
+         * 
+         * Applies to the request, not response.<p>
+         * 
+         * Often used by client with a {@link Method#TRACE} method to limit
+         * number of hops traced.
+         * 
+         * @see <a href="https://tools.ietf.org/html/rfc7231#section-5.1.2">RFC 7231 §5.1.2</a>
+         */
+        public static final String MAX_FORWARDS = "Max-Forwards";
+        
+        /**
+         * Initiates a request for CORS.<p>
+         * 
+         * Example: {@code Origin: http://www.example-social-network.com}<p>
+         * 
+         * Currently, the NoMagicHTTP server has no first-class support for
+         * CORS. Future work is planned to investigate what can be done about
+         * it.
+         * 
+         * @see <a href="https://fetch.spec.whatwg.org/#origin-header">WHATWG</a>
+         */
+        public static final String ORIGIN = "Origin";
+        
+        /**
+         * "Implementation-specific fields that may have various effects
+         * anywhere along the request-response chain." (
+         * <a href="https://en.wikipedia.org/wiki/List_of_HTTP_header_fields">Wikipedia</a>
+         * )<p>
+         * 
+         * Example: {@code Pragma: no-cache}<p>
+         * 
+         * Applies to the request, not response.<p>
+         * 
+         * This header key is never used by the NoMagicHTTP server.
+         * 
+         * @see <a href="https://tools.ietf.org/html/rfc7234#section-5.4">RFC 7234 §5.4</a>
+         */
+        public static final String PRAGMA = "Pragma";
+        
+        /**
+         * "Allows client to request that certain behaviors be employed by a
+         * server while processing a request." (
+         * <a href="https://en.wikipedia.org/wiki/List_of_HTTP_header_fields">Wikipedia</a>
+         * )<p>
+         * 
+         * Example: {@code Prefer: return=representation}<p>
+         * 
+         * This header key is never used by the NoMagicHTTP server.
+         * 
+         * @see <a href="https://tools.ietf.org/html/rfc7240#section-2">RFC 7240 §2</a>
+         */
+        public static final String PREFER = "Prefer";
+        
+        /**
+         * "Indicates which Prefer tokens were honored by the server and applied
+         * to the processing of the request." (
+         * <a href="https://en.wikipedia.org/wiki/List_of_HTTP_header_fields">Wikipedia</a>
+         * )<p>
+         * 
+         * Applies to the response, not request.<p>
+         * 
+         * Example: {@code Preference-Applied: return=representation}<p>
+         * 
+         * This header key is never used by the NoMagicHTTP server.
+         * 
+         * @see <a href="https://tools.ietf.org/html/rfc7240#section-3">RFC 7240 §3</a>
+         */
+        public static final String PREFERENCE_APPLIED = "Preference-Applied";
+        
+        /**
+         * "Request authentication to access the proxy." (
+         * <a href="https://en.wikipedia.org/wiki/List_of_HTTP_header_fields">Wikipedia</a>
+         * )<p>
+         * 
+         * Applies to the request, not response.<p>
+         * 
+         * Example: {@code Proxy-Authenticate: Basic}<p>
+         * 
+         * @see #AUTHORIZATION
+         * @see <a href="https://tools.ietf.org/html/rfc7235#section-4.3">RFC 7235 §4.3</a>
+         */
+        public static final String PROXY_AUTHENTICATE = "Proxy-Authenticate";
+        
+        /**
+         * "Authorization credentials for connecting to a proxy." (
+         * <a href="https://en.wikipedia.org/wiki/List_of_HTTP_header_fields">Wikipedia</a>
+         * )<p>
+         * 
+         * Applies to the request, not response.<p>
+         * 
+         * Example: {@code Proxy-Authorization: Basic QWxhZGRpbjpvcGVuIHNlc2FtZQ==}<p>
+         * 
+         * @see #AUTHORIZATION
+         * @see <a href="https://tools.ietf.org/html/rfc7235#section-4.4">RFC 7235 §4.4</a>
+         */
+        public static final String PROXY_AUTHORIZATION = "Proxy-Authorization";
+        
+        /**
+         * "Request only part of an entity." (
+         * <a href="https://en.wikipedia.org/wiki/List_of_HTTP_header_fields">Wikipedia</a>
+         * )<p>
+         * 
+         * Applies to the request, not response.<p>
+         * 
+         * Example: {@code Range: bytes=500-999}<p>
+         * 
+         * Currently, the NoMagicHTTP server has no first-class API support for
+         * byte serving. It will be added in the near future through an extended
+         * API that serves static files.
+         * 
+         * @see <a href="https://tools.ietf.org/html/rfc7233#section-3.1">RFC 7233 §3.1</a>
+         */
+        public static final String RANGE = "Range";
+        
+        /**
+         * "This is the address of the previous web page from which a link to
+         * the currently requested page was followed. (The word 'referrer' has
+         * been misspelled in the RFC as well as in most implementations to the
+         * point that it has become standard usage and is considered correct
+         * terminology)" (
+         * <a href="https://en.wikipedia.org/wiki/List_of_HTTP_header_fields">Wikipedia</a>
+         * )<p>
+         * 
+         * Applies to the request, not response.<p>
+         * 
+         * Example: {@code Referer: http://en.wikipedia.org/wiki/Main_Page}<p>
+         * 
+         * This header key is never used by the NoMagicHTTP server.
+         * 
+         * @see <a href="https://tools.ietf.org/html/rfc7231#section-5.5.2">RFC 7231 §5.5.2</a>
+         */
+        public static final String REFERER = "Referer";
+        
+        /**
+         * "Used in redirection, or when a new resource has been created. This
+         * refresh redirects after 5 seconds. Header extension introduced by
+         * Netscape and supported by most web browsers." (
+         * <a href="https://en.wikipedia.org/wiki/List_of_HTTP_header_fields">Wikipedia</a>
+         * )<p>
+         * 
+         * Applies to the response, not request.<p>
+         * 
+         * Example: {@code Refresh: 5; url=http://www.w3.org/pub/WWW/People.html}<p>
+         * 
+         * This header key is never used by the NoMagicHTTP server.
+         */
+        public static final String REFRESH = "Refresh";
+        
+        /**
+         * "If an entity is temporarily unavailable, this instructs the client
+         * to try again later. Value could be a specified period of time (in
+         * seconds) or a HTTP-date." (
+         * <a href="https://en.wikipedia.org/wiki/List_of_HTTP_header_fields">Wikipedia</a>
+         * )<p>
+         * 
+         * Applies to the response, not request.<p>
+         * 
+         * Example: {@code Retry-After: 120}<p>
+         * 
+         * This header key is never used by the NoMagicHTTP server.
+         * 
+         * @see <a href="https://tools.ietf.org/html/rfc7231#section-7.1.3">RFC 7231 §7.1.3</a>
+         */
+        public static final String RETRY_AFTER = "Retry-After";
+        
+        /**
+         * A name for the server.<p>
+         * 
+         * Applies to the response, not request.<p>
+         * 
+         * Example: {@code Server: Apache/2.4.1 (Unix)}<p>
+         * 
+         * Currently, the NoMagicHTTP server does not set this header. Planned
+         * future work will add this as a configuration option.
+         * 
+         * @see #USER_AGENT
+         * @see <a href="https://tools.ietf.org/html/rfc7231#section-7.4.2">RFC 7231 §7.4.2</a>
+         */
+        public static final String SERVER = "Server";
+        
+        /**
+         * Is used to send cookies from the server to the client.<p>
+         * 
+         * Applies to the response, not request.<p>
+         * 
+         * Example: {@code Set-Cookie: UserID=JohnDoe; Max-Age=3600; Version=1}<p>
+         * 
+         * @see #COOKIE
+         * @see <a href="https://tools.ietf.org/html/rfc6265#section-4.1">RFC 6265 §4.1</a>
+         */
+        public static final String SET_COOKIE = "Set-Cookie";
+        
+        /**
+         * Lets a server tell clients that "it should only be accessed using
+         * HTTPS, instead of using HTTP". (
+         * <a href="https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Strict-Transport-Security">MDN Web Docs</a>
+         * )<p>
+         * 
+         * Applies to the response, not request.<p>
+         * 
+         * Example: {@code Strict-Transport-Security: max-age=16070400; includeSubDomains}<p>
+         * 
+         * Currently, the NoMagicHTTP server has no native support for HTTPS and
+         * does not use this header key. Future work is planned to add this
+         * support.<p>
+         * 
+         * @see <a href="https://tools.ietf.org/html/rfc6797#section-6.1">RFC 6797 §6.1</a>
+         */
+        public static final String STRICT_TRANSPORT_SECURITY = "Strict-Transport-Security";
+        
+        /**
+         * Put in a request to indicate "what transfer codings, besides chunked,
+         * the client is willing to accept in response, and whether or not the
+         * client is willing to accept trailer fields in a chunked transfer
+         * coding." (
+         * <a href="https://tools.ietf.org/html/rfc7230#section-4.3">RFC 7230 §4.3</a>
+         * )<p>
+         * 
+         * Applies to the request, not response.<p>
+         * 
+         * Example: {@code TE: trailers, deflate}<p>
+         * 
+         * Currently, the NoMagicHTTP server does not apply chunked encoding and
+         * consequently ignores this key. Work is planned to add this support.
+         * HTTP/2 has it's own streaming mechanism and supports only {@code
+         * trailers}.
+         * 
+         * @see #TRAILER
+         * @see <a href="https://tools.ietf.org/html/rfc7230#section-4.3">RFC 7230 §4.3</a>
+         */
+        public static final String TE = "TE";
+        
+        /**
+         * "Tracking Status header, value suggested to be sent in response to a
+         * DNT(do-not-track)" (
+         * <a href="https://en.wikipedia.org/wiki/List_of_HTTP_header_fields">Wikipedia</a>
+         * )<p>
+         * 
+         * Applies to the response, not request.<p>
+         * 
+         * This header key is never used by the NoMagicHTTP server.
+         * 
+         * @see #DNT
+         */
+        public static final String TK = "Tk";
+        
+        /**
+         * The trailer header "allows the sender to include additional fields at
+         * the end of chunked messages in order to supply metadata that might be
+         * dynamically generated while the message body is sent, such as a
+         * message integrity check, digital signature, or post-processing
+         * status." (
+         * <a href="https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Trailer">MDN Web Docs</a>
+         * )<p>
+         * 
+         * Most often set on chunked response, but may also be set on a chunked
+         * request.<p>
+         * 
+         * Example: {@code Trailer: header-name}<p>
+         * 
+         * Currently, the NoMagicHTTP server does not support chunked encoding.
+         * Work is planned to add this support.
+         * 
+         * @see #TE
+         * @see <a href="https://tools.ietf.org/html/rfc7230#section-4.4">RFC 7230 §4.4</a>
+         */
+        public static final String TRAILER = "Trailer";
+        
+        /**
+         * Hop-by-hop transport encoding. {@link #CONTENT_ENCODING} applies
+         * end-to-end.<p>
+         * 
+         * May be used in both request and response.<p>
+         * 
+         * Example: {@code Transfer-Encoding: gzip, chunked}<p>
+         * 
+         * Currently, the NoMagicHTTP server has no first-class support for
+         * compression. Work is planned to add support.
+         * 
+         * @see #CONTENT_TYPE
+         * @see <a href="https://tools.ietf.org/html/rfc7230#section-3.3.1">RFC 7230 §3.3.1</a>
+         */
+        public static final String TRANSFER_ENCODING = "Transfer-Encoding";
+        
+        /**
+         * "The user agent string of the user agent." (
+         * <a href="https://en.wikipedia.org/wiki/List_of_HTTP_header_fields">Wikipedia</a>
+         * )<p>
+         * 
+         * Applies to the request, not response.<p>
+         * 
+         * Example: {@code User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:12.0) Gecko/20100101 Firefox/12.0}<p>
+         * 
+         * This header key is never used by the NoMagicHTTP server.
+         * 
+         * @see #SERVER
+         * @see <a href="https://tools.ietf.org/html/rfc7231#section-5.5.3">RFC 7231 §5.5.3</a>
+         */
+        public static final String USER_AGENT = "User-Agent";
+        
+        /**
+         * "Ask the server to upgrade to another protocol." (
+         * <a href="https://en.wikipedia.org/wiki/List_of_HTTP_header_fields">Wikipedia</a>
+         * )<p>
+         * 
+         * Applies to the request, not response.<p>
+         * 
+         * Example: {@code Upgrade: h2c, HTTPS/1.3, IRC/6.9, RTA/x11, websocket}<p>
+         * 
+         * @see StatusCode#ONE_HUNDRED_ONE
+         * @see <a href="https://tools.ietf.org/html/rfc7230#section-6.7">RFC 7230 §6.7</a>
+         */
+        public static final String UPGRADE = "Upgrade";
+        
+        /**
+         * "The 'Vary' header field in a response describes what parts of a
+         * request message, aside from the method, Host header field, and
+         * request target, might influence the origin server's process for
+         * selecting and representing this response." (
+         * <a href="https://tools.ietf.org/html/rfc7231#section-7.1.4">RFC 7231 §7.1.4</a>
+         * )<p>
+         * 
+         * Example: {@code Vary: accept-encoding, accept-language}<p>
+         * 
+         * Currently, the NoMagicHTTP server does not set this header. Planned
+         * future work may add this support for 200 and 304 responses.
+         * 
+         * @see #ACCEPT
+         * @see <a href="https://www.smashingmagazine.com/2017/11/understanding-vary-header/">Smashing Magazine</a>
+         */
+        public static final String VARY = "Vary";
+        
+        /**
+         * "Informs the server of proxies through which the request was sent." (
+         * <a href="https://en.wikipedia.org/wiki/List_of_HTTP_header_fields">Wikipedia</a>
+         * )<p>
+         * 
+         * Applies to the request, not response.<p>
+         * 
+         * Example: {@code Via: 1.0 fred, 1.1 example.com (Apache/1.1)}<p>
+         * 
+         * This header key is never used by the NoMagicHTTP server.
+         * 
+         * @see Method#TRACE
+         * @see <a href="https://tools.ietf.org/html/rfc7230#section-5.7.1">RFC 7230 §5.7.1</a>
+         */
         public static final String VIA = "Via";
+        
+        /**
+         * Indicates the sender's desire to receive a representation digest.<p>
+         * 
+         * @see #DIGEST
+         * @see <a href="https://datatracker.ietf.org/doc/html/draft-ietf-httpbis-digest-headers-04#section-4">IEFT Digest Draft §4</a>
+         */
+        public static final String WANT_DIGEST = "Want-Digest";
+        
+        /**
+         * "A general warning about possible problems with the entity body." (
+         * <a href="https://en.wikipedia.org/wiki/List_of_HTTP_header_fields">Wikipedia</a>
+         * )<p>
+         * 
+         * Mostly used in responses, but may also be set on a request.<p>
+         * 
+         * Example: {@code Warning: 199 Miscellaneous warning}<p>
+         * 
+         * This header key is never used by the NoMagicHTTP server.
+         * 
+         * @see <a href="https://tools.ietf.org/html/rfc7234#section-5.5">RFC 7234 §5.5</a>
+         */
+        public static final String WARNING = "Warning";
+        
+        /**
+         * "Indicates the authentication scheme that should be used to access
+         * the requested entity." (
+         * <a href="https://en.wikipedia.org/wiki/List_of_HTTP_header_fields">Wikipedia</a>
+         * )<p>
+         * 
+         * Applies to the response, not request.<p>
+         * 
+         * Example: {@code WWW-Authenticate: Basic}
+         * 
+         * @see #AUTHORIZATION
+         * @see StatusCode#FOUR_HUNDRED_ONE
+         * @see <a href="https://tools.ietf.org/html/rfc7235#section-4.1">RFC 7235 §4.1</a>
+         */
+        public static final String WWW_AUTHENTICATE = "WWW-Authenticate";
+        
+        /**
+         * "Mainly used to identify Ajax requests (most JavaScript frameworks
+         * send this field with value of XMLHttpRequest); also identifies
+         * Android apps using WebView." (
+         * <a href="https://en.wikipedia.org/wiki/List_of_HTTP_header_fields">Wikipedia</a>
+         * )<p>
+         * 
+         * Example: {@code X-Requested-With: XMLHttpRequest}<p>
+         * 
+         * This header key is never used by the NoMagicHTTP server.
+         * 
+         * @see <a href="https://www.stoutner.com/the-x-requested-with-header/">STOUTNER</a>
+         */
+        public static final String X_REQUESTED_WITH = "X-Requested-With";
+        
+        /**
+         * "Requests a web application to override the method specified in the
+         * request (typically POST) with the method given in the header field
+         * (typically PUT or DELETE). This can be used when a user agent or
+         * firewall prevents PUT or DELETE methods from being sent directly
+         * (note that this is either a bug in the software component, which
+         * ought to be fixed, or an intentional configuration, in which case
+         * bypassing it may be the wrong thing to do)." (
+         * <a href="https://en.wikipedia.org/wiki/List_of_HTTP_header_fields">Wikipedia</a>
+         * )<p>
+         * 
+         * Example: {@code X-HTTP-Method-Override: DELETE}<p>
+         * 
+         * This header key is never used by the NoMagicHTTP server.
+         */
+        public static final String X_HTTP_METHOD_OVERRIDE = "X-Http-Method-Override";
+        
+        /**
+         * Commonly used as a request identifier.<p>
+         * 
+         * Example: {@code X-Request-ID: f058ebd6-02f7-4d3f-942e-904344e8cde5}<p>
+         * 
+         * This header key is never used by the NoMagicHTTP server.
+         * 
+         * @see #X_CORRELATION_ID
+         */
+        public static final String X_REQUEST_ID = "X-Request-ID";
+        
+        /**
+         * Commonly used as a transaction identifier.<p>
+         * 
+         * Example: {@code X-Correlation-ID: f058ebd6-02f7-4d3f-942e-904344e8cde5}<p>
+         * 
+         * This header key is never used by the NoMagicHTTP server.
+         * 
+         * @see #X_REQUEST_ID
+         */
+        public static final String X_CORRELATION_ID = "X-Correlation-ID";
     }
     
     /**
-     *
+     * 
      */
     public static final class Version {
         private Version() {
