@@ -26,7 +26,7 @@ master. The master branch must always build just fine.
 An item ~~crossed out~~ is complete, an item in __bold__ is work in progress.
 
 [Stage: Project Enhancements](#stage-project-enhancements)  
-[__Stage: HTTP Constants__](#stage-http-constants)  
+[~~Stage: HTTP Constants~~](#stage-http-constants)  
 [Stage: HTTP Versioning](#stage-http-versioning)  
 [Stage: Improved Testing](#stage-improved-testing)  
 [Stage: Improved Content Negotiation](#stage-improved-content-negotiation)  
@@ -80,9 +80,9 @@ artifacts.
 - DESIGN.md is plausible, linked from CONTRIBUTING.md  
   _Result: Postponed_
 
-## Stage: HTTP Constants
+## ~~Stage: HTTP Constants~~
 
-_Status: **In progress.**_
+_Status: **Delivered**_
 
 Constants - even when not used by the server itself - is important for
 _discoverability_.
