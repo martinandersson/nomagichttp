@@ -25,6 +25,12 @@ import static java.util.Objects.requireNonNull;
  * 
  * <h2>Thread Semantics</h2>
  * 
+ * Firstly, and perhaps most importantly, the Reactive Streams specification and
+ * JavaDoc of {@link Flow.Publisher} doesn't actually define the publisher as
+ * being thread-safe, and some JDK implementations aren't (
+ * <a href="https://bugs.openjdk.java.net/browse/JDK-8222968">JDK-8222968</a>).
+ * Publishers created by this class <strong>is</strong> thread-safe.<p>
+ * 
  * The Reactive Streams specification requires the publisher to signal the
  * subscriber serially (happens-before relationship between signals). The
  * specification defines a serial signal as being "non-overlapping". At the same
@@ -102,7 +108,8 @@ import static java.util.Objects.requireNonNull;
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  * 
- * @see Response.Builder#body(Flow.Publisher) 
+ * @see Response.Builder#body(Flow.Publisher)
+ * @see BetterBodyPublishers
  */
 public final class Publishers
 {

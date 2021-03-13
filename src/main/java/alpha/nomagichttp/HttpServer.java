@@ -64,7 +64,7 @@ import java.nio.channels.AsynchronousServerSocketChannel;
  *     <a href="https://tools.ietf.org/html/rfc7231#section-6.2">RFC 7231 §6.2</a>)</li>
  * </ul>
  * 
- * These variants are rejected before or after the handler is resolved,
+ * These variants are rejected before or after the handler has been called,
  * depending on whether the message is a request or a response (TODO: define
  * exc types). They <i>must</i> be rejected since including a body would kill
  * the protocol. For example, a new virtual connection/protocol behavior is
@@ -73,8 +73,10 @@ import java.nio.channels.AsynchronousServerSocketChannel;
  * 
  * For all other variants of requests and responses, the body is optional and
  * the server does not reject the message nor does the API enforce an
- * opinionated view. The request handler is in full control over how it
- * interprets the request message and what response it returns.
+ * opinionated view. This is also true for message components such as the
+ * response status code and reason phrase. The request handler is in full
+ * control over how it interprets the request message and what response it
+ * returns.
  * 
  * For example, it might not be common but it <i>is</i>
  * possible (and legit) for {@link HttpConstants.Method#GET GET} requests (

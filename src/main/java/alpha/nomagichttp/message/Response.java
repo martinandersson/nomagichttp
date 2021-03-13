@@ -8,14 +8,11 @@ import alpha.nomagichttp.util.BetterBodyPublishers;
 import alpha.nomagichttp.util.Publishers;
 
 import java.net.http.HttpHeaders;
-import java.net.http.HttpRequest;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
-import java.nio.file.Path;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.Flow;
-import java.util.function.Supplier;
 
 import static alpha.nomagichttp.HttpConstants.ReasonPhrase;
 import static alpha.nomagichttp.HttpConstants.StatusCode;
@@ -25,19 +22,25 @@ import static alpha.nomagichttp.HttpConstants.StatusCode.TWO_HUNDRED_TWO;
 import static alpha.nomagichttp.HttpConstants.Version;
 
 /**
- * A {@code Response} contains a {@link #statusLine() statusLine}, {@link
- * #headers() headers} and an optional {@link #body() body}. It can be built
- * using a {@link #builder()} or other static methods found in {@link
- * Response.Builder} and {@link Responses}.<p>
+ * A {@code Response} contains a status line, followed by optional headers and
+ * body.<p>
  * 
- * The content of the request head (status-line and headers) will be written
+ * A response object can be built using a {@link #builder()} or other static
+ * methods found in {@link Response.Builder} and {@link Responses}.<p>
+ * 
+ * The status line will be built by the server by joining the active HTTP
+ * protocol version, status code and reason phrase. E.g. "HTTP/1.1 200 OK".<p>
+ * 
+ * The content of the request head (status line and headers) will be written
  * to the client verbatim/unaltered; i.e. casing will be preserved, yes, even
  * space characters. The head is encoded into bytes using {@link
- * StandardCharsets#US_ASCII US_ASCII}<p>
+ * StandardCharsets#US_ASCII US_ASCII} (UTF-8 is backwards compatible with
+ * ASCII).<p>
  * 
  * The {@code Response} implementation is immutable and can safely be reused
- * sequentially over time to the same client as well as shared concurrently to
- * different clients.<p>
+ * sequentially over time to the same client. It can also be shared concurrently
+ * to different clients, assuming the {@linkplain Builder#body(Flow.Publisher)
+ * body publisher} is thread safe.<p>
  * 
  * The {@code Response} implementation does not necessarily implement {@code
  * hashCode()} and {@code equals()}.
@@ -336,28 +339,27 @@ public interface Response
          * Set a message body. If never set, will default to an empty body and
          * set "Content-Length: 0".<p>
          * 
-         * The published bytebuffers must not be modified after being published
-         * to the subscriber.<p>
+         * Each response transmission will cause the server to subscribe with a
+         * new subscriber, consuming all of the remaining bytes in each
+         * published bytebuffer.<p>
          * 
-         * Depending on the application code, the body publisher may be exposed
-         * to more than just one HTTP server thread at the same time. For
-         * example, the body publisher instance may be shared by multiple
-         * responses derived from the same builder targeting different clients
-         * or the response instance itself containing the publisher may be sent
-         * to different clients.<p>
+         * Most responses are probably only used once. But the application may
+         * wish to cache and re-use responses. This is safe as long as either
+         * the response is only sent to a dedicated client (two subscriptions
+         * for the same client will never run in parallel), or if re-used
+         * concurrently [to different clients], the body publisher must be
+         * thread-safe and designed for concurrency; producing new bytebuffers
+         * with the same data for each new subscriber.<p>
          * 
-         * Each new transmission will cause the HTTP server to subscribe with a
-         * new subscriber, each of which is expected to receive the same data
-         * using all new and subscription-unique bytebuffers.<p>
+         * The same is also true if different response objects have been
+         * derived/templated from the same builder(s) as these response objects
+         * will share the same underlying body publisher reference.<p>
          * 
-         * Please note that {@link Flow.Publisher} is not specified to be
-         * thread-safe, and some implementations aren't (<a
-         * href="https://bugs.openjdk.java.net/browse/JDK-8222968">JDK-8222968
-         * </a>). Further, some JDK-provided types block, such as
-         * {@link HttpRequest.BodyPublishers#ofFile(Path)} and {@link
-         * HttpRequest.BodyPublishers#ofInputStream(Supplier)}. For these
-         * reasons, consider using an alternative from {@link Publishers} or
-         * {@link BetterBodyPublishers}<p>
+         * Response objects created by factory methods from the NoMagicHTTP
+         * library API are fully thread-safe and may be shared wildly. If none
+         * of these factories suits you and there's a need to set a response
+         * body manually, then consider using a publisher from {@link
+         * Publishers} or {@link BetterBodyPublishers}.<p>
          * 
          * @param   body publisher
          * @return  a new builder representing the new state
