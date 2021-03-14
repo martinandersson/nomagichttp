@@ -113,6 +113,14 @@ class ErrorHandlingTest
             "Content-Length: 0" + CRLF + CRLF);
     }
     
+    @Test
+    void httpVersionBad() throws IOException {
+        String res = createServerAndClient().writeRead("GET / Ooops" + CRLF + CRLF);
+        assertThat(res).isEqualTo(
+            "HTTP/1.1 400 Bad Request" + CRLF +
+            "Content-Length: 0" + CRLF + CRLF);
+    }
+    
     private ClientOperations createServerAndClient() throws IOException {
         return createServerAndClient(null);
     }

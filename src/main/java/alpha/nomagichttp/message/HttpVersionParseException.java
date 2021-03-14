@@ -1,12 +1,16 @@
 package alpha.nomagichttp.message;
 
 import alpha.nomagichttp.HttpConstants;
+import alpha.nomagichttp.handler.ErrorHandler;
 
 import static java.util.Objects.requireNonNull;
 
 /**
  * Thrown by the server if the HTTP-version field in the request head could not
- * be parsed into a {@link HttpConstants.Version} object.
+ * be parsed into a {@link HttpConstants.Version} object.<p>
+ * 
+ * The {@link ErrorHandler#DEFAULT default error handler} will translate this
+ * exception to a {@link Responses#badRequest() 400 Bad Request}.
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  */

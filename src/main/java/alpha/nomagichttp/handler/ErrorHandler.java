@@ -3,8 +3,9 @@ package alpha.nomagichttp.handler;
 import alpha.nomagichttp.HttpServer;
 import alpha.nomagichttp.examples.RetryRequestOnError;
 import alpha.nomagichttp.message.BadHeaderException;
-import alpha.nomagichttp.message.MediaTypeParseException;
+import alpha.nomagichttp.message.HttpVersionParseException;
 import alpha.nomagichttp.message.MaxRequestHeadSizeExceededException;
+import alpha.nomagichttp.message.MediaTypeParseException;
 import alpha.nomagichttp.message.Request;
 import alpha.nomagichttp.message.RequestHeadParseException;
 import alpha.nomagichttp.message.Response;
@@ -170,11 +171,15 @@ public interface ErrorHandler
      *   </thead>
      *   <tbody>
      *   <tr>
-     *     <th scope="row"> {@link BadHeaderException} </th>
+     *     <th scope="row"> {@link RequestHeadParseException} </th>
      *     <td> {@link Responses#badRequest()} </td>
      *   </tr>
      *   <tr>
-     *     <th scope="row"> {@link RequestHeadParseException} </th>
+     *     <th scope="row"> {@link HttpVersionParseException} </th>
+     *     <td> {@link Responses#badRequest()} </td>
+     *   </tr>
+     *   <tr>
+     *     <th scope="row"> {@link BadHeaderException} </th>
      *     <td> {@link Responses#badRequest()} </td>
      *   </tr>
      *   <tr>
@@ -213,7 +218,7 @@ public interface ErrorHandler
         final Response res;
         try {
             throw thr;
-        } catch (BadHeaderException | RequestHeadParseException e) {
+        } catch (RequestHeadParseException | HttpVersionParseException | BadHeaderException e) {
             res = badRequest();
         } catch (NoRouteFoundException e) {
             res = notFound();
