@@ -67,6 +67,14 @@ final class HttpExchange
     }
     
     void begin() {
+        try {
+            begin0();
+        } catch (Throwable t) {
+            unexpected(t);
+        }
+    }
+    
+    private void begin0() {
         RequestHeadSubscriber rhs = new RequestHeadSubscriber(
                 server.getConfig().maxRequestHeadSize());
         
@@ -147,6 +155,14 @@ final class HttpExchange
     }
     
     private void finish(Void Null, Throwable exc) {
+        try {
+            finish0(exc);
+        } catch (Throwable t) {
+            unexpected(t);
+        }
+    }
+    
+    private void finish0(Throwable exc) {
         /*
          * We should make the connection life cycle much more solid; when is
          * the connection persistent and when is it not (also see RFC 2616
@@ -258,5 +274,11 @@ final class HttpExchange
             return t;
         }
         return t.getCause() == null ? t : unpackCompletionException(t.getCause());
+    }
+    
+    private void unexpected(Throwable t) {
+        LOG.log(ERROR, "Unexpected.", t);
+        bytes.close();
+        child.orderlyClose();
     }
 }
