@@ -76,31 +76,25 @@ class HttpVersionParse
     @Test
     void exc_minorNotSupported_major0() {
         assertThatThrownBy(() -> parse("HTTP/0.8"))
-                .isExactlyInstanceOf(HttpVersionParseException.class)
+                .isExactlyInstanceOf(IllegalArgumentException.class)
                 .hasNoCause()
-                .hasMessage("Have no literal for minor version \"8\".")
-                .extracting("requestFieldValue")
-                .isEqualTo("HTTP/0.8");
+                .hasMessage("0:8");
     }
     
     @Test
     void exc_minorNotSupported_major1() {
         assertThatThrownBy(() -> parse("HTTP/1.3"))
-                .isExactlyInstanceOf(HttpVersionParseException.class)
+                .isExactlyInstanceOf(IllegalArgumentException.class)
                 .hasNoCause()
-                .hasMessage("Have no literal for minor version \"3\".")
-                .extracting("requestFieldValue")
-                .isEqualTo("HTTP/1.3");
+                .hasMessage("1:3");
     }
     
     @Test
     void exc_majorNotSupported() {
         assertThatThrownBy(() -> parse("HTTP/99999999"))
-                .isExactlyInstanceOf(HttpVersionParseException.class)
+                .isExactlyInstanceOf(IllegalArgumentException.class)
                 .hasNoCause()
-                .hasMessage("Have no literal for major version \"99999999\".")
-                .extracting("requestFieldValue")
-                .isEqualTo("HTTP/99999999");
+                .hasMessage("99999999:");
     }
     
     @Test

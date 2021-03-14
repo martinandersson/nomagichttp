@@ -2,7 +2,6 @@ package alpha.nomagichttp;
 
 import alpha.nomagichttp.handler.RequestHandler;
 import alpha.nomagichttp.message.HttpVersionParseException;
-import alpha.nomagichttp.message.HttpVersionRejectedException;
 import alpha.nomagichttp.message.MediaType;
 import alpha.nomagichttp.message.Request;
 import alpha.nomagichttp.message.Response;
@@ -2684,9 +2683,16 @@ public final class HttpConstants {
          * 
          * @return a version
          * 
-         * @throws NullPointerException if {@code str} is {@code null}
+         * @throws NullPointerException
+         *             if {@code str} is {@code null}
          * 
-         * @throws HttpVersionParseException if parsing failed
+         * @throws HttpVersionParseException
+         *             if parsing failed, e.g. caused by NumberFormatException
+         * 
+         * @throws IllegalArgumentException
+         *             if this enum type has no constant mapping to the parsed string
+         *             (message will be "{@literal <}major{@literal >}:{@literal <}minor?{@literal >}",
+         *             e.g. "0:5" and "99:")
          */
         public static Version parse(String str) {
             int slash = str.indexOf("/");
@@ -2723,20 +2729,20 @@ public final class HttpConstants {
             final int major;
             switch (major = parseInt(majorStr)) {
                 case 0:
-                    int m1 = parseMinor(str, minorStr);
+                    int m1 = reqMinor(str, minorStr);
                     if (m1 != 9) {
-                        throw newParseExcForUnsupportedMinor(str, m1);
+                        throw newIllegalArgForUnsupportedMinor(0, m1);
                     }
                     return HTTP_0_9;
                 case 1:
-                    int m2 = parseMinor(str, minorStr);
+                    int m2 = reqMinor(str, minorStr);
                     if (m2 == 0) {
                         return HTTP_1_0;
                     }
                     if (m2 == 1) {
                         return HTTP_1_1;
                     }
-                    throw newParseExcForUnsupportedMinor(str, m2);
+                    throw newIllegalArgForUnsupportedMinor(1, m2);
                 case 2:
                     reqNoMinor(str, minorStr);
                     return HTTP_2;
@@ -2744,12 +2750,14 @@ public final class HttpConstants {
                     reqNoMinor(str, minorStr);
                     return HTTP_3;
                 default:
-                    throw new HttpVersionParseException(str,
-                            "Have no literal for major version \"" + major + "\".");
+                    if (major < 0) {
+                        throw new IllegalArgumentException(major + ":" + reqMinor(str, minorStr));
+                    }
+                    throw new IllegalArgumentException(major + ":");
             }
         }
         
-        private static int parseMinor(String str, String minor) {
+        private static int reqMinor(String str, String minor) {
             if (minor == null) {
                 throw new HttpVersionParseException(str,
                         "No minor version provided when one was expected.");
@@ -2757,9 +2765,8 @@ public final class HttpConstants {
             return parseInt(minor);
         }
         
-        private static HttpVersionParseException newParseExcForUnsupportedMinor(String str, int minor) {
-            return new HttpVersionParseException(str,
-                    "Have no literal for minor version \"" + minor + "\".");
+        private static IllegalArgumentException newIllegalArgForUnsupportedMinor(int major, int minor) {
+            return new IllegalArgumentException(major + ":" + minor);
         }
         
         private static void reqNoMinor(String str, String minor) {
