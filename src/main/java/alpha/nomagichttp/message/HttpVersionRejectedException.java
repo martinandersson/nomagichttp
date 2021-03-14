@@ -1,6 +1,7 @@
 package alpha.nomagichttp.message;
 
 import alpha.nomagichttp.HttpConstants;
+import alpha.nomagichttp.handler.ErrorHandler;
 
 import static java.util.Objects.requireNonNull;
 
@@ -10,7 +11,10 @@ import static java.util.Objects.requireNonNull;
  * 
  * Currently, HTTP/2 is not supported, but will not crash the exchange. The HTTP
  * Upgrade header will simply be ignored and the exchange will continue using an
- * older protocol version. 
+ * older protocol version.<p>
+ * 
+ * The {@link ErrorHandler#DEFAULT default error handler} will translate this
+ * exception to a {@link Responses#upgradeRequired() 426 Upgrade Required}.
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  * 

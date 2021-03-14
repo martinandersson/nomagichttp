@@ -9,11 +9,13 @@ import java.nio.ByteBuffer;
 import java.util.concurrent.Flow;
 
 import static alpha.nomagichttp.HttpConstants.HeaderKey.CONTENT_LENGTH;
+import static alpha.nomagichttp.HttpConstants.ReasonPhrase.UPGRADE_REQUIRED;
 import static alpha.nomagichttp.HttpConstants.StatusCode.FIVE_HUNDRED;
 import static alpha.nomagichttp.HttpConstants.StatusCode.FIVE_HUNDRED_ONE;
 import static alpha.nomagichttp.HttpConstants.StatusCode.FOUR_HUNDRED;
 import static alpha.nomagichttp.HttpConstants.StatusCode.FOUR_HUNDRED_FOUR;
 import static alpha.nomagichttp.HttpConstants.StatusCode.FOUR_HUNDRED_THIRTEEN;
+import static alpha.nomagichttp.HttpConstants.StatusCode.FOUR_HUNDRED_TWENTY_SIX;
 import static java.net.http.HttpRequest.BodyPublisher;
 import static java.net.http.HttpRequest.BodyPublishers;
 
@@ -192,6 +194,24 @@ public final class Responses
      */
     public static Response notImplemented() {
         return Cache.NOT_IMPLEMENTED;
+    }
+    
+    /**
+     * Returns a "426 Upgrade Required"-response with no body.<p>
+     * 
+     * The response will {@linkplain Response#mustCloseAfterWrite() close the
+     * client channel} after having been sent.
+     * 
+     * @return  a "501 Not Implemented"-response with no body
+     * @see     StatusCode#FIVE_HUNDRED_ONE
+     */
+    public static Response upgradeRequired() {
+        return Response.builder()
+                .statusCode(FOUR_HUNDRED_TWENTY_SIX)
+                .reasonPhrase(UPGRADE_REQUIRED)
+                .header(CONTENT_LENGTH, "0")
+                .mustCloseAfterWrite(true)
+                .build();
     }
     
     /**

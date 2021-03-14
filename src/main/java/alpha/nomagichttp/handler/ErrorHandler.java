@@ -4,6 +4,7 @@ import alpha.nomagichttp.HttpServer;
 import alpha.nomagichttp.examples.RetryRequestOnError;
 import alpha.nomagichttp.message.BadHeaderException;
 import alpha.nomagichttp.message.HttpVersionParseException;
+import alpha.nomagichttp.message.HttpVersionRejectedException;
 import alpha.nomagichttp.message.MaxRequestHeadSizeExceededException;
 import alpha.nomagichttp.message.MediaTypeParseException;
 import alpha.nomagichttp.message.Request;
@@ -21,6 +22,7 @@ import static alpha.nomagichttp.message.Responses.entityTooLarge;
 import static alpha.nomagichttp.message.Responses.internalServerError;
 import static alpha.nomagichttp.message.Responses.notFound;
 import static alpha.nomagichttp.message.Responses.notImplemented;
+import static alpha.nomagichttp.message.Responses.upgradeRequired;
 import static java.lang.System.Logger.Level.ERROR;
 
 /**
@@ -183,6 +185,10 @@ public interface ErrorHandler
      *     <td> {@link Responses#badRequest()} </td>
      *   </tr>
      *   <tr>
+     *     <th scope="row"> {@link HttpVersionRejectedException} </th>
+     *     <td> {@link Responses#upgradeRequired()} </td>
+     *   </tr>
+     *   <tr>
      *     <th scope="row"> {@link NoRouteFoundException} </th>
      *     <td> {@link Responses#notFound()} </td>
      *   </tr>
@@ -220,6 +226,8 @@ public interface ErrorHandler
             throw thr;
         } catch (RequestHeadParseException | HttpVersionParseException | BadHeaderException e) {
             res = badRequest();
+        } catch (HttpVersionRejectedException e) {
+            res = upgradeRequired();
         } catch (NoRouteFoundException e) {
             res = notFound();
         } catch (MaxRequestHeadSizeExceededException e) {

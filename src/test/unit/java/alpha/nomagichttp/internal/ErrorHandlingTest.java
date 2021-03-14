@@ -121,6 +121,14 @@ class ErrorHandlingTest
             "Content-Length: 0" + CRLF + CRLF);
     }
     
+    @Test
+    void httpVersionRejected() throws IOException {
+        String res = createServerAndClient().writeRead("GET / HTTP/0.9" + CRLF + CRLF);
+        assertThat(res).isEqualTo(
+            "HTTP/1.1 426 Upgrade Required" + CRLF +
+            "Content-Length: 0" + CRLF + CRLF);
+    }
+    
     private ClientOperations createServerAndClient() throws IOException {
         return createServerAndClient(null);
     }
