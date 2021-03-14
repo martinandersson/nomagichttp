@@ -1,5 +1,6 @@
 package alpha.nomagichttp;
 
+import alpha.nomagichttp.handler.ErrorHandler;
 import alpha.nomagichttp.handler.RequestHandler;
 import alpha.nomagichttp.message.HttpVersionParseException;
 import alpha.nomagichttp.message.MediaType;
@@ -2490,13 +2491,15 @@ public final class HttpConstants {
         public static final String USER_AGENT = "User-Agent";
         
         /**
-         * "Ask the server to upgrade to another protocol." (
-         * <a href="https://en.wikipedia.org/wiki/List_of_HTTP_header_fields">Wikipedia</a>
-         * )<p>
+         * Ask the recipient to upgrade to another protocol.<p>
          * 
-         * Applies to the request, not response.<p>
+         * May be used in both request and response.<p>
          * 
          * Example: {@code Upgrade: h2c, HTTPS/1.3, IRC/6.9, RTA/x11, websocket}<p>
+         * 
+         * The NoMagicHTTP server's {@link ErrorHandler#DEFAULT default error
+         * handler} uses this header to suggest a new protocol version if an old
+         * version was rejected.
          * 
          * @see StatusCode#ONE_HUNDRED_ONE
          * @see <a href="https://tools.ietf.org/html/rfc7230#section-6.7">RFC 7230 §6.7</a>
@@ -2677,7 +2680,12 @@ public final class HttpConstants {
         HTTP_3 (3, empty());
         
         /**
-         * Parse a version.
+         * Parse a version.<p>
+         * 
+         * {@code HttpVersionParseException} is thrown not only for syntax
+         * problems. There's also a requirement enforced that HTTP major version
+         * {@literal <}= 1 must specify a minor, and major version {@literal >}=
+         * 2 must not.
          * 
          * @param str to parse
          * 
@@ -2687,7 +2695,7 @@ public final class HttpConstants {
          *             if {@code str} is {@code null}
          * 
          * @throws HttpVersionParseException
-         *             if parsing failed, e.g. caused by NumberFormatException
+         *             if parsing failed
          * 
          * @throws IllegalArgumentException
          *             if this enum type has no constant mapping to the parsed string
@@ -2753,6 +2761,7 @@ public final class HttpConstants {
                     if (major < 0) {
                         throw new IllegalArgumentException(major + ":" + reqMinor(str, minorStr));
                     }
+                    reqNoMinor(str, minorStr);
                     throw new IllegalArgumentException(major + ":");
             }
         }

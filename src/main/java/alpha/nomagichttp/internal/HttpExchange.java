@@ -3,7 +3,8 @@ package alpha.nomagichttp.internal;
 import alpha.nomagichttp.HttpConstants.Version;
 import alpha.nomagichttp.handler.ErrorHandler;
 import alpha.nomagichttp.handler.RequestHandler;
-import alpha.nomagichttp.message.HttpVersionRejectedException;
+import alpha.nomagichttp.message.HttpVersionTooNewException;
+import alpha.nomagichttp.message.HttpVersionTooOldException;
 import alpha.nomagichttp.message.Response;
 import alpha.nomagichttp.message.Responses;
 import alpha.nomagichttp.route.RouteRegistry;
@@ -14,6 +15,7 @@ import java.util.concurrent.CompletionStage;
 import static alpha.nomagichttp.HttpConstants.Version.HTTP_1_1;
 import static alpha.nomagichttp.util.Headers.accept;
 import static alpha.nomagichttp.util.Headers.contentType;
+import static java.lang.Integer.parseInt;
 import static java.lang.System.Logger.Level.DEBUG;
 import static java.lang.System.Logger.Level.ERROR;
 import static java.lang.System.Logger.Level.WARNING;
@@ -89,11 +91,26 @@ final class HttpExchange
     
     private void initialize(RequestHead h) {
         RequestTarget t = RequestTarget.parse(h.requestTarget());
-        Version ver = Version.parse(h.httpVersion());
+        final Version ver;
         
-        if (ver.major() != 1) {
-            throw new HttpVersionRejectedException(ver);
+        try {
+            ver = Version.parse(h.httpVersion());
+        } catch (IllegalArgumentException e) {
+            String[] comp = e.getMessage().split(":");
+            if (comp.length == 1) {
+                // No literal for major
+                requireHTTP1(parseInt(comp[0]), h.httpVersion(), "HTTP/1.1"); // for now
+                throw new AssertionError(
+                        "String \"HTTP/<single digit>\" should have failed with parse exception (missing minor).");
+            } else {
+                // No literal for major + minor (i.e., version older than HTTP/0.9)
+                assert comp.length == 2;
+                assert parseInt(comp[0]) <= 0;
+                throw new HttpVersionTooOldException(h.httpVersion(), "HTTP/1.1");
+            }
         }
+        
+        requireHTTP1(ver.major(), h.httpVersion(), "HTTP/1.1");
         this.ver = ver;
         
         RouteRegistry.Match m = findRoute(t);
@@ -264,6 +281,15 @@ final class HttpExchange
             return t;
         }
         return t.getCause() == null ? t : unpackCompletionException(t.getCause());
+    }
+    
+    private static void requireHTTP1(int major, String rejectedVersion, String upgrade) {
+        if (major < 1) {
+            throw new HttpVersionTooOldException(rejectedVersion, upgrade);
+        }
+        if (major > 1) { // for now
+            throw new HttpVersionTooNewException(rejectedVersion);
+        }
     }
     
     private void unexpected(Throwable t) {

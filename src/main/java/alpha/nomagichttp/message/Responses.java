@@ -8,9 +8,13 @@ import alpha.nomagichttp.util.BetterBodyPublishers;
 import java.nio.ByteBuffer;
 import java.util.concurrent.Flow;
 
+import static alpha.nomagichttp.HttpConstants.HeaderKey.CONNECTION;
 import static alpha.nomagichttp.HttpConstants.HeaderKey.CONTENT_LENGTH;
+import static alpha.nomagichttp.HttpConstants.HeaderKey.UPGRADE;
+import static alpha.nomagichttp.HttpConstants.ReasonPhrase.HTTP_VERSION_NOT_SUPPORTED;
 import static alpha.nomagichttp.HttpConstants.ReasonPhrase.UPGRADE_REQUIRED;
 import static alpha.nomagichttp.HttpConstants.StatusCode.FIVE_HUNDRED;
+import static alpha.nomagichttp.HttpConstants.StatusCode.FIVE_HUNDRED_FIVE;
 import static alpha.nomagichttp.HttpConstants.StatusCode.FIVE_HUNDRED_ONE;
 import static alpha.nomagichttp.HttpConstants.StatusCode.FOUR_HUNDRED;
 import static alpha.nomagichttp.HttpConstants.StatusCode.FOUR_HUNDRED_FOUR;
@@ -58,6 +62,8 @@ public final class Responses
      * @return  a "200 OK"-response with a text body
      * @see     StatusCode#TWO_HUNDRED
      */
+    // TODO: See Response.Builder.body(); WE MUST document thread-safety of Response returned,
+    //       and make BetterBodyPublishers a top priority
     public static Response text(String textPlain) {
         return text("text/plain; charset=utf-8", BodyPublishers.ofString(textPlain));
     }
@@ -202,13 +208,35 @@ public final class Responses
      * The response will {@linkplain Response#mustCloseAfterWrite() close the
      * client channel} after having been sent.
      * 
-     * @return  a "501 Not Implemented"-response with no body
-     * @see     StatusCode#FIVE_HUNDRED_ONE
+     * @param   upgrade header value (proposition for new protocol version)
+     * @return  a "426 Upgrade Required"-response with no body
+     * @see     StatusCode#FOUR_HUNDRED_TWENTY_SIX
      */
-    public static Response upgradeRequired() {
+    public static Response upgradeRequired(String upgrade) {
         return Response.builder()
                 .statusCode(FOUR_HUNDRED_TWENTY_SIX)
                 .reasonPhrase(UPGRADE_REQUIRED)
+                .addHeaders(
+                    UPGRADE, upgrade,
+                    CONNECTION, UPGRADE,
+                    CONTENT_LENGTH, "0")
+                .mustCloseAfterWrite(true)
+                .build();
+    }
+    
+    /**
+     * Returns a "505 HTTP Version Not Supported"-response with no body.<p>
+     * 
+     * The response will {@linkplain Response#mustCloseAfterWrite() close the
+     * client channel} after having been sent.
+     * 
+     * @return  a "505 HTTP Version Not Supported"-response with no body
+     * @see     StatusCode#FIVE_HUNDRED_FIVE
+     */
+    public static Response httpVersionNotSupported() {
+        return Response.builder()
+                .statusCode(FIVE_HUNDRED_FIVE)
+                .reasonPhrase(HTTP_VERSION_NOT_SUPPORTED)
                 .header(CONTENT_LENGTH, "0")
                 .mustCloseAfterWrite(true)
                 .build();
