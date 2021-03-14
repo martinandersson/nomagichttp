@@ -3,6 +3,8 @@ package alpha.nomagichttp.internal;
 import alpha.nomagichttp.HttpConstants.Version;
 import alpha.nomagichttp.handler.ErrorHandler;
 import alpha.nomagichttp.handler.RequestHandler;
+import alpha.nomagichttp.message.HttpVersionParseException;
+import alpha.nomagichttp.message.HttpVersionRejectedException;
 import alpha.nomagichttp.message.Response;
 import alpha.nomagichttp.message.Responses;
 import alpha.nomagichttp.route.RouteRegistry;
@@ -10,6 +12,7 @@ import alpha.nomagichttp.route.RouteRegistry;
 import java.util.concurrent.CompletionException;
 import java.util.concurrent.CompletionStage;
 
+import static alpha.nomagichttp.HttpConstants.Version.HTTP_1_1;
 import static alpha.nomagichttp.util.Headers.accept;
 import static alpha.nomagichttp.util.Headers.contentType;
 import static java.lang.System.Logger.Level.DEBUG;
@@ -78,7 +81,22 @@ final class HttpExchange
     
     private void initialize(RequestHead h) {
         RequestTarget t = RequestTarget.parse(h.requestTarget());
-        ver = Version.parse(h.httpVersion());
+        
+        final Version ver;
+        try {
+            ver = Version.parse(h.httpVersion());
+        } catch (HttpVersionParseException e) {
+            // We have to use some version in the response
+            this.ver = HTTP_1_1;
+            throw e;
+        }
+        
+        if (ver.major() != 1) {
+            this.ver = HTTP_1_1;
+            throw new HttpVersionRejectedException(ver);
+        }
+        
+        this.ver = ver;
         
         RouteRegistry.Match m = findRoute(t);
         
