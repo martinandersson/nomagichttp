@@ -18,7 +18,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
  *
  * @author Martin Andersson (webmaster at martinandersson.com)
  */
-class HttpVersionParse
+class HttpVersionParseTest
 {
     @Test
     void happy_path() {
