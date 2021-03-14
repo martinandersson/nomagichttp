@@ -2697,7 +2697,7 @@ public final class HttpConstants {
             
             if (!str.subSequence(0, slash).equals("HTTP")) {
                 throw new HttpVersionParseException(str,
-                        "HTTP-name \" + str.subSequence(0, i) + \" is not \"HTTP\".");
+                        "HTTP-name \"" + str.subSequence(0, slash) + "\" is not \"HTTP\".");
             }
             
             int dot = str.indexOf(".", slash + 1);
@@ -2751,7 +2751,8 @@ public final class HttpConstants {
         
         private static int parseMinor(String str, String minor) {
             if (minor == null) {
-                throw new HttpVersionParseException(str, "No minor version provided.");
+                throw new HttpVersionParseException(str,
+                        "No minor version provided when one was expected.");
             }
             return parseInt(minor);
         }
