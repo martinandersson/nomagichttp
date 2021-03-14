@@ -215,7 +215,7 @@ public interface ErrorHandler
             throw thr;
         } catch (BadHeaderException | RequestHeadParseException e) {
             res = badRequest();
-        } catch (NoRouteFoundException e) { // + AmbiguousRouteCollisionException
+        } catch (NoRouteFoundException e) {
             res = notFound();
         } catch (MaxRequestHeadSizeExceededException e) {
             res = entityTooLarge();

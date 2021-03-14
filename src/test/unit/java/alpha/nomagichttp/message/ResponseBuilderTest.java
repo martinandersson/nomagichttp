@@ -17,32 +17,19 @@ class ResponseBuilderTest
     @Test
     void happy_path() {
         Response r = Response.builder()
-                .httpVersion("HTTP/1.1")
                 .statusCode(200)
                 .reasonPhrase("OK")
                 .build();
         
-        assertThat(r.statusLine()).isEqualTo("HTTP/1.1 200 OK");
+        assertThat(r.statusCode()).isEqualTo(200);
+        assertThat(r.reasonPhrase()).isEqualTo("OK");
         assertThat(r.mustCloseAfterWrite()).isFalse();
         assertSame(r.body(), empty());
     }
     
     @Test
-    void no_httpVersion_IllegalArgumentException() {
-        Response.Builder b = Response.builder()
-                //.httpVersion("HTTP/1.1")
-                .statusCode(200)
-                .reasonPhrase("OK");
-        
-        assertThatThrownBy(b::build)
-                .isExactlyInstanceOf(IllegalArgumentException.class)
-                .hasMessage("HTTP version not set.");
-    }
-    
-    @Test
     void no_statusCode_IllegalArgumentException() {
         Response.Builder b = Response.builder()
-                .httpVersion("HTTP/1.1")
                 //.statusCode(200)
                 .reasonPhrase("OK");
         
@@ -52,24 +39,13 @@ class ResponseBuilderTest
     }
     
     @Test
-    void no_reasonPhrase_Unknown() {
-        Response r = Response.builder()
-                .httpVersion("HTTP/1.1")
-                .statusCode(200)
-                //.reasonPhrase("OK")
-                .build();
-        
-        assertThat(r.statusLine()).isEqualTo("HTTP/1.1 200 Unknown");
-    }
-    
-    @Test
     void future_changes_does_not_affect_old_builders() {
-        Response.Builder b0 = Response.builder().httpVersion("").reasonPhrase(""),
+        Response.Builder b0 = Response.builder().reasonPhrase(""),
                          b1 = b0.statusCode(1),
                          b2 = b1.statusCode(2);
         
-        assertThat(b1.build().statusLine()).isEqualTo(" 1 ");
-        assertThat(b2.build().statusLine()).isEqualTo(" 2 ");
+        assertThat(b1.build().statusCode()).isEqualTo(1);
+        assertThat(b2.build().statusCode()).isEqualTo(2);
     }
     
     @Test

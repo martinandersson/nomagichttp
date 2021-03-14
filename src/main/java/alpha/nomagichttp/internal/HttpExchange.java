@@ -1,5 +1,6 @@
 package alpha.nomagichttp.internal;
 
+import alpha.nomagichttp.HttpConstants.Version;
 import alpha.nomagichttp.handler.ErrorHandler;
 import alpha.nomagichttp.handler.RequestHandler;
 import alpha.nomagichttp.message.Response;
@@ -9,7 +10,6 @@ import alpha.nomagichttp.route.RouteRegistry;
 import java.util.concurrent.CompletionException;
 import java.util.concurrent.CompletionStage;
 
-import static alpha.nomagichttp.internal.RequestTarget.parse;
 import static alpha.nomagichttp.util.Headers.accept;
 import static alpha.nomagichttp.util.Headers.contentType;
 import static java.lang.System.Logger.Level.DEBUG;
@@ -40,6 +40,7 @@ final class HttpExchange
      * Executor/ExecutorService, or at worst, a new Thread.start() for each task.
      */
     
+    private Version ver;
     private DefaultRequest request;
     private RequestHandler handler;
     private ErrorHandlers eh;
@@ -56,6 +57,7 @@ final class HttpExchange
         this.server  = server;
         this.child   = child;
         this.bytes   = bytes;
+        this.ver     = null; // <-- should always be the same throughout connection!?
         this.request = null;
         this.handler = null;
         this.eh      = null;
@@ -75,8 +77,11 @@ final class HttpExchange
     }
     
     private void initialize(RequestHead h) {
-        RequestTarget t = parse(h.requestTarget());
+        RequestTarget t = RequestTarget.parse(h.requestTarget());
+        ver = Version.parse(h.httpVersion());
+        
         RouteRegistry.Match m = findRoute(t);
+        
         // This order is actually specified in javadoc of ErrorHandler#apply
         request = createRequest(h, t, m);
         handler = findRequestHandler(h, m);
@@ -87,7 +92,7 @@ final class HttpExchange
     }
     
     private DefaultRequest createRequest(RequestHead h, RequestTarget t, RouteRegistry.Match m) {
-        return new DefaultRequest(h, t, m, bytes, child);
+        return new DefaultRequest(ver, h, t, m, bytes, child);
     }
     
     private static RequestHandler findRequestHandler(RequestHead rh, RouteRegistry.Match m) {
@@ -105,7 +110,7 @@ final class HttpExchange
     }
     
     private CompletionStage<Void> writeResponseToChannel(Response r) {
-        ResponseBodySubscriber rbs = new ResponseBodySubscriber(r, child);
+        ResponseBodySubscriber rbs = new ResponseBodySubscriber(ver, r, child);
         r.body().subscribe(rbs);
         return rbs.asCompletionStage()
                   .thenRun(() -> {

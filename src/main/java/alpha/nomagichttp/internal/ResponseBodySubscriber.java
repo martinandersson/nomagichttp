@@ -1,5 +1,6 @@
 package alpha.nomagichttp.internal;
 
+import alpha.nomagichttp.HttpConstants;
 import alpha.nomagichttp.message.Response;
 
 import java.nio.ByteBuffer;
@@ -25,7 +26,7 @@ final class ResponseBodySubscriber implements SubscriberAsStage<ByteBuffer, Long
     private static final System.Logger LOG
             = System.getLogger(ResponseBodySubscriber.class.getPackageName());
     
-    private static final String CRLF = "\r\n";
+    private static final String SP = " ", CRLF = "\r\n";
     
     // Delta kept low because server could be handling a lot of responses and
     // we don't want to keep too much garbage in memory.
@@ -35,18 +36,20 @@ final class ResponseBodySubscriber implements SubscriberAsStage<ByteBuffer, Long
             // Maximum bytebuffer demand.
             DEMAND_MAX = 3;
     
-    private final Response response;
-    private final AnnounceToChannel channel;
+    private final HttpConstants.Version ver;
+    private final Response res;
+    private final AnnounceToChannel ch;
     private final CompletableFuture<Long> result;
     
     private Flow.Subscription subscription;
     private boolean pushedHead;
     private int requested;
     
-    ResponseBodySubscriber(Response response, DefaultChannelOperations child) {
-        this.response = requireNonNull(response);
-        this.result   = new CompletableFuture<>();
-        this.channel  = AnnounceToChannel.write(child, this::afterChannelFinished);
+    ResponseBodySubscriber(HttpConstants.Version ver, Response res, DefaultChannelOperations ch) {
+        this.ver = requireNonNull(ver);
+        this.res = requireNonNull(res);
+        this.result = new CompletableFuture<>();
+        this.ch  = AnnounceToChannel.write(ch, this::afterChannelFinished);
     }
     
     /**
@@ -100,7 +103,7 @@ final class ResponseBodySubscriber implements SubscriberAsStage<ByteBuffer, Long
             return;
         }
         
-        channel.announce(bodyPart);
+        ch.announce(bodyPart);
         
         if (--requested == DEMAND_MIN) {
             requested = DEMAND_MAX;
@@ -110,7 +113,7 @@ final class ResponseBodySubscriber implements SubscriberAsStage<ByteBuffer, Long
     
     @Override
     public void onError(Throwable t) {
-        if (!channel.stop(t)) {
+        if (!ch.stop(t)) {
             LOG.log(WARNING, () ->
                 "Response body publisher failed, but subscription was already done. " +
                 "This error will be ignored.", t);
@@ -122,17 +125,18 @@ final class ResponseBodySubscriber implements SubscriberAsStage<ByteBuffer, Long
         if (!pushedHead) {
             pushHead();
         }
-        channel.announce(NO_MORE);
+        ch.announce(NO_MORE);
     }
     
     private void pushHead() {
-        final String line = response.statusLine() + CRLF,
-                     vals = join(CRLF, response.headers()),
+        final String phra = res.reasonPhrase() == null ? "" : res.reasonPhrase(),
+                     line = ver + SP + res.statusCode() + SP + phra + CRLF,
+                     vals = join(CRLF, res.headers()),
                      head = line + (vals.isEmpty() ? CRLF : vals + CRLF + CRLF);
         
         ByteBuffer b = ByteBuffer.wrap(head.getBytes(US_ASCII));
         pushedHead = true;
-        channel.announce(b);
+        ch.announce(b);
     }
     
     private void afterChannelFinished(DefaultChannelOperations child, long byteCount, Throwable exc) {

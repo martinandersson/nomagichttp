@@ -14,7 +14,6 @@ import static alpha.nomagichttp.HttpConstants.StatusCode.FIVE_HUNDRED_ONE;
 import static alpha.nomagichttp.HttpConstants.StatusCode.FOUR_HUNDRED;
 import static alpha.nomagichttp.HttpConstants.StatusCode.FOUR_HUNDRED_FOUR;
 import static alpha.nomagichttp.HttpConstants.StatusCode.FOUR_HUNDRED_THIRTEEN;
-import static alpha.nomagichttp.HttpConstants.Version.HTTP_1_1;
 import static java.net.http.HttpRequest.BodyPublisher;
 import static java.net.http.HttpRequest.BodyPublishers;
 
@@ -210,7 +209,6 @@ public final class Responses
         
         private static Response respondThenClose(int code, String phrase) {
             return Response.builder()
-                    .httpVersion(HTTP_1_1)
                     .statusCode(code)
                     .reasonPhrase(phrase)
                     .header(CONTENT_LENGTH, "0")

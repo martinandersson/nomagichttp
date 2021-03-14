@@ -19,7 +19,7 @@ import static alpha.nomagichttp.HttpConstants.StatusCode;
 import static alpha.nomagichttp.HttpConstants.StatusCode.TWO_HUNDRED;
 import static alpha.nomagichttp.HttpConstants.StatusCode.TWO_HUNDRED_FOUR;
 import static alpha.nomagichttp.HttpConstants.StatusCode.TWO_HUNDRED_TWO;
-import static alpha.nomagichttp.HttpConstants.Version;
+import static alpha.nomagichttp.message.Response.builder;
 
 /**
  * A {@code Response} contains a status line, followed by optional headers and
@@ -63,15 +63,28 @@ public interface Response
     }
     
     /**
-     * Returns the status-line.<p>
+     * Returns the status code.<p>
      * 
-     * The status-line consists of an HTTP-version, a {@linkplain
-     * StatusCode status-code} and a {@linkplain ReasonPhrase reason-phrase}.
-     * For example: "HTTP/1.1 200 OK".
+     * As far as the server is concerned, the returned value may be any integer
+     * value, but should be conforming to the HTTP protocol.
      * 
-     * @return the status-line
+     * @return the status code
+     * 
+     * @see HttpConstants.StatusCode
      */
-    String statusLine();
+    int statusCode();
+    
+    /**
+     * Returns the reason phrase.
+     * 
+     * The returned value may be {@code null} or an empty string, in which case
+     * no reason phrase will be added to the status line.
+     * 
+     * @return the reason phrase
+     * 
+     * @see HttpConstants.ReasonPhrase
+     */
+    String reasonPhrase();
     
     /**
      * Returns the headers.
@@ -131,21 +144,20 @@ public interface Response
      * Builder of a {@link Response}.<p>
      * 
      * The builder type declares static methods that return builders already
-     * populated with common {@linkplain #statusLine() status line}s such as
-     * {@link #ok()} and {@link #accepted()}, what remains is to customize
-     * headers and the body. Static methods that build a complete response can
-     * be found in {@link Responses}.<p>
+     * populated with common status lines such as {@link #ok()} and {@link
+     * #accepted()}, what remains is to customize headers and the body. Static
+     * methods that build a complete response can be found in {@link
+     * Responses}.<p>
      * 
      * The builder can be used as a template to modify per-response state. Each
      * method returns a new builder instance representing the new state. The API
      * should be used in a fluent style with references saved and reused only
      * for templating.<p>
      * 
-     * HTTP version and status code must be set or {@link #build()} will fail.
-     * The reason phrase if not set will default to {@value
-     * ReasonPhrase#UNKNOWN}. Headers and body are optional. Please note that
-     * some message variants may build just fine but {@linkplain HttpServer blow
-     * up later}.<p>
+     * Status code must be set or {@link #build()} will fail. The reason phrase
+     * if not set will default to {@value ReasonPhrase#UNKNOWN}. Headers and
+     * body are optional. Please note that some message variants may build just
+     * fine but {@linkplain HttpServer blow up later}.<p>
      * 
      * Header key and values are taken at face value (case-sensitive),
      * concatenated using a colon followed by a space ": ". Adding many values
@@ -205,15 +217,6 @@ public interface Response
         }
         
         // TODO: Basically all other codes in the standard lol
-        
-        /**
-         * Set HTTP version.
-         * 
-         * @param   httpVersion value (any non-null string)
-         * @throws  NullPointerException if {@code httpVersion} is {@code null}
-         * @return  a new builder representing the new state
-         */
-        Builder httpVersion(String httpVersion);
         
         /**
          * Set status code.
@@ -391,17 +394,10 @@ public interface Response
     }
 }
 
-final class BuilderCache
-{
-    private static final Response.Builder HTTP_1_1
-            = Response.builder().httpVersion(Version.HTTP_1_1);
-    
-    private BuilderCache() {
-        // Empty
-    }
-    
+enum BuilderCache
+{;
     static final Response.Builder
-            OK         = HTTP_1_1.statusCode(TWO_HUNDRED).reasonPhrase(ReasonPhrase.OK),
-            ACCEPTED   = HTTP_1_1.statusCode(TWO_HUNDRED_TWO).reasonPhrase(ReasonPhrase.ACCEPTED),
-            NO_CONTENT = HTTP_1_1.statusCode(TWO_HUNDRED_FOUR).reasonPhrase(ReasonPhrase.NO_CONTENT);
+            OK         = builder().statusCode(TWO_HUNDRED).reasonPhrase(ReasonPhrase.OK),
+            ACCEPTED   = builder().statusCode(TWO_HUNDRED_TWO).reasonPhrase(ReasonPhrase.ACCEPTED),
+            NO_CONTENT = builder().statusCode(TWO_HUNDRED_FOUR).reasonPhrase(ReasonPhrase.NO_CONTENT);
 }
