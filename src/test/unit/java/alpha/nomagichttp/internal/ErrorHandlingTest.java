@@ -13,6 +13,7 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
+import java.util.List;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Supplier;
@@ -122,11 +123,31 @@ class ErrorHandlingTest
     }
     
     @Test
-    void httpVersionRejected() throws IOException {
-        String res = createServerAndClient().writeRead("GET / HTTP/0.9" + CRLF + CRLF);
-        assertThat(res).isEqualTo(
-            "HTTP/1.1 426 Upgrade Required" + CRLF +
-            "Content-Length: 0" + CRLF + CRLF);
+    void httpVersionRejected_tooOld() throws IOException {
+        ClientOperations c = createServerAndClient();
+        
+        for (String v : List.of("-1.23", "0.5", "0.8", "0.9")) {
+            String res = c.writeRead("GET / HTTP/" + v + CRLF + CRLF);
+            
+            assertThat(res).isEqualTo(
+                "HTTP/1.1 426 Upgrade Required" + CRLF +
+                "Upgrade: HTTP/1.1" + CRLF +
+                "Connection: Upgrade" + CRLF +
+                "Content-Length: 0" + CRLF + CRLF);
+        }
+    }
+    
+    @Test
+    void httpVersionRejected_tooNew() throws IOException {
+        ClientOperations c = createServerAndClient();
+        
+        for (String v : List.of("2", "3", "999")) {
+            String res = c.writeRead("GET / HTTP/" + v + CRLF + CRLF);
+            
+            assertThat(res).isEqualTo(
+                "HTTP/1.1 505 HTTP Version Not Supported" + CRLF +
+                "Content-Length: 0" + CRLF + CRLF);
+        }
     }
     
     private ClientOperations createServerAndClient() throws IOException {
