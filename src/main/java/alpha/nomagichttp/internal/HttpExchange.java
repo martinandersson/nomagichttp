@@ -91,8 +91,17 @@ final class HttpExchange
     
     private void initialize(RequestHead h) {
         RequestTarget t = RequestTarget.parse(h.requestTarget());
-        final Version ver;
+        this.ver = parseVersion(h);
+        RouteRegistry.Match m = findRoute(t);
         
+        // This order is actually specified in javadoc of ErrorHandler#apply
+        request = createRequest(h, t, m);
+        handler = findRequestHandler(h, m);
+    }
+    
+    private static Version parseVersion(RequestHead h) {
+        final Version ver;
+    
         try {
             ver = Version.parse(h.httpVersion());
         } catch (IllegalArgumentException e) {
@@ -109,15 +118,18 @@ final class HttpExchange
                 throw new HttpVersionTooOldException(h.httpVersion(), "HTTP/1.1");
             }
         }
-        
+    
         requireHTTP1(ver.major(), h.httpVersion(), "HTTP/1.1");
-        this.ver = ver;
-        
-        RouteRegistry.Match m = findRoute(t);
-        
-        // This order is actually specified in javadoc of ErrorHandler#apply
-        request = createRequest(h, t, m);
-        handler = findRequestHandler(h, m);
+        return ver;
+    }
+    
+    private static void requireHTTP1(int major, String rejectedVersion, String upgrade) {
+        if (major < 1) {
+            throw new HttpVersionTooOldException(rejectedVersion, upgrade);
+        }
+        if (major > 1) { // for now
+            throw new HttpVersionTooNewException(rejectedVersion);
+        }
     }
     
     private RouteRegistry.Match findRoute(RequestTarget t) {
@@ -281,15 +293,6 @@ final class HttpExchange
             return t;
         }
         return t.getCause() == null ? t : unpackCompletionException(t.getCause());
-    }
-    
-    private static void requireHTTP1(int major, String rejectedVersion, String upgrade) {
-        if (major < 1) {
-            throw new HttpVersionTooOldException(rejectedVersion, upgrade);
-        }
-        if (major > 1) { // for now
-            throw new HttpVersionTooNewException(rejectedVersion);
-        }
     }
     
     private void unexpected(Throwable t) {
