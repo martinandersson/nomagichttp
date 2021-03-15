@@ -197,6 +197,6 @@ class ErrorHandlingTest
         HttpServer.Config c = cfg == null ? DEFAULT : cfg;
         
         server = HttpServer.create(c, eh).add("/", handler).start();
-        return new ClientOperations(server.getLocalAddress().getPort());
+        return new ClientOperations(server);
     }
 }

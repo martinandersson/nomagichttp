@@ -52,7 +52,7 @@ abstract class AbstractEndToEndTest
         };
         
         server = HttpServer.create(collect).add("/", noop()).start();
-        client = new ClientOperations(server.getLocalAddress().getPort());
+        client = new ClientOperations(server);
     }
     
     @AfterEach
