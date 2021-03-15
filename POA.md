@@ -776,6 +776,8 @@ session ID/key saved in cookie.
 Most timeouts should probably result in a 408 (Request Timeout).
 
 - Max time spent receiving request head- and body respectively.
+  Currently, send a request that doesn't end with `CRLF` + `CRLF` and the
+  exchange "hangs" indefinetely.
 - Same for response.  
   Default for receiving/writing head should be low.  
   Default for receiving/writing body should be super high.
