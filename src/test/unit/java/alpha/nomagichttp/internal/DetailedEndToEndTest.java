@@ -17,7 +17,9 @@ import java.util.concurrent.Flow;
 import java.util.function.Consumer;
 import java.util.function.Function;
 
+import static alpha.nomagichttp.handler.RequestHandlers.GET;
 import static alpha.nomagichttp.handler.RequestHandlers.POST;
+import static alpha.nomagichttp.message.Responses.text;
 import static alpha.nomagichttp.testutil.ClientOperations.CRLF;
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -37,7 +39,7 @@ class DetailedEndToEndTest extends AbstractEndToEndTest
     @BeforeAll
     static void installHandlers() {
         Function<Request, CompletionStage<Response>>
-                isBodyEmpty = req -> Responses.text(String.valueOf(req.body().isEmpty())).completedStage(),
+                isBodyEmpty = req -> text(String.valueOf(req.body().isEmpty())).completedStage(),
                 echoBody    = req -> req.body().toText().thenApply(Responses::text);
         
         server().add(IS_BODY_EMPTY, POST().apply(isBodyEmpty));
@@ -162,6 +164,23 @@ class DetailedEndToEndTest extends AbstractEndToEndTest
              * TODO: When we have a ConnectionLifeCycleTest, make reference.
              */
         }
+    }
+    
+    /**
+     * Can make a simple HTTP/1.0 request (and get HTTP/1.0 response).<p>
+     * 
+     * See {@link ErrorHandlingTest} for cases related to unsupported versions.
+     */
+    @Test
+    void http_1_0() throws IOException {
+        server().add("/echo-version", GET().apply(req ->
+                text("Version: " + req.httpVersion()).completedStage()));
+        
+        String resp = client().writeRead("GET /echo-version HTTP/1.0" + CRLF + CRLF);
+        assertThat(resp).isEqualTo(
+            "HTTP/1.0 200 OK" + CRLF +
+            "Content-Type: text/plain; charset=utf-8" + CRLF +
+            "Content-Length: 17"+ CRLF + CRLF);
     }
     
     private static String requestWithBody(String requestTarget, String body) {
