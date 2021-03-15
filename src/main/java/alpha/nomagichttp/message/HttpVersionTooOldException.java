@@ -1,6 +1,7 @@
 package alpha.nomagichttp.message;
 
 import alpha.nomagichttp.HttpConstants;
+import alpha.nomagichttp.HttpServer;
 import alpha.nomagichttp.handler.ErrorHandler;
 
 import static java.util.Objects.requireNonNull;
@@ -9,11 +10,14 @@ import static java.util.Objects.requireNonNull;
  * Thrown by the server if the request HTTP version is not supported, because it
  * is too old.<p>
  * 
+ * Any HTTP version below 1.0 is too old.<p>
+ * 
  * The {@link ErrorHandler#DEFAULT default error handler} will translate this
  * exception to a {@link Responses#upgradeRequired(String) 426 Upgrade Required}.
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  * 
+ * @see HttpServer
  * @see HttpConstants.Version
  */
 public class HttpVersionTooOldException extends RuntimeException

@@ -3,6 +3,8 @@ package alpha.nomagichttp;
 import alpha.nomagichttp.handler.ErrorHandler;
 import alpha.nomagichttp.handler.RequestHandler;
 import alpha.nomagichttp.internal.DefaultServer;
+import alpha.nomagichttp.message.HttpVersionTooNewException;
+import alpha.nomagichttp.message.HttpVersionTooOldException;
 import alpha.nomagichttp.message.MaxRequestHeadSizeExceededException;
 import alpha.nomagichttp.message.Request;
 import alpha.nomagichttp.message.Response;
@@ -46,6 +48,15 @@ import java.nio.channels.AsynchronousServerSocketChannel;
  * If at least one server is running, then the JVM will not shutdown when the
  * main application thread dies. For the application process to end, all
  * server instances must {@link #stop()}.
+ * 
+ * 
+ * <h2>Supported HTTP Versions</h2>
+ *
+ * Currently, the NoMagicHTTP server is a project in its infancy. Support to
+ * fully support HTTP/1.0 and 1.1 is the first milestone, yet to be completed (
+ * see POA.md in repository). HTTP/2 will be implemented thereafter. HTTP
+ * clients older than HTTP/1.0 is rejected (exchange crash with {@link
+ * HttpVersionTooOldException}.
  * 
  * 
  * <h2>HTTP message semantics</h2>
