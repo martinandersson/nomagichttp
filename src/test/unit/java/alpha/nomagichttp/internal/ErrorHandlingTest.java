@@ -18,6 +18,7 @@ import java.util.concurrent.CompletionStage;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Supplier;
 
+import static alpha.nomagichttp.HttpServer.Config.DEFAULT;
 import static alpha.nomagichttp.handler.RequestHandlers.noop;
 import static alpha.nomagichttp.testutil.ClientOperations.CRLF;
 import static java.lang.System.Logger.Level.ALL;
@@ -107,7 +108,7 @@ class ErrorHandlingTest
         
         ErrorHandler retry = (t, r, h2) -> h2.logic().apply(r);
         
-        String res = createServerAndClient(h1, retry).writeRead(REQ_ROOT);
+        String res = createServerAndClient(h1, retry, null).writeRead(REQ_ROOT);
         assertThat(res).isEqualTo(
             "HTTP/1.1 200 OK" + CRLF +
             "N: 3" + CRLF +
@@ -122,8 +123,13 @@ class ErrorHandlingTest
             "Content-Length: 0" + CRLF + CRLF);
     }
     
+    /**
+     * By default, server rejects clients older than HTTP/1.0.
+     * 
+     * @throws IOException if an I/O error occurs
+     */
     @Test
-    void httpVersionRejected_tooOld() throws IOException {
+    void httpVersionRejected_tooOld_byDefault() throws IOException {
         ClientOperations c = createServerAndClient();
         
         for (String v : List.of("-1.23", "0.5", "0.8", "0.9")) {
@@ -135,6 +141,31 @@ class ErrorHandlingTest
                 "Connection: Upgrade" + CRLF +
                 "Content-Length: 0" + CRLF + CRLF);
         }
+    }
+    
+    /**
+     * Server may be configured to reject HTTP/1.0 clients.
+     * 
+     * See {@link DetailedEndToEndTest#http_1_0()} for the inverse test case. 
+     * 
+     * @throws IOException if an I/O error occurs
+     */
+    @Test
+    void httpVersionRejected_tooOld_thruConfig() throws IOException {
+        HttpServer.Config rejectHttp1_0 = new HttpServer.Config(){
+            @Override public boolean rejectClientsUsingHTTP1_0() {
+                return true;
+            }
+        };
+        
+        ClientOperations c = createServerAndClient(noop(), null, rejectHttp1_0);
+        String res = c.writeRead("GET /not-found HTTP/1.0" + CRLF + CRLF);
+        
+        assertThat(res).isEqualTo(
+            "HTTP/1.0 426 Upgrade Required" + CRLF +
+            "Upgrade: HTTP/1.1"             + CRLF +
+            "Connection: Upgrade"           + CRLF +
+            "Content-Length: 0"             + CRLF + CRLF);
     }
     
     @Test
@@ -155,15 +186,17 @@ class ErrorHandlingTest
     }
     
     private ClientOperations createServerAndClient(ErrorHandler onError) throws IOException {
-        return createServerAndClient(noop(), onError);
+        return createServerAndClient(noop(), onError, null);
     }
     
-    private ClientOperations createServerAndClient(RequestHandler handler, ErrorHandler onError) throws IOException {
+    private ClientOperations createServerAndClient(RequestHandler handler, ErrorHandler onError, HttpServer.Config cfg) throws IOException {
         ErrorHandler[] eh = onError == null ?
                 new ErrorHandler[0] :
                 new ErrorHandler[]{ onError };
         
-        server = HttpServer.create(eh).add("/", handler).start();
+        HttpServer.Config c = cfg == null ? DEFAULT : cfg;
+        
+        server = HttpServer.create(c, eh).add("/", handler).start();
         return new ClientOperations(server.getLocalAddress().getPort());
     }
 }

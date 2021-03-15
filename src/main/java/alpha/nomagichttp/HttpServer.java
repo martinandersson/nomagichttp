@@ -487,5 +487,38 @@ public interface HttpServer
         default int threadPoolSize() {
             return Runtime.getRuntime().availableProcessors();
         }
+        
+        /**
+         * Reject HTTP/1.0 clients, yes or no.<p>
+         * 
+         * By default, this method returns {@code false} and the server will
+         * therefore <i>accept</i> HTTP/1.0 clients.<p>
+         * 
+         * Rejection takes places through a server-thrown {@link
+         * HttpVersionTooOldException} which by default gets translated to a
+         * "426 Upgrade Required" response.<p>
+         * 
+         * Apart from not having all HTTP/1.1 features available for the
+         * exchange, HTTP/1.0 does not by default support persistent connections
+         * and may as a consequence be a wasteful protocol.<p>
+         * 
+         * In order to minimize waste, it's recommended to override this value
+         * with {@code true}. As a library however, we have to be backwards
+         * compatible and support as many applications as possible "out of the
+         * box", hence the {@code false} default.<p>
+         * 
+         * The server uses this config.......................................................
+         * 
+         * Note that HTTP/0.9 or older clients are always rejected (can not be
+         * configured differently).
+         * 
+         * @implSpec
+         * The default implementation returns {@code false}.
+         * 
+         * @return whether or not to reject HTTP/1.0 clients
+         */
+        default boolean rejectClientsUsingHTTP1_0() {
+            return false;
+        }
     }
 }

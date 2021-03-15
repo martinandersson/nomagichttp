@@ -12,6 +12,7 @@ import alpha.nomagichttp.route.RouteRegistry;
 import java.util.concurrent.CompletionException;
 import java.util.concurrent.CompletionStage;
 
+import static alpha.nomagichttp.HttpConstants.Version.HTTP_1_0;
 import static alpha.nomagichttp.HttpConstants.Version.HTTP_1_1;
 import static alpha.nomagichttp.util.Headers.accept;
 import static alpha.nomagichttp.util.Headers.contentType;
@@ -91,7 +92,12 @@ final class HttpExchange
     
     private void initialize(RequestHead h) {
         RequestTarget t = RequestTarget.parse(h.requestTarget());
-        this.ver = parseVersion(h);
+        this.ver = getValidHttpVersion(h);
+        
+        if (ver == HTTP_1_0 && server.getConfig().rejectClientsUsingHTTP1_0()) {
+            throw new HttpVersionTooOldException(h.httpVersion(), "HTTP/1.1");
+        }
+        
         RouteRegistry.Match m = findRoute(t);
         
         // This order is actually specified in javadoc of ErrorHandler#apply
@@ -99,15 +105,15 @@ final class HttpExchange
         handler = findRequestHandler(h, m);
     }
     
-    private static Version parseVersion(RequestHead h) {
+    private Version getValidHttpVersion(RequestHead h) {
         final Version ver;
-    
+        
         try {
             ver = Version.parse(h.httpVersion());
         } catch (IllegalArgumentException e) {
             String[] comp = e.getMessage().split(":");
             if (comp.length == 1) {
-                // No literal for major
+                // No literal for minor
                 requireHTTP1(parseInt(comp[0]), h.httpVersion(), "HTTP/1.1"); // for now
                 throw new AssertionError(
                         "String \"HTTP/<single digit>\" should have failed with parse exception (missing minor).");
@@ -118,7 +124,7 @@ final class HttpExchange
                 throw new HttpVersionTooOldException(h.httpVersion(), "HTTP/1.1");
             }
         }
-    
+        
         requireHTTP1(ver.major(), h.httpVersion(), "HTTP/1.1");
         return ver;
     }

@@ -167,7 +167,7 @@ class DetailedEndToEndTest extends AbstractEndToEndTest
     }
     
     /**
-     * Can make a simple HTTP/1.0 request (and get HTTP/1.0 response).<p>
+     * Can make a HTTP/1.0 request (and get HTTP/1.0 response).<p>
      * 
      * See {@link ErrorHandlingTest} for cases related to unsupported versions.
      */
