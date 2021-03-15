@@ -264,6 +264,8 @@ will most likely abstract a connection into one or many _channels_.
 - Perhaps
   - Split `HttpExchange` into different types depending on HTTP version.  
     May remove the need for some "if-version" checks in code?
+- Implement persistent connections (`Connection: keep-alive`) also for HTTP/1.0
+  clients.
 
 ## Stage: Actions
 
@@ -775,9 +777,16 @@ session ID/key saved in cookie.
 
 Most timeouts should probably result in a 408 (Request Timeout).
 
+For many other servers, timeouts are often quite short, specifically designed
+that way to save server threads. Fotunately, NoMagicHTTP is fully asynchronous
+so even if a request/exchange "hangs" and doesn't make any progress, no thread
+is blocked. But it's still not good for a million reasons to have idle
+connections and loaded buffers sitting around doing nothing. The upside is that
+the timeout configuration can be quite lenient and forgiving.
+
 - Max time spent receiving request head- and body respectively.
   Currently, send a request that doesn't end with `CRLF` + `CRLF` and the
-  exchange "hangs" indefinetely.
+  exchange "hangs" indefinetely. 
 - Same for response.  
   Default for receiving/writing head should be low.  
   Default for receiving/writing body should be super high.
