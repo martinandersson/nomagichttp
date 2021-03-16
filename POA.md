@@ -247,6 +247,7 @@ will most likely abstract a connection into one or many _channels_.
   Should *not* be implemented as a post-action as this is a protocol- and
   therefor server-specific detail.
 - Unroll theoretically possible recursion in `HttpExchange`.
+- New exchange does not begin if `Connection: close`
 - Add `Response.mustCloseAfterWrite(boolean)` and rename to `thenCloseChannel`.
   - Will close even if response is interim (future warning log may take place).
 - Research
