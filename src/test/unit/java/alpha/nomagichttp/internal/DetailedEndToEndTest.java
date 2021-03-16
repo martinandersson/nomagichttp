@@ -7,6 +7,7 @@ import alpha.nomagichttp.message.Request;
 import alpha.nomagichttp.message.Response;
 import alpha.nomagichttp.message.Responses;
 import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
@@ -172,6 +173,7 @@ class DetailedEndToEndTest extends AbstractEndToEndTest
      * See {@link ErrorHandlingTest} for cases related to unsupported versions.
      */
     @Test
+    @Disabled("Server+superclass needs to ignore disconnect errors first")
     void http_1_0() throws IOException {
         server().add("/echo-version", GET().apply(req ->
                 text("Version: " + req.httpVersion()).completedStage()));
