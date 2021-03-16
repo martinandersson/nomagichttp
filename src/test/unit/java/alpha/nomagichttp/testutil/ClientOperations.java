@@ -1,5 +1,6 @@
 package alpha.nomagichttp.testutil;
 
+import alpha.nomagichttp.HttpServer;
 import alpha.nomagichttp.message.Char;
 
 import java.io.ByteArrayOutputStream;
@@ -79,6 +80,16 @@ public final class ClientOperations
     
     private final SocketChannelSupplier factory;
     private SocketChannel ch;
+    
+    /**
+     * Constructs a {@code ClientOperations} using a {@code SocketChannel}
+     * opened on the port of the given server.
+     * 
+     * @param server client should connect to
+     */
+    public ClientOperations(HttpServer server) {
+        this(server.getLocalAddress().getPort());
+    }
     
     /**
      * Constructs a {@code ClientOperations} using a {@code SocketChannel}

@@ -3,8 +3,11 @@ package alpha.nomagichttp.handler;
 import alpha.nomagichttp.HttpServer;
 import alpha.nomagichttp.examples.RetryRequestOnError;
 import alpha.nomagichttp.message.BadHeaderException;
-import alpha.nomagichttp.message.BadMediaTypeSyntaxException;
+import alpha.nomagichttp.message.HttpVersionParseException;
+import alpha.nomagichttp.message.HttpVersionTooNewException;
+import alpha.nomagichttp.message.HttpVersionTooOldException;
 import alpha.nomagichttp.message.MaxRequestHeadSizeExceededException;
+import alpha.nomagichttp.message.MediaTypeParseException;
 import alpha.nomagichttp.message.Request;
 import alpha.nomagichttp.message.RequestHeadParseException;
 import alpha.nomagichttp.message.Response;
@@ -17,9 +20,11 @@ import java.util.concurrent.CompletionStage;
 
 import static alpha.nomagichttp.message.Responses.badRequest;
 import static alpha.nomagichttp.message.Responses.entityTooLarge;
+import static alpha.nomagichttp.message.Responses.httpVersionNotSupported;
 import static alpha.nomagichttp.message.Responses.internalServerError;
 import static alpha.nomagichttp.message.Responses.notFound;
 import static alpha.nomagichttp.message.Responses.notImplemented;
+import static alpha.nomagichttp.message.Responses.upgradeRequired;
 import static java.lang.System.Logger.Level.ERROR;
 
 /**
@@ -170,12 +175,24 @@ public interface ErrorHandler
      *   </thead>
      *   <tbody>
      *   <tr>
+     *     <th scope="row"> {@link RequestHeadParseException} </th>
+     *     <td> {@link Responses#badRequest()} </td>
+     *   </tr>
+     *   <tr>
+     *     <th scope="row"> {@link HttpVersionParseException} </th>
+     *     <td> {@link Responses#badRequest()} </td>
+     *   </tr>
+     *   <tr>
      *     <th scope="row"> {@link BadHeaderException} </th>
      *     <td> {@link Responses#badRequest()} </td>
      *   </tr>
      *   <tr>
-     *     <th scope="row"> {@link RequestHeadParseException} </th>
-     *     <td> {@link Responses#badRequest()} </td>
+     *     <th scope="row"> {@link HttpVersionTooOldException} </th>
+     *     <td> {@link Responses#upgradeRequired(String)} </td>
+     *   </tr>
+     *   <tr>
+     *     <th scope="row"> {@link HttpVersionTooNewException} </th>
+     *     <td> {@link Responses#httpVersionNotSupported()} </td>
      *   </tr>
      *   <tr>
      *     <th scope="row"> {@link NoRouteFoundException} </th>
@@ -190,7 +207,7 @@ public interface ErrorHandler
      *     <td> {@link Responses#notImplemented()} </td>
      *   </tr>
      *   <tr>
-     *     <th scope="row"> {@link BadMediaTypeSyntaxException} </th>
+     *     <th scope="row"> {@link MediaTypeParseException} </th>
      *     <td> If handler argument is null, then {@link Responses#badRequest()}
      *          (fault assumed to be the clients'), otherwise {@link
      *          Responses#internalServerError()} (fault assumed to be the
@@ -213,15 +230,19 @@ public interface ErrorHandler
         final Response res;
         try {
             throw thr;
-        } catch (BadHeaderException | RequestHeadParseException e) {
+        } catch (RequestHeadParseException | HttpVersionParseException | BadHeaderException e) {
             res = badRequest();
-        } catch (NoRouteFoundException e) { // + AmbiguousRouteCollisionException
+        } catch (HttpVersionTooOldException e) {
+            res = upgradeRequired(e.upgrade());
+        } catch (HttpVersionTooNewException e) {
+            res = httpVersionNotSupported();
+        } catch (NoRouteFoundException e) {
             res = notFound();
         } catch (MaxRequestHeadSizeExceededException e) {
             res = entityTooLarge();
         } catch (NoHandlerFoundException e) { // + AmbiguousNoHandlerFoundException
             res = notImplemented();
-        } catch (BadMediaTypeSyntaxException e) {
+        } catch (MediaTypeParseException e) {
             res = rh == null ? badRequest() : internalServerError();
         } catch (Throwable unhandledDefaultCase) {
             res = internalServerError();

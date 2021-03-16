@@ -25,27 +25,35 @@ import static java.util.stream.Collectors.toUnmodifiableList;
  */
 final class DefaultResponse implements Response
 {
-    private final String statusLine;
+    private final int statusCode;
+    private final String reasonPhrase;
     private final Iterable<String> headers;
     private final Flow.Publisher<ByteBuffer> body;
     private final boolean mustCloseAfterWrite;
     
     private DefaultResponse(
-            String statusLine,
+            int statusCode,
+            String reasonPhrase,
             // Is unmodifiable
             Iterable<String> headers,
             Flow.Publisher<ByteBuffer> body,
             boolean mustCloseAfterWrite)
     {
-        this.statusLine = statusLine;
+        this.statusCode = statusCode;
+        this.reasonPhrase = reasonPhrase;
         this.headers = headers;
         this.body = body;
         this.mustCloseAfterWrite = mustCloseAfterWrite;
     }
     
     @Override
-    public String statusLine() {
-        return statusLine;
+    public int statusCode() {
+        return statusCode;
+    }
+    
+    @Override
+    public String reasonPhrase() {
+        return reasonPhrase;
     }
     
     @Override
@@ -75,7 +83,6 @@ final class DefaultResponse implements Response
         // against a mutable state container during construction time.
         
         private static class MutableState {
-            String httpVersion;
             Integer statusCode;
             String reasonPhrase;
             Map<String, List<String>> headers;
@@ -121,12 +128,6 @@ final class DefaultResponse implements Response
         private Builder(Builder prev, Consumer<MutableState> modifier) {
             this.prev = prev;
             this.modifier = modifier;
-        }
-        
-        @Override
-        public Response.Builder httpVersion(String httpVersion) {
-            requireNonNull(httpVersion, "httpVersion");
-            return new Builder(this, s -> s.httpVersion = httpVersion);
         }
         
         @Override
@@ -230,15 +231,13 @@ final class DefaultResponse implements Response
             validate(s);
             setDefaults(s);
             
-            String statusLine = s.httpVersion + " " + s.statusCode + " " + s.reasonPhrase;
-            
             Iterable<String> headers = s.headers == null ? emptyList() :
                     s.headers.entrySet().stream().flatMap(e ->
                             e.getValue().stream().map(v -> e.getKey() + ": " + v))
                     .collect(toUnmodifiableList());
             
             return new DefaultResponse(
-                    statusLine, headers, s.body, s.mustCloseAfterWrite);
+                    s.statusCode, s.reasonPhrase, headers, s.body, s.mustCloseAfterWrite);
         }
         
         private void populate(MutableState s) {
@@ -252,9 +251,6 @@ final class DefaultResponse implements Response
         }
         
         private static void validate(MutableState s) {
-            if (s.httpVersion == null) {
-                throw new IllegalArgumentException("HTTP version not set."); }
-            
             if (s.statusCode == null) {
                 throw new IllegalArgumentException("Status code not set."); }
         }

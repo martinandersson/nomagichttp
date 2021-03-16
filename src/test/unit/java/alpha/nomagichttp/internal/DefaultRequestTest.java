@@ -15,6 +15,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Optional;
 
+import static alpha.nomagichttp.HttpConstants.Version.HTTP_1_1;
 import static alpha.nomagichttp.util.Headers.of;
 import static java.nio.charset.StandardCharsets.US_ASCII;
 import static java.nio.file.Files.notExists;
@@ -133,6 +134,7 @@ class DefaultRequestTest
                 headers);
         
         return new DefaultRequest(
+                HTTP_1_1,
                 rh,
                 RequestTarget.parse("/"),
                 null,

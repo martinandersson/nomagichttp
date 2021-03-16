@@ -2,7 +2,7 @@ package alpha.nomagichttp.util;
 
 import alpha.nomagichttp.HttpConstants;
 import alpha.nomagichttp.message.BadHeaderException;
-import alpha.nomagichttp.message.BadMediaTypeSyntaxException;
+import alpha.nomagichttp.message.MediaTypeParseException;
 import alpha.nomagichttp.message.MediaType;
 
 import java.net.http.HttpHeaders;
@@ -85,7 +85,7 @@ public final class Headers
      * @param  headers source to parse from
      * @return parsed values (may be empty, but not {@code null})
      * 
-     * @throws BadMediaTypeSyntaxException see {@link MediaType#parse(CharSequence)}}
+     * @throws MediaTypeParseException see {@link MediaType#parse(CharSequence)}}
      * 
      * @see HttpConstants.HeaderKey#ACCEPT
      */
@@ -107,7 +107,7 @@ public final class Headers
      * @param  headers source to parse from
      * @return parsed value (never {@code null})
      * 
-     * @throws BadMediaTypeSyntaxException
+     * @throws MediaTypeParseException
      *           see {@link MediaType#parse(CharSequence)}}
      * 
      * @throws BadHeaderException

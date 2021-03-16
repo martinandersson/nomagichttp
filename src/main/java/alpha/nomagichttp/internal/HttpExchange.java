@@ -1,7 +1,10 @@
 package alpha.nomagichttp.internal;
 
+import alpha.nomagichttp.HttpConstants.Version;
 import alpha.nomagichttp.handler.ErrorHandler;
 import alpha.nomagichttp.handler.RequestHandler;
+import alpha.nomagichttp.message.HttpVersionTooNewException;
+import alpha.nomagichttp.message.HttpVersionTooOldException;
 import alpha.nomagichttp.message.Response;
 import alpha.nomagichttp.message.Responses;
 import alpha.nomagichttp.route.RouteRegistry;
@@ -9,9 +12,11 @@ import alpha.nomagichttp.route.RouteRegistry;
 import java.util.concurrent.CompletionException;
 import java.util.concurrent.CompletionStage;
 
-import static alpha.nomagichttp.internal.RequestTarget.parse;
+import static alpha.nomagichttp.HttpConstants.Version.HTTP_1_0;
+import static alpha.nomagichttp.HttpConstants.Version.HTTP_1_1;
 import static alpha.nomagichttp.util.Headers.accept;
 import static alpha.nomagichttp.util.Headers.contentType;
+import static java.lang.Integer.parseInt;
 import static java.lang.System.Logger.Level.DEBUG;
 import static java.lang.System.Logger.Level.ERROR;
 import static java.lang.System.Logger.Level.WARNING;
@@ -40,6 +45,7 @@ final class HttpExchange
      * Executor/ExecutorService, or at worst, a new Thread.start() for each task.
      */
     
+    private Version ver;
     private DefaultRequest request;
     private RequestHandler handler;
     private ErrorHandlers eh;
@@ -56,12 +62,22 @@ final class HttpExchange
         this.server  = server;
         this.child   = child;
         this.bytes   = bytes;
+        // If request fails to parse, this is what we use in response
+        this.ver     = HTTP_1_1;
         this.request = null;
         this.handler = null;
         this.eh      = null;
     }
     
     void begin() {
+        try {
+            begin0();
+        } catch (Throwable t) {
+            unexpected(t);
+        }
+    }
+    
+    private void begin0() {
         RequestHeadSubscriber rhs = new RequestHeadSubscriber(
                 server.getConfig().maxRequestHeadSize());
         
@@ -75,11 +91,51 @@ final class HttpExchange
     }
     
     private void initialize(RequestHead h) {
-        RequestTarget t = parse(h.requestTarget());
+        RequestTarget t = RequestTarget.parse(h.requestTarget());
+        this.ver = getValidHttpVersion(h);
+        
+        if (ver == HTTP_1_0 && server.getConfig().rejectClientsUsingHTTP1_0()) {
+            throw new HttpVersionTooOldException(h.httpVersion(), "HTTP/1.1");
+        }
+        
         RouteRegistry.Match m = findRoute(t);
+        
         // This order is actually specified in javadoc of ErrorHandler#apply
         request = createRequest(h, t, m);
         handler = findRequestHandler(h, m);
+    }
+    
+    private Version getValidHttpVersion(RequestHead h) {
+        final Version ver;
+        
+        try {
+            ver = Version.parse(h.httpVersion());
+        } catch (IllegalArgumentException e) {
+            String[] comp = e.getMessage().split(":");
+            if (comp.length == 1) {
+                // No literal for minor
+                requireHTTP1(parseInt(comp[0]), h.httpVersion(), "HTTP/1.1"); // for now
+                throw new AssertionError(
+                        "String \"HTTP/<single digit>\" should have failed with parse exception (missing minor).");
+            } else {
+                // No literal for major + minor (i.e., version older than HTTP/0.9)
+                assert comp.length == 2;
+                assert parseInt(comp[0]) <= 0;
+                throw new HttpVersionTooOldException(h.httpVersion(), "HTTP/1.1");
+            }
+        }
+        
+        requireHTTP1(ver.major(), h.httpVersion(), "HTTP/1.1");
+        return ver;
+    }
+    
+    private static void requireHTTP1(int major, String rejectedVersion, String upgrade) {
+        if (major < 1) {
+            throw new HttpVersionTooOldException(rejectedVersion, upgrade);
+        }
+        if (major > 1) { // for now
+            throw new HttpVersionTooNewException(rejectedVersion);
+        }
     }
     
     private RouteRegistry.Match findRoute(RequestTarget t) {
@@ -87,7 +143,7 @@ final class HttpExchange
     }
     
     private DefaultRequest createRequest(RequestHead h, RequestTarget t, RouteRegistry.Match m) {
-        return new DefaultRequest(h, t, m, bytes, child);
+        return new DefaultRequest(ver, h, t, m, bytes, child);
     }
     
     private static RequestHandler findRequestHandler(RequestHead rh, RouteRegistry.Match m) {
@@ -105,7 +161,7 @@ final class HttpExchange
     }
     
     private CompletionStage<Void> writeResponseToChannel(Response r) {
-        ResponseBodySubscriber rbs = new ResponseBodySubscriber(r, child);
+        ResponseBodySubscriber rbs = new ResponseBodySubscriber(ver, r, child);
         r.body().subscribe(rbs);
         return rbs.asCompletionStage()
                   .thenRun(() -> {
@@ -124,6 +180,14 @@ final class HttpExchange
     }
     
     private void finish(Void Null, Throwable exc) {
+        try {
+            finish0(exc);
+        } catch (Throwable t) {
+            unexpected(t);
+        }
+    }
+    
+    private void finish0(Throwable exc) {
         /*
          * We should make the connection life cycle much more solid; when is
          * the connection persistent and when is it not (also see RFC 2616
@@ -235,5 +299,11 @@ final class HttpExchange
             return t;
         }
         return t.getCause() == null ? t : unpackCompletionException(t.getCause());
+    }
+    
+    private void unexpected(Throwable t) {
+        LOG.log(ERROR, "Unexpected.", t);
+        bytes.close();
+        child.orderlyClose();
     }
 }

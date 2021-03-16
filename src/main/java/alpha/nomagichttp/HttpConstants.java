@@ -1,10 +1,18 @@
 package alpha.nomagichttp;
 
+import alpha.nomagichttp.handler.ErrorHandler;
 import alpha.nomagichttp.handler.RequestHandler;
+import alpha.nomagichttp.message.HttpVersionParseException;
 import alpha.nomagichttp.message.MediaType;
 import alpha.nomagichttp.message.Request;
 import alpha.nomagichttp.message.Response;
 import alpha.nomagichttp.message.Responses;
+
+import java.util.OptionalInt;
+
+import static java.lang.Integer.parseInt;
+import static java.util.OptionalInt.empty;
+import static java.util.OptionalInt.of;
 
 /**
  * Namespace of constants related to the HTTP protocol.<p>
@@ -371,7 +379,7 @@ public final class HttpConstants {
     }
     
     /**
-     * A status code is a three-digit integer value on the response status-line,
+     * A status code is a three-digit integer value on the response status line,
      * giving the result of the processed request. They are classified into five
      * groups, as indicated by the first digit:
      * 
@@ -390,14 +398,14 @@ public final class HttpConstants {
      *     software quality.</li>
      * </ul>
      * 
-     * Clients are only required to understand the class of a status-code,
+     * Clients are only required to understand the class of a status code,
      * leaving the server free to select any subcode it so desires. IANA
      * maintains a
      * <a href="https://www.iana.org/assignments/http-status-codes/http-status-codes.xhtml">registry</a>
      * with status codes. The constants provided in {@code StatusCode} is
      * derived from
      * <a href="https://en.wikipedia.org/wiki/List_of_HTTP_status_codes">Wikipedia</a>
-     * and includes unofficial codes such as 418 (I'm a teapot).<p>
+     * and includes unofficial codes such as 418 (I'm a Teapot).<p>
      * 
      * A status code that is defined as being cacheable may be cached without
      * explicit freshness information whereas status codes not defined as
@@ -2483,13 +2491,15 @@ public final class HttpConstants {
         public static final String USER_AGENT = "User-Agent";
         
         /**
-         * "Ask the server to upgrade to another protocol." (
-         * <a href="https://en.wikipedia.org/wiki/List_of_HTTP_header_fields">Wikipedia</a>
-         * )<p>
+         * Ask the recipient to upgrade to another protocol.<p>
          * 
-         * Applies to the request, not response.<p>
+         * May be used in both request and response.<p>
          * 
          * Example: {@code Upgrade: h2c, HTTPS/1.3, IRC/6.9, RTA/x11, websocket}<p>
+         * 
+         * The NoMagicHTTP server's {@link ErrorHandler#DEFAULT default error
+         * handler} uses this header to suggest a new protocol version if an old
+         * version was rejected.
          * 
          * @see StatusCode#ONE_HUNDRED_ONE
          * @see <a href="https://tools.ietf.org/html/rfc7230#section-6.7">RFC 7230 §6.7</a>
@@ -2629,47 +2639,191 @@ public final class HttpConstants {
      * 
      * @see <a href="https://tools.ietf.org/html/rfc7230#section-2.6">RFC 7230 §2.6</a>
      */
-    public static final class Version {
-        private Version() {
-            // Private
-        }
-        
+    public enum Version
+    {
         /**
-         * {@value}<p>
+         * HTTP/0.9<p>
          * 
          * HTTP/0.9 was never standardized and is not supported by the
          * NoMagicHTTP server. Future work will reject clients using this
          * protocol version.
          */
-        public static final String HTTP_0_9 = "HTTP/0.9";
+        HTTP_0_9 (0, of(9)),
         
         /**
-         * {@value}<p>
+         * HTTP/1.0
          * 
-         * <a href="https://tools.ietf.org/html/rfc1945">RFC 1945</a>
+         * @see <a href="https://tools.ietf.org/html/rfc1945">RFC 1945</a>
          */
-        public static final String HTTP_1_0 = "HTTP/1.0";
+        HTTP_1_0 (1, of(0)),
         
         /**
-         * {@value}<p>
+         * HTTP/1.1
          * 
-         * <a href="https://tools.ietf.org/html/rfc7230">RFC 7230</a>
-         * <a href="https://tools.ietf.org/html/rfc7231">RFC 7231</a>
+         * @see <a href="https://tools.ietf.org/html/rfc7230">RFC 7230</a>
+         * @see <a href="https://tools.ietf.org/html/rfc7231">RFC 7231</a>
          */
-        public static final String HTTP_1_1 = "HTTP/1.1";
+        HTTP_1_1 (1, of(1)),
         
         /**
-         * {@value}<p>
+         * HTTP/2
          * 
-         * <a href="https://tools.ietf.org/html/rfc7540">RFC 7540</a>
+         * @see <a href="https://tools.ietf.org/html/rfc7540">RFC 7540</a>
          */
-        public static final String HTTP_2 = "HTTP/2";
+        HTTP_2 (2, empty()),
         
         /**
-         * {@value}<p>
+         * HTTP/3
          * 
-         * <a href="https://quicwg.org/base-drafts/draft-ietf-quic-http.html">QUIC Draft</a>
+         * @see <a href="https://quicwg.org/base-drafts/draft-ietf-quic-http.html">QUIC Draft</a>
          */
-        public static final String HTTP_3 = "HTTP/3";
+        HTTP_3 (3, empty());
+        
+        /**
+         * Parse a version.<p>
+         * 
+         * {@code HttpVersionParseException} is thrown not only for syntax
+         * problems. There's also a requirement enforced that HTTP major version
+         * {@literal <}= 1 must specify a minor, and major version {@literal >}=
+         * 2 must not.
+         * 
+         * @param str to parse
+         * 
+         * @return a version
+         * 
+         * @throws NullPointerException
+         *             if {@code str} is {@code null}
+         * 
+         * @throws HttpVersionParseException
+         *             if parsing failed
+         * 
+         * @throws IllegalArgumentException
+         *             if this enum type has no constant mapping to the parsed string
+         *             (message will be "{@literal <}major{@literal >}:{@literal <}minor?{@literal >}",
+         *             e.g. "0:5" and "99:")
+         */
+        public static Version parse(String str) {
+            int slash = str.indexOf("/");
+            
+            if (slash == -1) {
+                throw new HttpVersionParseException(str, "No forward slash.");
+            }
+            
+            if (!str.subSequence(0, slash).equals("HTTP")) {
+                throw new HttpVersionParseException(str,
+                        "HTTP-name \"" + str.subSequence(0, slash) + "\" is not \"HTTP\".");
+            }
+            
+            int dot = str.indexOf(".", slash + 1);
+            
+            final String major, minor;
+            
+            if (dot == -1) {
+                major = str.substring(slash + 1);
+                minor = null;
+            } else {
+                major = str.substring(slash + 1, dot);
+                minor = str.substring(dot + 1);
+            }
+            
+            try {
+                return valueOf(str, major, minor);
+            } catch (NumberFormatException e) {
+                throw new HttpVersionParseException(str, e);
+            }
+        }
+        
+        private static Version valueOf(String str, String majorStr, String minorStr) {
+            final int major;
+            switch (major = parseInt(majorStr)) {
+                case 0:
+                    int m1 = reqMinor(str, minorStr);
+                    if (m1 != 9) {
+                        throw newIllegalArgForUnsupportedMinor(0, m1);
+                    }
+                    return HTTP_0_9;
+                case 1:
+                    int m2 = reqMinor(str, minorStr);
+                    if (m2 == 0) {
+                        return HTTP_1_0;
+                    }
+                    if (m2 == 1) {
+                        return HTTP_1_1;
+                    }
+                    throw newIllegalArgForUnsupportedMinor(1, m2);
+                case 2:
+                    reqNoMinor(str, minorStr);
+                    return HTTP_2;
+                case 3:
+                    reqNoMinor(str, minorStr);
+                    return HTTP_3;
+                default:
+                    if (major < 0) {
+                        throw new IllegalArgumentException(major + ":" + reqMinor(str, minorStr));
+                    }
+                    reqNoMinor(str, minorStr);
+                    throw new IllegalArgumentException(major + ":");
+            }
+        }
+        
+        private static int reqMinor(String str, String minor) {
+            if (minor == null) {
+                throw new HttpVersionParseException(str,
+                        "No minor version provided when one was expected.");
+            }
+            return parseInt(minor);
+        }
+        
+        private static IllegalArgumentException newIllegalArgForUnsupportedMinor(int major, int minor) {
+            return new IllegalArgumentException(major + ":" + minor);
+        }
+        
+        private static void reqNoMinor(String str, String minor) {
+            if (minor != null) {
+                throw new HttpVersionParseException(str,
+                        "Minor version provided when none was expected.");
+            }
+        }
+        
+        private final int major;
+        private final OptionalInt minor;
+        
+        Version(int major, OptionalInt minor) {
+            this.major = major;
+            this.minor = minor;
+        }
+        
+        /**
+         * Returns the major protocol version.
+         * 
+         * @return the major protocol version
+         */
+        public int major() {
+            return major;
+        }
+        
+        /**
+         * Returns the minor protocol version.
+         * 
+         * Only HTTP/0.9, HTTP/1.0 and HTTP/1.1 use the minor version. Since
+         * HTTP/2, the minor version has been dropped.
+         * 
+         * @return the minor protocol version
+         */
+        public OptionalInt minor() {
+            return minor;
+        }
+        
+        /**
+         * Returns the HTTP-version field value.<p>
+         * 
+         * I.e., one of "HTTP/0.9", "HTTP/1.0", "HTTP/1.1", "HTTP/2" or "HTTP/3".
+         * 
+         * @return the HTTP-version field value
+         */
+        @Override
+        public String toString() {
+            return "HTTP/" + major() + (minor().isEmpty() ? "" : "." + minor().getAsInt()); 
+        }
     }
 }

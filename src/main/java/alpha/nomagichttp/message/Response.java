@@ -8,36 +8,39 @@ import alpha.nomagichttp.util.BetterBodyPublishers;
 import alpha.nomagichttp.util.Publishers;
 
 import java.net.http.HttpHeaders;
-import java.net.http.HttpRequest;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
-import java.nio.file.Path;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.Flow;
-import java.util.function.Supplier;
 
 import static alpha.nomagichttp.HttpConstants.ReasonPhrase;
 import static alpha.nomagichttp.HttpConstants.StatusCode;
 import static alpha.nomagichttp.HttpConstants.StatusCode.TWO_HUNDRED;
 import static alpha.nomagichttp.HttpConstants.StatusCode.TWO_HUNDRED_FOUR;
 import static alpha.nomagichttp.HttpConstants.StatusCode.TWO_HUNDRED_TWO;
-import static alpha.nomagichttp.HttpConstants.Version;
+import static alpha.nomagichttp.message.Response.builder;
 
 /**
- * A {@code Response} contains a {@link #statusLine() statusLine}, {@link
- * #headers() headers} and an optional {@link #body() body}. It can be built
- * using a {@link #builder()} or other static methods found in {@link
- * Response.Builder} and {@link Responses}.<p>
+ * A {@code Response} contains a status line, followed by optional headers and
+ * body.<p>
  * 
- * The content of the request head (status-line and headers) will be written
+ * A response object can be built using a {@link #builder()} or other static
+ * methods found in {@link Response.Builder} and {@link Responses}.<p>
+ * 
+ * The status line will be built by the server by joining the active HTTP
+ * protocol version, status code and reason phrase. E.g. "HTTP/1.1 200 OK".<p>
+ * 
+ * The content of the request head (status line and headers) will be written
  * to the client verbatim/unaltered; i.e. casing will be preserved, yes, even
  * space characters. The head is encoded into bytes using {@link
- * StandardCharsets#US_ASCII US_ASCII}<p>
+ * StandardCharsets#US_ASCII US_ASCII} (UTF-8 is backwards compatible with
+ * ASCII).<p>
  * 
  * The {@code Response} implementation is immutable and can safely be reused
- * sequentially over time to the same client as well as shared concurrently to
- * different clients.<p>
+ * sequentially over time to the same client. It can also be shared concurrently
+ * to different clients, assuming the {@linkplain Builder#body(Flow.Publisher)
+ * body publisher} is thread safe.<p>
  * 
  * The {@code Response} implementation does not necessarily implement {@code
  * hashCode()} and {@code equals()}.
@@ -60,15 +63,28 @@ public interface Response
     }
     
     /**
-     * Returns the status-line.<p>
+     * Returns the status code.<p>
      * 
-     * The status-line consists of an HTTP-version, a {@linkplain
-     * StatusCode status-code} and a {@linkplain ReasonPhrase reason-phrase}.
-     * For example: "HTTP/1.1 200 OK".
+     * As far as the server is concerned, the returned value may be any integer
+     * value, but should be conforming to the HTTP protocol.
      * 
-     * @return the status-line
+     * @return the status code
+     * 
+     * @see HttpConstants.StatusCode
      */
-    String statusLine();
+    int statusCode();
+    
+    /**
+     * Returns the reason phrase.
+     * 
+     * The returned value may be {@code null} or an empty string, in which case
+     * no reason phrase will be added to the status line.
+     * 
+     * @return the reason phrase
+     * 
+     * @see HttpConstants.ReasonPhrase
+     */
+    String reasonPhrase();
     
     /**
      * Returns the headers.
@@ -128,21 +144,20 @@ public interface Response
      * Builder of a {@link Response}.<p>
      * 
      * The builder type declares static methods that return builders already
-     * populated with common {@linkplain #statusLine() status line}s such as
-     * {@link #ok()} and {@link #accepted()}, what remains is to customize
-     * headers and the body. Static methods that build a complete response can
-     * be found in {@link Responses}.<p>
+     * populated with common status lines such as {@link #ok()} and {@link
+     * #accepted()}, what remains is to customize headers and the body. Static
+     * methods that build a complete response can be found in {@link
+     * Responses}.<p>
      * 
      * The builder can be used as a template to modify per-response state. Each
      * method returns a new builder instance representing the new state. The API
      * should be used in a fluent style with references saved and reused only
      * for templating.<p>
      * 
-     * HTTP version and status code must be set or {@link #build()} will fail.
-     * The reason phrase if not set will default to {@value
-     * ReasonPhrase#UNKNOWN}. Headers and body are optional. Please note that
-     * some message variants may build just fine but {@linkplain HttpServer blow
-     * up later}.<p>
+     * Status code must be set or {@link #build()} will fail. The reason phrase
+     * if not set will default to {@value ReasonPhrase#UNKNOWN}. Headers and
+     * body are optional. Please note that some message variants may build just
+     * fine but {@linkplain HttpServer blow up later}.<p>
      * 
      * Header key and values are taken at face value (case-sensitive),
      * concatenated using a colon followed by a space ": ". Adding many values
@@ -202,15 +217,6 @@ public interface Response
         }
         
         // TODO: Basically all other codes in the standard lol
-        
-        /**
-         * Set HTTP version.
-         * 
-         * @param   httpVersion value (any non-null string)
-         * @throws  NullPointerException if {@code httpVersion} is {@code null}
-         * @return  a new builder representing the new state
-         */
-        Builder httpVersion(String httpVersion);
         
         /**
          * Set status code.
@@ -336,28 +342,27 @@ public interface Response
          * Set a message body. If never set, will default to an empty body and
          * set "Content-Length: 0".<p>
          * 
-         * The published bytebuffers must not be modified after being published
-         * to the subscriber.<p>
+         * Each response transmission will cause the server to subscribe with a
+         * new subscriber, consuming all of the remaining bytes in each
+         * published bytebuffer.<p>
          * 
-         * Depending on the application code, the body publisher may be exposed
-         * to more than just one HTTP server thread at the same time. For
-         * example, the body publisher instance may be shared by multiple
-         * responses derived from the same builder targeting different clients
-         * or the response instance itself containing the publisher may be sent
-         * to different clients.<p>
+         * Most responses are probably only used once. But the application may
+         * wish to cache and re-use responses. This is safe as long as either
+         * the response is only sent to a dedicated client (two subscriptions
+         * for the same client will never run in parallel), or if re-used
+         * concurrently [to different clients], the body publisher must be
+         * thread-safe and designed for concurrency; producing new bytebuffers
+         * with the same data for each new subscriber.<p>
          * 
-         * Each new transmission will cause the HTTP server to subscribe with a
-         * new subscriber, each of which is expected to receive the same data
-         * using all new and subscription-unique bytebuffers.<p>
+         * The same is also true if different response objects have been
+         * derived/templated from the same builder(s) as these response objects
+         * will share the same underlying body publisher reference.<p>
          * 
-         * Please note that {@link Flow.Publisher} is not specified to be
-         * thread-safe, and some implementations aren't (<a
-         * href="https://bugs.openjdk.java.net/browse/JDK-8222968">JDK-8222968
-         * </a>). Further, some JDK-provided types block, such as
-         * {@link HttpRequest.BodyPublishers#ofFile(Path)} and {@link
-         * HttpRequest.BodyPublishers#ofInputStream(Supplier)}. For these
-         * reasons, consider using an alternative from {@link Publishers} or
-         * {@link BetterBodyPublishers}<p>
+         * Response objects created by factory methods from the NoMagicHTTP
+         * library API are fully thread-safe and may be shared wildly. If none
+         * of these factories suits you and there's a need to set a response
+         * body manually, then consider using a publisher from {@link
+         * Publishers} or {@link BetterBodyPublishers}.<p>
          * 
          * @param   body publisher
          * @return  a new builder representing the new state
@@ -389,17 +394,10 @@ public interface Response
     }
 }
 
-final class BuilderCache
-{
-    private static final Response.Builder HTTP_1_1
-            = Response.builder().httpVersion(Version.HTTP_1_1);
-    
-    private BuilderCache() {
-        // Empty
-    }
-    
+enum BuilderCache
+{;
     static final Response.Builder
-            OK         = HTTP_1_1.statusCode(TWO_HUNDRED).reasonPhrase(ReasonPhrase.OK),
-            ACCEPTED   = HTTP_1_1.statusCode(TWO_HUNDRED_TWO).reasonPhrase(ReasonPhrase.ACCEPTED),
-            NO_CONTENT = HTTP_1_1.statusCode(TWO_HUNDRED_FOUR).reasonPhrase(ReasonPhrase.NO_CONTENT);
+            OK         = builder().statusCode(TWO_HUNDRED).reasonPhrase(ReasonPhrase.OK),
+            ACCEPTED   = builder().statusCode(TWO_HUNDRED_TWO).reasonPhrase(ReasonPhrase.ACCEPTED),
+            NO_CONTENT = builder().statusCode(TWO_HUNDRED_FOUR).reasonPhrase(ReasonPhrase.NO_CONTENT);
 }

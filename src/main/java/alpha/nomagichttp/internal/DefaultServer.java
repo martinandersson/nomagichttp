@@ -197,14 +197,18 @@ public final class DefaultServer implements HttpServer
     {
         @Override
         public void completed(AsynchronousSocketChannel child, Void noAttachment) {
-            LOG.log(INFO, () -> "Accepted child: " + child);
-            
             try {
-                if (listener.isOpen()) {
-                    listener.accept(null, this);
-                }
+                completed0(child);
             } catch (Throwable t) {
                 failed(t, null);
+            }
+        }
+        
+        private void completed0(AsynchronousSocketChannel child) {
+            LOG.log(INFO, () -> "Accepted child: " + child);
+            
+            if (listener.isOpen()) {
+                listener.accept(null, this);
             }
             
             // TODO: child.setOption(StandardSocketOptions.SO_KEEPALIVE, true); ??

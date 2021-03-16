@@ -1,5 +1,6 @@
 package alpha.nomagichttp.internal;
 
+import alpha.nomagichttp.HttpConstants.Version;
 import alpha.nomagichttp.message.MediaType;
 import alpha.nomagichttp.message.PooledByteBufferHolder;
 import alpha.nomagichttp.message.Request;
@@ -46,6 +47,7 @@ final class DefaultRequest implements Request
     @SuppressWarnings({"rawtypes"}) // generic array construction
     private static final FileAttribute<?>[] NO_ATTRIBUTES = new FileAttribute[0];
     
+    private final Version ver;
     private final RequestHead head;
     private final RequestTarget paramsQuery;
     private final RouteRegistry.Match paramsPath;
@@ -56,12 +58,14 @@ final class DefaultRequest implements Request
     private final Attributes attributes;
     
     DefaultRequest(
+            Version ver,
             RequestHead head,
             RequestTarget paramsQuery,
             RouteRegistry.Match paramsPath,
             Flow.Publisher<DefaultPooledByteBufferHolder> bodySource,
             DefaultChannelOperations child)
     {
+        this.ver = ver;
         this.head = head;
         this.paramsQuery = paramsQuery;
         this.paramsPath = paramsPath;
@@ -103,8 +107,8 @@ final class DefaultRequest implements Request
     }
     
     @Override
-    public String httpVersion() {
-        return head.httpVersion();
+    public Version httpVersion() {
+        return ver;
     }
     
     @Override

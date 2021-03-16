@@ -104,11 +104,11 @@ public interface Request
      *   Accept: text/plain;charset=utf-8
      * }</pre>
      * 
-     * The returned value is "HTTP/1.1".
+     * The returned version is "HTTP/1.1".
      * 
      * @return the request-line's HTTP version
      */
-    String httpVersion();
+    HttpConstants.Version httpVersion();
     
     /**
      * Returns a parameters API object bound to this request.<p>

@@ -3,6 +3,7 @@ package alpha.nomagichttp;
 import alpha.nomagichttp.handler.ErrorHandler;
 import alpha.nomagichttp.handler.RequestHandler;
 import alpha.nomagichttp.internal.DefaultServer;
+import alpha.nomagichttp.message.HttpVersionTooOldException;
 import alpha.nomagichttp.message.MaxRequestHeadSizeExceededException;
 import alpha.nomagichttp.message.Request;
 import alpha.nomagichttp.message.Response;
@@ -10,6 +11,7 @@ import alpha.nomagichttp.route.DefaultRouteRegistry;
 import alpha.nomagichttp.route.HandlerCollisionException;
 import alpha.nomagichttp.route.Route;
 import alpha.nomagichttp.route.RouteCollisionException;
+import alpha.nomagichttp.route.RouteParseException;
 
 import java.io.IOException;
 import java.net.InetAddress;
@@ -47,6 +49,15 @@ import java.nio.channels.AsynchronousServerSocketChannel;
  * server instances must {@link #stop()}.
  * 
  * 
+ * <h2>Supported HTTP Versions</h2>
+ *
+ * Currently, the NoMagicHTTP server is a project in its infancy. Support to
+ * fully support HTTP/1.0 and 1.1 is the first milestone, yet to be completed (
+ * see POA.md in repository). HTTP/2 will be implemented thereafter. HTTP
+ * clients older than HTTP/1.0 is rejected (exchange crash with {@link
+ * HttpVersionTooOldException}.
+ * 
+ * 
  * <h2>HTTP message semantics</h2>
  * 
  * Only a very few message variants are specified to <i>not</i> have a body and
@@ -63,7 +74,7 @@ import java.nio.channels.AsynchronousServerSocketChannel;
  *     <a href="https://tools.ietf.org/html/rfc7231#section-6.2">RFC 7231 §6.2</a>)</li>
  * </ul>
  * 
- * These variants are rejected before or after the handler is resolved,
+ * These variants are rejected before or after the handler has been called,
  * depending on whether the message is a request or a response (TODO: define
  * exc types). They <i>must</i> be rejected since including a body would kill
  * the protocol. For example, a new virtual connection/protocol behavior is
@@ -72,8 +83,10 @@ import java.nio.channels.AsynchronousServerSocketChannel;
  * 
  * For all other variants of requests and responses, the body is optional and
  * the server does not reject the message nor does the API enforce an
- * opinionated view. The request handler is in full control over how it
- * interprets the request message and what response it returns.
+ * opinionated view. This is also true for message components such as the
+ * response status code and reason phrase. The request handler is in full
+ * control over how it interprets the request message and what response it
+ * returns.
  * 
  * For example, it might not be common but it <i>is</i>
  * possible (and legit) for {@link HttpConstants.Method#GET GET} requests (
@@ -281,10 +294,8 @@ public interface HttpServer
      * @throws NullPointerException
      *             if any argument is {@code null}
      * 
-     * @throws IllegalArgumentException
-     *             if a static segment value is empty
-     * 
-     * @throws IllegalStateException
+     * @throws RouteParseException
+     *             if a static segment value is empty, or
      *             if parameter names are repeated in the pattern, or
      *             if a catch-all parameter is not the last segment
      * 
@@ -446,7 +457,7 @@ public interface HttpServer
          * Successfully invoking an error handler (handler returns a response or
          * throws a <i>different</i> exception instance) counts as one attempt.<p>
          * 
-         * This configuration value will be polled at the start of each recovery
+         * The configuration value will be polled at the start of each recovery
          * attempt.
          * 
          * @implSpec
@@ -475,6 +486,40 @@ public interface HttpServer
          */
         default int threadPoolSize() {
             return Runtime.getRuntime().availableProcessors();
+        }
+        
+        /**
+         * Reject HTTP/1.0 clients, yes or no.<p>
+         * 
+         * By default, this method returns {@code false} and the server will
+         * therefore <i>accept</i> HTTP/1.0 clients.<p>
+         * 
+         * Rejection takes places through a server-thrown {@link
+         * HttpVersionTooOldException} which by default gets translated to a
+         * "426 Upgrade Required" response.<p>
+         * 
+         * Apart from not having all HTTP/1.1 features available for the
+         * exchange, HTTP/1.0 does not by default support persistent connections
+         * and may as a consequence be a wasteful protocol.<p>
+         * 
+         * In order to minimize waste, it's recommended to override this value
+         * with {@code true}. As a library however, we have to be backwards
+         * compatible and support as many applications as possible "out of the
+         * box", hence the {@code false} default.<p>
+         * 
+         * The configuration value will be polled at the beginning of each HTTP
+         * exchange.<p>
+         * 
+         * Note that HTTP/0.9 or older clients are always rejected (can not be
+         * configured differently).
+         * 
+         * @implSpec
+         * The default implementation returns {@code false}.
+         * 
+         * @return whether or not to reject HTTP/1.0 clients
+         */
+        default boolean rejectClientsUsingHTTP1_0() {
+            return false;
         }
     }
 }

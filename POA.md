@@ -27,7 +27,7 @@ An item ~~crossed out~~ is complete, an item in __bold__ is work in progress.
 
 [Stage: Project Enhancements](#stage-project-enhancements)  
 [~~Stage: HTTP Constants~~](#stage-http-constants)  
-[Stage: HTTP Versioning](#stage-http-versioning)  
+[~~Stage: HTTP Versioning~~](#stage-http-versioning)  
 [Stage: Improved Testing](#stage-improved-testing)  
 [Stage: Improved Content Negotiation](#stage-improved-content-negotiation)  
 [Stage: Pseudo-Mutable Types](#stage-pseudo-mutable-types)  
@@ -58,19 +58,15 @@ _Status: **Mostly Delivered.**_
 To deliver practical usefulness, the project must publish documentation and
 artifacts.
 
-- Gradle tasks for JavaDoc generation and publication.
+- ~~Gradle tasks for JavaDoc generation and publication.
   Ideally we want to be able to generate JavaDoc for public consumtion (public +
-  package access) versus docs for contributors (+ private + test classes).  
-  _Result: Added tasks `javadoc` and `javadocAll`._
-- Gradle must use specified JVM version(s) when building  
-  _Result: Using recent Gradle feature to set
-  `compileJava.options.release = 11`_
+  package access) versus docs for contributors (+ private + test classes).~~
+- ~~Gradle must use specified JVM version(s) when building~~
 - GitHub integrations (test build against many JVM vendors)  
   _Result: Added `build.yml` to build/test from Java 11 to 15_  
   _Remains: GitHub should notify JitPack on successful build?_
-- Gradle task to publish a `NoMagicHTTP-0.5-SNAPSHOT.jar` somewhere
-  - Consider splitting docs into separate jar - may be pushed into future.  
-    _Result: Using JitPack to publish binary, sources and JavaDoc_
+- ~~Gradle task to publish a `NoMagicHTTP-0.5-SNAPSHOT.jar` somewhere~~
+  - ~~Consider splitting docs into separate jar - may be pushed into future.~~
 - User guide (GitHub pages?) for examples and aggregated how-to's  
   _Result: Postponed_
 - README.md for super quick introduction followed by project-building how-to's  
@@ -87,38 +83,38 @@ _Status: **Delivered**_
 Constants - even when not used by the server itself - is important for
 _discoverability_.
 
-- Create enums/constants for well-known HTTP methods. JavaDoc has:
-  - A summary.
-  - Semantics (safe, idempotent, cacheable, expected payload).
-  - How and when (if at all) are the methods used by the NoMagicHTTP server.
-  - If not used, is it expected/planned to become incorporated?
-  - References to RFC:s - where are the methods defined.
-- Similarly, enums/constants for well-known:
-  - Headers
-  - Status codes
-  - HTTP versions (named `HttpVersion`)
+- ~~Create enums/constants for well-known HTTP methods. JavaDoc has:~~
+  - ~~A summary.~~
+  - ~~Semantics (safe, idempotent, cacheable, expected payload).~~
+  - ~~How and when (if at all) are the methods used by the NoMagicHTTP server.~~
+  - ~~If not used, is it expected/planned to become incorporated?~~
+  - ~~References to RFC:s - where are the methods defined.~~
+- ~~Similarly, enums/constants for well-known:~~
+  - ~~Headers~~
+  - ~~Status codes~~
+  - ~~HTTP versions (named `HttpVersion`)~~
 
-## Stage: HTTP Versioning
+## ~~Stage: HTTP Versioning~~
+
+_Status: **Delivered**_  
 
 The server must be in full control of which HTTP version is in use and
-`Request.httpVersion()` will reliably expose the version. HTTP version does
-affect the connection life-cycle, and possibly many other things. The API should
-clearly state what semantics applies given the version in use.
+`Request.httpVersion()` will reliably expose the version.
 
-- Improved JavaDoc to state supported versions; 1.0 and 1.1, with planned
-  support for 2.
-- Remove `Response.Builder.httpVersion(String)` (confusing for API user to have
-  this option).
-- `Request.httpVersion()` returns a validated `HttpVersion`, perhaps not the
-  first request of a protocol upgrade?
-- Server rejects all requests using HTTP less than 1.0 (with 426 (Upgrade
-  Required)).
-- Add server config to reject HTTP/1.0 clients (false by default, docs recommend
-  to enable for connection optimization)
+- ~~Improved JavaDoc to state supported versions; 1.0 and 1.1, with planned
+  support for 2.~~
+- ~~Remove `Response.Builder.httpVersion(String)` (confusing for API user to
+  have this option).~~
+- ~~`Request.httpVersion()` returns a validated `HttpVersion`, perhaps not the
+  first request of a protocol upgrade?~~
+- ~~Server rejects all requests using HTTP less than 1.0 (with 426 (Upgrade
+  Required)).~~
+- ~~Add server config to reject HTTP/1.0 clients (false by default, docs
+  recommend to enable for connection optimization)~~
 
-Notes: Version is case-sensitive and server may respond 505 (HTTP Version Not
+~~Notes: Version is case-sensitive and server may respond 505 (HTTP Version Not
 Supported) "for any reason, to refuse service of the client's major protocol
-version" (RFC 7230 §2.6).
+version" (RFC 7230 §2.6).~~
 
 ## Stage: Improved Testing
 
@@ -262,6 +258,8 @@ will most likely abstract a connection into one or many _channels_.
 - Perhaps
   - Split `HttpExchange` into different types depending on HTTP version.  
     May remove the need for some "if-version" checks in code?
+- Implement persistent connections (`Connection: keep-alive`) also for HTTP/1.0
+  clients.
 
 ## Stage: Actions
 
@@ -773,7 +771,16 @@ session ID/key saved in cookie.
 
 Most timeouts should probably result in a 408 (Request Timeout).
 
+For many other servers, timeouts are often quite short, specifically designed
+that way to save server threads. Fotunately, NoMagicHTTP is fully asynchronous
+so even if a request/exchange "hangs" and doesn't make any progress, no thread
+is blocked. But it's still not good for a million reasons to have idle
+connections and loaded buffers sitting around doing nothing. The upside is that
+the timeout configuration can be quite lenient and forgiving.
+
 - Max time spent receiving request head- and body respectively.
+  Currently, send a request that doesn't end with `CRLF` + `CRLF` and the
+  exchange "hangs" indefinetely. 
 - Same for response.  
   Default for receiving/writing head should be low.  
   Default for receiving/writing body should be super high.
