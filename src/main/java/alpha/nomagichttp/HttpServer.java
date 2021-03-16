@@ -457,7 +457,7 @@ public interface HttpServer
          * Successfully invoking an error handler (handler returns a response or
          * throws a <i>different</i> exception instance) counts as one attempt.<p>
          * 
-         * This configuration value will be polled at the start of each recovery
+         * The configuration value will be polled at the start of each recovery
          * attempt.
          * 
          * @implSpec
@@ -507,7 +507,8 @@ public interface HttpServer
          * compatible and support as many applications as possible "out of the
          * box", hence the {@code false} default.<p>
          * 
-         * The server uses this config.......................................................
+         * The configuration value will be polled at the beginning of each HTTP
+         * exchange.<p>
          * 
          * Note that HTTP/0.9 or older clients are always rejected (can not be
          * configured differently).
