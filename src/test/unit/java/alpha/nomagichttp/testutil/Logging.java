@@ -163,12 +163,12 @@ public final class Logging
             return sw.toString();
         }
         
-        private static String rightPad(String s, int minLenght) {
-            if (s.length() >= minLenght) {
+        private static String rightPad(String s, int minLength) {
+            if (s.length() >= minLength) {
                 return s;
             }
             
-            return s + " ".repeat(minLenght - s.length());
+            return s + " ".repeat(minLength - s.length());
         }
     }
 }
