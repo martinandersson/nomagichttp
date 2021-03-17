@@ -6,7 +6,7 @@ import alpha.nomagichttp.message.PooledByteBufferHolder;
 import alpha.nomagichttp.message.Request;
 import alpha.nomagichttp.message.Response;
 import alpha.nomagichttp.message.Responses;
-import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 
@@ -37,8 +37,8 @@ class DetailedEndToEndTest extends AbstractEndToEndTest
             IS_BODY_EMPTY = "/is-body-empty",
             ECHO_BODY     = "/echo-body";
     
-    @BeforeAll
-    static void installHandlers() {
+    @BeforeEach
+    void installHandlers() {
         Function<Request, CompletionStage<Response>>
                 isBodyEmpty = req -> text(String.valueOf(req.body().isEmpty())).completedStage(),
                 echoBody    = req -> req.body().toText().thenApply(Responses::text);
@@ -123,8 +123,6 @@ class DetailedEndToEndTest extends AbstractEndToEndTest
     
     @Test
     void request_body_subscriber_crash() throws IOException {
-        doNotAssertNormalFinish();
-        
         RequestHandler crashAfterOneByte = RequestHandlers.POST().accept(req ->
             req.body().subscribe(
                 new AfterByteTargetStop(1, subscriptionIgnored -> {
@@ -141,6 +139,7 @@ class DetailedEndToEndTest extends AbstractEndToEndTest
                 "HTTP/1.1 500 Internal Server Error" + CRLF +
                 "Content-Length: 0" + CRLF + CRLF);
             
+            assertServerErrorWasThrown();
             assertThat(client().drain()).isEmpty();
             assertThat(ch.isOpen()).isFalse();
             
@@ -173,6 +172,7 @@ class DetailedEndToEndTest extends AbstractEndToEndTest
      * See {@link ErrorHandlingTest} for cases related to unsupported versions.
      */
     @Test
+    // TODO: Then remove this
     @Disabled("Server+superclass needs to ignore disconnect errors first")
     void http_1_0() throws IOException {
         server().add("/echo-version", GET().apply(req ->

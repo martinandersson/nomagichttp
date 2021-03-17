@@ -4,30 +4,27 @@ import alpha.nomagichttp.HttpServer;
 import alpha.nomagichttp.handler.ErrorHandler;
 import alpha.nomagichttp.testutil.ClientOperations;
 import alpha.nomagichttp.testutil.Logging;
-import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.BeforeEach;
 
 import java.io.IOException;
 import java.util.Collection;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
-import static alpha.nomagichttp.handler.RequestHandlers.noop;
 import static java.lang.System.Logger.Level.ALL;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * Will setup a {@code server()} and a {@code client()} configured with the
- * server's port.<p>
+ * server's port; scoped to each test.<p>
  * 
- * The server has only one route "/" registered with a NOOP handler. Most
- * likely, each test will be interested in adding its own routes and
- * handlers.<p>
+ * The server has no routes added, but, has an error handler added which simply
+ * collects all exceptions caught into a {@code List} and then delegates the
+ * error handling to the default error handler.<p>
  * 
- * It's arguably a good baseline to assume that all HTTP exchanges completes
- * normally. And so, this class will assert after each test method that the
- * default exception handler was never called with an exception. This check can
- * be skipped using {@code doNotAssertNormalFinish()}.
+ * By default, after-each will assert that no errors were caught. If errors are
+ * expected, call {@code assertErrorWasThrown()}. How many errors and what types
+ * may then be inspected further by the test method.
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  * 
@@ -39,11 +36,11 @@ abstract class AbstractEndToEndTest
     private static HttpServer server;
     private static ClientOperations client;
     
-    private static final Collection<Throwable> errors = new ConcurrentLinkedQueue<>();
-    private boolean assertNormalFinish = true;
+    private final Collection<Throwable> errors = new ConcurrentLinkedQueue<>();
+    private boolean assertNoErrors = true;
     
-    @BeforeAll
-    private static void start() throws IOException {
+    @BeforeEach
+    void start() throws IOException {
         Logging.setLevel(SimpleEndToEndTest.class, ALL);
         
         ErrorHandler collect = (t, r, h) -> {
@@ -51,26 +48,21 @@ abstract class AbstractEndToEndTest
             throw t;
         };
         
-        server = HttpServer.create(collect).add("/", noop()).start();
+        server = HttpServer.create(collect).start();
         client = new ClientOperations(server);
     }
     
     @AfterEach
-    private void assertNormalFinish() {
-        if (!assertNormalFinish) {
-            errors.clear();
-            return;
-        }
-        
-        try {
+    void assertNoErrors() {
+        if (assertNoErrors) {
             assertThat(errors).isEmpty();
-        } finally {
-            errors.clear();
+        } else {
+            assertThat(errors).isNotEmpty();
         }
     }
     
-    @AfterAll
-    private static void stop() throws IOException {
+    @AfterEach
+    void stop() throws IOException {
         if (server != null) {
             server.stop();
         }
@@ -84,7 +76,7 @@ abstract class AbstractEndToEndTest
         return client;
     }
     
-    public void doNotAssertNormalFinish() {
-        assertNormalFinish = false;
+    public final void assertServerErrorWasThrown() {
+        assertNoErrors = false;
     }
 }
