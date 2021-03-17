@@ -4,19 +4,15 @@ import alpha.nomagichttp.handler.RequestHandler;
 import alpha.nomagichttp.handler.RequestHandlers;
 import alpha.nomagichttp.message.PooledByteBufferHolder;
 import alpha.nomagichttp.message.Request;
-import alpha.nomagichttp.message.Response;
 import alpha.nomagichttp.message.Responses;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.Channel;
-import java.util.concurrent.CompletionStage;
 import java.util.concurrent.Flow;
 import java.util.function.Consumer;
-import java.util.function.Function;
 
 import static alpha.nomagichttp.handler.RequestHandlers.GET;
 import static alpha.nomagichttp.handler.RequestHandlers.POST;
@@ -33,66 +29,62 @@ import static org.assertj.core.api.Assertions.assertThat;
  */
 class DetailedEndToEndTest extends AbstractEndToEndTest
 {
-    private static final String
-            IS_BODY_EMPTY = "/is-body-empty",
-            ECHO_BODY     = "/echo-body";
-    
-    @BeforeEach
-    void installHandlers() {
-        Function<Request, CompletionStage<Response>>
-                isBodyEmpty = req -> text(String.valueOf(req.body().isEmpty())).completedStage(),
-                echoBody    = req -> req.body().toText().thenApply(Responses::text);
-        
-        server().add(IS_BODY_EMPTY, POST().apply(isBodyEmpty));
-        server().add(ECHO_BODY,     POST().apply(echoBody));
-    }
-    
     @Test
     void empty_request_body() throws IOException {
-        String res = client().writeRead(requestWithBody(IS_BODY_EMPTY, ""), "true");
+        addEndpointIsBodyEmpty();
+        
+        String res = client().writeRead(requestWithBody(""), "true");
         
         assertThat(res).isEqualTo(
-            "HTTP/1.1 200 OK" + CRLF +
+            "HTTP/1.1 200 OK"                         + CRLF +
             "Content-Type: text/plain; charset=utf-8" + CRLF +
-            "Content-Length: 4" + CRLF + CRLF +
+            "Content-Length: 4"                       + CRLF + CRLF +
             
             "true");
     }
     
     @Test
     void connection_reuse() throws IOException {
+        addEndpointEchoBody();
+        
         final String resHead =
-            "HTTP/1.1 200 OK" + CRLF +
+            "HTTP/1.1 200 OK"                         + CRLF +
             "Content-Type: text/plain; charset=utf-8" + CRLF +
-            "Content-Length: 3" + CRLF + CRLF;
+            "Content-Length: 3"                       + CRLF + CRLF;
         
         Channel ch = client().openConnection();
         try (ch) {
-            String res1 = client().writeRead(requestWithBody(ECHO_BODY, "ABC"), "ABC");
+            String res1 = client().writeRead(requestWithBody("ABC"), "ABC");
             assertThat(res1).isEqualTo(resHead + "ABC");
             
-            String res2 = client().writeRead(requestWithBody(ECHO_BODY, "DEF"), "DEF");
+            String res2 = client().writeRead(requestWithBody("DEF"), "DEF");
             assertThat(res2).isEqualTo(resHead + "DEF");
         }
     }
     
     @Test
     void request_body_discard_all() throws IOException {
-        Channel ch = client().openConnection();
-        try (ch) {
-            String req = requestWithBody(IS_BODY_EMPTY, "x".repeat(10)),
+        addEndpointIsBodyEmpty();
+        
+        IORunnable exchange = () -> {
+            String req = requestWithBody("x".repeat(10)),
                    res = client().writeRead(req, "false");
             
             assertThat(res).isEqualTo(
-                "HTTP/1.1 200 OK" + CRLF +
+                "HTTP/1.1 200 OK"                         + CRLF +
                 "Content-Type: text/plain; charset=utf-8" + CRLF +
-                "Content-Length: 5" + CRLF + CRLF +
+                "Content-Length: 5"                       + CRLF + CRLF +
                 
                 "false");
+        };
+        
+        Channel ch = client().openConnection();
+        try (ch) {
+            exchange.run();
             
-            // The "/is-body-empty" endpoint didn't read the body contents, i.e. auto-discarded.
+            // The endpoint didn't read the body contents, i.e. auto-discarded.
             // If done correctly, we should be be able to send a new request using the same connection:
-            empty_request_body();
+            exchange.run();
         }
     }
     
@@ -102,22 +94,25 @@ class DetailedEndToEndTest extends AbstractEndToEndTest
         final int length = 100_000,
                   midway = length / 2;
         
-        RequestHandler discardMidway = RequestHandlers.POST().accept((req) ->
-            req.body().subscribe(
-                new AfterByteTargetStop(midway, Flow.Subscription::cancel)));
+        RequestHandler discardMidway = POST().accept((req) ->
+                req.body().subscribe(
+                        new AfterByteTargetStop(midway, Flow.Subscription::cancel)));
         
-        server().add("/discard-midway", discardMidway);
+        server().add("/", discardMidway);
         
-        Channel ch = client().openConnection();
-        try (ch) {
-            String req = requestWithBody("/discard-midway", "x".repeat(length)),
+        IORunnable exchange = () -> {
+            String req = requestWithBody("x".repeat(length)),
                    res = client().writeRead(req);
             
             assertThat(res).isEqualTo(
                 "HTTP/1.1 202 Accepted" + CRLF +
-                "Content-Length: 0" + CRLF + CRLF);
-            
-            empty_request_body();
+                "Content-Length: 0"     + CRLF + CRLF);
+        };
+        
+        Channel ch = client().openConnection();
+        try (ch) {
+            exchange.run();
+            exchange.run();
         }
     }
     
@@ -128,16 +123,16 @@ class DetailedEndToEndTest extends AbstractEndToEndTest
                 new AfterByteTargetStop(1, subscriptionIgnored -> {
                     throw new RuntimeException("Oops."); })));
         
-        server().add("/body-subscriber-crash", crashAfterOneByte);
+        server().add("/", crashAfterOneByte);
         
         Channel ch = client().openConnection();
         try (ch) {
-            String req = requestWithBody("/body-subscriber-crash", "Hello"),
+            String req = requestWithBody("Hello"),
                    res = client().writeRead(req);
             
             assertThat(res).isEqualTo(
                 "HTTP/1.1 500 Internal Server Error" + CRLF +
-                "Content-Length: 0" + CRLF + CRLF);
+                "Content-Length: 0"                  + CRLF + CRLF);
             
             assertServerErrorWasThrown();
             assertThat(client().drain()).isEmpty();
@@ -175,21 +170,52 @@ class DetailedEndToEndTest extends AbstractEndToEndTest
     // TODO: Then remove this
     @Disabled("Server+superclass needs to ignore disconnect errors first")
     void http_1_0() throws IOException {
-        server().add("/echo-version", GET().apply(req ->
+        server().add("/", GET().apply(req ->
                 text("Version: " + req.httpVersion()).completedStage()));
         
-        String resp = client().writeRead("GET /echo-version HTTP/1.0" + CRLF + CRLF);
+        String resp = client().writeRead("GET / HTTP/1.0" + CRLF + CRLF);
+        
         assertThat(resp).isEqualTo(
-            "HTTP/1.0 200 OK" + CRLF +
+            "HTTP/1.0 200 OK"                         + CRLF +
             "Content-Type: text/plain; charset=utf-8" + CRLF +
-            "Content-Length: 17"+ CRLF + CRLF);
+            "Content-Length: 17"                      + CRLF + CRLF);
     }
     
-    private static String requestWithBody(String requestTarget, String body) {
-        return "POST " + requestTarget + " HTTP/1.1" + CRLF +
-               "Accept: text/plain; charset=utf-8" + CRLF +
-               "Content-Length: " + body.length() + CRLF + CRLF +
-               body;
+    /**
+     * Add a "/" endpoint which responds a body with the value of {@link
+     * Request.Body#isEmpty()}
+     */
+    private void addEndpointIsBodyEmpty() {
+        server().add("/", POST().apply(req ->
+                text(String.valueOf(req.body().isEmpty())).completedStage()));
+    }
+    
+    /**
+     * Add a "/" endpoint which responds a body with the text-contents of the
+     * request body.
+     */
+    private void addEndpointEchoBody() {
+        server().add("/", POST().apply(req ->
+                req.body().toText().thenApply(Responses::text)));
+    }
+    
+    /**
+     * Make a HTTP/1.1 POST request with a body and request target "/".
+     * 
+     * @param body of request
+     * 
+     * @return the request
+     */
+    private static String requestWithBody(String body) {
+        return "POST / HTTP/1.1"                     + CRLF +
+               "Accept: text/plain; charset=utf-8"   + CRLF +
+               "Content-Length: " + body.length()    + CRLF + CRLF +
+                body;
+    }
+    
+    @FunctionalInterface
+    private interface IORunnable {
+        void run() throws IOException;
     }
     
     private static class AfterByteTargetStop implements Flow.Subscriber<PooledByteBufferHolder>
