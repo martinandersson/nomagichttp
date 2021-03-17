@@ -134,7 +134,13 @@ import java.nio.channels.AsynchronousServerSocketChannel;
 public interface HttpServer
 {
     /**
-     * Create a server using {@linkplain Config#DEFAULT default configuration}.
+     * Create a server using {@linkplain Config#DEFAULT default
+     * configuration}.<p>
+     * 
+     * The provided array of error handlers will be copied as-is into a {@code
+     * List}. Application should make sure the array does not contain
+     * duplicates, unless it for some bizarre reason wish to have an error
+     * handler called multiple times.
      * 
      * @param eh error handler(s)
      * 
@@ -149,6 +155,11 @@ public interface HttpServer
     
     /**
      * Create a server.<p>
+     * 
+     * The provided array of error handlers will be copied as-is into a {@code
+     * List}. Application should make sure the array does not contain
+     * duplicates, unless it for some bizarre reason wish to have an error
+     * handler called multiple times.
      * 
      * @param config of server
      * @param eh     error handler(s)

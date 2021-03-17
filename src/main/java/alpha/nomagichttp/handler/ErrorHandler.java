@@ -36,10 +36,17 @@ import static java.lang.System.Logger.Level.ERROR;
  * NoRouteFoundException} into an application-specific "404 Not Found"
  * response.<p>
  * 
+ * Many error handlers may be installed on the server. First to handle the error
+ * breaks the call chain. Details follow later.<p>
+ * 
+ * The error handler must be thread-safe, as it may be called concurrently. As
+ * far as the server is concerned, it does not need to implement 
+ * {@code hashCode()} {@code equals(Object)}.<p>
+ * 
  * The server will call error handlers only during the phase of the HTTP
  * exchange when there is a client waiting on a response which the ordinary
  * request handler could not successfully provide and only if the channel
- * remains open at the time of the error.<p>
+ * remains open for writing at the time of the error.<p>
  * 
  * Specifically for:<p>
  * 
@@ -72,13 +79,16 @@ import static java.lang.System.Logger.Level.ERROR;
  * 
  * Any number of error handlers can be configured. If many are configured, they
  * will be called in the same order they were added. First handler to produce a
- * {@code Response} breaks the call chain. The {@link #DEFAULT} will be used if
- * no handler can handle the error or no handler is configured.<p>
+ * {@code Response} breaks the call chain. The {@link #DEFAULT default handler}
+ * will be used if no other handler is configured.<p>
  * 
  * An error handler that is unwilling to handle the exception must re-throw the
- * same throwable instance which will then propagate to the next handler. If a
- * handler throws a different throwable, then this is considered to be a new
- * error and the whole cycle is restarted.<p>
+ * same throwable instance which will then propagate to the next handler,
+ * eventually reaching the default error handler if no other
+ * application-provided handler resolved the error.<p>
+ * 
+ * If a handler throws a different throwable, then this is considered to be a
+ * new error and the whole cycle is restarted.<p>
  * 
  * Super simple example:
  * <pre>{@code
@@ -86,9 +96,9 @@ import static java.lang.System.Logger.Level.ERROR;
  *         try {
  *             throw throwable;
  *         } catch (ExpectedException e) {
- *             return alternativeResponse();
+ *             return myAlternativeResponse();
  *         } catch (AnotherExpectedException e) {
- *             return anotherAlternativeResponse();
+ *             return someOtherAlternativeResponse();
  *         }
  *         // else automagically re-thrown and propagated throughout the chain
  *     };
