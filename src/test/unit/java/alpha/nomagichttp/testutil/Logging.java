@@ -40,19 +40,38 @@ public final class Logging
     }
     
     /**
-     * Set logging level for the package of a given component.
+     * Set logging level for the package of a given component.<p>
+     * 
+     * This method is assumed to be used by test cases interested to increase
+     * the logging output, purposefully to aid a human operator's study of
+     * Gradle's test report. Therefore, this method also takes the liberty of
+     * hacking the log environment a bit.<p>
+     * 
+     * Firstly, by default, the root logger's console handler will dump all
+     * records from {@code INFO} and above on {@code System.err}. Having all of
+     * them show up as an "error" in Gradle's report is less... intuitive? So
+     * an attempt is made to remove this guy.<p>
+     * 
+     * Secondly, first found console handler of the component's logger will also
+     * have the new level set. Normally, there will be none, so a new console
+     * handler of the target level is installed, which also formats all records
+     * elegantly and write them on {@code System.out}.<p>
+     * 
+     * Voila! The end result ought to be a much prettier and useful Gradle test
+     * report.
      * 
      * @param component to extract package from
      * @param level to set
+     * 
      * @throws NullPointerException if any argument is {@code null}
      */
     public static void setLevel(Class<?> component, System.Logger.Level level) {
         final java.util.logging.Level impl = toJUL(level);
         
         Logger l = Logger.getLogger(component.getPackageName());
-        
         l.setLevel(impl);
-        l.setUseParentHandlers(false);
+        
+        uninstallRootConsoleHandler();
         
         Optional<ConsoleHandler> ch = stream(l.getHandlers())
                 .filter(h -> h instanceof ConsoleHandler)
@@ -63,7 +82,9 @@ public final class Logging
             ch.get().setLevel(impl);
         }
         else {
-            l.addHandler(newConsoleHandler(impl));
+            Handler h = newConsoleHandler();
+            h.setLevel(impl);
+            l.addHandler(h);
         }
     }
     
@@ -171,9 +192,26 @@ public final class Logging
                         "No JUL match for this level: " + level));
     }
     
-    private static ConsoleHandler newConsoleHandler(java.util.logging.Level level) {
+    private static void uninstallRootConsoleHandler() {
+        final Logger root = Logger.getLogger("");
+        
+        Handler[] console = Stream.of(root.getHandlers())
+                .filter(h -> h instanceof ConsoleHandler)
+                .map(h -> (ConsoleHandler) h)
+                .toArray(Handler[]::new);
+        
+        if (console.length == 1) {
+            root.removeHandler(console[0]);
+        }
+        /*
+         * Else more than one ConsoleHandler on root (unexpected).
+         * We could probe for "java.util.logging.LogManager$RootLogger@50013...",
+         * but I'd rather just leave it as-is for now.
+         */
+    }
+    
+    private static ConsoleHandler newConsoleHandler() {
         ConsoleHandler h = new SystemOutInsteadOfSystemErr();
-        h.setLevel(level);
         h.setFormatter(new ElegantFormatter());
         return h;
     }
