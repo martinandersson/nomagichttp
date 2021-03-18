@@ -1,5 +1,7 @@
 package alpha.nomagichttp.testutil;
 
+import alpha.nomagichttp.HttpServer;
+
 import java.io.OutputStream;
 import java.io.PrintWriter;
 import java.io.StringWriter;
@@ -37,6 +39,22 @@ public final class Logging
 {
     private Logging() {
         // Empty
+    }
+    
+    /**
+     * Set level globally.<p>
+     * 
+     * An invocation of this method behaves in exactly the same way as the
+     * invocation
+     * <pre>
+     *     Logging.{@link #setLevel(Class, System.Logger.Level)
+     *       setLevel}(HttpServer.class, level);
+     * </pre>
+     * 
+     * @param level to set
+     */
+    public static void setLevel(System.Logger.Level level) {
+        setLevel(HttpServer.class, level);
     }
     
     /**
@@ -115,6 +133,24 @@ public final class Logging
      */
     public static void removeHandler(Class<?> component, Handler handler) {
         Logger.getLogger(component.getPackageName()).removeHandler(handler);
+    }
+    
+    /**
+     * Start global log recording.<p>
+     * 
+     * An invocation of this method behaves in exactly the same way as the
+     * invocation
+     * <pre>
+     *     Logging.{@link #startRecording(Class, Class[])
+     *       startRecording}(HttpServer.class);
+     * </pre>
+     * 
+     * @return key to use as argument to {@link #stopRecording(Recorder)}
+     * 
+     * @throws NullPointerException if any arg is {@code null}
+     */
+    public static Recorder startRecording() {
+        return startRecording(HttpServer.class);
     }
     
     /**
