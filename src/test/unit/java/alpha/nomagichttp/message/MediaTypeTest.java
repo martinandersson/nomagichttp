@@ -72,17 +72,19 @@ class MediaTypeTest
     
     @Test
     void extension_params() {
-        Handler handler = Mockito.mock(Handler.class);
-        Logging.addHandler(MediaType.class, handler);
+        Handler h = Mockito.mock(Handler.class);
+        Logging.addHandler(MediaType.class, h);
         
         MediaType.parse("*/*; q=1; extension=param");
         
         String expMsg = "Media type extension parameters ignored: " +
                 Map.of("extension", "param").toString();
         
-        Mockito.verify(handler).publish(argThat(r ->
+        Mockito.verify(h).publish(argThat(r ->
                 r.getLevel().equals(WARNING) &&
                 r.getMessage().equals(expMsg)));
+        
+        Logging.removeHandler(MediaType.class, h);
     }
     
     // TODO: more error cases
