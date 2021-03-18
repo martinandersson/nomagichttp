@@ -41,7 +41,7 @@ abstract class AbstractEndToEndTest
     
     @BeforeEach
     void start() throws IOException {
-        Logging.setLevel(SimpleEndToEndTest.class, ALL);
+        Logging.setLevel(ALL);
         
         ErrorHandler collect = (t, r, h) -> {
             errors.add(t);

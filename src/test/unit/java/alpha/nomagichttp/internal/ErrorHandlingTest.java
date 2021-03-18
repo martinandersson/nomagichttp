@@ -35,7 +35,7 @@ class ErrorHandlingTest
     
     @BeforeAll
     static void setLogging() {
-        Logging.setLevel(ErrorHandlingTest.class, ALL);
+        Logging.setLevel(ALL);
     }
     
     @AfterEach
