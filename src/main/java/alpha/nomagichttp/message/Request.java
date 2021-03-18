@@ -676,8 +676,8 @@ public interface Request
          *     body.{@link #toFile(Path,Set,FileAttribute[])
          *       toFile}(file, opts, new FileAttribute&lt;?&gt;[0]);
          * </pre>
-         * where {@code opts} is a {@code Set} containing the options specified to
-         * this method.
+         * where {@code opts} is a {@code Set} containing the options specified
+         * to this method.
          * 
          * @param file to dump body into
          * @param options specifying how the file is opened
