@@ -8,10 +8,11 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 
 import java.io.IOException;
-import java.util.Collection;
-import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.BlockingDeque;
+import java.util.concurrent.LinkedBlockingDeque;
 
 import static java.lang.System.Logger.Level.ALL;
+import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
@@ -19,12 +20,12 @@ import static org.assertj.core.api.Assertions.assertThat;
  * server's port; scoped to each test.<p>
  * 
  * The server has no routes added, but, has an error handler added which simply
- * collects all exceptions caught into a {@code List} and then delegates the
- * error handling to the default error handler.<p>
+ * collects all exceptions caught into a {@code BlockingDeque} and then
+ * delegates the error handling to the default error handler.<p>
  * 
- * By default, after-each will assert that no errors were caught. If errors are
- * expected, call {@code assertErrorWasThrown()}. How many errors and what types
- * may then be inspected further by the test method.
+ * By default, after-each will assert that no errors were delivered to the error
+ * handler. If errors are expected, then the test must consume all errors from
+ * the deque returned from {@code errors()}.
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  * 
@@ -36,8 +37,7 @@ abstract class AbstractEndToEndTest
     private static HttpServer server;
     private static ClientOperations client;
     
-    private final Collection<Throwable> errors = new ConcurrentLinkedQueue<>();
-    private boolean assertNoErrors = true;
+    private final BlockingDeque<Throwable> errors = new LinkedBlockingDeque<>();
     
     @BeforeEach
     void start() throws IOException {
@@ -54,11 +54,7 @@ abstract class AbstractEndToEndTest
     
     @AfterEach
     void assertNoErrors() {
-        if (assertNoErrors) {
-            assertThat(errors).isEmpty();
-        } else {
-            assertThat(errors).isNotEmpty();
-        }
+        assertThat(errors).isEmpty();
     }
     
     @AfterEach
@@ -76,7 +72,16 @@ abstract class AbstractEndToEndTest
         return client;
     }
     
-    public final void assertServerErrorWasThrown() {
-        assertNoErrors = false;
+    public final BlockingDeque<Throwable> errors() {
+        return errors;
+    }
+    
+    /**
+     * Same as {@code errors().poll(3, SECONDS)}.
+     * 
+     * @return same as {@code errors().poll(3, SECONDS)}
+     */
+    public final Throwable pollError() throws InterruptedException {
+        return errors().poll(3, SECONDS);
     }
 }

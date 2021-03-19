@@ -117,11 +117,13 @@ class DetailedEndToEndTest extends AbstractEndToEndTest
     }
     
     @Test
-    void request_body_subscriber_crash() throws IOException {
+    void request_body_subscriber_crash() throws IOException, InterruptedException {
+        RuntimeException err = new RuntimeException("Oops.");
+        
         RequestHandler crashAfterOneByte = RequestHandlers.POST().accept(req ->
             req.body().subscribe(
                 new AfterByteTargetStop(1, subscriptionIgnored -> {
-                    throw new RuntimeException("Oops."); })));
+                    throw err; })));
         
         server().add("/", crashAfterOneByte);
         
@@ -134,7 +136,7 @@ class DetailedEndToEndTest extends AbstractEndToEndTest
                 "HTTP/1.1 500 Internal Server Error" + CRLF +
                 "Content-Length: 0"                  + CRLF + CRLF);
             
-            assertServerErrorWasThrown();
+            assertThat(pollError()).isSameAs(err);
             assertThat(client().drain()).isEmpty();
             assertThat(ch.isOpen()).isFalse();
             
