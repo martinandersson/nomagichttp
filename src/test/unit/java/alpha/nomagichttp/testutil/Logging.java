@@ -11,7 +11,8 @@ import java.util.Deque;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentLinkedDeque;
 import java.util.concurrent.CountDownLatch;
-import java.util.function.BiConsumer;
+import java.util.function.Consumer;
+import java.util.function.Predicate;
 import java.util.logging.ConsoleHandler;
 import java.util.logging.Formatter;
 import java.util.logging.Handler;
@@ -168,9 +169,9 @@ public final class Logging
      * test worker, which applies to most server components as the server is
      * fully asynchronous. Otherwise there would be timing issues.<p>
      * 
-     * The awaiting feature can also be used without running assertions, as a
-     * simple mechanism to await a particular server-event (as revealed through
-     * the log) before moving on.<p>
+     * The awaiting feature can also be used solely as a mechanism to await a
+     * particular server-event (as revealed through the log) before moving
+     * on.<p>
      * 
      * WARNING: Recording is implemented through adding a handler to each
      * targeted logger. The handler's {@code publish(LogRecord)} method is
@@ -341,38 +342,38 @@ public final class Logging
         }
         
         /**
-         * Return immediately if a log record of the given level with the given
-         * message has been published, or await it's arrival for a maximum of 3
-         * seconds.<p>
+         * Return immediately if a log record passing the given test has been
+         * published, or await it's arrival for a maximum of 3 seconds.<p>
          * 
-         * Currently, due to implementation simplicity, only one away per
+         * Currently, due to implementation simplicity, only one await per
          * recorder instance is allowed.<p>
          * 
          * WARNING: This method may block the publication of a log record
          * temporarily and if so, the block is minuscule. Nonetheless, awaiting
          * should not be done by time-critical code.
          * 
-         * @param level of record
-         * @param message of record
-         * 
+         * @param test of record
+         *
          * @return {@code true} when target record is observed, or
          *         {@code false} if 3 seconds passes without observing the record
          * 
+         * @throws NullPointerException
+         *             if {@code test} is {@code null}
+         * 
          * @throws IllegalStateException
          *             if this method was used before
-         * 
+         *
          * @throws InterruptedException
          *             if the current thread is interrupted while waiting
          */
-        public boolean await(Level level, String message) throws InterruptedException {
-            requireNonNull(level);
-            requireNonNull(message);
+        public boolean await(Predicate<LogRecord> test) throws InterruptedException {
+            requireNonNull(test);
             
             CountDownLatch cl = new CountDownLatch(1);
             
             for (RecordListener rl : l) {
-                rl.monitor((lvl, msg) -> {
-                    if (lvl.equals(level) && msg.equals(message)) {
+                rl.monitor(rec -> {
+                    if (test.test(rec)) {
                         cl.countDown();
                     }
                 });
@@ -386,6 +387,83 @@ public final class Logging
             return cl.await(3, SECONDS);
         }
         
+        /**
+         * Return immediately if a log record of the given level with the given
+         * message has been published, or await it's arrival for a maximum of 3
+         * seconds.<p>
+         * 
+         * Uses {@link #await(Predicate)} under the hood. Same warning apply.
+         * 
+         * @param level of record
+         * @param message of record
+         * 
+         * @return {@code true} when target record is observed, or
+         *         {@code false} if 3 seconds passes without observing the record
+         * 
+         * @throws NullPointerException
+         *             if any arg is {@code null}
+         * 
+         * @throws IllegalStateException
+         *             if an {@code await} method was used before
+         * 
+         * @throws InterruptedException
+         *             if the current thread is interrupted while waiting
+         */
+        public boolean await(Level level, String message) throws InterruptedException {
+            requireNonNull(level);
+            requireNonNull(message);
+            return await(r -> r.getLevel().equals(level) && r.getMessage().equals(message));
+        }
+        
+        /**
+         * Return immediately if a generalized log record from a given source is
+         * observed, or await it's arrival for a maximum of 3 seconds.<p>
+         * 
+         * For example, suppose we want to wait for this record:
+         * 
+         * <pre>
+         *   2021-03-18 | 15:09:48.751Z | pool-1-thread-7  | INFO |
+         *   alpha.nomagichttp.internal.DefaultChannelOperations orderlyClose |
+         *   Closed child: sun.nio.ch.WindowsAsynchronousSocketChannelImpl[closed]
+         * </pre>
+         * 
+         * A solution:
+         * 
+         * <pre>{@code
+         *   recorder.await(DefaultChannelOperations.class, INFO, "orderlyClose");
+         * }</pre>
+         * 
+         * I.e. rather than testing the start of a dynamic message, we'd rather
+         * depend on the source of the record as being a more specific, reliable
+         * and descriptive predicate.<p>
+         * 
+         * Uses {@link #await(Predicate)} under the hood. Same warning apply.
+         * 
+         * @param sourceClass of record origin
+         * @param level of any record
+         * @param sourceMethod of record origin
+         * 
+         * @return {@code true} when target record is observed, or
+         *         {@code false} if 3 seconds passes without observing the record
+         * 
+         * @throws NullPointerException
+         *             if any arg is {@code null}
+         * 
+         * @throws IllegalStateException
+         *             if an {@code await} method was used before
+         * 
+         * @throws InterruptedException
+         *             if the current thread is interrupted while waiting
+         */
+        public boolean await(Class<?> sourceClass, Level level, String sourceMethod) throws InterruptedException {
+            requireNonNull(sourceClass);
+            requireNonNull(level);
+            requireNonNull(sourceMethod);
+            return await(r -> r.getSourceClassName().equals(sourceClass.getSimpleName()) &&
+                              r.getLevel().equals(level) &&
+                              r.getSourceMethodName().equals(sourceMethod));
+        }
+        
         Stream<RecordListener> listeners() {
             return Stream.of(l);
         }
@@ -394,7 +472,7 @@ public final class Logging
     private static class RecordListener extends Handler {
         private final Class<?> cmp;
         private final Deque<LogRecord> deq;
-        private BiConsumer<Level, String> mon;
+        private Consumer<LogRecord> mon;
         
         RecordListener(Class<?> component) {
             cmp = component;
@@ -410,11 +488,11 @@ public final class Logging
          * 
          * @param consumer code to execute with the records
          */
-        synchronized void monitor(BiConsumer<Level, String> consumer) {
+        synchronized void monitor(Consumer<LogRecord> consumer) {
             if (mon != null) {
                 throw new IllegalStateException();
             }
-            records().forEach(r -> consumer.accept(r.getLevel(), r.getMessage()));
+            records().forEach(consumer);
             mon = consumer;
         }
         
@@ -430,7 +508,7 @@ public final class Logging
         public synchronized void publish(LogRecord record) {
             deq.add(record);
             if (mon != null) {
-                mon.accept(record.getLevel(), record.getMessage());
+                mon.accept(record);
             }
         }
         
