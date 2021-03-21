@@ -266,10 +266,10 @@ final class DefaultRequest implements Request
         
         private static <T> void copyResult(CompletionStage<? extends T> from, CompletableFuture<? super T> to) {
             from.whenComplete((val, exc) -> {
-                if (exc != null) {
-                    to.completeExceptionally(exc);
-                } else {
+                if (exc == null) {
                     to.complete(val);
+                } else {
+                    to.completeExceptionally(exc);
                 }
             });
         }

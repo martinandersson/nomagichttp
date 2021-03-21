@@ -86,8 +86,9 @@ public final class ClientOperations
      * opened on the port of the given server.
      * 
      * @param server client should connect to
+     * @throws IOException if an I/O error occurs
      */
-    public ClientOperations(HttpServer server) {
+    public ClientOperations(HttpServer server) throws IOException {
         this(server.getLocalAddress().getPort());
     }
     

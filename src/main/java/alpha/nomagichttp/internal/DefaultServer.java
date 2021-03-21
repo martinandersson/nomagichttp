@@ -14,10 +14,20 @@ import java.nio.channels.AsynchronousSocketChannel;
 import java.nio.channels.ClosedChannelException;
 import java.nio.channels.CompletionHandler;
 import java.nio.channels.ShutdownChannelGroupException;
+import java.util.Iterator;
 import java.util.List;
-import java.util.concurrent.Executors;
+import java.util.Set;
+import java.util.concurrent.CancellationException;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionException;
+import java.util.concurrent.CompletionStage;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 
+import static alpha.nomagichttp.internal.AtomicReferences.lazyInitOrElse;
+import static alpha.nomagichttp.internal.AtomicReferences.setIfAbsent;
 import static java.lang.System.Logger.Level.DEBUG;
 import static java.lang.System.Logger.Level.ERROR;
 import static java.lang.System.Logger.Level.INFO;
@@ -25,7 +35,7 @@ import static java.net.InetAddress.getLoopbackAddress;
 import static java.util.Objects.requireNonNull;
 
 /**
- * A fully asynchronous implementation of {@code Server}.<p>
+ * A fully asynchronous implementation of {@link HttpServer}.<p>
  * 
  * This class uses {@link AsynchronousServerSocketChannel} which provides an
  * amazing performance on many operating systems, including Windows.
@@ -37,39 +47,18 @@ public final class DefaultServer implements HttpServer
     private static final System.Logger LOG
             = System.getLogger(DefaultServer.class.getPackageName());
     
-    // Good info on async groups:
-    // https://openjdk.java.net/projects/nio/resources/AsynchronousIo.html
-    
     /**
      * Global count of active servers.
      */
     private static final AtomicInteger SERVER_COUNT = new AtomicInteger();
-    private static AsynchronousChannelGroup group;
-    
-    private static synchronized AsynchronousChannelGroup group(int nThreads) throws IOException {
-        if (group == null) {
-            group = AsynchronousChannelGroup.withFixedThreadPool(nThreads,
-                    // Default-group uses daemon threads, we use non-daemon
-                    Executors.defaultThreadFactory());
-        }
-        
-        return group;
-    }
-    
-    private static synchronized  void groupShutdown() {
-        if (group == null || SERVER_COUNT.get() > 0) {
-            return;
-        }
-        
-        group.shutdown();
-        group = null;
-    }
     
     private final Config config;
     private final RouteRegistry registry;
     private final List<ErrorHandler> eh;
-    private AsynchronousServerSocketChannel listener;
-    private InetSocketAddress addr;
+    private final AtomicReference<CompletableFuture<AsynchronousServerSocketChannel>> parent;
+    private final AtomicReference<CompletableFuture<Void>> waitOnChildrenStop;
+    private final Set<DefaultChannelOperations> children;
+    private final AtomicBoolean terminating;
     
     /**
      * Constructs a {@code DefaultServer}.
@@ -83,69 +72,154 @@ public final class DefaultServer implements HttpServer
             RouteRegistry registry,
             ErrorHandler... eh)
     {
-        this.config = requireNonNull(config);
-        this.registry = requireNonNull(registry);
-        this.eh  = List.of(eh);
-        this.listener = null;
+        this.config        = requireNonNull(config);
+        this.registry      = requireNonNull(registry);
+        this.eh            = List.of(eh);
+        this.parent        = new AtomicReference<>();
+        this.waitOnChildrenStop = new AtomicReference<>();
+        this.children      = ConcurrentHashMap.newKeySet(10_000);
+        this.terminating   = new AtomicBoolean();
     }
     
     @Override
-    public synchronized HttpServer start(SocketAddress address) throws IOException {
-        if (listener != null) {
-            throw new IllegalStateException("Already running.");
+    public HttpServer start(SocketAddress address) throws IOException {
+        var res = lazyInitOrElse(
+                parent, CompletableFuture::new, v -> initialize(address, v), null);
+        
+        if (res == null) {
+            throw new IllegalStateException("Server already running.");
         }
         
-        SocketAddress use = address != null? address :
-                new InetSocketAddress(getLoopbackAddress(), 0);
-        
         try {
-            AsynchronousChannelGroup grp = group(config.threadPoolSize());
-            listener = AsynchronousServerSocketChannel.open(grp).bind(use);
+            // result immediately available because thread was initializer
+            AsynchronousServerSocketChannel parent = res.join();
+            parent.accept(null, new OnAccept(parent));
         } catch (Throwable t) {
-            groupShutdown();
-            throw t;
-        }
-        
-        SERVER_COUNT.incrementAndGet();
-        LOG.log(INFO, () -> "Opened server channel: " + listener);
-        
-        try {
-            addr = ((InetSocketAddress) listener.getLocalAddress());
-            listener.accept(null, new OnAccept());
-        } catch (Throwable t) {
-            stop();
-            throw t;
+            IOException io = null;
+            if (t instanceof CompletionException) {
+                CompletionException ce = (CompletionException) t;
+                if (ce.getCause() instanceof IOException) {
+                    // Unwrap
+                    io = (IOException) ce.getCause();
+                }
+            }
+            
+            try {
+                stopNow();
+            } catch (Throwable next) {
+                if (io != null) {
+                    io.addSuppressed(next);
+                } else {
+                    t.addSuppressed(next);
+                }
+            }
+            
+            if (io != null) {
+                throw io;
+            } else {
+                throw t;
+            }
         }
         
         return this;
     }
     
+    private void initialize(SocketAddress addr, CompletableFuture<AsynchronousServerSocketChannel> v) {
+        final AsynchronousServerSocketChannel ch;
+        try {
+            SocketAddress use = addr != null? addr :
+                    new InetSocketAddress(getLoopbackAddress(), 0);
+           
+            AsynchronousChannelGroup grp = AsyncGroup.getOrCreate(config.threadPoolSize())
+                    .toCompletableFuture().join();
+            
+            ch = AsynchronousServerSocketChannel.open(grp).bind(use);
+        } catch (Throwable t) {
+            if (SERVER_COUNT.get() == 0) {
+                // benign race with other servers starting in parallel,
+                // if they fail because we shutdown the group here, then like whatever
+                AsyncGroup.shutdown();
+            }
+            v.completeExceptionally(t);
+            return;
+        }
+        LOG.log(INFO, () -> "Opened server channel: " + ch);
+        SERVER_COUNT.incrementAndGet();
+        v.complete(ch);
+    }
+    
     @Override
-    public synchronized void stop() throws IOException {
-        if (listener == null) {
+    public CompletionStage<Void> stop() {
+        CompletableFuture<Void> trigger = new CompletableFuture<>();
+        trigger.whenComplete((ign,ored) -> waitOnChildrenStop.set(null));
+        
+        // trigger may now be our local one, or a previously set value
+        trigger = setIfAbsent(waitOnChildrenStop, trigger);
+        
+        if (stopServerSafe(trigger) && children.isEmpty()) {
+            trigger.complete(null);
+        }
+        
+        return trigger.copy();
+    }
+    
+    @Override
+    public void stopNow() throws IOException {
+        stopServer();
+        stopChildren();
+    }
+    
+    private void stopServer() throws IOException {
+        var res = parent.get();
+        if (res == null) {
             return;
         }
         
-        if (!listener.isOpen()) {
-            LOG.log(DEBUG, "Asked to stop server but channel was not open.");
-        } else {
-            listener.close();
-            LOG.log(INFO, () -> "Closed server channel: " + listener);
+        final AsynchronousServerSocketChannel ch;
+        try {
+            ch = res.join();
+        } catch (CancellationException | CompletionException e) {
+            // great, never started
+            return;
         }
         
-        listener = null;
-        
-        if (SERVER_COUNT.decrementAndGet() == 0) {
-            groupShutdown();
+        if (terminating.compareAndSet(false, true)) {
+            try {
+                ch.close();
+                LOG.log(INFO, () -> "Closed server channel: " + ch);
+                int n = SERVER_COUNT.decrementAndGet();
+                parent.set(null);
+                if (n == 0) {
+                    // benign race
+                    AsyncGroup.shutdown();
+                }
+                assert n >= 0;
+            } finally {
+                terminating.set(false);
+            }
         }
     }
     
-    void stopOrElseJVMExit() {
+    private boolean stopServerSafe(CompletableFuture<Void> reportErrorTo) {
         try {
-            stop();
-        } catch (Throwable t) {
-            LOG.log(ERROR, "Failed to close server. Will exit application (reduce security risk).", t);
-            System.exit(1);
+            stopServer();
+            return true;
+        } catch (IOException e) {
+            if (!reportErrorTo.completeExceptionally(e)) {
+                LOG.log(DEBUG,
+                    "Stop-Future already completed. " +
+                    "Except for this debug log, this error is ignored.", e);
+            }
+            return false;
+        }
+    }
+    
+    private void stopChildren() {
+        Iterator<DefaultChannelOperations> it = children.iterator();
+        while (it.hasNext()) {
+            DefaultChannelOperations child = it.next();
+            it.remove();
+            child.orderlyCloseSafe();
         }
     }
     
@@ -175,12 +249,15 @@ public final class DefaultServer implements HttpServer
     }
     
     @Override
-    public synchronized InetSocketAddress getLocalAddress() throws IllegalStateException {
-        if (listener == null || !listener.isOpen()) {
-            throw new IllegalStateException("Server is not running.");
+    public InetSocketAddress getLocalAddress() throws IllegalStateException, IOException {
+        try {
+            return (InetSocketAddress) parent.get().join().getLocalAddress();
+        } catch (IOException e) {
+            throw e;
+        } catch (Exception e) { // including NPE from get().join()
+            assert !(e instanceof ClassCastException);
+            throw new IllegalStateException("Server is not running.", e);
         }
-        
-        return addr;
     }
     
     /**
@@ -195,42 +272,74 @@ public final class DefaultServer implements HttpServer
     
     private class OnAccept implements CompletionHandler<AsynchronousSocketChannel, Void>
     {
+        private static final String NO_MORE = " Will accept no more children.";
+        
+        private final AsynchronousServerSocketChannel parent;
+        
+        OnAccept(AsynchronousServerSocketChannel parent) {
+            this.parent = parent;
+        }
+        
         @Override
         public void completed(AsynchronousSocketChannel child, Void noAttachment) {
             try {
-                completed0(child);
+                parent.accept(null, this);
             } catch (Throwable t) {
+                new DefaultChannelOperations(child).orderlyCloseSafe();
                 failed(t, null);
+                return;
             }
+            setup(child);
         }
         
-        private void completed0(AsynchronousSocketChannel child) {
+        private void setup(AsynchronousSocketChannel child) {
             LOG.log(INFO, () -> "Accepted child: " + child);
-            
-            if (listener.isOpen()) {
-                listener.accept(null, this);
-            }
+            DefaultChannelOperations dco = new DefaultChannelOperations(child);
+            ChannelByteBufferPublisher bytes = new ChannelByteBufferPublisher(dco);
+            children.add(dco);
+            startExchange(dco, bytes);
             
             // TODO: child.setOption(StandardSocketOptions.SO_KEEPALIVE, true); ??
-            
-            DefaultChannelOperations ops = new DefaultChannelOperations(child, DefaultServer.this);
-            new HttpExchange(DefaultServer.this, ops).begin();
+        }
+        
+        private void startExchange(DefaultChannelOperations dco, ChannelByteBufferPublisher bytes) {
+            new HttpExchange(DefaultServer.this, dco, bytes)
+                    .begin()
+                    .whenComplete((Null, exc) -> {
+                        // Both open-calls are volatile reads, no locks
+                        if (exc != null || !parent.isOpen() || !dco.isEverythingOpen()) {
+                            shutdown(dco, bytes);
+                        } else {
+                            startExchange(dco, bytes);
+                        }
+                    });
+        }
+        
+        private void shutdown(DefaultChannelOperations dco, ChannelByteBufferPublisher bytes) {
+            bytes.close();
+            dco.orderlyCloseSafe();
+            children.remove(dco);
+            // Notify anyone waiting on the last child
+            CompletableFuture<Void> trigger = waitOnChildrenStop.get();
+            if (trigger != null && children.isEmpty()) {
+                trigger.complete(null);
+            }
         }
         
         @Override
         public void failed(Throwable t, Void noAttachment) {
             if (t instanceof ClosedChannelException) { // note: AsynchronousCloseException extends ClosedChannelException
-                LOG.log(DEBUG, "Listening channel aka parent closed. Will accept no more.");
+                LOG.log(DEBUG, "Parent channel closed." + NO_MORE);
             }
             else if (t instanceof ShutdownChannelGroupException) {
-                LOG.log(DEBUG, "Group already closed when initiating a new accept. Will accept no more.");
+                LOG.log(DEBUG, "Group already closed when initiating a new accept." + NO_MORE);
             }
             else if (t instanceof IOException && t.getCause() instanceof ShutdownChannelGroupException) {
-                LOG.log(DEBUG, "Connection accepted and immediately closed, because group is shutting down/was shutdown. Will accept no more.");
+                LOG.log(DEBUG, "Connection accepted and immediately closed, because group is shutting down/was shutdown." + NO_MORE);
             }
             else {
-                LOG.log(ERROR, "Unknown failure. Will initiate orderly shutdown.", t);
-                stopOrElseJVMExit();
+                LOG.log(ERROR, "Unexpected or unknown failure. Stopping server (without force-closing children).", t);
+                stop();
             }
         }
     }

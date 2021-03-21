@@ -32,11 +32,11 @@ import static org.assertj.core.api.Assertions.assertThat;
  * @see SimpleEndToEndTest
  * @see DetailedEndToEndTest
  */
-abstract class AbstractEndToEndTest
+// TODO: Move to alpha.nomagichttp package
+public abstract class AbstractEndToEndTest
 {
-    private static HttpServer server;
-    private static ClientOperations client;
-    
+    private HttpServer server;
+    private ClientOperations client;
     private final BlockingDeque<Throwable> errors = new LinkedBlockingDeque<>();
     
     @BeforeEach
@@ -58,20 +58,33 @@ abstract class AbstractEndToEndTest
     }
     
     @AfterEach
-    void stop() throws IOException {
-        if (server != null) {
-            server.stop();
-        }
+    void stopNow() throws IOException {
+        server.stopNow();
     }
     
-    public static HttpServer server() {
+    /**
+     * Returns the server instance.
+     * 
+     * @return the server instance
+     */
+    public HttpServer server() {
         return server;
     }
     
-    public static ClientOperations client() {
+    /**
+     * Returns the client instance.
+     *
+     * @return the client instance
+     */
+    public ClientOperations client() {
         return client;
     }
     
+    /**
+     * Returns all caught errors.
+     * 
+     * @return all caught errors
+     */
     public final BlockingDeque<Throwable> errors() {
         return errors;
     }
@@ -80,6 +93,8 @@ abstract class AbstractEndToEndTest
      * Same as {@code errors().poll(3, SECONDS)}.
      * 
      * @return same as {@code errors().poll(3, SECONDS)}
+     * 
+     * @throws InterruptedException if the waiting is interrupted
      */
     public final Throwable pollError() throws InterruptedException {
         return errors().poll(3, SECONDS);

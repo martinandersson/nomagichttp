@@ -9,6 +9,7 @@ import alpha.nomagichttp.message.Response;
 import alpha.nomagichttp.message.Responses;
 import alpha.nomagichttp.route.RouteRegistry;
 
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
 import java.util.concurrent.CompletionStage;
 
@@ -23,9 +24,7 @@ import static java.lang.System.Logger.Level.WARNING;
 import static java.util.Objects.requireNonNull;
 
 /**
- * Initiates read- and write operations on a client channel in order to realize
- * an HTTP exchange. Once a request-response pair has been exchanged, the flow
- * is restarted.
+ * Implementation of an HTTP exchange from request to response.
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  */
@@ -36,10 +35,11 @@ final class HttpExchange
     private final DefaultServer server;
     private final DefaultChannelOperations child;
     private final ChannelByteBufferPublisher bytes;
+    private final CompletableFuture<Void> result;
     
     /*
-     * No mutable field in this class is volatile or synchronized. It is assumed
-     * that the asynchronous execution facility of the CompletionStage
+     * No mutable field in this class are volatile or synchronized. It is
+     * assumed that the asynchronous execution facility of the CompletionStage
      * implementation establishes a happens-before relationship. This is
      * certainly true for JDK's CompletableFuture which uses an
      * Executor/ExecutorService, or at worst, a new Thread.start() for each task.
@@ -50,11 +50,7 @@ final class HttpExchange
     private RequestHandler handler;
     private ErrorHandlers eh;
     
-    HttpExchange(DefaultServer server, DefaultChannelOperations child) {
-        this(server, child, new ChannelByteBufferPublisher(child));
-    }
-    
-    private HttpExchange(
+    HttpExchange(
             DefaultServer server,
             DefaultChannelOperations child,
             ChannelByteBufferPublisher bytes)
@@ -62,19 +58,31 @@ final class HttpExchange
         this.server  = server;
         this.child   = child;
         this.bytes   = bytes;
-        // If request fails to parse, this is what we use in response
+        this.result  = new CompletableFuture<>();
         this.ver     = HTTP_1_1;
         this.request = null;
         this.handler = null;
         this.eh      = null;
     }
     
-    void begin() {
+    /**
+     * Begin the exchange.<p>
+     * 
+     * The returned stage should mostly complete normally as HTTP exchange
+     * errors are dealt with internally (through {@link ErrorHandler}). Any
+     * other error will be logged in this class. The server must close the child
+     * if the result completes exceptionally.
+     * 
+     * @return a stage (never {@code null})
+     */
+    CompletionStage<Void> begin() {
         try {
             begin0();
         } catch (Throwable t) {
             unexpected(t);
         }
+        
+        return result;
     }
     
     private void begin0() {
@@ -165,29 +173,15 @@ final class HttpExchange
         r.body().subscribe(rbs);
         return rbs.asCompletionStage()
                   .thenRun(() -> {
-                      if (r.mustCloseAfterWrite() && (
-                              child.isOpenForReading() ||
-                              child.isOpenForWriting() ||
-                              child.get().isOpen()) )
-                      {
+                      if (r.mustCloseAfterWrite()) {
                           // TODO: Need to implement mustCloseAfterWrite( "mayInterrupt" param )
                           //       This will kill any ongoing subscription
-                          LOG.log(DEBUG, "Response wants us to close the child, will close.");
-                          bytes.close();
-                          child.orderlyClose();
+                          throw new ResponseInitiatedCloseException();
                       }
                   });
     }
     
     private void finish(Void Null, Throwable exc) {
-        try {
-            finish0(exc);
-        } catch (Throwable t) {
-            unexpected(t);
-        }
-    }
-    
-    private void finish0(Throwable exc) {
         /*
          * We should make the connection life cycle much more solid; when is
          * the connection persistent and when is it not (also see RFC 2616
@@ -199,43 +193,53 @@ final class HttpExchange
          * TODO: 2) Implement idle timeout.
          */
         
-        if (exc == null) {
-            if (!child.get().isOpen()) {
-                return;
+        try {
+            if (exc == null) {
+                prepareForNewExchange();
+            } else {
+                resolve(exc);
             }
-            
-            // Else begin new HTTP exchange
-            request.bodyDiscardIfNoSubscriber();
-            request.bodyStage().whenComplete((Null2, t2) -> {
-                if (t2 == null) {
-                    // TODO: Possible recursion. Unroll.
-                    new HttpExchange(server, child, bytes).begin();
-                } else if (child.isOpenForReading()) {
-                    // See SubscriberAsStageOp.asCompletionStage(); t2 can only be an upstream error
-                    LOG.log(WARNING, "Expected someone to have closed the child channel's read stream already.");
-                    child.orderlyShutdownInput();
-                }
-            });
-            
-            return;
+        } catch (Throwable t) {
+            unexpected(t);
         }
-        
+    }
+    
+    private void prepareForNewExchange() {
+        request.bodyDiscardIfNoSubscriber();
+        request.bodyStage().whenComplete((Null, t) -> {
+            if (t == null) {
+                result.complete(null);
+            } else {
+                LOG.log(DEBUG,
+                        // see SubscriptionAsStageOp.asCompletionStage()
+                        "Upstream error/channel fault. " +
+                        "Assuming reason and/or stacktrace was logged already.");
+                result.completeExceptionally(t);
+            }
+        });
+    }
+    
+    private void resolve(Throwable exc) {
         final Throwable unpacked = unpackCompletionException(exc);
         
         if (unpacked instanceof RequestHeadSubscriber.ClientAbortedException) {
-            LOG.log(DEBUG, "Child channel aborted the HTTP exchange, will not begin a new one.");
+            LOG.log(DEBUG, "Client aborted the HTTP exchange.");
+            result.completeExceptionally(unpacked);
+        } else if (unpacked instanceof ResponseInitiatedCloseException) {
+            LOG.log(DEBUG, "Response wants us to close the child, will close.");
+            result.completeExceptionally(unpacked);
         } else if (child.isOpenForWriting())  {
             if (eh == null) {
                 eh = new ErrorHandlers();
             }
             eh.resolve(unpacked)
               .thenCompose(this::writeResponseToChannel)
-              // TODO: Possible recursion. Unroll.
               .whenComplete(this::finish);
         } else {
             LOG.log(DEBUG, () ->
-                "HTTP exchange finished exceptionally and child channel is closed for writing. " +
-                "Assuming reason was logged already.");
+                    "HTTP exchange finished exceptionally and child channel is closed for writing. " +
+                    "Assuming reason and/or stacktrace was logged already.");
+            result.completeExceptionally(unpacked);
         }
     }
     
@@ -303,7 +307,10 @@ final class HttpExchange
     
     private void unexpected(Throwable t) {
         LOG.log(ERROR, "Unexpected.", t);
-        bytes.close();
-        child.orderlyClose();
+        result.completeExceptionally(t);
+    }
+    
+    private static class ResponseInitiatedCloseException extends RuntimeException {
+        private static final long serialVersionUID = 1L;
     }
 }

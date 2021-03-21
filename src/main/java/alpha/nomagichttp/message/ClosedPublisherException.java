@@ -1,8 +1,9 @@
 package alpha.nomagichttp.message;
 
 /**
- * Signalled by a {@code Flow.Publisher} to an active subscriber when the
- * subscription is early terminated or the publisher was/is terminating.<p>
+ * Signalled by a server-provided {@code Flow.Publisher} to an active subscriber
+ * when the subscription is early terminated or the publisher was/is
+ * terminating.<p>
  * 
  * An example of the former would be an illegally encountered state related to
  * the subscription alone which terminates the subscription but leaves the

@@ -108,9 +108,6 @@ public interface Response
      * returns {@code false}, for example if the server run into channel-related
      * problems.<p>
      * 
-     * For security; If closing the client channel fails, the server will try to
-     * stop itself. If stopping itself fails, the server will exit the JVM.<p>
-     * 
      * The channel's in- and output streams will shutdown first before channel
      * closure.
      * 

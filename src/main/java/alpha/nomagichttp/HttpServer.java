@@ -18,6 +18,7 @@ import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
 import java.nio.channels.AsynchronousServerSocketChannel;
+import java.util.concurrent.CompletionStage;
 
 /**
  * Listens on a port for HTTP {@link Request requests} targeting a specific
@@ -46,7 +47,10 @@ import java.nio.channels.AsynchronousServerSocketChannel;
  * 
  * If at least one server is running, then the JVM will not shutdown when the
  * main application thread dies. For the application process to end, all
- * server instances must {@link #stop()}.
+ * server instances must {@link #stop()}.<p>
+ * 
+ * The server may be recycled, i.e. started anew after having been stopped, any
+ * number of times.
  * 
  * 
  * <h2>Supported HTTP Versions</h2>
@@ -103,20 +107,24 @@ import java.nio.channels.AsynchronousServerSocketChannel;
  * 
  * <h2>Thread Safety and Threading Model</h2>
  * 
- * The server instance is fully thread-safe. Life-cycle methods {@code start}
- * and {@code stop} may block and should understandably not be invoked at a high
- * rate. The server also functions as a route registry, to which you {@code add}
- * and {@code remove} routes. These methods are highly concurrent but may impose
- * minuscule blocks at the discretion of the implementation. Most importantly,
- * looking up a route - as is done on every inbound request - never blocks and
- * features great performance no matter the size of the registry.<p>
+ * The server is fully thread-safe, and mostly, asynchronous and
+ * non-blocking.<p>
+ * 
+ * Life-cycle methods {@code start} and {@code stop} may block temporarily
+ * and should understandably not be invoked at a high rate.<p>
+ * 
+ * The HttpServer API also functions as a route registry, to which we {@code
+ * add} and {@code remove} routes. These methods are highly concurrent but may
+ * impose minuscule blocks at the discretion of the implementation. Most
+ * importantly, looking up a route - as is done on every inbound request - never
+ * blocks and features great performance no matter the size of the registry.<p>
  * 
  * All servers running in the same JVM share a common pool of threads (aka
  * "request threads"). The pool handles I/O completion events and executes
  * application-provided entities such as the request- and error handlers. The
  * request thread also subscribes to the response body. The pool size is fixed
  * and set to the value of {@link Config#threadPoolSize()} at the time of the
- * first server start.<p>
+ * start of the first server instance.<p>
  * 
  * It is absolutely crucial that the application does not block a request
  * thread, for example by synchronously waiting on an I/O result. The request
@@ -275,13 +283,41 @@ public interface HttpServer
     /**
      * Stop the server.<p>
      * 
-     * All currently running HTTP exchanges will be allowed to complete.<p>
+     * The server's listening port will be immediately closed and then this
+     * method returns. All active HTTP exchanges will be allowed to complete
+     * before the returned stage completes with {@code null}.<p>
      * 
-     * This method is NOP if server is already stopped.<p>
+     * If the server was just started and is still in the midst of opening the
+     * server's listening port, then this method will block until the startup
+     * routine is completed before initiating the shutdown.<p>
+     * 
+     * If the server is not running then the returned stage is already
+     * completed.<p>
+     * 
+     * Upon failure to close the server, the stage will complete exceptionally
+     * with an {@code IOException}.<p>
+     * 
+     * The returned stage is a defensive copy and can not be used to abort the
+     * shutdown.
+     * 
+     * @return the result
+     */
+    CompletionStage<Void> stop();
+    
+    /**
+     * Stop the server now.<p>
+     * 
+     * The server's listening port will be immediately closed and all active
+     * HTTP exchanges will be aborted. This method will only return when all
+     * related channels have closed.<p>
+     * 
+     * If the server was just started and is still in the midst of opening the
+     * server's listening port, then this method will block until the startup
+     * routine is completed before initiating the shutdown.
      * 
      * @throws IOException if an I/O error occurs
      */
-    void stop() throws IOException;
+    void stopNow() throws IOException;
     
     /**
      * Build a route and add it to the server.
@@ -400,15 +436,20 @@ public interface HttpServer
     Config getConfig();
     
     /**
-     * Returns the socket address that the server is listening on.
+     * Returns the socket address that the server is listening on.<p>
+     * 
+     * If the server was just started and is still in the midst of opening the
+     * server's listening port, then this method will block until the startup
+     * routine is completed before returning.
      * 
      * @return the port used by the server
      * 
      * @throws IllegalStateException if server is not running
+     * @throws IOException if an I/O error occurs
      * 
      * @see AsynchronousServerSocketChannel#getLocalAddress() 
      */
-    InetSocketAddress getLocalAddress() throws IllegalStateException;
+    InetSocketAddress getLocalAddress() throws IllegalStateException, IOException;
     
     /**
      * Server configuration.<p>

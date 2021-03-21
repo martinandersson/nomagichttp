@@ -285,10 +285,10 @@ final class AnnounceToChannel
     
     private void closeStream() {
         if (mode == Mode.READ) {
-            channel.orderlyShutdownInput();
+            channel.orderlyShutdownInputSafe();
         } else {
             assert mode == Mode.WRITE;
-            channel.orderlyShutdownOutput();
+            channel.orderlyShutdownOutputSafe();
         }
     }
     

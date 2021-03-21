@@ -8,7 +8,6 @@ import java.nio.channels.ClosedChannelException;
 
 import static java.lang.System.Logger.Level.DEBUG;
 import static java.lang.System.Logger.Level.ERROR;
-import static java.lang.System.Logger.Level.INFO;
 import static java.util.Objects.requireNonNull;
 
 /**
@@ -26,14 +25,12 @@ final class DefaultChannelOperations implements Request.ChannelOperations
             = System.getLogger(DefaultChannelOperations.class.getPackageName());
     
     private final AsynchronousSocketChannel ch;
-    private final DefaultServer server;
     
     private volatile boolean readShutdown,
                              writeShutdown;
     
-    DefaultChannelOperations(AsynchronousSocketChannel delegate, DefaultServer server) {
+    DefaultChannelOperations(AsynchronousSocketChannel delegate) {
         this.ch = requireNonNull(delegate);
-        this.server = requireNonNull(server);
         readShutdown = writeShutdown = false;
     }
     
@@ -57,8 +54,10 @@ final class DefaultChannelOperations implements Request.ChannelOperations
      * Note: Reason for shutting down should first be logged.<p>
      * 
      * Is NOP if input already shutdown or channel is closed.
+     * 
+     * @throws IOException if a propagated channel-close failed
      */
-    void orderlyShutdownInput() {
+    void orderlyShutdownInput() throws IOException {
         if (readShutdown) {
             return;
         }
@@ -69,7 +68,7 @@ final class DefaultChannelOperations implements Request.ChannelOperations
         } catch (ClosedChannelException e) {
             readShutdown = true;
             return;
-        } catch (Throwable t) {
+        } catch (IOException t) {
             LOG.log(ERROR,
                 "Failed to shutdown child channel's input stream. " +
                 "Will close channel (reduce security risk).", t);
@@ -83,17 +82,31 @@ final class DefaultChannelOperations implements Request.ChannelOperations
     }
     
     /**
+     * Same as {@link #orderlyShutdownInput()}, except {@code IOException} is
+     * logged and not thrown.
+     */
+    void orderlyShutdownInputSafe() {
+        try {
+            orderlyShutdownInput();
+        } catch (IOException e) {
+            LOG.log(ERROR, () -> "Failed to close input stream of child: " + ch, e);
+        }
+    }
+    
+    /**
      * Shutdown the channel's output stream.<p>
-     *
+     * 
      * If this operation fails or effectively terminates the connection (input
      * stream also shutdown), then this method propagates to {@link
      * #orderlyClose()}.<p>
-     *
+     * 
      * Note: Reason for shutting down should first be logged.<p>
-     *
+     * 
      * Is NOP if output already shutdown or channel is closed.
+     * 
+     * @throws IOException if a propagated channel-close failed
      */
-    void orderlyShutdownOutput() {
+    void orderlyShutdownOutput() throws IOException {
         if (writeShutdown) {
             return;
         }
@@ -104,7 +117,7 @@ final class DefaultChannelOperations implements Request.ChannelOperations
         } catch (ClosedChannelException e) {
             writeShutdown = true;
             return;
-        } catch (Throwable t) {
+        } catch (IOException t) {
             LOG.log(ERROR,
                 "Failed to shutdown child channel's output stream. " +
                 "Will close channel (reduce security risk).", t);
@@ -118,33 +131,29 @@ final class DefaultChannelOperations implements Request.ChannelOperations
     }
     
     /**
+     * Same as {@link #orderlyShutdownOutput()}, except {@code IOException} is
+     * logged and not thrown.
+     */
+    void orderlyShutdownOutputSafe() {
+        try {
+            orderlyShutdownOutput();
+        } catch (IOException e) {
+            LOG.log(ERROR, () -> "Failed to close output stream of child: " + ch, e);
+        }
+    }
+    
+    /**
      * End the channel's connection and then close the channel.<p>
-     * 
-     * In order to reduce the security risk of leaving open phantom channels
-     * behind, the following sequential closing-procedure will take place which
-     * progresses only if the previous step failed:
-     * 
-     * <ol>
-     *   <li>Close the channel</li>
-     *   <li>Close the server</li>
-     *   <li>Exit the JVM</li>
-     * </ol>
      * 
      * Is NOP if child is already closed.<p>
      * 
-     * Note 1: Ending the connection is done on a best-effort basis; failures
-     * are logged but otherwise ignored. We are only paranoid over not being
-     * able to close the channel. As long as we manage to close it we're happy.
-     * Lingering communication on a dead connection will eventually hit a
-     * "broken pipe" error and is thus not a strong reason enough for us to go
-     * and kill the entire server.<p>
+     * Ending the connection is done on a best-effort basis; IO-failures are
+     * logged but otherwise ignored. Lingering communication on a dead
+     * connection will eventually hit a "broken pipe" error.
      * 
-     * Note 2: It's very much possible that our paranoia procedure must go away:
-     * killing the server or the JVM is simply put <i>worse</i> than not being
-     * able to close an individual channel. The real remedy could be as simple
-     * as to log the error and otherwise ignore it. TODO: Research
+     * @throws IOException if closing the child failed
      */
-    void orderlyClose() {
+    void orderlyClose() throws IOException {
         if (!ch.isOpen()) {
             return;
         }
@@ -153,7 +162,7 @@ final class DefaultChannelOperations implements Request.ChannelOperations
         try {
             ch.shutdownInput();
             readShutdown = true;
-        } catch (Throwable t) {
+        } catch (IOException t) {
             // Fine, other peer will eventually receive "broken pipe" error or whatever
             LOG.log(DEBUG, "Failed to shutdown child channel's input stream.", t);
         }
@@ -161,16 +170,23 @@ final class DefaultChannelOperations implements Request.ChannelOperations
         try {
             ch.shutdownOutput();
             writeShutdown = true;
-        } catch (Throwable t) {
+        } catch (IOException t) {
             LOG.log(DEBUG, "Failed to shutdown child channel's output stream.", t);
         }
         
+        ch.close();
+        LOG.log(DEBUG, () -> "Closed child: " + ch);
+    }
+    
+    /**
+     * Same as {@link #orderlyClose()}, except {@code IOException} is logged and
+     * not thrown.
+     */
+    void orderlyCloseSafe() {
         try {
-            ch.close();
-            LOG.log(INFO, () -> "Closed child: " + ch);
+            orderlyClose();
         } catch (IOException e) {
-            LOG.log(ERROR, "Failed to close child. Will stop server (reduce security risk).", e);
-            server.stopOrElseJVMExit();
+            LOG.log(ERROR, () -> "Failed to close child: " + ch, e);
         }
     }
     
@@ -210,5 +226,16 @@ final class DefaultChannelOperations implements Request.ChannelOperations
             return ch.isOpen();
         }
         return false;
+    }
+    
+    /**
+     * Returns {@code true} the connection and the channel is open, otherwise
+     * {@code false}.
+     * 
+     * @return {@code true} the connection and the channel is open,
+     *         otherwise {@code false}
+     */
+    boolean isEverythingOpen() {
+        return !readShutdown && !writeShutdown && ch.isOpen();
     }
 }

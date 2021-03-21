@@ -17,7 +17,6 @@ import static java.lang.System.Logger.Level.ALL;
 import static java.util.concurrent.Flow.Publisher;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.Mockito.mock;
 
 /**
  * Tests for {@code ChannelByteBufferPublisher}.
@@ -48,9 +47,7 @@ class ChannelByteBufferPublisherTest
     
     ChannelByteBufferPublisher testee() throws InterruptedException {
         if (testee == null) {
-            DefaultChannelOperations ops = new DefaultChannelOperations(
-                    SERVER.accept(), mock(DefaultServer.class));
-            
+            DefaultChannelOperations ops = new DefaultChannelOperations(SERVER.accept());
             testee = new ChannelByteBufferPublisher(ops);
         }
         

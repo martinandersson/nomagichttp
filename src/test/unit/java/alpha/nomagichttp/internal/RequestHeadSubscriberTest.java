@@ -23,7 +23,6 @@ import static java.lang.Integer.MAX_VALUE;
 import static java.lang.System.Logger.Level.ALL;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.Mockito.mock;
 
 class RequestHeadSubscriberTest
 {
@@ -46,17 +45,12 @@ class RequestHeadSubscriberTest
     
     CompletionStage<RequestHead> testee() throws InterruptedException {
         if (testee == null) {
-            DefaultChannelOperations ops = new DefaultChannelOperations(
-                    SERVER.accept(), mock(DefaultServer.class));
-            
+            DefaultChannelOperations ops = new DefaultChannelOperations(SERVER.accept());
             Flow.Publisher<DefaultPooledByteBufferHolder> bytes = new ChannelByteBufferPublisher(ops);
-            
             RequestHeadSubscriber rhp = new RequestHeadSubscriber(MAX_VALUE);
             bytes.subscribe(rhp);
-            
             testee = rhp.asCompletionStage();
         }
-        
         return testee;
     }
     

@@ -17,10 +17,10 @@ import static java.util.stream.Collectors.toMap;
  * Consists of path segments and query key/value pairs; as split and parsed
  * from a raw request-target string.<p>
  * 
- * The query maps returned by this class is unmodifiable and retain the same
+ * The query maps returned by this class are unmodifiable and retain the same
  * iteration order as the query keys were declared in the query string.<p>
  * 
- * All lists returned by this class is unmodifiable and implements {@link
+ * All lists returned by this class are unmodifiable and implements {@link
  * RandomAccess}.
  * 
  * The implementation is thread-safe and non-blocking.<p>
