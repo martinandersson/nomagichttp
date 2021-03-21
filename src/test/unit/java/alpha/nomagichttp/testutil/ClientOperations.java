@@ -146,7 +146,7 @@ public final class ClientOperations
         return new Proxy();
     }
     
-    private void closeConnection() throws IOException {
+    private void closeChannel() throws IOException {
         if (ch != null) {
             ch.close();
             ch = null;
@@ -269,7 +269,7 @@ public final class ClientOperations
             Thread.interrupted(); // clear flag
             
             if (!persistent) {
-                closeConnection();
+                closeChannel();
             }
         }
     }
