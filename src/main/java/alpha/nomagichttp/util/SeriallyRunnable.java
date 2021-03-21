@@ -34,7 +34,7 @@ import static java.util.Objects.requireNonNull;
  * <h2>Memory Synchronization</h2>
  * 
  * Each run establishes a <i>happens-before</i> relationship with the
- * <i>subsequent</i> run. Or, put in other words: client code does not need to
+ * <i>subsequent</i> run. Put in other words: client code does not need to
  * provide external synchronization in order to create memory visibility
  * <i>between</i> runs. "Normal" state variables can be written to by one run
  * and safely observed and/or updated in the next run, even if the subsequent
@@ -47,7 +47,7 @@ import static java.util.Objects.requireNonNull;
  * 
  * This also means that the very first run is only guaranteed to be
  * synchronized-with the initial state value written by the class constructor.
- * Or, put in other words: if anything of great importance performed by thread A
+ * Put in other words: if anything of great importance performed by thread A
  * happens between the point in time where an object of this class was created
  * up until the first run of said object by thread B, then client code has the
  * responsibility to make sure these actions are visible to thread B executing
@@ -149,9 +149,9 @@ import static java.util.Objects.requireNonNull;
  * asynchronicity) something configurable through a builder.)<p>
  * 
  * The semantics for an exceptional return is not changed in asynchronous
- * mode. Or, in other words: this class will assume an asynchronous task was
- * never started and the logical run is implicitly completed through the
- * exceptional return.<p>
+ * mode. In other words: this class will assume an asynchronous task was never
+ * started and the logical run is implicitly completed through the exceptional
+ * return.<p>
  * 
  * The complete-method will signal complete for whatever logical run is active
  * at that time or if no one is active, an {@code IllegalStateException} will be
