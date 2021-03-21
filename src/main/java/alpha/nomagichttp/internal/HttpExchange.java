@@ -169,6 +169,10 @@ final class HttpExchange
     }
     
     private CompletionStage<Void> writeResponseToChannel(Response r) {
+        if (r.statusCode() == -1) {
+            LOG.log(DEBUG, "Response aborted before write. Will close child.");
+            throw new ResponseInitiatedCloseException();
+        }
         LOG.log(DEBUG, () -> "Subscribing to response: " + r);
         ResponseBodySubscriber rbs = new ResponseBodySubscriber(ver, r, child);
         r.body().subscribe(rbs);
@@ -176,6 +180,7 @@ final class HttpExchange
                   .thenAccept(len -> {
                       LOG.log(DEBUG, "Wrote " + len + " response byte(s) to the child channel.");
                       if (r.mustCloseAfterWrite()) {
+                          LOG.log(DEBUG, "Response wants us to close the child, will close.");
                           // TODO: Need to implement mustCloseAfterWrite( "mayInterrupt" param )
                           //       This will kill any ongoing subscription
                           throw new ResponseInitiatedCloseException();
@@ -228,7 +233,6 @@ final class HttpExchange
             LOG.log(DEBUG, "Client aborted the HTTP exchange.");
             result.completeExceptionally(unpacked);
         } else if (unpacked instanceof ResponseInitiatedCloseException) {
-            LOG.log(DEBUG, "Response wants us to close the child, will close.");
             result.completeExceptionally(unpacked);
         } else if (child.isOpenForWriting())  {
             if (eh == null) {

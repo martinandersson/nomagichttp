@@ -1,7 +1,9 @@
 package alpha.nomagichttp.internal;
 
+import alpha.nomagichttp.handler.ErrorHandler;
 import alpha.nomagichttp.handler.RequestHandler;
 import alpha.nomagichttp.handler.RequestHandlers;
+import alpha.nomagichttp.message.ClosedPublisherException;
 import alpha.nomagichttp.message.PooledByteBufferHolder;
 import alpha.nomagichttp.message.Request;
 import alpha.nomagichttp.message.Responses;
@@ -11,13 +13,17 @@ import org.junit.jupiter.api.Test;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.Channel;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Flow;
+import java.util.concurrent.TimeoutException;
 import java.util.function.Consumer;
 
 import static alpha.nomagichttp.handler.RequestHandlers.GET;
 import static alpha.nomagichttp.handler.RequestHandlers.POST;
 import static alpha.nomagichttp.message.Responses.text;
 import static alpha.nomagichttp.testutil.ClientOperations.CRLF;
+import static java.util.concurrent.TimeUnit.SECONDS;
+import static java.util.logging.Level.INFO;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
@@ -41,6 +47,63 @@ class DetailedEndToEndTest extends AbstractEndToEndTest
             "Content-Length: 4"                       + CRLF + CRLF +
             
             "true");
+    }
+    
+    /**
+     * Client immediately closes the channel. Error handler is not called and no
+     * other form of error logging occurs.
+     * 
+     * {@link RequestHeadSubscriber#asCompletionStage()}. 
+     */
+    @Test
+    void client_closeChannel_serverReceivedNoBytes_ignored()
+            throws IOException, InterruptedException, TimeoutException, ExecutionException
+    {
+        client().openConnection().close();
+        // In reality, whole test cycle over in less than 100 ms
+        server().stop().toCompletableFuture().get(3, SECONDS);
+        
+        /*
+         Just for the "record" (no pun intended), the log would as of 2021-03-21
+         been something like this:
+         
+           {tstamp} | Test worker | INFO | {pkg}.DefaultServer initialize | Opened server channel: {...}
+           {tstamp} | dead-25     | FINE | {pkg}.DefaultServer$OnAccept setup | Accepted child: {...}
+           {tstamp} | Test worker | INFO | {pkg}.DefaultServer stopServer | Closed server channel: {...}
+           {tstamp} | dead-24     | FINE | {pkg}.DefaultServer$OnAccept failed | Parent channel closed. Will accept no more children.
+           {tstamp} | dead-24     | FINE | {pkg}.AnnounceToChannel$Handler completed | End of stream; other side must have closed. Will close channel's input stream.
+           {tstamp} | dead-25     | FINE | {pkg}.AbstractUnicastPublisher accept | PollPublisher has a new subscriber: {...}
+           {tstamp} | dead-25     | FINE | {pkg}.HttpExchange resolve | Client aborted the HTTP exchange.
+           {tstamp} | dead-25     | FINE | {pkg}.DefaultChannelOperations orderlyClose | Closed child: {...}
+         */
+        assertThat(stopLogRecording()
+                .mapToInt(r -> r.getLevel().intValue()))
+                .noneMatch(v -> v > INFO.intValue());
+        
+        // that no error was thrown is asserted by super class
+    }
+    
+    /**
+     * Client writes an incomplete request and then close the channel. Error
+     * handler is called, but default handler notices that the error is due to a
+     * disconnect and subsequently ignores it without logging.
+     * 
+     * @see ErrorHandler
+     */
+    @Test
+    void client_closeChannel_serverReceivedSomeBytes_ignored()
+            throws IOException, InterruptedException, TimeoutException, ExecutionException
+    {
+        client().write("XXX /incomplete");
+        server().stop().toCompletableFuture().get(3, SECONDS);
+        
+        assertThat(stopLogRecording()
+                .mapToInt(r -> r.getLevel().intValue()))
+                .noneMatch(v -> v > INFO.intValue());
+        
+        assertThat(pollError())
+                .isExactlyInstanceOf(ClosedPublisherException.class)
+                .hasMessage("EOS");
     }
     
     @Test
@@ -169,8 +232,6 @@ class DetailedEndToEndTest extends AbstractEndToEndTest
      * See {@link ErrorHandlingTest} for cases related to unsupported versions.
      */
     @Test
-    // TODO: Then remove this
-    @Disabled("Server+superclass needs to ignore disconnect errors first")
     void http_1_0() throws IOException {
         server().add("/", GET().apply(req ->
                 text("Version: " + req.httpVersion()).completedStage()));
