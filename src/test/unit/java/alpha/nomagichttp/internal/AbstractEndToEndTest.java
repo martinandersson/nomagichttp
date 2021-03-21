@@ -10,6 +10,8 @@ import org.junit.jupiter.api.BeforeEach;
 import java.io.IOException;
 import java.util.concurrent.BlockingDeque;
 import java.util.concurrent.LinkedBlockingDeque;
+import java.util.logging.LogRecord;
+import java.util.stream.Stream;
 
 import static java.lang.System.Logger.Level.ALL;
 import static java.util.concurrent.TimeUnit.SECONDS;
@@ -25,7 +27,12 @@ import static org.assertj.core.api.Assertions.assertThat;
  * 
  * By default, after-each will assert that no errors were delivered to the error
  * handler. If errors are expected, then the test must consume all errors from
- * the deque returned from {@code errors()}.
+ * the deque returned from {@code errors()}.<p>
+ * 
+ * Log recording will be activated before starting the server. Records can be
+ * retrieved at any time using {@code stopLogRecording()}. However, if the
+ * records produced from a server stop is significant, the test ought to stop
+ * the server first and then stop recording.
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  * 
@@ -35,6 +42,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 // TODO: Move to alpha.nomagichttp package
 public abstract class AbstractEndToEndTest
 {
+    private Logging.Recorder key;
     private HttpServer server;
     private ClientOperations client;
     private final BlockingDeque<Throwable> errors = new LinkedBlockingDeque<>();
@@ -42,6 +50,7 @@ public abstract class AbstractEndToEndTest
     @BeforeEach
     void start() throws IOException {
         Logging.setLevel(ALL);
+        key = Logging.startRecording();
         
         ErrorHandler collect = (t, r, h) -> {
             errors.add(t);
@@ -60,6 +69,7 @@ public abstract class AbstractEndToEndTest
     @AfterEach
     void stopNow() throws IOException {
         server.stopNow();
+        Logging.stopRecording(key);
     }
     
     /**
@@ -67,7 +77,7 @@ public abstract class AbstractEndToEndTest
      * 
      * @return the server instance
      */
-    public HttpServer server() {
+    public final HttpServer server() {
         return server;
     }
     
@@ -76,8 +86,17 @@ public abstract class AbstractEndToEndTest
      *
      * @return the client instance
      */
-    public ClientOperations client() {
+    public final ClientOperations client() {
         return client;
+    }
+    
+    /**
+     * Stop log recording.
+     * 
+     * @return all logged records
+     */
+    public final Stream<LogRecord> stopLogRecording() {
+        return Logging.stopRecording(key);
     }
     
     /**

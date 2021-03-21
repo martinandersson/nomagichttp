@@ -211,6 +211,29 @@ public final class Logging
                 .sorted(comparing(LogRecord::getInstant));
     }
     
+    /**
+     * Elegantly formats the given record.<p>
+     * 
+     * {@code LogRecord} does not implement {@code toString} and would return
+     * something like "java.util.logging.LogRecord@4e196770".<p>
+     * 
+     * Internally, a new instance of a formatter class is used to produce the
+     * string and so this method should only be used when programmatically
+     * peeking log records from a {@link Recorder}.<p>
+     * 
+     * The same formatting is automagically applied to the Gradle report if test
+     * calls {@link #setLevel(Class, System.Logger.Level)}, except the formatter
+     * instance will be re-used of course and not created anew for each record.
+     * 
+     * @param rec log record to format
+     * @return a well formatted string
+     */
+    public static String toString(LogRecord rec) {
+        String s = new ElegantFormatter().format(rec);
+        // Remove trailing newline
+        return s.substring(0, s.length() - 1);
+    }
+    
     private static java.util.logging.Level toJUL(System.Logger.Level level) {
         return stream(java.util.logging.Level.class.getFields())
                 .filter(f ->

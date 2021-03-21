@@ -169,10 +169,12 @@ final class HttpExchange
     }
     
     private CompletionStage<Void> writeResponseToChannel(Response r) {
+        LOG.log(DEBUG, () -> "Subscribing to response: " + r);
         ResponseBodySubscriber rbs = new ResponseBodySubscriber(ver, r, child);
         r.body().subscribe(rbs);
         return rbs.asCompletionStage()
-                  .thenRun(() -> {
+                  .thenAccept(len -> {
+                      LOG.log(DEBUG, "Wrote " + len + " response byte(s) to the child channel.");
                       if (r.mustCloseAfterWrite()) {
                           // TODO: Need to implement mustCloseAfterWrite( "mayInterrupt" param )
                           //       This will kill any ongoing subscription

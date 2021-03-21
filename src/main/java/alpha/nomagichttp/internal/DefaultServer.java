@@ -293,7 +293,7 @@ public final class DefaultServer implements HttpServer
         }
         
         private void setup(AsynchronousSocketChannel child) {
-            LOG.log(INFO, () -> "Accepted child: " + child);
+            LOG.log(DEBUG, () -> "Accepted child: " + child);
             DefaultChannelOperations dco = new DefaultChannelOperations(child);
             ChannelByteBufferPublisher bytes = new ChannelByteBufferPublisher(dco);
             children.add(dco);
