@@ -24,10 +24,9 @@ import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.Flow;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.BiFunction;
-import java.util.function.Consumer;
-import java.util.function.Supplier;
 import java.util.stream.Stream;
 
+import static alpha.nomagichttp.internal.AtomicReferences.lazyInit;
 import static alpha.nomagichttp.util.Headers.contentLength;
 import static alpha.nomagichttp.util.Headers.contentType;
 import static java.nio.charset.StandardCharsets.UTF_8;
@@ -263,48 +262,6 @@ final class DefaultRequest implements Request
         @Override
         public boolean isEmpty() {
             return source == null;
-        }
-        
-        /**
-         * Lazily initialize the value of an atomic reference.<p>
-         * 
-         * The {@code factory} may be called multiple times when attempted
-         * updates fail due to contention among threads. However, the {@code
-         * postInit} consumer is only called once by the thread who successfully
-         * set the value.<p>
-         * 
-         * I.e. this method is useful when post-initialization of the value may
-         * be expensive but creating the value instance itself is not.
-         * 
-         * @param ref value container/store
-         * @param factory value creator
-         * @param postInit value initializer
-         * @param <V> value type
-         * @param <A> accumulation type
-         * 
-         * @return the value
-         */
-        private static <V, A extends V> V lazyInit(
-                AtomicReference<V> ref, Supplier<? extends A> factory, Consumer<? super A> postInit)
-        {
-            class Bag {
-                A thing;
-            }
-            
-            Bag created = new Bag();
-            
-            V latest = ref.updateAndGet(v -> {
-                if (v != null) {
-                    return v;
-                }
-                return created.thing = factory.get();
-            });
-            
-            if (latest == created.thing) {
-                postInit.accept(created.thing);
-            }
-            
-            return latest;
         }
         
         private static <T> void copyResult(CompletionStage<? extends T> from, CompletableFuture<? super T> to) {
