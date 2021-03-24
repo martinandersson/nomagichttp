@@ -57,7 +57,7 @@ public class GreetParameter
         app.add("/hello", GET().apply(req ->
                 req.parameters()
                    .queryFirst("name")
-                   .map(str -> text("Hello " + str))
+                   .map(str -> text("Hello " + str + "!"))
                    .orElse(badRequest())
                    .completedStage()));
         
