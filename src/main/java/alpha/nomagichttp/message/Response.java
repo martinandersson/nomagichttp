@@ -183,8 +183,7 @@ public interface Response
     interface Builder
     {
         /**
-         * Returns a builder already populated with a status-line
-         * "HTTP/1.1 200 OK".<p>
+         * Returns a builder populated with a status-line "HTTP/1.1 200 OK".<p>
          * 
          * What remains is to set headers and message body.
          * 
@@ -195,7 +194,7 @@ public interface Response
         }
         
         /**
-         * Returns a builder already populated with a status-line
+         * Returns a builder populated with a status-line
          * "HTTP/1.1 202 Accepted".<p>
          * 
          * What remains is to set headers and message body.
@@ -207,10 +206,8 @@ public interface Response
         }
         
         /**
-         * Returns a builder already populated with a status-line
-         * "HTTP/1.1 204 No Content".<p>
-         * 
-         * What remains is to set headers.
+         * Returns a builder populated with a status-line
+         * "HTTP/1.1 204 No Content".
          * 
          * @return a new builder representing the new state
          */

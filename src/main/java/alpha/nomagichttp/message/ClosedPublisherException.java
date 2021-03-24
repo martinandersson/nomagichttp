@@ -18,8 +18,6 @@ package alpha.nomagichttp.message;
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  */
-// TODO: Seeing this when I run echo_headers example. Why? Fix.
-// TODO: Move to util package. Enforce publisher can not be resubscribed.
 public final class ClosedPublisherException extends RuntimeException
 {
     private static final long serialVersionUID = 1L;

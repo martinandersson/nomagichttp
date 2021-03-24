@@ -237,7 +237,7 @@ public final class Responses
         return Response.builder()
                 .statusCode(FIVE_HUNDRED_FIVE)
                 .reasonPhrase(HTTP_VERSION_NOT_SUPPORTED)
-                .header(CONTENT_LENGTH, "0")
+                .contentLenght(0)
                 .mustCloseAfterWrite(true)
                 .build();
     }
@@ -259,7 +259,7 @@ public final class Responses
      */
     private static final class Cache {
         static final Response
-                ACCEPTED              = Response.Builder.accepted().header(CONTENT_LENGTH, "0").build(),
+                ACCEPTED              = Response.Builder.accepted().contentLenght(0).build(),
                 NO_CONTENT            = Response.Builder.noContent().build(),
                 BAD_REQUEST           = respondThenClose(FOUR_HUNDRED, ReasonPhrase.BAD_REQUEST),
                 NOT_FOUND             = respondThenClose(FOUR_HUNDRED_FOUR, ReasonPhrase.NOT_FOUND),
