@@ -165,27 +165,32 @@ public final class DefaultServer implements HttpServer
     
     @Override
     public void stopNow() throws IOException {
-        stopServer();
-        stopChildren();
+        AsynchronousServerSocketChannel ch = stopServer();
+        if (ch != null) {
+            stopChildren(ch);
+        }
     }
     
-    private void stopServer() throws IOException {
-        var res = parent.get();
-        if (res == null) {
-            return;
-        }
-        
-        final AsynchronousServerSocketChannel ch;
-        try {
-            ch = res.join();
-        } catch (CancellationException | CompletionException e) {
+    @Override
+    public boolean isRunning() {
+        return getParent(false) != null;
+    }
+    
+    private AsynchronousServerSocketChannel stopServer() throws IOException {
+        AsynchronousServerSocketChannel ch = getParent(true);
+        if (ch == null) {
             // great, never started
-            return;
+            return null;
         }
         
         if (terminating.compareAndSet(false, true)) {
+            if (!ch.isOpen()) {
+                // Assume concurrent close from us
+                return null;
+            }
             try {
                 ch.close();
+                // This is the code actually that we desperately need to protect
                 LOG.log(INFO, () -> "Closed server channel: " + ch);
                 int n = SERVER_COUNT.decrementAndGet();
                 parent.set(null);
@@ -194,9 +199,12 @@ public final class DefaultServer implements HttpServer
                     AsyncGroup.shutdown();
                 }
                 assert n >= 0;
+                return ch;
             } finally {
                 terminating.set(false);
             }
+        } else {
+            return null;
         }
     }
     
@@ -214,12 +222,15 @@ public final class DefaultServer implements HttpServer
         }
     }
     
-    private void stopChildren() {
+    private void stopChildren(AsynchronousServerSocketChannel ofParent) {
         Iterator<DefaultChannelOperations> it = children.iterator();
         while (it.hasNext()) {
             DefaultChannelOperations child = it.next();
-            it.remove();
-            child.orderlyCloseSafe();
+            // Just to not give a new concurrent server start any surprises lol
+            if (child.parent().equals(ofParent)) {
+                it.remove();
+                child.orderlyCloseSafe();
+            }
         }
     }
     
@@ -239,10 +250,6 @@ public final class DefaultServer implements HttpServer
         return getRouteRegistry().remove(route);
     }
     
-    RouteRegistry getRouteRegistry() {
-        return registry;
-    }
-    
     @Override
     public Config getConfig() {
         return config;
@@ -258,6 +265,30 @@ public final class DefaultServer implements HttpServer
             assert !(e instanceof ClassCastException);
             throw new IllegalStateException("Server is not running.", e);
         }
+    }
+    
+    RouteRegistry getRouteRegistry() {
+        return registry;
+    }
+    
+    private AsynchronousServerSocketChannel getParent(boolean waitOnBoot) {
+        var res = parent.get();
+        if (res == null) {
+            return null;
+        }
+        
+        if (!waitOnBoot && !res.isDone()) {
+            return null;
+        }
+        
+        final AsynchronousServerSocketChannel ch;
+        try {
+            ch = res.join();
+        } catch (CancellationException | CompletionException e) {
+            return null;
+        }
+        
+        return ch;
     }
     
     /**
@@ -285,7 +316,7 @@ public final class DefaultServer implements HttpServer
             try {
                 parent.accept(null, this);
             } catch (Throwable t) {
-                new DefaultChannelOperations(child).orderlyCloseSafe();
+                new DefaultChannelOperations(parent, child).orderlyCloseSafe();
                 failed(t, null);
                 return;
             }
@@ -294,7 +325,7 @@ public final class DefaultServer implements HttpServer
         
         private void setup(AsynchronousSocketChannel child) {
             LOG.log(DEBUG, () -> "Accepted child: " + child);
-            DefaultChannelOperations dco = new DefaultChannelOperations(child);
+            DefaultChannelOperations dco = new DefaultChannelOperations(parent, child);
             ChannelByteBufferPublisher bytes = new ChannelByteBufferPublisher(dco);
             children.add(dco);
             startExchange(dco, bytes);
@@ -307,10 +338,10 @@ public final class DefaultServer implements HttpServer
                     .begin()
                     .whenComplete((Null, exc) -> {
                         // Both open-calls are volatile reads, no locks
-                        if (exc != null || !parent.isOpen() || !dco.isEverythingOpen()) {
-                            shutdown(dco, bytes);
-                        } else {
+                        if (exc == null && parent.isOpen() || dco.isEverythingOpen()) {
                             startExchange(dco, bytes);
+                        } else {
+                            shutdown(dco, bytes);
                         }
                     });
         }
@@ -320,8 +351,8 @@ public final class DefaultServer implements HttpServer
             dco.orderlyCloseSafe();
             children.remove(dco);
             // Notify anyone waiting on the last child
-            CompletableFuture<Void> trigger = waitOnChildrenStop.get();
-            if (trigger != null && children.isEmpty()) {
+            CompletableFuture<Void> trigger;
+            if (!isRunning() && (trigger = waitOnChildrenStop.get()) != null && children.isEmpty()) {
                 trigger.complete(null);
             }
         }

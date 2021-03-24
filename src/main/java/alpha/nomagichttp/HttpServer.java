@@ -294,22 +294,33 @@ public interface HttpServer
      * If the server is not running then the returned stage is already
      * completed.<p>
      * 
-     * Upon failure to close the server, the stage will complete exceptionally
-     * with an {@code IOException}.<p>
+     * Upon failure to close the server's listening port, the stage will
+     * complete exceptionally with an {@code IOException}.<p>
+     * 
+     * It is possible for the server to be started up again whilst a stage has
+     * been returned from this method but active HTTP exchanges have yet to
+     * complete. In this case, the returned stage will not complete until
+     * earliest at the next server stop.<p>
      * 
      * The returned stage is a defensive copy and can not be used to abort the
      * shutdown.
+     * 
+     * There are no locks involved between a server's start and the completion
+     * of the returned stage. If the application starts the same server
+     * concurrent to the completion of the last HTTP exchange from the previous
+     * run cycle, then technically it is possible for the returned stage to
+     * complete at the same time the server is in a running state.<p>
      * 
      * @return the result
      */
     CompletionStage<Void> stop();
     
     /**
-     * Stop the server now.<p>
+     * Stop the server and all HTTP exchanges, now.<p>
      * 
-     * The server's listening port will be immediately closed and all active
-     * HTTP exchanges will be aborted. This method will only return when all
-     * related channels have closed.<p>
+     * The server's listening port will be immediately closed and then all
+     * active HTTP exchanges will be aborted. Once all HTTP exchanges have
+     * finished, this method returns.<p>
      * 
      * If the server was just started and is still in the midst of opening the
      * server's listening port, then this method will block until the startup
@@ -318,6 +329,22 @@ public interface HttpServer
      * @throws IOException if an I/O error occurs
      */
     void stopNow() throws IOException;
+    
+    /**
+     * Returns {@code true} if the server is running, otherwise {@code false}.<p>
+     * 
+     * By running means that the server has completed a startup, and has also
+     * not completed a subsequent closure of the server's listening port. This
+     * method answers the question; is the server listening on a port?<p>
+     * 
+     * The method does not take into account the state of lingering HTTP
+     * exchanges and/or the state of their underlying children channels.<p>
+     * 
+     * This method does not block.
+     * 
+     * @return {@code true} if the server is running, otherwise {@code false}
+     */
+    boolean isRunning();
     
     /**
      * Build a route and add it to the server.

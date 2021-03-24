@@ -3,6 +3,7 @@ package alpha.nomagichttp.internal;
 import alpha.nomagichttp.message.Request;
 
 import java.io.IOException;
+import java.nio.channels.AsynchronousServerSocketChannel;
 import java.nio.channels.AsynchronousSocketChannel;
 import java.nio.channels.ClosedChannelException;
 
@@ -24,12 +25,14 @@ final class DefaultChannelOperations implements Request.ChannelOperations
     private static final System.Logger LOG
             = System.getLogger(DefaultChannelOperations.class.getPackageName());
     
+    private final AsynchronousServerSocketChannel parent;
     private final AsynchronousSocketChannel ch;
     
     private volatile boolean readShutdown,
                              writeShutdown;
     
-    DefaultChannelOperations(AsynchronousSocketChannel delegate) {
+    DefaultChannelOperations(AsynchronousServerSocketChannel parent, AsynchronousSocketChannel delegate) {
+        this.parent = requireNonNull(parent);
         this.ch = requireNonNull(delegate);
         readShutdown = writeShutdown = false;
     }
@@ -42,6 +45,10 @@ final class DefaultChannelOperations implements Request.ChannelOperations
     @Override
     public AsynchronousSocketChannel get() {
         return ch;
+    }
+    
+    AsynchronousServerSocketChannel parent() {
+        return parent;
     }
     
     /**
