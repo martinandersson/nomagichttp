@@ -236,12 +236,15 @@ class DetailedEndToEndTest extends AbstractEndToEndTest
         server().add("/", GET().apply(req ->
                 text("Version: " + req.httpVersion()).completedStage()));
         
-        String resp = client().writeRead("GET / HTTP/1.0" + CRLF + CRLF);
+        String resp = client().writeRead(
+                "GET / HTTP/1.0" + CRLF + CRLF, "Version: HTTP/1.0");
         
         assertThat(resp).isEqualTo(
             "HTTP/1.0 200 OK"                         + CRLF +
             "Content-Type: text/plain; charset=utf-8" + CRLF +
-            "Content-Length: 17"                      + CRLF + CRLF);
+            "Content-Length: 17"                      + CRLF + CRLF +
+            
+            "Version: HTTP/1.0");
     }
     
     /**

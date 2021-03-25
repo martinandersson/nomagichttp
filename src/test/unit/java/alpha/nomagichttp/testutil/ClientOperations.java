@@ -305,6 +305,10 @@ public final class ClientOperations
             int start = data.arrayOffset() + data.position(),
                 end   = start + data.remaining();
             
+            // TODO: Rework this. We can't assert that we read and consume everything from the channel.
+            //       We should read our data until we reach end, then not consume the remaining.
+            //       AbstractEndToEndTet must @AfterEach assert that at that point all data in channel was consumed.
+            
             for (int i = start; i < end; ++i) {
                 byte b = data.array()[i];
                 delegate.write(b);
@@ -357,7 +361,7 @@ public final class ClientOperations
             List<String> l = new ArrayList<>();
             
             for (int i = start; i < end; ++i) {
-                l.add(Char.toDebugString((char) bytes[i]));
+                l.add("\n" + Char.toDebugString((char) bytes[i]));
             }
             
             return l;
