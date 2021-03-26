@@ -262,12 +262,16 @@ public final class Logging
         
         if (console.length == 1) {
             root.removeHandler(console[0]);
+        } else {
+            /*
+             * Else more than one ConsoleHandler on root (unexpected).
+             * We could probe for "java.util.logging.LogManager$RootLogger@50013...",
+             * but I'd rather just leave it as-is for now.
+             */
+            System.getLogger(Logging.class.getPackageName()).log(
+                    System.Logger.Level.INFO,
+                    () -> "Root console handler not removed. Found: " + console.length);
         }
-        /*
-         * Else more than one ConsoleHandler on root (unexpected).
-         * We could probe for "java.util.logging.LogManager$RootLogger@50013...",
-         * but I'd rather just leave it as-is for now.
-         */
     }
     
     private static ConsoleHandler newConsoleHandler() {
