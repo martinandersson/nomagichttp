@@ -8,9 +8,9 @@ import java.io.StringWriter;
 import java.lang.management.ManagementFactory;
 import java.lang.management.ThreadInfo;
 import java.util.Deque;
-import java.util.Optional;
 import java.util.concurrent.ConcurrentLinkedDeque;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
 import java.util.logging.ConsoleHandler;
@@ -38,6 +38,10 @@ import static java.util.stream.Stream.of;
  */
 public final class Logging
 {
+    private static final AtomicBoolean
+            WEIRD_GUY_REMOVED = new AtomicBoolean(),
+            GOOD_GUY_ADDED    = new AtomicBoolean();
+    
     private Logging() {
         // Empty
     }
@@ -71,10 +75,11 @@ public final class Logging
      * them show up as an "error" in Gradle's report is less... intuitive? So
      * an attempt is made to remove this guy.<p>
      * 
-     * Secondly, first found console handler of the component's logger will also
-     * have the new level set. Normally, there will be none, so a new console
-     * handler of the target level is installed, which also formats all records
-     * elegantly and write them on {@code System.out}.<p>
+     * Secondly, all found console handlers of the component's logger will also
+     * have the new level set (digging recursively through parents). Normally,
+     * there will be none, so a new console handler of the target level is
+     * installed on the root logger, which also formats all records elegantly
+     * and writes them on {@code System.out}.<p>
      * 
      * Voila! The end result ought to be a much prettier and useful Gradle test
      * report.
@@ -90,20 +95,25 @@ public final class Logging
         Logger l = Logger.getLogger(component.getPackageName());
         l.setLevel(impl);
         
-        uninstallRootConsoleHandler();
-        
-        Optional<ConsoleHandler> ch = stream(l.getHandlers())
-                .filter(h -> h instanceof ConsoleHandler)
-                .map(h -> (ConsoleHandler) h)
-                .findAny();
-        
-        if (ch.isPresent()) {
-            ch.get().setLevel(impl);
+        if (WEIRD_GUY_REMOVED.compareAndSet(false, true)) {
+            uninstallRootConsoleHandler();
         }
-        else {
+        
+        int n = 0;
+        while (l != null) {
+            for (Handler h : l.getHandlers()) {
+                if (isForeignConsoleHandler(h)) {
+                    h.setLevel(impl);
+                    ++n;
+                }
+            }
+            l = l.getParent();
+        }
+        
+        if (n == 0 && GOOD_GUY_ADDED.compareAndSet(false, true)) {
             Handler h = newConsoleHandler();
             h.setLevel(impl);
-            l.addHandler(h);
+            Logger.getLogger("").addHandler(h);
         }
     }
     
@@ -255,23 +265,24 @@ public final class Logging
     private static void uninstallRootConsoleHandler() {
         final Logger root = Logger.getLogger("");
         
-        Handler[] console = Stream.of(root.getHandlers())
-                .filter(h -> h instanceof ConsoleHandler)
+        Handler[] ch = Stream.of(root.getHandlers())
+                .filter(Logging::isForeignConsoleHandler)
                 .map(h -> (ConsoleHandler) h)
                 .toArray(Handler[]::new);
         
-        if (console.length == 1) {
-            root.removeHandler(console[0]);
-        } else {
-            /*
-             * Else more than one ConsoleHandler on root (unexpected).
-             * We could probe for "java.util.logging.LogManager$RootLogger@50013...",
-             * but I'd rather just leave it as-is for now.
-             */
+        if (ch.length == 1) {
+            root.removeHandler(ch[0]);
+        } else if (ch.length > 1) {
+            // We could specifically target "java.util.logging.LogManager$RootLogger@50013..."
             System.getLogger(Logging.class.getPackageName()).log(
                     System.Logger.Level.INFO,
-                    () -> "Root console handler not removed. Found: " + console.length);
+                    () -> "Root's console handler not removed. Found many of them: " + ch.length);
         }
+    }
+    
+    private static boolean isForeignConsoleHandler(Handler h) {
+        return h instanceof ConsoleHandler &&
+             !(h instanceof SystemOutInsteadOfSystemErr);
     }
     
     private static ConsoleHandler newConsoleHandler() {
