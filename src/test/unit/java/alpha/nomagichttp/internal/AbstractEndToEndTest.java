@@ -6,15 +6,19 @@ import alpha.nomagichttp.testutil.ClientOperations;
 import alpha.nomagichttp.testutil.Logging;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.TestInfo;
 
 import java.io.IOException;
+import java.lang.reflect.Method;
 import java.util.concurrent.BlockingDeque;
 import java.util.concurrent.LinkedBlockingDeque;
 import java.util.logging.LogRecord;
+import java.util.logging.Logger;
 import java.util.stream.Stream;
 
 import static java.lang.System.Logger.Level.ALL;
 import static java.util.concurrent.TimeUnit.SECONDS;
+import static java.util.logging.Level.INFO;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
@@ -42,14 +46,17 @@ import static org.assertj.core.api.Assertions.assertThat;
 // TODO: Move to alpha.nomagichttp package
 public abstract class AbstractEndToEndTest
 {
+    final Logger LOG =  Logger.getLogger(getClass().getPackageName());
+    
     private Logging.Recorder key;
     private HttpServer server;
     private ClientOperations client;
     private final BlockingDeque<Throwable> errors = new LinkedBlockingDeque<>();
     
     @BeforeEach
-    void start() throws IOException {
+    void start(TestInfo test) throws IOException {
         Logging.setLevel(ALL);
+        LOG.log(INFO, "Executing " + toString(test));
         key = Logging.startRecording();
         
         ErrorHandler collect = (t, r, h) -> {
@@ -67,9 +74,10 @@ public abstract class AbstractEndToEndTest
     }
     
     @AfterEach
-    void stopNow() throws IOException {
+    void stopNow(TestInfo test) throws IOException {
         server.stopNow();
-        Logging.stopRecording(key);
+        stopLogRecording();
+        LOG.log(INFO, "Finished " + toString(test));
     }
     
     /**
@@ -117,5 +125,10 @@ public abstract class AbstractEndToEndTest
      */
     public final Throwable pollError() throws InterruptedException {
         return errors().poll(3, SECONDS);
+    }
+    
+    private static final String toString(TestInfo test) {
+        Method m = test.getTestMethod().get();
+        return m.getDeclaringClass().getSimpleName() + "." + m.getName() + "()";
     }
 }

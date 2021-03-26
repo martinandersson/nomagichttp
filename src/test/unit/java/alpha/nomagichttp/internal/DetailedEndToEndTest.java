@@ -84,7 +84,7 @@ class DetailedEndToEndTest extends AbstractEndToEndTest
     }
     
     /**
-     * Client writes an incomplete request and then close the channel. Error
+     * Client writes an incomplete request and then closes the channel. Error
      * handler is called, but default handler notices that the error is due to a
      * disconnect and subsequently ignores it without logging.
      * 
