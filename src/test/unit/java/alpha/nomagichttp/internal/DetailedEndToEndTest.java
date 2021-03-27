@@ -7,7 +7,6 @@ import alpha.nomagichttp.message.ClosedPublisherException;
 import alpha.nomagichttp.message.PooledByteBufferHolder;
 import alpha.nomagichttp.message.Request;
 import alpha.nomagichttp.message.Responses;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
@@ -23,8 +22,10 @@ import static alpha.nomagichttp.handler.RequestHandlers.POST;
 import static alpha.nomagichttp.message.Responses.text;
 import static alpha.nomagichttp.testutil.ClientOperations.CRLF;
 import static java.util.concurrent.TimeUnit.SECONDS;
+import static java.util.logging.Level.FINE;
 import static java.util.logging.Level.INFO;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * Detailed end-to-end tests that target specific details of the API.
@@ -60,6 +61,7 @@ class DetailedEndToEndTest extends AbstractEndToEndTest
             throws IOException, InterruptedException, TimeoutException, ExecutionException
     {
         client().openConnection().close();
+        awaitChildAccept();
         // In reality, whole test cycle over in less than 100 ms
         server().stop().toCompletableFuture().get(3, SECONDS);
         
@@ -95,6 +97,7 @@ class DetailedEndToEndTest extends AbstractEndToEndTest
             throws IOException, InterruptedException, TimeoutException, ExecutionException
     {
         client().write("XXX /incomplete");
+        awaitChildAccept();
         server().stop().toCompletableFuture().get(3, SECONDS);
         
         assertThat(stopLogRecording()
@@ -254,6 +257,15 @@ class DetailedEndToEndTest extends AbstractEndToEndTest
     private void addEndpointIsBodyEmpty() {
         server().add("/", POST().apply(req ->
                 text(String.valueOf(req.body().isEmpty())).completedStage()));
+    }
+    
+    /**
+     * Waits for at most 3 seconds on the server log to indicate a child was
+     * accepted.
+     */
+    private void awaitChildAccept() throws InterruptedException {
+        assertTrue(logRecorder().await(
+                "DefaultServer$OnAccept", FINE, "Accepted child:"));
     }
     
     /**
