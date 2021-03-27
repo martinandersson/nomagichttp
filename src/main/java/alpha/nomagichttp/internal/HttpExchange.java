@@ -229,7 +229,7 @@ final class HttpExchange
     private void resolve(Throwable exc) {
         final Throwable unpacked = unpackCompletionException(exc);
         
-        if (unpacked instanceof RequestHeadSubscriber.ClientAbortedException) {
+        if (unpacked instanceof ClientAbortedException) {
             LOG.log(DEBUG, "Client aborted the HTTP exchange.");
             result.completeExceptionally(unpacked);
         } else if (unpacked instanceof ResponseInitiatedCloseException) {

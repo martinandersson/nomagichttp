@@ -28,18 +28,6 @@ import static java.lang.System.Logger.Level.DEBUG;
  */
 final class RequestHeadSubscriber implements SubscriberAsStage<PooledByteBufferHolder, RequestHead>
 {
-    /**
-     * Is the result of a {@link RequestHeadSubscriber} if it can be determined
-     * that the client closed his output stream cleanly.
-     * 
-     * @see #asCompletionStage()
-     */
-    static final class ClientAbortedException extends RuntimeException {
-        private static final long serialVersionUID = 1L;
-        ClientAbortedException(Throwable cause) {
-            super(cause);
-        }
-    }
     
     private static final System.Logger LOG
             = System.getLogger(RequestHeadSubscriber.class.getPackageName());
