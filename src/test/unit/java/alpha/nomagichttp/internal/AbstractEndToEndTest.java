@@ -22,21 +22,23 @@ import static java.util.logging.Level.INFO;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * Will setup a {@code server()} and a {@code client()} configured with the
- * server's port; scoped to each test.<p>
+ * Will setup a {@link #server()} and a {@link #client()}, the latter configured
+ * with the server's port. Both scoped to each test.<p>
  * 
- * The server has no routes added, but, has an error handler added which simply
- * collects all exceptions caught into a {@code BlockingDeque} and then
- * delegates the error handling to the default error handler.<p>
+ * The server has no routes added and so most test cases will probably have to
+ * add those in manually.<p>
+ * 
+ * This class registers en error handler which simply collects all delivered
+ * exceptions into a {@code BlockingDeque} and then delegates the error handling
+ * to the default error handler.<p>
  * 
  * By default, after-each will assert that no errors were delivered to the error
  * handler. If errors are expected, then the test must consume all errors from
- * the deque returned from {@code errors()}.<p>
+ * the deque using {@link #pollError()}.<p>
  * 
- * Log recording will be activated before starting the server. Records can be
- * retrieved at any time using {@code stopLogRecording()}. However, if the
- * records produced from a server stop is significant, the test ought to stop
- * the server first and then stop recording.
+ * Log recording will be activated before starting the server. The recorder can
+ * be retrieved using {@link #logRecorder()}. Records can be retrieved at any
+ * time using {@link #stopLogRecording()}.
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  * 
@@ -69,15 +71,15 @@ public abstract class AbstractEndToEndTest
     }
     
     @AfterEach
-    void assertNoErrors() {
-        assertThat(errors).isEmpty();
-    }
-    
-    @AfterEach
     void stopNow(TestInfo test) throws IOException {
         server.stopNow();
         stopLogRecording();
         LOG.log(INFO, "Finished " + toString(test));
+    }
+    
+    @AfterEach
+    void assertNoErrors() {
+        assertThat(errors).isEmpty();
     }
     
     /**
@@ -99,6 +101,26 @@ public abstract class AbstractEndToEndTest
     }
     
     /**
+     * Poll an error caught by the error handler, waiting at most 3 seconds.
+     * 
+     * @return an error, or {@code null} if none is available
+     * 
+     * @throws InterruptedException if interrupted while waiting
+     */
+    public final Throwable pollError() throws InterruptedException {
+        return errors.poll(3, SECONDS);
+    }
+    
+    /**
+     * Returns the test log recorder.
+     * 
+     * @return the test log recorder
+     */
+    public final Logging.Recorder logRecorder() {
+        return key;
+    }
+    
+    /**
      * Stop log recording.
      * 
      * @return all logged records
@@ -107,27 +129,7 @@ public abstract class AbstractEndToEndTest
         return Logging.stopRecording(key);
     }
     
-    /**
-     * Returns all caught errors.
-     * 
-     * @return all caught errors
-     */
-    public final BlockingDeque<Throwable> errors() {
-        return errors;
-    }
-    
-    /**
-     * Same as {@code errors().poll(3, SECONDS)}.
-     * 
-     * @return same as {@code errors().poll(3, SECONDS)}
-     * 
-     * @throws InterruptedException if the waiting is interrupted
-     */
-    public final Throwable pollError() throws InterruptedException {
-        return errors().poll(3, SECONDS);
-    }
-    
-    private static final String toString(TestInfo test) {
+    private static String toString(TestInfo test) {
         Method m = test.getTestMethod().get();
         return m.getDeclaringClass().getSimpleName() + "." + m.getName() + "()";
     }
