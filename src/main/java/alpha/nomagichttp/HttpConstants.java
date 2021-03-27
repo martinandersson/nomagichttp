@@ -35,9 +35,9 @@ public final class HttpConstants {
      * Commonly used methods are registered in the
      * <a href="https://www.iana.org/assignments/http-methods">IANA method registry</a>
      * which also features link to RFCs where the methods are defined. The
-     * method is required, but the value is a case-sensitive string and can be
-     * anything. The method token was originally envisioned as the name of an
-     * object method in the back-end (
+     * method token is required and is a case-sensitive string. The value of the
+     * string can be anything. The method token was originally envisioned as the
+     * name of an object method in the back-end (
      * <a href="https://tools.ietf.org/html/rfc7231#section-4.1">RFC 7231 §4.1</a>
      * ).<p>
      * 
@@ -90,8 +90,8 @@ public final class HttpConstants {
          * headers, i.e. the resource metadata. For example, to learn when the
          * resource was last modified.<p>
          * 
-         * Including a body is not only uninteresting to the client, but it
-         * would also effectively kill message framing within the connection
+         * A body in the response is not only uninteresting to the client, but
+         * it would also effectively kill message framing within the connection
          * since all response headers actually applies to the fictitious
          * would-be response, including headers such as {@code Content-Length}
          * and {@code Transfer-Encoding: chunked}.<p>
