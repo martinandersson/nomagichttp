@@ -41,7 +41,7 @@ class ErrorHandlingTest
     @AfterEach
     void stopServer() throws IOException {
         if (s != null) {
-            s.stop();
+            s.stopNow();
         }
     }
     
