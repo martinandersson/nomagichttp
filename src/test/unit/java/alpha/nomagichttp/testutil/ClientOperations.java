@@ -86,8 +86,9 @@ public final class ClientOperations
      * opened on the port of the given server.
      * 
      * @param server client should connect to
+     * @throws IOException if an I/O error occurs
      */
-    public ClientOperations(HttpServer server) {
+    public ClientOperations(HttpServer server) throws IOException {
         this(server.getLocalAddress().getPort());
     }
     
@@ -145,7 +146,7 @@ public final class ClientOperations
         return new Proxy();
     }
     
-    private void closeConnection() throws IOException {
+    private void closeChannel() throws IOException {
         if (ch != null) {
             ch.close();
             ch = null;
@@ -268,7 +269,7 @@ public final class ClientOperations
             Thread.interrupted(); // clear flag
             
             if (!persistent) {
-                closeConnection();
+                closeChannel();
             }
         }
     }
@@ -303,6 +304,10 @@ public final class ClientOperations
             
             int start = data.arrayOffset() + data.position(),
                 end   = start + data.remaining();
+            
+            // TODO: Rework this. We can't assert that we read and consume everything from the channel.
+            //       We should read our data until we reach end, then not consume the remaining.
+            //       AbstractEndToEndTet must @AfterEach assert that at that point all data in channel was consumed.
             
             for (int i = start; i < end; ++i) {
                 byte b = data.array()[i];
@@ -356,7 +361,7 @@ public final class ClientOperations
             List<String> l = new ArrayList<>();
             
             for (int i = start; i < end; ++i) {
-                l.add(Char.toDebugString((char) bytes[i]));
+                l.add("\n" + Char.toDebugString((char) bytes[i]));
             }
             
             return l;

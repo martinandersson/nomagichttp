@@ -71,6 +71,17 @@ final class DefaultResponse implements Response
         return mustCloseAfterWrite;
     }
     
+    @Override
+    public String toString() {
+        return DefaultResponse.class.getSimpleName() + "{" +
+                "statusCode=" + statusCode +
+                ", reasonPhrase='" + reasonPhrase + '\'' +
+                ", headers=?" +
+                ", body=?" +
+                ", mustCloseAfterWrite=" + mustCloseAfterWrite +
+                '}';
+    }
+    
     /**
      * Default implementation of {@link Response.Builder}.
      *

@@ -13,6 +13,7 @@ import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
 import java.net.http.HttpHeaders;
+import java.nio.channels.AsynchronousServerSocketChannel;
 import java.util.List;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ExecutionException;
@@ -47,16 +48,12 @@ class RequestHeadSubscriberTest
     CompletionStage<RequestHead> testee() throws InterruptedException {
         if (testee == null) {
             DefaultChannelOperations ops = new DefaultChannelOperations(
-                    SERVER.accept(), mock(DefaultServer.class));
-            
+                    mock(AsynchronousServerSocketChannel.class), SERVER.accept());
             Flow.Publisher<DefaultPooledByteBufferHolder> bytes = new ChannelByteBufferPublisher(ops);
-            
             RequestHeadSubscriber rhp = new RequestHeadSubscriber(MAX_VALUE);
             bytes.subscribe(rhp);
-            
             testee = rhp.asCompletionStage();
         }
-        
         return testee;
     }
     

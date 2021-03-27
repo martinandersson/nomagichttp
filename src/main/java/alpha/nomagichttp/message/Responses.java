@@ -237,9 +237,21 @@ public final class Responses
         return Response.builder()
                 .statusCode(FIVE_HUNDRED_FIVE)
                 .reasonPhrase(HTTP_VERSION_NOT_SUPPORTED)
-                .header(CONTENT_LENGTH, "0")
+                .contentLenght(0)
                 .mustCloseAfterWrite(true)
                 .build();
+    }
+    
+    /**
+     * Returns a response with a status code set to {@code -1} which instructs
+     * the server to close the client's channel immediately.
+     * 
+     * @return a response with a status code set to {@code -1}
+     * 
+     * @see Response
+     */
+    public static Response closeClientChannel() {
+        return Cache.CLOSE_CHANNEL;
     }
     
     /**
@@ -247,13 +259,14 @@ public final class Responses
      */
     private static final class Cache {
         static final Response
-                ACCEPTED              = Response.Builder.accepted().header(CONTENT_LENGTH, "0").build(),
+                ACCEPTED              = Response.Builder.accepted().contentLenght(0).build(),
                 NO_CONTENT            = Response.Builder.noContent().build(),
                 BAD_REQUEST           = respondThenClose(FOUR_HUNDRED, ReasonPhrase.BAD_REQUEST),
                 NOT_FOUND             = respondThenClose(FOUR_HUNDRED_FOUR, ReasonPhrase.NOT_FOUND),
                 ENTITY_TOO_LARGE      = respondThenClose(FOUR_HUNDRED_THIRTEEN, ReasonPhrase.ENTITY_TOO_LARGE),
                 INTERNAL_SERVER_ERROR = respondThenClose(FIVE_HUNDRED, ReasonPhrase.INTERNAL_SERVER_ERROR),
-                NOT_IMPLEMENTED       = respondThenClose(FIVE_HUNDRED_ONE, ReasonPhrase.NOT_IMPLEMENTED);
+                NOT_IMPLEMENTED       = respondThenClose(FIVE_HUNDRED_ONE, ReasonPhrase.NOT_IMPLEMENTED),
+                CLOSE_CHANNEL         = Response.builder().statusCode(-1).build();
         
         private static Response respondThenClose(int code, String phrase) {
             return Response.builder()

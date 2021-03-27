@@ -4,87 +4,133 @@ import alpha.nomagichttp.HttpServer;
 import alpha.nomagichttp.handler.ErrorHandler;
 import alpha.nomagichttp.testutil.ClientOperations;
 import alpha.nomagichttp.testutil.Logging;
-import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.TestInfo;
 
 import java.io.IOException;
-import java.util.Collection;
-import java.util.concurrent.ConcurrentLinkedQueue;
+import java.lang.reflect.Method;
+import java.util.concurrent.BlockingDeque;
+import java.util.concurrent.LinkedBlockingDeque;
+import java.util.logging.LogRecord;
+import java.util.logging.Logger;
+import java.util.stream.Stream;
 
-import static alpha.nomagichttp.handler.RequestHandlers.noop;
 import static java.lang.System.Logger.Level.ALL;
+import static java.util.concurrent.TimeUnit.SECONDS;
+import static java.util.logging.Level.INFO;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * Will setup a {@code server()} and a {@code client()} configured with the
- * server's port.<p>
+ * Will setup a {@link #server()} and a {@link #client()}, the latter configured
+ * with the server's port. Both scoped to each test.<p>
  * 
- * The server has only one route "/" registered with a NOOP handler. Most
- * likely, each test will be interested in adding its own routes and
- * handlers.<p>
+ * The server has no routes added and so most test cases will probably have to
+ * add those in manually.<p>
  * 
- * It's arguably a good baseline to assume that all HTTP exchanges completes
- * normally. And so, this class will assert after each test method that the
- * default exception handler was never called with an exception. This check can
- * be skipped using {@code doNotAssertNormalFinish()}.
+ * This class registers en error handler which simply collects all delivered
+ * exceptions into a {@code BlockingDeque} and then delegates the error handling
+ * to the default error handler.<p>
+ * 
+ * By default, after-each will assert that no errors were delivered to the error
+ * handler. If errors are expected, then the test must consume all errors from
+ * the deque using {@link #pollError()}.<p>
+ * 
+ * Log recording will be activated before starting the server. The recorder can
+ * be retrieved using {@link #logRecorder()}. Records can be retrieved at any
+ * time using {@link #stopLogRecording()}.
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  * 
  * @see SimpleEndToEndTest
  * @see DetailedEndToEndTest
  */
-abstract class AbstractEndToEndTest
+// TODO: Move to alpha.nomagichttp package
+public abstract class AbstractEndToEndTest
 {
-    private static HttpServer server;
-    private static ClientOperations client;
+    final Logger LOG =  Logger.getLogger(getClass().getPackageName());
     
-    private static final Collection<Throwable> errors = new ConcurrentLinkedQueue<>();
-    private boolean assertNormalFinish = true;
+    private Logging.Recorder key;
+    private HttpServer server;
+    private ClientOperations client;
+    private final BlockingDeque<Throwable> errors = new LinkedBlockingDeque<>();
     
-    @BeforeAll
-    private static void start() throws IOException {
-        Logging.setLevel(SimpleEndToEndTest.class, ALL);
+    @BeforeEach
+    void start(TestInfo test) throws IOException {
+        Logging.setLevel(ALL);
+        LOG.log(INFO, "Executing " + toString(test));
+        key = Logging.startRecording();
         
         ErrorHandler collect = (t, r, h) -> {
             errors.add(t);
             throw t;
         };
         
-        server = HttpServer.create(collect).add("/", noop()).start();
+        server = HttpServer.create(collect).start();
         client = new ClientOperations(server);
     }
     
     @AfterEach
-    private void assertNormalFinish() {
-        if (!assertNormalFinish) {
-            errors.clear();
-            return;
-        }
-        
-        try {
-            assertThat(errors).isEmpty();
-        } finally {
-            errors.clear();
-        }
+    void stopNow(TestInfo test) throws IOException {
+        server.stopNow();
+        stopLogRecording();
+        LOG.log(INFO, "Finished " + toString(test));
     }
     
-    @AfterAll
-    private static void stop() throws IOException {
-        if (server != null) {
-            server.stop();
-        }
+    @AfterEach
+    void assertNoErrors() {
+        assertThat(errors).isEmpty();
     }
     
-    public static HttpServer server() {
+    /**
+     * Returns the server instance.
+     * 
+     * @return the server instance
+     */
+    public final HttpServer server() {
         return server;
     }
     
-    public static ClientOperations client() {
+    /**
+     * Returns the client instance.
+     *
+     * @return the client instance
+     */
+    public final ClientOperations client() {
         return client;
     }
     
-    public void doNotAssertNormalFinish() {
-        assertNormalFinish = false;
+    /**
+     * Poll an error caught by the error handler, waiting at most 3 seconds.
+     * 
+     * @return an error, or {@code null} if none is available
+     * 
+     * @throws InterruptedException if interrupted while waiting
+     */
+    public final Throwable pollError() throws InterruptedException {
+        return errors.poll(3, SECONDS);
+    }
+    
+    /**
+     * Returns the test log recorder.
+     * 
+     * @return the test log recorder
+     */
+    public final Logging.Recorder logRecorder() {
+        return key;
+    }
+    
+    /**
+     * Stop log recording.
+     * 
+     * @return all logged records
+     */
+    public final Stream<LogRecord> stopLogRecording() {
+        return Logging.stopRecording(key);
+    }
+    
+    private static String toString(TestInfo test) {
+        Method m = test.getTestMethod().get();
+        return m.getDeclaringClass().getSimpleName() + "." + m.getName() + "()";
     }
 }

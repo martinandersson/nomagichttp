@@ -37,6 +37,11 @@ import static alpha.nomagichttp.message.Response.builder;
  * StandardCharsets#US_ASCII US_ASCII} (UTF-8 is backwards compatible with
  * ASCII).<p>
  * 
+ * If the server must close the channel immediately without writing a response,
+ * return a response with a status code {@code -1} (provided by {@link
+ * Responses#closeClientChannel()}). If channel should close after writing the
+ * response, set {@link #mustCloseAfterWrite()} to {@code true}.<p>
+ * 
  * The {@code Response} implementation is immutable and can safely be reused
  * sequentially over time to the same client. It can also be shared concurrently
  * to different clients, assuming the {@linkplain Builder#body(Flow.Publisher)
@@ -108,9 +113,6 @@ public interface Response
      * returns {@code false}, for example if the server run into channel-related
      * problems.<p>
      * 
-     * For security; If closing the client channel fails, the server will try to
-     * stop itself. If stopping itself fails, the server will exit the JVM.<p>
-     * 
      * The channel's in- and output streams will shutdown first before channel
      * closure.
      * 
@@ -181,8 +183,7 @@ public interface Response
     interface Builder
     {
         /**
-         * Returns a builder already populated with a status-line
-         * "HTTP/1.1 200 OK".<p>
+         * Returns a builder populated with a status-line "HTTP/1.1 200 OK".<p>
          * 
          * What remains is to set headers and message body.
          * 
@@ -193,7 +194,7 @@ public interface Response
         }
         
         /**
-         * Returns a builder already populated with a status-line
+         * Returns a builder populated with a status-line
          * "HTTP/1.1 202 Accepted".<p>
          * 
          * What remains is to set headers and message body.
@@ -205,10 +206,8 @@ public interface Response
         }
         
         /**
-         * Returns a builder already populated with a status-line
-         * "HTTP/1.1 204 No Content".<p>
-         * 
-         * What remains is to set headers.
+         * Returns a builder populated with a status-line
+         * "HTTP/1.1 204 No Content".
          * 
          * @return a new builder representing the new state
          */
@@ -388,7 +387,7 @@ public interface Response
          * @return a response
          * 
          * @throws IllegalStateException
-         *             if HTTP version or status code has not been set
+         *             if a status code has not been set
          */
         Response build();
     }

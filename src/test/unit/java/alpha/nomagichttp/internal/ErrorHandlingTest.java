@@ -35,13 +35,13 @@ class ErrorHandlingTest
     
     @BeforeAll
     static void setLogging() {
-        Logging.setLevel(ErrorHandlingTest.class, ALL);
+        Logging.setLevel(ALL);
     }
     
     @AfterEach
     void stopServer() throws IOException {
         if (s != null) {
-            s.stop();
+            s.stopNow();
         }
     }
     

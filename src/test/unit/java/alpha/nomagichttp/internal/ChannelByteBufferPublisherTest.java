@@ -8,6 +8,7 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
+import java.nio.channels.AsynchronousServerSocketChannel;
 import java.nio.charset.StandardCharsets;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeoutException;
@@ -49,8 +50,7 @@ class ChannelByteBufferPublisherTest
     ChannelByteBufferPublisher testee() throws InterruptedException {
         if (testee == null) {
             DefaultChannelOperations ops = new DefaultChannelOperations(
-                    SERVER.accept(), mock(DefaultServer.class));
-            
+                    mock(AsynchronousServerSocketChannel.class), SERVER.accept());
             testee = new ChannelByteBufferPublisher(ops);
         }
         

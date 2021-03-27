@@ -125,7 +125,7 @@ final class ChannelByteBufferPublisher implements Flow.Publisher<DefaultPooledBy
             subscriber.announce(exc -> {
                 if (child.isOpenForReading()) {
                     LOG.log(ERROR, () -> SIGNAL_FAILURE + CLOSE_MSG, exc);
-                    child.orderlyShutdownInput();
+                    child.orderlyShutdownInputSafe();
                 } // else assume whoever closed the stream also logged the exception
             });
         } catch (Throwable t) {
@@ -142,7 +142,7 @@ final class ChannelByteBufferPublisher implements Flow.Publisher<DefaultPooledBy
     public void close() {
         subscriber.stop();
         channel.stop();
-        child.orderlyShutdownInput();
+        child.orderlyShutdownInputSafe();
         readable.clear();
     }
 }

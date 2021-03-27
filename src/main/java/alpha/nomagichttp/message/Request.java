@@ -460,17 +460,18 @@ public interface Request
      * {@link #convert(BiFunction)} method or consumed directly "on arrival"
      * using the {@link #subscribe(Flow.Subscriber)} method.<p>
      * 
-     * If the body {@link #isEmpty()}, {@code subscribe()} completes the subscription
-     * immediately. {@code toText()} completes immediately with an empty string.
-     * {@code toFile()} completes immediately with 0 bytes. {@code convert()}
-     * immediately invokes its given function with an empty byte array.<p>
+     * If the body {@link #isEmpty()}, {@code subscribe()} completes the
+     * subscription immediately. {@code toText()} completes immediately with an
+     * empty string. {@code toFile()} completes immediately with 0 bytes. {@code
+     * convert()} immediately invokes its given function with an empty byte
+     * array.<p>
      * 
      * The body bytes can not be directly consumed more than once; they are not
      * saved by the server. An attempt to {@code convert()} or {@code
      * subscribe()} more than once will result in an {@code
      * IllegalStateException}.<p>
      * 
-     * Same is is also true for utility methods that "trickle down". If for
+     * Same is is also true for utility methods that trickle down. If for
      * example {@code convert()} is used followed by {@code toText()}, then the
      * latter will complete exceptionally with an {@code
      * IllegalStateException}.<p>
@@ -617,9 +618,8 @@ public interface Request
      * Exceptions thrown by the subscriber's {@code onNext()} and {@code
      * onComplete()} methods will be logged by the server if the channel's read
      * stream is still open when the exceptional return occur. The server will
-     * also close the read stream using a similar procedure documented in {@link
-     * Response#mustCloseAfterWrite()} (the write stream remains untouched so
-     * that a response in-flight can complete).<p>
+     * also close the read stream (the write stream remains untouched so that a
+     * response in-flight can complete).<p>
      * 
      * Exceptions signalled to {@code Subscriber.onError()} that are not
      * <i>caused by</i> the subscriber itself can safely be assumed to indicate
@@ -676,8 +676,8 @@ public interface Request
          *     body.{@link #toFile(Path,Set,FileAttribute[])
          *       toFile}(file, opts, new FileAttribute&lt;?&gt;[0]);
          * </pre>
-         * where {@code opts} is a {@code Set} containing the options specified to
-         * this method.
+         * where {@code opts} is a {@code Set} containing the options specified
+         * to this method.
          * 
          * @param file to dump body into
          * @param options specifying how the file is opened

@@ -30,8 +30,9 @@ public class EchoHeaders
             // Response.builder() allows setting any arbitrary status-line,
             // headers and body. The builder class has static methods that
             // return builders pre-populated with commonly used status-lines.
-            Response.Builder b = Response.Builder.ok(); // 200 OK
+            Response.Builder b = Response.Builder.noContent(); // 204 No Content
             
+            // TODO: Use a prefix
             return b.addHeaders(req.headers())
                     .build()
                     .completedStage();

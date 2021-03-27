@@ -214,13 +214,12 @@ In a new terminal, run:
 foo@bar:~$ curl -i localhost:8080/echo \
     -H "My-Header: Value 1" \
     -H "My-Header: Value 2"
-HTTP/1.1 200 OK
+HTTP/1.1 204 OK
 Accept: */*
 Host: localhost:8080
 My-Header: Value 1
 My-Header: Value 2
 User-Agent: curl/7.68.0
-Content-Length: 0
 ```
 
 [6-1]: src/main/java/alpha/nomagichttp/examples/EchoHeaders.java
