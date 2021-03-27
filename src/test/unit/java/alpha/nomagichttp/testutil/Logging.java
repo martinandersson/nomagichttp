@@ -427,13 +427,13 @@ public final class Logging
         
         /**
          * Return immediately if a log record of the given level with the given
-         * message has been published, or await it's arrival for a maximum of 3
-         * seconds.<p>
+         * message-prefix has been published, or await it's arrival for a
+         * maximum of 3 seconds.<p>
          * 
          * Uses {@link #await(Predicate)} under the hood. Same warning apply.
          * 
-         * @param level of record
-         * @param message of record
+         * @param level record level predicate
+         * @param messageStartsWith record message predicate
          * 
          * @return {@code true} when target record is observed, or
          *         {@code false} if 3 seconds passes without observing the record
@@ -447,117 +447,11 @@ public final class Logging
          * @throws InterruptedException
          *             if the current thread is interrupted while waiting
          */
-        public boolean await(Level level, String message) throws InterruptedException {
-            requireNonNull(level);
-            requireNonNull(message);
-            return await(r -> r.getLevel().equals(level) && r.getMessage().equals(message));
-        }
-        
-        /**
-         * Return immediately if a generalized log record from a given source is
-         * observed, or await it's arrival for a maximum of 3 seconds.<p>
-         * 
-         * For example, suppose we want to wait for this record:
-         * 
-         * <pre>
-         *   2021-03-18 | 15:09:48.751Z | pool-1-thread-7  | INFO |
-         *   alpha.nomagichttp.internal.DefaultChannelOperations orderlyClose |
-         *   Closed child: sun.nio.ch.WindowsAsynchronousSocketChannelImpl[closed]
-         * </pre>
-         * 
-         * A solution:
-         * 
-         * <pre>{@code
-         *   recorder.await(DefaultChannelOperations.class, INFO, "orderlyClose");
-         * }</pre>
-         * 
-         * There is no guarantee that the source class name and/or method is
-         * retrievable from the log record, in which case the record would be
-         * silently skipped.<p>
-         * 
-         * Uses {@link #await(Predicate)} under the hood. Same warning apply.<p>
-         * 
-         * Note: The example above which spurred the implementation of this
-         * method got quickly replaced with a better server life-cycle API
-         * instead. Now client can await the full server stop using
-         * {@link HttpServer#stop()}.
-         * 
-         * @param sourceClass of record origin
-         * @param sourceMethod of record origin
-         * @param level of any record
-         * 
-         * @return {@code true} when target record is observed, or
-         *         {@code false} if 3 seconds passes without observing the record
-         * 
-         * @throws NullPointerException
-         *             if any arg is {@code null}
-         * 
-         * @throws IllegalStateException
-         *             if an {@code await} method was used before
-         * 
-         * @throws InterruptedException
-         *             if the current thread is interrupted while waiting
-         */
-        public boolean await(Class<?> sourceClass, String sourceMethod, Level level) throws InterruptedException {
-            requireNonNull(sourceClass);
-            requireNonNull(sourceMethod);
-            requireNonNull(level);
-            return await(r -> sourceClass.getSimpleName().equals(r.getSourceClassName()) &&
-                              sourceMethod.equals(r.getSourceMethodName()) &&
-                              r.getLevel().equals(level));
-        }
-        
-        /**
-         * Return immediately if a particular log record from a given source is
-         * observed, or await it's arrival for a maximum of 3 seconds.<p>
-         * 
-         * For example, suppose we want to wait for this record:
-         * 
-         * <pre>
-         *   2021-03-18 | 15:09:48.751Z | pool-1-thread-7  | FINE |
-         *   alpha.nomagichttp.internal.DefaultServer$OnAccept setup |
-         *   Accepted child: sun.nio.ch.WindowsAsynchronousSocketChannelImpl[closed]
-         * </pre>
-         * 
-         * A solution:
-         * 
-         * <pre>{@code
-         *   recorder.await("DefaultServer$OnAccept", FINE, "Accepted child:");
-         * }</pre>
-         * 
-         * There is no guarantee that the source class name is retrievable from
-         * the log record, in which case the record would be silently
-         * skipped.<p>
-         * 
-         * Uses {@link #await(Predicate)} under the hood. Same warning apply.
-         * 
-         * @param sourceClassNameEndsWith class name predicate
-         * @param level level of record predicate
-         * @param messageStartsWith message predicate
-         * 
-         * @return {@code true} when target record is observed, or
-         *         {@code false} if 3 seconds passes without observing the record
-         * 
-         * @throws NullPointerException
-         *             if any arg is {@code null}
-         * 
-         * @throws IllegalStateException
-         *             if an {@code await} method was used before
-         * 
-         * @throws InterruptedException
-         *             if the current thread is interrupted while waiting
-         */
-        public boolean await(String sourceClassNameEndsWith, Level level, String messageStartsWith) throws InterruptedException {
-            requireNonNull(sourceClassNameEndsWith);
+        public boolean await(Level level, String messageStartsWith) throws InterruptedException {
             requireNonNull(level);
             requireNonNull(messageStartsWith);
-            return await(r -> notNullAnd(r.getSourceClassName(), scn -> scn.endsWith(sourceClassNameEndsWith)) &&
-                              r.getLevel().equals(level) &&
+            return await(r -> r.getLevel().equals(level) &&
                               r.getMessage().startsWith(messageStartsWith));
-        }
-        
-        private static <T> boolean notNullAnd(T obj, Predicate<T> pred) {
-            return obj != null && pred.test(obj);
         }
         
         Stream<RecordListener> listeners() {

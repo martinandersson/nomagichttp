@@ -264,8 +264,7 @@ class DetailedEndToEndTest extends AbstractEndToEndTest
      * accepted.
      */
     private void awaitChildAccept() throws InterruptedException {
-        assertTrue(logRecorder().await(
-                "DefaultServer$OnAccept", FINE, "Accepted child:"));
+        assertTrue(logRecorder().await(FINE, "Accepted child:"));
     }
     
     /**
