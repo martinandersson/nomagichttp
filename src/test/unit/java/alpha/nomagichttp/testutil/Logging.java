@@ -471,15 +471,16 @@ public final class Logging
          *   recorder.await(DefaultChannelOperations.class, INFO, "orderlyClose");
          * }</pre>
          * 
-         * I.e. rather than testing the start of a dynamic message, we'd rather
-         * depend on the source of the record as being a more specific, reliable
-         * and descriptive predicate.<p>
+         * Uses {@link #await(Predicate)} under the hood. Same warning apply.<p>
          * 
-         * Uses {@link #await(Predicate)} under the hood. Same warning apply.
+         * Note: The example above which spurred the implementation of this
+         * method got quickly replaced with a better server life-cycle API
+         * instead. Now client can await the full server stop using
+         * {@link HttpServer#stop()}.
          * 
          * @param sourceClass of record origin
-         * @param level of any record
          * @param sourceMethod of record origin
+         * @param level of any record
          * 
          * @return {@code true} when target record is observed, or
          *         {@code false} if 3 seconds passes without observing the record
@@ -493,13 +494,58 @@ public final class Logging
          * @throws InterruptedException
          *             if the current thread is interrupted while waiting
          */
-        public boolean await(Class<?> sourceClass, Level level, String sourceMethod) throws InterruptedException {
+        public boolean await(Class<?> sourceClass, String sourceMethod, Level level) throws InterruptedException {
             requireNonNull(sourceClass);
-            requireNonNull(level);
             requireNonNull(sourceMethod);
+            requireNonNull(level);
             return await(r -> r.getSourceClassName().equals(sourceClass.getSimpleName()) &&
+                              r.getSourceMethodName().equals(sourceMethod) &&
+                              r.getLevel().equals(level));
+        }
+        
+        /**
+         * Return immediately if a particular log record from a given source is
+         * observed, or await it's arrival for a maximum of 3 seconds.<p>
+         * 
+         * For example, suppose we want to wait for this record:
+         * 
+         * <pre>
+         *   2021-03-18 | 15:09:48.751Z | pool-1-thread-7  | FINE |
+         *   alpha.nomagichttp.internal.DefaultServer$OnAccept setup |
+         *   Accepted child: sun.nio.ch.WindowsAsynchronousSocketChannelImpl[closed]
+         * </pre>
+         * 
+         * A solution:
+         * 
+         * <pre>{@code
+         *   recorder.await("DefaultServer$OnAccept", FINE, "Accepted child:");
+         * }</pre>
+         * 
+         * Uses {@link #await(Predicate)} under the hood. Same warning apply.
+         * 
+         * @param sourceClassNameEndsWith class name predicate
+         * @param level level of record predicate
+         * @param messageStartsWith message predicate
+         * 
+         * @return {@code true} when target record is observed, or
+         *         {@code false} if 3 seconds passes without observing the record
+         * 
+         * @throws NullPointerException
+         *             if any arg is {@code null}
+         * 
+         * @throws IllegalStateException
+         *             if an {@code await} method was used before
+         * 
+         * @throws InterruptedException
+         *             if the current thread is interrupted while waiting
+         */
+        public boolean await(String sourceClassNameEndsWith, Level level, String messageStartsWith) throws InterruptedException {
+            requireNonNull(sourceClassNameEndsWith);
+            requireNonNull(level);
+            requireNonNull(messageStartsWith);
+            return await(r -> r.getSourceClassName().endsWith(sourceClassNameEndsWith) &&
                               r.getLevel().equals(level) &&
-                              r.getSourceMethodName().equals(sourceMethod));
+                              r.getMessage().startsWith(messageStartsWith));
         }
         
         Stream<RecordListener> listeners() {
