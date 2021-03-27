@@ -471,6 +471,10 @@ public final class Logging
          *   recorder.await(DefaultChannelOperations.class, INFO, "orderlyClose");
          * }</pre>
          * 
+         * There is no guarantee that the source class name and/or method is
+         * retrievable from the log record, in which case the record would be
+         * silently skipped.<p>
+         * 
          * Uses {@link #await(Predicate)} under the hood. Same warning apply.<p>
          * 
          * Note: The example above which spurred the implementation of this
@@ -498,8 +502,8 @@ public final class Logging
             requireNonNull(sourceClass);
             requireNonNull(sourceMethod);
             requireNonNull(level);
-            return await(r -> r.getSourceClassName().equals(sourceClass.getSimpleName()) &&
-                              r.getSourceMethodName().equals(sourceMethod) &&
+            return await(r -> sourceClass.getSimpleName().equals(r.getSourceClassName()) &&
+                              sourceMethod.equals(r.getSourceMethodName()) &&
                               r.getLevel().equals(level));
         }
         
@@ -520,6 +524,10 @@ public final class Logging
          * <pre>{@code
          *   recorder.await("DefaultServer$OnAccept", FINE, "Accepted child:");
          * }</pre>
+         * 
+         * There is no guarantee that the source class name is retrievable from
+         * the log record, in which case the record would be silently
+         * skipped.<p>
          * 
          * Uses {@link #await(Predicate)} under the hood. Same warning apply.
          * 
@@ -543,9 +551,13 @@ public final class Logging
             requireNonNull(sourceClassNameEndsWith);
             requireNonNull(level);
             requireNonNull(messageStartsWith);
-            return await(r -> r.getSourceClassName().endsWith(sourceClassNameEndsWith) &&
+            return await(r -> notNullAnd(r.getSourceClassName(), scn -> scn.endsWith(sourceClassNameEndsWith)) &&
                               r.getLevel().equals(level) &&
                               r.getMessage().startsWith(messageStartsWith));
+        }
+        
+        private static <T> boolean notNullAnd(T obj, Predicate<T> pred) {
+            return obj != null && pred.test(obj);
         }
         
         Stream<RecordListener> listeners() {
