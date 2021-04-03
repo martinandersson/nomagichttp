@@ -8,7 +8,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Stream;
 
-import static alpha.nomagichttp.handler.RequestHandlers.noop;
+import static alpha.nomagichttp.handler.RequestHandlers.GET;
+import static alpha.nomagichttp.message.Responses.accepted;
 import static alpha.nomagichttp.util.PercentDecoder.decode;
 import static java.util.Arrays.stream;
 import static java.util.function.Predicate.not;
@@ -23,7 +24,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
  */
 class DefaultRouteRegistryTest
 {
-    private static final Route ROOT_NOOP = noopRoute("/");
+    private static final Route ROOT_NOOP = dummyRoute("/");
     
     private final RouteRegistry testee = new DefaultRouteRegistry();
     
@@ -41,15 +42,15 @@ class DefaultRouteRegistryTest
     @Test
     void can_add_child_level_1() {
         testee.add(ROOT_NOOP);
-        Route r = noopRoute("/child-of-root");
+        Route r = dummyRoute("/child-of-root");
         testee.add(r);
         assertMatch("/child-of-root", r);
     }
     
     @Test
     void can_add_child_level_2() {
-        testee.add(noopRoute("/a"));
-        Route r = noopRoute("/a/b");
+        testee.add(dummyRoute("/a"));
+        Route r = dummyRoute("/a/b");
         testee.add(r);
         assertMatch("/a/b", r);
     }
@@ -57,15 +58,15 @@ class DefaultRouteRegistryTest
     // We should be able to add "/" even if "/a" is registered
     @Test
     void can_add_parent_level_1() {
-        testee.add(noopRoute("/a"));
+        testee.add(dummyRoute("/a"));
         testee.add(ROOT_NOOP);
         assertMatch("/", ROOT_NOOP);
     }
     
     @Test
     void can_add_parent_level_2() {
-        testee.add(noopRoute("/a/b"));
-        Route r = noopRoute("/a");
+        testee.add(dummyRoute("/a/b"));
+        Route r = dummyRoute("/a");
         testee.add(r);
         assertMatch("/a", r);
     }
@@ -73,8 +74,8 @@ class DefaultRouteRegistryTest
     // We should be able to add "/b" even if "/a" is registered
     @Test
     void can_add_sibling() {
-        testee.add(noopRoute("/a"));
-        Route r = noopRoute("/b");
+        testee.add(dummyRoute("/a"));
+        Route r = dummyRoute("/b");
         testee.add(r);
         assertMatch("/b", r);
     }
@@ -102,8 +103,8 @@ class DefaultRouteRegistryTest
             e("/*p1",  "/*p2",  "Route \"/*p2\" is equivalent to an already added route \"/*p1\".")
         ).forEach(e -> {
             RouteRegistry reg = new DefaultRouteRegistry();
-            reg.add(noopRoute(e[0]));
-            assertThatThrownBy(() -> reg.add(noopRoute(e[1])))
+            reg.add(dummyRoute(e[0]));
+            assertThatThrownBy(() -> reg.add(dummyRoute(e[1])))
                     .isExactlyInstanceOf(RouteCollisionException.class)
                     .hasMessage(e[2]);
         });
@@ -118,7 +119,7 @@ class DefaultRouteRegistryTest
     
     @Test
     void match_abc() {
-        Route exp = noopRoute("/a/b/c");
+        Route exp = dummyRoute("/a/b/c");
         testee.add(exp);
         
         String[] salt = {
@@ -127,7 +128,7 @@ class DefaultRouteRegistryTest
                 "/a/b",
                 "/a/b/sibling" };
         
-        Stream.of(salt).forEach(p -> testee.add(noopRoute(p)));
+        Stream.of(salt).forEach(p -> testee.add(dummyRoute(p)));
         
         assertMatch(
                 "/a/b/c", exp);
@@ -141,7 +142,7 @@ class DefaultRouteRegistryTest
     
     @Test
     void path_param_single_singleton() {
-        Route r = noopRoute("/:p");
+        Route r = dummyRoute("/:p");
         testee.add(r);
         
         assertMatch(
@@ -153,9 +154,9 @@ class DefaultRouteRegistryTest
     
     @Test
     void path_param_single_branch_shared() {
-        Route r1 = noopRoute("/:p1"),
-              r2 = noopRoute("/:p1/:p2"),
-              r3 = noopRoute("/:p1/:p2/segment");
+        Route r1 = dummyRoute("/:p1"),
+              r2 = dummyRoute("/:p1/:p2"),
+              r3 = dummyRoute("/:p1/:p2/segment");
         
         testee.add(r1);
         testee.add(r2);
@@ -172,7 +173,7 @@ class DefaultRouteRegistryTest
     
     @Test
     void path_param_catchAll() {
-        Route r = noopRoute("/src/*p");
+        Route r = dummyRoute("/src/*p");
         testee.add(r);
         
         assertMatch(
@@ -192,7 +193,7 @@ class DefaultRouteRegistryTest
     
     @Test
     void remove_reference() {
-        Route r = noopRoute("/download/:user/*filepath");
+        Route r = dummyRoute("/download/:user/*filepath");
         testee.add(r);
         assertThat(testee.remove(r)).isTrue();
         assertThat(dump()).containsOnlyKeys("/");
@@ -200,7 +201,7 @@ class DefaultRouteRegistryTest
     
     @Test
     void remove_pattern_names_yes() {
-        Route r = noopRoute("/download/:user/*filepath");
+        Route r = dummyRoute("/download/:user/*filepath");
         testee.add(r);
         assertThat(testee.remove("/download/:user/*filepath")).isSameAs(r);
         assertThat(dump()).containsOnlyKeys("/");
@@ -208,7 +209,7 @@ class DefaultRouteRegistryTest
     
     @Test
     void remove_pattern_names_no() {
-        Route r = noopRoute("/download/:user/*filepath");
+        Route r = dummyRoute("/download/:user/*filepath");
         testee.add(r);
         assertThat(testee.remove("/download/:/*")).isSameAs(r); // <-- empty
         assertThat(dump()).containsOnlyKeys("/");
@@ -216,7 +217,7 @@ class DefaultRouteRegistryTest
     
     @Test
     void remove_pattern_names_duplicated() {
-        Route r = noopRoute("/download/:user/*filepath");
+        Route r = dummyRoute("/download/:user/*filepath");
         testee.add(r);
         assertThat(testee.remove("/download/:bla/*bla")).isSameAs(r); // <-- duplicated
         assertThat(dump()).containsOnlyKeys("/");
@@ -246,7 +247,7 @@ class DefaultRouteRegistryTest
      */
     @Test
     void bug_catch_all_child_not_unreserved() {
-        Route r = noopRoute("*p");
+        Route r = dummyRoute("*p");
         
         testee.add(r);
         assertThat(dump()).containsExactly(
@@ -296,8 +297,10 @@ class DefaultRouteRegistryTest
                 .hasMessage(null));
     }
     
-    private static Route noopRoute(String pattern) {
-        return Route.builder(pattern).handler(noop()).build();
+    private static Route dummyRoute(String pattern) {
+        return Route.builder(pattern)
+                .handler(GET().apply(requestIgnored -> accepted().completedStage()))
+                .build();
     }
     
     private static Iterable<String> toSegments(String path) {

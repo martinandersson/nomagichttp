@@ -3,12 +3,10 @@ package alpha.nomagichttp.handler;
 import alpha.nomagichttp.message.MediaRange;
 import alpha.nomagichttp.message.MediaType;
 import alpha.nomagichttp.message.Request;
-import alpha.nomagichttp.message.Response;
 
 import java.util.Objects;
 import java.util.StringJoiner;
-import java.util.concurrent.CompletionStage;
-import java.util.function.Function;
+import java.util.function.BiConsumer;
 
 import static alpha.nomagichttp.message.MediaType.ALL;
 import static alpha.nomagichttp.message.MediaType.NOTHING;
@@ -25,14 +23,14 @@ final class DefaultRequestHandler implements RequestHandler
 {
     private final String method;
     private final MediaType consumes, produces;
-    private final Function<Request, CompletionStage<Response>> logic;
+    private final BiConsumer<Request, ClientChannel> logic;
     private final int hash;
     
     DefaultRequestHandler(
             String method,
             MediaType consumes,
             MediaType produces,
-            Function<Request, CompletionStage<Response>> logic)
+            BiConsumer<Request, ClientChannel> logic)
     {
         this.method   = requireNonNull(method);
         this.consumes = validateConsumes(consumes);
@@ -57,7 +55,7 @@ final class DefaultRequestHandler implements RequestHandler
     }
     
     @Override
-    public Function<Request, CompletionStage<Response>> logic() {
+    public BiConsumer<Request, ClientChannel> logic() {
         return logic;
     }
     

@@ -30,9 +30,8 @@ public class HelloWorld
         Response answer = Responses.text("Hello World!");
         
         // This handler serves requests of the HTTP verb/method GET. The factory
-        // method respond() accepts an already built Response. Other factory
-        // methods exist for dynamically computing a response, with or without
-        // access to the request object.
+        // method respond() accepts an already built Response. Other overloads
+        // exist for accessing the request and client channel directly.
         RequestHandler handler = RequestHandlers.GET().respond(answer);
         
         // The real content of the server are resources, addressed by a request path.

@@ -12,9 +12,9 @@ import java.net.http.HttpResponse;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * Effectively superseded by the addition of big message tests in {@code
- * TwoHundredRequestsFromSameClient}. Kept around because this is a slightly
- * easier test case to run and debug in the event of failure.
+ * Effectively superseded by {@code TwoHundredRequestsFromSameClient.big_xxx}.
+ * Kept around because this is a slightly easier test case to run and debug in
+ * the event of failure.
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  */

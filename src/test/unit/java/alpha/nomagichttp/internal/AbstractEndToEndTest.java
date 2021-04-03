@@ -61,7 +61,7 @@ public abstract class AbstractEndToEndTest
         LOG.log(INFO, "Executing " + toString(test));
         key = Logging.startRecording();
         
-        ErrorHandler collect = (t, r, h) -> {
+        ErrorHandler collect = (t, r, c, h) -> {
             errors.add(t);
             throw t;
         };

@@ -7,10 +7,11 @@ import org.junit.jupiter.api.Test;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 
-import static alpha.nomagichttp.handler.RequestHandlers.noop;
+import static alpha.nomagichttp.handler.RequestHandlers.GET;
 import static alpha.nomagichttp.message.MediaType.ALL;
 import static alpha.nomagichttp.message.MediaType.NOTHING;
 import static alpha.nomagichttp.message.MediaType.NOTHING_AND_ALL;
+import static alpha.nomagichttp.message.Responses.accepted;
 import static java.util.List.of;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -142,9 +143,9 @@ class RouteBuilderTest
     
     @Test
     void handler_already_added() {
-        testee = Route.builder("/").handler(noop());
+        testee = Route.builder("/").handler(dummy());
         
-        assertThatThrownBy(() -> testee.handler(noop()))
+        assertThatThrownBy(() -> testee.handler(dummy()))
                 .isExactlyInstanceOf(HandlerCollisionException.class)
                 .hasMessage("An equivalent handler has already been added: " +
                         "DefaultRequestHandler{method=\"GET\", consumes=\"<nothing and all>\", produces=\"*/*\"}");
@@ -165,11 +166,15 @@ class RouteBuilderTest
         return RequestHandler.Builder.GET()
                 .consumes(consumes)
                 .producesAll()
-                .run(() -> {});
+                .respond(accepted());
     }
     
     private Route.Builder builder(String pattern) {
-        return Route.builder(pattern).handler(noop());
+        return Route.builder(pattern).handler(dummy());
+    }
+    
+    private static RequestHandler dummy() {
+        return GET().respond(accepted());
     }
     
     private void assertSegments(String... segments) {

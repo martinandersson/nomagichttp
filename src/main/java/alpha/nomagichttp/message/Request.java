@@ -2,6 +2,7 @@ package alpha.nomagichttp.message;
 
 import alpha.nomagichttp.HttpConstants;
 import alpha.nomagichttp.HttpServer;
+import alpha.nomagichttp.handler.ClientChannel;
 import alpha.nomagichttp.handler.ErrorHandler;
 import alpha.nomagichttp.route.Route;
 import alpha.nomagichttp.util.Publishers;
@@ -11,7 +12,6 @@ import java.net.http.HttpHeaders;
 import java.nio.channels.AsynchronousByteChannel;
 import java.nio.channels.AsynchronousFileChannel;
 import java.nio.channels.GatheringByteChannel;
-import java.nio.channels.NetworkChannel;
 import java.nio.charset.Charset;
 import java.nio.charset.IllegalCharsetNameException;
 import java.nio.charset.UnsupportedCharsetException;
@@ -27,7 +27,6 @@ import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Flow;
 import java.util.function.BiFunction;
-import java.util.function.Supplier;
 import java.util.stream.Stream;
 
 /**
@@ -153,13 +152,6 @@ public interface Request
      * @return an attributes API object bound to this request
      */
     Attributes attributes();
-    
-    /**
-     * Returns a channel management API bound to this request.
-     * 
-     * @return a channel management API bound to this request
-     */
-    ChannelOperations channel();
     
     /**
      * Is a thread-safe and non-blocking API for accessing immutable request
@@ -509,7 +501,7 @@ public interface Request
      * unexpected errors, in particular, errors that originate from the
      * channel's read operation. The safest bet for an application when
      * attempting error recovery is to always check first if {@link
-     * ChannelOperations#isOpenForReading() request.channel().isOpenForReading()}.
+     * ClientChannel#isOpenForReading()}.
      * 
      * 
      * <h2>Subscribing to bytes with a {@code Flow.Subscriber}</h2>
@@ -908,30 +900,5 @@ public interface Request
          * @return a modifiable map view of the attributes
          */
         <V> ConcurrentMap<String, V> asMapAny();
-    }
-    
-    /**
-     * An API for management of the channel from which a request originates.
-     * 
-     * @author Martin Andersson (webmaster at martinandersson.com)
-     */
-    interface ChannelOperations extends Supplier<NetworkChannel>
-    {
-        /**
-         * Returns the actual Java channel instance.
-         * 
-         * @return the actual Java channel instance (never {@code null})
-         */
-        @Override
-        NetworkChannel get();
-        
-        /**
-         * Returns {@code true} if the channel is open for reading, otherwise
-         * {@code false}.
-         * 
-         * @return {@code true} if the channel is open for reading,
-         *         otherwise {@code false}
-         */
-        boolean isOpenForReading();
     }
 }

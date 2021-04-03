@@ -5,10 +5,9 @@ import alpha.nomagichttp.handler.ErrorHandler;
 import alpha.nomagichttp.handler.RequestHandler;
 import alpha.nomagichttp.message.HttpVersionTooNewException;
 import alpha.nomagichttp.message.HttpVersionTooOldException;
-import alpha.nomagichttp.message.Response;
-import alpha.nomagichttp.message.Responses;
 import alpha.nomagichttp.route.RouteRegistry;
 
+import java.nio.channels.AsynchronousSocketChannel;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
 import java.util.concurrent.CompletionStage;
@@ -17,6 +16,7 @@ import static alpha.nomagichttp.HttpConstants.Version.HTTP_1_0;
 import static alpha.nomagichttp.HttpConstants.Version.HTTP_1_1;
 import static alpha.nomagichttp.util.Headers.accept;
 import static alpha.nomagichttp.util.Headers.contentType;
+import static alpha.nomagichttp.util.Subscribers.onNext;
 import static java.lang.Integer.parseInt;
 import static java.lang.System.Logger.Level.DEBUG;
 import static java.lang.System.Logger.Level.ERROR;
@@ -33,8 +33,8 @@ final class HttpExchange
     private static final System.Logger LOG = System.getLogger(HttpExchange.class.getPackageName());
     
     private final DefaultServer server;
-    private final DefaultChannelOperations child;
     private final ChannelByteBufferPublisher bytes;
+    private final DefaultClientChannel child;
     private final CompletableFuture<Void> result;
     
     /*
@@ -45,24 +45,22 @@ final class HttpExchange
      * Executor/ExecutorService, or at worst, a new Thread.start() for each task.
      */
     
-    private Version ver;
     private DefaultRequest request;
     private RequestHandler handler;
-    private ErrorHandlers eh;
+    private ErrorResolver err;
     
     HttpExchange(
             DefaultServer server,
-            DefaultChannelOperations child,
+            AsynchronousSocketChannel child,
             ChannelByteBufferPublisher bytes)
     {
         this.server  = server;
-        this.child   = child;
         this.bytes   = bytes;
         this.result  = new CompletableFuture<>();
-        this.ver     = HTTP_1_1;
+        this.child   = new DefaultClientChannel(child, HTTP_1_1, () -> result.complete(null));
         this.request = null;
         this.handler = null;
-        this.eh      = null;
+        this.err     = null;
     }
     
     /**
@@ -81,35 +79,50 @@ final class HttpExchange
         } catch (Throwable t) {
             unexpected(t);
         }
-        
         return result;
     }
     
+    /**
+     * Delegates to {@code child.}{@link DefaultClientChannel#isEverythingOpen()
+     * isEverythingOpen()}.
+     * 
+     * @return see JavaDoc
+     */
+    boolean isEverythingOpen() {
+        return child.isEverythingOpen();
+    }
+    
     private void begin0() {
+        child.pipeline().subscribe(
+                // Written byte count ignored
+                onNext(r -> handleResult(r.error())));
+        
         RequestHeadSubscriber rhs = new RequestHeadSubscriber(
                 server.getConfig().maxRequestHeadSize());
         
         bytes.subscribe(rhs);
-        
         rhs.asCompletionStage()
            .thenAccept(this::initialize)
-           .thenCompose(Null -> invokeRequestHandler())
-           .thenCompose(this::writeResponseToChannel)
-           .whenComplete(this::finish);
+           .thenRun(this::invokeRequestHandler)
+           .exceptionally(thr -> {
+               handleResult(thr);
+               return null;
+           });
     }
     
     private void initialize(RequestHead h) {
         RequestTarget t = RequestTarget.parse(h.requestTarget());
-        this.ver = getValidHttpVersion(h);
         
-        if (ver == HTTP_1_0 && server.getConfig().rejectClientsUsingHTTP1_0()) {
+        Version v = getValidHttpVersion(h);
+        child.pipeline().updateVersion(v);
+        if (v == HTTP_1_0 && server.getConfig().rejectClientsUsingHTTP1_0()) {
             throw new HttpVersionTooOldException(h.httpVersion(), "HTTP/1.1");
         }
         
         RouteRegistry.Match m = findRoute(t);
         
         // This order is actually specified in javadoc of ErrorHandler#apply
-        request = createRequest(h, t, m);
+        request = createRequest(v, h, t, m);
         handler = findRequestHandler(h, m);
     }
     
@@ -150,8 +163,8 @@ final class HttpExchange
         return server.getRouteRegistry().lookup(t.segmentsNotPercentDecoded());
     }
     
-    private DefaultRequest createRequest(RequestHead h, RequestTarget t, RouteRegistry.Match m) {
-        return new DefaultRequest(ver, h, t, m, bytes, child);
+    private DefaultRequest createRequest(Version v, RequestHead h, RequestTarget t, RouteRegistry.Match m) {
+        return new DefaultRequest(v, h, t, m, bytes, child);
     }
     
     private static RequestHandler findRequestHandler(RequestHead rh, RouteRegistry.Match m) {
@@ -164,31 +177,11 @@ final class HttpExchange
         return h;
     }
     
-    private CompletionStage<Response> invokeRequestHandler() {
-        return handler.logic().apply(request);
+    private void invokeRequestHandler() {
+        handler.logic().accept(request, child);
     }
     
-    private CompletionStage<Void> writeResponseToChannel(Response r) {
-        if (r.statusCode() == -1) {
-            LOG.log(DEBUG, "Response aborted before write. Will close child.");
-            throw new ResponseInitiatedCloseException();
-        }
-        LOG.log(DEBUG, () -> "Subscribing to response: " + r);
-        ResponseBodySubscriber rbs = new ResponseBodySubscriber(ver, r, child);
-        r.body().subscribe(rbs);
-        return rbs.asCompletionStage()
-                  .thenAccept(len -> {
-                      LOG.log(DEBUG, "Wrote " + len + " response byte(s) to the child channel.");
-                      if (r.mustCloseAfterWrite()) {
-                          LOG.log(DEBUG, "Response wants us to close the child, will close.");
-                          // TODO: Need to implement mustCloseAfterWrite( "mayInterrupt" param )
-                          //       This will kill any ongoing subscription
-                          throw new ResponseInitiatedCloseException();
-                      }
-                  });
-    }
-    
-    private void finish(Void Null, Throwable exc) {
+    private void handleResult(Throwable thr) {
         /*
          * We should make the connection life cycle much more solid; when is
          * the connection persistent and when is it not (also see RFC 2616
@@ -201,10 +194,10 @@ final class HttpExchange
          */
         
         try {
-            if (exc == null) {
+            if (thr == null) {
                 prepareForNewExchange();
             } else {
-                resolve(exc);
+                resolve(thr);
             }
         } catch (Throwable t) {
             unexpected(t);
@@ -232,15 +225,11 @@ final class HttpExchange
         if (unpacked instanceof ClientAbortedException) {
             LOG.log(DEBUG, "Client aborted the HTTP exchange.");
             result.completeExceptionally(unpacked);
-        } else if (unpacked instanceof ResponseInitiatedCloseException) {
-            result.completeExceptionally(unpacked);
         } else if (child.isOpenForWriting())  {
-            if (eh == null) {
-                eh = new ErrorHandlers();
+            if (err == null) {
+                err = new ErrorResolver();
             }
-            eh.resolve(unpacked)
-              .thenCompose(this::writeResponseToChannel)
-              .whenComplete(this::finish);
+            err.resolve(unpacked);
         } else {
             LOG.log(DEBUG, () ->
                     "HTTP exchange finished exceptionally and child channel is closed for writing. " +
@@ -249,15 +238,15 @@ final class HttpExchange
         }
     }
     
-    private class ErrorHandlers {
+    private class ErrorResolver {
         private Throwable prev;
         private int attemptCount;
         
-        ErrorHandlers() {
+        ErrorResolver() {
             this.attemptCount = 0;
         }
         
-        CompletionStage<Response> resolve(Throwable t) {
+        void resolve(Throwable t) {
             if (prev != null) {
                 assert prev != t;
                 t.addSuppressed(prev);
@@ -265,41 +254,44 @@ final class HttpExchange
             prev = t;
             
             if (server.getErrorHandlers().isEmpty()) {
-                return usingDefault(t);
+                usingDefault(t);
+                return;
             }
             
             if (++attemptCount > server.getConfig().maxErrorRecoveryAttempts()) {
                 LOG.log(WARNING, "Error recovery attempts depleted, will use default handler.");
-                return usingDefault(t);
+                usingDefault(t);
+                return;
             }
             
             LOG.log(DEBUG, () -> "Attempting error recovery #" + attemptCount);
-            return usingHandlers(t);
+            usingHandlers(t);
         }
         
-        private CompletionStage<Response> usingDefault(Throwable t) {
+        private void usingDefault(Throwable t) {
             try {
-                return ErrorHandler.DEFAULT.apply(t, request, handler);
+                ErrorHandler.DEFAULT.apply(t, child, request, handler);
             } catch (Throwable next) {
-                // Do not next.addSuppressed(unpacked); the first thing DEFAULT did was to log unpacked.
-                LOG.log(ERROR, "Default error handler failed.", next);
-                return Responses.internalServerError().completedStage();
+                next.addSuppressed(t);
+                unexpected(next);
             }
         }
         
-        private CompletionStage<Response> usingHandlers(Throwable t) {
+        private void usingHandlers(Throwable t) {
             for (ErrorHandler h : server.getErrorHandlers()) {
                 try {
-                    return requireNonNull(h.apply(t, request, handler));
+                    h.apply(t, child, request, handler);
+                    return;
                 } catch (Throwable next) {
                     if (t != next) {
                         // New fail
-                        return resolve(unpackCompletionException(next));
+                        HttpExchange.this.resolve(next);
+                        return;
                     } // else continue; Handler opted out
                 }
             }
             // All handlers opted out
-            return usingDefault(t);
+            usingDefault(t);
         }
     }
     
@@ -314,9 +306,5 @@ final class HttpExchange
     private void unexpected(Throwable t) {
         LOG.log(ERROR, "Unexpected.", t);
         result.completeExceptionally(t);
-    }
-    
-    private static class ResponseInitiatedCloseException extends RuntimeException {
-        private static final long serialVersionUID = 1L;
     }
 }

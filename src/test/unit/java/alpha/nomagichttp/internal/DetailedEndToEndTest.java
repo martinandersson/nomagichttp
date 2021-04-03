@@ -19,6 +19,7 @@ import java.util.function.Consumer;
 
 import static alpha.nomagichttp.handler.RequestHandlers.GET;
 import static alpha.nomagichttp.handler.RequestHandlers.POST;
+import static alpha.nomagichttp.message.Responses.accepted;
 import static alpha.nomagichttp.message.Responses.text;
 import static alpha.nomagichttp.testutil.ClientOperations.CRLF;
 import static java.util.concurrent.TimeUnit.SECONDS;
@@ -160,9 +161,11 @@ class DetailedEndToEndTest extends AbstractEndToEndTest
         final int length = 100_000,
                   midway = length / 2;
         
-        RequestHandler discardMidway = POST().accept((req) ->
-                req.body().subscribe(
-                        new AfterByteTargetStop(midway, Flow.Subscription::cancel)));
+        RequestHandler discardMidway = POST().apply(req -> {
+            req.body().subscribe(
+                    new AfterByteTargetStop(midway, Flow.Subscription::cancel));
+            return accepted().completedStage();
+        });
         
         server().add("/", discardMidway);
         
@@ -186,7 +189,7 @@ class DetailedEndToEndTest extends AbstractEndToEndTest
     void request_body_subscriber_crash() throws IOException, InterruptedException {
         RuntimeException err = new RuntimeException("Oops.");
         
-        RequestHandler crashAfterOneByte = RequestHandlers.POST().accept(req ->
+        RequestHandler crashAfterOneByte = RequestHandlers.POST().accept((req, ch) ->
             req.body().subscribe(
                 new AfterByteTargetStop(1, subscriptionIgnored -> {
                     throw err; })));

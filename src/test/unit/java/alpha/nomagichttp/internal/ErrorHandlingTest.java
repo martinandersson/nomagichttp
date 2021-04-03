@@ -58,14 +58,14 @@ class ErrorHandlingTest
     
     @Test
     void not_found_custom() throws IOException {
-        ErrorHandler eh = (exc, req, han) -> {
+        ErrorHandler eh = (exc, ch, req, han) -> {
             if (exc instanceof NoRouteFoundException) {
-                return Response.builder()
+                ch.write(Response.builder()
                                .statusCode(123)
                                .reasonPhrase("Custom Not Found!")
                                .mustCloseAfterWrite(true)
                                .build()
-                               .completedStage();
+                               .completedStage());
             }
             throw exc;
         };
@@ -95,7 +95,7 @@ class ErrorHandlingTest
     {
         AtomicInteger c = new AtomicInteger();
         
-        RequestHandler h1 = RequestHandlers.GET().supply(() -> {
+        RequestHandler h1 = RequestHandlers.GET().apply(requestIgnored -> {
             if (c.incrementAndGet() < 3) {
                 return response.get();
             }
@@ -107,7 +107,7 @@ class ErrorHandlingTest
                                    .completedStage();
         });
         
-        ErrorHandler retry = (t, r, h2) -> h2.logic().apply(r);
+        ErrorHandler retry = (t, ch, r, h2) -> h2.logic().accept(r, ch);
         
         s = create(retry).add("/", h1).start();;
         String r = new ClientOperations(s).writeRead(

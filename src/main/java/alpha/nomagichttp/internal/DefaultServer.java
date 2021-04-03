@@ -57,7 +57,7 @@ public final class DefaultServer implements HttpServer
     private final List<ErrorHandler> eh;
     private final AtomicReference<CompletableFuture<AsynchronousServerSocketChannel>> parent;
     private final AtomicReference<CompletableFuture<Void>> waitOnChildrenStop;
-    private final Set<DefaultChannelOperations> children;
+    private final Set<ChannelCouple> children; // for fast removal, that's all
     private final AtomicBoolean terminating;
     
     /**
@@ -223,13 +223,13 @@ public final class DefaultServer implements HttpServer
     }
     
     private void stopChildren(AsynchronousServerSocketChannel ofParent) {
-        Iterator<DefaultChannelOperations> it = children.iterator();
+        Iterator<ChannelCouple> it = children.iterator();
         while (it.hasNext()) {
-            DefaultChannelOperations child = it.next();
+            ChannelCouple pair = it.next();
             // Just to not give a new concurrent server start any surprises lol
-            if (child.parent().equals(ofParent)) {
+            if (pair.parent.equals(ofParent)) {
                 it.remove();
-                child.orderlyCloseSafe();
+                pair.child.closeSafe();
             }
         }
     }
@@ -291,6 +291,16 @@ public final class DefaultServer implements HttpServer
         return ch;
     }
     
+    private static final class ChannelCouple {
+        final AsynchronousServerSocketChannel parent;
+        final DefaultClientChannel child;
+        
+        ChannelCouple(AsynchronousServerSocketChannel parent, DefaultClientChannel child) {
+            this.parent = parent;
+            this.child  = child;
+        }
+    }
+    
     /**
      * Returns an unmodifiable {@code RandomAccess} {@code List} of error
      * handlers.
@@ -316,40 +326,50 @@ public final class DefaultServer implements HttpServer
             try {
                 parent.accept(null, this);
             } catch (Throwable t) {
-                new DefaultChannelOperations(parent, child).orderlyCloseSafe();
+                new DefaultClientChannel(child, null, null).closeSafe();
                 failed(t, null);
                 return;
             }
             setup(child);
         }
         
-        private void setup(AsynchronousSocketChannel child) {
-            LOG.log(DEBUG, () -> "Accepted child: " + child);
-            DefaultChannelOperations dco = new DefaultChannelOperations(parent, child);
-            ChannelByteBufferPublisher bytes = new ChannelByteBufferPublisher(dco);
-            children.add(dco);
-            startExchange(dco, bytes);
+        private void setup(AsynchronousSocketChannel ch) {
+            LOG.log(DEBUG, () -> "Accepted child: " + ch);
+            DefaultClientChannel api = new DefaultClientChannel(ch, null, null);
+            ChannelByteBufferPublisher bytes = new ChannelByteBufferPublisher(api);
+            ChannelCouple member = new ChannelCouple(parent, api);
+            children.add(member);
+            
+            startExchange(ch, bytes, api, member);
             
             // TODO: child.setOption(StandardSocketOptions.SO_KEEPALIVE, true); ??
         }
         
-        private void startExchange(DefaultChannelOperations dco, ChannelByteBufferPublisher bytes) {
-            new HttpExchange(DefaultServer.this, dco, bytes)
-                    .begin()
-                    .whenComplete((Null, exc) -> {
-                        // Both open-calls are volatile reads, no locks
-                        if (exc == null && parent.isOpen() || dco.isEverythingOpen()) {
-                            startExchange(dco, bytes);
-                        } else {
-                            shutdown(dco, bytes);
-                        }
-                    });
+        private void startExchange(
+                AsynchronousSocketChannel ch,
+                ChannelByteBufferPublisher bytes,
+                DefaultClientChannel api,
+                ChannelCouple member)
+        {
+            var e = new HttpExchange(DefaultServer.this, ch, bytes);
+            e.begin().whenComplete((Null, exc) -> {
+                // Both open-calls are volatile reads, no locks
+                if (exc == null && parent.isOpen() && e.isEverythingOpen()) {
+                    startExchange(ch, bytes, api, member);
+                } else {
+                    shutdown(bytes, api, member);
+                }
+            });
         }
         
-        private void shutdown(DefaultChannelOperations dco, ChannelByteBufferPublisher bytes) {
+        private void shutdown(
+                ChannelByteBufferPublisher bytes,
+                DefaultClientChannel api,
+                ChannelCouple member)
+        {
             bytes.close();
-            dco.orderlyCloseSafe();
-            children.remove(dco);
+            api.closeSafe();
+            children.remove(member);
             // Notify anyone waiting on the last child
             CompletableFuture<Void> trigger;
             if (!isRunning() && (trigger = waitOnChildrenStop.get()) != null && children.isEmpty()) {

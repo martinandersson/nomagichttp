@@ -17,10 +17,8 @@ import alpha.nomagichttp.route.NoHandlerFoundException;
 import alpha.nomagichttp.route.NoRouteFoundException;
 
 import java.util.concurrent.CompletionException;
-import java.util.concurrent.CompletionStage;
 
 import static alpha.nomagichttp.message.Responses.badRequest;
-import static alpha.nomagichttp.message.Responses.closeClientChannel;
 import static alpha.nomagichttp.message.Responses.entityTooLarge;
 import static alpha.nomagichttp.message.Responses.httpVersionNotSupported;
 import static alpha.nomagichttp.message.Responses.internalServerError;
@@ -56,8 +54,8 @@ import static java.lang.System.Logger.Level.ERROR;
  * server has begun receiving and parsing a request message until when the
  * request handler invocation has returned.<p>
  * 
- * 2) Exceptions that completes exceptionally the response {@code
- * CompletionStage} returned from the request handler.<p>
+ * 2) Exceptions that completes exceptionally the {@code
+ * CompletionStage<Response>} written to the {@link ClientChannel}.<p>
  * 
  * 3) Exceptions signalled to the server's {@code Flow.Subscriber} of the {@link
  * Response#body() response body} - if and only if - the body publisher has not
@@ -80,8 +78,8 @@ import static java.lang.System.Logger.Level.ERROR;
  * Response#mustCloseAfterWrite()}.<p>
  * 
  * Any number of error handlers can be configured. If many are configured, they
- * will be called in the same order they were added. First handler to produce a
- * {@code Response} breaks the call chain. The {@link #DEFAULT default handler}
+ * will be called in the same order they were added. First handler to not throw
+ * an exception breaks the call chain. The {@link #DEFAULT default handler}
  * will be used if no other handler is configured.<p>
  * 
  * An error handler that is unwilling to handle the exception must re-throw the
@@ -94,13 +92,13 @@ import static java.lang.System.Logger.Level.ERROR;
  * 
  * Super simple example:
  * <pre>{@code
- *     ErrorHandler eh = (throwable, request, requestHandler) -> {
+ *     ErrorHandler eh = (throwable, channel, request, requestHandler) -> {
  *         try {
  *             throw throwable;
  *         } catch (ExpectedException e) {
- *             return myAlternativeResponse();
+ *             channel.write(myAlternativeResponse());
  *         } catch (AnotherExpectedException e) {
- *             return someOtherAlternativeResponse();
+ *             channel.write(someOtherAlternativeResponse());
  *         }
  *         // else automagically re-thrown and propagated throughout the chain
  *     };
@@ -114,18 +112,18 @@ import static java.lang.System.Logger.Level.ERROR;
  * @author Martin Andersson (webmaster at martinandersson.com)
  * 
  * @see HttpServer.Config#maxErrorRecoveryAttempts() 
- * @see ErrorHandler#apply(Throwable, Request, RequestHandler) 
+ * @see ErrorHandler#apply(Throwable, ClientChannel, Request, RequestHandler) 
  */
 @FunctionalInterface
 public interface ErrorHandler
 {
     /**
-     * Handles an exception by producing a client response.<p>
+     * Optionally handles an exception by producing an alternative response.<p>
      * 
-     * The first argument ({@code Throwable}) will always be non-null. The
-     * succeeding two arguments ({@code Request} and {@code RequestHandler})
-     * may be null or non-null depending on how much progress was made in the
-     * HTTP exchange before the error occurred.<p>
+     * The first two arguments ({@code Throwable} and {@code ClientChannel})
+     * will always be non-null. The last two arguments ({@code Request} and
+     * {@code RequestHandler}) may be null or non-null depending on how much
+     * progress was made in the HTTP exchange before the error occurred.<p>
      * 
      * A little bit simplified; the server's procedure is to always first build
      * a request object, which is then used to invoke the request handler
@@ -150,7 +148,7 @@ public interface ErrorHandler
      * 
      * It is a design goal of the NoMagicHTTP library to have each exception
      * type provide whatever API necessary to investigate and possibly resolve
-     * the error. For example, {@code NoRouteFoundException} provides the path
+     * the error. For example, {@link NoRouteFoundException} provides the path
      * for which no route was found, which could potentially be used by the
      * application as a basis for a redirect.<p>
      * 
@@ -159,16 +157,15 @@ public interface ErrorHandler
      * pass the cause to the error handler instead.
      * 
      * @param thr the error (never null)
+     * @param ch client channel (never null)
      * @param req request object (may be null)
      * @param rh  request handler object (may be null)
-     * 
-     * @return a client response
      * 
      * @throws Throwable may be {@code thr} or a new one
      * 
      * @see ErrorHandler
      */
-    CompletionStage<Response> apply(Throwable thr, Request req, RequestHandler rh) throws Throwable;
+    void apply(Throwable thr, ClientChannel ch, Request req, RequestHandler rh) throws Throwable;
     
     /**
      * Is the default error handler used by the server if no other handler has
@@ -244,7 +241,7 @@ public interface ErrorHandler
      *     <th scope="row">{@link ClosedPublisherException} <br>
      *                     If message is "EOS"</th>
      *     <td> No </td>
-     *     <td> {@link Responses#closeClientChannel()} <br>
+     *     <td> No response, channel is closed. <br>
      *          This error signals the failure of a read operation due to client
      *          disconnect <i>and</i> at least one byte of data was received
      *          prior to the disconnect (if no bytes were received the error
@@ -263,7 +260,7 @@ public interface ErrorHandler
      * Please note that each of these responses will also close the client
      * channel (see {@link Response#mustCloseAfterWrite()}).
      */
-    ErrorHandler DEFAULT = (thr, req, rh) -> {
+    ErrorHandler DEFAULT = (thr, ch, req, rh) -> {
         final Response res;
         try {
             throw thr;
@@ -290,7 +287,8 @@ public interface ErrorHandler
             }
         } catch (ClosedPublisherException e) {
             if ("EOS".equals(e.getMessage())) {
-                res = closeClientChannel();
+                ch.closeSafe();
+                return;
             } else {
                 log(thr);
                 res = internalServerError();
@@ -300,7 +298,7 @@ public interface ErrorHandler
             res = internalServerError();
         }
         
-        return res.completedStage();
+        ch.write(res);
     };
     
     private static void log(Throwable thr) {

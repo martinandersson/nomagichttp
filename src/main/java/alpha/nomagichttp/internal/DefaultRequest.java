@@ -1,6 +1,7 @@
 package alpha.nomagichttp.internal;
 
 import alpha.nomagichttp.HttpConstants.Version;
+import alpha.nomagichttp.handler.ClientChannel;
 import alpha.nomagichttp.message.MediaType;
 import alpha.nomagichttp.message.PooledByteBufferHolder;
 import alpha.nomagichttp.message.Request;
@@ -53,7 +54,7 @@ final class DefaultRequest implements Request
     private final CompletionStage<Void> bodyStage;
     private final Body bodyApi;
     private final OnCancelDiscardOp bodyDiscard;
-    private final ChannelOperations child;
+    private final ClientChannel child;
     private final Attributes attributes;
     
     DefaultRequest(
@@ -62,7 +63,7 @@ final class DefaultRequest implements Request
             RequestTarget paramsQuery,
             RouteRegistry.Match paramsPath,
             Flow.Publisher<DefaultPooledByteBufferHolder> bodySource,
-            DefaultChannelOperations child)
+            DefaultClientChannel child)
     {
         this.ver = ver;
         this.head = head;
@@ -136,11 +137,6 @@ final class DefaultRequest implements Request
     @Override
     public Attributes attributes() {
         return attributes;
-    }
-    
-    @Override
-    public ChannelOperations channel() {
-        return child;
     }
     
     /**

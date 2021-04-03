@@ -3,6 +3,7 @@ package alpha.nomagichttp.util;
 import alpha.nomagichttp.message.ClosedPublisherException;
 
 import java.util.concurrent.Flow;
+import java.util.function.Consumer;
 
 import static java.lang.System.Logger.Level.ERROR;
 
@@ -45,6 +46,33 @@ public final class Subscribers
         @SuppressWarnings("unchecked")
         Flow.Subscriber<T> typed = (Flow.Subscriber<T>) new Noop();
         return typed;
+    }
+    
+    /**
+     * Returns a subscriber interested only in published items.
+     * 
+     * The implementation's {@code onSubscribe} method will request {@code
+     * Long.MAX_VALUE} and the {@code onError} and {@code onComplete} methods
+     * are empty.
+     * 
+     * @param impl item consumer
+     * @param <T> item type
+     * 
+     * @return a subscriber
+     * 
+     * @throws NullPointerException if {@code onNext} is {@code null}
+     */
+    public static <T> Flow.Subscriber<? super T> onNext(Consumer<? super T> impl) {
+        return new Flow.Subscriber<>() {
+            public void onSubscribe(Flow.Subscription s) {
+                s.request(Long.MAX_VALUE); }
+            
+            public void onNext(T item) {
+                impl.accept(item); }
+            
+            public void onError(Throwable throwable) { }
+            public void onComplete() { }
+        };
     }
     
     /**

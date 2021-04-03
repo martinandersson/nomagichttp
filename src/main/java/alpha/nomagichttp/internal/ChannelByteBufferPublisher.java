@@ -52,12 +52,12 @@ final class ChannelByteBufferPublisher implements Flow.Publisher<DefaultPooledBy
      * back to the channel for new read operations.
      */
     
-    private final DefaultChannelOperations child;
+    private final DefaultClientChannel child;
     private final Deque<ByteBuffer> readable;
     private final AnnounceToSubscriber<DefaultPooledByteBufferHolder> subscriber;
     private final AnnounceToChannel channel;
     
-    ChannelByteBufferPublisher(DefaultChannelOperations child) {
+    ChannelByteBufferPublisher(DefaultClientChannel child) {
         this.child      = child;
         this.readable   = new ConcurrentLinkedDeque<>();
         this.subscriber = new AnnounceToSubscriber<>(this::pollReadable);
@@ -101,7 +101,7 @@ final class ChannelByteBufferPublisher implements Flow.Publisher<DefaultPooledBy
         }
     }
     
-    private void afterChannelFinished(DefaultChannelOperations ignored1, long ignored2, Throwable t) {
+    private void afterChannelFinished(DefaultClientChannel ignored1, long ignored2, Throwable t) {
         if (t != null) {
             subscriber.error(t);
             close();
@@ -125,7 +125,7 @@ final class ChannelByteBufferPublisher implements Flow.Publisher<DefaultPooledBy
             subscriber.announce(exc -> {
                 if (child.isOpenForReading()) {
                     LOG.log(ERROR, () -> SIGNAL_FAILURE + CLOSE_MSG, exc);
-                    child.orderlyShutdownInputSafe();
+                    child.shutdownInputSafe();
                 } // else assume whoever closed the stream also logged the exception
             });
         } catch (Throwable t) {
@@ -142,7 +142,7 @@ final class ChannelByteBufferPublisher implements Flow.Publisher<DefaultPooledBy
     public void close() {
         subscriber.stop();
         channel.stop();
-        child.orderlyShutdownInputSafe();
+        child.shutdownInputSafe();
         readable.clear();
     }
 }

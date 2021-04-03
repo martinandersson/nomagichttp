@@ -41,7 +41,7 @@ import static java.util.Objects.requireNonNull;
  * bytebuffer to reach the callback may not be the last bytebuffer(s) announced
  * but may have been replaced with the sentinel value {@link #EOS}.<p>
  * 
- * The {@link WhenDone#accept(DefaultChannelOperations, long, Throwable) whenDone}
+ * The {@link WhenDone#accept(DefaultClientChannel, long, Throwable) whenDone}
  * callback executes exactly-once whenever the last pending operation
  * completes.<p>
  * 
@@ -68,11 +68,11 @@ final class AnnounceToChannel
          *     total number of bytes that was either read or written (capped at {@code Long.MAX_VALUE})
          * @param exc only non-null if there was a problem
          */
-        void accept(DefaultChannelOperations channel, long byteCount, Throwable exc);
+        void accept(DefaultClientChannel channel, long byteCount, Throwable exc);
     }
     
     static AnnounceToChannel read(
-            DefaultChannelOperations source,
+            DefaultClientChannel source,
             Consumer<? super ByteBuffer> onComplete,
             WhenDone whenDone)
     {
@@ -80,7 +80,7 @@ final class AnnounceToChannel
     }
     
     static AnnounceToChannel write(
-            DefaultChannelOperations destination,
+            DefaultClientChannel destination,
             WhenDone whenDone)
     {
         return new AnnounceToChannel(Mode.WRITE, destination, null, whenDone);
@@ -114,7 +114,7 @@ final class AnnounceToChannel
     }
     
     private final Mode mode;
-    private final DefaultChannelOperations channel;
+    private final DefaultClientChannel channel;
     private final Consumer<? super ByteBuffer> onComplete;
     
     private final SeriallyRunnable operation;
@@ -127,7 +127,7 @@ final class AnnounceToChannel
     
     private AnnounceToChannel(
             Mode mode,
-            DefaultChannelOperations channel,
+            DefaultClientChannel channel,
             Consumer<? super ByteBuffer> onComplete,
             WhenDone whenDone)
     {
@@ -253,8 +253,8 @@ final class AnnounceToChannel
         
         try {
             switch (mode) {
-                case READ:  channel.get().read( b, b, handler); break;
-                case WRITE: channel.get().write(b, b, handler); break;
+                case READ:  channel.delegate().read( b, b, handler); break;
+                case WRITE: channel.delegate().write(b, b, handler); break;
                 default:    throw new UnsupportedOperationException("What is this?: " + mode);
             }
         } catch (Throwable t) {
@@ -285,10 +285,10 @@ final class AnnounceToChannel
     
     private void closeStream() {
         if (mode == Mode.READ) {
-            channel.orderlyShutdownInputSafe();
+            channel.shutdownInputSafe();
         } else {
             assert mode == Mode.WRITE;
-            channel.orderlyShutdownOutputSafe();
+            channel.shutdownOutputSafe();
         }
     }
     
