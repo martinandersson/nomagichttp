@@ -148,7 +148,7 @@ Implemented), which is wrong.
   - and another one that signals no handler consumes the message payload,
     translated to 415 (Unsupported Media Type).
 
-## **Stage: Pseudo-Mutable Types**
+## Stage: Pseudo-Mutable Types
 
 _Status: **In progres**_
 
