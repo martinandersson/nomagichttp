@@ -30,7 +30,7 @@ An item ~~crossed out~~ is complete, an item in __bold__ is work in progress.
 [~~Stage: HTTP Versioning~~](#stage-http-versioning)  
 [Stage: Improved Testing](#stage-improved-testing)  
 [Stage: Improved Content Negotiation](#stage-improved-content-negotiation)  
-[Stage: Pseudo-Mutable Types](#stage-pseudo-mutable-types)  
+[**Stage: Pseudo-Mutable Types**](#stage-pseudo-mutable-types)  
 [Stage: Multiple Responses](#stage-multiple-responses)  
 [Stage: Connection Life-Cycle/Management](#stage-connection-life-cyclemanagement)  
 [Stage: Actions](#stage-actions)  
@@ -148,7 +148,9 @@ Implemented), which is wrong.
   - and another one that signals no handler consumes the message payload,
     translated to 415 (Unsupported Media Type).
 
-## Stage: Pseudo-Mutable Types
+## **Stage: Pseudo-Mutable Types**
+
+_Status: **In progres**_
 
 In preparation of multiple responses and response-modifying post actions, we
 need to open up `Response` for state-changes, except we keep the class
