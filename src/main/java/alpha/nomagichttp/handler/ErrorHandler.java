@@ -44,8 +44,7 @@ import static java.lang.System.Logger.Level.ERROR;
  * {@code hashCode()} {@code equals(Object)}.<p>
  * 
  * The server will call error handlers only during the phase of the HTTP
- * exchange when there is a client waiting on a response which the ordinary
- * request handler could not successfully provide and only if the channel
+ * exchange when there is a client waiting on a response and only if the channel
  * remains open for writing at the time of the error.<p>
  * 
  * Specifically for:<p>

@@ -164,14 +164,44 @@ public final class Publishers
     public static <T> Flow.Publisher<T> just(T... items) {
         @SuppressWarnings("varargs")
         List<T> l = List.of(items); // documented to disallow null
-        return new ItemPublisher<>(l);
+        return ofIterable(l);
     }
     
-    private static final class ItemPublisher<T> implements Flow.Publisher<T>
+    /**
+     * Creates a {@code Flow.Publisher} that for each new subscriber, polls out
+     * an Iterator from the given source subsequently used to publish the
+     * items.<p>
+     * 
+     * The publisher does not limit how many subscriptions at a time can be
+     * active. Thus, either care should be exercised so that the publisher is
+     * only used by one subscriber at a time or the iterable source must be
+     * thread-safe.<p>
+     * 
+     * The iterator is invoked serially with full memory visibility between item
+     * emissions.<p>
+     * 
+     * The iterator should never return a null item (
+     * <a href="https://github.com/reactive-streams/reactive-streams-jvm/blob/v1.0.3/README.md">
+     * Reactive Streams §2.13</a>), but if it does, the publisher will end the
+     * subscription and attempt to signal a {@code NullPointerException}
+     * downstream to the subscriber's {@code onError} method.
+     * 
+     * @param source of items to publish
+     * @param <T> type of item
+     * 
+     * @return a new publisher
+     * 
+     * @throws NullPointerException if {@code source} is {@code null}
+     */
+    public static <T> Flow.Publisher<T> ofIterable(Iterable<? extends T> source) {
+        return new PollPublisher<>(source);
+    }
+    
+    private static final class PollPublisher<T> implements Flow.Publisher<T>
     {
         private final Iterable<? extends T> items;
         
-        private ItemPublisher(Iterable<? extends T> items) {
+        private PollPublisher(Iterable<? extends T> items) {
             this.items = requireNonNull(items);
         }
         
@@ -224,7 +254,10 @@ public final class Publishers
             Function<SerialTransferService<T>, ? extends T> generator = self -> {
                 if (it.hasNext()) {
                     T t = it.next();
-                    assert t != null;
+                    if (t == null) {
+                        var exc = new NullPointerException("Item is null.");
+                        self.finish(() -> Subscribers.signalErrorSafe(subsc, exc));
+                    }
                     return t;
                 } else {
                     self.finish(subsc::onComplete);

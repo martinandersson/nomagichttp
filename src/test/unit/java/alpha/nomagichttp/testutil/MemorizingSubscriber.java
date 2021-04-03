@@ -1,12 +1,17 @@
 package alpha.nomagichttp.testutil;
 
 import java.util.Collection;
+import java.util.List;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.Flow;
-import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
+import static alpha.nomagichttp.testutil.MemorizingSubscriber.Signal.MethodName.ON_COMPLETE;
+import static alpha.nomagichttp.testutil.MemorizingSubscriber.Signal.MethodName.ON_ERROR;
+import static alpha.nomagichttp.testutil.MemorizingSubscriber.Signal.MethodName.ON_NEXT;
+import static alpha.nomagichttp.testutil.MemorizingSubscriber.Signal.MethodName.ON_SUBSCRIBE;
 import static java.lang.Long.MAX_VALUE;
-import static java.util.stream.Collectors.toList;
+import static java.util.stream.Collectors.toUnmodifiableList;
 
 /**
  * A subscriber that records all signals received.
@@ -26,14 +31,34 @@ public class MemorizingSubscriber<T> implements Flow.Subscriber<T>
      * The publisher should publish items eagerly in order for the items to be
      * present in the returned collection.
      * 
-     * @param publisher to drain
+     * @param from publisher to drain
      * @param <T> type of item published
      * @return all signals received
      */
-    public static <T> Collection<T> drain(Flow.Publisher<? extends T> publisher) {
+    public static <T> List<T> drainItems(Flow.Publisher<? extends T> from) {
         MemorizingSubscriber<T> s = new MemorizingSubscriber<>(Request.IMMEDIATELY_MAX());
-        publisher.subscribe(s);
+        from.subscribe(s);
         return s.items();
+    }
+    
+    /**
+     * Subscribes a {@code MemorizingSubscriber} to the given publisher and then
+     * return all invoked methods.<p>
+     * 
+     * The subscriber used will immediately request {@code Long.MAX_VALUE}.<p>
+     * 
+     * The publisher should be eager in order for all [expected] methods to be
+     * present in the returned collection.
+     * 
+     * @param from publisher to drain
+     * @return all methods invoked
+     */
+    public static List<Signal.MethodName> drainMethods(Flow.Publisher<?> from) {
+        var s = new MemorizingSubscriber<>(Request.IMMEDIATELY_MAX());
+        from.subscribe(s);
+        return s.signals()
+                .map(Signal::getMethodName)
+                .collect(toUnmodifiableList());
     }
     
     /**
@@ -82,14 +107,50 @@ public class MemorizingSubscriber<T> implements Flow.Subscriber<T>
     }
     
     /**
-     * A signal received by the memorizing subscriber.
+     * A signal received by the memorizing subscriber.<p>
+     * 
+     * Except for which method a signal maps to, each signal has it's own API.
+     * For example, the published item may be retrieved using {@link
+     * Next#item()} and the publisher error may be retrieved using {@link
+     * Error#error()}.
      */
     public static abstract class Signal {
+        /**
+         * Enumeration of {@code Flow.Subscriber} methods.
+         */
+        public enum MethodName {
+            /** {@code onSubscribe(Subscriber)} */
+            ON_SUBSCRIBE,
+            /** {@code onNext(T)} */
+            ON_NEXT,
+            /** {@code onComplete()} */
+            ON_COMPLETE,
+            /** {@code onError(Throwable)} */
+            ON_ERROR;
+        }
+        
+        private final MethodName name;
+        
+        private Signal(MethodName name) {
+            this.name = name;
+        }
+        
+        /**
+         * Returns the subscriber method invoked.
+         * 
+         * @return the subscriber method invoked
+         */
+        public final MethodName getMethodName() {
+            return name;
+        }
+        
         /**
          * A signal created when {@code Flow.Subscriber.onSubscribe()} is called.
          */
         public static final class Subscribe extends Signal {
-            // Empty
+            Subscribe() {
+                super(ON_SUBSCRIBE);
+            }
         }
         
         /**
@@ -99,6 +160,7 @@ public class MemorizingSubscriber<T> implements Flow.Subscriber<T>
             private final Object t;
             
             Next(Object t) {
+                super(ON_NEXT);
                 this.t = t;
             }
             
@@ -122,6 +184,7 @@ public class MemorizingSubscriber<T> implements Flow.Subscriber<T>
             private final Throwable e;
             
             Error(Throwable e) {
+                super(ON_ERROR);
                 this.e = e;
             }
             
@@ -139,7 +202,9 @@ public class MemorizingSubscriber<T> implements Flow.Subscriber<T>
          * A signal created when {@code Flow.Subscriber.onComplete()} is called.
          */
         public static final class Complete extends Signal {
-            // Empty
+            Complete() {
+                super(ON_COMPLETE);
+            }
         }
     }
     
@@ -161,9 +226,8 @@ public class MemorizingSubscriber<T> implements Flow.Subscriber<T>
      * 
      * @return a snapshot collection of all signals received
      */
-    public Collection<Class<?>> signals() {
-        return signals.stream().map(Signal::getClass)
-                               .collect(toList());
+    public Stream<? extends Signal> signals() {
+        return signals.stream();
     }
     
     /**
@@ -171,10 +235,10 @@ public class MemorizingSubscriber<T> implements Flow.Subscriber<T>
      *
      * @return a snapshot collection of all items received
      */
-    public Collection<T> items() {
-        return signals.stream().filter(s -> s instanceof Signal.Next)
-                               .map(s -> ((Signal.Next) s).<T>item())
-                               .collect(Collectors.toUnmodifiableList());
+    public List<T> items() {
+        return signals().filter(s -> s instanceof Signal.Next)
+                        .map(s -> ((Signal.Next) s).<T>item())
+                        .collect(toUnmodifiableList());
     }
     
     @Override

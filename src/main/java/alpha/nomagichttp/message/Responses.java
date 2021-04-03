@@ -20,6 +20,7 @@ import static alpha.nomagichttp.HttpConstants.StatusCode.FOUR_HUNDRED;
 import static alpha.nomagichttp.HttpConstants.StatusCode.FOUR_HUNDRED_FOUR;
 import static alpha.nomagichttp.HttpConstants.StatusCode.FOUR_HUNDRED_THIRTEEN;
 import static alpha.nomagichttp.HttpConstants.StatusCode.FOUR_HUNDRED_TWENTY_SIX;
+import static alpha.nomagichttp.util.BetterBodyPublishers.ofString;
 import static java.net.http.HttpRequest.BodyPublisher;
 import static java.net.http.HttpRequest.BodyPublishers;
 
@@ -62,10 +63,8 @@ public final class Responses
      * @return  a "200 OK"-response with a text body
      * @see     StatusCode#TWO_HUNDRED
      */
-    // TODO: See Response.Builder.body(); WE MUST document thread-safety of Response returned,
-    //       and make BetterBodyPublishers a top priority
     public static Response text(String textPlain) {
-        return ok("text/plain; charset=utf-8", BodyPublishers.ofString(textPlain));
+        return ok("text/plain; charset=utf-8", ofString(textPlain));
     }
     
     /**

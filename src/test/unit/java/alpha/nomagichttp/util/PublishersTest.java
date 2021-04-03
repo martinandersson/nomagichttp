@@ -8,7 +8,10 @@ import java.util.concurrent.Flow;
 
 import static alpha.nomagichttp.testutil.MemorizingSubscriber.Request;
 import static alpha.nomagichttp.testutil.MemorizingSubscriber.Signal;
-import static alpha.nomagichttp.testutil.MemorizingSubscriber.drain;
+import static alpha.nomagichttp.testutil.MemorizingSubscriber.Signal.MethodName.ON_COMPLETE;
+import static alpha.nomagichttp.testutil.MemorizingSubscriber.Signal.MethodName.ON_SUBSCRIBE;
+import static alpha.nomagichttp.testutil.MemorizingSubscriber.drainItems;
+import static alpha.nomagichttp.testutil.MemorizingSubscriber.drainMethods;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
@@ -19,7 +22,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 final class PublishersTest
 {
     @Test
-    void just_one_repeat() {
+    void just_reuse() {
         Flow.Publisher<String> p = Publishers.just("one");
         MemorizingSubscriber<String> s = new MemorizingSubscriber<>(Request.IMMEDIATELY_MAX());
         p.subscribe(s);
@@ -29,20 +32,16 @@ final class PublishersTest
     }
     
     @Test
-    void just_one_two() {
-        Collection<String> items = drain(Publishers.just("one", "two"));
+    void just_two_items() {
+        Collection<String> items = drainItems(Publishers.just("one", "two"));
         assertThat(items).containsExactly("one", "two");
     }
     
     @Test
     void just_empty() {
-        MemorizingSubscriber<Object> s = new MemorizingSubscriber<>(Request.NOTHING());
-        
-        Publishers.just().subscribe(s);
-        
-        assertThat(s.signals()).containsExactly(
-                Signal.Subscribe.class,
-                Signal.Complete.class);
+        assertThat(drainMethods(Publishers.just())).containsExactly(
+                ON_SUBSCRIBE,
+                ON_COMPLETE);
     }
     
     @Test
@@ -57,7 +56,8 @@ final class PublishersTest
         
         Publishers.just().subscribe(s);
         
-        assertThat(s.signals()).containsExactly(
-                Signal.Subscribe.class); // but no complete, because we cancelled!
+        assertThat(s.signals().map(Signal::getMethodName)).containsExactly(
+                ON_SUBSCRIBE);
+               // but not ON_COMPLETE, because we cancelled!
     }
 }
