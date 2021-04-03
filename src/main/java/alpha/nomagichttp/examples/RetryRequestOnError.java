@@ -1,6 +1,7 @@
 package alpha.nomagichttp.examples;
 
 import alpha.nomagichttp.HttpServer;
+import alpha.nomagichttp.handler.ClientChannel;
 import alpha.nomagichttp.handler.ErrorHandler;
 import alpha.nomagichttp.handler.RequestHandler;
 import alpha.nomagichttp.message.Request;
@@ -8,7 +9,6 @@ import alpha.nomagichttp.message.Response;
 
 import java.io.IOException;
 import java.time.format.DateTimeFormatter;
-import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Supplier;
@@ -18,7 +18,6 @@ import static alpha.nomagichttp.message.Responses.noContent;
 import static java.time.LocalTime.now;
 import static java.util.concurrent.CompletableFuture.delayedExecutor;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
-import static java.util.function.Function.identity;
 
 /**
  * Deals with failed requests by invoking the same request handler again.
@@ -40,7 +39,7 @@ public class RetryRequestOnError
      */
     public static void main(String... args) throws IOException {
         // A very unstable request handler
-        RequestHandler rh = GET().supply(new MyUnstableResponseSupplier());
+        RequestHandler rh = GET().respond(new MyUnstableResponseSupplier());
         
         // The savior
         ErrorHandler eh = new MyRequestRetrier();
@@ -73,8 +72,7 @@ public class RetryRequestOnError
     // Retries failed requests a maximum of three times, using an exponentially increased delay
     private static class MyRequestRetrier implements ErrorHandler {
         @Override
-        public CompletionStage<Response>
-                apply(Throwable thr, Request req, RequestHandler rh) throws Throwable
+        public void apply(Throwable thr, ClientChannel ch, Request req, RequestHandler rh) throws Throwable
         {
             // Handle known exception suitable for retry,
             // otherwise propagate to server's default handler
@@ -93,22 +91,13 @@ public class RetryRequestOnError
                 int ms = delay(attempt);
                 System.out.println("Error handler will retry #" + attempt + " after delay (ms): " + ms);
                 
-                return retry(rh, req, ms);
+                delayedExecutor(ms, MILLISECONDS)
+                        .execute(() -> rh.logic().accept(req, ch));
             }
         }
         
         private static int delay(int attempt) {
             return 40 * (int) Math.pow(attempt, 2);
-        }
-        
-        private static CompletionStage<Response> retry(RequestHandler rh, Request req, int delay) {
-            // Alternatively:
-            // return CompletableFuture.runAsync(() -> {}, delayedExecutor(delay, MILLISECONDS))
-            //         .thenCompose(Void -> handler.logic().apply(req));
-            return CompletableFuture.supplyAsync(
-                        () -> rh.logic().apply(req),
-                        delayedExecutor(delay, MILLISECONDS))
-                    .thenCompose(identity());
         }
     }
     

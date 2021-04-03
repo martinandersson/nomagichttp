@@ -1,6 +1,7 @@
 package alpha.nomagichttp.examples;
 
 import alpha.nomagichttp.HttpServer;
+import alpha.nomagichttp.message.Response;
 
 import java.io.IOException;
 
@@ -36,30 +37,26 @@ public class GreetParameter
          * 2) Query parameters are always optional,
          *    parameters().queryFirst(key) returns an Optional of the first occurred value.
          * 
-         * 3) The HTTP server is fully asynchronous which is great for web applications
-         *    which often rely heavily on external I/O resources for request processing.
-         *    And so the RequestHandler returns a CompletionStage<Response> to the server.
-         *    When the response object can be created immediately without blocking, use
-         *    Response.completedStage() to wrap it in an already completed stage.
-         * 
          * Example requests:
          * "/hello/John"         Hello John!
          * "/hello?name=John"    Hello John!
          * "/hello"              400 Bad Request
          */
         
-        app.add("/hello/:name", GET().apply(req -> {
-            String name = req.parameters().path("name");
+        app.add("/hello/:name", GET().accept((request, channel) -> {
+            String name = request.parameters().path("name");
             String msg  = "Hello " + name + "!";
-            return text(msg).completedStage();
+            channel.write(text(msg));
         }));
         
-        app.add("/hello", GET().apply(req ->
-                req.parameters()
-                   .queryFirst("name")
-                   .map(str -> text("Hello " + str + "!"))
-                   .orElse(badRequest())
-                   .completedStage()));
+        app.add("/hello", GET().accept((request, channel) -> {
+            Response r = request.parameters()
+                    .queryFirst("name")
+                    .map(str -> text("Hello " + str + "!"))
+                    .orElse(badRequest());
+            
+            channel.write(r);
+        }));
         
         app.start(PORT);
         System.out.println("Listening on port " + PORT + ".");

@@ -37,11 +37,6 @@ import static alpha.nomagichttp.message.Response.builder;
  * StandardCharsets#US_ASCII US_ASCII} (UTF-8 is backwards compatible with
  * ASCII).<p>
  * 
- * If the server must close the channel immediately without writing a response,
- * return a response with a status code {@code -1} (provided by {@link
- * Responses#closeClientChannel()}). If channel should close after writing the
- * response, set {@link #mustCloseAfterWrite()} to {@code true}.<p>
- * 
  * The {@code Response} implementation is immutable and can safely be reused
  * sequentially over time to the same client. It can also be shared concurrently
  * to different clients, assuming the {@linkplain Builder#body(Flow.Publisher)

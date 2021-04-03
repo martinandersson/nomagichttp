@@ -139,7 +139,7 @@ class DefaultRequestTest
                 RequestTarget.parse("/"),
                 null,
                 Publishers.just(wrap(body, US_ASCII)),
-                Mockito.mock(DefaultChannelOperations.class));
+                Mockito.mock(DefaultClientChannel.class));
     }
     
     private static DefaultRequest createEmptyRequest() {

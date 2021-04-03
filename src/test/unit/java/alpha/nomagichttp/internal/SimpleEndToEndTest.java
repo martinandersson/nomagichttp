@@ -27,24 +27,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 class SimpleEndToEndTest extends AbstractEndToEndTest
 {
     @Test
-    void helloworld_console() throws IOException {
-        RequestHandler handler = GET().run(() ->
-                System.out.println("Hello, World!"));
-        
-        server().add("/hello-console", handler);
-        
-        String req = "GET /hello-console HTTP/1.1" + CRLF + CRLF,
-               res = client().writeRead(req);
-        
-        assertThat(res).isEqualTo(
-            "HTTP/1.1 202 Accepted" + CRLF +
-            "Content-Length: 0" + CRLF + CRLF);
-    }
-    
-    @Test
-    void helloworld_response() throws IOException {
-        server().add("/hello-response",
-                GET().respond(text("Hello World!")));
+    void helloworld() throws IOException {
+        server().add("/hello-response", GET().respond(text("Hello World!")));
         
         String req =
             "GET /hello-response HTTP/1.1" + CRLF +
@@ -67,7 +51,7 @@ class SimpleEndToEndTest extends AbstractEndToEndTest
             String text = "Hello " + name + "!";
             return text(text).completedStage();
         }));
-    
+        
         server().add("/hello", GET().apply(req -> {
             String name = req.parameters().queryFirst("name").get();
             String text = "Hello " + name + "!";
@@ -97,7 +81,8 @@ class SimpleEndToEndTest extends AbstractEndToEndTest
     @Test
     void greet_requestbody() throws IOException {
         RequestHandler echo = POST().apply(req ->
-                req.body().toText().thenApply(name -> text("Hello " + name + "!")));
+                req.body().toText().thenApply(name ->
+                        text("Hello " + name + "!")));
         
         server().add("/greet-body", echo);
         

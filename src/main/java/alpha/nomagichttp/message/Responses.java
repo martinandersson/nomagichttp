@@ -243,18 +243,6 @@ public final class Responses
     }
     
     /**
-     * Returns a response with a status code set to {@code -1} which instructs
-     * the server to close the client's channel immediately.
-     * 
-     * @return a response with a status code set to {@code -1}
-     * 
-     * @see Response
-     */
-    public static Response closeClientChannel() {
-        return Cache.CLOSE_CHANNEL;
-    }
-    
-    /**
      * Pre-built response objects with no payloads (message body).
      */
     private static final class Cache {
@@ -265,8 +253,7 @@ public final class Responses
                 NOT_FOUND             = respondThenClose(FOUR_HUNDRED_FOUR, ReasonPhrase.NOT_FOUND),
                 ENTITY_TOO_LARGE      = respondThenClose(FOUR_HUNDRED_THIRTEEN, ReasonPhrase.ENTITY_TOO_LARGE),
                 INTERNAL_SERVER_ERROR = respondThenClose(FIVE_HUNDRED, ReasonPhrase.INTERNAL_SERVER_ERROR),
-                NOT_IMPLEMENTED       = respondThenClose(FIVE_HUNDRED_ONE, ReasonPhrase.NOT_IMPLEMENTED),
-                CLOSE_CHANNEL         = Response.builder().statusCode(-1).build();
+                NOT_IMPLEMENTED       = respondThenClose(FIVE_HUNDRED_ONE, ReasonPhrase.NOT_IMPLEMENTED);
         
         private static Response respondThenClose(int code, String phrase) {
             return Response.builder()

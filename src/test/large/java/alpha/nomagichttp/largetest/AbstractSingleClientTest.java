@@ -9,7 +9,6 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 
-import static alpha.nomagichttp.handler.RequestHandlers.noop;
 import static java.net.http.HttpRequest.BodyPublishers;
 import static java.net.http.HttpResponse.BodyHandlers;
 import static java.nio.charset.StandardCharsets.UTF_8;
@@ -18,8 +17,7 @@ import static java.nio.charset.StandardCharsets.UTF_8;
  * Starts a server on a system-picked port. An {@link HttpClient} connecting to
  * the server can be operated using protected methods in this class.<p>
  * 
- * A NOOP handler will be added to route "/". The server can be retrieved using
- * {@link #server()}.
+ * The server can be retrieved using {@link #server()}.
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  */
@@ -31,9 +29,7 @@ abstract class AbstractSingleClientTest
     
     @BeforeAll
     static void setup() throws IOException {
-        SERVER = HttpServer.create().add("/", noop());
-        SERVER.start();
-        
+        SERVER = HttpServer.create().start();
         ROOT = "http://localhost:" + SERVER.getLocalAddress().getPort();
         CLIENT = HttpClient.newHttpClient();
     }

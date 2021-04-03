@@ -10,7 +10,7 @@ import alpha.nomagichttp.route.NoHandlerFoundException;
 import alpha.nomagichttp.route.Route;
 
 import java.util.concurrent.CompletionStage;
-import java.util.function.Consumer;
+import java.util.function.BiConsumer;
 import java.util.function.Function;
 import java.util.function.Supplier;
 
@@ -19,13 +19,11 @@ import static alpha.nomagichttp.message.MediaType.NOTHING;
 import static alpha.nomagichttp.message.MediaType.NOTHING_AND_ALL;
 import static alpha.nomagichttp.message.MediaType.TEXT_PLAIN;
 import static alpha.nomagichttp.message.MediaType.parse;
-import static alpha.nomagichttp.message.Responses.accepted;
 import static java.util.Objects.requireNonNull;
 
 /**
- * Holder of a request-to-response {@link #logic() function} (the "logic
- * instance") coupled together with metadata describing semantics of the
- * function.<p>
+ * Holder of a request processing {@link #logic() function} coupled together
+ * with metadata describing semantics of the function.<p>
  * 
  * The metadata consists of a HTTP {@link #method() method} token and
  * {@link #consumes() consumes}/{@link #produces() produces} media types. This
@@ -69,10 +67,11 @@ import static java.util.Objects.requireNonNull;
  * <pre>{@code
  *     import static alpha.nomagichttp.handler.RequestHandler.Builder.GET;
  *     ...
+ *     Response generic = ...
  *     RequestHandler h = GET()
  *             .consumesNothingAndAll()
  *             .producesAll()
- *             .run(() -> System.out.println("Hello, World!"));
+ *             .respond(generic);
  * }</pre>
  * 
  * Or, use a utility method to accomplish the same thing:
@@ -80,7 +79,7 @@ import static java.util.Objects.requireNonNull;
  * <pre>{@code
  *     import static alpha.nomagichttp.handler.RequestHandlers.GET;
  *     ...
- *     RequestHandler h = GET().run(() -> System.out.println("Hello, World!"));
+ *     RequestHandler h = GET().respond(generic);
  * }</pre>
  * 
  * <h3>Qualify handler by method token</h3>
@@ -295,6 +294,9 @@ public interface RequestHandler
     /**
      * Returns the function that will process a request into a response.<p>
      * 
+     * No argument passed to the function is null. The channel argument must be
+     * used at some point to either shutdown the channel or write a response.<p>
+     * 
      * This method is called anew each time a route and handler has been matched
      * against a request.
      * 
@@ -302,7 +304,7 @@ public interface RequestHandler
      * 
      * @see RequestHandler
      */
-    Function<Request, CompletionStage<Response>> logic();
+    BiConsumer<Request, ClientChannel> logic();
     
     /**
      * Returns this represented as a string.<p>
@@ -337,37 +339,43 @@ public interface RequestHandler
      * of the handler. The last step is also what builds a new handler
      * instance.<p>
      * 
-     * Ultimately, the logic is a {@code Function<Request,
-     * CompletionStage<Response>>}, but for convenience, the builder provides
-     * some adapter methods which receives a variety of arguments adapted into
-     * the final request-processing {@code Function}, accordingly:<p>
+     * Ultimately, the request processing logic of the handler is a {@code
+     * BiConsumer<Request, ClientChannel>}. This instance can be passed as-is to
+     * the builder using {@link Builder.LastStep#accept(BiConsumer)}.
      * 
-     * <strong>{@code respond()}</strong> receives an already built response
-     * object which is immediately and indiscriminately returned for each
-     * handled request. A great option for static resources!<p> 
+     * <pre>{@code
+     * import static alpha.nomagichttp.handler.RequestHandlers.GET;
+     * import static alpha.nomagichttp.message.Responses.text;
+     * ...
      * 
-     * <strong>{@code run()}</strong> receives a no-args {@link Runnable} which
-     * represents logic that does not need to access the request object and has
-     * no need to customize the "202 Accepted" response sent back to the client.
-     * This flavor is useful for handlers that will accept all requests as a
-     * command to initiate processes on the server.<p>
+     * RequestHandler greeter = GET().accept((request, channel) -> {
+     *     CompletionStage<Response> response = request.body()
+     *         .toText()
+     *         .thenApply(name -> text("Hello " + name));
+     *     
+     *     channel.write(response);
+     * });
+     * }</pre>
      * 
-     * <strong>{@code accept()}</strong> is very much similar to {@code run()},
-     * except the logic is represented by a {@link Consumer} who will receive
-     * the request object and can therefore read meaningful data out of it.<p>
+     * A few adapter overloads exist which do the same thing (write a response
+     * to the channel), they only differ in the signature. Last example can be
+     * rewritten as:
      * 
-     * <strong>{@code supply()}</strong> receives a {@link Supplier} which
-     * represents logic that is not interested in the request object but does
-     * have the need to return a fully customizable response.<p>
+     * <pre>{@code
+     * RequestHandler greeter = GET().apply(req ->
+     *     req.body().toText().thenApply(name -> text("Hello " + name)));
+     * }</pre>
      * 
-     * <strong>{@code apply()}</strong> receives a {@link Function} which has
-     * access to the request object <i>and</i> returns a fully customizable
-     * response.<p>
+     * If a response does not depend on the request, a greeter can be simplified
+     * even further:
      * 
-     * The implementation is thread-safe.<p>
+     * <pre>{@code
+     * Response cached = text("Hello Stranger");
+     * RequestHandler greeter = GET().respond(cached);
+     * }</pre>
      * 
-     * The implementation does not necessarily implement {@code hashCode()} and
-     * {@code equals()}.
+     * The implementation is thread-safe. It does not not necessarily implement
+     * {@code hashCode()} and {@code equals()}.
      * 
      * @author Martin Andersson (webmaster at martinandersson.com)
      */
@@ -379,7 +387,7 @@ public interface RequestHandler
          * @return a builder with HTTP method set to "GET"
          */
         static Builder GET() {
-            return builder("GET");
+            return builder(HttpConstants.Method.GET);
         }
         
         /**
@@ -388,7 +396,7 @@ public interface RequestHandler
          * @return a builder with HTTP method set to "HEAD"
          */
         static Builder HEAD() {
-            return builder("HEAD");
+            return builder(HttpConstants.Method.HEAD);
         }
         
         /**
@@ -397,7 +405,7 @@ public interface RequestHandler
          * @return a builder with HTTP method set to "POST"
          */
         static Builder POST() {
-            return builder("POST");
+            return builder(HttpConstants.Method.POST);
         }
         
         /**
@@ -406,7 +414,7 @@ public interface RequestHandler
          * @return a builder with HTTP method set to "PUT"
          */
         static Builder PUT() {
-            return builder("PUT");
+            return builder(HttpConstants.Method.PUT);
         }
         
         /**
@@ -415,7 +423,7 @@ public interface RequestHandler
          * @return a builder with HTTP method set to "DELETE"
          */
         static Builder DELETE() {
-            return builder("DELETE");
+            return builder(HttpConstants.Method.DELETE);
         }
         
         /**
@@ -475,7 +483,7 @@ public interface RequestHandler
         NextStep consumes(MediaType mediaType);
         
         /**
-         * An API specific for selecting producing media type qualifier.
+         * A builder API reduced to selecting producing media type qualifier.
          */
         interface NextStep
         {
@@ -519,72 +527,76 @@ public interface RequestHandler
         }
     
         /**
-         * An API specific for specifying the request handler logic.
+         * A builder API reduced to specifying the request handler logic.
          */
         interface LastStep
         {
             /**
-             * Delegate handler's logic to a static response.
+             * Build a request handler that returns the response to any valid
+             * request hitting the route.
              * 
-             * @param response what each request should get in response
+             * @param response to return
              * @return a new request handler
              * @throws NullPointerException if {@code response} is {@code null}
-             * @see Builder
              */
             default RequestHandler respond(Response response) {
-                return supply(response::completedStage);
+                requireNonNull(response);
+                return accept((req, ch) -> ch.write(response));
             }
             
             /**
-             * Delegate handler's logic to a runnable.
+             * Build a request handler that returns the response to any valid
+             * request hitting the route.
+             *
+             * @param response to return
+             * @return a new request handler
+             * @throws NullPointerException if {@code response} is {@code null}
+             */
+            default RequestHandler respond(CompletionStage<Response> response) {
+                requireNonNull(response);
+                return accept((req, ch) -> ch.write(response));
+            }
+            
+            /**
+             * Build a request handler that returns a response to any valid
+             * request hitting the route.<p>
              * 
-             * @param logic delegate
+             * Unlike the other two <i>respond</i> overloads, this response is
+             * retrieved lazily.
+             *
+             * @param response supplier
              * @return a new request handler
-             * @throws NullPointerException if {@code logic} is {@code null}
-             * @see Builder
+             * @throws NullPointerException if {@code response} is {@code null}
              */
-            default RequestHandler run(Runnable logic) {
-                requireNonNull(logic);
-                return accept(requestIgnored -> logic.run());
+            default RequestHandler respond(Supplier<CompletionStage<Response>> response) {
+                requireNonNull(response);
+                return accept((req, ch) -> ch.write(response.get()));
             }
             
             /**
-             * Delegate handler's logic to a consumer of the request.
-             *
-             * @param logic delegate
-             * @return a new request handler
-             * @throws NullPointerException if {@code logic} is {@code null}
-             * @see Builder
-             */
-            default RequestHandler accept(Consumer<Request> logic) {
-                requireNonNull(logic);
-                return apply(req -> {
-                    logic.accept(req);
-                    return accepted().completedStage();
-                });
-            }
-            
-            /**
-             * Delegate handler's logic to a supplier of the response.
-             *
-             * @param logic delegate
-             * @return a new request handler
-             * @throws NullPointerException if {@code logic} is {@code null}
-             * @see Builder
-             */
-            default RequestHandler supply(Supplier<CompletionStage<Response>> logic) {
-                requireNonNull(logic);
-                return apply(requestIgnored -> logic.get());
-            }
-            
-            /**
-             * Set handler's logic.
-             *
+             * Build a request handler that invokes the given function for every
+             * request and writes the produced response on the client channel.
+             * 
              * @param logic to call
              * @return a new request handler
              * @throws NullPointerException if {@code logic} is {@code null}
              */
-            RequestHandler apply(Function<Request, CompletionStage<Response>> logic);
+            default RequestHandler apply(Function<Request, CompletionStage<Response>> logic) {
+                requireNonNull(logic);
+                return accept((req, ch) -> ch.write(logic.apply(req)));
+            }
+            
+            /**
+             * Build a request handler using the given logic function.<p>
+             * 
+             * The function must ensure that a response is written to the client
+             * channel at some point, or otherwise closed.
+             * 
+             * @param logic to call
+             * @return a new request handler
+             * @throws NullPointerException if {@code logic} is {@code null}
+             */
+            RequestHandler accept(BiConsumer<Request, ClientChannel> logic);
         }
     }
 }

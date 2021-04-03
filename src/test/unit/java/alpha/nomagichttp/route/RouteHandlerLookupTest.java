@@ -13,6 +13,7 @@ import static alpha.nomagichttp.message.MediaType.NOTHING;
 import static alpha.nomagichttp.message.MediaType.NOTHING_AND_ALL;
 import static alpha.nomagichttp.message.MediaType.TEXT_PLAIN;
 import static alpha.nomagichttp.message.MediaType.parse;
+import static alpha.nomagichttp.message.Responses.accepted;
 import static java.util.Arrays.stream;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -259,7 +260,7 @@ class RouteHandlerLookupTest
         RequestHandler h = RequestHandler.Builder.GET()
                 .consumes(consumes)
                 .produces(produces)
-                .run(() -> {});
+                .respond(accepted());
         
         handlers.add(h);
         return h;

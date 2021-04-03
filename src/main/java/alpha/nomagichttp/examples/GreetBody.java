@@ -27,6 +27,10 @@ public class GreetBody
         HttpServer app = HttpServer.create();
         
         /*
+         * The HTTP server is fully asynchronous which is great for web
+         * applications which often rely heavily on external I/O resources for
+         * request processing.
+         * 
          * The handler is invoked as soon as the server has parsed a request
          * head which is likely before the body contents has fully arrived.
          * Method Request.body() returns an API with methods for asynchronously

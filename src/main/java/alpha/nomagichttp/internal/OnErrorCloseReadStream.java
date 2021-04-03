@@ -20,12 +20,12 @@ import static java.util.Objects.requireNonNull;
  */
 final class OnErrorCloseReadStream<T> extends AbstractOp<T>
 {
-    private final DefaultChannelOperations child;
+    private final DefaultClientChannel child;
     
     private static final System.Logger LOG
             = System.getLogger(OnErrorCloseReadStream.class.getPackageName());
     
-    protected OnErrorCloseReadStream(Flow.Publisher<? extends T> upstream, DefaultChannelOperations child) {
+    protected OnErrorCloseReadStream(Flow.Publisher<? extends T> upstream, DefaultClientChannel child) {
         super(upstream);
         this.child  = requireNonNull(child);
     }
@@ -54,7 +54,7 @@ final class OnErrorCloseReadStream<T> extends AbstractOp<T>
              */
             if (child.isOpenForReading()) {
                 LOG.log(ERROR, SIGNAL_FAILURE + " Will close the channel's read stream.", t);
-                child.orderlyShutdownInputSafe();
+                child.shutdownInputSafe();
             } // else assume whoever closed the stream also logged the exception
             
             signalError(new ClosedPublisherException(SIGNAL_FAILURE, t));

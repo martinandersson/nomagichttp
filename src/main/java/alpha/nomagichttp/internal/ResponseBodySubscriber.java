@@ -1,6 +1,7 @@
 package alpha.nomagichttp.internal;
 
 import alpha.nomagichttp.HttpConstants;
+import alpha.nomagichttp.handler.ClientChannel;
 import alpha.nomagichttp.message.Response;
 
 import java.nio.ByteBuffer;
@@ -45,7 +46,7 @@ final class ResponseBodySubscriber implements SubscriberAsStage<ByteBuffer, Long
     private boolean pushedHead;
     private int requested;
     
-    ResponseBodySubscriber(HttpConstants.Version ver, Response res, DefaultChannelOperations ch) {
+    ResponseBodySubscriber(HttpConstants.Version ver, Response res, DefaultClientChannel ch) {
         this.ver = requireNonNull(ver);
         this.res = requireNonNull(res);
         this.result = new CompletableFuture<>();
@@ -139,13 +140,14 @@ final class ResponseBodySubscriber implements SubscriberAsStage<ByteBuffer, Long
         ch.announce(b);
     }
     
-    private void afterChannelFinished(DefaultChannelOperations child, long byteCount, Throwable exc) {
+    private void afterChannelFinished(DefaultClientChannel child, long byteCount, Throwable exc) {
         if (exc == null) {
+            assert byteCount > 0;
             result.complete(byteCount);
         } else {
             if (byteCount > 0) {
                 LOG.log(ERROR, "Failed writing all of the response to channel. Will close the output stream.", exc);
-                child.orderlyShutdownOutputSafe();
+                child.shutdownOutputSafe();
             }
             result.completeExceptionally(exc);
         }

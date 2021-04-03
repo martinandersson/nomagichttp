@@ -27,7 +27,7 @@ import java.util.concurrent.CompletionStage;
  * 
  * This interface declares static <i>{@code create}</i> methods that construct
  * and return the default implementation {@link DefaultServer}. Once the server
- * has been constructed, it needs to <i>{@code start}</i>.<p>
+ * has been constructed, it needs to <i>{@code start()}</i>.<p>
  * 
  * Routes can be dynamically added and removed using {@link #add(Route)} and
  * {@link #remove(Route)}.<p>
@@ -55,10 +55,10 @@ import java.util.concurrent.CompletionStage;
  * 
  * <h2>Supported HTTP Versions</h2>
  *
- * Currently, the NoMagicHTTP server is a project in its infancy. Support to
- * fully support HTTP/1.0 and 1.1 is the first milestone, yet to be completed (
- * see POA.md in repository). HTTP/2 will be implemented thereafter. HTTP
- * clients older than HTTP/1.0 is rejected (exchange crash with {@link
+ * Currently, the NoMagicHTTP server is a project in its infancy. Full support
+ * HTTP/1.0 and 1.1 is the first milestone, yet to be completed (see POA.md in
+ * repository). HTTP/2 will be implemented thereafter. HTTP clients older than
+ * HTTP/1.0 is rejected (exchange will crash with a {@link
  * HttpVersionTooOldException}.
  * 
  * 
@@ -122,9 +122,8 @@ import java.util.concurrent.CompletionStage;
  * All servers running in the same JVM share a common pool of threads (aka
  * "request threads"). The pool handles I/O completion events and executes
  * application-provided entities such as the request- and error handlers. The
- * request thread also subscribes to the response body. The pool size is fixed
- * and set to the value of {@link Config#threadPoolSize()} at the time of the
- * start of the first server instance.<p>
+ * pool size is fixed and set to the value of {@link Config#threadPoolSize()} at
+ * the time of the start of the first server instance.<p>
  * 
  * It is absolutely crucial that the application does not block a request
  * thread, for example by synchronously waiting on an I/O result. The request
@@ -138,6 +137,7 @@ import java.util.concurrent.CompletionStage;
  * 
  * @see Route
  * @see RequestHandler
+ * @see ErrorHandler
  */
 public interface HttpServer
 {
@@ -430,7 +430,7 @@ public interface HttpServer
     Route remove(String pattern);
     
     /**
-     * Remove a route.<p>
+     * Remove a route of a particular identity.<p>
      * 
      * The route's currently active requests and exchanges will run to
      * completion and will not be aborted. Only when all active connections
@@ -444,8 +444,8 @@ public interface HttpServer
      * is not specified and the default implementation has not overridden the
      * equals method. I.e., the route provided must be the same instance.<p>
      * 
-     * In order to remove any route at the targeted position, use {@link
-     * #remove(String) instead}.
+     * In order to remove <i>any</i> route at the targeted position, use {@link
+     * #remove(String)} instead.
      * 
      * @param route to remove
      * 

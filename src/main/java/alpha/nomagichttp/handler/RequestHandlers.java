@@ -95,18 +95,4 @@ public final class RequestHandlers
                 .consumesNothingAndAll()
                 .producesAll();
     }
-    
-    /**
-     * Builds a handler responding to method "GET" that does nothing.<p>
-     * 
-     * Should probably only be useful for testing.
-     *
-     * @return a handler
-     *
-     * @see RequestHandlers
-     * @see RequestHandler.Builder
-     */
-    public static RequestHandler noop() {
-        return GET().run(() -> {});
-    }
 }
