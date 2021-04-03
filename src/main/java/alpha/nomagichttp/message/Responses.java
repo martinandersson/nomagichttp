@@ -65,61 +65,77 @@ public final class Responses
     // TODO: See Response.Builder.body(); WE MUST document thread-safety of Response returned,
     //       and make BetterBodyPublishers a top priority
     public static Response text(String textPlain) {
-        return text("text/plain; charset=utf-8", BodyPublishers.ofString(textPlain));
+        return ok("text/plain; charset=utf-8", BodyPublishers.ofString(textPlain));
     }
     
     /**
      * Returns a "200 OK"-response with an arbitrary body.<p>
      * 
-     * @param   contentType header value
-     * @param   body publisher with content length
-     * @return  a "200 OK"-response with an arbitrary body
-     * @see     StatusCode#TWO_HUNDRED
-     * @see     HttpConstants.HeaderKey#CONTENT_TYPE
+     * @param contentType header value
+     * @param body publisher with content length
+     * 
+     * @return a "200 OK"-response with an arbitrary body
+     * 
+     * @see StatusCode#TWO_HUNDRED
+     * @see HttpConstants.HeaderKey#CONTENT_TYPE
      */
-    public static Response text(String contentType, BodyPublisher body) {
-        return text(MediaType.parse(contentType), body, body.contentLength());
+    public static Response ok(String contentType, BodyPublisher body) {
+        return ok(MediaType.parse(contentType), body, body.contentLength());
     }
     
     /**
      * Returns a "200 OK"-response with an arbitrary body.<p>
      * 
-     * @param   contentType header value
-     * @param   body publisher with content length
-     * @return  a "200 OK"-response with an arbitrary body
-     * @see     StatusCode#TWO_HUNDRED
+     * @param contentType header value
+     * @param body publisher with content length
+     * 
+     * @return a "200 OK"-response with an arbitrary body
+     * 
+     * @see StatusCode#TWO_HUNDRED
      */
-    public static Response text(MediaType contentType, BodyPublisher body) {
-        return text(contentType, body, body.contentLength());
+    public static Response ok(MediaType contentType, BodyPublisher body) {
+        return ok(contentType, body, body.contentLength());
     }
     
     /**
      * Returns a "200 OK"-response with an arbitrary body.<p>
      * 
-     * @param   contentType header value
-     * @param   body publisher
-     * @param   length of body (will be set as "Content-Length" header value)
-     * @return  a "200 OK"-response with an arbitrary body
-     * @see     StatusCode#TWO_HUNDRED
-     * @see     HttpConstants.HeaderKey#CONTENT_TYPE
-     * @see     HttpConstants.HeaderKey#CONTENT_LENGTH
+     * The server subscribing to the response body does not limit his
+     * subscription based on the given length value. The value must be equal to
+     * the number of bytes emitted by the publisher.
+     * 
+     * @param contentType header value
+     * @param body publisher
+     * @param length will be set as "Content-Length" header value
+     * 
+     * @return a "200 OK"-response with an arbitrary body
+     * 
+     * @see StatusCode#TWO_HUNDRED
+     * @see HttpConstants.HeaderKey#CONTENT_TYPE
+     * @see HttpConstants.HeaderKey#CONTENT_LENGTH
      */
-    public static Response text(String contentType, Flow.Publisher<ByteBuffer> body, long length) {
-        return text(MediaType.parse(contentType), body, length);
+    public static Response ok(String contentType, Flow.Publisher<ByteBuffer> body, long length) {
+        return ok(MediaType.parse(contentType), body, length);
     }
     
     /**
      * Returns a "200 OK"-response with an arbitrary body.<p>
      * 
-     * @param   contentType header value
-     * @param   body publisher
-     * @param   length of body (will be set as "Content-Length" header value)
-     * @return  a "200 OK"-response with an arbitrary body
-     * @see     StatusCode#TWO_HUNDRED
-     * @see     HttpConstants.HeaderKey#CONTENT_TYPE
-     * @see     HttpConstants.HeaderKey#CONTENT_LENGTH
+     * The server subscribing to the response body does not limit his
+     * subscription based on the given length value. The value must be equal to
+     * the number of bytes emitted by the publisher.
+     * 
+     * @param contentType header value
+     * @param body publisher
+     * @param length of body (will be set as "Content-Length" header value)
+     * 
+     * @return a "200 OK"-response with an arbitrary body
+     * 
+     * @see StatusCode#TWO_HUNDRED
+     * @see HttpConstants.HeaderKey#CONTENT_TYPE
+     * @see HttpConstants.HeaderKey#CONTENT_LENGTH
      */
-    public static Response text(MediaType contentType, Flow.Publisher<ByteBuffer> body, long length) {
+    public static Response ok(MediaType contentType, Flow.Publisher<ByteBuffer> body, long length) {
         return Response.Builder.ok()
                 .contentType(contentType)
                 .contentLenght(length)

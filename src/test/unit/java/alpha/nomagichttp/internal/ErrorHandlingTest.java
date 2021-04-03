@@ -80,13 +80,13 @@ class ErrorHandlingTest
     
     /** Request handler fails synchronously. */
     @Test
-    void retry_failed_request_sync() throws IOException, InterruptedException {
+    void retry_failed_request_sync() throws IOException {
         firstTwoRequestsResponds(() -> { throw new RuntimeException(); });
     }
     
     /** Returned stage completes exceptionally. */
     @Test
-    void retry_failed_request_async() throws IOException, InterruptedException {
+    void retry_failed_request_async() throws IOException {
         firstTwoRequestsResponds(() -> failedFuture(new RuntimeException()));
     }
     
