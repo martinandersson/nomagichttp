@@ -62,10 +62,10 @@ import static java.util.Objects.requireNonNull;
  */
 final class AnnounceToSubscriber<T>
 {
-    private final PollPublisher<T> impl;
+    private final PullPublisher<T> impl;
     
     AnnounceToSubscriber(Supplier<? extends T> generator) {
-        this.impl = new PollPublisher<>(generator);
+        this.impl = new PullPublisher<>(generator);
     }
     
     /**
@@ -148,11 +148,11 @@ final class AnnounceToSubscriber<T>
         A attachment();
     }
     
-    private static final class PollPublisher<T> extends AugmentedAbstractUnicastPublisher<T, SerialTransferService<T>>
+    private static final class PullPublisher<T> extends AugmentedAbstractUnicastPublisher<T, SerialTransferService<T>>
     {
         private final Supplier<? extends T> generator;
         
-        protected PollPublisher(Supplier<? extends T> generator) {
+        protected PullPublisher(Supplier<? extends T> generator) {
             this.generator = requireNonNull(generator);
         }
         

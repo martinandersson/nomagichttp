@@ -168,9 +168,9 @@ public final class Publishers
     }
     
     /**
-     * Creates a {@code Flow.Publisher} that for each new subscriber, polls out
-     * an Iterator from the given source subsequently used to publish the
-     * items.<p>
+     * Creates a {@code Flow.Publisher} that for each new subscriber, retrieves
+     * a subscription-dedicated Iterator from the given source which is
+     * then used to pull items handed off to the subscriber.<p>
      * 
      * The publisher does not limit how many subscriptions at a time can be
      * active. Thus, either care should be exercised so that the publisher is
@@ -194,14 +194,14 @@ public final class Publishers
      * @throws NullPointerException if {@code source} is {@code null}
      */
     public static <T> Flow.Publisher<T> ofIterable(Iterable<? extends T> source) {
-        return new PollPublisher<>(source);
+        return new PullPublisher<>(source);
     }
     
-    private static final class PollPublisher<T> implements Flow.Publisher<T>
+    private static final class PullPublisher<T> implements Flow.Publisher<T>
     {
         private final Iterable<? extends T> items;
         
-        private PollPublisher(Iterable<? extends T> items) {
+        private PullPublisher(Iterable<? extends T> items) {
             this.items = requireNonNull(items);
         }
         
