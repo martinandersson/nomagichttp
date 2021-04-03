@@ -31,16 +31,18 @@ import static alpha.nomagichttp.message.Response.builder;
  * The status line will be built by the server by joining the active HTTP
  * protocol version, status code and reason phrase. E.g. "HTTP/1.1 200 OK".<p>
  * 
- * The content of the request head (status line and headers) will be written
+ * The content of the response head (status line and headers) will be written
  * to the client verbatim/unaltered; i.e. casing will be preserved, yes, even
  * space characters. The head is encoded into bytes using {@link
  * StandardCharsets#US_ASCII US_ASCII} (UTF-8 is backwards compatible with
  * ASCII).<p>
  * 
  * The {@code Response} implementation is immutable and can safely be reused
- * sequentially over time to the same client. It can also be shared concurrently
- * to different clients, assuming the {@linkplain Builder#body(Flow.Publisher)
- * body publisher} is thread safe.<p>
+ * sequentially over time to the same client. The response can also be shared
+ * concurrently to different clients, assuming the {@linkplain
+ * Builder#body(Flow.Publisher) body publisher} is thread-safe. If the publisher
+ * instance was retrieved using any method provided by the NoMagicHTTP library,
+ * then it is thread-safe.<p>
  * 
  * The {@code Response} implementation does not necessarily implement {@code
  * hashCode()} and {@code equals()}.
@@ -178,7 +180,7 @@ public interface Response
     interface Builder
     {
         /**
-         * Returns a builder populated with a status-line "HTTP/1.1 200 OK".<p>
+         * Returns a builder populated with a status-line "200 OK".<p>
          * 
          * What remains is to set headers and message body.
          * 
@@ -189,8 +191,7 @@ public interface Response
         }
         
         /**
-         * Returns a builder populated with a status-line
-         * "HTTP/1.1 202 Accepted".<p>
+         * Returns a builder populated with a status-line "202 Accepted".<p>
          * 
          * What remains is to set headers and message body.
          * 
@@ -201,8 +202,7 @@ public interface Response
         }
         
         /**
-         * Returns a builder populated with a status-line
-         * "HTTP/1.1 204 No Content".
+         * Returns a builder populated with a status-line "204 No Content".
          * 
          * @return a new builder representing the new state
          */
@@ -341,22 +341,25 @@ public interface Response
          * published bytebuffer.<p>
          * 
          * Most responses are probably only used once. But the application may
-         * wish to cache and re-use responses. This is safe as long as either
-         * the response is only sent to a dedicated client (two subscriptions
-         * for the same client will never run in parallel), or if re-used
-         * concurrently [to different clients], the body publisher must be
-         * thread-safe and designed for concurrency; producing new bytebuffers
-         * with the same data for each new subscriber.<p>
+         * wish to cache and re-use responses. This is always safe as the
+         * response is only sent to a dedicated client (two subscriptions
+         * for the same client will never run in parallel). If the response is
+         * may be re-used concurrently to different clients, then the body
+         * publisher must be thread-safe and designed for concurrency; producing
+         * new bytebuffers with the same data for each new subscriber.<p>
          * 
-         * The same is also true if different response objects have been
-         * derived/templated from the same builder(s) as these response objects
-         * will share the same underlying body publisher reference.<p>
+         * Please note that multiple response objects derived/templated from the
+         * same builder(s) will share the same underlying body publisher
+         * reference. So same rule apply; the publisher must be thread-safe if
+         * the derivatives go out to different clients.<p>
          * 
          * Response objects created by factory methods from the NoMagicHTTP
-         * library API are fully thread-safe and may be shared wildly. If none
-         * of these factories suits you and there's a need to set a response
-         * body manually, then consider using a publisher from {@link
-         * Publishers} or {@link BetterBodyPublishers}.<p>
+         * library API (and derivatives created from them) are fully thread-safe
+         * and may be shared wildly. No worries! If none of these factories
+         * suits you and there's a need to create a body publisher manually,
+         * then consider using a publisher from {@link Publishers} or {@link
+         * BetterBodyPublishers}. Not only are these defined to be thread-safe,
+         * they are also non-blocking.<p>
          * 
          * @param   body publisher
          * @return  a new builder representing the new state
