@@ -97,7 +97,8 @@ public final class BetterBodyPublishers
      * without thread-safety issues (
      * <a href="https://bugs.openjdk.java.net/browse/JDK-8222968">JDK-8222968</a>).<p>
      * 
-     * The given data array is assumed to be immutable and potentially re-used.
+     * The given data array is <i>not</i> copied. It should not be modified
+     * after calling this method.
      * 
      * @param   buf the byte array containing the body
      * @return  a BodyPublisher
@@ -115,7 +116,8 @@ public final class BetterBodyPublishers
      * except without thread-safety issues (
      * <a href="https://bugs.openjdk.java.net/browse/JDK-8222968">JDK-8222968</a>).<p>
      * 
-     * The given data array is assumed to be immutable and potentially re-used.
+     * The given data array is <i>not</i> copied. It should not be modified
+     * after calling this method.
      * 
      * @param   buf the byte array containing the body
      * @param   offset the offset of the first byte
