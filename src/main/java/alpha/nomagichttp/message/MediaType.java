@@ -112,7 +112,7 @@ public class MediaType
      * 
      * @see RequestHandler
      */
-    public static final MediaType NOTHING
+    public static final MediaType __NOTHING
             = new MediaType("<nothing>", null, null, Map.of()) {};
     
     // All modifiers repeated because otherwise the JavaDoc won't be picked up lol
@@ -127,7 +127,7 @@ public class MediaType
      * 
      * @see RequestHandler
      */
-    public static final MediaType NOTHING_AND_ALL
+    public static final MediaType __NOTHING_AND_ALL
             = new MediaType("<nothing and all>", null, null, Map.of()) {};
     
     /**
@@ -140,7 +140,7 @@ public class MediaType
      * 
      * @see RequestHandler
      */
-    public static final MediaType ALL = parse("*/*");
+    public static final MediaType __ALL = parse("*/*");
     
     /** Text. Value: "text/plain". File extension: ".txt". */
     public static final MediaType TEXT_PLAIN = parse("text/plain");
@@ -554,11 +554,11 @@ public class MediaType
      * @return an integer value for specificity
      */
     public final int specificity() {
-        if (this == NOTHING_AND_ALL) {
+        if (this == __NOTHING_AND_ALL) {
             return 7;
         }
         
-        if (this == NOTHING) {
+        if (this == __NOTHING) {
             return 6;
         }
         
@@ -601,7 +601,7 @@ public class MediaType
         }
         
         // These sentinel objects use identity based equality.
-        if (this == NOTHING || obj == NOTHING || this == NOTHING_AND_ALL || obj == NOTHING_AND_ALL) {
+        if (this == __NOTHING || obj == __NOTHING || this == __NOTHING_AND_ALL || obj == __NOTHING_AND_ALL) {
             return false;
         }
         

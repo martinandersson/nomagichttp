@@ -8,9 +8,9 @@ import java.util.Objects;
 import java.util.StringJoiner;
 import java.util.function.BiConsumer;
 
-import static alpha.nomagichttp.message.MediaType.ALL;
-import static alpha.nomagichttp.message.MediaType.NOTHING;
-import static alpha.nomagichttp.message.MediaType.NOTHING_AND_ALL;
+import static alpha.nomagichttp.message.MediaType.__ALL;
+import static alpha.nomagichttp.message.MediaType.__NOTHING;
+import static alpha.nomagichttp.message.MediaType.__NOTHING_AND_ALL;
 import static java.text.MessageFormat.format;
 import static java.util.Objects.requireNonNull;
 
@@ -101,8 +101,8 @@ final class DefaultRequestHandler implements RequestHandler
     
     private static MediaType validateProduces(MediaType produces) {
         requireQualityOne(requireNonNull(produces));
-        requireNotSame(produces, NOTHING);
-        requireNotSame(produces, NOTHING_AND_ALL);
+        requireNotSame(produces, __NOTHING);
+        requireNotSame(produces, __NOTHING_AND_ALL);
         return produces;
     }
     
@@ -119,7 +119,7 @@ final class DefaultRequestHandler implements RequestHandler
         if (produces == invalid) {
             throw new IllegalArgumentException(format(
                     "Handler's producing media type must not be \"{0}\". Maybe try \"{1}\"?",
-                    invalid, ALL));
+                    invalid, __ALL));
         }
     }
     

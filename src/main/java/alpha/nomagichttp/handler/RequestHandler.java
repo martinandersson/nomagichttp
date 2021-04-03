@@ -14,9 +14,9 @@ import java.util.function.BiConsumer;
 import java.util.function.Function;
 import java.util.function.Supplier;
 
-import static alpha.nomagichttp.message.MediaType.ALL;
-import static alpha.nomagichttp.message.MediaType.NOTHING;
-import static alpha.nomagichttp.message.MediaType.NOTHING_AND_ALL;
+import static alpha.nomagichttp.message.MediaType.__ALL;
+import static alpha.nomagichttp.message.MediaType.__NOTHING;
+import static alpha.nomagichttp.message.MediaType.__NOTHING_AND_ALL;
 import static alpha.nomagichttp.message.MediaType.TEXT_PLAIN;
 import static alpha.nomagichttp.message.MediaType.parse;
 import static java.util.Objects.requireNonNull;
@@ -61,7 +61,7 @@ import static java.util.Objects.requireNonNull;
  * To guard against ambiguity, the application can register a more generic
  * handler as a fallback. The most generic handler which can never be
  * eliminated as a candidate based on media types alone, consumes
- * {@link MediaType#NOTHING_AND_ALL} and produces "*&#47;*".<p>
+ * {@link MediaType#__NOTHING_AND_ALL} and produces "*&#47;*".<p>
  * 
  * For example:
  * <pre>{@code
@@ -111,15 +111,15 @@ import static java.util.Objects.requireNonNull;
  * 
  * The handler may declare that he can only process requests that are
  * <i>missing</i> the "Content-Type" header by specifying {@link
- * MediaType#NOTHING}.<p>
+ * MediaType#__NOTHING}.<p>
  * 
  * The handler may declare that he can process any media type, as long as the
  * "Content-Type" header is provided in the request using {@link
- * MediaType#ALL} ("*&#47;*").<p>
+ * MediaType#__ALL} ("*&#47;*").<p>
  * 
  * The handler may declare that he doesn't care at all whether or not the
  * "Content-Type" is provided or what value it might have: {@link
- * MediaType#NOTHING_AND_ALL}.
+ * MediaType#__NOTHING_AND_ALL}.
  * 
  * <h3>Qualify handler with producing media type (proactive content negotiation)</h3>
  * 
@@ -427,30 +427,30 @@ public interface RequestHandler
         }
         
         /**
-         * Set consumption media type to {@link MediaType#NOTHING}.
+         * Set consumption media type to {@link MediaType#__NOTHING}.
          * 
          * @return the next step
          */
         default NextStep consumesNothing() {
-            return consumes(NOTHING);
+            return consumes(__NOTHING);
         }
         
         /**
-         * Set consumption media type to {@link MediaType#ALL}.
+         * Set consumption media type to {@link MediaType#__ALL}.
          * 
          * @return the next step
          */
         default NextStep consumesAll() {
-            return consumes(ALL);
+            return consumes(__ALL);
         }
         
         /**
-         * Set consumption media type to {@link MediaType#NOTHING_AND_ALL}.
+         * Set consumption media type to {@link MediaType#__NOTHING_AND_ALL}.
          * 
          * @return the next step
          */
         default NextStep consumesNothingAndAll() {
-            return consumes(NOTHING_AND_ALL);
+            return consumes(__NOTHING_AND_ALL);
         }
         
         /**
@@ -488,12 +488,12 @@ public interface RequestHandler
         interface NextStep
         {
             /**
-             * Set producing media type to {@link MediaType#ALL}.
+             * Set producing media type to {@link MediaType#__ALL}.
              * 
              * @return the last step
              */
             default LastStep producesAll() {
-                return produces(ALL);
+                return produces(__ALL);
             }
             
             /**
