@@ -43,8 +43,7 @@ import static java.util.stream.Collectors.joining;
  * participate in the handler selection process. Please read the javadoc of
  * {@link RequestHandler} to learn more on that.<p>
  * 
- * Many commonly used media types are available as public static constants in
- * this class. Missing one? Let us know!
+ * Common media types are available as public static constants in this class.
  * 
  * 
  * <h2>Type and subtype</h2>
@@ -116,6 +115,8 @@ public class MediaType
     public static final MediaType NOTHING
             = new MediaType("<nothing>", null, null, Map.of()) {};
     
+    // All modifiers repeated because otherwise the JavaDoc won't be picked up lol
+    
     /**
      * A sentinel media type that can optionally be used as a handler's
      * consuming media type to indicate that the handler do not care about the
@@ -141,10 +142,89 @@ public class MediaType
      */
     public static final MediaType ALL = parse("*/*");
     
-    /**
-     * Media type "text/plain".
-     */
+    /** Text. Value: "text/plain". File extension: ".txt". */
     public static final MediaType TEXT_PLAIN = parse("text/plain");
+    
+    /** HyperText Markup Language. Value: "text/html". File extension: ".html". */
+    public static final MediaType TEXT_HTML = parse("text/html");
+    
+    /** Cascading Style Sheets. Value: "text/css". File extension: ".css". */
+    public static final MediaType TEXT_CSS = parse("text/css");
+    
+    /** Comma-Separated Values. Value: "text/csv". File extension: ".csv". */
+    public static final MediaType TEXT_CSV = parse("text/csv");
+    
+    /** JavaScript. Value: "text/javascript". File extension: ".js". */
+    public static final MediaType TEXT_JAVASCRIPT = parse("text/javascript");
+    
+    /** Any kind of binary data. Value: "application/octet-stream". */
+    public static final MediaType APPLICATION_OCTET_STREAM = parse("application/octet-stream");
+    
+    /** JSON format. Value: "application/json". File extension: ".json". */
+    public static final MediaType APPLICATION_JSON = parse("application/json");
+    
+    /** ZIP archive. Value: "application/zip". File extension: ".zip". */
+    public static final MediaType APPLICATION_ZIP = parse("application/zip");
+    
+    /** GZip compressed archive. Value: "application/gzip". File extension: ".gz". */
+    public static final MediaType APPLICATION_GZIP = parse("application/gzip");
+    
+    /** RAR archive. Value: "application/vnd.rar". File extension: ".rar". */
+    public static final MediaType APPLICATION_VND_RAR = parse("application/vnd.rar");
+    
+    /** TAR archive. Value: "application/x-tar". File extension: ".tar". */
+    public static final MediaType APPLICATION_X_TAR = parse("application/x-tar");
+    
+    /** 7-zip archive. Value: "application/x-7z-compressed". File extension: ".7z". */
+    public static final MediaType APPLICATION_X_7Z_COMPRESSED = parse("application/x-7z-compressed");
+    
+    /** Adobe Portable Document Format. Value: "application/pdf". File extension: ".pdf". */
+    public static final MediaType APPLICATION_PDF = parse("application/pdf");
+    
+    /** Java archive. Value: "application/java-archive". File extension: ".jar". */
+    public static final MediaType APPLICATION_JAVA_ARCHIVE = parse("application/java-archive");
+    
+    /** Portable Network Graphics. Value: "image/png". File extension: ".png". */
+    public static final MediaType IMAGE_PNG = parse("image/png");
+    
+    /** Graphics Interchange Format. Value: "image/gif". File extension: ".gif". */
+    public static final MediaType IMAGE_GIF = parse("image/gif");
+    
+    /** JPEG image. Value: "image/jpeg". File extension: ".jpg". */
+    public static final MediaType IMAGE_JPEG = parse("image/jpeg");
+    
+    /** Windows OS/2 bitmap graphics. Value: "image/bmp". File extension: ".bmp". */
+    public static final MediaType IMAGE_BMP = parse("image/bmp");
+    
+    /** Scalable vector graphics. Value: "image/svg+xml". File extension: ".svg". */
+    public static final MediaType IMAGE_SVG_XML = parse("image/svg+xml");
+    
+    /** Tagged Image File Format. Value: "image/tiff". File extension: ".tif/.tiff". */
+    public static final MediaType IMAGE_TIFF = parse("image/tiff");
+    
+    /** Waveform Audio Format. Value: "audio/wav". File extension: ".wav". */
+    public static final MediaType AUDIO_WAV = parse("audio/wav");
+    
+    /** AAC audio. Value: "audio/aac". File extension: ".aac". */
+    public static final MediaType AUDIO_AAC = parse("audio/aac");
+    
+    /** Musical Instrument Digital Interface. Value: "audio/midi". File extension: ".mid/.midi". */
+    public static final MediaType AUDIO_MIDI = parse("audio/midi");
+    
+    /** MP3 audio. Value: "audio/mpeg". File extension: ".mp3". */
+    public static final MediaType AUDIO_MPEG = parse("audio/mpeg");
+    
+    /** OGG audio. Value: "audio/ogg". File extension: ".oga". */
+    public static final MediaType AUDIO_OGG = parse("audio/ogg");
+    
+    /** OGG video. Value: "video/ogg". File extension: ".ogv". */
+    public static final MediaType VIDEO_OGG = parse("video/ogg");
+    
+    /** MP4 video. Value: "video/mp4". File extension: ".mp4". */
+    public static final MediaType VIDEO_MP4 = parse("video/mp4");
+    
+    /** MPEG video. Value: "video/mpeg". File extension: ".mpeg". */
+    public static final MediaType VIDEO_MPEG = parse("video/mpeg");
     
     /**
      * Parse a text into a {@link MediaType} or a {@link MediaRange}.<p>
