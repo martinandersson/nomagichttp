@@ -1,6 +1,7 @@
 package alpha.nomagichttp.largetest;
 
 import alpha.nomagichttp.handler.RequestHandler;
+import alpha.nomagichttp.message.Responses;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
@@ -10,7 +11,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 
 import static alpha.nomagichttp.handler.RequestHandlers.POST;
-import static alpha.nomagichttp.message.Response.Builder.noContent;
+import static alpha.nomagichttp.message.Responses.noContent;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
@@ -25,15 +26,16 @@ class BigFileRequest extends AbstractSingleClientTest
     @BeforeAll
     static void beforeAll() throws IOException {
         FILE = Files.createTempDirectory("nomagic")
-                .resolve("50MB.bin");
+                    .resolve("50MB");
         
         RequestHandler fileSaver = POST().apply(req ->
                 req.body()
                    .toFile(FILE)
                    .thenApply(n ->
-                        noContent()
-                       .header("Received", Long.toString(n))
-                   .build()));
+                       Responses.noContent()
+                                .toBuilder()
+                                .header("Received", Long.toString(n))
+                                .build()));
         
         server().add("/file", fileSaver);
     }

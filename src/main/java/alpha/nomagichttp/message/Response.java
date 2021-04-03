@@ -2,7 +2,6 @@ package alpha.nomagichttp.message;
 
 import alpha.nomagichttp.HttpConstants;
 import alpha.nomagichttp.HttpServer;
-import alpha.nomagichttp.handler.ErrorHandler;
 import alpha.nomagichttp.handler.RequestHandler;
 import alpha.nomagichttp.util.BetterBodyPublishers;
 import alpha.nomagichttp.util.Publishers;
@@ -16,17 +15,38 @@ import java.util.concurrent.Flow;
 
 import static alpha.nomagichttp.HttpConstants.ReasonPhrase;
 import static alpha.nomagichttp.HttpConstants.StatusCode;
-import static alpha.nomagichttp.HttpConstants.StatusCode.TWO_HUNDRED;
-import static alpha.nomagichttp.HttpConstants.StatusCode.TWO_HUNDRED_FOUR;
-import static alpha.nomagichttp.HttpConstants.StatusCode.TWO_HUNDRED_TWO;
 import static alpha.nomagichttp.message.Response.builder;
 
 /**
  * A {@code Response} contains a status line, followed by optional headers and
  * body.<p>
  * 
- * A response object can be built using a {@link #builder()} or other static
- * methods found in {@link Response.Builder} and {@link Responses}.<p>
+ * Can be built using a builder:
+ * 
+ * <pre>{@code
+ *   Response r = Response.builder(204, "No Content") // Or use HttpConstants
+ *                        .header("My-Header", "value")
+ *                        .build();
+ * }</pre>
+ * 
+ * {@code Response} is immutable but may be converted back into a builder for
+ * templating. This example uses a factory from {@link Responses} and is
+ * equivalent to the previous example:
+ * 
+ * <pre>{@code
+ *   Response r = Responses.noContent()
+ *                         .toBuilder()
+ *                         .header("My-Header", "value")
+ *                         .build();
+ * }</pre>
+ * 
+ * {@code Responses} in combination with body factories in {@link
+ * BetterBodyPublishers} ought to cover for the most common use cases.
+ * 
+ * <pre>{@code
+ *   BodyPublisher body = BetterBodyPublishers.ofByteArray(...);
+ *   Response r = Responses.ok(body); // 200 OK
+ * }</pre>
  * 
  * The status line will be built by the server by joining the active HTTP
  * protocol version, status code and reason phrase. E.g. "HTTP/1.1 200 OK".<p>
@@ -37,12 +57,11 @@ import static alpha.nomagichttp.message.Response.builder;
  * StandardCharsets#US_ASCII US_ASCII} (UTF-8 is backwards compatible with
  * ASCII).<p>
  * 
- * The {@code Response} implementation is immutable and can safely be reused
- * sequentially over time to the same client. The response can also be shared
- * concurrently to different clients, assuming the {@linkplain
- * Builder#body(Flow.Publisher) body publisher} is thread-safe. If the publisher
- * instance was retrieved using any method provided by the NoMagicHTTP library,
- * then it is thread-safe.<p>
+ * The {@code Response} object can safely be reused sequentially over time to
+ * the same client. The response can also be shared concurrently to different
+ * clients, assuming the {@linkplain Builder#body(Flow.Publisher) body
+ * publisher} is thread-safe. If the publisher instance was retrieved using any
+ * method provided by the NoMagicHTTP library, then it is thread-safe.<p>
  * 
  * The {@code Response} implementation does not necessarily implement {@code
  * hashCode()} and {@code equals()}.
@@ -51,17 +70,36 @@ import static alpha.nomagichttp.message.Response.builder;
  * 
  * @see Response.Builder
  * @see RequestHandler
- * @see ErrorHandler
+ * @see HttpServer
  */
 public interface Response
 {
     /**
      * Returns a {@code Response} builder.<p>
      * 
+     * By default, the reason phrase will be "Unknown" if not set in the
+     * returned builder.
+     * 
+     * @param statusCode response status code
      * @return a builder (doesn't have to be a new instance)
+     * @see #statusCode()
      */
-    static Builder builder() {
-        return DefaultResponse.Builder.ROOT;
+    static Builder builder(int statusCode) {
+        return DefaultResponse.Builder.ROOT.statusCode(statusCode);
+    }
+    
+    /**
+     * Returns a {@code Response} builder.<p>
+     * 
+     * @param statusCode response status code
+     * @param reasonPhrase response reason phrase
+     * @return a builder (doesn't have to be a new instance)
+     * @see #statusCode()
+     * @see #reasonPhrase()
+     * @throws NullPointerException if {@code reasonPhrase} is {@code null}
+     */
+    static Builder builder(int statusCode, String reasonPhrase) {
+        return builder(statusCode).reasonPhrase(reasonPhrase);
     }
     
     /**
@@ -80,7 +118,9 @@ public interface Response
      * Returns the reason phrase.
      * 
      * The returned value may be {@code null} or an empty string, in which case
-     * no reason phrase will be added to the status line.
+     * no reason phrase will be added to the status line.<p>
+     * 
+     * The default implementation will return "Unknown" if not set.
      * 
      * @return the reason phrase
      * 
@@ -140,23 +180,25 @@ public interface Response
     }
     
     /**
-     * Builder of a {@link Response}.<p>
+     * Returns the builder instance that built this response.<p>
      * 
-     * The builder type declares static methods that return builders already
-     * populated with common status lines such as {@link #ok()} and {@link
-     * #accepted()}, what remains is to customize headers and the body. Static
-     * methods that build a complete response can be found in {@link
-     * Responses}.<p>
+     * The builder may be used for further response templating.
+     * 
+     * @return the builder instance that built this response
+     */
+    Builder toBuilder();
+    
+    /**
+     * Builder of a {@link Response}.<p>
      * 
      * The builder can be used as a template to modify per-response state. Each
      * method returns a new builder instance representing the new state. The API
      * should be used in a fluent style with references saved and reused only
      * for templating.<p>
      * 
-     * Status code must be set or {@link #build()} will fail. The reason phrase
-     * if not set will default to {@value ReasonPhrase#UNKNOWN}. Headers and
-     * body are optional. Please note that some message variants may build just
-     * fine but {@linkplain HttpServer blow up later}.<p>
+     * Status code is the only required field. Please note that some message
+     * variants may build just fine but {@linkplain HttpServer blow up
+     * later}.<p>
      * 
      * Header key and values are taken at face value (case-sensitive),
      * concatenated using a colon followed by a space ": ". Adding many values
@@ -180,39 +222,6 @@ public interface Response
     interface Builder
     {
         /**
-         * Returns a builder populated with a status-line "200 OK".<p>
-         * 
-         * What remains is to set headers and message body.
-         * 
-         * @return a new builder representing the new state
-         */
-        static Builder ok() {
-            return BuilderCache.OK;
-        }
-        
-        /**
-         * Returns a builder populated with a status-line "202 Accepted".<p>
-         * 
-         * What remains is to set headers and message body.
-         * 
-         * @return a new builder representing the new state
-         */
-        static Builder accepted() {
-            return BuilderCache.ACCEPTED;
-        }
-        
-        /**
-         * Returns a builder populated with a status-line "204 No Content".
-         * 
-         * @return a new builder representing the new state
-         */
-        static Builder noContent() {
-            return BuilderCache.NO_CONTENT;
-        }
-        
-        // TODO: Basically all other codes in the standard lol
-        
-        /**
          * Set status code.
          * 
          * @param   statusCode value (any integer value)
@@ -222,7 +231,7 @@ public interface Response
         Builder statusCode(int statusCode);
         
         /**
-         * Set reason phrase. If never set, will default to "Unknown".
+         * Set reason phrase.
          * 
          * @param   reasonPhrase value (any non-null string)
          * @throws  NullPointerException if {@code reasonPhrase} is {@code null}
@@ -242,31 +251,6 @@ public interface Response
          * @see     HttpConstants.HeaderKey
          */
         Builder header(String name, String value);
-        
-        /**
-         * Set the "Content-Type" header.<p>
-         * 
-         * Please note that changing the Content-Type ought to be followed by a
-         * new response body.
-         * 
-         * @param   type media type
-         * @return  a new builder representing the new state
-         * @throws  NullPointerException if {@code type} is {@code null}
-         * @see     HttpConstants.HeaderKey#CONTENT_TYPE
-         */
-        Builder contentType(MediaType type);
-        
-        /**
-         * Set the "Content-Length" header.<p>
-         * 
-         * Please note that changing the Content-Length ought to be followed by
-         * a new response body.
-         * 
-         * @param   value content length
-         * @return  a new builder representing the new state
-         * @see     HttpConstants.HeaderKey#CONTENT_LENGTH
-         */
-        Builder contentLenght(long value);
         
         /**
          * Remove all previously set values for the given header name.
@@ -319,7 +303,7 @@ public interface Response
         Builder addHeaders(String name, String value, String... morePairs);
         
         /**
-         * Add all headers from the given {@code HttpHeaders}.<p>
+         * Add all headers from the given HttpHeaders object.<p>
          * 
          * The implementation may use {@link HttpHeaders#map()} to access the
          * header values which does not provide any guarantee with regards to
@@ -333,20 +317,21 @@ public interface Response
         Builder addHeaders(HttpHeaders headers);
         
         /**
-         * Set a message body. If never set, will default to an empty body and
-         * set "Content-Length: 0".<p>
+         * Set a message body.<p>
+         * 
+         * If never set, will default to an empty body.<p>
          * 
          * Each response transmission will cause the server to subscribe with a
          * new subscriber, consuming all of the remaining bytes in each
          * published bytebuffer.<p>
          * 
          * Most responses are probably only used once. But the application may
-         * wish to cache and re-use responses. This is always safe as the
+         * wish to cache and re-use responses. This is always safe if the
          * response is only sent to a dedicated client (two subscriptions
          * for the same client will never run in parallel). If the response is
-         * may be re-used concurrently to different clients, then the body
-         * publisher must be thread-safe and designed for concurrency; producing
-         * new bytebuffers with the same data for each new subscriber.<p>
+         * re-used concurrently to different clients, then the body publisher
+         * must be thread-safe and designed for concurrency; producing new
+         * bytebuffers with the same data for each new subscriber.<p>
          * 
          * Please note that multiple response objects derived/templated from the
          * same builder(s) will share the same underlying body publisher
@@ -389,12 +374,4 @@ public interface Response
          */
         Response build();
     }
-}
-
-enum BuilderCache
-{;
-    static final Response.Builder
-            OK         = builder().statusCode(TWO_HUNDRED).reasonPhrase(ReasonPhrase.OK),
-            ACCEPTED   = builder().statusCode(TWO_HUNDRED_TWO).reasonPhrase(ReasonPhrase.ACCEPTED),
-            NO_CONTENT = builder().statusCode(TWO_HUNDRED_FOUR).reasonPhrase(ReasonPhrase.NO_CONTENT);
 }

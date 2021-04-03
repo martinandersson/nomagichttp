@@ -1,7 +1,6 @@
 package alpha.nomagichttp.internal;
 
 import alpha.nomagichttp.handler.RequestHandler;
-import alpha.nomagichttp.message.Response;
 import alpha.nomagichttp.message.Responses;
 import org.junit.jupiter.api.Test;
 
@@ -105,24 +104,24 @@ class SimpleEndToEndTest extends AbstractEndToEndTest
     
     @Test
     void echo_headers() throws IOException {
-        RequestHandler echo = GET().apply(req -> Response.Builder.ok()
-                .addHeaders(req.headers())
-                .build()
-                .completedStage());
+        RequestHandler echo = GET().apply(req ->
+                Responses.noContent()
+                         .toBuilder()
+                         .addHeaders(req.headers())
+                         .build()
+                         .completedStage());
         
         server().add("/echo-headers", echo);
         
         String req =
             "GET /echo-headers HTTP/1.1" + CRLF +
-            "Accept: text/plain; charset=utf-8" + CRLF +
-            "Content-Length: 0" + CRLF + CRLF;
+            "Accept: text/plain; charset=utf-8" + CRLF + CRLF;
         
         String res = client().writeRead(req);
         
         assertThat(res).isEqualTo(
-            "HTTP/1.1 200 OK" + CRLF +
-            "Accept: text/plain; charset=utf-8" + CRLF +
-            "Content-Length: 0" + CRLF + CRLF);
+            "HTTP/1.1 204 No Content" + CRLF +
+            "Accept: text/plain; charset=utf-8" + CRLF + CRLF);
     }
     
     @Test

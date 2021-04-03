@@ -5,6 +5,7 @@ import alpha.nomagichttp.handler.ErrorHandler;
 import alpha.nomagichttp.handler.RequestHandler;
 import alpha.nomagichttp.handler.RequestHandlers;
 import alpha.nomagichttp.message.Response;
+import alpha.nomagichttp.message.Responses;
 import alpha.nomagichttp.route.NoRouteFoundException;
 import alpha.nomagichttp.testutil.ClientOperations;
 import alpha.nomagichttp.testutil.Logging;
@@ -60,12 +61,10 @@ class ErrorHandlingTest
     void not_found_custom() throws IOException {
         ErrorHandler eh = (exc, ch, req, han) -> {
             if (exc instanceof NoRouteFoundException) {
-                ch.write(Response.builder()
-                               .statusCode(123)
-                               .reasonPhrase("Custom Not Found!")
-                               .mustCloseAfterWrite(true)
-                               .build()
-                               .completedStage());
+                ch.write(Response.builder(123, "Custom Not Found!")
+                                 .mustCloseAfterWrite(true)
+                                 .build());
+                return;
             }
             throw exc;
         };
@@ -95,16 +94,16 @@ class ErrorHandlingTest
     {
         AtomicInteger c = new AtomicInteger();
         
-        RequestHandler h1 = RequestHandlers.GET().apply(requestIgnored -> {
+        RequestHandler h1 = RequestHandlers.GET().respond(() -> {
             if (c.incrementAndGet() < 3) {
                 return response.get();
             }
             
-            return Response.Builder.ok()
-                                   .header("N", Integer.toString(c.get()))
-                                   .addHeader("Content-Length", "0")
-                                   .build()
-                                   .completedStage();
+            return Responses.noContent()
+                            .toBuilder()
+                            .header("N", Integer.toString(c.get()))
+                            .build()
+                            .completedStage();
         });
         
         ErrorHandler retry = (t, ch, r, h2) -> h2.logic().accept(r, ch);
@@ -114,9 +113,8 @@ class ErrorHandlingTest
             "GET / HTTP/1.1" + CRLF + CRLF);
         
         assertThat(r).isEqualTo(
-            "HTTP/1.1 200 OK"   + CRLF +
-            "N: 3"              + CRLF +
-            "Content-Length: 0" + CRLF + CRLF);
+            "HTTP/1.1 204 No Content" + CRLF +
+            "N: 3"                    + CRLF + CRLF);
     }
     
     @Test

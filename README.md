@@ -214,7 +214,7 @@ In a new terminal, run:
 foo@bar:~$ curl -i localhost:8080/echo \
     -H "My-Header: Value 1" \
     -H "My-Header: Value 2"
-HTTP/1.1 204 OK
+HTTP/1.1 204 No Content
 Accept: */*
 Host: localhost:8080
 My-Header: Value 1
