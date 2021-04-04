@@ -2,7 +2,6 @@ package alpha.nomagichttp.internal;
 
 import alpha.nomagichttp.handler.ErrorHandler;
 import alpha.nomagichttp.handler.RequestHandler;
-import alpha.nomagichttp.handler.RequestHandlers;
 import alpha.nomagichttp.message.ClosedPublisherException;
 import alpha.nomagichttp.message.PooledByteBufferHolder;
 import alpha.nomagichttp.message.Request;
@@ -17,8 +16,8 @@ import java.util.concurrent.Flow;
 import java.util.concurrent.TimeoutException;
 import java.util.function.Consumer;
 
-import static alpha.nomagichttp.handler.RequestHandlers.GET;
-import static alpha.nomagichttp.handler.RequestHandlers.POST;
+import static alpha.nomagichttp.handler.RequestHandler.GET;
+import static alpha.nomagichttp.handler.RequestHandler.POST;
 import static alpha.nomagichttp.message.Responses.accepted;
 import static alpha.nomagichttp.message.Responses.text;
 import static alpha.nomagichttp.testutil.ClientOperations.CRLF;
@@ -189,7 +188,7 @@ class DetailedEndToEndTest extends AbstractEndToEndTest
     void request_body_subscriber_crash() throws IOException, InterruptedException {
         RuntimeException err = new RuntimeException("Oops.");
         
-        RequestHandler crashAfterOneByte = RequestHandlers.POST().accept((req, ch) ->
+        RequestHandler crashAfterOneByte = POST().accept((req, ch) ->
             req.body().subscribe(
                 new AfterByteTargetStop(1, subscriptionIgnored -> {
                     throw err; })));

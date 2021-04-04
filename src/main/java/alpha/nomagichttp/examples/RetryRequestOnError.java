@@ -13,7 +13,7 @@ import java.util.concurrent.CompletionStage;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Supplier;
 
-import static alpha.nomagichttp.handler.RequestHandlers.GET;
+import static alpha.nomagichttp.handler.RequestHandler.GET;
 import static alpha.nomagichttp.message.Responses.noContent;
 import static java.time.LocalTime.now;
 import static java.util.concurrent.CompletableFuture.delayedExecutor;

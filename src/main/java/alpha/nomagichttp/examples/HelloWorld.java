@@ -2,7 +2,6 @@ package alpha.nomagichttp.examples;
 
 import alpha.nomagichttp.HttpServer;
 import alpha.nomagichttp.handler.RequestHandler;
-import alpha.nomagichttp.handler.RequestHandlers;
 import alpha.nomagichttp.message.Response;
 import alpha.nomagichttp.message.Responses;
 
@@ -32,7 +31,7 @@ public class HelloWorld
         // This handler serves requests of the HTTP verb/method GET. The factory
         // method respond() accepts an already built Response. Other overloads
         // exist for accessing the request and client channel directly.
-        RequestHandler handler = RequestHandlers.GET().respond(answer);
+        RequestHandler handler = RequestHandler.GET().respond(answer);
         
         // The real content of the server are resources, addressed by a request path.
         // (just as with Response, the handler too is immutable and can be shared)

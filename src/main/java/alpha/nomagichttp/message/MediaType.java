@@ -104,9 +104,9 @@ public class MediaType
     private static final Pattern SEMICOLON = Pattern.compile(";");
     
     /**
-     * A sentinel media type that can optionally be used as a handler's
-     * consuming media type to indicate that the handler consumes nothing and is
-     * not willing to handle requests that has the "Content-Type" header set.<p>
+     * A sentinel media type that can be used as a handler's consuming media
+     * type to indicate that the handler consumes nothing and is not willing to
+     * handle requests that has the "Content-Type" header set.<p>
      * 
      * <strong>Not</strong> valid as a handler's producing media type.
      * 
@@ -118,10 +118,10 @@ public class MediaType
     // All modifiers repeated because otherwise the JavaDoc won't be picked up lol
     
     /**
-     * A sentinel media type that can optionally be used as a handler's
-     * consuming media type to indicate that the handler do not care about the
-     * request header's "Content-Type"; it can be missing as well as it can be
-     * any media type.<p>
+     * A sentinel media type that can be used as a handler's consuming media
+     * type to indicate that the handler is willing to handle requests
+     * irrelevant of the "Content-Type" header; it can be missing as well as it
+     * can have any value.<p>
      * 
      * <strong>Not</strong> valid as a handler's producing media type.
      * 
@@ -131,12 +131,13 @@ public class MediaType
             = new MediaType("<nothing and all>", null, null, Map.of()) {};
     
     /**
-     * A sentinel media type that can optionally be used as a handler's
-     * consuming and/or producing media type to indicate that the handler is
-     * able to consume and/or produce any media type.<p>
+     * A sentinel media type that can be used as a handler's consuming and/or
+     * producing media type to indicate that the handler is willing to consume
+     * and/or produce any media type.<p>
      * 
-     * A handler that declares this media type as producing is still free to not
-     * respond a message body.
+     * A handler that declares this media type as producing may still chose to
+     * respond a different representation or perhaps a message with no body at
+     * all. This is fully up to the handler implementation.
      * 
      * @see RequestHandler
      */

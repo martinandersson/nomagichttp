@@ -7,7 +7,7 @@ import org.junit.jupiter.api.Test;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 
-import static alpha.nomagichttp.handler.RequestHandlers.GET;
+import static alpha.nomagichttp.handler.RequestHandler.GET;
 import static alpha.nomagichttp.message.MediaType.__ALL;
 import static alpha.nomagichttp.message.MediaType.__NOTHING;
 import static alpha.nomagichttp.message.MediaType.__NOTHING_AND_ALL;
@@ -148,7 +148,7 @@ class RouteBuilderTest
         assertThatThrownBy(() -> testee.handler(dummy()))
                 .isExactlyInstanceOf(HandlerCollisionException.class)
                 .hasMessage("An equivalent handler has already been added: " +
-                        "DefaultRequestHandler{method=\"GET\", consumes=\"<nothing and all>\", produces=\"*/*\"}");
+                        "DefaultRequestHandler{method=\"GET\", consumes=\"<nothing and all>\", produces=\"*/*\", logic=?}");
     }
     
     @Test
@@ -163,10 +163,8 @@ class RouteBuilderTest
     }
     
     private RequestHandler createHandler(MediaType consumes) {
-        return RequestHandler.Builder.GET()
-                .consumes(consumes)
-                .producesAll()
-                .respond(accepted());
+        return GET().consumes(consumes)
+                    .respond(accepted());
     }
     
     private Route.Builder builder(String pattern) {

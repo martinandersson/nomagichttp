@@ -5,7 +5,7 @@ import alpha.nomagichttp.message.Response;
 
 import java.io.IOException;
 
-import static alpha.nomagichttp.handler.RequestHandlers.GET;
+import static alpha.nomagichttp.handler.RequestHandler.GET;
 import static alpha.nomagichttp.message.Responses.badRequest;
 import static alpha.nomagichttp.message.Responses.text;
 

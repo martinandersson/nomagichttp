@@ -8,6 +8,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 
+import static alpha.nomagichttp.handler.RequestHandler.GET;
 import static alpha.nomagichttp.message.MediaType.TEXT_PLAIN;
 import static alpha.nomagichttp.message.MediaType.__ALL;
 import static alpha.nomagichttp.message.MediaType.__NOTHING;
@@ -257,11 +258,9 @@ class RouteHandlerLookupTest
     }
     
     private RequestHandler create(MediaType consumes, MediaType produces) {
-        RequestHandler h = RequestHandler.Builder.GET()
-                .consumes(consumes)
-                .produces(produces)
-                .respond(accepted());
-        
+        RequestHandler h = GET().consumes(consumes)
+                                .produces(produces)
+                                .respond(accepted());
         handlers.add(h);
         return h;
     }

@@ -43,7 +43,7 @@
  * RequestHandler.builder()}. The builder gives a fine-grained control over
  * the build. Commonly, there's also a convenient API meant for static import in
  * order to easily implement common use-cases, for example {@link
- * alpha.nomagichttp.handler.RequestHandlers#GET() RequestHandlers.GET()} and
+ * alpha.nomagichttp.handler.RequestHandler#GET() RequestHandler.GET()} and
  * {@link alpha.nomagichttp.message.Responses#noContent() Responses.noContent()}.
  * 
  * 

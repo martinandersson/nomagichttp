@@ -50,7 +50,7 @@ In an empty directory, create a new [Gradle][1-1] build file `build.gradle`:
 In subfolder `src/main/java`, create a new file `Greeter.java`:
 
     import alpha.nomagichttp.HttpServer;
-    import static alpha.nomagichttp.handler.RequestHandlers.GET;
+    import static alpha.nomagichttp.handler.RequestHandler.GET;
     import static alpha.nomagichttp.message.Responses.text;
     
     class Greeter {

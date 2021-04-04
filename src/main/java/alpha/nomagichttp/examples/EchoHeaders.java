@@ -6,7 +6,7 @@ import alpha.nomagichttp.message.Responses;
 
 import java.io.IOException;
 
-import static alpha.nomagichttp.handler.RequestHandlers.GET;
+import static alpha.nomagichttp.handler.RequestHandler.GET;
 
 /**
  * Echoes the requests headers.

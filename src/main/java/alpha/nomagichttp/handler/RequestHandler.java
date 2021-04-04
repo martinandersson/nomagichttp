@@ -2,6 +2,7 @@ package alpha.nomagichttp.handler;
 
 import alpha.nomagichttp.HttpConstants;
 import alpha.nomagichttp.message.MediaType;
+import alpha.nomagichttp.message.MediaTypeParseException;
 import alpha.nomagichttp.message.Request;
 import alpha.nomagichttp.message.Response;
 import alpha.nomagichttp.route.AmbiguousNoHandlerFoundException;
@@ -17,7 +18,6 @@ import java.util.function.Supplier;
 import static alpha.nomagichttp.message.MediaType.__ALL;
 import static alpha.nomagichttp.message.MediaType.__NOTHING;
 import static alpha.nomagichttp.message.MediaType.__NOTHING_AND_ALL;
-import static alpha.nomagichttp.message.MediaType.TEXT_PLAIN;
 import static alpha.nomagichttp.message.MediaType.parse;
 import static java.util.Objects.requireNonNull;
 
@@ -31,8 +31,7 @@ import static java.util.Objects.requireNonNull;
  * has matched a request against a {@link Route} and needs to select which
  * handler of the route to process the request.<p>
  * 
- * A {@code RequestHandler} can be built using {@link #builder(String)} or other
- * static methods found in {@link Builder} and {@link RequestHandlers}.
+ * A {@code RequestHandler} can be built using {@link #builder(String)}.
  * 
  * 
  * <h2>Handler Selection</h2>
@@ -230,15 +229,55 @@ import static java.util.Objects.requireNonNull;
 public interface RequestHandler
 {
     /**
+     * Returns a builder with HTTP method set to "GET".
+     *
+     * @return a builder with HTTP method set to "GET"
+     */
+    static Builder GET() {
+        return builder(HttpConstants.Method.GET);
+    }
+    
+    /**
+     * Returns a builder with HTTP method set to "POST".
+     *
+     * @return a builder with HTTP method set to "POST"
+     */
+    static Builder POST() {
+        return builder(HttpConstants.Method.POST);
+    }
+    
+    /**
+     * Returns a builder with HTTP method set to "PUT".
+     *
+     * @return a builder with HTTP method set to "PUT"
+     */
+    static Builder PUT() {
+        return builder(HttpConstants.Method.PUT);
+    }
+    
+    /**
+     * Returns a builder with HTTP method set to "DELETE".
+     *
+     * @return a builder with HTTP method set to "DELETE"
+     */
+    static Builder DELETE() {
+        return builder(HttpConstants.Method.DELETE);
+    }
+    
+    /**
+     * Returns a builder with HTTP method set to "HEAD".
+     *
+     * @return a builder with HTTP method set to "HEAD"
+     */
+    static Builder HEAD() {
+        return builder(HttpConstants.Method.HEAD);
+    }
+    
+    /**
      * Creates a new {@code RequestHandler} builder.<p>
      * 
      * The method is any non-empty, case-sensitive string containing no white
-     * space. For example, "GET" and "POST". Constants are available in {@link
-     * HttpConstants.Method}.<p>
-     * 
-     * Builders with standardized methods is already available using static
-     * methods in the builder interface, such as {@link Builder#GET()}, {@link
-     * Builder#POST()} etc.
+     * space.<p>
      * 
      * @param method token qualifier
      * 
@@ -248,7 +287,7 @@ public interface RequestHandler
      *             if {@code method} is {@code null}
      * 
      * @throws IllegalArgumentException
-     *             if {@code method} is non-empty or contains whitespace
+     *             if {@code method} is empty or contains whitespace
      */
     static Builder builder(String method) {
         return new DefaultRequestHandler.Builder(method);
@@ -277,7 +316,9 @@ public interface RequestHandler
      * 
      * @see RequestHandler
      */
-    MediaType consumes();
+    default MediaType consumes() {
+        return __NOTHING_AND_ALL;
+    }
     
     /**
      * Returns the media type of the response entity-body this handler
@@ -289,7 +330,9 @@ public interface RequestHandler
      * 
      * @see RequestHandler
      */
-    MediaType produces();
+    default MediaType produces() {
+        return __ALL;
+    }
     
     /**
      * Returns the function that will process a request into a response.<p>
@@ -307,169 +350,157 @@ public interface RequestHandler
     BiConsumer<Request, ClientChannel> logic();
     
     /**
-     * Returns this represented as a string.<p>
-     * 
-     * There's probably not much sense in marshalling the logic instance
-     * together with the returned string given how the logic does not
-     * participate in the identity of the handler.
-     * 
-     * @return this represented as a String (never {@code null})
-     */
-    @Override
-    String toString();
-    
-    /**
      * Builder of {@link RequestHandler}.<p>
      * 
-     * Each method returns an immutable builder instance which can be used
-     * repeatedly as a template for new builds.<p>
+     * When the builder has been constructed, the request handler method will
+     * have already been set. What remains is to optionally set consuming and
+     * producing media types and finally build the handler.<p>
      * 
-     * The builder will guide the user through a series of steps along the
-     * process of building a handler.<p>
+     * Consuming and producing media types will by default be set to {@link
+     * MediaType#__NOTHING_AND_ALL} and "*&#47;*" respectively, meaning that
+     * unless more restrictive media types are set, the handler is willing to
+     * serve all requests no matter the presence- or value of the request's
+     * content-type and accept headers.<p>
      * 
-     * The first step is the {@link RequestHandler#builder(String)} constructor
-     * which requires an HTTP method. Static methods for HTTP-standardized
-     * methods exists in the form of {@link #GET()}, {@link #POST()} and so
-     * on.<p> 
+     * The handler is built and returned when specifying the request-processing
+     * logic. Three different styles of methods support specifying the logic;
+     * <i>{@code respond}</i>, <i>{@code apply}</i> and <i>{@code accept}</i>.
+     * The first two are adapters which re-packages the given function into
+     * the {@code BiConsumer} type needed by accept.<p>
      * 
-     * The next step is to specify what media type the handler consumes followed
-     * by what media type it produces, for example "text/plain".<p>
-     * 
-     * The last step will be to specify the {@link RequestHandler#logic() logic}
-     * of the handler. The last step is also what builds a new handler
-     * instance.<p>
-     * 
-     * Ultimately, the request processing logic of the handler is a {@code
-     * BiConsumer<Request, ClientChannel>}. This instance can be passed as-is to
-     * the builder using {@link Builder.LastStep#accept(BiConsumer)}.
+     * {@code respond()} is great when the function does not need access to the
+     * request object: 
      * 
      * <pre>{@code
-     * import static alpha.nomagichttp.handler.RequestHandlers.GET;
+     * import static alpha.nomagichttp.handler.RequestHandler.GET;
      * import static alpha.nomagichttp.message.Responses.text;
      * ...
      * 
-     * RequestHandler greeter = GET().accept((request, channel) -> {
-     *     CompletionStage<Response> response = request.body()
-     *         .toText()
-     *         .thenApply(name -> text("Hello " + name));
-     *     
-     *     channel.write(response);
+     * RequestHandler static = GET().respond(text("Hello!"));
+     * }</pre>
+     * 
+     * {@code apply()} is great when the function need access to the request
+     * object and produces an asynchronous response (the request body is the
+     * asynchronous part in this example which returns a {@code
+     * CompletionStage}):
+     * 
+     * <pre>{@code
+     * RequestHandler greeter = POST()
+     *         .apply(request -> request.body().toText()
+     *         .thenApply(name -> text("Hello " + name + "!")));
+     * }</pre>
+     * 
+     * For any other case, or simply for the sake of code readability and
+     * explicitness, {@code accept()} is given the undressed handler logic
+     * function which must use the client channel to write a response:
+     * 
+     * <pre>{@code
+     * RequestHandler greeter = POST().accept((request, channel) -> {
+     *     if (request.body().isEmpty()) {
+     *         Response bad = Responses.badRequest();
+     *         channel.write(bad);
+     *     } else {
+     *         CompletionStage<Response> ok
+     *                 = request.body().convert(...).thenApply(...);
+     *         channel.write(ok);
+     *     }
      * });
      * }</pre>
      * 
-     * A few adapter overloads exist which do the same thing (write a response
-     * to the channel), they only differ in the signature. Last example can be
-     * rewritten as:
+     * Small JavaDoc examples in all honor, but most real-world use cases will
+     * likely be classes that implement the functional signature.
      * 
      * <pre>{@code
-     * RequestHandler greeter = GET().apply(req ->
-     *     req.body().toText().thenApply(name -> text("Hello " + name)));
+     * class MyLogic implements BiConsumer<Request, ClientChannel> {
+     *     MyLogic(My dependencies) {
+     *         ...
+     *     }
+     *     
+     *     @Override
+     *     public void accept(Request req, ClientChannel ch) {
+     *         ...
+     *     }
+     * }
+     * ...
+     * server.add("/", GET().accept(new MyLogic()));
      * }</pre>
      * 
-     * If a response does not depend on the request, a greeter can be simplified
-     * even further:
+     * Or, if you wish to skip the builder completely:
      * 
      * <pre>{@code
-     * Response cached = text("Hello Stranger");
-     * RequestHandler greeter = GET().respond(cached);
+     * class MyEndpoint implements RequestHandler {
+     *     MyEndpoint(My dependencies) {
+     *         ...
+     *     }
+     *     
+     *     @Override
+     *     String method() {
+     *         return "GET"; // Or use HttpConstants
+     *     }
+     *     
+     *     @Override
+     *     BiConsumer<Request, ClientChannel> logic() {
+     *         return this::process;
+     *     }
+     *     
+     *     private void process(Request req, ClientChannel ch) {
+     *         ...
+     *     }
+     * }
+     * ...
+     * HttpServer.create().add("/", new MyEndpoint());
      * }</pre>
      * 
-     * The implementation is thread-safe. It does not not necessarily implement
-     * {@code hashCode()} and {@code equals()}.
+     * State-modifying methods return the same builder instance invoked. The
+     * builder is not thread-safe. It should be used only temporarily while
+     * constructing a request handler and then the builder reference should be
+     * discarded.<p>
+     * 
+     * The implementation does not not necessarily implement {@code hashCode()}
+     * and {@code equals()}.
      * 
      * @author Martin Andersson (webmaster at martinandersson.com)
      */
     interface Builder
     {
         /**
-         * Returns a builder with HTTP method set to "GET".
-         * 
-         * @return a builder with HTTP method set to "GET"
-         */
-        static Builder GET() {
-            return builder(HttpConstants.Method.GET);
-        }
-        
-        /**
-         * Returns a builder with HTTP method set to "HEAD".
-         * 
-         * @return a builder with HTTP method set to "HEAD"
-         */
-        static Builder HEAD() {
-            return builder(HttpConstants.Method.HEAD);
-        }
-        
-        /**
-         * Returns a builder with HTTP method set to "POST".
-         * 
-         * @return a builder with HTTP method set to "POST"
-         */
-        static Builder POST() {
-            return builder(HttpConstants.Method.POST);
-        }
-        
-        /**
-         * Returns a builder with HTTP method set to "PUT".
-         * 
-         * @return a builder with HTTP method set to "PUT"
-         */
-        static Builder PUT() {
-            return builder(HttpConstants.Method.PUT);
-        }
-        
-        /**
-         * Returns a builder with HTTP method set to "DELETE".
-         * 
-         * @return a builder with HTTP method set to "DELETE"
-         */
-        static Builder DELETE() {
-            return builder(HttpConstants.Method.DELETE);
-        }
-        
-        /**
          * Set consumption media type to {@link MediaType#__NOTHING}.
          * 
-         * @return the next step
+         * @return this (for chaining/fluency)
          */
-        default NextStep consumesNothing() {
+        default Builder consumesNothing() {
             return consumes(__NOTHING);
         }
         
         /**
          * Set consumption media type to {@link MediaType#__ALL}.
          * 
-         * @return the next step
+         * @return this (for chaining/fluency)
          */
-        default NextStep consumesAll() {
+        default Builder consumesAll() {
             return consumes(__ALL);
         }
         
         /**
          * Set consumption media type to {@link MediaType#__NOTHING_AND_ALL}.
          * 
-         * @return the next step
+         * @return this (for chaining/fluency)
          */
-        default NextStep consumesNothingAndAll() {
+        default Builder consumesNothingAndAll() {
             return consumes(__NOTHING_AND_ALL);
         }
         
         /**
-         * Set consumption media type to {@link MediaType#TEXT_PLAIN}.
+         * Parse and set consumption media-type.
          * 
-         * @return the next step
-         */
-        default NextStep consumesTextPlain() {
-            return consumes(TEXT_PLAIN);
-        }
-        
-        /**
-         * Parse and set consumption {@code mediaType}.
-         * 
-         * @return the next step
          * @param mediaType to set
-         * @see MediaType#parse(CharSequence) 
+         * 
+         * @return this (for chaining/fluency)
+         * 
+         * @throws MediaTypeParseException
+         *             if content-type failed to {@linkplain MediaType#parse(CharSequence) parse}
          */
-        default NextStep consumes(String mediaType) {
+        default Builder consumes(String mediaType) {
             return consumes(parse(mediaType));
         }
         
@@ -480,123 +511,102 @@ public interface RequestHandler
          * @param mediaType to set
          * @throws NullPointerException if {@code mediaType} is {@code null}
          */
-        NextStep consumes(MediaType mediaType);
+        Builder consumes(MediaType mediaType);
         
         /**
-         * A builder API reduced to selecting producing media type qualifier.
+         * Set producing media type to {@link MediaType#__ALL}.
+         *
+         * @return the last step
          */
-        interface NextStep
-        {
-            /**
-             * Set producing media type to {@link MediaType#__ALL}.
-             * 
-             * @return the last step
-             */
-            default LastStep producesAll() {
-                return produces(__ALL);
-            }
-            
-            /**
-             * Set producing media type to {@link MediaType#TEXT_PLAIN}.
-             * 
-             * @return the last step
-             */
-            default LastStep producesTextPlain() {
-                return produces(TEXT_PLAIN);
-            }
-            
-            /**
-             * Parse and set producing {@code mediaType}.
-             * 
-             * @return the last step
-             * @param mediaType to set
-             * @see MediaType#parse(CharSequence)
-             */
-            default LastStep produces(String mediaType) {
-                return produces(parse(mediaType));
-            }
-            
-            /**
-             * Set producing media type.
-             * 
-             * @return the last step
-             * @param mediaType to set
-             * @throws NullPointerException if {@code mediaType} is {@code null}
-             */
-            LastStep produces(MediaType mediaType);
+        default Builder producesAll() {
+            return produces(__ALL);
+        }
+        
+        /**
+         * Parse and set producing {@code mediaType}.
+         *
+         * @return the last step
+         * @param mediaType to set
+         * @see MediaType#parse(CharSequence)
+         */
+        default Builder produces(String mediaType) {
+            return produces(parse(mediaType));
+        }
+        
+        /**
+         * Set producing media type.
+         *
+         * @return the last step
+         * @param mediaType to set
+         * @throws NullPointerException if {@code mediaType} is {@code null}
+         */
+        Builder produces(MediaType mediaType);
+    
+        /**
+         * Build a request handler that returns the response to any valid
+         * request hitting the route.
+         *
+         * @param response to return
+         * @return a new request handler
+         * @throws NullPointerException if {@code response} is {@code null}
+         */
+        default RequestHandler respond(Response response) {
+            requireNonNull(response);
+            return accept((req, ch) -> ch.write(response));
         }
     
         /**
-         * A builder API reduced to specifying the request handler logic.
+         * Build a request handler that returns the response to any valid
+         * request hitting the route.
+         *
+         * @param response to return
+         * @return a new request handler
+         * @throws NullPointerException if {@code response} is {@code null}
          */
-        interface LastStep
-        {
-            /**
-             * Build a request handler that returns the response to any valid
-             * request hitting the route.
-             * 
-             * @param response to return
-             * @return a new request handler
-             * @throws NullPointerException if {@code response} is {@code null}
-             */
-            default RequestHandler respond(Response response) {
-                requireNonNull(response);
-                return accept((req, ch) -> ch.write(response));
-            }
-            
-            /**
-             * Build a request handler that returns the response to any valid
-             * request hitting the route.
-             *
-             * @param response to return
-             * @return a new request handler
-             * @throws NullPointerException if {@code response} is {@code null}
-             */
-            default RequestHandler respond(CompletionStage<Response> response) {
-                requireNonNull(response);
-                return accept((req, ch) -> ch.write(response));
-            }
-            
-            /**
-             * Build a request handler that returns a response to any valid
-             * request hitting the route.<p>
-             * 
-             * Unlike the other two <i>respond</i> overloads, this response is
-             * retrieved lazily.
-             *
-             * @param response supplier
-             * @return a new request handler
-             * @throws NullPointerException if {@code response} is {@code null}
-             */
-            default RequestHandler respond(Supplier<CompletionStage<Response>> response) {
-                requireNonNull(response);
-                return accept((req, ch) -> ch.write(response.get()));
-            }
-            
-            /**
-             * Build a request handler that invokes the given function for every
-             * request and writes the produced response on the client channel.
-             * 
-             * @param logic to call
-             * @return a new request handler
-             * @throws NullPointerException if {@code logic} is {@code null}
-             */
-            default RequestHandler apply(Function<Request, CompletionStage<Response>> logic) {
-                requireNonNull(logic);
-                return accept((req, ch) -> ch.write(logic.apply(req)));
-            }
-            
-            /**
-             * Build a request handler using the given logic function.<p>
-             * 
-             * The function must ensure that a response is written to the client
-             * channel at some point, or otherwise closed.
-             * 
-             * @param logic to call
-             * @return a new request handler
-             * @throws NullPointerException if {@code logic} is {@code null}
-             */
-            RequestHandler accept(BiConsumer<Request, ClientChannel> logic);
+        default RequestHandler respond(CompletionStage<Response> response) {
+            requireNonNull(response);
+            return accept((req, ch) -> ch.write(response));
         }
+    
+        /**
+         * Build a request handler that returns a response to any valid
+         * request hitting the route.<p>
+         *
+         * Unlike the other two <i>respond</i> overloads, this response is
+         * retrieved lazily.
+         *
+         * @param response supplier
+         * @return a new request handler
+         * @throws NullPointerException if {@code response} is {@code null}
+         */
+        default RequestHandler respond(Supplier<CompletionStage<Response>> response) {
+            requireNonNull(response);
+            return accept((req, ch) -> ch.write(response.get()));
+        }
+    
+        /**
+         * Build a request handler that invokes the given function for every
+         * request and writes the produced response on the client channel.
+         *
+         * @param logic to call
+         * @return a new request handler
+         * @throws NullPointerException if {@code logic} is {@code null}
+         */
+        default RequestHandler apply(Function<Request, CompletionStage<Response>> logic) {
+            requireNonNull(logic);
+            return accept((req, ch) -> ch.write(logic.apply(req)));
+        }
+        
+        /**
+         * Build a request handler using the given logic function.<p>
+         *
+         * The function must ensure that a response is written to the client
+         * channel at some point, or otherwise closed.
+         *
+         * @param logic to call
+         * @return a new request handler
+         * @throws NullPointerException if {@code logic} is {@code null}
+         */
+        RequestHandler accept(BiConsumer<Request, ClientChannel> logic);
     }
 }

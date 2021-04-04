@@ -1,7 +1,6 @@
 package alpha.nomagichttp.largetest;
 
 import alpha.nomagichttp.handler.RequestHandler;
-import alpha.nomagichttp.message.Responses;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
@@ -10,7 +9,7 @@ import java.net.http.HttpResponse;
 import java.nio.file.Files;
 import java.nio.file.Path;
 
-import static alpha.nomagichttp.handler.RequestHandlers.POST;
+import static alpha.nomagichttp.handler.RequestHandler.POST;
 import static alpha.nomagichttp.message.Responses.noContent;
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -32,10 +31,10 @@ class BigFileRequest extends AbstractSingleClientTest
                 req.body()
                    .toFile(FILE)
                    .thenApply(n ->
-                       Responses.noContent()
-                                .toBuilder()
-                                .header("Received", Long.toString(n))
-                                .build()));
+                       noContent()
+                       .toBuilder()
+                       .header("Received", Long.toString(n))
+                       .build()));
         
         server().add("/file", fileSaver);
     }
