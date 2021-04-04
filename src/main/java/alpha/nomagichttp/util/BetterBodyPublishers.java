@@ -42,6 +42,8 @@ import static java.nio.charset.StandardCharsets.UTF_8;
  * {@link BodyPublishers#ofInputStream(Supplier)} is by definition blocking and
  * should be avoided altogether).<p>
  * 
+ * All published bytebuffers are read-only.
+ * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  * 
  * @see Response.Builder#body(Flow.Publisher) 
@@ -202,7 +204,7 @@ public final class BetterBodyPublishers
             @Override
             public ByteBuffer next() {
                 final int cap = Math.min(BUF_SIZE, desire());
-                final ByteBuffer bb = ByteBuffer.wrap(buf, pos, cap);
+                final ByteBuffer bb = ByteBuffer.wrap(buf, pos, cap).asReadOnlyBuffer();
                 pos += cap;
                 return bb;
             }
