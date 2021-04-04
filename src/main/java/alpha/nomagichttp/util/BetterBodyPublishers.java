@@ -21,21 +21,26 @@ import static java.nio.charset.StandardCharsets.UTF_8;
  * Mirrors the API of {@link BodyPublishers} with implementations better in some
  * aspects.<p>
  * 
- * When this class offers an alternative, then it is safe to assume that the
- * alternative is a better choice, for at least one or all of the following
- * reasons: the alternative 1) is likely more performant with better memory
- * utilization (e.g. wrap data array on-demand instead of eager copying), 2) is
- * thread-safe and non-blocking, 3) has a documented contract and is more
- * compliant with the
- * <a href="https://github.com/reactive-streams/reactive-streams-jvm/blob/v1.0.3/README.md">
- * Reactive Streams</a> specification (same semantics as specified in {@link
- * Publishers} apply).<p>
+ * {@link Publishers} is used under the hood to deliver the implementations
+ * produced by this class. So same semantics apply.<p>
  * 
- * When this class does not offer an alternative, then it is safe to assume that
- * the standard {@code BodyPublishers} factory is adequate or an alternative is
- * just not meaningful to implement. For example, {@link
- * BodyPublishers#ofInputStream(Supplier)} is by definition blocking and should
- * be avoided altogether.
+ * When this class offers an alternative, then it is safe to assume that the
+ * alternative is a better choice, for at least one or both of the following
+ * reasons: the alternative is 1) likely more efficient with CPU and memory
+ * (e.g. wrap data array on-demand instead of eager copying), 2) is thread-safe
+ * and non-blocking.<p>
+ * 
+ * The alternative is also more compliant with the
+ * <a href="https://github.com/reactive-streams/reactive-streams-jvm/blob/v1.0.3/README.md">
+ * Reactive Streams</a> specification. This is not necessarily a good thing lol,
+ * but at least the contract is well documented (see {@link Publishers}) and so
+ * there will be no surprises for the application developer.<p>
+ * 
+ * When this class does not offer an alternative, then either the {@code
+ * BodyPublishers} factory is too recent to have been ported, or it is adequate
+ * enough, or an alternative is just not meaningful to implement (for example,
+ * {@link BodyPublishers#ofInputStream(Supplier)} is by definition blocking and
+ * should be avoided altogether).<p>
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  * 
@@ -62,8 +67,7 @@ public final class BetterBodyPublishers
      * converted using the {@link StandardCharsets#UTF_8 UTF_8} character set.
      * 
      * Is an alternative to {@link BodyPublishers#ofString(String)} except
-     * without thread-safety issues (
-     * <a href="https://bugs.openjdk.java.net/browse/JDK-8222968">JDK-8222968</a>).
+     * it is likely more performant and has no thread-safety issues.
      * 
      * @param   body the String containing the body
      * @return  a BodyPublisher
@@ -78,8 +82,7 @@ public final class BetterBodyPublishers
      * String}, converted using the given character set.
      * 
      * Is an alternative to {@link BodyPublishers#ofString(String, Charset)}
-     * except without thread-safety issues (
-     * <a href="https://bugs.openjdk.java.net/browse/JDK-8222968">JDK-8222968</a>).
+     * except it is likely more performant and has no thread-safety issues.
      * 
      * @param   s the String containing the body
      * @param   charset the character set to convert the string to bytes
@@ -93,12 +96,11 @@ public final class BetterBodyPublishers
     /**
      * Returns a body publisher whose body is the given byte array.<p>
      * 
-     * Is an alternative to {@link BodyPublishers#ofByteArray(byte[])} except
-     * without thread-safety issues (
-     * <a href="https://bugs.openjdk.java.net/browse/JDK-8222968">JDK-8222968</a>).<p>
+     * Is an alternative to {@link BodyPublishers#ofByteArray(byte[])}  except
+     * it is likely more performant and has no thread-safety issues.
      * 
-     * The given data array is <i>not</i> copied. It should not be modified
-     * after calling this method.
+     * The given data array is <i>not</i> defensively copied. It should not be
+     * modified after calling this method.
      * 
      * @param   buf the byte array containing the body
      * @return  a BodyPublisher
@@ -111,13 +113,12 @@ public final class BetterBodyPublishers
     /**
      * Returns a body publisher whose body is the content of the given byte
      * array of {@code length} bytes starting from the specified {@code offset}.
-     * 
+     *
      * Is an alternative to {@link BodyPublishers#ofByteArray(byte[], int, int)}
-     * except without thread-safety issues (
-     * <a href="https://bugs.openjdk.java.net/browse/JDK-8222968">JDK-8222968</a>).<p>
+     * except it is likely more performant and has no thread-safety issues.
      * 
-     * The given data array is <i>not</i> copied. It should not be modified
-     * after calling this method.
+     * The given data array is <i>not</i> defensively copied. It should not be
+     * modified after calling this method.
      * 
      * @param   buf the byte array containing the body
      * @param   offset the offset of the first byte
