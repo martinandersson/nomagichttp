@@ -31,7 +31,6 @@ import static alpha.nomagichttp.internal.AtomicReferences.setIfAbsent;
 import static java.lang.System.Logger.Level.DEBUG;
 import static java.lang.System.Logger.Level.ERROR;
 import static java.lang.System.Logger.Level.INFO;
-import static java.net.InetAddress.getLoopbackAddress;
 import static java.util.Objects.requireNonNull;
 
 /**
@@ -83,6 +82,7 @@ public final class DefaultServer implements HttpServer
     
     @Override
     public HttpServer start(SocketAddress address) throws IOException {
+        requireNonNull(address);
         var res = lazyInitOrElse(
                 parent, CompletableFuture::new, v -> initialize(address, v), null);
         
@@ -127,13 +127,9 @@ public final class DefaultServer implements HttpServer
     private void initialize(SocketAddress addr, CompletableFuture<AsynchronousServerSocketChannel> v) {
         final AsynchronousServerSocketChannel ch;
         try {
-            SocketAddress use = addr != null? addr :
-                    new InetSocketAddress(getLoopbackAddress(), 0);
-           
             AsynchronousChannelGroup grp = AsyncGroup.getOrCreate(config.threadPoolSize())
                     .toCompletableFuture().join();
-            
-            ch = AsynchronousServerSocketChannel.open(grp).bind(use);
+            ch = AsynchronousServerSocketChannel.open(grp).bind(addr);
         } catch (Throwable t) {
             if (SERVER_COUNT.get() == 0) {
                 // benign race with other servers starting in parallel,

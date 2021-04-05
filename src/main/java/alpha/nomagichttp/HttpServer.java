@@ -22,6 +22,8 @@ import java.nio.channels.AsynchronousServerSocketChannel;
 import java.util.concurrent.CompletionStage;
 import java.util.function.BiConsumer;
 
+import static java.net.InetAddress.getLoopbackAddress;
+
 /**
  * Listens on a port for HTTP requests.<p>
  * 
@@ -253,9 +255,8 @@ public interface HttpServer
      * 
      * @see InetAddress
      */
-    
     default HttpServer start() throws IOException {
-        return start(null);
+        return start(new InetSocketAddress(getLoopbackAddress(), 0));
     }
     
     /**
@@ -309,16 +310,13 @@ public interface HttpServer
     }
     
     /**
-     * Listen for client connections on a given address.<p>
-     * 
-     * Passing in {@code null} for address is equivalent to {@link #start()}
-     * without any arguments, i.e. a system-picked port will be used on the
-     * loopback address.
+     * Listen for client connections on a given address.
      * 
      * @param address to use
      * 
      * @return this (for chaining/fluency)
      * 
+     * @throws NullPointerException if {@code address} is {@code null}
      * @throws IllegalStateException if server is already running
      * @throws IOException if an I/O error occurs
      *
