@@ -146,6 +146,10 @@ tasks.withType(Javadoc) {
     
     // Text to be injected as overview
     options.overview = 'src/main/java/overview.html'
+    
+    // Link to Java 11 API
+    def v = compileJava.options.release.get()
+    options.links("https://docs.oracle.com/en/java/javase/$v/docs/api")
 }
 
 // Add tasks "javadocJar" and "sourcesJar" (for IDE:s and other tooling)
