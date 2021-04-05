@@ -30,15 +30,17 @@ import static java.util.Objects.requireNonNull;
 import static java.util.function.Function.identity;
 
 /**
- * A concurrent tree structure. No node in the tree store its key. Instead, the
- * node's position defines the key which is effectively split into segments and
- * distributed across the branch. All descendants of a node share a common key
- * prefix and the root is the only node whose prefix is the empty key (because
- * it has no parent).<p>
+ * A concurrent tree structure.<p>
+ * 
+ * No node in the tree store its key. Instead, the node's position defines the
+ * key which is effectively split into segments and distributed across the
+ * branch. All descendants of a node share a common key prefix and the root is
+ * the only node whose prefix is the empty key (because it has no parent).<p>
  * 
  * With this class, the client will add-, remove- and lookup entries by
  * traversing the tree, one segment/node at a time. Traversing the tree is done
- * in a <i>reading</i> or <i>writing</i> mode. The API is different for each.
+ * in a <i>reading</i> or <i>writing</i> mode. The API is different for each.<p>
+ * 
  * The split has two benefits. Firstly, the api will be more easy to use as it
  * will be trimmed to the intent of the traversing operation. The split also
  * makes it possible for the tree implementation to perform a few optimizations,
@@ -227,16 +229,6 @@ final class Tree<V>
         WriteNode<V> nextOrCreateIf(String segment, BooleanSupplier condition);
     }
     
-    private static final int INITIAL_CAPACITY = 3;
-    
-    private static final Deque<?> EMPTY = new ArrayDeque<>(0);
-    
-    private static <V> Deque<V> empty() {
-        @SuppressWarnings("unchecked")
-        Deque<V> typed = (Deque<V>) EMPTY;
-        return typed;
-    }
-    
     private final NodeImpl root;
     
     /** Is {@code true} if current writing thread needs to prune the tree. */
@@ -249,10 +241,10 @@ final class Tree<V>
     private final ThreadLocal<Deque<NodeImpl>> release;
     
     Tree() {
-        root = new NodeImpl(null);
-        clean = ThreadLocal.withInitial(() -> false);
+        root     = new NodeImpl(null);
+        clean    = ThreadLocal.withInitial(() -> false);
         cleaning = new AtomicBoolean(false);
-        release = ThreadLocal.withInitial(ArrayDeque::new);
+        release  = ThreadLocal.withInitial(ArrayDeque::new);
     }
     
     /**

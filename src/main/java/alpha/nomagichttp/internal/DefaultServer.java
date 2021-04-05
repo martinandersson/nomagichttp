@@ -188,7 +188,7 @@ public final class DefaultServer implements HttpServer
             }
             try {
                 ch.close();
-                // This is the code actually that we desperately need to protect
+                // This is the code that we desperately need to protect
                 LOG.log(INFO, () -> "Closed server channel: " + ch);
                 int n = SERVER_COUNT.decrementAndGet();
                 parent.set(null);
@@ -224,7 +224,7 @@ public final class DefaultServer implements HttpServer
         Iterator<ChannelCouple> it = children.iterator();
         while (it.hasNext()) {
             ChannelCouple pair = it.next();
-            // Just to not give a new concurrent server start any surprises lol
+            // Just to not give a new concurrent start any surprises lol
             if (pair.parent.equals(ofParent)) {
                 it.remove();
                 pair.child.closeSafe();
