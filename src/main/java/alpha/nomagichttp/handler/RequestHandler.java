@@ -395,60 +395,53 @@ public interface RequestHandler
      * function which must use the client channel to write a response:
      * 
      * <pre>{@code
-     * RequestHandler greeter = POST().accept((request, channel) -> {
-     *     if (request.body().isEmpty()) {
-     *         Response bad = Responses.badRequest();
-     *         channel.write(bad);
-     *     } else {
-     *         CompletionStage<Response> ok
-     *                 = request.body().convert(...).thenApply(...);
-     *         channel.write(ok);
-     *     }
-     * });
+     *     RequestHandler greeter = POST().accept((request, channel) -> {
+     *         if (request.body().isEmpty()) {
+     *             Response bad = Responses.badRequest();
+     *             channel.write(bad);
+     *         } else {
+     *             CompletionStage<Response> ok
+     *                     = request.body().convert(...).thenApply(...);
+     *             channel.write(ok);
+     *         }
+     *     });
      * }</pre>
      * 
      * Small JavaDoc examples in all honor, but most real-world use cases will
      * likely be classes that implement the functional signature.
      * 
      * <pre>{@code
-     * class MyLogic implements BiConsumer<Request, ClientChannel> {
-     *     MyLogic(My dependencies) {
-     *         ...
+     *     class MyLogic implements BiConsumer<Request, ClientChannel> {
+     *         MyLogic(My dependencies) {
+     *             ...
+     *         }
+     *         public void accept(Request req, ClientChannel ch) {
+     *             ...
+     *         }
      *     }
-     *     
-     *     @Override
-     *     public void accept(Request req, ClientChannel ch) {
-     *         ...
-     *     }
-     * }
-     * ...
-     * server.add("/", GET().accept(new MyLogic()));
+     *     ...
+     *     server.add("/", GET().accept(new MyLogic()));
      * }</pre>
      * 
      * Or, if you wish to skip the builder completely:
      * 
      * <pre>{@code
-     * class MyEndpoint implements RequestHandler {
-     *     MyEndpoint(My dependencies) {
-     *         ...
+     *     class MyEndpoint implements RequestHandler {
+     *         MyEndpoint(My dependencies) {
+     *             ...
+     *         }
+     *         String method() {
+     *             return "GET"; // Or use HttpConstants
+     *         }
+     *         BiConsumer<Request, ClientChannel> logic() {
+     *             return this::process;
+     *         }
+     *         private void process(Request req, ClientChannel ch) {
+     *             ...
+     *         }
      *     }
-     *     
-     *     @Override
-     *     String method() {
-     *         return "GET"; // Or use HttpConstants
-     *     }
-     *     
-     *     @Override
-     *     BiConsumer<Request, ClientChannel> logic() {
-     *         return this::process;
-     *     }
-     *     
-     *     private void process(Request req, ClientChannel ch) {
-     *         ...
-     *     }
-     * }
-     * ...
-     * HttpServer.create().add("/", new MyEndpoint());
+     *     ...
+     *     HttpServer.create().add("/", new MyEndpoint());
      * }</pre>
      * 
      * State-modifying methods return the same builder instance invoked. The
