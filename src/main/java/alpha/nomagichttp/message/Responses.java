@@ -85,6 +85,19 @@ public final class Responses
     }
     
     /**
+     * Returns a "200 OK"-response with a JSON body.<p>
+     * 
+     * The content-type header will be set to "application/json; charset=utf-8".
+     * 
+     * @param   json message body
+     * @return  a "200 OK"-response
+     * @see     StatusCode#TWO_HUNDRED
+     */
+    public static Response json(String json) {
+        return ok(ofString(json), "application/json; charset=utf-8");
+    }
+    
+    /**
      * Returns a "200 OK"-response with the given body.<p>
      * 
      * The content-type will be set to "application/octet-stream".
