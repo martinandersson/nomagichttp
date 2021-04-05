@@ -1,12 +1,13 @@
 package alpha.nomagichttp;
 
+import alpha.nomagichttp.handler.ClientChannel;
 import alpha.nomagichttp.handler.ErrorHandler;
 import alpha.nomagichttp.handler.RequestHandler;
 import alpha.nomagichttp.internal.DefaultServer;
 import alpha.nomagichttp.message.HttpVersionTooOldException;
 import alpha.nomagichttp.message.MaxRequestHeadSizeExceededException;
-import alpha.nomagichttp.message.Request;
 import alpha.nomagichttp.message.Response;
+import alpha.nomagichttp.message.Responses;
 import alpha.nomagichttp.route.DefaultRouteRegistry;
 import alpha.nomagichttp.route.HandlerCollisionException;
 import alpha.nomagichttp.route.Route;
@@ -19,30 +20,44 @@ import java.net.InetSocketAddress;
 import java.net.SocketAddress;
 import java.nio.channels.AsynchronousServerSocketChannel;
 import java.util.concurrent.CompletionStage;
+import java.util.function.BiConsumer;
 
 /**
- * Listens on a port for HTTP {@link Request requests} targeting a specific
- * {@link Route route} which contains at least one {@link RequestHandler request
- * handler} which processes the request into a {@link Response response}.<p>
+ * Listens on a port for HTTP requests.<p>
  * 
  * This interface declares static <i>{@code create}</i> methods that construct
  * and return the default implementation {@link DefaultServer}. Once the server
  * has been constructed, it needs to <i>{@code start()}</i>.<p>
  * 
  * Routes can be dynamically added and removed using {@link #add(Route)} and
- * {@link #remove(Route)}.<p>
+ * {@link #remove(Route)}. A legal server variant is to not even have any routes
+ * registered. The idea is that resources (what's "behind the route") can be
+ * short-lived and serve very specific purposes, so their presence can
+ * change. Example:
+ * 
+ * <pre>
+ *   HttpServer.{@link #create(ErrorHandler...)
+ *     create}().{@link #add(String, RequestHandler, RequestHandler...)
+ *       add}("/", {@link RequestHandler#GET()
+ *         GET}().{@link RequestHandler.Builder#respond(Response)
+ *           respond}({@link Responses#text(String)
+ *             text}("Hello"))).{@link #start() start}();
+ * </pre>
  * 
  * The server's function is to provide port- and channel management, parse
  * an inbound request head and resolve which handler of a route is qualified to
- * handle the request. Once the handler has been invoked, it has total freedom
- * in regards to how it interprets the request headers- and body as well as what
- * headers and body it responds.
+ * handle the request. Once the handler has been invoked, it has almost total
+ * freedom in regards to how it interprets the request headers- and body as well
+ * as what headers and body it responds.<p>
  * 
+ * The process of receiving a request and respond responses (one or many
+ * intermittent responses, followed by a final response) is often called an
+ * "exchange".
  * 
  * <h2>Server Life-Cycle</h2>
  * 
  * It is possible to start many server instances on different ports. One
- * use-case for this pattern is to expose public endpoints on one port but
+ * use-case for this pattern is to expose public endpoints on one port but keep
  * more sensitive administrator endpoints on another more secluded port.<p>
  * 
  * If at least one server is running, then the JVM will not shutdown when the
@@ -52,15 +67,13 @@ import java.util.concurrent.CompletionStage;
  * The server may be recycled, i.e. started anew after having been stopped, any
  * number of times.
  * 
- * 
  * <h2>Supported HTTP Versions</h2>
  *
  * Currently, the NoMagicHTTP server is a project in its infancy. Full support
  * HTTP/1.0 and 1.1 is the first milestone, yet to be completed (see POA.md in
  * repository). HTTP/2 will be implemented thereafter. HTTP clients older than
- * HTTP/1.0 is rejected (exchange will crash with a {@link
+ * HTTP/1.0 is rejected (the exchange will crash with a {@link
  * HttpVersionTooOldException}.
- * 
  * 
  * <h2>HTTP message semantics</h2>
  * 
@@ -80,17 +93,15 @@ import java.util.concurrent.CompletionStage;
  * 
  * These variants are rejected before or after the handler has been called,
  * depending on whether the message is a request or a response (TODO: define
- * exc types). They <i>must</i> be rejected since including a body would kill
- * the protocol. For example, a new virtual connection/protocol behavior is
- * supposed to start after the response headers to a successful {@code CONNECT}
- * request and {@code 101 (Switching Protocol)} response.<p>
+ * exc types). They <i>must</i> be rejected since including a body would have
+ * likely killed the protocol.<p>
  * 
  * For all other variants of requests and responses, the body is optional and
  * the server does not reject the message nor does the API enforce an
  * opinionated view. This is also true for message components such as the
  * response status code and reason phrase. The request handler is in full
  * control over how it interprets the request message and what response it
- * returns.
+ * returns.<p>
  * 
  * For example, it might not be common but it <i>is</i>
  * possible (and legit) for {@link HttpConstants.Method#GET GET} requests (
@@ -104,14 +115,13 @@ import java.util.concurrent.CompletionStage;
  * <a href="https://tools.ietf.org/html/rfc7231#section-6.3.2">RFC 7231 §6.3.2</a>
  * ), but it's not required to. And so the list goes on.
  * 
- * 
  * <h2>Thread Safety and Threading Model</h2>
  * 
  * The server is fully thread-safe, and mostly, asynchronous and
- * non-blocking.<p>
+ * non-blocking. This is mostly true for the entire library API. It's actually
+ * quite hard to screw up when programming with the NoMagicHTTP server.<p>
  * 
- * Life-cycle methods {@code start} and {@code stop} may block temporarily
- * and should understandably not be invoked at a high rate.<p>
+ * Life-cycle methods {@code start} and {@code stop} may block temporarily.<p>
  * 
  * The HttpServer API also functions as a route registry, to which we {@code
  * add} and {@code remove} routes. These methods are highly concurrent but may
@@ -122,16 +132,49 @@ import java.util.concurrent.CompletionStage;
  * All servers running in the same JVM share a common pool of threads (aka
  * "request threads"). The pool handles I/O completion events and executes
  * application-provided entities such as the request- and error handlers. The
- * pool size is fixed and set to the value of {@link Config#threadPoolSize()} at
- * the time of the start of the first server instance.<p>
+ * pool size is fixed and set to the value of {@link Config#threadPoolSize()}.
+ * <p>
  * 
- * It is absolutely crucial that the application does not block a request
- * thread, for example by synchronously waiting on an I/O result. The request
- * thread is suitable only for short-lived and CPU-bound work. I/O work or
- * long-lived tasks should execute somewhere else. Blocking the request thread
- * will have a negative impact on scalability and could at worse starve the pool
- * of available threads making the server unable to make progress with tasks
- * such as accepting new client connections or processing other requests.
+ * It is <strong>absolutely crucial</strong> that the application does not block
+ * a request thread, for example by synchronously waiting on an I/O result. The
+ * request thread is suitable only for short-lived and CPU-bound work. I/O work
+ * or long-lived tasks should execute somewhere else. Blocking the request
+ * thread will have a negative impact on scalability and could at worse starve
+ * the pool of available threads making the server unable to make progress with
+ * tasks such as accepting new client connections or processing other
+ * requests.<p>
+ * 
+ * This is bad:
+ * <pre>
+ *   RequestHandler h = GET().{@link RequestHandler.Builder#accept(BiConsumer)
+ *         accept}((request, channel) -{@literal >} {
+ *       String data = database.fetch("SELECT * FROM Something"); // {@literal <}-- blocks!
+ *       Response resp = {@link Responses}.text(data);
+ *       channel.{@link ClientChannel#write(CompletionStage)
+ *         write}(resp); // {@literal <}-- never blocks. Server is fully asynchronous.
+ *   });
+ * </pre>
+ * 
+ * Instead, do this:
+ * <pre>
+ * 
+ *   RequestHandler h = GET().accept((request, channel) -{@literal >} {
+ *       CompletionStage{@literal <}String{@literal >} data = database.fetchAsync("SELECT * FROM Something");
+ *       CompletionStage{@literal <}Response{@literal >} resp = data.thenApply(Responses::text);
+ *       channel.write(resp);
+ *   });
+ * </pre>
+ * 
+ * The problem is <i>not</i> synchronously producing a response if one can be
+ * produced safely without blocking.
+ * 
+ * <pre>
+ * 
+ *   RequestHandler h = GET().accept((request, channel) -{@literal >} {
+ *       Response resp = text(String.join(" ", "Short-lived", "CPU-bound work", "is fine!"));
+ *       channel.write(resp);
+ *   });
+ * </pre>
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  * 
@@ -146,8 +189,8 @@ public interface HttpServer
      * configuration}.<p>
      * 
      * The provided array of error handlers will be copied as-is into a {@code
-     * List}. Application should make sure the array does not contain
-     * duplicates, unless it for some bizarre reason wish to have an error
+     * List}. The application should make sure that the array does not contain
+     * duplicates, unless for some bizarre reason it is desired to have an error
      * handler called multiple times.
      * 
      * @param eh error handler(s)
@@ -165,8 +208,8 @@ public interface HttpServer
      * Create a server.<p>
      * 
      * The provided array of error handlers will be copied as-is into a {@code
-     * List}. Application should make sure the array does not contain
-     * duplicates, unless it for some bizarre reason wish to have an error
+     * List}. The application should make sure that the array does not contain
+     * duplicates, unless for some bizarre reason it is desired to have an error
      * handler called multiple times.
      * 
      * @param config of server
@@ -175,32 +218,35 @@ public interface HttpServer
      * @return an instance of {@link DefaultServer}
      * 
      * @throws NullPointerException
-     *             if any given argument or element is {@code null}
+     *             if any argument or array element is {@code null}
      */
     static HttpServer create(Config config, ErrorHandler... eh) {
         return new DefaultServer(config, new DefaultRouteRegistry(), eh);
     }
     
     /**
-     * Make the server listen for new client connections on a system-picked port
-     * on the loopback address (IPv4 127.0.0.1, IPv6 ::1).<p>
+     * Listen for client connections on a system-picked port on the loopback
+     * address (IPv4 127.0.0.1, IPv6 ::1).<p>
      * 
      * This method is useful for inter-process communication on the same machine
      * or to start a server in a test environment.<p>
      * 
-     * The port can be retrieved using {@link #getLocalAddress()}{@code
-     * .getPort()}.
+     * The port can be retrieved using {@link
+     * #getLocalAddress()}{@code .getPort()}.<p>
+     * 
+     * Production code ought to specify an address using any other overload of
+     * the start method.
      * 
      * @implSpec
      * The default implementation is equivalent to:
-     * <pre>{@code
-     *     InetAddress addr = InetAddress.getLoopbackAddress();
-     *     int port = 0;
-     *     SocketAddress local = new InetSocketAddress(addr, port);
-     *     return start(local);
-     * }</pre>
+     * <pre>
+     *   InetAddress addr = InetAddress.getLoopbackAddress();
+     *   int port = 0;
+     *   SocketAddress local = new InetSocketAddress(addr, port);
+     *   return {@link #start(SocketAddress) start}(local);
+     * </pre>
      * 
-     * @return a bound server-socket channel
+     * @return this (for chaining/fluency)
      * 
      * @throws IllegalStateException if the server is already running
      * @throws IOException if an I/O error occurs
@@ -213,15 +259,17 @@ public interface HttpServer
     }
     
     /**
-     * Make the server listen for new client connections on the specified port
-     * on the wildcard address (also known as "any local address" and "the
-     * unspecified address").
+     * Listen for client connections on the specified port on the wildcard
+     * address.<p>
+     * 
+     * The wildcard address is also known as "any local address" and "the
+     * unspecified address".
      * 
      * @implSpec
      * The default implementation is equivalent to:
-     * <pre>{@code
-     *     return start(new InetSocketAddress(port));
-     * }</pre>
+     * <pre>
+     *     return {@link #start(SocketAddress) start}(new InetSocketAddress(port));
+     * </pre>
      * 
      * @param port to use
      * 
@@ -238,14 +286,13 @@ public interface HttpServer
     }
     
     /**
-     * Make the server listen for new client connections on the specified
-     * hostname and port.
+     * Listen for client connections on a given hostname and port.
      * 
      * @implSpec
      * The default implementation is equivalent to:
-     * <pre>{@code
-     *     return start(new InetSocketAddress(hostname, port));
-     * }</pre>
+     * <pre>
+     *     return {@link #start(SocketAddress) start}(new InetSocketAddress(hostname, port));
+     * </pre>
      * 
      * @param hostname to use
      * @param port to use
@@ -262,8 +309,7 @@ public interface HttpServer
     }
     
     /**
-     * Make the server listen for new client connections on the specified
-     * address.
+     * Listen for client connections on a given address.<p>
      * 
      * Passing in {@code null} for address is equivalent to {@link #start()}
      * without any arguments, i.e. a system-picked port will be used on the
@@ -281,7 +327,8 @@ public interface HttpServer
     HttpServer start(SocketAddress address) throws IOException;
     
     /**
-     * Stop the server.<p>
+     * Stop listening for client connections and do not begin new HTTP
+     * exchanges.<p>
      * 
      * The server's listening port will be immediately closed and then this
      * method returns. All active HTTP exchanges will be allowed to complete
@@ -291,19 +338,19 @@ public interface HttpServer
      * server's listening port, then this method will block until the startup
      * routine is completed before initiating the shutdown.<p>
      * 
-     * If the server is not running then the returned stage is already
-     * completed.<p>
+     * If the server is not {@link #isRunning() running} then the returned stage
+     * is already completed.<p>
      * 
      * Upon failure to close the server's listening port, the stage will
      * complete exceptionally with an {@code IOException}.<p>
      * 
-     * It is possible for the server to be started up again whilst a stage has
-     * been returned from this method but active HTTP exchanges have yet to
-     * complete. In this case, the returned stage will not complete until
-     * earliest at the next server stop.<p>
+     * It is possible for the server to be started again whilst a stage has been
+     * returned from this method but active HTTP exchanges have yet to complete.
+     * In this case, the returned stage will not complete until earliest at the
+     * next server stop.<p>
      * 
      * The returned stage is a defensive copy and can not be used to abort the
-     * shutdown.
+     * shutdown.<p>
      * 
      * There are no locks involved between a server's start and the completion
      * of the returned stage. If the application starts the same server
@@ -316,7 +363,8 @@ public interface HttpServer
     CompletionStage<Void> stop();
     
     /**
-     * Stop the server and all HTTP exchanges, now.<p>
+     * Stop listening for client connections and immediately abort all HTTP
+     * exchanges.<p>
      * 
      * The server's listening port will be immediately closed and then all
      * active HTTP exchanges will be aborted. Once all HTTP exchanges have
@@ -338,7 +386,7 @@ public interface HttpServer
      * method answers the question; is the server listening on a port?<p>
      * 
      * The method does not take into account the state of lingering HTTP
-     * exchanges and/or the state of their underlying children channels.<p>
+     * exchanges and/or the state of underlying client channels.<p>
      * 
      * This method does not block.
      * 
@@ -401,7 +449,7 @@ public interface HttpServer
     HttpServer add(Route route);
     
     /**
-     * Remove a route.<p>
+     * Remove any route on the given hierarchical position.<p>
      * 
      * This method is similar to {@link #remove(Route)}, except any route no
      * matter its identity found at the hierarchical position will be removed.
@@ -412,10 +460,11 @@ public interface HttpServer
      * through the same normalization and validation routine.<p>
      * 
      * For example:
-     * <pre>{@code
-     *   server.add("/download/:user/*filepath", ...);
+     * <pre>
+     *   Route route = ...
+     *   server.add("/download/:user/*filepath", route);
      *   server.remove("/download/:/*"); // or "/download/:bla/*bla", doesn't matter
-     * }</pre>
+     * </pre>
      * 
      * @param pattern of route to remove
      * 
@@ -432,11 +481,11 @@ public interface HttpServer
     /**
      * Remove a route of a particular identity.<p>
      * 
-     * The route's currently active requests and exchanges will run to
-     * completion and will not be aborted. Only when all active connections
-     * against the route have closed will the route effectively not be in use
-     * anymore. However, the route is guaranteed to not be <i>discoverable</i>
-     * for <i>new</i> lookup operations once this method has returned.<p>
+     * The route's currently active exchanges will run to completion and will
+     * not be aborted. Only when all of the exchanges have finished will the
+     * route effectively not be in use anymore. However, the route is guaranteed
+     * to not be <i>discoverable</i> for <i>new</i> requests once this method
+     * has returned.<p>
      * 
      * In order for the route to be removed, the current route in the registry
      * occupying the same hierarchical position must be {@code equal} to the
@@ -551,12 +600,13 @@ public interface HttpServer
         }
         
         /**
-         * Returns the number of request threads that should be allocated for
+         * Returns the number of request threads that are allocated for
          * executing HTTP exchanges (such as calling the application-provided
          * request- and error handlers).<p>
          * 
-         * For a runtime change of this value to have an effect, all server
-         * instances must restart.
+         * The value is retrieved at the time of the start of the first server
+         * instance. For a later change of this value to have an effect, all
+         * server instances must first stop.
          * 
          * @implSpec
          * The default implementation returns {@link Runtime#availableProcessors()}.
