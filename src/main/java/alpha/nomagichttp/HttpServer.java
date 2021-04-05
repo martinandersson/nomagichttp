@@ -541,7 +541,8 @@ public interface HttpServer
          * 
          * Max request head size = 8 000 <br>
          * Max error recovery attempts = 5 <br>
-         * Thread pool-size = {@code Runtime.getRuntime().availableProcessors()}
+         * Thread pool-size = {@code Runtime.getRuntime().availableProcessors()}<br>
+         * Reject clients using HTTP/1.0 = true
          */
         Config DEFAULT = new Config(){};
         
@@ -550,20 +551,20 @@ public interface HttpServer
          * head before giving up.<p>
          * 
          * Once the limit has been exceeded, a {@link
-         * MaxRequestHeadSizeExceededException} will be thrown.<p>
+         * MaxRequestHeadSizeExceededException} is thrown.<p>
          * 
-         * This configuration value will be polled at the start of each new request.
+         * The configuration value is polled at the start of each new exchange.
          * 
          * @implSpec
          * The default implementation is equivalent to:
-         * <pre>{@code
+         * <pre>
          *     return 8_000;
-         * }</pre>
+         * </pre>
          * 
-         * This corresponds to <a
-         * href="https://tools.ietf.org/html/rfc7230#section-3.1.1">section 3.1.1 in
-         * RFC 7230</a> as well as <a
-         * href="https://stackoverflow.com/a/8623061/1268003">common practice</a>.
+         * The default value corresponds to <a
+         * href="https://tools.ietf.org/html/rfc7230#section-3.1.1">RFC 7230 §3.1.1</a>
+         * as well as
+         * <a href="https://stackoverflow.com/a/8623061/1268003">common practice</a>.
          * 
          * @return number of request head bytes processed before exception is thrown
          */
@@ -574,14 +575,14 @@ public interface HttpServer
         /**
          * Returns the max number of attempts at recovering a failed request.<p>
          * 
-         * This configuration has an effect only if the application has provided one
-         * or more error handlers to the server.<p>
+         * The configuration has an effect only if the application has provide
+         * one or more error handlers to the server.<p>
          * 
          * When all tries have been exhausted, the {@link ErrorHandler#DEFAULT
          * default error handler} will be called with the original exception.<p>
          * 
-         * Successfully invoking an error handler (handler returns a response or
-         * throws a <i>different</i> exception instance) counts as one attempt.<p>
+         * Successfully invoking an error handler (handler does not throw a
+         * <i>different</i> exception instance) counts as one attempt.<p>
          * 
          * The configuration value will be polled at the start of each recovery
          * attempt.
@@ -599,8 +600,7 @@ public interface HttpServer
         
         /**
          * Returns the number of request threads that are allocated for
-         * executing HTTP exchanges (such as calling the application-provided
-         * request- and error handlers).<p>
+         * executing HTTP exchanges.<p>
          * 
          * The value is retrieved at the time of the start of the first server
          * instance. For a later change of this value to have an effect, all
@@ -619,7 +619,7 @@ public interface HttpServer
          * Reject HTTP/1.0 clients, yes or no.<p>
          * 
          * By default, this method returns {@code false} and the server will
-         * therefore <i>accept</i> HTTP/1.0 clients.<p>
+         * therefore accept HTTP/1.0 clients.<p>
          * 
          * Rejection takes places through a server-thrown {@link
          * HttpVersionTooOldException} which by default gets translated to a

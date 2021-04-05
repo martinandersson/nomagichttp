@@ -32,16 +32,12 @@ import static java.lang.System.Logger.Level.ERROR;
  * 
  * One use case could be to retry a new execution of the request handler on
  * known and expected errors. Another use case could be to customize the
- * server's default error responses, for example by translating a {@code
+ * server's default error responses, for example by translating a {@link
  * NoRouteFoundException} into an application-specific "404 Not Found"
  * response.<p>
  * 
  * Many error handlers may be installed on the server. First to handle the error
  * breaks the call chain. Details follow later.<p>
- * 
- * The error handler must be thread-safe, as it may be called concurrently. As
- * far as the server is concerned, it does not need to implement 
- * {@code hashCode()} {@code equals(Object)}.<p>
  * 
  * The server will call error handlers only during the phase of the HTTP
  * exchange when there is a client waiting on a response and only if the channel
@@ -56,11 +52,11 @@ import static java.lang.System.Logger.Level.ERROR;
  * 2) Exceptions that completes exceptionally the {@code
  * CompletionStage<Response>} written to the {@link ClientChannel}.<p>
  * 
- * 3) Exceptions signalled to the server's {@code Flow.Subscriber} of the {@link
- * Response#body() response body} - if and only if - the body publisher has not
- * yet published any bytebuffers before the error was signalled. It doesn't make
- * much sense trying to recover the situation after the point where a response
- * has already begun transmitting back to the client.<p>
+ * 3) Exceptions signalled to the server's {@code Flow.Subscriber} of the {@code
+ * Response.body()} - if and only if - the body publisher has not yet published
+ * any bytebuffers before the error was signalled. It doesn't make much sense
+ * trying to recover the situation after the point where a response has already
+ * begun transmitting back to the client.<p>
  * 
  * The server will <strong>not</strong> call error handlers for errors that are
  * not directly involved in the HTTP exchange or for errors that occur
@@ -84,14 +80,14 @@ import static java.lang.System.Logger.Level.ERROR;
  * An error handler that is unwilling to handle the exception must re-throw the
  * same throwable instance which will then propagate to the next handler,
  * eventually reaching the default error handler if no other
- * application-provided handler resolved the error.<p>
+ * application-provided handler completed normally.<p>
  * 
  * If a handler throws a different throwable, then this is considered to be a
  * new error and the whole cycle is restarted.<p>
  * 
- * Super simple example:
- * <pre>{@code
- *     ErrorHandler eh = (throwable, channel, request, requestHandler) -> {
+ * Example:
+ * <pre>
+ *     ErrorHandler eh = (throwable, channel, request, requestHandler) -{@literal >} {
  *         try {
  *             throw throwable;
  *         } catch (ExpectedException e) {
@@ -101,12 +97,16 @@ import static java.lang.System.Logger.Level.ERROR;
  *         }
  *         // else automagically re-thrown and propagated throughout the chain
  *     };
- * }</pre>
+ * </pre>
  * 
- * If there is a request available when the error handler is called, then the
- * {@link Request#attributes() request attributes} is a good place to store
- * state that needs to be passed between handler invocations, such as an error
- * retry counter (see example {@link RetryRequestOnError}).
+ * If there is a request available when the error handler is called, then {@link
+ * Request#attributes()} is a good place to store state that needs to be passed
+ * between handler invocations, such as an error retry counter (see example
+ * {@link RetryRequestOnError}).<p>
+ * 
+ * The error handler must be thread-safe, as it may be called concurrently. As
+ * far as the server is concerned, it does not need to implement 
+ * {@code hashCode()} and {@code equals(Object)}.
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  * 
@@ -240,7 +240,7 @@ public interface ErrorHandler
      *     <th scope="row">{@link ClosedPublisherException} <br>
      *                     If message is "EOS"</th>
      *     <td> No </td>
-     *     <td> No response, channel is closed. <br>
+     *     <td> No response, channel is already closed. <br>
      *          This error signals the failure of a read operation due to client
      *          disconnect <i>and</i> at least one byte of data was received
      *          prior to the disconnect (if no bytes were received the error

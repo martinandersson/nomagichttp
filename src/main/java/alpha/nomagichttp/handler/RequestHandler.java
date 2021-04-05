@@ -16,14 +16,13 @@ import java.util.function.Function;
 import java.util.function.Supplier;
 
 import static alpha.nomagichttp.message.MediaType.__ALL;
-import static alpha.nomagichttp.message.MediaType.__NOTHING;
 import static alpha.nomagichttp.message.MediaType.__NOTHING_AND_ALL;
 import static alpha.nomagichttp.message.MediaType.parse;
 import static java.util.Objects.requireNonNull;
 
 /**
- * Holder of a request processing {@link #logic() function} coupled together
- * with metadata describing semantics of the function.<p>
+ * Holder of a request-processing function coupled together with metadata
+ * describing semantics of the function.<p>
  * 
  * The metadata consists of a HTTP {@link #method() method} token and
  * {@link #consumes() consumes}/{@link #produces() produces} media types. This
@@ -31,16 +30,17 @@ import static java.util.Objects.requireNonNull;
  * has matched a request against a {@link Route} and needs to select which
  * handler of the route to process the request.<p>
  * 
- * A {@code RequestHandler} can be built using {@link #builder(String)}.
- * 
+ * A {@code RequestHandler} can be built using {@link #builder(String)
+ * builder(String method)}. Commonly used methods exist in the form of {@link
+ * #GET()}, {@link #POST()}, {@link #PUT()} and so on.
  * 
  * <h2>Handler Selection</h2>
  * 
  * When the server selects which handler of a route to call, it first weeds out
- * all handlers that does not qualify based on request headers and the handler's
- * metadata. If there's still many of them that qualifies, the handler with
- * media types preferred by the client and with greatest {@link
- * MediaType#specificity() specificity} will be used. More details will be
+ * all handlers that does not qualify based on request headers and handler
+ * metadata. If there's still more than one handler that qualify, the handler
+ * with media types preferred by the client and with media types most {@link
+ * MediaType#specificity() specific} will be used. More details will be
  * discussed throughout subsequent sections.<p>
  * 
  * A {@link NoHandlerFoundException} is thrown if no handler can be matched.<p>
@@ -51,35 +51,40 @@ import static java.util.Objects.requireNonNull;
  * both consume "text/plain" and differs only in their producing media type.
  * They would both match a "GET" request with header "Content-Type: text/plain"
  * and "Accept: *&#47;*". For this request, the matched handlers are
- * ambiguous. When the handler resolution ends ambiguously, a {@link
+ * ambiguous. When the handler resolution ends ambiguously, an {@link
  * AmbiguousNoHandlerFoundException} is thrown<p>
  * 
  * It isn't possible to add completely equivalent handlers to a route as
- * this would immediately fail-fast with a {@link HandlerCollisionException}.<p>
+ * this would fail-fast with a {@link HandlerCollisionException}.<p>
  * 
  * To guard against ambiguity, the application can register a more generic
  * handler as a fallback. The most generic handler which can never be
  * eliminated as a candidate based on media types alone, consumes
- * {@link MediaType#__NOTHING_AND_ALL} and produces "*&#47;*".<p>
+ * {@link MediaType#__NOTHING_AND_ALL} and produces "*&#47;*". These are also
+ * the default media types used if not specified.<p>
  * 
- * For example:
- * <pre>{@code
- *     import static alpha.nomagichttp.handler.RequestHandler.Builder.GET;
- *     ...
- *     Response generic = ...
- *     RequestHandler h = GET()
- *             .consumesNothingAndAll()
- *             .producesAll()
- *             .respond(generic);
- * }</pre>
- * 
- * Or, use a utility method to accomplish the same thing:
- * 
- * <pre>{@code
- *     import static alpha.nomagichttp.handler.RequestHandlers.GET;
- *     ...
- *     RequestHandler h = GET().respond(generic);
- * }</pre>
+ * Example:
+ * <pre>
+ *   // Requests' content headers never eliminate this candidate
+ *   Response textPlain = Responses.text("greeting=Hello");
+ *   RequestHandler fallback = GET().respond(textPlain);
+ *   
+ *   // Acquired taste
+ *   Response json = Responses.json("{\"greeting\": \"Hello\"}");
+ *   RequestHandler specific = GET().produces("application/json").respond(json); // Or use MediaType.APPLICATION_JSON
+ *   
+ *   server.add("/greeting", specific, fallback); // {@literal <}-- order does not matter
+ *   
+ *   // Result
+ *   GET /greeting HTTP/1.1
+ *   Host: www.example.com
+ *   {@literal >} greeting=Hello
+ *   
+ *   GET /greeting HTTP/1.1
+ *   Host: example.com
+ *   Accept: application/json
+ *   {@literal >} {"greeting": "Hello"}
+ * </pre>
  * 
  * <h3>Qualify handler by method token</h3>
  * 
@@ -89,44 +94,44 @@ import static java.util.Objects.requireNonNull;
  * 
  * For example, this request would match all "GET" handlers of route
  * "/hello.txt":
- * <pre>{@code
+ * <pre>
  *   GET /hello.txt HTTP/1.1
  *   User-Agent: curl/7.16.3 libcurl/7.16.3 OpenSSL/0.9.7l zlib/1.2.3
  *   Host: www.example.com
  *   Accept: text/plain;charset=utf-8
- * }</pre>
+ * </pre>
  * 
  * <h3>Qualify handler by consuming media type</h3>
  * 
- * If an inbound request has a {@link MediaType media type} set in the
- * "Content-Type" header, then this hints that an entity-body will be attached
- * and the server will proceed to filter out all handlers that does not consume
- * a {@link MediaType#compatibility(MediaType) compatible} media type.<p>
+ * If a request has a {@link MediaType} set in the {@value
+ * HttpConstants.HeaderKey#CONTENT_TYPE} header, then this hints that an
+ * entity-body will be attached and the server will proceed to filter out all
+ * handlers that does not consume a {@link MediaType#compatibility(MediaType)
+ * compatible} media type.<p>
  * 
- * The handler can be very generic; ""text/*"", or the handler can be more
- * specific; "text/plain". In the event both of these handlers would remain after
- * the elimination process, the latter would be selected because he is the most
+ * The handler can be very generic; "text/*", or the handler can be more
+ * specific; "text/plain". In the event both of these handlers remain after
+ * the elimination process, the latter would be selected because it is the most
  * specific one.<p>
  * 
  * The handler may declare that he can only process requests that are
- * <i>missing</i> the "Content-Type" header by specifying {@link
+ * <i>missing</i> the content-type header by specifying {@link
  * MediaType#__NOTHING}.<p>
  * 
  * The handler may declare that he can process any media type, as long as the
- * "Content-Type" header is provided in the request using {@link
- * MediaType#__ALL} ("*&#47;*").<p>
+ * header is provided in the request using {@link MediaType#__ALL}
+ * ("*&#47;*").<p>
  * 
- * The handler may declare that he doesn't care at all whether or not the
- * "Content-Type" is provided or what value it might have: {@link
- * MediaType#__NOTHING_AND_ALL}.
+ * The handler may declare that he doesn't care at all whether or not the header
+ * is provided or what value it might have: {@link MediaType#__NOTHING_AND_ALL}.
  * 
- * <h3>Qualify handler with producing media type (proactive content negotiation)</h3>
+ * <h3>Qualify handler by producing media type (proactive content negotiation)</h3>
  * 
- * The "Accept" header of a request indicates what media type(s) the client is
- * willing to accept as response body. Each such media type - or "media range"
- * to be technically correct - can carry with it a "quality" value indicating
- * the client's preference. It makes no sense for the handler to specify a
- * quality value.<p>
+ * The {@value HttpConstants.HeaderKey#ACCEPT} header of a request indicates
+ * what media type(s) the client is willing to accept as response body. Each
+ * such media type - or "media range" to be technically correct - can carry with
+ * it a "quality" value indicating the client's preference. It makes no sense
+ * for the handler to specify a quality value.<p>
  * 
  * If the quality value is "0", then this means the client absolutely does
  * <i>not</i> accept said media type and <i>all handlers producing this media
@@ -140,10 +145,11 @@ import static java.util.Objects.requireNonNull;
  * ordering mechanism and will be used to order handler candidates accordingly.
  * The quality value - if not specified - defaults to "1".<p> 
  * 
- * The "Accept" header could be missing, in which case it, per the HTTP
+ * The accept header could be missing, in which case it, per the HTTP
  * specification, defaults to "*&#47;*". I.e. the client is by default willing
- * to accept anything in response. The client has no means to indicate that a
- * response whatever it would be or even absent, is unacceptable.<p>
+ * to accept any representation in the response. The client has no means to
+ * indicate that a response whatever it would be or even absent, is
+ * unacceptable.<p>
  * 
  * For the same reasons, a handler's producing media type can not be {@code
  * MediaType.NOTHING} or {@code MediaType.NOTHING_AND_ALL}. The most generic
@@ -160,11 +166,13 @@ import static java.util.Objects.requireNonNull;
  * handler with a more specific producing media type is preferred over one with
  * a less specific one.<p>
  * 
- * The server ignores other headers such as "Accept-Charset" and
- * "Accept-Language".<p>
+ * The server ignores other headers such as {@value
+ * HttpConstants.HeaderKey#ACCEPT_CHARSET} and {@value
+ * HttpConstants.HeaderKey#ACCEPT_LANGUAGE}.<p>
  * 
  * There is no library-provided support for magical request parameters
- * ("?format=json") and so called "URL suffixes" ("/my-resource.json").
+ * ("?format=json") and so called "URL suffixes" ("/my-resource.json"). The
+ * handler is of course free to implement such branching if desired.
  * 
  * <h3>Media type parameters</h3>
  * 
@@ -190,10 +198,10 @@ import static java.util.Objects.requireNonNull;
  * semantically the same as declaring an absolute requirement for what the
  * handler is able to handle.<p>
  * 
- * From the client's perspective on the other hand, even if the client has
- * specified parameters which couldn't be matched against no other handler than
- * one who implicitly handles all parameters, then it is still better to have a
- * response than none at all.<p>
+ * From the client's perspective, even if the request has specified parameters
+ * which could not be matched against no other handler than one who implicitly
+ * handles all parameters, then it is better to get a representation back rather
+ * than none at all.<p>
  * 
  * When evaluating media type parameters, then all parameters must match; both
  * names and values. The order of parameters does not matter. Parameter names
@@ -201,16 +209,15 @@ import static java.util.Objects.requireNonNull;
  * only exception is the "charset" parameter value for all "text/*" media types
  * which is treated case-insensitively.
  * 
- * 
  * <h2>Scopes</h2>
  * 
  * There is no library-provided scope mechanism. Normal rules concerning
  * reachability of Java references applies. Effectively, this means that the
- * implementation built using {@link #builder(String)} can be regarded as a
- * "singleton" or "application-scoped". A custom implementation can choose to
- * create a new logic instance for each request since the {@link #logic()}
- * method is invoked anew for each request.
- * 
+ * handler implementation may be regarded as a "singleton" or
+ * "application-scoped". A custom implementation can choose to create a new
+ * logic instance for each request since the {@link #logic()} method is invoked
+ * anew for each request. Examples on how to implement this interface is
+ * provided in the JavaDoc of {@link Builder}.
  * 
  * <h2>Thread safety and object equality</h2>
  * 
@@ -218,8 +225,8 @@ import static java.util.Objects.requireNonNull;
  * instance it returns. The server will invoke the handler concurrently for
  * parallel inbound requests targeting the same handler.<p>
  * 
- * Equality of handlers is fully based on method tokens, consumes- and produces
- * media types. The logic instances plays no part.
+ * Equality of handlers is fully based on the method token, consumes- and
+ * produces media types. The logic instance plays no part.
  * 
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
@@ -312,6 +319,9 @@ public interface RequestHandler
      * 
      * For example "*&#47;*", "text/plain".
      * 
+     * @implSpec
+     * The default implementation returns {@link MediaType#__NOTHING_AND_ALL}.
+     * 
      * @return the media type (never {@code null})
      * 
      * @see RequestHandler
@@ -325,6 +335,9 @@ public interface RequestHandler
      * produces.<p>
      * 
      * For example "*&#47;*", "text/plain".
+     * 
+     * @implSpec
+     * The default implementation returns {@link MediaType#__ALL}.
      * 
      * @return the media type his handler produces (never {@code null})
      * 
@@ -360,89 +373,86 @@ public interface RequestHandler
      * MediaType#__NOTHING_AND_ALL} and "*&#47;*" respectively, meaning that
      * unless more restrictive media types are set, the handler is willing to
      * serve all requests no matter the presence- or value of the request's
-     * content-type and accept headers.<p>
+     * {@value HttpConstants.HeaderKey#CONTENT_TYPE} and {@value
+     * HttpConstants.HeaderKey#ACCEPT} headers.<p>
      * 
-     * The handler is built and returned when specifying the request-processing
-     * logic. Three different styles of methods support specifying the logic;
+     * The handler is built and returned from the setter method that specifies
+     * the request-processing logic. Three different styles of setter methods
+     * for the logic exist;
      * <i>{@code respond}</i>, <i>{@code apply}</i> and <i>{@code accept}</i>.
-     * The first two are adapters which re-packages the given function into
-     * the {@code BiConsumer} type needed by accept.<p>
+     * The first two are adapters that repackages the given function into the
+     * {@code BiConsumer} type required by {@code accept}.<p>
      * 
      * {@code respond()} is great when the function does not need access to the
-     * request object: 
-     * 
-     * <pre>{@code
-     * import static alpha.nomagichttp.handler.RequestHandler.GET;
-     * import static alpha.nomagichttp.message.Responses.text;
-     * ...
-     * 
-     * RequestHandler static = GET().respond(text("Hello!"));
-     * }</pre>
+     * request object:
+     * <pre>
+     *   RequestHandler static = GET().respond(text("Hello!"));
+     * </pre>
      * 
      * {@code apply()} is great when the function need access to the request
      * object and produces an asynchronous response (the request body is the
      * asynchronous part in this example which returns a {@code
      * CompletionStage}):
+     * <pre>
      * 
-     * <pre>{@code
-     * RequestHandler greeter = POST()
-     *         .apply(request -> request.body().toText()
-     *         .thenApply(name -> text("Hello " + name + "!")));
-     * }</pre>
+     *   RequestHandler greeter = POST()
+     *           .apply(request -{@literal >} request.body().toText()
+     *                   .thenApply(name -{@literal >} text("Hello " + name + "!")));
+     * </pre>
      * 
      * For any other case, or simply for the sake of code readability and
      * explicitness, {@code accept()} is given the undressed handler logic
      * function which must use the client channel to write a response:
+     * <pre>
      * 
-     * <pre>{@code
-     *     RequestHandler greeter = POST().accept((request, channel) -> {
-     *         if (request.body().isEmpty()) {
-     *             Response bad = Responses.badRequest();
-     *             channel.write(bad);
-     *         } else {
-     *             CompletionStage<Response> ok
-     *                     = request.body().convert(...).thenApply(...);
-     *             channel.write(ok);
-     *         }
-     *     });
-     * }</pre>
+     *   RequestHandler greeter = POST().accept((request, channel) -{@literal >} {
+     *       if (request.body().isEmpty()) {
+     *           Response bad = Responses.badRequest();
+     *           channel.write(bad);
+     *       } else {
+     *           CompletionStage{@literal <}Response{@literal >} ok
+     *                   = request.body().convert(...).thenApply(...);
+     *           channel.write(ok);
+     *       }
+     *   });
+     * </pre>
      * 
-     * Small JavaDoc examples in all honor, but most real-world use cases will
-     * likely be classes that implement the functional signature.
+     * Small JavaDoc examples are great, but most real-world endpoints will
+     * likely be classes that implement the functional signature. This will also
+     * be necessary for more advanced use-cases that needs hot-swapping,
+     * request-scoped dependencies, and so forth.
+     * <pre>
      * 
-     * <pre>{@code
-     *     class MyLogic implements BiConsumer<Request, ClientChannel> {
-     *         MyLogic(My dependencies) {
-     *             ...
-     *         }
-     *         public void accept(Request req, ClientChannel ch) {
-     *             ...
-     *         }
-     *     }
-     *     ...
-     *     server.add("/", GET().accept(new MyLogic()));
-     * }</pre>
+     *   class MyLogic implements BiConsumer{@literal <}Request, ClientChannel{@literal >} {
+     *       MyLogic(My dependencies) {
+     *           ...
+     *       }
+     *       public void accept(Request req, ClientChannel ch) {
+     *           ...
+     *       }
+     *   }
+     *   server.add("/", GET().accept(new MyLogic(...)));
+     * </pre>
      * 
      * Or, if you wish to skip the builder completely:
+     * <pre>
      * 
-     * <pre>{@code
-     *     class MyEndpoint implements RequestHandler {
-     *         MyEndpoint(My dependencies) {
-     *             ...
-     *         }
-     *         String method() {
-     *             return "GET"; // Or use HttpConstants
-     *         }
-     *         BiConsumer<Request, ClientChannel> logic() {
-     *             return this::process;
-     *         }
-     *         private void process(Request req, ClientChannel ch) {
-     *             ...
-     *         }
-     *     }
-     *     ...
-     *     HttpServer.create().add("/", new MyEndpoint());
-     * }</pre>
+     *   class MyEndpoint implements RequestHandler {
+     *       MyEndpoint(My dependencies) {
+     *           ...
+     *       }
+     *       public String method() {
+     *           return "GET"; // Or use HttpConstants
+     *       }
+     *       public BiConsumer{@literal <}Request, ClientChannel{@literal >} logic() {
+     *           return this::process;
+     *       }
+     *       private void process(Request req, ClientChannel ch) {
+     *           ...
+     *       }
+     *   }
+     *   HttpServer.create().add("/", new MyEndpoint(...));
+     * </pre>
      * 
      * State-modifying methods return the same builder instance invoked. The
      * builder is not thread-safe. It should be used only temporarily while
@@ -457,41 +467,23 @@ public interface RequestHandler
     interface Builder
     {
         /**
-         * Set consumption media type to {@link MediaType#__NOTHING}.
-         * 
-         * @return this (for chaining/fluency)
-         */
-        default Builder consumesNothing() {
-            return consumes(__NOTHING);
-        }
-        
-        /**
-         * Set consumption media type to {@link MediaType#__ALL}.
-         * 
-         * @return this (for chaining/fluency)
-         */
-        default Builder consumesAll() {
-            return consumes(__ALL);
-        }
-        
-        /**
-         * Set consumption media type to {@link MediaType#__NOTHING_AND_ALL}.
-         * 
-         * @return this (for chaining/fluency)
-         */
-        default Builder consumesNothingAndAll() {
-            return consumes(__NOTHING_AND_ALL);
-        }
-        
-        /**
          * Parse and set consumption media-type.
          * 
          * @param mediaType to set
          * 
+         * @implSpec
+         * The default implementation is equivalent to:
+         * <pre>
+         *   return consumes(MediaType.parse(mediaType))
+         * </pre>
+         * 
          * @return this (for chaining/fluency)
          * 
+         * @throws NullPointerException
+         *             if {@code mediaType} is {@code null}
+         * 
          * @throws MediaTypeParseException
-         *             if content-type failed to {@linkplain MediaType#parse(CharSequence) parse}
+         *             if media type failed to {@linkplain MediaType#parse(CharSequence) parse}
          */
         default Builder consumes(String mediaType) {
             return consumes(parse(mediaType));
@@ -500,27 +492,30 @@ public interface RequestHandler
         /**
          * Set consumption media type.
          * 
-         * @return the next step
          * @param mediaType to set
+         * @return this (for chaining/fluency)
          * @throws NullPointerException if {@code mediaType} is {@code null}
          */
         Builder consumes(MediaType mediaType);
         
         /**
-         * Set producing media type to {@link MediaType#__ALL}.
-         *
-         * @return the last step
-         */
-        default Builder producesAll() {
-            return produces(__ALL);
-        }
-        
-        /**
          * Parse and set producing {@code mediaType}.
-         *
-         * @return the last step
+         * 
          * @param mediaType to set
-         * @see MediaType#parse(CharSequence)
+         * 
+         * @implSpec
+         * The default implementation is equivalent to:
+         * <pre>
+         *   return produces(MediaType.parse(mediaType))
+         * </pre>
+         * 
+         * @return this (for chaining/fluency)
+         * 
+         * @throws NullPointerException
+         *             if {@code mediaType} is {@code null}
+         * 
+         * @throws MediaTypeParseException
+         *             if media type failed to {@linkplain MediaType#parse(CharSequence) parse}
          */
         default Builder produces(String mediaType) {
             return produces(parse(mediaType));
@@ -528,61 +523,97 @@ public interface RequestHandler
         
         /**
          * Set producing media type.
-         *
-         * @return the last step
+         * 
          * @param mediaType to set
+         * @return this (for chaining/fluency)
          * @throws NullPointerException if {@code mediaType} is {@code null}
          */
         Builder produces(MediaType mediaType);
-    
+        
         /**
-         * Build a request handler that returns the response to any valid
+         * Build a request handler that returns the given response to any valid
          * request hitting the route.
-         *
+         * 
          * @param response to return
+         * 
+         * @implSpec
+         * The default implementation is equivalent to:
+         * <pre>
+         *   Objects.requireNonNull(response);
+         *   return accept((req, ch) -{@literal >} ch.write(response));
+         * </pre>
+         * 
          * @return a new request handler
+         * 
          * @throws NullPointerException if {@code response} is {@code null}
          */
         default RequestHandler respond(Response response) {
             requireNonNull(response);
             return accept((req, ch) -> ch.write(response));
         }
-    
+        
         /**
-         * Build a request handler that returns the response to any valid
+         * Build a request handler that returns the given response to any valid
          * request hitting the route.
-         *
+         * 
          * @param response to return
+         * 
+         * @implSpec
+         * The default implementation is equivalent to:
+         * <pre>
+         *   Objects.requireNonNull(response);
+         *   return accept((req, ch) -{@literal >} ch.write(response));
+         * </pre>
+         * 
          * @return a new request handler
+         * 
          * @throws NullPointerException if {@code response} is {@code null}
          */
         default RequestHandler respond(CompletionStage<Response> response) {
             requireNonNull(response);
             return accept((req, ch) -> ch.write(response));
         }
-    
+        
         /**
          * Build a request handler that returns a response to any valid
          * request hitting the route.<p>
-         *
+         * 
          * Unlike the other two <i>respond</i> overloads, this response is
          * retrieved lazily.
-         *
+         * 
          * @param response supplier
+         * 
+         * @implSpec
+         * The default implementation is equivalent to:
+         * <pre>
+         *   Objects.requireNonNull(response);
+         *   return accept((req, ch) -{@literal >} ch.write(response.get()));
+         * </pre>
+         * 
          * @return a new request handler
+         * 
          * @throws NullPointerException if {@code response} is {@code null}
          */
         default RequestHandler respond(Supplier<CompletionStage<Response>> response) {
             requireNonNull(response);
             return accept((req, ch) -> ch.write(response.get()));
         }
-    
+        
         /**
          * Build a request handler that invokes the given function for every
          * request and writes the produced response on the client channel.
-         *
+         * 
          * @param logic to call
+         * 
+         * @implSpec
+         * The default implementation is equivalent to:
+         * <pre>
+         *   Objects.requireNonNull(logic);
+         *   return accept((req, ch) -{@literal >} ch.write(logic.apply(req)));
+         * </pre>
+         * 
          * @return a new request handler
+         * 
          * @throws NullPointerException if {@code logic} is {@code null}
          */
         default RequestHandler apply(Function<Request, CompletionStage<Response>> logic) {
@@ -595,7 +626,7 @@ public interface RequestHandler
          *
          * The function must ensure that a response is written to the client
          * channel at some point, or otherwise closed.
-         *
+         * 
          * @param logic to call
          * @return a new request handler
          * @throws NullPointerException if {@code logic} is {@code null}

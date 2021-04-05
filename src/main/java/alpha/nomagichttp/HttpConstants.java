@@ -1120,6 +1120,8 @@ public final class HttpConstants {
     }
     
     /**
+     * Optional human-readable description of the status-code.<p>
+     * 
      * "The reason-phrase element exists for the sole purpose of providing a
      * textual description associated with the numeric status code, mostly out
      * of deference to earlier Internet application protocols that were more
