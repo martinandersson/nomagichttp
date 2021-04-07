@@ -16,6 +16,7 @@ import java.util.function.Function;
 import java.util.function.Supplier;
 
 import static alpha.nomagichttp.message.MediaType.__ALL;
+import static alpha.nomagichttp.message.MediaType.__NOTHING;
 import static alpha.nomagichttp.message.MediaType.__NOTHING_AND_ALL;
 import static alpha.nomagichttp.message.MediaType.parse;
 import static java.util.Objects.requireNonNull;
@@ -466,6 +467,21 @@ public interface RequestHandler
      */
     interface Builder
     {
+        /**
+         * Set consumption media-type to {@link MediaType#__NOTHING},
+         * 
+         * @implSpec
+         * The default implementation is equivalent to:
+         * <pre>
+         *   return consumes(MediaType.__NOTHING)
+         * </pre>
+         * 
+         * @return this (for chaining/fluency)
+         */
+        default Builder consumesNothing() {
+            return consumes(__NOTHING);
+        }
+        
         /**
          * Parse and set consumption media-type.
          * 
