@@ -31,7 +31,7 @@ An item ~~crossed out~~ is complete, an item in __bold__ is work in progress.
 [Stage: Improved Testing](#stage-improved-testing)  
 [Stage: Improved Content Negotiation](#stage-improved-content-negotiation)  
 [~~Stage: Pseudo-Mutable Types~~](#stage-pseudo-mutable-types)  
-[Stage: Multiple Responses](#stage-multiple-responses)  
+[**Stage: Multiple Responses**](#stage-multiple-responses)  
 [Stage: Connection Life-Cycle/Management](#stage-connection-life-cyclemanagement)  
 [Stage: Actions](#stage-actions)  
 [Stage: Codings, Part 1/3 (Chunked Transfer)](#stage-codings-part-13-chunked-transfer)  
@@ -185,6 +185,8 @@ logic is required.~~
   methods returning a builder at worst, or pseudo-mutable type.~~
 
 ## Stage: Multiple Responses
+
+_Status: **In Progress**_
 
 The most common HTTP response is "final"; 2XX (Success). But final responses may
 be preceeded (not obsoleted) by "interim" responses of class 1XX (Informational)
