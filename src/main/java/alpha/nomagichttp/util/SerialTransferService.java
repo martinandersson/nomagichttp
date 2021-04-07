@@ -45,8 +45,8 @@ import static java.util.Objects.requireNonNull;
  * Calls into this class will block if work can begin immediately, or raise a
  * flag and schedule work to be done after the currently running transfer,
  * either by the already transfer-executing thread, or possibly another thread -
- * whichever wins a race at that time in the future. The methods therefore
- * operate nondeterministically both synchronously and asynchronously...<p>
+ * whichever wins a race at that time. The methods therefore operate
+ * nondeterministically both synchronously and asynchronously...<p>
  * 
  * ...except for recursive calls from the same thread which are always
  * asynchronous. This means that recursive calls are just like non-recursive
@@ -133,7 +133,7 @@ public final class SerialTransferService<T>
      * @throws NullPointerException if {@code from} or {@code to} is {@code null}
      */
     public SerialTransferService(Supplier<? extends T> from, Consumer<? super T> to) {
-        this(ignored -> from.get(), to, null);
+        this(selfIgnored -> from.get(), to, null);
     }
     
     /**
@@ -162,7 +162,7 @@ public final class SerialTransferService<T>
      * @throws NullPointerException if {@code from} or {@code to} is {@code null}
      */
     public SerialTransferService(Supplier<? extends T> from, Consumer<? super T> to, Runnable beforeFirstDelivery) {
-        this(ignored -> from.get(), to, beforeFirstDelivery);
+        this(selfIgnored -> from.get(), to, beforeFirstDelivery);
     }
     
     /**

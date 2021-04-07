@@ -7,10 +7,10 @@ import org.junit.jupiter.api.Test;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 
-import static alpha.nomagichttp.handler.RequestHandlers.GET;
-import static alpha.nomagichttp.message.MediaType.ALL;
-import static alpha.nomagichttp.message.MediaType.NOTHING;
-import static alpha.nomagichttp.message.MediaType.NOTHING_AND_ALL;
+import static alpha.nomagichttp.handler.RequestHandler.GET;
+import static alpha.nomagichttp.message.MediaType.__ALL;
+import static alpha.nomagichttp.message.MediaType.__NOTHING;
+import static alpha.nomagichttp.message.MediaType.__NOTHING_AND_ALL;
 import static alpha.nomagichttp.message.Responses.accepted;
 import static java.util.List.of;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -148,25 +148,23 @@ class RouteBuilderTest
         assertThatThrownBy(() -> testee.handler(dummy()))
                 .isExactlyInstanceOf(HandlerCollisionException.class)
                 .hasMessage("An equivalent handler has already been added: " +
-                        "DefaultRequestHandler{method=\"GET\", consumes=\"<nothing and all>\", produces=\"*/*\"}");
+                        "DefaultRequestHandler{method=\"GET\", consumes=\"<nothing and all>\", produces=\"*/*\", logic=?}");
     }
     
     @Test
     void handler_consumes_ambiguity() {
         testee = Route.builder("/");
-        testee.handler(createHandler(NOTHING));
-        testee.handler(createHandler(NOTHING_AND_ALL));
+        testee.handler(createHandler(__NOTHING));
+        testee.handler(createHandler(__NOTHING_AND_ALL));
         
-        assertThatThrownBy(() -> testee.handler(createHandler(ALL)))
+        assertThatThrownBy(() -> testee.handler(createHandler(__ALL)))
                 .isExactlyInstanceOf(HandlerCollisionException.class)
                 .hasMessage("All other meta data being equal; if there's a consumes <nothing> then <nothing and all> is effectively equal to */*.");
     }
     
     private RequestHandler createHandler(MediaType consumes) {
-        return RequestHandler.Builder.GET()
-                .consumes(consumes)
-                .producesAll()
-                .respond(accepted());
+        return GET().consumes(consumes)
+                    .respond(accepted());
     }
     
     private Route.Builder builder(String pattern) {

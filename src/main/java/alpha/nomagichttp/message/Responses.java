@@ -10,6 +10,7 @@ import java.util.concurrent.Flow;
 
 import static alpha.nomagichttp.HttpConstants.HeaderKey.CONNECTION;
 import static alpha.nomagichttp.HttpConstants.HeaderKey.CONTENT_LENGTH;
+import static alpha.nomagichttp.HttpConstants.HeaderKey.CONTENT_TYPE;
 import static alpha.nomagichttp.HttpConstants.HeaderKey.UPGRADE;
 import static alpha.nomagichttp.HttpConstants.ReasonPhrase.HTTP_VERSION_NOT_SUPPORTED;
 import static alpha.nomagichttp.HttpConstants.ReasonPhrase.UPGRADE_REQUIRED;
@@ -20,15 +21,18 @@ import static alpha.nomagichttp.HttpConstants.StatusCode.FOUR_HUNDRED;
 import static alpha.nomagichttp.HttpConstants.StatusCode.FOUR_HUNDRED_FOUR;
 import static alpha.nomagichttp.HttpConstants.StatusCode.FOUR_HUNDRED_THIRTEEN;
 import static alpha.nomagichttp.HttpConstants.StatusCode.FOUR_HUNDRED_TWENTY_SIX;
+import static alpha.nomagichttp.HttpConstants.StatusCode.TWO_HUNDRED;
+import static alpha.nomagichttp.HttpConstants.StatusCode.TWO_HUNDRED_FOUR;
+import static alpha.nomagichttp.HttpConstants.StatusCode.TWO_HUNDRED_TWO;
+import static alpha.nomagichttp.message.MediaType.APPLICATION_OCTET_STREAM;
+import static alpha.nomagichttp.message.MediaType.parse;
+import static alpha.nomagichttp.message.Response.builder;
+import static alpha.nomagichttp.util.BetterBodyPublishers.ofString;
 import static java.net.http.HttpRequest.BodyPublisher;
 import static java.net.http.HttpRequest.BodyPublishers;
 
 /**
- * Utility methods for building complete {@link Response}s.<p>
- * 
- * For a more fine-grained control, use {@link Response#builder()} or
- * semi-populated builders such as {@link Response.Builder#ok()} and {@link
- * Response.Builder#accepted()}.<p>
+ * Factories of {@link Response}s.<p>
  * 
  * <strong>WARNING:</strong> Using {@link BodyPublishers} to create the response
  * body may not be thread-safe where thread-safety matters or may block the HTTP
@@ -44,97 +48,160 @@ public final class Responses
     }
     
     /**
-     * Returns a "204 OK"-response with no body.
+     * Returns a "204 No Content"-response with no body.
      * 
-     * @return  a "204 OK"-response with no body
-     * @see     StatusCode#TWO_HUNDRED_FOUR
+     * @return a "204 No Content" response
+     * 
+     * @see StatusCode#TWO_HUNDRED_FOUR
      */
     public static Response noContent() {
-        return Cache.NO_CONTENT;
+        return ResponseCache.NO_CONTENT;
     }
     
     /**
      * Returns a "200 OK"-response with a text body.<p>
      * 
-     * The Content-Type header will be set to "text/plain; charset=utf-8".
+     * The content-type header will be set to "text/plain; charset=utf-8".
      * 
      * @param   textPlain message body
-     * @return  a "200 OK"-response with a text body
+     * @return  a "200 OK"-response
      * @see     StatusCode#TWO_HUNDRED
      */
-    // TODO: See Response.Builder.body(); WE MUST document thread-safety of Response returned,
-    //       and make BetterBodyPublishers a top priority
     public static Response text(String textPlain) {
-        return text("text/plain; charset=utf-8", BodyPublishers.ofString(textPlain));
+        return ok(ofString(textPlain), "text/plain; charset=utf-8");
     }
     
     /**
-     * Returns a "200 OK"-response with an arbitrary body.<p>
+     * Returns a "200 OK"-response with a HTML body.<p>
      * 
-     * @param   contentType header value
-     * @param   body publisher with content length
-     * @return  a "200 OK"-response with an arbitrary body
+     * The content-type header will be set to "text/html; charset=utf-8".
+     * 
+     * @param   textHtml message body
+     * @return  a "200 OK"-response
      * @see     StatusCode#TWO_HUNDRED
-     * @see     HttpConstants.HeaderKey#CONTENT_TYPE
      */
-    public static Response text(String contentType, BodyPublisher body) {
-        return text(MediaType.parse(contentType), body, body.contentLength());
+    public static Response html(String textHtml) {
+        return ok(ofString(textHtml), "text/html; charset=utf-8");
     }
     
     /**
-     * Returns a "200 OK"-response with an arbitrary body.<p>
+     * Returns a "200 OK"-response with a JSON body.<p>
      * 
-     * @param   contentType header value
-     * @param   body publisher with content length
-     * @return  a "200 OK"-response with an arbitrary body
+     * The content-type header will be set to "application/json; charset=utf-8".
+     * 
+     * @param   json message body
+     * @return  a "200 OK"-response
      * @see     StatusCode#TWO_HUNDRED
      */
-    public static Response text(MediaType contentType, BodyPublisher body) {
-        return text(contentType, body, body.contentLength());
+    public static Response json(String json) {
+        return ok(ofString(json), "application/json; charset=utf-8");
     }
     
     /**
-     * Returns a "200 OK"-response with an arbitrary body.<p>
+     * Returns a "200 OK"-response with the given body.<p>
      * 
-     * @param   contentType header value
-     * @param   body publisher
-     * @param   length of body (will be set as "Content-Length" header value)
-     * @return  a "200 OK"-response with an arbitrary body
-     * @see     StatusCode#TWO_HUNDRED
-     * @see     HttpConstants.HeaderKey#CONTENT_TYPE
-     * @see     HttpConstants.HeaderKey#CONTENT_LENGTH
+     * The content-type will be set to "application/octet-stream".
+     * 
+     * @param body data
+     * 
+     * @return a "200 OK"-response
+     *
+     * @see StatusCode#TWO_HUNDRED
      */
-    public static Response text(String contentType, Flow.Publisher<ByteBuffer> body, long length) {
-        return text(MediaType.parse(contentType), body, length);
+    public static Response ok(BodyPublisher body) {
+        return ok(body, APPLICATION_OCTET_STREAM);
     }
     
     /**
-     * Returns a "200 OK"-response with an arbitrary body.<p>
+     * Returns a "200 OK"-response with the given body.<p>
      * 
-     * @param   contentType header value
-     * @param   body publisher
-     * @param   length of body (will be set as "Content-Length" header value)
-     * @return  a "200 OK"-response with an arbitrary body
-     * @see     StatusCode#TWO_HUNDRED
-     * @see     HttpConstants.HeaderKey#CONTENT_TYPE
-     * @see     HttpConstants.HeaderKey#CONTENT_LENGTH
+     * @param body data
+     * @param contentType header value
+     * 
+     * @return a "200 OK"-response
+     * 
+     * @throws MediaTypeParseException
+     *             if content-type failed to {@linkplain MediaType#parse(CharSequence) parse}
+     * 
+     * @see StatusCode#TWO_HUNDRED
+     * @see HttpConstants.HeaderKey#CONTENT_TYPE
      */
-    public static Response text(MediaType contentType, Flow.Publisher<ByteBuffer> body, long length) {
-        return Response.Builder.ok()
-                .contentType(contentType)
-                .contentLenght(length)
-                .body(body)
-                .build();
+    public static Response ok(BodyPublisher body, String contentType) {
+        return ok(body, parse(contentType));
+    }
+    
+    /**
+     * Returns a "200 OK"-response with the given body.<p>
+     * 
+     * @param body data
+     * @param contentType header value
+     * 
+     * @return a "200 OK"-response
+     * 
+     * @see StatusCode#TWO_HUNDRED
+     * @see HttpConstants.HeaderKey#CONTENT_TYPE
+     */
+    public static Response ok(BodyPublisher body, MediaType contentType) {
+        return ok(body, contentType, body.contentLength());
+    }
+    
+    /**
+     * Returns a "200 OK"-response with the given body.<p>
+     * 
+     * The server subscribing to the response body does not limit his
+     * subscription based on the given length value. The value must be equal to
+     * the number of bytes emitted by the publisher.
+     * 
+     * @param body data
+     * @param contentType header value
+     * @param contentLength header value
+     * 
+     * @return a "200 OK"-response
+     * 
+     * @throws MediaTypeParseException
+     *             if content-type failed to {@linkplain MediaType#parse(CharSequence) parse}
+     * 
+     * @see StatusCode#TWO_HUNDRED
+     * @see HttpConstants.HeaderKey#CONTENT_TYPE
+     * @see HttpConstants.HeaderKey#CONTENT_LENGTH
+     */
+    public static Response ok(Flow.Publisher<ByteBuffer> body, String contentType, long contentLength) {
+        return ok(body, parse(contentType), contentLength);
+    }
+    
+    /**
+     * Returns a "200 OK"-response with the given body.<p>
+     * 
+     * The server subscribing to the response body does not limit his
+     * subscription based on the given length value. The value must be equal to
+     * the number of bytes emitted by the publisher.
+     * 
+     * @param body data
+     * @param contentType header value
+     * @param contentLength header value
+     * 
+     * @return a "200 OK"-response
+     * 
+     * @see StatusCode#TWO_HUNDRED
+     * @see HttpConstants.HeaderKey#CONTENT_TYPE
+     * @see HttpConstants.HeaderKey#CONTENT_LENGTH
+     */
+    public static Response ok(Flow.Publisher<ByteBuffer> body, MediaType contentType, long contentLength) {
+        return BuilderCache.OK
+                 .header(CONTENT_TYPE,   contentType.toString())
+                 .header(CONTENT_LENGTH, Long.toString(contentLength))
+                 .body(body)
+                 .build();
     }
     
     /**
      * Returns a "202 Accepted"-response with no body.
      * 
-     * @return  a "202 Accepted"-response with no body
-     * @see     StatusCode#TWO_HUNDRED_TWO
+     * @return  a "202 Accepted"
+     * @see    StatusCode#TWO_HUNDRED_TWO
      */
     public static Response accepted() {
-        return Cache.ACCEPTED;
+        return ResponseCache.ACCEPTED;
     }
     
     /**
@@ -143,11 +210,11 @@ public final class Responses
      * The response will {@linkplain Response#mustCloseAfterWrite() close the
      * client channel} after having been sent.
      * 
-     * @return  a "400 Bad Request"-response with no body
+     * @return  a "400 Bad Request"-response
      * @see     StatusCode#FOUR_HUNDRED
      */
     public static Response badRequest() {
-        return Cache.BAD_REQUEST;
+        return ResponseCache.BAD_REQUEST;
     }
     
     /**
@@ -156,11 +223,11 @@ public final class Responses
      * The response will {@linkplain Response#mustCloseAfterWrite() close the
      * client channel} after having been sent.
      * 
-     * @return a "404 Not Found"-response with no body
+     * @return a "404 Not Found"
      * @see     StatusCode#FOUR_HUNDRED_FOUR
      */
     public static Response notFound() {
-        return Cache.NOT_FOUND;
+        return ResponseCache.NOT_FOUND;
     }
     
     /**
@@ -169,11 +236,11 @@ public final class Responses
      * The response will {@linkplain Response#mustCloseAfterWrite() close the
      * client channel} after having been sent.
      * 
-     * @return  a "413 Entity Too Large"-response with no body
+     * @return  a "413 Entity Too Large"
      * @see    StatusCode#FOUR_HUNDRED_THIRTEEN
      */
     public static Response entityTooLarge() {
-        return Cache.ENTITY_TOO_LARGE;
+        return ResponseCache.ENTITY_TOO_LARGE;
     }
     
     /**
@@ -182,11 +249,11 @@ public final class Responses
      * The response will {@linkplain Response#mustCloseAfterWrite() close the
      * client channel} after having been sent.
      * 
-     * @return  a "500 Internal Server Error"-response with no body
+     * @return  a "500 Internal Server Error"-response
      * @see     StatusCode#FIVE_HUNDRED
      */
     public static Response internalServerError() {
-        return Cache.INTERNAL_SERVER_ERROR;
+        return ResponseCache.INTERNAL_SERVER_ERROR;
     }
     
     /**
@@ -195,11 +262,11 @@ public final class Responses
      * The response will {@linkplain Response#mustCloseAfterWrite() close the
      * client channel} after having been sent.
      * 
-     * @return  a "501 Not Implemented"-response with no body
+     * @return  a "501 Not Implemented"-response
      * @see     StatusCode#FIVE_HUNDRED_ONE
      */
     public static Response notImplemented() {
-        return Cache.NOT_IMPLEMENTED;
+        return ResponseCache.NOT_IMPLEMENTED;
     }
     
     /**
@@ -209,19 +276,17 @@ public final class Responses
      * client channel} after having been sent.
      * 
      * @param   upgrade header value (proposition for new protocol version)
-     * @return  a "426 Upgrade Required"-response with no body
+     * @return  a "426 Upgrade Required"-response
      * @see     StatusCode#FOUR_HUNDRED_TWENTY_SIX
      */
     public static Response upgradeRequired(String upgrade) {
-        return Response.builder()
-                .statusCode(FOUR_HUNDRED_TWENTY_SIX)
-                .reasonPhrase(UPGRADE_REQUIRED)
-                .addHeaders(
-                    UPGRADE, upgrade,
-                    CONNECTION, UPGRADE,
-                    CONTENT_LENGTH, "0")
-                .mustCloseAfterWrite(true)
-                .build();
+        return builder(FOUR_HUNDRED_TWENTY_SIX, UPGRADE_REQUIRED)
+                 .addHeaders(
+                     UPGRADE, upgrade,
+                     CONNECTION, UPGRADE,
+                     CONTENT_LENGTH, "0")
+                 .mustCloseAfterWrite(true)
+                 .build();
     }
     
     /**
@@ -230,38 +295,41 @@ public final class Responses
      * The response will {@linkplain Response#mustCloseAfterWrite() close the
      * client channel} after having been sent.
      * 
-     * @return  a "505 HTTP Version Not Supported"-response with no body
+     * @return  a "505 HTTP Version Not Supported"-response
      * @see     StatusCode#FIVE_HUNDRED_FIVE
      */
     public static Response httpVersionNotSupported() {
-        return Response.builder()
-                .statusCode(FIVE_HUNDRED_FIVE)
-                .reasonPhrase(HTTP_VERSION_NOT_SUPPORTED)
-                .contentLenght(0)
-                .mustCloseAfterWrite(true)
-                .build();
+        return builder(FIVE_HUNDRED_FIVE, HTTP_VERSION_NOT_SUPPORTED)
+                 .header(CONTENT_LENGTH, "0")
+                 .mustCloseAfterWrite(true)
+                 .build();
     }
     
     /**
-     * Pre-built response objects with no payloads (message body).
+     * Pre-built builder objects.
      */
-    private static final class Cache {
+    private static final class BuilderCache {
+        static final Response.Builder OK = builder(TWO_HUNDRED, ReasonPhrase.OK);
+    }
+    
+    /**
+     * Pre-built response objects with no payloads.
+     */
+    private static final class ResponseCache {
         static final Response
-                ACCEPTED              = Response.Builder.accepted().contentLenght(0).build(),
-                NO_CONTENT            = Response.Builder.noContent().build(),
-                BAD_REQUEST           = respondThenClose(FOUR_HUNDRED, ReasonPhrase.BAD_REQUEST),
-                NOT_FOUND             = respondThenClose(FOUR_HUNDRED_FOUR, ReasonPhrase.NOT_FOUND),
-                ENTITY_TOO_LARGE      = respondThenClose(FOUR_HUNDRED_THIRTEEN, ReasonPhrase.ENTITY_TOO_LARGE),
-                INTERNAL_SERVER_ERROR = respondThenClose(FIVE_HUNDRED, ReasonPhrase.INTERNAL_SERVER_ERROR),
-                NOT_IMPLEMENTED       = respondThenClose(FIVE_HUNDRED_ONE, ReasonPhrase.NOT_IMPLEMENTED);
+            ACCEPTED              = builder(TWO_HUNDRED_TWO, ReasonPhrase.ACCEPTED).header(CONTENT_LENGTH, "0").build(),
+            NO_CONTENT            = builder(TWO_HUNDRED_FOUR, ReasonPhrase.NO_CONTENT).build(),
+            BAD_REQUEST           = respondThenClose(FOUR_HUNDRED, ReasonPhrase.BAD_REQUEST),
+            NOT_FOUND             = respondThenClose(FOUR_HUNDRED_FOUR, ReasonPhrase.NOT_FOUND),
+            ENTITY_TOO_LARGE      = respondThenClose(FOUR_HUNDRED_THIRTEEN, ReasonPhrase.ENTITY_TOO_LARGE),
+            INTERNAL_SERVER_ERROR = respondThenClose(FIVE_HUNDRED, ReasonPhrase.INTERNAL_SERVER_ERROR),
+            NOT_IMPLEMENTED       = respondThenClose(FIVE_HUNDRED_ONE, ReasonPhrase.NOT_IMPLEMENTED);
         
         private static Response respondThenClose(int code, String phrase) {
-            return Response.builder()
-                    .statusCode(code)
-                    .reasonPhrase(phrase)
-                    .header(CONTENT_LENGTH, "0")
-                    .mustCloseAfterWrite(true)
-                    .build();
+            return builder(code, phrase)
+                     .header(CONTENT_LENGTH, "0")
+                     .mustCloseAfterWrite(true)
+                     .build();
         }
     }
 }

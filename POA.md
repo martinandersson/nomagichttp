@@ -30,7 +30,7 @@ An item ~~crossed out~~ is complete, an item in __bold__ is work in progress.
 [~~Stage: HTTP Versioning~~](#stage-http-versioning)  
 [Stage: Improved Testing](#stage-improved-testing)  
 [Stage: Improved Content Negotiation](#stage-improved-content-negotiation)  
-[**Stage: Pseudo-Mutable Types**](#stage-pseudo-mutable-types)  
+[~~Stage: Pseudo-Mutable Types~~](#stage-pseudo-mutable-types)  
 [Stage: Multiple Responses](#stage-multiple-responses)  
 [Stage: Connection Life-Cycle/Management](#stage-connection-life-cyclemanagement)  
 [Stage: Actions](#stage-actions)  
@@ -96,7 +96,7 @@ _discoverability_.
 
 ## ~~Stage: HTTP Versioning~~
 
-_Status: **Delivered**_  
+_Status: **Delivered**_
 
 The server must be in full control of which HTTP version is in use and
 `Request.httpVersion()` will reliably expose the version.
@@ -148,36 +148,41 @@ Implemented), which is wrong.
   - and another one that signals no handler consumes the message payload,
     translated to 415 (Unsupported Media Type).
 
-## **Stage: Pseudo-Mutable Types**
+## ~~Stage: Pseudo-Mutable Types~~
 
-_Status: **In progres**_
+_Status: **Delivered**_
 
 In preparation of multiple responses and response-modifying post actions, we
 need to open up `Response` for state-changes, except we keep the class
 immutable.
 
-- `Response.Builder` is like super smart and keeps a record of changes "replayed"
-  when building the response. This behavior we incorporate directly into
-  `Response` keeping response immutable and setter methods return a new instance.
-- Replace `Response.builder()` with `Response.create(int statusCode)` and
+End result: Builders's kept, but API footprint vastly reduced. Crucially, added
+`Response.toBuilder()`.
+
+- ~~`Response.Builder` is like super smart and keeps a record of changes
+  "replayed" when building the response. This behavior we incorporate directly
+  into `Response` keeping response immutable and setter methods return a new
+  instance.~~
+- ~~Replace `Response.builder()` with `Response.create(int statusCode)` and
   `create(int statusCode, String reasonPhrase)`. Note: status code eagerly
-  required.
-- Move static util methods in `Response.Builder` to `Response`.
-- Anticipate lots of mutations to response so attempt make it more efficient.
-  For example, cache `Response.completedStage()`.
+  required.~~
+- ~~Move static util methods in `Response.Builder` to `Response`.~~
+- ~~Anticipate lots of mutations to response so attempt make it more efficient.
+  For example, cache `Response.completedStage()`.~~
 
-Similarly, do the same for `RequestHandler` and delete `RequestHandlers`.
+~~Similarly, do the same for `RequestHandler` and delete `RequestHandlers`.
 Client still uses `RequestHandler.Builder`, implicitly, because both method and
-logic is required.
+logic is required.~~
 
-- `RequestHandler.of("METHOD")` returns `RequestHandler.Builder`, populated with
-  method. Builder asks for logic, the "next step". This always return a built
-  handler. The application can then invoke consumes/produces to change defaults.  
-  `RequestHandler.GET().apply(req -> ...).consumes(blabla).produces(blabla)`
-- Add METHDOS() using method constants from `HttpConstants`.
-- Go bananas and revise all builder types, perhaps we can apply the same pattern
-  elsewhere. Ideally we scrap "builder" methods in favor of factory methods
-  returning a builder at worst, or pseudo-mutable type.
+- ~~`RequestHandler.of("METHOD")` returns `RequestHandler.Builder`, populated
+  with method. Builder asks for logic, the "next step". This always return a
+  built handler. The application can then invoke consumes/produces to change
+  defaults.  
+  `RequestHandler.GET().apply(req -> ...).consumes(blabla).produces(blabla)`~~
+- ~~Add METHDOS() using method constants from `HttpConstants`.~~
+- ~~Go bananas and revise all builder types, perhaps we can apply the same
+  pattern elsewhere. Ideally we scrap "builder" methods in favor of factory
+  methods returning a builder at worst, or pseudo-mutable type.~~
 
 ## Stage: Multiple Responses
 

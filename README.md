@@ -50,7 +50,7 @@ In an empty directory, create a new [Gradle][1-1] build file `build.gradle`:
 In subfolder `src/main/java`, create a new file `Greeter.java`:
 
     import alpha.nomagichttp.HttpServer;
-    import static alpha.nomagichttp.handler.RequestHandlers.GET;
+    import static alpha.nomagichttp.handler.RequestHandler.GET;
     import static alpha.nomagichttp.message.Responses.text;
     
     class Greeter {
@@ -214,7 +214,7 @@ In a new terminal, run:
 foo@bar:~$ curl -i localhost:8080/echo \
     -H "My-Header: Value 1" \
     -H "My-Header: Value 2"
-HTTP/1.1 204 OK
+HTTP/1.1 204 No Content
 Accept: */*
 Host: localhost:8080
 My-Header: Value 1

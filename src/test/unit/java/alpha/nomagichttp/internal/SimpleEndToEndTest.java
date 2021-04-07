@@ -1,7 +1,6 @@
 package alpha.nomagichttp.internal;
 
 import alpha.nomagichttp.handler.RequestHandler;
-import alpha.nomagichttp.message.Response;
 import alpha.nomagichttp.message.Responses;
 import org.junit.jupiter.api.Test;
 
@@ -9,8 +8,8 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 
-import static alpha.nomagichttp.handler.RequestHandlers.GET;
-import static alpha.nomagichttp.handler.RequestHandlers.POST;
+import static alpha.nomagichttp.handler.RequestHandler.GET;
+import static alpha.nomagichttp.handler.RequestHandler.POST;
 import static alpha.nomagichttp.message.Responses.text;
 import static alpha.nomagichttp.testutil.ClientOperations.CRLF;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -105,24 +104,24 @@ class SimpleEndToEndTest extends AbstractEndToEndTest
     
     @Test
     void echo_headers() throws IOException {
-        RequestHandler echo = GET().apply(req -> Response.Builder.ok()
-                .addHeaders(req.headers())
-                .build()
-                .completedStage());
+        RequestHandler echo = GET().apply(req ->
+                Responses.noContent()
+                         .toBuilder()
+                         .addHeaders(req.headers())
+                         .build()
+                         .completedStage());
         
         server().add("/echo-headers", echo);
         
         String req =
             "GET /echo-headers HTTP/1.1" + CRLF +
-            "Accept: text/plain; charset=utf-8" + CRLF +
-            "Content-Length: 0" + CRLF + CRLF;
+            "Accept: text/plain; charset=utf-8" + CRLF + CRLF;
         
         String res = client().writeRead(req);
         
         assertThat(res).isEqualTo(
-            "HTTP/1.1 200 OK" + CRLF +
-            "Accept: text/plain; charset=utf-8" + CRLF +
-            "Content-Length: 0" + CRLF + CRLF);
+            "HTTP/1.1 204 No Content" + CRLF +
+            "Accept: text/plain; charset=utf-8" + CRLF + CRLF);
     }
     
     @Test

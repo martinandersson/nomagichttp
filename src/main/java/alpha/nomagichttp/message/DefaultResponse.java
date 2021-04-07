@@ -1,5 +1,7 @@
 package alpha.nomagichttp.message;
 
+import alpha.nomagichttp.HttpConstants;
+
 import java.net.http.HttpHeaders;
 import java.nio.ByteBuffer;
 import java.util.ArrayDeque;
@@ -11,8 +13,6 @@ import java.util.Map;
 import java.util.concurrent.Flow;
 import java.util.function.Consumer;
 
-import static alpha.nomagichttp.HttpConstants.HeaderKey.CONTENT_LENGTH;
-import static alpha.nomagichttp.HttpConstants.HeaderKey.CONTENT_TYPE;
 import static alpha.nomagichttp.util.Publishers.empty;
 import static java.util.Collections.emptyList;
 import static java.util.Objects.requireNonNull;
@@ -30,6 +30,7 @@ final class DefaultResponse implements Response
     private final Iterable<String> headers;
     private final Flow.Publisher<ByteBuffer> body;
     private final boolean mustCloseAfterWrite;
+    private final Builder origin;
     
     private DefaultResponse(
             int statusCode,
@@ -37,13 +38,15 @@ final class DefaultResponse implements Response
             // Is unmodifiable
             Iterable<String> headers,
             Flow.Publisher<ByteBuffer> body,
-            boolean mustCloseAfterWrite)
+            boolean mustCloseAfterWrite,
+            Builder origin)
     {
         this.statusCode = statusCode;
         this.reasonPhrase = reasonPhrase;
         this.headers = headers;
         this.body = body;
         this.mustCloseAfterWrite = mustCloseAfterWrite;
+        this.origin = origin;
     }
     
     @Override
@@ -69,6 +72,11 @@ final class DefaultResponse implements Response
     @Override
     public boolean mustCloseAfterWrite() {
         return mustCloseAfterWrite;
+    }
+    
+    @Override
+    public Response.Builder toBuilder() {
+        return origin;
     }
     
     @Override
@@ -160,17 +168,6 @@ final class DefaultResponse implements Response
         }
         
         @Override
-        public Response.Builder contentType(MediaType type) {
-            requireNonNull(type, "type");
-            return addHeaders(CONTENT_TYPE, type.toString());
-        }
-        
-        @Override
-        public Response.Builder contentLenght(long value) {
-            return addHeaders(CONTENT_LENGTH, Long.toString(value));
-        }
-        
-        @Override
         public Response.Builder removeHeader(String name) {
             requireNonNull(name, "name");
             return new Builder(this, s -> s.removeHeader(name));
@@ -227,12 +224,12 @@ final class DefaultResponse implements Response
             return new Builder(this, s -> s.mustCloseAfterWrite = enabled);
         }
         
-        private Response response;
+        private Response sealed;
         
         @Override
         public Response build() {
-            Response r = response;
-            return r != null ? r : (response = construct());
+            Response r = sealed;
+            return r != null ? r : (sealed = construct());
         }
         
         private Response construct() {
@@ -248,7 +245,12 @@ final class DefaultResponse implements Response
                     .collect(toUnmodifiableList());
             
             return new DefaultResponse(
-                    s.statusCode, s.reasonPhrase, headers, s.body, s.mustCloseAfterWrite);
+                    s.statusCode,
+                    s.reasonPhrase,
+                    headers,
+                    s.body,
+                    s.mustCloseAfterWrite,
+                    this);
         }
         
         private void populate(MutableState s) {
@@ -268,7 +270,7 @@ final class DefaultResponse implements Response
         
         private static void setDefaults(MutableState s) {
             if (s.reasonPhrase == null) {
-                s.reasonPhrase = "Unknown"; }
+                s.reasonPhrase = HttpConstants.ReasonPhrase.UNKNOWN; }
             
             if (s.body == null) {
                 s.body = empty(); }

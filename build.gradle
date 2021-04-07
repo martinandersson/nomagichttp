@@ -146,6 +146,10 @@ tasks.withType(Javadoc) {
     
     // Text to be injected as overview
     options.overview = 'src/main/java/overview.html'
+    
+    // Link to Java 11 API
+    def v = compileJava.options.release.get()
+    options.links("https://docs.oracle.com/en/java/javase/$v/docs/api")
 }
 
 // Add tasks "javadocJar" and "sourcesJar" (for IDE:s and other tooling)
@@ -154,8 +158,8 @@ java {
     withSourcesJar() // contains .java source code files; no .class files or HTML
 }
 
-// withJavadocJar() added the javadoc task as a dependency on the assemble task,
-// also add the javadocAll task as dependency (we want gradle build to fail if any doc task fails)
+// withJavadocJar() added the javadoc task as an assemble task dependency,
+// do the same for javadocAll (gradle build will fail if any doc task fails)
 assemble.dependsOn javadocAll
 
 // For jitpack.io, define a publication

@@ -3,8 +3,8 @@ package alpha.nomagichttp.internal;
 import alpha.nomagichttp.HttpServer;
 import alpha.nomagichttp.handler.ErrorHandler;
 import alpha.nomagichttp.handler.RequestHandler;
-import alpha.nomagichttp.handler.RequestHandlers;
 import alpha.nomagichttp.message.Response;
+import alpha.nomagichttp.message.Responses;
 import alpha.nomagichttp.route.NoRouteFoundException;
 import alpha.nomagichttp.testutil.ClientOperations;
 import alpha.nomagichttp.testutil.Logging;
@@ -19,6 +19,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Supplier;
 
 import static alpha.nomagichttp.HttpServer.create;
+import static alpha.nomagichttp.handler.RequestHandler.GET;
 import static alpha.nomagichttp.testutil.ClientOperations.CRLF;
 import static java.lang.System.Logger.Level.ALL;
 import static java.util.concurrent.CompletableFuture.failedFuture;
@@ -60,12 +61,10 @@ class ErrorHandlingTest
     void not_found_custom() throws IOException {
         ErrorHandler eh = (exc, ch, req, han) -> {
             if (exc instanceof NoRouteFoundException) {
-                ch.write(Response.builder()
-                               .statusCode(123)
-                               .reasonPhrase("Custom Not Found!")
-                               .mustCloseAfterWrite(true)
-                               .build()
-                               .completedStage());
+                ch.write(Response.builder(123, "Custom Not Found!")
+                                 .mustCloseAfterWrite(true)
+                                 .build());
+                return;
             }
             throw exc;
         };
@@ -80,13 +79,13 @@ class ErrorHandlingTest
     
     /** Request handler fails synchronously. */
     @Test
-    void retry_failed_request_sync() throws IOException, InterruptedException {
+    void retry_failed_request_sync() throws IOException {
         firstTwoRequestsResponds(() -> { throw new RuntimeException(); });
     }
     
     /** Returned stage completes exceptionally. */
     @Test
-    void retry_failed_request_async() throws IOException, InterruptedException {
+    void retry_failed_request_async() throws IOException {
         firstTwoRequestsResponds(() -> failedFuture(new RuntimeException()));
     }
     
@@ -95,16 +94,16 @@ class ErrorHandlingTest
     {
         AtomicInteger c = new AtomicInteger();
         
-        RequestHandler h1 = RequestHandlers.GET().apply(requestIgnored -> {
+        RequestHandler h1 = GET().respond(() -> {
             if (c.incrementAndGet() < 3) {
                 return response.get();
             }
             
-            return Response.Builder.ok()
-                                   .header("N", Integer.toString(c.get()))
-                                   .addHeader("Content-Length", "0")
-                                   .build()
-                                   .completedStage();
+            return Responses.noContent()
+                            .toBuilder()
+                            .header("N", Integer.toString(c.get()))
+                            .build()
+                            .completedStage();
         });
         
         ErrorHandler retry = (t, ch, r, h2) -> h2.logic().accept(r, ch);
@@ -114,9 +113,8 @@ class ErrorHandlingTest
             "GET / HTTP/1.1" + CRLF + CRLF);
         
         assertThat(r).isEqualTo(
-            "HTTP/1.1 200 OK"   + CRLF +
-            "N: 3"              + CRLF +
-            "Content-Length: 0" + CRLF + CRLF);
+            "HTTP/1.1 204 No Content" + CRLF +
+            "N: 3"                    + CRLF + CRLF);
     }
     
     @Test

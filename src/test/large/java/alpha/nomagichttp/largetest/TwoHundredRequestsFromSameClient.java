@@ -1,7 +1,6 @@
 package alpha.nomagichttp.largetest;
 
 import alpha.nomagichttp.handler.RequestHandler;
-import alpha.nomagichttp.handler.RequestHandlers;
 import alpha.nomagichttp.message.Responses;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -13,6 +12,7 @@ import java.util.concurrent.ThreadLocalRandom;
 import java.util.function.Supplier;
 import java.util.stream.Stream;
 
+import static alpha.nomagichttp.handler.RequestHandler.POST;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
@@ -27,7 +27,7 @@ class TwoHundredRequestsFromSameClient extends AbstractSingleClientTest
 {
     @BeforeAll
     static void addHandler() {
-        RequestHandler echo = RequestHandlers.POST().apply(req ->
+        RequestHandler echo = POST().apply(req ->
                 req.body().toText().thenApply(Responses::text));
         
         server().add("/echo", echo);

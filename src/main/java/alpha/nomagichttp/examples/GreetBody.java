@@ -4,7 +4,7 @@ import alpha.nomagichttp.HttpServer;
 
 import java.io.IOException;
 
-import static alpha.nomagichttp.handler.RequestHandlers.POST;
+import static alpha.nomagichttp.handler.RequestHandler.POST;
 import static alpha.nomagichttp.message.Responses.text;
 
 /**

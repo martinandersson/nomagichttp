@@ -31,14 +31,15 @@ import static alpha.nomagichttp.internal.AtomicReferences.setIfAbsent;
 import static java.lang.System.Logger.Level.DEBUG;
 import static java.lang.System.Logger.Level.ERROR;
 import static java.lang.System.Logger.Level.INFO;
-import static java.net.InetAddress.getLoopbackAddress;
 import static java.util.Objects.requireNonNull;
 
 /**
- * A fully asynchronous implementation of {@link HttpServer}.<p>
+ * A fully asynchronous {@link HttpServer}.<p>
  * 
- * This class uses {@link AsynchronousServerSocketChannel} which provides an
- * amazing performance on many operating systems, including Windows.
+ * This implementation is fully JDK-based (no native calls). It does not use
+ * selector threads (event polling) or any other type of blocking techniques. It
+ * responds to native system events with zero blocking for maximum performance
+ * across all operating systems that runs Java.
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  */
@@ -83,6 +84,7 @@ public final class DefaultServer implements HttpServer
     
     @Override
     public HttpServer start(SocketAddress address) throws IOException {
+        requireNonNull(address);
         var res = lazyInitOrElse(
                 parent, CompletableFuture::new, v -> initialize(address, v), null);
         
@@ -127,13 +129,9 @@ public final class DefaultServer implements HttpServer
     private void initialize(SocketAddress addr, CompletableFuture<AsynchronousServerSocketChannel> v) {
         final AsynchronousServerSocketChannel ch;
         try {
-            SocketAddress use = addr != null? addr :
-                    new InetSocketAddress(getLoopbackAddress(), 0);
-           
             AsynchronousChannelGroup grp = AsyncGroup.getOrCreate(config.threadPoolSize())
                     .toCompletableFuture().join();
-            
-            ch = AsynchronousServerSocketChannel.open(grp).bind(use);
+            ch = AsynchronousServerSocketChannel.open(grp).bind(addr);
         } catch (Throwable t) {
             if (SERVER_COUNT.get() == 0) {
                 // benign race with other servers starting in parallel,
@@ -190,7 +188,7 @@ public final class DefaultServer implements HttpServer
             }
             try {
                 ch.close();
-                // This is the code actually that we desperately need to protect
+                // This is the code that we desperately need to protect
                 LOG.log(INFO, () -> "Closed server channel: " + ch);
                 int n = SERVER_COUNT.decrementAndGet();
                 parent.set(null);
@@ -226,7 +224,7 @@ public final class DefaultServer implements HttpServer
         Iterator<ChannelCouple> it = children.iterator();
         while (it.hasNext()) {
             ChannelCouple pair = it.next();
-            // Just to not give a new concurrent server start any surprises lol
+            // Just to not give a new concurrent start any surprises lol
             if (pair.parent.equals(ofParent)) {
                 it.remove();
                 pair.child.closeSafe();

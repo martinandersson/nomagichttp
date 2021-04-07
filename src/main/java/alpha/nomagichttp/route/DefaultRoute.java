@@ -13,9 +13,9 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.TreeSet;
 
-import static alpha.nomagichttp.message.MediaType.ALL;
-import static alpha.nomagichttp.message.MediaType.NOTHING;
-import static alpha.nomagichttp.message.MediaType.NOTHING_AND_ALL;
+import static alpha.nomagichttp.message.MediaType.__ALL;
+import static alpha.nomagichttp.message.MediaType.__NOTHING;
+import static alpha.nomagichttp.message.MediaType.__NOTHING_AND_ALL;
 import static alpha.nomagichttp.message.MediaType.Score.NOPE;
 import static alpha.nomagichttp.route.AmbiguousNoHandlerFoundException.createAmbiguousEx;
 import static java.lang.String.join;
@@ -147,12 +147,12 @@ public final class DefaultRoute implements Route
     {
         final MediaType consumes = handler.consumes();
         
-        if (consumes == NOTHING_AND_ALL) {
+        if (consumes == __NOTHING_AND_ALL) {
             return true;
         }
         
         boolean contentTypeProvided = contentType != null,
-                consumesNothing     = consumes == NOTHING;
+                consumesNothing     = consumes == __NOTHING;
         
         if (contentTypeProvided) {
             if (consumesNothing) {
@@ -327,7 +327,7 @@ public final class DefaultRoute implements Route
             return this;
         }
         
-        private static final Set<MediaType> SPECIAL = Set.of(NOTHING, NOTHING_AND_ALL, ALL);
+        private static final Set<MediaType> SPECIAL = Set.of(__NOTHING, __NOTHING_AND_ALL, __ALL);
         
         @Override
         public Route.Builder handler(RequestHandler first, RequestHandler... more) {
@@ -344,7 +344,7 @@ public final class DefaultRoute implements Route
                 if (specials.equals(SPECIAL)) {
                     throw new HandlerCollisionException(format(
                             "All other meta data being equal; if there''s a consumes {0} then {1} is effectively equal to {2}.",
-                            NOTHING, NOTHING_AND_ALL, ALL));
+                            __NOTHING, __NOTHING_AND_ALL, __ALL));
                 }
             }
             

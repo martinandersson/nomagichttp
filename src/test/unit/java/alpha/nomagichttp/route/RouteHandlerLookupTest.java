@@ -8,10 +8,11 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 
-import static alpha.nomagichttp.message.MediaType.ALL;
-import static alpha.nomagichttp.message.MediaType.NOTHING;
-import static alpha.nomagichttp.message.MediaType.NOTHING_AND_ALL;
+import static alpha.nomagichttp.handler.RequestHandler.GET;
 import static alpha.nomagichttp.message.MediaType.TEXT_PLAIN;
+import static alpha.nomagichttp.message.MediaType.__ALL;
+import static alpha.nomagichttp.message.MediaType.__NOTHING;
+import static alpha.nomagichttp.message.MediaType.__NOTHING_AND_ALL;
 import static alpha.nomagichttp.message.MediaType.parse;
 import static alpha.nomagichttp.message.Responses.accepted;
 import static java.util.Arrays.stream;
@@ -33,9 +34,9 @@ class RouteHandlerLookupTest
     
     @Test
     void simple_with_salt() {
-                         create("text/plain", "text/html");
+                                create("text/plain", "text/html");
         RequestHandler target = create("text/plain", "text/plain");
-                         create("text/html", "*/*");
+                                create("text/html",  "*/*");
         
         assertThat(exec("text/plain", "text/plain")).isSameAs(target);
     }
@@ -95,8 +96,8 @@ class RouteHandlerLookupTest
     // Solve ambiguity by providing a more generic fallback.
     @Test
     void ambiguous_solution_1() {
-                         create("text/plain", "text/what");
-                         create("text/plain", "text/ever");
+                                create("text/plain", "text/what");
+                                create("text/plain", "text/ever");
         RequestHandler target = create("text/*",     "text/html");
         
         assertThat(exec("text/plain")).isSameAs(target);
@@ -105,7 +106,7 @@ class RouteHandlerLookupTest
     // ..or by being more specific.
     @Test
     void ambiguous_solution_2() {
-                         create("text/plain", "*/*");
+                                create("text/plain", "*/*");
         RequestHandler target = create("text/plain", "more/specific");
         
         assertThat(exec("text/plain")).isSameAs(target);
@@ -113,16 +114,16 @@ class RouteHandlerLookupTest
     
     @Test
     void order_by_specificity_1() {
-                         create(NOTHING_AND_ALL, ALL);
-        RequestHandler target = create(NOTHING_AND_ALL, TEXT_PLAIN);
+                                create(__NOTHING_AND_ALL, __ALL);
+        RequestHandler target = create(__NOTHING_AND_ALL, TEXT_PLAIN);
         
         assertThat(exec(null, "text/*")).isSameAs(target);
     }
     
     @Test
     void order_by_specificity_2() {
-        RequestHandler target = create(NOTHING,  ALL);
-                         create(NOTHING_AND_ALL, ALL);
+        RequestHandler target = create(__NOTHING, __ALL);
+                                create(__NOTHING_AND_ALL, __ALL);
         
         // In this case, NOTHING is more specific than NOTHING_AND_ALL
         assertThat(exec((MediaType) null)).isSameAs(target);
@@ -130,8 +131,8 @@ class RouteHandlerLookupTest
     
     @Test
     void order_by_specificity_3() {
-                         create(NOTHING,  ALL);
-        RequestHandler target = create(NOTHING_AND_ALL, ALL);
+                                create(__NOTHING, __ALL);
+        RequestHandler target = create(__NOTHING_AND_ALL, __ALL);
         
         // In this case, NOTHING_AND_ALL is more specific than NOTHING
         assertThat(exec("bla/bla")).isSameAs(target);
@@ -139,8 +140,8 @@ class RouteHandlerLookupTest
     
     @Test
     void order_by_specificity_4() {
-                         create(NOTHING_AND_ALL, ALL);
-        RequestHandler target = create(ALL,      ALL);
+                                create(__NOTHING_AND_ALL, __ALL);
+        RequestHandler target = create(__ALL, __ALL);
         
         // In this case, ALL is more specific than NOTHING_AND_ALL
         assertThat(exec("bla/bla")).isSameAs(target);
@@ -168,7 +169,7 @@ class RouteHandlerLookupTest
     
     @Test
     void produces_params_specific() {
-        RequestHandler target = create(NOTHING_AND_ALL, parse("text/plain; charset=utf-8; something=else"));
+        RequestHandler target = create(__NOTHING_AND_ALL, parse("text/plain; charset=utf-8; something=else"));
         
         assertThatThrownBy(() -> exec(null, "*/*"))
                 .isExactlyInstanceOf(NoHandlerFoundException.class)
@@ -180,15 +181,15 @@ class RouteHandlerLookupTest
     
     @Test
     void produces_params_all() {
-        RequestHandler target = create(NOTHING_AND_ALL, parse("text/html"));
-        assertThat(exec(NOTHING_AND_ALL, parse("*/*;       bla=bla"))).isSameAs(target);
-        assertThat(exec(NOTHING_AND_ALL, parse("text/*;    bla=bla"))).isSameAs(target);
-        assertThat(exec(NOTHING_AND_ALL, parse("text/html; bla=bla"))).isSameAs(target);
+        RequestHandler target = create(__NOTHING_AND_ALL, parse("text/html"));
+        assertThat(exec(__NOTHING_AND_ALL, parse("*/*;       bla=bla"))).isSameAs(target);
+        assertThat(exec(__NOTHING_AND_ALL, parse("text/*;    bla=bla"))).isSameAs(target);
+        assertThat(exec(__NOTHING_AND_ALL, parse("text/html; bla=bla"))).isSameAs(target);
     }
     
     @Test
     void stupid_client() {
-        create(NOTHING_AND_ALL, ALL);
+        create(__NOTHING_AND_ALL, __ALL);
         // Client has nothing to provide us and accepts nothing in return.
         assertThatThrownBy(() -> exec(null, "*/*;q=0"))
                 .isExactlyInstanceOf(NoHandlerFoundException.class)
@@ -223,28 +224,28 @@ class RouteHandlerLookupTest
                 "*/*;q=0.5"};
         
         // "text/plain" is the client's last preference, but the only one we have.
-        RequestHandler target = create(NOTHING_AND_ALL, parse("text/plain"));
+        RequestHandler target = create(__NOTHING_AND_ALL, parse("text/plain"));
         assertThat(exec(null, accepts)).isSameAs(target);
         
         // So we keep adding more preferred handlers (the "given type" in RFC),
         // and the same request gets routed to the new handlers accordingly.
         
-        target = create(NOTHING_AND_ALL, parse("text/html;level=2"));
+        target = create(__NOTHING_AND_ALL, parse("text/html;level=2"));
         assertThat(exec(null, accepts)).isSameAs(target);
         
-        target = create(NOTHING_AND_ALL, parse("image/jpeg"));
+        target = create(__NOTHING_AND_ALL, parse("image/jpeg"));
         assertThat(exec(null, accepts)).isSameAs(target);
         
-        target = create(NOTHING_AND_ALL, parse("text/html"));
+        target = create(__NOTHING_AND_ALL, parse("text/html"));
         assertThat(exec(null, accepts)).isSameAs(target);
         
         // Same Q ("0.7") as last one and media type even more specific.
         // But handler specifies a parameter and request doesn't.
         // So the more generic handler "text/html" with no params is still the match.
-        create(NOTHING_AND_ALL, parse("text/html;level=3"));
+        create(__NOTHING_AND_ALL, parse("text/html;level=3"));
         assertThat(exec(null, accepts)).isSameAs(target);
         
-        target = create(NOTHING_AND_ALL, parse("text/html;level=1"));
+        target = create(__NOTHING_AND_ALL, parse("text/html;level=1"));
         assertThat(exec(null, accepts)).isSameAs(target);
     }
     
@@ -257,11 +258,9 @@ class RouteHandlerLookupTest
     }
     
     private RequestHandler create(MediaType consumes, MediaType produces) {
-        RequestHandler h = RequestHandler.Builder.GET()
-                .consumes(consumes)
-                .produces(produces)
-                .respond(accepted());
-        
+        RequestHandler h = GET().consumes(consumes)
+                                .produces(produces)
+                                .respond(accepted());
         handlers.add(h);
         return h;
     }

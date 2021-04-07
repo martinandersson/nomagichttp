@@ -9,8 +9,8 @@ import java.net.http.HttpResponse;
 import java.nio.file.Files;
 import java.nio.file.Path;
 
-import static alpha.nomagichttp.handler.RequestHandlers.POST;
-import static alpha.nomagichttp.message.Response.Builder.noContent;
+import static alpha.nomagichttp.handler.RequestHandler.POST;
+import static alpha.nomagichttp.message.Responses.noContent;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
@@ -25,15 +25,16 @@ class BigFileRequest extends AbstractSingleClientTest
     @BeforeAll
     static void beforeAll() throws IOException {
         FILE = Files.createTempDirectory("nomagic")
-                .resolve("50MB.bin");
+                    .resolve("50MB");
         
         RequestHandler fileSaver = POST().apply(req ->
                 req.body()
                    .toFile(FILE)
                    .thenApply(n ->
-                        noContent()
+                       noContent()
+                       .toBuilder()
                        .header("Received", Long.toString(n))
-                   .build()));
+                       .build()));
         
         server().add("/file", fileSaver);
     }
