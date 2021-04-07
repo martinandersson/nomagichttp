@@ -266,7 +266,7 @@ public interface ErrorHandler
         } catch (RequestHeadParseException | HttpVersionParseException | BadHeaderException e) {
             res = badRequest();
         } catch (HttpVersionTooOldException e) {
-            res = upgradeRequired(e.upgrade());
+            res = upgradeRequired(e.getUpgrade());
         } catch (HttpVersionTooNewException e) {
             res = httpVersionNotSupported();
         } catch (NoRouteFoundException e) {

@@ -39,7 +39,7 @@ public class NoRouteFoundException extends RuntimeException
      * 
      * @see Route
      */
-    public Iterable<String> segments() {
+    public Iterable<String> getSegments() {
         return segments;
     }
     
@@ -49,7 +49,7 @@ public class NoRouteFoundException extends RuntimeException
      * @return the request path for which no {@link Route} was found
      *         (never {@code null} or the empty string)
      */
-    public String path() {
-        return "/" + stream(segments().spliterator(), false).collect(joining("/"));
+    public String getPath() {
+        return "/" + stream(getSegments().spliterator(), false).collect(joining("/"));
     }
 }

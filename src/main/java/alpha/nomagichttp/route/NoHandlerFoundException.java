@@ -78,7 +78,7 @@ public class NoHandlerFoundException extends RuntimeException
      * 
      * @return the request's HTTP method (never {@code null} or empty)
      */
-    public String method() {
+    public String getMethod() {
         return method;
     }
     
@@ -87,7 +87,7 @@ public class NoHandlerFoundException extends RuntimeException
      * 
      * @return the request target (never {@code null})
      */
-    public Route route() {
+    public Route getRoute() {
         return route;
     }
     
@@ -97,7 +97,7 @@ public class NoHandlerFoundException extends RuntimeException
      * @return Content-Type (may be {@code null})
      * @see HttpConstants.HeaderKey#CONTENT_TYPE
      */
-    public MediaType contentType() {
+    public MediaType getContentType() {
         return contentType;
     }
     
@@ -107,7 +107,7 @@ public class NoHandlerFoundException extends RuntimeException
      * @return Accept (may be empty, never {@code null})
      * @see HttpConstants.HeaderKey#ACCEPT
      */
-    public MediaType[] accepts() {
+    public MediaType[] getAccepts() {
         return accepts;
     }
 }

@@ -45,7 +45,7 @@ public class HttpVersionTooOldException extends RuntimeException
      * 
      * @return the rejected version (never {@code null})
      */
-    public final String version() {
+    public final String getVersion() {
         return version;
     }
     
@@ -57,7 +57,7 @@ public class HttpVersionTooOldException extends RuntimeException
      * @return server's proposed version the client should use instead
      *         (never {@code null})
      */
-    public String upgrade() {
+    public String getUpgrade() {
         return upgrade;
     }
 }

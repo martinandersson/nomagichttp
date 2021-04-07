@@ -59,7 +59,7 @@ public final class AmbiguousNoHandlerFoundException extends NoHandlerFoundExcept
      * 
      * @return all ambiguous candidates that qualified (never {@code null} or empty)
      */
-    public Set<RequestHandler> candidates() {
+    public Set<RequestHandler> getCandidates() {
         return ambiguous;
     }
 }

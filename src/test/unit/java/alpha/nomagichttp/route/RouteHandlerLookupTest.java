@@ -89,7 +89,7 @@ class RouteHandlerLookupTest
         // Accepts "*/*"
         assertThatThrownBy(() -> exec("text/plain"))
                 .isExactlyInstanceOf(AmbiguousNoHandlerFoundException.class)
-                .extracting(e -> ((AmbiguousNoHandlerFoundException) e).candidates())
+                .extracting(e -> ((AmbiguousNoHandlerFoundException) e).getCandidates())
                 .isEqualTo(ambiguous);
     }
     
