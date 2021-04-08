@@ -141,8 +141,8 @@ final class DefaultResponse implements Response
         
         static final Response.Builder ROOT = new Builder(null, null);
         
-        final Builder prev;
-        final Consumer<MutableState> modifier;
+        private final Builder prev;
+        private final Consumer<MutableState> modifier;
         
         private Builder(Builder prev, Consumer<MutableState> modifier) {
             this.prev = prev;
@@ -224,19 +224,11 @@ final class DefaultResponse implements Response
             return new Builder(this, s -> s.mustCloseAfterWrite = enabled);
         }
         
-        private Response sealed;
-        
         @Override
         public Response build() {
-            Response r = sealed;
-            return r != null ? r : (sealed = construct());
-        }
-        
-        private Response construct() {
             MutableState s = new MutableState();
             
             populate(s);
-            validate(s);
             setDefaults(s);
             
             Iterable<String> headers = s.headers == null ? emptyList() :
@@ -244,13 +236,21 @@ final class DefaultResponse implements Response
                             e.getValue().stream().map(v -> e.getKey() + ": " + v))
                     .collect(toUnmodifiableList());
             
-            return new DefaultResponse(
+            assert s.statusCode != null : "Status-code supposed to be set by Response.Builder(int)";
+            Response r = new DefaultResponse(
                     s.statusCode,
                     s.reasonPhrase,
                     headers,
                     s.body,
                     s.mustCloseAfterWrite,
                     this);
+            
+            if (r.statusCode() >= 100 && r.statusCode() < 200) {
+                throw new IllegalBodyException(
+                        "Body in a 1XX (Informational) response.", r);
+            }
+            
+            return r;
         }
         
         private void populate(MutableState s) {
@@ -261,11 +261,6 @@ final class DefaultResponse implements Response
             }
             
             mods.forEach(m -> m.accept(s));
-        }
-        
-        private static void validate(MutableState s) {
-            if (s.statusCode == null) {
-                throw new IllegalArgumentException("Status code not set."); }
         }
         
         private static void setDefaults(MutableState s) {

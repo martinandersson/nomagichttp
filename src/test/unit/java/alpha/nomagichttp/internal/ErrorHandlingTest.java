@@ -8,6 +8,7 @@ import alpha.nomagichttp.message.Responses;
 import alpha.nomagichttp.route.NoRouteFoundException;
 import alpha.nomagichttp.testutil.ClientOperations;
 import alpha.nomagichttp.testutil.Logging;
+import alpha.nomagichttp.util.BetterBodyPublishers;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -24,6 +25,7 @@ import static alpha.nomagichttp.handler.RequestHandler.HEAD;
 import static alpha.nomagichttp.handler.RequestHandler.TRACE;
 import static alpha.nomagichttp.message.Responses.text;
 import static alpha.nomagichttp.testutil.ClientOperations.CRLF;
+import static alpha.nomagichttp.util.BetterBodyPublishers.ofString;
 import static java.lang.System.Logger.Level.ALL;
 import static java.util.concurrent.CompletableFuture.failedFuture;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -33,6 +35,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  */
+// Rename to ErrorEndToEndTest
 class ErrorHandlingTest
 {
     HttpServer s;
@@ -64,7 +67,7 @@ class ErrorHandlingTest
     void not_found_custom() throws IOException {
         ErrorHandler eh = (exc, ch, req, han) -> {
             if (exc instanceof NoRouteFoundException) {
-                ch.write(Response.builder(123, "Custom Not Found!")
+                ch.write(Response.builder(499, "Custom Not Found!")
                                  .mustCloseAfterWrite(true)
                                  .build());
                 return;
@@ -77,7 +80,7 @@ class ErrorHandlingTest
             "GET /404 HTTP/1.1" + CRLF + CRLF);
         
         assertThat(res).isEqualTo(
-            "HTTP/1.1 123 Custom Not Found!" + CRLF + CRLF);
+            "HTTP/1.1 499 Custom Not Found!" + CRLF + CRLF);
     }
     
     /** Request handler fails synchronously. */
@@ -220,5 +223,22 @@ class ErrorHandlingTest
         assertThat(res).isEqualTo(
                 "HTTP/1.1 400 Bad Request" + CRLF +
                 "Content-Length: 0"        + CRLF + CRLF);
+    }
+    
+    @Test
+    void IllegalBodyException_in1xxResponse() throws IOException {
+        s = create().start();
+        s.add("/", GET().respond(() ->
+                Response.builder(123)
+                        .body(ofString("Body!"))
+                        .build()
+                        .completedStage()));
+        
+        String res = new ClientOperations(s)
+                .writeRead("GET / HTTP/1.1" + CRLF + CRLF);
+        
+        assertThat(res).isEqualTo(
+                "HTTP/1.1 500 Internal Server Error" + CRLF +
+                "Content-Length: 0"                  + CRLF + CRLF);
     }
 }

@@ -11,11 +11,15 @@ import static java.util.Objects.requireNonNull;
 /**
  * An HTTP message contains a body when no body is permitted.<p>
  * 
- * Is thrown by the server if a {@link HttpConstants.Method#TRACE} request
- * contains a body. Is thrown by {@link Response.Builder#body(Flow.Publisher)}
- * if the response status-code is 1xx. Is thrown by the server if a response
- * body publisher publishes a bytebuffer in response to a {@link
- * HttpConstants.Method#HEAD} request.
+ * Is thrown:
+ * <ul>
+ *   <li>By the server when a {@link HttpConstants.Method#TRACE} request
+ *       contains a body.</li>
+ *   <li>By {@link Response.Builder#body(Flow.Publisher)} if the response
+ *       status-code is 1XX (Informational).</li>
+ *   <li>By the server if a response body publisher publishes a bytebuffer in
+ *       response to a {@link HttpConstants.Method#HEAD} request.</li>
+ * </ul>
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  * 

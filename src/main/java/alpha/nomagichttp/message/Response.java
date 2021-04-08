@@ -369,8 +369,8 @@ public interface Response
          * 
          * @return a response
          * 
-         * @throws IllegalStateException
-         *             if a status code has not been set
+         * @throws IllegalBodyException
+         *             if body is present and status-code is 1XX (Informational)
          */
         Response build();
     }
