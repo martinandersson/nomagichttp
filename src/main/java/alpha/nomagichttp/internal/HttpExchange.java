@@ -5,9 +5,9 @@ import alpha.nomagichttp.handler.ErrorHandler;
 import alpha.nomagichttp.handler.RequestHandler;
 import alpha.nomagichttp.message.HttpVersionTooNewException;
 import alpha.nomagichttp.message.HttpVersionTooOldException;
+import alpha.nomagichttp.message.Request;
 import alpha.nomagichttp.route.RouteRegistry;
 
-import java.nio.channels.AsynchronousSocketChannel;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
 import java.util.concurrent.CompletionStage;
@@ -24,7 +24,7 @@ import static java.lang.System.Logger.Level.WARNING;
 import static java.util.Objects.requireNonNull;
 
 /**
- * Implementation of an HTTP exchange from request to response.
+ * Orchestrator of an HTTP exchange from request to response.
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  */
@@ -34,7 +34,8 @@ final class HttpExchange
     
     private final DefaultServer server;
     private final ChannelByteBufferPublisher bytes;
-    private final DefaultClientChannel child;
+    private final ResponsePipeline pipe;
+    private final DefaultClientChannel chan;
     private final CompletableFuture<Void> result;
     
     /*
@@ -45,22 +46,25 @@ final class HttpExchange
      * Executor/ExecutorService, or at worst, a new Thread.start() for each task.
      */
     
+    private Version ver;
     private DefaultRequest request;
     private RequestHandler handler;
-    private ErrorResolver err;
+    private ErrorResolver onError;
     
     HttpExchange(
             DefaultServer server,
-            AsynchronousSocketChannel child,
-            ChannelByteBufferPublisher bytes)
+            ChannelByteBufferPublisher bytes,
+            DefaultClientChannel chan)
     {
-        this.server  = server;
-        this.bytes   = bytes;
-        this.result  = new CompletableFuture<>();
-        this.child   = new DefaultClientChannel(child, HTTP_1_1, () -> result.complete(null));
-        this.request = null;
-        this.handler = null;
-        this.err     = null;
+        this.server   = server;
+        this.bytes    = bytes;
+        this.chan     = chan;
+        this.pipe     = new ResponsePipeline(this, chan);
+        this.result   = new CompletableFuture<>();
+        this.ver      = HTTP_1_1; // <-- default until updated
+        this.request  = null;
+        this.handler  = null;
+        this.onError  = null;
     }
     
     /**
@@ -68,8 +72,8 @@ final class HttpExchange
      * 
      * The returned stage should mostly complete normally as HTTP exchange
      * errors are dealt with internally (through {@link ErrorHandler}). Any
-     * other error will be logged in this class. The server must close the child
-     * if the result completes exceptionally.
+     * other error will be logged in this class. The server should close the
+     * child if the result completes exceptionally.
      * 
      * @return a stage (never {@code null})
      */
@@ -82,18 +86,17 @@ final class HttpExchange
         return result;
     }
     
-    /**
-     * Delegates to {@code child.}{@link DefaultClientChannel#isEverythingOpen()
-     * isEverythingOpen()}.
-     * 
-     * @return see JavaDoc
-     */
-    boolean isEverythingOpen() {
-        return child.isEverythingOpen();
+    Version getHttpVersion() {
+        return ver;
+    }
+    
+    Request getRequest() {
+        return request;
     }
     
     private void begin0() {
-        child.pipeline().subscribe(
+        chan.usePipeline(pipe);
+        pipe.subscribe(
                 // Written byte count ignored
                 onNext(r -> handleResult(r.error())));
         
@@ -113,24 +116,23 @@ final class HttpExchange
     private void initialize(RequestHead h) {
         RequestTarget t = RequestTarget.parse(h.requestTarget());
         
-        Version v = getValidHttpVersion(h);
-        child.pipeline().updateVersion(v);
-        if (v == HTTP_1_0 && server.getConfig().rejectClientsUsingHTTP1_0()) {
+        ver = parseHttpVersion(h);
+        if (ver == HTTP_1_0 && server.getConfig().rejectClientsUsingHTTP1_0()) {
             throw new HttpVersionTooOldException(h.httpVersion(), "HTTP/1.1");
         }
         
         RouteRegistry.Match m = findRoute(t);
         
         // This order is actually specified in javadoc of ErrorHandler#apply
-        request = createRequest(v, h, t, m);
+        request = createRequest(h, t, m);
         handler = findRequestHandler(h, m);
     }
     
-    private Version getValidHttpVersion(RequestHead h) {
-        final Version ver;
+    private static Version parseHttpVersion(RequestHead h) {
+        final Version v;
         
         try {
-            ver = Version.parse(h.httpVersion());
+            v = Version.parse(h.httpVersion());
         } catch (IllegalArgumentException e) {
             String[] comp = e.getMessage().split(":");
             if (comp.length == 1) {
@@ -146,8 +148,8 @@ final class HttpExchange
             }
         }
         
-        requireHTTP1(ver.major(), h.httpVersion(), "HTTP/1.1");
-        return ver;
+        requireHTTP1(v.major(), h.httpVersion(), "HTTP/1.1");
+        return v;
     }
     
     private static void requireHTTP1(int major, String rejectedVersion, String upgrade) {
@@ -163,8 +165,8 @@ final class HttpExchange
         return server.getRouteRegistry().lookup(t.segmentsNotPercentDecoded());
     }
     
-    private DefaultRequest createRequest(Version v, RequestHead h, RequestTarget t, RouteRegistry.Match m) {
-        return new DefaultRequest(v, h, t, m, bytes, child);
+    private DefaultRequest createRequest(RequestHead h, RequestTarget t, RouteRegistry.Match m) {
+        return new DefaultRequest(ver, h, t, m, bytes, chan);
     }
     
     private static RequestHandler findRequestHandler(RequestHead rh, RouteRegistry.Match m) {
@@ -178,7 +180,7 @@ final class HttpExchange
     }
     
     private void invokeRequestHandler() {
-        handler.logic().accept(request, child);
+        handler.logic().accept(request, chan);
     }
     
     private void handleResult(Throwable thr) {
@@ -225,11 +227,11 @@ final class HttpExchange
         if (unpacked instanceof ClientAbortedException) {
             LOG.log(DEBUG, "Client aborted the HTTP exchange.");
             result.completeExceptionally(unpacked);
-        } else if (child.isOpenForWriting())  {
-            if (err == null) {
-                err = new ErrorResolver();
+        } else if (chan.isOpenForWriting())  {
+            if (onError == null) {
+                onError = new ErrorResolver();
             }
-            err.resolve(unpacked);
+            onError.resolve(unpacked);
         } else {
             LOG.log(DEBUG, () ->
                     "HTTP exchange finished exceptionally and child channel is closed for writing. " +
@@ -270,7 +272,7 @@ final class HttpExchange
         
         private void usingDefault(Throwable t) {
             try {
-                ErrorHandler.DEFAULT.apply(t, child, request, handler);
+                ErrorHandler.DEFAULT.apply(t, chan, request, handler);
             } catch (Throwable next) {
                 next.addSuppressed(t);
                 unexpected(next);
@@ -280,7 +282,7 @@ final class HttpExchange
         private void usingHandlers(Throwable t) {
             for (ErrorHandler h : server.getErrorHandlers()) {
                 try {
-                    h.apply(t, child, request, handler);
+                    h.apply(t, chan, request, handler);
                     return;
                 } catch (Throwable next) {
                     if (t != next) {

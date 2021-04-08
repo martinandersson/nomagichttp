@@ -47,8 +47,8 @@ class ChannelByteBufferPublisherTest
     
     ChannelByteBufferPublisher testee() throws InterruptedException {
         if (testee == null) {
-            DefaultClientChannel api = new DefaultClientChannel(SERVER.accept(), null, null);
-            testee = new ChannelByteBufferPublisher(api);
+            DefaultClientChannel chan = new DefaultClientChannel(SERVER.accept());
+            testee = new ChannelByteBufferPublisher(chan);
         }
         
         return testee;

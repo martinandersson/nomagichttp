@@ -1,12 +1,13 @@
 package alpha.nomagichttp.internal;
 
-import alpha.nomagichttp.HttpConstants;
 import alpha.nomagichttp.handler.ClientChannel;
 import alpha.nomagichttp.message.Response;
 
 import java.io.IOException;
 import java.nio.channels.AsynchronousSocketChannel;
 import java.nio.channels.ClosedChannelException;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.CompletionStage;
 
 import static java.lang.System.Logger.Level.DEBUG;
@@ -19,54 +20,61 @@ final class DefaultClientChannel implements ClientChannel
             = System.getLogger(DefaultClientChannel.class.getPackageName());
     
     private final AsynchronousSocketChannel child;
-    private final ResponsePipeline pipe;
-    private final Runnable onClose;
+    private ResponsePipeline pipe;
+    private final List<Runnable> onClose;
     
     private volatile boolean readShutdown,
-                             writeShutdown;
+                            writeShutdown;
     
     /**
      * Constructs a {@code DefaultClientChannel}.<p>
      * 
-     * The HTTP version may be {@code null}, in which case this instance can not
-     * be used for writing responses (no backing pipeline). This variant is
-     * useful only for a select few internal server components as a means to
-     * access the channel-state management API of this class. An
-     * application-facing instance must have a HTTP version set.<p>
-     * 
-     * The on-channel-close callback is only called if the child channel is
-     * closed through this API. If the channel reference is closed or the
-     * channel is asynchronously closed then the callback is never invoked
-     * (TODO: must implement timeouts). The callback may also be called multiple
-     * times, even concurrently.
+     * The channel can not be used for writing responses before this instance
+     * has been {@link #usePipeline(ResponsePipeline) initialized}.
      * 
      * @param child of parent (client)
-     * @param ver HTTP version (may be {@code null})
-     * @param onChannelClose callback (may be {@code null})
      * 
-     * @throws NullPointerException if {@code client} is {@code null}
+     * @throws NullPointerException if {@code child} is {@code null}
      */
-    DefaultClientChannel(
-            AsynchronousSocketChannel child,
-            HttpConstants.Version ver,
-            Runnable onChannelClose)
-    {
+    DefaultClientChannel(AsynchronousSocketChannel child) {
         this.child   = requireNonNull(child);
-        this.pipe    = ver == null ? null : new ResponsePipeline(this, ver);
+        this.onClose = new ArrayList<>(1);
         readShutdown = writeShutdown = false;
-        this.onClose = onChannelClose;
+    }
+    
+    /**
+     * Schedule a callback to run on channel close.<p>
+     * 
+     * This operation is not thread-safe with no memory fencing. Should only be
+     * called before the first HTTP exchange begins. The callback may be invoked
+     * concurrently, even multiple times. The callback is only called if the
+     * channel is closed through the API exposed by this class.
+     * 
+     * @param callback on channel close
+     * @throws NullPointerException if {@code callback} is {@code null}
+     */
+    void onClose(Runnable callback) {
+        onClose.add(requireNonNull(callback));
+        if (!child.isOpen()) {
+            callback.run();
+        }
+    }
+    
+    /**
+     * Initialize this channel with a pipeline or replace an old.<p>
+     * 
+     * This operation will enable the response-writing API of the interface.
+     * Until then, only the channel state-management API is useful.
+     * 
+     * @param pipe response pipeline
+     */
+    void usePipeline(ResponsePipeline pipe) {
+        this.pipe = pipe;
     }
     
     @Override
     public AsynchronousSocketChannel delegate() {
         return child;
-    }
-    
-    ResponsePipeline pipeline() {
-        if (pipe == null) {
-            throw new UnsupportedOperationException("Need HTTP version.");
-        }
-        return pipe;
     }
     
     @Override
@@ -184,9 +192,7 @@ final class DefaultClientChannel implements ClientChannel
         
         child.close();
         LOG.log(DEBUG, () -> "Closed child: " + child);
-        if (onClose != null) {
-            onClose.run();
-        }
+        onClose.forEach(Runnable::run);
     }
     
     @Override

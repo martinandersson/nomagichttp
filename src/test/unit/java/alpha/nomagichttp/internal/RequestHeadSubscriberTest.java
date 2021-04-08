@@ -45,8 +45,8 @@ class RequestHeadSubscriberTest
     
     CompletionStage<RequestHead> testee() throws InterruptedException {
         if (testee == null) {
-            DefaultClientChannel api = new DefaultClientChannel(SERVER.accept(), null, null);
-            Flow.Publisher<DefaultPooledByteBufferHolder> bytes = new ChannelByteBufferPublisher(api);
+            DefaultClientChannel chan = new DefaultClientChannel(SERVER.accept());
+            Flow.Publisher<DefaultPooledByteBufferHolder> bytes = new ChannelByteBufferPublisher(chan);
             RequestHeadSubscriber rhp = new RequestHeadSubscriber(MAX_VALUE);
             bytes.subscribe(rhp);
             testee = rhp.asCompletionStage();

@@ -1,7 +1,6 @@
 package alpha.nomagichttp.internal;
 
-import alpha.nomagichttp.HttpConstants;
-import alpha.nomagichttp.handler.ClientChannel;
+import alpha.nomagichttp.message.IllegalBodyException;
 import alpha.nomagichttp.message.Response;
 
 import java.nio.ByteBuffer;
@@ -9,6 +8,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.Flow;
 
+import static alpha.nomagichttp.HttpConstants.Method.HEAD;
 import static alpha.nomagichttp.internal.AnnounceToChannel.NO_MORE;
 import static java.lang.String.join;
 import static java.lang.System.Logger.Level.DEBUG;
@@ -37,8 +37,8 @@ final class ResponseBodySubscriber implements SubscriberAsStage<ByteBuffer, Long
             // Maximum bytebuffer demand.
             DEMAND_MAX = 3;
     
-    private final HttpConstants.Version ver;
-    private final Response res;
+    private final Response resp;
+    private final HttpExchange exch;
     private final AnnounceToChannel ch;
     private final CompletableFuture<Long> result;
     
@@ -46,11 +46,11 @@ final class ResponseBodySubscriber implements SubscriberAsStage<ByteBuffer, Long
     private boolean pushedHead;
     private int requested;
     
-    ResponseBodySubscriber(HttpConstants.Version ver, Response res, DefaultClientChannel ch) {
-        this.ver = requireNonNull(ver);
-        this.res = requireNonNull(res);
+    ResponseBodySubscriber(Response resp, HttpExchange exch, DefaultClientChannel ch) {
+        this.resp   = requireNonNull(resp);
+        this.exch   = requireNonNull(exch);
         this.result = new CompletableFuture<>();
-        this.ch  = AnnounceToChannel.write(ch, this::afterChannelFinished);
+        this.ch     = AnnounceToChannel.write(ch, this::afterChannelFinished);
     }
     
     /**
@@ -94,6 +94,14 @@ final class ResponseBodySubscriber implements SubscriberAsStage<ByteBuffer, Long
         }
         
         if (!pushedHead) {
+            if (exch.getRequest().method().equalsIgnoreCase(HEAD)) {
+                var e = new IllegalBodyException(
+                        "Body in response to a HEAD request.", exch.getRequest());
+                result.completeExceptionally(e);
+                subscription.cancel();
+                return;
+            }
+            
             pushHead();
         }
         
@@ -130,9 +138,9 @@ final class ResponseBodySubscriber implements SubscriberAsStage<ByteBuffer, Long
     }
     
     private void pushHead() {
-        final String phra = res.reasonPhrase() == null ? "" : res.reasonPhrase(),
-                     line = ver + SP + res.statusCode() + SP + phra + CRLF,
-                     vals = join(CRLF, res.headers()),
+        final String phra = resp.reasonPhrase() == null ? "" : resp.reasonPhrase(),
+                     line = exch.getHttpVersion() + SP + resp.statusCode() + SP + phra + CRLF,
+                     vals = join(CRLF, resp.headers()),
                      head = line + (vals.isEmpty() ? CRLF : vals + CRLF + CRLF);
         
         ByteBuffer b = ByteBuffer.wrap(head.getBytes(US_ASCII));

@@ -1,6 +1,7 @@
 package alpha.nomagichttp.internal;
 
 import alpha.nomagichttp.HttpServer;
+import alpha.nomagichttp.handler.ClientChannel;
 import alpha.nomagichttp.handler.ErrorHandler;
 import alpha.nomagichttp.route.Route;
 import alpha.nomagichttp.route.RouteRegistry;
@@ -291,9 +292,9 @@ public final class DefaultServer implements HttpServer
     
     private static final class ChannelCouple {
         final AsynchronousServerSocketChannel parent;
-        final DefaultClientChannel child;
+        final ClientChannel child;
         
-        ChannelCouple(AsynchronousServerSocketChannel parent, DefaultClientChannel child) {
+        ChannelCouple(AsynchronousServerSocketChannel parent, ClientChannel child) {
             this.parent = parent;
             this.child  = child;
         }
@@ -324,49 +325,54 @@ public final class DefaultServer implements HttpServer
             try {
                 parent.accept(null, this);
             } catch (Throwable t) {
-                new DefaultClientChannel(child, null, null).closeSafe();
+                LOG.log(DEBUG, () -> "Discarding accepted child.");
+                try {
+                    child.close();
+                } catch (IOException e) {
+                    // Ignore
+                }
                 failed(t, null);
                 return;
             }
             setup(child);
         }
         
-        private void setup(AsynchronousSocketChannel ch) {
-            LOG.log(DEBUG, () -> "Accepted child: " + ch);
-            DefaultClientChannel api = new DefaultClientChannel(ch, null, null);
-            ChannelByteBufferPublisher bytes = new ChannelByteBufferPublisher(api);
-            ChannelCouple member = new ChannelCouple(parent, api);
+        private void setup(AsynchronousSocketChannel child) {
+            LOG.log(DEBUG, () -> "Accepted child: " + child);
+            DefaultClientChannel chan = new DefaultClientChannel(child);
+            ChannelByteBufferPublisher bytes = new ChannelByteBufferPublisher(chan);
+            ChannelCouple member = new ChannelCouple(parent, chan);
             children.add(member);
             
-            startExchange(ch, bytes, api, member);
+            chan.onClose(() -> shutdown(chan, bytes, member));
+            startExchange(chan, bytes, member);
             
             // TODO: child.setOption(StandardSocketOptions.SO_KEEPALIVE, true); ??
         }
         
         private void startExchange(
-                AsynchronousSocketChannel ch,
+                DefaultClientChannel chan,
                 ChannelByteBufferPublisher bytes,
-                DefaultClientChannel api,
                 ChannelCouple member)
         {
-            var e = new HttpExchange(DefaultServer.this, ch, bytes);
-            e.begin().whenComplete((Null, exc) -> {
+            var exch = new HttpExchange(DefaultServer.this, bytes, chan);
+            exch.begin().whenComplete((Null, exc) -> {
                 // Both open-calls are volatile reads, no locks
-                if (exc == null && parent.isOpen() && e.isEverythingOpen()) {
-                    startExchange(ch, bytes, api, member);
+                if (exc == null && parent.isOpen() && chan.isEverythingOpen()) {
+                    startExchange(chan, bytes, member);
                 } else {
-                    shutdown(bytes, api, member);
+                    shutdown(chan, bytes, member);
                 }
             });
         }
         
         private void shutdown(
+                ClientChannel chan,
                 ChannelByteBufferPublisher bytes,
-                DefaultClientChannel api,
                 ChannelCouple member)
         {
             bytes.close();
-            api.closeSafe();
+            chan.closeSafe();
             children.remove(member);
             // Notify anyone waiting on the last child
             CompletableFuture<Void> trigger;

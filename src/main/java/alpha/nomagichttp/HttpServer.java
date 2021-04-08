@@ -5,6 +5,7 @@ import alpha.nomagichttp.handler.ErrorHandler;
 import alpha.nomagichttp.handler.RequestHandler;
 import alpha.nomagichttp.internal.DefaultServer;
 import alpha.nomagichttp.message.HttpVersionTooOldException;
+import alpha.nomagichttp.message.IllegalBodyException;
 import alpha.nomagichttp.message.MaxRequestHeadSizeExceededException;
 import alpha.nomagichttp.message.Response;
 import alpha.nomagichttp.message.Responses;
@@ -93,10 +94,9 @@ import static java.net.InetAddress.getLoopbackAddress;
  *     <a href="https://tools.ietf.org/html/rfc7231#section-6.2">RFC 7231 §6.2</a>)</li>
  * </ul>
  * 
- * These variants are rejected before or after the handler has been called,
- * depending on whether the message is a request or a response (TODO: define
- * exc types). They <i>must</i> be rejected since including a body would have
- * likely killed the protocol.<p>
+ * These variants <i>must</i> be rejected since including a body would have
+ * likely killed the protocol (causes {@link IllegalBodyException} to be
+ * thrown).<p>
  * 
  * For all other variants of requests and responses, the body is optional and
  * the server does not reject the message nor does the API enforce an

@@ -20,6 +20,8 @@ import java.util.function.Supplier;
 
 import static alpha.nomagichttp.HttpServer.create;
 import static alpha.nomagichttp.handler.RequestHandler.GET;
+import static alpha.nomagichttp.handler.RequestHandler.HEAD;
+import static alpha.nomagichttp.message.Responses.text;
 import static alpha.nomagichttp.testutil.ClientOperations.CRLF;
 import static java.lang.System.Logger.Level.ALL;
 import static java.util.concurrent.CompletableFuture.failedFuture;
@@ -189,5 +191,20 @@ class ErrorHandlingTest
                  "HTTP/1.1 505 HTTP Version Not Supported" + CRLF +
                  "Content-Length: 0" + CRLF + CRLF);
         }
+    }
+    
+    // TODO: When this class extends AbstractEndToEndTest, assert default handler caught
+    //       IllegalBodyException: Body in response to a HEAD request.
+    @Test
+    void IllegalBodyException_inResponseToHEAD() throws IOException {
+        s = create().start();
+        s.add("/", HEAD().respond(text("Body!")));
+        
+        String res = new ClientOperations(s)
+                .writeRead("HEAD / HTTP/1.1" + CRLF + CRLF);
+        
+        assertThat(res).isEqualTo(
+                "HTTP/1.1 500 Internal Server Error" + CRLF +
+                "Content-Length: 0"                  + CRLF + CRLF);
     }
 }
