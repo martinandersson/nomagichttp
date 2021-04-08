@@ -5,6 +5,7 @@ import alpha.nomagichttp.handler.ErrorHandler;
 import alpha.nomagichttp.handler.RequestHandler;
 import alpha.nomagichttp.message.HttpVersionTooNewException;
 import alpha.nomagichttp.message.HttpVersionTooOldException;
+import alpha.nomagichttp.message.IllegalBodyException;
 import alpha.nomagichttp.message.Request;
 import alpha.nomagichttp.route.RouteRegistry;
 
@@ -12,6 +13,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
 import java.util.concurrent.CompletionStage;
 
+import static alpha.nomagichttp.HttpConstants.Method.TRACE;
 import static alpha.nomagichttp.HttpConstants.Version.HTTP_1_0;
 import static alpha.nomagichttp.HttpConstants.Version.HTTP_1_1;
 import static alpha.nomagichttp.util.Headers.accept;
@@ -166,7 +168,11 @@ final class HttpExchange
     }
     
     private DefaultRequest createRequest(RequestHead h, RequestTarget t, RouteRegistry.Match m) {
-        return new DefaultRequest(ver, h, t, m, bytes, chan);
+        DefaultRequest r = new DefaultRequest(ver, h, t, m, bytes, chan);
+        if (r.method().equals(TRACE) && r.body().isEmpty()) {
+            throw new IllegalBodyException("Body in a TRACE request.", r);
+        }
+        return r;
     }
     
     private static RequestHandler findRequestHandler(RequestHead rh, RouteRegistry.Match m) {

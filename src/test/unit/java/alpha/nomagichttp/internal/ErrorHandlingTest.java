@@ -21,6 +21,7 @@ import java.util.function.Supplier;
 import static alpha.nomagichttp.HttpServer.create;
 import static alpha.nomagichttp.handler.RequestHandler.GET;
 import static alpha.nomagichttp.handler.RequestHandler.HEAD;
+import static alpha.nomagichttp.handler.RequestHandler.TRACE;
 import static alpha.nomagichttp.message.Responses.text;
 import static alpha.nomagichttp.testutil.ClientOperations.CRLF;
 import static java.lang.System.Logger.Level.ALL;
@@ -206,5 +207,18 @@ class ErrorHandlingTest
         assertThat(res).isEqualTo(
                 "HTTP/1.1 500 Internal Server Error" + CRLF +
                 "Content-Length: 0"                  + CRLF + CRLF);
+    }
+    
+    @Test
+    void IllegalBodyException_inRequestFromTRACE() throws IOException {
+        s = create().start();
+        s.add("/", TRACE().respond(text("Body!")));
+        
+        String res = new ClientOperations(s)
+                .writeRead("TRACE / HTTP/1.1" + CRLF + CRLF);
+        
+        assertThat(res).isEqualTo(
+                "HTTP/1.1 400 Bad Request" + CRLF +
+                "Content-Length: 0"        + CRLF + CRLF);
     }
 }

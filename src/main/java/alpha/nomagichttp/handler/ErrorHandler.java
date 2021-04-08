@@ -7,6 +7,7 @@ import alpha.nomagichttp.message.ClosedPublisherException;
 import alpha.nomagichttp.message.HttpVersionParseException;
 import alpha.nomagichttp.message.HttpVersionTooNewException;
 import alpha.nomagichttp.message.HttpVersionTooOldException;
+import alpha.nomagichttp.message.IllegalBodyException;
 import alpha.nomagichttp.message.MaxRequestHeadSizeExceededException;
 import alpha.nomagichttp.message.MediaTypeParseException;
 import alpha.nomagichttp.message.Request;
@@ -224,17 +225,31 @@ public interface ErrorHandler
      *   </tr>
      *   <tr>
      *     <th scope="row"> {@link MediaTypeParseException} <br>
-     *                      If handler argument is null</th>
+     *                      If request handler argument is null</th>
      *     <td> No </td>
      *     <td> {@link Responses#badRequest()} <br>
      *          Fault assumed to be the clients'.</td>
      *   </tr>
      *   <tr>
      *     <th scope="row"> {@link MediaTypeParseException} <br>
-     *                      If handler argument is not null</th>
+     *                      If request handler argument is not null</th>
      *     <td> Yes </td>
      *     <td> {@link Responses#internalServerError()} <br>
-     *          Fault assumed to be the request handlers'.</td>
+     *          Fault assumed to be the applications'.</td>
+     *   </tr>
+     *   <tr>
+     *     <th scope="row"> {@link IllegalBodyException} <br>
+     *                      If request handler argument is null</th>
+     *     <td> No </td>
+     *     <td> {@link Responses#badRequest()} <br>
+     *          Fault assumed to be the clients'.</td>
+     *   </tr>
+     *   <tr>
+     *     <th scope="row"> {@link IllegalBodyException} <br>
+     *                      If request handler argument is not null</th>
+     *     <td> Yes </td>
+     *     <td> {@link Responses#internalServerError()} <br>
+     *          Fault assumed to be the applications'.</td>
      *   </tr>
      *   <tr>
      *     <th scope="row">{@link ClosedPublisherException} <br>
@@ -277,7 +292,7 @@ public interface ErrorHandler
         } catch (NoHandlerFoundException e) { // + AmbiguousNoHandlerFoundException
             log(thr);
             res = notImplemented();
-        } catch (MediaTypeParseException e) {
+        } catch (MediaTypeParseException | IllegalBodyException e) {
             if (rh == null) {
                 res = badRequest();
             } else {

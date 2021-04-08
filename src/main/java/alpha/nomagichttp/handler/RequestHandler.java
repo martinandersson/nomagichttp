@@ -282,6 +282,15 @@ public interface RequestHandler
     }
     
     /**
+     * Returns a builder with HTTP method set to "TRACE".
+     *
+     * @return a builder with HTTP method set to "TRACE"
+     */
+    static Builder TRACE() {
+        return builder(HttpConstants.Method.TRACE);
+    }
+    
+    /**
      * Creates a new {@code RequestHandler} builder.<p>
      * 
      * The method is any non-empty, case-sensitive string containing no white
