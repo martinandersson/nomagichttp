@@ -1,7 +1,6 @@
 package alpha.nomagichttp.internal;
 
 import alpha.nomagichttp.HttpServer;
-import alpha.nomagichttp.handler.ClientChannel;
 import alpha.nomagichttp.handler.ErrorHandler;
 import alpha.nomagichttp.route.Route;
 import alpha.nomagichttp.route.RouteRegistry;
@@ -28,11 +27,12 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
 import static alpha.nomagichttp.internal.AtomicReferences.lazyInitOrElse;
-import static alpha.nomagichttp.internal.AtomicReferences.setIfAbsent;
 import static java.lang.System.Logger.Level.DEBUG;
 import static java.lang.System.Logger.Level.ERROR;
 import static java.lang.System.Logger.Level.INFO;
 import static java.util.Objects.requireNonNull;
+import static java.util.concurrent.CompletableFuture.completedStage;
+import static java.util.concurrent.CompletableFuture.failedStage;
 
 /**
  * A fully JDK-based and asynchronous implementation of {@code HttpServer}.<p>
@@ -49,18 +49,13 @@ public final class DefaultServer implements HttpServer
     private static final System.Logger LOG
             = System.getLogger(DefaultServer.class.getPackageName());
     
-    /**
-     * Global count of active servers.
-     */
+    private static final int INITIAL_CAPACITY = 10_000;
     private static final AtomicInteger SERVER_COUNT = new AtomicInteger();
     
     private final Config config;
     private final RouteRegistry registry;
     private final List<ErrorHandler> eh;
-    private final AtomicReference<CompletableFuture<AsynchronousServerSocketChannel>> parent;
-    private final AtomicReference<CompletableFuture<Void>> waitOnChildrenStop;
-    private final Set<ChannelCouple> children; // for fast removal, that's all
-    private final AtomicBoolean terminating;
+    private final AtomicReference<CompletableFuture<ParentWithHandler>> parent;
     
     /**
      * Constructs a {@code DefaultServer}.
@@ -69,18 +64,11 @@ public final class DefaultServer implements HttpServer
      * @param registry of server
      * @param eh error handlers
      */
-    public DefaultServer(
-            Config config,
-            RouteRegistry registry,
-            ErrorHandler... eh)
-    {
-        this.config        = requireNonNull(config);
-        this.registry      = requireNonNull(registry);
-        this.eh            = List.of(eh);
-        this.parent        = new AtomicReference<>();
-        this.waitOnChildrenStop = new AtomicReference<>();
-        this.children      = ConcurrentHashMap.newKeySet(10_000);
-        this.terminating   = new AtomicBoolean();
+    public DefaultServer(Config config, RouteRegistry registry, ErrorHandler... eh) {
+        this.config   = requireNonNull(config);
+        this.registry = requireNonNull(registry);
+        this.eh       = List.of(eh);
+        this.parent   = new AtomicReference<>();
     }
     
     @Override
@@ -95,8 +83,8 @@ public final class DefaultServer implements HttpServer
         
         try {
             // result immediately available because thread was initializer
-            AsynchronousServerSocketChannel parent = res.join();
-            parent.accept(null, new OnAccept(parent));
+            ParentWithHandler pwh = res.join();
+            pwh.initiateAccept();
         } catch (Throwable t) {
             IOException io = null;
             if (t instanceof CompletionException) {
@@ -127,7 +115,7 @@ public final class DefaultServer implements HttpServer
         return this;
     }
     
-    private void initialize(SocketAddress addr, CompletableFuture<AsynchronousServerSocketChannel> v) {
+    private void initialize(SocketAddress addr, CompletableFuture<ParentWithHandler> v) {
         final AsynchronousServerSocketChannel ch;
         try {
             AsynchronousChannelGroup grp = AsyncGroup.getOrCreate(config.threadPoolSize())
@@ -144,29 +132,33 @@ public final class DefaultServer implements HttpServer
         }
         LOG.log(INFO, () -> "Opened server channel: " + ch);
         SERVER_COUNT.incrementAndGet();
-        v.complete(ch);
+        v.complete(new ParentWithHandler(ch));
     }
     
     @Override
     public CompletionStage<Void> stop() {
-        CompletableFuture<Void> trigger = new CompletableFuture<>();
-        trigger.whenComplete((ign,ored) -> waitOnChildrenStop.set(null));
+        ParentWithHandler pwh;
         
-        // trigger may now be our local one, or a previously set value
-        trigger = setIfAbsent(waitOnChildrenStop, trigger);
-        
-        if (stopServerSafe(trigger) && children.isEmpty()) {
-            trigger.complete(null);
+        try {
+            pwh = stopServer();
+        } catch (IOException e) {
+            return failedStage(e);
         }
         
-        return trigger.copy();
+        return pwh == null ?
+                completedStage(null) :
+                pwh.onAccept().lastChildStage();
     }
     
     @Override
     public void stopNow() throws IOException {
-        AsynchronousServerSocketChannel ch = stopServer();
-        if (ch != null) {
-            stopChildren(ch);
+        ParentWithHandler pwc = stopServer();
+        if (pwc != null) {
+            Iterator<DefaultClientChannel> it = pwc.onAccept().children();
+            while (it.hasNext()) {
+                it.next().closeSafe();
+                it.remove();
+            }
         }
     }
     
@@ -175,61 +167,30 @@ public final class DefaultServer implements HttpServer
         return getParent(false) != null;
     }
     
-    private AsynchronousServerSocketChannel stopServer() throws IOException {
-        AsynchronousServerSocketChannel ch = getParent(true);
-        if (ch == null) {
+    private ParentWithHandler stopServer() throws IOException {
+        ParentWithHandler pwh = getParent(true);
+        if (pwh == null) {
             // great, never started
             return null;
         }
         
-        if (terminating.compareAndSet(false, true)) {
+        if (pwh.markTerminated()) {
+            parent.set(null);
+            AsynchronousServerSocketChannel ch = pwh.channel();
             if (!ch.isOpen()) {
-                // Assume concurrent close from us
                 return null;
             }
-            try {
-                ch.close();
-                // This is the code that we desperately need to protect
-                LOG.log(INFO, () -> "Closed server channel: " + ch);
-                int n = SERVER_COUNT.decrementAndGet();
-                parent.set(null);
-                if (n == 0) {
-                    // benign race
-                    AsyncGroup.shutdown();
-                }
-                assert n >= 0;
-                return ch;
-            } finally {
-                terminating.set(false);
+            ch.close();
+            LOG.log(INFO, () -> "Closed server channel: " + ch);
+            int n = SERVER_COUNT.decrementAndGet();
+            if (n == 0) {
+                // benign race
+                AsyncGroup.shutdown();
             }
+            assert n >= 0;
+            return pwh;
         } else {
             return null;
-        }
-    }
-    
-    private boolean stopServerSafe(CompletableFuture<Void> reportErrorTo) {
-        try {
-            stopServer();
-            return true;
-        } catch (IOException e) {
-            if (!reportErrorTo.completeExceptionally(e)) {
-                LOG.log(DEBUG,
-                    "Stop-Future already completed. " +
-                    "Except for this debug log, this error is ignored.", e);
-            }
-            return false;
-        }
-    }
-    
-    private void stopChildren(AsynchronousServerSocketChannel ofParent) {
-        Iterator<ChannelCouple> it = children.iterator();
-        while (it.hasNext()) {
-            ChannelCouple pair = it.next();
-            // Just to not give a new concurrent start any surprises lol
-            if (pair.parent.equals(ofParent)) {
-                it.remove();
-                pair.child.closeSafe();
-            }
         }
     }
     
@@ -257,7 +218,7 @@ public final class DefaultServer implements HttpServer
     @Override
     public InetSocketAddress getLocalAddress() throws IllegalStateException, IOException {
         try {
-            return (InetSocketAddress) parent.get().join().getLocalAddress();
+            return (InetSocketAddress) parent.get().join().channel().getLocalAddress();
         } catch (IOException e) {
             throw e;
         } catch (Exception e) { // including NPE from get().join()
@@ -270,7 +231,7 @@ public final class DefaultServer implements HttpServer
         return registry;
     }
     
-    private AsynchronousServerSocketChannel getParent(boolean waitOnBoot) {
+    private ParentWithHandler getParent(boolean waitOnBoot) {
         var res = parent.get();
         if (res == null) {
             return null;
@@ -280,23 +241,41 @@ public final class DefaultServer implements HttpServer
             return null;
         }
         
-        final AsynchronousServerSocketChannel ch;
+        final ParentWithHandler pwh;
         try {
-            ch = res.join();
+            pwh = res.join();
         } catch (CancellationException | CompletionException e) {
             return null;
         }
         
-        return ch;
+        return pwh;
     }
     
-    private static final class ChannelCouple {
-        final AsynchronousServerSocketChannel parent;
-        final ClientChannel child;
+    private final class ParentWithHandler {
+        private final AsynchronousServerSocketChannel parent;
+        private final OnAccept onAccept;
+        private final AtomicBoolean terminated;
         
-        ChannelCouple(AsynchronousServerSocketChannel parent, ClientChannel child) {
+        ParentWithHandler(AsynchronousServerSocketChannel parent) {
             this.parent = parent;
-            this.child  = child;
+            this.onAccept = new OnAccept(parent);
+            this.terminated = new AtomicBoolean();
+        }
+        
+        AsynchronousServerSocketChannel channel() {
+            return parent;
+        }
+        
+        OnAccept onAccept() {
+            return onAccept;
+        }
+        
+        void initiateAccept() {
+            parent.accept(null, onAccept);
+        }
+        
+        boolean markTerminated() {
+            return terminated.compareAndSet(false, true);
         }
     }
     
@@ -315,9 +294,21 @@ public final class DefaultServer implements HttpServer
         private static final String NO_MORE = " Will accept no more children.";
         
         private final AsynchronousServerSocketChannel parent;
+        private final Set<DefaultClientChannel> children;
+        private final CompletableFuture<Void> lastChild;
         
         OnAccept(AsynchronousServerSocketChannel parent) {
-            this.parent = parent;
+            this.parent    = parent;
+            this.children  = ConcurrentHashMap.newKeySet(INITIAL_CAPACITY);
+            this.lastChild = new CompletableFuture<>();
+        }
+        
+        Iterator<DefaultClientChannel> children() {
+            return children.iterator();
+        }
+        
+        CompletionStage<Void> lastChildStage() {
+            return lastChild.copy();
         }
         
         @Override
@@ -341,43 +332,36 @@ public final class DefaultServer implements HttpServer
             LOG.log(DEBUG, () -> "Accepted child: " + child);
             DefaultClientChannel chan = new DefaultClientChannel(child);
             ChannelByteBufferPublisher bytes = new ChannelByteBufferPublisher(chan);
-            ChannelCouple member = new ChannelCouple(parent, chan);
-            children.add(member);
+            children.add(chan);
             
-            chan.onClose(() -> shutdown(chan, bytes, member));
-            startExchange(chan, bytes, member);
+            chan.onClose(() -> shutdown(chan, bytes));
+            startExchange(chan, bytes);
             
             // TODO: child.setOption(StandardSocketOptions.SO_KEEPALIVE, true); ??
         }
         
         private void startExchange(
                 DefaultClientChannel chan,
-                ChannelByteBufferPublisher bytes,
-                ChannelCouple member)
+                ChannelByteBufferPublisher bytes)
         {
             var exch = new HttpExchange(DefaultServer.this, bytes, chan);
             exch.begin().whenComplete((Null, exc) -> {
                 // Both open-calls are volatile reads, no locks
                 if (exc == null && parent.isOpen() && chan.isEverythingOpen()) {
-                    startExchange(chan, bytes, member);
+                    startExchange(chan, bytes);
                 } else {
-                    shutdown(chan, bytes, member);
+                    shutdown(chan, bytes);
                 }
             });
         }
         
-        private void shutdown(
-                ClientChannel chan,
-                ChannelByteBufferPublisher bytes,
-                ChannelCouple member)
-        {
+        private void shutdown(DefaultClientChannel chan, ChannelByteBufferPublisher bytes) {
             bytes.close();
             chan.closeSafe();
-            children.remove(member);
-            // Notify anyone waiting on the last child
-            CompletableFuture<Void> trigger;
-            if (!isRunning() && (trigger = waitOnChildrenStop.get()) != null && children.isEmpty()) {
-                trigger.complete(null);
+            children.remove(chan);
+            if (!parent.isOpen() && children.isEmpty()) {
+                // Notify anyone waiting on the last child
+                lastChild.complete(null);
             }
         }
         

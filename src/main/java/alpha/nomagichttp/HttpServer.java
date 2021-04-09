@@ -342,19 +342,14 @@ public interface HttpServer
      * Upon failure to close the server's listening port, the stage will
      * complete exceptionally with an {@code IOException}.<p>
      * 
-     * It is possible for the server to be started again whilst a stage has been
-     * returned from this method but active HTTP exchanges have yet to complete.
-     * In this case, the returned stage will not complete until earliest at the
-     * next server stop.<p>
-     * 
-     * The returned stage is a defensive copy and can not be used to abort the
-     * shutdown.<p>
+     * The returned stage can not be used to abort the shutdown.<p>
      * 
      * There are no locks involved between a server's start and the completion
      * of the returned stage. If the application starts the same server
      * concurrent to the completion of the last HTTP exchange from the previous
      * run cycle, then technically it is possible for the returned stage to
-     * complete at the same time the server is in a running state.<p>
+     * complete at the same time the server is considered to be in a running
+     * state.<p>
      * 
      * @return the result
      */
@@ -365,8 +360,7 @@ public interface HttpServer
      * exchanges.<p>
      * 
      * The server's listening port will be immediately closed and then all
-     * active HTTP exchanges will be aborted. Once all HTTP exchanges have
-     * finished, this method returns.<p>
+     * active HTTP exchanges will be aborted.<p>
      * 
      * If the server was just started and is still in the midst of opening the
      * server's listening port, then this method will block until the startup
