@@ -35,12 +35,12 @@ import static java.lang.System.Logger.Level.INFO;
 import static java.util.Objects.requireNonNull;
 
 /**
- * A fully asynchronous {@link HttpServer}.<p>
+ * A fully JDK-based and asynchronous implementation of {@code HttpServer}.<p>
  * 
- * This implementation is fully JDK-based (no native calls). It does not use
- * selector threads (event polling) or any other type of blocking techniques. It
- * responds to native system events with zero blocking for maximum performance
- * across all operating systems that runs Java.
+ * The server code use no native calls and it does not use selector threads
+ * (event polling) or any other type of blocking techniques. It responds to
+ * native system events with zero blocking. All put together translates to
+ * maximum performance across all operating systems that runs Java.
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  */

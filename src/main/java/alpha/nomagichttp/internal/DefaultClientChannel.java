@@ -4,10 +4,14 @@ import alpha.nomagichttp.handler.ClientChannel;
 import alpha.nomagichttp.message.Response;
 
 import java.io.IOException;
+import java.net.SocketAddress;
+import java.net.SocketOption;
 import java.nio.channels.AsynchronousSocketChannel;
 import java.nio.channels.ClosedChannelException;
+import java.nio.channels.NetworkChannel;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.CompletionStage;
 
 import static java.lang.System.Logger.Level.DEBUG;
@@ -73,7 +77,24 @@ final class DefaultClientChannel implements ClientChannel
     }
     
     @Override
-    public AsynchronousSocketChannel delegate() {
+    public NetworkChannel delegate() {
+        return new ProxiedNetworkChannel(child);
+    }
+    
+    /**
+     * Returns the raw delegate, not wrapped in a proxy.<p>
+     * 
+     * The purpose of the proxy is to capture close-calls, so that we can make
+     * safe assumptions about the channel state as well as to run
+     * close-callbacks server-side for resource cleanup.<p>
+     * 
+     * This method may be used when the interface {@code NetworkChannel} is not
+     * sufficient or as a performance optimization but only if the close method
+     * is not invoked on the returned reference.
+     * 
+     * @return non-proxied delegate
+     */
+    AsynchronousSocketChannel delegateNoProxy() {
         return child;
     }
     
@@ -201,6 +222,50 @@ final class DefaultClientChannel implements ClientChannel
             close();
         } catch (IOException e) {
             LOG.log(ERROR, () -> "Failed to close child: " + child, e);
+        }
+    }
+    
+    private final class ProxiedNetworkChannel implements NetworkChannel
+    {
+        private final AsynchronousSocketChannel d;
+        
+        ProxiedNetworkChannel(AsynchronousSocketChannel d) {
+            this.d = d;
+        }
+        
+        @Override
+        public NetworkChannel bind(SocketAddress local) throws IOException {
+            return d.bind(local);
+        }
+        
+        @Override
+        public SocketAddress getLocalAddress() throws IOException {
+            return d.getLocalAddress();
+        }
+        
+        @Override
+        public <T> NetworkChannel setOption(SocketOption<T> name, T value) throws IOException {
+            return d.setOption(name, value);
+        }
+        
+        @Override
+        public <T> T getOption(SocketOption<T> name) throws IOException {
+            return d.getOption(name);
+        }
+        
+        @Override
+        public Set<SocketOption<?>> supportedOptions() {
+            return d.supportedOptions();
+        }
+        
+        @Override
+        public boolean isOpen() {
+            return d.isOpen();
+        }
+        
+        @Override
+        public void close() throws IOException {
+            DefaultClientChannel.this.close();
         }
     }
 }
