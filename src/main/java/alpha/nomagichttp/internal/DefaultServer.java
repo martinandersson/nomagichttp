@@ -306,7 +306,7 @@ public final class DefaultServer implements HttpServer
             try {
                 parent.accept(null, this);
             } catch (Throwable t) {
-                LOG.log(DEBUG, () -> "Discarding accepted child.");
+                LOG.log(DEBUG, () -> "Discarding child.");
                 try {
                     child.close();
                 } catch (IOException e) {
@@ -319,12 +319,12 @@ public final class DefaultServer implements HttpServer
         }
         
         private void setup(AsynchronousSocketChannel child) {
-            LOG.log(DEBUG, () -> "Accepted child: " + child);
             DefaultClientChannel chan = new DefaultClientChannel(child);
             ChannelByteBufferPublisher bytes = new ChannelByteBufferPublisher(chan);
             children.add(chan);
-            
             chan.onClose(() -> shutdown(chan, bytes));
+            
+            LOG.log(DEBUG, () -> "Accepted child: " + child);
             startExchange(chan, bytes);
             
             // TODO: child.setOption(StandardSocketOptions.SO_KEEPALIVE, true); ??
