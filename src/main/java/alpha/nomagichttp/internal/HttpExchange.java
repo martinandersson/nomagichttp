@@ -1,6 +1,7 @@
 package alpha.nomagichttp.internal;
 
 import alpha.nomagichttp.HttpConstants.Version;
+import alpha.nomagichttp.HttpServer;
 import alpha.nomagichttp.handler.ErrorHandler;
 import alpha.nomagichttp.handler.RequestHandler;
 import alpha.nomagichttp.message.HttpVersionTooNewException;
@@ -9,6 +10,7 @@ import alpha.nomagichttp.message.IllegalBodyException;
 import alpha.nomagichttp.message.Request;
 import alpha.nomagichttp.route.RouteRegistry;
 
+import java.util.Collection;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
 import java.util.concurrent.CompletionStage;
@@ -34,7 +36,9 @@ final class HttpExchange
 {
     private static final System.Logger LOG = System.getLogger(HttpExchange.class.getPackageName());
     
-    private final DefaultServer server;
+    private final HttpServer.Config config;
+    private final RouteRegistry registry;
+    private final Collection<ErrorHandler> handlers;
     private final ChannelByteBufferPublisher bytes;
     private final ResponsePipeline pipe;
     private final DefaultClientChannel chan;
@@ -54,11 +58,15 @@ final class HttpExchange
     private ErrorResolver onError;
     
     HttpExchange(
-            DefaultServer server,
+            HttpServer.Config config,
+            RouteRegistry registry,
+            Collection<ErrorHandler> handlers,
             ChannelByteBufferPublisher bytes,
             DefaultClientChannel chan)
     {
-        this.server   = server;
+        this.config   = config;
+        this.registry = registry;
+        this.handlers = handlers;
         this.bytes    = bytes;
         this.chan     = chan;
         this.pipe     = new ResponsePipeline(this, chan);
@@ -102,9 +110,7 @@ final class HttpExchange
                 // Written byte count ignored
                 onNext(r -> handleResult(r.error())));
         
-        RequestHeadSubscriber rhs = new RequestHeadSubscriber(
-                server.getConfig().maxRequestHeadSize());
-        
+        RequestHeadSubscriber rhs = new RequestHeadSubscriber(config.maxRequestHeadSize());
         bytes.subscribe(rhs);
         rhs.asCompletionStage()
            .thenAccept(this::initialize)
@@ -119,7 +125,7 @@ final class HttpExchange
         RequestTarget t = RequestTarget.parse(h.requestTarget());
         
         ver = parseHttpVersion(h);
-        if (ver == HTTP_1_0 && server.getConfig().rejectClientsUsingHTTP1_0()) {
+        if (ver == HTTP_1_0 && config.rejectClientsUsingHTTP1_0()) {
             throw new HttpVersionTooOldException(h.httpVersion(), "HTTP/1.1");
         }
         
@@ -164,7 +170,7 @@ final class HttpExchange
     }
     
     private RouteRegistry.Match findRoute(RequestTarget t) {
-        return server.getRouteRegistry().lookup(t.segmentsNotPercentDecoded());
+        return registry.lookup(t.segmentsNotPercentDecoded());
     }
     
     private DefaultRequest createRequest(RequestHead h, RequestTarget t, RouteRegistry.Match m) {
@@ -261,12 +267,12 @@ final class HttpExchange
             }
             prev = t;
             
-            if (server.getErrorHandlers().isEmpty()) {
+            if (handlers.isEmpty()) {
                 usingDefault(t);
                 return;
             }
             
-            if (++attemptCount > server.getConfig().maxErrorRecoveryAttempts()) {
+            if (++attemptCount > config.maxErrorRecoveryAttempts()) {
                 LOG.log(WARNING, "Error recovery attempts depleted, will use default handler.");
                 usingDefault(t);
                 return;
@@ -286,7 +292,7 @@ final class HttpExchange
         }
         
         private void usingHandlers(Throwable t) {
-            for (ErrorHandler h : server.getErrorHandlers()) {
+            for (ErrorHandler h : handlers) {
                 try {
                     h.apply(t, chan, request, handler);
                     return;

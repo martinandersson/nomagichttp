@@ -118,7 +118,7 @@ public final class DefaultServer implements HttpServer
     private void initialize(SocketAddress addr, CompletableFuture<ParentWithHandler> v) {
         final AsynchronousServerSocketChannel ch;
         try {
-            AsynchronousChannelGroup grp = AsyncGroup.getOrCreate(config.threadPoolSize())
+            AsynchronousChannelGroup grp = AsyncGroup.getOrCreate(getConfig().threadPoolSize())
                     .toCompletableFuture().join();
             ch = AsynchronousServerSocketChannel.open(grp).bind(addr);
         } catch (Throwable t) {
@@ -279,16 +279,6 @@ public final class DefaultServer implements HttpServer
         }
     }
     
-    /**
-     * Returns an unmodifiable {@code RandomAccess} {@code List} of error
-     * handlers.
-     * 
-     * @return error handlers
-     */
-    List<ErrorHandler> getErrorHandlers() {
-        return eh;
-    }
-    
     private class OnAccept implements CompletionHandler<AsynchronousSocketChannel, Void>
     {
         private static final String NO_MORE = " Will accept no more children.";
@@ -344,7 +334,9 @@ public final class DefaultServer implements HttpServer
                 DefaultClientChannel chan,
                 ChannelByteBufferPublisher bytes)
         {
-            var exch = new HttpExchange(DefaultServer.this, bytes, chan);
+            var exch = new HttpExchange(
+                    getConfig(), getRouteRegistry(), eh, bytes, chan);
+            
             exch.begin().whenComplete((Null, exc) -> {
                 // Both open-calls are volatile reads, no locks
                 if (exc == null && parent.isOpen() && chan.isEverythingOpen()) {
