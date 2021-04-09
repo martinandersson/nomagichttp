@@ -152,13 +152,14 @@ public final class DefaultServer implements HttpServer
     
     @Override
     public void stopNow() throws IOException {
-        ParentWithHandler pwc = stopServer();
-        if (pwc != null) {
-            Iterator<DefaultClientChannel> it = pwc.onAccept().children();
+        ParentWithHandler pwh = stopServer();
+        if (pwh != null) {
+            Iterator<DefaultClientChannel> it = pwh.onAccept().children();
             while (it.hasNext()) {
                 it.next().closeSafe();
                 it.remove();
             }
+            pwh.onAccept().tryCompleteLastChildStage();
         }
     }
     
@@ -188,6 +189,7 @@ public final class DefaultServer implements HttpServer
                 AsyncGroup.shutdown();
             }
             assert n >= 0;
+            pwh.onAccept().tryCompleteLastChildStage();
             return pwh;
         } else {
             return null;
@@ -301,6 +303,14 @@ public final class DefaultServer implements HttpServer
             return lastChild.copy();
         }
         
+        // Notify anyone waiting on the last child
+        // (assumes server channel is closed)
+        void tryCompleteLastChildStage() {
+            if (children.isEmpty()) {
+                lastChild.complete(null);
+            }
+        }
+        
         @Override
         public void completed(AsynchronousSocketChannel child, Void noAttachment) {
             try {
@@ -319,12 +329,13 @@ public final class DefaultServer implements HttpServer
         }
         
         private void setup(AsynchronousSocketChannel child) {
+            LOG.log(DEBUG, () -> "Accepted child: " + child);
+            
             DefaultClientChannel chan = new DefaultClientChannel(child);
             ChannelByteBufferPublisher bytes = new ChannelByteBufferPublisher(chan);
             children.add(chan);
             chan.onClose(() -> shutdown(chan, bytes));
             
-            LOG.log(DEBUG, () -> "Accepted child: " + child);
             startExchange(chan, bytes);
             
             // TODO: child.setOption(StandardSocketOptions.SO_KEEPALIVE, true); ??
@@ -351,9 +362,8 @@ public final class DefaultServer implements HttpServer
             bytes.close();
             chan.closeSafe();
             children.remove(chan);
-            if (!parent.isOpen() && children.isEmpty()) {
-                // Notify anyone waiting on the last child
-                lastChild.complete(null);
+            if (!parent.isOpen()) {
+                tryCompleteLastChildStage();
             }
         }
         
