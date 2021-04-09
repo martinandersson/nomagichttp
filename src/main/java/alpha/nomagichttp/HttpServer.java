@@ -190,10 +190,10 @@ public interface HttpServer
      * Create a server using {@linkplain Config#DEFAULT default
      * configuration}.<p>
      * 
-     * The provided array of error handlers will be copied as-is into a {@code
-     * List}. The application should make sure that the array does not contain
-     * duplicates, unless for some bizarre reason it is desired to have an error
-     * handler called multiple times.
+     * The provided array of error handlers will be copied as-is. The
+     * application should make sure that the array does not contain duplicates,
+     * unless for some bizarre reason it is desired to have an error handler
+     * called multiple times.
      * 
      * @param eh error handler(s)
      * 
@@ -208,11 +208,11 @@ public interface HttpServer
     
     /**
      * Create a server.<p>
-     * 
-     * The provided array of error handlers will be copied as-is into a {@code
-     * List}. The application should make sure that the array does not contain
-     * duplicates, unless for some bizarre reason it is desired to have an error
-     * handler called multiple times.
+     *
+     * The provided array of error handlers will be copied as-is. The
+     * application should make sure that the array does not contain duplicates,
+     * unless for some bizarre reason it is desired to have an error handler
+     * called multiple times.
      * 
      * @param config of server
      * @param eh     error handler(s)
