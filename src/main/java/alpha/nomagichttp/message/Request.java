@@ -684,13 +684,12 @@ public interface Request
          * This method is equivalent to
          * <pre>
          *     {@link AsynchronousFileChannel#open(Path,Set,ExecutorService,FileAttribute[])
-         *       AsynchronousFileChannel.open}(file, opts, null, attrs);
+         *       AsynchronousFileChannel.open}(file, opts, (ExecutorService) null, attrs);
          * </pre>
          * 
-         * ...except if {@code options} is empty, a set of {@code WRITE}, {@code
-         * CREATE} and {@code TRUNCATE_EXISTING} will be used. I.e, by default,
-         * a new file will be created or an existing file will be
-         * overwritten.<p>
+         * ...except if {@code options} is empty, a set of {@code WRITE} and
+         * {@code CREATE_NEW} will be used (if the file exists the operation
+         * will fail).<p>
          * 
          * If the returned stage completes with 0 bytes, then the file will not
          * have been created. If the file is created but the operation completes

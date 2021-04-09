@@ -5,6 +5,7 @@ import alpha.nomagichttp.message.Responses;
 import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
+import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 
@@ -30,15 +31,15 @@ class SimpleEndToEndTest extends AbstractEndToEndTest
         server().add("/hello-response", GET().respond(text("Hello World!")));
         
         String req =
-            "GET /hello-response HTTP/1.1" + CRLF +
+            "GET /hello-response HTTP/1.1"      + CRLF +
             "Accept: text/plain; charset=utf-8" + CRLF + CRLF;
         
         String res = client().writeRead(req, "World!");
         
         assertThat(res).isEqualTo(
-            "HTTP/1.1 200 OK" + CRLF +
+            "HTTP/1.1 200 OK"                         + CRLF +
             "Content-Type: text/plain; charset=utf-8" + CRLF +
-            "Content-Length: 12" + CRLF + CRLF +
+            "Content-Length: 12"                      + CRLF + CRLF +
             
             "Hello World!");
     }
@@ -58,18 +59,18 @@ class SimpleEndToEndTest extends AbstractEndToEndTest
         }));
         
         String req1 =
-            "GET /hello/John HTTP/1.1" + CRLF +
+            "GET /hello/John HTTP/1.1"          + CRLF +
             "Accept: text/plain; charset=utf-8" + CRLF + CRLF;
         
         String req2 =
-            "GET /hello?name=John HTTP/1.1" + CRLF +
+            "GET /hello?name=John HTTP/1.1"     + CRLF +
             "Accept: text/plain; charset=utf-8" + CRLF + CRLF;
         
         String res1 = client().writeRead(req1, "John!");
         assertThat(res1).isEqualTo(
-            "HTTP/1.1 200 OK" + CRLF +
+            "HTTP/1.1 200 OK"                         + CRLF +
             "Content-Type: text/plain; charset=utf-8" + CRLF +
-            "Content-Length: 11" + CRLF + CRLF +
+            "Content-Length: 11"                      + CRLF + CRLF +
             
             "Hello John!");
         
@@ -86,19 +87,19 @@ class SimpleEndToEndTest extends AbstractEndToEndTest
         server().add("/greet-body", echo);
         
         String req =
-            "POST /greet-body HTTP/1.1" + CRLF +
+            "POST /greet-body HTTP/1.1"         + CRLF +
             "Accept: text/plain; charset=utf-8" + CRLF +
-            "Content-Length: 4" + CRLF + CRLF +
+            "Content-Length: 4"                 + CRLF + CRLF +
             
             "John";
         
         String res = client().writeRead(req, "John!");
         
         assertThat(res).isEqualTo(
-            "HTTP/1.1 200 OK" + CRLF +
+            "HTTP/1.1 200 OK"                         + CRLF +
             "Content-Type: text/plain; charset=utf-8" + CRLF +
-            "Content-Length: 11" + CRLF +
-            CRLF +
+            "Content-Length: 11"                      + CRLF + CRLF +
+            
             "Hello John!");
     }
     
@@ -114,18 +115,18 @@ class SimpleEndToEndTest extends AbstractEndToEndTest
         server().add("/echo-headers", echo);
         
         String req =
-            "GET /echo-headers HTTP/1.1" + CRLF +
+            "GET /echo-headers HTTP/1.1"        + CRLF +
             "Accept: text/plain; charset=utf-8" + CRLF + CRLF;
         
         String res = client().writeRead(req);
         
         assertThat(res).isEqualTo(
-            "HTTP/1.1 204 No Content" + CRLF +
+            "HTTP/1.1 204 No Content"           + CRLF +
             "Accept: text/plain; charset=utf-8" + CRLF + CRLF);
     }
     
     @Test
-    void post_small_file() throws IOException {
+    void post_small_file() throws IOException, InterruptedException {
         // 1. Save to new file
         // ---
         Path file = Files.createTempDirectory("nomagic")
@@ -140,14 +141,27 @@ class SimpleEndToEndTest extends AbstractEndToEndTest
         
         final String reqHead =
             "POST /small-file HTTP/1.1" + CRLF +
-            "Content-Length: 3" + CRLF + CRLF;
+            "Content-Length: 3"         + CRLF + CRLF;
         
-        client().writeRead(reqHead + "Foo", "3");
+        String res1 = client().writeRead(reqHead + "Foo", "3");
+        
+        assertThat(res1).isEqualTo(
+            "HTTP/1.1 200 OK"                          + CRLF +
+            "Content-Type: text/plain; charset=utf-8"  + CRLF +
+            "Content-Length: 1"                        + CRLF + CRLF +
+            
+            "3");
         assertThat(Files.readString(file)).isEqualTo("Foo");
         
-        // 2. By default, existing files are overwritten
+        
+        // 2. By default, existing files are not overwritten
         // ---
-        client().writeRead(reqHead + "Bar", "3");
-        assertThat(Files.readString(file)).isEqualTo("Bar");
+        String res2 = client().writeRead(reqHead + "Bar", "3");
+        
+        assertThat(res2).isEqualTo(
+            "HTTP/1.1 500 Internal Server Error" + CRLF +
+            "Content-Length: 0"                  + CRLF + CRLF);
+        assertThat(pollError()).isExactlyInstanceOf(FileAlreadyExistsException.class);
+        assertThat(Files.readString(file)).isEqualTo("Foo");
     }
 }

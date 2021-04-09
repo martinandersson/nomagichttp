@@ -31,8 +31,7 @@ import static alpha.nomagichttp.internal.AtomicReferences.lazyInit;
 import static alpha.nomagichttp.util.Headers.contentLength;
 import static alpha.nomagichttp.util.Headers.contentType;
 import static java.nio.charset.StandardCharsets.UTF_8;
-import static java.nio.file.StandardOpenOption.CREATE;
-import static java.nio.file.StandardOpenOption.TRUNCATE_EXISTING;
+import static java.nio.file.StandardOpenOption.CREATE_NEW;
 import static java.nio.file.StandardOpenOption.WRITE;
 import static java.util.Objects.requireNonNull;
 import static java.util.Optional.ofNullable;
@@ -222,7 +221,7 @@ final class DefaultRequest implements Request
         @Override
         public CompletionStage<Long> toFile(Path file, Set<? extends OpenOption> options, FileAttribute<?>... attrs) {
             final Set<? extends OpenOption> opt = !options.isEmpty() ? options :
-                    Set.of(WRITE, CREATE, TRUNCATE_EXISTING);
+                    Set.of(WRITE, CREATE_NEW);
             
             final AsynchronousFileChannel fs;
             
