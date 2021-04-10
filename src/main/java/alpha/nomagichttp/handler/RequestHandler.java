@@ -213,12 +213,12 @@ import static java.util.Objects.requireNonNull;
  * <h2>Scopes</h2>
  * 
  * There is no library-provided scope mechanism. Normal rules concerning
- * reachability of Java references applies. Effectively, this means that the
- * handler implementation may be regarded as a "singleton" or
- * "application-scoped". A custom implementation can choose to create a new
- * logic instance for each request since the {@link #logic()} method is invoked
- * anew for each request. Examples on how to implement this interface is
- * provided in the JavaDoc of {@link Builder}.
+ * reachability of Java references apply. Effectively, this means that the
+ * handler instance may be regarded as a "singleton" or "application-scoped". A
+ * custom implementation can choose to create a new logic instance for each
+ * request since the {@link #logic()} method is invoked anew for each request.
+ * Examples on how to implement this interface is provided in the JavaDoc of
+ * {@link Builder}.
  * 
  * <h2>Thread safety and object equality</h2>
  * 

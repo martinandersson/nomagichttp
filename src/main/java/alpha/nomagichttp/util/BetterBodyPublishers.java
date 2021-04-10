@@ -42,7 +42,13 @@ import static java.nio.charset.StandardCharsets.UTF_8;
  * {@link BodyPublishers#ofInputStream(Supplier)} is by definition blocking and
  * should be avoided altogether).<p>
  * 
- * All published bytebuffers are read-only.
+ * All published bytebuffers are read-only.<p>
+ * 
+ * Please do not be mislead by the Java namespace for
+ * <i>{@code HttpRequest}</i>{@code .BodyPublisher}. The {@code BodyPublisher}
+ * is simply a publisher with a known content length used in turn by the HTTP
+ * protocol for message framing. Obviously this is useful not just for requests
+ * but for responses as well.
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  * 

@@ -452,7 +452,7 @@ public interface Request
      * {@link #convert(BiFunction)} method or consumed directly "on arrival"
      * using the {@link #subscribe(Flow.Subscriber)} method.<p>
      * 
-     * If the body {@link #isEmpty()}, {@code subscribe()} completes the
+     * If the body {@link #isEmpty()}; {@code subscribe()} completes the
      * subscription immediately. {@code toText()} completes immediately with an
      * empty string. {@code toFile()} completes immediately with 0 bytes. {@code
      * convert()} immediately invokes its given function with an empty byte
@@ -473,8 +473,7 @@ public interface Request
      * assumed to ignore the body, followed by a server-side discard of it).<p>
      * 
      * Some utility methods such as {@code toText()} cache the result and will
-     * return the same stage on future invocations. This may for example be
-     * useful when retrying processing logic of the same request.<p>
+     * return the same stage on future invocations.<p>
      * 
      * The normal way to reject an operation is to fail-fast and blow up the
      * calling thread. This is also common practice for rejected
@@ -501,7 +500,7 @@ public interface Request
      * unexpected errors, in particular, errors that originate from the
      * channel's read operation. The safest bet for an application when
      * attempting error recovery is to always check first if {@link
-     * ClientChannel#isOpenForReading()}.
+     * ClientChannel#isOpenForReading() theClientChannel.isOpenForReading()}.
      * 
      * 
      * <h2>Subscribing to bytes with a {@code Flow.Subscriber}</h2>
@@ -509,8 +508,8 @@ public interface Request
      * Almost all of the same {@code Flow.Publisher} semantics specified in the
      * JavaDoc of {@link Publishers} applies to the {@code Body} as a publisher
      * as well. The only exception is that the body does not support subscriber
-     * reuse, simply because the body can not be subscribed to more than
-     * once.<p>
+     * reuse, again because the server does not keep the bytes after
+     * consumption.<p>
      * 
      * The subscriber will receive bytebuffers in the same order they are read
      * from the underlying channel. The subscriber can not read beyond the
@@ -541,36 +540,39 @@ public interface Request
      * released. So, awaiting more buffers before releasing old ones will
      * inevitably halt progress.<p>
      * 
-     * In order to fully support concurrent processing of many bytebuffers
-     * without the risk of adding unnecessary delays or blockages, the Body API
-     * would have to declare methods that the application can use to learn how
-     * many bytebuffers are immediately available and possibly also learn the
-     * size of the server's bytebuffer pool.<p>
+     * For the Body API to support concurrent processing of many
+     * bytebuffers without the risk of adding unnecessary delays or blockages,
+     * the API would have to declare methods that the application can use to
+     * learn how many bytebuffers are immediately available and possibly also
+     * learn the size of the server's bytebuffer pool.<p>
      * 
-     * This is not very likely to happen. Not only will concurrent processing be
-     * a challenge for the application to implement properly with respect to
-     * byte order and message integrity, but concurrent processing could also be
-     * a sign that the application's processing code would have blocked the
-     * request thread (see "Threading Model" in {@link HttpServer}) - hence the
-     * need to "collect" or buffer the bytebuffers. For example, {@link
-     * GatheringByteChannel} expects a {@code ByteBuffer[]} but is a blocking
-     * API. Instead, submit the bytebuffers one at a time to {@link
-     * AsynchronousByteChannel}, releasing each in the completion handler.<p>
+     * This is not very likely to ever happen for a number of reasons. The API
+     * complexity would increase dramatically for a doubtful benefit. In fact,
+     * concurrent processing would most likely corrupt byte order and message
+     * integrity.<p>
      * 
-     * Given how only one bytebuffer at a time is published, there's really no
-     * difference between requesting {@code Long.MAX_VALUE} versus requesting
-     * one at a time. Unfortunately, the Reactive Stream specification calls the
-     * latter approach an "inherently inefficient 'stop-and-wait' protocol".
-     * This is wrong. The bytebuffers are pooled and cached upstream already.
-     * Requesting a bytebuffer is essentially the same as polling a stupidly
-     * fast queue of buffers and there simply does not exist - surprise surprise
-     * - a good reason to engage in "premature optimization".<p>
+     * If there is a need for the application to "collect" or buffer the
+     * bytebuffers, then this is a sign that the application's processing code
+     * would have blocked the request thread (see "Threading Model" in {@link
+     * HttpServer}). For example, {@link GatheringByteChannel} expects a {@code
+     * ByteBuffer[]} but is a blocking API. Instead, submit the bytebuffers one
+     * at a time to {@link AsynchronousByteChannel}, releasing each in the
+     * completion handler.<p>
      * 
-     * Speaking of optimization; the default implementation uses <i>direct</i>
-     * bytebuffers in order to support "zero-copy" transfers. I.e., no data is
-     * moved into Java heap space unless the subscriber itself causes this to
-     * happen. Whenever possible, always pass forward the bytebuffers to the
-     * destination without reading the bytes in application code!
+     * Given how only one bytebuffer at a time is published, then there's really
+     * no difference between requesting {@code Long.MAX_VALUE} versus requesting
+     * one at a time. Unfortunately, the
+     * <a href="https://github.com/reactive-streams/reactive-streams-jvm/blob/v1.0.3/README.md">
+     * Reactive Streams</a> calls the latter approach an "inherently inefficient
+     * 'stop-and-wait' protocol". In our context, this is wrong. The bytebuffers
+     * are pooled and cached upstream already. Requesting a bytebuffer is
+     * essentially the same as polling a stupidly fast queue of buffers.<p>
+     * 
+     * The default implementation uses <i>direct</i> bytebuffers in order to
+     * support "zero-copy" transfers. I.e., no data is moved into Java heap
+     * space unless the subscriber itself causes this to happen. Whenever
+     * possible, always pass forward the bytebuffers to the destination without
+     * reading the bytes in application code!
      * 
      * <h3>The HTTP exchange and body discarding</h3>
      * 
