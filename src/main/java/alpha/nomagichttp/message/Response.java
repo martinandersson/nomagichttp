@@ -384,6 +384,15 @@ public interface Response
          * BetterBodyPublishers}. Not only are these defined to be thread-safe,
          * they are also non-blocking.<p>
          * 
+         * If you desire to remove an already set body, pass {@link
+         * Publishers#empty()} or a {@code BodyPublisher} with {@code
+         * contentLength() == 0} to this method. Any other body instance will
+         * cause the build to fail with an {@link IllegalBodyException}
+         * <strong>if</strong> the status-code is 1XX (Informational). There is
+         * unfortunately no other pragmatic alternative since the {@code
+         * Flow.Publisher} API does not support a method equivalent to {@code
+         * isEmpty()} <i>and</i> still keep the fail-fast behavior.
+         * 
          * @param   body publisher
          * @return  a new builder representing the new state
          * @throws  NullPointerException if {@code body} is {@code null}

@@ -497,9 +497,7 @@ public final class HttpConstants {
          * A server that indiscriminately send such updates would effectively
          * kill timeout mechanisms put in various points of the HTTP chain for a
          * reason. A request handler that lingers and who is alive, you know,
-         * doing well, ought to update the client accordingly. However, the API
-         * will be extended in the future to support discovering/creating
-         * processing responses.
+         * doing well, ought to update the client accordingly.
          * 
          * @see <a href="https://tools.ietf.org/html/rfc2518#section-10.1">RFC 2518 §10.1</a>
          */

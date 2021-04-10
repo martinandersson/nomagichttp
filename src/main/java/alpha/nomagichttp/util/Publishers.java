@@ -132,7 +132,7 @@ public final class Publishers
      */
     public static <T> Flow.Publisher<T> empty() {
         @SuppressWarnings("unchecked")
-        Flow.Publisher<T> typed = (Flow.Publisher<T>) EMPTY;
+        var typed = (Flow.Publisher<T>) EMPTY;
         return typed;
     }
     

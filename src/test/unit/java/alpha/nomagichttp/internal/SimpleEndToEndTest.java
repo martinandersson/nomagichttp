@@ -11,6 +11,8 @@ import java.nio.file.Path;
 
 import static alpha.nomagichttp.handler.RequestHandler.GET;
 import static alpha.nomagichttp.handler.RequestHandler.POST;
+import static alpha.nomagichttp.message.Responses.accepted;
+import static alpha.nomagichttp.message.Responses.processing;
 import static alpha.nomagichttp.message.Responses.text;
 import static alpha.nomagichttp.testutil.ClientOperations.CRLF;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -163,5 +165,27 @@ class SimpleEndToEndTest extends AbstractEndToEndTest
             "Content-Length: 0"                  + CRLF + CRLF);
         assertThat(pollError()).isExactlyInstanceOf(FileAlreadyExistsException.class);
         assertThat(Files.readString(file)).isEqualTo("Foo");
+    }
+    
+    @Test
+    public void multiple_responses() throws IOException {
+        server().add("/", GET().accept((req, ch) -> {
+            ch.write(processing());
+            ch.write(processing());
+            ch.write(text("Done!"));
+        }));
+        
+        String rsp = client().writeRead("GET / HTTP/1.1" + CRLF + CRLF, "Done!");
+        
+        assertThat(rsp).isEqualTo(
+            "HTTP/1.1 102 Processing"                 + CRLF + CRLF +
+            
+            "HTTP/1.1 102 Processing"                 + CRLF + CRLF +
+            
+            "HTTP/1.1 200 OK"                         + CRLF +
+            "Content-Type: text/plain; charset=utf-8" + CRLF +
+            "Content-Length: 5"                       + CRLF + CRLF +
+            
+            "Done!");
     }
 }

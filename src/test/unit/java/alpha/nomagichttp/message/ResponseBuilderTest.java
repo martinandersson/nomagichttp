@@ -65,4 +65,9 @@ class ResponseBuilderTest
         Response r = Response.builder(-1).header("k", "v1").header("k", "v2").build();
         assertThat(r.headers()).containsExactly("k: v2");
     }
+    
+    @Test
+    void informational_response_can_build() {
+        Response.builder(102).build();
+    }
 }

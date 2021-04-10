@@ -21,6 +21,7 @@ import static alpha.nomagichttp.HttpConstants.StatusCode.FOUR_HUNDRED;
 import static alpha.nomagichttp.HttpConstants.StatusCode.FOUR_HUNDRED_FOUR;
 import static alpha.nomagichttp.HttpConstants.StatusCode.FOUR_HUNDRED_THIRTEEN;
 import static alpha.nomagichttp.HttpConstants.StatusCode.FOUR_HUNDRED_TWENTY_SIX;
+import static alpha.nomagichttp.HttpConstants.StatusCode.ONE_HUNDRED_TWO;
 import static alpha.nomagichttp.HttpConstants.StatusCode.TWO_HUNDRED;
 import static alpha.nomagichttp.HttpConstants.StatusCode.TWO_HUNDRED_FOUR;
 import static alpha.nomagichttp.HttpConstants.StatusCode.TWO_HUNDRED_TWO;
@@ -34,10 +35,19 @@ import static java.net.http.HttpRequest.BodyPublishers;
 /**
  * Factories of {@link Response}s.<p>
  * 
+ * Even though this class produces ready-built responses, further modifications
+ * of the response is easy to accomplish using {@code toBuilder()}.
+ * 
+ * <pre>
+ *   Response status = Responses.processing()
+ *                              .toBuilder()
+ *                              .header("Progress", "45%")
+ *                              .build();
+ * </pre>
+ * 
  * <strong>WARNING:</strong> Using {@link BodyPublishers} to create the response
  * body may not be thread-safe where thread-safety matters or may block the HTTP
- * server thread. Consider using {@link BetterBodyPublishers} instead. See
- * {@link Response.Builder#body(Flow.Publisher)}.
+ * server thread. Consider using {@link BetterBodyPublishers} instead.
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  */
@@ -45,6 +55,17 @@ public final class Responses
 {
     private Responses() {
         // Empty
+    }
+    
+    /**
+     * Returns a "102 Processing" interim response.
+     *
+     * @return a "102 Processing" response
+     *
+     * @see StatusCode#TWO_HUNDRED_FOUR
+     */
+    public static Response processing() {
+        return ResponseCache.PROCESSING;
     }
     
     /**
@@ -317,6 +338,7 @@ public final class Responses
      */
     private static final class ResponseCache {
         static final Response
+            PROCESSING            = builder(ONE_HUNDRED_TWO, ReasonPhrase.PROCESSING).build(),
             ACCEPTED              = builder(TWO_HUNDRED_TWO, ReasonPhrase.ACCEPTED).header(CONTENT_LENGTH, "0").build(),
             NO_CONTENT            = builder(TWO_HUNDRED_FOUR, ReasonPhrase.NO_CONTENT).build(),
             BAD_REQUEST           = respondThenClose(FOUR_HUNDRED, ReasonPhrase.BAD_REQUEST),

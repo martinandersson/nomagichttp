@@ -1,8 +1,11 @@
 package alpha.nomagichttp.message;
 
 import alpha.nomagichttp.HttpConstants;
+import alpha.nomagichttp.util.Publishers;
 
 import java.net.http.HttpHeaders;
+import java.net.http.HttpRequest;
+import static java.net.http.HttpRequest.BodyPublisher;
 import java.nio.ByteBuffer;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
@@ -245,12 +248,23 @@ final class DefaultResponse implements Response
                     s.mustCloseAfterWrite,
                     this);
             
-            if (r.statusCode() >= 100 && r.statusCode() < 200) {
+            if (r.isInformational() && !isBodyEmpty(r)) {
                 throw new IllegalBodyException(
                         "Body in a 1XX (Informational) response.", r);
             }
-            
             return r;
+        }
+        
+        private static boolean isBodyEmpty(Response r) {
+            Flow.Publisher<ByteBuffer> b = r.body();
+            if (b == Publishers.<ByteBuffer>empty()) {
+                return true;
+            }
+            if (b instanceof BodyPublisher) {
+                var typed = (BodyPublisher) b;
+                return typed.contentLength() == 0;
+            }
+            return false;
         }
         
         private void populate(MutableState s) {
