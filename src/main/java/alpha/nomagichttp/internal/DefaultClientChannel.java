@@ -76,9 +76,15 @@ final class DefaultClientChannel implements ClientChannel
         this.pipe = pipe;
     }
     
+    private NetworkChannel proxy;
+    
     @Override
     public NetworkChannel delegate() {
-        return new ProxiedNetworkChannel(child);
+        NetworkChannel p = proxy;
+        if (p == null) {
+            proxy = p = new ProxiedNetworkChannel(child);
+        }
+        return p;
     }
     
     /**
@@ -86,7 +92,7 @@ final class DefaultClientChannel implements ClientChannel
      * 
      * The purpose of the proxy is to capture close-calls, so that we can make
      * safe assumptions about the channel state as well as to run
-     * close-callbacks server-side for resource cleanup.<p>
+     * server-side close-callbacks for resource cleanup.<p>
      * 
      * This method may be used when the interface {@code NetworkChannel} is not
      * sufficient or as a performance optimization but only if the close method
@@ -106,6 +112,16 @@ final class DefaultClientChannel implements ClientChannel
     @Override
     public void write(CompletionStage<Response> response) {
         pipe.add(response);
+    }
+    
+    @Override
+    public void writeFirst(Response response) {
+        writeFirst(response.completedStage());
+    }
+    
+    @Override
+    public void writeFirst(CompletionStage<Response> response) {
+        pipe.addFirst(response);
     }
     
     @Override

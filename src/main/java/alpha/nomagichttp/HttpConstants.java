@@ -2815,6 +2815,32 @@ public final class HttpConstants {
         public OptionalInt minor() {
             return minor;
         }
+    
+        /**
+         * Returns {@code true} if the given version is less than this version,
+         * otherwise {@code false}.<p>
+         * 
+         * E.g., this returns true: {@code HTTP_1.0.isLessThan(HTTP_1.1)}.
+         * 
+         * @param  other version to compare with
+         * @return {@code true} if the given version is less than this version,
+         *         otherwise {@code false}
+         * @throws NullPointerException if {@code other} is {@code null}
+         */
+        public boolean isLessThan(Version other) {
+            if (this.major() < other.major()) {
+                return true;
+            }
+            if (this.major() > other.major()) {
+                return false;
+            }
+            if (minor().isEmpty()) {
+                // Same version
+                return false;
+            }
+            assert other.minor().isPresent();
+            return this.minor().getAsInt() < other.minor().getAsInt();
+        }
         
         /**
          * Returns the HTTP-version field value.<p>

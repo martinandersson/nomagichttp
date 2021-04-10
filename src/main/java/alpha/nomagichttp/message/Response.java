@@ -2,6 +2,7 @@ package alpha.nomagichttp.message;
 
 import alpha.nomagichttp.HttpConstants;
 import alpha.nomagichttp.HttpServer;
+import alpha.nomagichttp.handler.ClientChannel;
 import alpha.nomagichttp.handler.RequestHandler;
 import alpha.nomagichttp.util.BetterBodyPublishers;
 import alpha.nomagichttp.util.Publishers;
@@ -143,15 +144,52 @@ public interface Response
     Flow.Publisher<ByteBuffer> body();
     
     /**
+     * Returns {@code true} if the status-code is 1XX (Informational), otherwise
+     * {@code false}.
+     * 
+     * @implSpec
+     * The default implementation is equivalent to:
+     * <pre>{@code
+     *   return statusCode() >= 100 && statusCode() < 200;
+     * }</pre>
+     * 
+     * @return {@code true} if the status-code is 1XX (Informational),
+     *         otherwise {@code false}
+     * 
+     * @see HttpConstants.StatusCode
+     * @see ClientChannel
+     */
+    default boolean isInformational() {
+        return statusCode() >= 100 && statusCode() < 200;
+    }
+    
+    /**
+     * Returns {@code true} if the status-code is not 1XX (Informational),
+     * otherwise {@code false}.
+     * 
+     * @implSpec
+     * The default implementation is equivalent to:
+     * <pre>
+     *   return !isInformational();
+     * </pre>
+     * 
+     * @return {@code true} if the status-code is not 1XX (Informational),
+     *         otherwise {@code false}
+     * 
+     * @see HttpConstants.StatusCode
+     * @see ClientChannel
+     */
+    default boolean isFinal() {
+        return !isInformational();
+    }
+    
+    /**
      * Returns {@code true} if the server must close the underlying client
      * channel after writing the response, otherwise {@code false}.<p>
      * 
      * The server is always free to close the channel even if this method
      * returns {@code false}, for example if the server run into channel-related
-     * problems.<p>
-     * 
-     * The channel's in- and output streams will shutdown first before channel
-     * closure.
+     * problems.
      * 
      * @return {@code true} if the server must close the underlying client
      * channel, otherwise {@code false}

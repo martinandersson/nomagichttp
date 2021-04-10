@@ -1,14 +1,17 @@
 package alpha.nomagichttp.internal;
 
-import alpha.nomagichttp.handler.ClientChannel;
+import alpha.nomagichttp.handler.ResponseRejectedException;
 import alpha.nomagichttp.message.Response;
+import alpha.nomagichttp.util.SeriallyRunnable;
 
 import java.util.ArrayList;
+import java.util.Deque;
 import java.util.List;
 import java.util.concurrent.CompletionStage;
+import java.util.concurrent.ConcurrentLinkedDeque;
 import java.util.concurrent.Flow;
-import java.util.concurrent.atomic.AtomicBoolean;
 
+import static alpha.nomagichttp.HttpConstants.Version.HTTP_1_1;
 import static alpha.nomagichttp.util.Subscriptions.noop;
 import static java.lang.System.Logger.Level.DEBUG;
 import static java.lang.System.Logger.Level.WARNING;
@@ -19,9 +22,7 @@ import static java.util.Objects.requireNonNull;
  * channel.<p>
  * 
  * The {@code write} methods of {@link DefaultClientChannel} is a direct facade
- * for the {@code add} method declared in this class. <strong>Note in particular
- * that currently, only one response is allowed to be written no matter its
- * status code.</strong> This will change in the near future.<p>
+ * for the {@code add} method declared in this class.<p>
  * 
  * For each response completed, the result is published to all active
  * subscribers. If there are no active subscribers, a successful result is
@@ -46,26 +47,15 @@ import static java.util.Objects.requireNonNull;
  *   <li>The behavior is undefined if the subscriber throws an exception.</li>
  * </ol>
  * 
- * The subscription never terminates through error and there is no embedded
- * open/closed state in this class. If more than one response have been written
- * or an attempt is made to write after a previous corrupt message, both cases
- * will be rejected on the calling thread (this is wrong, can't have the same
- * error type be both sync and async). A "closed" state will likely be
- * implemented in the future when multiple responses are supported.<p>
- * 
  * After the final response has completed (successfully), all active
  * subscriptions will be completed (this is the perfect opportunity to trigger a
  * new HTTP exchange).<p>
  * 
- * Failures from the accepted {@code CompletionStage<Response>} and failures
+ * The subscription of this class is never signaled {@code onError}. Failures
+ * from the accepted {@code CompletionStage<Response>} and failures
  * from the underlying {@link ResponseBodySubscriber#asCompletionStage()} is
- * published as-is to the subscribers of this class.<p>
- * 
- * Writes may be scheduled even if the underlying channel is closed and this
- * won't throw an exception on the call site, the write-failure will propagate
- * as a throwable through the published result instead. The write/add methods
- * are defined to be asynchronous (TODO: This needs to go to the public JavaDoc
- * instead on ClientChannel, plus, the throwable needs to be specified).
+ * published as-is boxed in a {@code Result} item to the subscribers of this
+ * class.
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  */
@@ -73,8 +63,15 @@ final class ResponsePipeline implements Flow.Publisher<ResponsePipeline.Result>
 {
     interface Result {
         /**
-         * Returns the number of bytes written (response length), only if
-         * response completed successfully, otherwise {@code null}.
+         * Returns the response that was transmitted or attempted to transmit.
+         * 
+         * @return the response (never {@code null}
+         */
+        Response response();
+        
+        /**
+         * Returns the number of bytes written, only if response completed
+         * successfully, otherwise {@code null}.
          * 
          * @return byte count if successful, otherwise {@code null}
          */
@@ -93,7 +90,8 @@ final class ResponsePipeline implements Flow.Publisher<ResponsePipeline.Result>
     
     private final HttpExchange exch;
     private final DefaultClientChannel chan;
-    private final AtomicBoolean open; // <-- in future, replace with collection (?)
+    private final Deque<CompletionStage<Response>> queue;
+    private final Runnable writeSafe;
     private final List<Flow.Subscriber<? super Result>> subs;
     
     /**
@@ -105,26 +103,11 @@ final class ResponsePipeline implements Flow.Publisher<ResponsePipeline.Result>
      * @throws NullPointerException if any arg is {@code null}
      */
     ResponsePipeline(HttpExchange exch, DefaultClientChannel chan) {
-        this.chan = requireNonNull(chan);
-        this.exch = requireNonNull(exch);
-        this.open = new AtomicBoolean(true);
-        this.subs = new ArrayList<>();
-    }
-    
-    void add(CompletionStage<Response> resp) {
-        requireNonNull(resp);
-        if (!open.compareAndSet(true, false)) {
-            throw new IllegalStateException(
-                    "Response already in-flight or bytes written during HTTP exchange.");
-        }
-        resp.whenComplete((r, t) -> {
-            if (t == null) {
-                safe(() -> initiate(r));
-            } else {
-                open.set(true);
-                publish(null, t);
-            }
-        });
+        this.chan       = requireNonNull(chan);
+        this.exch       = requireNonNull(exch);
+        this.queue      = new ConcurrentLinkedDeque<>();
+        this.writeSafe  = new SeriallyRunnable(this::writeUnsafe);
+        this.subs       = new ArrayList<>();
     }
     
     @Override
@@ -133,17 +116,70 @@ final class ResponsePipeline implements Flow.Publisher<ResponsePipeline.Result>
         subs.add(s);
     }
     
-    private void safe(Runnable code) {
-        try {
-            code.run();
-        } catch (Exception e) { // <-- Error is best not managed by us
-            // unexpected, let <open> remain false
-            publish(null, e);
-        }
+    void add(CompletionStage<Response> resp) {
+        requireNonNull(resp);
+        queue.add(resp);
+        writeSafe.run();
     }
     
-    private void publish(Long len, Throwable thr) {
+    void addFirst(CompletionStage<Response> resp) {
+        requireNonNull(resp);
+        queue.addFirst(resp);
+        writeSafe.run();
+    }
+    
+    private void writeUnsafe() {
+        CompletionStage<Response> r = queue.poll();
+        if (r == null) {
+            return;
+        }
+        r.thenCompose(this::subscribeToResponse)
+         .whenComplete(this::handleResponseResult);
+    }
+    
+    private Response inFlight = null;
+    private boolean wroteFinal = false;
+    
+    private CompletionStage<ResponseBodySubscriber.Result> subscribeToResponse(Response r) {
+        if (wroteFinal) {
+            throw new ResponseRejectedException(r, "Final response already written.");
+        }
+        if (r.isInformational() && exch.getHttpVersion().isLessThan(HTTP_1_1)) {
+            throw new ResponseRejectedException(r,
+                    exch.getHttpVersion() + " does not support 1XX (Informational) responses.");
+        }
+        inFlight = r;
+        wroteFinal = r.isFinal();
+        LOG.log(DEBUG, () -> "Subscribing to response: " + r);
+        var rbs = new ResponseBodySubscriber(r, exch, chan);
+        r.body().subscribe(rbs);
+        return rbs.asCompletionStage();
+    }
+    
+    private void handleResponseResult(ResponseBodySubscriber.Result res, Throwable thr) {
+        Response r = inFlight;
+        inFlight = null;
+        if (res != null) {
+            // Success
+            // TODO: Implement "mayAbortRequest" flag
+            if (r.mustCloseAfterWrite()) {
+                LOG.log(DEBUG, "Response wants us to close the child, will close.");
+                chan.closeSafe();
+            }
+            publish(r, res.bytesWritten(), null);
+        } else if (chan.isOpenForWriting()) {
+            // Failed, but no bytes were written on the wire
+            wroteFinal = false;
+            assert thr != null;
+            publish(r, null, thr);
+        }
+        writeSafe.run();
+    }
+    
+    private void publish(Response rsp, Long len, Throwable thr) {
         Result r = new Result() {
+            public Response response() {
+                return rsp; }
             public Long length() {
                 return len; }
             public Throwable error() {
@@ -166,25 +202,5 @@ final class ResponsePipeline implements Flow.Publisher<ResponsePipeline.Result>
                 "Response stage or response writing failed, " +
                 "but no subscriber consumed this error.", thr);
         }
-    }
-    
-    private void initiate(Response resp) {
-        LOG.log(DEBUG, () -> "Subscribing to response: " + resp);
-        ResponseBodySubscriber rbs = new ResponseBodySubscriber(resp, exch, chan);
-        resp.body().subscribe(rbs);
-        
-        rbs.asCompletionStage().whenComplete((len, thr) -> {
-            if (len != null) {
-                // TODO: Implement "mayAbortRequest" flag
-                if (resp.mustCloseAfterWrite()) {
-                    LOG.log(DEBUG, "Response wants us to close the child, will close.");
-                    chan.closeSafe();
-                }
-                // <open> remains false; only 1 response supported
-            } else {
-                open.set(chan.isOpenForWriting()); // <-- likely determined by ResponseBodySubscriber
-            }
-            publish(len, thr);
-        });
     }
 }

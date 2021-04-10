@@ -577,8 +577,8 @@ public interface Request
      * <h3>The HTTP exchange and body discarding</h3>
      * 
      * The HTTP exchange is considered done as soon as both the server's
-     * response body subscription <i>and</i> the application's request body
-     * subscription have both completed. Not until then will the next HTTP
+     * final response body subscription <i>and</i> the application's request
+     * body subscription have both completed. Not until then will the next HTTP
      * message-exchange commence on the same channel.<p>
      * 
      * This means that a request body subscriber must ensure his subscription
@@ -587,12 +587,13 @@ public interface Request
      * underlying channel (there is no timeout in the NoMagicHTTP library
      * code).<p>
      * 
-     * If the server's response body subscription completes and earliest at that
-     * point no request body subscriber has arrived, then the server will assume
-     * that the body was intentionally ignored and proceed to discard it - after
-     * which it can not be subscribed to by the application any more.<p>
+     * When the server's final response body subscription completes and earliest
+     * at that point no request body subscriber has arrived, then the server
+     * will assume that the body was intentionally ignored and proceed to
+     * discard it - after which it can not be subscribed to by the application
+     * any more.<p>
      * 
-     * If a response must be sent back immediately but processing the
+     * If a final response must be sent back immediately but processing the
      * request body bytes must be delayed, then there's at least two ways of
      * solving this. Either delay completing the server's response body
      * subscription or register a request body subscriber but delay requesting

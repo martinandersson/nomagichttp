@@ -70,8 +70,7 @@ import static java.lang.System.Logger.Level.ERROR;
  * 
  * For errors caught but not propagated to an error handler, the server's
  * strategy is usually to log the error and immediately close the client's
- * channel according to the procedure documented in {@link
- * Response#mustCloseAfterWrite()}.<p>
+ * channel.<p>
  * 
  * Any number of error handlers can be configured. If many are configured, they
  * will be called in the same order they were added. First handler to not throw
@@ -92,9 +91,9 @@ import static java.lang.System.Logger.Level.ERROR;
  *         try {
  *             throw throwable;
  *         } catch (ExpectedException e) {
- *             channel.write(myAlternativeResponse());
+ *             channel.writeFirst(myAlternativeResponse());
  *         } catch (AnotherExpectedException e) {
- *             channel.write(someOtherAlternativeResponse());
+ *             channel.writeFirst(someOtherAlternativeResponse());
  *         }
  *         // else automagically re-thrown and propagated throughout the chain
  *     };
@@ -312,7 +311,7 @@ public interface ErrorHandler
             res = internalServerError();
         }
         
-        ch.write(res);
+        ch.writeFirst(res);
     };
     
     private static void log(Throwable thr) {

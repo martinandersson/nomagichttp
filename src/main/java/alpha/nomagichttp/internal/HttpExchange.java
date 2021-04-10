@@ -88,6 +88,7 @@ final class HttpExchange
      * @return a stage (never {@code null})
      */
     CompletionStage<Void> begin() {
+        LOG.log(DEBUG, "Beginning a new HTTP exchange.");
         try {
             begin0();
         } catch (Throwable t) {
@@ -106,9 +107,7 @@ final class HttpExchange
     
     private void begin0() {
         chan.usePipeline(pipe);
-        pipe.subscribe(
-                // Written byte count ignored
-                onNext(r -> handleResult(r.error())));
+        pipe.subscribe(onNext(this::handleResult));
         
         RequestHeadSubscriber rhs = new RequestHeadSubscriber(config.maxRequestHeadSize());
         bytes.subscribe(rhs);
@@ -116,7 +115,7 @@ final class HttpExchange
            .thenAccept(this::initialize)
            .thenRun(this::invokeRequestHandler)
            .exceptionally(thr -> {
-               handleResult(thr);
+               handleError(thr);
                return null;
            });
     }
@@ -195,7 +194,7 @@ final class HttpExchange
         handler.logic().accept(request, chan);
     }
     
-    private void handleResult(Throwable thr) {
+    private void handleResult(ResponsePipeline.Result res) {
         /*
          * We should make the connection life cycle much more solid; when is
          * the connection persistent and when is it not (also see RFC 2616
@@ -207,14 +206,13 @@ final class HttpExchange
          * TODO: 2) Implement idle timeout.
          */
         
-        try {
-            if (thr == null) {
-                prepareForNewExchange();
-            } else {
-                resolve(thr);
-            }
-        } catch (Throwable t) {
-            unexpected(t);
+        if (res.error() != null) {
+            handleError(res.error());
+        } else if (res.response().isFinal()) {
+            LOG.log(DEBUG, "Preparing new HTTP exchange.");
+            prepareForNewExchange();
+        } else {
+            LOG.log(DEBUG, "Response not final. HTTP exchange remains active.");
         }
     }
     
@@ -225,15 +223,15 @@ final class HttpExchange
                 result.complete(null);
             } else {
                 LOG.log(DEBUG,
-                        // see SubscriptionAsStageOp.asCompletionStage()
-                        "Upstream error/channel fault. " +
-                        "Assuming reason and/or stacktrace was logged already.");
+                    // see SubscriptionAsStageOp.asCompletionStage()
+                    "Upstream error/channel fault. " +
+                    "Assuming reason and/or stacktrace was logged already.");
                 result.completeExceptionally(t);
             }
         });
     }
     
-    private void resolve(Throwable exc) {
+    private void handleError(Throwable exc) {
         final Throwable unpacked = unpackCompletionException(exc);
         
         if (unpacked instanceof ClientAbortedException) {
@@ -299,7 +297,7 @@ final class HttpExchange
                 } catch (Throwable next) {
                     if (t != next) {
                         // New fail
-                        HttpExchange.this.resolve(next);
+                        HttpExchange.this.handleError(next);
                         return;
                     } // else continue; Handler opted out
                 }
