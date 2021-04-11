@@ -263,13 +263,13 @@ final class AnnounceToChannel
     }
     
     private void executeCallbackOnce() {
-        final Throwable t1 = state.getAndSet(STOPPED);
+        final Throwable prev = state.getAndSet(STOPPED);
         
         if (whenDone != null) {
             // Propagate null instead of sentinel
-            final Throwable t2 = t1 == RUNNING || t1 == STOPPED ? null : t1;
+            final Throwable real = prev == RUNNING || prev == STOPPED ? null : prev;
             try {
-                whenDone.accept(channel, byteCount, t2);
+                whenDone.accept(channel, byteCount, real);
             } finally {
                 // Ensure we don't execute callback again
                 whenDone = null;
