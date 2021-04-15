@@ -541,6 +541,13 @@ public final class ThreadScheduler
          * 
          * @param threadNr e.g., 1 becomes "T1"
          * @param stageNr e.g., 2 becomes "S2"
+         * 
+         * @throws UnsupportedOperationException
+         *             if called by a non-worker thread
+         *
+         * @throws IllegalArgumentException
+         *             if the given stage has already executed fully
+         *             (repetition not permitted)
          */
         public void continueStage(int threadNr, int stageNr) {
             continueStage("T" + threadNr + "S" + stageNr);
