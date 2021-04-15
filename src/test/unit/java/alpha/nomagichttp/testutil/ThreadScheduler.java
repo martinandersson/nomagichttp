@@ -337,7 +337,7 @@ public final class ThreadScheduler
      * @throws CompletionException
      *             anything else thrown from a worker/stage
      */
-    public static void runInParallel(Stage first, Stage second, Stage... more)
+    private static void runInParallel(Stage first, Stage second, Stage... more)
             throws InterruptedException, TimeoutException
     {
         Map<String, List<Runnable>> threadNameToCode = stream(first, second, more)
@@ -374,7 +374,7 @@ public final class ThreadScheduler
         
         Throwable t = null;
         for (Throwable e : problems) {
-            if (e instanceof PleaseThrowTheCause) {
+            if (e instanceof PleaseUnboxTheCause) {
                 e = e.getCause();
             }
             if (t == null) {
@@ -677,12 +677,12 @@ public final class ThreadScheduler
      * and must therefore be thrown by the {@code runInParallel()} method
      * unwrapped.
      */
-    private static final class PleaseThrowTheCause extends CompletionException {
+    private static final class PleaseUnboxTheCause extends CompletionException {
         private static final long serialVersionUID = 1L;
-        PleaseThrowTheCause(TimeoutException e) {
+        PleaseUnboxTheCause(TimeoutException e) {
             super(e);
         }
-        PleaseThrowTheCause(IllegalArgumentException e) {
+        PleaseUnboxTheCause(IllegalArgumentException e) {
             super(e);
         }
     }
@@ -767,14 +767,14 @@ public final class ThreadScheduler
         
         private void requireWithinRuntime() {
             if (Instant.now().isAfter(giveUp)) {
-                throw new PleaseThrowTheCause(new TimeoutException(
+                throw new PleaseUnboxTheCause(new TimeoutException(
                         "Busy-wait prolonged past max runtime."));
             }
         }
         
         private void requireAllStagesCompleted() {
             if (!myStarted.isEmpty()) {
-                throw new PleaseThrowTheCause(new IllegalArgumentException(
+                throw new PleaseUnboxTheCause(new IllegalArgumentException(
                         "Stage(s) started but never completed: " + myStarted));
             }
         }
