@@ -444,8 +444,8 @@ public final class ThreadScheduler
      * Run stages sequentially as orchestrated through the yielder.<p>
      * 
      * The first given stage executes immediately and is the only stage that
-     * executes by this operation. The remaining path of stage execution is
-     * solely determined by calls to the yielder. In the end, all stages must
+     * is initiated by the driver thread. The remaining path of stage execution
+     * is solely determined by calls to the yielder. In the end, all stages must
      * have been given control at least once and must have executed fully. No
      * repetition allowed.<p>
      * 
