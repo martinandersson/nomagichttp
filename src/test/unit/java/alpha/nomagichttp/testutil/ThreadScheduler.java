@@ -14,11 +14,13 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeoutException;
 import java.util.stream.Stream;
 
+import static java.util.Arrays.copyOfRange;
 import static java.util.Objects.requireNonNull;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static java.util.stream.Collectors.groupingBy;
 import static java.util.stream.Collectors.mapping;
 import static java.util.stream.Collectors.toList;
+import static java.util.stream.IntStream.range;
 import static java.util.stream.Stream.of;
 
 
@@ -32,9 +34,7 @@ import static java.util.stream.Stream.of;
  * <pre>
  *   // Test two threads incrementing a counter
  *   AtomicInteger counter = new AtomicInteger();
- *   Stage t1s1 = new ThreadScheduler.Stage("T1", "S1", counter::incrementAndGet);
- *   Stage t2s1 = new ThreadScheduler.Stage("T2", "S1", counter::incrementAndGet);
- *   ThreadScheduler.runInParallel(t1s1, t2s1);
+ *   ThreadScheduler.runInParallel(2, counter::incrementAndGet);
  *   assertThat(counter.get()).isEqualTo(2);
  * </pre>
  * 
@@ -105,6 +105,20 @@ public final class ThreadScheduler
         /**
          * Constructs a {@code Stage}.
          * 
+         * This is a shortcut for {@link #Stage(String, String, Runnable)}
+         * which will prepend a "T" and "S" to the given arguments respectively.
+         * 
+         * @param threadNr e.g., 1 becomes "T1"
+         * @param stageNr e.g., 1 becomes "S1"
+         * @param code to execute
+         */
+        public Stage(int threadNr, int stageNr, Runnable code) {
+            this("T" + threadNr, "S" + stageNr, code);
+        }
+        
+        /**
+         * Constructs a {@code Stage}.
+         * 
          * @param threadName e.g., "T1"
          * @param stageName e.g., "S1"
          * @param code to execute
@@ -133,6 +147,162 @@ public final class ThreadScheduler
         public String toString() {
             return threadName() + stageName();
         }
+    }
+    
+    /**
+     * Run code asynchronously.<p>
+     * 
+     * The worker thread will have the name "T1".<p>
+     * 
+     * The thread that invokes this operation will lie dormant until the worker
+     * completes, or 3 seconds have passed, whichever happens first.
+     * 
+     * @param code to run
+     *
+     * @throws NullPointerException
+     *             if {@code code} is {@code null}
+     *
+     * @throws InterruptedException
+     *             if driver thread is interrupted
+     *
+     * @throws TimeoutException
+     *             if the run takes longer than 3 seconds
+     *
+     * @throws CompletionException
+     *             anything else thrown from the worker
+     */
+    public static void runAsync(Runnable code) throws InterruptedException, TimeoutException {
+        Runnable nop = () -> {};
+        runInParallel(code, nop, nop);
+    }
+    
+    /**
+     * An invocation of this method behaves in exactly the same way as the
+     * invocation
+     * <pre>
+     *     ThreadScheduler.{@link #runInParallel(int, int, Runnable)
+     *       runInParallel}(threads, repetitions, code);
+     * </pre>
+     * where {@code repetitions} is {@code 1}.
+     * 
+     * @param nThreads number of worker threads to use
+     * @param code shared by all workers
+     *
+     * @throws IllegalArgumentException
+     *             if any integer argument is less than 1
+     *
+     * @throws NullPointerException
+     *             if {@code code} is {@code null}
+     *
+     * @throws InterruptedException
+     *             if driver thread is interrupted
+     *
+     * @throws TimeoutException
+     *             if the run takes longer than 3 seconds
+     *
+     * @throws CompletionException
+     *             anything else thrown from a worker
+     */
+    public static void runInParallel(int nThreads, Runnable code)
+            throws InterruptedException, TimeoutException
+    {
+        runInParallel(nThreads, 1, code);
+    }
+    
+    /**
+     * Run code asynchronously and in parallel.<p>
+     * 
+     * E.g., increment a counter by ten threads, five times per thread.
+     * <pre>{@code
+     *   ThreadScheduler.runInParallel(10, 5, myCounter::increment);
+     *   assertThat(myCounter.value()).isEqualTo(50);
+     * }</pre>
+     * 
+     * Worker thread names used will be "T1", "T2", and so on.<p>
+     * 
+     * The thread that invokes this operation will lie dormant until all workers
+     * complete, or 3 seconds have passed, whichever happens first.
+     * 
+     * @param nThreads number of worker threads to use
+     * @param nRepetitions number of code executions per thread
+     * @param code shared by all workers
+     * 
+     * @throws IllegalArgumentException
+     *             if any integer argument is less than 1
+     * 
+     * @throws NullPointerException
+     *             if {@code code} is {@code null}
+     * 
+     * @throws InterruptedException
+     *             if driver thread is interrupted
+     * 
+     * @throws TimeoutException
+     *             if the run takes longer than 3 seconds
+     * 
+     * @throws CompletionException
+     *             anything else thrown from a worker
+     */
+    public static void runInParallel(int nThreads, int nRepetitions, Runnable code)
+            throws InterruptedException, TimeoutException
+    {
+        if (nThreads < 1 || nRepetitions < 1) {
+            throw new IllegalArgumentException();
+        }
+        
+        Stage[] arr = range(0, nThreads).boxed().flatMap(t ->
+                      range(0, nRepetitions).mapToObj(   s ->
+                              new Stage(t, s, code))).toArray(Stage[]::new);
+        
+        switch (arr.length) {
+            case 1:
+                runAsync(arr[0].code());
+                break;
+            case 2:
+                runInParallel(arr[0], arr[1]);
+                break;
+            default:
+                runInParallel(arr[0], arr[1], copyOfRange(arr, 2, arr.length));
+                break;
+        }
+    }
+    
+    /**
+     * Run code asynchronously and in parallel.<p>
+     * 
+     * As many threads will be created as there are arguments to this operation.
+     * All threads will await each other's readiness before collectively
+     * starting.<p>
+     * 
+     * Worker thread names used will be "T1", "T2", and so on.<p>
+     * 
+     * The thread that invokes this operation will lie dormant until all workers
+     * complete, or 3 seconds have passed, whichever happens first.
+     * 
+     * @param first thread's unit of work
+     * @param second thread's unit of work
+     * @param more threads+work optionally (but at least two are required)
+     * 
+     * @throws NullPointerException
+     *             if any arg (or element thereof) is {@code null}
+     * 
+     * @throws InterruptedException
+     *             if driver thread is interrupted
+     * 
+     * @throws TimeoutException
+     *             if the run takes longer than 3 seconds
+     * 
+     * @throws CompletionException
+     *             anything else thrown from a worker
+     */
+    public static void runInParallel(Runnable first, Runnable second, Runnable... more)
+            throws InterruptedException, TimeoutException
+    {
+        Stage f = new Stage(1, 1, first);
+        Stage s = new Stage(2, 1, second);
+        Stage[] m = range(0, more.length)
+                        .mapToObj(i -> new Stage(i + 3, 1, more[i]))
+                        .toArray(Stage[]::new);
+        runInParallel(f, s, m);
     }
     
     /**
@@ -365,6 +535,20 @@ public final class ThreadScheduler
         /**
          * Yield control from one stage to the specified other.<p>
          * 
+         * This is a shortcut for {@link #continueStage(String)} which takes
+         * the given integers and put them together into a combined thread- and
+         * stage name. E.g. 1 and 2 becomes "T1S2".
+         * 
+         * @param threadNr e.g., 1 becomes "T1"
+         * @param stageNr e.g., 2 becomes "S2"
+         */
+        public void continueStage(int threadNr, int stageNr) {
+            continueStage("T" + threadNr + "S" + stageNr);
+        }
+        
+        /**
+         * Yield control from one stage to the specified other.<p>
+         * 
          * This method will block until the current stage is yielded back
          * control.<p>
          * 
@@ -372,8 +556,9 @@ public final class ThreadScheduler
          * visible effect. The thread returns immediately.<p>
          * 
          * Stage execution can jump backwards any number of levels (e.g. stage 1
-         * > 2 > 3 > 1), but in the end, all stages given to the thread
-         * scheduler must execute fully or else the test will fail.<p>
+         * {@literal >} 2 {@literal >} 3 {@literal >} 1), but in the end, all
+         * stages given to the thread scheduler must execute fully or else the
+         * test will fail.<p>
          * 
          * A stage can not yield to a stage that has already completed.<p>
          * 

@@ -24,9 +24,7 @@ class ThreadSchedulerTest
     @Test
     void atomicIntegerExample() throws InterruptedException, TimeoutException {
         AtomicInteger c = new AtomicInteger();
-        Stage t1s1 = new Stage("T1", "S1", c::incrementAndGet);
-        Stage t2s1 = new Stage("T2", "S1", c::incrementAndGet);
-        ThreadScheduler.runInParallel(t1s1, t2s1);
+        ThreadScheduler.runInParallel(2, c::incrementAndGet);
         assertThat(c.get()).isEqualTo(2);
     }
     
