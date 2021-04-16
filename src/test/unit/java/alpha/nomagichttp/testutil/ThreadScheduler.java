@@ -112,7 +112,7 @@ public final class ThreadScheduler
          * @param stageNr e.g., 1 becomes "S1"
          * @param code to execute
          */
-        public Stage(int threadNr, int stageNr, Runnable code) {
+        private Stage(int threadNr, int stageNr, Runnable code) {
             this("T" + threadNr, "S" + stageNr, code);
         }
         
@@ -177,6 +177,26 @@ public final class ThreadScheduler
     }
     
     /**
+     * Run code asynchronously.<p>
+     * 
+     * This method is equivalent to
+     * <pre>
+     *     ThreadScheduler.{@link #runAsync(Runnable)
+     *       runAsync}(code);
+     * </pre>
+     * except all checked exceptions are wrapped in a {@code RuntimeException}.
+     * 
+     * @param code to run
+     */
+    public static void runAsyncUnchecked(Runnable code) {
+        try {
+            runAsync(code);
+        } catch (InterruptedException | TimeoutException e) {
+            throw new RuntimeException(e);
+        }
+    }
+    
+    /**
      * An invocation of this method behaves in exactly the same way as the
      * invocation
      * <pre>
@@ -212,7 +232,7 @@ public final class ThreadScheduler
     /**
      * Run code asynchronously and in parallel.<p>
      * 
-     * E.g., increment a counter by ten threads, five times per thread.
+     * E.g., make ten threads increment a counter, five times per thread.
      * <pre>{@code
      *   ThreadScheduler.runInParallel(10, 5, myCounter::increment);
      *   assertThat(myCounter.value()).isEqualTo(50);
@@ -251,7 +271,7 @@ public final class ThreadScheduler
         
         Stage[] arr = range(0, nThreads).boxed().flatMap(t ->
                       range(0, nRepetitions).mapToObj(   s ->
-                              new Stage(t, s, code))).toArray(Stage[]::new);
+                              new Stage(t + 1, s, code))).toArray(Stage[]::new);
         
         switch (arr.length) {
             case 1:
@@ -532,27 +552,6 @@ public final class ThreadScheduler
      * May be used by a stage to yield execution to another stage.
      */
     public static final class Yielder {
-        /**
-         * Yield control from one stage to the specified other.<p>
-         * 
-         * This is a shortcut for {@link #continueStage(String)} which takes
-         * the given integers and put them together into a combined thread- and
-         * stage name. E.g. 1 and 2 becomes "T1S2".
-         * 
-         * @param threadNr e.g., 1 becomes "T1"
-         * @param stageNr e.g., 2 becomes "S2"
-         * 
-         * @throws UnsupportedOperationException
-         *             if called by a non-worker thread
-         *
-         * @throws IllegalArgumentException
-         *             if the given stage has already executed fully
-         *             (repetition not permitted)
-         */
-        public void continueStage(int threadNr, int stageNr) {
-            continueStage("T" + threadNr + "S" + stageNr);
-        }
-        
         /**
          * Yield control from one stage to the specified other.<p>
          * 
