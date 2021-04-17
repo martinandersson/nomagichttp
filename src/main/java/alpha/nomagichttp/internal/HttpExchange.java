@@ -107,7 +107,7 @@ final class HttpExchange
     
     private void begin0() {
         chan.usePipeline(pipe);
-        pipe.subscribe(onNext(this::handleResult));
+        pipe.subscribe(onNext(this::handlePipeResult));
         
         RequestHeadSubscriber rhs = new RequestHeadSubscriber(config.maxRequestHeadSize());
         bytes.subscribe(rhs);
@@ -194,7 +194,7 @@ final class HttpExchange
         handler.logic().accept(request, chan);
     }
     
-    private void handleResult(ResponsePipeline.Result res) {
+    private void handlePipeResult(ResponsePipeline.Result res) {
         /*
          * We should make the connection life cycle much more solid; when is
          * the connection persistent and when is it not (also see RFC 2616
