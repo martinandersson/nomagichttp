@@ -253,8 +253,8 @@ final class AnnounceToChannel
         
         try {
             switch (mode) {
-                case READ:  channel.delegateNoProxy().read( b, b, handler); break;
-                case WRITE: channel.delegateNoProxy().write(b, b, handler); break;
+                case READ:  channel.getDelegateNoProxy().read( b, b, handler); break;
+                case WRITE: channel.getDelegateNoProxy().write(b, b, handler); break;
                 default:    throw new UnsupportedOperationException("What is this?: " + mode);
             }
         } catch (Throwable t) {

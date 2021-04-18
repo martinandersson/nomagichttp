@@ -100,7 +100,7 @@ final class DefaultClientChannel implements ClientChannel
      * 
      * @return non-proxied delegate
      */
-    AsynchronousSocketChannel delegateNoProxy() {
+    AsynchronousSocketChannel getDelegateNoProxy() {
         return child;
     }
     
