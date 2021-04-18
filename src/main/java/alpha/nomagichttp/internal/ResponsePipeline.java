@@ -91,7 +91,7 @@ final class ResponsePipeline implements Flow.Publisher<ResponsePipeline.Result>
     private final HttpExchange exch;
     private final DefaultClientChannel chan;
     private final Deque<CompletionStage<Response>> queue;
-    private final Runnable writeSafe;
+    private final SeriallyRunnable writeSafe;
     private final List<Flow.Subscriber<? super Result>> subs;
     
     /**
@@ -106,7 +106,7 @@ final class ResponsePipeline implements Flow.Publisher<ResponsePipeline.Result>
         this.chan       = requireNonNull(chan);
         this.exch       = requireNonNull(exch);
         this.queue      = new ConcurrentLinkedDeque<>();
-        this.writeSafe  = new SeriallyRunnable(this::writeUnsafe);
+        this.writeSafe  = new SeriallyRunnable(this::writeUnsafe, true);
         this.subs       = new ArrayList<>();
     }
     
@@ -131,10 +131,11 @@ final class ResponsePipeline implements Flow.Publisher<ResponsePipeline.Result>
     private void writeUnsafe() {
         CompletionStage<Response> r = queue.poll();
         if (r == null) {
+            writeSafe.complete();
             return;
         }
         r.thenCompose(this::subscribeToResponse)
-         .whenComplete(this::handleResponseResult);
+         .whenComplete(this::handleChannelResult);
     }
     
     private Response inFlight = null;
@@ -156,23 +157,28 @@ final class ResponsePipeline implements Flow.Publisher<ResponsePipeline.Result>
         return rbs.asCompletionStage();
     }
     
-    private void handleResponseResult(ResponseBodySubscriber.Result res, Throwable thr) {
+    private void handleChannelResult(ResponseBodySubscriber.Result res, Throwable thr) {
         Response r = inFlight;
         inFlight = null;
         if (res != null) {
             // Success
+            LOG.log(DEBUG, () -> "Sent response (" + res.bytesWritten() + " bytes).");
             // TODO: Implement "mayAbortRequest" flag
             if (r.mustCloseAfterWrite()) {
                 LOG.log(DEBUG, "Response wants us to close the child, will close.");
                 chan.closeSafe();
             }
             publish(r, res.bytesWritten(), null);
-        } else if (chan.isOpenForWriting()) {
-            // Failed, but no bytes were written on the wire
-            wroteFinal = false;
+        } else {
+            // Failed
+            if (chan.isOpenForWriting()) {
+                // and no bytes were written on the wire
+                wroteFinal = false;
+            }
             assert thr != null;
             publish(r, null, thr);
         }
+        writeSafe.complete();
         writeSafe.run();
     }
     
