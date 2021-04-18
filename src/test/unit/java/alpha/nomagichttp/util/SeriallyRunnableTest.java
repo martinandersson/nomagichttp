@@ -2,6 +2,8 @@ package alpha.nomagichttp.util;
 
 import org.junit.jupiter.api.Test;
 
+import java.util.Queue;
+import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.IntStream;
@@ -86,11 +88,19 @@ class SeriallyRunnableTest
     }
     
     @Test
-    void noCompleteInSyncMode() {
+    void noCompleteInSyncMode_before() {
         sr = new SeriallyRunnable(() -> {});
         assertThatThrownBy(sr::complete)
-                .isExactlyInstanceOf(UnsupportedOperationException.class)
-                .hasMessage("In synchronous mode.");
+                .isExactlyInstanceOf(IllegalStateException.class)
+                .hasMessage("No run active.");
+    }
+    
+    @Test
+    void noCompleteInSyncMode_recursively() {
+        sr = new SeriallyRunnable(() -> sr.complete());
+        assertThatThrownBy(sr::run)
+                .isExactlyInstanceOf(IllegalStateException.class)
+                .hasMessage("No run active.");
     }
     
     @Test
@@ -98,7 +108,7 @@ class SeriallyRunnableTest
         sr = new SeriallyRunnable(() -> {}, true);
         assertThatThrownBy(sr::complete)
                 .isExactlyInstanceOf(IllegalStateException.class)
-                .hasMessage("The run completed already (exceptionally) or complete() was called more than once.");
+                .hasMessage("No run active.");
     }
     
     @Test
@@ -110,7 +120,7 @@ class SeriallyRunnableTest
         
         assertThatThrownBy(sr::run)
                 .isExactlyInstanceOf(IllegalStateException.class)
-                .hasMessage("complete() called more than once.");
+                .hasMessage("No run active.");
     }
     
     @Test
@@ -235,9 +245,32 @@ class SeriallyRunnableTest
         
         assertThatThrownBy(sr::complete)
                 .isExactlyInstanceOf(IllegalStateException.class)
-                .hasMessage("The run completed already (exceptionally) or complete() was called more than once.");
+                .hasMessage("No run active.");
         
         assertThat(counter).isOne();
+    }
+    
+    @Test
+    void complete_noRerun() {
+        sr = new SeriallyRunnable(this::increment, true);
+        sr.run();
+        sr.complete();
+        assertThat(counter).isOne();
+    }
+    
+    @Test
+    void twoRerunSignalsOneRepeat() {
+        sr = new SeriallyRunnable(() -> {
+            increment();
+            if (counter == 1) {
+                sr.run(); // <-- schedules extra run
+                assertThat(counter).isOne();
+                sr.run(); // <-- ignored
+                assertThat(counter).isOne();
+            }
+        });
+        sr.run();
+        assertThat(counter).isEqualTo(2);
     }
     
     @Test
@@ -259,11 +292,13 @@ class SeriallyRunnableTest
     void sameThreadRecursivelyCompletes_withRerun() {
         sr = new SeriallyRunnable(() -> {
             if (counter == 2) {
-                return;
+                return; // Or else infinite loop
             }
-            increment();
+            int noChangePlz = incrementAndGet();
             sr.run();
+            assertThat(counter).isEqualTo(noChangePlz);
             sr.complete();
+            assertThat(counter).isEqualTo(noChangePlz);
         }, true);
         
         sr.run();
@@ -322,25 +357,15 @@ class SeriallyRunnableTest
     }
     
     @Test
-    void complete_noRerun() {
+    void initiatingThreadSignalsRerun_otherThreadCompletes() throws InterruptedException, TimeoutException {
         sr = new SeriallyRunnable(this::increment, true);
+        
         sr.run();
-        sr.complete();
         assertThat(counter).isOne();
-    }
-    
-    @Test
-    void twoRerunSignalsOneRepeat() {
-        sr = new SeriallyRunnable(() -> {
-            increment();
-            if (counter == 1) {
-                sr.run(); // <-- schedules extra run
-                assertThat(counter).isOne();
-                sr.run(); // <-- ignored
-                assertThat(counter).isOne();
-            }
-        });
         sr.run();
+        assertThat(counter).isOne();
+        
+        runAsync(sr::complete);
         assertThat(counter).isEqualTo(2);
     }
     
@@ -352,17 +377,19 @@ class SeriallyRunnableTest
         final int nThreads = 20, nRepetitions = 1_000;
         int[] thrLocal = new int[nThreads];
         sr = new SeriallyRunnable(() -> {
-            increment(); // <-- bump global non-volatile var
-            int thrId = parseInt(currentThread().getName().substring(1));
+            increment(); // Bump global non-volatile var
+            int thrId = parseInt(currentThread().getName().substring(1)); // "T3" becomes 3
             int v = thrLocal[thrId - 1];
-            thrLocal[thrId - 1] = ++v; // <-- also keep count in a ThreadLocal
+            thrLocal[thrId - 1] = ++v; // Also keep count per-thread
         });
         runInParallel(nThreads, nRepetitions, () -> {
             sr.run();
             // Small pause outside as to not hog the runner with one looping thread only
             arbitraryWork();
         });
+        // Counter must be equal to sum of all cells
         assertThat(counter).isEqualTo(IntStream.of(thrLocal).sum());
+        // Actual threads scheduled are the ones who counted something
         long uniq = IntStream.of(thrLocal).filter(v -> v > 0).count();
         assumeTrue(uniq >= 2, "Two or more actual threads required."); // Weird OS, too small pause.. aliens?
     }
@@ -382,7 +409,6 @@ class SeriallyRunnableTest
                 doComplete.set(true);
                 return currentThread();
             });
-            currentThread().interrupt();
         }, true);
         
         runInParallel(nThreads, nRepetitions, () -> {
@@ -396,6 +422,26 @@ class SeriallyRunnableTest
             }
         });
     }
+    
+    @Test
+    void parallel_asyncMode_noMissedRerun_processingSync() throws InterruptedException, TimeoutException {
+        final int nThreads = 20, nRepetitions = 1_000;
+        Queue<String> items = new ConcurrentLinkedQueue<>();
+        sr = new SeriallyRunnable(() -> {
+            String s = items.poll();
+            sr.complete();
+            if (s != null) {
+                sr.run();
+            }
+        }, true);
+        runInParallel(nThreads, nRepetitions, () -> {
+            items.add("X");
+            sr.run();
+        });
+        assertThat(items.size()).isZero();
+    }
+    
+    // TODO: parallel_asyncMode_noMissedRerun_processingAsync
     
     private static void arbitraryWork() {
         IntStream.range(0, 5).forEach(ignored -> Thread.onSpinWait());
