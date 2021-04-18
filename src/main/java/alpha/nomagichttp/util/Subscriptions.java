@@ -41,13 +41,13 @@ public final class Subscriptions
      *    <li>If the subscriber does cancel the subscription, the publisher must
      *       stop interacting with the subscriber, obviously the sooner the
      *       better (§1.8, §3.12).</li>
-     * </ol>
+     * </ol><p>
      * 
      * Example {@code Publisher.subscribe()} implementation (with semantics
      * as specified in {@link Publishers}):
-     * <pre>{@code
+     * <pre>
      *   {@literal @}Override
-     *   public void subscribe(Flow.Subscriber<? super T> s) {
+     *   public void subscribe(Flow.Subscriber{@literal <}? super T{@literal >} s) {
      *       if (mustReject) {
      *           CanOnlyBeCancelled temp = Subscriptions.canOnlyBeCancelled();
      *           Subscribers.signalOnSubscribeOrTerminate(s, temp);
@@ -62,7 +62,7 @@ public final class Subscriptions
      *           }
      *       }
      *   }
-     * }</pre>
+     * </pre>
      * 
      * Note, it still isn't possible to be fully compliant with the
      * specification. §3.9 stipulates that a call to {@code
