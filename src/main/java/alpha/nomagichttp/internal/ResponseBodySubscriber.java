@@ -74,8 +74,6 @@ final class ResponseBodySubscriber implements SubscriberAsStage<ByteBuffer, Resu
         this.resp   = requireNonNull(resp);
         this.exch   = requireNonNull(exch);
         this.result = new CompletableFuture<>();
-        // TODO: Instead of creating a new AnnouneToChannel, we'd like to have one per client channel.
-        //       Similar to how there's only one ChannelByteBufferPublisher -> one AnnounceToChannel.read()
         this.ch     = AnnounceToChannel.write(ch, this::afterChannelFinished);
     }
     
