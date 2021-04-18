@@ -331,7 +331,7 @@ public final class DefaultServer implements HttpServer
         private void setup(AsynchronousSocketChannel child) {
             LOG.log(DEBUG, () -> "Accepted child: " + child);
             
-            DefaultClientChannel chan = new DefaultClientChannel(child);
+            DefaultClientChannel chan = new DefaultClientChannel(child, DefaultServer.this);
             ChannelByteBufferPublisher bytes = new ChannelByteBufferPublisher(chan);
             children.add(chan);
             chan.onClose(() -> shutdown(chan, bytes));

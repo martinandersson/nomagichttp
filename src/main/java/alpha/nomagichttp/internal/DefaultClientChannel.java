@@ -1,5 +1,6 @@
 package alpha.nomagichttp.internal;
 
+import alpha.nomagichttp.HttpServer;
 import alpha.nomagichttp.handler.ClientChannel;
 import alpha.nomagichttp.message.Response;
 
@@ -24,8 +25,9 @@ final class DefaultClientChannel implements ClientChannel
             = System.getLogger(DefaultClientChannel.class.getPackageName());
     
     private final AsynchronousSocketChannel child;
-    private ResponsePipeline pipe;
+    private final HttpServer server;
     private final List<Runnable> onClose;
+    private ResponsePipeline pipe;
     
     private volatile boolean readShutdown,
                             writeShutdown;
@@ -36,13 +38,16 @@ final class DefaultClientChannel implements ClientChannel
      * The channel can not be used for writing responses before this instance
      * has been {@link #usePipeline(ResponsePipeline) initialized}.
      * 
-     * @param child of parent (client)
+     * @param child channel
+     * @param server parent
      * 
-     * @throws NullPointerException if {@code child} is {@code null}
+     * @throws NullPointerException if any argument is {@code null}
      */
-    DefaultClientChannel(AsynchronousSocketChannel child) {
+    DefaultClientChannel(AsynchronousSocketChannel child, HttpServer server) {
         this.child   = requireNonNull(child);
+        this.server  = requireNonNull(server);
         this.onClose = new ArrayList<>(1);
+        this.pipe    = null;
         readShutdown = writeShutdown = false;
     }
     
@@ -74,34 +79,6 @@ final class DefaultClientChannel implements ClientChannel
      */
     void usePipeline(ResponsePipeline pipe) {
         this.pipe = pipe;
-    }
-    
-    private NetworkChannel proxy;
-    
-    @Override
-    public NetworkChannel getDelegate() {
-        NetworkChannel p = proxy;
-        if (p == null) {
-            proxy = p = new ProxiedNetworkChannel(child);
-        }
-        return p;
-    }
-    
-    /**
-     * Returns the raw delegate, not wrapped in a proxy.<p>
-     * 
-     * The purpose of the proxy is to capture close-calls, so that we can make
-     * safe assumptions about the channel state as well as to run
-     * server-side close-callbacks for resource cleanup.<p>
-     * 
-     * This method may be used when the interface {@code NetworkChannel} is not
-     * sufficient or as a performance optimization but only if the close method
-     * is not invoked on the returned reference.
-     * 
-     * @return non-proxied delegate
-     */
-    AsynchronousSocketChannel getDelegateNoProxy() {
-        return child;
     }
     
     @Override
@@ -239,6 +216,39 @@ final class DefaultClientChannel implements ClientChannel
         } catch (IOException e) {
             LOG.log(ERROR, () -> "Failed to close child: " + child, e);
         }
+    }
+    
+    private NetworkChannel proxy;
+    
+    @Override
+    public NetworkChannel getDelegate() {
+        NetworkChannel p = proxy;
+        if (p == null) {
+            proxy = p = new ProxiedNetworkChannel(child);
+        }
+        return p;
+    }
+    
+    /**
+     * Returns the raw delegate, not wrapped in a proxy.<p>
+     *
+     * The purpose of the proxy is to capture close-calls, so that we can make
+     * safe assumptions about the channel state as well as to run
+     * server-side close-callbacks for resource cleanup.<p>
+     *
+     * This method may be used when the interface {@code NetworkChannel} is not
+     * sufficient or as a performance optimization but only if the close method
+     * is not invoked on the returned reference.
+     *
+     * @return non-proxied delegate
+     */
+    AsynchronousSocketChannel getDelegateNoProxy() {
+        return child;
+    }
+    
+    @Override
+    public HttpServer getServer() {
+        return server;
     }
     
     private final class ProxiedNetworkChannel implements NetworkChannel

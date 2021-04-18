@@ -1,5 +1,6 @@
 package alpha.nomagichttp.handler;
 
+import alpha.nomagichttp.HttpServer;
 import alpha.nomagichttp.message.Request;
 import alpha.nomagichttp.message.Response;
 
@@ -261,4 +262,11 @@ public interface ClientChannel extends Closeable
      * @return the underlying Java channel instance (never {@code null})
      */
     NetworkChannel getDelegate();
+    
+    /**
+     * Returns the server from which this channel originates.
+     * 
+     * @return the server from which this channel originates (never {@code null})
+     */
+    HttpServer getServer();
 }
