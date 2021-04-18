@@ -21,6 +21,7 @@ import static alpha.nomagichttp.HttpConstants.StatusCode.FOUR_HUNDRED;
 import static alpha.nomagichttp.HttpConstants.StatusCode.FOUR_HUNDRED_FOUR;
 import static alpha.nomagichttp.HttpConstants.StatusCode.FOUR_HUNDRED_THIRTEEN;
 import static alpha.nomagichttp.HttpConstants.StatusCode.FOUR_HUNDRED_TWENTY_SIX;
+import static alpha.nomagichttp.HttpConstants.StatusCode.ONE_HUNDRED;
 import static alpha.nomagichttp.HttpConstants.StatusCode.ONE_HUNDRED_TWO;
 import static alpha.nomagichttp.HttpConstants.StatusCode.TWO_HUNDRED;
 import static alpha.nomagichttp.HttpConstants.StatusCode.TWO_HUNDRED_FOUR;
@@ -58,11 +59,22 @@ public final class Responses
     }
     
     /**
+     * Returns a "100 Continue" interim response.
+     *
+     * @return a "100 Continue" response
+     *
+     * @see StatusCode#ONE_HUNDRED
+     */
+    public static Response continue_() {
+        return ResponseCache.CONTINUE;
+    }
+    
+    /**
      * Returns a "102 Processing" interim response.
      *
      * @return a "102 Processing" response
      *
-     * @see StatusCode#TWO_HUNDRED_FOUR
+     * @see StatusCode#ONE_HUNDRED_TWO
      */
     public static Response processing() {
         return ResponseCache.PROCESSING;
@@ -163,6 +175,7 @@ public final class Responses
      * @see HttpConstants.HeaderKey#CONTENT_TYPE
      */
     public static Response ok(BodyPublisher body, MediaType contentType) {
+        // TODO: body.contentLength() may return < 0 for "unknown length"
         return ok(body, contentType, body.contentLength());
     }
     
@@ -338,6 +351,7 @@ public final class Responses
      */
     private static final class ResponseCache {
         static final Response
+            CONTINUE              = builder(ONE_HUNDRED, ReasonPhrase.CONTINUE).build(),
             PROCESSING            = builder(ONE_HUNDRED_TWO, ReasonPhrase.PROCESSING).build(),
             ACCEPTED              = builder(TWO_HUNDRED_TWO, ReasonPhrase.ACCEPTED).header(CONTENT_LENGTH, "0").build(),
             NO_CONTENT            = builder(TWO_HUNDRED_FOUR, ReasonPhrase.NO_CONTENT).build(),
