@@ -1,5 +1,6 @@
 package alpha.nomagichttp.internal;
 
+import alpha.nomagichttp.HttpServer;
 import alpha.nomagichttp.testutil.ClientOperations;
 import alpha.nomagichttp.testutil.Logging;
 import alpha.nomagichttp.testutil.SkeletonServer;
@@ -17,6 +18,7 @@ import static java.lang.System.Logger.Level.ALL;
 import static java.util.concurrent.Flow.Publisher;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.mock;
 
 /**
  * Tests for {@code ChannelByteBufferPublisher}.
@@ -47,10 +49,10 @@ class ChannelByteBufferPublisherTest
     
     ChannelByteBufferPublisher testee() throws InterruptedException {
         if (testee == null) {
-            DefaultClientChannel chan = new DefaultClientChannel(SERVER.accept());
+            DefaultClientChannel chan = new DefaultClientChannel(
+                    SERVER.accept(), mock(HttpServer.class));
             testee = new ChannelByteBufferPublisher(chan);
         }
-        
         return testee;
     }
     

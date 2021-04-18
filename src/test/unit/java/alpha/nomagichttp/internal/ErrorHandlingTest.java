@@ -8,7 +8,6 @@ import alpha.nomagichttp.message.Responses;
 import alpha.nomagichttp.route.NoRouteFoundException;
 import alpha.nomagichttp.testutil.ClientOperations;
 import alpha.nomagichttp.testutil.Logging;
-import alpha.nomagichttp.util.BetterBodyPublishers;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -23,6 +22,7 @@ import static alpha.nomagichttp.HttpServer.create;
 import static alpha.nomagichttp.handler.RequestHandler.GET;
 import static alpha.nomagichttp.handler.RequestHandler.HEAD;
 import static alpha.nomagichttp.handler.RequestHandler.TRACE;
+import static alpha.nomagichttp.message.Responses.processing;
 import static alpha.nomagichttp.message.Responses.text;
 import static alpha.nomagichttp.testutil.ClientOperations.CRLF;
 import static alpha.nomagichttp.util.BetterBodyPublishers.ofString;
@@ -240,5 +240,27 @@ class ErrorHandlingTest
         assertThat(res).isEqualTo(
                 "HTTP/1.1 500 Internal Server Error" + CRLF +
                 "Content-Length: 0"                  + CRLF + CRLF);
+    }
+    
+    @Test
+    void ResponseRejectedException_interimIgnoredForOldClient() throws IOException {
+        s = create().start();
+        
+        s.add("/", GET().accept((req, ch) -> {
+            ch.write(processing()); // <-- ignored
+            ch.write(text("Done!"));
+        }));
+        
+        // If all you do is to replace "HTTP/1.0" with "HTTP/1.1"...
+        String res = new ClientOperations(s)
+                .writeRead("GET / HTTP/1.0" + CRLF + CRLF, "Done!");
+        
+        // ...then the interim response is no longer ignored.
+        assertThat(res).isEqualTo(
+            "HTTP/1.0 200 OK"                         + CRLF +
+            "Content-Type: text/plain; charset=utf-8" + CRLF +
+            "Content-Length: 5"                       + CRLF + CRLF +
+            
+            "Done!");
     }
 }

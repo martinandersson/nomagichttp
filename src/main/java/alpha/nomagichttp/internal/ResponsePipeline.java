@@ -12,6 +12,8 @@ import java.util.concurrent.ConcurrentLinkedDeque;
 import java.util.concurrent.Flow;
 
 import static alpha.nomagichttp.HttpConstants.Version.HTTP_1_1;
+import static alpha.nomagichttp.handler.ResponseRejectedException.Reason.EXCHANGE_NOT_ACTIVE;
+import static alpha.nomagichttp.handler.ResponseRejectedException.Reason.PROTOCOL_NOT_SUPPORTED;
 import static alpha.nomagichttp.util.Subscriptions.noop;
 import static java.lang.System.Logger.Level.DEBUG;
 import static java.lang.System.Logger.Level.WARNING;
@@ -143,10 +145,11 @@ final class ResponsePipeline implements Flow.Publisher<ResponsePipeline.Result>
     
     private CompletionStage<ResponseBodySubscriber.Result> subscribeToResponse(Response r) {
         if (wroteFinal) {
-            throw new ResponseRejectedException(r, "Final response already written.");
+            throw new ResponseRejectedException(r, EXCHANGE_NOT_ACTIVE,
+                    "Final response already written.");
         }
         if (r.isInformational() && exch.getHttpVersion().isLessThan(HTTP_1_1)) {
-            throw new ResponseRejectedException(r,
+            throw new ResponseRejectedException(r, PROTOCOL_NOT_SUPPORTED,
                     exch.getHttpVersion() + " does not support 1XX (Informational) responses.");
         }
         inFlight = r;

@@ -68,7 +68,7 @@ public interface ClientChannel extends Closeable
      *   <li>A final response has already been transmitted (in parts or in
      *       whole); the HTTP exchange is no longer active.</li>
      *   <li>The response status-code is 1XX and HTTP version used is {@literal <} 1.1.</li>
-     * </ul>
+     * </ul><p>
      * 
      * If the response is rejected, a {@link ResponseRejectedException} will
      * pass through the server's chain of {@link ErrorHandler error handlers}.

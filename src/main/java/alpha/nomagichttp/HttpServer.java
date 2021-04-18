@@ -7,6 +7,7 @@ import alpha.nomagichttp.internal.DefaultServer;
 import alpha.nomagichttp.message.HttpVersionTooOldException;
 import alpha.nomagichttp.message.IllegalBodyException;
 import alpha.nomagichttp.message.MaxRequestHeadSizeExceededException;
+import alpha.nomagichttp.message.Request;
 import alpha.nomagichttp.message.Response;
 import alpha.nomagichttp.message.Responses;
 import alpha.nomagichttp.route.DefaultRouteRegistry;
@@ -641,6 +642,35 @@ public interface HttpServer
          */
         default boolean rejectClientsUsingHTTP1_0() {
             return false;
+        }
+        
+        /**
+         * Ignore rejected 1XX (Informational) responses when they fail to be
+         * sent to an HTTP/1.0 client. The default value is {@code true} and the
+         * application can safely send 1XX (Informational) responses without
+         * concern for old clients.<p>
+         * 
+         * If this option is disabled (changed to return false), then the
+         * default error handler will instead of ignoring the failure, write a
+         * final 500 (Internal Server Error) response as an alternative to the
+         * failed response, meaning that the application will then not be able
+         * to write its intended final response. This means that the application
+         * would then have to query the active HTTP exchange version ({@link
+         * Request#httpVersion()}) and not attempt to send interim responses to
+         * HTTP/1.0 clients.<p>
+         * 
+         * The configuration value will be polled by the {@link
+         * ErrorHandler#DEFAULT default error handler} for each handled relevant
+         * case.
+         * 
+         * @implSpec
+         * The default implementation returns {@code true}.
+         * 
+         * @return whether or not to ignore failed 1XX (Informational) responses
+         *         sent to HTTP/1.0 clients
+         */
+        default boolean ignoreRejectedInformational() {
+            return true;
         }
     }
 }

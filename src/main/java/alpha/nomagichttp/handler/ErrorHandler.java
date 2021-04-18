@@ -19,6 +19,9 @@ import alpha.nomagichttp.route.NoRouteFoundException;
 
 import java.util.concurrent.CompletionException;
 
+import static alpha.nomagichttp.HttpConstants.Version.HTTP_1_1;
+import static alpha.nomagichttp.handler.ResponseRejectedException.Reason;
+import static alpha.nomagichttp.handler.ResponseRejectedException.Reason.PROTOCOL_NOT_SUPPORTED;
 import static alpha.nomagichttp.message.Responses.badRequest;
 import static alpha.nomagichttp.message.Responses.entityTooLarge;
 import static alpha.nomagichttp.message.Responses.httpVersionNotSupported;
@@ -91,7 +94,7 @@ import static java.lang.System.Logger.Level.ERROR;
  *         try {
  *             throw throwable;
  *         } catch (ExpectedException e) {
- *             channel.writeFirst(myAlternativeResponse());
+ *             channel.{@link ClientChannel#writeFirst(Response) writeFirst}(myAlternativeResponse());
  *         } catch (AnotherExpectedException e) {
  *             channel.writeFirst(someOtherAlternativeResponse());
  *         }
@@ -177,6 +180,7 @@ public interface ErrorHandler
      *   <thead>
      *   <tr>
      *     <th scope="col">Exception Type</th>
+     *     <th scope="col">Condition(s)</th>
      *     <th scope="col">Logged</th>
      *     <th scope="col">Response</th>
      *   </tr>
@@ -184,75 +188,83 @@ public interface ErrorHandler
      *   <tbody>
      *   <tr>
      *     <th scope="row"> {@link RequestHeadParseException} </th>
+     *     <td> None </td>
      *     <td> No </td>
      *     <td> {@link Responses#badRequest()} </td>
      *   </tr>
      *   <tr>
      *     <th scope="row"> {@link HttpVersionParseException} </th>
+     *     <td> None </td>
      *     <td> No </td>
      *     <td> {@link Responses#badRequest()} </td>
      *   </tr>
      *   <tr>
      *     <th scope="row"> {@link BadHeaderException} </th>
+     *     <td> None </td>
      *     <td> No </td>
      *     <td> {@link Responses#badRequest()} </td>
      *   </tr>
      *   <tr>
      *     <th scope="row"> {@link HttpVersionTooOldException} </th>
+     *     <td> None </td>
      *     <td> No </td>
      *     <td> {@link Responses#upgradeRequired(String)} </td>
      *   </tr>
      *   <tr>
      *     <th scope="row"> {@link HttpVersionTooNewException} </th>
+     *     <td> None </td>
      *     <td> No </td>
      *     <td> {@link Responses#httpVersionNotSupported()} </td>
      *   </tr>
      *   <tr>
      *     <th scope="row"> {@link NoRouteFoundException} </th>
+     *     <td> None </td>
      *     <td> Yes </td>
      *     <td> {@link Responses#notFound()} </td>
      *   </tr>
      *   <tr>
      *     <th scope="row"> {@link MaxRequestHeadSizeExceededException} </th>
+     *     <td> None </td>
      *     <td> No </td>
      *     <td> {@link Responses#entityTooLarge()} </td>
      *   </tr>
      *   <tr>
      *     <th scope="row"> {@link NoHandlerFoundException} </th>
+     *     <td> None </td>
      *     <td> Yes </td>
      *     <td> {@link Responses#notImplemented()} </td>
      *   </tr>
      *   <tr>
-     *     <th scope="row"> {@link MediaTypeParseException} <br>
-     *                      If request handler argument is null</th>
+     *     <th scope="row"> {@link MediaTypeParseException} </th>
+     *     <td> Request handler argument is null </td>
      *     <td> No </td>
      *     <td> {@link Responses#badRequest()} <br>
      *          Fault assumed to be the clients'.</td>
      *   </tr>
      *   <tr>
-     *     <th scope="row"> {@link MediaTypeParseException} <br>
-     *                      If request handler argument is not null</th>
+     *     <th scope="row"> {@link MediaTypeParseException} </th>
+     *     <td> Request handler argument is not null </td>
      *     <td> Yes </td>
      *     <td> {@link Responses#internalServerError()} <br>
      *          Fault assumed to be the applications'.</td>
      *   </tr>
      *   <tr>
-     *     <th scope="row"> {@link IllegalBodyException} <br>
-     *                      If request handler argument is null</th>
+     *     <th scope="row"> {@link IllegalBodyException} </th>
+     *     <td> Request handler argument is null </td>
      *     <td> No </td>
      *     <td> {@link Responses#badRequest()} <br>
      *          Fault assumed to be the clients'.</td>
      *   </tr>
      *   <tr>
-     *     <th scope="row"> {@link IllegalBodyException} <br>
-     *                      If request handler argument is not null</th>
+     *     <th scope="row"> {@link IllegalBodyException} </th>
+     *     <td> Request handler argument is not null </td>
      *     <td> Yes </td>
      *     <td> {@link Responses#internalServerError()} <br>
      *          Fault assumed to be the applications'.</td>
      *   </tr>
      *   <tr>
-     *     <th scope="row">{@link ClosedPublisherException} <br>
-     *                     If message is "EOS"</th>
+     *     <th scope="row">{@link ClosedPublisherException} </th>
+     *     <td> Exception message is "EOS" </td>
      *     <td> No </td>
      *     <td> No response, channel is already closed. <br>
      *          This error signals the failure of a read operation due to client
@@ -263,7 +275,19 @@ public interface ErrorHandler
      *          request. This might be added in the future.</td>
      *   </tr>
      *   <tr>
+     *     <th scope="row">{@link ResponseRejectedException} </th>
+     *     <td> Response.{@link Response#isInformational() isInformational()}, and <br>
+     *          rejected reason is {@link Reason#PROTOCOL_NOT_SUPPORTED
+     *          PROTOCOL_NOT_SUPPORTED}, and <br>
+     *          HTTP version is {@literal <} 1.1, and <br>
+     *          {@link HttpServer.Config#ignoreRejectedInformational()
+     *          ignoreRejectedInformational()} is {@code true}</td>
+     *     <td> No </td>
+     *     <td> No response, the failed interim response is ignored. </td>
+     *   </tr>
+     *   <tr>
      *     <th scope="row"> <i>{@code Everything else}</i> </th>
+     *     <td> None </td>
      *     <td> Yes </td>
      *     <td> {@link Responses#internalServerError()} </td>
      *   </tr>
@@ -306,12 +330,25 @@ public interface ErrorHandler
                 log(thr);
                 res = internalServerError();
             }
+        } catch (ResponseRejectedException e) {
+            if (e.rejected().isInformational() &&
+                e.reason() == PROTOCOL_NOT_SUPPORTED &&
+                req.httpVersion().isLessThan(HTTP_1_1) &&
+                ch.getServer().getConfig().ignoreRejectedInformational()) {
+                // Ignore
+                res = null;
+            } else {
+                log(thr);
+                res = internalServerError();
+            }
         } catch (Throwable unknown) {
             log(thr);
             res = internalServerError();
         }
         
-        ch.writeFirst(res);
+        if (res != null) {
+            ch.writeFirst(res);
+        }
     };
     
     private static void log(Throwable thr) {

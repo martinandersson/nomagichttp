@@ -209,10 +209,10 @@ final class HttpExchange
         if (res.error() != null) {
             handleError(res.error());
         } else if (res.response().isFinal()) {
-            LOG.log(DEBUG, "Preparing new HTTP exchange.");
+            LOG.log(DEBUG, "Response sent is final. Preparing new HTTP exchange.");
             prepareForNewExchange();
         } else {
-            LOG.log(DEBUG, "Response not final. HTTP exchange remains active.");
+            LOG.log(DEBUG, "Response sent was not final. HTTP exchange remains active.");
         }
     }
     
