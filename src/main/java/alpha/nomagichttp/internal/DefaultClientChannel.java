@@ -79,7 +79,7 @@ final class DefaultClientChannel implements ClientChannel
     private NetworkChannel proxy;
     
     @Override
-    public NetworkChannel delegate() {
+    public NetworkChannel getDelegate() {
         NetworkChannel p = proxy;
         if (p == null) {
             proxy = p = new ProxiedNetworkChannel(child);

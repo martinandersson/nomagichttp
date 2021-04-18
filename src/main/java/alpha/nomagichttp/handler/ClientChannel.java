@@ -260,5 +260,5 @@ public interface ClientChannel extends Closeable
      * 
      * @return the underlying Java channel instance (never {@code null})
      */
-    NetworkChannel delegate();
+    NetworkChannel getDelegate();
 }
