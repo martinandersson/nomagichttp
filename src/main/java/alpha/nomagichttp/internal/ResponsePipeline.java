@@ -91,7 +91,7 @@ final class ResponsePipeline implements Flow.Publisher<ResponsePipeline.Result>
     private final HttpExchange exch;
     private final DefaultClientChannel chan;
     private final Deque<CompletionStage<Response>> queue;
-    private final SeriallyRunnable writeSafe;
+    private final SeriallyRunnable op;
     private final List<Flow.Subscriber<? super Result>> subs;
     
     /**
@@ -103,11 +103,11 @@ final class ResponsePipeline implements Flow.Publisher<ResponsePipeline.Result>
      * @throws NullPointerException if any arg is {@code null}
      */
     ResponsePipeline(HttpExchange exch, DefaultClientChannel chan) {
-        this.chan       = requireNonNull(chan);
-        this.exch       = requireNonNull(exch);
-        this.queue      = new ConcurrentLinkedDeque<>();
-        this.writeSafe  = new SeriallyRunnable(this::writeUnsafe, true);
-        this.subs       = new ArrayList<>();
+        this.chan  = requireNonNull(chan);
+        this.exch  = requireNonNull(exch);
+        this.queue = new ConcurrentLinkedDeque<>();
+        this.op    = new SeriallyRunnable(this::pollAndProcessAsync, true);
+        this.subs  = new ArrayList<>();
     }
     
     @Override
@@ -119,19 +119,19 @@ final class ResponsePipeline implements Flow.Publisher<ResponsePipeline.Result>
     void add(CompletionStage<Response> resp) {
         requireNonNull(resp);
         queue.add(resp);
-        writeSafe.run();
+        op.run();
     }
     
     void addFirst(CompletionStage<Response> resp) {
         requireNonNull(resp);
         queue.addFirst(resp);
-        writeSafe.run();
+        op.run();
     }
     
-    private void writeUnsafe() {
+    private void pollAndProcessAsync() {
         CompletionStage<Response> r = queue.poll();
         if (r == null) {
-            writeSafe.complete();
+            op.complete();
             return;
         }
         r.thenCompose(this::subscribeToResponse)
@@ -178,8 +178,8 @@ final class ResponsePipeline implements Flow.Publisher<ResponsePipeline.Result>
             assert thr != null;
             publish(r, null, thr);
         }
-        writeSafe.complete();
-        writeSafe.run();
+        op.complete();
+        op.run();
     }
     
     private void publish(Response rsp, Long len, Throwable thr) {
