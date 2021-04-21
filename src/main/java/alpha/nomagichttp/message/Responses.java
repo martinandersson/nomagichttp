@@ -60,9 +60,9 @@ public final class Responses
     
     /**
      * Returns a 100 (Continue) interim response.
-     *
+     * 
      * @return a 100 (Continue) response
-     *
+     * 
      * @see StatusCode#ONE_HUNDRED
      */
     public static Response continue_() {

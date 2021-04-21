@@ -135,6 +135,37 @@ public interface Request
     HttpHeaders headers();
     
     /**
+     * If a header is present, check if it contains a value substring.<p>
+     * 
+     * This method operate without regard to case for both header key and
+     * value substring.<p>
+     * 
+     * Suppose the server receives this request:
+     * <pre>
+     *   GET /where?q=now HTTP/1.1
+     *   Host: www.example.com
+     *   User-Agent: curl/7.68.0
+     * </pre>
+     * 
+     * Returns true:
+     * <pre>
+     *   request.headerContains("user-agent", "cUrL");
+     * </pre>
+     * 
+     * This method searches through repeated headers.<p>
+     * 
+     * This method returns {@code false} if the header is not present.
+     * 
+     * @param headerKey header key filter
+     * @param valueSubstring value substring to look for
+     * 
+     * @return {@code true} if found, otherwise {@code false}
+     * 
+     * @throws NullPointerException if any argument is {@code null}
+     */
+    boolean headerContains(String headerKey, String valueSubstring);
+    
+    /**
      * Returns a body API object bound to this request.
      * 
      * @return a body API object bound to this request

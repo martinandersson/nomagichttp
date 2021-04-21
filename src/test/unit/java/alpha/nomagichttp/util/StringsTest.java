@@ -4,6 +4,8 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * Tests for utility class {@code Strings}.
@@ -13,7 +15,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 class StringsTest
 {
     @Test
-    void all() {
+    void split() {
         given("a,b,c", ',', '_');
         expect("a", "b", "c");
         
@@ -48,14 +50,23 @@ class StringsTest
     char delimiter;
     char excludeBoundary;
     
-    void given(String toSplit, char delimiter, char excludeBoundary) {
+    private void given(String toSplit, char delimiter, char excludeBoundary) {
         this.testee = toSplit;
         this.delimiter = delimiter;
         this.excludeBoundary = excludeBoundary;
     }
     
-    void expect(String... expected) {
+    private void expect(String... expected) {
         assertThat(Strings.split(testee, delimiter, excludeBoundary))
                 .isEqualTo(expected);
+    }
+    
+    @Test
+    void containsIgnoreCase() {
+        assertTrue(Strings.containsIgnoreCase("", ""));
+        assertTrue(Strings.containsIgnoreCase("abc", ""));
+        assertTrue(Strings.containsIgnoreCase("abc", "b"));
+        assertFalse(Strings.containsIgnoreCase("abc", "z"));
+        assertTrue(Strings.containsIgnoreCase("cAsE", "CaSe"));
     }
 }

@@ -4,7 +4,12 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.PrimitiveIterator;
 
-final class Strings
+/**
+ * String utilities.
+ * 
+ * @author Martin Andersson (webmaster at martinandersson.com)
+ */
+public final class Strings
 {
     private Strings() {
         // Empty
@@ -73,5 +78,31 @@ final class Strings
         return bucket == null ?
                 new String[]{} :
                 bucket.toArray(String[]::new);
+    }
+    
+    /**
+     * Similar to {@link String#contains(CharSequence)}, except without regards
+     * to casing.
+     * 
+     * @param str left operand
+     * @param substr right operand
+     * 
+     * @return {@code true} if {@code str} contains {@code substr},
+     *         otherwise {@code false}
+     * 
+     * @throws NullPointerException if any arg is {@code null}
+     */
+    public static boolean containsIgnoreCase(String str, String substr) {
+        // Sourced from:
+        // https://github.com/apache/commons-lang/blob/c1a0c26c305919c698196b857899e7e4725b0c45/src/main/java/org/apache/commons/lang3/StringUtils.java#L1238
+        final int len = substr.length(),
+                  max = str.length() - len;
+        
+        for (int i = 0; i <= max; i++) {
+            if (str.regionMatches(true, i, substr, 0, len)) {
+                return true;
+            }
+        }
+        return false;
     }
 }
