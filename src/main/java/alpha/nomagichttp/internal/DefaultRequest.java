@@ -1,7 +1,6 @@
 package alpha.nomagichttp.internal;
 
 import alpha.nomagichttp.HttpConstants.Version;
-import alpha.nomagichttp.handler.ClientChannel;
 import alpha.nomagichttp.message.MediaType;
 import alpha.nomagichttp.message.PooledByteBufferHolder;
 import alpha.nomagichttp.message.Request;
@@ -53,7 +52,6 @@ final class DefaultRequest implements Request
     private final CompletionStage<Void> bodyStage;
     private final Body bodyApi;
     private final OnCancelDiscardOp bodyDiscard;
-    private final ClientChannel child;
     private final Attributes attributes;
     
     DefaultRequest(
@@ -91,7 +89,6 @@ final class DefaultRequest implements Request
             bodyApi = DefaultBody.of(headers(), bodyDiscard);
         }
         
-        this.child = child;
         this.attributes = new DefaultAttributes();
     }
     
