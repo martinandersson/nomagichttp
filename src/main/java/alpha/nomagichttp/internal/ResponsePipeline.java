@@ -144,8 +144,7 @@ final class ResponsePipeline implements Flow.Publisher<ResponsePipeline.Result>
     
     private Response inFlight = null;
     private boolean wroteFinal = false;
-    private int n100continue = 1;
-    private static final Throwable IGNORE = new Throwable();
+    private int n100continue = 0;
     
     private CompletionStage<ResponseBodySubscriber.Result> subscribeToResponse(Response r) {
         if (wroteFinal) {
@@ -159,7 +158,7 @@ final class ResponsePipeline implements Flow.Publisher<ResponsePipeline.Result>
             }
             if (r.statusCode() == ONE_HUNDRED && ++n100continue > 1) {
                 LOG.log(n100continue == 2 ? DEBUG : WARNING, "Ignoring repeated 100 (Continue).");
-                return failedStage(IGNORE);
+                return failedStage(new AssertionError("Ignored"));
             }
         }
         inFlight = r;
@@ -171,7 +170,7 @@ final class ResponsePipeline implements Flow.Publisher<ResponsePipeline.Result>
     }
     
     private void handleChannelResult(ResponseBodySubscriber.Result res, Throwable thr) {
-        if (thr == IGNORE) {
+        if (n100continue > 1) {
             return;
         }
         Response r = inFlight;

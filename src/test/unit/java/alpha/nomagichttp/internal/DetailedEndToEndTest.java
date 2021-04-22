@@ -252,6 +252,30 @@ class DetailedEndToEndTest extends AbstractEndToEndTest
             "Received HTTP/1.0");
     }
     
+    @Test
+    void expect100Continue_onFirstBodyAccess() throws IOException {
+        server().add("/", POST().apply(req ->
+                req.body().toText().thenApply(Responses::text)));
+        
+        String req = "POST / HTTP/1.1"          + CRLF +
+                     "Expect: 100-continue"     + CRLF +
+                     "Content-Length: 2"        + CRLF +
+                     "Content-Type: text/plain" + CRLF + CRLF +
+                     
+                     "Hi";
+        
+        String rsp = client().writeRead(req, "Hi");
+        
+        assertThat(rsp).isEqualTo(
+                "HTTP/1.1 100 Continue"                   + CRLF + CRLF +
+                
+                "HTTP/1.1 200 OK"                         + CRLF +
+                "Content-Type: text/plain; charset=utf-8" + CRLF +
+                "Content-Length: 2"                       + CRLF + CRLF +
+                
+                "Hi");
+    }
+    
     /**
      * Add a "/" endpoint which responds a body with the value of {@link
      * Request.Body#isEmpty()}
