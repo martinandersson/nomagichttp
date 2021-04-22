@@ -66,12 +66,21 @@ public interface ClientChannel extends Closeable
      * 
      * <ul>
      *   <li>A final response has already been transmitted (in parts or in
-     *       whole); the HTTP exchange is no longer active.</li>
+     *       whole), i.e. the HTTP exchange is no longer active.</li>
      *   <li>The response status-code is 1XX and HTTP version used is {@literal <} 1.1.</li>
      * </ul><p>
      * 
      * If the response is rejected, a {@link ResponseRejectedException} will
-     * pass through the server's chain of {@link ErrorHandler error handlers}.
+     * pass through the server's chain of {@link ErrorHandler error
+     * handlers}.<p>
+     * 
+     * The {@link HttpServer.Config#ignoreRejectedInformational() default server
+     * behavior} is to ignore failed 1XX (Informational) responses if the reason
+     * is because the HTTP client is using an old protocol version.<p>
+     * 
+     * Only at most one 100 (Continue) response will be sent. Repeated 100
+     * (Continue) responses will be ignored. Attempts to send more than two will
+     * log a warning on each offense.
      * 
      * @param response the response
      * 

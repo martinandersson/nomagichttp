@@ -11,6 +11,7 @@ import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ConcurrentLinkedDeque;
 import java.util.concurrent.Flow;
 
+import static alpha.nomagichttp.HttpConstants.StatusCode.ONE_HUNDRED;
 import static alpha.nomagichttp.HttpConstants.Version.HTTP_1_1;
 import static alpha.nomagichttp.handler.ResponseRejectedException.Reason.EXCHANGE_NOT_ACTIVE;
 import static alpha.nomagichttp.handler.ResponseRejectedException.Reason.PROTOCOL_NOT_SUPPORTED;
@@ -18,6 +19,7 @@ import static alpha.nomagichttp.util.Subscriptions.noop;
 import static java.lang.System.Logger.Level.DEBUG;
 import static java.lang.System.Logger.Level.WARNING;
 import static java.util.Objects.requireNonNull;
+import static java.util.concurrent.CompletableFuture.failedStage;
 
 /**
  * Enqueues responses and schedules them to be written out on a client
@@ -142,15 +144,23 @@ final class ResponsePipeline implements Flow.Publisher<ResponsePipeline.Result>
     
     private Response inFlight = null;
     private boolean wroteFinal = false;
+    private int n100continue = 1;
+    private static final Throwable IGNORE = new Throwable();
     
     private CompletionStage<ResponseBodySubscriber.Result> subscribeToResponse(Response r) {
         if (wroteFinal) {
             throw new ResponseRejectedException(r, EXCHANGE_NOT_ACTIVE,
                     "Final response already written.");
         }
-        if (r.isInformational() && exch.getHttpVersion().isLessThan(HTTP_1_1)) {
-            throw new ResponseRejectedException(r, PROTOCOL_NOT_SUPPORTED,
-                    exch.getHttpVersion() + " does not support 1XX (Informational) responses.");
+        if (r.isInformational()) {
+            if (exch.getHttpVersion().isLessThan(HTTP_1_1)) {
+                throw new ResponseRejectedException(r, PROTOCOL_NOT_SUPPORTED,
+                        exch.getHttpVersion() + " does not support 1XX (Informational) responses.");
+            }
+            if (r.statusCode() == ONE_HUNDRED && ++n100continue > 1) {
+                LOG.log(n100continue == 2 ? DEBUG : WARNING, "Ignoring repeated 100 (Continue).");
+                return failedStage(IGNORE);
+            }
         }
         inFlight = r;
         wroteFinal = r.isFinal();
@@ -161,6 +171,9 @@ final class ResponsePipeline implements Flow.Publisher<ResponsePipeline.Result>
     }
     
     private void handleChannelResult(ResponseBodySubscriber.Result res, Throwable thr) {
+        if (thr == IGNORE) {
+            return;
+        }
         Response r = inFlight;
         inFlight = null;
         if (res != null) {

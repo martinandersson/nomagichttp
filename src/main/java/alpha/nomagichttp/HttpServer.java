@@ -616,18 +616,15 @@ public interface HttpServer
          * By default, this method returns {@code false} and the server will
          * therefore accept HTTP/1.0 clients.<p>
          * 
-         * Rejection takes places through a server-thrown {@link
+         * Rejection takes place through a server-thrown {@link
          * HttpVersionTooOldException} which by default gets translated to a
          * "426 Upgrade Required" response.<p>
          * 
-         * Apart from not having all HTTP/1.1 features available for the
-         * exchange, HTTP/1.0 does not by default support persistent connections
-         * and may as a consequence be a wasteful protocol.<p>
-         * 
-         * In order to minimize waste, it's recommended to override this value
-         * with {@code true}. As a library however, we have to be backwards
-         * compatible and support as many applications as possible "out of the
-         * box", hence the {@code false} default.<p>
+         * HTTP/1.0 does not by default support persistent connections and may
+         * as a consequence be a wasteful protocol. It's recommended to override
+         * this value with {@code true}. As a library however, we have to be
+         * backwards compatible and support as many applications as possible
+         * "out of the box", hence the {@code false} default.<p>
          * 
          * The configuration value will be polled at the beginning of each HTTP
          * exchange.<p>
@@ -646,18 +643,20 @@ public interface HttpServer
         
         /**
          * Ignore rejected 1XX (Informational) responses when they fail to be
-         * sent to an HTTP/1.0 client. The default value is {@code true} and the
-         * application can safely send 1XX (Informational) responses without
-         * concern for old clients.<p>
+         * sent to an HTTP/1.0 client.<p>
+         * 
+         * The default value is {@code true} and the application can safely
+         * write 1XX (Informational) responses to the channel without concern
+         * for old incompatible clients.<p>
          * 
          * If this option is disabled (changed to return false), then the
          * default error handler will instead of ignoring the failure, write a
          * final 500 (Internal Server Error) response as an alternative to the
          * failed response, meaning that the application will then not be able
-         * to write its intended final response. This means that the application
-         * would then have to query the active HTTP exchange version ({@link
-         * Request#httpVersion()}) and not attempt to send interim responses to
-         * HTTP/1.0 clients.<p>
+         * to write its intended final response. This also means that the
+         * application would have to query the active HTTP version ({@link
+         * Request#httpVersion()}) and restrain itself from attempting to send
+         * interim responses to HTTP/1.0 clients.<p>
          * 
          * The configuration value will be polled by the {@link
          * ErrorHandler#DEFAULT default error handler} for each handled relevant
@@ -671,6 +670,38 @@ public interface HttpServer
          */
         default boolean ignoreRejectedInformational() {
             return true;
+        }
+        
+        /**
+         * Immediately respond a 100 (Continue) interim response to a request
+         * with a {@code Expect: 100-continue} header.<p>
+         * 
+         * By default, this value is {@code false} leaving the client and
+         * application in control.<p>
+         * 
+         * Even when {@code false}, the server will respond a 100 (Continue)
+         * response to the client on first access of a non-empty request body
+         * (all methods in {@link Request.Body} except {@link
+         * Request.Body#isEmpty()}) unless one has already been sent. This is
+         * convenient for the application developer who does not need to know
+         * anything about this particular protocol feature.<p>
+         * 
+         * Independent of the configured value, the server never attempts to
+         * automatically send a 100 (Continue) response to a HTTP/1.0 client (
+         * <a href="https://tools.ietf.org/html/rfc7231#section-5.1.1">RFC 7231 §5.1.1</a>).<p>
+         * 
+         * The configuration value is polled once on each new request.
+         * 
+         * @implSpec
+         * The default implementation returns {@code false}.
+         * 
+         * @return whether or not to immediately respond a 100 (Continue)
+         *         interim response to a request with a {@code Expect: 100-continue} header
+         * 
+         * @see HttpConstants.StatusCode#ONE_HUNDRED
+         */
+        default boolean immediatelyContinueExpect100() {
+            return false;
         }
     }
 }

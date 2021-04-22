@@ -435,16 +435,29 @@ public final class HttpConstants {
          * {@value} {@value ReasonPhrase#CONTINUE}.<p>
          * 
          * The server has received the request headers and accepted them, the
-         * client may proceed to transmit the request body. Used by clients to
-         * invoke an artificial pause in order to avoid transmitting data in
-         * case the request would have been rejected anyways. The client must
-         * signal his pause by including an {@link HeaderKey#EXPECT Expect:
-         * 100-continue} header in the request.<p>
+         * client may proceed to transmit the request body.<p>
          * 
-         * Currently, the NoMagicHTTP server does not auto-respond a 101 interim
-         * response to a waiting client, although future work is planned to
-         * arrange for this in a smart, transparent and configurable way.
+         * A client may add an {@link HeaderKey#EXPECT Expect: 100-continue}
+         * header in the request and after having transmitted the request head,
+         * wait momentarily for either a rejection of the message or a 100
+         * (Continue) response which triggers the client to proceed transmitting
+         * the request body.<p>
          * 
+         * As an example, Curl will send the Expect header if the payload for a
+         * PUT or POST request exceeds 1024 bytes, waiting by default 1 second
+         * before proceeding.<p>
+         * 
+         * The idea is to not have to transmit large bodies unnecessarily, at
+         * the expense of a connection re-connect. Why a connection re-connect?
+         * Because the server must assume that trailing bytes on the wire
+         * belong to the rejected body. There's no "message rollback" in HTTP.
+         * The only options the server has is to either read and discard the
+         * message, or close the connection. And so - since the body is
+         * presumably large - the most sane thing for the server to do when
+         * rejecting requests carrying the {@code Expect: 100-continue} header
+         * is to also close the connection.
+         * 
+         * @see HttpServer.Config#immediatelyContinueExpect100() 
          * @see <a href="https://tools.ietf.org/html/rfc7231#section-6.2.1">RFC 7231 §6.2.1</a>
          */
         public static final int ONE_HUNDRED = 100;

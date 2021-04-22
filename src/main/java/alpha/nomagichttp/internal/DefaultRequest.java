@@ -61,7 +61,9 @@ final class DefaultRequest implements Request
             RequestTarget paramsQuery,
             RouteRegistry.Match paramsPath,
             Flow.Publisher<DefaultPooledByteBufferHolder> bodySource,
-            DefaultClientChannel child)
+            DefaultClientChannel child,
+            // TODO: Remove this in favor of a real event mechanism
+            Runnable onBodySubscription)
     {
         this.ver = ver;
         this.head = head;
@@ -87,7 +89,7 @@ final class DefaultRequest implements Request
             bodyDiscard = new OnCancelDiscardOp(onError);
             
             bodyStage = observe.asCompletionStage();
-            bodyApi = DefaultBody.of(headers(), bodyDiscard);
+            bodyApi = DefaultBody.of(headers(), bodyDiscard, onBodySubscription);
         }
         
         this.attributes = new DefaultAttributes();
@@ -175,24 +177,26 @@ final class DefaultRequest implements Request
         private final HttpHeaders headers;
         private final Flow.Publisher<PooledByteBufferHolder> source;
         private final AtomicReference<CompletionStage<String>> cachedText;
+        private final Runnable onBodySubscription;
         
         static Request.Body empty(HttpHeaders headers) {
             // Even an empty body must still validate the arguments,
             // for example toText() may complete with IllegalCharsetNameException.
             requireNonNull(headers);
-            return new DefaultBody(headers, null);
+            return new DefaultBody(headers, null, null);
         }
         
-        static Request.Body of(HttpHeaders headers, Flow.Publisher<PooledByteBufferHolder> source) {
+        static Request.Body of(HttpHeaders headers, Flow.Publisher<PooledByteBufferHolder> source, Runnable onBodySubscription) {
             requireNonNull(headers);
             requireNonNull(source);
-            return new DefaultBody(headers, source);
+            return new DefaultBody(headers, source, onBodySubscription);
         }
         
-        private DefaultBody(HttpHeaders headers, Flow.Publisher<PooledByteBufferHolder> source) {
+        private DefaultBody(HttpHeaders headers, Flow.Publisher<PooledByteBufferHolder> source, Runnable onBodySubscription) {
             this.headers = headers;
             this.source  = source;
             this.cachedText = new AtomicReference<>(null);
+            this.onBodySubscription = onBodySubscription;
         }
         
         @Override
@@ -255,6 +259,9 @@ final class DefaultRequest implements Request
             if (isEmpty()) {
                 Publishers.<PooledByteBufferHolder>empty().subscribe(subscriber);
             } else {
+                if (onBodySubscription != null) {
+                    onBodySubscription.run();
+                }
                 source.subscribe(subscriber);
             }
         }

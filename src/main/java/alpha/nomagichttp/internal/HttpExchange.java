@@ -15,9 +15,11 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
 import java.util.concurrent.CompletionStage;
 
+import static alpha.nomagichttp.HttpConstants.HeaderKey.EXPECT;
 import static alpha.nomagichttp.HttpConstants.Method.TRACE;
 import static alpha.nomagichttp.HttpConstants.Version.HTTP_1_0;
 import static alpha.nomagichttp.HttpConstants.Version.HTTP_1_1;
+import static alpha.nomagichttp.message.Responses.continue_;
 import static alpha.nomagichttp.util.Headers.accept;
 import static alpha.nomagichttp.util.Headers.contentType;
 import static alpha.nomagichttp.util.Subscribers.onNext;
@@ -55,6 +57,7 @@ final class HttpExchange
     private Version ver;
     private DefaultRequest request;
     private RequestHandler handler;
+    private boolean sent100c;
     private ErrorResolver onError;
     
     HttpExchange(
@@ -74,6 +77,7 @@ final class HttpExchange
         this.ver      = HTTP_1_1; // <-- default until updated
         this.request  = null;
         this.handler  = null;
+        this.sent100c = false;
         this.onError  = null;
     }
     
@@ -113,6 +117,8 @@ final class HttpExchange
         bytes.subscribe(rhs);
         rhs.asCompletionStage()
            .thenAccept(this::initialize)
+           .thenRun(() -> { if (config.immediatelyContinueExpect100())
+               tryRespond100Continue(); })
            .thenRun(this::invokeRequestHandler)
            .exceptionally(thr -> {
                handleError(thr);
@@ -173,7 +179,7 @@ final class HttpExchange
     }
     
     private DefaultRequest createRequest(RequestHead h, RequestTarget t, RouteRegistry.Match m) {
-        DefaultRequest r = new DefaultRequest(ver, h, t, m, bytes, chan);
+        DefaultRequest r = new DefaultRequest(ver, h, t, m, bytes, chan, this::tryRespond100Continue);
         if (r.method().equals(TRACE) && r.body().isEmpty()) {
             throw new IllegalBodyException("Body in a TRACE request.", r);
         }
@@ -188,6 +194,16 @@ final class HttpExchange
         
         LOG.log(DEBUG, () -> "Matched handler: " + h);
         return h;
+    }
+    
+    private void tryRespond100Continue() {
+        if (!sent100c &&
+            !getHttpVersion().isLessThan(HTTP_1_1) &&
+            request.headerContains(EXPECT, "100-continue"))
+        {
+            sent100c = true;
+            chan.write(continue_());
+        }
     }
     
     private void invokeRequestHandler() {
@@ -212,7 +228,7 @@ final class HttpExchange
             LOG.log(DEBUG, "Response sent is final. Preparing new HTTP exchange.");
             prepareForNewExchange();
         } else {
-            LOG.log(DEBUG, "Response sent was not final. HTTP exchange remains active.");
+            LOG.log(DEBUG, "Response sent is not final. HTTP exchange remains active.");
         }
     }
     

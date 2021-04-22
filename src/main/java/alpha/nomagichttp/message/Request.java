@@ -647,8 +647,8 @@ public interface Request
      * also close the read stream (the write stream remains untouched so that a
      * response in-flight can complete).<p>
      * 
-     * Exceptions signalled to {@code Subscriber.onError()} that are not
-     * <i>caused by</i> the subscriber itself can safely be assumed to indicate
+     * Exceptions signalled to {@code Subscriber.onError()} that are <i>not
+     * caused by</i> the subscriber itself can safely be assumed to indicate
      * low-level problems with the underlying channel. They will also have been
      * logged by the HTTP server followed suite by read-stream closure.<p>
      * 
