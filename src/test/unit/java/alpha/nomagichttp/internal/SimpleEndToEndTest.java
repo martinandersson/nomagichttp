@@ -11,7 +11,6 @@ import java.nio.file.Path;
 
 import static alpha.nomagichttp.handler.RequestHandler.GET;
 import static alpha.nomagichttp.handler.RequestHandler.POST;
-import static alpha.nomagichttp.message.Responses.accepted;
 import static alpha.nomagichttp.message.Responses.processing;
 import static alpha.nomagichttp.message.Responses.text;
 import static alpha.nomagichttp.testutil.ClientOperations.CRLF;
@@ -89,9 +88,10 @@ class SimpleEndToEndTest extends AbstractEndToEndTest
         server().add("/greet-body", echo);
         
         String req =
-            "POST /greet-body HTTP/1.1"         + CRLF +
-            "Accept: text/plain; charset=utf-8" + CRLF +
-            "Content-Length: 4"                 + CRLF + CRLF +
+            "POST /greet-body HTTP/1.1"               + CRLF +
+            "Accept: text/plain; charset=utf-8"       + CRLF +
+            "Content-Type: text/plain; charset=utf-8" + CRLF +
+            "Content-Length: 4"                       + CRLF + CRLF +
             
             "John";
         

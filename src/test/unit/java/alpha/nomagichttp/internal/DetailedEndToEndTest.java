@@ -286,10 +286,12 @@ class DetailedEndToEndTest extends AbstractEndToEndTest
      * @return the request
      */
     private static String requestWithBody(String body) {
-        return "POST / HTTP/1.1"                     + CRLF +
-               "Accept: text/plain; charset=utf-8"   + CRLF +
-               "Content-Length: " + body.length()    + CRLF + CRLF +
-                body;
+        return "POST / HTTP/1.1"                         + CRLF +
+               "Accept: text/plain; charset=utf-8"       + CRLF +
+               "Content-Type: text/plain; charset=utf-8" + CRLF +
+               "Content-Length: " + body.length()        + CRLF + CRLF +
+               
+               body;
     }
     
     @FunctionalInterface
