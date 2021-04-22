@@ -11,20 +11,28 @@ import org.junit.jupiter.api.Test;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.Channel;
+import java.util.List;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Flow;
 import java.util.concurrent.TimeoutException;
 import java.util.function.Consumer;
+import java.util.logging.LogRecord;
 
 import static alpha.nomagichttp.handler.RequestHandler.GET;
 import static alpha.nomagichttp.handler.RequestHandler.POST;
 import static alpha.nomagichttp.message.Responses.accepted;
+import static alpha.nomagichttp.message.Responses.continue_;
 import static alpha.nomagichttp.message.Responses.text;
 import static alpha.nomagichttp.testutil.ClientOperations.CRLF;
+import static alpha.nomagichttp.testutil.Logging.toJUL;
+import static java.lang.System.Logger.Level.DEBUG;
+import static java.lang.System.Logger.Level.WARNING;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static java.util.logging.Level.FINE;
 import static java.util.logging.Level.INFO;
+import static java.util.stream.Collectors.toList;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.tuple;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
@@ -274,6 +282,39 @@ class DetailedEndToEndTest extends AbstractEndToEndTest
                 "Content-Length: 2"                       + CRLF + CRLF +
                 
                 "Hi");
+    }
+    
+    // TODO: Respond 100 Continue thru config (subclass must expose config)
+    
+    @Test
+    void expect100Continue_repeatedIgnored() throws IOException {
+        server().add("/", GET().accept((req, ch) -> {
+            // In response to GET without Expect and no body - app gets what app wants.
+            ch.write(continue_());
+            ch.write(continue_());
+            ch.write(continue_());
+            ch.write(accepted());
+        }));
+        
+        String req = "GET / HTTP/1.1" + CRLF + CRLF;
+        String rsp = client().writeRead(req, "Content-Length: 0" + CRLF + CRLF);
+        
+        assertThat(rsp).isEqualTo(
+            "HTTP/1.1 100 Continue"  + CRLF + CRLF +
+            
+            "HTTP/1.1 202 Accepted"  + CRLF +
+            "Content-Length: 0"      + CRLF + CRLF);
+        
+        // Logging specified in JavaDoc of ClientChannel.write()
+        List<LogRecord> serverLog = stopLogRecording().collect(toList());
+        
+        assertThat(serverLog)
+            .extracting(LogRecord::getLevel, LogRecord::getMessage)
+            .containsOnlyOnce(
+                // First ignored 100 Continue silently logged
+                tuple(toJUL(DEBUG),   "Ignoring repeated 100 (Continue)."),
+                // But any more than that and level escalates
+                tuple(toJUL(WARNING), "Ignoring repeated 100 (Continue)."));
     }
     
     /**

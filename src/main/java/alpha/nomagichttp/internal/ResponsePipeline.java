@@ -171,6 +171,8 @@ final class ResponsePipeline implements Flow.Publisher<ResponsePipeline.Result>
     
     private void handleChannelResult(ResponseBodySubscriber.Result res, Throwable thr) {
         if (n100continue > 1) {
+            op.complete();
+            op.run();
             return;
         }
         Response r = inFlight;
