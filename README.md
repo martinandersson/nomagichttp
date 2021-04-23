@@ -99,9 +99,12 @@ previous Gradle build file. I.e., to run the first example, do:
         mainClass = 'alpha.nomagichttp.examples.HelloWorld'
     }
 
-For brevity, the example runs provided does not use Gradle and assume that the
-JAR file path and package have been provided by two environment variables
+For brevity, the example runs provided below does not use Gradle and assume that
+the JAR file path and package have been provided by two environment variables
 instead.
+
+    JAR=build/libs/nomagichttp-0.5-SNAPSHOT.jar
+    PKG=alpha.nomagichttp.examples
 
 It is recommended to follow the links in each example as the source code
 contains useful commentary that explains the API used.
