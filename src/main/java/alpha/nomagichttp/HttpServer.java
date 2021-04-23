@@ -82,7 +82,7 @@ import static java.net.InetAddress.getLoopbackAddress;
  * <h2>HTTP message semantics</h2>
  * 
  * Only a very few message variants are specified to <i>not</i> have a body and
- * will be rejected by the server if they do:
+ * will be rejected by the server if they do ({@link IllegalBodyException}):
  * 
  * <ul>
  *   <li>{@link HttpConstants.Method#TRACE TRACE} requests (
@@ -96,8 +96,7 @@ import static java.net.InetAddress.getLoopbackAddress;
  * </ul>
  * 
  * These variants <i>must</i> be rejected since including a body would have
- * likely killed the protocol (causes {@link IllegalBodyException} to be
- * thrown).<p>
+ * likely killed the protocol.<p>
  * 
  * For all other variants of requests and responses, the body is optional and
  * the server does not reject the message nor does the API enforce an
