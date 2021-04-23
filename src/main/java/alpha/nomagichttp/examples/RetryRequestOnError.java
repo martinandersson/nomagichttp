@@ -38,7 +38,10 @@ public class RetryRequestOnError
         // A very unstable request handler
         RequestHandler unstable = GET().respond(new MyUnstableResponseSupplier());
         
-        // The savior
+        // Note: Implementing a custom ErrorHandler is not hard! This library
+        // provided implementation essentially does only the following:
+        //     if (isOurHandledType(throwable))
+        //         requestHandler.logic().accept(request, channel);
         ErrorHandler retry = ErrorHandlers.delayedRetryOn(OptimisticLockException.class);
         
         HttpServer.create(retry).add("/", unstable).start(PORT);
