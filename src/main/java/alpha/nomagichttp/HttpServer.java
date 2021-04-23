@@ -54,7 +54,7 @@ import static java.net.InetAddress.getLoopbackAddress;
  * freedom in regards to how it interprets the request headers- and body as well
  * as what headers and body it responds.<p>
  * 
- * The process of receiving a request and respond responses (one or many
+ * The process of receiving a request and respond responses (any number of
  * intermittent responses, followed by a final response) is often called an
  * "exchange".
  * 
