@@ -51,7 +51,7 @@ public class HttpVersionTooNewException extends RuntimeException
      * 
      * @return the rejected version (never {@code null})
      */
-    public final String version() {
+    public final String getVersion() {
         return version;
     }
 }

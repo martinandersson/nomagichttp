@@ -1,7 +1,6 @@
 package alpha.nomagichttp.internal;
 
-import alpha.nomagichttp.HttpConstants;
-import alpha.nomagichttp.handler.ClientChannel;
+import alpha.nomagichttp.message.IllegalBodyException;
 import alpha.nomagichttp.message.Response;
 
 import java.nio.ByteBuffer;
@@ -9,7 +8,9 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.Flow;
 
+import static alpha.nomagichttp.HttpConstants.Method.HEAD;
 import static alpha.nomagichttp.internal.AnnounceToChannel.NO_MORE;
+import static alpha.nomagichttp.internal.ResponseBodySubscriber.Result;
 import static java.lang.String.join;
 import static java.lang.System.Logger.Level.DEBUG;
 import static java.lang.System.Logger.Level.ERROR;
@@ -22,8 +23,31 @@ import static java.util.Objects.requireNonNull;
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  */
-final class ResponseBodySubscriber implements SubscriberAsStage<ByteBuffer, Long>
+final class ResponseBodySubscriber implements SubscriberAsStage<ByteBuffer, Result>
 {
+    /**
+     * The result of this subscriber, as a stage.
+     * 
+     * @see #asCompletionStage()
+     */
+    static final class Result {
+        private final Response rsp;
+        private final long len;
+        
+        private Result(Response rsp, long len) {
+            this.rsp = rsp;
+            this.len = len;
+        }
+        
+        Response response() {
+            return rsp;
+        }
+        
+        long bytesWritten() {
+            return len;
+        }
+    }
+    
     private static final System.Logger LOG
             = System.getLogger(ResponseBodySubscriber.class.getPackageName());
     
@@ -37,27 +61,28 @@ final class ResponseBodySubscriber implements SubscriberAsStage<ByteBuffer, Long
             // Maximum bytebuffer demand.
             DEMAND_MAX = 3;
     
-    private final HttpConstants.Version ver;
-    private final Response res;
+    private final Response resp;
+    private final HttpExchange exch;
     private final AnnounceToChannel ch;
-    private final CompletableFuture<Long> result;
+    private final CompletableFuture<Result> result;
     
     private Flow.Subscription subscription;
     private boolean pushedHead;
     private int requested;
     
-    ResponseBodySubscriber(HttpConstants.Version ver, Response res, DefaultClientChannel ch) {
-        this.ver = requireNonNull(ver);
-        this.res = requireNonNull(res);
+    ResponseBodySubscriber(Response resp, HttpExchange exch, DefaultClientChannel ch) {
+        this.resp   = requireNonNull(resp);
+        this.exch   = requireNonNull(exch);
         this.result = new CompletableFuture<>();
-        this.ch  = AnnounceToChannel.write(ch, this::afterChannelFinished);
+        this.ch     = AnnounceToChannel.write(ch, this::afterChannelFinished);
     }
     
     /**
      * Returns the response-body-to-channel write process as a stage.<p>
      * 
      * The returned stage completes normally when the last byte has been written
-     * to the channel. The result is a byte count of all bytes written.<p>
+     * to the channel. The result container has a reference to the response
+     * written as well as a count of all bytes written.<p>
      * 
      * Errors passed down from the source publisher (the response) as well as
      * errors related to the channel write operations completes the returned
@@ -76,7 +101,7 @@ final class ResponseBodySubscriber implements SubscriberAsStage<ByteBuffer, Long
      * @return the response-body-to-channel write process as a stage
      */
     @Override
-    public CompletionStage<Long> asCompletionStage() {
+    public CompletionStage<Result> asCompletionStage() {
         return result;
     }
     
@@ -94,6 +119,14 @@ final class ResponseBodySubscriber implements SubscriberAsStage<ByteBuffer, Long
         }
         
         if (!pushedHead) {
+            if (exch.getRequest().method().equalsIgnoreCase(HEAD)) {
+                var e = new IllegalBodyException(
+                        "Body in response to a HEAD request.", exch.getRequest());
+                result.completeExceptionally(e);
+                subscription.cancel();
+                return;
+            }
+            
             pushHead();
         }
         
@@ -130,9 +163,9 @@ final class ResponseBodySubscriber implements SubscriberAsStage<ByteBuffer, Long
     }
     
     private void pushHead() {
-        final String phra = res.reasonPhrase() == null ? "" : res.reasonPhrase(),
-                     line = ver + SP + res.statusCode() + SP + phra + CRLF,
-                     vals = join(CRLF, res.headers()),
+        final String phra = resp.reasonPhrase() == null ? "" : resp.reasonPhrase(),
+                     line = exch.getHttpVersion() + SP + resp.statusCode() + SP + phra + CRLF,
+                     vals = join(CRLF, resp.headers()),
                      head = line + (vals.isEmpty() ? CRLF : vals + CRLF + CRLF);
         
         ByteBuffer b = ByteBuffer.wrap(head.getBytes(US_ASCII));
@@ -143,7 +176,7 @@ final class ResponseBodySubscriber implements SubscriberAsStage<ByteBuffer, Long
     private void afterChannelFinished(DefaultClientChannel child, long byteCount, Throwable exc) {
         if (exc == null) {
             assert byteCount > 0;
-            result.complete(byteCount);
+            result.complete(new Result(resp, byteCount));
         } else {
             if (byteCount > 0) {
                 LOG.log(ERROR, "Failed writing all of the response to channel. Will close the output stream.", exc);

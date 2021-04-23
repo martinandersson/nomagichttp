@@ -25,16 +25,19 @@ public class HelloWorld
         HttpServer app = HttpServer.create();
         
         // All requests coming in to the server expects a Response in return
-        // (Response is immutable and so can be cached/shared when possible)
         Response answer = Responses.text("Hello World!");
         
         // This handler serves requests of the HTTP verb/method GET. The factory
-        // method respond() accepts an already built Response. Other overloads
-        // exist for accessing the request and client channel directly.
+        // method respond() accepts a Response and has no access to the inbound
+        // request or client channel objects. This is sufficient for simple
+        // handlers. For more advanced use cases, use apply(Request) or
+        // accept(Request, ClientChannel). In the end, they all do the same
+        // thing which is to write a response to the client channel.
         RequestHandler handler = RequestHandler.GET().respond(answer);
         
         // The real content of the server are resources, addressed by a request path.
-        // (just as with Response, the handler too is immutable and can be shared)
+        // Most types such as Response, RequestHandler and Route are both
+        // thread-safe and immutable. They may be freely cached/shared.
         app.add("/hello", handler);
         
         /*

@@ -21,6 +21,8 @@ import static alpha.nomagichttp.HttpConstants.StatusCode.FOUR_HUNDRED;
 import static alpha.nomagichttp.HttpConstants.StatusCode.FOUR_HUNDRED_FOUR;
 import static alpha.nomagichttp.HttpConstants.StatusCode.FOUR_HUNDRED_THIRTEEN;
 import static alpha.nomagichttp.HttpConstants.StatusCode.FOUR_HUNDRED_TWENTY_SIX;
+import static alpha.nomagichttp.HttpConstants.StatusCode.ONE_HUNDRED;
+import static alpha.nomagichttp.HttpConstants.StatusCode.ONE_HUNDRED_TWO;
 import static alpha.nomagichttp.HttpConstants.StatusCode.TWO_HUNDRED;
 import static alpha.nomagichttp.HttpConstants.StatusCode.TWO_HUNDRED_FOUR;
 import static alpha.nomagichttp.HttpConstants.StatusCode.TWO_HUNDRED_TWO;
@@ -34,10 +36,19 @@ import static java.net.http.HttpRequest.BodyPublishers;
 /**
  * Factories of {@link Response}s.<p>
  * 
+ * Even though this class produces ready-built responses, further modifications
+ * of the response is easy to accomplish using {@code toBuilder()}.
+ * 
+ * <pre>
+ *   Response status = Responses.processing() // 102 (Processing)
+ *                              .toBuilder()
+ *                              .header("Progress", "45%")
+ *                              .build();
+ * </pre>
+ * 
  * <strong>WARNING:</strong> Using {@link BodyPublishers} to create the response
  * body may not be thread-safe where thread-safety matters or may block the HTTP
- * server thread. Consider using {@link BetterBodyPublishers} instead. See
- * {@link Response.Builder#body(Flow.Publisher)}.
+ * server thread. Consider using {@link BetterBodyPublishers} instead.
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  */
@@ -48,9 +59,31 @@ public final class Responses
     }
     
     /**
-     * Returns a "204 No Content"-response with no body.
+     * Returns a 100 (Continue) interim response.
      * 
-     * @return a "204 No Content" response
+     * @return a 100 (Continue) response
+     * 
+     * @see StatusCode#ONE_HUNDRED
+     */
+    public static Response continue_() {
+        return ResponseCache.CONTINUE;
+    }
+    
+    /**
+     * Returns a 102 (Processing) interim response.
+     *
+     * @return a 102 (Processing) response
+     *
+     * @see StatusCode#ONE_HUNDRED_TWO
+     */
+    public static Response processing() {
+        return ResponseCache.PROCESSING;
+    }
+    
+    /**
+     * Returns a 204 (No Content) response with no body.
+     * 
+     * @return a 204 (No Content) response
      * 
      * @see StatusCode#TWO_HUNDRED_FOUR
      */
@@ -59,12 +92,12 @@ public final class Responses
     }
     
     /**
-     * Returns a "200 OK"-response with a text body.<p>
+     * Returns a 200 (OK) response with a text body.<p>
      * 
      * The content-type header will be set to "text/plain; charset=utf-8".
      * 
      * @param   textPlain message body
-     * @return  a "200 OK"-response
+     * @return  a 200 (OK) response
      * @see     StatusCode#TWO_HUNDRED
      */
     public static Response text(String textPlain) {
@@ -72,12 +105,12 @@ public final class Responses
     }
     
     /**
-     * Returns a "200 OK"-response with a HTML body.<p>
+     * Returns a 200 (OK) response with a HTML body.<p>
      * 
      * The content-type header will be set to "text/html; charset=utf-8".
      * 
      * @param   textHtml message body
-     * @return  a "200 OK"-response
+     * @return  a 200 (OK) response
      * @see     StatusCode#TWO_HUNDRED
      */
     public static Response html(String textHtml) {
@@ -85,12 +118,12 @@ public final class Responses
     }
     
     /**
-     * Returns a "200 OK"-response with a JSON body.<p>
+     * Returns a 200 (OK) response with a JSON body.<p>
      * 
      * The content-type header will be set to "application/json; charset=utf-8".
      * 
      * @param   json message body
-     * @return  a "200 OK"-response
+     * @return  a 200 (OK) response
      * @see     StatusCode#TWO_HUNDRED
      */
     public static Response json(String json) {
@@ -98,13 +131,13 @@ public final class Responses
     }
     
     /**
-     * Returns a "200 OK"-response with the given body.<p>
+     * Returns a 200 (OK) response with the given body.<p>
      * 
      * The content-type will be set to "application/octet-stream".
      * 
      * @param body data
      * 
-     * @return a "200 OK"-response
+     * @return a 200 (OK) response
      *
      * @see StatusCode#TWO_HUNDRED
      */
@@ -113,12 +146,12 @@ public final class Responses
     }
     
     /**
-     * Returns a "200 OK"-response with the given body.<p>
+     * Returns a 200 (OK) response with the given body.<p>
      * 
      * @param body data
      * @param contentType header value
      * 
-     * @return a "200 OK"-response
+     * @return a 200 (OK) response
      * 
      * @throws MediaTypeParseException
      *             if content-type failed to {@linkplain MediaType#parse(CharSequence) parse}
@@ -131,22 +164,23 @@ public final class Responses
     }
     
     /**
-     * Returns a "200 OK"-response with the given body.<p>
+     * Returns a 200 (OK) response with the given body.<p>
      * 
      * @param body data
      * @param contentType header value
      * 
-     * @return a "200 OK"-response
+     * @return a 200 (OK) response
      * 
      * @see StatusCode#TWO_HUNDRED
      * @see HttpConstants.HeaderKey#CONTENT_TYPE
      */
     public static Response ok(BodyPublisher body, MediaType contentType) {
+        // TODO: body.contentLength() may return < 0 for "unknown length"
         return ok(body, contentType, body.contentLength());
     }
     
     /**
-     * Returns a "200 OK"-response with the given body.<p>
+     * Returns a 200 (OK) response with the given body.<p>
      * 
      * The server subscribing to the response body does not limit his
      * subscription based on the given length value. The value must be equal to
@@ -156,7 +190,7 @@ public final class Responses
      * @param contentType header value
      * @param contentLength header value
      * 
-     * @return a "200 OK"-response
+     * @return a 200 (OK) response
      * 
      * @throws MediaTypeParseException
      *             if content-type failed to {@linkplain MediaType#parse(CharSequence) parse}
@@ -170,7 +204,7 @@ public final class Responses
     }
     
     /**
-     * Returns a "200 OK"-response with the given body.<p>
+     * Returns a 200 (OK) response with the given body.<p>
      * 
      * The server subscribing to the response body does not limit his
      * subscription based on the given length value. The value must be equal to
@@ -180,7 +214,7 @@ public final class Responses
      * @param contentType header value
      * @param contentLength header value
      * 
-     * @return a "200 OK"-response
+     * @return a 200 (OK) response
      * 
      * @see StatusCode#TWO_HUNDRED
      * @see HttpConstants.HeaderKey#CONTENT_TYPE
@@ -195,9 +229,9 @@ public final class Responses
     }
     
     /**
-     * Returns a "202 Accepted"-response with no body.
+     * Returns a 202 (Accepted) response with no body.
      * 
-     * @return  a "202 Accepted"
+     * @return  a 202 (Accepted)
      * @see    StatusCode#TWO_HUNDRED_TWO
      */
     public static Response accepted() {
@@ -205,12 +239,12 @@ public final class Responses
     }
     
     /**
-     * Returns a "400 Bad Request"-response with no body.<p>
+     * Returns a 400 (Bad Request) response with no body.<p>
      * 
      * The response will {@linkplain Response#mustCloseAfterWrite() close the
      * client channel} after having been sent.
      * 
-     * @return  a "400 Bad Request"-response
+     * @return  a 400 (Bad Request) response
      * @see     StatusCode#FOUR_HUNDRED
      */
     public static Response badRequest() {
@@ -218,12 +252,12 @@ public final class Responses
     }
     
     /**
-     * Returns a "404 Not Found"-response with no body.<p>
+     * Returns a 404 (Not Found) response with no body.<p>
      * 
      * The response will {@linkplain Response#mustCloseAfterWrite() close the
      * client channel} after having been sent.
      * 
-     * @return a "404 Not Found"
+     * @return a 404 (Not Found)
      * @see     StatusCode#FOUR_HUNDRED_FOUR
      */
     public static Response notFound() {
@@ -231,12 +265,12 @@ public final class Responses
     }
     
     /**
-     * Returns a "413 Entity Too Large"-response with no body.<p>
+     * Returns a 413 (Entity Too Large) response with no body.<p>
      * 
      * The response will {@linkplain Response#mustCloseAfterWrite() close the
      * client channel} after having been sent.
      * 
-     * @return  a "413 Entity Too Large"
+     * @return  a 413 (Entity Too Large)
      * @see    StatusCode#FOUR_HUNDRED_THIRTEEN
      */
     public static Response entityTooLarge() {
@@ -244,12 +278,12 @@ public final class Responses
     }
     
     /**
-     * Returns a "500 Internal Server Error"-response with no body.<p>
+     * Returns a 500 (Internal Server Error) response with no body.<p>
      * 
      * The response will {@linkplain Response#mustCloseAfterWrite() close the
      * client channel} after having been sent.
      * 
-     * @return  a "500 Internal Server Error"-response
+     * @return  a 500 (Internal Server Error) response
      * @see     StatusCode#FIVE_HUNDRED
      */
     public static Response internalServerError() {
@@ -257,12 +291,12 @@ public final class Responses
     }
     
     /**
-     * Returns a "501 Not Implemented"-response with no body.<p>
+     * Returns a 501 (Not Implemented) response with no body.<p>
      * 
      * The response will {@linkplain Response#mustCloseAfterWrite() close the
      * client channel} after having been sent.
      * 
-     * @return  a "501 Not Implemented"-response
+     * @return  a 501 (Not Implemented) response
      * @see     StatusCode#FIVE_HUNDRED_ONE
      */
     public static Response notImplemented() {
@@ -270,13 +304,13 @@ public final class Responses
     }
     
     /**
-     * Returns a "426 Upgrade Required"-response with no body.<p>
+     * Returns a 426 (Upgrade Required) response with no body.<p>
      * 
      * The response will {@linkplain Response#mustCloseAfterWrite() close the
      * client channel} after having been sent.
      * 
      * @param   upgrade header value (proposition for new protocol version)
-     * @return  a "426 Upgrade Required"-response
+     * @return  a 426 (Upgrade Required) response
      * @see     StatusCode#FOUR_HUNDRED_TWENTY_SIX
      */
     public static Response upgradeRequired(String upgrade) {
@@ -290,12 +324,12 @@ public final class Responses
     }
     
     /**
-     * Returns a "505 HTTP Version Not Supported"-response with no body.<p>
+     * Returns a 505 (HTTP Version Not Supported) response with no body.<p>
      * 
      * The response will {@linkplain Response#mustCloseAfterWrite() close the
      * client channel} after having been sent.
      * 
-     * @return  a "505 HTTP Version Not Supported"-response
+     * @return  a 505 (HTTP Version Not Supported) response
      * @see     StatusCode#FIVE_HUNDRED_FIVE
      */
     public static Response httpVersionNotSupported() {
@@ -317,6 +351,8 @@ public final class Responses
      */
     private static final class ResponseCache {
         static final Response
+            CONTINUE              = builder(ONE_HUNDRED, ReasonPhrase.CONTINUE).build(),
+            PROCESSING            = builder(ONE_HUNDRED_TWO, ReasonPhrase.PROCESSING).build(),
             ACCEPTED              = builder(TWO_HUNDRED_TWO, ReasonPhrase.ACCEPTED).header(CONTENT_LENGTH, "0").build(),
             NO_CONTENT            = builder(TWO_HUNDRED_FOUR, ReasonPhrase.NO_CONTENT).build(),
             BAD_REQUEST           = respondThenClose(FOUR_HUNDRED, ReasonPhrase.BAD_REQUEST),

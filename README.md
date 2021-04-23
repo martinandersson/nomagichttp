@@ -99,9 +99,12 @@ previous Gradle build file. I.e., to run the first example, do:
         mainClass = 'alpha.nomagichttp.examples.HelloWorld'
     }
 
-For brevity, the example runs provided does not use Gradle and assume that the
-JAR file path and package have been provided by two environment variables
+For brevity, the example runs provided below does not use Gradle and assume that
+the JAR file path and package have been provided by two environment variables
 instead.
+
+    JAR=build/libs/nomagichttp-0.5-SNAPSHOT.jar
+    PKG=alpha.nomagichttp.examples
 
 It is recommended to follow the links in each example as the source code
 contains useful commentary that explains the API used.
@@ -224,12 +227,46 @@ User-Agent: curl/7.68.0
 
 [6-1]: src/main/java/alpha/nomagichttp/examples/EchoHeaders.java
 
+### Keep client informed
+
+A final response may be preceeded by any number of interim 1XX (Informational)
+responses. This is an excellent way to keep the client informed while processing
+lengthy requests (without the need for server-sent events, websockets, long
+pulling, et cetera).
+
+See code: [src/main/java/.../KeepClientInformed.java][7-1]
+
+Run:
+
+```console
+foo@bar:~$ java --class-path=$JAR $PKG.KeepClientInformed
+Listening on port 8080.
+```
+
+In a new terminal, run:
+
+```console
+foo@bar:~$ curl -i localhost:8080
+HTTP/1.1 102 Processing
+Time-Left: 3 second(s)
+
+HTTP/1.1 102 Processing
+Time-Left: 2 second(s)
+
+HTTP/1.1 102 Processing
+Time-Left: 1 second(s)
+
+HTTP/1.1 204 No Content
+```
+
+[7-1]: src/main/java/alpha/nomagichttp/examples/KeepClientInformed.java
+
 ### Retry request on error
 
 This example demonstrates error handling and will re-execute the request handler
-on a particular known exception.
+on a particular exception.
 
-See code: [src/main/java/.../RetryRequestOnError.java][7-1]
+See code: [src/main/java/.../RetryRequestOnError.java][8-1]
 
 Run:
 
@@ -247,9 +284,8 @@ HTTP/1.1 204 No Content
 
 In the server terminal, you should see text similar to this:
 ```console
-Request handler received a request 15:19:58.780 and will crash!
-Error handler will retry #1 after delay (ms): 40
-Request handler received a request 15:19:58.827 and will return 204 No Content
+Handler invoked 18:32:08.130 and will crash!
+Handler invoked 18:32:08.197 and will return 204 No Content
 ```
 
-[7-1]: src/main/java/alpha/nomagichttp/examples/RetryRequestOnError.java
+[8-1]: src/main/java/alpha/nomagichttp/examples/RetryRequestOnError.java

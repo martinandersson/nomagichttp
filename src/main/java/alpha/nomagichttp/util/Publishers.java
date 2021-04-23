@@ -57,8 +57,8 @@ import static java.util.Objects.requireNonNull;
  * advantages. For the subscriber developer, there will be no {@code
  * StackOverflowError} gotchas and weird recommendations in the
  * specification "to invoke Subscription methods at the very end of any signal
- * processing" can safely be ignored. Feel free to focus on writing code with no
- * worries.<p>
+ * processing" can safely be ignored. Feel free to focus on writing code without
+ * any worries.<p>
  * 
  * The only thing a subscriber developer should be mindful about is the
  * following: {@code Subscription.cancel()} is only guaranteed to have an
@@ -132,7 +132,7 @@ public final class Publishers
      */
     public static <T> Flow.Publisher<T> empty() {
         @SuppressWarnings("unchecked")
-        Flow.Publisher<T> typed = (Flow.Publisher<T>) EMPTY;
+        var typed = (Flow.Publisher<T>) EMPTY;
         return typed;
     }
     

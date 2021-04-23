@@ -23,6 +23,7 @@ final class DefaultPooledByteBufferHolder implements PooledByteBufferHolder
                                      RELEASED = noopNew();
     
     private static IntConsumer noopNew() {
+        // MUST BE NEW INSTANCE, no lambda
         return new IntConsumer() {
             @Override public void accept(int value) {
                 // Empty

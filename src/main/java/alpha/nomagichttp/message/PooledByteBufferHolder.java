@@ -7,8 +7,8 @@ import java.util.function.IntConsumer;
  * Holder of a pooled byte buffer.<p>
  * 
  * Pooling byte buffers makes a data generator (the origin) able to re-use
- * buffers for new data instead of creating new buffers; reducing garbage and
- * increasing performance.<p>
+ * buffers for data emissions instead of creating new buffers; reducing garbage
+ * and increasing performance.<p>
  * 
  * The receiver may process the buffer synchronously or asynchronously, but the
  * buffer must always be {@link #release() released} after processing. Never
@@ -21,9 +21,6 @@ import java.util.function.IntConsumer;
  * initiated if it is guaranteed that the receiver returns normally - for
  * example, by letting the submission of a task to an executor be the last
  * statement.<p>
- * 
- * Holding on to a bytebuffer reference after releasing it is not
- * recommended.<p>
  * 
  * Operating on a bytebuffer after release has undefined application
  * behavior.<p>

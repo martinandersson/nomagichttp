@@ -1,8 +1,11 @@
 package alpha.nomagichttp.message;
 
 import alpha.nomagichttp.HttpConstants;
+import alpha.nomagichttp.util.Publishers;
 
 import java.net.http.HttpHeaders;
+import java.net.http.HttpRequest;
+import static java.net.http.HttpRequest.BodyPublisher;
 import java.nio.ByteBuffer;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
@@ -141,8 +144,8 @@ final class DefaultResponse implements Response
         
         static final Response.Builder ROOT = new Builder(null, null);
         
-        final Builder prev;
-        final Consumer<MutableState> modifier;
+        private final Builder prev;
+        private final Consumer<MutableState> modifier;
         
         private Builder(Builder prev, Consumer<MutableState> modifier) {
             this.prev = prev;
@@ -224,19 +227,11 @@ final class DefaultResponse implements Response
             return new Builder(this, s -> s.mustCloseAfterWrite = enabled);
         }
         
-        private Response sealed;
-        
         @Override
         public Response build() {
-            Response r = sealed;
-            return r != null ? r : (sealed = construct());
-        }
-        
-        private Response construct() {
             MutableState s = new MutableState();
             
             populate(s);
-            validate(s);
             setDefaults(s);
             
             Iterable<String> headers = s.headers == null ? emptyList() :
@@ -244,13 +239,32 @@ final class DefaultResponse implements Response
                             e.getValue().stream().map(v -> e.getKey() + ": " + v))
                     .collect(toUnmodifiableList());
             
-            return new DefaultResponse(
+            assert s.statusCode != null : "Status-code supposed to be set by Response.Builder(int)";
+            Response r = new DefaultResponse(
                     s.statusCode,
                     s.reasonPhrase,
                     headers,
                     s.body,
                     s.mustCloseAfterWrite,
                     this);
+            
+            if (r.isInformational() && !isBodyEmpty(r)) {
+                throw new IllegalBodyException(
+                        "Body in a 1XX (Informational) response.", r);
+            }
+            return r;
+        }
+        
+        private static boolean isBodyEmpty(Response r) {
+            Flow.Publisher<ByteBuffer> b = r.body();
+            if (b == Publishers.<ByteBuffer>empty()) {
+                return true;
+            }
+            if (b instanceof BodyPublisher) {
+                var typed = (BodyPublisher) b;
+                return typed.contentLength() == 0;
+            }
+            return false;
         }
         
         private void populate(MutableState s) {
@@ -261,11 +275,6 @@ final class DefaultResponse implements Response
             }
             
             mods.forEach(m -> m.accept(s));
-        }
-        
-        private static void validate(MutableState s) {
-            if (s.statusCode == null) {
-                throw new IllegalArgumentException("Status code not set."); }
         }
         
         private static void setDefaults(MutableState s) {

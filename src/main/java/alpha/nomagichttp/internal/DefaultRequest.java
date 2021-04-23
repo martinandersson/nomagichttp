@@ -1,7 +1,6 @@
 package alpha.nomagichttp.internal;
 
 import alpha.nomagichttp.HttpConstants.Version;
-import alpha.nomagichttp.handler.ClientChannel;
 import alpha.nomagichttp.message.MediaType;
 import alpha.nomagichttp.message.PooledByteBufferHolder;
 import alpha.nomagichttp.message.Request;
@@ -30,9 +29,9 @@ import java.util.stream.Stream;
 import static alpha.nomagichttp.internal.AtomicReferences.lazyInit;
 import static alpha.nomagichttp.util.Headers.contentLength;
 import static alpha.nomagichttp.util.Headers.contentType;
+import static alpha.nomagichttp.util.Strings.containsIgnoreCase;
 import static java.nio.charset.StandardCharsets.UTF_8;
-import static java.nio.file.StandardOpenOption.CREATE;
-import static java.nio.file.StandardOpenOption.TRUNCATE_EXISTING;
+import static java.nio.file.StandardOpenOption.CREATE_NEW;
 import static java.nio.file.StandardOpenOption.WRITE;
 import static java.util.Objects.requireNonNull;
 import static java.util.Optional.ofNullable;
@@ -54,7 +53,6 @@ final class DefaultRequest implements Request
     private final CompletionStage<Void> bodyStage;
     private final Body bodyApi;
     private final OnCancelDiscardOp bodyDiscard;
-    private final ClientChannel child;
     private final Attributes attributes;
     
     DefaultRequest(
@@ -63,7 +61,9 @@ final class DefaultRequest implements Request
             RequestTarget paramsQuery,
             RouteRegistry.Match paramsPath,
             Flow.Publisher<DefaultPooledByteBufferHolder> bodySource,
-            DefaultClientChannel child)
+            DefaultClientChannel child,
+            // TODO: Remove this in favor of a real event mechanism
+            Runnable onBodySubscription)
     {
         this.ver = ver;
         this.head = head;
@@ -89,10 +89,9 @@ final class DefaultRequest implements Request
             bodyDiscard = new OnCancelDiscardOp(onError);
             
             bodyStage = observe.asCompletionStage();
-            bodyApi = DefaultBody.of(headers(), bodyDiscard);
+            bodyApi = DefaultBody.of(headers(), bodyDiscard, onBodySubscription);
         }
         
-        this.child = child;
         this.attributes = new DefaultAttributes();
     }
     
@@ -127,6 +126,13 @@ final class DefaultRequest implements Request
     @Override
     public HttpHeaders headers() {
         return head.headers();
+    }
+    
+    @Override
+    public boolean headerContains(String headerKey, String valueSubstring) {
+        // NPE is unfortunately not documented in JDK
+        return headers().allValues(requireNonNull(headerKey)).stream()
+                .anyMatch(v -> containsIgnoreCase(v, valueSubstring));
     }
     
     @Override
@@ -171,24 +177,26 @@ final class DefaultRequest implements Request
         private final HttpHeaders headers;
         private final Flow.Publisher<PooledByteBufferHolder> source;
         private final AtomicReference<CompletionStage<String>> cachedText;
+        private final Runnable onBodySubscription;
         
         static Request.Body empty(HttpHeaders headers) {
             // Even an empty body must still validate the arguments,
             // for example toText() may complete with IllegalCharsetNameException.
             requireNonNull(headers);
-            return new DefaultBody(headers, null);
+            return new DefaultBody(headers, null, null);
         }
         
-        static Request.Body of(HttpHeaders headers, Flow.Publisher<PooledByteBufferHolder> source) {
+        static Request.Body of(HttpHeaders headers, Flow.Publisher<PooledByteBufferHolder> source, Runnable onBodySubscription) {
             requireNonNull(headers);
             requireNonNull(source);
-            return new DefaultBody(headers, source);
+            return new DefaultBody(headers, source, onBodySubscription);
         }
         
-        private DefaultBody(HttpHeaders headers, Flow.Publisher<PooledByteBufferHolder> source) {
+        private DefaultBody(HttpHeaders headers, Flow.Publisher<PooledByteBufferHolder> source, Runnable onBodySubscription) {
             this.headers = headers;
             this.source  = source;
             this.cachedText = new AtomicReference<>(null);
+            this.onBodySubscription = onBodySubscription;
         }
         
         @Override
@@ -222,7 +230,7 @@ final class DefaultRequest implements Request
         @Override
         public CompletionStage<Long> toFile(Path file, Set<? extends OpenOption> options, FileAttribute<?>... attrs) {
             final Set<? extends OpenOption> opt = !options.isEmpty() ? options :
-                    Set.of(WRITE, CREATE, TRUNCATE_EXISTING);
+                    Set.of(WRITE, CREATE_NEW);
             
             final AsynchronousFileChannel fs;
             
@@ -251,6 +259,9 @@ final class DefaultRequest implements Request
             if (isEmpty()) {
                 Publishers.<PooledByteBufferHolder>empty().subscribe(subscriber);
             } else {
+                if (onBodySubscription != null) {
+                    onBodySubscription.run();
+                }
                 source.subscribe(subscriber);
             }
         }

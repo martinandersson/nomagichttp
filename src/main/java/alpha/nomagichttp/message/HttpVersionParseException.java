@@ -52,7 +52,7 @@ public class HttpVersionParseException extends RuntimeException
      * 
      * @return the HTTP-version field value from the request (never {@code null})
      */
-    public final String requestFieldValue() {
+    public final String getRequestFieldValue() {
         return requestFieldValue;
     }
 }

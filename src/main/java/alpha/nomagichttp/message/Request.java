@@ -135,6 +135,37 @@ public interface Request
     HttpHeaders headers();
     
     /**
+     * If a header is present, check if it contains a value substring.<p>
+     * 
+     * This method operate without regard to case for both header key and
+     * value substring.<p>
+     * 
+     * Suppose the server receives this request:
+     * <pre>
+     *   GET /where?q=now HTTP/1.1
+     *   Host: www.example.com
+     *   User-Agent: curl/7.68.0
+     * </pre>
+     * 
+     * Returns true:
+     * <pre>
+     *   request.headerContains("user-agent", "cUrL");
+     * </pre>
+     * 
+     * This method searches through repeated headers.<p>
+     * 
+     * This method returns {@code false} if the header is not present.
+     * 
+     * @param headerKey header key filter
+     * @param valueSubstring value substring to look for
+     * 
+     * @return {@code true} if found, otherwise {@code false}
+     * 
+     * @throws NullPointerException if any argument is {@code null}
+     */
+    boolean headerContains(String headerKey, String valueSubstring);
+    
+    /**
      * Returns a body API object bound to this request.
      * 
      * @return a body API object bound to this request
@@ -452,7 +483,7 @@ public interface Request
      * {@link #convert(BiFunction)} method or consumed directly "on arrival"
      * using the {@link #subscribe(Flow.Subscriber)} method.<p>
      * 
-     * If the body {@link #isEmpty()}, {@code subscribe()} completes the
+     * If the body {@link #isEmpty()}; {@code subscribe()} completes the
      * subscription immediately. {@code toText()} completes immediately with an
      * empty string. {@code toFile()} completes immediately with 0 bytes. {@code
      * convert()} immediately invokes its given function with an empty byte
@@ -473,8 +504,7 @@ public interface Request
      * assumed to ignore the body, followed by a server-side discard of it).<p>
      * 
      * Some utility methods such as {@code toText()} cache the result and will
-     * return the same stage on future invocations. This may for example be
-     * useful when retrying processing logic of the same request.<p>
+     * return the same stage on future invocations.<p>
      * 
      * The normal way to reject an operation is to fail-fast and blow up the
      * calling thread. This is also common practice for rejected
@@ -501,7 +531,7 @@ public interface Request
      * unexpected errors, in particular, errors that originate from the
      * channel's read operation. The safest bet for an application when
      * attempting error recovery is to always check first if {@link
-     * ClientChannel#isOpenForReading()}.
+     * ClientChannel#isOpenForReading() theClientChannel.isOpenForReading()}.
      * 
      * 
      * <h2>Subscribing to bytes with a {@code Flow.Subscriber}</h2>
@@ -509,8 +539,8 @@ public interface Request
      * Almost all of the same {@code Flow.Publisher} semantics specified in the
      * JavaDoc of {@link Publishers} applies to the {@code Body} as a publisher
      * as well. The only exception is that the body does not support subscriber
-     * reuse, simply because the body can not be subscribed to more than
-     * once.<p>
+     * reuse, again because the server does not keep the bytes after
+     * consumption.<p>
      * 
      * The subscriber will receive bytebuffers in the same order they are read
      * from the underlying channel. The subscriber can not read beyond the
@@ -541,42 +571,45 @@ public interface Request
      * released. So, awaiting more buffers before releasing old ones will
      * inevitably halt progress.<p>
      * 
-     * In order to fully support concurrent processing of many bytebuffers
-     * without the risk of adding unnecessary delays or blockages, the Body API
-     * would have to declare methods that the application can use to learn how
-     * many bytebuffers are immediately available and possibly also learn the
-     * size of the server's bytebuffer pool.<p>
+     * For the Body API to support concurrent processing of many
+     * bytebuffers without the risk of adding unnecessary delays or blockages,
+     * the API would have to declare methods that the application can use to
+     * learn how many bytebuffers are immediately available and possibly also
+     * learn the size of the server's bytebuffer pool.<p>
      * 
-     * This is not very likely to happen. Not only will concurrent processing be
-     * a challenge for the application to implement properly with respect to
-     * byte order and message integrity, but concurrent processing could also be
-     * a sign that the application's processing code would have blocked the
-     * request thread (see "Threading Model" in {@link HttpServer}) - hence the
-     * need to "collect" or buffer the bytebuffers. For example, {@link
-     * GatheringByteChannel} expects a {@code ByteBuffer[]} but is a blocking
-     * API. Instead, submit the bytebuffers one at a time to {@link
-     * AsynchronousByteChannel}, releasing each in the completion handler.<p>
+     * This is not very likely to ever happen for a number of reasons. The API
+     * complexity would increase dramatically for a doubtful benefit. In fact,
+     * concurrent processing would most likely corrupt byte order and message
+     * integrity.<p>
      * 
-     * Given how only one bytebuffer at a time is published, there's really no
-     * difference between requesting {@code Long.MAX_VALUE} versus requesting
-     * one at a time. Unfortunately, the Reactive Stream specification calls the
-     * latter approach an "inherently inefficient 'stop-and-wait' protocol".
-     * This is wrong. The bytebuffers are pooled and cached upstream already.
-     * Requesting a bytebuffer is essentially the same as polling a stupidly
-     * fast queue of buffers and there simply does not exist - surprise surprise
-     * - a good reason to engage in "premature optimization".<p>
+     * If there is a need for the application to "collect" or buffer the
+     * bytebuffers, then this is a sign that the application's processing code
+     * would have blocked the request thread (see "Threading Model" in {@link
+     * HttpServer}). For example, {@link GatheringByteChannel} expects a {@code
+     * ByteBuffer[]} but is a blocking API. Instead, submit the bytebuffers one
+     * at a time to {@link AsynchronousByteChannel}, releasing each in the
+     * completion handler.<p>
      * 
-     * Speaking of optimization; the default implementation uses <i>direct</i>
-     * bytebuffers in order to support "zero-copy" transfers. I.e., no data is
-     * moved into Java heap space unless the subscriber itself causes this to
-     * happen. Whenever possible, always pass forward the bytebuffers to the
-     * destination without reading the bytes in application code!
+     * Given how only one bytebuffer at a time is published, then there's really
+     * no difference between requesting {@code Long.MAX_VALUE} versus requesting
+     * one at a time. Unfortunately, the
+     * <a href="https://github.com/reactive-streams/reactive-streams-jvm/blob/v1.0.3/README.md">
+     * Reactive Streams</a> calls the latter approach an "inherently inefficient
+     * 'stop-and-wait' protocol". In our context, this is wrong. The bytebuffers
+     * are pooled and cached upstream already. Requesting a bytebuffer is
+     * essentially the same as polling a stupidly fast queue of buffers.<p>
+     * 
+     * The default implementation uses <i>direct</i> bytebuffers in order to
+     * support "zero-copy" transfers. I.e., no data is moved into Java heap
+     * space unless the subscriber itself causes this to happen. Whenever
+     * possible, always pass forward the bytebuffers to the destination without
+     * reading the bytes in application code!
      * 
      * <h3>The HTTP exchange and body discarding</h3>
      * 
      * The HTTP exchange is considered done as soon as both the server's
-     * response body subscription <i>and</i> the application's request body
-     * subscription have both completed. Not until then will the next HTTP
+     * final response body subscription <i>and</i> the application's request
+     * body subscription have both completed. Not until then will the next HTTP
      * message-exchange commence on the same channel.<p>
      * 
      * This means that a request body subscriber must ensure his subscription
@@ -585,12 +618,13 @@ public interface Request
      * underlying channel (there is no timeout in the NoMagicHTTP library
      * code).<p>
      * 
-     * If the server's response body subscription completes and earliest at that
-     * point no request body subscriber has arrived, then the server will assume
-     * that the body was intentionally ignored and proceed to discard it - after
-     * which it can not be subscribed to by the application any more.<p>
+     * When the server's final response body subscription completes and earliest
+     * at that point no request body subscriber has arrived, then the server
+     * will assume that the body was intentionally ignored and proceed to
+     * discard it - after which it can not be subscribed to by the application
+     * any more.<p>
      * 
-     * If a response must be sent back immediately but processing the
+     * If a final response must be sent back immediately but processing the
      * request body bytes must be delayed, then there's at least two ways of
      * solving this. Either delay completing the server's response body
      * subscription or register a request body subscriber but delay requesting
@@ -613,8 +647,8 @@ public interface Request
      * also close the read stream (the write stream remains untouched so that a
      * response in-flight can complete).<p>
      * 
-     * Exceptions signalled to {@code Subscriber.onError()} that are not
-     * <i>caused by</i> the subscriber itself can safely be assumed to indicate
+     * Exceptions signalled to {@code Subscriber.onError()} that are <i>not
+     * caused by</i> the subscriber itself can safely be assumed to indicate
      * low-level problems with the underlying channel. They will also have been
      * logged by the HTTP server followed suite by read-stream closure.<p>
      * 
@@ -684,13 +718,12 @@ public interface Request
          * This method is equivalent to
          * <pre>
          *     {@link AsynchronousFileChannel#open(Path,Set,ExecutorService,FileAttribute[])
-         *       AsynchronousFileChannel.open}(file, opts, null, attrs);
+         *       AsynchronousFileChannel.open}(file, opts, (ExecutorService) null, attrs);
          * </pre>
          * 
-         * ...except if {@code options} is empty, a set of {@code WRITE}, {@code
-         * CREATE} and {@code TRUNCATE_EXISTING} will be used. I.e, by default,
-         * a new file will be created or an existing file will be
-         * overwritten.<p>
+         * ...except if {@code options} is empty, a set of {@code WRITE} and
+         * {@code CREATE_NEW} will be used (if the file exists the operation
+         * will fail).<p>
          * 
          * If the returned stage completes with 0 bytes, then the file will not
          * have been created. If the file is created but the operation completes
@@ -752,18 +785,16 @@ public interface Request
      * 
      * <pre>{@code
      *   // In a request handler
-     *   request.attributes().set("stuff", new MyClass());
+     *   request.attributes().set("my.stuff", new MyClass());
      *   // Somewhere else
-     *   MyClass obj = request.attributes().getAny("stuff");
+     *   MyClass obj = request.attributes().getAny("my.stuff");
      * }</pre>
      * 
      * The implementation is thread-safe.<p>
      * 
-     * The NoMagicHTTP library may use the attribute object in the future as a
-     * means of communication, for example as a store of information related to
-     * the characteristics of a request. If so, the names used will start with
-     * "alpha.nomagichttp.". Applications are encouraged to avoid using this
-     * prefix in their names.
+     * The NoMagicHTTP library reserves the right to use the namespace
+     * "alpha.nomagichttp.*" exclusively. Applications are encouraged to avoid
+     * using this prefix in their names.
      * 
      * @author Martin Andersson (webmaster at martinandersson.com)
      */

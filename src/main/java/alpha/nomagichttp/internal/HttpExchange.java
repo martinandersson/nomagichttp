@@ -1,19 +1,25 @@
 package alpha.nomagichttp.internal;
 
 import alpha.nomagichttp.HttpConstants.Version;
+import alpha.nomagichttp.HttpServer;
 import alpha.nomagichttp.handler.ErrorHandler;
 import alpha.nomagichttp.handler.RequestHandler;
 import alpha.nomagichttp.message.HttpVersionTooNewException;
 import alpha.nomagichttp.message.HttpVersionTooOldException;
+import alpha.nomagichttp.message.IllegalBodyException;
+import alpha.nomagichttp.message.Request;
 import alpha.nomagichttp.route.RouteRegistry;
 
-import java.nio.channels.AsynchronousSocketChannel;
+import java.util.Collection;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
 import java.util.concurrent.CompletionStage;
 
+import static alpha.nomagichttp.HttpConstants.HeaderKey.EXPECT;
+import static alpha.nomagichttp.HttpConstants.Method.TRACE;
 import static alpha.nomagichttp.HttpConstants.Version.HTTP_1_0;
 import static alpha.nomagichttp.HttpConstants.Version.HTTP_1_1;
+import static alpha.nomagichttp.message.Responses.continue_;
 import static alpha.nomagichttp.util.Headers.accept;
 import static alpha.nomagichttp.util.Headers.contentType;
 import static alpha.nomagichttp.util.Subscribers.onNext;
@@ -24,7 +30,7 @@ import static java.lang.System.Logger.Level.WARNING;
 import static java.util.Objects.requireNonNull;
 
 /**
- * Implementation of an HTTP exchange from request to response.
+ * Orchestrator of an HTTP exchange from request to response.
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  */
@@ -32,9 +38,12 @@ final class HttpExchange
 {
     private static final System.Logger LOG = System.getLogger(HttpExchange.class.getPackageName());
     
-    private final DefaultServer server;
+    private final HttpServer.Config config;
+    private final RouteRegistry registry;
+    private final Collection<ErrorHandler> handlers;
     private final ChannelByteBufferPublisher bytes;
-    private final DefaultClientChannel child;
+    private final ResponsePipeline pipe;
+    private final DefaultClientChannel chan;
     private final CompletableFuture<Void> result;
     
     /*
@@ -45,22 +54,31 @@ final class HttpExchange
      * Executor/ExecutorService, or at worst, a new Thread.start() for each task.
      */
     
+    private Version ver;
     private DefaultRequest request;
     private RequestHandler handler;
-    private ErrorResolver err;
+    private boolean sent100c;
+    private ErrorResolver onError;
     
     HttpExchange(
-            DefaultServer server,
-            AsynchronousSocketChannel child,
-            ChannelByteBufferPublisher bytes)
+            HttpServer.Config config,
+            RouteRegistry registry,
+            Collection<ErrorHandler> handlers,
+            ChannelByteBufferPublisher bytes,
+            DefaultClientChannel chan)
     {
-        this.server  = server;
-        this.bytes   = bytes;
-        this.result  = new CompletableFuture<>();
-        this.child   = new DefaultClientChannel(child, HTTP_1_1, () -> result.complete(null));
-        this.request = null;
-        this.handler = null;
-        this.err     = null;
+        this.config   = config;
+        this.registry = registry;
+        this.handlers = handlers;
+        this.bytes    = bytes;
+        this.chan     = chan;
+        this.pipe     = new ResponsePipeline(this, chan);
+        this.result   = new CompletableFuture<>();
+        this.ver      = HTTP_1_1; // <-- default until updated
+        this.request  = null;
+        this.handler  = null;
+        this.sent100c = false;
+        this.onError  = null;
     }
     
     /**
@@ -68,12 +86,13 @@ final class HttpExchange
      * 
      * The returned stage should mostly complete normally as HTTP exchange
      * errors are dealt with internally (through {@link ErrorHandler}). Any
-     * other error will be logged in this class. The server must close the child
-     * if the result completes exceptionally.
+     * other error will be logged in this class. The server should close the
+     * child if the result completes exceptionally.
      * 
      * @return a stage (never {@code null})
      */
     CompletionStage<Void> begin() {
+        LOG.log(DEBUG, "Beginning a new HTTP exchange.");
         try {
             begin0();
         } catch (Throwable t) {
@@ -82,30 +101,27 @@ final class HttpExchange
         return result;
     }
     
-    /**
-     * Delegates to {@code child.}{@link DefaultClientChannel#isEverythingOpen()
-     * isEverythingOpen()}.
-     * 
-     * @return see JavaDoc
-     */
-    boolean isEverythingOpen() {
-        return child.isEverythingOpen();
+    Version getHttpVersion() {
+        return ver;
+    }
+    
+    Request getRequest() {
+        return request;
     }
     
     private void begin0() {
-        child.pipeline().subscribe(
-                // Written byte count ignored
-                onNext(r -> handleResult(r.error())));
+        chan.usePipeline(pipe);
+        pipe.subscribe(onNext(this::handlePipeResult));
         
-        RequestHeadSubscriber rhs = new RequestHeadSubscriber(
-                server.getConfig().maxRequestHeadSize());
-        
+        RequestHeadSubscriber rhs = new RequestHeadSubscriber(config.maxRequestHeadSize());
         bytes.subscribe(rhs);
         rhs.asCompletionStage()
            .thenAccept(this::initialize)
+           .thenRun(() -> { if (config.immediatelyContinueExpect100())
+               tryRespond100Continue(); })
            .thenRun(this::invokeRequestHandler)
            .exceptionally(thr -> {
-               handleResult(thr);
+               handleError(thr);
                return null;
            });
     }
@@ -113,24 +129,23 @@ final class HttpExchange
     private void initialize(RequestHead h) {
         RequestTarget t = RequestTarget.parse(h.requestTarget());
         
-        Version v = getValidHttpVersion(h);
-        child.pipeline().updateVersion(v);
-        if (v == HTTP_1_0 && server.getConfig().rejectClientsUsingHTTP1_0()) {
+        ver = parseHttpVersion(h);
+        if (ver == HTTP_1_0 && config.rejectClientsUsingHTTP1_0()) {
             throw new HttpVersionTooOldException(h.httpVersion(), "HTTP/1.1");
         }
         
         RouteRegistry.Match m = findRoute(t);
         
         // This order is actually specified in javadoc of ErrorHandler#apply
-        request = createRequest(v, h, t, m);
+        request = createRequest(h, t, m);
         handler = findRequestHandler(h, m);
     }
     
-    private Version getValidHttpVersion(RequestHead h) {
-        final Version ver;
+    private static Version parseHttpVersion(RequestHead h) {
+        final Version v;
         
         try {
-            ver = Version.parse(h.httpVersion());
+            v = Version.parse(h.httpVersion());
         } catch (IllegalArgumentException e) {
             String[] comp = e.getMessage().split(":");
             if (comp.length == 1) {
@@ -146,8 +161,8 @@ final class HttpExchange
             }
         }
         
-        requireHTTP1(ver.major(), h.httpVersion(), "HTTP/1.1");
-        return ver;
+        requireHTTP1(v.major(), h.httpVersion(), "HTTP/1.1");
+        return v;
     }
     
     private static void requireHTTP1(int major, String rejectedVersion, String upgrade) {
@@ -160,11 +175,15 @@ final class HttpExchange
     }
     
     private RouteRegistry.Match findRoute(RequestTarget t) {
-        return server.getRouteRegistry().lookup(t.segmentsNotPercentDecoded());
+        return registry.lookup(t.segmentsNotPercentDecoded());
     }
     
-    private DefaultRequest createRequest(Version v, RequestHead h, RequestTarget t, RouteRegistry.Match m) {
-        return new DefaultRequest(v, h, t, m, bytes, child);
+    private DefaultRequest createRequest(RequestHead h, RequestTarget t, RouteRegistry.Match m) {
+        DefaultRequest r = new DefaultRequest(ver, h, t, m, bytes, chan, this::tryRespond100Continue);
+        if (r.method().equals(TRACE) && r.body().isEmpty()) {
+            throw new IllegalBodyException("Body in a TRACE request.", r);
+        }
+        return r;
     }
     
     private static RequestHandler findRequestHandler(RequestHead rh, RouteRegistry.Match m) {
@@ -177,11 +196,21 @@ final class HttpExchange
         return h;
     }
     
-    private void invokeRequestHandler() {
-        handler.logic().accept(request, child);
+    private void tryRespond100Continue() {
+        if (!sent100c &&
+            !getHttpVersion().isLessThan(HTTP_1_1) &&
+            request.headerContains(EXPECT, "100-continue"))
+        {
+            sent100c = true;
+            chan.write(continue_());
+        }
     }
     
-    private void handleResult(Throwable thr) {
+    private void invokeRequestHandler() {
+        handler.logic().accept(request, chan);
+    }
+    
+    private void handlePipeResult(ResponsePipeline.Result res) {
         /*
          * We should make the connection life cycle much more solid; when is
          * the connection persistent and when is it not (also see RFC 2616
@@ -193,14 +222,13 @@ final class HttpExchange
          * TODO: 2) Implement idle timeout.
          */
         
-        try {
-            if (thr == null) {
-                prepareForNewExchange();
-            } else {
-                resolve(thr);
-            }
-        } catch (Throwable t) {
-            unexpected(t);
+        if (res.error() != null) {
+            handleError(res.error());
+        } else if (res.response().isFinal()) {
+            LOG.log(DEBUG, "Response sent is final. Preparing new HTTP exchange.");
+            prepareForNewExchange();
+        } else {
+            LOG.log(DEBUG, "Response sent is not final. HTTP exchange remains active.");
         }
     }
     
@@ -211,25 +239,25 @@ final class HttpExchange
                 result.complete(null);
             } else {
                 LOG.log(DEBUG,
-                        // see SubscriptionAsStageOp.asCompletionStage()
-                        "Upstream error/channel fault. " +
-                        "Assuming reason and/or stacktrace was logged already.");
+                    // see SubscriptionAsStageOp.asCompletionStage()
+                    "Upstream error/channel fault. " +
+                    "Assuming reason and/or stacktrace was logged already.");
                 result.completeExceptionally(t);
             }
         });
     }
     
-    private void resolve(Throwable exc) {
+    private void handleError(Throwable exc) {
         final Throwable unpacked = unpackCompletionException(exc);
         
         if (unpacked instanceof ClientAbortedException) {
             LOG.log(DEBUG, "Client aborted the HTTP exchange.");
             result.completeExceptionally(unpacked);
-        } else if (child.isOpenForWriting())  {
-            if (err == null) {
-                err = new ErrorResolver();
+        } else if (chan.isOpenForWriting())  {
+            if (onError == null) {
+                onError = new ErrorResolver();
             }
-            err.resolve(unpacked);
+            onError.resolve(unpacked);
         } else {
             LOG.log(DEBUG, () ->
                     "HTTP exchange finished exceptionally and child channel is closed for writing. " +
@@ -253,12 +281,12 @@ final class HttpExchange
             }
             prev = t;
             
-            if (server.getErrorHandlers().isEmpty()) {
+            if (handlers.isEmpty()) {
                 usingDefault(t);
                 return;
             }
             
-            if (++attemptCount > server.getConfig().maxErrorRecoveryAttempts()) {
+            if (++attemptCount > config.maxErrorRecoveryAttempts()) {
                 LOG.log(WARNING, "Error recovery attempts depleted, will use default handler.");
                 usingDefault(t);
                 return;
@@ -270,7 +298,7 @@ final class HttpExchange
         
         private void usingDefault(Throwable t) {
             try {
-                ErrorHandler.DEFAULT.apply(t, child, request, handler);
+                ErrorHandler.DEFAULT.apply(t, chan, request, handler);
             } catch (Throwable next) {
                 next.addSuppressed(t);
                 unexpected(next);
@@ -278,14 +306,14 @@ final class HttpExchange
         }
         
         private void usingHandlers(Throwable t) {
-            for (ErrorHandler h : server.getErrorHandlers()) {
+            for (ErrorHandler h : handlers) {
                 try {
-                    h.apply(t, child, request, handler);
+                    h.apply(t, chan, request, handler);
                     return;
                 } catch (Throwable next) {
                     if (t != next) {
                         // New fail
-                        HttpExchange.this.resolve(next);
+                        HttpExchange.this.handleError(next);
                         return;
                     } // else continue; Handler opted out
                 }

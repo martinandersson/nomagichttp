@@ -31,7 +31,7 @@ An item ~~crossed out~~ is complete, an item in __bold__ is work in progress.
 [Stage: Improved Testing](#stage-improved-testing)  
 [Stage: Improved Content Negotiation](#stage-improved-content-negotiation)  
 [~~Stage: Pseudo-Mutable Types~~](#stage-pseudo-mutable-types)  
-[Stage: Multiple Responses](#stage-multiple-responses)  
+[~~Stage: Multiple Responses~~](#stage-multiple-responses)  
 [Stage: Connection Life-Cycle/Management](#stage-connection-life-cyclemanagement)  
 [Stage: Actions](#stage-actions)  
 [Stage: Codings, Part 1/3 (Chunked Transfer)](#stage-codings-part-13-chunked-transfer)  
@@ -184,59 +184,64 @@ logic is required.~~
   pattern elsewhere. Ideally we scrap "builder" methods in favor of factory
   methods returning a builder at worst, or pseudo-mutable type.~~
 
-## Stage: Multiple Responses
+## ~~Stage: Multiple Responses~~
+
+_Status: **Delivered**_
 
 The most common HTTP response is "final"; 2XX (Success). But final responses may
 be preceeded (not obsoleted) by "interim" responses of class 1XX (Informational)
 (since HTTP/1.1). This is sort of a server-side event mechanism for keeping the
 client updated while processing lengthy requests.
 
-### API
+End result: Introduced a `ClientChannel` which request handlers write to (any
+number of responses) and a `ResponsePipeline` in the back-end.
 
-- Add `Response.thenRespond(CompletonStage<Response> next)`.  
-  Schedules a subsequent response.
-  - If the first response is not 1XX (Informational), throw
-    `UnsupportedOperationException`.
-  - Also throws an exception if HTTP version is < 1.1.
-  - For simplicity, client can use any reference in the chain to keep adding
-    responses? Sort of like an "addLast" method. Not sure I like this.
-  - Add overload which accepts an unboxed/ready `Response`.
-- `Response.body()` throws exception if response is interim.
-- Add factory methods for `100 (Continue)` and `102 (Processing)`.
+### ~~API~~
 
-### Server
+- ~~Add `Response.thenRespond(CompletonStage<Response> next)`.  
+  Schedules a subsequent response.~~
+  - ~~If the first response is not 1XX (Informational), throw
+    `UnsupportedOperationException`.~~
+  - ~~Also throws an exception if HTTP version is < 1.1.~~
+  - ~~For simplicity, client can use any reference in the chain to keep adding
+    responses? Sort of like an "addLast" method. Not sure I like this.~~
+  - ~~Add overload which accepts an unboxed/ready `Response`.~~
+- ~~`Response.body()` throws exception if response is interim.~~
+- ~~Add factory methods for `100 (Continue)` and `102 (Processing)`.~~
 
-- "a server MUST NOT send a 1xx response to an HTTP/1.0 client" (RFC 7231 §6.2).  
-  Can only fail just before writing response.
+### ~~Server~~
 
-Multiple responses changes the `HttpExchange` life-cycle; interim responses
-doesn't finish the exchange.
+- ~~"a server MUST NOT send a 1xx response to an HTTP/1.0 client" (RFC 7231 §6.2).  
+  Can only fail just before writing response.~~
 
-- While response is interim; server pulls `Response.next()` which returns
-  `CompletionStage<Response>`.
-- `Response.next()` throws `NoSuchElementException` if it is final.  
-  Unnecessary noise to add "hasNext()" method.
+~~Multiple responses changes the `HttpExchange` life-cycle; interim responses
+doesn't finish the exchange.~~
 
-Client may announce a pause before sending the request body.
+- ~~While response is interim; server pulls `Response.next()` which returns
+  `CompletionStage<Response>`.~~
+- ~~`Response.next()` throws `NoSuchElementException` if it is final.  
+  Unnecessary noise to add "hasNext()" method.~~
 
-- Add `HttpServer.Config.autoContinueExpect100()`
-  - `false` by default. Meaning that by default, application code will have an
+~~Client may announce a pause before sending the request body.~~
+
+- ~~Add `HttpServer.Config.autoContinueExpect100()`~~
+  - ~~`false` by default. Meaning that by default, application code will have an
     opportunity to engage with a client sending a "Expect: 100-continue"
     request. If the application code doesn't explicitly respond a 100 (Continue)
     message to the client, then the server will automagically send the
     continue-reply as soon as the application access the request body. This
     ought to translate to virtually no pause at all for a majority of all cases
-    and still leave the application in control.
-  - If set to `true`, the server will immediately respond to the continue-reply
+    and still leave the application in control.~~
+  - ~~If set to `true`, the server will immediately respond to the continue-reply
     with no delay, effectively disabling the mechanism. It's interesting to note
     that this is how most other frameworks/libraries I have looked at behaves,
     and they don't even make it configurable, effectively killing the whole
     mechanism leaving applications that rely on it very surprised. Of course, to
     find that out, you'll have to look at the source code as the documentation
-    says zilch about it. I guess that's the only thing that doesn't surprise me.
-  - Regardless of who initiates the 100 (Continue) response, it can safely be
+    says zilch about it. I guess that's the only thing that doesn't surprise me.~~
+  - ~~Regardless of who initiates the 100 (Continue) response, it can safely be
     skipped by the server if when initiating the write-operation, the request
-    body has already begun transmitting.
+    body has already begun transmitting.~~
 
 ## Stage: Connection Life-Cycle/Management
 

@@ -244,7 +244,15 @@ public final class Logging
         return s.substring(0, s.length() - 1);
     }
     
-    private static java.util.logging.Level toJUL(System.Logger.Level level) {
+    /**
+     * Convert {@code System.Logger.Level} to {@code java.util.logging.Level}.
+     * 
+     * @param level to convert
+     * @return the converted value
+     * @throws NullPointerException if {@code level} is {@code null}
+     */
+    public static java.util.logging.Level toJUL(System.Logger.Level level) {
+        requireNonNull(level);
         return stream(java.util.logging.Level.class.getFields())
                 .filter(f ->
                     f.getType() == java.util.logging.Level.class &&

@@ -12,6 +12,8 @@ import static alpha.nomagichttp.HttpConstants.Version.parse;
 import static java.util.Arrays.stream;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * Small tests of {@link HttpConstants.Version#parse(String)}.
@@ -125,5 +127,14 @@ class HttpVersionParseTest
                 .hasMessage("Minor version provided when none was expected.")
                 .extracting("requestFieldValue")
                 .isEqualTo("HTTP/2.1");
+    }
+    
+    @Test
+    void isLessThan() {
+        HttpConstants.Version[] v = HttpConstants.Version.values();
+        for (int i = 0; i < v.length - 1; ++i) {
+            assertTrue(v[i].isLessThan(v[i + 1])); // HTTP 0.9 < 1.0
+            assertFalse(v[i].isLessThan(v[i]));    // !(HTTP 0.9 < HTTP 0.9)
+        }
     }
 }

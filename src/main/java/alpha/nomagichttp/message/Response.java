@@ -2,6 +2,7 @@ package alpha.nomagichttp.message;
 
 import alpha.nomagichttp.HttpConstants;
 import alpha.nomagichttp.HttpServer;
+import alpha.nomagichttp.handler.ClientChannel;
 import alpha.nomagichttp.handler.RequestHandler;
 import alpha.nomagichttp.util.BetterBodyPublishers;
 import alpha.nomagichttp.util.Publishers;
@@ -143,15 +144,52 @@ public interface Response
     Flow.Publisher<ByteBuffer> body();
     
     /**
+     * Returns {@code true} if the status-code is 1XX (Informational), otherwise
+     * {@code false}.
+     * 
+     * @implSpec
+     * The default implementation is equivalent to:
+     * <pre>{@code
+     *   return statusCode() >= 100 && statusCode() < 200;
+     * }</pre>
+     * 
+     * @return {@code true} if the status-code is 1XX (Informational),
+     *         otherwise {@code false}
+     * 
+     * @see HttpConstants.StatusCode
+     * @see ClientChannel
+     */
+    default boolean isInformational() {
+        return statusCode() >= 100 && statusCode() < 200;
+    }
+    
+    /**
+     * Returns {@code true} if the status-code is not 1XX (Informational),
+     * otherwise {@code false}.
+     * 
+     * @implSpec
+     * The default implementation is equivalent to:
+     * <pre>
+     *   return !isInformational();
+     * </pre>
+     * 
+     * @return {@code true} if the status-code is not 1XX (Informational),
+     *         otherwise {@code false}
+     * 
+     * @see HttpConstants.StatusCode
+     * @see ClientChannel
+     */
+    default boolean isFinal() {
+        return !isInformational();
+    }
+    
+    /**
      * Returns {@code true} if the server must close the underlying client
      * channel after writing the response, otherwise {@code false}.<p>
      * 
      * The server is always free to close the channel even if this method
      * returns {@code false}, for example if the server run into channel-related
-     * problems.<p>
-     * 
-     * The channel's in- and output streams will shutdown first before channel
-     * closure.
+     * problems.
      * 
      * @return {@code true} if the server must close the underlying client
      * channel, otherwise {@code false}
@@ -346,6 +384,15 @@ public interface Response
          * BetterBodyPublishers}. Not only are these defined to be thread-safe,
          * they are also non-blocking.<p>
          * 
+         * If you desire to remove an already set body, pass {@link
+         * Publishers#empty()} or a {@code BodyPublisher} with {@code
+         * contentLength() == 0} to this method. Any other body instance will
+         * cause the build to fail with an {@link IllegalBodyException}
+         * <strong>if</strong> the status-code is 1XX (Informational). There is
+         * unfortunately no other pragmatic alternative since the {@code
+         * Flow.Publisher} API does not support a method equivalent to {@code
+         * isEmpty()} <i>and</i> still keep the fail-fast behavior.
+         * 
          * @param   body publisher
          * @return  a new builder representing the new state
          * @throws  NullPointerException if {@code body} is {@code null}
@@ -369,8 +416,8 @@ public interface Response
          * 
          * @return a response
          * 
-         * @throws IllegalStateException
-         *             if a status code has not been set
+         * @throws IllegalBodyException
+         *             if body is present and status-code is 1XX (Informational)
          */
         Response build();
     }

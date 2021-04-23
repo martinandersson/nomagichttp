@@ -1,12 +1,18 @@
 package alpha.nomagichttp.internal;
 
-import alpha.nomagichttp.HttpConstants;
+import alpha.nomagichttp.HttpServer;
 import alpha.nomagichttp.handler.ClientChannel;
 import alpha.nomagichttp.message.Response;
 
 import java.io.IOException;
+import java.net.SocketAddress;
+import java.net.SocketOption;
 import java.nio.channels.AsynchronousSocketChannel;
 import java.nio.channels.ClosedChannelException;
+import java.nio.channels.NetworkChannel;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Set;
 import java.util.concurrent.CompletionStage;
 
 import static java.lang.System.Logger.Level.DEBUG;
@@ -19,54 +25,60 @@ final class DefaultClientChannel implements ClientChannel
             = System.getLogger(DefaultClientChannel.class.getPackageName());
     
     private final AsynchronousSocketChannel child;
-    private final ResponsePipeline pipe;
-    private final Runnable onClose;
+    private final HttpServer server;
+    private final List<Runnable> onClose;
+    private ResponsePipeline pipe;
     
     private volatile boolean readShutdown,
-                             writeShutdown;
+                            writeShutdown;
     
     /**
      * Constructs a {@code DefaultClientChannel}.<p>
      * 
-     * The HTTP version may be {@code null}, in which case this instance can not
-     * be used for writing responses (no backing pipeline). This variant is
-     * useful only for a select few internal server components as a means to
-     * access the channel-state management API of this class. An
-     * application-facing instance must have a HTTP version set.<p>
+     * The channel can not be used for writing responses before this instance
+     * has been {@link #usePipeline(ResponsePipeline) initialized}.
      * 
-     * The on-channel-close callback is only called if the child channel is
-     * closed through this API. If the channel reference is closed or the
-     * channel is asynchronously closed then the callback is never invoked
-     * (TODO: must implement timeouts). The callback may also be called multiple
-     * times, even concurrently.
+     * @param child channel
+     * @param server parent
      * 
-     * @param child of parent (client)
-     * @param ver HTTP version (may be {@code null})
-     * @param onChannelClose callback (may be {@code null})
-     * 
-     * @throws NullPointerException if {@code client} is {@code null}
+     * @throws NullPointerException if any argument is {@code null}
      */
-    DefaultClientChannel(
-            AsynchronousSocketChannel child,
-            HttpConstants.Version ver,
-            Runnable onChannelClose)
-    {
+    DefaultClientChannel(AsynchronousSocketChannel child, HttpServer server) {
         this.child   = requireNonNull(child);
-        this.pipe    = ver == null ? null : new ResponsePipeline(this, ver);
+        this.server  = requireNonNull(server);
+        this.onClose = new ArrayList<>(1);
+        this.pipe    = null;
         readShutdown = writeShutdown = false;
-        this.onClose = onChannelClose;
     }
     
-    @Override
-    public AsynchronousSocketChannel delegate() {
-        return child;
-    }
-    
-    ResponsePipeline pipeline() {
-        if (pipe == null) {
-            throw new UnsupportedOperationException("Need HTTP version.");
+    /**
+     * Schedule a callback to run on channel close.<p>
+     * 
+     * This operation is not thread-safe with no memory fencing. Should only be
+     * called before the first HTTP exchange begins. The callback may be invoked
+     * concurrently, even multiple times. The callback is only called if the
+     * channel is closed through the API exposed by this class.
+     * 
+     * @param callback on channel close
+     * @throws NullPointerException if {@code callback} is {@code null}
+     */
+    void onClose(Runnable callback) {
+        onClose.add(requireNonNull(callback));
+        if (!child.isOpen()) {
+            callback.run();
         }
-        return pipe;
+    }
+    
+    /**
+     * Initialize this channel with a pipeline or replace an old.<p>
+     * 
+     * This operation will enable the response-writing API of the interface.
+     * Until then, only the channel state-management API is useful.
+     * 
+     * @param pipe response pipeline
+     */
+    void usePipeline(ResponsePipeline pipe) {
+        this.pipe = pipe;
     }
     
     @Override
@@ -77,6 +89,16 @@ final class DefaultClientChannel implements ClientChannel
     @Override
     public void write(CompletionStage<Response> response) {
         pipe.add(response);
+    }
+    
+    @Override
+    public void writeFirst(Response response) {
+        writeFirst(response.completedStage());
+    }
+    
+    @Override
+    public void writeFirst(CompletionStage<Response> response) {
+        pipe.addFirst(response);
     }
     
     @Override
@@ -184,9 +206,7 @@ final class DefaultClientChannel implements ClientChannel
         
         child.close();
         LOG.log(DEBUG, () -> "Closed child: " + child);
-        if (onClose != null) {
-            onClose.run();
-        }
+        onClose.forEach(Runnable::run);
     }
     
     @Override
@@ -195,6 +215,83 @@ final class DefaultClientChannel implements ClientChannel
             close();
         } catch (IOException e) {
             LOG.log(ERROR, () -> "Failed to close child: " + child, e);
+        }
+    }
+    
+    private NetworkChannel proxy;
+    
+    @Override
+    public NetworkChannel getDelegate() {
+        NetworkChannel p = proxy;
+        if (p == null) {
+            proxy = p = new ProxiedNetworkChannel(child);
+        }
+        return p;
+    }
+    
+    /**
+     * Returns the raw delegate, not wrapped in a proxy.<p>
+     *
+     * The purpose of the proxy is to capture close-calls, so that we can make
+     * safe assumptions about the channel state as well as to run
+     * server-side close-callbacks for resource cleanup.<p>
+     *
+     * This method may be used when the interface {@code NetworkChannel} is not
+     * sufficient or as a performance optimization but only if the close method
+     * is not invoked on the returned reference.
+     *
+     * @return non-proxied delegate
+     */
+    AsynchronousSocketChannel getDelegateNoProxy() {
+        return child;
+    }
+    
+    @Override
+    public HttpServer getServer() {
+        return server;
+    }
+    
+    private final class ProxiedNetworkChannel implements NetworkChannel
+    {
+        private final AsynchronousSocketChannel d;
+        
+        ProxiedNetworkChannel(AsynchronousSocketChannel d) {
+            this.d = d;
+        }
+        
+        @Override
+        public NetworkChannel bind(SocketAddress local) throws IOException {
+            return d.bind(local);
+        }
+        
+        @Override
+        public SocketAddress getLocalAddress() throws IOException {
+            return d.getLocalAddress();
+        }
+        
+        @Override
+        public <T> NetworkChannel setOption(SocketOption<T> name, T value) throws IOException {
+            return d.setOption(name, value);
+        }
+        
+        @Override
+        public <T> T getOption(SocketOption<T> name) throws IOException {
+            return d.getOption(name);
+        }
+        
+        @Override
+        public Set<SocketOption<?>> supportedOptions() {
+            return d.supportedOptions();
+        }
+        
+        @Override
+        public boolean isOpen() {
+            return d.isOpen();
+        }
+        
+        @Override
+        public void close() throws IOException {
+            DefaultClientChannel.this.close();
         }
     }
 }

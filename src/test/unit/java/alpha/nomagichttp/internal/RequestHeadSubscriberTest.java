@@ -1,5 +1,6 @@
 package alpha.nomagichttp.internal;
 
+import alpha.nomagichttp.HttpServer;
 import alpha.nomagichttp.message.RequestHeadParseException;
 import alpha.nomagichttp.testutil.ClientOperations;
 import alpha.nomagichttp.testutil.Logging;
@@ -23,6 +24,7 @@ import static java.lang.Integer.MAX_VALUE;
 import static java.lang.System.Logger.Level.ALL;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.mock;
 
 class RequestHeadSubscriberTest
 {
@@ -45,8 +47,9 @@ class RequestHeadSubscriberTest
     
     CompletionStage<RequestHead> testee() throws InterruptedException {
         if (testee == null) {
-            DefaultClientChannel api = new DefaultClientChannel(SERVER.accept(), null, null);
-            Flow.Publisher<DefaultPooledByteBufferHolder> bytes = new ChannelByteBufferPublisher(api);
+            DefaultClientChannel chan = new DefaultClientChannel(
+                    SERVER.accept(), mock(HttpServer.class));
+            Flow.Publisher<DefaultPooledByteBufferHolder> bytes = new ChannelByteBufferPublisher(chan);
             RequestHeadSubscriber rhp = new RequestHeadSubscriber(MAX_VALUE);
             bytes.subscribe(rhp);
             testee = rhp.asCompletionStage();

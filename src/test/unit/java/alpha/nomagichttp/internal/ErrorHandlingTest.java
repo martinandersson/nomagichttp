@@ -20,7 +20,12 @@ import java.util.function.Supplier;
 
 import static alpha.nomagichttp.HttpServer.create;
 import static alpha.nomagichttp.handler.RequestHandler.GET;
+import static alpha.nomagichttp.handler.RequestHandler.HEAD;
+import static alpha.nomagichttp.handler.RequestHandler.TRACE;
+import static alpha.nomagichttp.message.Responses.processing;
+import static alpha.nomagichttp.message.Responses.text;
 import static alpha.nomagichttp.testutil.ClientOperations.CRLF;
+import static alpha.nomagichttp.util.BetterBodyPublishers.ofString;
 import static java.lang.System.Logger.Level.ALL;
 import static java.util.concurrent.CompletableFuture.failedFuture;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -30,6 +35,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  */
+// Rename to ErrorEndToEndTest
 class ErrorHandlingTest
 {
     HttpServer s;
@@ -61,7 +67,7 @@ class ErrorHandlingTest
     void not_found_custom() throws IOException {
         ErrorHandler eh = (exc, ch, req, han) -> {
             if (exc instanceof NoRouteFoundException) {
-                ch.write(Response.builder(123, "Custom Not Found!")
+                ch.write(Response.builder(499, "Custom Not Found!")
                                  .mustCloseAfterWrite(true)
                                  .build());
                 return;
@@ -74,7 +80,7 @@ class ErrorHandlingTest
             "GET /404 HTTP/1.1" + CRLF + CRLF);
         
         assertThat(res).isEqualTo(
-            "HTTP/1.1 123 Custom Not Found!" + CRLF + CRLF);
+            "HTTP/1.1 499 Custom Not Found!" + CRLF + CRLF);
     }
     
     /** Request handler fails synchronously. */
@@ -189,5 +195,72 @@ class ErrorHandlingTest
                  "HTTP/1.1 505 HTTP Version Not Supported" + CRLF +
                  "Content-Length: 0" + CRLF + CRLF);
         }
+    }
+    
+    // TODO: When this class extends AbstractEndToEndTest, assert default handler caught
+    //       IllegalBodyException: Body in response to a HEAD request.
+    @Test
+    void IllegalBodyException_inResponseToHEAD() throws IOException {
+        s = create().start();
+        s.add("/", HEAD().respond(text("Body!")));
+        
+        String res = new ClientOperations(s)
+                .writeRead("HEAD / HTTP/1.1" + CRLF + CRLF);
+        
+        assertThat(res).isEqualTo(
+                "HTTP/1.1 500 Internal Server Error" + CRLF +
+                "Content-Length: 0"                  + CRLF + CRLF);
+    }
+    
+    @Test
+    void IllegalBodyException_inRequestFromTRACE() throws IOException {
+        s = create().start();
+        s.add("/", TRACE().respond(text("Body!")));
+        
+        String res = new ClientOperations(s)
+                .writeRead("TRACE / HTTP/1.1" + CRLF + CRLF);
+        
+        assertThat(res).isEqualTo(
+                "HTTP/1.1 400 Bad Request" + CRLF +
+                "Content-Length: 0"        + CRLF + CRLF);
+    }
+    
+    @Test
+    void IllegalBodyException_in1xxResponse() throws IOException {
+        s = create().start();
+        s.add("/", GET().respond(() ->
+                Response.builder(123)
+                        .body(ofString("Body!"))
+                        .build()
+                        .completedStage()));
+        
+        String res = new ClientOperations(s)
+                .writeRead("GET / HTTP/1.1" + CRLF + CRLF);
+        
+        assertThat(res).isEqualTo(
+                "HTTP/1.1 500 Internal Server Error" + CRLF +
+                "Content-Length: 0"                  + CRLF + CRLF);
+    }
+    
+    @Test
+    void ResponseRejectedException_interimIgnoredForOldClient() throws IOException {
+        s = create().start();
+        
+        s.add("/", GET().accept((req, ch) -> {
+            ch.write(processing()); // <-- ignored
+            ch.write(text("Done!"));
+        }));
+        
+        // If all you do is to replace "HTTP/1.0" with "HTTP/1.1"...
+        String res = new ClientOperations(s)
+                .writeRead("GET / HTTP/1.0" + CRLF + CRLF, "Done!");
+        
+        // ...then the interim response is no longer ignored.
+        assertThat(res).isEqualTo(
+            "HTTP/1.0 200 OK"                         + CRLF +
+            "Content-Type: text/plain; charset=utf-8" + CRLF +
+            "Content-Length: 5"                       + CRLF + CRLF +
+            
+            "Done!");
     }
 }

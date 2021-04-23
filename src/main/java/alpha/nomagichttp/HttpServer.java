@@ -5,7 +5,9 @@ import alpha.nomagichttp.handler.ErrorHandler;
 import alpha.nomagichttp.handler.RequestHandler;
 import alpha.nomagichttp.internal.DefaultServer;
 import alpha.nomagichttp.message.HttpVersionTooOldException;
+import alpha.nomagichttp.message.IllegalBodyException;
 import alpha.nomagichttp.message.MaxRequestHeadSizeExceededException;
+import alpha.nomagichttp.message.Request;
 import alpha.nomagichttp.message.Response;
 import alpha.nomagichttp.message.Responses;
 import alpha.nomagichttp.route.DefaultRouteRegistry;
@@ -93,10 +95,9 @@ import static java.net.InetAddress.getLoopbackAddress;
  *     <a href="https://tools.ietf.org/html/rfc7231#section-6.2">RFC 7231 §6.2</a>)</li>
  * </ul>
  * 
- * These variants are rejected before or after the handler has been called,
- * depending on whether the message is a request or a response (TODO: define
- * exc types). They <i>must</i> be rejected since including a body would have
- * likely killed the protocol.<p>
+ * These variants <i>must</i> be rejected since including a body would have
+ * likely killed the protocol (causes {@link IllegalBodyException} to be
+ * thrown).<p>
  * 
  * For all other variants of requests and responses, the body is optional and
  * the server does not reject the message nor does the API enforce an
@@ -190,10 +191,10 @@ public interface HttpServer
      * Create a server using {@linkplain Config#DEFAULT default
      * configuration}.<p>
      * 
-     * The provided array of error handlers will be copied as-is into a {@code
-     * List}. The application should make sure that the array does not contain
-     * duplicates, unless for some bizarre reason it is desired to have an error
-     * handler called multiple times.
+     * The provided array of error handlers will be copied as-is. The
+     * application should make sure that the array does not contain duplicates,
+     * unless for some bizarre reason it is desired to have an error handler
+     * called multiple times.
      * 
      * @param eh error handler(s)
      * 
@@ -208,11 +209,11 @@ public interface HttpServer
     
     /**
      * Create a server.<p>
-     * 
-     * The provided array of error handlers will be copied as-is into a {@code
-     * List}. The application should make sure that the array does not contain
-     * duplicates, unless for some bizarre reason it is desired to have an error
-     * handler called multiple times.
+     *
+     * The provided array of error handlers will be copied as-is. The
+     * application should make sure that the array does not contain duplicates,
+     * unless for some bizarre reason it is desired to have an error handler
+     * called multiple times.
      * 
      * @param config of server
      * @param eh     error handler(s)
@@ -342,19 +343,14 @@ public interface HttpServer
      * Upon failure to close the server's listening port, the stage will
      * complete exceptionally with an {@code IOException}.<p>
      * 
-     * It is possible for the server to be started again whilst a stage has been
-     * returned from this method but active HTTP exchanges have yet to complete.
-     * In this case, the returned stage will not complete until earliest at the
-     * next server stop.<p>
-     * 
-     * The returned stage is a defensive copy and can not be used to abort the
-     * shutdown.<p>
+     * The returned stage can not be used to abort the shutdown.<p>
      * 
      * There are no locks involved between a server's start and the completion
      * of the returned stage. If the application starts the same server
      * concurrent to the completion of the last HTTP exchange from the previous
      * run cycle, then technically it is possible for the returned stage to
-     * complete at the same time the server is in a running state.<p>
+     * complete at the same time the server is considered to be in a running
+     * state.<p>
      * 
      * @return the result
      */
@@ -365,8 +361,7 @@ public interface HttpServer
      * exchanges.<p>
      * 
      * The server's listening port will be immediately closed and then all
-     * active HTTP exchanges will be aborted. Once all HTTP exchanges have
-     * finished, this method returns.<p>
+     * active HTTP exchanges will be aborted.<p>
      * 
      * If the server was just started and is still in the midst of opening the
      * server's listening port, then this method will block until the startup
@@ -621,18 +616,15 @@ public interface HttpServer
          * By default, this method returns {@code false} and the server will
          * therefore accept HTTP/1.0 clients.<p>
          * 
-         * Rejection takes places through a server-thrown {@link
+         * Rejection takes place through a server-thrown {@link
          * HttpVersionTooOldException} which by default gets translated to a
          * "426 Upgrade Required" response.<p>
          * 
-         * Apart from not having all HTTP/1.1 features available for the
-         * exchange, HTTP/1.0 does not by default support persistent connections
-         * and may as a consequence be a wasteful protocol.<p>
-         * 
-         * In order to minimize waste, it's recommended to override this value
-         * with {@code true}. As a library however, we have to be backwards
-         * compatible and support as many applications as possible "out of the
-         * box", hence the {@code false} default.<p>
+         * HTTP/1.0 does not by default support persistent connections and may
+         * as a consequence be a wasteful protocol. It's recommended to override
+         * this value with {@code true}. As a library however, we have to be
+         * backwards compatible and support as many applications as possible
+         * "out of the box", hence the {@code false} default.<p>
          * 
          * The configuration value will be polled at the beginning of each HTTP
          * exchange.<p>
@@ -646,6 +638,69 @@ public interface HttpServer
          * @return whether or not to reject HTTP/1.0 clients
          */
         default boolean rejectClientsUsingHTTP1_0() {
+            return false;
+        }
+        
+        /**
+         * Ignore rejected 1XX (Informational) responses when they fail to be
+         * sent to an HTTP/1.0 client.<p>
+         * 
+         * The default value is {@code true} and the application can safely
+         * write 1XX (Informational) responses to the channel without concern
+         * for old incompatible clients.<p>
+         * 
+         * If this option is disabled (changed to return false), then the
+         * default error handler will instead of ignoring the failure, write a
+         * final 500 (Internal Server Error) response as an alternative to the
+         * failed response, meaning that the application will then not be able
+         * to write its intended final response. This also means that the
+         * application would have to query the active HTTP version ({@link
+         * Request#httpVersion()}) and restrain itself from attempting to send
+         * interim responses to HTTP/1.0 clients.<p>
+         * 
+         * The configuration value will be polled by the {@link
+         * ErrorHandler#DEFAULT default error handler} for each handled relevant
+         * case.
+         * 
+         * @implSpec
+         * The default implementation returns {@code true}.
+         * 
+         * @return whether or not to ignore failed 1XX (Informational) responses
+         *         sent to HTTP/1.0 clients
+         */
+        default boolean ignoreRejectedInformational() {
+            return true;
+        }
+        
+        /**
+         * Immediately respond a 100 (Continue) interim response to a request
+         * with a {@code Expect: 100-continue} header.<p>
+         * 
+         * By default, this value is {@code false} leaving the client and
+         * application in control.<p>
+         * 
+         * Even when {@code false}, the server will respond a 100 (Continue)
+         * response to the client on first access of a non-empty request body
+         * (all methods in {@link Request.Body} except {@link
+         * Request.Body#isEmpty()}) unless one has already been sent. This is
+         * convenient for the application developer who does not need to know
+         * anything about this particular protocol feature.<p>
+         * 
+         * Independent of the configured value, the server never attempts to
+         * automatically send a 100 (Continue) response to a HTTP/1.0 client (
+         * <a href="https://tools.ietf.org/html/rfc7231#section-5.1.1">RFC 7231 §5.1.1</a>).<p>
+         * 
+         * The configuration value is polled once on each new request.
+         * 
+         * @implSpec
+         * The default implementation returns {@code false}.
+         * 
+         * @return whether or not to immediately respond a 100 (Continue)
+         *         interim response to a request with a {@code Expect: 100-continue} header
+         * 
+         * @see HttpConstants.StatusCode#ONE_HUNDRED
+         */
+        default boolean immediatelyContinueExpect100() {
             return false;
         }
     }

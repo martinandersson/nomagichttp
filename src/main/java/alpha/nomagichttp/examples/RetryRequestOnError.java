@@ -1,10 +1,9 @@
 package alpha.nomagichttp.examples;
 
 import alpha.nomagichttp.HttpServer;
-import alpha.nomagichttp.handler.ClientChannel;
 import alpha.nomagichttp.handler.ErrorHandler;
+import alpha.nomagichttp.handler.ErrorHandlers;
 import alpha.nomagichttp.handler.RequestHandler;
-import alpha.nomagichttp.message.Request;
 import alpha.nomagichttp.message.Response;
 
 import java.io.IOException;
@@ -16,8 +15,6 @@ import java.util.function.Supplier;
 import static alpha.nomagichttp.handler.RequestHandler.GET;
 import static alpha.nomagichttp.message.Responses.noContent;
 import static java.time.LocalTime.now;
-import static java.util.concurrent.CompletableFuture.delayedExecutor;
-import static java.util.concurrent.TimeUnit.MILLISECONDS;
 
 /**
  * Deals with failed requests by invoking the same request handler again.
@@ -39,12 +36,15 @@ public class RetryRequestOnError
      */
     public static void main(String... args) throws IOException {
         // A very unstable request handler
-        RequestHandler rh = GET().respond(new MyUnstableResponseSupplier());
+        RequestHandler unstable = GET().respond(new MyUnstableResponseSupplier());
         
-        // The savior
-        ErrorHandler eh = new MyRequestRetrier();
+        // Note: Implementing a custom ErrorHandler is not hard! This library
+        // provided implementation essentially does only the following:
+        //     if (isOurHandledType(throwable))
+        //         requestHandler.logic().accept(request, channel);
+        ErrorHandler retry = ErrorHandlers.delayedRetryOn(OptimisticLockException.class);
         
-        HttpServer.create(eh).add("/", rh).start(PORT);
+        HttpServer.create(retry).add("/", unstable).start(PORT);
         System.out.println("Listening on port " + PORT + ".");
     }
     
@@ -54,7 +54,7 @@ public class RetryRequestOnError
         
         @Override
         public CompletionStage<Response> get() {
-            System.out.print("Request handler received a request " +
+            System.out.print("Handler invoked " +
                     DateTimeFormatter.ofPattern("HH:mm:ss.SSS").format(now()));
             
             if (n.incrementAndGet() % 2 != 0) {
@@ -66,38 +66,6 @@ public class RetryRequestOnError
             
             System.out.println(" and will return 204 No Content");
             return noContent().completedStage();
-        }
-    }
-    
-    // Retries failed requests a maximum of three times, using an exponentially increased delay
-    private static class MyRequestRetrier implements ErrorHandler {
-        @Override
-        public void apply(Throwable thr, ClientChannel ch, Request req, RequestHandler rh) throws Throwable
-        {
-            // Handle known exception suitable for retry,
-            // otherwise propagate to server's default handler
-            try {
-                throw thr;
-            } catch (OptimisticLockException e) {
-                // Bump retry counter
-                int attempt = req.attributes().<Integer>asMapAny()
-                        .merge("retry.counter", 1, Integer::sum);
-                
-                if (attempt > 3) {
-                    System.out.println("Retried three times already, giving up!");
-                    throw e; // same as thr
-                }
-                
-                int ms = delay(attempt);
-                System.out.println("Error handler will retry #" + attempt + " after delay (ms): " + ms);
-                
-                delayedExecutor(ms, MILLISECONDS)
-                        .execute(() -> rh.logic().accept(req, ch));
-            }
-        }
-        
-        private static int delay(int attempt) {
-            return 40 * (int) Math.pow(attempt, 2);
         }
     }
     

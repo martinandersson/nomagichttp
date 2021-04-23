@@ -28,9 +28,9 @@ import static org.assertj.core.api.Assertions.assertThat;
  * The server has no routes added and so most test cases will probably have to
  * add those in manually.<p>
  * 
- * This class registers en error handler which simply collects all delivered
- * exceptions into a {@code BlockingDeque} and then delegates the error handling
- * to the default error handler.<p>
+ * This class registers en error handler which collects all server exceptions
+ * into a {@code BlockingDeque} and then delegates the error handling to the
+ * default error handler.<p>
  * 
  * By default, after-each will assert that no errors were delivered to the error
  * handler. If errors are expected, then the test must consume all errors from
