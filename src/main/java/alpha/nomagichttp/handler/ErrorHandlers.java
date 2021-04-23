@@ -42,7 +42,7 @@ public final class ErrorHandlers {
     }
     
     /**
-     * Retry failed requests using an exponentially increased delay.<p>
+     * Retry a failed request using an exponentially increased delay.<p>
      * 
      * With "retry" means that the request handler is executed anew.<p>
      * 
@@ -62,7 +62,7 @@ public final class ErrorHandlers {
      * and 1515.
      * 
      * @param onError which error triggers the retry
-     * @param maxRetries maximum number of retries
+     * @param maxRetries maximum number of retries of a failed request
      *     (capped by {@link HttpServer.Config#maxErrorRecoveryAttempts()})
      * @param delayBase in milliseconds
      * @param jitterBound in milliseconds (inclusive)
