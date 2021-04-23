@@ -149,8 +149,8 @@ import java.nio.charset.Charset;
  *       literally.</li>
  * </ul>
  * 
- * The implementation is thread-safe and does not necessarily implement {@code
- * hashCode()} and {@code equals()}.
+ * The implementation is thread-safe and immutable. It does not necessarily
+ * implement {@code hashCode()} and {@code equals()}.
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  * 
