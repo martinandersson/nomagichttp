@@ -114,7 +114,8 @@ import static java.lang.System.Logger.Level.ERROR;
  * @author Martin Andersson (webmaster at martinandersson.com)
  * 
  * @see HttpServer.Config#maxErrorRecoveryAttempts() 
- * @see ErrorHandler#apply(Throwable, ClientChannel, Request, RequestHandler) 
+ * @see ErrorHandler#apply(Throwable, ClientChannel, Request, RequestHandler)
+ * @see ErrorHandlers
  */
 @FunctionalInterface
 public interface ErrorHandler

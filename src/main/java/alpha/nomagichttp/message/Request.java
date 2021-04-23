@@ -785,18 +785,16 @@ public interface Request
      * 
      * <pre>{@code
      *   // In a request handler
-     *   request.attributes().set("stuff", new MyClass());
+     *   request.attributes().set("my.stuff", new MyClass());
      *   // Somewhere else
-     *   MyClass obj = request.attributes().getAny("stuff");
+     *   MyClass obj = request.attributes().getAny("my.stuff");
      * }</pre>
      * 
      * The implementation is thread-safe.<p>
      * 
-     * The NoMagicHTTP library may use the attribute object in the future as a
-     * means of communication, for example as a store of information related to
-     * the characteristics of a request. If so, the names used will start with
-     * "alpha.nomagichttp.". Applications are encouraged to avoid using this
-     * prefix in their names.
+     * The NoMagicHTTP library reserves the right to use the namespace
+     * "alpha.nomagichttp.*" exclusively. Applications are encouraged to avoid
+     * using this prefix in their names.
      * 
      * @author Martin Andersson (webmaster at martinandersson.com)
      */

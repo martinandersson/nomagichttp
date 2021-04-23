@@ -264,7 +264,7 @@ HTTP/1.1 204 No Content
 ### Retry request on error
 
 This example demonstrates error handling and will re-execute the request handler
-on a particular known exception.
+on a particular exception.
 
 See code: [src/main/java/.../RetryRequestOnError.java][8-1]
 
@@ -284,9 +284,8 @@ HTTP/1.1 204 No Content
 
 In the server terminal, you should see text similar to this:
 ```console
-Request handler received a request 15:19:58.780 and will crash!
-Error handler will retry #1 after delay (ms): 40
-Request handler received a request 15:19:58.827 and will return 204 No Content
+Handler invoked 18:32:08.130 and will crash!
+Handler invoked 18:32:08.197 and will return 204 No Content
 ```
 
 [8-1]: src/main/java/alpha/nomagichttp/examples/RetryRequestOnError.java
