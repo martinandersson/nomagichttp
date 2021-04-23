@@ -167,8 +167,8 @@ import static java.net.InetAddress.getLoopbackAddress;
  *   });
  * </pre>
  * 
- * The problem is <i>not</i> synchronously producing a response if one can be
- * produced safely without blocking.
+ * The problem is <i>not</i> synchronously producing a response <i>if</i> one
+ * can be produced without blocking.
  * 
  * <pre>
  * 
