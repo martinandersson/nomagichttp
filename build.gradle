@@ -43,8 +43,8 @@ dependencies {
     testImplementation 'org.assertj:assertj-core:3.16.1'
     testImplementation 'org.mockito:mockito-core:3.4.4'
     
-    // Used by TwoHundredRequestsFromSameClient
-    largeTestImplementation 'org.junit.jupiter:junit-jupiter-params:5.5.1'
+    // Used by DetailedEndToEndTest and TwoHundredRequestsFromSameClient
+    testImplementation 'org.junit.jupiter:junit-jupiter-params:5.7.1'
 }
 
 // To be bumped by task in future or perhaps not even set in this file

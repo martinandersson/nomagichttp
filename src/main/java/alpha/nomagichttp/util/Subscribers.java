@@ -52,8 +52,7 @@ public final class Subscribers
      * Returns a subscriber interested only in published items.
      * 
      * The implementation's {@code onSubscribe} method will request {@code
-     * Long.MAX_VALUE} and the {@code onError} and {@code onComplete} methods
-     * are empty.
+     * Long.MAX_VALUE}. {@code onError} and {@code onComplete} are NOP.
      * 
      * @param impl item consumer
      * @param <T> item type
@@ -62,7 +61,7 @@ public final class Subscribers
      * 
      * @throws NullPointerException if {@code onNext} is {@code null}
      */
-    public static <T> Flow.Subscriber<? super T> onNext(Consumer<? super T> impl) {
+    public static <T> Flow.Subscriber<T> onNext(Consumer<? super T> impl) {
         return new Flow.Subscriber<>() {
             public void onSubscribe(Flow.Subscription s) {
                 s.request(Long.MAX_VALUE); }

@@ -6,7 +6,11 @@ import alpha.nomagichttp.message.ClosedPublisherException;
 import alpha.nomagichttp.message.PooledByteBufferHolder;
 import alpha.nomagichttp.message.Request;
 import alpha.nomagichttp.message.Responses;
+import alpha.nomagichttp.testutil.MemorizingSubscriber;
+import alpha.nomagichttp.testutil.MemorizingSubscriber.Signal;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -20,13 +24,24 @@ import java.util.logging.LogRecord;
 
 import static alpha.nomagichttp.handler.RequestHandler.GET;
 import static alpha.nomagichttp.handler.RequestHandler.POST;
+import static alpha.nomagichttp.handler.RequestHandler.builder;
 import static alpha.nomagichttp.message.Responses.accepted;
 import static alpha.nomagichttp.message.Responses.continue_;
 import static alpha.nomagichttp.message.Responses.text;
 import static alpha.nomagichttp.testutil.ClientOperations.CRLF;
 import static alpha.nomagichttp.testutil.Logging.toJUL;
+import static alpha.nomagichttp.testutil.MemorizingSubscriber.Signal.MethodName.ON_COMPLETE;
+import static alpha.nomagichttp.testutil.MemorizingSubscriber.Signal.MethodName.ON_ERROR;
+import static alpha.nomagichttp.testutil.MemorizingSubscriber.Signal.MethodName.ON_NEXT;
+import static alpha.nomagichttp.testutil.MemorizingSubscriber.Signal.MethodName.ON_SUBSCRIBE;
+import static alpha.nomagichttp.testutil.TestSubscribers.onNextAndComplete;
+import static alpha.nomagichttp.testutil.TestSubscribers.onNextAndError;
+import static alpha.nomagichttp.testutil.TestSubscribers.onSubscribe;
+import static alpha.nomagichttp.util.Subscribers.onNext;
 import static java.lang.System.Logger.Level.DEBUG;
+import static java.lang.System.Logger.Level.ERROR;
 import static java.lang.System.Logger.Level.WARNING;
+import static java.util.List.of;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static java.util.logging.Level.FINE;
 import static java.util.logging.Level.INFO;
@@ -192,53 +207,6 @@ class DetailedEndToEndTest extends AbstractEndToEndTest
         }
     }
     
-    @Test
-    void request_body_subscriber_crash() throws IOException, InterruptedException {
-        RuntimeException err = new RuntimeException("Oops.");
-        
-        RequestHandler crashAfterOneByte = POST().accept((req, ch) ->
-            req.body().subscribe(
-                new AfterByteTargetStop(1, subscriptionIgnored -> {
-                    throw err; })));
-        
-        server().add("/", crashAfterOneByte);
-        
-        Channel ch = client().openConnection();
-        try (ch) {
-            String req = requestWithBody("Hello"),
-                   res = client().writeRead(req);
-            
-            assertThat(res).isEqualTo(
-                "HTTP/1.1 500 Internal Server Error" + CRLF +
-                "Content-Length: 0"                  + CRLF + CRLF);
-            
-            assertThat(pollError()).isSameAs(err);
-            assertThat(client().drain()).isEmpty();
-            assertThat(ch.isOpen()).isFalse();
-            
-            /*
-             * What just happened?
-             * 
-             * 1) On the server side, OnErrorCloseReadStream caught the error
-             * and closed the input stream. Not the output stream and not the
-             * child channel.
-             * 
-             * 2) Error propagates and eventually hits the default exception
-             * handler, which produces Responses.internalServerError() which
-             * specifies "mustCloseAfterWrite()".
-             * 
-             * 2) HttpExchange notices the request to close and calls
-             * ChannelOperations.orderlyClose() which before closing the child
-             * first shuts down the input- and output streams.
-             * 
-             * 3) This then gives our client an EOS to which we react by closing
-             * the channel on our side. See ClientOperations.writeRead().
-             * 
-             * TODO: When we have a ConnectionLifeCycleTest, make reference.
-             */
-        }
-    }
-    
     /**
      * Can make a HTTP/1.0 request (and get HTTP/1.0 response).<p>
      * 
@@ -306,15 +274,184 @@ class DetailedEndToEndTest extends AbstractEndToEndTest
             "Content-Length: 0"      + CRLF + CRLF);
         
         // Logging specified in JavaDoc of ClientChannel.write()
-        List<LogRecord> serverLog = stopLogRecording().collect(toList());
-        
-        assertThat(serverLog)
+        assertThat(stopLogRecording())
             .extracting(LogRecord::getLevel, LogRecord::getMessage)
             .containsOnlyOnce(
                 // First ignored 100 Continue silently logged
                 tuple(toJUL(DEBUG),   "Ignoring repeated 100 (Continue)."),
                 // But any more than that and level escalates
                 tuple(toJUL(WARNING), "Ignoring repeated 100 (Continue)."));
+    }
+    
+    @ParameterizedTest
+    @ValueSource(strings = {"GET", "POST"})
+    void requestBodySubscriberFails_onSubscribe(String method) throws IOException, InterruptedException {
+        MemorizingSubscriber<PooledByteBufferHolder> sub = new MemorizingSubscriber<>(
+                // GET:  Caught by Publishers.empty()
+                // POST: Caught by ChannelByteBufferPublisher > AnnounceToSubscriber > AbstractUnicastPublisher
+                onSubscribe(i -> { throw OOPS; }));
+        
+        server().add("/", builder(method).accept((req, ch) -> {
+            req.body().subscribe(sub);
+        }));
+        
+        String req;
+        switch (method) {
+            case "GET":  req = requestWithoutBody(); break;
+            case "POST": req = requestWithBody("not empty"); break;
+            default: throw new AssertionError();
+        }
+        
+        String rsp = client().writeRead(req);
+        
+        assertThat(rsp).isEqualTo(
+            "HTTP/1.1 500 Internal Server Error" + CRLF +
+            "Content-Length: 0"                  + CRLF + CRLF);
+        
+        // TODO: Would ideally like to assert that when the error handler was called,
+        //       read stream remained open. Requires subclass to export API for this.
+        
+        var s = sub.signals();
+        assertThat(s).hasSize(2);
+        
+        assertTrue(s.get(0).getMethodName() == ON_SUBSCRIBE &&
+                   s.get(1).getMethodName() == ON_ERROR);
+        
+        assertOnErrorThrowable(s.get(1), "Subscriber.onSubscribe() returned exceptionally.");
+        assertThatErrorHandlerCaughtOops();
+    }
+    
+    @Test
+    void requestBodySubscriberFails_onNext() throws IOException, InterruptedException {
+        MemorizingSubscriber<PooledByteBufferHolder> sub = new MemorizingSubscriber<>(
+                // Intercepted by DefaultRequest > OnErrorCloseReadStream
+                onNext(i -> { throw OOPS; }));
+        
+        server().add("/", POST().accept((req, ch) -> {
+            req.body().subscribe(sub);
+        }));
+        
+        String rsp = client().writeRead(requestWithBody("not empty"));
+        
+        assertThat(rsp).isEqualTo(
+                "HTTP/1.1 500 Internal Server Error" + CRLF +
+                "Content-Length: 0"                  + CRLF + CRLF);
+        
+        // TODO: Assert that read stream was closed before error handler called.
+        //       Next statement kind of works as a substitute.
+        assertThat(stopLogRecording()).extracting(LogRecord::getLevel, LogRecord::getMessage)
+                .contains(tuple(toJUL(ERROR),
+                    "Signalling Flow.Subscriber failed. Will close the channel's read stream."));
+        
+        var s = sub.signals();
+        assertThat(s).hasSize(3);
+        
+        assertTrue(s.get(0).getMethodName() == ON_SUBSCRIBE &&
+                   s.get(1).getMethodName() == ON_NEXT &&
+                   s.get(2).getMethodName() == ON_ERROR);
+        
+        assertOnErrorThrowable(s.get(2), "Signalling Flow.Subscriber failed.");
+        assertThatErrorHandlerCaughtOops();
+    }
+    
+    @Test
+    void requestBodySubscriberFails_onError() throws IOException, InterruptedException {
+        MemorizingSubscriber<PooledByteBufferHolder> sub = new MemorizingSubscriber<>(
+                onNextAndError(
+                    item -> { throw OOPS; },
+                    thr  -> { throw new RuntimeException("is logged but not re-thrown"); }));
+        
+        server().add("/", POST().accept((req, ch) -> {
+            req.body().subscribe(sub);
+        }));
+        
+        String rsp = client().writeRead(requestWithBody("not empty"));
+        
+        assertThat(rsp).isEqualTo(
+            "HTTP/1.1 500 Internal Server Error" + CRLF +
+            "Content-Length: 0"                  + CRLF + CRLF);
+        
+        // TODO: Assert that read stream was closed before error handler called.
+        
+        var log = stopLogRecording().collect(toList());
+        assertThat(log).extracting(LogRecord::getLevel, LogRecord::getMessage)
+            .contains(tuple(toJUL(ERROR),
+                "Signalling Flow.Subscriber failed. Will close the channel's read stream."));
+        
+        LogRecord fromOnError = log.stream().filter(
+                    r -> r.getLevel().equals(toJUL(ERROR)) &&
+                    r.getMessage().equals("Subscriber.onError() returned exceptionally. This new error is only logged but otherwise ignored."))
+                .findAny()
+                .get();
+        
+        assertThat(fromOnError.getThrown())
+                .isExactlyInstanceOf(RuntimeException.class)
+                .hasMessage("is logged but not re-thrown");
+        
+        var s = sub.signals();
+        assertThat(s).hasSize(3);
+        
+        assertTrue(s.get(0).getMethodName() == ON_SUBSCRIBE &&
+                   s.get(1).getMethodName() == ON_NEXT &&
+                   s.get(2).getMethodName() == ON_ERROR);
+        
+        assertOnErrorThrowable(s.get(2), "Signalling Flow.Subscriber failed.");
+        assertThatErrorHandlerCaughtOops();
+    }
+    
+    @ParameterizedTest
+    @ValueSource(strings = {"GET", "POST"})
+    void requestBodySubscriberFails_onComplete(String method) throws IOException, InterruptedException {
+        MemorizingSubscriber<PooledByteBufferHolder> sub = new MemorizingSubscriber<>(
+                onNextAndComplete(
+                    buff -> { buff.get().position(buff.get().limit()); buff.release(); }, // Discard
+                    ()   -> { throw OOPS; }));
+        
+        server().add("/", builder(method).accept((req, ch) -> {
+            req.body().subscribe(sub);
+        }));
+        
+        String req;
+        switch (method) {
+            case "GET":  req = requestWithoutBody(); break;
+            case "POST": req = requestWithBody("1"); break; // Small body to ensure we stay within one ByteBuff
+            default: throw new AssertionError();
+        }
+        
+        String rsp = client().writeRead(req);
+        
+        assertThat(rsp).isEqualTo(
+                "HTTP/1.1 500 Internal Server Error" + CRLF +
+                "Content-Length: 0"                  + CRLF + CRLF);
+        
+        List<Signal.MethodName> exp;
+        switch (method) {
+            case "GET":  exp = of(ON_SUBSCRIBE, ON_COMPLETE); break;
+            case "POST": exp = of(ON_SUBSCRIBE, ON_NEXT, ON_COMPLETE); break;
+            default:
+                throw new AssertionError();
+        }
+        
+        assertThat(sub.methodNames()).isEqualTo(exp);
+        assertThatErrorHandlerCaughtOops();
+    }
+    
+    private static void assertOnErrorThrowable(Signal onError, String msg) {
+        assertThat(onError.<Throwable>getArgument())
+                .isExactlyInstanceOf(ClosedPublisherException.class)
+                .hasMessage(msg)
+                .hasNoSuppressedExceptions()
+                .getCause()
+                .isSameAs(OOPS);
+    }
+    
+    private static final RuntimeException OOPS = new RuntimeException("Oops!");
+    
+    private void assertThatErrorHandlerCaughtOops() throws InterruptedException {
+        assertThat(pollError())
+                .isSameAs(OOPS)
+                .hasNoCause()
+                .hasNoSuppressedExceptions();
     }
     
     /**
@@ -341,6 +478,18 @@ class DetailedEndToEndTest extends AbstractEndToEndTest
     private void addEndpointEchoBody() {
         server().add("/", POST().apply(req ->
                 req.body().toText().thenApply(Responses::text)));
+    }
+    
+    /**
+     * Make a "GET / HTTP/1.1" request.
+     * 
+     * @return the request
+     */
+    private static String requestWithoutBody() {
+        return "GET / HTTP/1.1"                           + CRLF +
+                "Accept: text/plain; charset=utf-8"       + CRLF +
+                "Content-Type: text/plain; charset=utf-8" + CRLF +
+                "Content-Length: " + 0                    + CRLF + CRLF;
     }
     
     /**

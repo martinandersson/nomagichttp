@@ -10,9 +10,9 @@ import static java.lang.System.Logger.Level.ERROR;
 import static java.util.Objects.requireNonNull;
 
 /**
- * On downstream signal failure; 1) log the exception and close the channel's
- * read stream, 2) pass the exception back to subscriber's {@code onError()} and
- * lastly 3) re-throw the exception.<p>
+ * On downstream signal failure; 1) close the channel's read stream, 2) pass the
+ * exception back to subscriber's {@code onError()} and lastly 3) re-throw the
+ * exception.<p>
  * 
  * This behavior is specified by {@link Request.Body}.
  * 
@@ -53,7 +53,7 @@ final class OnErrorCloseReadStream<T> extends AbstractOp<T>
               * the subscriber run through the subscriberAnnounce() method.
              */
             if (child.isOpenForReading()) {
-                LOG.log(ERROR, SIGNAL_FAILURE + " Will close the channel's read stream.", t);
+                LOG.log(ERROR, SIGNAL_FAILURE + " Will close the channel's read stream.");
                 child.shutdownInputSafe();
             } // else assume whoever closed the stream also logged the exception
             
