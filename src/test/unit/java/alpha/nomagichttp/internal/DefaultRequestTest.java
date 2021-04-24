@@ -16,6 +16,7 @@ import java.nio.file.Paths;
 import java.util.Optional;
 
 import static alpha.nomagichttp.HttpConstants.Version.HTTP_1_1;
+import static alpha.nomagichttp.testutil.Assertions.assertFailed;
 import static alpha.nomagichttp.util.Headers.of;
 import static java.nio.charset.StandardCharsets.US_ASCII;
 import static java.nio.file.Files.notExists;
@@ -54,7 +55,7 @@ class DefaultRequestTest
                 "Content-Type", "second"),
                 "abc");
         
-        assertThat(req.body().toText()).hasFailedWithThrowableThat()
+        assertFailed(req.body().toText())
                 .isExactlyInstanceOf(BadHeaderException.class)
                 .hasMessage("Multiple Content-Type values in request.");
     }
@@ -66,7 +67,7 @@ class DefaultRequestTest
                 "Content-Type", "text/plain;charset=."),
                 "abc");
         
-        assertThat(req.body().toText()).hasFailedWithThrowableThat()
+        assertFailed(req.body().toText())
                 .isExactlyInstanceOf(IllegalCharsetNameException.class);
                 // Message not specified
     }
@@ -78,7 +79,7 @@ class DefaultRequestTest
                 "Content-Type", "text/plain;charset=from-another-galaxy"),
                 "abc");
         
-        assertThat(req.body().toText()).hasFailedWithThrowableThat()
+        assertFailed(req.body().toText())
                 .isExactlyInstanceOf(UnsupportedCharsetException.class);
     }
     
