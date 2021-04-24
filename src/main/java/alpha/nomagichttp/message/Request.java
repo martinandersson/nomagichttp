@@ -636,25 +636,20 @@ public interface Request
      * specified in the JavaDoc of {@link Publishers}, decorated with some added
      * behavior on top.<p>
      * 
-     * Exceptions thrown by the {@code Flow.Subscriber.onSubscribe()} method
-     * propagates to the calling thread, i.e., the one calling {@code
-     * Body.subscribe()}. If this thread is the HTTP server's request thread,
-     * then standard {@link ErrorHandler error handling} is kicked off.<p>
+     * An exception thrown by {@code
+     * Flow.Subscriber.onSubscribe()/onNext()/onComplete()} propagates to the
+     * calling thread, i.e., the one calling {@code Body.subscribe()}. If this
+     * thread is the HTTP server's request thread, then standard {@link
+     * ErrorHandler error handling} is kicked off.<p>
      * 
-     * Exceptions thrown by the subscriber's {@code onNext()} and {@code
-     * onComplete()} methods will be logged by the server if the channel's read
-     * stream is still open when the exceptional return occur. The server will
-     * also close the read stream (the write stream remains untouched so that a
-     * response in-flight can complete).<p>
+     * An exception thrown by the subscriber's {@code onNext()} will cause the
+     * server to close the channel's read stream (the write stream remains
+     * untouched so that a response in-flight can complete).<p>
      * 
      * Exceptions signalled to {@code Subscriber.onError()} that are <i>not
      * caused by</i> the subscriber itself can safely be assumed to indicate
      * low-level problems with the underlying channel. They will also have been
-     * logged by the HTTP server followed suite by read-stream closure.<p>
-     * 
-     * Even if the server has a reaction for some observed exceptions - such as
-     * closing the read stream as previously noted - this doesn't stop the
-     * exception from being propagated as specified by {@link Publishers}.
+     * logged by the HTTP server followed suite by read-stream closure.
      * 
      * @author Martin Andersson (webmaster at martinandersson.com)
      */

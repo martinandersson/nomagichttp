@@ -20,6 +20,7 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Flow;
 import java.util.concurrent.TimeoutException;
 
+import static alpha.nomagichttp.testutil.Assertions.assertFails;
 import static java.lang.Integer.MAX_VALUE;
 import static java.lang.System.Logger.Level.ALL;
 import static java.util.concurrent.TimeUnit.SECONDS;
@@ -114,10 +115,9 @@ class RequestHeadSubscriberTest
     {
         String p1 = "GET ", p2 = "\n/hel....";
         CLIENT.write(p1 + p2);
-        waitForCompletion();
         
-        assertThat(testee()).hasFailedWithThrowableThat()
-                .isInstanceOf(RequestHeadParseException.class)
+        assertFails(testee())
+                .isExactlyInstanceOf(RequestHeadParseException.class)
                 .hasMessage("Unexpected char.")
                 .extracting("pos").isEqualTo(p1.length());
     }
@@ -135,23 +135,19 @@ class RequestHeadSubscriberTest
     }
     
     @Test
-    void httpversion_leading_whitespace_linefeed_illegal() throws
-            IOException, TimeoutException, InterruptedException
-    {
+    void httpversion_leading_whitespace_linefeed_illegal()
+            throws IOException, InterruptedException, TimeoutException {
         String p1 = "GET /hello.txt ", p2 = "\nHTTP....";
         CLIENT.write(p1 + p2);
-        waitForCompletion();
         
-        assertThat(testee()).hasFailedWithThrowableThat()
-                .isInstanceOf(RequestHeadParseException.class)
+        assertFails(testee())
+                .isExactlyInstanceOf(RequestHeadParseException.class)
                 .hasMessage("Empty HTTP-version.")
                 .extracting("pos").isEqualTo(p1.length());
     }
     
     @Test
-    void httpversion_illegal_linebreak() throws
-            IOException, TimeoutException, InterruptedException
-    {
+    void httpversion_illegal_linebreak() throws IOException, InterruptedException, TimeoutException {
         // CR serves as a delimiter ("any whitespace") between method and
         // request-target. But for the HTTP version token, which is waiting on
         // a newline to be his delimiter, then it is required that if CR is
@@ -160,24 +156,20 @@ class RequestHeadSubscriberTest
         
         String p1 = "GET\r/hello.txt\r", p2 = "Boom!";
         CLIENT.write(p1 + p2);
-        waitForCompletion();
         
-        assertThat(testee()).hasFailedWithThrowableThat()
-                .isInstanceOf(RequestHeadParseException.class)
+        assertFails(testee())
+                .isExactlyInstanceOf(RequestHeadParseException.class)
                 .hasMessage("CR followed by something other than LF.")
                 .extracting("pos").isEqualTo(p1.length());
     }
     
     @Test
-    void httpversion_illegal_whitespace_in_token() throws
-            IOException, TimeoutException, InterruptedException
-    {
+    void httpversion_illegal_whitespace_in_token() throws IOException, InterruptedException, TimeoutException {
         String p1 = "GET /hello.txt HT", p2 = " TP/1....";
         CLIENT.write(p1 + p2);
-        waitForCompletion();
         
-        assertThat(testee()).hasFailedWithThrowableThat()
-                .isInstanceOf(RequestHeadParseException.class)
+        assertFails(testee())
+                .isExactlyInstanceOf(RequestHeadParseException.class)
                 .hasMessage("Whitespace in HTTP-version not accepted.")
                 .extracting("pos").isEqualTo(p1.length());
     }
@@ -186,69 +178,57 @@ class RequestHeadSubscriberTest
     // ----------
     
     @Test
-    void header_key_space_name_1a() throws
-            IOException, TimeoutException, InterruptedException
-    {
+    void header_key_space_name_1a() throws IOException, InterruptedException, TimeoutException {
         String p1 =
             "A B C\n" +
             "Has", p2 = " Space: blabla\n\n"; // <-- space added in key/name
         
         CLIENT.write(p1 + p2);
-        waitForCompletion();
         
-        assertThat(testee()).hasFailedWithThrowableThat()
-                .isInstanceOf(RequestHeadParseException.class)
+        assertFails(testee())
+                .isExactlyInstanceOf(RequestHeadParseException.class)
                 .hasMessage("Whitespace in header key or before colon is not accepted.")
                 .extracting("pos").isEqualTo(p1.length());
     }
     
     @Test
-    void header_key_space_name_1b() throws
-            IOException, TimeoutException, InterruptedException
-    {
+    void header_key_space_name_1b() throws IOException, InterruptedException, TimeoutException {
         String p1 =
             "A B C\n" +
             "Has", p2 = "\nSpace: blabla\n\n"; // <-- space as LF
         
         CLIENT.write(p1 + p2);
-        waitForCompletion();
         
-        assertThat(testee()).hasFailedWithThrowableThat()
-                .isInstanceOf(RequestHeadParseException.class)
+        assertFails(testee())
+                .isExactlyInstanceOf(RequestHeadParseException.class)
                 .hasMessage("Whitespace in header key or before colon is not accepted.")
                 .extracting("pos").isEqualTo(p1.length());
     }
     
     @Test
-    void header_key_space_name_2() throws
-            IOException, TimeoutException, InterruptedException
-    {
+    void header_key_space_name_2() throws IOException, InterruptedException, TimeoutException {
         String p1 =
             "A B C\n" +
             "Has-Space", p2 = " : blabla\n\n"; // <-- space added before colon
         
         CLIENT.write(p1 + p2);
-        waitForCompletion();
         
-        assertThat(testee()).hasFailedWithThrowableThat()
-                .isInstanceOf(RequestHeadParseException.class)
+        assertFails(testee())
+                .isExactlyInstanceOf(RequestHeadParseException.class)
                 .hasMessage("Whitespace in header key or before colon is not accepted.")
                 .extracting("pos").isEqualTo(p1.length());
     }
     
     @Test
-    void header_key_space_name_3() throws
-            IOException, TimeoutException, InterruptedException
-    {
+    void header_key_space_name_3() throws IOException, InterruptedException, TimeoutException {
         String p1 =
             "A B C\n", p2 =
             " Has-Space: blabla\n\n"; // <-- space added before key/name
         
         CLIENT.write(p1 + p2);
-        waitForCompletion();
         
-        assertThat(testee()).hasFailedWithThrowableThat()
-                .isInstanceOf(RequestHeadParseException.class)
+        assertFails(testee())
+                .isExactlyInstanceOf(RequestHeadParseException.class)
                 .hasMessage("Leading whitespace in header key not accepted.")
                 .extracting("pos").isEqualTo(p1.length());
     }
@@ -362,24 +342,12 @@ class RequestHeadSubscriberTest
     private AbstractListAssert<?, List<?>, Object, ObjectAssert<Object>>
             assertHead() throws InterruptedException, ExecutionException, TimeoutException
     {
-        return assertThat(actual()).extracting(
+        var head = testee().toCompletableFuture().get(3, SECONDS);
+        return assertThat(head).extracting(
                 RequestHead::method,
                 RequestHead::requestTarget,
                 RequestHead::httpVersion,
                 RequestHead::headers);
-    }
-    
-    private RequestHead actual() throws InterruptedException, TimeoutException, ExecutionException {
-        return testee().toCompletableFuture().get(2, SECONDS);
-    }
-    
-    private void waitForCompletion() throws InterruptedException, TimeoutException {
-        try {
-            actual();
-        }
-        catch (ExecutionException e) {
-            // Ignore
-        }
     }
     
     private static HttpHeaders headers(String... keyValuePairs) {

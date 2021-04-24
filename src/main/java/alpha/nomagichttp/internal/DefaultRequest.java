@@ -62,7 +62,6 @@ final class DefaultRequest implements Request
             RouteRegistry.Match paramsPath,
             Flow.Publisher<DefaultPooledByteBufferHolder> bodySource,
             DefaultClientChannel child,
-            // TODO: Remove this in favor of a real event mechanism
             Runnable onBodySubscription)
     {
         this.ver = ver;

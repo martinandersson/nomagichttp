@@ -113,9 +113,7 @@ contains useful commentary that explains the API used.
 
 ### Selecting port
 
-Commonly, the server port is provided through an environment variable or
-command-line argument. If a port is not specified, the system will pick a port
-on the loopback address.
+If a port is not specified, the system will pick a port on the loopback address.
 
 See code: [src/main/java/.../HelloWorld.java][3-1]
 

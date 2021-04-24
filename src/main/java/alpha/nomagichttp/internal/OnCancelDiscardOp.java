@@ -16,10 +16,9 @@ import static java.lang.Long.MAX_VALUE;
  * With "discard" means that the bytebuffer's position will be set to its limit
  * (i.e. no more remaining bytes!) and then released. Hence this operator should
  * be attached <strong>after</strong> other operators that modifies the
- * bytebuffer view <strong>and</strong> after any publisher that makes the
- * subscription finite (upstream must at some point complete the subscription).
- * Otherwise we could end up clearing bytes that crosses over a message boundary
- * or end up forever discarding bytes (by definition pretty pointless).<p>
+ * bytebuffer view (or we risk clearing bytes that crosses over a message
+ * boundary) and <strong>never</strong> to an infinite stream (by definition
+ * pretty pointless).<p>
  * 
  * Is used by the server's request thread to make sure that if and when the
  * application's body subscription is prematurely cancelled, the read-position

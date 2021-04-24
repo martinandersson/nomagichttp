@@ -7,7 +7,6 @@ import java.util.Collection;
 import java.util.concurrent.Flow;
 
 import static alpha.nomagichttp.testutil.MemorizingSubscriber.Request;
-import static alpha.nomagichttp.testutil.MemorizingSubscriber.Signal;
 import static alpha.nomagichttp.testutil.MemorizingSubscriber.Signal.MethodName.ON_COMPLETE;
 import static alpha.nomagichttp.testutil.MemorizingSubscriber.Signal.MethodName.ON_SUBSCRIBE;
 import static alpha.nomagichttp.testutil.MemorizingSubscriber.drainItems;
@@ -55,9 +54,8 @@ final class PublishersTest
         };
         
         Publishers.just().subscribe(s);
-        
-        assertThat(s.signals().map(Signal::getMethodName)).containsExactly(
-                ON_SUBSCRIBE);
-               // but not ON_COMPLETE, because we cancelled!
+    
+        // but not ON_COMPLETE, because we cancelled!
+        assertThat(s.methodNames()).containsExactly(ON_SUBSCRIBE);
     }
 }

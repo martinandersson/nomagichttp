@@ -1,16 +1,17 @@
 package alpha.nomagichttp.testutil;
 
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.Flow;
-import java.util.stream.Stream;
 
 import static alpha.nomagichttp.testutil.MemorizingSubscriber.Signal.MethodName.ON_COMPLETE;
 import static alpha.nomagichttp.testutil.MemorizingSubscriber.Signal.MethodName.ON_ERROR;
 import static alpha.nomagichttp.testutil.MemorizingSubscriber.Signal.MethodName.ON_NEXT;
 import static alpha.nomagichttp.testutil.MemorizingSubscriber.Signal.MethodName.ON_SUBSCRIBE;
 import static java.lang.Long.MAX_VALUE;
+import static java.util.Objects.requireNonNull;
 import static java.util.stream.Collectors.toUnmodifiableList;
 
 /**
@@ -26,7 +27,7 @@ public class MemorizingSubscriber<T> implements Flow.Subscriber<T>
      * Subscribes a {@code MemorizingSubscriber} to the given publisher and then
      * return the published {@link #items() items}.<p>
      * 
-     * The subscriber used will immediately request {@code Long.MAX_VALUE}.<p>
+     * The subscriber will immediately request {@code Long.MAX_VALUE}.<p>
      * 
      * The publisher should publish items eagerly in order for the items to be
      * present in the returned collection.
@@ -45,7 +46,7 @@ public class MemorizingSubscriber<T> implements Flow.Subscriber<T>
      * Subscribes a {@code MemorizingSubscriber} to the given publisher and then
      * return all invoked methods.<p>
      * 
-     * The subscriber used will immediately request {@code Long.MAX_VALUE}.<p>
+     * The subscriber will immediately request {@code Long.MAX_VALUE}.<p>
      * 
      * The publisher should be eager in order for all [expected] methods to be
      * present in the returned collection.
@@ -56,13 +57,11 @@ public class MemorizingSubscriber<T> implements Flow.Subscriber<T>
     public static List<Signal.MethodName> drainMethods(Flow.Publisher<?> from) {
         var s = new MemorizingSubscriber<>(Request.IMMEDIATELY_MAX());
         from.subscribe(s);
-        return s.signals()
-                .map(Signal::getMethodName)
-                .collect(toUnmodifiableList());
+        return s.methodNames();
     }
     
     /**
-     * Request strategy of the memorizing subscriber.
+     * Request strategy of a memorizing subscriber without a delegate.
      */
     public static class Request {
         private static final Request NOTHING = new Request(-1);
@@ -107,14 +106,12 @@ public class MemorizingSubscriber<T> implements Flow.Subscriber<T>
     }
     
     /**
-     * A signal received by the memorizing subscriber.<p>
+     * A signal received by the memorizing subscriber.
      * 
-     * Except for which method a signal maps to, each signal has it's own API.
-     * For example, the published item may be retrieved using {@link
-     * Next#item()} and the publisher error may be retrieved using {@link
-     * Error#error()}.
+     * Signals may carry an argument received; the subscription object or the
+     * item/error from upstream. {@code onComplete} does not receive an argument.
      */
-    public static abstract class Signal {
+    public static final class Signal {
         /**
          * Enumeration of {@code Flow.Subscriber} methods.
          */
@@ -130,9 +127,11 @@ public class MemorizingSubscriber<T> implements Flow.Subscriber<T>
         }
         
         private final MethodName name;
+        private final Object arg;
         
-        private Signal(MethodName name) {
+        private Signal(MethodName name, Object arg) {
             this.name = name;
+            this.arg  = arg;
         }
         
         /**
@@ -143,124 +142,129 @@ public class MemorizingSubscriber<T> implements Flow.Subscriber<T>
         public final MethodName getMethodName() {
             return name;
         }
-        
+    
         /**
-         * A signal created when {@code Flow.Subscriber.onSubscribe()} is called.
+         * Returns the signal argument.<p>
+         * 
+         * {@code onComplete} returns {@code Void.class}.
+         * 
+         * @param <T> argument type, inferred on call-site
+         * @return the signal argument
          */
-        public static final class Subscribe extends Signal {
-            Subscribe() {
-                super(ON_SUBSCRIBE);
-            }
+        public final <T> T getArgument() {
+            @SuppressWarnings("unchecked")
+            T typed = (T) arg;
+            return typed;
         }
         
-        /**
-         * A signal created when {@code Flow.Subscriber.onNext()} is called.
-         */
-        public static final class Next extends Signal {
-            private final Object t;
-            
-            Next(Object t) {
-                super(ON_NEXT);
-                this.t = t;
-            }
-            
-            /**
-             * Returns the item received.
-             * 
-             * @param <T> type of item
-             * @return the item received
-             */
-            <T> T item() {
-                @SuppressWarnings("unchecked")
-                T typed = (T) t;
-                return typed;
-            }
-        }
-        
-        /**
-         * A signal created when {@code Flow.Subscriber.onError()} is called.
-         */
-        public static final class Error extends Signal {
-            private final Throwable e;
-            
-            Error(Throwable e) {
-                super(ON_ERROR);
-                this.e = e;
-            }
-            
-            /**
-             * Returns the error received.
-             * 
-             * @return the error received
-             */
-            Throwable error() {
-                return e;
-            }
-        }
-        
-        /**
-         * A signal created when {@code Flow.Subscriber.onComplete()} is called.
-         */
-        public static final class Complete extends Signal {
-            Complete() {
-                super(ON_COMPLETE);
-            }
+        @Override
+        public String toString() {
+            return "Signal{" +
+                    "name="  + name +
+                    ", arg=" + arg +
+                    '}';
         }
     }
     
     private final Collection<Signal> signals;
     private final Request strategy;
+    private final Flow.Subscriber<T> delegate;
     
     /**
      * Constructs a {@code MemorizingSubscriber}.
      * 
      * @param strategy request strategy
+     * 
+     * @throws NullPointerException if {@code delegate} is {@code null}
      */
     public MemorizingSubscriber(Request strategy) {
         this.signals = new ConcurrentLinkedQueue<>();
-        this.strategy = strategy;
+        this.strategy = requireNonNull(strategy);
+        this.delegate = null;
     }
     
     /**
-     * Returns a snapshot collection of all signals received.
+     * Constructs a {@code MemorizingSubscriber}.
      * 
-     * @return a snapshot collection of all signals received
+     * The delegate is called for each method called to this class, after first
+     * having recorded the signal.
+     * 
+     * @param delegate of subscriber
+     * 
+     * @throws NullPointerException if {@code delegate} is {@code null}
      */
-    public Stream<? extends Signal> signals() {
-        return signals.stream();
+    public MemorizingSubscriber(Flow.Subscriber<T> delegate) {
+        this.signals = new ConcurrentLinkedQueue<>();
+        this.strategy = null;
+        this.delegate = requireNonNull(delegate);
+    }
+    
+    /**
+     * Returns a snapshot list of all signals received.<p>
+     * 
+     * The returned list implements {@code RandomAccess}.
+     * 
+     * @return a snapshot list of all signals received
+     */
+    public List<Signal> signals() {
+        return new ArrayList<>(signals);
     }
     
     /**
      * Returns a snapshot collection of all items received.
-     *
+     * 
      * @return a snapshot collection of all items received
      */
     public List<T> items() {
-        return signals().filter(s -> s instanceof Signal.Next)
-                        .map(s -> ((Signal.Next) s).<T>item())
-                        .collect(toUnmodifiableList());
+        return signals.stream()
+                      .filter(s -> s.getMethodName() == ON_NEXT)
+                      .map(Signal::<T>getArgument)
+                      .collect(toUnmodifiableList());
+    }
+    
+    /**
+     * Returns a snapshot collection of all method names invoked.
+     * 
+     * @return a snapshot collection of all method names invoked
+     */
+    public List<Signal.MethodName> methodNames() {
+        return signals.stream()
+                      .map(Signal::getMethodName)
+                      .collect(toUnmodifiableList());
     }
     
     @Override
     public void onSubscribe(Flow.Subscription subscription) {
-        signals.add(new Signal.Subscribe());
-        if (strategy != Request.NOTHING) {
+        signals.add(new Signal(ON_SUBSCRIBE, subscription));
+        if (delegate != null) {
+            delegate.onSubscribe(subscription);
+        } else if (strategy != Request.NOTHING) {
+            assert strategy != null;
             subscription.request(strategy.value());
         }
     }
     
     @Override
     public void onNext(T item) {
-        signals.add(new Signal.Next(item));
+        signals.add(new Signal(ON_NEXT, item));
+        if (delegate != null) {
+            delegate.onNext(item);
+        }
     }
     
     @Override
     public void onError(Throwable throwable) {
-        signals.add(new Signal.Error(throwable));
+        signals.add(new Signal(ON_ERROR, throwable));
+        if (delegate != null) {
+            delegate.onError(throwable);
+        }
     }
     
     @Override
     public void onComplete() {
-        signals.add(new Signal.Complete());
+        signals.add(new Signal(ON_COMPLETE, Void.class));
+        if (delegate != null) {
+            delegate.onComplete();
+        }
     }
 }

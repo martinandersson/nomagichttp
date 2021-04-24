@@ -163,7 +163,7 @@ class SimpleEndToEndTest extends AbstractEndToEndTest
         assertThat(res2).isEqualTo(
             "HTTP/1.1 500 Internal Server Error" + CRLF +
             "Content-Length: 0"                  + CRLF + CRLF);
-        assertThat(pollError()).isExactlyInstanceOf(FileAlreadyExistsException.class);
+        assertThat(pollServerError()).isExactlyInstanceOf(FileAlreadyExistsException.class);
         assertThat(Files.readString(file)).isEqualTo("Foo");
     }
     
