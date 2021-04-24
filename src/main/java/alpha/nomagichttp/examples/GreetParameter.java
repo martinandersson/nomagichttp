@@ -51,9 +51,9 @@ public class GreetParameter
         
         app.add("/hello", GET().accept((request, channel) -> {
             Response r = request.parameters()
-                    .queryFirst("name")
-                    .map(str -> text("Hello " + str + "!"))
-                    .orElse(badRequest());
+                                .queryFirst("name")
+                                .map(str -> text("Hello " + str + "!"))
+                                .orElse(badRequest());
             
             channel.write(r);
         }));
