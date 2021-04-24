@@ -34,7 +34,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  * 
  * By default, after-each will assert that no errors were delivered to the error
  * handler. If errors are expected, then the test must consume all errors from
- * the deque using {@link #pollError()}.<p>
+ * the deque using {@link #pollServerError()}.<p>
  * 
  * Log recording will be activated before starting the server. The recorder can
  * be retrieved using {@link #logRecorder()}. Records can be retrieved at any
@@ -107,7 +107,7 @@ public abstract class AbstractEndToEndTest
      * 
      * @throws InterruptedException if interrupted while waiting
      */
-    public final Throwable pollError() throws InterruptedException {
+    public final Throwable pollServerError() throws InterruptedException {
         return errors.poll(3, SECONDS);
     }
     

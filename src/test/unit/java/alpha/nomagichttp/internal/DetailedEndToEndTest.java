@@ -127,7 +127,7 @@ class DetailedEndToEndTest extends AbstractEndToEndTest
                 .mapToInt(r -> r.getLevel().intValue()))
                 .noneMatch(v -> v > INFO.intValue());
         
-        assertThat(pollError())
+        assertThat(pollServerError())
                 .isExactlyInstanceOf(ClosedPublisherException.class)
                 .hasMessage("EOS");
     }
@@ -448,7 +448,7 @@ class DetailedEndToEndTest extends AbstractEndToEndTest
     private static final RuntimeException OOPS = new RuntimeException("Oops!");
     
     private void assertThatErrorHandlerCaughtOops() throws InterruptedException {
-        assertThat(pollError())
+        assertThat(pollServerError())
                 .isSameAs(OOPS)
                 .hasNoCause()
                 .hasNoSuppressedExceptions();
