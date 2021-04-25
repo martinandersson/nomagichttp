@@ -432,6 +432,32 @@ public final class HttpConstants {
         }
         
         /**
+         * Returns {@code true} if the status-code is 1XX (Informational),
+         * otherwise {@code false}.
+         * 
+         * @param statusCode to check
+         * 
+         * @return {@code true} if the status-code is 1XX (Informational),
+         *         otherwise {@code false}
+         */
+        public static boolean isInformational(int statusCode) {
+            return statusCode >= 100 && statusCode < 200;
+        }
+        
+        /**
+         * Returns {@code true} if the status-code is not 1XX (Informational),
+         * otherwise {@code false}.
+         * 
+         * @param statusCode to check
+         * 
+         * @return {@code true} if the status-code is not 1XX (Informational),
+         *         otherwise {@code false}
+         */
+        public static boolean isFinal(int statusCode) {
+            return !isInformational(statusCode);
+        }
+        
+        /**
          * {@value} {@value ReasonPhrase#CONTINUE}.<p>
          * 
          * The server has received the request headers and accepted them, the
@@ -459,6 +485,7 @@ public final class HttpConstants {
          * 
          * @see HttpServer.Config#immediatelyContinueExpect100() 
          * @see <a href="https://tools.ietf.org/html/rfc7231#section-6.2.1">RFC 7231 §6.2.1</a>
+         * @see <a href="https://tools.ietf.org/html/rfc7231#section-6.3">RFC 7231 §6.3</a>
          */
         public static final int ONE_HUNDRED = 100;
         

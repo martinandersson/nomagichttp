@@ -4,19 +4,21 @@ import alpha.nomagichttp.HttpConstants;
 import alpha.nomagichttp.util.Publishers;
 
 import java.net.http.HttpHeaders;
-import java.net.http.HttpRequest;
-import static java.net.http.HttpRequest.BodyPublisher;
 import java.nio.ByteBuffer;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Deque;
+import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.Flow;
 import java.util.function.Consumer;
 
+import static alpha.nomagichttp.HttpConstants.HeaderKey.CONNECTION;
+import static alpha.nomagichttp.HttpConstants.StatusCode;
 import static alpha.nomagichttp.util.Publishers.empty;
+import static java.net.http.HttpRequest.BodyPublisher;
 import static java.util.Collections.emptyList;
 import static java.util.Objects.requireNonNull;
 import static java.util.stream.Collectors.toUnmodifiableList;
@@ -32,6 +34,7 @@ final class DefaultResponse implements Response
     private final String reasonPhrase;
     private final Iterable<String> headers;
     private final Flow.Publisher<ByteBuffer> body;
+    private final boolean mustShutdownOutputAfterWrite;
     private final boolean mustCloseAfterWrite;
     private final Builder origin;
     
@@ -41,6 +44,7 @@ final class DefaultResponse implements Response
             // Is unmodifiable
             Iterable<String> headers,
             Flow.Publisher<ByteBuffer> body,
+            boolean mustShutdownOutputAfterWrite,
             boolean mustCloseAfterWrite,
             Builder origin)
     {
@@ -48,6 +52,7 @@ final class DefaultResponse implements Response
         this.reasonPhrase = reasonPhrase;
         this.headers = headers;
         this.body = body;
+        this.mustShutdownOutputAfterWrite = mustShutdownOutputAfterWrite;
         this.mustCloseAfterWrite = mustCloseAfterWrite;
         this.origin = origin;
     }
@@ -73,6 +78,11 @@ final class DefaultResponse implements Response
     }
     
     @Override
+    public boolean mustShutdownOutputAfterWrite() {
+        return mustShutdownOutputAfterWrite;
+    }
+    
+    @Override
     public boolean mustCloseAfterWrite() {
         return mustCloseAfterWrite;
     }
@@ -89,6 +99,7 @@ final class DefaultResponse implements Response
                 ", reasonPhrase='" + reasonPhrase + '\'' +
                 ", headers=?" +
                 ", body=?" +
+                ", mustShutdownOutputAfterWrite=" + mustShutdownOutputAfterWrite +
                 ", mustCloseAfterWrite=" + mustCloseAfterWrite +
                 '}';
     }
@@ -98,7 +109,7 @@ final class DefaultResponse implements Response
      *
      * @author Martin Andersson (webmaster at martinandersson.com)
      */
-    final static class Builder implements Response.Builder
+    final static class Builder implements Response.Builder // TODO: Rename to DefaultBuilder
     {
         // How this works: Builders are backwards-linked in a chain and the only
         // real state they each store is a modifying action, which is replayed
@@ -109,28 +120,41 @@ final class DefaultResponse implements Response
             String reasonPhrase;
             Map<String, List<String>> headers;
             Flow.Publisher<ByteBuffer> body;
+            Boolean mustShutdownOutputAfterWrite;
             Boolean mustCloseAfterWrite;
             
             void removeHeader(String name) {
                 assert name != null;
-                
                 if (headers == null) {
                     return;
                 }
                 headers.remove(name);
             }
             
+            void removeHeaderIf(String name, String presentValue) {
+                assert name != null;
+                assert presentValue != null;
+                if (headers == null) {
+                    return;
+                }
+                headers.entrySet().stream()
+                       .filter(e -> e.getKey().equalsIgnoreCase(name))
+                       .forEach(e -> {
+                           Iterator<String> v = e.getValue().iterator();
+                           while (v.hasNext() && v.next().equalsIgnoreCase(presentValue)) {
+                               v.remove();
+                           }
+                       });
+            }
+            
             void addHeader(boolean clearFirst, String name, String value) {
                 assert name != null;
                 assert value != null;
-                
                 List<String> v = getOrCreateHeaders()
                         .computeIfAbsent(name, k -> new ArrayList<>(1));
-                
                 if (clearFirst) {
                     v.clear();
                 }
-                
                 v.add(value);
             }
             
@@ -174,6 +198,13 @@ final class DefaultResponse implements Response
         public Response.Builder removeHeader(String name) {
             requireNonNull(name, "name");
             return new Builder(this, s -> s.removeHeader(name));
+        }
+        
+        @Override
+        public Response.Builder removeHeaderIf(String name, String presentValue) {
+            requireNonNull(name, "name");
+            requireNonNull(presentValue, "presentValue");
+            return new Builder(this, s -> s.removeHeaderIf(name, presentValue));
         }
         
         @Override
@@ -223,8 +254,19 @@ final class DefaultResponse implements Response
         }
         
         @Override
+        public Response.Builder mustShutdownOutputAfterWrite(boolean enabled) {
+            Builder b = new Builder(this, s -> s.mustShutdownOutputAfterWrite = enabled);
+            return enabled ?
+                    b.header(CONNECTION, "close") :
+                    b.removeHeaderIf(CONNECTION, "close");
+        }
+        
+        @Override
         public Response.Builder mustCloseAfterWrite(boolean enabled) {
-            return new Builder(this, s -> s.mustCloseAfterWrite = enabled);
+            Builder b = new Builder(this, s -> s.mustCloseAfterWrite = enabled);
+            return enabled ?
+                    b.header(CONNECTION, "close") :
+                    b.removeHeaderIf(CONNECTION, "close");
         }
         
         @Override
@@ -234,17 +276,28 @@ final class DefaultResponse implements Response
             populate(s);
             setDefaults(s);
             
+            if (StatusCode.isInformational(s.statusCode)) {
+                if (s.mustShutdownOutputAfterWrite) {
+                    throw new IllegalStateException(
+                            "Output stream marked to shutdown after an interim response.");
+                }
+                if (s.mustCloseAfterWrite) {
+                    throw new IllegalStateException(
+                            "Channel marked to close after an interim response.");
+                }
+            }
+            
             Iterable<String> headers = s.headers == null ? emptyList() :
                     s.headers.entrySet().stream().flatMap(e ->
                             e.getValue().stream().map(v -> e.getKey() + ": " + v))
                     .collect(toUnmodifiableList());
             
-            assert s.statusCode != null : "Status-code supposed to be set by Response.Builder(int)";
             Response r = new DefaultResponse(
                     s.statusCode,
                     s.reasonPhrase,
                     headers,
                     s.body,
+                    s.mustShutdownOutputAfterWrite,
                     s.mustCloseAfterWrite,
                     this);
             
@@ -252,6 +305,7 @@ final class DefaultResponse implements Response
                 throw new IllegalBodyException(
                         "Body in a 1XX (Informational) response.", r);
             }
+            
             return r;
         }
         
@@ -283,6 +337,10 @@ final class DefaultResponse implements Response
             
             if (s.body == null) {
                 s.body = empty(); }
+            
+            if (s.mustShutdownOutputAfterWrite == null) {
+                s.mustShutdownOutputAfterWrite = false;
+            }
             
             if (s.mustCloseAfterWrite == null) {
                 s.mustCloseAfterWrite = false; }

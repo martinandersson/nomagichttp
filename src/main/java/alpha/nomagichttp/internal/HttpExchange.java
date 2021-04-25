@@ -15,6 +15,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
 import java.util.concurrent.CompletionStage;
 
+import static alpha.nomagichttp.HttpConstants.HeaderKey.CONNECTION;
 import static alpha.nomagichttp.HttpConstants.HeaderKey.EXPECT;
 import static alpha.nomagichttp.HttpConstants.Method.TRACE;
 import static alpha.nomagichttp.HttpConstants.Version.HTTP_1_0;
@@ -236,6 +237,11 @@ final class HttpExchange
         request.bodyDiscardIfNoSubscriber();
         request.bodyStage().whenComplete((Null, t) -> {
             if (t == null) {
+                if (request.headerContains(CONNECTION, "close") && chan.isOpenForWriting()) {
+                    LOG.log(DEBUG, "Request initiated connection close. Will shutdown write stream.");
+                    chan.shutdownOutputSafe();
+                    // DefaultServer will not start a new exchange
+                }
                 result.complete(null);
             } else {
                 LOG.log(DEBUG,

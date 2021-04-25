@@ -149,18 +149,16 @@ public interface Response
      * 
      * @implSpec
      * The default implementation is equivalent to:
-     * <pre>{@code
-     *   return statusCode() >= 100 && statusCode() < 200;
-     * }</pre>
+     * <pre>
+     *   return StatusCode.{@link StatusCode#isInformational(int)
+     *       isInformational}(this.statusCode());
+     * </pre>
      * 
      * @return {@code true} if the status-code is 1XX (Informational),
      *         otherwise {@code false}
-     * 
-     * @see HttpConstants.StatusCode
-     * @see ClientChannel
      */
     default boolean isInformational() {
-        return statusCode() >= 100 && statusCode() < 200;
+        return StatusCode.isInformational(statusCode());
     }
     
     /**
@@ -170,31 +168,58 @@ public interface Response
      * @implSpec
      * The default implementation is equivalent to:
      * <pre>
-     *   return !isInformational();
+     *   return StatusCode.{@link StatusCode#isFinal(int)
+     *       isFinal}(this.statusCode());
      * </pre>
      * 
      * @return {@code true} if the status-code is not 1XX (Informational),
      *         otherwise {@code false}
-     * 
-     * @see HttpConstants.StatusCode
-     * @see ClientChannel
      */
     default boolean isFinal() {
-        return !isInformational();
+        return StatusCode.isFinal(statusCode());
     }
     
     /**
-     * Returns {@code true} if the server must close the underlying client
-     * channel after writing the response, otherwise {@code false}.<p>
+     * Command the server to shutdown the client channel's output/write stream
+     * after first attempt to send the response.<p>
      * 
-     * The server is always free to close the channel even if this method
-     * returns {@code false}, for example if the server run into channel-related
-     * problems.
+     * The command will also cause the server to close the channel at the end of
+     * the HTTP exchange (after an in-flight request and the processing of it
+     * completes). This method is equivalent to a "graceful close".<p>
      * 
-     * @return {@code true} if the server must close the underlying client
-     * channel, otherwise {@code false}
+     * If the application desires to also stop the read stream no matter if a
+     * client-request is in-flight, use {@link #mustCloseAfterWrite()}.<p>
+     * 
+     * The server is in full control of the client channel's life-cycle and so,
+     * a {@code false} returned value has no effect.
+     * 
+     * @return {@code true} if the server must shutdown the output/write stream,
+     *         otherwise {@code false}
+     * 
+     * @see ClientChannel#shutdownOutput()
      */
-    // TODO: Param that accepts mayInterruptRequestBodySubscriberOtherwiseWeWillWantForHim
+    boolean mustShutdownOutputAfterWrite();
+    
+    /**
+     * Command the server to close the client channel after first attempt to
+     * send the response.<p>
+     * 
+     * Returning {@code true} will forcefully close the channel. A client
+     * request in-flight will fail. In order to end the channel more gracefully,
+     * signal {@link #mustShutdownOutputAfterWrite()} instead.<p>
+     * 
+     * The application can always kill the channel immediately and abruptly by
+     * calling {@link ClientChannel#close()} instead of passing a lazy command
+     * to the server through the response object.<p>
+     * 
+     * The server is in full control of the client channel's life-cycle and so,
+     * a {@code false} returned value has no effect.
+     * 
+     * @return {@code true} if the server must close the client channel,
+     *         otherwise {@code false}
+     * 
+     * @see ClientChannel#close()
+     */
     boolean mustCloseAfterWrite();
     
     /**
@@ -238,12 +263,12 @@ public interface Response
      * variants may build just fine but {@linkplain HttpServer blow up
      * later}.<p>
      * 
-     * Header key and values are taken at face value (case-sensitive),
-     * concatenated using a colon followed by a space ": ". Adding many values
-     * to the same header name replicates the name across multiple rows in the
-     * response. It does <strong>not</strong> join the values on the same row.
-     * If this is desired, first join multiple values and then pass it to the
-     * builder as one.<p>
+     * Header key and values are taken at face value (case-sensitive, unless
+     * documented otherwise), concatenated using a colon followed by a space
+     * ": ". Adding many values to the same header name replicates the name
+     * across multiple rows in the response. It does <strong>not</strong> join
+     * the values on the same row. If this is desired, first join multiple
+     * values and then pass it to the builder as one.<p>
      * 
      * Header order is not significant (
      * <a href="https://tools.ietf.org/html/rfc7230#section-3.2.2">RFC 7230 §3.2.2</a>
@@ -294,10 +319,23 @@ public interface Response
          * Remove all previously set values for the given header name.
          * 
          * @param name of the header
-         * 
          * @return a new builder representing the new state
+         * @throws  NullPointerException if {@code name} is {@code null}
          */
         Builder removeHeader(String name);
+        
+        /**
+         * Remove all occurrences of a header that has the given value.
+         * 
+         * This method operates without regard to casing for both header name
+         * and value.
+         * 
+         * @param name of the header
+         * @param presentValue predicate
+         * @return a new builder representing the new state
+         * @throws  NullPointerException if any argument is {@code null}
+         */
+        Builder removeHeaderIf(String name, String presentValue);
         
         /**
          * Add a header to this response. If the header is already present then
@@ -400,8 +438,28 @@ public interface Response
         Builder body(Flow.Publisher<ByteBuffer> body);
         
         /**
-         * Set the {@code must-close-after-write} setting. If never set, will
-         * default to false.
+         * Enable the {@code must-shutdown-output-after-write} command. If
+         * never set, will default to {@code false}.<p>
+         * 
+         * If {@code enabled} is {@code true}, the builder will also set (or
+         * silently replace) a {@code Connection: close} header. If {@code
+         * enabled} is {@code false}, the header is removed but only if it has
+         * value "close".
+         * 
+         * @param   enabled true or false
+         * @return  a new builder representing the new state
+         * @see     Response#mustShutdownOutputAfterWrite()
+         */
+        Builder mustShutdownOutputAfterWrite(boolean enabled);
+        
+        /**
+         * Enable the {@code must-close-after-write} command. If never set, will
+         * default to {@code false}.<p>
+         * 
+         * If {@code enabled} is {@code true}, the builder will also set (or
+         * silently replace) a {@code Connection: close} header. If {@code
+         * enabled} is {@code false}, the header is removed but only if it has
+         * value "close".
          * 
          * @param   enabled true or false
          * @return  a new builder representing the new state
@@ -410,14 +468,17 @@ public interface Response
         Builder mustCloseAfterWrite(boolean enabled);
         
         /**
-         * Builds the response.<p>
-         * 
-         * The returned response may be a cached object if previously built.<p>
+         * Builds the response.
          * 
          * @return a response
          * 
          * @throws IllegalBodyException
          *             if body is present and status-code is 1XX (Informational)
+         * 
+         * @throws IllegalStateException
+         *             if any stream of the channel or the channel itself has
+         *             been marked to shutdown/close and status-code is 1XX
+         *             (Informational)
          */
         Response build();
     }

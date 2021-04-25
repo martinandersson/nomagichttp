@@ -158,7 +158,7 @@ class SimpleEndToEndTest extends AbstractEndToEndTest
         
         // 2. By default, existing files are not overwritten
         // ---
-        String res2 = client().writeRead(reqHead + "Bar", "3");
+        String res2 = client().writeRead(reqHead + "Bar");
         
         assertThat(res2).isEqualTo(
             "HTTP/1.1 500 Internal Server Error" + CRLF +

@@ -67,9 +67,7 @@ class ErrorHandlingTest
     void not_found_custom() throws IOException {
         ErrorHandler eh = (exc, ch, req, han) -> {
             if (exc instanceof NoRouteFoundException) {
-                ch.write(Response.builder(499, "Custom Not Found!")
-                                 .mustCloseAfterWrite(true)
-                                 .build());
+                ch.write(Response.builder(499, "Custom Not Found!").build());
                 return;
             }
             throw exc;
@@ -193,7 +191,8 @@ class ErrorHandlingTest
              
              assertThat(r).isEqualTo(
                  "HTTP/1.1 505 HTTP Version Not Supported" + CRLF +
-                 "Content-Length: 0" + CRLF + CRLF);
+                 "Content-Length: 0"                       + CRLF +
+                 "Connection: close"                       + CRLF + CRLF);
         }
     }
     

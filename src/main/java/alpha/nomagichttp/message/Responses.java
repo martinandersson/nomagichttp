@@ -175,16 +175,17 @@ public final class Responses
      * @see HttpConstants.HeaderKey#CONTENT_TYPE
      */
     public static Response ok(BodyPublisher body, MediaType contentType) {
-        // TODO: body.contentLength() may return < 0 for "unknown length"
         return ok(body, contentType, body.contentLength());
     }
     
     /**
      * Returns a 200 (OK) response with the given body.<p>
      * 
-     * The server subscribing to the response body does not limit his
-     * subscription based on the given length value. The value must be equal to
-     * the number of bytes emitted by the publisher.
+     * This method is equivalent to:
+     * <pre>
+     *   {@link #ok(Flow.Publisher, MediaType, long)
+     *       ok}(body, MediaType.parse(contentType), contentLength)
+     * </pre>
      * 
      * @param body data
      * @param contentType header value
@@ -208,7 +209,11 @@ public final class Responses
      * 
      * The server subscribing to the response body does not limit his
      * subscription based on the given length value. The value must be equal to
-     * the number of bytes emitted by the publisher.
+     * the number of bytes emitted by the publisher.<p>
+     * 
+     * If {@code contentLength} is negative, the corresponding header will not
+     * be set. Instead, the server will close the write stream after having sent
+     * the response.
      * 
      * @param body data
      * @param contentType header value
@@ -221,11 +226,20 @@ public final class Responses
      * @see HttpConstants.HeaderKey#CONTENT_LENGTH
      */
     public static Response ok(Flow.Publisher<ByteBuffer> body, MediaType contentType, long contentLength) {
-        return BuilderCache.OK
-                 .header(CONTENT_TYPE,   contentType.toString())
-                 .header(CONTENT_LENGTH, Long.toString(contentLength))
-                 .body(body)
-                 .build();
+        Response.Builder b = BuilderCache.OK
+                 .header(CONTENT_TYPE, contentType.toString());
+        
+        if (contentLength >= 0) {
+            b = b.header(CONTENT_LENGTH, Long.toString(contentLength));
+        } else {
+            // TODO: Not exactly cool that we instruct server/protocol behavior
+            //       on a message level. But this will be fixed when we also have
+            //       chunked encoding, which may be employed by the server as an
+            //       alternative to unknown content-length.
+            b = b.mustShutdownOutputAfterWrite(true);
+        }
+        
+        return b.body(body).build();
     }
     
     /**
@@ -239,10 +253,7 @@ public final class Responses
     }
     
     /**
-     * Returns a 400 (Bad Request) response with no body.<p>
-     * 
-     * The response will {@linkplain Response#mustCloseAfterWrite() close the
-     * client channel} after having been sent.
+     * Returns a 400 (Bad Request) response with no body.
      * 
      * @return  a 400 (Bad Request) response
      * @see     StatusCode#FOUR_HUNDRED
@@ -252,10 +263,7 @@ public final class Responses
     }
     
     /**
-     * Returns a 404 (Not Found) response with no body.<p>
-     * 
-     * The response will {@linkplain Response#mustCloseAfterWrite() close the
-     * client channel} after having been sent.
+     * Returns a 404 (Not Found) response with no body.
      * 
      * @return a 404 (Not Found)
      * @see     StatusCode#FOUR_HUNDRED_FOUR
@@ -267,8 +275,8 @@ public final class Responses
     /**
      * Returns a 413 (Entity Too Large) response with no body.<p>
      * 
-     * The response will {@linkplain Response#mustCloseAfterWrite() close the
-     * client channel} after having been sent.
+     * The response will {@linkplain Response#mustShutdownOutputAfterWrite()
+     * close the output stream}.
      * 
      * @return  a 413 (Entity Too Large)
      * @see    StatusCode#FOUR_HUNDRED_THIRTEEN
@@ -278,10 +286,7 @@ public final class Responses
     }
     
     /**
-     * Returns a 500 (Internal Server Error) response with no body.<p>
-     * 
-     * The response will {@linkplain Response#mustCloseAfterWrite() close the
-     * client channel} after having been sent.
+     * Returns a 500 (Internal Server Error) response with no body.
      * 
      * @return  a 500 (Internal Server Error) response
      * @see     StatusCode#FIVE_HUNDRED
@@ -291,10 +296,7 @@ public final class Responses
     }
     
     /**
-     * Returns a 501 (Not Implemented) response with no body.<p>
-     * 
-     * The response will {@linkplain Response#mustCloseAfterWrite() close the
-     * client channel} after having been sent.
+     * Returns a 501 (Not Implemented) response with no body.
      * 
      * @return  a 501 (Not Implemented) response
      * @see     StatusCode#FIVE_HUNDRED_ONE
@@ -306,9 +308,6 @@ public final class Responses
     /**
      * Returns a 426 (Upgrade Required) response with no body.<p>
      * 
-     * The response will {@linkplain Response#mustCloseAfterWrite() close the
-     * client channel} after having been sent.
-     * 
      * @param   upgrade header value (proposition for new protocol version)
      * @return  a 426 (Upgrade Required) response
      * @see     StatusCode#FOUR_HUNDRED_TWENTY_SIX
@@ -319,7 +318,6 @@ public final class Responses
                      UPGRADE, upgrade,
                      CONNECTION, UPGRADE,
                      CONTENT_LENGTH, "0")
-                 .mustCloseAfterWrite(true)
                  .build();
     }
     
@@ -327,7 +325,7 @@ public final class Responses
      * Returns a 505 (HTTP Version Not Supported) response with no body.<p>
      * 
      * The response will {@linkplain Response#mustCloseAfterWrite() close the
-     * client channel} after having been sent.
+     * client channel}.
      * 
      * @return  a 505 (HTTP Version Not Supported) response
      * @see     StatusCode#FIVE_HUNDRED_FIVE
@@ -355,17 +353,18 @@ public final class Responses
             PROCESSING            = builder(ONE_HUNDRED_TWO, ReasonPhrase.PROCESSING).build(),
             ACCEPTED              = builder(TWO_HUNDRED_TWO, ReasonPhrase.ACCEPTED).header(CONTENT_LENGTH, "0").build(),
             NO_CONTENT            = builder(TWO_HUNDRED_FOUR, ReasonPhrase.NO_CONTENT).build(),
-            BAD_REQUEST           = respondThenClose(FOUR_HUNDRED, ReasonPhrase.BAD_REQUEST),
-            NOT_FOUND             = respondThenClose(FOUR_HUNDRED_FOUR, ReasonPhrase.NOT_FOUND),
-            ENTITY_TOO_LARGE      = respondThenClose(FOUR_HUNDRED_THIRTEEN, ReasonPhrase.ENTITY_TOO_LARGE),
-            INTERNAL_SERVER_ERROR = respondThenClose(FIVE_HUNDRED, ReasonPhrase.INTERNAL_SERVER_ERROR),
-            NOT_IMPLEMENTED       = respondThenClose(FIVE_HUNDRED_ONE, ReasonPhrase.NOT_IMPLEMENTED);
+            BAD_REQUEST           = respond(FOUR_HUNDRED, ReasonPhrase.BAD_REQUEST, false),
+            NOT_FOUND             = respond(FOUR_HUNDRED_FOUR, ReasonPhrase.NOT_FOUND, false),
+            ENTITY_TOO_LARGE      = respond(FOUR_HUNDRED_THIRTEEN, ReasonPhrase.ENTITY_TOO_LARGE, true),
+            INTERNAL_SERVER_ERROR = respond(FIVE_HUNDRED, ReasonPhrase.INTERNAL_SERVER_ERROR, false),
+            NOT_IMPLEMENTED       = respond(FIVE_HUNDRED_ONE, ReasonPhrase.NOT_IMPLEMENTED, false);
         
-        private static Response respondThenClose(int code, String phrase) {
-            return builder(code, phrase)
-                     .header(CONTENT_LENGTH, "0")
-                     .mustCloseAfterWrite(true)
-                     .build();
+        private static Response respond(int code, String phrase, boolean close) {
+            Response.Builder b = builder(code, phrase).header(CONTENT_LENGTH, "0");
+            if (close) {
+                b = b.mustShutdownOutputAfterWrite(true);
+            }
+            return b.build();
         }
     }
 }

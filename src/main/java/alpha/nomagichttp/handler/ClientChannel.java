@@ -41,8 +41,10 @@ import java.util.concurrent.CompletionStage;
  * reference in a global scope somewhere and sporadically and randomly use it to
  * write responses.<p>
  * 
- * Closing a channel will silently discard enqueued responses. They will not be
- * logged.<p>
+ * The life-cycle of the channel is managed by the server. The application
+ * should have no need to directly use shutdown/close methods in this class.
+ * Consider using {@link Response.Builder#mustShutdownOutputAfterWrite(boolean)}
+ * or {@link Response.Builder#mustCloseAfterWrite(boolean)} instead.<p>
  * 
  * The implementation is thread-safe and mostly non-blocking. Underlying channel
  * life-cycle APIs used to query the state of a channel or close it may block
@@ -209,14 +211,17 @@ public interface ClientChannel extends Closeable
     boolean isEverythingOpen();
     
     /**
-     * Shutdown the channel's input stream.<p>
+     * Shutdown the channel's input/read stream.<p>
      * 
      * If this operation fails or effectively terminates the connection (output
      * stream was also shutdown), then this method propagates to {@link
      * #close()}.<p>
      * 
-     * Is NOP if input already shutdown or channel is closed.
-     *
+     * Is NOP if input already shutdown or channel is closed.<p>
+     * 
+     * A shutdown will interrupt a client request in-flight. After shutdown, no
+     * more requests will be received.
+     * 
      * @throws IOException if a propagated channel-close failed
      */
     void shutdownInput() throws IOException;
@@ -228,13 +233,16 @@ public interface ClientChannel extends Closeable
     void shutdownInputSafe();
     
     /**
-     * Shutdown the channel's output stream.<p>
+     * Shutdown the channel's output/write stream.<p>
      * 
      * If this operation fails or effectively terminates the connection (input
      * stream was also shutdown), then this method propagates to {@link
      * #close()}.<p>
      * 
-     * Is NOP if output already shutdown or channel is closed.
+     * Is NOP if output already shutdown or channel is closed.<p>
+     * 
+     * A shutdown will interrupt a client response in-flight. After shutdown, no
+     * more responses can be sent.
      * 
      * @throws IOException if a propagated channel-close failed
      */
@@ -247,11 +255,15 @@ public interface ClientChannel extends Closeable
     void shutdownOutputSafe();
     
     /**
-     * End the channel's connection and then close the channel.<p>
+     * End the channel's connection (stop input/output streams) and then close
+     * the channel.<p>
      * 
      * Is NOP if channel is already closed.
-     *
+     * 
      * @throws IOException if closing the channel failed
+     * 
+     * @see #shutdownInput()
+     * @see #shutdownOutput()
      */
     @Override
     void close() throws IOException;

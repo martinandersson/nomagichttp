@@ -7,6 +7,7 @@ import alpha.nomagichttp.util.SeriallyRunnable;
 import java.util.ArrayList;
 import java.util.Deque;
 import java.util.List;
+import java.util.concurrent.CompletionException;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ConcurrentLinkedDeque;
 import java.util.concurrent.Flow;
@@ -145,6 +146,7 @@ final class ResponsePipeline implements Flow.Publisher<ResponsePipeline.Result>
     private Response inFlight = null;
     private boolean wroteFinal = false;
     private int n100continue = 0;
+    private static final Throwable IGNORE = new AssertionError();
     
     private CompletionStage<ResponseBodySubscriber.Result> subscribeToResponse(Response r) {
         if (wroteFinal) {
@@ -158,7 +160,7 @@ final class ResponsePipeline implements Flow.Publisher<ResponsePipeline.Result>
             }
             if (r.statusCode() == ONE_HUNDRED && ++n100continue > 1) {
                 LOG.log(n100continue == 2 ? DEBUG : WARNING, "Ignoring repeated 100 (Continue).");
-                return failedStage(new AssertionError("Ignored"));
+                return failedStage(IGNORE);
             }
         }
         inFlight = r;
@@ -170,21 +172,30 @@ final class ResponsePipeline implements Flow.Publisher<ResponsePipeline.Result>
     }
     
     private void handleChannelResult(ResponseBodySubscriber.Result res, Throwable thr) {
-        if (n100continue > 1) {
+        Response r = inFlight;
+        inFlight = null;
+        
+        if (thr != null && thr.getCause() == IGNORE) {
             op.complete();
             op.run();
             return;
         }
-        Response r = inFlight;
-        inFlight = null;
-        if (res != null) {
-            // Success
-            LOG.log(DEBUG, () -> "Sent response (" + res.bytesWritten() + " bytes).");
-            // TODO: Implement "mayAbortRequest" flag
+        
+        // If application's stage completed exceptionally, we never received a Response obj
+        if (r != null) {
             if (r.mustCloseAfterWrite()) {
                 LOG.log(DEBUG, "Response wants us to close the child, will close.");
                 chan.closeSafe();
+            } else if (r.mustShutdownOutputAfterWrite()) {
+                LOG.log(DEBUG, "Response wants us to shutdown output, will shutdown.");
+                chan.shutdownOutputSafe();
+                // DefaultServer will not start a new exchange
             }
+        }
+        
+        if (res != null) {
+            // Success
+            LOG.log(DEBUG, () -> "Sent response (" + res.bytesWritten() + " bytes).");
             publish(r, res.bytesWritten(), null);
         } else {
             // Failed
@@ -195,6 +206,7 @@ final class ResponsePipeline implements Flow.Publisher<ResponsePipeline.Result>
             assert thr != null;
             publish(r, null, thr);
         }
+        
         op.complete();
         op.run();
     }
