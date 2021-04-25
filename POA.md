@@ -32,7 +32,7 @@ An item ~~crossed out~~ is complete, an item in __bold__ is work in progress.
 [Stage: Improved Content Negotiation](#stage-improved-content-negotiation)  
 [~~Stage: Pseudo-Mutable Types~~](#stage-pseudo-mutable-types)  
 [~~Stage: Multiple Responses~~](#stage-multiple-responses)  
-[Stage: Connection Life-Cycle/Management](#stage-connection-life-cyclemanagement)  
+[**Stage: Connection Life-Cycle/Management**](#stage-connection-life-cyclemanagement)  
 [Stage: Actions](#stage-actions)  
 [Stage: Codings, Part 1/3 (Chunked Transfer)](#stage-codings-part-13-chunked-transfer)  
 [Stage: Codings, Part 2/3 (Response Body Compression)](#stage-codings-part-23-response-body-compression)  
@@ -53,7 +53,7 @@ An item ~~crossed out~~ is complete, an item in __bold__ is work in progress.
 
 ## Stage: Project Enhancements
 
-_Status: **Mostly Delivered.**_
+_Status: **Mostly Delivered**_
 
 To deliver practical usefulness, the project must publish documentation and
 artifacts.
@@ -243,7 +243,9 @@ doesn't finish the exchange.~~
     skipped by the server if when initiating the write-operation, the request
     body has already begun transmitting.~~
 
-## Stage: Connection Life-Cycle/Management
+## **Stage: Connection Life-Cycle/Management**
+
+_Status: **In Progress**_
 
 Goal is to make the connection life-cycle more solid and specified with docs; a
 connection may represent many users aka "request isolation", as well as one
