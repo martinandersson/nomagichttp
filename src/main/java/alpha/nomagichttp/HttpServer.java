@@ -619,11 +619,14 @@ public interface HttpServer
          * HttpVersionTooOldException} which by default gets translated to a
          * "426 Upgrade Required" response.<p>
          * 
-         * HTTP/1.0 does not by default support persistent connections and may
-         * as a consequence be a wasteful protocol. It's recommended to override
-         * this value with {@code true}. As a library however, we have to be
-         * backwards compatible and support as many applications as possible
-         * "out of the box", hence the {@code false} default.<p>
+         * HTTP/1.0 does not by default support persistent connections and there
+         * are a number of issues related to HTTP/1.0's Keep-Alive mechanism
+         * which the NoMagicHTTP server does not support. All HTTP/1.0
+         * connections will therefore close after each response, which is
+         * inefficient. It's recommended to override this value with {@code
+         * true}. As a library however, we have to be backwards compatible and
+         * support as many applications as possible "out of the box", hence the
+         * {@code false} default.<p>
          * 
          * The configuration value will be polled at the beginning of each HTTP
          * exchange.<p>
