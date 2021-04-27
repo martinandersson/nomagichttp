@@ -166,7 +166,11 @@ public final class ClientOperations
             int r = Interrupt.after(1, SECONDS, () -> ch.read(buff));
             return r == -1;
         } catch (IOException e) {
-            return isCausedByBrokenInputStream(e);
+            boolean broken =  isCausedByBrokenInputStream(e);
+            if (!broken) {
+                LOG.log(DEBUG, "Exception not considered broken read.", e);
+            }
+            return broken;
         }
     }
     
@@ -218,8 +222,11 @@ public final class ClientOperations
             
             return false;
         } catch (IOException e) {
-            System.out.println("CAUGHT: " + e);
-            return isCausedByBrokenOutputStream(e);
+            boolean broken = isCausedByBrokenOutputStream(e);
+            if (!broken) {
+                LOG.log(DEBUG, "Exception not considered broken write.", e);
+            }
+            return broken;
         }
     }
     

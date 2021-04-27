@@ -30,6 +30,7 @@ public final class IOExceptions
             // Windows
             "An existing connection was forcibly closed by the remote host",
             "An established connection was aborted by the software in your host machine",
+            "Software caused connection abort: no further information",
             "Connection reset by peer",
             // Linux
             "Broken pipe"};
