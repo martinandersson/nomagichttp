@@ -130,8 +130,7 @@ final class DefaultClientChannel implements ClientChannel
         }
         
         try {
-            child.shutdownInput();
-            readShutdown = true;
+            shutdownInputImpl();
         } catch (ClosedChannelException e) {
             readShutdown = true;
             return;
@@ -153,6 +152,12 @@ final class DefaultClientChannel implements ClientChannel
         }
     }
     
+    private void shutdownInputImpl() throws IOException {
+        child.shutdownInput();
+        readShutdown = true;
+        LOG.log(DEBUG, () -> "Shutdown input stream of child: " + child);
+    }
+    
     @Override
     public void shutdownOutput() throws IOException {
         if (writeShutdown) {
@@ -160,8 +165,7 @@ final class DefaultClientChannel implements ClientChannel
         }
         
         try {
-            child.shutdownOutput();
-            writeShutdown = true;
+            shutdownOutputImpl();
         } catch (ClosedChannelException e) {
             writeShutdown = true;
             return;
@@ -183,6 +187,12 @@ final class DefaultClientChannel implements ClientChannel
         }
     }
     
+    private void shutdownOutputImpl() throws IOException {
+        child.shutdownOutput();
+        writeShutdown = true;
+        LOG.log(DEBUG, () -> "Shutdown output stream of child: " + child);
+    }
+    
     @Override
     public void close() throws IOException {
         if (!child.isOpen()) {
@@ -191,15 +201,13 @@ final class DefaultClientChannel implements ClientChannel
         
         // https://stackoverflow.com/a/20749656/1268003
         try {
-            child.shutdownInput();
-            readShutdown = true;
+            shutdownInputImpl();
         } catch (IOException t) {
             LOG.log(DEBUG, "Failed to shutdown child channel's input stream.", t);
         }
         
         try {
-            child.shutdownOutput();
-            writeShutdown = true;
+            shutdownOutputImpl();
         } catch (IOException t) {
             LOG.log(DEBUG, "Failed to shutdown child channel's output stream.", t);
         }
