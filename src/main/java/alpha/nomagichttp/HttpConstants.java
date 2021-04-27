@@ -441,7 +441,7 @@ public final class HttpConstants {
          *         otherwise {@code false}
          */
         public static boolean isInformational(int statusCode) {
-            return statusCode >= 100 && statusCode < 200;
+            return statusCode >= 100 && statusCode <= 199;
         }
         
         /**
@@ -455,6 +455,58 @@ public final class HttpConstants {
          */
         public static boolean isFinal(int statusCode) {
             return !isInformational(statusCode);
+        }
+        
+        /**
+         * Returns {@code true} if the status-code is 2XX (Successful),
+         * otherwise {@code false}.
+         *
+         * @param statusCode to check
+         *
+         * @return {@code true} if the status-code is 2XX (Successful),
+         *         otherwise {@code false}
+         */
+        public static boolean isSuccessful(int statusCode) {
+            return statusCode >= 200 && statusCode <= 299;
+        }
+        
+        /**
+         * Returns {@code true} if the status-code is 3XX (Redirection),
+         * otherwise {@code false}.
+         *
+         * @param statusCode to check
+         *
+         * @return {@code true} if the status-code is 3XX (Redirection),
+         *         otherwise {@code false}
+         */
+        public static boolean isRedirection(int statusCode) {
+            return statusCode >= 300 && statusCode <= 399;
+        }
+        
+        /**
+         * Returns {@code true} if the status-code is 4XX (Client Error),
+         * otherwise {@code false}.
+         *
+         * @param statusCode to check
+         *
+         * @return {@code true} if the status-code is 4XX (Client Error),
+         *         otherwise {@code false}
+         */
+        public static boolean isClientError(int statusCode) {
+            return statusCode >= 400 && statusCode <= 499;
+        }
+        
+        /**
+         * Returns {@code true} if the status-code is 5XX (Server Error),
+         * otherwise {@code false}.
+         *
+         * @param statusCode to check
+         *
+         * @return {@code true} if the status-code is 5XX (Server Error),
+         *         otherwise {@code false}
+         */
+        public static boolean isServerError(int statusCode) {
+            return statusCode >= 500 && statusCode <= 599;
         }
         
         /**
