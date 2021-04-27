@@ -1,13 +1,13 @@
 package alpha.nomagichttp.handler;
 
 
+import alpha.nomagichttp.internal.DefaultAttributes;
 import alpha.nomagichttp.message.Request;
 import org.junit.jupiter.api.Test;
 import org.mockito.MockedStatic;
 import org.mockito.Mockito;
 
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executor;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -28,9 +28,7 @@ class ErrorHandlersTest
     @Test
     void delayedRetrier() throws Throwable {
         Request req = mock(Request.class);
-        Request.Attributes attr = mock(Request.Attributes.class);
-        when(req.attributes()).thenReturn(attr);
-        when(attr.<Integer>asMapAny()).thenReturn(new ConcurrentHashMap<>());
+        when(req.attributes()).thenReturn(new DefaultAttributes());
         
         RequestHandler rh = mock(RequestHandler.class);
         AtomicInteger retries = new AtomicInteger();

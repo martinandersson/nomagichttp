@@ -5,6 +5,7 @@ import alpha.nomagichttp.HttpServer;
 import alpha.nomagichttp.handler.ClientChannel;
 import alpha.nomagichttp.handler.ErrorHandler;
 import alpha.nomagichttp.route.Route;
+import alpha.nomagichttp.util.AttributeHolder;
 import alpha.nomagichttp.util.Publishers;
 
 import java.net.URLDecoder;
@@ -23,7 +24,6 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.CompletionStage;
-import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Flow;
 import java.util.function.BiFunction;
@@ -45,7 +45,7 @@ import java.util.stream.Stream;
  * @see <a href="https://tools.ietf.org/html/rfc7230#section-3.1.1">RFC 7230 §3.1.1</a>
  * @see <a href="https://tools.ietf.org/html/rfc7230#section-3.3">RFC 7230 §3.3</a>
  */
-public interface Request
+public interface Request extends AttributeHolder
 {
     /**
      * Returns the request-line's method token.<p>
@@ -173,16 +173,6 @@ public interface Request
      * @see Body
      */
     Body body();
-    
-    /**
-     * Returns an attributes API bound to this request.<p>
-     * 
-     * Attributes are application-provided objects associated with the request
-     * for passing data through the request object and across boundaries.
-     * 
-     * @return an attributes API object bound to this request
-     */
-    Attributes attributes();
     
     /**
      * Is a thread-safe and non-blocking API for accessing immutable request
@@ -771,160 +761,5 @@ public interface Request
          * @see Body
          */
         boolean isEmpty();
-    }
-    
-    /**
-     * Is an API for accessing objects associated with a particular request.
-     * Useful when passing data across boundaries, such as from a request
-     * handler to an error handler.
-     * 
-     * <pre>{@code
-     *   // In a request handler
-     *   request.attributes().set("my.stuff", new MyClass());
-     *   // Somewhere else
-     *   MyClass obj = request.attributes().getAny("my.stuff");
-     * }</pre>
-     * 
-     * The implementation is thread-safe.<p>
-     * 
-     * The NoMagicHTTP library reserves the right to use the namespace
-     * "alpha.nomagichttp.*" exclusively. Applications are encouraged to avoid
-     * using this prefix in their names.
-     * 
-     * @author Martin Andersson (webmaster at martinandersson.com)
-     */
-    interface Attributes
-    {
-        /**
-         * Returns the value of the named attribute as an object.
-         * 
-         * @param name of attribute
-         * 
-         * @return the value of the named attribute as an object (may be {@code null})
-         * 
-         * @throws NullPointerException if {@code name} is {@code null}
-         */
-        Object get(String name);
-        
-        /**
-         * Set the value of the named attribute.<p>
-         * 
-         * @param name  of attribute (any non-null string)
-         * @param value of attribute (may be {@code null})
-         * 
-         * @return the old value (may be {@code null})
-         * 
-         * @throws NullPointerException if {@code name} is {@code null}
-         */
-        Object set(String name, Object value);
-        
-        /**
-         * Returns the value of the named attribute cast to V.
-         * 
-         * This method is equivalent to:
-         * <pre>{@code
-         *   V v = (V) request.attributes().get(name);
-         * }</pre>
-         * 
-         * Except the cast is implicit and the type is inferred by the Java
-         * compiler. The call site will still blow up with a {@code
-         * ClassCastException} if a non-null object can not be cast to the
-         * inferred type.
-         * 
-         * <pre>{@code
-         *   // Given
-         *   request.attributes().set("name", "my string");
-         *   
-         *   // Okay
-         *   String str = request.attributes().getAny("name");
-         *   
-         *   // ClassCastException
-         *   DateTimeFormatter oops = request.attributes().getAny("name");
-         * }</pre>
-         * 
-         * @param <V>  value type (explicitly provided on call site or inferred 
-         *             by Java compiler)
-         * @param name of attribute
-         * 
-         * @return the value of the named attribute as an object (may be {@code null})
-         *
-         * @throws NullPointerException if {@code name} is {@code null}
-         */
-        <V> V getAny(String name);
-        
-        /**
-         * Returns the value of the named attribute described as an Optional of
-         * an object.<p>
-         * 
-         * @param name of attribute
-         * 
-         * @return the value of the named attribute described as an Optional of
-         *         an object (never {@code null} but possibly empty)
-         *
-         * @throws NullPointerException if {@code name} is {@code null}
-         */
-        Optional<Object> getOpt(String name);
-        
-        /**
-         * Returns the value of the named attribute described as an Optional of
-         * V.<p>
-         * 
-         * Unlike {@link #getAny(String)} where the {@code ClassCastException}
-         * is immediate for non-null and assignment-incompatible types, this
-         * method should generally be considered unsafe as the
-         * ClassCastException is delayed (known as "heap pollution").
-         * 
-         * <pre>{@code
-         *   // Given
-         *   request.attributes().set("name", "my string");
-         *   
-         *   // Okay
-         *   Optional<String> str = request.attributes().getOptAny("name");
-         *   
-         *   // No ClassCastException!
-         *   Optional<DateTimeFormatter> poison = request.attributes().getOptAny("name");
-         *   
-         *   // Let's give the problem to someone else in the future
-         *   anotherDestination(poison);
-         * }</pre>
-         * 
-         * @param <V>  value type (explicitly provided on call site or inferred 
-         *             by Java compiler)
-         * @param name of attribute
-         * 
-         * @return the value of the named attribute described as an Optional of
-         *         V (never {@code null} but possibly empty)
-         * 
-         * @throws NullPointerException if {@code name} is {@code null}
-         */
-        <V> Optional<V> getOptAny(String name);
-        
-        /**
-         * Returns a modifiable map view of the attributes. Changes to the map
-         * are reflected in the attributes, and vice-versa.
-         * 
-         * @return a modifiable map view of the attributes
-         */
-        ConcurrentMap<String, Object> asMap();
-        
-        /**
-         * Returns a modifiable map view of the attributes. Changes to the map
-         * are reflected in the attributes, and vice-versa.<p>
-         * 
-         * Unlike {@link #getOptAny(String)}, using this method does not lead to
-         * heap pollution if you immediately use the returned map to work with
-         * the values directly. For example: 
-         * 
-         * <pre>{@code
-         *   int v = req.attributes().<Integer>asMapAny()
-         *                   .merge("request.counter", 1, Integer::sum);
-         * }</pre>
-         * 
-         * @param <V> value type (explicitly provided on call site or inferred 
-         *            by Java compiler)
-         * 
-         * @return a modifiable map view of the attributes
-         */
-        <V> ConcurrentMap<String, V> asMapAny();
     }
 }
