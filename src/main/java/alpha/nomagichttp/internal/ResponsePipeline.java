@@ -1,5 +1,6 @@
 package alpha.nomagichttp.internal;
 
+import alpha.nomagichttp.HttpServer;
 import alpha.nomagichttp.handler.ResponseRejectedException;
 import alpha.nomagichttp.message.Response;
 import alpha.nomagichttp.util.SeriallyRunnable;
@@ -7,12 +8,13 @@ import alpha.nomagichttp.util.SeriallyRunnable;
 import java.util.ArrayList;
 import java.util.Deque;
 import java.util.List;
-import java.util.concurrent.CompletionException;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ConcurrentLinkedDeque;
 import java.util.concurrent.Flow;
 
 import static alpha.nomagichttp.HttpConstants.StatusCode.ONE_HUNDRED;
+import static alpha.nomagichttp.HttpConstants.StatusCode.isClientError;
+import static alpha.nomagichttp.HttpConstants.StatusCode.isServerError;
 import static alpha.nomagichttp.HttpConstants.Version.HTTP_1_1;
 import static alpha.nomagichttp.handler.ResponseRejectedException.Reason.EXCHANGE_NOT_ACTIVE;
 import static alpha.nomagichttp.handler.ResponseRejectedException.Reason.PROTOCOL_NOT_SUPPORTED;
@@ -98,21 +100,24 @@ final class ResponsePipeline implements Flow.Publisher<ResponsePipeline.Result>
     private final Deque<CompletionStage<Response>> queue;
     private final SeriallyRunnable op;
     private final List<Flow.Subscriber<? super Result>> subs;
+    private final int maxUnssuccessful;
     
     /**
      * Constructs a {@code ResponsePipeline}.<p>
      * 
      * @param exch the HTTP exchange
      * @param chan channel's delegate used for writing
+     * @param maxUnssuccessful {@link HttpServer.Config#maxUnsuccessfulResponses()}
      * 
      * @throws NullPointerException if any arg is {@code null}
      */
-    ResponsePipeline(HttpExchange exch, DefaultClientChannel chan) {
+    ResponsePipeline(HttpExchange exch, DefaultClientChannel chan, int maxUnssuccessful) {
         this.chan  = requireNonNull(chan);
         this.exch  = requireNonNull(exch);
         this.queue = new ConcurrentLinkedDeque<>();
         this.op    = new SeriallyRunnable(this::pollAndProcessAsync, true);
         this.subs  = new ArrayList<>();
+        this.maxUnssuccessful = maxUnssuccessful;
     }
     
     @Override
@@ -148,26 +153,50 @@ final class ResponsePipeline implements Flow.Publisher<ResponsePipeline.Result>
     private int n100continue = 0;
     private static final Throwable IGNORE = new AssertionError();
     
-    private CompletionStage<ResponseBodySubscriber.Result> subscribeToResponse(Response r) {
+    private CompletionStage<ResponseBodySubscriber.Result> subscribeToResponse(final Response in) {
+        final Response out;
+        
         if (wroteFinal) {
-            throw new ResponseRejectedException(r, EXCHANGE_NOT_ACTIVE,
+            throw new ResponseRejectedException(in, EXCHANGE_NOT_ACTIVE,
                     "Final response already written.");
         }
-        if (r.isInformational()) {
+        if (in.isInformational()) {
             if (exch.getHttpVersion().isLessThan(HTTP_1_1)) {
-                throw new ResponseRejectedException(r, PROTOCOL_NOT_SUPPORTED,
+                throw new ResponseRejectedException(in, PROTOCOL_NOT_SUPPORTED,
                         exch.getHttpVersion() + " does not support 1XX (Informational) responses.");
             }
-            if (r.statusCode() == ONE_HUNDRED && ++n100continue > 1) {
+            if (in.statusCode() == ONE_HUNDRED && ++n100continue > 1) {
                 LOG.log(n100continue == 2 ? DEBUG : WARNING, "Ignoring repeated 100 (Continue).");
                 return failedStage(IGNORE);
             }
         }
-        inFlight = r;
-        wroteFinal = r.isFinal();
-        LOG.log(DEBUG, () -> "Subscribing to response: " + r);
-        var rbs = new ResponseBodySubscriber(r, exch, chan);
-        r.body().subscribe(rbs);
+        
+        // TODO: This is ideally replaced by a post-action in the future
+        //       (and then we won't need final in/out refs)
+        if (isClientError(in.statusCode()) || isServerError(in.statusCode())) {
+            // Bump retry counter
+            int n = chan.attributes().<Integer>asMapAny()
+                    .merge("alpha.nomagichttp.responsepipeline.nUnssuccessful", 1, Integer::sum);
+            
+            if (n >= maxUnssuccessful && !in.mustCloseAfterWrite()) {
+                LOG.log(DEBUG, "Max number of unsuccessful responses reached. Marking response to close client channel.");
+                out = in.toBuilder().mustCloseAfterWrite(true).build();
+            } else {
+                out = in;
+            }
+        } else {
+            // Reset
+            chan.attributes().set("alpha.nomagichttp.responsepipeline.nUnssuccessful", 0);
+            out = in;
+        }
+        
+        if (LOG.isLoggable(DEBUG)) {
+            LOG.log(DEBUG, "Subscribing to response: " + out);
+        }
+        inFlight = out;
+        wroteFinal = out.isFinal();
+        var rbs = new ResponseBodySubscriber(out, exch, chan);
+        out.body().subscribe(rbs);
         return rbs.asCompletionStage();
     }
     

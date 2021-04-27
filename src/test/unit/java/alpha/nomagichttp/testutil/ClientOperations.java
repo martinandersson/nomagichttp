@@ -5,7 +5,9 @@ import alpha.nomagichttp.message.Char;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.net.InetSocketAddress;
+import java.net.SocketOption;
 import java.net.http.HttpClient;
 import java.nio.ByteBuffer;
 import java.nio.channels.Channel;
@@ -14,14 +16,14 @@ import java.nio.channels.SocketChannel;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.ScheduledFuture;
-import java.util.concurrent.atomic.AtomicBoolean;
 
+import static alpha.nomagichttp.util.IOExceptions.isCausedByBrokenInputStream;
+import static alpha.nomagichttp.util.IOExceptions.isCausedByBrokenOutputStream;
 import static java.lang.System.Logger.Level.DEBUG;
 import static java.lang.System.Logger.Level.WARNING;
 import static java.net.InetAddress.getLoopbackAddress;
+import static java.net.StandardSocketOptions.SO_RCVBUF;
+import static java.net.StandardSocketOptions.SO_SNDBUF;
 import static java.nio.ByteBuffer.allocate;
 import static java.nio.ByteBuffer.wrap;
 import static java.nio.charset.StandardCharsets.US_ASCII;
@@ -31,9 +33,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * A utility API on top of a {@code SocketChannel}.<p>
- * 
- * Any operation taking 3 seconds or longer will cause an {@code
- * InterruptedException} to be thrown<p>
  * 
  * All channel operating utility methods will by default open/close a new
  * connection for each method call into this class. In order to re-use a
@@ -70,13 +69,6 @@ public final class ClientOperations
     public static final String CRLF = "\r\n";
     
     private static final System.Logger LOG = System.getLogger(ClientOperations.class.getPackageName());
-    
-    private static final ScheduledExecutorService SCHEDULER
-            = Executors.newSingleThreadScheduledExecutor(r -> {
-                  Thread t = new Thread(r);
-                  t.setDaemon(true);
-                  return t;
-            });
     
     private final SocketChannelSupplier factory;
     private SocketChannel ch;
@@ -146,6 +138,99 @@ public final class ClientOperations
         return new Proxy();
     }
     
+    /**
+     * Will return {@code true} if it can be assumed that the other peer closed
+     * his output stream (analogous to our input stream and reading ability).<p>
+     * 
+     * An attempt will be made to manipulate the channel's receiving buffer size
+     * and read bytes from the channel. Hence, the test must only call this
+     * method at the very end of the channel's life. Otherwise the test will
+     * risk running into a message protocol error later.
+     * 
+     * @return {@code true} if other peer closed his output stream,
+     *         otherwise {@code false}
+     * 
+     * @throws IllegalStateException if no connection is active,
+     *                               or we closed our channel
+     */
+    public boolean serverClosedOutput() {
+        if (ch == null) {
+            throw new IllegalStateException("No connection active.");
+        }
+        if (!ch.isOpen()) {
+            throw new IllegalStateException("Channel closed on our side.");
+        }
+        int size = setNoBufferGetActual(SO_RCVBUF);
+        ByteBuffer buff = allocate(size + 1);
+        try {
+            int r = Interrupt.after(1, SECONDS, () -> ch.read(buff));
+            return r == -1;
+        } catch (IOException e) {
+            return isCausedByBrokenInputStream(e);
+        }
+    }
+    
+    /**
+     * Will return {@code true} if it can be assumed that the other peer closed
+     * his input stream (analogous to our output stream and writing ability).<p>
+     * 
+     * An attempt will be made to manipulate the channel's send buffer size and
+     * write bytes to the channel. Hence, the test must only call this method at
+     * the very end of the channel's life. Otherwise the test will risk running
+     * into a message protocol error later.<p>
+     * 
+     * If test is probing the status of both of the server's streams, then test
+     * should call {@link #serverClosedOutput()} first, followed by this method.
+     * Reason is that the attempted read is more prone to pick up the FIN packet
+     * (EOS) whereas writing significant amounts of data to a closed connection
+     * may actually succeed without hitting a broken pipe error.
+     * 
+     * @return {@code true} if other peer closed his input stream,
+     *         otherwise {@code false}
+     *
+     * @throws IllegalStateException if no connection is active,
+     *                               or we closed our channel
+     */
+    public boolean serverClosedInput() {
+        if (ch == null) {
+            throw new IllegalStateException("No connection active.");
+        }
+        if (!ch.isOpen()) {
+            throw new IllegalStateException("Channel closed on our side.");
+        }
+        int size = setNoBufferGetActual(SO_SNDBUF);
+        ByteBuffer buff = allocate(size + 1);
+        try {
+            // Test 1
+            Interrupt.after(1, SECONDS, () -> {
+                while (buff.hasRemaining()) {
+                    int r = ch.write(buff);
+                    assertThat(r).isPositive().describedAs(
+                            "Blocking mode; expecting IOException, not 0");
+                }
+            });
+            
+            // Test 2
+            ch.socket().sendUrgentData(1);
+            
+            // Windows 10 will detect broken pipe using either Test 1, 2 or both
+            // Ubuntu 20.04 requires both Test 1 and 2
+            
+            return false;
+        } catch (IOException e) {
+            return isCausedByBrokenOutputStream(e);
+        }
+    }
+    
+    private int setNoBufferGetActual(SocketOption<Integer> sendOrReceive) {
+        try {
+            ch.setOption(sendOrReceive, 0);
+            return ch.getOption(sendOrReceive);
+        } catch (IOException e) {
+            throw new UncheckedIOException("Failed to set/get socket option.", e);
+        }
+    }
+    
     private void closeChannel() throws IOException {
         if (ch != null) {
             ch.close();
@@ -160,7 +245,12 @@ public final class ClientOperations
      * Please note that UTF-8 is backwards compatible with ASCII.
      * 
      * @param text to write
-     * @throws IOException if an I/O error occurs
+     * 
+     * @throws ClosedByInterruptException
+     *             if operation takes longer than 3 seconds
+     * 
+     * @throws IOException
+     *             for other weird reasons lol
      */
     public void write(String text) throws IOException {
         writeRead(text, "");
@@ -172,10 +262,16 @@ public final class ClientOperations
      * 
      * Useful when <i>not</i> expecting a response body, in which case the
      * response should end after the headers with two newlines.
-     *
+     * 
      * @param request to write
+     * 
      * @return the response
-     * @throws IOException if an I/O error occurs
+     * 
+     * @throws ClosedByInterruptException
+     *             if operation takes longer than 3 seconds
+     * 
+     * @throws IOException
+     *             for other weird reasons lol
      */
     public String writeRead(String request) throws IOException {
         return writeRead(request, CRLF + CRLF);
@@ -194,7 +290,11 @@ public final class ClientOperations
      * 
      * @return the response
      * 
-     * @throws IOException if an I/O error occurs
+     * @throws ClosedByInterruptException
+     *             if operation takes longer than 3 seconds
+     * 
+     * @throws IOException
+     *             for other weird reasons lol
      */
     public String writeRead(String request, String responseEnd) throws IOException {
         byte[] bytes = writeRead(
@@ -219,20 +319,13 @@ public final class ClientOperations
      * 
      * @return the response
      * 
-     * @throws ClosedByInterruptException if operation takes longer than 3 seconds
-     * @throws IOException for other weird reasons lol
+     * @throws ClosedByInterruptException
+     *             if operation takes longer than 3 seconds
+     * 
+     * @throws IOException
+     *             for other weird reasons lol
      */
     public byte[] writeRead(byte[] request, byte[] responseEnd) throws IOException {
-        final Thread worker = Thread.currentThread();
-        final AtomicBoolean communicating = new AtomicBoolean(true);
-        
-        ScheduledFuture<?> interrupt = SCHEDULER.schedule(() -> {
-            if (communicating.get()) {
-                LOG.log(WARNING, "HTTP exchange took too long, will timeout.");
-                worker.interrupt();
-            }
-        }, 3, SECONDS);
-        
         final FiniteByteBufferSink sink = new FiniteByteBufferSink(128, responseEnd);
         final boolean persistent = ch != null;
         
@@ -241,22 +334,24 @@ public final class ClientOperations
                 openConnection();
             }
             
-            int r = ch.write(wrap(request));
-            assertThat(r).isEqualTo(request.length);
-            
-            ByteBuffer buff = allocate(128);
-            
-            while (!sink.hasReachedEnd()) {
-                if (ch.read(buff) == -1) {
-                    LOG.log(DEBUG, "EOS; server closed channel's read stream. Closing our channel.");
-                    ch.close();
-                    break;
-                }
+            Interrupt.after(3, SECONDS, () -> {
+                int r = ch.write(wrap(request));
+                assertThat(r).isEqualTo(request.length);
                 
-                buff.flip();
-                sink.write(buff);
-                buff.clear();
-            }
+                ByteBuffer buff = allocate(128);
+                
+                while (!sink.hasReachedEnd()) {
+                    if (ch.read(buff) == -1) {
+                        LOG.log(DEBUG, "EOS; server closed channel's read stream. Closing our channel.");
+                        ch.close();
+                        break;
+                    }
+                    
+                    buff.flip();
+                    sink.write(buff);
+                    buff.clear();
+                }
+            });
             
             return sink.toByteArray();
         } catch (Exception e) {
@@ -264,10 +359,6 @@ public final class ClientOperations
             throw e;
         }
         finally {
-            communicating.set(false);
-            interrupt.cancel(false);
-            Thread.interrupted(); // clear flag
-            
             if (!persistent) {
                 closeChannel();
             }

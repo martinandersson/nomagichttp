@@ -73,7 +73,7 @@ final class HttpExchange
         this.handlers = handlers;
         this.bytes    = bytes;
         this.chan     = chan;
-        this.pipe     = new ResponsePipeline(this, chan);
+        this.pipe     = new ResponsePipeline(this, chan, config.maxUnsuccessfulResponses());
         this.result   = new CompletableFuture<>();
         this.ver      = HTTP_1_1; // <-- default until updated
         this.request  = null;
@@ -213,14 +213,7 @@ final class HttpExchange
     
     private void handlePipeResult(ResponsePipeline.Result res) {
         /*
-         * We should make the connection life cycle much more solid; when is
-         * the connection persistent and when is it not (also see RFC 2616
-         * §14.10 Connection). No point in starting a new exchange if we expect
-         * the connection to end. In fact, if that's the case we should actually
-         * go ahead and close the channel! Currently, if the other side never
-         * closes then we would end up having idle zombie connections (!).
-         * TODO: 1) Make connection life cycle solid and robust.
-         * TODO: 2) Implement idle timeout.
+         * TODO: Implement idle timeout.
          */
         
         if (res.error() != null) {

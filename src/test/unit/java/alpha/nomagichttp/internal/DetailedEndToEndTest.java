@@ -6,6 +6,7 @@ import alpha.nomagichttp.message.ClosedPublisherException;
 import alpha.nomagichttp.message.PooledByteBufferHolder;
 import alpha.nomagichttp.message.Request;
 import alpha.nomagichttp.message.Responses;
+import alpha.nomagichttp.testutil.IORunnable;
 import alpha.nomagichttp.testutil.MemorizingSubscriber;
 import alpha.nomagichttp.testutil.MemorizingSubscriber.Signal;
 import org.junit.jupiter.api.Test;
@@ -26,6 +27,7 @@ import static alpha.nomagichttp.handler.RequestHandler.GET;
 import static alpha.nomagichttp.handler.RequestHandler.POST;
 import static alpha.nomagichttp.handler.RequestHandler.builder;
 import static alpha.nomagichttp.message.Responses.accepted;
+import static alpha.nomagichttp.message.Responses.badRequest;
 import static alpha.nomagichttp.message.Responses.continue_;
 import static alpha.nomagichttp.message.Responses.text;
 import static alpha.nomagichttp.testutil.ClientOperations.CRLF;
@@ -436,6 +438,30 @@ class DetailedEndToEndTest extends AbstractEndToEndTest
         assertThatErrorHandlerCaughtOops();
     }
     
+    @Test
+    void maxUnsuccessfulResponses() throws IOException, InterruptedException {
+        server().add("/", GET().respond(badRequest()));
+        
+        IORunnable sendBadRequest = () -> {
+            String rsp = client().writeRead(requestWithoutBody());
+            assertThat(rsp).startsWith("HTTP/1.1 400 Bad Request");
+        };
+        
+        try (Channel ch = client().openConnection()) {
+            for (int i = server().getConfig().maxUnsuccessfulResponses(); i > 1; --i) {
+                sendBadRequest.run();
+                assertTrue(ch.isOpen());
+            }
+            sendBadRequest.run();
+            
+            awaitChildClose();
+            assertTrue(client().serverClosedOutput());
+            assertTrue(client().serverClosedInput());
+        }
+    }
+    
+    // TODO: Test multiple responses order
+    
     private static void assertOnErrorThrowable(Signal onError, String msg) {
         assertThat(onError.<Throwable>getArgument())
                 .isExactlyInstanceOf(ClosedPublisherException.class)
@@ -469,6 +495,14 @@ class DetailedEndToEndTest extends AbstractEndToEndTest
      */
     private void awaitChildAccept() throws InterruptedException {
         assertTrue(logRecorder().await(FINE, "Accepted child:"));
+    }
+    
+    /**
+     * Waits for at most 3 seconds on the server log to indicate a child was
+     * closed.
+     */
+    private void awaitChildClose() throws InterruptedException {
+        assertTrue(logRecorder().await(FINE, "Closed child:"));
     }
     
     /**
@@ -506,11 +540,6 @@ class DetailedEndToEndTest extends AbstractEndToEndTest
                "Content-Length: " + body.length()        + CRLF + CRLF +
                
                body;
-    }
-    
-    @FunctionalInterface
-    private interface IORunnable {
-        void run() throws IOException;
     }
     
     private static class AfterByteTargetStop implements Flow.Subscriber<PooledByteBufferHolder>

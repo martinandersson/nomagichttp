@@ -21,30 +21,6 @@ import org.junit.jupiter.api.Disabled;
  * client and close. Server thought exchange would continue but receives a weird
  * IOException.<p>
  * 
- * IOExceptions from broken read operations, I noticed, may have these messages:
- * <pre>
- *     Windows:
- *       java.io.IOException: The specified network name is no longer available
- *     Linux:
- *       java.io.IOException: Connection reset by peer
- * </pre>
- * 
- * On write:
- * <pre>
- *   Windows:
- *     java.io.IOException: An existing connection was forcibly closed by the remote host
- *   Linux:
- *     java.io.IOException: Broken pipe
- * </pre>
- * 
- * Also observed <a href="https://github.com/http4s/blaze/blob/main/core/src/main/scala/org/http4s/blaze/channel/ChannelHead.scala#L43">here</a>:
- * <pre>
- *   "Connection timed out", // Found on Linux NIO1
- *   "Connection reset", // Found on Linux, Java 13
- * </pre>
- * 
- * Not sure from what operation (read/write) these messages originated. The
- * first may probably be ignored since we don't use NIO1?
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  */

@@ -567,6 +567,29 @@ public interface HttpServer
         }
         
         /**
+         * Returns the max number of consecutive responses sent to a client of
+         * classification 4XX (Client Error) and 5XX (Server Error) before
+         * closing the client channel.<p>
+         * 
+         * Closing the channel after repeatedly unsuccessful exchanges increases
+         * security.<p>
+         * 
+         * The configuration value is polled at the start of each new exchange.
+         * 
+         * @implSpec
+         * The default implementation is equivalent to:
+         * <pre>
+         *     return 3;
+         * </pre>
+         * 
+         * @return max number of consecutively unsuccessful responses
+         *         before closing channel
+         */
+        default int maxUnsuccessfulResponses() {
+            return 3;
+        }
+        
+        /**
          * Returns the max number of attempts at recovering a failed request.<p>
          * 
          * The configuration has an effect only if the application has provide
