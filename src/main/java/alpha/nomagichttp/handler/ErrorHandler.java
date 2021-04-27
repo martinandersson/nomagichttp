@@ -104,8 +104,7 @@ import static java.lang.System.Logger.Level.ERROR;
  * 
  * If there is a request available when the error handler is called, then {@link
  * Request#attributes()} is a good place to store state that needs to be passed
- * between handler invocations, such as an error retry counter (see example
- * {@link RetryRequestOnError}).<p>
+ * between handler invocations.<p>
  * 
  * The error handler must be thread-safe, as it may be called concurrently. As
  * far as the server is concerned, it does not need to implement 
