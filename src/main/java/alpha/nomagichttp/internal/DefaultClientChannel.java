@@ -3,6 +3,7 @@ package alpha.nomagichttp.internal;
 import alpha.nomagichttp.HttpServer;
 import alpha.nomagichttp.handler.ClientChannel;
 import alpha.nomagichttp.message.Response;
+import alpha.nomagichttp.util.Attributes;
 
 import java.io.IOException;
 import java.net.SocketAddress;
@@ -27,6 +28,7 @@ final class DefaultClientChannel implements ClientChannel
     private final AsynchronousSocketChannel child;
     private final HttpServer server;
     private final List<Runnable> onClose;
+    private final Attributes attr;
     private ResponsePipeline pipe;
     
     private volatile boolean readShutdown,
@@ -47,6 +49,7 @@ final class DefaultClientChannel implements ClientChannel
         this.child   = requireNonNull(child);
         this.server  = requireNonNull(server);
         this.onClose = new ArrayList<>(1);
+        this.attr    = new DefaultAttributes();
         this.pipe    = null;
         readShutdown = writeShutdown = false;
     }
@@ -257,6 +260,11 @@ final class DefaultClientChannel implements ClientChannel
     @Override
     public HttpServer getServer() {
         return server;
+    }
+    
+    @Override
+    public Attributes attributes() {
+        return attr;
     }
     
     private final class ProxiedNetworkChannel implements NetworkChannel

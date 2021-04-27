@@ -3,6 +3,7 @@ package alpha.nomagichttp.handler;
 import alpha.nomagichttp.HttpServer;
 import alpha.nomagichttp.message.Request;
 import alpha.nomagichttp.message.Response;
+import alpha.nomagichttp.util.AttributeHolder;
 
 import java.io.Closeable;
 import java.io.IOException;
@@ -53,7 +54,7 @@ import java.util.concurrent.CompletionStage;
  * @author Martin Andersson (webmaster at martinandersson.com)
  */
 // https://stackoverflow.com/a/61117435/1268003
-public interface ClientChannel extends Closeable
+public interface ClientChannel extends Closeable, AttributeHolder
 {
     /**
      * Write a response.<p>
