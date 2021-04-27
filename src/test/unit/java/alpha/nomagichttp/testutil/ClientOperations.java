@@ -160,7 +160,7 @@ public final class ClientOperations
         if (!ch.isOpen()) {
             throw new IllegalStateException("Channel closed on our side.");
         }
-        int size = setNoBufferGetActual(SO_RCVBUF);
+        int size = setSmallBufferGetActual(SO_RCVBUF);
         ByteBuffer buff = allocate(size + 1);
         try {
             int r = Interrupt.after(1, SECONDS, () -> ch.read(buff));
@@ -198,7 +198,7 @@ public final class ClientOperations
         if (!ch.isOpen()) {
             throw new IllegalStateException("Channel closed on our side.");
         }
-        int size = setNoBufferGetActual(SO_SNDBUF);
+        int size = setSmallBufferGetActual(SO_SNDBUF);
         ByteBuffer buff = allocate(size + 1);
         try {
             // Test 1
@@ -218,13 +218,17 @@ public final class ClientOperations
             
             return false;
         } catch (IOException e) {
+            System.out.println("CAUGHT: " + e);
             return isCausedByBrokenOutputStream(e);
         }
     }
     
-    private int setNoBufferGetActual(SocketOption<Integer> sendOrReceive) {
+    private int setSmallBufferGetActual(SocketOption<Integer> sendOrReceive) {
         try {
-            ch.setOption(sendOrReceive, 0);
+            // Windows 10 and Ubuntu 20.04 accepts a 0 as argument.
+            // Although it has no effect on Ubuntu.
+            // MacOS won't accept 0 as argument; java.net.SocketException: Invalid argument
+            ch.setOption(sendOrReceive, 1);
             return ch.getOption(sendOrReceive);
         } catch (IOException e) {
             throw new UncheckedIOException("Failed to set/get socket option.", e);

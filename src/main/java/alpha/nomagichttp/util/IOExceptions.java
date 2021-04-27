@@ -29,6 +29,7 @@ public final class IOExceptions
     private static final String[] BROKEN_WRITE = {
             // Windows
             "An existing connection was forcibly closed by the remote host",
+            "An established connection was aborted by the software in your host machine",
             "Connection reset by peer",
             // Linux
             "Broken pipe"};
