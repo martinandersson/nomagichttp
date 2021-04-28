@@ -12,6 +12,7 @@ import java.util.concurrent.CompletableFuture;
 
 import static alpha.nomagichttp.handler.RequestHandler.POST;
 import static alpha.nomagichttp.testutil.TestClient.CRLF;
+import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
 import static org.assertj.core.api.AssertionsForClassTypes.assertThatThrownBy;
 
@@ -65,7 +66,7 @@ class HttpServerLifeCycleTest extends AbstractEndToEndTest
             awaitChildClose(); // Not dependent on the closure of this connection
         }
         
-        assertThat(fut).isCompleted();
+        assertThat(fut).succeedsWithin(1, SECONDS).isNull();
         assertThat(server().isRunning()).isFalse();
         assertNewConnectionIsRejected();
     }
