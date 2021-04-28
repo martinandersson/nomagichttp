@@ -30,7 +30,7 @@ import static alpha.nomagichttp.message.Responses.accepted;
 import static alpha.nomagichttp.message.Responses.badRequest;
 import static alpha.nomagichttp.message.Responses.continue_;
 import static alpha.nomagichttp.message.Responses.text;
-import static alpha.nomagichttp.testutil.ClientOperations.CRLF;
+import static alpha.nomagichttp.testutil.TestClient.CRLF;
 import static alpha.nomagichttp.testutil.Logging.toJUL;
 import static alpha.nomagichttp.testutil.MemorizingSubscriber.Signal.MethodName.ON_COMPLETE;
 import static alpha.nomagichttp.testutil.MemorizingSubscriber.Signal.MethodName.ON_ERROR;

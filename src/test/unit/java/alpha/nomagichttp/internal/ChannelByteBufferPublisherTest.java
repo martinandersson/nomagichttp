@@ -1,7 +1,7 @@
 package alpha.nomagichttp.internal;
 
 import alpha.nomagichttp.HttpServer;
-import alpha.nomagichttp.testutil.ClientOperations;
+import alpha.nomagichttp.testutil.TestClient;
 import alpha.nomagichttp.testutil.Logging;
 import alpha.nomagichttp.testutil.SkeletonServer;
 import org.junit.jupiter.api.AfterAll;
@@ -31,7 +31,7 @@ class ChannelByteBufferPublisherTest
     //       DRY; refactor to common superclass or something.
     
     private static SkeletonServer SERVER;
-    private static ClientOperations CLIENT;
+    private static TestClient CLIENT;
     private ChannelByteBufferPublisher testee;
     
     @BeforeAll
@@ -39,7 +39,7 @@ class ChannelByteBufferPublisherTest
         Logging.setLevel(ChannelByteBufferPublisher.class, ALL);
         SERVER = new SkeletonServer();
         SERVER.start();
-        CLIENT = new ClientOperations(SERVER::newClient);
+        CLIENT = new TestClient(SERVER::newClient);
     }
     
     @AfterAll

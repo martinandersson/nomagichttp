@@ -46,7 +46,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  */
-public final class ClientOperations
+public final class TestClient
 {
     /**
      * Client/delegate factory.
@@ -68,39 +68,39 @@ public final class ClientOperations
      */
     public static final String CRLF = "\r\n";
     
-    private static final System.Logger LOG = System.getLogger(ClientOperations.class.getPackageName());
+    private static final System.Logger LOG = System.getLogger(TestClient.class.getPackageName());
     
     private final SocketChannelSupplier factory;
     private SocketChannel ch;
     
     /**
-     * Constructs a {@code ClientOperations} using a {@code SocketChannel}
-     * opened on the port of the given server.
+     * Constructs a {@code TestClient} using a {@code SocketChannel} opened on
+     * the port of the given server.
      * 
      * @param server client should connect to
      * @throws IOException if an I/O error occurs
      */
-    public ClientOperations(HttpServer server) throws IOException {
+    public TestClient(HttpServer server) throws IOException {
         this(server.getLocalAddress().getPort());
     }
     
     /**
-     * Constructs a {@code ClientOperations} using a {@code SocketChannel}
-     * opened on the given port.
+     * Constructs a {@code TestClient} using a {@code SocketChannel} opened on
+     * the given port.
      * 
      * @param port of client channel
      */
-    public ClientOperations(int port) {
+    public TestClient(int port) {
         this(() -> SocketChannel.open(
                 new InetSocketAddress(getLoopbackAddress(), port)));
     }
     
     /**
-     * Constructs a {@code ClientOperations}.
+     * Constructs a {@code TestClient}.
      * 
      * @param factory of client
      */
-    public ClientOperations(SocketChannelSupplier factory) {
+    public TestClient(SocketChannelSupplier factory) {
         this.factory = requireNonNull(factory);
     }
     
@@ -130,7 +130,7 @@ public final class ClientOperations
             
             @Override
             public void close() throws IOException {
-                ClientOperations.this.ch = null;
+                TestClient.this.ch = null;
                 ch.close();
             }
         }
@@ -231,6 +231,7 @@ public final class ClientOperations
     }
     
     private int setSmallBufferGetActual(SocketOption<Integer> sendOrReceive) {
+        // TODO: To future proof this, we should accept default on "Invalid arg" crash
         try {
             // Windows 10 and Ubuntu 20.04 accepts a 0 as argument.
             // Although it has no effect on Ubuntu.

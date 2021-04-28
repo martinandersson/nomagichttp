@@ -2,7 +2,7 @@ package alpha.nomagichttp.internal;
 
 import alpha.nomagichttp.HttpServer;
 import alpha.nomagichttp.handler.ErrorHandler;
-import alpha.nomagichttp.testutil.ClientOperations;
+import alpha.nomagichttp.testutil.TestClient;
 import alpha.nomagichttp.testutil.Logging;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -52,7 +52,7 @@ public abstract class AbstractEndToEndTest
     
     private Logging.Recorder key;
     private HttpServer server;
-    private ClientOperations client;
+    private TestClient client;
     private final BlockingDeque<Throwable> errors = new LinkedBlockingDeque<>();
     
     @BeforeEach
@@ -67,7 +67,7 @@ public abstract class AbstractEndToEndTest
         };
         
         server = HttpServer.create(collect).start();
-        client = new ClientOperations(server);
+        client = new TestClient(server);
     }
     
     @AfterEach
@@ -96,7 +96,7 @@ public abstract class AbstractEndToEndTest
      *
      * @return the client instance
      */
-    public final ClientOperations client() {
+    public final TestClient client() {
         return client;
     }
     

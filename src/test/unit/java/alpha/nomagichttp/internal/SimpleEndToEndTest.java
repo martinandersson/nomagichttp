@@ -13,7 +13,7 @@ import static alpha.nomagichttp.handler.RequestHandler.GET;
 import static alpha.nomagichttp.handler.RequestHandler.POST;
 import static alpha.nomagichttp.message.Responses.processing;
 import static alpha.nomagichttp.message.Responses.text;
-import static alpha.nomagichttp.testutil.ClientOperations.CRLF;
+import static alpha.nomagichttp.testutil.TestClient.CRLF;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**

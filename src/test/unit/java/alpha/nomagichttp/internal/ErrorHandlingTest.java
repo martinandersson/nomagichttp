@@ -6,7 +6,7 @@ import alpha.nomagichttp.handler.RequestHandler;
 import alpha.nomagichttp.message.Response;
 import alpha.nomagichttp.message.Responses;
 import alpha.nomagichttp.route.NoRouteFoundException;
-import alpha.nomagichttp.testutil.ClientOperations;
+import alpha.nomagichttp.testutil.TestClient;
 import alpha.nomagichttp.testutil.Logging;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
@@ -24,7 +24,7 @@ import static alpha.nomagichttp.handler.RequestHandler.HEAD;
 import static alpha.nomagichttp.handler.RequestHandler.TRACE;
 import static alpha.nomagichttp.message.Responses.processing;
 import static alpha.nomagichttp.message.Responses.text;
-import static alpha.nomagichttp.testutil.ClientOperations.CRLF;
+import static alpha.nomagichttp.testutil.TestClient.CRLF;
 import static alpha.nomagichttp.util.BetterBodyPublishers.ofString;
 import static java.lang.System.Logger.Level.ALL;
 import static java.util.concurrent.CompletableFuture.failedFuture;
@@ -55,7 +55,7 @@ class ErrorHandlingTest
     @Test
     void not_found_default() throws IOException {
         s = create().start();
-        String r = new ClientOperations(s).writeRead(
+        String r = new TestClient(s).writeRead(
             "GET /404 HTTP/1.1" + CRLF + CRLF);
         
         assertThat(r).isEqualTo(
@@ -74,7 +74,7 @@ class ErrorHandlingTest
         };
         
         s = create(eh).start();
-        String res = new ClientOperations(s).writeRead(
+        String res = new TestClient(s).writeRead(
             "GET /404 HTTP/1.1" + CRLF + CRLF);
         
         assertThat(res).isEqualTo(
@@ -113,7 +113,7 @@ class ErrorHandlingTest
         ErrorHandler retry = (t, ch, r, h2) -> h2.logic().accept(r, ch);
         
         s = create(retry).add("/", h1).start();;
-        String r = new ClientOperations(s).writeRead(
+        String r = new TestClient(s).writeRead(
             "GET / HTTP/1.1" + CRLF + CRLF);
         
         assertThat(r).isEqualTo(
@@ -124,7 +124,7 @@ class ErrorHandlingTest
     @Test
     void httpVersionBad() throws IOException {
         s = create().start();;
-        String res = new ClientOperations(s).writeRead(
+        String res = new TestClient(s).writeRead(
             "GET / Ooops" + CRLF + CRLF);
         
         assertThat(res).isEqualTo(
@@ -140,7 +140,7 @@ class ErrorHandlingTest
     @Test
     void httpVersionRejected_tooOld_byDefault() throws IOException {
         s = create().start();;
-        ClientOperations c = new ClientOperations(s);
+        TestClient c = new TestClient(s);
         
         for (String v : List.of("-1.23", "0.5", "0.8", "0.9")) {
              String res = c.writeRead(
@@ -170,7 +170,7 @@ class ErrorHandlingTest
         };
         
         s = create(rejectHttp1_0).start();;
-        String r = new ClientOperations(s).writeRead(
+        String r = new TestClient(s).writeRead(
             "GET /not-found HTTP/1.0" + CRLF + CRLF);
         
         assertThat(r).isEqualTo(
@@ -183,7 +183,7 @@ class ErrorHandlingTest
     @Test
     void httpVersionRejected_tooNew() throws IOException {
         s = create().start();;
-        ClientOperations c = new ClientOperations(s);
+        TestClient c = new TestClient(s);
         
         for (String v : List.of("2", "3", "999")) {
              String r = c.writeRead(
@@ -203,7 +203,7 @@ class ErrorHandlingTest
         s = create().start();
         s.add("/", HEAD().respond(text("Body!")));
         
-        String res = new ClientOperations(s)
+        String res = new TestClient(s)
                 .writeRead("HEAD / HTTP/1.1" + CRLF + CRLF);
         
         assertThat(res).isEqualTo(
@@ -216,7 +216,7 @@ class ErrorHandlingTest
         s = create().start();
         s.add("/", TRACE().respond(text("Body!")));
         
-        String res = new ClientOperations(s)
+        String res = new TestClient(s)
                 .writeRead("TRACE / HTTP/1.1" + CRLF + CRLF);
         
         assertThat(res).isEqualTo(
@@ -233,7 +233,7 @@ class ErrorHandlingTest
                         .build()
                         .completedStage()));
         
-        String res = new ClientOperations(s)
+        String res = new TestClient(s)
                 .writeRead("GET / HTTP/1.1" + CRLF + CRLF);
         
         assertThat(res).isEqualTo(
@@ -251,7 +251,7 @@ class ErrorHandlingTest
         }));
         
         // If all you do is to replace "HTTP/1.0" with "HTTP/1.1"...
-        String res = new ClientOperations(s)
+        String res = new TestClient(s)
                 .writeRead("GET / HTTP/1.0" + CRLF + CRLF, "Done!");
         
         // ...then the interim response is no longer ignored.
