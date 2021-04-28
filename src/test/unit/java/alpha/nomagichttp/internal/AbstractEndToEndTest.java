@@ -54,6 +54,7 @@ public abstract class AbstractEndToEndTest
     
     private Logging.Recorder key;
     private HttpServer server;
+    private int port;
     private TestClient client;
     private final BlockingDeque<Throwable> errors = new LinkedBlockingDeque<>();
     
@@ -69,6 +70,7 @@ public abstract class AbstractEndToEndTest
         };
         
         server = HttpServer.create(collect).start();
+        port   = server.getLocalAddress().getPort();
         client = new TestClient(server);
     }
     
@@ -91,6 +93,19 @@ public abstract class AbstractEndToEndTest
      */
     protected final HttpServer server() {
         return server;
+    }
+    
+    /**
+     * Returns the cached server port.<p>
+     * 
+     * This method is useful for testing communication on the port even after
+     * the server has stopped (at which point the port can no longer be
+     * retrieved from the server).
+     * 
+     * @return the cached server port
+     */
+    protected final int serverPort() {
+        return port;
     }
     
     /**
