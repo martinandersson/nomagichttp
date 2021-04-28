@@ -39,7 +39,7 @@ class ChannelByteBufferPublisherTest
         Logging.setLevel(ChannelByteBufferPublisher.class, ALL);
         SERVER = new SkeletonServer();
         SERVER.start();
-        CLIENT = new TestClient(SERVER::newClient);
+        CLIENT = new TestClient(SERVER::newConnection);
     }
     
     @AfterAll

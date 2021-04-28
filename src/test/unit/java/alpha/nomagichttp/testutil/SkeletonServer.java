@@ -16,19 +16,21 @@ import static java.net.InetAddress.getLoopbackAddress;
 import static java.util.concurrent.TimeUnit.SECONDS;
 
 /**
- * A dual-sided facade of an {@code AsynchronousServerSocketChannel}.<p>
+ * An API to access both channels (accepted/child + client) of an {@code
+ * AsynchronousServerSocketChannel}.<p>
  * 
- * The test case first {@code start()} the server which will internally open and
- * bind a listening server channel. The test then calls {@code newClient()}
- * which will open and return a [client] socket channel connected to the
- * listening channel's port. The test then calls {@code accept()} which returns
- * the [server] listening channel's accepted socket channel. At this point, the
- * test will have access to both channels on both sides.<p>
+ * Having access to both channels, the test can easily and with full control
+ * test byte processors and other internal components that depend on the child
+ * connection. Other than providing access to the channels, this class has no
+ * real server logic: hence "skeleton".<p>
  * 
- * Other than creating a client channel and leaking the server channel, this
- * <i>skeleton</i> class has no other logic. The purpose of this class is to be
- * able to test byte processors and other internal components that depends on
- * the child connection.
+ * <strong>Usage:</strong> The test first {@link #start()} the server which will
+ * internally open and bind a listening server channel. The test then calls
+ * {@link #newConnection()} which will open and return a [client] socket channel
+ * connected to the listening channel's port. The test then calls
+ * {@link #accept()} which returns the [server] listening channel's accepted
+ * socket channel. At this point, the test will have access to both channels on
+ * both sides. How cool is that!
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  */
@@ -73,12 +75,12 @@ public final class SkeletonServer implements Closeable
     }
     
     /**
-     * Open socket channel connected to the server's port.
+     * Open a socket channel connected to the server's port.
      * 
      * @return the socket channel
      * @throws IOException if an I/O error occurs
      */
-    public SocketChannel newClient() throws IOException {
+    public SocketChannel newConnection() throws IOException {
         return SocketChannel.open(
                 new InetSocketAddress(getLoopbackAddress(), port));
     }
