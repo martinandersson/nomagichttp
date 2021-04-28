@@ -490,22 +490,6 @@ class DetailedEndToEndTest extends AbstractEndToEndTest
     }
     
     /**
-     * Waits for at most 3 seconds on the server log to indicate a child was
-     * accepted.
-     */
-    private void awaitChildAccept() throws InterruptedException {
-        assertTrue(logRecorder().await(FINE, "Accepted child:"));
-    }
-    
-    /**
-     * Waits for at most 3 seconds on the server log to indicate a child was
-     * closed.
-     */
-    private void awaitChildClose() throws InterruptedException {
-        assertTrue(logRecorder().await(FINE, "Closed child:"));
-    }
-    
-    /**
      * Add a "/" endpoint which responds a body with the text-contents of the
      * request body.
      */
