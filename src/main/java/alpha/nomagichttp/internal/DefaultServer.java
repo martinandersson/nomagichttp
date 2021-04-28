@@ -85,7 +85,7 @@ public final class DefaultServer implements HttpServer
         try {
             // result immediately available because thread was initializer
             ParentWithHandler pwh = res.join();
-            pwh.initiateAccept();
+            pwh.startAccepting();
         } catch (Throwable t) {
             IOException io = null;
             if (t instanceof CompletionException) {
@@ -148,19 +148,19 @@ public final class DefaultServer implements HttpServer
         
         return pwh == null ?
                 completedStage(null) :
-                pwh.onAccept().lastChildStage();
+                pwh.handler().lastChildStage();
     }
     
     @Override
     public void stopNow() throws IOException {
         ParentWithHandler pwh = stopServer();
         if (pwh != null) {
-            Iterator<DefaultClientChannel> it = pwh.onAccept().children();
+            Iterator<DefaultClientChannel> it = pwh.handler().children();
             while (it.hasNext()) {
                 it.next().closeSafe();
                 it.remove();
             }
-            pwh.onAccept().tryCompleteLastChildStage();
+            pwh.handler().tryCompleteLastChildStage();
         }
     }
     
@@ -190,7 +190,7 @@ public final class DefaultServer implements HttpServer
                 AsyncGroup.shutdown();
             }
             assert n >= 0;
-            pwh.onAccept().tryCompleteLastChildStage();
+            pwh.handler().tryCompleteLastChildStage();
             return pwh;
         } else {
             return null;
@@ -269,11 +269,11 @@ public final class DefaultServer implements HttpServer
             return parent;
         }
         
-        OnAccept onAccept() {
+        OnAccept handler() {
             return onAccept;
         }
         
-        void initiateAccept() {
+        void startAccepting() {
             parent.accept(null, onAccept);
         }
         
