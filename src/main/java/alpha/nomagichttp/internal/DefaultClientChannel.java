@@ -16,6 +16,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.concurrent.CompletionStage;
 
+import static alpha.nomagichttp.internal.DefaultServer.becauseChannelOrGroupClosed;
 import static java.lang.System.Logger.Level.DEBUG;
 import static java.lang.System.Logger.Level.ERROR;
 import static java.util.Objects.requireNonNull;
@@ -233,8 +234,14 @@ final class DefaultClientChannel implements ClientChannel
         try {
             close();
         } catch (IOException e) {
-            LOG.log(ERROR, () -> "Failed to close child: " + child, e);
-        }
+            LOG.log(DEBUG, () -> "Failed to close child: " + child, e);
+        } catch (Throwable t) {
+            if (becauseChannelOrGroupClosed(t)) {
+                LOG.log(DEBUG, () -> "Failed to close child: " + child, t);
+            } else {
+                throw t;
+            }
+        } 
     }
     
     private NetworkChannel proxy;

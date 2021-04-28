@@ -2,10 +2,7 @@ package alpha.nomagichttp.internal;
 
 import alpha.nomagichttp.util.SeriallyRunnable;
 
-import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.nio.channels.ClosedChannelException;
-import java.nio.channels.ShutdownChannelGroupException;
 import java.util.Deque;
 import java.util.Queue;
 import java.util.concurrent.ConcurrentLinkedDeque;
@@ -13,6 +10,7 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 
+import static alpha.nomagichttp.internal.DefaultServer.becauseChannelOrGroupClosed;
 import static java.lang.Long.MAX_VALUE;
 import static java.lang.Math.addExact;
 import static java.lang.System.Logger.Level.DEBUG;
@@ -332,7 +330,7 @@ final class AnnounceToChannel
                 Throwable t = state.get();
                 if (t == STOPPED) {
                     // Was "stopped normally", we only log ours - if need be
-                    if (!failedBecauseChannelWasAlreadyClosed(exc)) {
+                    if (!becauseChannelOrGroupClosed(exc)) {
                         loggedStack = true;
                         LOG.log(ERROR, () ->
                             mode + " operation failed and service already stopped normally; " +
@@ -356,12 +354,5 @@ final class AnnounceToChannel
             operation.run();
             operation.complete();
         }
-    }
-    
-    private static boolean failedBecauseChannelWasAlreadyClosed(Throwable t) {
-        // Copy-paste from DefaultServer class (has the descriptions as well)
-        return t instanceof ClosedChannelException || // note: AsynchronousCloseException extends ClosedChannelException
-               t instanceof ShutdownChannelGroupException ||
-               t instanceof IOException && t.getCause() instanceof ShutdownChannelGroupException;
     }
 }

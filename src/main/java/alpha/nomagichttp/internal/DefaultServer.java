@@ -283,8 +283,6 @@ public final class DefaultServer implements HttpServer
     
     private class OnAccept implements CompletionHandler<AsynchronousSocketChannel, Void>
     {
-        private static final String NO_MORE = " Will accept no more children.";
-        
         private final AsynchronousServerSocketChannel parent;
         private final Set<DefaultClientChannel> children;
         private final CompletableFuture<Void> lastChild;
@@ -319,8 +317,10 @@ public final class DefaultServer implements HttpServer
                 LOG.log(DEBUG, () -> "Discarding child.");
                 try {
                     child.close();
-                } catch (IOException e) {
+                } catch (IOException | ShutdownChannelGroupException e) {
                     // Ignore
+                } catch (Throwable next) {
+                    LOG.log(WARNING, "Unknown (and ignored) exception from discarding close() call.", next);
                 }
                 failed(t, null);
                 return;
@@ -369,19 +369,31 @@ public final class DefaultServer implements HttpServer
         
         @Override
         public void failed(Throwable t, Void noAttachment) {
-            if (t instanceof ClosedChannelException) { // note: AsynchronousCloseException extends ClosedChannelException
-                LOG.log(DEBUG, "Parent channel closed." + NO_MORE);
+            if (becauseChannelOrGroupClosed(t)) {
+                return;
             }
-            else if (t instanceof ShutdownChannelGroupException) {
-                LOG.log(DEBUG, "Group already closed when initiating a new accept." + NO_MORE);
-            }
-            else if (t instanceof IOException && t.getCause() instanceof ShutdownChannelGroupException) {
-                LOG.log(DEBUG, "Connection accepted and immediately closed, because group is shutting down/was shutdown." + NO_MORE);
-            }
-            else {
-                LOG.log(ERROR, "Unexpected or unknown failure. Stopping server (without force-closing children).", t);
-                stop();
-            }
+            LOG.log(ERROR, "Unexpected or unknown failure. Stopping server (without force-closing children).", t);
+            stop();
         }
+    }
+    
+    /**
+     * Returns {@code true} if the channel operation failed because the channel
+     * or the group to which the channel belongs, was closed - otherwise {@code
+     * false}.<p>
+     * 
+     * For a long time, these errors were observed only on failed accept and
+     * read/write initiating operations. Only once on MacOS, however, was a
+     * {@code ShutdownChannelGroupException} also observed on a child channel
+     * {@code close()}.
+     * 
+     * @param t throwable to test
+     * 
+     * @return see JavaDoc
+     */
+    static boolean becauseChannelOrGroupClosed(Throwable t) {
+        return t instanceof ClosedChannelException || // note: AsynchronousCloseException extends ClosedChannelException
+               t instanceof ShutdownChannelGroupException ||
+               t instanceof IOException && t.getCause() instanceof ShutdownChannelGroupException;
     }
 }

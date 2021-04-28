@@ -32,7 +32,6 @@ class HttpServerLifeCycleTest extends AbstractEndToEndTest
         //     Server accepts no new connections
         // Client send the rest of the request
         //     Stage completes
-        //     Server accepts no more requests
         
         server().add("/", POST().apply(req ->
                 req.body().toText().thenApply(Responses::text)));

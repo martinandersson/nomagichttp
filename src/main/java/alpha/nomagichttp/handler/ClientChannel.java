@@ -270,8 +270,9 @@ public interface ClientChannel extends Closeable, AttributeHolder
     void close() throws IOException;
     
     /**
-     * Same as {@link #close()}, except {@code IOException} is logged but
-     * otherwise ignored.
+     * Same as {@link #close()}, except {@code IOException} and any throwable
+     * thrown because the channel (or group of channel) is already closed, will
+     * be ignored.
      */
     void closeSafe();
     
