@@ -121,6 +121,10 @@ final class DefaultClientChannel implements ClientChannel
         return false;
     }
     
+    public boolean isAnythingOpen() {
+        return !readShutdown || !writeShutdown || child.isOpen();
+    }
+    
     @Override
     public boolean isEverythingOpen() {
         return !readShutdown && !writeShutdown && child.isOpen();

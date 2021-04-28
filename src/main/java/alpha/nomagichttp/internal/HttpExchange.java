@@ -219,7 +219,7 @@ final class HttpExchange
         if (res.error() != null) {
             handleError(res.error());
         } else if (res.response().isFinal()) {
-            LOG.log(DEBUG, "Response sent is final. Preparing new HTTP exchange.");
+            LOG.log(DEBUG, "Response sent is final. Preparing for a new HTTP exchange.");
             prepareForNewExchange();
         } else {
             LOG.log(DEBUG, "Response sent is not final. HTTP exchange remains active.");
@@ -230,9 +230,9 @@ final class HttpExchange
         request.bodyDiscardIfNoSubscriber();
         request.bodyStage().whenComplete((Null, t) -> {
             if (t == null) {
-                if (request.headerContains(CONNECTION, "close") && chan.isOpenForWriting()) {
-                    LOG.log(DEBUG, "Request initiated connection close. Will shutdown write stream.");
-                    chan.shutdownOutputSafe();
+                if (request.headerContains(CONNECTION, "close") && chan.isAnythingOpen()) {
+                    LOG.log(DEBUG, "Request initiated connection close. Will close child.");
+                    chan.closeSafe();
                     // DefaultServer will not start a new exchange
                 }
                 result.complete(null);
