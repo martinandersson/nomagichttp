@@ -208,13 +208,17 @@ final class DefaultClientChannel implements ClientChannel
         
         // https://stackoverflow.com/a/20749656/1268003
         try {
-            shutdownInputImpl();
+            if (!readShutdown) {
+                shutdownInputImpl();
+            }
         } catch (IOException t) {
             LOG.log(DEBUG, "Failed to shutdown child channel's input stream.", t);
         }
         
         try {
-            shutdownOutputImpl();
+            if (!writeShutdown) {
+                shutdownOutputImpl();
+            }
         } catch (IOException t) {
             LOG.log(DEBUG, "Failed to shutdown child channel's output stream.", t);
         }
