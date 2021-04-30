@@ -8,7 +8,6 @@ import alpha.nomagichttp.message.HttpVersionTooNewException;
 import alpha.nomagichttp.message.HttpVersionTooOldException;
 import alpha.nomagichttp.message.IllegalBodyException;
 import alpha.nomagichttp.message.Request;
-import alpha.nomagichttp.message.Response;
 import alpha.nomagichttp.route.RouteRegistry;
 
 import java.util.Collection;
@@ -221,23 +220,22 @@ final class HttpExchange
             handleError(res.error());
         } else if (res.response().isFinal()) {
             LOG.log(DEBUG, "Response sent is final. Preparing for a new HTTP exchange.");
-            prepareForNewExchange(res.response());
+            prepareForNewExchange();
         } else {
             LOG.log(DEBUG, "Response sent is not final. HTTP exchange remains active.");
         }
     }
     
-    private void prepareForNewExchange(Response rsp) {
+    private void prepareForNewExchange() {
         request.bodyDiscardIfNoSubscriber();
         request.bodyStage().whenComplete((Null, t) -> {
             if (t == null) {
-                if ((request.headerContains(CONNECTION, "close") || rsp.headerContains(CONNECTION, "close")) &&
-                    chan.isAnythingOpen())
-                {
-                    LOG.log(DEBUG, "Message initiated connection close. Will close child.");
-                    chan.closeSafe();
-                    // DefaultServer will not start a new exchange
+                if (request.headerContains(CONNECTION, "close") && chan.isOpenForReading()) {
+                    LOG.log(DEBUG, "Request has \"Connection: close\", shutting down input.");
+                    chan.shutdownInputSafe();
                 }
+                // ResponsePipeline shuts down output on "Connection: close".
+                // DefaultServer will not start a new exchange if child or any stream thereof is closed.
                 result.complete(null);
             } else {
                 LOG.log(DEBUG,

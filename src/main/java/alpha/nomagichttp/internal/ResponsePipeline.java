@@ -11,8 +11,8 @@ import java.util.List;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ConcurrentLinkedDeque;
 import java.util.concurrent.Flow;
-import java.util.stream.StreamSupport;
 
+import static alpha.nomagichttp.HttpConstants.HeaderKey.CONNECTION;
 import static alpha.nomagichttp.HttpConstants.HeaderKey.CONTENT_LENGTH;
 import static alpha.nomagichttp.HttpConstants.StatusCode.ONE_HUNDRED;
 import static alpha.nomagichttp.HttpConstants.StatusCode.isClientError;
@@ -146,22 +146,63 @@ final class ResponsePipeline implements Flow.Publisher<ResponsePipeline.Result>
             op.complete();
             return;
         }
-        // TODO: trackUnsuccessful() and handleUnknownLength() will become post-actions
-        r.thenApply(this::trackUnsuccessful)
-         .thenApply(ResponsePipeline::handleUnknownLength)
+        // TODO: All thenApply() will become post-actions
+        r.thenApply(this::closeHttp1_0)
+         .thenApply(this::handleUnknownLength)
+         .thenApply(this::trackConnectionClose)
+         .thenApply(this::trackUnsuccessful)
          .thenCompose(this::subscribeToResponse)
          .whenComplete(this::handleChannelResult);
     }
     
     private Response inFlight = null;
     private boolean wroteFinal = false;
+    private boolean sawConnectionClose = false;
     private int n100continue = 0;
     private static final Throwable IGNORE = new AssertionError();
+    
+    private Response closeHttp1_0(Response rsp) {
+            // 1XX (Informational) will be ignored for HTTP 1.0 clients
+        if (rsp.isFinal() &&
+            // No support for HTTP 1.0 Keep-Alive
+            exch.getHttpVersion().isLessThan(HTTP_1_1) &&
+            !rsp.headerContains(CONNECTION, "close"))
+        {
+            return rsp.toBuilder().header(CONNECTION, "close").build();
+        }
+        return rsp;
+    }
+    
+    private Response handleUnknownLength(Response rsp) {
+        if (rsp.headerIsMissingOrEmpty(CONTENT_LENGTH) &&
+                !rsp.mustShutdownOutputAfterWrite() &&
+                !rsp.mustCloseAfterWrite() &&
+                !rsp.headerContains(CONNECTION, "close") &&
+                !rsp.isBodyEmpty())
+        {
+            // TODO: In the future when implemented, chunked encoding may also be an option
+            LOG.log(DEBUG, "Response body of unknown length and not marked to close connection, setting \"Connection: close\".");
+            return rsp.toBuilder().header(CONNECTION, "close").build();
+        }
+        return rsp;
+    }
+    
+    private Response trackConnectionClose(Response rsp) {
+        if (rsp.headerContains(CONNECTION, "close")) {
+            sawConnectionClose = true;
+            // return rsp
+        } else if (sawConnectionClose && rsp.isFinal()) {
+            // "Connection: close" propagates even if previous response(s) failed
+            return rsp.toBuilder().header(CONNECTION, "close").build();
+        }
+        return rsp;
+    }
     
     private Response trackUnsuccessful(final Response in) {
         final Response out;
         if (isClientError(in.statusCode()) || isServerError(in.statusCode())) {
             // Bump retry counter
+            // TODO: Research "request isolation", safe to save this on channel/connection?
             int n = chan.attributes().<Integer>asMapAny()
                     .merge("alpha.nomagichttp.responsepipeline.nUnssuccessful", 1, Integer::sum);
             
@@ -177,19 +218,6 @@ final class ResponsePipeline implements Flow.Publisher<ResponsePipeline.Result>
             out = in;
         }
         return out;
-    }
-    
-    private static Response handleUnknownLength(Response rsp) {
-        if (rsp.headerIsMissingOrEmpty(CONTENT_LENGTH) &&
-            !rsp.mustShutdownOutputAfterWrite() &&
-            !rsp.mustCloseAfterWrite() &&
-            !rsp.isBodyEmpty())
-        {
-            // TODO: In the future when implemented, chunked encoding may also be an option
-            LOG.log(DEBUG, "Response body of unknown length and not marked to close connection, setting the mark.");
-            return rsp.toBuilder().mustShutdownOutputAfterWrite(true).build();
-        }
-        return rsp;
     }
     
     private CompletionStage<ResponseBodySubscriber.Result> subscribeToResponse(Response rsp) {
@@ -244,6 +272,10 @@ final class ResponsePipeline implements Flow.Publisher<ResponsePipeline.Result>
             // Success
             assert rsp != null;
             LOG.log(DEBUG, () -> "Sent response (" + res.bytesWritten() + " bytes).");
+            if (wroteFinal && sawConnectionClose && chan.isOpenForWriting()) {
+                LOG.log(DEBUG, "Saw \"Connection: close\", shutting down output.");
+                chan.shutdownOutputSafe();
+            }
             publish(rsp, res.bytesWritten(), null);
         } else {
             // Failed

@@ -215,17 +215,23 @@ public interface Response extends HeaderHolder
     
     /**
      * Command the server to shutdown the client channel's output/write stream
-     * after first attempt to send the response.<p>
+     * after <i>first attempt</i> to send the response.<p>
      * 
      * The command will also cause the server to close the channel at the end of
      * the HTTP exchange (after an in-flight request and the processing of it
-     * completes). This method is equivalent to a "graceful close".<p>
+     * completes).<p>
+     * 
+     * The write stream will close whether or not the response was successfully
+     * transmitted. So, on failure, an alternative subsequent response will not
+     * succeed. If it is desired to close the connection only after a successful
+     * request and response pair (a so called "graceful close"), then set the
+     * "Connection: close" header.<p>
      * 
      * If the application desires to also stop the read stream no matter if a
      * client-request is in-flight, use {@link #mustCloseAfterWrite()}.<p>
      * 
-     * The server is in full control of the client channel's life-cycle and so,
-     * a {@code false} returned value has no effect.
+     * The server manages the client channel's life-cycle and so, a {@code
+     * false} returned value has no effect.
      * 
      * @return {@code true} if the server must shutdown the output/write stream,
      *         otherwise {@code false}
@@ -246,8 +252,8 @@ public interface Response extends HeaderHolder
      * calling {@link ClientChannel#close()} instead of passing a lazy command
      * to the server through the response object.<p>
      * 
-     * The server is in full control of the client channel's life-cycle and so,
-     * a {@code false} returned value has no effect.
+     * The server manages the client channel's life-cycle and so, a {@code
+     * false} returned value has no effect.
      * 
      * @return {@code true} if the server must close the client channel,
      *         otherwise {@code false}

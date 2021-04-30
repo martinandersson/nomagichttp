@@ -1,7 +1,6 @@
 package alpha.nomagichttp.handler;
 
 import alpha.nomagichttp.HttpServer;
-import alpha.nomagichttp.examples.RetryRequestOnError;
 import alpha.nomagichttp.message.BadHeaderException;
 import alpha.nomagichttp.message.ClosedPublisherException;
 import alpha.nomagichttp.message.HttpVersionParseException;
@@ -293,9 +292,6 @@ public interface ErrorHandler
      *   </tr>
      *   </tbody>
      * </table>
-     * 
-     * Please note that each of these responses will also close the client
-     * channel (see {@link Response#mustCloseAfterWrite()}).
      */
     ErrorHandler DEFAULT = (thr, ch, req, rh) -> {
         final Response res;

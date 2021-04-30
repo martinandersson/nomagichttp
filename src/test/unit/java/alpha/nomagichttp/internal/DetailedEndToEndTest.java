@@ -227,7 +227,8 @@ class DetailedEndToEndTest extends AbstractEndToEndTest
         assertThat(resp).isEqualTo(
             "HTTP/1.0 200 OK"                         + CRLF +
             "Content-Type: text/plain; charset=utf-8" + CRLF +
-            "Content-Length: 17"                      + CRLF + CRLF +
+            "Content-Length: 17"                      + CRLF +
+            "Connection: close"                       + CRLF + CRLF +
             
             "Received HTTP/1.0");
     }

@@ -176,7 +176,7 @@ class ErrorHandlingTest
         assertThat(r).isEqualTo(
             "HTTP/1.0 426 Upgrade Required" + CRLF +
             "Upgrade: HTTP/1.1"             + CRLF +
-            "Connection: Upgrade"           + CRLF +
+            "Connection: close"             + CRLF +
             "Content-Length: 0"             + CRLF + CRLF);
     }
     
@@ -246,19 +246,19 @@ class ErrorHandlingTest
         s = create().start();
         
         s.add("/", GET().accept((req, ch) -> {
-            ch.write(processing()); // <-- ignored
+            ch.write(processing()); // <-- ignored...
             ch.write(text("Done!"));
         }));
         
-        // If all you do is to replace "HTTP/1.0" with "HTTP/1.1"...
+        // ... because "HTTP/1.0"
         String res = new TestClient(s)
                 .writeRead("GET / HTTP/1.0" + CRLF + CRLF, "Done!");
         
-        // ...then the interim response is no longer ignored.
         assertThat(res).isEqualTo(
             "HTTP/1.0 200 OK"                         + CRLF +
             "Content-Type: text/plain; charset=utf-8" + CRLF +
-            "Content-Length: 5"                       + CRLF + CRLF +
+            "Content-Length: 5"                       + CRLF +
+            "Connection: close"                       + CRLF + CRLF +
             
             "Done!");
     }

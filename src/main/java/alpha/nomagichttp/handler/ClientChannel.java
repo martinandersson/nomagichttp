@@ -44,8 +44,11 @@ import java.util.concurrent.CompletionStage;
  * 
  * The life-cycle of the channel is managed by the server. The application
  * should have no need to directly use shutdown/close methods in this class.
- * Consider using {@link Response.Builder#mustShutdownOutputAfterWrite(boolean)}
- * or {@link Response.Builder#mustCloseAfterWrite(boolean)} instead.<p>
+ * For a graceful close of the client connection, set the "Connection: close"
+ * header. More abruptly terminating methods may be scheduled using {@link
+ * Response.Builder#mustShutdownOutputAfterWrite(boolean)}
+ * and {@link Response.Builder#mustCloseAfterWrite(boolean)}. Invoking {@link
+ * #close()} on this class is equivalent to an instant "kill".<p>
  * 
  * The implementation is thread-safe and mostly non-blocking. Underlying channel
  * life-cycle APIs used to query the state of a channel or close it may block
