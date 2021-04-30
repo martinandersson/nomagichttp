@@ -73,7 +73,7 @@ final class HttpExchange
         this.handlers = handlers;
         this.bytes    = bytes;
         this.chan     = chan;
-        this.pipe     = new ResponsePipeline(this, chan, config.maxUnsuccessfulResponses());
+        this.pipe     = new ResponsePipeline(this, chan);
         this.result   = new CompletableFuture<>();
         this.ver      = HTTP_1_1; // <-- default until updated
         this.request  = null;

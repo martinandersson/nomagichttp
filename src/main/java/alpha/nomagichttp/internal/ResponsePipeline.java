@@ -97,29 +97,30 @@ final class ResponsePipeline implements Flow.Publisher<ResponsePipeline.Result>
     private static final System.Logger LOG
             = System.getLogger(ResponsePipeline.class.getPackageName());
     
+    private static final Throwable IGNORE = new AssertionError();
+    
+    private final int maxUnssuccessful;
     private final HttpExchange exch;
     private final DefaultClientChannel chan;
     private final Deque<CompletionStage<Response>> queue;
     private final SeriallyRunnable op;
     private final List<Flow.Subscriber<? super Result>> subs;
-    private final int maxUnssuccessful;
     
     /**
      * Constructs a {@code ResponsePipeline}.<p>
      * 
      * @param exch the HTTP exchange
      * @param chan channel's delegate used for writing
-     * @param maxUnssuccessful {@link HttpServer.Config#maxUnsuccessfulResponses()}
      * 
      * @throws NullPointerException if any arg is {@code null}
      */
-    ResponsePipeline(HttpExchange exch, DefaultClientChannel chan, int maxUnssuccessful) {
-        this.chan  = requireNonNull(chan);
+    ResponsePipeline(HttpExchange exch, DefaultClientChannel chan) {
+        this.maxUnssuccessful = chan.getServer().getConfig().maxUnsuccessfulResponses();
+        this.chan  = chan;
         this.exch  = requireNonNull(exch);
         this.queue = new ConcurrentLinkedDeque<>();
         this.op    = new SeriallyRunnable(this::pollAndProcessAsync, true);
         this.subs  = new ArrayList<>();
-        this.maxUnssuccessful = maxUnssuccessful;
     }
     
     @Override
@@ -155,11 +156,11 @@ final class ResponsePipeline implements Flow.Publisher<ResponsePipeline.Result>
          .whenComplete(this::handleChannelResult);
     }
     
+    // HttpExchange memory; will go out of scope after final response
     private Response inFlight = null;
     private boolean wroteFinal = false;
     private boolean sawConnectionClose = false;
     private int n100continue = 0;
-    private static final Throwable IGNORE = new AssertionError();
     
     private Response closeHttp1_0(Response rsp) {
             // 1XX (Informational) will be ignored for HTTP 1.0 clients
@@ -174,11 +175,13 @@ final class ResponsePipeline implements Flow.Publisher<ResponsePipeline.Result>
     }
     
     private Response handleUnknownLength(Response rsp) {
-        if (rsp.headerIsMissingOrEmpty(CONTENT_LENGTH) &&
-                !rsp.mustShutdownOutputAfterWrite() &&
-                !rsp.mustCloseAfterWrite() &&
-                !rsp.headerContains(CONNECTION, "close") &&
-                !rsp.isBodyEmpty())
+            // Two quick reads; assume "Connection: close" will be present
+        if (!rsp.mustShutdownOutputAfterWrite()         &&
+            !rsp.mustCloseAfterWrite()                  &&
+            // If not, we need to dig a little bit
+             rsp.headerIsMissingOrEmpty(CONTENT_LENGTH) &&
+            !rsp.headerContains(CONNECTION, "close")    &&
+            !rsp.isBodyEmpty())
         {
             // TODO: In the future when implemented, chunked encoding may also be an option
             LOG.log(DEBUG, "Response body of unknown length and not marked to close connection, setting \"Connection: close\".");
@@ -190,9 +193,9 @@ final class ResponsePipeline implements Flow.Publisher<ResponsePipeline.Result>
     private Response trackConnectionClose(Response rsp) {
         if (rsp.headerContains(CONNECTION, "close")) {
             sawConnectionClose = true;
-            // return rsp
+            // will return rsp
         } else if (sawConnectionClose && rsp.isFinal()) {
-            // "Connection: close" propagates even if previous response(s) failed
+            // "Connection: close" propagates from previous response(s) even if they failed
             return rsp.toBuilder().header(CONNECTION, "close").build();
         }
         return rsp;
@@ -201,8 +204,7 @@ final class ResponsePipeline implements Flow.Publisher<ResponsePipeline.Result>
     private Response trackUnsuccessful(final Response in) {
         final Response out;
         if (isClientError(in.statusCode()) || isServerError(in.statusCode())) {
-            // Bump retry counter
-            // TODO: Research "request isolation", safe to save this on channel/connection?
+            // Bump error counter
             int n = chan.attributes().<Integer>asMapAny()
                     .merge("alpha.nomagichttp.responsepipeline.nUnssuccessful", 1, Integer::sum);
             
