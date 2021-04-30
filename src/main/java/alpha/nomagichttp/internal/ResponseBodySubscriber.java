@@ -121,7 +121,7 @@ final class ResponseBodySubscriber implements SubscriberAsStage<ByteBuffer, Resu
         if (!pushedHead) {
             if (exch.getRequest().method().equalsIgnoreCase(HEAD)) {
                 var e = new IllegalBodyException(
-                        "Body in response to a HEAD request.", exch.getRequest());
+                        "Body in response to a HEAD request.", resp);
                 result.completeExceptionally(e);
                 subscription.cancel();
                 return;
