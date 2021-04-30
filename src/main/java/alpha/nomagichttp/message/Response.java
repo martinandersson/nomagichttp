@@ -512,7 +512,7 @@ public interface Response extends HeaderHolder
          * @return a response
          * 
          * @throws IllegalBodyException
-         *             if status-code is 1XX (Informational) and a body is
+         *             if status code is 1XX (Informational) and a body is
          *             presumably not empty (see {@link Response#isBodyEmpty()})
          * 
          * @throws IllegalStateException
@@ -522,6 +522,11 @@ public interface Response extends HeaderHolder
          * 
          * @throws IllegalStateException
          *             if response contains multiple {@code Content-Length} headers
+         * 
+         * @throws IllegalStateException
+         *             if status code is 1XX (Informational) and header {@code
+         *             Connection: close} is set (see
+         *             <a href="https://tools.ietf.org/html/rfc7230#section-6.1">RFC 7231 §6.1</a>)
          */
         Response build();
     }

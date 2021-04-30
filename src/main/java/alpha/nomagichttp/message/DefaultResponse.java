@@ -345,9 +345,15 @@ final class DefaultResponse implements Response
                     s.mustCloseAfterWrite,
                     this);
             
-            if (r.isInformational() && !r.isBodyEmpty()) {
-                throw new IllegalBodyException(
-                        "Presumably a body in a 1XX (Informational) response.", r);
+            if (r.isInformational()) {
+                if (r.headerContains(CONNECTION, "close")) {
+                    throw new IllegalStateException(
+                            "\"Connection: close\" set on 1XX (Informational) response.");
+                }
+                if (!r.isBodyEmpty()) {
+                    throw new IllegalBodyException(
+                            "Presumably a body in a 1XX (Informational) response.", r);
+                }
             }
             
             return r;

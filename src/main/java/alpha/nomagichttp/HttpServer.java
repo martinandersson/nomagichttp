@@ -99,9 +99,9 @@ import static java.net.InetAddress.getLoopbackAddress;
  * likely killed the protocol.<p>
  * 
  * For all other variants of requests and responses, the body is optional and
- * the server does not reject the message nor does the API enforce an
- * opinionated view. This is also true for message components such as the
- * response status code and reason phrase. The request handler is in full
+ * the server does not reject the message based on the presence of a body. This
+ * is mostly true for all other message variants as well; the server does not
+ * have an opinionated view unless warranted. The request handler is largely in
  * control over how it interprets the request message and what response it
  * returns.<p>
  * 

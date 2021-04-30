@@ -93,4 +93,13 @@ class ResponseBuilderTest
                 .isExactlyInstanceOf(IllegalStateException.class)
                 .hasMessage("Multiple Content-Length headers.");
     }
+    
+    @Test
+    void connectionCloseOn1XX() {
+        Response.Builder b = Response.builder(123).header("coNnEcTiOn", "cLoSe");
+        
+        assertThatThrownBy(b::build)
+                .isExactlyInstanceOf(IllegalStateException.class)
+                .hasMessage("\"Connection: close\" set on 1XX (Informational) response.");
+    }
 }
