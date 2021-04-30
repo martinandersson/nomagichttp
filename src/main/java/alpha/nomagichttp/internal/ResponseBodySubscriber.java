@@ -165,7 +165,7 @@ final class ResponseBodySubscriber implements SubscriberAsStage<ByteBuffer, Resu
     private void pushHead() {
         final String phra = resp.reasonPhrase() == null ? "" : resp.reasonPhrase(),
                      line = exch.getHttpVersion() + SP + resp.statusCode() + SP + phra + CRLF,
-                     vals = join(CRLF, resp.headers()),
+                     vals = join(CRLF, resp.headersForWriting()),
                      head = line + (vals.isEmpty() ? CRLF : vals + CRLF + CRLF);
         
         ByteBuffer b = ByteBuffer.wrap(head.getBytes(US_ASCII));

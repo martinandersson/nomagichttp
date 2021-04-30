@@ -13,6 +13,7 @@ import java.util.concurrent.ConcurrentLinkedDeque;
 import java.util.concurrent.Flow;
 import java.util.stream.StreamSupport;
 
+import static alpha.nomagichttp.HttpConstants.HeaderKey.CONTENT_LENGTH;
 import static alpha.nomagichttp.HttpConstants.StatusCode.ONE_HUNDRED;
 import static alpha.nomagichttp.HttpConstants.StatusCode.isClientError;
 import static alpha.nomagichttp.HttpConstants.StatusCode.isServerError;
@@ -179,14 +180,13 @@ final class ResponsePipeline implements Flow.Publisher<ResponsePipeline.Result>
     }
     
     private static Response handleUnknownLength(Response rsp) {
-        // TODO: TEMP SOLUTION. Sort of repeated code from Response.isBodyEmpty() (and case-sensitive),
-        //       need to make Response store easy access to headers.
-        if (StreamSupport.stream(rsp.headers().spliterator(), false).noneMatch(h -> h.startsWith("Content-Length")) &&
-            !rsp.isBodyEmpty() &&
+        if (rsp.headerIsMissingOrEmpty(CONTENT_LENGTH) &&
             !rsp.mustShutdownOutputAfterWrite() &&
-            !rsp.mustCloseAfterWrite())
+            !rsp.mustCloseAfterWrite() &&
+            !rsp.isBodyEmpty())
         {
             // TODO: In the future when implemented, chunked encoding may also be an option
+            LOG.log(DEBUG, "Response body of unknown length and not marked to close connection, setting the mark.");
             return rsp.toBuilder().mustShutdownOutputAfterWrite(true).build();
         }
         return rsp;

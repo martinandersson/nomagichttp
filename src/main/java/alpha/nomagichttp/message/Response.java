@@ -61,6 +61,18 @@ import static java.net.http.HttpRequest.BodyPublisher;
  * StandardCharsets#US_ASCII US_ASCII} (UTF-8 is backwards compatible with
  * ASCII).<p>
  * 
+ * When the headers are written on the wire, name and value will be concatenated
+ * using a colon followed by a space (": "). Adding many values to the same
+ * name replicates the header across multiple rows in the response. It does
+ * <strong>not</strong> join the values on the same row. If this is desired,
+ * first join multiple values and then pass it to the builder as one.<p>
+ * 
+ * Header order is not significant (
+ * <a href="https://tools.ietf.org/html/rfc7230#section-3.2.2">RFC 7230 §3.2.2</a>
+ * ), but will be preserved on the wire (FIFO) except for duplicated names which
+ * will be grouped together and inserted at the occurrence of the first
+ * value.<p>
+ * 
  * The {@code Response} object can safely be reused sequentially over time to
  * the same client. The response can also be shared concurrently to different
  * clients, assuming the {@linkplain Builder#body(Flow.Publisher) body
@@ -76,7 +88,7 @@ import static java.net.http.HttpRequest.BodyPublisher;
  * @see RequestHandler
  * @see HttpServer
  */
-public interface Response
+public interface Response extends HeaderHolder
 {
     /**
      * Returns a {@code Response} builder.<p>
@@ -133,11 +145,15 @@ public interface Response
     String reasonPhrase();
     
     /**
-     * Returns the headers.
+     * Returns the headers as they are written on the wire out to client.<p>
      * 
-     * @return the headers (unmodifiable and possibly empty)
+     * The default implementation adheres to the contract as defined in JavaDoc
+     * of {@link Response}. A custom implementation can change this however it
+     * sees fit.
+     * 
+     * @return the headers as they are written on the wire (unmodifiable)
      */
-    Iterable<String> headers();
+    Iterable<String> headersForWriting();
     
     /**
      * Returns the message body (possibly empty).
@@ -281,17 +297,6 @@ public interface Response
      * variants may build just fine but {@linkplain HttpServer blow up
      * later}.<p>
      * 
-     * Header key and values are taken at face value (case-sensitive, unless
-     * documented otherwise), concatenated using a colon followed by a space
-     * ": ". Adding many values to the same header name replicates the name
-     * across multiple rows in the response. It does <strong>not</strong> join
-     * the values on the same row. If this is desired, first join multiple
-     * values and then pass it to the builder as one.<p>
-     * 
-     * Header order is not significant (
-     * <a href="https://tools.ietf.org/html/rfc7230#section-3.2.2">RFC 7230 §3.2.2</a>
-     * ), but will be preserved (FIFO) except for duplicated names which will be
-     * grouped together and inserted at the occurrence of the first value.<p>
      * 
      * The implementation is thread-safe.<p>
      * 
@@ -514,6 +519,9 @@ public interface Response
          *             if any stream of the channel or the channel itself has
          *             been marked to shutdown/close and status-code is 1XX
          *             (Informational)
+         * 
+         * @throws IllegalStateException
+         *             if response contains multiple {@code Content-Length} headers
          */
         Response build();
     }

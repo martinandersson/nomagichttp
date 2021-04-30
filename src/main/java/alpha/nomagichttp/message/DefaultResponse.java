@@ -1,6 +1,7 @@
 package alpha.nomagichttp.message;
 
 import alpha.nomagichttp.HttpConstants;
+import alpha.nomagichttp.util.Headers;
 import alpha.nomagichttp.util.Publishers;
 
 import java.net.http.HttpHeaders;
@@ -14,7 +15,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.Flow;
 import java.util.function.Consumer;
-import java.util.stream.StreamSupport;
 
 import static alpha.nomagichttp.HttpConstants.HeaderKey.CONNECTION;
 import static alpha.nomagichttp.HttpConstants.HeaderKey.CONTENT_LENGTH;
@@ -34,7 +34,8 @@ final class DefaultResponse implements Response
 {
     private final int statusCode;
     private final String reasonPhrase;
-    private final Iterable<String> headers;
+    private final HttpHeaders headers;
+    private final Iterable<String> forWriting;
     private final Flow.Publisher<ByteBuffer> body;
     private final boolean mustShutdownOutputAfterWrite;
     private final boolean mustCloseAfterWrite;
@@ -43,8 +44,9 @@ final class DefaultResponse implements Response
     private DefaultResponse(
             int statusCode,
             String reasonPhrase,
+            HttpHeaders headers,
             // Is unmodifiable
-            Iterable<String> headers,
+            Iterable<String> forWriting,
             Flow.Publisher<ByteBuffer> body,
             boolean mustShutdownOutputAfterWrite,
             boolean mustCloseAfterWrite,
@@ -53,6 +55,7 @@ final class DefaultResponse implements Response
         this.statusCode = statusCode;
         this.reasonPhrase = reasonPhrase;
         this.headers = headers;
+        this.forWriting = forWriting;
         this.body = body;
         this.mustShutdownOutputAfterWrite = mustShutdownOutputAfterWrite;
         this.mustCloseAfterWrite = mustCloseAfterWrite;
@@ -70,8 +73,13 @@ final class DefaultResponse implements Response
     }
     
     @Override
-    public Iterable<String> headers() {
+    public HttpHeaders headers() {
         return headers;
+    }
+    
+    @Override
+    public Iterable<String> headersForWriting() {
+        return forWriting;
     }
     
     @Override
@@ -89,11 +97,7 @@ final class DefaultResponse implements Response
             var typed = (BodyPublisher) b;
             return typed.contentLength() == 0;
         }
-        // TODO: THIS IS A TEMPORARY SOLUTION.
-        //       Probably quite solid, but less performant. Should be replaced
-        //       with a real header-access API, similar to Request.headerContains().
-        return StreamSupport.stream(headers().spliterator(), false)
-                .anyMatch(h -> h.equalsIgnoreCase(CONTENT_LENGTH + ": 0"));
+        return headerContains(CONTENT_LENGTH, "0");
     }
     
     @Override
@@ -319,7 +323,14 @@ final class DefaultResponse implements Response
                 }
             }
             
-            Iterable<String> headers = s.headers == null ? emptyList() :
+            HttpHeaders headers = s.headers == null ? Headers.of() :
+                    HttpHeaders.of(s.headers, (k, v) -> true);
+            
+            if (headers.allValues(CONTENT_LENGTH).size() > 1) {
+                throw new IllegalStateException("Multiple " + CONTENT_LENGTH + " headers.");
+            }
+            
+            Iterable<String> forWriting = s.headers == null ? emptyList() :
                     s.headers.entrySet().stream().flatMap(e ->
                             e.getValue().stream().map(v -> e.getKey() + ": " + v))
                     .collect(toUnmodifiableList());
@@ -328,6 +339,7 @@ final class DefaultResponse implements Response
                     s.statusCode,
                     s.reasonPhrase,
                     headers,
+                    forWriting,
                     s.body,
                     s.mustShutdownOutputAfterWrite,
                     s.mustCloseAfterWrite,

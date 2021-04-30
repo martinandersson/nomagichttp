@@ -9,7 +9,6 @@ import alpha.nomagichttp.util.AttributeHolder;
 import alpha.nomagichttp.util.Publishers;
 
 import java.net.URLDecoder;
-import java.net.http.HttpHeaders;
 import java.nio.channels.AsynchronousByteChannel;
 import java.nio.channels.AsynchronousFileChannel;
 import java.nio.channels.GatheringByteChannel;
@@ -45,7 +44,7 @@ import java.util.stream.Stream;
  * @see <a href="https://tools.ietf.org/html/rfc7230#section-3.1.1">RFC 7230 §3.1.1</a>
  * @see <a href="https://tools.ietf.org/html/rfc7230#section-3.3">RFC 7230 §3.3</a>
  */
-public interface Request extends AttributeHolder
+public interface Request extends HeaderHolder, AttributeHolder
 {
     /**
      * Returns the request-line's method token.<p>
@@ -120,50 +119,6 @@ public interface Request extends AttributeHolder
      * @see Parameters
      */
     Parameters parameters();
-    
-    /**
-     * Returns the HTTP headers.<p>
-     * 
-     * The order is not significant (
-     * <a href="https://tools.ietf.org/html/rfc7230#section-3.2.2">RFC 7230 §3.2.2</a>
-     * ).
-     * 
-     * @return the HTTP headers
-     * 
-     * @see HttpConstants.HeaderKey
-     */
-    HttpHeaders headers();
-    
-    /**
-     * If a header is present, check if it contains a value substring.<p>
-     * 
-     * This method operate without regard to case for both header key and
-     * value substring.<p>
-     * 
-     * Suppose the server receives this request:
-     * <pre>
-     *   GET /where?q=now HTTP/1.1
-     *   Host: www.example.com
-     *   User-Agent: curl/7.68.0
-     * </pre>
-     * 
-     * Returns true:
-     * <pre>
-     *   request.headerContains("user-agent", "cUrL");
-     * </pre>
-     * 
-     * This method searches through repeated headers.<p>
-     * 
-     * This method returns {@code false} if the header is not present.
-     * 
-     * @param headerKey header key filter
-     * @param valueSubstring value substring to look for
-     * 
-     * @return {@code true} if found, otherwise {@code false}
-     * 
-     * @throws NullPointerException if any argument is {@code null}
-     */
-    boolean headerContains(String headerKey, String valueSubstring);
     
     /**
      * Returns a body API object bound to this request.

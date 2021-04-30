@@ -28,7 +28,6 @@ import java.util.stream.Stream;
 import static alpha.nomagichttp.internal.AtomicReferences.lazyInit;
 import static alpha.nomagichttp.util.Headers.contentLength;
 import static alpha.nomagichttp.util.Headers.contentType;
-import static alpha.nomagichttp.util.Strings.containsIgnoreCase;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.nio.file.StandardOpenOption.CREATE_NEW;
 import static java.nio.file.StandardOpenOption.WRITE;
@@ -123,13 +122,6 @@ final class DefaultRequest implements Request
     @Override
     public HttpHeaders headers() {
         return head.headers();
-    }
-    
-    @Override
-    public boolean headerContains(String headerKey, String valueSubstring) {
-        // NPE is unfortunately not documented in JDK
-        return headers().allValues(requireNonNull(headerKey)).stream()
-                .anyMatch(v -> containsIgnoreCase(v, valueSubstring));
     }
     
     @Override
