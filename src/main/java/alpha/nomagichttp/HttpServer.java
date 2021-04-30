@@ -579,14 +579,14 @@ public interface HttpServer
          * @implSpec
          * The default implementation is equivalent to:
          * <pre>
-         *     return 3;
+         *     return 7;
          * </pre>
          * 
          * @return max number of consecutively unsuccessful responses
          *         before closing channel
          */
         default int maxUnsuccessfulResponses() {
-            return 3;
+            return 7;
         }
         
         /**
