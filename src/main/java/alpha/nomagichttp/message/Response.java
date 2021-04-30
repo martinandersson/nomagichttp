@@ -33,8 +33,9 @@ import static java.net.http.HttpRequest.BodyPublisher;
  * }</pre>
  * 
  * {@code Response} is immutable but may be converted back into a builder for
- * templating. This example uses a factory from {@link Responses} and is
- * equivalent to the previous example:
+ * templating. This effectively makes ready-built {@link Responses} also serve
+ * as a repository of commonly used status lines. This example is equivalent to
+ * the previous:
  * 
  * <pre>{@code
  *   Response r = Responses.noContent()
