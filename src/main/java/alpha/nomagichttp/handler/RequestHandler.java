@@ -218,7 +218,12 @@ import static java.util.Objects.requireNonNull;
  * custom implementation can choose to create a new logic instance for each
  * request since the {@link #logic()} method is invoked anew for each request.
  * Examples on how to implement this interface is provided in the JavaDoc of
- * {@link Builder}.
+ * {@link Builder}.<p>
+ * 
+ * Data that needs to be saved and accessed throughout the HTTP exchange can be
+ * put as {@link Request#attributes()} and data that needs to span all HTTP
+ * exchanges throughout the connection's life can be put as
+ * {@link ClientChannel#attributes()}.
  * 
  * <h2>Thread safety and object equality</h2>
  * 
