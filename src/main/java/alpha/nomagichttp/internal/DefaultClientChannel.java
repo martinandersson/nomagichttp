@@ -237,7 +237,7 @@ final class DefaultClientChannel implements ClientChannel
             LOG.log(DEBUG, () -> "Failed to close child: " + child, e);
         } catch (Throwable t) {
             if (becauseChannelOrGroupClosed(t)) {
-                LOG.log(DEBUG, () -> "Failed to close child: " + child, t);
+                LOG.log(DEBUG, () -> "Child already closed: " + child, t);
             } else {
                 throw t;
             }
