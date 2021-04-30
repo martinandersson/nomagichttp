@@ -146,7 +146,7 @@ public final class Responses
     }
     
     /**
-     * Returns a 200 (OK) response with the given body.<p>
+     * Returns a 200 (OK) response with the given body.
      * 
      * @param body data
      * @param contentType header value
@@ -164,7 +164,7 @@ public final class Responses
     }
     
     /**
-     * Returns a 200 (OK) response with the given body.<p>
+     * Returns a 200 (OK) response with the given body.
      * 
      * @param body data
      * @param contentType header value
@@ -175,7 +175,10 @@ public final class Responses
      * @see HttpConstants.HeaderKey#CONTENT_TYPE
      */
     public static Response ok(BodyPublisher body, MediaType contentType) {
-        return ok(body, contentType, body.contentLength());
+        return BuilderCache.OK
+                .header(CONTENT_TYPE, contentType.toString())
+                .body(body)
+                .build();
     }
     
     /**
@@ -208,12 +211,12 @@ public final class Responses
      * Returns a 200 (OK) response with the given body.<p>
      * 
      * The server subscribing to the response body does not limit his
-     * subscription based on the given length value. The value must be equal to
-     * the number of bytes emitted by the publisher.<p>
+     * subscription based on the given length value. The value should be equal
+     * to the number of bytes emitted by the publisher, never greater.<p>
      * 
-     * If {@code contentLength} is negative, the corresponding header will not
-     * be set. Instead, the server will close the write stream after having sent
-     * the response.
+     * For an unknown body length, the length argument must be negative. For an
+     * empty publisher, the length argument must be zero. Discrepancies has
+     * unknown application behavior.
      * 
      * @param body data
      * @param contentType header value
@@ -222,6 +225,7 @@ public final class Responses
      * @return a 200 (OK) response
      * 
      * @see StatusCode#TWO_HUNDRED
+     * @see Response.Builder#body(Flow.Publisher) 
      * @see HttpConstants.HeaderKey#CONTENT_TYPE
      * @see HttpConstants.HeaderKey#CONTENT_LENGTH
      */
@@ -231,13 +235,7 @@ public final class Responses
         
         if (contentLength >= 0) {
             b = b.header(CONTENT_LENGTH, Long.toString(contentLength));
-        } else {
-            // TODO: Not exactly cool that we instruct server/protocol behavior
-            //       on a message level. But this will be fixed when we also have
-            //       chunked encoding, which may be employed by the server as an
-            //       alternative to unknown content-length.
-            b = b.mustShutdownOutputAfterWrite(true);
-        }
+        } // else unknown length, ResponsePipeline will deal with it
         
         return b.body(body).build();
     }

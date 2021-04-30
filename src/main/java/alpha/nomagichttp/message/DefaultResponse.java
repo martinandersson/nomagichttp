@@ -14,8 +14,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.Flow;
 import java.util.function.Consumer;
+import java.util.stream.StreamSupport;
 
 import static alpha.nomagichttp.HttpConstants.HeaderKey.CONNECTION;
+import static alpha.nomagichttp.HttpConstants.HeaderKey.CONTENT_LENGTH;
 import static alpha.nomagichttp.HttpConstants.StatusCode;
 import static alpha.nomagichttp.util.Publishers.empty;
 import static java.net.http.HttpRequest.BodyPublisher;
@@ -75,6 +77,23 @@ final class DefaultResponse implements Response
     @Override
     public Flow.Publisher<ByteBuffer> body() {
         return body;
+    }
+    
+    @Override
+    public boolean isBodyEmpty() {
+        Flow.Publisher<ByteBuffer> b = body();
+        if (b == Publishers.<ByteBuffer>empty()) {
+            return true;
+        }
+        if (b instanceof BodyPublisher) {
+            var typed = (BodyPublisher) b;
+            return typed.contentLength() == 0;
+        }
+        // TODO: THIS IS A TEMPORARY SOLUTION.
+        //       Probably quite solid, but less performant. Should be replaced
+        //       with a real header-access API, similar to Request.headerContains().
+        return StreamSupport.stream(headers().spliterator(), false)
+                .anyMatch(h -> h.equalsIgnoreCase(CONTENT_LENGTH + ": 0"));
     }
     
     @Override
@@ -250,7 +269,20 @@ final class DefaultResponse implements Response
         @Override
         public Response.Builder body(Flow.Publisher<ByteBuffer> body) {
             requireNonNull(body, "body");
-            return new Builder(this, s -> s.body = body);
+            final Builder b = new Builder(this, s -> s.body = body);
+            
+            if (body == Publishers.<ByteBuffer>empty()) {
+                return b.removeHeader(CONTENT_LENGTH);
+            } else if (body instanceof BodyPublisher) {
+                long len = ((BodyPublisher) body).contentLength();
+                if (len < 0) {
+                    return b.removeHeader(CONTENT_LENGTH);
+                } else {
+                    return b.header(CONTENT_LENGTH, Long.toString(len));
+                }
+            }
+            
+            return b;
         }
         
         @Override
@@ -301,24 +333,12 @@ final class DefaultResponse implements Response
                     s.mustCloseAfterWrite,
                     this);
             
-            if (r.isInformational() && !isBodyEmpty(r)) {
+            if (r.isInformational() && !r.isBodyEmpty()) {
                 throw new IllegalBodyException(
-                        "Body in a 1XX (Informational) response.", r);
+                        "Presumably a body in a 1XX (Informational) response.", r);
             }
             
             return r;
-        }
-        
-        private static boolean isBodyEmpty(Response r) {
-            Flow.Publisher<ByteBuffer> b = r.body();
-            if (b == Publishers.<ByteBuffer>empty()) {
-                return true;
-            }
-            if (b instanceof BodyPublisher) {
-                var typed = (BodyPublisher) b;
-                return typed.contentLength() == 0;
-            }
-            return false;
         }
         
         private void populate(MutableState s) {

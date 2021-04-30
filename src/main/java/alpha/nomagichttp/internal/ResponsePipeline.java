@@ -11,6 +11,7 @@ import java.util.List;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ConcurrentLinkedDeque;
 import java.util.concurrent.Flow;
+import java.util.stream.StreamSupport;
 
 import static alpha.nomagichttp.HttpConstants.StatusCode.ONE_HUNDRED;
 import static alpha.nomagichttp.HttpConstants.StatusCode.isClientError;
@@ -144,7 +145,10 @@ final class ResponsePipeline implements Flow.Publisher<ResponsePipeline.Result>
             op.complete();
             return;
         }
-        r.thenCompose(this::subscribeToResponse)
+        // TODO: trackUnsuccessful() and handleUnknownLength() will become post-actions
+        r.thenApply(this::trackUnsuccessful)
+         .thenApply(ResponsePipeline::handleUnknownLength)
+         .thenCompose(this::subscribeToResponse)
          .whenComplete(this::handleChannelResult);
     }
     
@@ -153,26 +157,8 @@ final class ResponsePipeline implements Flow.Publisher<ResponsePipeline.Result>
     private int n100continue = 0;
     private static final Throwable IGNORE = new AssertionError();
     
-    private CompletionStage<ResponseBodySubscriber.Result> subscribeToResponse(final Response in) {
+    private Response trackUnsuccessful(final Response in) {
         final Response out;
-        
-        if (wroteFinal) {
-            throw new ResponseRejectedException(in, EXCHANGE_NOT_ACTIVE,
-                    "Final response already written.");
-        }
-        if (in.isInformational()) {
-            if (exch.getHttpVersion().isLessThan(HTTP_1_1)) {
-                throw new ResponseRejectedException(in, PROTOCOL_NOT_SUPPORTED,
-                        exch.getHttpVersion() + " does not support 1XX (Informational) responses.");
-            }
-            if (in.statusCode() == ONE_HUNDRED && ++n100continue > 1) {
-                LOG.log(n100continue == 2 ? DEBUG : WARNING, "Ignoring repeated 100 (Continue).");
-                return failedStage(IGNORE);
-            }
-        }
-        
-        // TODO: This is ideally replaced by a post-action in the future
-        //       (and then we won't need final in/out refs)
         if (isClientError(in.statusCode()) || isServerError(in.statusCode())) {
             // Bump retry counter
             int n = chan.attributes().<Integer>asMapAny()
@@ -189,19 +175,51 @@ final class ResponsePipeline implements Flow.Publisher<ResponsePipeline.Result>
             chan.attributes().set("alpha.nomagichttp.responsepipeline.nUnssuccessful", 0);
             out = in;
         }
+        return out;
+    }
+    
+    private static Response handleUnknownLength(Response rsp) {
+        // TODO: TEMP SOLUTION. Sort of repeated code from Response.isBodyEmpty() (and case-sensitive),
+        //       need to make Response store easy access to headers.
+        if (StreamSupport.stream(rsp.headers().spliterator(), false).noneMatch(h -> h.startsWith("Content-Length")) &&
+            !rsp.isBodyEmpty() &&
+            !rsp.mustShutdownOutputAfterWrite() &&
+            !rsp.mustCloseAfterWrite())
+        {
+            // TODO: In the future when implemented, chunked encoding may also be an option
+            return rsp.toBuilder().mustShutdownOutputAfterWrite(true).build();
+        }
+        return rsp;
+    }
+    
+    private CompletionStage<ResponseBodySubscriber.Result> subscribeToResponse(Response rsp) {
+        if (wroteFinal) {
+            throw new ResponseRejectedException(rsp, EXCHANGE_NOT_ACTIVE,
+                    "Final response already written.");
+        }
+        if (rsp.isInformational()) {
+            if (exch.getHttpVersion().isLessThan(HTTP_1_1)) {
+                throw new ResponseRejectedException(rsp, PROTOCOL_NOT_SUPPORTED,
+                        exch.getHttpVersion() + " does not support 1XX (Informational) responses.");
+            }
+            if (rsp.statusCode() == ONE_HUNDRED && ++n100continue > 1) {
+                LOG.log(n100continue == 2 ? DEBUG : WARNING, "Ignoring repeated 100 (Continue).");
+                return failedStage(IGNORE);
+            }
+        }
         
         if (LOG.isLoggable(DEBUG)) {
-            LOG.log(DEBUG, "Subscribing to response: " + out);
+            LOG.log(DEBUG, "Subscribing to response: " + rsp);
         }
-        inFlight = out;
-        wroteFinal = out.isFinal();
-        var rbs = new ResponseBodySubscriber(out, exch, chan);
-        out.body().subscribe(rbs);
+        inFlight = rsp;
+        wroteFinal = rsp.isFinal();
+        var rbs = new ResponseBodySubscriber(rsp, exch, chan);
+        rsp.body().subscribe(rbs);
         return rbs.asCompletionStage();
     }
     
     private void handleChannelResult(ResponseBodySubscriber.Result res, Throwable thr) {
-        Response r = inFlight;
+        Response rsp = inFlight;
         inFlight = null;
         
         if (thr != null && thr.getCause() == IGNORE) {
@@ -210,12 +228,12 @@ final class ResponsePipeline implements Flow.Publisher<ResponsePipeline.Result>
             return;
         }
         
-        // If application's stage completed exceptionally, we never received a Response obj
-        if (r != null) {
-            if (r.mustCloseAfterWrite()) {
+        // Response is null if application's provided stage completed exceptionally
+        if (rsp != null) {
+            if (rsp.mustCloseAfterWrite()) {
                 LOG.log(DEBUG, "Response wants us to close the child, will close.");
                 chan.closeSafe();
-            } else if (r.mustShutdownOutputAfterWrite()) {
+            } else if (rsp.mustShutdownOutputAfterWrite()) {
                 LOG.log(DEBUG, "Response wants us to shutdown output, will shutdown.");
                 chan.shutdownOutputSafe();
                 // DefaultServer will not start a new exchange
@@ -224,16 +242,17 @@ final class ResponsePipeline implements Flow.Publisher<ResponsePipeline.Result>
         
         if (res != null) {
             // Success
+            assert rsp != null;
             LOG.log(DEBUG, () -> "Sent response (" + res.bytesWritten() + " bytes).");
-            publish(r, res.bytesWritten(), null);
+            publish(rsp, res.bytesWritten(), null);
         } else {
             // Failed
+            assert thr != null;
             if (chan.isOpenForWriting()) {
-                // and no bytes were written on the wire
+                // and so no bytes were written on the wire
                 wroteFinal = false;
             }
-            assert thr != null;
-            publish(r, null, thr);
+            publish(rsp, null, thr);
         }
         
         op.complete();

@@ -9,6 +9,7 @@ import alpha.nomagichttp.message.Responses;
 import alpha.nomagichttp.testutil.IORunnable;
 import alpha.nomagichttp.testutil.MemorizingSubscriber;
 import alpha.nomagichttp.testutil.MemorizingSubscriber.Signal;
+import alpha.nomagichttp.util.Publishers;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
@@ -23,19 +24,21 @@ import java.util.concurrent.TimeoutException;
 import java.util.function.Consumer;
 import java.util.logging.LogRecord;
 
+import static alpha.nomagichttp.HttpConstants.HeaderKey.CONTENT_LENGTH;
 import static alpha.nomagichttp.handler.RequestHandler.GET;
 import static alpha.nomagichttp.handler.RequestHandler.POST;
 import static alpha.nomagichttp.handler.RequestHandler.builder;
 import static alpha.nomagichttp.message.Responses.accepted;
 import static alpha.nomagichttp.message.Responses.badRequest;
 import static alpha.nomagichttp.message.Responses.continue_;
+import static alpha.nomagichttp.message.Responses.ok;
 import static alpha.nomagichttp.message.Responses.text;
-import static alpha.nomagichttp.testutil.TestClient.CRLF;
 import static alpha.nomagichttp.testutil.Logging.toJUL;
 import static alpha.nomagichttp.testutil.MemorizingSubscriber.Signal.MethodName.ON_COMPLETE;
 import static alpha.nomagichttp.testutil.MemorizingSubscriber.Signal.MethodName.ON_ERROR;
 import static alpha.nomagichttp.testutil.MemorizingSubscriber.Signal.MethodName.ON_NEXT;
 import static alpha.nomagichttp.testutil.MemorizingSubscriber.Signal.MethodName.ON_SUBSCRIBE;
+import static alpha.nomagichttp.testutil.TestClient.CRLF;
 import static alpha.nomagichttp.testutil.TestSubscribers.onNextAndComplete;
 import static alpha.nomagichttp.testutil.TestSubscribers.onNextAndError;
 import static alpha.nomagichttp.testutil.TestSubscribers.onSubscribe;
@@ -45,7 +48,6 @@ import static java.lang.System.Logger.Level.ERROR;
 import static java.lang.System.Logger.Level.WARNING;
 import static java.util.List.of;
 import static java.util.concurrent.TimeUnit.SECONDS;
-import static java.util.logging.Level.FINE;
 import static java.util.logging.Level.INFO;
 import static java.util.stream.Collectors.toList;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -458,6 +460,38 @@ class DetailedEndToEndTest extends AbstractEndToEndTest
             assertTrue(client().serverClosedOutput());
             assertTrue(client().serverClosedInput());
         }
+    }
+    
+    @Test
+    void response_unknownLength_bodyNonEmpty() throws IOException, InterruptedException {
+        server().add("/", GET().respond(
+                text("Hi").toBuilder()
+                           .removeHeader(CONTENT_LENGTH)
+                           .build()));
+        
+        String rsp = client().writeRead(requestWithoutBody(), "Hi");
+        assertThat(rsp).isEqualTo(
+            "HTTP/1.1 200 OK"                         + CRLF +
+            "Content-Type: text/plain; charset=utf-8" + CRLF +
+            "Connection: close"                       + CRLF + CRLF +
+            
+            "Hi");
+        
+        awaitChildClose();
+    }
+    
+    @Test
+    void response_unknownLength_bodyEmpty() throws IOException, InterruptedException {
+        var empty = Publishers.just(ByteBuffer.allocate(0));
+        server().add("/", GET().respond(ok(empty, "application/octet-stream", -1)));
+        
+        String rsp = client().writeRead(requestWithoutBody(), "Hi");
+        assertThat(rsp).isEqualTo(
+            "HTTP/1.1 200 OK"                         + CRLF +
+            "Content-Type: application/octet-stream"  + CRLF +
+            "Connection: close"                       + CRLF + CRLF);
+        
+        awaitChildClose();
     }
     
     // TODO: Test multiple responses order

@@ -8,6 +8,7 @@ import alpha.nomagichttp.util.BetterBodyPublishers;
 import alpha.nomagichttp.util.Publishers;
 
 import java.net.http.HttpHeaders;
+import java.net.http.HttpRequest;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.util.concurrent.CompletableFuture;
@@ -17,6 +18,7 @@ import java.util.concurrent.Flow;
 import static alpha.nomagichttp.HttpConstants.ReasonPhrase;
 import static alpha.nomagichttp.HttpConstants.StatusCode;
 import static alpha.nomagichttp.message.Response.builder;
+import static java.net.http.HttpRequest.BodyPublisher;
 
 /**
  * A {@code Response} contains a status line, followed by optional headers and
@@ -178,6 +180,21 @@ public interface Response
     default boolean isFinal() {
         return StatusCode.isFinal(statusCode());
     }
+    
+    /**
+     * Returns {@code true} if the body is assumed to be empty, otherwise
+     * {@code false}.<p>
+     * 
+     * The body is assumed to be empty, if {@code this.body()} returns the same
+     * object instance as {@link Publishers#empty()}, or it returns a
+     * {@link HttpRequest.BodyPublisher} implementation with {@code
+     * contentLength()} set to 0, or the response has a {@code Content-Length}
+     * header set to 0 [in future: and no chunked encoding].
+     * 
+     * @return {@code true} if the body is assumed to be empty,
+     *         otherwise {@code false}
+     */
+    boolean isBodyEmpty();
     
     /**
      * Command the server to shutdown the client channel's output/write stream
@@ -409,10 +426,10 @@ public interface Response
          * must be thread-safe and designed for concurrency; producing new
          * bytebuffers with the same data for each new subscriber.<p>
          * 
-         * Please note that multiple response objects derived/templated from the
-         * same builder(s) will share the same underlying body publisher
-         * reference. So same rule apply; the publisher must be thread-safe if
-         * the derivatives go out to different clients.<p>
+         * Multiple response objects derived/templated from the same builder(s)
+         * will share the same underlying body publisher reference. So same rule
+         * apply; the publisher must be thread-safe if the derivatives go out to
+         * different clients.<p>
          * 
          * Response objects created by factory methods from the NoMagicHTTP
          * library API (and derivatives created from them) are fully thread-safe
@@ -422,14 +439,30 @@ public interface Response
          * BetterBodyPublishers}. Not only are these defined to be thread-safe,
          * they are also non-blocking.<p>
          * 
-         * If you desire to remove an already set body, pass {@link
-         * Publishers#empty()} or a {@code BodyPublisher} with {@code
-         * contentLength() == 0} to this method. Any other body instance will
-         * cause the build to fail with an {@link IllegalBodyException}
-         * <strong>if</strong> the status-code is 1XX (Informational). There is
-         * unfortunately no other pragmatic alternative since the {@code
-         * Flow.Publisher} API does not support a method equivalent to {@code
-         * isEmpty()} <i>and</i> still keep the fail-fast behavior.
+         * If the body argument is a {@link BodyPublisher} and {@code
+         * BodyPublisher.contentLength()} returns a negative value, then any
+         * present {@code Content-Length} header will be removed (unknown
+         * length). A positive value ({@code >= 0}) will set the header value
+         * (possibly overwriting an old). So, it's unnecessary to set the header
+         * manually as long as the body is a {@code BodyPublisher}.<p>
+         * 
+         * To remove an already set body, it's as easy as passing in as argument
+         * to this method a {@link Publishers#empty()} or a {@code
+         * BodyPublisher} with {@code contentLength() == 0}. Both cases will
+         * also set the {@code Content-Length} header to 0.<p>
+         * 
+         * Any other publisher implementation must also be accompanied with an
+         * explicit builder-call to either remove the {@code Content-Length}
+         * header (for unknown length) or set it to the new length (or in
+         * future; apply chunked encoding). Failure to comply may end up
+         * re-using an old legacy {@code Content-Length} value with unspecified
+         * application behavior as a result.<p>
+         * 
+         * A known length is always preferred over an unknown length as in the
+         * latter case, the server will have to schedule a close of the
+         * connection after the active exchange (in future: or apply chunked
+         * encoding). There's no other way around that and still maintain proper
+         * HTTP message framing.
          * 
          * @param   body publisher
          * @return  a new builder representing the new state
@@ -473,7 +506,8 @@ public interface Response
          * @return a response
          * 
          * @throws IllegalBodyException
-         *             if body is present and status-code is 1XX (Informational)
+         *             if status-code is 1XX (Informational) and a body is
+         *             presumably not empty (see {@link Response#isBodyEmpty()})
          * 
          * @throws IllegalStateException
          *             if any stream of the channel or the channel itself has
