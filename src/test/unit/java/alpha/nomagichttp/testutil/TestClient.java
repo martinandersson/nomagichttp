@@ -8,7 +8,6 @@ import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.net.InetSocketAddress;
 import java.net.SocketOption;
-import java.net.http.HttpClient;
 import java.nio.ByteBuffer;
 import java.nio.channels.Channel;
 import java.nio.channels.ClosedByInterruptException;
@@ -34,15 +33,19 @@ import static org.assertj.core.api.Assertions.assertThat;
 /**
  * A utility API on top of a {@code SocketChannel}.<p>
  * 
- * All channel operating utility methods will by default open/close a new
- * connection for each method call into this class. In order to re-use a
- * persistent connection across method calls, first invoke {@link
- * #openConnection()} .<p>
+ * This class provides low-level access for test cases that need direct control
+ * over what bytes are put on the wire and monitor what is received. This class
+ * has no knowledge about the HTTP protocol.<p>
  * 
- * Note: This class provides low-level access for test cases that need direct
- * control over what bytes are put on the wire and monitor what is received.
- * Test cases that operate on a higher "HTTP exchange semantics kind of layer"
- * should use a real client such as JDK's {@link HttpClient} instead.
+ * All write methods will by default open/close a new connection for each call.
+ * In order to re-use a persistent connection across method calls, manually
+ * {@link #openConnection()} and close the returned channel after the last
+ * message exchange.<p>
+ *  
+ * When to stop reading from the channel has to be specified by proving the last
+ * bytes expected in the server's response. This will trigger the test client to
+ * assert there's no more bytes left in the channel and return all bytes
+ * received.
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  */
