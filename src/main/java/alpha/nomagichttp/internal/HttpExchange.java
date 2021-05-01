@@ -14,6 +14,7 @@ import java.util.Collection;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
 import java.util.concurrent.CompletionStage;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import static alpha.nomagichttp.HttpConstants.HeaderKey.CONNECTION;
 import static alpha.nomagichttp.HttpConstants.HeaderKey.EXPECT;
@@ -45,6 +46,7 @@ final class HttpExchange
     private final ChannelByteBufferPublisher bytes;
     private final ResponsePipeline pipe;
     private final DefaultClientChannel chan;
+    private final AtomicInteger cntDown;
     private final CompletableFuture<Void> result;
     
     /*
@@ -74,6 +76,7 @@ final class HttpExchange
         this.bytes    = bytes;
         this.chan     = chan;
         this.pipe     = new ResponsePipeline(this, chan);
+        this.cntDown  = new AtomicInteger(2); // <-- request handler + final response
         this.result   = new CompletableFuture<>();
         this.ver      = HTTP_1_1; // <-- default until updated
         this.request  = null;
@@ -111,8 +114,8 @@ final class HttpExchange
     }
     
     private void begin0() {
-        chan.usePipeline(pipe);
         pipe.subscribe(onNext(this::handlePipeResult));
+        chan.usePipeline(pipe);
         
         RequestHeadSubscriber rhs = new RequestHeadSubscriber(config.maxRequestHeadSize());
         bytes.subscribe(rhs);
@@ -208,19 +211,38 @@ final class HttpExchange
     }
     
     private void invokeRequestHandler() {
-        handler.logic().accept(request, chan);
+        try {
+            handler.logic().accept(request, chan);
+        } catch (Throwable t) {
+            if (cntDown.decrementAndGet() == 0) {
+                LOG.log(WARNING, "Request handler returned exceptionally but final response already sent. " +
+                                 "This error is ignored.", t);
+                return;
+            }
+            throw t;
+        }
+        if (cntDown.decrementAndGet() == 0) {
+            LOG.log(DEBUG, "Request handler finished after final response. " +
+                           "Preparing for a new HTTP exchange.");
+            prepareForNewExchange();
+        }
     }
     
     private void handlePipeResult(ResponsePipeline.Result res) {
         /*
-         * TODO: Implement idle timeout.
+         * TODO: Implement idle timeout. in this branch
          */
         
         if (res.error() != null) {
             handleError(res.error());
         } else if (res.response().isFinal()) {
-            LOG.log(DEBUG, "Response sent is final. Preparing for a new HTTP exchange.");
-            prepareForNewExchange();
+            if (cntDown.decrementAndGet() == 0) {
+                LOG.log(DEBUG, "Response sent is final. Preparing for a new HTTP exchange.");
+                prepareForNewExchange();
+            } else {
+                LOG.log(DEBUG, "Response sent is final but request handler is still executing. " +
+                               "HTTP exchange remains active.");
+            }
         } else {
             LOG.log(DEBUG, "Response sent is not final. HTTP exchange remains active.");
         }

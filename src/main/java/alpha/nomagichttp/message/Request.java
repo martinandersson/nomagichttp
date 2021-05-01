@@ -552,10 +552,11 @@ public interface Request extends HeaderHolder, AttributeHolder
      * 
      * <h3>The HTTP exchange and body discarding</h3>
      * 
-     * The HTTP exchange is considered done as soon as both the server's
-     * final response body subscription <i>and</i> the application's request
-     * body subscription have both completed. Not until then will the next HTTP
-     * message-exchange commence on the same channel.<p>
+     * The HTTP exchange is considered done as soon as 1) the request handler
+     * invocation has returned and both of the application's request body
+     * subscription and the server's final response body subscription have
+     * completed. Not until then will the next HTTP message-exchange commence on
+     * the same channel.<p>
      * 
      * This means that a request body subscriber must ensure his subscription
      * runs all the way to the end or is cancelled. Subscribing to the body but
