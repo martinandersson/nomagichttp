@@ -1,6 +1,5 @@
 package alpha.nomagichttp.internal;
 
-import alpha.nomagichttp.HttpServer;
 import alpha.nomagichttp.handler.ResponseRejectedException;
 import alpha.nomagichttp.message.Response;
 import alpha.nomagichttp.util.SeriallyRunnable;
@@ -20,7 +19,6 @@ import static alpha.nomagichttp.HttpConstants.StatusCode.isServerError;
 import static alpha.nomagichttp.HttpConstants.Version.HTTP_1_1;
 import static alpha.nomagichttp.handler.ResponseRejectedException.Reason.EXCHANGE_NOT_ACTIVE;
 import static alpha.nomagichttp.handler.ResponseRejectedException.Reason.PROTOCOL_NOT_SUPPORTED;
-import static alpha.nomagichttp.util.Subscriptions.noop;
 import static java.lang.System.Logger.Level.DEBUG;
 import static java.lang.System.Logger.Level.WARNING;
 import static java.util.Objects.requireNonNull;
@@ -33,7 +31,7 @@ import static java.util.concurrent.CompletableFuture.failedStage;
  * The {@code write} methods of {@link DefaultClientChannel} is a direct facade
  * for the {@code add} method declared in this class.<p>
  * 
- * For each response completed, the result is published to all active
+ * For each response transmitted, the result is published to all active
  * subscribers. If there are no active subscribers, a successful result is
  * logged on {@code DEBUG} level and errors are logged on {@code WARNING}.<p>
  * 
@@ -47,24 +45,17 @@ import static java.util.concurrent.CompletableFuture.failedStage;
  *       <i>publisher</i>, this class is not thread-safe. The {@code add} method
  *       is.</li>
  *   <li>The subscriber is called serially.</li>
- *   <li>The subscription will never cancel and the subscriber implicitly
- *       requests {@code Long.MAX_VALUE}. In fact, the subscription object
- *        passed to the subscriber is NOP. I.e. there is no backpressure
- *        control and the subscription only terminates when the pipeline
- *       terminates.</li>
+ *   <li>The only method called on the subscriber is {@code onNext()}, passing
+ *       to it a result object containing the status of a response
+ *       transmission. This includes failures from the client-given  {@code
+ *       CompletionStage<Response>} and failures from the underlying {@link
+ *       ResponseBodySubscriber#asCompletionStage()}</li>
+ *   <li>For as long as this class keeps being used for writing responses, the
+ *       emissions to the subscriber also never ends.</li>
+ *   <li>Implicitly, the subscriber requests {@code Long.MAX_VALUE}.</li>
  *   <li>Subscriber identity is not tracked. Reuse equals duplication.</li>
  *   <li>The behavior is undefined if the subscriber throws an exception.</li>
  * </ol>
- * 
- * After the final response has completed (successfully), all active
- * subscriptions will be completed (this is the perfect opportunity to trigger a
- * new HTTP exchange).<p>
- * 
- * The subscription of this class is never signaled {@code onError}. Failures
- * from the accepted {@code CompletionStage<Response>} and failures
- * from the underlying {@link ResponseBodySubscriber#asCompletionStage()} is
- * published as-is boxed in a {@code Result} item to the subscribers of this
- * class.
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  */
@@ -125,7 +116,6 @@ final class ResponsePipeline implements Flow.Publisher<ResponsePipeline.Result>
     
     @Override
     public void subscribe(Flow.Subscriber<? super Result> s) {
-        s.onSubscribe(noop());
         subs.add(s);
     }
     
@@ -156,16 +146,14 @@ final class ResponsePipeline implements Flow.Publisher<ResponsePipeline.Result>
          .whenComplete(this::handleChannelResult);
     }
     
-    // HttpExchange memory; will go out of scope after final response
     private Response inFlight = null;
     private boolean wroteFinal = false;
     private boolean sawConnectionClose = false;
     private int n100continue = 0;
     
     private Response closeHttp1_0(Response rsp) {
-            // 1XX (Informational) will be ignored for HTTP 1.0 clients
+        // No support for HTTP 1.0 Keep-Alive
         if (rsp.isFinal() &&
-            // No support for HTTP 1.0 Keep-Alive
             exch.getHttpVersion().isLessThan(HTTP_1_1) &&
             !rsp.headerContains(CONNECTION, "close"))
         {
