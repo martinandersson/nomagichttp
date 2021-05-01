@@ -91,7 +91,26 @@ public interface ClientChannel extends Closeable, AttributeHolder
      * 
      * Only at most one 100 (Continue) response will be sent. Repeated 100
      * (Continue) responses will be ignored. Attempts to send more than two will
-     * log a warning on each offense.
+     * log a warning on each offense.<p>
+     * 
+     * Responses will be sent in the same order they are given to this method
+     * and {@link #write(CompletionStage)}. It does not matter if a previously
+     * enqueued stage did not complete before this method is called with an
+     * already built response.<p>
+     * 
+     * In this example, the already built response will be sent last because it
+     * was added last:
+     * <pre>{@code
+     *   CompletionStage<Response> completesSoon = ...
+     *   Response alreadyBuilt = ...
+     *   channel.write(completesSoon);
+     *   channel.write(alreadyBuilt);
+     * }</pre>
+     * 
+     * Having the response be sent in order of stage completion is as simple as:
+     * <pre>{@code
+     *   myResponseStage.thenAccept(channel::write);
+     * }</pre>
      * 
      * @param response the response
      * 
@@ -102,13 +121,11 @@ public interface ClientChannel extends Closeable, AttributeHolder
     /**
      * Write a response.<p>
      * 
-     * This method is equivalent to:
-     * <pre>
-     *   response.thenAccept(channel::{@link #write(Response) write});
-     * </pre>
-     * 
      * If the stage completes exceptionally, the error will pass through the
-     * server's chain of {@link ErrorHandler error handlers}.
+     * server's chain of {@link ErrorHandler error handlers}.<p>
+     * 
+     * All JavaDoc of {@link #write(Response)} applies to this method as
+     * well.
      * 
      * @param response the response
      * 

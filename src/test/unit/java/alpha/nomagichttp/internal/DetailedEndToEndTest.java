@@ -5,6 +5,7 @@ import alpha.nomagichttp.handler.RequestHandler;
 import alpha.nomagichttp.message.ClosedPublisherException;
 import alpha.nomagichttp.message.PooledByteBufferHolder;
 import alpha.nomagichttp.message.Request;
+import alpha.nomagichttp.message.Response;
 import alpha.nomagichttp.message.Responses;
 import alpha.nomagichttp.testutil.IORunnable;
 import alpha.nomagichttp.testutil.MemorizingSubscriber;
@@ -18,6 +19,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.Channel;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Flow;
 import java.util.concurrent.TimeoutException;
@@ -32,6 +34,7 @@ import static alpha.nomagichttp.message.Responses.accepted;
 import static alpha.nomagichttp.message.Responses.badRequest;
 import static alpha.nomagichttp.message.Responses.continue_;
 import static alpha.nomagichttp.message.Responses.ok;
+import static alpha.nomagichttp.message.Responses.processing;
 import static alpha.nomagichttp.message.Responses.text;
 import static alpha.nomagichttp.testutil.Logging.toJUL;
 import static alpha.nomagichttp.testutil.MemorizingSubscriber.Signal.MethodName.ON_COMPLETE;
@@ -495,7 +498,33 @@ class DetailedEndToEndTest extends AbstractEndToEndTest
         awaitChildClose();
     }
     
-    // TODO: Test multiple responses order
+    @Test
+    void responseOrderMaintained() throws IOException {
+        server().add("/", GET().accept((req, ch) -> {
+            CompletableFuture<Response> first  = new CompletableFuture<>();
+            Response second = processing().toBuilder().header("ID", "2").build();
+            CompletableFuture<Response> third = new CompletableFuture<>();
+            ch.write(first);
+            ch.write(second);
+            ch.write(third);
+            third.complete(text("done"));
+            first.complete(processing().toBuilder().header("ID", "1").build());
+        }));
+        
+        String rsp = client().writeRead(requestWithoutBody(), "done");
+        assertThat(rsp).isEqualTo(
+            "HTTP/1.1 102 Processing"                 + CRLF +
+            "ID: 1"                                   + CRLF + CRLF +
+            
+            "HTTP/1.1 102 Processing"                 + CRLF +
+            "ID: 2"                                   + CRLF + CRLF +
+            
+            "HTTP/1.1 200 OK"                         + CRLF +
+            "Content-Type: text/plain; charset=utf-8" + CRLF +
+            "Content-Length: 4"                       + CRLF + CRLF +
+            
+            "done");
+    }
     
     private static void assertOnErrorThrowable(Signal onError, String msg) {
         assertThat(onError.<Throwable>getArgument())

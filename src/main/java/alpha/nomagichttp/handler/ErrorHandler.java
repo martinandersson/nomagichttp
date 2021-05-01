@@ -271,7 +271,7 @@ public interface ErrorHandler
      *          prior to the disconnect (if no bytes were received the error
      *          handler is never called; no data loss, no problem). Currently,
      *          however, there's no API support to retrieve the incomplete
-     *          request. This might be added in the future.</td>
+     *          request.</td>
      *   </tr>
      *   <tr>
      *     <th scope="row">{@link ResponseRejectedException} </th>
