@@ -1,7 +1,9 @@
 package alpha.nomagichttp.internal;
 
+import alpha.nomagichttp.util.IOExceptions;
 import alpha.nomagichttp.util.SeriallyRunnable;
 
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Deque;
 import java.util.Queue;
@@ -9,6 +11,7 @@ import java.util.concurrent.ConcurrentLinkedDeque;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
+import java.util.function.Supplier;
 
 import static alpha.nomagichttp.internal.DefaultServer.becauseChannelOrGroupClosed;
 import static java.lang.Long.MAX_VALUE;
@@ -324,35 +327,61 @@ final class AnnounceToChannel
         
         @Override
         public void failed(Throwable exc, ByteBuffer ignored) {
+            final boolean pushed = stop(exc);
             boolean loggedStack = false;
             
-            if (!stop(exc)) {
+            // If we manage to push the error to someone else, we need not bother
+            if (!pushed) {
                 Throwable t = state.get();
                 if (t == STOPPED) {
-                    // Was "stopped normally", we only log ours - if need be
+                    // Service "stopped normally", we only log ours - if need be
                     if (!becauseChannelOrGroupClosed(exc)) {
                         loggedStack = true;
                         LOG.log(ERROR, () ->
                             mode + " operation failed and service already stopped normally; " +
-                            "can not propagate the error anywhere.", exc);
-                    } // else channel was effectively closed AND service stopped already, really not a problem then
+                            "can not propagate this error anywhere.", exc);
+                    } // else channel was effectively closed AND service stopped already, nothing to do
                 } else {
                     // Someone else has scheduled a different error to propagate
                     t.addSuppressed(exc);
                 }
             }
             
+            // All errors will close the stream, and we ought to always log WHY stream was closed
             if (isStreamOpen()) {
                 if (loggedStack) {
-                    LOG.log(ERROR, "Will close connection's used stream.");
+                    // Simply append to what was logged already
+                    LOG.log(DEBUG, "Will close connection's used stream.");
+                } else if (isCausedByBrokenStream(exc)) {
+                    // Log "broken pipe", but no stack dump
+                    LOG.log(DEBUG, () -> mode + " operation failed (broken pipe), will close stream.");
                 } else {
-                    LOG.log(ERROR, () -> mode + " operation failed and channel's used stream is still open, will close it.", exc);
+                    Supplier<String> msg = () -> mode + " operation failed and stream is still open, will close it.";
+                    if (pushed) {
+                        // Only message
+                        LOG.log(DEBUG, msg);
+                    } else {
+                        // Full stack trace
+                        LOG.log(DEBUG, msg, exc);
+                    }
                 }
                 closeStream();
             } // else assume reason for closing has been logged already
             
             operation.run();
             operation.complete();
+        }
+    }
+    
+    private boolean isCausedByBrokenStream(Throwable t) {
+        if (!(t instanceof IOException)) {
+            return false;
+        }
+        IOException io = (IOException) t;
+        switch (mode) {
+            case READ:  return IOExceptions.isCausedByBrokenInputStream(io);
+            case WRITE: return IOExceptions.isCausedByBrokenOutputStream(io);
+            default:    throw new AssertionError("What is this?: " + mode);
         }
     }
 }
