@@ -247,7 +247,11 @@ final class HttpExchange
         });
     }
     
-    private void handleError(Throwable exc) {
+    // Lock not expected to be contended. But in theory, this method can be
+    // invoked concurrently by a synchronous error from the request handler
+    // invocation as well as an asynchronous error from the response pipeline.
+    // TODO: Fix?
+    private synchronized void handleError(Throwable exc) {
         final Throwable unpacked = unpackCompletionException(exc);
         
         if (unpacked instanceof ClientAbortedException) {
