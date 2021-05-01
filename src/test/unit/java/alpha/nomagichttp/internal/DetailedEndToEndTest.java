@@ -33,6 +33,7 @@ import static alpha.nomagichttp.handler.RequestHandler.builder;
 import static alpha.nomagichttp.message.Responses.accepted;
 import static alpha.nomagichttp.message.Responses.badRequest;
 import static alpha.nomagichttp.message.Responses.continue_;
+import static alpha.nomagichttp.message.Responses.noContent;
 import static alpha.nomagichttp.message.Responses.ok;
 import static alpha.nomagichttp.message.Responses.processing;
 import static alpha.nomagichttp.message.Responses.text;
@@ -50,6 +51,7 @@ import static java.lang.System.Logger.Level.DEBUG;
 import static java.lang.System.Logger.Level.ERROR;
 import static java.lang.System.Logger.Level.WARNING;
 import static java.util.List.of;
+import static java.util.concurrent.CompletableFuture.failedStage;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static java.util.logging.Level.INFO;
 import static java.util.stream.Collectors.toList;
@@ -524,6 +526,45 @@ class DetailedEndToEndTest extends AbstractEndToEndTest
             "Content-Length: 4"                       + CRLF + CRLF +
             
             "done");
+    }
+    
+    // TODO: This needs to go to ErrorHandlingTest; after test refactoring
+    @Test
+    void afterHttpExchange_responseIsLoggedButIgnored() throws IOException, InterruptedException {
+        server().add("/", GET().accept((req, ch) -> {
+            ch.write(noContent());
+            ch.write(Response.builder(123).build());
+        }));
+        
+        String rsp = client().writeRead(
+                "GET / HTTP/1.1"          + CRLF + CRLF);
+        assertThat(rsp).isEqualTo(
+                "HTTP/1.1 204 No Content" + CRLF + CRLF);
+        
+        assertTrue(logRecorder().await(toJUL(WARNING),
+                "HTTP exchange not active. This response is ignored: DefaultResponse{statusCode=123"));
+        
+        // Superclass asserts no error sent to error handler
+    }
+    
+    // TODO: This needs to go to ErrorHandlingTest; after test refactoring
+    @Test
+    void afterHttpExchange_responseExceptionIsLoggedButIgnored() throws IOException, InterruptedException {
+        server().add("/", GET().accept((req, ch) -> {
+            ch.write(noContent());
+            ch.write(failedStage(new RuntimeException("Oops!")));
+        }));
+        
+        String rsp = client().writeRead(
+                "GET / HTTP/1.1"          + CRLF + CRLF);
+        assertThat(rsp).isEqualTo(
+                "HTTP/1.1 204 No Content" + CRLF + CRLF);
+        
+        assertTrue(logRecorder().await(toJUL(ERROR),
+                "Application's response stage completed exceptionally, " +
+                "but HTTP exchange is not active. This error does not propagate anywhere."));
+        
+        // Superclass asserts no error sent to error handler
     }
     
     private static void assertOnErrorThrowable(Signal onError, String msg) {

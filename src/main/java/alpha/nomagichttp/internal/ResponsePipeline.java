@@ -17,9 +17,9 @@ import static alpha.nomagichttp.HttpConstants.StatusCode.ONE_HUNDRED;
 import static alpha.nomagichttp.HttpConstants.StatusCode.isClientError;
 import static alpha.nomagichttp.HttpConstants.StatusCode.isServerError;
 import static alpha.nomagichttp.HttpConstants.Version.HTTP_1_1;
-import static alpha.nomagichttp.handler.ResponseRejectedException.Reason.EXCHANGE_NOT_ACTIVE;
 import static alpha.nomagichttp.handler.ResponseRejectedException.Reason.PROTOCOL_NOT_SUPPORTED;
 import static java.lang.System.Logger.Level.DEBUG;
+import static java.lang.System.Logger.Level.ERROR;
 import static java.lang.System.Logger.Level.WARNING;
 import static java.util.Objects.requireNonNull;
 import static java.util.concurrent.CompletableFuture.failedStage;
@@ -50,8 +50,10 @@ import static java.util.concurrent.CompletableFuture.failedStage;
  *       transmission. This includes failures from the client-given  {@code
  *       CompletionStage<Response>} and failures from the underlying {@link
  *       ResponseBodySubscriber#asCompletionStage()}</li>
- *   <li>For as long as this class keeps being used for writing responses, the
- *       emissions to the subscriber also never ends.</li>
+ *   <li>The last emission to the subscriber will be the result of any bytes
+ *       sent of a final response. This ends the pipeline's life. Subsequent
+ *       responses from the application will be logged, but otherwise
+ *       ignored.</li>
  *   <li>Implicitly, the subscriber requests {@code Long.MAX_VALUE}.</li>
  *   <li>Subscriber identity is not tracked. Reuse equals duplication.</li>
  *   <li>The behavior is undefined if the subscriber throws an exception.</li>
@@ -143,7 +145,7 @@ final class ResponsePipeline implements Flow.Publisher<ResponsePipeline.Result>
          .thenApply(this::trackConnectionClose)
          .thenApply(this::trackUnsuccessful)
          .thenCompose(this::subscribeToResponse)
-         .whenComplete(this::handleChannelResult);
+         .whenComplete(this::handleResult);
     }
     
     private Response inFlight = null;
@@ -212,8 +214,8 @@ final class ResponsePipeline implements Flow.Publisher<ResponsePipeline.Result>
     
     private CompletionStage<ResponseBodySubscriber.Result> subscribeToResponse(Response rsp) {
         if (wroteFinal) {
-            throw new ResponseRejectedException(rsp, EXCHANGE_NOT_ACTIVE,
-                    "Final response already written.");
+            LOG.log(WARNING, () -> "HTTP exchange not active. This response is ignored: " + rsp);
+            return failedStage(IGNORE);
         }
         if (rsp.isInformational()) {
             if (exch.getHttpVersion().isLessThan(HTTP_1_1)) {
@@ -236,7 +238,7 @@ final class ResponsePipeline implements Flow.Publisher<ResponsePipeline.Result>
         return rbs.asCompletionStage();
     }
     
-    private void handleChannelResult(ResponseBodySubscriber.Result res, Throwable thr) {
+    private void handleResult(ResponseBodySubscriber.Result res, Throwable thr) {
         Response rsp = inFlight;
         inFlight = null;
         
@@ -246,39 +248,63 @@ final class ResponsePipeline implements Flow.Publisher<ResponsePipeline.Result>
             return;
         }
         
-        // Response is null if application's provided stage completed exceptionally
-        if (rsp != null) {
-            if (rsp.mustCloseAfterWrite()) {
-                LOG.log(DEBUG, "Response wants us to close the child, will close.");
-                chan.closeSafe();
-            } else if (rsp.mustShutdownOutputAfterWrite()) {
-                LOG.log(DEBUG, "Response wants us to shutdown output, will shutdown.");
-                chan.shutdownOutputSafe();
-                // DefaultServer will not start a new exchange
-            }
-        }
+        actOnChannelCommands(rsp);
         
         if (res != null) {
-            // Success
-            assert rsp != null;
-            LOG.log(DEBUG, () -> "Sent response (" + res.bytesWritten() + " bytes).");
-            if (wroteFinal && sawConnectionClose && chan.isOpenForWriting()) {
-                LOG.log(DEBUG, "Saw \"Connection: close\", shutting down output.");
-                chan.shutdownOutputSafe();
-            }
-            publish(rsp, res.bytesWritten(), null);
+            actOnWriteSuccess(res, rsp);
         } else {
-            // Failed
-            assert thr != null;
-            if (chan.isOpenForWriting()) {
-                // and so no bytes were written on the wire
-                wroteFinal = false;
-            }
-            publish(rsp, null, thr);
+            actOnWriteFailure(thr, rsp);
         }
         
         op.complete();
         op.run();
+    }
+    
+    private void actOnChannelCommands(Response rsp) {
+        if (rsp == null) {
+            // Application's provided stage completed exceptionally, nothing to do
+            return;
+        }
+        if (rsp.mustCloseAfterWrite()) {
+            LOG.log(DEBUG, "Response wants us to close the child, will close.");
+            chan.closeSafe();
+        } else if (rsp.mustShutdownOutputAfterWrite()) {
+            LOG.log(DEBUG, "Response wants us to shutdown output, will shutdown.");
+            chan.shutdownOutputSafe();
+            // DefaultServer will not start a new exchange
+        }
+    }
+    
+    private void actOnWriteSuccess(ResponseBodySubscriber.Result res, Response rsp) {
+        assert rsp != null;
+        LOG.log(DEBUG, () -> "Sent response (" + res.bytesWritten() + " bytes).");
+        if (wroteFinal && sawConnectionClose && chan.isOpenForWriting()) {
+            LOG.log(DEBUG, "Saw \"Connection: close\", shutting down output.");
+            chan.shutdownOutputSafe();
+        }
+        publish(rsp, res.bytesWritten(), null);
+    }
+    
+    private void actOnWriteFailure(Throwable thr, Response rsp) {
+        assert thr != null;
+        if (rsp == null) {
+            // thr originates from application
+            if (wroteFinal) {
+                LOG.log(ERROR,
+                    "Application's response stage completed exceptionally, " +
+                    "but HTTP exchange is not active. This error does not propagate anywhere.", thr);
+                // no publish
+            } else {
+                publish(null, null, thr);
+            }
+        } else {
+            // thr originates from response writer
+            if (chan.isOpenForWriting()) {
+                // and no bytes were written on the wire, rollback
+                wroteFinal = false;
+            }
+            publish(rsp, null, thr);
+        }
     }
     
     private void publish(Response rsp, Long len, Throwable thr) {

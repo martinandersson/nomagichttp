@@ -73,17 +73,13 @@ public interface ClientChannel extends Closeable, AttributeHolder
      * operation immediately, or the response will be enqueued for future
      * transmission (unbounded queue).<p>
      * 
-     * At the time of transmission, a response may be rejected if:
-     * 
-     * <ul>
-     *   <li>A final response has already been transmitted (in parts or in
-     *       whole), i.e. the HTTP exchange is no longer active.</li>
-     *   <li>The response status-code is 1XX and HTTP version used is {@literal <} 1.1.</li>
-     * </ul><p>
-     * 
-     * If the response is rejected, a {@link ResponseRejectedException} will
-     * pass through the server's chain of {@link ErrorHandler error
-     * handlers}.<p>
+     * At the time of transmission, a response may be rejected. If it is
+     * rejected because a final response has already been transmitted (in parts
+     * or in whole) - i.e. the HTTP exchange is no longer active - then the
+     * response is logged but otherwise ignored. This is the same also for
+     * exceptions that complete a response stage. Otherwise (exchange active), a
+     * {@link ResponseRejectedException} will pass through the server's error
+     * handler.<p>
      * 
      * The {@link HttpServer.Config#ignoreRejectedInformational() default server
      * behavior} is to ignore failed 1XX (Informational) responses if the reason

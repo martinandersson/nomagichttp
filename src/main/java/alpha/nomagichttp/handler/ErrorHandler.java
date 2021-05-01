@@ -31,20 +31,20 @@ import static alpha.nomagichttp.message.Responses.upgradeRequired;
 import static java.lang.System.Logger.Level.ERROR;
 
 /**
- * Handles a {@code Throwable} by translating it into an alternative response.<p>
+ * Handles a {@code Throwable}, presumably by translating it into a response as
+ * an alternative to the one that failed.<p>
  * 
  * One use case could be to retry a new execution of the request handler on
  * known and expected errors. Another use case could be to customize the
- * server's default error responses, for example by translating a {@link
- * NoRouteFoundException} into an application-specific "404 Not Found"
- * response.<p>
+ * server's default error responses.<p>
  * 
  * Many error handlers may be installed on the server. First to handle the error
  * breaks the call chain. Details follow later.<p>
  * 
- * The server will call error handlers only during the phase of the HTTP
- * exchange when there is a client waiting on a response and only if the channel
- * remains open for writing at the time of the error.<p>
+ * The server will call error handlers only during an active HTTP exchange and
+ * only if the channel remains open for writing at the time of the error. The
+ * purpose is to always provide the client with a response despite server
+ * errors.<p>
  * 
  * Specifically for:<p>
  * 
@@ -53,10 +53,11 @@ import static java.lang.System.Logger.Level.ERROR;
  * request handler invocation has returned.<p>
  * 
  * 2) Exceptions that completes exceptionally the {@code
- * CompletionStage<Response>} written to the {@link ClientChannel}.<p>
+ * CompletionStage<Response>} written to the {@link ClientChannel} if and only
+ * if the HTTP exchange is active at the time.<p>
  * 
  * 3) Exceptions signalled to the server's {@code Flow.Subscriber} of the {@code
- * Response.body()} - if and only if - the body publisher has not yet published
+ * Response.body()} if and only if the body publisher has not yet published
  * any bytebuffers before the error was signalled. It doesn't make much sense
  * trying to recover the situation after the point where a response has already
  * begun transmitting back to the client.<p>
@@ -81,8 +82,7 @@ import static java.lang.System.Logger.Level.ERROR;
  * 
  * An error handler that is unwilling to handle the exception must re-throw the
  * same throwable instance which will then propagate to the next handler,
- * eventually reaching the default error handler if no other
- * application-provided handler completed normally.<p>
+ * eventually reaching the default handler.<p>
  * 
  * If a handler throws a different throwable, then this is considered to be a
  * new error and the whole cycle is restarted.<p>
@@ -119,7 +119,7 @@ import static java.lang.System.Logger.Level.ERROR;
 public interface ErrorHandler
 {
     /**
-     * Optionally handles an exception by producing an alternative response.<p>
+     * Optionally handles an exception.<p>
      * 
      * The first two arguments ({@code Throwable} and {@code ClientChannel})
      * will always be non-null. The last two arguments ({@code Request} and
