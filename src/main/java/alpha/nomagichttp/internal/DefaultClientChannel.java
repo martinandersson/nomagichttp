@@ -30,7 +30,9 @@ final class DefaultClientChannel implements ClientChannel
     private final HttpServer server;
     private final List<Runnable> onClose;
     private final Attributes attr;
-    private ResponsePipeline pipe;
+    // Request thread will always see the updated pipe.
+    // Marked volatile only for the sake of foreign threads keeping a stale copy of the channel.
+    private volatile ResponsePipeline pipe;
     
     private volatile boolean readShutdown,
                             writeShutdown;
