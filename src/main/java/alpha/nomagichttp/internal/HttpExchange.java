@@ -10,7 +10,6 @@ import alpha.nomagichttp.message.IllegalBodyException;
 import alpha.nomagichttp.message.Request;
 import alpha.nomagichttp.route.RouteRegistry;
 
-import java.nio.channels.ClosedChannelException;
 import java.util.Collection;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
@@ -20,6 +19,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import static alpha.nomagichttp.HttpConstants.HeaderKey.CONNECTION;
 import static alpha.nomagichttp.HttpConstants.HeaderKey.EXPECT;
 import static alpha.nomagichttp.HttpConstants.Method.TRACE;
+import static alpha.nomagichttp.HttpConstants.StatusCode.ONE_HUNDRED;
 import static alpha.nomagichttp.HttpConstants.Version.HTTP_1_0;
 import static alpha.nomagichttp.HttpConstants.Version.HTTP_1_1;
 import static alpha.nomagichttp.message.Responses.continue_;
@@ -51,17 +51,17 @@ final class HttpExchange
     private final CompletableFuture<Void> result;
     
     /*
-     * No mutable field in this class are volatile or synchronized. It is
-     * assumed that the asynchronous execution facility of the CompletionStage
-     * implementation establishes a happens-before relationship. This is
-     * certainly true for JDK's CompletableFuture which uses an
+     * Most mutable fields in this class are not volatile nor synchronized. It
+     * is assumed that the asynchronous execution facility of the
+     * CompletionStage implementation establishes a happens-before relationship.
+     * This is certainly true for JDK's CompletableFuture which uses an
      * Executor/ExecutorService, or at worst, a new Thread.start() for each task.
      */
     
     private Version ver;
     private DefaultRequest request;
     private RequestHandler handler;
-    private boolean sent100c;
+    private volatile boolean sent100c;
     private ErrorResolver onError;
     
     HttpExchange(
@@ -212,7 +212,6 @@ final class HttpExchange
             !getHttpVersion().isLessThan(HTTP_1_1) &&
             request.headerContains(EXPECT, "100-continue"))
         {
-            sent100c = true;
             chan.write(continue_());
         }
     }
@@ -243,6 +242,9 @@ final class HttpExchange
                     "HTTP exchange remains active.");
             }
         } else {
+            if (res.response().statusCode() == ONE_HUNDRED) {
+                sent100c = true;
+            }
             LOG.log(DEBUG, "Response sent is not final. HTTP exchange remains active.");
         }
     }
