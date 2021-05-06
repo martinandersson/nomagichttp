@@ -10,6 +10,7 @@ import alpha.nomagichttp.message.IllegalBodyException;
 import alpha.nomagichttp.message.Request;
 import alpha.nomagichttp.route.RouteRegistry;
 
+import java.nio.channels.ClosedChannelException;
 import java.util.Collection;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
@@ -125,7 +126,13 @@ final class HttpExchange
                tryRespond100Continue(); })
            .thenRun(this::invokeRequestHandler)
            .exceptionally(thr -> {
-               handleError(thr);
+               if (cntDown.decrementAndGet() == 0) {
+                   LOG.log(WARNING,
+                       "Request handler returned exceptionally but final response already sent. " +
+                       "This error is ignored.", thr);
+               } else {
+                   handleError(thr);
+               }
                return null;
            });
     }
@@ -211,16 +218,7 @@ final class HttpExchange
     }
     
     private void invokeRequestHandler() {
-        try {
-            handler.logic().accept(request, chan);
-        } catch (Throwable t) {
-            if (cntDown.decrementAndGet() == 0) {
-                LOG.log(WARNING, "Request handler returned exceptionally but final response already sent. " +
-                                 "This error is ignored.", t);
-                return;
-            }
-            throw t;
-        }
+        handler.logic().accept(request, chan);
         if (cntDown.decrementAndGet() == 0) {
             LOG.log(DEBUG, "Request handler finished after final response. " +
                            "Preparing for a new HTTP exchange.");
@@ -240,8 +238,9 @@ final class HttpExchange
                 LOG.log(DEBUG, "Response sent is final. Preparing for a new HTTP exchange.");
                 prepareForNewExchange();
             } else {
-                LOG.log(DEBUG, "Response sent is final but request handler is still executing. " +
-                               "HTTP exchange remains active.");
+                LOG.log(DEBUG,
+                    "Response sent is final but request handler is still executing. " +
+                    "HTTP exchange remains active.");
             }
         } else {
             LOG.log(DEBUG, "Response sent is not final. HTTP exchange remains active.");
@@ -258,12 +257,14 @@ final class HttpExchange
                 }
                 // ResponsePipeline shuts down output on "Connection: close".
                 // DefaultServer will not start a new exchange if child or any stream thereof is closed.
+                LOG.log(DEBUG, "Normal end of HTTP exchange.");
                 result.complete(null);
             } else {
                 LOG.log(DEBUG,
                     // see SubscriptionAsStageOp.asCompletionStage()
-                    "Upstream error/channel fault. " +
-                    "Assuming reason and/or stacktrace was logged already.");
+                    "Request upstream/channel error. " +
+                    "Assuming reason and/or stacktrace was logged already. " +
+                    "HTTP exchange is over.");
                 result.completeExceptionally(t);
             }
         });
@@ -286,8 +287,9 @@ final class HttpExchange
             onError.resolve(unpacked);
         } else {
             LOG.log(DEBUG, () ->
-                    "HTTP exchange finished exceptionally and child channel is closed for writing. " +
-                    "Assuming reason and/or stacktrace was logged already.");
+                "Child channel is closed for writing. " +
+                "Can not resolve this error. " +
+                "HTTP exchange is over.", unpacked);
             result.completeExceptionally(unpacked);
         }
     }
