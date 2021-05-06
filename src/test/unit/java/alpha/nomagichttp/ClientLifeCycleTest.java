@@ -9,6 +9,7 @@ import java.nio.channels.Channel;
 import static alpha.nomagichttp.handler.RequestHandler.GET;
 import static alpha.nomagichttp.message.Responses.noContent;
 import static alpha.nomagichttp.testutil.TestClient.CRLF;
+import static java.util.logging.Level.FINE;
 import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
 
 /**
@@ -51,5 +52,30 @@ class ClientLifeCycleTest extends AbstractEndToEndTest
             
             awaitChildClose();
         }
+    }
+    
+    @Test
+    void closeChannelBeforeResponse() throws IOException, InterruptedException {
+        server().add("/", GET().accept((req, ch) -> {
+            ch.closeSafe();
+            ch.write(noContent());
+        }));
+        
+        Channel ch = client().openConnection();
+        try (ch) {
+            String rsp = client().writeRead("GET / HTTP/1.1" + CRLF + CRLF);
+            
+            assertThat(rsp).isEmpty();
+            
+            logRecorder().await(FINE,
+                "Child channel is closed for writing. " +
+                "Can not resolve this error. " +
+                "HTTP exchange is over.");
+            
+            // Clean close from server will cause our end to close as well
+            assertThat(ch.isOpen()).isFalse();
+        }
+        
+        // <implicit assert that no error was delivered to the error handler>
     }
 }
