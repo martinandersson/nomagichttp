@@ -20,8 +20,6 @@ public class ResponseRejectedException extends RuntimeException
      * The reason why a response was rejected.
      */
     public enum Reason {
-        // TODO: Also need to "close" exchange on channel close.
-        // TODO: Also need to "close" exchange on channel close in this branch
         /**
          * The response status-code is 1XX and HTTP version used is {@literal <} 1.1.
          */
