@@ -211,13 +211,19 @@ class ErrorHandlingTest
                 "Content-Length: 0"                  + CRLF + CRLF);
     }
     
+    // TODO: Same here as last test, assert log
     @Test
     void IllegalBodyException_inRequestFromTRACE() throws IOException {
         s = create().start();
-        s.add("/", TRACE().respond(text("Body!")));
+        s.add("/", TRACE().accept((req, ch) -> {
+            throw new AssertionError("Not invoked.");
+        }));
         
-        String res = new TestClient(s)
-                .writeRead("TRACE / HTTP/1.1" + CRLF + CRLF);
+        String res = new TestClient(s).writeRead(
+                "TRACE / HTTP/1.1"  + CRLF +
+                "Content-Length: 1" + CRLF + CRLF +
+                
+                "X");
         
         assertThat(res).isEqualTo(
                 "HTTP/1.1 400 Bad Request" + CRLF +

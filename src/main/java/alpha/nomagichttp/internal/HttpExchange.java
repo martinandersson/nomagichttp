@@ -191,7 +191,7 @@ final class HttpExchange
     
     private DefaultRequest createRequest(RequestHead h, RequestTarget t, RouteRegistry.Match m) {
         DefaultRequest r = new DefaultRequest(ver, h, t, m, bytes, chan, this::tryRespond100Continue);
-        if (r.method().equals(TRACE) && r.body().isEmpty()) {
+        if (r.method().equals(TRACE) && !r.body().isEmpty()) {
             throw new IllegalBodyException("Body in a TRACE request.", r);
         }
         return r;
