@@ -246,7 +246,7 @@ final class AnnounceToChannel
         if (b == null) {
             operation.complete();
             return;
-        } else if (b == NO_MORE || !isStreamOpen()) {
+        } else if (b == NO_MORE) {
             stop();
             operation.complete();
             return;
