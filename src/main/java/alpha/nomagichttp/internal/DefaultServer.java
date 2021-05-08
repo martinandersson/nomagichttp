@@ -335,7 +335,12 @@ public final class DefaultServer implements HttpServer
             DefaultClientChannel chan = new DefaultClientChannel(child, DefaultServer.this);
             ChannelByteBufferPublisher bytes = new ChannelByteBufferPublisher(chan);
             children.add(chan);
-            chan.onClose(() -> shutdown(chan, bytes));
+            chan.onClose(() -> {
+                children.remove(chan);
+                if (!parent.isOpen()) {
+                    tryCompleteLastChildStage();
+                }
+            });
             
             startExchange(chan, bytes);
             
@@ -354,18 +359,13 @@ public final class DefaultServer implements HttpServer
                 if (exc == null && parent.isOpen() && chan.isEverythingOpen()) {
                     startExchange(chan, bytes);
                 } else {
-                    shutdown(chan, bytes);
+                    try {
+                        bytes.close();
+                    } finally {
+                        chan.closeSafe();
+                    }
                 }
             });
-        }
-        
-        private void shutdown(DefaultClientChannel chan, ChannelByteBufferPublisher bytes) {
-            bytes.close();
-            chan.closeSafe();
-            children.remove(chan);
-            if (!parent.isOpen()) {
-                tryCompleteLastChildStage();
-            }
         }
         
         @Override

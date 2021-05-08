@@ -1,5 +1,6 @@
 package alpha.nomagichttp.internal;
 
+import alpha.nomagichttp.HttpServer;
 import alpha.nomagichttp.handler.ResponseRejectedException;
 import alpha.nomagichttp.message.Response;
 import alpha.nomagichttp.util.SeriallyRunnable;
@@ -31,7 +32,21 @@ import static java.util.concurrent.CompletableFuture.failedStage;
  * The {@code write} methods of {@link DefaultClientChannel} is a direct facade
  * for the {@code add} method declared in this class.<p>
  * 
- * For each response transmitted, the result is published to all active
+ * Core responsibilities:
+ * <ul>
+ *   <li>From a queue of responses, schedule channel write operations</li>
+ *   <li>Apply response transformations such as setting "Connection: close" if
+ *       no "Content-Length"</li>
+ *   <li>Act on response-scheduled channel commands (must-close-after-write,
+ *       "Connection: close" et cetera)</li>
+ * </ul>
+ * 
+ * In addition:
+ * <ol>
+ *   <li>Implements {@link HttpServer.Config#maxUnsuccessfulResponses()}</li>
+ * </ol>
+ * 
+ * The result of each attempt to transmit a response is published to all active
  * subscribers. If there are no active subscribers, a successful result is
  * logged on {@code DEBUG} level and errors are logged on {@code WARNING}.<p>
  * 

@@ -52,6 +52,19 @@ final class DefaultRequest implements Request
     private final OnCancelDiscardOp bodyDiscard;
     private final Attributes attributes;
     
+    /**
+     * Constructs a {@code DefaultRequest}.
+     * 
+     * @param ver HTTP version (must not be {@code null})
+     * @param head request head (must not be {@code null})
+     * @param paramsQuery if {@code null}, will cause {@code parameters()} to throw NPE
+     * @param paramsPath if {@code null}, will cause {@code parameters()} to throw NPE
+     * @param bodySource must not be {@code null}
+     * @param child must not be {@code null}
+     * @param onBodySubscription if {@code null}, no callback
+     * 
+     * @throws NullPointerException if a required argument is {@code null}
+     */
     DefaultRequest(
             Version ver,
             RequestHead head,
@@ -61,8 +74,8 @@ final class DefaultRequest implements Request
             DefaultClientChannel child,
             Runnable onBodySubscription)
     {
-        this.ver = ver;
-        this.head = head;
+        this.ver = requireNonNull(ver);
+        this.head = requireNonNull(head);
         this.paramsQuery = paramsQuery;
         this.paramsPath = paramsPath;
         
@@ -75,6 +88,7 @@ final class DefaultRequest implements Request
         final long len = contentLength(head.headers()).orElse(0);
         
         if (len <= 0) {
+            requireNonNull(bodySource);
             bodyStage   = COMPLETED;
             bodyApi     = DefaultBody.empty(headers());
             bodyDiscard = null;
@@ -157,7 +171,6 @@ final class DefaultRequest implements Request
         if (body().isEmpty()) {
             return;
         }
-        
         bodyDiscard.discardIfNoSubscriber();
     }
     
@@ -277,7 +290,7 @@ final class DefaultRequest implements Request
         private final Map<String, List<String>> q, qRaw;
         
         DefaultParameters(RouteRegistry.Match paramsPath, RequestTarget paramsQuery) {
-            p = paramsPath;
+            p = requireNonNull(paramsPath);
             q = paramsQuery.queryMapPercentDecoded();
             qRaw = paramsQuery.queryMapNotPercentDecoded();
         }

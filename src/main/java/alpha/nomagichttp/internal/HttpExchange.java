@@ -8,12 +8,17 @@ import alpha.nomagichttp.message.HttpVersionTooNewException;
 import alpha.nomagichttp.message.HttpVersionTooOldException;
 import alpha.nomagichttp.message.IllegalBodyException;
 import alpha.nomagichttp.message.Request;
+import alpha.nomagichttp.message.RequestTimeoutException;
+import alpha.nomagichttp.message.ResponseTimeoutException;
 import alpha.nomagichttp.route.RouteRegistry;
 
+import java.nio.channels.InterruptedByTimeoutException;
 import java.util.Collection;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
 import java.util.concurrent.CompletionStage;
+import java.util.concurrent.ScheduledThreadPoolExecutor;
+import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static alpha.nomagichttp.HttpConstants.HeaderKey.CONNECTION;
@@ -33,13 +38,45 @@ import static java.lang.System.Logger.Level.WARNING;
 import static java.util.Objects.requireNonNull;
 
 /**
- * Orchestrator of an HTTP exchange from request to response.
+ * Orchestrator of an HTTP exchange from request to response.<p>
+ * 
+ * Core responsibilities:
+ * <ul>
+ *   <li>Schedule a request head subscriber on the channel</li>
+ *   <li>Create request object and invoke request handler</li>
+ *   <li>Handle errors from the exchange by possibly invoking error handlers</li>
+ * </ul>
+ * 
+ * In addition:
+ * <ul>
+ *   <li>Has package-private accessors for the HTTP version and request object</li>
+ *   <li>May pre-emptively send a 100 (Continue) depending on configuration</li>
+ *   <li>Shuts down read stream if request has header "Connection: close"</li>
+ *   <li>Shuts down read stream on request timeout</li>
+ *   <li>Closes channel after response timeout</li>
+ * </ul>
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  */
 final class HttpExchange
 {
     private static final System.Logger LOG = System.getLogger(HttpExchange.class.getPackageName());
+    
+    private static final ScheduledThreadPoolExecutor SCHEDULER;
+    static {
+        (SCHEDULER = new ScheduledThreadPoolExecutor(1,
+                new DaemonThreadFactory())).
+                setRemoveOnCancelPolicy(true);
+    }
+    
+    private static final class DaemonThreadFactory implements ThreadFactory {
+        public Thread newThread(Runnable r) {
+            Thread t = new Thread(r);
+            t.setDaemon(true);
+            t.setName("NoMagicDelayScheduler");
+            return t;
+        }
+    }
     
     private final HttpServer.Config config;
     private final RouteRegistry registry;
@@ -58,6 +95,7 @@ final class HttpExchange
      * Executor/ExecutorService, or at worst, a new Thread.start() for each task.
      */
     
+    private RequestHead head;
     private Version ver;
     private DefaultRequest request;
     private RequestHandler handler;
@@ -118,7 +156,9 @@ final class HttpExchange
         pipe.subscribe(onNext(this::handlePipeResult));
         chan.usePipeline(pipe);
         
-        RequestHeadSubscriber rhs = new RequestHeadSubscriber(config.maxRequestHeadSize());
+        RequestHeadSubscriber rhs = new RequestHeadSubscriber(
+                config.maxRequestHeadSize(), config.timeoutIdleConnection(), SCHEDULER);
+        
         bytes.subscribe(rhs);
         rhs.asCompletionStage()
            .thenAccept(this::initialize)
@@ -138,6 +178,7 @@ final class HttpExchange
     }
     
     private void initialize(RequestHead h) {
+        head = h;
         RequestTarget t = RequestTarget.parse(h.requestTarget());
         
         ver = parseHttpVersion(h);
@@ -221,21 +262,19 @@ final class HttpExchange
         if (cntDown.decrementAndGet() == 0) {
             LOG.log(DEBUG, "Request handler finished after final response. " +
                            "Preparing for a new HTTP exchange.");
-            prepareForNewExchange();
+            tryPrepareForNewExchange();
         }
     }
     
     private void handlePipeResult(ResponsePipeline.Result res) {
-        /*
-         * TODO: Implement idle timeout. in this branch
-         */
-        
         if (res.error() != null) {
             handleError(res.error());
         } else if (res.response().isFinal()) {
+            // No need to tryRespond100Continue() after this point
+            sent100c = true;
             if (cntDown.decrementAndGet() == 0) {
-                LOG.log(DEBUG, "Response sent is final. Preparing for a new HTTP exchange.");
-                prepareForNewExchange();
+                LOG.log(DEBUG, "Response sent is final. May prepare for a new HTTP exchange.");
+                tryPrepareForNewExchange();
             } else {
                 LOG.log(DEBUG,
                     "Response sent is final but request handler is still executing. " +
@@ -249,11 +288,40 @@ final class HttpExchange
         }
     }
     
-    private void prepareForNewExchange() {
-        request.bodyDiscardIfNoSubscriber();
-        request.bodyStage().whenComplete((Null, t) -> {
+    private void tryPrepareForNewExchange() {
+        // Super early failure means no new HTTP exchange
+        if (head == null) {
+            // e.g. RequestHeadParseException -> 400 (Bad Request)
+            if (LOG.isLoggable(DEBUG)) {
+                if (chan.isEverythingOpen()) {
+                    LOG.log(DEBUG, "No request head parsed. Closing child channel. (end of HTTP exchange)");
+                } else {
+                    LOG.log(DEBUG, "No request head parsed. (end of HTTP exchange)");
+                }
+            }
+            chan.closeSafe();
+            result.complete(null);
+            return;
+        }
+        
+        // To have a new HTTP exchange, we must first make sure all of the request body is read
+        
+        if (!chan.isOpenForReading()) {
+            // ...nothing to drain
+            LOG.log(DEBUG, "Input stream was shut down. HTTP exchange is over.");
+            result.complete(null);
+            return;
+        }
+        
+        final DefaultRequest req = request != null ? request :
+                // e.g. NoRouteFoundException -> 404 (Not Found)
+                // (use local request obj without API support for parameters)
+                new DefaultRequest(ver, head, null, null, bytes, chan, null);
+        
+        req.bodyDiscardIfNoSubscriber();
+        req.bodyStage().whenComplete((Null, t) -> {
             if (t == null) {
-                if (request.headerContains(CONNECTION, "close") && chan.isOpenForReading()) {
+                if (req.headerContains(CONNECTION, "close") && chan.isOpenForReading()) {
                     LOG.log(DEBUG, "Request has \"Connection: close\", shutting down input.");
                     chan.shutdownInputSafe();
                 }
@@ -279,14 +347,30 @@ final class HttpExchange
     private synchronized void handleError(Throwable exc) {
         final Throwable unpacked = unpackCompletionException(exc);
         
-        if (unpacked instanceof ClientAbortedException) {
+        if (unpacked instanceof RequestTimeoutException) {
+            LOG.log(DEBUG, "Request timed out, shutting down input stream.");
+            // HTTP exchange will not continue after response
+            chan.shutdownInputSafe();
+        } else if (unpacked instanceof InterruptedByTimeoutException) {
+            LOG.log(DEBUG, "Low-level write timed out. Closing channel. (end of HTTP exchange)", unpacked);
+            chan.closeSafe();
+            result.completeExceptionally(unpacked);
+            return;
+        } else if (unpacked instanceof ClientAbortedException) {
             LOG.log(DEBUG, "Client aborted the HTTP exchange.");
             result.completeExceptionally(unpacked);
-        } else if (chan.isOpenForWriting())  {
+            return;
+        }
+        
+        if (chan.isOpenForWriting())  {
             if (onError == null) {
                 onError = new ErrorResolver();
             }
             onError.resolve(unpacked);
+            if (unpacked instanceof ResponseTimeoutException && chan.isAnythingOpen()) {
+                LOG.log(DEBUG, "Earlier response timed out. Closing channel.");
+                chan.closeSafe();
+            }
         } else {
             LOG.log(DEBUG, () ->
                 "Child channel is closed for writing. " +

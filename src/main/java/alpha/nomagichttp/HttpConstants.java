@@ -916,10 +916,9 @@ public final class HttpConstants {
         public static final int FOUR_HUNDRED_SEVEN = 407;
         
         /**
-         * {@value} {@value ReasonPhrase#REQUEST_TIMEOUT}.<p>
+         * {@value} {@value ReasonPhrase#REQUEST_TIMEOUT}.
          * 
-         * TODO: write something
-         * 
+         * @see HttpServer.Config#timeoutIdleConnection()
          * @see <a href="https://tools.ietf.org/html/rfc7231#section-6.5.7">RFC 7231 §6.5.7</a>
          */
         public static final int FOUR_HUNDRED_EIGHT = 408;
@@ -1137,10 +1136,9 @@ public final class HttpConstants {
         public static final int FIVE_HUNDRED_TWO = 502;
         
         /**
-         * {@value} {@value ReasonPhrase#SERVICE_UNAVAILABLE}.<p>
+         * {@value} {@value ReasonPhrase#SERVICE_UNAVAILABLE}.
          * 
-         * TODO: write something
-         * 
+         * @see HttpServer.Config#timeoutIdleConnection()
          * @see <a href="https://tools.ietf.org/html/rfc7231#section-6.6.4">RFC 7731 §6.6.4</a>
          */
         public static final int FIVE_HUNDRED_THREE = 503;

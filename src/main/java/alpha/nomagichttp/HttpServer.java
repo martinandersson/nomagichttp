@@ -8,7 +8,9 @@ import alpha.nomagichttp.message.HttpVersionTooOldException;
 import alpha.nomagichttp.message.IllegalBodyException;
 import alpha.nomagichttp.message.MaxRequestHeadSizeExceededException;
 import alpha.nomagichttp.message.Request;
+import alpha.nomagichttp.message.RequestTimeoutException;
 import alpha.nomagichttp.message.Response;
+import alpha.nomagichttp.message.ResponseTimeoutException;
 import alpha.nomagichttp.message.Responses;
 import alpha.nomagichttp.route.DefaultRouteRegistry;
 import alpha.nomagichttp.route.HandlerCollisionException;
@@ -21,6 +23,7 @@ import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
 import java.nio.channels.AsynchronousServerSocketChannel;
+import java.time.Duration;
 import java.util.concurrent.CompletionStage;
 import java.util.function.BiConsumer;
 
@@ -668,7 +671,7 @@ public interface HttpServer
         
         /**
          * Ignore rejected 1XX (Informational) responses when they fail to be
-         * sent to an HTTP/1.0 client.<p>
+         * sent to a HTTP/1.0 client.<p>
          * 
          * The default value is {@code true} and the application can safely
          * write 1XX (Informational) responses to the channel without concern
@@ -712,7 +715,8 @@ public interface HttpServer
          * anything about this particular protocol feature.<p>
          * 
          * Independent of the configured value, the server never attempts to
-         * automatically send a 100 (Continue) response to a HTTP/1.0 client (
+         * automatically send a 100 (Continue) response to a HTTP/1.0 client
+         * since HTTP/1.0 does not support interim responses (
          * <a href="https://tools.ietf.org/html/rfc7231#section-5.1.1">RFC 7231 §5.1.1</a>).<p>
          * 
          * The configuration value is polled once on each new request.
@@ -727,6 +731,69 @@ public interface HttpServer
          */
         default boolean immediatelyContinueExpect100() {
             return false;
+        }
+        
+        /**
+         * Returns the max duration allowed for idle connections, after which,
+         * the connection will be closed.<p>
+         * 
+         * A timeout while a request is expected or in-flight will cause the
+         * server to throw a {@link RequestTimeoutException}, translated by the
+         * {@link ErrorHandler#DEFAULT default error handler} to a 408 (Request
+         * Timeout).<p>
+         * 
+         * A timeout from waiting on a response will cause the server to throw a
+         * {@link ResponseTimeoutException}, translated by the default error
+         * handler to a 503 (Service Unavailable). <p>
+         * 
+         * The response timer starts when the request body completes and so the
+         * response will never timeout while a request is still transferring.
+         * The response timeout is reset for each response given to the {@link
+         * ClientChannel} (after possible stage completion) and does no longer
+         * apply after the final response. A request processor that needs more
+         * time to produce a response can reset the timer by sending a 1XX
+         * (Informational) interim response.<p>
+         * 
+         * The request timer is not reset after each byte received on the wire.
+         * The timer is only reset after each server input buffer has been
+         * filled. This means that an extremely slow client may timeout even
+         * though the connection is technically still making progress. This is
+         * by design, as it improves greatly the server performance and also
+         * works as an automatic protection against slow clients hogging server
+         * connections.<p>
+         * 
+         * The default timeout is one and a half minute and the
+         * server's buffer size is 16 384 bytes. This computes to a
+         * <i>possible</i> (dependent on request size, and so on) timeout for
+         * clients consistently sending data equal to or slower than 1.456 kb/s
+         * (0.001456 Mbit/s) for one and a half minute. This calculated minimum
+         * rate is well within the transfer rate of cellular networks even older
+         * than 2G (10-15% of Cellular Digital Packet Data rate). But if the
+         * application's clients are expected to be on Mars, then perhaps the
+         * timeout ought to be increased.<p>
+         * 
+         * Analogous to the built-in protection against slow clients when
+         * receiving data, a special low-level timeout will cause the underlying
+         * channel write operation to abort for response body bytebuffers with
+         * remaining bytes equal to or less than the server's input buffer size
+         * if not all of the bytebuffer was sent before the duration elapses.
+         * The difference from {@code ResponseTimeoutException} is that this
+         * error will not be delivered to the error handler. Instead, it will be
+         * logged and subsequently close the connection.<p>
+         * 
+         * A response bytebuffer of greater size than the server's input buffer
+         * size does not schedule the low-level write timeout. In theory, the
+         * write operation sending such a bytebuffer could go on forever. A
+         * future configuration value may be added for explicitly setting the
+         * connection's minimum acceptable transfer rate.
+         * 
+         * @implSpec
+         * The default implementation returns {@code Duration.ofSeconds(90)}.
+         * 
+         * @return a max allowed duration for idle connections
+         */
+        default Duration timeoutIdleConnection() {
+            return Duration.ofSeconds(90);
         }
     }
 }

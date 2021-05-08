@@ -11,7 +11,9 @@ import alpha.nomagichttp.message.MaxRequestHeadSizeExceededException;
 import alpha.nomagichttp.message.MediaTypeParseException;
 import alpha.nomagichttp.message.Request;
 import alpha.nomagichttp.message.RequestHeadParseException;
+import alpha.nomagichttp.message.RequestTimeoutException;
 import alpha.nomagichttp.message.Response;
+import alpha.nomagichttp.message.ResponseTimeoutException;
 import alpha.nomagichttp.message.Responses;
 import alpha.nomagichttp.route.NoHandlerFoundException;
 import alpha.nomagichttp.route.NoRouteFoundException;
@@ -27,6 +29,8 @@ import static alpha.nomagichttp.message.Responses.httpVersionNotSupported;
 import static alpha.nomagichttp.message.Responses.internalServerError;
 import static alpha.nomagichttp.message.Responses.notFound;
 import static alpha.nomagichttp.message.Responses.notImplemented;
+import static alpha.nomagichttp.message.Responses.requestTimeout;
+import static alpha.nomagichttp.message.Responses.serviceUnavailable;
 import static alpha.nomagichttp.message.Responses.upgradeRequired;
 import static java.lang.System.Logger.Level.ERROR;
 
@@ -285,6 +289,18 @@ public interface ErrorHandler
      *     <td> No response, the failed interim response is ignored. </td>
      *   </tr>
      *   <tr>
+     *     <th scope="row"> {@link RequestTimeoutException} </th>
+     *     <td> None </td>
+     *     <td> No </td>
+     *     <td> {@link Responses#requestTimeout()}</td>
+     *   </tr>
+     *   <tr>
+     *     <th scope="row"> {@link ResponseTimeoutException} </th>
+     *     <td> None </td>
+     *     <td> Yes </td>
+     *     <td> {@link Responses#serviceUnavailable()}</td>
+     *   </tr>
+     *   <tr>
      *     <th scope="row"> <i>{@code Everything else}</i> </th>
      *     <td> None </td>
      *     <td> Yes </td>
@@ -337,6 +353,11 @@ public interface ErrorHandler
                 log(thr);
                 res = internalServerError();
             }
+        } catch (RequestTimeoutException e) {
+            res = requestTimeout();
+        } catch (ResponseTimeoutException e) {
+            log(thr);
+            res = serviceUnavailable();
         } catch (Throwable unknown) {
             log(thr);
             res = internalServerError();

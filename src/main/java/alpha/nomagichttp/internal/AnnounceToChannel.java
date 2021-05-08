@@ -1,14 +1,15 @@
 package alpha.nomagichttp.internal;
 
+import alpha.nomagichttp.HttpServer;
 import alpha.nomagichttp.util.IOExceptions;
 import alpha.nomagichttp.util.SeriallyRunnable;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.nio.channels.InterruptedByTimeoutException;
+import java.time.Duration;
 import java.util.Deque;
-import java.util.Queue;
 import java.util.concurrent.ConcurrentLinkedDeque;
-import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
@@ -20,6 +21,7 @@ import static java.lang.System.Logger.Level.DEBUG;
 import static java.lang.System.Logger.Level.ERROR;
 import static java.util.Locale.ROOT;
 import static java.util.Objects.requireNonNull;
+import static java.util.concurrent.TimeUnit.NANOSECONDS;
 
 /**
  * A service used to {@link #announce(ByteBuffer) announce} the availability of
@@ -45,6 +47,11 @@ import static java.util.Objects.requireNonNull;
  * The {@link WhenDone#accept(DefaultClientChannel, long, Throwable) whenDone}
  * callback executes exactly-once whenever the last pending operation
  * completes.<p>
+ * 
+ * In write mode, the service will self-{@link #stop(Throwable)} with an {@link
+ * InterruptedByTimeoutException} on timeout for applicable bytebuffers.
+ * Low-level reads never time out (by this class). See {@link
+ * HttpServer.Config#timeoutIdleConnection}<p>
  * 
  * Please note that the responsibility of this class is to manage a particular
  * type of channel <i>operations</i> (read or write) for as long as the service
@@ -77,14 +84,15 @@ final class AnnounceToChannel
             Consumer<? super ByteBuffer> onComplete,
             WhenDone whenDone)
     {
-        return new AnnounceToChannel(Mode.READ, source, onComplete, whenDone);
+        return new AnnounceToChannel(Mode.READ, source, onComplete, whenDone, null);
     }
     
     static AnnounceToChannel write(
             DefaultClientChannel destination,
-            WhenDone whenDone)
+            WhenDone whenDone,
+            Duration timeout)
     {
-        return new AnnounceToChannel(Mode.WRITE, destination, null, whenDone);
+        return new AnnounceToChannel(Mode.WRITE, destination, null, whenDone, timeout);
     }
     
     /**
@@ -117,10 +125,11 @@ final class AnnounceToChannel
     private final Mode mode;
     private final DefaultClientChannel channel;
     private final Consumer<? super ByteBuffer> onComplete;
+    private final long timeoutNs;
     
     private final SeriallyRunnable operation;
     private final Handler handler;
-    private final Queue<ByteBuffer> buffers;
+    private final Deque<ByteBuffer> buffers;
     private final AtomicReference<Throwable> state;
     
     private WhenDone whenDone;
@@ -130,17 +139,19 @@ final class AnnounceToChannel
             Mode mode,
             DefaultClientChannel channel,
             Consumer<? super ByteBuffer> onComplete,
-            WhenDone whenDone)
+            WhenDone whenDone,
+            Duration timeout)
     {
         this.mode       = requireNonNull(mode);
         this.channel    = requireNonNull(channel);
         this.onComplete = onComplete != null ? onComplete : ignored -> {};
         this.whenDone   = requireNonNull(whenDone);
+        // with nanos, no further unit conversions in JDK's ScheduledThreadPoolExecutor
+        this.timeoutNs  = mode == Mode.READ ? -1 : timeout.toNanos();
         
         this.operation = new SeriallyRunnable(this::pollAndInitiate, true);
         this.handler   = new Handler();
-        this.buffers   = mode == Mode.READ ?
-                new ConcurrentLinkedQueue<>() : new ConcurrentLinkedDeque<>();
+        this.buffers   = new ConcurrentLinkedDeque<>();
         
         this.byteCount = 0;
         this.state = new AtomicReference<>(RUNNING);
@@ -204,11 +215,13 @@ final class AnnounceToChannel
      * already.<p>
      * 
      * If this method returns {@code true}, then the specified exception is what
-     * will be delivered to the {@code whenDone} callback. In addition, similar
-     * to a Java try-with-resources statement; if an ongoing asynchronous
-     * operation completes exceptionally, the channel-related error will be
-     * added as <i>suppressed</i> but does not stop the original exception from
-     * being propagated.
+     * will be delivered to the {@code whenDone} callback.<p>
+     * 
+     * Similar to a Java try-with-resources statement; if an ongoing
+     * asynchronous operation completes exceptionally and the exception fails to
+     * be marked for delivery to the {@code whenDone} callback, then the error
+     * will be added as <i>suppressed</i>. It does not stop the original
+     * exception from being propagated.
      * 
      * @param t a throwable
      * 
@@ -252,11 +265,21 @@ final class AnnounceToChannel
             return;
         }
         
+        var ch = channel.getDelegateNoProxy();
         try {
             switch (mode) {
-                case READ:  channel.getDelegateNoProxy().read( b, b, handler); break;
-                case WRITE: channel.getDelegateNoProxy().write(b, b, handler); break;
-                default:    throw new UnsupportedOperationException("What is this?: " + mode);
+                case READ:
+                    ch.read(b, b, handler);
+                    break;
+                case WRITE:
+                    if (b.remaining() > ChannelByteBufferPublisher.BUF_SIZE) {
+                        ch.write(b, b, handler);
+                    } else {
+                        ch.write(b, timeoutNs, NANOSECONDS, b, handler);
+                    }
+                    break;
+                default:
+                    throw new UnsupportedOperationException("What is this?: " + mode);
             }
         } catch (Throwable t) {
             handler.failed(t, null);
@@ -301,8 +324,9 @@ final class AnnounceToChannel
             
             if (r == -1) {
                 assert mode == Mode.READ;
-                LOG.log(DEBUG, "End of stream; other side must have closed. Will close channel's input stream.");
-                closeStream(); // <-- will cause stop() to be called next run
+                LOG.log(DEBUG, "End of stream. Will close channel's input stream.");
+                closeStream();
+                buffers.addFirst(NO_MORE); // <-- will cause stop() to be called next run
                 buf = EOS;
             } else {
                 try {
@@ -317,7 +341,7 @@ final class AnnounceToChannel
             } else if (buf.hasRemaining()) {
                 assert mode == Mode.WRITE;
                 LOG.log(DEBUG, () -> mode + " operation didn't read all of the buffer, adding back as head of queue.");
-                ((Deque<ByteBuffer>) buffers).addFirst(buf);
+                buffers.addFirst(buf);
             }
             
             onComplete.accept(buf);

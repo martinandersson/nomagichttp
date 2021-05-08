@@ -13,11 +13,15 @@ import static alpha.nomagichttp.HttpConstants.HeaderKey.CONTENT_LENGTH;
 import static alpha.nomagichttp.HttpConstants.HeaderKey.CONTENT_TYPE;
 import static alpha.nomagichttp.HttpConstants.HeaderKey.UPGRADE;
 import static alpha.nomagichttp.HttpConstants.ReasonPhrase.HTTP_VERSION_NOT_SUPPORTED;
+import static alpha.nomagichttp.HttpConstants.ReasonPhrase.REQUEST_TIMEOUT;
+import static alpha.nomagichttp.HttpConstants.ReasonPhrase.SERVICE_UNAVAILABLE;
 import static alpha.nomagichttp.HttpConstants.ReasonPhrase.UPGRADE_REQUIRED;
 import static alpha.nomagichttp.HttpConstants.StatusCode.FIVE_HUNDRED;
 import static alpha.nomagichttp.HttpConstants.StatusCode.FIVE_HUNDRED_FIVE;
 import static alpha.nomagichttp.HttpConstants.StatusCode.FIVE_HUNDRED_ONE;
+import static alpha.nomagichttp.HttpConstants.StatusCode.FIVE_HUNDRED_THREE;
 import static alpha.nomagichttp.HttpConstants.StatusCode.FOUR_HUNDRED;
+import static alpha.nomagichttp.HttpConstants.StatusCode.FOUR_HUNDRED_EIGHT;
 import static alpha.nomagichttp.HttpConstants.StatusCode.FOUR_HUNDRED_FOUR;
 import static alpha.nomagichttp.HttpConstants.StatusCode.FOUR_HUNDRED_THIRTEEN;
 import static alpha.nomagichttp.HttpConstants.StatusCode.FOUR_HUNDRED_TWENTY_SIX;
@@ -333,6 +337,36 @@ public final class Responses
                  .header(CONTENT_LENGTH, "0")
                  .mustCloseAfterWrite(true)
                  .build();
+    }
+    
+    /**
+     * Returns a 408 (Request Timeout) response with no body.<p>
+     * 
+     * The header "Connection: close" will be set.
+     * 
+     * @return  a 408 (Request Timeout) response
+     * @see     StatusCode#FOUR_HUNDRED_EIGHT
+     */
+    public static Response requestTimeout() {
+        return builder(FOUR_HUNDRED_EIGHT, REQUEST_TIMEOUT)
+                .header(CONTENT_LENGTH, "0")
+                .header(CONNECTION, "close")
+                .build();
+    }
+    
+    /**
+     * Returns a 503 (Service Unavailable) response with no body.<p>
+     * 
+     * The header "Connection: close" will be set.
+     * 
+     * @return  a 503 (Service Unavailable) response
+     * @see     StatusCode#FIVE_HUNDRED_THREE
+     */
+    public static Response serviceUnavailable() {
+        return builder(FIVE_HUNDRED_THREE, SERVICE_UNAVAILABLE)
+                .header(CONTENT_LENGTH, "0")
+                .header(CONNECTION, "close")
+                .build();
     }
     
     /**

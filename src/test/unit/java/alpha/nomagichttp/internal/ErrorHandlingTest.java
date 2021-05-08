@@ -13,6 +13,7 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
+import java.time.Duration;
 import java.util.List;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -27,6 +28,7 @@ import static alpha.nomagichttp.message.Responses.text;
 import static alpha.nomagichttp.testutil.TestClient.CRLF;
 import static alpha.nomagichttp.util.BetterBodyPublishers.ofString;
 import static java.lang.System.Logger.Level.ALL;
+import static java.time.Duration.ofMillis;
 import static java.util.concurrent.CompletableFuture.failedFuture;
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -268,4 +270,27 @@ class ErrorHandlingTest
             
             "Done!");
     }
+    
+    @Test
+    void RequestTimeoutException_duringHead() throws IOException {
+        HttpServer.Config lowTimeout = new HttpServer.Config(){
+            @Override public Duration timeoutIdleConnection() {
+                return ofMillis(1);
+            }
+        };
+        
+        s = create(lowTimeout).start();;
+        
+        String res = new TestClient(s)
+                // Server waits for CRLF + CRLF, but times out instead
+                .writeRead("GET / HTTP...");
+        
+        assertThat(res).isEqualTo(
+            "HTTP/1.1 408 Request Timeout" + CRLF +
+            "Content-Length: 0"            + CRLF +
+            "Connection: close"            + CRLF + CRLF);
+        
+        // TODO: When we extend AbstractEndToEndTest; also assert log
+    }
+    
 }

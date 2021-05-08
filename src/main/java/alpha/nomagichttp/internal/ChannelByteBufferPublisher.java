@@ -36,11 +36,11 @@ final class ChannelByteBufferPublisher implements Flow.Publisher<DefaultPooledBy
     // TODO: Repeated on several occurrences in code base; DRY
     private static final String CLOSE_MSG = " Will close the channel's read stream.";
     
-    private static final int
-            /** Number of bytebuffers in pool. */
-            BUF_COUNT = 5,
-            /** Size of each pooled bytebuffer (same as jdk.internal.net.http.common.Utils.DEFAULT_BUFSIZE). */
-            BUF_SIZE = 16 * 1_024;
+    /** Number of bytebuffers in pool. */
+    private static final int BUF_COUNT = 5;
+    
+    /** Size of each pooled bytebuffer (same as jdk.internal.net.http.common.Utils.DEFAULT_BUFSIZE). */
+    /* package-private */ static final int BUF_SIZE = 16 * 1_024;
     
     /*
      * Works like this:

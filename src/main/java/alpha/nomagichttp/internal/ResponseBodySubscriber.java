@@ -74,7 +74,9 @@ final class ResponseBodySubscriber implements SubscriberAsStage<ByteBuffer, Resu
         this.resp   = requireNonNull(resp);
         this.exch   = requireNonNull(exch);
         this.result = new CompletableFuture<>();
-        this.ch     = AnnounceToChannel.write(ch, this::afterChannelFinished);
+        this.ch     = AnnounceToChannel.write(ch,
+                this::afterChannelFinished,
+                ch.getServer().getConfig().timeoutIdleConnection());
     }
     
     /**

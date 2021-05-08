@@ -14,10 +14,12 @@ import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
 import java.net.http.HttpHeaders;
+import java.time.Duration;
 import java.util.List;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Flow;
+import java.util.concurrent.ScheduledThreadPoolExecutor;
 import java.util.concurrent.TimeoutException;
 
 import static alpha.nomagichttp.testutil.Assertions.assertFails;
@@ -51,7 +53,8 @@ class RequestHeadSubscriberTest
             DefaultClientChannel chan = new DefaultClientChannel(
                     SERVER.accept(), mock(HttpServer.class));
             Flow.Publisher<DefaultPooledByteBufferHolder> bytes = new ChannelByteBufferPublisher(chan);
-            RequestHeadSubscriber rhp = new RequestHeadSubscriber(MAX_VALUE);
+            RequestHeadSubscriber rhp = new RequestHeadSubscriber(
+                    MAX_VALUE, Duration.ofDays(99), mock(ScheduledThreadPoolExecutor.class));
             bytes.subscribe(rhp);
             testee = rhp.asCompletionStage();
         }
