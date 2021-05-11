@@ -20,8 +20,8 @@ import java.util.concurrent.Flow;
  * operator's business logic.
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
- * 
  * @param <T> type of item to publish
+ * @see alpha.nomagichttp.internal
  */
 abstract class AbstractOp<T> extends AbstractUnicastPublisher<T>
 {

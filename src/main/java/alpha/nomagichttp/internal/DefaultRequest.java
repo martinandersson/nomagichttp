@@ -29,7 +29,6 @@ import java.util.function.BiFunction;
 import java.util.stream.Stream;
 
 import static alpha.nomagichttp.internal.AtomicReferences.lazyInit;
-import static alpha.nomagichttp.internal.TimeoutOperator.timeoutSubscription;
 import static alpha.nomagichttp.util.Headers.contentLength;
 import static alpha.nomagichttp.util.Headers.contentType;
 import static java.lang.System.Logger.Level.DEBUG;
@@ -105,7 +104,7 @@ final class DefaultRequest implements Request
             bodyDiscard = null;
         } else {
             var bounded = new LengthLimitedOp(len, bodySource);
-            var timeOut = timeoutSubscription(bounded, timeout, () -> {
+            var timeOut = new TimeoutOp.Flow<>(bounded, timeout, () -> {
                 if (LOG.isLoggable(DEBUG) && child.isOpenForReading()) {
                     LOG.log(DEBUG, "Request body timed out, shutting down child channel's read stream.");
                 }
