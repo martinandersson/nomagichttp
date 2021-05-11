@@ -5,12 +5,13 @@ import java.util.concurrent.Flow;
 /**
  * Transforms a semi-complex web of inter-related {@code Flow.Processor}
  * components into a set of optionally overridable methods for the concrete
- * and non-reusable operator; {@code onUpstreamNext()}, {@code
- * onDownstreamRequest()} and so forth.<p>
+ * and non-reusable operator; {@code fromUpstreamNext()}, {@code
+ * fromDownstreamRequest()} and so forth.<p>
  * 
  * The default behavior of each method is to pass the signal through as-is. An
  * operator should obviously override at least one of these methods in order to
- * attach its operator-specific feature.<p>
+ * attach its operator-specific feature. To propagate the signal forward, call
+ * super.<p>
  * 
  * Although this class adds no logic or behavior and could be put into question
  * why it exists, the alternative would be for each operator to copy-paste a

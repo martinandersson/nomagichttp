@@ -6,8 +6,8 @@ import alpha.nomagichttp.handler.RequestHandler;
 import alpha.nomagichttp.message.Response;
 import alpha.nomagichttp.message.Responses;
 import alpha.nomagichttp.route.NoRouteFoundException;
-import alpha.nomagichttp.testutil.TestClient;
 import alpha.nomagichttp.testutil.Logging;
+import alpha.nomagichttp.testutil.TestClient;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -15,6 +15,8 @@ import org.junit.jupiter.api.Test;
 import java.io.IOException;
 import java.time.Duration;
 import java.util.List;
+import java.util.concurrent.ArrayBlockingQueue;
+import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Supplier;
@@ -22,14 +24,18 @@ import java.util.function.Supplier;
 import static alpha.nomagichttp.HttpServer.create;
 import static alpha.nomagichttp.handler.RequestHandler.GET;
 import static alpha.nomagichttp.handler.RequestHandler.HEAD;
+import static alpha.nomagichttp.handler.RequestHandler.POST;
 import static alpha.nomagichttp.handler.RequestHandler.TRACE;
 import static alpha.nomagichttp.message.Responses.processing;
 import static alpha.nomagichttp.message.Responses.text;
 import static alpha.nomagichttp.testutil.TestClient.CRLF;
+import static alpha.nomagichttp.testutil.TestSubscribers.onError;
 import static alpha.nomagichttp.util.BetterBodyPublishers.ofString;
 import static java.lang.System.Logger.Level.ALL;
 import static java.time.Duration.ofMillis;
 import static java.util.concurrent.CompletableFuture.failedFuture;
+import static java.util.concurrent.TimeUnit.MILLISECONDS;
+import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
@@ -37,7 +43,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  */
-// Rename to ErrorEndToEndTest
+// Rename to ErrorEndToEndTest and extend AbstractEndToEndTest
 class ErrorHandlingTest
 {
     HttpServer s;
@@ -272,14 +278,17 @@ class ErrorHandlingTest
     }
     
     @Test
-    void RequestTimeoutException_duringHead() throws IOException {
-        HttpServer.Config lowTimeout = new HttpServer.Config(){
+    void RequestHeadTimeoutException() throws IOException {
+        // Return uber low timeout on the first poll, i.e. for the request head,
+        // but switch to default timeout for request body and response.
+        HttpServer.Config lowHeadTimeout = new HttpServer.Config() {
+            final AtomicInteger pollCnt = new AtomicInteger(0);
             @Override public Duration timeoutIdleConnection() {
-                return ofMillis(1);
+                return pollCnt.incrementAndGet() == 1 ? ofMillis(1) : HttpServer.Config.super.timeoutIdleConnection();
             }
         };
         
-        s = create(lowTimeout).start();;
+        s = create(lowHeadTimeout).start();
         
         String res = new TestClient(s)
                 // Server waits for CRLF + CRLF, but times out instead
@@ -290,7 +299,53 @@ class ErrorHandlingTest
             "Content-Length: 0"            + CRLF +
             "Connection: close"            + CRLF + CRLF);
         
-        // TODO: When we extend AbstractEndToEndTest; also assert log
+        // TODO: When we extend AbstractEndToEndTest
+        //         1) poll and assert RequestHeadTimeoutException
+        //         2) assert log
     }
     
+    @Test
+    void RequestBodyTimeoutException_caughtByServer() throws IOException, InterruptedException {
+        HttpServer.Config lowBodyTimeout = new HttpServer.Config() {
+            final AtomicInteger pollCnt = new AtomicInteger(0);
+            @Override public Duration timeoutIdleConnection() {
+                return pollCnt.incrementAndGet() == 2 ? ofMillis(1) : HttpServer.Config.super.timeoutIdleConnection();
+            }
+        };
+        
+        final BlockingQueue<Throwable> appErr = new ArrayBlockingQueue<>(1);
+        s = create(lowBodyTimeout)
+                // The async timeout, even though instant in this case, does
+                // not abort the eminent request handler invocation.
+                .add("/", POST().accept((req, ch) -> {
+                    // TODO: When extending AbstractEndToEndTest,
+                    //       poll and await RequestBodyTimeoutException instead of this
+                    try {
+                        MILLISECONDS.sleep(100); // <-- has to be significant, but shall be removed soon
+                    } catch (InterruptedException e) {
+                        appErr.add(e);
+                        return;
+                    }
+                    // or body().toText().exceptionally(), doesn't matter
+                    req.body().subscribe(onError(appErr::add));
+                }))
+                .start();
+        
+        String res = new TestClient(s).writeRead(
+                "POST / HTTP/1.1"   + CRLF +
+                "Content-Length: 2" + CRLF + CRLF +
+                
+                "1");
+        
+        assertThat(res).isEqualTo(
+            "HTTP/1.1 408 Request Timeout" + CRLF +
+            "Content-Length: 0"            + CRLF +
+            "Connection: close"            + CRLF + CRLF);
+        
+        assertThat(appErr.poll(3, SECONDS))
+                .isExactlyInstanceOf(IllegalStateException.class)
+                .hasMessage("Publisher was already subscribed to and is not reusable.");
+        
+        // TODO: When we extend AbstractEndToEndTest, assert log
+    }
 }

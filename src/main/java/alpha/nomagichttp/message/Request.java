@@ -445,8 +445,8 @@ public interface Request extends HeaderHolder, AttributeHolder
      * IllegalStateException}.<p>
      * 
      * And, it does not matter if a {@code Flow.Subscription} is immediately
-     * cancelled with or without actually consuming any bytes (application is
-     * assumed to ignore the body, followed by a server-side discard of it).<p>
+     * cancelled with or without actually consuming any bytes. Subscription
+     * cancellation will cause the body to be discarded.<p>
      * 
      * Some utility methods such as {@code toText()} cache the result and will
      * return the same stage on future invocations.<p>
@@ -471,12 +471,14 @@ public interface Request extends HeaderHolder, AttributeHolder
      * thread wherever warranted.<p>
      * 
      * In general, high-level exception types - in particular, when documented -
-     * does not close the underlying channel's read stream and so the
-     * application can choose to recover from them. The opposite is true for
-     * unexpected errors, in particular, errors that originate from the
-     * channel's read operation. The safest bet for an application when
-     * attempting error recovery is to always check first if {@link
-     * ClientChannel#isOpenForReading() theClientChannel.isOpenForReading()}.
+     * occurs without a real subscription and will leave the channel read stream
+     * open. The application can generally attempt a new operation to recover
+     * the body (e.g. {@code toText() >} {@code IllegalCharsetNameException}).
+     * Unexpected errors - in particular, errors that originate from the
+     * channel's read operation - have used up a real subscription and also
+     * closed the read stream (e.g. {@code RequestBodyTimeoutException}). Before
+     * attempting to recover the body, always check first if the {@link
+     * ClientChannel#isOpenForReading()}.
      * 
      * 
      * <h2>Subscribing to bytes with a {@code Flow.Subscriber}</h2>
@@ -514,7 +516,7 @@ public interface Request extends HeaderHolder, AttributeHolder
      * The subscriber may request/demand any number of bytebuffers, but will
      * only receive the next bytebuffer after the previous one has been
      * released. So, awaiting more buffers before releasing old ones will
-     * inevitably halt progress.<p>
+     * inevitably result in a {@link RequestBodyTimeoutException}.<p>
      * 
      * For the Body API to support concurrent processing of many
      * bytebuffers without the risk of adding unnecessary delays or blockages,
@@ -535,14 +537,16 @@ public interface Request extends HeaderHolder, AttributeHolder
      * at a time to {@link AsynchronousByteChannel}, releasing each in the
      * completion handler.<p>
      * 
-     * Given how only one bytebuffer at a time is published, then there's really
-     * no difference between requesting {@code Long.MAX_VALUE} versus requesting
+     * Given how only one bytebuffer at a time is published then there's no
+     * difference between requesting {@code Long.MAX_VALUE} versus requesting
      * one at a time. Unfortunately, the
      * <a href="https://github.com/reactive-streams/reactive-streams-jvm/blob/v1.0.3/README.md">
      * Reactive Streams</a> calls the latter approach an "inherently inefficient
      * 'stop-and-wait' protocol". In our context, this is wrong. The bytebuffers
      * are pooled and cached upstream already. Requesting a bytebuffer is
-     * essentially the same as polling a stupidly fast queue of buffers.<p>
+     * essentially the same as polling a stupidly fast queue of buffers. The
+     * advantage of requesting {@code Long.MAX_VALUE} is implementation
+     * simplicity.<p>
      * 
      * The default implementation uses <i>direct</i> bytebuffers in order to
      * support "zero-copy" transfers. I.e., no data is moved into Java heap
@@ -553,28 +557,27 @@ public interface Request extends HeaderHolder, AttributeHolder
      * <h3>The HTTP exchange and body discarding</h3>
      * 
      * The HTTP exchange is considered done as soon as 1) the request handler
-     * invocation has returned and both of the application's request body
-     * subscription and the server's final response body subscription have
-     * completed. Not until then will the next HTTP message-exchange commence on
-     * the same channel.<p>
+     * invocation has returned, and 2) the request body subscription completes,
+     * and 3) the final response body subscription completes. Not until then
+     * will the next HTTP message-exchange commence on the same channel.<p>
      * 
-     * This means that a request body subscriber must ensure his subscription
-     * runs all the way to the end or is cancelled. Subscribing to the body but
-     * never completing the subscription may lead to a progress halt for the
-     * underlying channel (there is no timeout in the NoMagicHTTP library
-     * code).<p>
+     * This means that a request body subscriber should ensure his subscription
+     * runs all the way to the end or is cancelled. Failure to request items in
+     * a timely manner will result in a {@link RequestBodyTimeoutException}.<p>
      * 
-     * When the server's final response body subscription completes and earliest
-     * at that point no request body subscriber has arrived, then the server
-     * will assume that the body was intentionally ignored and proceed to
-     * discard it - after which it can not be subscribed to by the application
-     * any more.<p>
+     * But the application does not have to consume the body explicitly. When
+     * the server's final response body subscription completes and earliest at
+     * that point no request body subscriber has arrived, then the server will
+     * assume that the body was intentionally ignored and proceed to discard it
+     * - after which it can not be subscribed to by the application any more.<p>
      * 
-     * If a final response must be sent back immediately but processing the
-     * request body bytes must be delayed, then there's at least two ways of
-     * solving this. Either delay completing the server's response body
-     * subscription or register a request body subscriber but delay requesting
-     * items.
+     * If a final response must be sent back immediately but reading the request
+     * body bytes must be delayed, then there's at least two ways of solving
+     * this. Either register a request body subscriber but delay requesting
+     * items, or delay completing the server's response body subscription. Both
+     * approaches are still subject to {@link
+     * HttpServer.Config#timeoutIdleConnection()}. There is currently no API
+     * support to temporarily suspend timeouts.
      * 
      * <h3>Exception Handling</h3>
      * 

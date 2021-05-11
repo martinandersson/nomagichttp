@@ -8,7 +8,8 @@ import alpha.nomagichttp.message.HttpVersionTooOldException;
 import alpha.nomagichttp.message.IllegalBodyException;
 import alpha.nomagichttp.message.MaxRequestHeadSizeExceededException;
 import alpha.nomagichttp.message.Request;
-import alpha.nomagichttp.message.RequestTimeoutException;
+import alpha.nomagichttp.message.RequestBodyTimeoutException;
+import alpha.nomagichttp.message.RequestHeadTimeoutException;
 import alpha.nomagichttp.message.Response;
 import alpha.nomagichttp.message.ResponseTimeoutException;
 import alpha.nomagichttp.message.Responses;
@@ -25,6 +26,7 @@ import java.net.SocketAddress;
 import java.nio.channels.AsynchronousServerSocketChannel;
 import java.time.Duration;
 import java.util.concurrent.CompletionStage;
+import java.util.concurrent.Flow;
 import java.util.function.BiConsumer;
 
 import static java.net.InetAddress.getLoopbackAddress;
@@ -737,55 +739,92 @@ public interface HttpServer
          * Returns the max duration allowed for idle connections, after which,
          * the connection will be closed.<p>
          * 
-         * A timeout while a request is expected or in-flight will cause the
-         * server to throw a {@link RequestTimeoutException}, translated by the
-         * {@link ErrorHandler#DEFAULT default error handler} to a 408 (Request
-         * Timeout).<p>
+         * All the timers discussed in subsequent sections elapse independently
+         * by the duration value returned from this method.<p>
          * 
-         * A timeout from waiting on a response will cause the server to throw a
-         * {@link ResponseTimeoutException}, translated by the default error
-         * handler to a 503 (Service Unavailable). <p>
+         * <strong>Request Timeout</strong><p>
          * 
-         * The response timer starts when the request body completes and so the
-         * response will never timeout while a request is still transferring.
-         * The response timeout is reset for each response given to the {@link
-         * ClientChannel} (after possible stage completion) and does no longer
-         * apply after the final response. A request processor that needs more
-         * time to produce a response can reset the timer by sending a 1XX
-         * (Informational) interim response.<p>
+         * A timeout while a request head is expected or in-flight will cause
+         * the server to throw a {@link RequestHeadTimeoutException}, translated
+         * by the {@link ErrorHandler#DEFAULT default error handler} to a 408
+         * (Request Timeout).<p>
          * 
-         * The request timer is not reset after each byte received on the wire.
-         * The timer is only reset after each server input buffer has been
-         * filled. This means that an extremely slow client may timeout even
-         * though the connection is technically still making progress. This is
-         * by design, as it improves greatly the server performance and also
-         * works as an automatic protection against slow clients hogging server
+         * Another timer will start as soon as the request object has been
+         * created and ends when the request body subscription completes. When
+         * the timer elapses, a {@link RequestBodyTimeoutException} is either
+         * thrown by the server or - if there is a body subscriber - delivered
+         * to the subscriber's {@link Flow.Subscriber#onError(Throwable)}
+         * method. If it was thrown, or the subscriber is the server's own
+         * discarding body subscriber, then the error will pass through the
+         * error handler(s), the default of which translates the exception to a
+         * 408 (Request Timeout).<p>
+         * 
+         * An application-installed body subscriber must deal with the timeout
+         * exception (for example by responding {@link
+         * Responses#requestTimeout()}), just as the application needs to be
+         * prepared to deal with any other error passed to the body
+         * subscriber. Failure to deal with the exception will eventually result
+         * in a {@link ResponseTimeoutException} instead, as discussed in the
+         * next section.<p>
+         * 
+         * The request timers are not reset after each byte received on the
+         * wire. The timers are only reset on each published bytebuffer. This
+         * means that an extremely slow client may cause a request timeout even
+         * though the connection is technically still making progress.
+         * Similarly, a request timeout may also happen because the
+         * application's body subscriber takes too long processing a
+         * bytebuffer. It can be argued that the purpose of the timeouts are not
+         * so much to protect against stale connections as they are to protect
+         * against HTTP exchanges not making progress, whoever is at fault.<p>
+         * 
+         * This coarse-grained resolution for timer reset is by design, as it
+         * improves greatly the server performance and also works as an
+         * automatic protection against slow clients hogging server
          * connections.<p>
          * 
-         * The default timeout is one and a half minute and the
-         * server's buffer size is 16 384 bytes. This computes to a
-         * <i>possible</i> (dependent on request size, and so on) timeout for
-         * clients consistently sending data equal to or slower than 1.456 kb/s
-         * (0.001456 Mbit/s) for one and a half minute. This calculated minimum
-         * rate is well within the transfer rate of cellular networks even older
-         * than 2G (10-15% of Cellular Digital Packet Data rate). But if the
+         * The in-practice minimum acceptable transfer rate can be computed. The
+         * default timeout duration is one and a half minute and the server's
+         * buffer size is 16 384 bytes. This computes to a <i>possible</i>
+         * (dependent on request size, and so on) timeout for clients sending
+         * data on average equal to or slower than 1.456 kb/s (0.001456 Mbit/s)
+         * for one and a half minute. This calculated minimum rate is well
+         * within the transfer rate of cellular networks even older than 2G
+         * (10-15% of Cellular Digital Packet Data rate). But if the
          * application's clients are expected to be on Mars, then perhaps the
          * timeout ought to be increased.<p>
          * 
-         * Analogous to the built-in protection against slow clients when
-         * receiving data, a special low-level timeout will cause the underlying
-         * channel write operation to abort for response body bytebuffers with
-         * remaining bytes equal to or less than the server's input buffer size
-         * if not all of the bytebuffer was sent before the duration elapses.
-         * The difference from {@code ResponseTimeoutException} is that this
-         * error will not be delivered to the error handler. Instead, it will be
-         * logged and subsequently close the connection.<p>
+         * <strong>Response Timeout</strong><p>
          * 
-         * A response bytebuffer of greater size than the server's input buffer
-         * size does not schedule the low-level write timeout. In theory, the
-         * write operation sending such a bytebuffer could go on forever. A
-         * future configuration value may be added for explicitly setting the
-         * connection's minimum acceptable transfer rate.
+         * A timeout from waiting on a response will cause the server to throw a
+         * {@link ResponseTimeoutException}, translated by the default error
+         * handler to a 503 (Service Unavailable).<p>
+         * 
+         * The response timer starts when the request times out or the request
+         * body subscription completes, and so the response will never timeout
+         * while a request is still being processed.<p>
+         * 
+         * The response timeout is reset for each response given to the {@link
+         * ClientChannel} (after possible stage completion). A response producer
+         * that needs more time can reset the timer by sending a 1XX
+         * (Informational) interim response.<p>
+         * 
+         * There's also a second response timer which is active only when the
+         * server's response body subscriber has outstanding demand and the
+         * timer is reset on each item received. I.e. the application must not
+         * only ensure that response objects are given to the client channel in
+         * a timely manner but also that message body bytes are emitted in a
+         * timely manner.<p>
+         * 
+         * Analogous to the built-in protection against slow clients when
+         * receiving data, a third response timer will cause the underlying
+         * channel write operation to abort for response body bytebuffers not
+         * sent before the duration elapses. The difference from {@code
+         * ResponseTimeoutException} is that this error will not be delivered to
+         * the error handler. Instead, it will be logged and subsequently close
+         * the connection. The application can still chose to publish very large
+         * response body bytebuffers without worrying about the effect this may
+         * have on the write timeout. The server will internally slice the
+         * buffer if need be.
          * 
          * @implSpec
          * The default implementation returns {@code Duration.ofSeconds(90)}.

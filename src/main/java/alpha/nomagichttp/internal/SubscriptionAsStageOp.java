@@ -95,9 +95,10 @@ final class SubscriptionAsStageOp extends AbstractOp<PooledByteBufferHolder>
      * exceptionally.<p>
      * 
      * The cure for C is for the server to have a point in time when he gives up
-     * waiting (already documented in {@code Request.Body} to be the point when
-     * the response-body subscription completes). For this reason, the returned
-     * stage supports being cast to a {@code CompletableFuture} (or do {@code
+     * waiting (documented in {@code Request.Body} to be the point when
+     * the response-body subscription completes or on {@code
+     * RequestBodyTimeoutException}). For this reason, the returned stage
+     * supports being cast to a {@code CompletableFuture} (or do {@code
      * CompletionStage.toCompletableFuture()}) so that client code may complete
      * the stage or query about its state {@code CompletableFuture.isDone()}.<p>
      * 

@@ -4,18 +4,15 @@ import alpha.nomagichttp.message.Char;
 import alpha.nomagichttp.message.ClosedPublisherException;
 import alpha.nomagichttp.message.MaxRequestHeadSizeExceededException;
 import alpha.nomagichttp.message.PooledByteBufferHolder;
-import alpha.nomagichttp.message.RequestTimeoutException;
+import alpha.nomagichttp.message.RequestHeadTimeoutException;
 
 import java.nio.ByteBuffer;
 import java.time.Duration;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.Flow;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.ScheduledFuture;
 
 import static java.lang.System.Logger.Level.DEBUG;
-import static java.util.concurrent.TimeUnit.NANOSECONDS;
 
 /**
  * A subscriber of bytebuffers processed into a {@code RequestHead}, accessible
@@ -29,19 +26,16 @@ final class RequestHeadSubscriber implements SubscriberAsStage<PooledByteBufferH
             = System.getLogger(RequestHeadSubscriber.class.getPackageName());
     
     private final int maxHeadSize;
-    private final long timeoutNs;
-    private final ScheduledExecutorService scheduler;
+    private final Timeout timeout;
     private final RequestHeadProcessor processor;
     private final CompletableFuture<RequestHead> result;
-    private ScheduledFuture<?> timeoutTask;
     
-    RequestHeadSubscriber(int maxRequestHeadSize, Duration timeout, ScheduledExecutorService scheduler) {
+    
+    RequestHeadSubscriber(int maxRequestHeadSize, Duration timeout) {
         this.maxHeadSize = maxRequestHeadSize;
-        this.timeoutNs   = timeout.toNanos();
-        this.scheduler   = scheduler;
+        this.timeout     = new Timeout(timeout);
         this.processor   = new RequestHeadProcessor();
         this.result      = new CompletableFuture<>();
-        this.timeoutTask = null;
     }
     
     /**
@@ -53,7 +47,7 @@ final class RequestHeadSubscriber implements SubscriberAsStage<PooledByteBufferH
      * the stage will complete exceptionally with a {@link
      * ClientAbortedException}.<p>
      * 
-     * The stage will complete with a {@link RequestTimeoutException} if the
+     * The stage will complete with a {@link RequestHeadTimeoutException} if the
      * emission of a bytebuffer from upstream takes longer than the specified
      * timeout provided to the constructor.
      * 
@@ -67,7 +61,7 @@ final class RequestHeadSubscriber implements SubscriberAsStage<PooledByteBufferH
     @Override
     public void onSubscribe(Flow.Subscription subscription) {
         this.subscription = SubscriberAsStage.validate(this.subscription, subscription);
-        timeoutNew();
+        timeout.schedule(this::timeoutAction);
         subscription.request(Long.MAX_VALUE);
     }
     
@@ -79,7 +73,7 @@ final class RequestHeadSubscriber implements SubscriberAsStage<PooledByteBufferH
     
     @Override
     public void onNext(PooledByteBufferHolder item) {
-        timeoutAbort();
+        timeout.abort();
         
         final RequestHead head;
         try {
@@ -96,7 +90,7 @@ final class RequestHeadSubscriber implements SubscriberAsStage<PooledByteBufferH
             subscription.cancel();
             result.complete(head);
         } else {
-            timeoutNew();
+            timeout.schedule(this::timeoutAction);
         }
     }
     
@@ -119,7 +113,7 @@ final class RequestHeadSubscriber implements SubscriberAsStage<PooledByteBufferH
     
     @Override
     public void onError(final Throwable t) {
-        timeoutAbort();
+        timeout.abort();
         if (t instanceof ClosedPublisherException &&
             "EOS".equals(t.getMessage()) &&
             !processor.hasStarted())
@@ -132,21 +126,13 @@ final class RequestHeadSubscriber implements SubscriberAsStage<PooledByteBufferH
     
     @Override
     public void onComplete() {
-        timeoutAbort();
+        timeout.abort();
         // Never mind the result carrier, channel read stream is shutting down
     }
     
-    private void timeoutNew() {
-        timeoutTask = scheduler.schedule(() -> {
-                if (result.completeExceptionally(new RequestTimeoutException())) {
-                    subscription.cancel();
-                }
-            }, timeoutNs, NANOSECONDS);
-    }
-    
-    private void timeoutAbort() {
-        if (timeoutTask != null) {
-            timeoutTask.cancel(false);
+    private void timeoutAction() {
+        if (result.completeExceptionally(new RequestHeadTimeoutException())) {
+            subscription.cancel();
         }
     }
 }

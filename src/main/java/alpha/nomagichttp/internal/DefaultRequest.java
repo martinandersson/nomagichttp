@@ -1,9 +1,11 @@
 package alpha.nomagichttp.internal;
 
 import alpha.nomagichttp.HttpConstants.Version;
+import alpha.nomagichttp.HttpServer;
 import alpha.nomagichttp.message.MediaType;
 import alpha.nomagichttp.message.PooledByteBufferHolder;
 import alpha.nomagichttp.message.Request;
+import alpha.nomagichttp.message.RequestBodyTimeoutException;
 import alpha.nomagichttp.route.RouteRegistry;
 import alpha.nomagichttp.util.Attributes;
 import alpha.nomagichttp.util.Publishers;
@@ -14,6 +16,7 @@ import java.nio.charset.Charset;
 import java.nio.file.OpenOption;
 import java.nio.file.Path;
 import java.nio.file.attribute.FileAttribute;
+import java.time.Duration;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -26,8 +29,10 @@ import java.util.function.BiFunction;
 import java.util.stream.Stream;
 
 import static alpha.nomagichttp.internal.AtomicReferences.lazyInit;
+import static alpha.nomagichttp.internal.TimeoutOperator.timeoutSubscription;
 import static alpha.nomagichttp.util.Headers.contentLength;
 import static alpha.nomagichttp.util.Headers.contentType;
+import static java.lang.System.Logger.Level.DEBUG;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.nio.file.StandardOpenOption.CREATE_NEW;
 import static java.nio.file.StandardOpenOption.WRITE;
@@ -37,6 +42,8 @@ import static java.util.concurrent.CompletableFuture.failedStage;
 
 final class DefaultRequest implements Request
 {
+    private static final System.Logger LOG = System.getLogger(DefaultRequest.class.getPackageName());
+    
     private static final CompletionStage<Void> COMPLETED = completedStage(null);
     
     // Copy-pasted from AsynchronousFileChannel.NO_ATTRIBUTES
@@ -55,13 +62,14 @@ final class DefaultRequest implements Request
     /**
      * Constructs a {@code DefaultRequest}.
      * 
-     * @param ver HTTP version (must not be {@code null})
-     * @param head request head (must not be {@code null})
+     * @param ver HTTP version (required)
+     * @param head request head (required)
      * @param paramsQuery if {@code null}, will cause {@code parameters()} to throw NPE
      * @param paramsPath if {@code null}, will cause {@code parameters()} to throw NPE
-     * @param bodySource must not be {@code null}
-     * @param child must not be {@code null}
-     * @param onBodySubscription if {@code null}, no callback
+     * @param bodySource required
+     * @param child required
+     * @param onNonEmptyBodySubscription if {@code null}, no callback
+     * @param timeout required (see {@link HttpServer.Config#timeoutIdleConnection()})
      * 
      * @throws NullPointerException if a required argument is {@code null}
      */
@@ -72,7 +80,8 @@ final class DefaultRequest implements Request
             RouteRegistry.Match paramsPath,
             Flow.Publisher<DefaultPooledByteBufferHolder> bodySource,
             DefaultClientChannel child,
-            Runnable onBodySubscription)
+            Runnable onNonEmptyBodySubscription,
+            Duration timeout)
     {
         this.ver = requireNonNull(ver);
         this.head = requireNonNull(head);
@@ -89,17 +98,27 @@ final class DefaultRequest implements Request
         
         if (len <= 0) {
             requireNonNull(bodySource);
+            requireNonNull(child);
+            requireNonNull(timeout);
             bodyStage   = COMPLETED;
             bodyApi     = DefaultBody.empty(headers());
             bodyDiscard = null;
         } else {
             var bounded = new LengthLimitedOp(len, bodySource);
-            var observe = new SubscriptionAsStageOp(bounded);
+            var timeOut = timeoutSubscription(bounded, timeout, () -> {
+                if (LOG.isLoggable(DEBUG) && child.isOpenForReading()) {
+                    LOG.log(DEBUG, "Request body timed out, shutting down child channel's read stream.");
+                }
+                child.shutdownInputSafe();
+                return new RequestBodyTimeoutException();
+            });
+            var observe = new SubscriptionAsStageOp(timeOut);
             var onError = new OnErrorCloseReadStream<>(observe, child);
             bodyDiscard = new OnCancelDiscardOp(onError);
+            timeOut.start();
             
             bodyStage = observe.asCompletionStage();
-            bodyApi = DefaultBody.of(headers(), bodyDiscard, onBodySubscription);
+            bodyApi = DefaultBody.of(headers(), bodyDiscard, onNonEmptyBodySubscription);
         }
         
         this.attributes = new DefaultAttributes();
@@ -261,10 +280,10 @@ final class DefaultRequest implements Request
             if (isEmpty()) {
                 Publishers.<PooledByteBufferHolder>empty().subscribe(subscriber);
             } else {
+                source.subscribe(subscriber);
                 if (onBodySubscription != null) {
                     onBodySubscription.run();
                 }
-                source.subscribe(subscriber);
             }
         }
         

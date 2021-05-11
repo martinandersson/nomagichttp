@@ -10,8 +10,9 @@ import alpha.nomagichttp.message.IllegalBodyException;
 import alpha.nomagichttp.message.MaxRequestHeadSizeExceededException;
 import alpha.nomagichttp.message.MediaTypeParseException;
 import alpha.nomagichttp.message.Request;
+import alpha.nomagichttp.message.RequestBodyTimeoutException;
 import alpha.nomagichttp.message.RequestHeadParseException;
-import alpha.nomagichttp.message.RequestTimeoutException;
+import alpha.nomagichttp.message.RequestHeadTimeoutException;
 import alpha.nomagichttp.message.Response;
 import alpha.nomagichttp.message.ResponseTimeoutException;
 import alpha.nomagichttp.message.Responses;
@@ -289,7 +290,13 @@ public interface ErrorHandler
      *     <td> No response, the failed interim response is ignored. </td>
      *   </tr>
      *   <tr>
-     *     <th scope="row"> {@link RequestTimeoutException} </th>
+     *     <th scope="row"> {@link RequestHeadTimeoutException} </th>
+     *     <td> None </td>
+     *     <td> No </td>
+     *     <td> {@link Responses#requestTimeout()}</td>
+     *   </tr>
+     *   <tr>
+     *     <th scope="row"> {@link RequestBodyTimeoutException} </th>
      *     <td> None </td>
      *     <td> No </td>
      *     <td> {@link Responses#requestTimeout()}</td>
@@ -353,7 +360,7 @@ public interface ErrorHandler
                 log(thr);
                 res = internalServerError();
             }
-        } catch (RequestTimeoutException e) {
+        } catch (RequestHeadTimeoutException | RequestBodyTimeoutException e) {
             res = requestTimeout();
         } catch (ResponseTimeoutException e) {
             log(thr);

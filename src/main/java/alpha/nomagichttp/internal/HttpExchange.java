@@ -8,7 +8,8 @@ import alpha.nomagichttp.message.HttpVersionTooNewException;
 import alpha.nomagichttp.message.HttpVersionTooOldException;
 import alpha.nomagichttp.message.IllegalBodyException;
 import alpha.nomagichttp.message.Request;
-import alpha.nomagichttp.message.RequestTimeoutException;
+import alpha.nomagichttp.message.RequestBodyTimeoutException;
+import alpha.nomagichttp.message.RequestHeadTimeoutException;
 import alpha.nomagichttp.message.ResponseTimeoutException;
 import alpha.nomagichttp.route.RouteRegistry;
 
@@ -17,8 +18,6 @@ import java.util.Collection;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
 import java.util.concurrent.CompletionStage;
-import java.util.concurrent.ScheduledThreadPoolExecutor;
-import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static alpha.nomagichttp.HttpConstants.HeaderKey.CONNECTION;
@@ -62,22 +61,6 @@ final class HttpExchange
 {
     private static final System.Logger LOG = System.getLogger(HttpExchange.class.getPackageName());
     
-    private static final ScheduledThreadPoolExecutor SCHEDULER;
-    static {
-        (SCHEDULER = new ScheduledThreadPoolExecutor(1,
-                new DaemonThreadFactory())).
-                setRemoveOnCancelPolicy(true);
-    }
-    
-    private static final class DaemonThreadFactory implements ThreadFactory {
-        public Thread newThread(Runnable r) {
-            Thread t = new Thread(r);
-            t.setDaemon(true);
-            t.setName("NoMagicDelayScheduler");
-            return t;
-        }
-    }
-    
     private final HttpServer.Config config;
     private final RouteRegistry registry;
     private final Collection<ErrorHandler> handlers;
@@ -100,6 +83,7 @@ final class HttpExchange
     private DefaultRequest request;
     private RequestHandler handler;
     private volatile boolean sent100c;
+    private volatile boolean subscriberArrived;
     private ErrorResolver onError;
     
     HttpExchange(
@@ -157,7 +141,7 @@ final class HttpExchange
         chan.usePipeline(pipe);
         
         RequestHeadSubscriber rhs = new RequestHeadSubscriber(
-                config.maxRequestHeadSize(), config.timeoutIdleConnection(), SCHEDULER);
+                config.maxRequestHeadSize(), config.timeoutIdleConnection());
         
         bytes.subscribe(rhs);
         rhs.asCompletionStage()
@@ -190,6 +174,8 @@ final class HttpExchange
         
         // This order is actually specified in javadoc of ErrorHandler#apply
         request = createRequest(h, t, m);
+                  validateRequest();
+                  monitorRequest();
         handler = findRequestHandler(h, m);
     }
     
@@ -231,11 +217,33 @@ final class HttpExchange
     }
     
     private DefaultRequest createRequest(RequestHead h, RequestTarget t, RouteRegistry.Match m) {
-        DefaultRequest r = new DefaultRequest(ver, h, t, m, bytes, chan, this::tryRespond100Continue);
-        if (r.method().equals(TRACE) && !r.body().isEmpty()) {
-            throw new IllegalBodyException("Body in a TRACE request.", r);
+        return new DefaultRequest(ver, h, t, m, bytes, chan,
+                this::onRequestBodySubscription,
+                config.timeoutIdleConnection());
+    }
+    
+    private void onRequestBodySubscription() {
+        subscriberArrived = true;
+        tryRespond100Continue();
+    }
+    
+    private void validateRequest() {
+        // May become pre-action
+        if (request.method().equals(TRACE) && !request.body().isEmpty()) {
+            throw new IllegalBodyException("Body in a TRACE request.", request);
         }
-        return r;
+    }
+    
+    private void monitorRequest() {
+        request.bodyStage().whenComplete((Null, thr) -> {
+            
+            // TODO: Start response timeout
+            
+            if (thr instanceof RequestBodyTimeoutException && !subscriberArrived) {
+                // Then we need to deal with it
+                handleError(thr);
+            }
+        });
     }
     
     private static RequestHandler findRequestHandler(RequestHead rh, RouteRegistry.Match m) {
@@ -316,7 +324,7 @@ final class HttpExchange
         final DefaultRequest req = request != null ? request :
                 // e.g. NoRouteFoundException -> 404 (Not Found)
                 // (use local request obj without API support for parameters)
-                new DefaultRequest(ver, head, null, null, bytes, chan, null);
+                new DefaultRequest(ver, head, null, null, bytes, chan, null, config.timeoutIdleConnection());
         
         req.bodyDiscardIfNoSubscriber();
         req.bodyStage().whenComplete((Null, t) -> {
@@ -347,19 +355,25 @@ final class HttpExchange
     private synchronized void handleError(Throwable exc) {
         final Throwable unpacked = unpackCompletionException(exc);
         
-        if (unpacked instanceof RequestTimeoutException) {
-            LOG.log(DEBUG, "Request timed out, shutting down input stream.");
-            // HTTP exchange will not continue after response
-            chan.shutdownInputSafe();
-        } else if (unpacked instanceof InterruptedByTimeoutException) {
+        if (unpacked instanceof ClientAbortedException) {
+            LOG.log(DEBUG, "Client aborted the HTTP exchange.");
+            result.completeExceptionally(unpacked);
+            return;
+        }
+        
+        if (unpacked instanceof InterruptedByTimeoutException) {
             LOG.log(DEBUG, "Low-level write timed out. Closing channel. (end of HTTP exchange)", unpacked);
             chan.closeSafe();
             result.completeExceptionally(unpacked);
             return;
-        } else if (unpacked instanceof ClientAbortedException) {
-            LOG.log(DEBUG, "Client aborted the HTTP exchange.");
-            result.completeExceptionally(unpacked);
-            return;
+        }
+        
+        if (unpacked instanceof RequestHeadTimeoutException) {
+            LOG.log(DEBUG, "Request head timed out, shutting down input stream.");
+            // HTTP exchange will not continue after response
+            // RequestBodyTimeoutException already shut down the input stream
+            chan.shutdownInputSafe();
+            // Continue
         }
         
         if (chan.isOpenForWriting())  {
