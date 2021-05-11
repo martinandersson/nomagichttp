@@ -348,4 +348,7 @@ class ErrorHandlingTest
         
         // TODO: When we extend AbstractEndToEndTest, assert log
     }
+    
+    // RequestBodyTimeoutException_caughtByApp() ??
+    // Super tricky to do deterministically without also blocking the test. Skipping for now.
 }

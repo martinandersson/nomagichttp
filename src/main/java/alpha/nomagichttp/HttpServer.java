@@ -753,19 +753,19 @@ public interface HttpServer
          * created and ends when the request body subscription completes. When
          * the timer elapses, a {@link RequestBodyTimeoutException} is either
          * thrown by the server or - if there is a body subscriber - delivered
-         * to the subscriber's {@link Flow.Subscriber#onError(Throwable)}
-         * method. If it was thrown, or the subscriber is the server's own
-         * discarding body subscriber, then the error will pass through the
-         * error handler(s), the default of which translates the exception to a
-         * 408 (Request Timeout).<p>
+         * to the subscriber's {@link Flow.Subscriber#onError(Throwable)
+         * onError()} method. If it was thrown, or the subscriber is the
+         * server's own discarding body subscriber, then the error will pass
+         * through the error handler(s), the default of which translates the
+         * exception to a 408 (Request Timeout).<p>
          * 
          * An application-installed body subscriber must deal with the timeout
          * exception (for example by responding {@link
          * Responses#requestTimeout()}), just as the application needs to be
          * prepared to deal with any other error passed to the body
-         * subscriber. Failure to deal with the exception will eventually result
-         * in a {@link ResponseTimeoutException} instead, as discussed in the
-         * next section.<p>
+         * subscriber. Failure to deal with the exception will likely and
+         * eventually result in a {@link ResponseTimeoutException} instead, as
+         * discussed in the next section.<p>
          * 
          * The request timers are not reset after each byte received on the
          * wire. The timers are only reset on each published bytebuffer. This
@@ -801,7 +801,7 @@ public interface HttpServer
          * 
          * The response timer starts when the request times out or the request
          * body subscription completes, and so the response will never timeout
-         * while a request is still being processed.<p>
+         * while a request is still actively being processed.<p>
          * 
          * The response timeout is reset for each response given to the {@link
          * ClientChannel} (after possible stage completion). A response producer
@@ -818,13 +818,13 @@ public interface HttpServer
          * Analogous to the built-in protection against slow clients when
          * receiving data, a third response timer will cause the underlying
          * channel write operation to abort for response body bytebuffers not
-         * sent before the duration elapses. The difference from {@code
+         * fully sent before the duration elapses. The difference from {@code
          * ResponseTimeoutException} is that this error will not be delivered to
          * the error handler. Instead, it will be logged and subsequently close
          * the connection. The application can still chose to publish very large
-         * response body bytebuffers without worrying about the effect this may
-         * have on the write timeout. The server will internally slice the
-         * buffer if need be.
+         * response body bytebuffers without worrying about a possible timeout
+         * due to the increased time it may take to send a large buffer. The
+         * server will internally slice the buffer if need be.
          * 
          * @implSpec
          * The default implementation returns {@code Duration.ofSeconds(90)}.
