@@ -49,9 +49,9 @@ import static java.util.concurrent.TimeUnit.NANOSECONDS;
  * completes.<p>
  * 
  * In write mode, the service will self-{@link #stop(Throwable)} with an {@link
- * InterruptedByTimeoutException} on timeout for applicable bytebuffers.
- * Low-level reads never time out (by this class). See {@link
- * HttpServer.Config#timeoutIdleConnection}<p>
+ * InterruptedByTimeoutException} if the operation takes longer than the
+ * configured timeout. Read operations never time out (by this class). See
+ * {@link HttpServer.Config#timeoutIdleConnection}.<p>
  * 
  * Please note that the responsibility of this class is to manage a particular
  * type of channel <i>operations</i> (read or write) for as long as the service
@@ -272,11 +272,7 @@ final class AnnounceToChannel
                     ch.read(b, b, handler);
                     break;
                 case WRITE:
-                    if (b.remaining() > ChannelByteBufferPublisher.BUF_SIZE) {
-                        ch.write(b, b, handler);
-                    } else {
-                        ch.write(b, timeoutNs, NANOSECONDS, b, handler);
-                    }
+                    ch.write(b, timeoutNs, NANOSECONDS, b, handler);
                     break;
                 default:
                     throw new UnsupportedOperationException("What is this?: " + mode);

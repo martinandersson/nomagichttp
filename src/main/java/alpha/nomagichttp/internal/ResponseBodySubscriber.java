@@ -7,9 +7,11 @@ import java.nio.ByteBuffer;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.Flow;
+import java.util.stream.Stream;
 
 import static alpha.nomagichttp.HttpConstants.Method.HEAD;
 import static alpha.nomagichttp.internal.AnnounceToChannel.NO_MORE;
+import static alpha.nomagichttp.internal.ChannelByteBufferPublisher.BUF_SIZE;
 import static alpha.nomagichttp.internal.ResponseBodySubscriber.Result;
 import static java.lang.String.join;
 import static java.lang.System.Logger.Level.DEBUG;
@@ -138,8 +140,8 @@ final class ResponseBodySubscriber implements SubscriberAsStage<ByteBuffer, Resu
             subscription.cancel();
             return;
         }
-        
-        ch.announce(bodyPart);
+    
+        feedChannel(bodyPart);
         
         if (--requested == DEMAND_MIN) {
             requested = DEMAND_MAX;
@@ -161,7 +163,7 @@ final class ResponseBodySubscriber implements SubscriberAsStage<ByteBuffer, Resu
         if (!pushedHead) {
             pushHead();
         }
-        ch.announce(NO_MORE);
+        feedChannel(NO_MORE);
     }
     
     private void pushHead() {
@@ -172,7 +174,7 @@ final class ResponseBodySubscriber implements SubscriberAsStage<ByteBuffer, Resu
         
         ByteBuffer b = ByteBuffer.wrap(head.getBytes(US_ASCII));
         pushedHead = true;
-        ch.announce(b);
+        feedChannel(b);
     }
     
     private void afterChannelFinished(DefaultClientChannel child, long byteCount, Throwable exc) {
@@ -186,5 +188,30 @@ final class ResponseBodySubscriber implements SubscriberAsStage<ByteBuffer, Resu
             }
             result.completeExceptionally(exc);
         }
+    }
+    
+    private void feedChannel(ByteBuffer buf) {
+        if (buf.remaining() <= BUF_SIZE) {
+            ch.announce(buf);
+        } else {
+            sliceIntoChunks(buf, BUF_SIZE).forEach(ch::announce);
+        }
+    }
+    
+    private static Stream<ByteBuffer> sliceIntoChunks(ByteBuffer buff, int chunkSize) {
+        Stream.Builder<ByteBuffer> b = Stream.builder();
+        
+        int pos = 0;
+        while (pos < buff.remaining()) {
+            // TODO: Use ByteBuffer.slice(index, length) in Java 13
+            ByteBuffer s = buff.slice().position(pos);
+            if (s.remaining() > chunkSize) {
+                s.limit(pos + chunkSize);
+            }
+            pos += s.remaining();
+            b.add(s);
+        }
+        
+        return b.build();
     }
 }
