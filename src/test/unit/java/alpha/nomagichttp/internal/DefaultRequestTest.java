@@ -143,6 +143,7 @@ class DefaultRequestTest
                 Publishers.just(wrap(body, US_ASCII)),
                 Mockito.mock(DefaultClientChannel.class),
                 ofDays(99),
+                null,
                 null);
     }
     

@@ -68,7 +68,7 @@ final class DefaultRequest implements Request
      * @param bodySource body bytes
      * @param child client channel
      * @param timeout see {@link HttpServer.Config#timeoutIdleConnection()}
-     * @param onNonEmptyBodySubscription if {@code null}, no callback
+     * @param afterNonEmptyBodySubscription if {@code null}, no callback
      * 
      * @throws NullPointerException if a required argument is {@code null}
      * 
@@ -82,11 +82,12 @@ final class DefaultRequest implements Request
             Flow.Publisher<DefaultPooledByteBufferHolder> bodySource,
             DefaultClientChannel child,
             Duration timeout,
-            Runnable onNonEmptyBodySubscription)
+            Runnable beforeNonEmptyBodySubscription,
+            Runnable afterNonEmptyBodySubscription)
     {
         return new DefaultRequest(
-                ver, head, paramsQuery, paramsPath, bodySource,
-                child, timeout, onNonEmptyBodySubscription);
+                ver, head, paramsQuery, paramsPath, bodySource, child, timeout,
+                beforeNonEmptyBodySubscription, afterNonEmptyBodySubscription);
     }
     
     /**
@@ -105,7 +106,8 @@ final class DefaultRequest implements Request
      * @param bodySource body bytes
      * @param child client channel
      * @param timeout see {@link HttpServer.Config#timeoutIdleConnection()}
-     * @param onNonEmptyBodySubscription if {@code null}, no callback
+     * @param beforeNonEmptyBodySubscription if {@code null}, no callback
+     * @param afterNonEmptyBodySubscription if {@code null}, no callback
      * 
      * @throws NullPointerException if a required argument is {@code null}
      * 
@@ -117,11 +119,12 @@ final class DefaultRequest implements Request
             Flow.Publisher<DefaultPooledByteBufferHolder> bodySource,
             DefaultClientChannel child,
             Duration timeout,
-            Runnable onNonEmptyBodySubscription)
+            Runnable beforeNonEmptyBodySubscription,
+            Runnable afterNonEmptyBodySubscription)
     {
         return new DefaultRequest(
-                ver, head, null, null, bodySource,
-                child, timeout, onNonEmptyBodySubscription);
+                ver, head, null, null, bodySource, child, timeout,
+                beforeNonEmptyBodySubscription, afterNonEmptyBodySubscription);
     }
     
     private DefaultRequest(
@@ -132,7 +135,8 @@ final class DefaultRequest implements Request
             Flow.Publisher<DefaultPooledByteBufferHolder> bodySource,
             DefaultClientChannel child,
             Duration timeout,
-            Runnable onNonEmptyBodySubscription)
+            Runnable beforeNonEmptyBodySubscription,
+            Runnable afterNonEmptyBodySubscription)
     {
         this.ver = requireNonNull(ver);
         this.head = requireNonNull(head);
@@ -169,7 +173,8 @@ final class DefaultRequest implements Request
             timeOut.start();
             
             bodyStage = observe.asCompletionStage();
-            bodyApi = DefaultBody.of(headers(), bodyDiscard, onNonEmptyBodySubscription);
+            bodyApi = DefaultBody.of(headers(), bodyDiscard,
+                    beforeNonEmptyBodySubscription, afterNonEmptyBodySubscription);
         }
         
         this.attributes = new DefaultAttributes();
@@ -246,29 +251,42 @@ final class DefaultRequest implements Request
     
     private static final class DefaultBody implements Request.Body
     {
-        private final HttpHeaders headers;
-        private final Flow.Publisher<PooledByteBufferHolder> source;
-        private final AtomicReference<CompletionStage<String>> cachedText;
-        private final Runnable onBodySubscription;
-        
         static Request.Body empty(HttpHeaders headers) {
             // Even an empty body must still validate the arguments,
             // for example toText() may complete with IllegalCharsetNameException.
             requireNonNull(headers);
-            return new DefaultBody(headers, null, null);
+            return new DefaultBody(headers, null, null, null);
         }
-        
-        static Request.Body of(HttpHeaders headers, Flow.Publisher<PooledByteBufferHolder> source, Runnable onBodySubscription) {
+    
+        static Request.Body of(
+                HttpHeaders headers,
+                Flow.Publisher<PooledByteBufferHolder> source,
+                Runnable beforeNonEmptyBodySubscription,
+                Runnable afterNonEmptyBodySubscription)
+        {
             requireNonNull(headers);
             requireNonNull(source);
-            return new DefaultBody(headers, source, onBodySubscription);
+            return new DefaultBody(headers, source,
+                    beforeNonEmptyBodySubscription, afterNonEmptyBodySubscription);
         }
         
-        private DefaultBody(HttpHeaders headers, Flow.Publisher<PooledByteBufferHolder> source, Runnable onBodySubscription) {
+        private final HttpHeaders headers;
+        private final Flow.Publisher<PooledByteBufferHolder> source;
+        private final AtomicReference<CompletionStage<String>> cachedText;
+        private final Runnable beforeSubscription;
+        private final Runnable afterSubscription;
+        
+        private DefaultBody(
+                HttpHeaders headers,
+                Flow.Publisher<PooledByteBufferHolder> source,
+                Runnable beforeSubscription,
+                Runnable afterSubscription)
+        {
             this.headers = headers;
             this.source  = source;
             this.cachedText = new AtomicReference<>(null);
-            this.onBodySubscription = onBodySubscription;
+            this.beforeSubscription = beforeSubscription;
+            this.afterSubscription = afterSubscription;
         }
         
         @Override
@@ -331,9 +349,12 @@ final class DefaultRequest implements Request
             if (isEmpty()) {
                 Publishers.<PooledByteBufferHolder>empty().subscribe(subscriber);
             } else {
+                if (beforeSubscription != null) {
+                    beforeSubscription.run();
+                }
                 source.subscribe(subscriber);
-                if (onBodySubscription != null) {
-                    onBodySubscription.run();
+                if (afterSubscription != null) {
+                    afterSubscription.run();
                 }
             }
         }
