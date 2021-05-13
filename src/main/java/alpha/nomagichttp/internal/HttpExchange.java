@@ -217,9 +217,8 @@ final class HttpExchange
     }
     
     private DefaultRequest createRequest(RequestHead h, RequestTarget t, RouteRegistry.Match m) {
-        return new DefaultRequest(ver, h, t, m, bytes, chan,
-                this::onRequestBodySubscription,
-                config.timeoutIdleConnection());
+        return DefaultRequest.withParams(ver, h, t, m, bytes, chan,
+                config.timeoutIdleConnection(), this::onRequestBodySubscription);
     }
     
     private void onRequestBodySubscription() {
@@ -324,7 +323,7 @@ final class HttpExchange
         final DefaultRequest req = request != null ? request :
                 // e.g. NoRouteFoundException -> 404 (Not Found)
                 // (use local request obj without API support for parameters)
-                new DefaultRequest(ver, head, null, null, bytes, chan, null, config.timeoutIdleConnection());
+                DefaultRequest.withoutParams(ver, head, bytes, chan, config.timeoutIdleConnection(), null);
         
         req.bodyDiscardIfNoSubscriber();
         req.bodyStage().whenComplete((Null, t) -> {

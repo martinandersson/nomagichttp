@@ -135,15 +135,15 @@ class DefaultRequestTest
                 "test-httpVersion",
                 headers);
         
-        return new DefaultRequest(
+        return DefaultRequest.withParams(
                 HTTP_1_1,
                 rh,
                 RequestTarget.parse("/"),
                 null,
                 Publishers.just(wrap(body, US_ASCII)),
                 Mockito.mock(DefaultClientChannel.class),
-                null,
-                ofDays(99));
+                ofDays(99),
+                null);
     }
     
     private static DefaultRequest createEmptyRequest() {
