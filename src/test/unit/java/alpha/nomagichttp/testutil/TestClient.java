@@ -164,9 +164,9 @@ public final class TestClient
             throw new IllegalStateException("Channel closed on our side.");
         }
         int size = setSmallBufferGetActual(SO_RCVBUF);
-        ByteBuffer buff = allocate(size + 1);
+        ByteBuffer buf = allocate(size + 1);
         try {
-            int r = Interrupt.after(1, SECONDS, () -> ch.read(buff));
+            int r = Interrupt.after(1, SECONDS, () -> ch.read(buf));
             return r == -1;
         } catch (IOException e) {
             boolean broken =  isCausedByBrokenInputStream(e);
@@ -206,12 +206,12 @@ public final class TestClient
             throw new IllegalStateException("Channel closed on our side.");
         }
         int size = setSmallBufferGetActual(SO_SNDBUF);
-        ByteBuffer buff = allocate(size + 1);
+        ByteBuffer buf = allocate(size + 1);
         try {
             // Test 1
             Interrupt.after(1, SECONDS, () -> {
-                while (buff.hasRemaining()) {
-                    int r = ch.write(buff);
+                while (buf.hasRemaining()) {
+                    int r = ch.write(buf);
                     assertThat(r).isPositive().describedAs(
                             "Blocking mode; expecting IOException, not 0");
                 }
@@ -353,18 +353,18 @@ public final class TestClient
                 int r = ch.write(wrap(request));
                 assertThat(r).isEqualTo(request.length);
                 
-                ByteBuffer buff = allocate(128);
+                ByteBuffer buf = allocate(128);
                 
                 while (!sink.hasReachedEnd()) {
-                    if (ch.read(buff) == -1) {
+                    if (ch.read(buf) == -1) {
                         LOG.log(DEBUG, "EOS; server closed channel's read stream. Closing our channel.");
                         ch.close();
                         break;
                     }
                     
-                    buff.flip();
-                    sink.write(buff);
-                    buff.clear();
+                    buf.flip();
+                    sink.write(buf);
+                    buf.clear();
                 }
             });
             

@@ -414,7 +414,7 @@ class DetailedEndToEndTest extends AbstractEndToEndTest
     void requestBodySubscriberFails_onComplete(String method) throws IOException, InterruptedException {
         MemorizingSubscriber<PooledByteBufferHolder> sub = new MemorizingSubscriber<>(
                 onNextAndComplete(
-                    buff -> { buff.get().position(buff.get().limit()); buff.release(); }, // Discard
+                    buf -> { buf.get().position(buf.get().limit()); buf.release(); }, // Discard
                     ()   -> { throw OOPS; }));
         
         server().add("/", builder(method).accept((req, ch) -> {
