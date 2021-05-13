@@ -59,28 +59,80 @@ final class DefaultRequest implements Request
     private final Attributes attributes;
     
     /**
-     * Constructs a {@code DefaultRequest}.
+     * Creates a complete request with access to parameters.
      * 
-     * @param ver HTTP version (required)
-     * @param head request head (required)
-     * @param paramsQuery if {@code null}, will cause {@code parameters()} to throw NPE
-     * @param paramsPath if {@code null}, will cause {@code parameters()} to throw NPE
-     * @param bodySource required
-     * @param child required
+     * @param ver HTTP version
+     * @param head request head
+     * @param paramsQuery params from query
+     * @param paramsPath params from path
+     * @param bodySource body bytes
+     * @param child client channel
+     * @param timeout see {@link HttpServer.Config#timeoutIdleConnection()}
      * @param onNonEmptyBodySubscription if {@code null}, no callback
-     * @param timeout required (see {@link HttpServer.Config#timeoutIdleConnection()})
      * 
      * @throws NullPointerException if a required argument is {@code null}
+     * 
+     * @return a request
      */
-    DefaultRequest(
+    static DefaultRequest withParams(
             Version ver,
             RequestHead head,
             RequestTarget paramsQuery,
             RouteRegistry.Match paramsPath,
             Flow.Publisher<DefaultPooledByteBufferHolder> bodySource,
             DefaultClientChannel child,
-            Runnable onNonEmptyBodySubscription,
-            Duration timeout)
+            Duration timeout,
+            Runnable onNonEmptyBodySubscription)
+    {
+        return new DefaultRequest(
+                ver, head, paramsQuery, paramsPath, bodySource,
+                child, timeout, onNonEmptyBodySubscription);
+    }
+    
+    /**
+     * Creates a request without support for parameters.<p>
+     * 
+     * The benefit of this variant is that there's no need for the call site to
+     * have local access to a parsed {@link RequestTarget} (query params) or a
+     * {@link RouteRegistry.Match} (path params). This is the case if either of
+     * the two failed to be produced, yet the HTTP exchange may need an API to
+     * discard the request body.<p>
+     * 
+     * Accessing a parameter method will throw NPE.
+     * 
+     * @param ver HTTP version
+     * @param head request head
+     * @param bodySource body bytes
+     * @param child client channel
+     * @param timeout see {@link HttpServer.Config#timeoutIdleConnection()}
+     * @param onNonEmptyBodySubscription if {@code null}, no callback
+     * 
+     * @throws NullPointerException if a required argument is {@code null}
+     * 
+     * @return a request
+     */
+    static DefaultRequest withoutParams(
+            Version ver,
+            RequestHead head,
+            Flow.Publisher<DefaultPooledByteBufferHolder> bodySource,
+            DefaultClientChannel child,
+            Duration timeout,
+            Runnable onNonEmptyBodySubscription)
+    {
+        return new DefaultRequest(
+                ver, head, null, null, bodySource,
+                child, timeout, onNonEmptyBodySubscription);
+    }
+    
+    private DefaultRequest(
+            Version ver,
+            RequestHead head,
+            RequestTarget paramsQuery,
+            RouteRegistry.Match paramsPath,
+            Flow.Publisher<DefaultPooledByteBufferHolder> bodySource,
+            DefaultClientChannel child,
+            Duration timeout,
+            Runnable onNonEmptyBodySubscription)
     {
         this.ver = requireNonNull(ver);
         this.head = requireNonNull(head);
