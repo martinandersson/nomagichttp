@@ -606,6 +606,10 @@ public interface HttpServer
          * Successfully invoking an error handler (handler does not throw a
          * <i>different</i> exception instance) counts as one attempt.<p>
          * 
+         * The recovery attempt count is saved and increment over the life span
+         * of the HTTP exchange. It is not directly related to any given
+         * invocation of a request handler.<p>
+         * 
          * The configuration value will be polled at the start of each recovery
          * attempt.
          * 
