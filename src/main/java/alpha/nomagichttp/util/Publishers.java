@@ -1,6 +1,5 @@
 package alpha.nomagichttp.util;
 
-import alpha.nomagichttp.message.ClosedPublisherException;
 import alpha.nomagichttp.message.Response;
 
 import java.net.http.HttpRequest;
@@ -72,7 +71,7 @@ import static java.util.Objects.requireNonNull;
  * Exceptions thrown by {@code Subscriber.onSubscribe()} and {@code onNext()}
  * propagates to the calling thread - after having been forwarded to {@code
  * Subscriber.onError()} as the <i>cause</i> of a {@link
- * ClosedPublisherException}. Having said that, the subscription is voided and
+ * SubscriberFailedException}. Having said that, the subscription is voided and
  * the publisher will no longer interact with the subscriber that failed.<p>
  * 
  * Exceptions from {@code Subscriber.onComplete()} will also propagate to the

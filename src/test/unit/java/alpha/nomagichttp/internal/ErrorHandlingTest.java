@@ -4,7 +4,6 @@ import alpha.nomagichttp.HttpServer;
 import alpha.nomagichttp.handler.ErrorHandler;
 import alpha.nomagichttp.handler.RequestHandler;
 import alpha.nomagichttp.message.Response;
-import alpha.nomagichttp.message.Responses;
 import alpha.nomagichttp.route.NoRouteFoundException;
 import alpha.nomagichttp.testutil.Logging;
 import alpha.nomagichttp.testutil.TestClient;
@@ -26,6 +25,7 @@ import static alpha.nomagichttp.handler.RequestHandler.GET;
 import static alpha.nomagichttp.handler.RequestHandler.HEAD;
 import static alpha.nomagichttp.handler.RequestHandler.POST;
 import static alpha.nomagichttp.handler.RequestHandler.TRACE;
+import static alpha.nomagichttp.message.Responses.noContent;
 import static alpha.nomagichttp.message.Responses.processing;
 import static alpha.nomagichttp.message.Responses.text;
 import static alpha.nomagichttp.testutil.TestClient.CRLF;
@@ -111,11 +111,10 @@ class ErrorHandlingTest
                 return response.get();
             }
             
-            return Responses.noContent()
-                            .toBuilder()
-                            .header("N", Integer.toString(c.get()))
-                            .build()
-                            .completedStage();
+            return noContent().toBuilder()
+                              .header("N", Integer.toString(c.get()))
+                              .build()
+                              .completedStage();
         });
         
         ErrorHandler retry = (t, ch, r, h2) -> h2.logic().accept(r, ch);

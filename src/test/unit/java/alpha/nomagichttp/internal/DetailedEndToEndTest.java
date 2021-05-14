@@ -11,6 +11,7 @@ import alpha.nomagichttp.testutil.IORunnable;
 import alpha.nomagichttp.testutil.MemorizingSubscriber;
 import alpha.nomagichttp.testutil.MemorizingSubscriber.Signal;
 import alpha.nomagichttp.util.Publishers;
+import alpha.nomagichttp.util.SubscriberFailedException;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
@@ -327,7 +328,7 @@ class DetailedEndToEndTest extends AbstractEndToEndTest
         assertTrue(s.get(0).getMethodName() == ON_SUBSCRIBE &&
                    s.get(1).getMethodName() == ON_ERROR);
         
-        assertOnErrorThrowable(s.get(1), "Subscriber.onSubscribe() returned exceptionally.");
+        assertOnErrorThrowable(s.get(1), "Signalling Flow.Subscriber.onSubscribe() failed.");
         assertThatErrorHandlerCaughtOops();
     }
     
@@ -351,7 +352,7 @@ class DetailedEndToEndTest extends AbstractEndToEndTest
         //       Next statement kind of works as a substitute.
         assertThat(stopLogRecording()).extracting(LogRecord::getLevel, LogRecord::getMessage)
                 .contains(tuple(toJUL(ERROR),
-                    "Signalling Flow.Subscriber failed. Will close the channel's read stream."));
+                    "Signalling Flow.Subscriber.onNext() failed. Will close the channel's read stream."));
         
         var s = sub.signals();
         assertThat(s).hasSize(3);
@@ -360,7 +361,7 @@ class DetailedEndToEndTest extends AbstractEndToEndTest
                    s.get(1).getMethodName() == ON_NEXT &&
                    s.get(2).getMethodName() == ON_ERROR);
         
-        assertOnErrorThrowable(s.get(2), "Signalling Flow.Subscriber failed.");
+        assertOnErrorThrowable(s.get(2), "Signalling Flow.Subscriber.onNext() failed.");
         assertThatErrorHandlerCaughtOops();
     }
     
@@ -386,7 +387,7 @@ class DetailedEndToEndTest extends AbstractEndToEndTest
         var log = stopLogRecording().collect(toList());
         assertThat(log).extracting(LogRecord::getLevel, LogRecord::getMessage)
             .contains(tuple(toJUL(ERROR),
-                "Signalling Flow.Subscriber failed. Will close the channel's read stream."));
+                "Signalling Flow.Subscriber.onNext() failed. Will close the channel's read stream."));
         
         LogRecord fromOnError = log.stream().filter(
                     r -> r.getLevel().equals(toJUL(ERROR)) &&
@@ -405,7 +406,7 @@ class DetailedEndToEndTest extends AbstractEndToEndTest
                    s.get(1).getMethodName() == ON_NEXT &&
                    s.get(2).getMethodName() == ON_ERROR);
         
-        assertOnErrorThrowable(s.get(2), "Signalling Flow.Subscriber failed.");
+        assertOnErrorThrowable(s.get(2), "Signalling Flow.Subscriber.onNext() failed.");
         assertThatErrorHandlerCaughtOops();
     }
     
@@ -569,7 +570,7 @@ class DetailedEndToEndTest extends AbstractEndToEndTest
     
     private static void assertOnErrorThrowable(Signal onError, String msg) {
         assertThat(onError.<Throwable>getArgument())
-                .isExactlyInstanceOf(ClosedPublisherException.class)
+                .isExactlyInstanceOf(SubscriberFailedException.class)
                 .hasMessage(msg)
                 .hasNoSuppressedExceptions()
                 .getCause()

@@ -3,13 +3,13 @@ package alpha.nomagichttp.internal;
 import alpha.nomagichttp.message.ClosedPublisherException;
 import alpha.nomagichttp.message.PooledByteBufferHolder;
 import alpha.nomagichttp.util.SerialTransferService;
+import alpha.nomagichttp.util.SubscriberFailedException;
 import alpha.nomagichttp.util.Subscribers;
 
 import java.util.concurrent.Flow;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
 
-import static alpha.nomagichttp.message.ClosedPublisherException.SIGNAL_FAILURE;
 import static java.util.Objects.requireNonNull;
 
 /**
@@ -21,7 +21,7 @@ import static java.util.Objects.requireNonNull;
  * 
  * Only one subscriber at a time is allowed but many may come and go over time
  * if and only if a previous subscriber cancelled his subscription. This class
- * assumes that the publisher represents a never-ending flow of items and so can
+ * assumes that the publisher represents a continuous flow of items and so can
  * only be stoppable from the publisher's side exceptionally. Rejected
  * subscribers receive an {@code IllegalStateException}.<p>
  * 
@@ -93,7 +93,7 @@ final class AnnounceToSubscriber<T>
      * 
      * If this method synchronously invokes a subscriber and the subscriber
      * returns exceptionally, then 1) the provided {@code onError} is called,
-     * 2) subscriber is signalled a {@link ClosedPublisherException}, 3) this
+     * 2) subscriber is signalled a {@link SubscriberFailedException}, 3) this
      * class {@link #stop() self-stop} and 4) the exception is re-thrown.<p>
      * 
      * Is NOP if no subscriber is active or an active subscriber's demand is
@@ -134,8 +134,8 @@ final class AnnounceToSubscriber<T>
      * otherwise ignored.<p>
      * 
      * It is advisable to first call {@link #error(Throwable)} in order to
-     * tailor the error message. Of course, a subscriber that registers
-     * in-between {@code error()} and {@code stop()} would still receive the
+     * tailor the error. Of course, a subscriber that registers in-between
+     * {@code error()} and {@code stop()} would still receive the
      * message-less exception.<p>
      * 
      * Is NOP if already stopped.
@@ -163,7 +163,7 @@ final class AnnounceToSubscriber<T>
                 onError.accept(t);
                 // Not targeting witnessed s in particular, the reason/cause for
                 // stopping stays the same even if s is replaced with someone new
-                error(new ClosedPublisherException(SIGNAL_FAILURE, t));
+                error(SubscriberFailedException.onNext(t));
                 stop();
                 throw t;
             }

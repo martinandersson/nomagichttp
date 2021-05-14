@@ -12,7 +12,6 @@ import java.util.concurrent.Flow;
 import java.util.stream.IntStream;
 
 import static alpha.nomagichttp.internal.AnnounceToChannel.EOS;
-import static alpha.nomagichttp.message.ClosedPublisherException.SIGNAL_FAILURE;
 import static java.lang.System.Logger.Level.ERROR;
 import static java.lang.System.Logger.Level.WARNING;
 
@@ -124,7 +123,7 @@ final class ChannelByteBufferPublisher implements Flow.Publisher<DefaultPooledBy
         try {
             subscriber.announce(exc -> {
                 if (child.isOpenForReading()) {
-                    LOG.log(ERROR, () -> SIGNAL_FAILURE + CLOSE_MSG, exc);
+                    LOG.log(ERROR, () -> "Signalling subscriber failed. " + CLOSE_MSG, exc);
                     child.shutdownInputSafe();
                 } // else assume whoever closed the stream also logged the exception
             });

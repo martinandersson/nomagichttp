@@ -1,7 +1,5 @@
 package alpha.nomagichttp.util;
 
-import alpha.nomagichttp.message.ClosedPublisherException;
-
 import java.util.concurrent.Flow;
 import java.util.function.Consumer;
 
@@ -78,7 +76,7 @@ public final class Subscribers
      * Invoke the given {@code target}'s {@code onSubscribe()} method.<p>
      * 
      * If the call returns exceptionally, 1) set the exception as the cause of a
-     * {@link ClosedPublisherException} and pass the latter to {@link
+     * {@link SubscriberFailedException} and pass the latter to {@link
      * #signalErrorSafe(Flow.Subscriber, Throwable)}. Then 2) rethrow the first
      * exception. 
      * 
@@ -91,8 +89,8 @@ public final class Subscribers
         try {
             target.onSubscribe(subscription);
         } catch (Throwable t) {
-            signalErrorSafe(target, new ClosedPublisherException(
-                    "Subscriber.onSubscribe() returned exceptionally.", t));
+            var e = SubscriberFailedException.onSubscribe(t);
+            signalErrorSafe(target, e);
             throw t;
         }
     }
@@ -101,7 +99,7 @@ public final class Subscribers
      * Invoke the given {@code target}'s {@code onNext()} method.<p>
      * 
      * If the call returns exceptionally, 1) set the exception as the cause of a
-     * {@link ClosedPublisherException} and pass the latter to {@link
+     * {@link SubscriberFailedException} and pass the latter to {@link
      * #signalErrorSafe(Flow.Subscriber, Throwable)}. Then 2) rethrow the first
      * exception. 
      * 
@@ -113,8 +111,8 @@ public final class Subscribers
         try {
             target.onNext(item);
         } catch (Throwable t) {
-            signalErrorSafe(target, new ClosedPublisherException(
-                    "Subscriber.onNext() returned exceptionally.", t));
+            var e = SubscriberFailedException.onNext(t);
+            signalErrorSafe(target, e);
             throw t;
         }
     }
