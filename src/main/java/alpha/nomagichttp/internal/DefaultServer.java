@@ -359,11 +359,7 @@ public final class DefaultServer implements HttpServer
                 if (exc == null && parent.isOpen() && chan.isEverythingOpen()) {
                     startExchange(chan, bytes);
                 } else {
-                    try {
-                        bytes.close();
-                    } finally {
-                        chan.closeSafe();
-                    }
+                    chan.closeSafe();
                 }
             });
         }

@@ -5,7 +5,6 @@ import alpha.nomagichttp.message.PooledByteBufferHolder;
 import alpha.nomagichttp.message.Request;
 import alpha.nomagichttp.util.PushPullPublisher;
 
-import java.io.Closeable;
 import java.nio.ByteBuffer;
 import java.util.Deque;
 import java.util.concurrent.ConcurrentLinkedDeque;
@@ -28,7 +27,7 @@ import static java.lang.System.Logger.Level.WARNING;
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  */
-final class ChannelByteBufferPublisher implements Flow.Publisher<DefaultPooledByteBufferHolder>, Closeable
+final class ChannelByteBufferPublisher implements Flow.Publisher<DefaultPooledByteBufferHolder>
 {
     private static final System.Logger LOG
             = System.getLogger(ChannelByteBufferPublisher.class.getPackageName());
@@ -78,14 +77,19 @@ final class ChannelByteBufferPublisher implements Flow.Publisher<DefaultPooledBy
         } else if (b == EOS) {
             // Channel dried up
             subscriber.error(new ClosedPublisherException("EOS"));
-            close();
+            subscriber.stop();
+            readable.clear();
             return null;
         } else if (!b.hasRemaining()) {
             LOG.log(WARNING, () ->
                 "Empty ByteBuffer in subscriber's queue. " +
                 "Please do not operate on a ByteBuffer after release; can have devastating consequences." +
                 CLOSE_MSG);
-            close();
+            subscriber.error(new IllegalStateException("Empty ByteBuffer"));
+            subscriber.stop();
+            channel.stop();
+            child.shutdownInputSafe();
+            readable.clear();
             return null;
         }
         
@@ -103,8 +107,9 @@ final class ChannelByteBufferPublisher implements Flow.Publisher<DefaultPooledBy
     
     private void afterChannelFinished(DefaultClientChannel ignored1, long ignored2, Throwable t) {
         if (t != null) {
-            subscriber.error(new ClosedPublisherException("Channel failure.", t));
-            close();
+            subscriber.error(t);
+            subscriber.stop();
+            readable.clear();
         } // else normal completion; subscriber will be stopped when EOS is observed
     }
     
@@ -129,20 +134,13 @@ final class ChannelByteBufferPublisher implements Flow.Publisher<DefaultPooledBy
                 } // else assume whoever closed the stream also logged the exception
             });
         } catch (Throwable t) {
-            close();
+            readable.clear();
+            throw t;
         }
     }
     
     @Override
     public void subscribe(Flow.Subscriber<? super DefaultPooledByteBufferHolder> s) {
         subscriber.subscribe(s);
-    }
-    
-    @Override
-    public void close() {
-        subscriber.stop();
-        channel.stop();
-        child.shutdownInputSafe();
-        readable.clear();
     }
 }
