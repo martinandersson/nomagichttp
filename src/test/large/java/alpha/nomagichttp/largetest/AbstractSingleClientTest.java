@@ -49,6 +49,15 @@ abstract class AbstractSingleClientTest
         return CLIENT.send(req, BodyHandlers.discarding());
     }
     
+    protected static HttpResponse<byte[]> getBytes(String route) throws IOException, InterruptedException {
+        HttpRequest req = HttpRequest.newBuilder()
+                .uri(URI.create(ROOT + route))
+                .GET()
+                .build();
+        
+        return CLIENT.send(req, BodyHandlers.ofByteArray());
+    }
+    
     protected static HttpResponse<String> postAndReceiveText(String route, String utf8Body)
             throws IOException, InterruptedException
     {
