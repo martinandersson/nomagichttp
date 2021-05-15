@@ -378,7 +378,7 @@ final class HttpExchange
             }
             onError.resolve(unpacked);
             if (unpacked instanceof ResponseTimeoutException && chan.isAnythingOpen()) {
-                LOG.log(DEBUG, "Earlier response timed out. Closing channel.");
+                LOG.log(DEBUG, "A response timed out. Closing channel.");
                 chan.closeSafe();
             }
         } else {

@@ -186,6 +186,7 @@ final class ResponseBodySubscriber implements SubscriberAsStage<ByteBuffer, Resu
                 LOG.log(ERROR, "Failed writing all of the response to channel. Will close the output stream.", exc);
                 child.shutdownOutputSafe();
             }
+            subscription.cancel();
             result.completeExceptionally(exc);
         }
     }

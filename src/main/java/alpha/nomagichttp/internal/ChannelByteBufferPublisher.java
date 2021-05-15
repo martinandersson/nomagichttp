@@ -3,6 +3,7 @@ package alpha.nomagichttp.internal;
 import alpha.nomagichttp.message.ClosedPublisherException;
 import alpha.nomagichttp.message.PooledByteBufferHolder;
 import alpha.nomagichttp.message.Request;
+import alpha.nomagichttp.util.PushPullPublisher;
 
 import java.io.Closeable;
 import java.nio.ByteBuffer;
@@ -53,13 +54,13 @@ final class ChannelByteBufferPublisher implements Flow.Publisher<DefaultPooledBy
     
     private final DefaultClientChannel child;
     private final Deque<ByteBuffer> readable;
-    private final AnnounceToSubscriber<DefaultPooledByteBufferHolder> subscriber;
+    private final PushPullPublisher<DefaultPooledByteBufferHolder> subscriber;
     private final AnnounceToChannel channel;
     
     ChannelByteBufferPublisher(DefaultClientChannel child) {
         this.child      = child;
         this.readable   = new ConcurrentLinkedDeque<>();
-        this.subscriber = new AnnounceToSubscriber<>(this::pollReadable);
+        this.subscriber = new PushPullPublisher<>(true, this::pollReadable);
         this.channel    = AnnounceToChannel.read(
                 child, this::putReadableLast, this::afterChannelFinished);
         
@@ -102,7 +103,7 @@ final class ChannelByteBufferPublisher implements Flow.Publisher<DefaultPooledBy
     
     private void afterChannelFinished(DefaultClientChannel ignored1, long ignored2, Throwable t) {
         if (t != null) {
-            subscriber.error(t);
+            subscriber.error(new ClosedPublisherException("Channel failure.", t));
             close();
         } // else normal completion; subscriber will be stopped when EOS is observed
     }
@@ -134,7 +135,7 @@ final class ChannelByteBufferPublisher implements Flow.Publisher<DefaultPooledBy
     
     @Override
     public void subscribe(Flow.Subscriber<? super DefaultPooledByteBufferHolder> s) {
-        subscriber.register(s);
+        subscriber.subscribe(s);
     }
     
     @Override

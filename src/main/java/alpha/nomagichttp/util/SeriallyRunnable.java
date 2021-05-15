@@ -10,7 +10,8 @@ import java.util.concurrent.atomic.AtomicInteger;
  * If a party (self or another thread) calls <i>{@code run}</i> when already
  * running, then the invocation will immediately schedule a new run to be
  * executed after the current execution completes and proceed to return without
- * blocking (no reentrancy). The scheduled run will take place later in time
+ * blocking (no reentrancy, no waste of stack-memory, no {@code
+ * StackOverflowError}). The scheduled run will take place later in time
  * immediately after the current execution, either by the thread already
  * executing or another competing thread, whichever wins the race to start a new
  * run at that time.<p>

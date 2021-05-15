@@ -1,5 +1,7 @@
 package alpha.nomagichttp.internal;
 
+import alpha.nomagichttp.util.AbstractUnicastPublisher;
+
 import java.util.concurrent.Flow;
 
 /**
