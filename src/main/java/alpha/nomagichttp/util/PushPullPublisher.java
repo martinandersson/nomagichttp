@@ -88,7 +88,8 @@ public class PushPullPublisher<T> extends AugmentedAbstractUnicastPublisher<T, S
      * Constructs a non-reusable {@code PushPullPublisher}.
      * 
      * The {@code onCancel} callback executes only once and only if the
-     * subscriber's cancel-signal was the subscription terminating signal.
+     * subscriber's cancel-signal was the signal that terminated the
+     * subscription.
      * 
      * @param generator item supplier
      * @param onCancel callback

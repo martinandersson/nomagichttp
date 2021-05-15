@@ -272,7 +272,7 @@ public final class BetterBodyPublishers
             
             Reader(Path path) {
                 this.path      = path;
-                this.announcer = new PushPullPublisher<>(false, this::getNext);
+                this.announcer = new PushPullPublisher<>(this::getNext, this::closeSafe);
                 this.contents  = new ConcurrentLinkedDeque<>();
                 this.handler   = new Handler();
                 this.fc        = null;
