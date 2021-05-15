@@ -294,7 +294,7 @@ public final class BetterBodyPublishers
                     return null;
                 }
                 handler.tryScheduleRead();
-                return contents.poll();
+                return b;
             }
             
             private boolean open() {
@@ -306,15 +306,6 @@ public final class BetterBodyPublishers
                     // Subscriber subscribed to FilePublisher, which can go again.
                     announcer.error(e);
                     return false;
-                }
-            }
-            
-            private void announce() {
-                try {
-                    announcer.announce();
-                } catch (Throwable t) {
-                    closeSafe();
-                    throw t;
                 }
             }
             
@@ -359,8 +350,8 @@ public final class BetterBodyPublishers
                         b.flip();
                         pos += b.remaining();
                         contents.add(b);
-                        announce();
                     }
+                    announce();
                     op.complete();
                     if (!eos) {
                         tryScheduleRead();
@@ -371,6 +362,15 @@ public final class BetterBodyPublishers
                 public void failed(Throwable exc, ByteBuffer ignored) {
                     announcer.error(exc);
                     closeSafe();
+                }
+                
+                private void announce() {
+                    try {
+                        announcer.announce();
+                    } catch (Throwable t) {
+                        closeSafe();
+                        throw t;
+                    }
                 }
             }
         }

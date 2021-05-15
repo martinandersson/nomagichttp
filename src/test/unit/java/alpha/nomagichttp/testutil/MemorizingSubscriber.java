@@ -3,6 +3,8 @@ package alpha.nomagichttp.testutil;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.Flow;
 
@@ -58,6 +60,23 @@ public class MemorizingSubscriber<T> implements Flow.Subscriber<T>
         var s = new MemorizingSubscriber<>(Request.IMMEDIATELY_MAX());
         from.subscribe(s);
         return s.methodNames();
+    }
+    
+    /**
+     * Subscribes a {@code MemorizingSubscriber} to the given publisher and
+     * returns all received signals when the subscription completes.<p>
+     * 
+     * The subscriber will immediately request {@code Long.MAX_VALUE}.
+     * 
+     * @param from publisher to drain
+     * @return all signals received
+     */
+    public static CompletionStage<List<Signal>> drainSignalsAsync(Flow.Publisher<?> from) {
+        CompletableFuture<List<Signal>> r = new CompletableFuture<>();
+        var s = new MemorizingSubscriber<>(Request.IMMEDIATELY_MAX());
+        from.subscribe(s);
+        return s.asCompletionStage()
+                .thenApply(Null -> s.signals());
     }
     
     /**
@@ -169,6 +188,7 @@ public class MemorizingSubscriber<T> implements Flow.Subscriber<T>
     private final Collection<Signal> signals;
     private final Request strategy;
     private final Flow.Subscriber<T> delegate;
+    private final CompletableFuture<Void> result;
     
     /**
      * Constructs a {@code MemorizingSubscriber}.
@@ -178,9 +198,10 @@ public class MemorizingSubscriber<T> implements Flow.Subscriber<T>
      * @throws NullPointerException if {@code delegate} is {@code null}
      */
     public MemorizingSubscriber(Request strategy) {
-        this.signals = new ConcurrentLinkedQueue<>();
+        this.signals  = new ConcurrentLinkedQueue<>();
         this.strategy = requireNonNull(strategy);
         this.delegate = null;
+        this.result   = new CompletableFuture<>();
     }
     
     /**
@@ -194,9 +215,10 @@ public class MemorizingSubscriber<T> implements Flow.Subscriber<T>
      * @throws NullPointerException if {@code delegate} is {@code null}
      */
     public MemorizingSubscriber(Flow.Subscriber<T> delegate) {
-        this.signals = new ConcurrentLinkedQueue<>();
+        this.signals  = new ConcurrentLinkedQueue<>();
         this.strategy = null;
         this.delegate = requireNonNull(delegate);
+        this.result   = new CompletableFuture<>();
     }
     
     /**
@@ -233,6 +255,19 @@ public class MemorizingSubscriber<T> implements Flow.Subscriber<T>
                       .collect(toUnmodifiableList());
     }
     
+    /**
+     * Returns the subscription as a stage.<p>
+     * 
+     * {@code onComplete} will cause the returned stage to complete with {@code
+     * null}. {@code onError} will cause the returned stage to complete with the
+     * error.
+     * 
+     * @return a stage
+     */
+    public CompletionStage<Void> asCompletionStage() {
+        return result;
+    }
+    
     @Override
     public void onSubscribe(Flow.Subscription subscription) {
         signals.add(new Signal(ON_SUBSCRIBE, subscription));
@@ -253,11 +288,12 @@ public class MemorizingSubscriber<T> implements Flow.Subscriber<T>
     }
     
     @Override
-    public void onError(Throwable throwable) {
-        signals.add(new Signal(ON_ERROR, throwable));
+    public void onError(Throwable t) {
+        signals.add(new Signal(ON_ERROR, t));
         if (delegate != null) {
-            delegate.onError(throwable);
+            delegate.onError(t);
         }
+        result.completeExceptionally(t);
     }
     
     @Override
@@ -266,5 +302,6 @@ public class MemorizingSubscriber<T> implements Flow.Subscriber<T>
         if (delegate != null) {
             delegate.onComplete();
         }
+        result.complete(null);
     }
 }
