@@ -169,7 +169,7 @@ public final class Publishers
     /**
      * Creates a {@code Flow.Publisher} that for each new subscriber, retrieves
      * a subscription-dedicated Iterator from the given source which is
-     * then used to pull items handed off to the subscriber.<p>
+     * then used to pull the items (on-demand) published to the subscriber.<p>
      * 
      * The publisher does not limit how many subscriptions at a time can be
      * active. Thus, either care should be exercised so that the publisher is
@@ -196,11 +196,26 @@ public final class Publishers
         return new PullPublisher<>(source);
     }
     
+    /**
+     * Creates a {@code Flow.Publisher} that immediately signals {@code onError}
+     * for each new subscriber.
+     * 
+     * @param error to complete subscriptions with
+     * @param <T> type of item
+     * 
+     * @return a failing publisher
+     * 
+     * @throws NullPointerException if {@code error} is {@code null}
+     */
+    public static <T> Flow.Publisher<T> failed(Throwable error) {
+        return new FailedPublisher<>(error);
+    }
+    
     private static final class PullPublisher<T> implements Flow.Publisher<T>
     {
         private final Iterable<? extends T> items;
         
-        private PullPublisher(Iterable<? extends T> items) {
+        PullPublisher(Iterable<? extends T> items) {
             this.items = requireNonNull(items);
         }
         
@@ -248,26 +263,44 @@ public final class Publishers
         }
         
         private SerialTransferService<T> newService(
-                Iterator<? extends T> it, Flow.Subscriber<? super T> subsc)
+                Iterator<? extends T> it, Flow.Subscriber<? super T> s)
         {
             Function<SerialTransferService<T>, ? extends T> generator = self -> {
                 if (it.hasNext()) {
                     T t = it.next();
                     if (t == null) {
                         var exc = new NullPointerException("Item is null.");
-                        self.finish(() -> Subscribers.signalErrorSafe(subsc, exc));
+                        self.finish(() -> Subscribers.signalErrorSafe(s, exc));
                     }
                     return t;
                 } else {
-                    self.finish(subsc::onComplete);
+                    self.finish(s::onComplete);
                     return null;
                 }
             };
             
             Consumer<? super T> receiver = item ->
-                    Subscribers.signalNextOrTerminate(subsc, item);
+                    Subscribers.signalNextOrTerminate(s, item);
             
             return new SerialTransferService<>(generator, receiver);
+        }
+    }
+    
+    private static final class FailedPublisher<T> implements Flow.Publisher<T> {
+        private final Throwable err;
+        
+        FailedPublisher(Throwable err) {
+            this.err = requireNonNull(err);
+        }
+        
+        @Override
+        public void subscribe(Flow.Subscriber<? super T> s) {
+            requireNonNull(s);
+            CanOnlyBeCancelled tmp = Subscriptions.canOnlyBeCancelled();
+            Subscribers.signalOnSubscribeOrTerminate(s, tmp);
+            if (!tmp.isCancelled()) {
+                Subscribers.signalErrorSafe(s, err);
+            }
         }
     }
 }
