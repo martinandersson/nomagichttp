@@ -47,10 +47,12 @@ import static alpha.nomagichttp.testutil.TestClient.CRLF;
 import static alpha.nomagichttp.testutil.TestSubscribers.onNextAndComplete;
 import static alpha.nomagichttp.testutil.TestSubscribers.onNextAndError;
 import static alpha.nomagichttp.testutil.TestSubscribers.onSubscribe;
+import static alpha.nomagichttp.util.BetterBodyPublishers.ofByteArray;
 import static alpha.nomagichttp.util.Subscribers.onNext;
 import static java.lang.System.Logger.Level.DEBUG;
 import static java.lang.System.Logger.Level.ERROR;
 import static java.lang.System.Logger.Level.WARNING;
+import static java.nio.charset.StandardCharsets.US_ASCII;
 import static java.util.List.of;
 import static java.util.concurrent.CompletableFuture.failedStage;
 import static java.util.concurrent.TimeUnit.SECONDS;
@@ -566,6 +568,35 @@ class DetailedEndToEndTest extends AbstractEndToEndTest
                 "but HTTP exchange is not active. This error does not propagate anywhere."));
         
         // Superclass asserts no error sent to error handler
+    }
+    
+    // See ResponseBodySubscriber.sliceIntoChunks()
+    @Test
+    void responseBodyBufferOversized() throws IOException {
+        // End of message
+        final byte eom = 9;
+        
+        // TODO: Need improved "HTTP message" API in TestClient
+        
+        byte[] rspBody = new byte[ChannelByteBufferPublisher.BUF_SIZE + 1];
+        rspBody[rspBody.length - 1] = eom;
+        Response r = Responses.ok(ofByteArray(rspBody));
+        server().add("/", GET().respond(r));
+        
+        byte[] req = ("GET / HTTP/1.1" + CRLF + CRLF).getBytes(US_ASCII);
+        
+        byte[] expHead =
+                ("HTTP/1.1 200 OK"                       + CRLF +
+                "Content-Type: application/octet-stream" + CRLF +
+                "Content-Length: 16385"                  + CRLF + CRLF)
+                .getBytes(US_ASCII);
+        
+        ByteBuffer merged = ByteBuffer.allocate(expHead.length + rspBody.length);
+        for (byte b : expHead) merged.put(b);
+        for (byte b : rspBody) merged.put(b);
+        
+        byte[] rsp = client().writeRead(req, new byte[]{eom});
+        assertThat(rsp).isEqualTo(merged.array());
     }
     
     private static void assertOnErrorThrowable(Signal onError, String msg) {
