@@ -1,6 +1,5 @@
 package alpha.nomagichttp.util;
 
-import alpha.nomagichttp.message.ClosedPublisherException;
 import alpha.nomagichttp.message.PooledByteBufferHolder;
 
 import java.util.concurrent.Flow;
@@ -214,7 +213,8 @@ public abstract class AbstractUnicastPublisher<T> implements Flow.Publisher<T>
         } else if (witness == CLOSED) {
             // Publisher called shutdown() during initialization
             if (!proxy.isCancelled()) {
-                Subscribers.signalErrorSafe(newS, new ClosedPublisherException());
+                Subscribers.signalErrorSafe(newS,
+                        new IllegalStateException("Publisher shutdown during initialization."));
             }
         } else if (witness != ACCEPTING && witness != NOT_REUSABLE) {
             throw new AssertionError("During initialization, only reset was expected. Saw: " + witness);

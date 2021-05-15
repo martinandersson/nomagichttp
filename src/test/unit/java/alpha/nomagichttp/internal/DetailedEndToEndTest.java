@@ -2,7 +2,7 @@ package alpha.nomagichttp.internal;
 
 import alpha.nomagichttp.handler.ErrorHandler;
 import alpha.nomagichttp.handler.RequestHandler;
-import alpha.nomagichttp.message.ClosedPublisherException;
+import alpha.nomagichttp.message.EndOfStreamException;
 import alpha.nomagichttp.message.PooledByteBufferHolder;
 import alpha.nomagichttp.message.Request;
 import alpha.nomagichttp.message.Response;
@@ -140,8 +140,7 @@ class DetailedEndToEndTest extends AbstractEndToEndTest
                 .noneMatch(v -> v > INFO.intValue());
         
         assertThat(pollServerError())
-                .isExactlyInstanceOf(ClosedPublisherException.class)
-                .hasMessage("EOS");
+                .isExactlyInstanceOf(EndOfStreamException.class);
     }
     
     @Test

@@ -1,6 +1,6 @@
 package alpha.nomagichttp.internal;
 
-import alpha.nomagichttp.message.ClosedPublisherException;
+import alpha.nomagichttp.message.EndOfStreamException;
 import alpha.nomagichttp.message.PooledByteBufferHolder;
 import alpha.nomagichttp.message.Request;
 import alpha.nomagichttp.util.PushPullPublisher;
@@ -23,7 +23,7 @@ import static java.lang.System.Logger.Level.WARNING;
  * {@link Request.Body} and {@link PooledByteBufferHolder}.<p>
  * 
  * When the channel's end-of-stream is reached, the active subscriber will be
- * signalled a {@link ClosedPublisherException} with the message "EOS".
+ * signalled a {@link EndOfStreamException}.
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  */
@@ -76,7 +76,7 @@ final class ChannelByteBufferPublisher implements Flow.Publisher<DefaultPooledBy
             return null;
         } else if (b == EOS) {
             // Channel dried up
-            subscriber.error(new ClosedPublisherException("EOS"));
+            subscriber.error(new EndOfStreamException());
             subscriber.stop();
             readable.clear();
             return null;

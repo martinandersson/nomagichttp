@@ -302,8 +302,6 @@ public final class BetterBodyPublishers
                     fc = AsynchronousFileChannel.open(path);
                     return true;
                 } catch (UnsupportedOperationException | IOException | SecurityException e) {
-                    // Not wrapped in ClosedPublisherException.
-                    // Subscriber subscribed to FilePublisher, which can go again.
                     announcer.error(e);
                     return false;
                 }

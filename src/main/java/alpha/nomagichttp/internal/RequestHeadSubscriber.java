@@ -1,7 +1,7 @@
 package alpha.nomagichttp.internal;
 
 import alpha.nomagichttp.message.Char;
-import alpha.nomagichttp.message.ClosedPublisherException;
+import alpha.nomagichttp.message.EndOfStreamException;
 import alpha.nomagichttp.message.MaxRequestHeadSizeExceededException;
 import alpha.nomagichttp.message.PooledByteBufferHolder;
 import alpha.nomagichttp.message.RequestHeadTimeoutException;
@@ -42,10 +42,9 @@ final class RequestHeadSubscriber implements SubscriberAsStage<PooledByteBufferH
      * Returns a stage that completes with the result.<p>
      * 
      * If the sourced publisher (ChannelByteBufferPublisher) terminates the
-     * subscription with a {@link ClosedPublisherException} having the message
-     * "EOS" <i>and</i> no bytes have been processed by this subscriber, then
-     * the stage will complete exceptionally with a {@link
-     * ClientAbortedException}.<p>
+     * subscription with an {@link EndOfStreamException} <i>and</i> no bytes
+     * have been processed by this subscriber, then the stage will complete
+     * exceptionally with a {@link ClientAbortedException}.<p>
      * 
      * The stage will complete with a {@link RequestHeadTimeoutException} if the
      * emission of a bytebuffer from upstream takes longer than the specified
@@ -114,10 +113,7 @@ final class RequestHeadSubscriber implements SubscriberAsStage<PooledByteBufferH
     @Override
     public void onError(final Throwable t) {
         timeout.abort();
-        if (t instanceof ClosedPublisherException &&
-            "EOS".equals(t.getMessage()) &&
-            !processor.hasStarted())
-        {
+        if (t instanceof EndOfStreamException && !processor.hasStarted()) {
             result.completeExceptionally(new ClientAbortedException(t));
         } else {
             result.completeExceptionally(t);

@@ -2,7 +2,7 @@ package alpha.nomagichttp.handler;
 
 import alpha.nomagichttp.HttpServer;
 import alpha.nomagichttp.message.BadHeaderException;
-import alpha.nomagichttp.message.ClosedPublisherException;
+import alpha.nomagichttp.message.EndOfStreamException;
 import alpha.nomagichttp.message.HttpVersionParseException;
 import alpha.nomagichttp.message.HttpVersionTooNewException;
 import alpha.nomagichttp.message.HttpVersionTooOldException;
@@ -267,10 +267,10 @@ public interface ErrorHandler
      *          Fault assumed to be the applications'.</td>
      *   </tr>
      *   <tr>
-     *     <th scope="row">{@link ClosedPublisherException} </th>
-     *     <td> Exception message is "EOS" </td>
+     *     <th scope="row">{@link EndOfStreamException} </th>
+     *     <td> None </td>
      *     <td> No </td>
-     *     <td> No response, channel is already closed. <br>
+     *     <td> No response, closes the channel. <br>
      *          This error signals the failure of a read operation due to client
      *          disconnect <i>and</i> at least one byte of data was received
      *          prior to the disconnect (if no bytes were received the error
@@ -341,14 +341,9 @@ public interface ErrorHandler
                 log(thr);
                 res = internalServerError();
             }
-        } catch (ClosedPublisherException e) {
-            if ("EOS".equals(e.getMessage())) {
-                ch.closeSafe();
-                return;
-            } else {
-                log(thr);
-                res = internalServerError();
-            }
+        } catch (EndOfStreamException e) {
+            ch.closeSafe();
+            res = null;
         } catch (ResponseRejectedException e) {
             if (e.rejected().isInformational() &&
                 e.reason() == PROTOCOL_NOT_SUPPORTED &&

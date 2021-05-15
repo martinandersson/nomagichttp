@@ -1,6 +1,5 @@
 package alpha.nomagichttp.util;
 
-import alpha.nomagichttp.message.ClosedPublisherException;
 import alpha.nomagichttp.message.PooledByteBufferHolder;
 
 import java.nio.file.Path;
@@ -178,16 +177,11 @@ public class PushPullPublisher<T> extends AugmentedAbstractUnicastPublisher<T, S
     /**
      * Do no longer accept new subscribers.<p>
      * 
-     * An active subscriber will be signalled a {@link ClosedPublisherException}
-     * without a message and future subscribers will be signalled an {@code
-     * IllegalStateException}.<p>
-     * 
-     * If the active subscriber who receives a {@code ClosedPublisherException}
-     * itself throws an exception, then the new exception is logged but
-     * otherwise ignored.<p>
+     * An active as well as future subscribers will be signalled an {@link
+     * IllegalStateException} without a message.<p>
      * 
      * It is advisable to first call {@link #error(Throwable)} in order to
-     * tailor the error message and then call this method.<p>
+     * tailor the error for an active subscriber and then call this method.<p>
      * 
      * Is NOP if already stopped.
      */
@@ -197,7 +191,7 @@ public class PushPullPublisher<T> extends AugmentedAbstractUnicastPublisher<T, S
             return;
         }
         s.attachment().finish(() ->
-                Subscribers.signalErrorSafe(s, new ClosedPublisherException()));
+                Subscribers.signalErrorSafe(s, new IllegalStateException()));
     }
     
     private void ifPresent(Consumer<SubscriberWithAttachment<T, SerialTransferService<T>>> action) {
