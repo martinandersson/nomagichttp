@@ -81,8 +81,8 @@ import static java.net.InetAddress.getLoopbackAddress;
  * Currently, the NoMagicHTTP server is a project in its infancy. Almost
  * complete support for HTTP/1.0 and 1.1 is the first milestone, yet to be done
  * (see POA.md in repository). HTTP/2 will be implemented thereafter. HTTP
- * clients older than HTTP/1.0 is rejected (the exchange will crash with a {@link
- * HttpVersionTooOldException}.
+ * clients older than HTTP/1.0 is rejected (the exchange will crash with a
+ * {@link HttpVersionTooOldException}.
  * 
  * <h2>HTTP message semantics</h2>
  * 
