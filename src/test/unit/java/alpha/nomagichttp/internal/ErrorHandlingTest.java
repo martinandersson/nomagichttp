@@ -350,4 +350,7 @@ class ErrorHandlingTest
     
     // RequestBodyTimeoutException_caughtByApp() ??
     // Super tricky to do deterministically without also blocking the test. Skipping for now.
+    
+    // Low-level write timeout by InterruptedByTimeoutException?
+    // Same. Can't do deterministically. Need to mock the channel.
 }
