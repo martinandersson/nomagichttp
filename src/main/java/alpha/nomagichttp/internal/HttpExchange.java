@@ -10,7 +10,6 @@ import alpha.nomagichttp.message.IllegalBodyException;
 import alpha.nomagichttp.message.Request;
 import alpha.nomagichttp.message.RequestBodyTimeoutException;
 import alpha.nomagichttp.message.RequestHeadTimeoutException;
-import alpha.nomagichttp.message.ResponseTimeoutException;
 import alpha.nomagichttp.route.RouteRegistry;
 
 import java.nio.channels.InterruptedByTimeoutException;
@@ -52,7 +51,6 @@ import static java.util.Objects.requireNonNull;
  *   <li>May pre-emptively send a 100 (Continue) depending on configuration</li>
  *   <li>Shuts down read stream if request has header "Connection: close"</li>
  *   <li>Shuts down read stream on request timeout</li>
- *   <li>Closes channel after response timeout</li>
  * </ul>
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
@@ -71,11 +69,12 @@ final class HttpExchange
     private final CompletableFuture<Void> result;
     
     /*
-     * Most mutable fields in this class are not volatile nor synchronized. It
-     * is assumed that the asynchronous execution facility of the
-     * CompletionStage implementation establishes a happens-before relationship.
-     * This is certainly true for JDK's CompletableFuture which uses an
-     * Executor/ExecutorService, or at worst, a new Thread.start() for each task.
+     * Mutable fields related to the request chain in this class are not
+     * volatile nor synchronized. It is assumed that the asynchronous execution
+     * facility of the CompletionStage implementation establishes a
+     * happens-before relationship. This is certainly true for JDK's
+     * CompletableFuture which uses an Executor/ExecutorService, or at worst, a
+     * new Thread.start() for each task.
      */
     
     private RequestHead head;
@@ -149,6 +148,7 @@ final class HttpExchange
                        "Request handler returned exceptionally but final response already sent. " +
                        "This error is ignored.", thr);
                } else {
+                   pipe.startTimeout();
                    handleError(thr);
                }
                return null;
@@ -241,9 +241,7 @@ final class HttpExchange
     
     private void monitorRequest() {
         request.bodyStage().whenComplete((Null, thr) -> {
-            
-            // TODO: Start response timeout
-            
+            pipe.startTimeout();
             if (thr instanceof RequestBodyTimeoutException && !subscriberArrived) {
                 // Then we need to deal with it
                 handleError(thr);
@@ -386,10 +384,6 @@ final class HttpExchange
                 errRes = new ErrorResolver();
             }
             errRes.resolve(unpacked);
-            if (unpacked instanceof ResponseTimeoutException && chan.isAnythingOpen()) {
-                LOG.log(DEBUG, "A response timed out. Closing channel.");
-                chan.closeSafe();
-            }
         } else {
             LOG.log(DEBUG, () ->
                 "Child channel is closed for writing. " +

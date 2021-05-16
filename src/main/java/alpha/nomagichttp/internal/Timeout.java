@@ -1,25 +1,38 @@
 package alpha.nomagichttp.internal;
 
 import java.time.Duration;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.ScheduledThreadPoolExecutor;
 import java.util.concurrent.ThreadFactory;
+import java.util.concurrent.atomic.AtomicReference;
 
+import static alpha.nomagichttp.internal.AtomicReferences.lazyInitOrElse;
+import static alpha.nomagichttp.internal.AtomicReferences.take;
+import static java.util.Objects.requireNonNull;
 import static java.util.concurrent.TimeUnit.NANOSECONDS;
 
 /**
- * Schedule a command to execute after a configured timeout.
+ * Schedule a command to execute after a configured timeout.<p>
+ * 
+ * This class is fully thread-safe and non-blocking.
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  */
 final class Timeout
 {
-    private final long nanos;
-    private volatile ScheduledFuture<?> task;
-    
-    Timeout(Duration timeout) {
-        this.nanos = timeout.toNanos();
-        this.task  = null;
+    /**
+     * Schedule an action to run after the given amount of nanoseconds.
+     * 
+     * @param nanos time to delay
+     * @param action to run
+     * 
+     * @return the scheduled task
+     * 
+     * @throws NullPointerException if {@code action} is {@code null}
+     */
+    public static ScheduledFuture<?> schedule(long nanos, Runnable action) {
+        return SCHEDULER.schedule(action, nanos, NANOSECONDS);
     }
     
     private static final ScheduledThreadPoolExecutor SCHEDULER;
@@ -38,11 +51,22 @@ final class Timeout
         }
     }
     
+    private final long nanos;
+    private final AtomicReference<
+            CompletableFuture<
+                    ScheduledFuture<?>>> task;
+    
+    Timeout(Duration timeout) {
+        this.nanos = timeout.toNanos();
+        this.task  = new AtomicReference<>();
+    }
+    
+    
     /**
      * Run the given action on timeout.<p>
      * 
-     * A scheduled task will be created and stored in this class using volatile
-     * set. It can be aborted using {@link #abort()}.
+     * A scheduled task will be created and stored in this class. It can be
+     * aborted using {@link #abort()}.
      * 
      * @param action to run
      * 
@@ -50,14 +74,15 @@ final class Timeout
      *             if {@code action} is {@code null}
      * 
      * @throws IllegalStateException
-     *             if an observable task has already been scheduled
+     *             if a task has already been scheduled
      */
     void schedule(Runnable action) {
-        var t = task;
-        if (t != null) {
+        requireNonNull(action);
+        Object set = lazyInitOrElse(task, CompletableFuture::new, f ->
+                f.complete(schedule(nanos, action)), null);
+        if (set == null) {
             throw new IllegalStateException();
         }
-        task = SCHEDULER.schedule(action, nanos, NANOSECONDS);
     }
     
     /**
@@ -65,37 +90,33 @@ final class Timeout
      * 
      * No guarantee is provided that the task is aborted.<p>
      * 
-     * Whichever task that is observed will attempt to abort. There is no lock
-     * between {@code schedule()} and {@code abort()}. However, they write+read
-     * using volatile semantics.<p>
-     * 
      * This method is NOP if no task has been scheduled.
      * 
      * @see ScheduledFuture#cancel(boolean) 
      */
     void abort() {
-        var t = task;
-        if (t != null) {
-            t.cancel(false);
-            task = null;
-        }
+        take(task).ifPresent(t -> t.thenAccept(f -> f.cancel(false)));
     }
     
     /**
-     * Same as calling {@link #abort()} followed by {@link #schedule(Runnable)},
-     * except optimized to use one pair of volatile read+write instead of what
-     * otherwise would have been two.
+     * Semantically the same as calling {@link #abort()} followed by
+     * {@link #schedule(Runnable)}, difference being this method does not
+     * throw {@code IllegalStateException}.
      * 
      * @param action to run
      * 
-     * @throws NullPointerException
-     *             if {@code action} is {@code null} (after potential abort)
+     * @throws NullPointerException if {@code action} is {@code null}
      */
     void reschedule(Runnable action) {
-        var t = task;
-        if (t != null) {
-            t.cancel(false);
+        requireNonNull(action);
+        for (;;) {
+            abort();
+            try {
+                schedule(action);
+                return;
+            } catch (IllegalStateException ignored) {
+                // Go again
+            }
         }
-        task = SCHEDULER.schedule(action, nanos, NANOSECONDS);
     }
 }

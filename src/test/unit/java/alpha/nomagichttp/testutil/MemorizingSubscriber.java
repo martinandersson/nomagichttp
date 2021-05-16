@@ -63,6 +63,24 @@ public class MemorizingSubscriber<T> implements Flow.Subscriber<T>
     }
     
     /**
+     * Subscribes a {@code MemorizingSubscriber} to the given publisher and then
+     * return all received signals.<p>
+     * 
+     * The subscriber will immediately request {@code Long.MAX_VALUE}.<p>
+     * 
+     * The publisher should be eager in order for all [expected] signals to be
+     * present in the returned collection.
+     * 
+     * @param from publisher to drain
+     * @return all methods invoked
+     */
+    public static List<Signal> drainSignals(Flow.Publisher<?> from) {
+        var s = new MemorizingSubscriber<>(Request.IMMEDIATELY_MAX());
+        from.subscribe(s);
+        return s.signals();
+    }
+    
+    /**
      * Subscribes a {@code MemorizingSubscriber} to the given publisher and
      * returns all received signals when the subscription completes.<p>
      * 

@@ -353,4 +353,27 @@ class ErrorHandlingTest
     
     // Low-level write timeout by InterruptedByTimeoutException?
     // Same. Can't do deterministically. Need to mock the channel.
+    
+    @Test
+    void ResponseTimeoutException_fromPipeline() throws IOException {
+        HttpServer.Config lowBodyTimeout = new HttpServer.Config() {
+            final AtomicInteger pollCnt = new AtomicInteger(0);
+            @Override public Duration timeoutIdleConnection() {
+                return pollCnt.incrementAndGet() == 3 ? ofMillis(1) : HttpServer.Config.super.timeoutIdleConnection();
+            }
+        };
+        s = create(lowBodyTimeout).add("/", GET().accept((ign,ored) -> {})).start();
+        
+        String res = new TestClient(s).writeRead(
+            "GET / HTTP/1.1"                   + CRLF + CRLF);
+        assertThat(res).isEqualTo(
+            "HTTP/1.1 503 Service Unavailable" + CRLF +
+            "Content-Length: 0"                + CRLF +
+            "Connection: close"                + CRLF + CRLF);
+        
+        // TODO: When we extend AbstractEndToEndTest
+        //         1) poll and assert ResponseTimeoutException
+        //         2) assert log
+    }
+    
 }

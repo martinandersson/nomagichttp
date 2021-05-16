@@ -305,7 +305,8 @@ public interface ErrorHandler
      *     <th scope="row"> {@link ResponseTimeoutException} </th>
      *     <td> None </td>
      *     <td> Yes </td>
-     *     <td> {@link Responses#serviceUnavailable()}</td>
+     *     <td> {@link Responses#serviceUnavailable()} with
+     *          {@link Response#mustCloseAfterWrite()} enabled.</td>
      *   </tr>
      *   <tr>
      *     <th scope="row"> <i>{@code Everything else}</i> </th>
@@ -359,7 +360,8 @@ public interface ErrorHandler
             res = requestTimeout();
         } catch (ResponseTimeoutException e) {
             log(thr);
-            res = serviceUnavailable();
+            res = serviceUnavailable()
+                    .toBuilder().mustCloseAfterWrite(true).build();
         } catch (Throwable unknown) {
             log(thr);
             res = internalServerError();

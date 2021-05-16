@@ -3,6 +3,7 @@ package alpha.nomagichttp.internal;
 import alpha.nomagichttp.HttpServer;
 import alpha.nomagichttp.handler.ResponseRejectedException;
 import alpha.nomagichttp.message.Response;
+import alpha.nomagichttp.message.ResponseTimeoutException;
 import alpha.nomagichttp.util.SeriallyRunnable;
 
 import java.util.ArrayList;
@@ -11,6 +12,8 @@ import java.util.List;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ConcurrentLinkedDeque;
 import java.util.concurrent.Flow;
+import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Consumer;
 
 import static alpha.nomagichttp.HttpConstants.HeaderKey.CONNECTION;
 import static alpha.nomagichttp.HttpConstants.HeaderKey.CONTENT_LENGTH;
@@ -19,18 +22,22 @@ import static alpha.nomagichttp.HttpConstants.StatusCode.isClientError;
 import static alpha.nomagichttp.HttpConstants.StatusCode.isServerError;
 import static alpha.nomagichttp.HttpConstants.Version.HTTP_1_1;
 import static alpha.nomagichttp.handler.ResponseRejectedException.Reason.PROTOCOL_NOT_SUPPORTED;
+import static alpha.nomagichttp.internal.AtomicReferences.ifPresent;
+import static alpha.nomagichttp.internal.AtomicReferences.setIfAbsent;
+import static alpha.nomagichttp.internal.AtomicReferences.take;
 import static java.lang.System.Logger.Level.DEBUG;
 import static java.lang.System.Logger.Level.ERROR;
 import static java.lang.System.Logger.Level.WARNING;
 import static java.util.Objects.requireNonNull;
 import static java.util.concurrent.CompletableFuture.failedStage;
+import static java.util.concurrent.TimeUnit.SECONDS;
 
 /**
  * Enqueues responses and schedules them to be written out on a client
  * channel.<p>
  * 
  * The {@code write} methods of {@link DefaultClientChannel} is a direct facade
- * for the {@code add} method declared in this class.<p>
+ * for the {@code add} methods declared in this class.<p>
  * 
  * Core responsibilities:
  * <ul>
@@ -38,7 +45,7 @@ import static java.util.concurrent.CompletableFuture.failedStage;
  *   <li>Apply response transformations such as setting "Connection: close" if
  *       no "Content-Length"</li>
  *   <li>Act on response-scheduled channel commands (must-close-after-write,
- *       "Connection: close" et cetera)</li>
+ *       "Connection: close", et cetera)</li>
  * </ul>
  * 
  * In addition:
@@ -82,7 +89,11 @@ final class ResponsePipeline implements Flow.Publisher<ResponsePipeline.Result>
         /**
          * Returns the response that was transmitted or attempted to transmit.
          * 
-         * @return the response (never {@code null}
+         * The response object is provided whether transmission of it was
+         * successful or not. On response timeout, this method returns {@code
+         * null}.
+         * 
+         * @return the response
          */
         Response response();
         
@@ -95,9 +106,11 @@ final class ResponsePipeline implements Flow.Publisher<ResponsePipeline.Result>
         Long length();
         
         /**
-         * Returns the error if response-writing failed, otherwise {@code null}.
+         * Returns an error if response-writing failed or response timed out,
+         * otherwise {@code null}.
          * 
-         * @return the error if response-writing failed, otherwise {@code null}
+         * @return an error if response-writing failed or response timed out,
+         *         otherwise {@code null}
          */
         Throwable error();
     }
@@ -105,14 +118,18 @@ final class ResponsePipeline implements Flow.Publisher<ResponsePipeline.Result>
     private static final System.Logger LOG
             = System.getLogger(ResponsePipeline.class.getPackageName());
     
-    private static final Throwable IGNORE = new AssertionError();
+    private static final Throwable IGNORE = new Throwable();
     
+    private final HttpServer.Config cfg;
     private final int maxUnssuccessful;
     private final HttpExchange exch;
     private final DefaultClientChannel chan;
     private final Deque<CompletionStage<Response>> queue;
     private final SeriallyRunnable op;
     private final List<Flow.Subscriber<? super Result>> subs;
+    private final AtomicReference<Timeout> timer;
+    private volatile boolean timedOut;
+    private boolean timeoutPublished;
     
     /**
      * Constructs a {@code ResponsePipeline}.<p>
@@ -123,12 +140,16 @@ final class ResponsePipeline implements Flow.Publisher<ResponsePipeline.Result>
      * @throws NullPointerException if any arg is {@code null}
      */
     ResponsePipeline(HttpExchange exch, DefaultClientChannel chan) {
-        this.maxUnssuccessful = chan.getServer().getConfig().maxUnsuccessfulResponses();
+        this.cfg = chan.getServer().getConfig();
+        this.maxUnssuccessful = cfg.maxUnsuccessfulResponses();
         this.chan  = chan;
         this.exch  = requireNonNull(exch);
         this.queue = new ConcurrentLinkedDeque<>();
         this.op    = new SeriallyRunnable(this::pollAndProcessAsync, true);
         this.subs  = new ArrayList<>();
+        this.timer = new AtomicReference<>();
+        this.timedOut = false;
+        this.timeoutPublished = false;
     }
     
     @Override
@@ -136,24 +157,64 @@ final class ResponsePipeline implements Flow.Publisher<ResponsePipeline.Result>
         subs.add(s);
     }
     
+    // HttpExchange starts the timer after the request
+    void startTimeout() {
+        Timeout t = setIfAbsent(timer, () ->
+                new Timeout(cfg.timeoutIdleConnection()));
+        t.reschedule(this::timeoutAction);
+    }
+    
+    private void stopTimeout() {
+        take(timer).ifPresent(Timeout::abort);
+    }
+    
     void add(CompletionStage<Response> resp) {
-        requireNonNull(resp);
-        queue.add(resp);
-        op.run();
+        enqueue(resp, queue::add);
     }
     
     void addFirst(CompletionStage<Response> resp) {
+        enqueue(resp, queue::addFirst);
+    }
+    
+    private void enqueue(CompletionStage<Response> resp, Consumer<CompletionStage<Response>> sink) {
         requireNonNull(resp);
-        queue.addFirst(resp);
+        resp.thenRun(this::timeoutReset);
+        sink.accept(resp);
         op.run();
     }
     
+    private void timeoutAction() {
+        timedOut = true;
+        op.run();
+    }
+    
+    private void timeoutReset() {
+        ifPresent(timer, t -> t.reschedule(this::timeoutAction));
+    }
+    
+    private static void scheduleClose(DefaultClientChannel chan) {
+        Timeout.schedule(SECONDS.toNanos(5), () -> {
+            if (chan.isAnythingOpen()) {
+                LOG.log(WARNING, "Response timed out, but after 5 seconds more the channel is still not closed. Closing child.");
+                chan.closeSafe();
+            }
+        });
+    }
+    
     private void pollAndProcessAsync() {
+        if (timedOut && !timeoutPublished) {
+            scheduleClose(chan);
+            publish(null, null, new ResponseTimeoutException(
+                    "Gave up waiting on a response."));
+            timeoutPublished = true;
+        }
+        
         CompletionStage<Response> r = queue.poll();
         if (r == null) {
             op.complete();
             return;
         }
+        
         // TODO: All thenApply() will become post-actions
         r.thenApply(this::closeHttp1_0)
          .thenApply(this::handleUnknownLength)
@@ -243,11 +304,12 @@ final class ResponsePipeline implements Flow.Publisher<ResponsePipeline.Result>
             }
         }
         
-        if (LOG.isLoggable(DEBUG)) {
-            LOG.log(DEBUG, "Subscribing to response: " + rsp);
-        }
+        LOG.log(DEBUG, () -> "Subscribing to response: " + rsp);
         inFlight = rsp;
-        wroteFinal = rsp.isFinal();
+        if (rsp.isFinal()) {
+            wroteFinal = true;
+            stopTimeout();
+        }
         var rbs = new ResponseBodySubscriber(rsp, exch, chan);
         rsp.body().subscribe(rbs);
         return rbs.asCompletionStage();

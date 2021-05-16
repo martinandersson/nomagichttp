@@ -747,7 +747,8 @@ public interface HttpServer
          * during different phases of the HTTP exchange; parsing a request head,
          * processing a request body, waiting on a response from the application
          * and finally writing a response to the underlying channel. The timeout
-         * duration for each timer is the value returned from this method.<p>
+         * duration for each timer is the value returned from this method and is
+         * polled at various points throughout the HTTP exchange.<p>
          * 
          * <strong>Request Timeout</strong><p>
          * 
