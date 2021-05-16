@@ -384,7 +384,7 @@ public final class TestClient
      * Read until end-of-stream.
      * 
      * @return what's left in the channel's read stream
-     *
+     * 
      * @throws ClosedByInterruptException if operation takes longer than 3 seconds
      * @throws IOException for other weird reasons lol
      */
