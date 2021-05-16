@@ -1,6 +1,7 @@
 package alpha.nomagichttp.internal;
 
 import alpha.nomagichttp.message.RequestBodyTimeoutException;
+import alpha.nomagichttp.message.RequestHeadTimeoutException;
 import alpha.nomagichttp.message.ResponseTimeoutException;
 
 import java.time.Duration;
@@ -19,13 +20,14 @@ import static java.util.Objects.requireNonNull;
  * be used as a "before signalling the error" callback). The timer is reset each
  * time an item is delivered from upstream.<p>
  * 
- * The two implementations {@link java.util.concurrent.Flow} and {@link Pub} differ only in the
- * applied scope of the timeout - when is the timer active? Flow spans from an
- * explicit start to the end of the subscription (basically always active, we
- * expect a continuous flow of items or else timeout) and Pub ("publisher") is
- * only active when there is outstanding demand (i.e. focused solely on the
- * upstream publisher, downstream may take however long he wish to process the
- * items or run his own timeouts).
+ * The two implementations {@link Flow} and {@link Pub} differ only in the
+ * applied scope of the timeout - when is the timer active? {@code Flow} spans
+ * from an explicit start or implicit start on the first published item, to the
+ * end of the subscription (basically always active, we expect a continuous flow
+ * of items or else timeout). {@code Pub} ("publisher") is only active when
+ * there is outstanding demand (i.e. focused solely on the upstream publisher,
+ * downstream may take however long he wish to process the items or run his own
+ * timeouts).
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  */
@@ -78,7 +80,7 @@ abstract class TimeoutOp<T> extends AbstractOp<T> {
      * from the downstream.<p>
      * 
      * Is foreseen to be used by {@link ResponseBodySubscriber} for producing
-     * {@link ResponseTimeoutException} (downstream channel uses his own write
+     * {@link ResponseTimeoutException} (downstream channel uses its own write
      * timeout).
      * 
      * @param <T> published item type

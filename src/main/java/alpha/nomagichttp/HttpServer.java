@@ -743,8 +743,11 @@ public interface HttpServer
          * Returns the max duration allowed for idle connections, after which,
          * the connection will be closed.<p>
          * 
-         * All the timers discussed in subsequent sections elapse independently
-         * by the duration value returned from this method.<p>
+         * The "idling" is detected by different timers timing out on inactivity
+         * during different phases of the HTTP exchange; parsing a request head,
+         * processing a request body, waiting on a response from the application
+         * and finally writing a response to the underlying channel. The timeout
+         * duration for each timer is the value returned from this method.<p>
          * 
          * <strong>Request Timeout</strong><p>
          * 
@@ -753,15 +756,16 @@ public interface HttpServer
          * by the {@link ErrorHandler#DEFAULT default error handler} to a 408
          * (Request Timeout).<p>
          * 
-         * Another timer will start as soon as the request object has been
-         * created and ends when the request body subscription completes. When
-         * the timer elapses, a {@link RequestBodyTimeoutException} is either
-         * thrown by the server or - if there is a body subscriber - delivered
-         * to the subscriber's {@link Flow.Subscriber#onError(Throwable)
-         * onError()} method. If it was thrown, or the subscriber is the
-         * server's own discarding body subscriber, then the error will pass
-         * through the error handler(s), the default of which translates the
-         * exception to a 408 (Request Timeout).<p>
+         * If there is a request body, then another timer will start as soon as
+         * the request object has been created (after head parsing) and ends
+         * when the request body subscription terminates. When the timer
+         * elapses, a {@link RequestBodyTimeoutException} is either thrown by
+         * the server or - if there is a body subscriber - delivered to the
+         * subscriber's {@link Flow.Subscriber#onError(Throwable) onError()}
+         * method. If it was thrown, or the subscriber is the server's own
+         * discarding body subscriber, then the error will pass through the
+         * error handler(s), the default of which translates the exception to a
+         * 408 (Request Timeout).<p>
          * 
          * An application-installed body subscriber must deal with the timeout
          * exception (for example by responding {@link
@@ -772,11 +776,11 @@ public interface HttpServer
          * discussed in the next section.<p>
          * 
          * The request timers are not reset after each byte received on the
-         * wire. The timers are only reset on each published bytebuffer. This
-         * means that an extremely slow client may cause a request timeout even
-         * though the connection is technically still making progress.
-         * Similarly, a request timeout may also happen because the
-         * application's body subscriber takes too long processing a
+         * wire. The timers are only reset on each bytebuffer observed through
+         * the processing chain. This means that an extremely slow client may
+         * cause a request timeout even though the connection is technically
+         * still making progress. Similarly, a request timeout may also happen
+         * because the application's body subscriber takes too long processing a
          * bytebuffer. It can be argued that the purpose of the timeouts are not
          * so much to protect against stale connections as they are to protect
          * against HTTP exchanges not making progress, whoever is at fault.<p>
@@ -803,9 +807,9 @@ public interface HttpServer
          * {@link ResponseTimeoutException}, translated by the default error
          * handler to a 503 (Service Unavailable).<p>
          * 
-         * The response timer starts when the request times out or the request
-         * body subscription completes, and so the response will never timeout
-         * while a request is still actively being processed.<p>
+         * The response timer starts when the request timer(s) end or times out,
+         * and so the response will never timeout while a request is still
+         * actively being processed.<p>
          * 
          * The response timeout is reset for each response given to the {@link
          * ClientChannel} (after possible stage completion). A response producer

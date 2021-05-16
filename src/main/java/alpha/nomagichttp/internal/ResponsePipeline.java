@@ -64,7 +64,7 @@ import static java.util.concurrent.CompletableFuture.failedStage;
  *       to it a result object containing the status of a response
  *       transmission. This includes failures from the client-given  {@code
  *       CompletionStage<Response>} and failures from the underlying {@link
- *       ResponseBodySubscriber#asCompletionStage()}</li>
+ *       ResponseBodySubscriber#asCompletionStage()}.</li>
  *   <li>The last emission to the subscriber will be the result of any bytes
  *       sent of a final response. This ends the pipeline's life. Subsequent
  *       responses from the application will be logged, but otherwise
