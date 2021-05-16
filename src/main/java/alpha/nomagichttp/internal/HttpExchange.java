@@ -84,7 +84,7 @@ final class HttpExchange
     private RequestHandler handler;
     private volatile boolean sent100c;
     private volatile boolean subscriberArrived;
-    private ErrorResolver onError;
+    private ErrorResolver errRes;
     
     HttpExchange(
             HttpServer.Config config,
@@ -105,7 +105,15 @@ final class HttpExchange
         this.request  = null;
         this.handler  = null;
         this.sent100c = false;
-        this.onError  = null;
+        this.errRes   = null;
+    }
+    
+    Version getHttpVersion() {
+        return ver;
+    }
+    
+    Request getRequest() {
+        return request;
     }
     
     /**
@@ -128,24 +136,9 @@ final class HttpExchange
         return result;
     }
     
-    Version getHttpVersion() {
-        return ver;
-    }
-    
-    Request getRequest() {
-        return request;
-    }
-    
     private void begin0() {
-        pipe.subscribe(onNext(this::handlePipeResult));
-        chan.usePipeline(pipe);
-        
-        RequestHeadSubscriber rhs = new RequestHeadSubscriber(config.maxRequestHeadSize());
-        new TimeoutOp.Flow<>(bytes, config.timeoutIdleConnection(), RequestHeadTimeoutException::new)
-                .start()
-                .subscribe(rhs);
-        
-        rhs.asCompletionStage()
+        setupPipeline();
+        parseRequestHead()
            .thenAccept(this::initialize)
            .thenRun(() -> { if (config.immediatelyContinueExpect100())
                tryRespond100Continue(); })
@@ -160,6 +153,21 @@ final class HttpExchange
                }
                return null;
            });
+    }
+    
+    private void setupPipeline() {
+        pipe.subscribe(onNext(this::handlePipeResult));
+        chan.usePipeline(pipe);
+    }
+    
+    private CompletionStage<RequestHead> parseRequestHead() {
+        RequestHeadSubscriber rhs = new RequestHeadSubscriber(config.maxRequestHeadSize());
+        
+        var to = new TimeoutOp.Flow<>(bytes, config.timeoutIdleConnection(), RequestHeadTimeoutException::new);
+        to.subscribe(rhs);
+        to.start();
+        
+        return rhs.asCompletionStage();
     }
     
     private void initialize(RequestHead h) {
@@ -348,7 +356,7 @@ final class HttpExchange
     // Lock not expected to be contended. But in theory, this method can be
     // invoked concurrently by a synchronous error from the request handler
     // invocation as well as an asynchronous error from the response pipeline.
-    // TODO: Fix?
+    // TODO: Improve?
     private synchronized void handleError(Throwable exc) {
         final Throwable unpacked = unpackCompletionException(exc);
         
@@ -374,10 +382,10 @@ final class HttpExchange
         }
         
         if (chan.isOpenForWriting())  {
-            if (onError == null) {
-                onError = new ErrorResolver();
+            if (errRes == null) {
+                errRes = new ErrorResolver();
             }
-            onError.resolve(unpacked);
+            errRes.resolve(unpacked);
             if (unpacked instanceof ResponseTimeoutException && chan.isAnythingOpen()) {
                 LOG.log(DEBUG, "A response timed out. Closing channel.");
                 chan.closeSafe();

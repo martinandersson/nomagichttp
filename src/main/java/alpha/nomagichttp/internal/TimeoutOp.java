@@ -5,6 +5,7 @@ import alpha.nomagichttp.message.RequestHeadTimeoutException;
 import alpha.nomagichttp.message.ResponseTimeoutException;
 
 import java.time.Duration;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Supplier;
 
@@ -22,12 +23,12 @@ import static java.util.Objects.requireNonNull;
  * 
  * The two implementations {@link Flow} and {@link Pub} differ only in the
  * applied scope of the timeout - when is the timer active? {@code Flow} spans
- * from an explicit start or implicit start on the first published item, to the
- * end of the subscription (basically always active, we expect a continuous flow
- * of items or else timeout). {@code Pub} ("publisher") is only active when
- * there is outstanding demand (i.e. focused solely on the upstream publisher,
- * downstream may take however long he wish to process the items or run his own
- * timeouts).
+ * from an explicit start or implicit start on first downstream increase of
+ * demand, to the end of the subscription (basically always active, we expect a
+ * continuous flow of items or else timeout). {@code Pub} ("publisher") is only
+ * active when there is outstanding demand (i.e. focused solely on the upstream
+ * publisher, downstream may take however long he wish to process the items or
+ * run his own timeouts).
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  */
@@ -36,8 +37,8 @@ abstract class TimeoutOp<T> extends AbstractOp<T> {
             = System.getLogger(TimeoutOp.class.getPackageName());
     
     /**
-     * A timeout operator which may be manually started before the first item
-     * publication from the upstream and the timer runs until the subscription
+     * A timeout operator which may be manually started ahead of the first
+     * downstream increase of demand and is active until the subscription
      * completes.<p>
      * 
      * Currently used by {@link HttpExchange} to abort {@link
@@ -48,30 +49,48 @@ abstract class TimeoutOp<T> extends AbstractOp<T> {
      * @param <T> published item type
      */
     static final class Flow<T> extends TimeoutOp<T> {
+        private final AtomicBoolean started;
+        
         Flow(java.util.concurrent.Flow.Publisher<? extends T> upstream,
              Duration timeout,
-             Supplier<? extends Throwable> exception) {
+             Supplier<? extends Throwable> exception)
+        {
             super(upstream, timeout, exception);
+            started = new AtomicBoolean();
         }
         
         /**
          * Start the timer.<p>
-         *
+         * 
          * The start should be scheduled immediately after the operator chain
          * has been setup. This will ensure that a super fast timeout does not
-         * fire off an exception before the chain is properly initialized.
+         * fire off an exception before the final downstream subscriber has
+         * arrived.<p>
          * 
-         * @return self for fluency/chaining
+         * Is NOP if already started.
          */
-        Flow<T> start() {
-            to.schedule(super::timeoutAction);
-            return this;
+        void start() {
+            tryStart();
+        }
+        
+        @Override
+        protected void fromDownstreamRequest(long n) {
+            if (n > 0) {
+                tryStart();
+            }
+            super.fromDownstreamRequest(n);
         }
         
         @Override
         protected void fromUpstreamNext(T item) {
             to.reschedule(super::timeoutAction);
             super.fromUpstreamNext(item);
+        }
+        
+        private void tryStart() {
+            if (started.compareAndSet(false, true)) {
+                to.schedule(super::timeoutAction);
+            }
         }
     }
     
