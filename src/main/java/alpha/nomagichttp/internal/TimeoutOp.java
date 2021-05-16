@@ -62,10 +62,10 @@ abstract class TimeoutOp<T> extends AbstractOp<T> {
         /**
          * Start the timer.<p>
          * 
-         * The start should be scheduled immediately after the operator chain
-         * has been setup. This will ensure that a super fast timeout does not
-         * fire off an exception before the final downstream subscriber has
-         * arrived.<p>
+         * The start should be scheduled only after the call site has made sure
+         * the timeout - which may in theory (as is the case in our tests) be
+         * extremely short. Meaning, after {@link SubscriptionAsStageOp} has
+         * subscribed to the timeout operator.<p>
          * 
          * Is NOP if already started.
          */

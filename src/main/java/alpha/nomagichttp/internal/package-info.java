@@ -34,8 +34,8 @@
  * interface. These operators are more of a trait or a feature that is added to
  * an upstream publisher by using the decorator pattern. Instead of external
  * subscription at some point of time in the future, the upstream has to be
- * passed as a constructor argument to which the operator immediately
- * subscribes.<p>
+ * passed as a constructor argument to which the operator subscribes lazily when
+ * the downstream subscribes.<p>
  * 
  * Utilizing the decorator pattern instead of implementing {@code
  * Flow.Processor} also makes it perfectly clear that the operators can <i>only

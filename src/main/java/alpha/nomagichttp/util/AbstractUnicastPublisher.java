@@ -164,9 +164,10 @@ public abstract class AbstractUnicastPublisher<T> implements Flow.Publisher<T>
      * 
      * However, the {@code request()} signal - apart from a potential delay
      * during initialization - is always routed through as-is. Yes, even after
-     * the subscription has completed (!). Therefore, the reusable publisher
-     * must ensure that an old subscriber can not accidentally increase the
-     * demand [or trigger an invalid-demand error] for a new subscriber.<p>
+     * the subscription has completed (!). Therefore, the <i>reusable</i>
+     * publisher must ensure that an old subscriber can not accidentally
+     * increase the demand [or trigger an invalid-demand error] for a new
+     * subscriber.<p>
      * 
      * A call to {@code newSubscription()} happens-before a subsequent call to
      * {@code newSubscription()}.

@@ -1,6 +1,7 @@
 package alpha.nomagichttp.internal;
 
 import alpha.nomagichttp.message.PooledByteBufferHolder;
+import alpha.nomagichttp.message.RequestBodyTimeoutException;
 
 import java.util.Optional;
 import java.util.concurrent.CancellationException;
@@ -13,12 +14,16 @@ import java.util.concurrent.atomic.AtomicReference;
 import static java.util.Optional.ofNullable;
 
 /**
- * Allows the downstream subscription to be observed {@link
- * #asCompletionStage()}.<p>
+ * Allows the flow to be observed {@link #asCompletionStage()}.<p>
  * 
- * Is used by the server's request thread as a notification mechanism for when
- * the application's body processing completes at which point the next HTTP
- * exchange pair may commence.<p>
+ * Is used by the server's request thread as a notification mechanism for
+ * upstream errors (specifically, {@link RequestBodyTimeoutException}) and to be
+ * notified when the application's body processing completes at which point the
+ * next HTTP exchange pair may commence.<p>
+ * 
+ * Unlike the default operator behavior, this operator subscribes eagerly to the
+ * upstream in order in order to catch all errors. The error is caught even if
+ * at that time no downstream subscriber was active.<p>
  * 
  * This operator doesn't change any semantics regarding the flow between the
  * upstream and downstream. All signals are passed through as-is, even
@@ -60,6 +65,7 @@ final class SubscriptionAsStageOp extends AbstractOp<PooledByteBufferHolder>
         processing = new AtomicInteger();
         terminated = new AtomicReference<>(null);
         result     = new CompletableFuture<>();
+        trySubscribeToUpstream();
     }
     
     /**
