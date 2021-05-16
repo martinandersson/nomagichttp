@@ -140,10 +140,11 @@ final class HttpExchange
         pipe.subscribe(onNext(this::handlePipeResult));
         chan.usePipeline(pipe);
         
-        RequestHeadSubscriber rhs = new RequestHeadSubscriber(
-                config.maxRequestHeadSize(), config.timeoutIdleConnection());
+        RequestHeadSubscriber rhs = new RequestHeadSubscriber(config.maxRequestHeadSize());
+        new TimeoutOp.Flow<>(bytes, config.timeoutIdleConnection(), RequestHeadTimeoutException::new)
+                .start()
+                .subscribe(rhs);
         
-        bytes.subscribe(rhs);
         rhs.asCompletionStage()
            .thenAccept(this::initialize)
            .thenRun(() -> { if (config.immediatelyContinueExpect100())

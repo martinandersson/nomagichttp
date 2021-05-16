@@ -37,9 +37,11 @@ abstract class TimeoutOp<T> extends AbstractOp<T> {
      * A timeout operator which may be manually started before the first item
      * publication from the upstream and the timer runs until the subscription
      * completes.<p>
-     *
-     * Currently used by {@link DefaultRequest} for aborting the body
-     * subscription with a {@link RequestBodyTimeoutException}.
+     * 
+     * Currently used by {@link HttpExchange} to abort {@link
+     * RequestHeadSubscriber} with a {@link RequestHeadTimeoutException} and
+     * used by {@link DefaultRequest} to abort the body subscriber with a {@link
+     * RequestBodyTimeoutException}.
      * 
      * @param <T> published item type
      */
@@ -56,9 +58,12 @@ abstract class TimeoutOp<T> extends AbstractOp<T> {
          * The start should be scheduled immediately after the operator chain
          * has been setup. This will ensure that a super fast timeout does not
          * fire off an exception before the chain is properly initialized.
+         * 
+         * @return self for fluency/chaining
          */
-        void start() {
+        Flow<T> start() {
             to.schedule(super::timeoutAction);
+            return this;
         }
         
         @Override

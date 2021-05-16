@@ -4,10 +4,8 @@ import alpha.nomagichttp.message.Char;
 import alpha.nomagichttp.message.EndOfStreamException;
 import alpha.nomagichttp.message.MaxRequestHeadSizeExceededException;
 import alpha.nomagichttp.message.PooledByteBufferHolder;
-import alpha.nomagichttp.message.RequestHeadTimeoutException;
 
 import java.nio.ByteBuffer;
-import java.time.Duration;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.Flow;
@@ -26,14 +24,12 @@ final class RequestHeadSubscriber implements SubscriberAsStage<PooledByteBufferH
             = System.getLogger(RequestHeadSubscriber.class.getPackageName());
     
     private final int maxHeadSize;
-    private final Timeout timeout;
     private final RequestHeadProcessor processor;
     private final CompletableFuture<RequestHead> result;
     
     
-    RequestHeadSubscriber(int maxRequestHeadSize, Duration timeout) {
+    RequestHeadSubscriber(int maxRequestHeadSize) {
         this.maxHeadSize = maxRequestHeadSize;
-        this.timeout     = new Timeout(timeout);
         this.processor   = new RequestHeadProcessor();
         this.result      = new CompletableFuture<>();
     }
@@ -44,11 +40,7 @@ final class RequestHeadSubscriber implements SubscriberAsStage<PooledByteBufferH
      * If the sourced publisher (ChannelByteBufferPublisher) terminates the
      * subscription with an {@link EndOfStreamException} <i>and</i> no bytes
      * have been processed by this subscriber, then the stage will complete
-     * exceptionally with a {@link ClientAbortedException}.<p>
-     * 
-     * The stage will complete with a {@link RequestHeadTimeoutException} if the
-     * emission of a bytebuffer from upstream takes longer than the specified
-     * timeout provided to the constructor.
+     * exceptionally with a {@link ClientAbortedException}.
      * 
      * @return a stage that completes with the result
      */
@@ -60,7 +52,6 @@ final class RequestHeadSubscriber implements SubscriberAsStage<PooledByteBufferH
     @Override
     public void onSubscribe(Flow.Subscription subscription) {
         this.subscription = SubscriberAsStage.validate(this.subscription, subscription);
-        timeout.schedule(this::timeoutAction);
         subscription.request(Long.MAX_VALUE);
     }
     
@@ -72,8 +63,6 @@ final class RequestHeadSubscriber implements SubscriberAsStage<PooledByteBufferH
     
     @Override
     public void onNext(PooledByteBufferHolder item) {
-        timeout.abort();
-        
         final RequestHead head;
         try {
             head = process(item.get());
@@ -88,8 +77,6 @@ final class RequestHeadSubscriber implements SubscriberAsStage<PooledByteBufferH
         if (head != null) {
             subscription.cancel();
             result.complete(head);
-        } else {
-            timeout.schedule(this::timeoutAction);
         }
     }
     
@@ -112,7 +99,6 @@ final class RequestHeadSubscriber implements SubscriberAsStage<PooledByteBufferH
     
     @Override
     public void onError(final Throwable t) {
-        timeout.abort();
         if (t instanceof EndOfStreamException && !processor.hasStarted()) {
             result.completeExceptionally(new ClientAbortedException(t));
         } else {
@@ -122,13 +108,6 @@ final class RequestHeadSubscriber implements SubscriberAsStage<PooledByteBufferH
     
     @Override
     public void onComplete() {
-        timeout.abort();
         // Never mind the result carrier, channel read stream is shutting down
-    }
-    
-    private void timeoutAction() {
-        if (result.completeExceptionally(new RequestHeadTimeoutException())) {
-            subscription.cancel();
-        }
     }
 }

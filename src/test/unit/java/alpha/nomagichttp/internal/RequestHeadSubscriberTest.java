@@ -14,7 +14,6 @@ import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
 import java.net.http.HttpHeaders;
-import java.time.Duration;
 import java.util.List;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ExecutionException;
@@ -24,7 +23,6 @@ import java.util.concurrent.TimeoutException;
 import static alpha.nomagichttp.testutil.Assertions.assertFails;
 import static java.lang.Integer.MAX_VALUE;
 import static java.lang.System.Logger.Level.ALL;
-import static java.time.Duration.ofDays;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
@@ -53,7 +51,7 @@ class RequestHeadSubscriberTest
             DefaultClientChannel chan = new DefaultClientChannel(
                     SERVER.accept(), mock(HttpServer.class));
             Flow.Publisher<DefaultPooledByteBufferHolder> bytes = new ChannelByteBufferPublisher(chan);
-            RequestHeadSubscriber rhp = new RequestHeadSubscriber(MAX_VALUE, ofDays(99));
+            RequestHeadSubscriber rhp = new RequestHeadSubscriber(MAX_VALUE);
             bytes.subscribe(rhp);
             testee = rhp.asCompletionStage();
         }
