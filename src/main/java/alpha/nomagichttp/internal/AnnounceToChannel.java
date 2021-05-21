@@ -6,6 +6,7 @@ import alpha.nomagichttp.util.SeriallyRunnable;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.nio.channels.AsynchronousCloseException;
 import java.nio.channels.InterruptedByTimeoutException;
 import java.time.Duration;
 import java.util.Deque;
@@ -118,7 +119,11 @@ final class AnnounceToChannel
         
         @Override
         public String toString() {
-            return name().charAt(0) + name().toLowerCase(ROOT).substring(1);
+            return name().toLowerCase(ROOT);
+        }
+        
+        public String capitalized() {
+            return name().charAt(0) + toString().substring(1);
         }
     }
     
@@ -220,8 +225,9 @@ final class AnnounceToChannel
      * Similar to a Java try-with-resources statement; if an ongoing
      * asynchronous operation completes exceptionally and the exception fails to
      * be marked for delivery to the {@code whenDone} callback, then the error
-     * will be added as <i>suppressed</i>. It does not stop the original
-     * exception from being propagated.
+     * will be added as <i>suppressed</i> by the given error (or whichever other
+     * error was marked for delivery). The asynchronous failure does not stop
+     * the marked exception from being propagated.
      * 
      * @param t a throwable
      * 
@@ -244,6 +250,32 @@ final class AnnounceToChannel
         }
         
         return false;
+    }
+    
+    /**
+     * First call {@link #stop(Throwable)} with the given exception, then
+     * shutdown the stream in use, then return what {@code stop(Throwable)}
+     * returned.<p>
+     * 
+     * An ongoing operation will be aborted with an {@link
+     * AsynchronousCloseException}. If this methods returns {@code true}, then
+     * the close exception will be added as suppressed by the given error.<p>
+     * 
+     * Note: The stream will always shutdown, no matter the boolean return value
+     * from this method.
+     * 
+     * @param t a throwable
+     * 
+     * @return same as {@link #stop(Throwable)}
+     */
+    boolean stopNow(Throwable t) {
+        boolean s = stop(t);
+        if (isStreamOpen()) {
+            LOG.log(DEBUG, () ->
+                "Asked to shutdown channel's " + mode + " stream, will shutdown the stream.");
+            closeStream();
+        }
+        return s;
     }
     
     private void pollAndInitiate() {
@@ -336,7 +368,8 @@ final class AnnounceToChannel
                 buf.flip();
             } else if (buf.hasRemaining()) {
                 assert mode == Mode.WRITE;
-                LOG.log(DEBUG, () -> mode + " operation didn't read all of the buffer, adding back as head of queue.");
+                LOG.log(DEBUG, () -> mode.capitalized() +
+                    " operation didn't read all of the buffer, adding back as head of queue.");
                 buffers.addFirst(buf);
             }
             
@@ -357,8 +390,8 @@ final class AnnounceToChannel
                     // Service "stopped normally", we only log ours - if need be
                     if (!becauseChannelOrGroupClosed(exc)) {
                         loggedStack = true;
-                        LOG.log(ERROR, () ->
-                            mode + " operation failed and service already stopped normally; " +
+                        LOG.log(ERROR, () -> mode.capitalized() +
+                            " operation failed and service already stopped normally; " +
                             "can not propagate this error anywhere.", exc);
                     } // else channel was effectively closed AND service stopped already, nothing to do
                 } else {
@@ -374,9 +407,11 @@ final class AnnounceToChannel
                     LOG.log(DEBUG, "Will close connection's used stream.");
                 } else if (isCausedByBrokenStream(exc)) {
                     // Log "broken pipe", but no stack dump
-                    LOG.log(DEBUG, () -> mode + " operation failed (broken pipe), will close stream.");
+                    LOG.log(DEBUG, () -> mode.capitalized() +
+                        " operation failed (broken pipe), will close stream.");
                 } else {
-                    Supplier<String> msg = () -> mode + " operation failed and stream is still open, will close it.";
+                    Supplier<String> msg = () -> mode.capitalized() +
+                        " operation failed and stream is still open, will close it.";
                     if (pushed) {
                         // Only message
                         LOG.log(DEBUG, msg);

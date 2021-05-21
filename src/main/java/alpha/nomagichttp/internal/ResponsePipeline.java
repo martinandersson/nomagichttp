@@ -6,6 +6,7 @@ import alpha.nomagichttp.message.Response;
 import alpha.nomagichttp.message.ResponseTimeoutException;
 import alpha.nomagichttp.util.SeriallyRunnable;
 
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Deque;
 import java.util.List;
@@ -127,6 +128,8 @@ final class ResponsePipeline implements Flow.Publisher<ResponsePipeline.Result>
     private final Deque<CompletionStage<Response>> queue;
     private final SeriallyRunnable op;
     private final List<Flow.Subscriber<? super Result>> subs;
+    // This timer times out delays from app to give us a response.
+    // Response body timer is set by method subscribeToResponse().
     private final AtomicReference<Timeout> timer;
     private volatile boolean timedOut;
     private boolean timeoutPublished;
@@ -310,9 +313,17 @@ final class ResponsePipeline implements Flow.Publisher<ResponsePipeline.Result>
             wroteFinal = true;
             stopTimeout();
         }
-        var rbs = new ResponseBodySubscriber(rsp, exch, chan);
-        rsp.body().subscribe(rbs);
-        return rbs.asCompletionStage();
+        
+        // Response.body() (app) -> operator -> ResponseBodySubscriber (server)
+        // On timeout, operator will cancel upstream and error out downstream.
+        var body = new TimeoutOp.Pub<>(true, false, rsp.body(), cfg.timeoutIdleConnection(), () -> {
+            scheduleClose(chan);
+            return new ResponseTimeoutException(
+                    "Gave up waiting on a response body bytebuffer.");
+        });
+        var sub = new ResponseBodySubscriber(rsp, exch, chan);
+        body.subscribe(sub);
+        return sub.asCompletionStage();
     }
     
     private void handleResult(ResponseBodySubscriber.Result res, Throwable thr) {
@@ -325,7 +336,7 @@ final class ResponsePipeline implements Flow.Publisher<ResponsePipeline.Result>
             return;
         }
         
-        actOnChannelCommands(rsp);
+        tryActOnChannelCommands(rsp);
         
         if (res != null) {
             actOnWriteSuccess(res, rsp);
@@ -337,7 +348,7 @@ final class ResponsePipeline implements Flow.Publisher<ResponsePipeline.Result>
         op.run();
     }
     
-    private void actOnChannelCommands(Response rsp) {
+    private void tryActOnChannelCommands(Response rsp) {
         if (rsp == null) {
             // Application's provided stage completed exceptionally, nothing to do
             return;

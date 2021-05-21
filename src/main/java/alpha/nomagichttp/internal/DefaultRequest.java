@@ -160,7 +160,8 @@ final class DefaultRequest implements Request
             bodyDiscard = null;
         } else {
             var bounded = new LengthLimitedOp(len, bodySource);
-            var timeOut = new TimeoutOp.Flow<>(bounded, timeout, () -> {
+            // Upstream is ChannelByteBufferPublisher, he can handle async cancel
+            var timeOut = new TimeoutOp.Flow<>(false, true, bounded, timeout, () -> {
                 if (LOG.isLoggable(DEBUG) && child.isOpenForReading()) {
                     LOG.log(DEBUG, "Request body timed out, shutting down child channel's read stream.");
                 }

@@ -169,7 +169,7 @@ public final class TestClient
             int r = Interrupt.after(1, SECONDS, () -> ch.read(buf));
             return r == -1;
         } catch (IOException e) {
-            boolean broken =  isCausedByBrokenInputStream(e);
+            boolean broken = isCausedByBrokenInputStream(e);
             if (!broken) {
                 LOG.log(DEBUG, "Exception not considered broken read.", e);
             }

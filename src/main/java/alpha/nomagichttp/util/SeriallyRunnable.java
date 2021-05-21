@@ -125,8 +125,10 @@ import java.util.concurrent.atomic.AtomicInteger;
  * 
  * The delegate will not be eligible to execute again before both the
  * run-method has returned and the complete signal has been raised. This was
- * implemented to fix a race where an async task completes before the run method
- * do which could have ended up breaking the serial guarantee of this class.<p>
+ * implemented not only to support the executing thread also raising the
+ * complete signal, but also to fix a race where an async task completes before
+ * the run method do which could have ended up breaking the serial guarantee of
+ * this class.<p>
  * 
  * The requirement for both parties to complete also brings in another advantage
  * free of charge. The task-submitting thread invoking the run-method can safely
@@ -243,9 +245,9 @@ public final class SeriallyRunnable implements Runnable
      * @throws NullPointerException if {@code delegate} is {@code null}
      */
     public SeriallyRunnable(Runnable delegate, boolean async) {
-        this.delegate = delegate;
-        this.async = async;
-        this.state = new AtomicInteger(END);
+        this.delegate  = delegate;
+        this.async     = async;
+        this.state     = new AtomicInteger(END);
         this.initiator = ThreadLocal.withInitial(() -> false);
     }
     
@@ -309,15 +311,15 @@ public final class SeriallyRunnable implements Runnable
     }
     
     /**
-     * In asynchronous mode, mark the active logical run as completed.<p>
+     * In asynchronous mode, mark the active logical run as completed.
      * 
-     * Do not call this method in synchronous mode. Doing so will infer with the
-     * logic in the {@code SeriallyRunnable} class, at best causing {@code
-     * run()} to return exceptionally.
-     * 
-     * @throws IllegalStateException if no run is active
+     * @throws IllegalStateException if running in synchronous mode, or
+     *                               if no run is active
      */
     public void complete() {
+        if (!async) {
+            throw new IllegalStateException("Call to complete() in synchronous mode.");
+        }
         if (countDownAndTryAgain() && !initiator.get()) {
             run();
         }

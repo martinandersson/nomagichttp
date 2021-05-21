@@ -273,19 +273,6 @@ public class MemorizingSubscriber<T> implements Flow.Subscriber<T>
                       .collect(toUnmodifiableList());
     }
     
-    /**
-     * Returns the subscription as a stage.<p>
-     * 
-     * {@code onComplete} will cause the returned stage to complete with {@code
-     * null}. {@code onError} will cause the returned stage to complete with the
-     * error.
-     * 
-     * @return a stage
-     */
-    public CompletionStage<Void> asCompletionStage() {
-        return result;
-    }
-    
     @Override
     public void onSubscribe(Flow.Subscription subscription) {
         signals.add(new Signal(ON_SUBSCRIBE, subscription));
@@ -311,7 +298,7 @@ public class MemorizingSubscriber<T> implements Flow.Subscriber<T>
         if (delegate != null) {
             delegate.onError(t);
         }
-        result.completeExceptionally(t);
+        result.complete(null);
     }
     
     @Override
@@ -321,5 +308,19 @@ public class MemorizingSubscriber<T> implements Flow.Subscriber<T>
             delegate.onComplete();
         }
         result.complete(null);
+    }
+    
+    /**
+     * Returns the subscription as a stage.<p>
+     * 
+     * This method should be used for awaiting the subscription termination.
+     * Both {@code onComplete} and {@code onError} will complete the stage with
+     * {@code null}. Exactly what caused the termination event can be checked by
+     * running asserts on the received signals.
+     * 
+     * @return a stage
+     */
+    private CompletionStage<Void> asCompletionStage() {
+        return result;
     }
 }

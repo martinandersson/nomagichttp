@@ -1,6 +1,7 @@
 package alpha.nomagichttp.internal;
 
 import alpha.nomagichttp.util.AbstractUnicastPublisher;
+import alpha.nomagichttp.util.SerialExecutor;
 
 import java.util.concurrent.Flow;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -25,11 +26,17 @@ import static java.util.Objects.requireNonNull;
  * attach its operator-specific feature. To propagate the signal forward, call
  * super.<p>
  * 
- * A few key notes from {@code AbstractUnicastPublisher}: {@code
- * fromDownstreamRequest()} never while the superclass is still executing {@code
- * newSubscription()}. The operator will only receive at most one terminating
- * signal. Downstream request for demand is routed through even after
- * subscription termination.<p>
+ * A few key notes from {@code AbstractUnicastPublisher}:
+ * <ul>
+ *   <li>{@code fromDownstreamRequest()} is never called while the superclass is
+ *       still executing {@code newSubscription()}</li>
+ *   <li>The operator will only receive at most one terminating signal.</li>
+ *   <li>Downstream request for demand is routed through even after subscription
+ *       termination.</li>
+ *   <li>If the operator signals an untrusted (i.e. non-library) upstream- or
+ *       any downstream asynchronously, then signals must be arranged to execute
+ *       serially. Consider extending {@link Async}.</li>
+ * </ul>
  * 
  * Although this class adds no logic or behavior and could be put into question
  * why it exists, the alternative would be for each operator to copy-paste a
@@ -107,5 +114,63 @@ abstract class AbstractOp<T> extends AbstractUnicastPublisher<T>
         
         @Override public void cancel() {
             fromDownstreamCancel(); }
+    }
+    
+    /**
+     * Serializes all signals to upstream- and/or downstream.<p>
+     * 
+     * Only <i>fromXXX()</i> methods are serialized. Calls directly to {@code
+     * AbstractUnicastPublisher} such as {@code signalNext()} is not serialized.
+     * 
+     * @param <T> type of item
+     */
+    static class Async<T> extends AbstractOp<T> {
+        private final SerialExecutor up, down;
+        
+        protected Async(Flow.Publisher<? extends T> upstream, boolean serializeUp, boolean serializeDown) {
+            super(upstream);
+            up   = serializeUp   ? new SerialExecutor() : null;
+            down = serializeDown ? new SerialExecutor() : null;
+        }
+        
+        protected void fromUpstreamNext(T item) {
+            if (down == null) {
+                super.fromUpstreamNext(item);
+            } else {
+                down.execute(() -> super.fromUpstreamNext(item));
+            }
+        }
+        
+        protected void fromUpstreamError(Throwable t) {
+            if (down == null) {
+                super.fromUpstreamError(t);
+            } else {
+                down.execute(() -> super.fromUpstreamError(t));
+            }
+        }
+        
+        protected void fromUpstreamComplete() {
+            if (down == null) {
+                super.fromUpstreamComplete();
+            } else {
+                down.execute(super::fromUpstreamComplete);
+            }
+        }
+    
+        protected void fromDownstreamRequest(long n) {
+            if (up == null) {
+                super.fromDownstreamRequest(n);
+            } else {
+                up.execute(() -> super.fromDownstreamRequest(n));
+            }
+        }
+    
+        protected void fromDownstreamCancel() {
+            if (up == null) {
+                super.fromDownstreamCancel();
+            } else {
+                up.execute(super::fromDownstreamCancel);
+            }
+        }
     }
 }

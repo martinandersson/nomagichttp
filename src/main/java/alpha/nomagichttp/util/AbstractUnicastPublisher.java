@@ -305,7 +305,7 @@ public abstract class AbstractUnicastPublisher<T> implements Flow.Publisher<T>
         requireNonNull(expected);
         final Flow.Subscriber<? super T> s = get();
         
-        if (s == expected || expected == ANYONE) {
+        if (s != null && (s == expected || expected == ANYONE)) {
             s.onNext(item);
             return true;
         }

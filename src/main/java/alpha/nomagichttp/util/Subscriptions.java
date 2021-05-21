@@ -148,7 +148,7 @@ public final class Subscriptions
          * 
          * @param delegate delegate
          * 
-         * @throws NullPointerException if {@code d} is {@code null}
+         * @throws NullPointerException if {@code delegate} is {@code null}
          */
         public final void activate(final Flow.Subscription delegate) {
             this.delegate = requireNonNull(delegate);

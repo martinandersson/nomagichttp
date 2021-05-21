@@ -163,7 +163,8 @@ final class HttpExchange
     private CompletionStage<RequestHead> parseRequestHead() {
         RequestHeadSubscriber rhs = new RequestHeadSubscriber(config.maxRequestHeadSize());
         
-        var to = new TimeoutOp.Flow<>(bytes, config.timeoutIdleConnection(), RequestHeadTimeoutException::new);
+        var to = new TimeoutOp.Flow<>(false, true, bytes,
+                config.timeoutIdleConnection(), RequestHeadTimeoutException::new);
         to.subscribe(rhs);
         to.start();
         
@@ -374,7 +375,7 @@ final class HttpExchange
         if (unpacked instanceof RequestHeadTimeoutException) {
             LOG.log(DEBUG, "Request head timed out, shutting down input stream.");
             // HTTP exchange will not continue after response
-            // RequestBodyTimeoutException already shut down the input stream
+            // RequestBodyTimeoutException already shut down the input stream (see DefaultRequest)
             chan.shutdownInputSafe();
             // Continue
         }
@@ -385,7 +386,7 @@ final class HttpExchange
             }
             errRes.resolve(unpacked);
         } else {
-            LOG.log(DEBUG, () ->
+            LOG.log(WARNING, () ->
                 "Child channel is closed for writing. " +
                 "Can not resolve this error. " +
                 "HTTP exchange is over.", unpacked);

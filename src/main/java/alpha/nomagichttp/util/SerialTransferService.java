@@ -1,6 +1,7 @@
 package alpha.nomagichttp.util;
 
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Supplier;
@@ -102,7 +103,7 @@ public final class SerialTransferService<T>
     private static final int FINISHED = -1;
     
     private final Function<SerialTransferService<T>, ? extends T> from;
-    private final Consumer<? super T> to;
+    private final BiConsumer<SerialTransferService<T>, ? super T> to;
     private final AtomicLong demand;
     // #before is safely published through volatile init and subsequent read of
     // #demand thereafter only updated (to null) in the first serial run with
@@ -121,52 +122,43 @@ public final class SerialTransferService<T>
      * @throws NullPointerException if {@code from} or {@code to} is {@code null}
      */
     public SerialTransferService(Supplier<? extends T> from, Consumer<? super T> to) {
-        this(selfIgnored -> from.get(), to, null);
+        this(selfIgnored -> from.get(), (selfIgnored, item) -> to.accept(item));
+        requireNonNull(from);
+        requireNonNull(to);
     }
     
     /**
      * Constructs a {@code SerialTransferService}.
      * 
      * @param from  item supplier (will receive {@code this} service as argument)
-     * @param to    item consumer
+     * @param to    item consumer (will receive {@code this} service as second argument)
      * 
      * @throws NullPointerException if {@code from} or {@code to} is {@code null}
      */
-    public SerialTransferService(Function<SerialTransferService<T>, ? extends T> from, Consumer<? super T> to) {
+    public SerialTransferService(Function<SerialTransferService<T>, ? extends T> from,
+                                 BiConsumer<SerialTransferService<T>, ? super T> to) {
         this(from, to, null);
     }
     
     /**
      * Constructs a {@code SerialTransferService}.
-     *
-     * The before-first-delivery callback is called exactly once, serially
-     * within the scope of the first delivery just before the consumer receives
-     * the item.
-     *
-     * @param from  item supplier
-     * @param to    item consumer
-     * @param beforeFirstDelivery callback (optional; may be {@code null})
-     *
-     * @throws NullPointerException if {@code from} or {@code to} is {@code null}
-     */
-    public SerialTransferService(Supplier<? extends T> from, Consumer<? super T> to, Runnable beforeFirstDelivery) {
-        this(selfIgnored -> from.get(), to, beforeFirstDelivery);
-    }
-    
-    /**
-     * Constructs a {@code SerialTransferService}.
      * 
      * The before-first-delivery callback is called exactly once, serially
      * within the scope of the first delivery just before the consumer receives
      * the item.
      * 
      * @param from  item supplier (will receive {@code this} service as argument)
-     * @param to    item consumer
+     * @param to    item consumer (will receive {@code this} service as first argument)
      * @param beforeFirstDelivery callback (optional; may be {@code null})
      * 
      * @throws NullPointerException if {@code from} or {@code to} is {@code null}
      */
-    public SerialTransferService(Function<SerialTransferService<T>, ? extends T> from, Consumer<? super T> to, Runnable beforeFirstDelivery) {
+    // private only coz before-first currently not used anywhere
+    private SerialTransferService(
+            Function<SerialTransferService<T>, ? extends T> from,
+            BiConsumer<SerialTransferService<T>, ? super T> to,
+            Runnable beforeFirstDelivery)
+    {
         this.from   = requireNonNull(from);
         this.to     = requireNonNull(to);
         this.before = beforeFirstDelivery;
@@ -305,7 +297,7 @@ public final class SerialTransferService<T>
         final long now;
         try {
             runBeforeOnce();
-            to.accept(item);
+            to.accept(this, item);
         } finally {
             now = demand.updateAndGet(curr ->
                     // keep flags unmodified and zero is the smallest demand

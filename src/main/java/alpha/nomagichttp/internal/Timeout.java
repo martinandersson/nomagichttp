@@ -9,6 +9,7 @@ import java.util.concurrent.atomic.AtomicReference;
 
 import static alpha.nomagichttp.internal.AtomicReferences.lazyInitOrElse;
 import static alpha.nomagichttp.internal.AtomicReferences.take;
+import static alpha.nomagichttp.internal.AtomicReferences.takeIfSame;
 import static java.util.Objects.requireNonNull;
 import static java.util.concurrent.TimeUnit.NANOSECONDS;
 
@@ -78,8 +79,14 @@ final class Timeout
      */
     void schedule(Runnable action) {
         requireNonNull(action);
-        Object set = lazyInitOrElse(task, CompletableFuture::new, f ->
-                f.complete(schedule(nanos, action)), null);
+        Object set = lazyInitOrElse(task, CompletableFuture::new, f -> {
+            Runnable onCondition = () -> {
+                if (takeIfSame(task, f).isPresent()) {
+                    action.run();
+                }
+            };
+            f.complete(schedule(nanos, onCondition));
+        }, null);
         if (set == null) {
             throw new IllegalStateException();
         }
@@ -95,7 +102,7 @@ final class Timeout
      * @see ScheduledFuture#cancel(boolean) 
      */
     void abort() {
-        take(task).ifPresent(t -> t.thenAccept(f -> f.cancel(false)));
+        take(task).ifPresent(cf -> cf.thenAccept(sf -> sf.cancel(false)));
     }
     
     /**

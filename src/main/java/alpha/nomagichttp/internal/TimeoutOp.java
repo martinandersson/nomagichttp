@@ -10,7 +10,6 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Supplier;
 
 import static java.lang.Long.MAX_VALUE;
-import static java.lang.System.Logger.Level.DEBUG;
 import static java.util.Objects.requireNonNull;
 
 /**
@@ -28,14 +27,17 @@ import static java.util.Objects.requireNonNull;
  * continuous flow of items or else timeout). {@code Pub} ("publisher") is only
  * active when there is outstanding demand (i.e. focused solely on the upstream
  * publisher, downstream may take however long he wish to process the items or
- * run his own timeouts).
+ * run his own timeouts).<p>
+ * 
+ * The timeout signals cancel upstream and error downstream
+ * <i>asynchronously</i> and so, depending on the context of the use-site -
+ * whether or not the up-/downstream can handle concurrent signals - boolean
+ * constructor arguments can configure the operator to serialize signals in
+ * either direction.
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  */
-abstract class TimeoutOp<T> extends AbstractOp<T> {
-    private static final System.Logger LOG
-            = System.getLogger(TimeoutOp.class.getPackageName());
-    
+abstract class TimeoutOp<T> extends AbstractOp.Async<T> {
     /**
      * A timeout operator which may be manually started ahead of the first
      * downstream increase of demand and is active until the subscription
@@ -51,11 +53,13 @@ abstract class TimeoutOp<T> extends AbstractOp<T> {
     static final class Flow<T> extends TimeoutOp<T> {
         private final AtomicBoolean started;
         
-        Flow(java.util.concurrent.Flow.Publisher<? extends T> upstream,
+        Flow(boolean serializeUp,
+             boolean serializeDown,
+             java.util.concurrent.Flow.Publisher<? extends T> upstream,
              Duration timeout,
              Supplier<? extends Throwable> exception)
         {
-            super(upstream, timeout, exception);
+            super(serializeUp, serializeDown, upstream, timeout, exception);
             started = new AtomicBoolean();
         }
         
@@ -108,10 +112,12 @@ abstract class TimeoutOp<T> extends AbstractOp<T> {
         // TODO: Review "demand" atomic long usage, I think same setup is used elsewhere. DRY
         private final AtomicLong demand;
         
-        Pub(java.util.concurrent.Flow.Publisher<? extends T> upstream,
+        Pub(boolean serializeUp,
+            boolean serializeDown,
+            java.util.concurrent.Flow.Publisher<? extends T> upstream,
             Duration timeout,
             Supplier<? extends Throwable> exception) {
-            super(upstream, timeout, exception);
+            super(serializeUp, serializeDown, upstream, timeout, exception);
             demand = new AtomicLong(0);
         }
         
@@ -162,11 +168,13 @@ abstract class TimeoutOp<T> extends AbstractOp<T> {
     private final Supplier<? extends Throwable> ex;
     
     private TimeoutOp(
+            boolean serializeUp,
+            boolean serializeDown,
             java.util.concurrent.Flow.Publisher<? extends T> upstream,
             Duration timeout,
             Supplier<? extends Throwable> exception)
     {
-        super(upstream);
+        super(upstream, serializeUp, serializeDown);
         to = new Timeout(timeout);
         ex = requireNonNull(exception);
     }
@@ -174,9 +182,8 @@ abstract class TimeoutOp<T> extends AbstractOp<T> {
     protected final void timeoutAction() {
         super.fromDownstreamCancel();
         Throwable err = ex.get();
-        if (!signalError(err)) {
-            LOG.log(DEBUG, "Failed to deliver exception, no subscriber.", err);
-        }
+        // If we fail to deliver the error, great, timeout doesn't apply without an active subscriber
+        super.fromUpstreamError(err);
     }
     
     @Override

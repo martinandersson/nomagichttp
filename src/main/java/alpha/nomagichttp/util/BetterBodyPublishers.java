@@ -20,6 +20,8 @@ import java.util.concurrent.ConcurrentLinkedDeque;
 import java.util.concurrent.Flow;
 import java.util.function.Supplier;
 
+import static alpha.nomagichttp.util.Arrays.stream;
+import static java.lang.Long.MAX_VALUE;
 import static java.lang.System.Logger.Level.DEBUG;
 import static java.net.http.HttpRequest.BodyPublisher;
 import static java.nio.charset.StandardCharsets.UTF_8;
@@ -159,9 +161,37 @@ public final class BetterBodyPublishers
      */
     public static BodyPublisher ofByteArray(byte[] buf, int offset, int length) {
         Objects.checkFromIndexSize(offset, length, buf.length);
-        return new Adapter(
-                length - offset,
+        return asBodyPublisher(length,
                 Publishers.ofIterable(new ByteBufferIterable(buf, offset, length)));
+    }
+    
+    /**
+     * Wrap the delegate with a content-length set to -1 (unknown length).
+     * 
+     * @param delegate upstream source of bytebuffers
+     * 
+     * @return a new body publisher
+     * 
+     * @throws NullPointerException if {@code delegate} is {@code null}
+     */
+    public static BodyPublisher asBodyPublisher(Flow.Publisher<? extends ByteBuffer> delegate) {
+        return asBodyPublisher(-1, delegate);
+    }
+    
+    /**
+     * Wrap the delegate with a content-length.
+     * 
+     * @param contentLength content length (byte count)
+     * @param delegate upstream source of bytebuffers
+     * 
+     * @return a new body publisher
+     * 
+     * @throws NullPointerException if {@code delegate} is {@code null}
+     */
+    public static BodyPublisher asBodyPublisher(
+            long contentLength, Flow.Publisher<? extends ByteBuffer> delegate)
+    {
+        return new Adapter(contentLength, delegate);
     }
     
     /**
@@ -189,13 +219,64 @@ public final class BetterBodyPublishers
         return new Adapter(len, new FilePublisher(path));
     }
     
+    /**
+     * Equivalent to {@link
+     * Publishers#concat(Flow.Publisher, Flow.Publisher, Flow.Publisher[])},
+     * except the publisher returned is a {@link BodyPublisher}.<p>
+     * 
+     * The returned publisher will have {@link BodyPublisher#contentLength()}
+     * set to the sum of all lengths provided by the given publishers, capped at
+     * {@code MAX_VALUE}, only if all publishers are instances of BodyPublisher
+     * with a non-negative length, otherwise the length will be set to {@code
+     * -1} (unknown length).
+     * 
+     * @param first publisher
+     * @param second publisher
+     * @param more optionally
+     * 
+     * @return all given publishers orderly concatenated into one
+     * @throws NullPointerException if any arg or array element is {@code null}
+     */
+    @SafeVarargs
+    @SuppressWarnings("varargs")
+    public static BodyPublisher concat(
+            Flow.Publisher<ByteBuffer> first,
+            Flow.Publisher<ByteBuffer> second,
+            Flow.Publisher<ByteBuffer>... more)
+    {
+        class Negative extends RuntimeException {
+            // For compilation warning
+            // "[serial] serializable class Negative has no definition of serialVersionUID"
+            private static final long serialVersionUID = 1L;
+        }
+        long len;
+        try {
+            len = stream(first, second, more)
+                    .mapToLong(p -> p instanceof BodyPublisher ?
+                        ((BodyPublisher) p).contentLength() : -1 )
+                    .peek(v -> { if (v < 0)
+                        throw new Negative(); })
+                    .reduce(0, (a, b) -> {
+                        try {
+                            return Math.addExact(a, b);
+                        } catch (ArithmeticException e) {
+                            return MAX_VALUE;
+                        }
+                    });
+        } catch (Negative e) {
+            len = -1;
+        }
+        
+        return asBodyPublisher(len, Publishers.concat(first, second, more));
+    }
+    
     private static class Adapter implements BodyPublisher {
         private final long length;
         private final Flow.Publisher<? extends ByteBuffer> delegate;
         
         Adapter(long length, Flow.Publisher<? extends ByteBuffer> delegate) {
             this.length = length;
-            this.delegate = delegate;
+            this.delegate = requireNonNull(delegate);
         }
         
         @Override
@@ -213,12 +294,12 @@ public final class BetterBodyPublishers
     {
         private final byte[] buf;
         private final int offset;
-        private final int length;
+        private final int end;
         
         ByteBufferIterable(byte[] buf, int offset, int length) {
-            this.buf = buf;
+            this.buf    = buf;
             this.offset = offset;
-            this.length = length;
+            this.end    = offset + length;
         }
         
         @Override
@@ -243,7 +324,7 @@ public final class BetterBodyPublishers
             }
             
             private int desire() {
-                return length - pos;
+                return end - pos;
             }
         }
     }

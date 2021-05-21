@@ -28,6 +28,8 @@ import static org.junit.jupiter.api.Assumptions.assumeTrue;
  */
 class SeriallyRunnableTest
 {
+    private static final Runnable VOID = () -> {};
+    
     SeriallyRunnable sr;
     
     int counter;
@@ -89,10 +91,10 @@ class SeriallyRunnableTest
     
     @Test
     void noCompleteInSyncMode_before() {
-        sr = new SeriallyRunnable(() -> {});
+        sr = new SeriallyRunnable(VOID);
         assertThatThrownBy(sr::complete)
                 .isExactlyInstanceOf(IllegalStateException.class)
-                .hasMessage("No run active.");
+                .hasMessage("Call to complete() in synchronous mode.");
     }
     
     @Test
@@ -100,12 +102,12 @@ class SeriallyRunnableTest
         sr = new SeriallyRunnable(() -> sr.complete());
         assertThatThrownBy(sr::run)
                 .isExactlyInstanceOf(IllegalStateException.class)
-                .hasMessage("No run active.");
+                .hasMessage("Call to complete() in synchronous mode.");
     }
     
     @Test
     void completeNeverStarted() {
-        sr = new SeriallyRunnable(() -> {}, true);
+        sr = new SeriallyRunnable(VOID, true);
         assertThatThrownBy(sr::complete)
                 .isExactlyInstanceOf(IllegalStateException.class)
                 .hasMessage("No run active.");
