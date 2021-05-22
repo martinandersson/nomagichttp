@@ -277,8 +277,8 @@ public final class Responses
     /**
      * Returns a 413 (Entity Too Large) response with no body.<p>
      * 
-     * The response will {@linkplain Response#mustShutdownOutputAfterWrite()
-     * close the output stream}.
+     * The response will also {@linkplain Response#mustCloseAfterWrite()
+     * close the client channel}.
      * 
      * @return  a 413 (Entity Too Large)
      * @see    StatusCode#FOUR_HUNDRED_THIRTEEN
@@ -394,7 +394,7 @@ public final class Responses
         private static Response respond(int code, String phrase, boolean close) {
             Response.Builder b = builder(code, phrase).header(CONTENT_LENGTH, "0");
             if (close) {
-                b = b.mustShutdownOutputAfterWrite(true);
+                b = b.mustCloseAfterWrite(true);
             }
             return b.build();
         }

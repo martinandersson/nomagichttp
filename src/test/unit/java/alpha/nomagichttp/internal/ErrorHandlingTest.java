@@ -432,4 +432,25 @@ class ErrorHandlingTest
         // TODO: Same here, release permit and assert log.
         //       We should then also be able to assert the start of the 200 OK response?
     }
+    
+    @Test
+    void request_too_large() throws IOException {
+        HttpServer.Config tinyHead = new HttpServer.Config() {
+            @Override public int maxRequestHeadSize() {
+                return 1;
+            }
+        };
+        
+        s = create(tinyHead).add("/", GET().accept((req, ch) -> {
+            throw new AssertionError();
+        })).start();
+    
+        String rsp = new TestClient(s).writeRead("AB");
+        assertThat(rsp).isEqualTo(
+            "HTTP/1.1 413 Entity Too Large" + CRLF +
+            "Content-Length: 0"             + CRLF +
+            "Connection: close"             + CRLF + CRLF);
+        
+        // TODO: Error handler received MaxRequestHeadSizeExceededException, and assert log
+    }
 }
