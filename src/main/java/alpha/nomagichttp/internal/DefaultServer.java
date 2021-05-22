@@ -1,5 +1,6 @@
 package alpha.nomagichttp.internal;
 
+import alpha.nomagichttp.Config;
 import alpha.nomagichttp.HttpServer;
 import alpha.nomagichttp.handler.ErrorHandler;
 import alpha.nomagichttp.route.Route;

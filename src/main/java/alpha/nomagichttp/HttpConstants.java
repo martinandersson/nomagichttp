@@ -535,7 +535,7 @@ public final class HttpConstants {
          * rejecting requests carrying the {@code Expect: 100-continue} header
          * is to also close the connection.
          * 
-         * @see HttpServer.Config#immediatelyContinueExpect100() 
+         * @see Config#immediatelyContinueExpect100() 
          * @see <a href="https://tools.ietf.org/html/rfc7231#section-6.2.1">RFC 7231 §6.2.1</a>
          * @see <a href="https://tools.ietf.org/html/rfc7231#section-6.3">RFC 7231 §6.3</a>
          */
@@ -918,7 +918,7 @@ public final class HttpConstants {
         /**
          * {@value} {@value ReasonPhrase#REQUEST_TIMEOUT}.
          * 
-         * @see HttpServer.Config#timeoutIdleConnection()
+         * @see Config#timeoutIdleConnection()
          * @see <a href="https://tools.ietf.org/html/rfc7231#section-6.5.7">RFC 7231 §6.5.7</a>
          */
         public static final int FOUR_HUNDRED_EIGHT = 408;
@@ -1138,7 +1138,7 @@ public final class HttpConstants {
         /**
          * {@value} {@value ReasonPhrase#SERVICE_UNAVAILABLE}.
          * 
-         * @see HttpServer.Config#timeoutIdleConnection()
+         * @see Config#timeoutIdleConnection()
          * @see <a href="https://tools.ietf.org/html/rfc7231#section-6.6.4">RFC 7731 §6.6.4</a>
          */
         public static final int FIVE_HUNDRED_THREE = 503;

@@ -1,5 +1,6 @@
 package alpha.nomagichttp.internal;
 
+import alpha.nomagichttp.Config;
 import alpha.nomagichttp.HttpServer;
 import alpha.nomagichttp.handler.ErrorHandler;
 import alpha.nomagichttp.handler.RequestHandler;
@@ -13,8 +14,6 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
-import java.nio.ByteBuffer;
-import java.nio.channels.Channel;
 import java.time.Duration;
 import java.util.List;
 import java.util.concurrent.ArrayBlockingQueue;
@@ -36,7 +35,6 @@ import static alpha.nomagichttp.testutil.TestPublishers.blockSubscriber;
 import static alpha.nomagichttp.testutil.TestSubscribers.onError;
 import static alpha.nomagichttp.util.BetterBodyPublishers.concat;
 import static alpha.nomagichttp.util.BetterBodyPublishers.ofString;
-import static alpha.nomagichttp.util.Publishers.just;
 import static java.lang.System.Logger.Level.ALL;
 import static java.time.Duration.ofMillis;
 import static java.util.concurrent.CompletableFuture.failedFuture;
@@ -176,7 +174,7 @@ class ErrorHandlingTest
      */
     @Test
     void httpVersionRejected_tooOld_thruConfig() throws IOException {
-        HttpServer.Config rejectHttp1_0 = new HttpServer.Config(){
+        Config rejectHttp1_0 = new Config(){
             @Override public boolean rejectClientsUsingHTTP1_0() {
                 return true;
             }
@@ -286,10 +284,10 @@ class ErrorHandlingTest
     void RequestHeadTimeoutException() throws IOException {
         // Return uber low timeout on the first poll, i.e. for the request head,
         // but use default timeout for request body and response.
-        HttpServer.Config lowHeadTimeout = new HttpServer.Config() {
+        Config lowHeadTimeout = new Config() {
             final AtomicInteger pollCnt = new AtomicInteger(0);
             @Override public Duration timeoutIdleConnection() {
-                return pollCnt.incrementAndGet() == 1 ? ofMillis(0) : HttpServer.Config.super.timeoutIdleConnection();
+                return pollCnt.incrementAndGet() == 1 ? ofMillis(0) : Config.super.timeoutIdleConnection();
             }
         };
         
@@ -311,10 +309,10 @@ class ErrorHandlingTest
     
     @Test
     void RequestBodyTimeoutException_caughtByServer() throws IOException, InterruptedException {
-        HttpServer.Config lowBodyTimeout = new HttpServer.Config() {
+        Config lowBodyTimeout = new Config() {
             final AtomicInteger pollCnt = new AtomicInteger(0);
             @Override public Duration timeoutIdleConnection() {
-                return pollCnt.incrementAndGet() == 2 ? ofMillis(0) : HttpServer.Config.super.timeoutIdleConnection();
+                return pollCnt.incrementAndGet() == 2 ? ofMillis(0) : Config.super.timeoutIdleConnection();
             }
         };
         
@@ -365,10 +363,10 @@ class ErrorHandlingTest
     
     @Test
     void ResponseTimeoutException_fromPipeline() throws IOException {
-        HttpServer.Config lowBodyTimeout = new HttpServer.Config() {
+        Config lowBodyTimeout = new Config() {
             final AtomicInteger pollCnt = new AtomicInteger(0);
             @Override public Duration timeoutIdleConnection() {
-                return pollCnt.incrementAndGet() == 3 ? ofMillis(0) : HttpServer.Config.super.timeoutIdleConnection();
+                return pollCnt.incrementAndGet() == 3 ? ofMillis(0) : Config.super.timeoutIdleConnection();
             }
         };
         s = create(lowBodyTimeout).add("/", GET().accept((ign,ored) -> {})).start();
@@ -387,10 +385,10 @@ class ErrorHandlingTest
     
     @Test
     void ResponseTimeoutException_fromResponseBody_immediately() throws IOException {
-        HttpServer.Config lowBodyTimeout = new HttpServer.Config() {
+        Config lowBodyTimeout = new Config() {
             final AtomicInteger pollCnt = new AtomicInteger(0);
             @Override public Duration timeoutIdleConnection() {
-                return pollCnt.incrementAndGet() == 4 ? ofMillis(0) : HttpServer.Config.super.timeoutIdleConnection();
+                return pollCnt.incrementAndGet() == 4 ? ofMillis(0) : Config.super.timeoutIdleConnection();
             }
         };
         
@@ -413,10 +411,10 @@ class ErrorHandlingTest
     
     @Test
     void ResponseTimeoutException_fromResponseBody_afterOneChar() throws IOException {
-        HttpServer.Config lowBodyTimeout = new HttpServer.Config() {
+        Config lowBodyTimeout = new Config() {
             final AtomicInteger pollCnt = new AtomicInteger(0);
             @Override public Duration timeoutIdleConnection() {
-                return pollCnt.incrementAndGet() == 4 ? ofMillis(1) : HttpServer.Config.super.timeoutIdleConnection();
+                return pollCnt.incrementAndGet() == 4 ? ofMillis(1) : Config.super.timeoutIdleConnection();
             }
         };
         
@@ -435,7 +433,7 @@ class ErrorHandlingTest
     
     @Test
     void request_too_large() throws IOException {
-        HttpServer.Config tinyHead = new HttpServer.Config() {
+        Config tinyHead = new Config() {
             @Override public int maxRequestHeadSize() {
                 return 1;
             }

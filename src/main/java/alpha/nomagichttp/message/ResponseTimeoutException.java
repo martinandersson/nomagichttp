@@ -1,6 +1,6 @@
 package alpha.nomagichttp.message;
 
-import alpha.nomagichttp.HttpServer;
+import alpha.nomagichttp.Config;
 import alpha.nomagichttp.handler.ErrorHandler;
 
 /**
@@ -15,7 +15,7 @@ import alpha.nomagichttp.handler.ErrorHandler;
  * closure after another 5 seconds and proceed to close it.
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
- * @see HttpServer.Config#timeoutIdleConnection()
+ * @see Config#timeoutIdleConnection()
  */
 public final class ResponseTimeoutException extends RuntimeException {
     private static final long serialVersionUID = 1L;

@@ -1,5 +1,6 @@
 package alpha.nomagichttp.internal;
 
+import alpha.nomagichttp.Config;
 import alpha.nomagichttp.HttpServer;
 import alpha.nomagichttp.message.IllegalBodyException;
 import alpha.nomagichttp.message.Response;
@@ -48,8 +49,8 @@ import static java.util.Objects.requireNonNull;
  * TimeoutOp}). Therefore, the implementation of {@code onError()} can handle
  * calls concurrent to other signals from upstream. In addition, the timeout
  * exception will cause this class to shutdown the write stream (see {@link
- * HttpServer.Config#timeoutIdleConnection()}). All other signals from upstream,
- * however, must be delivered serially.
+ * Config#timeoutIdleConnection()}). All other signals from upstream, however,
+ * must be delivered serially.
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  */

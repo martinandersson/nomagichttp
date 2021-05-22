@@ -1,5 +1,6 @@
 package alpha.nomagichttp.handler;
 
+import alpha.nomagichttp.Config;
 import alpha.nomagichttp.HttpServer;
 import alpha.nomagichttp.message.Request;
 import alpha.nomagichttp.message.Response;
@@ -81,9 +82,9 @@ public interface ClientChannel extends Closeable, AttributeHolder
      * {@link ResponseRejectedException} will pass through the server's error
      * handler.<p>
      * 
-     * The {@link HttpServer.Config#ignoreRejectedInformational() default server
-     * behavior} is to ignore failed 1XX (Informational) responses if the reason
-     * is because the HTTP client is using an old protocol version.<p>
+     * The {@link Config#ignoreRejectedInformational() default server behavior}
+     * is to ignore failed 1XX (Informational) responses if the reason is
+     * because the HTTP client is using an old protocol version.<p>
      * 
      * Only at most one 100 (Continue) response will be sent. Repeated 100
      * (Continue) responses will be ignored. Attempts to send more than two will

@@ -1,12 +1,11 @@
 package alpha.nomagichttp.internal;
 
-import alpha.nomagichttp.HttpServer;
+import alpha.nomagichttp.Config;
 import alpha.nomagichttp.handler.ResponseRejectedException;
 import alpha.nomagichttp.message.Response;
 import alpha.nomagichttp.message.ResponseTimeoutException;
 import alpha.nomagichttp.util.SeriallyRunnable;
 
-import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Deque;
 import java.util.List;
@@ -51,7 +50,7 @@ import static java.util.concurrent.TimeUnit.SECONDS;
  * 
  * In addition:
  * <ol>
- *   <li>Implements {@link HttpServer.Config#maxUnsuccessfulResponses()}</li>
+ *   <li>Implements {@link Config#maxUnsuccessfulResponses()}</li>
  * </ol>
  * 
  * The result of each attempt to transmit a response is published to all active
@@ -121,7 +120,7 @@ final class ResponsePipeline implements Flow.Publisher<ResponsePipeline.Result>
     
     private static final Throwable IGNORE = new Throwable();
     
-    private final HttpServer.Config cfg;
+    private final Config cfg;
     private final int maxUnssuccessful;
     private final HttpExchange exch;
     private final DefaultClientChannel chan;
