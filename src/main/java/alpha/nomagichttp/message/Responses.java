@@ -12,6 +12,7 @@ import static alpha.nomagichttp.HttpConstants.HeaderKey.CONNECTION;
 import static alpha.nomagichttp.HttpConstants.HeaderKey.CONTENT_LENGTH;
 import static alpha.nomagichttp.HttpConstants.HeaderKey.CONTENT_TYPE;
 import static alpha.nomagichttp.HttpConstants.HeaderKey.UPGRADE;
+import static alpha.nomagichttp.HttpConstants.ReasonPhrase.ENTITY_TOO_LARGE;
 import static alpha.nomagichttp.HttpConstants.ReasonPhrase.HTTP_VERSION_NOT_SUPPORTED;
 import static alpha.nomagichttp.HttpConstants.ReasonPhrase.REQUEST_TIMEOUT;
 import static alpha.nomagichttp.HttpConstants.ReasonPhrase.SERVICE_UNAVAILABLE;
@@ -284,7 +285,8 @@ public final class Responses
      * @see    StatusCode#FOUR_HUNDRED_THIRTEEN
      */
     public static Response entityTooLarge() {
-        return ResponseCache.ENTITY_TOO_LARGE;
+        return Response.builder(FOUR_HUNDRED_THIRTEEN, ENTITY_TOO_LARGE)
+                .mustCloseAfterWrite(true).build();
     }
     
     /**
@@ -385,18 +387,13 @@ public final class Responses
             PROCESSING            = builder(ONE_HUNDRED_TWO, ReasonPhrase.PROCESSING).build(),
             ACCEPTED              = builder(TWO_HUNDRED_TWO, ReasonPhrase.ACCEPTED).header(CONTENT_LENGTH, "0").build(),
             NO_CONTENT            = builder(TWO_HUNDRED_FOUR, ReasonPhrase.NO_CONTENT).build(),
-            BAD_REQUEST           = respond(FOUR_HUNDRED, ReasonPhrase.BAD_REQUEST, false),
-            NOT_FOUND             = respond(FOUR_HUNDRED_FOUR, ReasonPhrase.NOT_FOUND, false),
-            ENTITY_TOO_LARGE      = respond(FOUR_HUNDRED_THIRTEEN, ReasonPhrase.ENTITY_TOO_LARGE, true),
-            INTERNAL_SERVER_ERROR = respond(FIVE_HUNDRED, ReasonPhrase.INTERNAL_SERVER_ERROR, false),
-            NOT_IMPLEMENTED       = respond(FIVE_HUNDRED_ONE, ReasonPhrase.NOT_IMPLEMENTED, false);
+            BAD_REQUEST           = respond(FOUR_HUNDRED, ReasonPhrase.BAD_REQUEST),
+            NOT_FOUND             = respond(FOUR_HUNDRED_FOUR, ReasonPhrase.NOT_FOUND),
+            INTERNAL_SERVER_ERROR = respond(FIVE_HUNDRED, ReasonPhrase.INTERNAL_SERVER_ERROR),
+            NOT_IMPLEMENTED       = respond(FIVE_HUNDRED_ONE, ReasonPhrase.NOT_IMPLEMENTED);
         
-        private static Response respond(int code, String phrase, boolean close) {
-            Response.Builder b = builder(code, phrase).header(CONTENT_LENGTH, "0");
-            if (close) {
-                b = b.mustCloseAfterWrite(true);
-            }
-            return b.build();
+        private static Response respond(int code, String phrase) {
+            return builder(code, phrase).header(CONTENT_LENGTH, "0").build();
         }
     }
 }

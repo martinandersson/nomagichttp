@@ -448,7 +448,6 @@ class ErrorHandlingTest
         String rsp = new TestClient(s).writeRead("AB");
         assertThat(rsp).isEqualTo(
             "HTTP/1.1 413 Entity Too Large" + CRLF +
-            "Content-Length: 0"             + CRLF +
             "Connection: close"             + CRLF + CRLF);
         
         // TODO: Error handler received MaxRequestHeadSizeExceededException, and assert log
