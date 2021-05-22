@@ -28,9 +28,13 @@ public interface Config
      * Values used:<p>
      * 
      * Max request head size = 8 000 <br>
+     * Max unsuccessful responses = 7 <br>
      * Max error recovery attempts = 5 <br>
      * Thread pool-size = {@code Runtime.getRuntime().availableProcessors()}<br>
-     * Reject clients using HTTP/1.0 = true
+     * Reject clients using HTTP/1.0 = true <br>
+     * Ignore rejected informational = true <br>
+     * Immediately continue Expect 100 = false <br>
+     * Timeout idle connection = 90 seconds
      */
     Config DEFAULT = new Config(){};
     
