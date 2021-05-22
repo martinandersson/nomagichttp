@@ -1,14 +1,13 @@
 package alpha.nomagichttp.message;
 
 import alpha.nomagichttp.HttpConstants;
+import alpha.nomagichttp.util.AbstractImmutableBuilder;
 import alpha.nomagichttp.util.Headers;
 import alpha.nomagichttp.util.Publishers;
 
 import java.net.http.HttpHeaders;
 import java.nio.ByteBuffer;
-import java.util.ArrayDeque;
 import java.util.ArrayList;
-import java.util.Deque;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -129,15 +128,13 @@ final class DefaultResponse implements Response
     
     /**
      * Default implementation of {@link Response.Builder}.
-     *
+     * 
      * @author Martin Andersson (webmaster at martinandersson.com)
      */
-    final static class Builder implements Response.Builder // TODO: Rename to DefaultBuilder
+    final static class Builder // TODO: Rename to DefaultBuilder
+            extends AbstractImmutableBuilder<Builder.MutableState>
+            implements Response.Builder
     {
-        // How this works: Builders are backwards-linked in a chain and the only
-        // real state they each store is a modifying action, which is replayed
-        // against a mutable state container during construction time.
-        
         private static class MutableState {
             Integer statusCode;
             String reasonPhrase;
@@ -189,14 +186,14 @@ final class DefaultResponse implements Response
             }
         }
         
-        static final Response.Builder ROOT = new Builder(null, null);
+        static final Response.Builder ROOT = new Builder();
         
-        private final Builder prev;
-        private final Consumer<MutableState> modifier;
+        private Builder() {
+            // super()
+        }
         
         private Builder(Builder prev, Consumer<MutableState> modifier) {
-            this.prev = prev;
-            this.modifier = modifier;
+            super(prev, modifier);
         }
         
         @Override
@@ -307,9 +304,7 @@ final class DefaultResponse implements Response
         
         @Override
         public Response build() {
-            MutableState s = new MutableState();
-            
-            populate(s);
+            MutableState s = constructState(MutableState::new);
             setDefaults(s);
             
             if (StatusCode.isInformational(s.statusCode)) {
@@ -357,16 +352,6 @@ final class DefaultResponse implements Response
             }
             
             return r;
-        }
-        
-        private void populate(MutableState s) {
-            Deque<Consumer<MutableState>> mods = new ArrayDeque<>();
-            
-            for (Builder b = this; b.modifier != null; b = b.prev) {
-                mods.addFirst(b.modifier);
-            }
-            
-            mods.forEach(m -> m.accept(s));
         }
         
         private static void setDefaults(MutableState s) {

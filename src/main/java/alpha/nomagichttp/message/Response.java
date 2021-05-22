@@ -296,13 +296,13 @@ public interface Response extends HeaderHolder
      * 
      * The builder can be used as a template to modify per-response state. Each
      * method returns a new builder instance representing the new state. The API
-     * should be used in a fluent style with references saved and reused only
-     * for templating.<p>
+     * should be used in a fluent style. There's generally no reason to save a
+     * builder reference as the builder that built a response can be retrieved
+     * using {@link Response#toBuilder()}<p>
      * 
      * Status code is the only required field. Please note that some message
      * variants may build just fine but {@linkplain HttpServer blow up
      * later}.<p>
-     * 
      * 
      * The implementation is thread-safe.<p>
      * 

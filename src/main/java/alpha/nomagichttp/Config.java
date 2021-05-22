@@ -16,9 +16,13 @@ import java.util.concurrent.Flow;
 /**
  * Server configuration.<p>
  * 
- * The implementation is thread-safe.<p>
+ * The implementation is immutable and thread-safe.<p>
  * 
- * The implementation used if none is specified is {@link #DEFAULT}.
+ * The implementation used if none is specified is {@link #DEFAULT}.<p>
+ * 
+ * Any configuration object can be turned into a builder for customization. The
+ * static method {@link #configuration()} is a shortcut for {@code
+ * Config.DEFAULT.toBuilder()}.
  * 
  * @author Martin Andersson (webmaster at martinandersson.com
  */
@@ -36,7 +40,7 @@ public interface Config
      * Immediately continue Expect 100 = false <br>
      * Timeout idle connection = 90 seconds
      */
-    Config DEFAULT = new Config(){};
+    Config DEFAULT = DefaultConfig.DefaultBuilder.ROOT.build();
     
     /**
      * Returns the max number of bytes processed while parsing a request head
@@ -45,13 +49,7 @@ public interface Config
      * Once the limit has been exceeded, a {@link
      * MaxRequestHeadSizeExceededException} is thrown.<p>
      * 
-     * The configuration value is polled at the start of each new exchange.
-     * 
-     * @implSpec
-     * The default implementation is equivalent to:
-     * <pre>
-     *     return 8_000;
-     * </pre>
+     * The default implementation returns {@code 8_000}.
      * 
      * The default value corresponds to <a
      * href="https://tools.ietf.org/html/rfc7230#section-3.1.1">RFC 7230 §3.1.1</a>
@@ -60,9 +58,7 @@ public interface Config
      * 
      * @return number of request head bytes processed before exception is thrown
      */
-    default int maxRequestHeadSize() {
-        return 8_000;
-    }
+    int maxRequestHeadSize();
     
     /**
      * Returns the max number of consecutive responses sent to a client of
@@ -72,23 +68,16 @@ public interface Config
      * Closing the channel after repeatedly unsuccessful exchanges increases
      * security.<p>
      * 
-     * The configuration value is polled at the start of each new exchange.
-     * 
-     * @implSpec
-     * The default implementation is equivalent to:
-     * <pre>
-     *     return 7;
-     * </pre>
+     * The default implementation returns {@code 7}.
      * 
      * @return max number of consecutively unsuccessful responses
      *         before closing channel
      */
-    default int maxUnsuccessfulResponses() {
-        return 7;
-    }
+    int maxUnsuccessfulResponses();
     
     /**
-     * Returns the max number of attempts at recovering a failed request.<p>
+     * Returns the max number of attempts at recovering a failed HTTP
+     * exchange.<p>
      * 
      * The configuration has an effect only if the application has provide one
      * or more error handlers to the server.<p>
@@ -103,36 +92,29 @@ public interface Config
      * the HTTP exchange. It is not directly related to any given invocation of
      * a request handler.<p>
      * 
-     * The configuration value will be polled at the start of each recovery
-     * attempt.
-     * 
-     * @implSpec
      * The default implementation returns {@code 5}.
      * 
      * @return max number of attempts
      * 
      * @see ErrorHandler
      */
-    default int maxErrorRecoveryAttempts() {
-        return 5;
-    }
+    int maxErrorRecoveryAttempts();
     
     /**
      * Returns the number of request threads that are allocated for executing
      * HTTP exchanges.<p>
      * 
-     * The value is retrieved at the time of the start of the first server
-     * instance. For a later change of this value to have an effect, all server
-     * instances must first stop.
+     * The value is retrieved only once at the time of the start of the first
+     * server instance. All subsequent servers will share the same thread pool.
+     * To effectively change the thread pool size, all server instances must
+     * first stop.<p>
      * 
-     * @implSpec
      * The default implementation returns {@link Runtime#availableProcessors()}.
      * 
      * @return thread pool size
+     * @see HttpServer
      */
-    default int threadPoolSize() {
-        return Runtime.getRuntime().availableProcessors();
-    }
+    int threadPoolSize();
     
     /**
      * Reject HTTP/1.0 clients, yes or no.<p>
@@ -153,20 +135,14 @@ public interface Config
      * applications as possible "out of the box", hence the {@code false}
      * default.<p>
      * 
-     * The configuration value will be polled at the beginning of each HTTP
-     * exchange.<p>
-     * 
      * Note that HTTP/0.9 or older clients are always rejected (can not be
-     * configured differently).
+     * configured differently).<p>
      * 
-     * @implSpec
      * The default implementation returns {@code false}.
      * 
      * @return whether or not to reject HTTP/1.0 clients
      */
-    default boolean rejectClientsUsingHTTP1_0() {
-        return false;
-    }
+    boolean rejectClientsUsingHTTP1_0();
     
     /**
      * Ignore rejected 1XX (Informational) responses when they fail to be sent
@@ -185,19 +161,12 @@ public interface Config
      * restrain itself from attempting to send interim responses to HTTP/1.0
      * clients.<p>
      * 
-     * The configuration value will be polled by the {@link
-     * ErrorHandler#DEFAULT default error handler} for each handled relevant
-     * case.
-     * 
-     * @implSpec
      * The default implementation returns {@code true}.
      * 
      * @return whether or not to ignore failed 1XX (Informational) responses
      *         sent to HTTP/1.0 clients
      */
-    default boolean ignoreRejectedInformational() {
-        return true;
-    }
+    boolean ignoreRejectedInformational();
     
     /**
      * Immediately respond a 100 (Continue) interim response to a request with a
@@ -218,9 +187,6 @@ public interface Config
      * HTTP/1.0 does not support interim responses (
      * <a href="https://tools.ietf.org/html/rfc7231#section-5.1.1">RFC 7231 §5.1.1</a>).<p>
      * 
-     * The configuration value is polled once on each new request.
-     * 
-     * @implSpec
      * The default implementation returns {@code false}.
      * 
      * @return whether or not to immediately respond a 100 (Continue)
@@ -228,9 +194,7 @@ public interface Config
      * 
      * @see HttpConstants.StatusCode#ONE_HUNDRED
      */
-    default boolean immediatelyContinueExpect100() {
-        return false;
-    }
+    boolean immediatelyContinueExpect100();
     
     /**
      * Returns the max duration allowed for idle connections, after which, the
@@ -338,14 +302,147 @@ public interface Config
      * a stuck thread. For example, if the server's thread who subscribes to the
      * response body is immediately and indefinitely blocked, then no error
      * handler will ever be called and the timeout exception will never be
-     * logged. The connection will close, but that's it. Never block a thread.
+     * logged. The connection will close, but that's it. Never block a
+     * thread.<p>
      * 
-     * @implSpec
      * The default implementation returns {@code Duration.ofSeconds(90)}.
      * 
      * @return a max allowed duration for idle connections
      */
-    default Duration timeoutIdleConnection() {
-        return Duration.ofSeconds(90);
+    Duration timeoutIdleConnection();
+    
+     /**
+     * Returns the builder instance that built this configuration.<p>
+     * 
+     * The builder may be used to modify configuration values.
+     * 
+     * @return the builder instance that built this configuration object
+     */
+    Config.Builder toBuilder();
+    
+    /**
+     * Returns the builder used to build the default configuration.
+     * 
+     * @return the builder used to build the default configuration
+     * @see #toBuilder()
+     */
+    static Config.Builder configuration() {
+        return DEFAULT.toBuilder();
+    }
+    
+    /**
+     * Builder of a {@link Config}.<p>
+     * 
+     * The builder can be used as a template to modify configuration state. Each
+     * method returns a new builder instance representing the new state. The API
+     * should be used in a fluent style. There's generally no reason to save a
+     * builder reference as the builder that built a configuration object can be
+     * retrieved using {@link Config#toBuilder()}<p>
+     * 
+     * The implementation is thread-safe.<p>
+     * 
+     * The implementation does not necessarily implement {@code hashCode()} and
+     * {@code equals()}.
+     * 
+     * @author Martin Andersson (webmaster at martinandersson.com)
+     */
+    interface Builder {
+        /**
+         * Set a new value.
+         * 
+         * The value can be any integer, although a value too small (or
+         * negative) will risk rejecting all requests.
+         * 
+         * @param newVal new value
+         * @return a new builder representing the new state
+         * @see Config#maxRequestHeadSize()
+         */
+        Builder maxRequestHeadSize(int newVal);
+        
+        /**
+         * Set a new value.
+         * 
+         * The value can be any integer, although a value too small (or
+         * negative) will risk closing the connection early.
+         * 
+         * @param newVal new value
+         * @return a new builder representing the new state
+         * @see Config#maxUnsuccessfulResponses()
+         */
+        Builder maxUnsuccessfulResponses(int newVal);
+        
+        /**
+         * Set a new value.
+         * 
+         * The value can be any integer, although a value too small (or
+         * negative) will risk not invoking error handlers provided by the
+         * application.
+         * 
+         * @param newVal new value
+         * @return a new builder representing the new state
+         * @see Config#maxErrorRecoveryAttempts()
+         */
+        Builder maxErrorRecoveryAttempts(int newVal);
+        
+        /**
+         * Set a new value.
+         * 
+         * The value can be any integer, although a zero value (or negative)
+         * will likely cause the HttpServer {@code start()} to blow up with an
+         * {@code IllegalArgumentException}.
+         * 
+         * @param newVal new value
+         * @return a new builder representing the new state
+         * @see Config#threadPoolSize()
+         */
+        Builder threadPoolSize(int newVal);
+        
+        /**
+         * Set a new value.
+         * 
+         * @param newVal new value
+         * @return a new builder representing the new state
+         * @see Config#rejectClientsUsingHTTP1_0()
+         */
+        Builder rejectClientsUsingHTTP1_0(boolean newVal);
+        
+        /**
+         * Set a new value.
+         * 
+         * @param newVal new value
+         * @return a new builder representing the new state
+         * @see Config#ignoreRejectedInformational()
+         */
+        Builder ignoreRejectedInformational(boolean newVal);
+        
+        /**
+         * Set a new value.
+         * 
+         * @param newVal new value
+         * @return a new builder representing the new state
+         * @see Config#immediatelyContinueExpect100()
+         */
+        Builder immediatelyContinueExpect100(boolean newVal);
+        
+        /**
+         * Set a new value.
+         * 
+         * The value can be any duration, although a short (or negative) duration
+         * will likely immediate timeout exceptions, effectively making the
+         * server useless.
+         * 
+         * @param newVal new value
+         * @return a new builder representing the new state
+         * @throws NullPointerException if {@code newVal} is {@code null}
+         * @see Config#threadPoolSize()
+         */
+        Builder timeoutIdleConnection(Duration newVal);
+        
+        /**
+         * Builds a configuration object.
+         * 
+         * @return the configuration object
+         */
+        Config build();
     }
 }
