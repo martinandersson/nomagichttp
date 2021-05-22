@@ -101,7 +101,7 @@ public interface Response extends HeaderHolder
      * @see #statusCode()
      */
     static Builder builder(int statusCode) {
-        return DefaultResponse.Builder.ROOT.statusCode(statusCode);
+        return DefaultResponse.DefaultBuilder.ROOT.statusCode(statusCode);
     }
     
     /**

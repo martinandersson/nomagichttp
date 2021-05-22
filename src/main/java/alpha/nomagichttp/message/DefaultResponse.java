@@ -38,7 +38,7 @@ final class DefaultResponse implements Response
     private final Flow.Publisher<ByteBuffer> body;
     private final boolean mustShutdownOutputAfterWrite;
     private final boolean mustCloseAfterWrite;
-    private final Builder origin;
+    private final DefaultBuilder origin;
     
     private DefaultResponse(
             int statusCode,
@@ -49,7 +49,7 @@ final class DefaultResponse implements Response
             Flow.Publisher<ByteBuffer> body,
             boolean mustShutdownOutputAfterWrite,
             boolean mustCloseAfterWrite,
-            Builder origin)
+            DefaultBuilder origin)
     {
         this.statusCode = statusCode;
         this.reasonPhrase = reasonPhrase;
@@ -131,8 +131,8 @@ final class DefaultResponse implements Response
      * 
      * @author Martin Andersson (webmaster at martinandersson.com)
      */
-    final static class Builder // TODO: Rename to DefaultBuilder
-            extends AbstractImmutableBuilder<Builder.MutableState>
+    final static class DefaultBuilder
+            extends AbstractImmutableBuilder<DefaultBuilder.MutableState>
             implements Response.Builder
     {
         private static class MutableState {
@@ -186,52 +186,52 @@ final class DefaultResponse implements Response
             }
         }
         
-        static final Response.Builder ROOT = new Builder();
+        static final Response.Builder ROOT = new DefaultBuilder();
         
-        private Builder() {
+        private DefaultBuilder() {
             // super()
         }
         
-        private Builder(Builder prev, Consumer<MutableState> modifier) {
+        private DefaultBuilder(DefaultBuilder prev, Consumer<MutableState> modifier) {
             super(prev, modifier);
         }
         
         @Override
         public Response.Builder statusCode(int statusCode) {
-            return new Builder(this, s -> s.statusCode = statusCode);
+            return new DefaultBuilder(this, s -> s.statusCode = statusCode);
         }
         
         @Override
         public Response.Builder reasonPhrase(String reasonPhrase) {
             requireNonNull(reasonPhrase, "reasonPhrase");
-            return new Builder(this, s -> s.reasonPhrase = reasonPhrase);
+            return new DefaultBuilder(this, s -> s.reasonPhrase = reasonPhrase);
         }
         
         @Override
         public Response.Builder header(String name, String value) {
             requireNonNull(name, "name");
             requireNonNull(value, "value");
-            return new Builder(this, s -> s.addHeader(true, name, value));
+            return new DefaultBuilder(this, s -> s.addHeader(true, name, value));
         }
         
         @Override
         public Response.Builder removeHeader(String name) {
             requireNonNull(name, "name");
-            return new Builder(this, s -> s.removeHeader(name));
+            return new DefaultBuilder(this, s -> s.removeHeader(name));
         }
         
         @Override
         public Response.Builder removeHeaderIf(String name, String presentValue) {
             requireNonNull(name, "name");
             requireNonNull(presentValue, "presentValue");
-            return new Builder(this, s -> s.removeHeaderIf(name, presentValue));
+            return new DefaultBuilder(this, s -> s.removeHeaderIf(name, presentValue));
         }
         
         @Override
         public Response.Builder addHeader(String name, String value) {
             requireNonNull(name, "name");
             requireNonNull(value, "value");
-            return new Builder(this, s -> s.addHeader(false, name, value));
+            return new DefaultBuilder(this, s -> s.addHeader(false, name, value));
         }
         
         @Override
@@ -247,7 +247,7 @@ final class DefaultResponse implements Response
                 throw new IllegalArgumentException("morePairs.length is not even");
             }
             
-            return new Builder(this, ms -> {
+            return new DefaultBuilder(this, ms -> {
                 ms.addHeader(false, name, value);
                 
                 for (int i = 0; i < morePairs.length - 1; i += 2) {
@@ -262,7 +262,7 @@ final class DefaultResponse implements Response
         @Override
         public Response.Builder addHeaders(HttpHeaders headers) {
             requireNonNull(headers, "headers");
-            return new Builder(this, s ->
+            return new DefaultBuilder(this, s ->
                     headers.map().forEach((name, values) ->
                             values.forEach(v -> s.addHeader(false, name, v))));
         }
@@ -270,7 +270,7 @@ final class DefaultResponse implements Response
         @Override
         public Response.Builder body(Flow.Publisher<ByteBuffer> body) {
             requireNonNull(body, "body");
-            final Builder b = new Builder(this, s -> s.body = body);
+            final DefaultBuilder b = new DefaultBuilder(this, s -> s.body = body);
             
             if (body == Publishers.<ByteBuffer>empty()) {
                 return b.removeHeader(CONTENT_LENGTH);
@@ -288,7 +288,7 @@ final class DefaultResponse implements Response
         
         @Override
         public Response.Builder mustShutdownOutputAfterWrite(boolean enabled) {
-            Builder b = new Builder(this, s -> s.mustShutdownOutputAfterWrite = enabled);
+            DefaultBuilder b = new DefaultBuilder(this, s -> s.mustShutdownOutputAfterWrite = enabled);
             return enabled ?
                     b.header(CONNECTION, "close") :
                     b.removeHeaderIf(CONNECTION, "close");
@@ -296,7 +296,7 @@ final class DefaultResponse implements Response
         
         @Override
         public Response.Builder mustCloseAfterWrite(boolean enabled) {
-            Builder b = new Builder(this, s -> s.mustCloseAfterWrite = enabled);
+            DefaultBuilder b = new DefaultBuilder(this, s -> s.mustCloseAfterWrite = enabled);
             return enabled ?
                     b.header(CONNECTION, "close") :
                     b.removeHeaderIf(CONNECTION, "close");
