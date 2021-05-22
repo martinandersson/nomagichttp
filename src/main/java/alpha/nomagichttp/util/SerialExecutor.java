@@ -1,6 +1,4 @@
-package alpha.nomagichttp.internal;
-
-import alpha.nomagichttp.util.SeriallyRunnable;
+package alpha.nomagichttp.util;
 
 import java.util.Queue;
 import java.util.concurrent.ConcurrentLinkedQueue;
@@ -55,7 +53,7 @@ import static java.lang.ThreadLocal.withInitial;
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  */
-class SerialExecutor implements Executor
+public final class SerialExecutor implements Executor
 {
     private static final ThreadLocal<Boolean> EXECUTING = withInitial(() -> false);
     
@@ -63,16 +61,29 @@ class SerialExecutor implements Executor
     private final SeriallyRunnable serial;
     private final boolean mayRecurse;
     
-    SerialExecutor() {
+    /**
+     * Constructs a serial execute that never recurse.
+     */
+    public SerialExecutor() {
         this(false);
     }
     
-    SerialExecutor(boolean mayRecurse) {
+    /**
+     * Constructs a serial executor.
+     * 
+     * @param mayRecurse {@code true} or {@code false}
+     */
+    public SerialExecutor(boolean mayRecurse) {
         this.actions = new ConcurrentLinkedQueue<>();
         this.serial  = new SeriallyRunnable(this::pollAndExecute);
         this.mayRecurse = mayRecurse;
     }
     
+    /**
+     * Execute the given action or schedule it for future execution.
+     * 
+     * @param action to execute
+     */
     @Override
     public void execute(Runnable action) {
         if (mayRecurse && EXECUTING.get()) {

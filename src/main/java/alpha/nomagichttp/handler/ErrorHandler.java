@@ -1,9 +1,8 @@
 package alpha.nomagichttp.handler;
 
 import alpha.nomagichttp.HttpServer;
-import alpha.nomagichttp.examples.RetryRequestOnError;
 import alpha.nomagichttp.message.BadHeaderException;
-import alpha.nomagichttp.message.ClosedPublisherException;
+import alpha.nomagichttp.message.EndOfStreamException;
 import alpha.nomagichttp.message.HttpVersionParseException;
 import alpha.nomagichttp.message.HttpVersionTooNewException;
 import alpha.nomagichttp.message.HttpVersionTooOldException;
@@ -11,8 +10,11 @@ import alpha.nomagichttp.message.IllegalBodyException;
 import alpha.nomagichttp.message.MaxRequestHeadSizeExceededException;
 import alpha.nomagichttp.message.MediaTypeParseException;
 import alpha.nomagichttp.message.Request;
+import alpha.nomagichttp.message.RequestBodyTimeoutException;
 import alpha.nomagichttp.message.RequestHeadParseException;
+import alpha.nomagichttp.message.RequestHeadTimeoutException;
 import alpha.nomagichttp.message.Response;
+import alpha.nomagichttp.message.ResponseTimeoutException;
 import alpha.nomagichttp.message.Responses;
 import alpha.nomagichttp.route.NoHandlerFoundException;
 import alpha.nomagichttp.route.NoRouteFoundException;
@@ -28,24 +30,26 @@ import static alpha.nomagichttp.message.Responses.httpVersionNotSupported;
 import static alpha.nomagichttp.message.Responses.internalServerError;
 import static alpha.nomagichttp.message.Responses.notFound;
 import static alpha.nomagichttp.message.Responses.notImplemented;
+import static alpha.nomagichttp.message.Responses.requestTimeout;
+import static alpha.nomagichttp.message.Responses.serviceUnavailable;
 import static alpha.nomagichttp.message.Responses.upgradeRequired;
 import static java.lang.System.Logger.Level.ERROR;
 
 /**
- * Handles a {@code Throwable} by translating it into an alternative response.<p>
+ * Handles a {@code Throwable}, presumably by translating it into a response as
+ * an alternative to the one that failed.<p>
  * 
  * One use case could be to retry a new execution of the request handler on
  * known and expected errors. Another use case could be to customize the
- * server's default error responses, for example by translating a {@link
- * NoRouteFoundException} into an application-specific "404 Not Found"
- * response.<p>
+ * server's default error responses.<p>
  * 
  * Many error handlers may be installed on the server. First to handle the error
  * breaks the call chain. Details follow later.<p>
  * 
- * The server will call error handlers only during the phase of the HTTP
- * exchange when there is a client waiting on a response and only if the channel
- * remains open for writing at the time of the error.<p>
+ * The server will call error handlers only during an active HTTP exchange and
+ * only if the channel remains open for writing at the time of the error. The
+ * purpose is to always provide the client with a response despite server
+ * errors.<p>
  * 
  * Specifically for:<p>
  * 
@@ -54,10 +58,11 @@ import static java.lang.System.Logger.Level.ERROR;
  * request handler invocation has returned.<p>
  * 
  * 2) Exceptions that completes exceptionally the {@code
- * CompletionStage<Response>} written to the {@link ClientChannel}.<p>
+ * CompletionStage<Response>} written to the {@link ClientChannel} if and only
+ * if the HTTP exchange is active at the time.<p>
  * 
  * 3) Exceptions signalled to the server's {@code Flow.Subscriber} of the {@code
- * Response.body()} - if and only if - the body publisher has not yet published
+ * Response.body()} if and only if the body publisher has not yet published
  * any bytebuffers before the error was signalled. It doesn't make much sense
  * trying to recover the situation after the point where a response has already
  * begun transmitting back to the client.<p>
@@ -82,8 +87,7 @@ import static java.lang.System.Logger.Level.ERROR;
  * 
  * An error handler that is unwilling to handle the exception must re-throw the
  * same throwable instance which will then propagate to the next handler,
- * eventually reaching the default error handler if no other
- * application-provided handler completed normally.<p>
+ * eventually reaching the default handler.<p>
  * 
  * If a handler throws a different throwable, then this is considered to be a
  * new error and the whole cycle is restarted.<p>
@@ -104,8 +108,7 @@ import static java.lang.System.Logger.Level.ERROR;
  * 
  * If there is a request available when the error handler is called, then {@link
  * Request#attributes()} is a good place to store state that needs to be passed
- * between handler invocations, such as an error retry counter (see example
- * {@link RetryRequestOnError}).<p>
+ * between handler invocations.<p>
  * 
  * The error handler must be thread-safe, as it may be called concurrently. As
  * far as the server is concerned, it does not need to implement 
@@ -121,7 +124,7 @@ import static java.lang.System.Logger.Level.ERROR;
 public interface ErrorHandler
 {
     /**
-     * Optionally handles an exception by producing an alternative response.<p>
+     * Optionally handles an exception.<p>
      * 
      * The first two arguments ({@code Throwable} and {@code ClientChannel})
      * will always be non-null. The last two arguments ({@code Request} and
@@ -264,16 +267,16 @@ public interface ErrorHandler
      *          Fault assumed to be the applications'.</td>
      *   </tr>
      *   <tr>
-     *     <th scope="row">{@link ClosedPublisherException} </th>
-     *     <td> Exception message is "EOS" </td>
+     *     <th scope="row">{@link EndOfStreamException} </th>
+     *     <td> None </td>
      *     <td> No </td>
-     *     <td> No response, channel is already closed. <br>
+     *     <td> No response, closes the channel. <br>
      *          This error signals the failure of a read operation due to client
      *          disconnect <i>and</i> at least one byte of data was received
      *          prior to the disconnect (if no bytes were received the error
      *          handler is never called; no data loss, no problem). Currently,
      *          however, there's no API support to retrieve the incomplete
-     *          request. This might be added in the future.</td>
+     *          request.</td>
      *   </tr>
      *   <tr>
      *     <th scope="row">{@link ResponseRejectedException} </th>
@@ -287,6 +290,25 @@ public interface ErrorHandler
      *     <td> No response, the failed interim response is ignored. </td>
      *   </tr>
      *   <tr>
+     *     <th scope="row"> {@link RequestHeadTimeoutException} </th>
+     *     <td> None </td>
+     *     <td> No </td>
+     *     <td> {@link Responses#requestTimeout()}</td>
+     *   </tr>
+     *   <tr>
+     *     <th scope="row"> {@link RequestBodyTimeoutException} </th>
+     *     <td> None </td>
+     *     <td> No </td>
+     *     <td> {@link Responses#requestTimeout()}</td>
+     *   </tr>
+     *   <tr>
+     *     <th scope="row"> {@link ResponseTimeoutException} </th>
+     *     <td> None </td>
+     *     <td> Yes </td>
+     *     <td> {@link Responses#serviceUnavailable()} with
+     *          {@link Response#mustCloseAfterWrite()} enabled.</td>
+     *   </tr>
+     *   <tr>
      *     <th scope="row"> <i>{@code Everything else}</i> </th>
      *     <td> None </td>
      *     <td> Yes </td>
@@ -294,9 +316,6 @@ public interface ErrorHandler
      *   </tr>
      *   </tbody>
      * </table>
-     * 
-     * Please note that each of these responses will also close the client
-     * channel (see {@link Response#mustCloseAfterWrite()}).
      */
     ErrorHandler DEFAULT = (thr, ch, req, rh) -> {
         final Response res;
@@ -323,14 +342,9 @@ public interface ErrorHandler
                 log(thr);
                 res = internalServerError();
             }
-        } catch (ClosedPublisherException e) {
-            if ("EOS".equals(e.getMessage())) {
-                ch.closeSafe();
-                return;
-            } else {
-                log(thr);
-                res = internalServerError();
-            }
+        } catch (EndOfStreamException e) {
+            ch.closeSafe();
+            res = null;
         } catch (ResponseRejectedException e) {
             if (e.rejected().isInformational() &&
                 e.reason() == PROTOCOL_NOT_SUPPORTED &&
@@ -342,6 +356,12 @@ public interface ErrorHandler
                 log(thr);
                 res = internalServerError();
             }
+        } catch (RequestHeadTimeoutException | RequestBodyTimeoutException e) {
+            res = requestTimeout();
+        } catch (ResponseTimeoutException e) {
+            log(thr);
+            res = serviceUnavailable()
+                    .toBuilder().mustCloseAfterWrite(true).build();
         } catch (Throwable unknown) {
             log(thr);
             res = internalServerError();

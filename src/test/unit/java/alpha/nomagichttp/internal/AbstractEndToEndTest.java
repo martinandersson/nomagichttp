@@ -2,8 +2,8 @@ package alpha.nomagichttp.internal;
 
 import alpha.nomagichttp.HttpServer;
 import alpha.nomagichttp.handler.ErrorHandler;
-import alpha.nomagichttp.testutil.ClientOperations;
 import alpha.nomagichttp.testutil.Logging;
+import alpha.nomagichttp.testutil.TestClient;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.TestInfo;
@@ -18,8 +18,10 @@ import java.util.stream.Stream;
 
 import static java.lang.System.Logger.Level.ALL;
 import static java.util.concurrent.TimeUnit.SECONDS;
+import static java.util.logging.Level.FINE;
 import static java.util.logging.Level.INFO;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * Will setup a {@link #server()} and a {@link #client()}, the latter configured
@@ -52,11 +54,12 @@ public abstract class AbstractEndToEndTest
     
     private Logging.Recorder key;
     private HttpServer server;
-    private ClientOperations client;
+    private int port;
+    private TestClient client;
     private final BlockingDeque<Throwable> errors = new LinkedBlockingDeque<>();
     
     @BeforeEach
-    void start(TestInfo test) throws IOException {
+    void __start(TestInfo test) throws IOException {
         Logging.setLevel(ALL);
         LOG.log(INFO, "Executing " + toString(test));
         key = Logging.startRecording();
@@ -67,18 +70,19 @@ public abstract class AbstractEndToEndTest
         };
         
         server = HttpServer.create(collect).start();
-        client = new ClientOperations(server);
+        port   = server.getLocalAddress().getPort();
+        client = new TestClient(server);
     }
     
     @AfterEach
-    void stopNow(TestInfo test) throws IOException {
+    void __stopNow(TestInfo test) throws IOException {
         server.stopNow();
         stopLogRecording();
         LOG.log(INFO, "Finished " + toString(test));
     }
     
     @AfterEach
-    void assertNoErrors() {
+    void __assertNoErrors() {
         assertThat(errors).isEmpty();
     }
     
@@ -87,8 +91,21 @@ public abstract class AbstractEndToEndTest
      * 
      * @return the server instance
      */
-    public final HttpServer server() {
+    protected final HttpServer server() {
         return server;
+    }
+    
+    /**
+     * Returns the cached server port.<p>
+     * 
+     * This method is useful for testing communication on the port even after
+     * the server has stopped (at which point the port can no longer be
+     * retrieved from the server).
+     * 
+     * @return the cached server port
+     */
+    protected final int serverPort() {
+        return port;
     }
     
     /**
@@ -96,7 +113,7 @@ public abstract class AbstractEndToEndTest
      *
      * @return the client instance
      */
-    public final ClientOperations client() {
+    protected final TestClient client() {
         return client;
     }
     
@@ -107,7 +124,7 @@ public abstract class AbstractEndToEndTest
      * 
      * @throws InterruptedException if interrupted while waiting
      */
-    public final Throwable pollServerError() throws InterruptedException {
+    protected final Throwable pollServerError() throws InterruptedException {
         return errors.poll(3, SECONDS);
     }
     
@@ -116,7 +133,7 @@ public abstract class AbstractEndToEndTest
      * 
      * @return the test log recorder
      */
-    public final Logging.Recorder logRecorder() {
+    protected final Logging.Recorder logRecorder() {
         return key;
     }
     
@@ -125,8 +142,30 @@ public abstract class AbstractEndToEndTest
      * 
      * @return all logged records
      */
-    public final Stream<LogRecord> stopLogRecording() {
+    protected final Stream<LogRecord> stopLogRecording() {
         return Logging.stopRecording(key);
+    }
+    
+    /**
+     * Waits for at most 3 seconds on the server log to indicate a child was
+     * accepted.
+     * 
+     * @throws InterruptedException
+     *             if the current thread is interrupted while waiting
+     */
+    protected final void awaitChildAccept() throws InterruptedException {
+        assertTrue(logRecorder().await(FINE, "Accepted child:"));
+    }
+    
+    /**
+     * Waits for at most 3 seconds on the server log to indicate a child was
+     * closed.
+     * 
+     * @throws InterruptedException
+     *             if the current thread is interrupted while waiting
+     */
+    protected final void awaitChildClose() throws InterruptedException {
+        assertTrue(logRecorder().await(FINE, "Closed child:"));
     }
     
     private static String toString(TestInfo test) {

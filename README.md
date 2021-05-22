@@ -230,7 +230,7 @@ User-Agent: curl/7.68.0
 A final response may be preceeded by any number of interim 1XX (Informational)
 responses. This is an excellent way to keep the client informed while processing
 lengthy requests (without the need for server-sent events, websockets, long
-pulling, et cetera).
+polling, et cetera).
 
 See code: [src/main/java/.../KeepClientInformed.java][7-1]
 

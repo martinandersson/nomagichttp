@@ -1,6 +1,7 @@
 package alpha.nomagichttp.util;
 
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Supplier;
@@ -9,8 +10,8 @@ import static java.lang.Long.MAX_VALUE;
 import static java.util.Objects.requireNonNull;
 
 /**
- * This class can be used as a lock-free concurrency primitive to transfer an
- * item from a supplier to a consumer.<p>
+ * This class can be used as a thread-safe and lock-free concurrency primitive
+ * to transfer an item from a supplier to a consumer.<p>
  * 
  * The consumer signals his receiving capability through raising a demand and
  * only if there is a demand will the supplier (provided to constructor) be
@@ -21,7 +22,23 @@ import static java.util.Objects.requireNonNull;
  * Item deliveries - or "transfers" if you will - are performed <i>serially</i>
  * as part of one transaction, one at a time. Or put in other words, the
  * functional methods of the supplier and consumer are serially invoked by the
- * same thread and this operation never runs concurrently.<p>
+ * same thread and this operation never runs concurrently.
+ * 
+ * 
+ * <h2>Threading Model</h2>
+ * 
+ * Work performed by this class is only executed by threads calling into
+ * package-private methods of this class (thread identify does not matter). The
+ * core functionality is provided by {@link SeriallyRunnable} which also has
+ * more to say on specific thread semantics. Perhaps most importantly; the
+ * functional methods given to this class will never recurse.<p>
+ * 
+ * The supplier-side must call {@link #tryTransfer()} anytime a condition
+ * changes to the effect a previously null-producing supplier could maybe start
+ * yielding non-null items again. This class does <i>not</i> manage background
+ * tasks to ensure progress. Failure to call {@code tryTransfer()} could mean
+ * progress is forever not made until the next time the consumer increases his
+ * demand.<p>
  * 
  * Transfers will repeat for as long as they are successful. This means that a
  * thread initiating a transfer may be used to not just deliver one item but
@@ -30,42 +47,14 @@ import static java.util.Objects.requireNonNull;
  * (through his demand).
  * 
  * 
- * <h2>Threading Model</h2>
- * 
- * Work performed by this class is only executed by threads calling into
- * package-private methods of this class (thread identify does not matter).<p>
- * 
- * This class does <i>not</i> manage background tasks to ensure progress. It is
- * therefore important that the supplier-side calls the {@link #tryTransfer()}
- * method anytime a condition changes to the effect a previously null-producing
- * supplier could maybe start yielding non-null items again. Failure to do so
- * could mean progress is forever not made until the next time the consumer
- * increases his demand.<p>
- * 
- * Calls into this class will block if work can begin immediately, or raise a
- * flag and schedule work to be done after the currently running transfer,
- * either by the already transfer-executing thread, or possibly another thread -
- * whichever wins a race at that time. The methods therefore operate
- * nondeterministically both synchronously and asynchronously...<p>
- * 
- * ...except for recursive calls from the same thread which are always
- * asynchronous. This means that recursive calls are just like non-recursive
- * calls; efficient in terms of stack-memory and also safe, will never throw
- * a {@code StackOverflowError}.<p>
- * 
- * Just to have it stated unless not already obvious: This class is
- * thread-safe and so too is the supplier and consumer as long as they are not
- * also accessed outside the control of this class.
- * 
- * 
  * <h2>Demand</h2>
  * 
- * The demand starts out being zero. Therefore, the {@code increaseDemand}
- * method must be called at least once. The signalled demand is additive and can
- * as the greatest only become {@code Long.MAX_VALUE} at which point this class
- * cease to bother about demand completely. At this point, the service is
- * regarded as effectively unbounded and the demand will never decrease again
- * moving forward.<p>
+ * The consumer's demand starts out being zero. Therefore, the {@link
+ * #increaseDemand(long)} method must be called at least once. The signalled
+ * demand is additive and can as the greatest only become {@code Long.MAX_VALUE}
+ * at which point this class cease to bother about demand completely. At this
+ * point, the service is regarded as effectively unbounded and the demand will
+ * never decrease again moving forward.<p>
  * 
  * If a supplier produces a {@code null} item, then this aborts the transfer
  * attempt but does not count against the demand.
@@ -114,7 +103,7 @@ public final class SerialTransferService<T>
     private static final int FINISHED = -1;
     
     private final Function<SerialTransferService<T>, ? extends T> from;
-    private final Consumer<? super T> to;
+    private final BiConsumer<SerialTransferService<T>, ? super T> to;
     private final AtomicLong demand;
     // #before is safely published through volatile init and subsequent read of
     // #demand thereafter only updated (to null) in the first serial run with
@@ -133,52 +122,43 @@ public final class SerialTransferService<T>
      * @throws NullPointerException if {@code from} or {@code to} is {@code null}
      */
     public SerialTransferService(Supplier<? extends T> from, Consumer<? super T> to) {
-        this(selfIgnored -> from.get(), to, null);
+        this(selfIgnored -> from.get(), (selfIgnored, item) -> to.accept(item));
+        requireNonNull(from);
+        requireNonNull(to);
     }
     
     /**
      * Constructs a {@code SerialTransferService}.
      * 
      * @param from  item supplier (will receive {@code this} service as argument)
-     * @param to    item consumer
+     * @param to    item consumer (will receive {@code this} service as second argument)
      * 
      * @throws NullPointerException if {@code from} or {@code to} is {@code null}
      */
-    public SerialTransferService(Function<SerialTransferService<T>, ? extends T> from, Consumer<? super T> to) {
+    public SerialTransferService(Function<SerialTransferService<T>, ? extends T> from,
+                                 BiConsumer<SerialTransferService<T>, ? super T> to) {
         this(from, to, null);
     }
     
     /**
      * Constructs a {@code SerialTransferService}.
-     *
-     * The before-first-delivery callback is called exactly once, serially
-     * within the scope of the first delivery just before the consumer receives
-     * the item.
-     *
-     * @param from  item supplier
-     * @param to    item consumer
-     * @param beforeFirstDelivery callback (optional; may be {@code null})
-     *
-     * @throws NullPointerException if {@code from} or {@code to} is {@code null}
-     */
-    public SerialTransferService(Supplier<? extends T> from, Consumer<? super T> to, Runnable beforeFirstDelivery) {
-        this(selfIgnored -> from.get(), to, beforeFirstDelivery);
-    }
-    
-    /**
-     * Constructs a {@code SerialTransferService}.
      * 
      * The before-first-delivery callback is called exactly once, serially
      * within the scope of the first delivery just before the consumer receives
      * the item.
      * 
      * @param from  item supplier (will receive {@code this} service as argument)
-     * @param to    item consumer
+     * @param to    item consumer (will receive {@code this} service as first argument)
      * @param beforeFirstDelivery callback (optional; may be {@code null})
      * 
      * @throws NullPointerException if {@code from} or {@code to} is {@code null}
      */
-    public SerialTransferService(Function<SerialTransferService<T>, ? extends T> from, Consumer<? super T> to, Runnable beforeFirstDelivery) {
+    // private only coz before-first currently not used anywhere
+    private SerialTransferService(
+            Function<SerialTransferService<T>, ? extends T> from,
+            BiConsumer<SerialTransferService<T>, ? super T> to,
+            Runnable beforeFirstDelivery)
+    {
         this.from   = requireNonNull(from);
         this.to     = requireNonNull(to);
         this.before = beforeFirstDelivery;
@@ -317,7 +297,7 @@ public final class SerialTransferService<T>
         final long now;
         try {
             runBeforeOnce();
-            to.accept(item);
+            to.accept(this, item);
         } finally {
             now = demand.updateAndGet(curr ->
                     // keep flags unmodified and zero is the smallest demand

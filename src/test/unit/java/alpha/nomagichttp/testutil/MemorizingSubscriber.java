@@ -3,6 +3,8 @@ package alpha.nomagichttp.testutil;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.Flow;
 
@@ -58,6 +60,41 @@ public class MemorizingSubscriber<T> implements Flow.Subscriber<T>
         var s = new MemorizingSubscriber<>(Request.IMMEDIATELY_MAX());
         from.subscribe(s);
         return s.methodNames();
+    }
+    
+    /**
+     * Subscribes a {@code MemorizingSubscriber} to the given publisher and then
+     * return all received signals.<p>
+     * 
+     * The subscriber will immediately request {@code Long.MAX_VALUE}.<p>
+     * 
+     * The publisher should be eager in order for all [expected] signals to be
+     * present in the returned collection.
+     * 
+     * @param from publisher to drain
+     * @return all methods invoked
+     */
+    public static List<Signal> drainSignals(Flow.Publisher<?> from) {
+        var s = new MemorizingSubscriber<>(Request.IMMEDIATELY_MAX());
+        from.subscribe(s);
+        return s.signals();
+    }
+    
+    /**
+     * Subscribes a {@code MemorizingSubscriber} to the given publisher and
+     * returns all received signals when the subscription completes.<p>
+     * 
+     * The subscriber will immediately request {@code Long.MAX_VALUE}.
+     * 
+     * @param from publisher to drain
+     * @return all signals received
+     */
+    public static CompletionStage<List<Signal>> drainSignalsAsync(Flow.Publisher<?> from) {
+        CompletableFuture<List<Signal>> r = new CompletableFuture<>();
+        var s = new MemorizingSubscriber<>(Request.IMMEDIATELY_MAX());
+        from.subscribe(s);
+        return s.asCompletionStage()
+                .thenApply(Null -> s.signals());
     }
     
     /**
@@ -169,6 +206,7 @@ public class MemorizingSubscriber<T> implements Flow.Subscriber<T>
     private final Collection<Signal> signals;
     private final Request strategy;
     private final Flow.Subscriber<T> delegate;
+    private final CompletableFuture<Void> result;
     
     /**
      * Constructs a {@code MemorizingSubscriber}.
@@ -178,9 +216,10 @@ public class MemorizingSubscriber<T> implements Flow.Subscriber<T>
      * @throws NullPointerException if {@code delegate} is {@code null}
      */
     public MemorizingSubscriber(Request strategy) {
-        this.signals = new ConcurrentLinkedQueue<>();
+        this.signals  = new ConcurrentLinkedQueue<>();
         this.strategy = requireNonNull(strategy);
         this.delegate = null;
+        this.result   = new CompletableFuture<>();
     }
     
     /**
@@ -194,9 +233,10 @@ public class MemorizingSubscriber<T> implements Flow.Subscriber<T>
      * @throws NullPointerException if {@code delegate} is {@code null}
      */
     public MemorizingSubscriber(Flow.Subscriber<T> delegate) {
-        this.signals = new ConcurrentLinkedQueue<>();
+        this.signals  = new ConcurrentLinkedQueue<>();
         this.strategy = null;
         this.delegate = requireNonNull(delegate);
+        this.result   = new CompletableFuture<>();
     }
     
     /**
@@ -253,11 +293,12 @@ public class MemorizingSubscriber<T> implements Flow.Subscriber<T>
     }
     
     @Override
-    public void onError(Throwable throwable) {
-        signals.add(new Signal(ON_ERROR, throwable));
+    public void onError(Throwable t) {
+        signals.add(new Signal(ON_ERROR, t));
         if (delegate != null) {
-            delegate.onError(throwable);
+            delegate.onError(t);
         }
+        result.complete(null);
     }
     
     @Override
@@ -266,5 +307,20 @@ public class MemorizingSubscriber<T> implements Flow.Subscriber<T>
         if (delegate != null) {
             delegate.onComplete();
         }
+        result.complete(null);
+    }
+    
+    /**
+     * Returns the subscription as a stage.<p>
+     * 
+     * This method should be used for awaiting the subscription termination.
+     * Both {@code onComplete} and {@code onError} will complete the stage with
+     * {@code null}. Exactly what caused the termination event can be checked by
+     * running asserts on the received signals.
+     * 
+     * @return a stage
+     */
+    private CompletionStage<Void> asCompletionStage() {
+        return result;
     }
 }

@@ -4,6 +4,7 @@ import org.junit.jupiter.api.Test;
 
 import static alpha.nomagichttp.util.Publishers.empty;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.junit.jupiter.api.Assertions.assertSame;
 
 /**
@@ -35,7 +36,7 @@ class ResponseBuilderTest
     @Test
     void header_addHeader_single() {
         Response r = Response.builder(-1).addHeaders("k", "v").build();
-        assertThat(r.headers()).containsExactly("k: v");
+        assertThat(r.headersForWriting()).containsExactly("k: v");
     }
     
     @Test
@@ -47,7 +48,7 @@ class ResponseBuilderTest
                             "k", "v4")
                 .build();
         
-        assertThat(r.headers()).containsExactly(
+        assertThat(r.headersForWriting()).containsExactly(
                 "k: v1",
                 "k: v2",
                 "k: v3",
@@ -57,17 +58,48 @@ class ResponseBuilderTest
     @Test
     void header_removeHeader() {
         Response r = Response.builder(-1).header("k", "v").removeHeader("k").build();
-        assertThat(r.headers()).isEmpty();
+        assertThat(r.headersForWriting()).isEmpty();
     }
     
     @Test
     void header_replace() {
         Response r = Response.builder(-1).header("k", "v1").header("k", "v2").build();
-        assertThat(r.headers()).containsExactly("k: v2");
+        assertThat(r.headersForWriting()).containsExactly("k: v2");
     }
     
     @Test
     void informational_response_can_build() {
         Response.builder(102).build();
+    }
+    
+    @Test
+    void multipleContentLength_withValues() {
+        Response.Builder b = Response.builder(123).addHeaders(
+                "Content-Length", "1",
+                "Content-Length", "2");
+        
+        assertThatThrownBy(b::build)
+                .isExactlyInstanceOf(IllegalStateException.class)
+                .hasMessage("Multiple Content-Length headers.");
+    }
+    
+    @Test
+    void multipleContentLength_noValues() {
+        Response.Builder b = Response.builder(123).addHeaders(
+                "Content-Length", "",
+                "Content-Length", "    ");
+        
+        assertThatThrownBy(b::build)
+                .isExactlyInstanceOf(IllegalStateException.class)
+                .hasMessage("Multiple Content-Length headers.");
+    }
+    
+    @Test
+    void connectionCloseOn1XX() {
+        Response.Builder b = Response.builder(123).header("coNnEcTiOn", "cLoSe");
+        
+        assertThatThrownBy(b::build)
+                .isExactlyInstanceOf(IllegalStateException.class)
+                .hasMessage("\"Connection: close\" set on 1XX (Informational) response.");
     }
 }

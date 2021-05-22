@@ -35,7 +35,8 @@ final class SerialTransferServiceTest
         new SerialTransferService<String>(s -> {
             assertTrue(s.finish());
             return "Hello";
-        }, items::add).increaseDemand(2);
+        }, (selfIgnored, item) -> items.add(item))
+                .increaseDemand(2);
         
         assertThat(items).containsExactly("Hello");
     }

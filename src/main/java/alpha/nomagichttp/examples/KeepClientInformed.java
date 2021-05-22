@@ -36,12 +36,13 @@ public class KeepClientInformed
         app.add("/", GET().accept((req, ch) -> {
             ch.write(mkProgressReport(3));
             
-            CompletableFuture.runAsync(() ->
-                    ch.write(mkProgressReport(2)), after1sec)
+            CompletableFuture
+                .runAsync(() ->
+                      ch.write(mkProgressReport(2)), after1sec)
                 .thenRunAsync(() ->
-                    ch.write(mkProgressReport(1)), after1sec)
+                      ch.write(mkProgressReport(1)), after1sec)
                 .thenRunAsync(() ->
-                    ch.write(Responses.noContent()), after1sec);
+                      ch.write(Responses.noContent()), after1sec);
         }));
         
         app.start(PORT);

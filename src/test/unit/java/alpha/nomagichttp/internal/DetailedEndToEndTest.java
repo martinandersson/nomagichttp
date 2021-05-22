@@ -2,12 +2,16 @@ package alpha.nomagichttp.internal;
 
 import alpha.nomagichttp.handler.ErrorHandler;
 import alpha.nomagichttp.handler.RequestHandler;
-import alpha.nomagichttp.message.ClosedPublisherException;
+import alpha.nomagichttp.message.EndOfStreamException;
 import alpha.nomagichttp.message.PooledByteBufferHolder;
 import alpha.nomagichttp.message.Request;
+import alpha.nomagichttp.message.Response;
 import alpha.nomagichttp.message.Responses;
+import alpha.nomagichttp.testutil.IORunnable;
 import alpha.nomagichttp.testutil.MemorizingSubscriber;
 import alpha.nomagichttp.testutil.MemorizingSubscriber.Signal;
+import alpha.nomagichttp.util.Publishers;
+import alpha.nomagichttp.util.SubscriberFailedException;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
@@ -16,34 +20,42 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.Channel;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Flow;
 import java.util.concurrent.TimeoutException;
 import java.util.function.Consumer;
 import java.util.logging.LogRecord;
 
+import static alpha.nomagichttp.HttpConstants.HeaderKey.CONTENT_LENGTH;
 import static alpha.nomagichttp.handler.RequestHandler.GET;
 import static alpha.nomagichttp.handler.RequestHandler.POST;
 import static alpha.nomagichttp.handler.RequestHandler.builder;
 import static alpha.nomagichttp.message.Responses.accepted;
+import static alpha.nomagichttp.message.Responses.badRequest;
 import static alpha.nomagichttp.message.Responses.continue_;
+import static alpha.nomagichttp.message.Responses.noContent;
+import static alpha.nomagichttp.message.Responses.ok;
+import static alpha.nomagichttp.message.Responses.processing;
 import static alpha.nomagichttp.message.Responses.text;
-import static alpha.nomagichttp.testutil.ClientOperations.CRLF;
 import static alpha.nomagichttp.testutil.Logging.toJUL;
 import static alpha.nomagichttp.testutil.MemorizingSubscriber.Signal.MethodName.ON_COMPLETE;
 import static alpha.nomagichttp.testutil.MemorizingSubscriber.Signal.MethodName.ON_ERROR;
 import static alpha.nomagichttp.testutil.MemorizingSubscriber.Signal.MethodName.ON_NEXT;
 import static alpha.nomagichttp.testutil.MemorizingSubscriber.Signal.MethodName.ON_SUBSCRIBE;
+import static alpha.nomagichttp.testutil.TestClient.CRLF;
 import static alpha.nomagichttp.testutil.TestSubscribers.onNextAndComplete;
 import static alpha.nomagichttp.testutil.TestSubscribers.onNextAndError;
 import static alpha.nomagichttp.testutil.TestSubscribers.onSubscribe;
+import static alpha.nomagichttp.util.BetterBodyPublishers.ofByteArray;
 import static alpha.nomagichttp.util.Subscribers.onNext;
 import static java.lang.System.Logger.Level.DEBUG;
 import static java.lang.System.Logger.Level.ERROR;
 import static java.lang.System.Logger.Level.WARNING;
+import static java.nio.charset.StandardCharsets.US_ASCII;
 import static java.util.List.of;
+import static java.util.concurrent.CompletableFuture.failedStage;
 import static java.util.concurrent.TimeUnit.SECONDS;
-import static java.util.logging.Level.FINE;
 import static java.util.logging.Level.INFO;
 import static java.util.stream.Collectors.toList;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -128,8 +140,7 @@ class DetailedEndToEndTest extends AbstractEndToEndTest
                 .noneMatch(v -> v > INFO.intValue());
         
         assertThat(pollServerError())
-                .isExactlyInstanceOf(ClosedPublisherException.class)
-                .hasMessage("EOS");
+                .isExactlyInstanceOf(EndOfStreamException.class);
     }
     
     @Test
@@ -223,7 +234,8 @@ class DetailedEndToEndTest extends AbstractEndToEndTest
         assertThat(resp).isEqualTo(
             "HTTP/1.0 200 OK"                         + CRLF +
             "Content-Type: text/plain; charset=utf-8" + CRLF +
-            "Content-Length: 17"                      + CRLF + CRLF +
+            "Content-Length: 17"                      + CRLF +
+            "Connection: close"                       + CRLF + CRLF +
             
             "Received HTTP/1.0");
     }
@@ -317,7 +329,7 @@ class DetailedEndToEndTest extends AbstractEndToEndTest
         assertTrue(s.get(0).getMethodName() == ON_SUBSCRIBE &&
                    s.get(1).getMethodName() == ON_ERROR);
         
-        assertOnErrorThrowable(s.get(1), "Subscriber.onSubscribe() returned exceptionally.");
+        assertOnErrorThrowable(s.get(1), "Signalling Flow.Subscriber.onSubscribe() failed.");
         assertThatErrorHandlerCaughtOops();
     }
     
@@ -341,7 +353,7 @@ class DetailedEndToEndTest extends AbstractEndToEndTest
         //       Next statement kind of works as a substitute.
         assertThat(stopLogRecording()).extracting(LogRecord::getLevel, LogRecord::getMessage)
                 .contains(tuple(toJUL(ERROR),
-                    "Signalling Flow.Subscriber failed. Will close the channel's read stream."));
+                    "Signalling Flow.Subscriber.onNext() failed. Will close the channel's read stream."));
         
         var s = sub.signals();
         assertThat(s).hasSize(3);
@@ -350,7 +362,7 @@ class DetailedEndToEndTest extends AbstractEndToEndTest
                    s.get(1).getMethodName() == ON_NEXT &&
                    s.get(2).getMethodName() == ON_ERROR);
         
-        assertOnErrorThrowable(s.get(2), "Signalling Flow.Subscriber failed.");
+        assertOnErrorThrowable(s.get(2), "Signalling Flow.Subscriber.onNext() failed.");
         assertThatErrorHandlerCaughtOops();
     }
     
@@ -376,7 +388,7 @@ class DetailedEndToEndTest extends AbstractEndToEndTest
         var log = stopLogRecording().collect(toList());
         assertThat(log).extracting(LogRecord::getLevel, LogRecord::getMessage)
             .contains(tuple(toJUL(ERROR),
-                "Signalling Flow.Subscriber failed. Will close the channel's read stream."));
+                "Signalling Flow.Subscriber.onNext() failed. Will close the channel's read stream."));
         
         LogRecord fromOnError = log.stream().filter(
                     r -> r.getLevel().equals(toJUL(ERROR)) &&
@@ -395,7 +407,7 @@ class DetailedEndToEndTest extends AbstractEndToEndTest
                    s.get(1).getMethodName() == ON_NEXT &&
                    s.get(2).getMethodName() == ON_ERROR);
         
-        assertOnErrorThrowable(s.get(2), "Signalling Flow.Subscriber failed.");
+        assertOnErrorThrowable(s.get(2), "Signalling Flow.Subscriber.onNext() failed.");
         assertThatErrorHandlerCaughtOops();
     }
     
@@ -404,7 +416,7 @@ class DetailedEndToEndTest extends AbstractEndToEndTest
     void requestBodySubscriberFails_onComplete(String method) throws IOException, InterruptedException {
         MemorizingSubscriber<PooledByteBufferHolder> sub = new MemorizingSubscriber<>(
                 onNextAndComplete(
-                    buff -> { buff.get().position(buff.get().limit()); buff.release(); }, // Discard
+                    buf -> { buf.get().position(buf.get().limit()); buf.release(); }, // Discard
                     ()   -> { throw OOPS; }));
         
         server().add("/", builder(method).accept((req, ch) -> {
@@ -436,9 +448,159 @@ class DetailedEndToEndTest extends AbstractEndToEndTest
         assertThatErrorHandlerCaughtOops();
     }
     
+    @Test
+    void maxUnsuccessfulResponses() throws IOException, InterruptedException {
+        server().add("/", GET().respond(badRequest()));
+        
+        IORunnable sendBadRequest = () -> {
+            String rsp = client().writeRead(requestWithoutBody());
+            assertThat(rsp).startsWith("HTTP/1.1 400 Bad Request");
+        };
+        
+        try (Channel ch = client().openConnection()) {
+            for (int i = server().getConfig().maxUnsuccessfulResponses(); i > 1; --i) {
+                sendBadRequest.run();
+                assertTrue(ch.isOpen());
+            }
+            sendBadRequest.run();
+            
+            awaitChildClose();
+            assertTrue(client().serverClosedOutput());
+            assertTrue(client().serverClosedInput());
+        }
+    }
+    
+    @Test
+    void response_unknownLength_bodyNonEmpty() throws IOException, InterruptedException {
+        server().add("/", GET().respond(
+                text("Hi").toBuilder()
+                           .removeHeader(CONTENT_LENGTH)
+                           .build()));
+        
+        String rsp = client().writeRead(requestWithoutBody(), "Hi");
+        assertThat(rsp).isEqualTo(
+            "HTTP/1.1 200 OK"                         + CRLF +
+            "Content-Type: text/plain; charset=utf-8" + CRLF +
+            "Connection: close"                       + CRLF + CRLF +
+            
+            "Hi");
+        
+        awaitChildClose();
+    }
+    
+    @Test
+    void response_unknownLength_bodyEmpty() throws IOException, InterruptedException {
+        var empty = Publishers.just(ByteBuffer.allocate(0));
+        server().add("/", GET().respond(ok(empty, "application/octet-stream", -1)));
+        
+        String rsp = client().writeRead(requestWithoutBody(), "Hi");
+        assertThat(rsp).isEqualTo(
+            "HTTP/1.1 200 OK"                         + CRLF +
+            "Content-Type: application/octet-stream"  + CRLF +
+            "Connection: close"                       + CRLF + CRLF);
+        
+        awaitChildClose();
+    }
+    
+    @Test
+    void responseOrderMaintained() throws IOException {
+        server().add("/", GET().accept((req, ch) -> {
+            CompletableFuture<Response> first  = new CompletableFuture<>();
+            Response second = processing().toBuilder().header("ID", "2").build();
+            CompletableFuture<Response> third = new CompletableFuture<>();
+            ch.write(first);
+            ch.write(second);
+            ch.write(third);
+            third.complete(text("done"));
+            first.complete(processing().toBuilder().header("ID", "1").build());
+        }));
+        
+        String rsp = client().writeRead(requestWithoutBody(), "done");
+        assertThat(rsp).isEqualTo(
+            "HTTP/1.1 102 Processing"                 + CRLF +
+            "ID: 1"                                   + CRLF + CRLF +
+            
+            "HTTP/1.1 102 Processing"                 + CRLF +
+            "ID: 2"                                   + CRLF + CRLF +
+            
+            "HTTP/1.1 200 OK"                         + CRLF +
+            "Content-Type: text/plain; charset=utf-8" + CRLF +
+            "Content-Length: 4"                       + CRLF + CRLF +
+            
+            "done");
+    }
+    
+    // TODO: This needs to go to ErrorHandlingTest; after test refactoring
+    @Test
+    void afterHttpExchange_responseIsLoggedButIgnored() throws IOException, InterruptedException {
+        server().add("/", GET().accept((req, ch) -> {
+            ch.write(noContent());
+            ch.write(Response.builder(123).build());
+        }));
+        
+        String rsp = client().writeRead(
+                "GET / HTTP/1.1"          + CRLF + CRLF);
+        assertThat(rsp).isEqualTo(
+                "HTTP/1.1 204 No Content" + CRLF + CRLF);
+        
+        assertTrue(logRecorder().await(toJUL(WARNING),
+                "HTTP exchange not active. This response is ignored: DefaultResponse{statusCode=123"));
+        
+        // Superclass asserts no error sent to error handler
+    }
+    
+    // TODO: This needs to go to ErrorHandlingTest; after test refactoring
+    @Test
+    void afterHttpExchange_responseExceptionIsLoggedButIgnored() throws IOException, InterruptedException {
+        server().add("/", GET().accept((req, ch) -> {
+            ch.write(noContent());
+            ch.write(failedStage(new RuntimeException("Oops!")));
+        }));
+        
+        String rsp = client().writeRead(
+                "GET / HTTP/1.1"          + CRLF + CRLF);
+        assertThat(rsp).isEqualTo(
+                "HTTP/1.1 204 No Content" + CRLF + CRLF);
+        
+        assertTrue(logRecorder().await(toJUL(ERROR),
+                "Application's response stage completed exceptionally, " +
+                "but HTTP exchange is not active. This error does not propagate anywhere."));
+        
+        // Superclass asserts no error sent to error handler
+    }
+    
+    // See ResponseBodySubscriber.sliceIntoChunks()
+    @Test
+    void responseBodyBufferOversized() throws IOException {
+        // End of message
+        final byte eom = 9;
+        
+        // TODO: Need improved "HTTP message" API in TestClient
+        
+        byte[] rspBody = new byte[ChannelByteBufferPublisher.BUF_SIZE + 1];
+        rspBody[rspBody.length - 1] = eom;
+        Response r = Responses.ok(ofByteArray(rspBody));
+        server().add("/", GET().respond(r));
+        
+        byte[] req = ("GET / HTTP/1.1" + CRLF + CRLF).getBytes(US_ASCII);
+        
+        byte[] expHead =
+                ("HTTP/1.1 200 OK"                       + CRLF +
+                "Content-Type: application/octet-stream" + CRLF +
+                "Content-Length: 16385"                  + CRLF + CRLF)
+                .getBytes(US_ASCII);
+        
+        ByteBuffer merged = ByteBuffer.allocate(expHead.length + rspBody.length);
+        for (byte b : expHead) merged.put(b);
+        for (byte b : rspBody) merged.put(b);
+        
+        byte[] rsp = client().writeRead(req, new byte[]{eom});
+        assertThat(rsp).isEqualTo(merged.array());
+    }
+    
     private static void assertOnErrorThrowable(Signal onError, String msg) {
         assertThat(onError.<Throwable>getArgument())
-                .isExactlyInstanceOf(ClosedPublisherException.class)
+                .isExactlyInstanceOf(SubscriberFailedException.class)
                 .hasMessage(msg)
                 .hasNoSuppressedExceptions()
                 .getCause()
@@ -461,14 +623,6 @@ class DetailedEndToEndTest extends AbstractEndToEndTest
     private void addEndpointIsBodyEmpty() {
         server().add("/", POST().apply(req ->
                 text(String.valueOf(req.body().isEmpty())).completedStage()));
-    }
-    
-    /**
-     * Waits for at most 3 seconds on the server log to indicate a child was
-     * accepted.
-     */
-    private void awaitChildAccept() throws InterruptedException {
-        assertTrue(logRecorder().await(FINE, "Accepted child:"));
     }
     
     /**
@@ -506,11 +660,6 @@ class DetailedEndToEndTest extends AbstractEndToEndTest
                "Content-Length: " + body.length()        + CRLF + CRLF +
                
                body;
-    }
-    
-    @FunctionalInterface
-    private interface IORunnable {
-        void run() throws IOException;
     }
     
     private static class AfterByteTargetStop implements Flow.Subscriber<PooledByteBufferHolder>

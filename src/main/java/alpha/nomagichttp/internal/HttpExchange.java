@@ -8,15 +8,21 @@ import alpha.nomagichttp.message.HttpVersionTooNewException;
 import alpha.nomagichttp.message.HttpVersionTooOldException;
 import alpha.nomagichttp.message.IllegalBodyException;
 import alpha.nomagichttp.message.Request;
+import alpha.nomagichttp.message.RequestBodyTimeoutException;
+import alpha.nomagichttp.message.RequestHeadTimeoutException;
 import alpha.nomagichttp.route.RouteRegistry;
 
+import java.nio.channels.InterruptedByTimeoutException;
 import java.util.Collection;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
 import java.util.concurrent.CompletionStage;
+import java.util.concurrent.atomic.AtomicInteger;
 
+import static alpha.nomagichttp.HttpConstants.HeaderKey.CONNECTION;
 import static alpha.nomagichttp.HttpConstants.HeaderKey.EXPECT;
 import static alpha.nomagichttp.HttpConstants.Method.TRACE;
+import static alpha.nomagichttp.HttpConstants.StatusCode.ONE_HUNDRED;
 import static alpha.nomagichttp.HttpConstants.Version.HTTP_1_0;
 import static alpha.nomagichttp.HttpConstants.Version.HTTP_1_1;
 import static alpha.nomagichttp.message.Responses.continue_;
@@ -30,7 +36,22 @@ import static java.lang.System.Logger.Level.WARNING;
 import static java.util.Objects.requireNonNull;
 
 /**
- * Orchestrator of an HTTP exchange from request to response.
+ * Orchestrator of an HTTP exchange from request to response.<p>
+ * 
+ * Core responsibilities:
+ * <ul>
+ *   <li>Schedule a request head subscriber on the channel</li>
+ *   <li>Create request object and invoke request handler</li>
+ *   <li>Handle errors from the exchange by possibly invoking error handlers</li>
+ * </ul>
+ * 
+ * In addition:
+ * <ul>
+ *   <li>Has package-private accessors for the HTTP version and request object</li>
+ *   <li>May pre-emptively send a 100 (Continue) depending on configuration</li>
+ *   <li>Shuts down read stream if request has header "Connection: close"</li>
+ *   <li>Shuts down read stream on request timeout</li>
+ * </ul>
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  */
@@ -44,21 +65,25 @@ final class HttpExchange
     private final ChannelByteBufferPublisher bytes;
     private final ResponsePipeline pipe;
     private final DefaultClientChannel chan;
+    private final AtomicInteger cntDown;
     private final CompletableFuture<Void> result;
     
     /*
-     * No mutable field in this class are volatile or synchronized. It is
-     * assumed that the asynchronous execution facility of the CompletionStage
-     * implementation establishes a happens-before relationship. This is
-     * certainly true for JDK's CompletableFuture which uses an
-     * Executor/ExecutorService, or at worst, a new Thread.start() for each task.
+     * Mutable fields related to the request chain in this class are not
+     * volatile nor synchronized. It is assumed that the asynchronous execution
+     * facility of the CompletionStage implementation establishes a
+     * happens-before relationship. This is certainly true for JDK's
+     * CompletableFuture which uses an Executor/ExecutorService, or at worst, a
+     * new Thread.start() for each task.
      */
     
+    private RequestHead head;
     private Version ver;
     private DefaultRequest request;
     private RequestHandler handler;
-    private boolean sent100c;
-    private ErrorResolver onError;
+    private volatile boolean sent100c;
+    private volatile boolean subscriberArrived;
+    private ErrorResolver errRes;
     
     HttpExchange(
             HttpServer.Config config,
@@ -73,12 +98,21 @@ final class HttpExchange
         this.bytes    = bytes;
         this.chan     = chan;
         this.pipe     = new ResponsePipeline(this, chan);
+        this.cntDown  = new AtomicInteger(2); // <-- request handler + final response
         this.result   = new CompletableFuture<>();
         this.ver      = HTTP_1_1; // <-- default until updated
         this.request  = null;
         this.handler  = null;
         this.sent100c = false;
-        this.onError  = null;
+        this.errRes   = null;
+    }
+    
+    Version getHttpVersion() {
+        return ver;
+    }
+    
+    Request getRequest() {
+        return request;
     }
     
     /**
@@ -101,32 +135,44 @@ final class HttpExchange
         return result;
     }
     
-    Version getHttpVersion() {
-        return ver;
-    }
-    
-    Request getRequest() {
-        return request;
-    }
-    
     private void begin0() {
-        chan.usePipeline(pipe);
-        pipe.subscribe(onNext(this::handlePipeResult));
-        
-        RequestHeadSubscriber rhs = new RequestHeadSubscriber(config.maxRequestHeadSize());
-        bytes.subscribe(rhs);
-        rhs.asCompletionStage()
+        setupPipeline();
+        parseRequestHead()
            .thenAccept(this::initialize)
            .thenRun(() -> { if (config.immediatelyContinueExpect100())
                tryRespond100Continue(); })
            .thenRun(this::invokeRequestHandler)
            .exceptionally(thr -> {
-               handleError(thr);
+               if (cntDown.decrementAndGet() == 0) {
+                   LOG.log(WARNING,
+                       "Request handler returned exceptionally but final response already sent. " +
+                       "This error is ignored.", thr);
+               } else {
+                   pipe.startTimeout();
+                   handleError(thr);
+               }
                return null;
            });
     }
     
+    private void setupPipeline() {
+        pipe.subscribe(onNext(this::handlePipeResult));
+        chan.usePipeline(pipe);
+    }
+    
+    private CompletionStage<RequestHead> parseRequestHead() {
+        RequestHeadSubscriber rhs = new RequestHeadSubscriber(config.maxRequestHeadSize());
+        
+        var to = new TimeoutOp.Flow<>(false, true, bytes,
+                config.timeoutIdleConnection(), RequestHeadTimeoutException::new);
+        to.subscribe(rhs);
+        to.start();
+        
+        return rhs.asCompletionStage();
+    }
+    
     private void initialize(RequestHead h) {
+        head = h;
         RequestTarget t = RequestTarget.parse(h.requestTarget());
         
         ver = parseHttpVersion(h);
@@ -138,6 +184,8 @@ final class HttpExchange
         
         // This order is actually specified in javadoc of ErrorHandler#apply
         request = createRequest(h, t, m);
+                  validateRequest();
+                  monitorRequest();
         handler = findRequestHandler(h, m);
     }
     
@@ -179,11 +227,27 @@ final class HttpExchange
     }
     
     private DefaultRequest createRequest(RequestHead h, RequestTarget t, RouteRegistry.Match m) {
-        DefaultRequest r = new DefaultRequest(ver, h, t, m, bytes, chan, this::tryRespond100Continue);
-        if (r.method().equals(TRACE) && r.body().isEmpty()) {
-            throw new IllegalBodyException("Body in a TRACE request.", r);
+        return DefaultRequest.withParams(ver, h, t, m, bytes, chan,
+                config.timeoutIdleConnection(),
+                this::tryRespond100Continue,
+                () -> { subscriberArrived = true; });
+    }
+    
+    private void validateRequest() {
+        // May become pre-action
+        if (request.method().equals(TRACE) && !request.body().isEmpty()) {
+            throw new IllegalBodyException("Body in a TRACE request.", request);
         }
-        return r;
+    }
+    
+    private void monitorRequest() {
+        request.bodyStage().whenComplete((Null, thr) -> {
+            pipe.startTimeout();
+            if (thr instanceof RequestBodyTimeoutException && !subscriberArrived) {
+                // Then we need to deal with it
+                handleError(thr);
+            }
+        });
     }
     
     private static RequestHandler findRequestHandler(RequestHead rh, RouteRegistry.Match m) {
@@ -201,67 +265,131 @@ final class HttpExchange
             !getHttpVersion().isLessThan(HTTP_1_1) &&
             request.headerContains(EXPECT, "100-continue"))
         {
-            sent100c = true;
             chan.write(continue_());
         }
     }
     
     private void invokeRequestHandler() {
         handler.logic().accept(request, chan);
+        if (cntDown.decrementAndGet() == 0) {
+            LOG.log(DEBUG, "Request handler finished after final response. " +
+                           "Preparing for a new HTTP exchange.");
+            tryPrepareForNewExchange();
+        }
     }
     
     private void handlePipeResult(ResponsePipeline.Result res) {
-        /*
-         * We should make the connection life cycle much more solid; when is
-         * the connection persistent and when is it not (also see RFC 2616
-         * §14.10 Connection). No point in starting a new exchange if we expect
-         * the connection to end. In fact, if that's the case we should actually
-         * go ahead and close the channel! Currently, if the other side never
-         * closes then we would end up having idle zombie connections (!).
-         * TODO: 1) Make connection life cycle solid and robust.
-         * TODO: 2) Implement idle timeout.
-         */
-        
         if (res.error() != null) {
             handleError(res.error());
         } else if (res.response().isFinal()) {
-            LOG.log(DEBUG, "Response sent is final. Preparing new HTTP exchange.");
-            prepareForNewExchange();
+            // No need to tryRespond100Continue() after this point
+            sent100c = true;
+            if (cntDown.decrementAndGet() == 0) {
+                LOG.log(DEBUG, "Response sent is final. May prepare for a new HTTP exchange.");
+                tryPrepareForNewExchange();
+            } else {
+                LOG.log(DEBUG,
+                    "Response sent is final but request handler is still executing. " +
+                    "HTTP exchange remains active.");
+            }
         } else {
+            if (res.response().statusCode() == ONE_HUNDRED) {
+                sent100c = true;
+            }
             LOG.log(DEBUG, "Response sent is not final. HTTP exchange remains active.");
         }
     }
     
-    private void prepareForNewExchange() {
-        request.bodyDiscardIfNoSubscriber();
-        request.bodyStage().whenComplete((Null, t) -> {
+    private void tryPrepareForNewExchange() {
+        // Super early failure means no new HTTP exchange
+        if (head == null) {
+            // e.g. RequestHeadParseException -> 400 (Bad Request)
+            if (LOG.isLoggable(DEBUG)) {
+                if (chan.isEverythingOpen()) {
+                    LOG.log(DEBUG, "No request head parsed. Closing child channel. (end of HTTP exchange)");
+                } else {
+                    LOG.log(DEBUG, "No request head parsed. (end of HTTP exchange)");
+                }
+            }
+            chan.closeSafe();
+            result.complete(null);
+            return;
+        }
+        
+        // To have a new HTTP exchange, we must first make sure all of the request body is read
+        
+        if (!chan.isOpenForReading()) {
+            // ...nothing to drain
+            LOG.log(DEBUG, "Input stream was shut down. HTTP exchange is over.");
+            result.complete(null);
+            return;
+        }
+        
+        final DefaultRequest req = request != null ? request :
+                // e.g. NoRouteFoundException -> 404 (Not Found)
+                // (use local request obj without API support for parameters)
+                DefaultRequest.withoutParams(ver, head, bytes, chan, config.timeoutIdleConnection(), null, null);
+        
+        req.bodyDiscardIfNoSubscriber();
+        req.bodyStage().whenComplete((Null, t) -> {
             if (t == null) {
+                if (req.headerContains(CONNECTION, "close") && chan.isOpenForReading()) {
+                    LOG.log(DEBUG, "Request has \"Connection: close\", shutting down input.");
+                    chan.shutdownInputSafe();
+                }
+                // ResponsePipeline shuts down output on "Connection: close".
+                // DefaultServer will not start a new exchange if child or any stream thereof is closed.
+                LOG.log(DEBUG, "Normal end of HTTP exchange.");
                 result.complete(null);
             } else {
                 LOG.log(DEBUG,
                     // see SubscriptionAsStageOp.asCompletionStage()
-                    "Upstream error/channel fault. " +
-                    "Assuming reason and/or stacktrace was logged already.");
+                    "Request upstream/channel error. " +
+                    "Assuming reason and/or stacktrace was logged already. " +
+                    "HTTP exchange is over.");
                 result.completeExceptionally(t);
             }
         });
     }
     
-    private void handleError(Throwable exc) {
+    // Lock not expected to be contended. But in theory, this method can be
+    // invoked concurrently by a synchronous error from the request handler
+    // invocation as well as an asynchronous error from the response pipeline.
+    // TODO: Improve?
+    private synchronized void handleError(Throwable exc) {
         final Throwable unpacked = unpackCompletionException(exc);
         
         if (unpacked instanceof ClientAbortedException) {
             LOG.log(DEBUG, "Client aborted the HTTP exchange.");
             result.completeExceptionally(unpacked);
-        } else if (chan.isOpenForWriting())  {
-            if (onError == null) {
-                onError = new ErrorResolver();
+            return;
+        }
+        
+        if (unpacked instanceof InterruptedByTimeoutException) {
+            LOG.log(DEBUG, "Low-level write timed out. Closing channel. (end of HTTP exchange)", unpacked);
+            chan.closeSafe();
+            result.completeExceptionally(unpacked);
+            return;
+        }
+        
+        if (unpacked instanceof RequestHeadTimeoutException) {
+            LOG.log(DEBUG, "Request head timed out, shutting down input stream.");
+            // HTTP exchange will not continue after response
+            // RequestBodyTimeoutException already shut down the input stream (see DefaultRequest)
+            chan.shutdownInputSafe();
+            // Continue
+        }
+        
+        if (chan.isOpenForWriting())  {
+            if (errRes == null) {
+                errRes = new ErrorResolver();
             }
-            onError.resolve(unpacked);
+            errRes.resolve(unpacked);
         } else {
-            LOG.log(DEBUG, () ->
-                    "HTTP exchange finished exceptionally and child channel is closed for writing. " +
-                    "Assuming reason and/or stacktrace was logged already.");
+            LOG.log(WARNING, () ->
+                "Child channel is closed for writing. " +
+                "Can not resolve this error. " +
+                "HTTP exchange is over.", unpacked);
             result.completeExceptionally(unpacked);
         }
     }

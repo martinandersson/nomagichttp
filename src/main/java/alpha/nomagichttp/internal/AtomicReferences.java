@@ -1,9 +1,14 @@
 package alpha.nomagichttp.internal;
 
+import java.util.Optional;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
+import java.util.function.Predicate;
 import java.util.function.Supplier;
+
+import static java.util.Objects.requireNonNull;
+import static java.util.Optional.ofNullable;
 
 /**
  * Utilities for {@link AtomicReference}.
@@ -22,10 +27,17 @@ final class AtomicReferences
      * The {@code factory} may be called multiple times when attempted
      * updates fail due to contention among threads. However, the {@code
      * postInit} consumer is only called exactly once by the thread who
-     * successfully updated the reference value.<p>
+     * successfully set the reference value (determined by object identity).<p>
      * 
      * I.e. this method is useful when constructing the value instance is not
-     * expensive but post-initialization of the object is.<p>
+     * expensive but post-initialization of the object is, e.g. create a {@code
+     * CompletableFuture} but have only one tread compute its result. Other
+     * threads can join the result.<p>
+     * 
+     * Can also be used in a similar way when post-initialization may be cheap
+     * but must for whatever reason still only be performed exactly once, e.g.
+     * create a {@code CompletableFuture} as a container but have only one
+     * thread create a scheduled task (the result).<p>
      * 
      * Note:
      * <ol>
@@ -52,10 +64,17 @@ final class AtomicReferences
      * @param <A> accumulation type
      * 
      * @return the value
+     * 
+     * @throws NullPointerException
+     *             if any arg is {@code null}, or
+     *             if factory returns {@code null} upon invocation
      */
     static <V, A extends V> V lazyInit(
             AtomicReference<V> ref, Supplier<? extends A> factory, Consumer<? super A> postInit)
     {
+        requireNonNull(factory);
+        requireNonNull(postInit);
+        
         class Bag {
             A thing;
         }
@@ -66,7 +85,7 @@ final class AtomicReferences
             if (v != null) {
                 return v;
             }
-            return created.thing = factory.get();
+            return created.thing = requireNonNull(factory.get());
         });
         
         if (latest == created.thing) {
@@ -100,13 +119,20 @@ final class AtomicReferences
      * @param <V> value type
      * @param <A> accumulation type
      *
-     * @return the value
+     * @return the value if initialized, otherwise the alternative
+     * 
+     * @throws NullPointerException
+     *             if any arg is {@code null}, or
+     *             if factory returns {@code null} upon invocation
      */
     static <V, A extends V> V lazyInitOrElse(
             AtomicReference<V> ref, Supplier<? extends A> factory, Consumer<? super A> postInit, V alternativeValue)
     {
         // Copy-pasted from lazyInit(). Implementing DRY through a common method
-        // would probably be hard to understand?
+        // would probably be hard to read/understand?
+        
+        requireNonNull(factory);
+        requireNonNull(postInit);
         
         class Bag {
             A thing;
@@ -118,7 +144,7 @@ final class AtomicReferences
             if (v != null) {
                 return v;
             }
-            return created.thing = factory.get();
+            return created.thing = requireNonNull(factory.get());
         });
         
         if (latest == created.thing) {
@@ -139,12 +165,78 @@ final class AtomicReferences
      * 
      * @return actual value if not {@code null}, otherwise {@code newValue}
      */
-    static <V> V setIfAbsent(AtomicReference<V> ref, V newValue) {
+    static <V> V setIfAbsent(AtomicReference<V> ref, Supplier<? extends V> newValue) {
         return ref.updateAndGet(act -> {
             if (act != null) {
                 return act;
             }
-            return newValue;
+            return newValue.get();
         });
+    }
+    
+    /**
+     * Invoke the given action only if the atomic reference stores a non-null
+     * value.
+     * 
+     * @param ref reference target
+     * @param action consumer of non-null value
+     * @param <V> value type
+     * @return {@code true} if present (action called), otherwise {@code false}
+     * @throws NullPointerException if any arg is {@code null}
+     */
+    static <V> boolean ifPresent(AtomicReference<V> ref, Consumer<? super V> action) {
+        V v = ref.get();
+        if (v == null) {
+            requireNonNull(action);
+            return false;
+        }
+        action.accept(v);
+        return true;
+    }
+    
+    /**
+     * Take the value from the atomic reference, and set it to {@code null}.
+     * 
+     * @param ref reference target
+     * @param <V> value type
+     * @return an optional with the value
+     * @throws NullPointerException if {@code ref} is {@code null}
+     */
+    static <V> Optional<V> take(AtomicReference<V> ref) {
+        return ofNullable(ref.getAndUpdate(v -> null));
+    }
+    
+    /**
+     * Take the value from the atomic reference, and set it to {@code null}, but
+     * only if the current value pass the test.<p>
+     * 
+     * Note: an empty optional means the value did not pass the test, or test
+     * approved null, effectively making an empty optional semantically
+     * worthless. The test ought to perform checks on real values and call-site
+     * ought to act only on the presence of a value returned.
+     * 
+     * @param ref reference target
+     * @param test of current value (value may be {@code null}!)
+     * @param <V> value type
+     * @return an optional with the value if it passed the test
+     * @throws NullPointerException if any arg is {@code null}
+     */
+    static <V> Optional<V> takeIf(AtomicReference<V> ref, Predicate<? super V> test) {
+        return ofNullable(ref.getAndUpdate(v -> test.test(v) ? null : v));
+    }
+    
+    /**
+     * Take the value from the atomic reference, and set it to {@code null}, but
+     * only if the current value {@code == val}.<p>
+     * 
+     * @param ref reference target
+     * @param val wanted value
+     * @param <V> value type
+     * @return an optional with {@code val} if {@code val} was current value
+     * @throws NullPointerException if any arg is {@code null}
+     */
+    static <V> Optional<V> takeIfSame(AtomicReference<V> ref, V val) {
+        requireNonNull(val);
+        return takeIf(ref, v -> v == val);
     }
 }

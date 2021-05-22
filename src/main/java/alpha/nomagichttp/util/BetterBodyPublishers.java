@@ -4,25 +4,35 @@ import alpha.nomagichttp.handler.ErrorHandler;
 import alpha.nomagichttp.message.Response;
 
 import java.io.FileNotFoundException;
+import java.io.IOException;
 import java.net.http.HttpRequest.BodyPublishers;
 import java.nio.ByteBuffer;
+import java.nio.channels.AsynchronousFileChannel;
+import java.nio.channels.CompletionHandler;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Deque;
 import java.util.Iterator;
 import java.util.Objects;
+import java.util.concurrent.ConcurrentLinkedDeque;
 import java.util.concurrent.Flow;
 import java.util.function.Supplier;
 
+import static alpha.nomagichttp.util.Arrays.stream;
+import static java.lang.Long.MAX_VALUE;
+import static java.lang.System.Logger.Level.DEBUG;
 import static java.net.http.HttpRequest.BodyPublisher;
 import static java.nio.charset.StandardCharsets.UTF_8;
+import static java.util.Objects.requireNonNull;
 
 /**
  * Mirrors the API of {@link BodyPublishers} with implementations better in some
  * aspects.<p>
  * 
- * {@link Publishers} is used under the hood to deliver the implementations
- * produced by this class. So same semantics apply.<p>
+ * All publishers produced by this class follows the same semantics specified in
+ * {@link Publishers}.<p>
  * 
  * When this class offers an alternative, then it is safe to assume that the
  * alternative is a better choice, for at least one or both of the following
@@ -42,8 +52,6 @@ import static java.nio.charset.StandardCharsets.UTF_8;
  * {@link BodyPublishers#ofInputStream(Supplier)} is by definition blocking and
  * should be avoided altogether).<p>
  * 
- * All published bytebuffers are read-only.<p>
- * 
  * Please do not be mislead by the Java namespace for
  * <i>{@code HttpRequest}</i>{@code .BodyPublisher}. The {@code BodyPublisher}
  * is simply a publisher with a known content length used in turn by the HTTP
@@ -52,10 +60,13 @@ import static java.nio.charset.StandardCharsets.UTF_8;
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  * 
- * @see Response.Builder#body(Flow.Publisher) 
+ * @see Response.Builder#body(Flow.Publisher)
  */
 public final class BetterBodyPublishers
 {
+    private static final System.Logger LOG
+            = System.getLogger(BetterBodyPublishers.class.getPackageName());
+    
     /**
      * Maximum bytebuffer capacity.<p>
      * 
@@ -64,6 +75,7 @@ public final class BetterBodyPublishers
      * 
      * Package visibility for tests.
      */
+    // Also same as ChannelByteBufferPublisher.BUF_SIZE
     static final int BUF_SIZE = 16 * 1_024;
     
     private BetterBodyPublishers() {
@@ -75,7 +87,9 @@ public final class BetterBodyPublishers
      * converted using the {@link StandardCharsets#UTF_8 UTF_8} character set.
      * 
      * Is an alternative to {@link BodyPublishers#ofString(String)} except
-     * it is likely more performant and has no thread-safety issues.
+     * it is likely more performant and has no thread-safety issues.<p>
+     * 
+     * Published bytebuffers are read-only.
      * 
      * @param   body the String containing the body
      * @return  a BodyPublisher
@@ -90,7 +104,9 @@ public final class BetterBodyPublishers
      * String}, converted using the given character set.
      * 
      * Is an alternative to {@link BodyPublishers#ofString(String, Charset)}
-     * except it is likely more performant and has no thread-safety issues.
+     * except it is likely more performant and has no thread-safety issues.<p>
+     * 
+     * Published bytebuffers are read-only.
      * 
      * @param   s the String containing the body
      * @param   charset the character set to convert the string to bytes
@@ -108,7 +124,9 @@ public final class BetterBodyPublishers
      * it is likely more performant and has no thread-safety issues.
      * 
      * The given data array is <i>not</i> defensively copied. It should not be
-     * modified after calling this method.
+     * modified after calling this method.<p>
+     * 
+     * Published bytebuffers are read-only.
      * 
      * @param   buf the byte array containing the body
      * @return  a BodyPublisher
@@ -126,7 +144,9 @@ public final class BetterBodyPublishers
      * except it is likely more performant and has no thread-safety issues.
      * 
      * The given data array is <i>not</i> defensively copied. It should not be
-     * modified after calling this method.
+     * modified after calling this method.<p>
+     * 
+     * Published bytebuffers are read-only.
      * 
      * @param   buf the byte array containing the body
      * @param   offset the offset of the first byte
@@ -141,25 +161,113 @@ public final class BetterBodyPublishers
      */
     public static BodyPublisher ofByteArray(byte[] buf, int offset, int length) {
         Objects.checkFromIndexSize(offset, length, buf.length);
-        return new Adapter(
-                length - offset,
+        return asBodyPublisher(length,
                 Publishers.ofIterable(new ByteBufferIterable(buf, offset, length)));
     }
     
     /**
-     * A body publisher that takes data from the contents of a file.<p>
+     * Wrap the delegate with a content-length set to -1 (unknown length).
+     * 
+     * @param delegate upstream source of bytebuffers
+     * 
+     * @return a new body publisher
+     * 
+     * @throws NullPointerException if {@code delegate} is {@code null}
+     */
+    public static BodyPublisher asBodyPublisher(Flow.Publisher<? extends ByteBuffer> delegate) {
+        return asBodyPublisher(-1, delegate);
+    }
+    
+    /**
+     * Wrap the delegate with a content-length.
+     * 
+     * @param contentLength content length (byte count)
+     * @param delegate upstream source of bytebuffers
+     * 
+     * @return a new body publisher
+     * 
+     * @throws NullPointerException if {@code delegate} is {@code null}
+     */
+    public static BodyPublisher asBodyPublisher(
+            long contentLength, Flow.Publisher<? extends ByteBuffer> delegate)
+    {
+        return new Adapter(contentLength, delegate);
+    }
+    
+    /**
+     * A body publisher that publishes a file as bytebuffers.<p>
      * 
      * Is an alternative to {@link BodyPublishers#ofFile(Path)} except the
-     * implementation does not block and exceptions (e.g. {@link
-     * FileNotFoundException}) are delivered to the [server's] subscriber, i.e.,
+     * implementation does not block and exceptions like {@link
+     * FileNotFoundException} are delivered to the [server's] subscriber, i.e.,
      * can be dealt with globally using an {@link ErrorHandler}.
      * 
-     * @param   path the path to the file containing the body
-     * @return  a BodyPublisher
-     * @throws  AbstractMethodError for now (method not implemented)
+     * @param path the path to the file containing the body
+     * 
+     * @return a BodyPublisher
      */
     public static BodyPublisher ofFile(Path path) {
-        throw new AbstractMethodError("Implement me");
+        long len;
+        try {
+            len = Files.size(path);
+        } catch (IOException e) {
+            if (e instanceof FileNotFoundException) {
+                return new Adapter(0, Publishers.failed(e));
+            }
+            len = -1;
+        }
+        return new Adapter(len, new FilePublisher(path));
+    }
+    
+    /**
+     * Equivalent to {@link
+     * Publishers#concat(Flow.Publisher, Flow.Publisher, Flow.Publisher[])},
+     * except the publisher returned is a {@link BodyPublisher}.<p>
+     * 
+     * The returned publisher will have {@link BodyPublisher#contentLength()}
+     * set to the sum of all lengths provided by the given publishers, capped at
+     * {@code MAX_VALUE}, only if all publishers are instances of BodyPublisher
+     * with a non-negative length, otherwise the length will be set to {@code
+     * -1} (unknown length).
+     * 
+     * @param first publisher
+     * @param second publisher
+     * @param more optionally
+     * 
+     * @return all given publishers orderly concatenated into one
+     * @throws NullPointerException if any arg or array element is {@code null}
+     */
+    @SafeVarargs
+    @SuppressWarnings("varargs")
+    public static BodyPublisher concat(
+            Flow.Publisher<ByteBuffer> first,
+            Flow.Publisher<ByteBuffer> second,
+            Flow.Publisher<ByteBuffer>... more)
+    {
+        class Negative extends RuntimeException {
+            // For compilation warning
+            // "[serial] serializable class Negative has no definition of serialVersionUID"
+            private static final long serialVersionUID = 1L;
+        }
+        long len;
+        try {
+            len = stream(first, second, more)
+                    .mapToLong(p -> p instanceof BodyPublisher ?
+                        ((BodyPublisher) p).contentLength() : -1 )
+                    .peek(v -> { if (v < 0)
+                        throw new Negative(); })
+                    .reduce(0, (a, b) -> {
+                        try {
+                            return Math.addExact(a, b);
+                        } catch (ArithmeticException e) {
+                            return MAX_VALUE;
+                        }
+                    });
+        } catch (Negative e) {
+            len = -1;
+        }
+        
+        return asBodyPublisher(len, Publishers.concat(first, second, more));
     }
     
     private static class Adapter implements BodyPublisher {
@@ -168,14 +276,14 @@ public final class BetterBodyPublishers
         
         Adapter(long length, Flow.Publisher<? extends ByteBuffer> delegate) {
             this.length = length;
-            this.delegate = delegate;
+            this.delegate = requireNonNull(delegate);
         }
         
         @Override
         public long contentLength() {
             return length;
         }
-    
+        
         @Override
         public void subscribe(Flow.Subscriber<? super ByteBuffer> s) {
             delegate.subscribe(s);
@@ -186,12 +294,12 @@ public final class BetterBodyPublishers
     {
         private final byte[] buf;
         private final int offset;
-        private final int length;
+        private final int end;
         
         ByteBufferIterable(byte[] buf, int offset, int length) {
-            this.buf = buf;
+            this.buf    = buf;
             this.offset = offset;
-            this.length = length;
+            this.end    = offset + length;
         }
         
         @Override
@@ -216,7 +324,133 @@ public final class BetterBodyPublishers
             }
             
             private int desire() {
-                return length - pos;
+                return end - pos;
+            }
+        }
+    }
+    
+    private static final class FilePublisher implements Flow.Publisher<ByteBuffer> {
+        private static final int MAX_READ_AHEAD = 3;
+        private static final ByteBuffer EOS = ByteBuffer.allocate(0);
+        
+        private final Path path;
+        
+        FilePublisher(Path path) {
+            this.path = requireNonNull(path);
+        }
+        
+        @Override
+        public void subscribe(Flow.Subscriber<? super ByteBuffer> s) {
+            new Reader(path).subscribe(s);
+        }
+        
+        private static final class Reader implements Flow.Publisher<ByteBuffer> {
+            private final Path path;
+            private final PushPullPublisher<ByteBuffer> announcer;
+            private final Deque<ByteBuffer> contents;
+            private final Handler handler;
+            private AsynchronousFileChannel fc;
+            
+            Reader(Path path) {
+                this.path      = path;
+                this.announcer = new PushPullPublisher<>(this::getNext, this::closeSafe);
+                this.contents  = new ConcurrentLinkedDeque<>();
+                this.handler   = new Handler();
+                this.fc        = null;
+            }
+            
+            @Override
+            public void subscribe(Flow.Subscriber<? super ByteBuffer> s) {
+                announcer.subscribe(s);
+            }
+            
+            private ByteBuffer getNext() {
+                if (fc == null && !open()) {
+                    return null;
+                }
+                ByteBuffer b = contents.poll();
+                if (b == EOS) {
+                    announcer.complete();
+                    closeSafe();
+                    return null;
+                }
+                handler.tryScheduleRead();
+                return b;
+            }
+            
+            private boolean open() {
+                try {
+                    fc = AsynchronousFileChannel.open(path);
+                    return true;
+                } catch (UnsupportedOperationException | IOException | SecurityException e) {
+                    announcer.error(e);
+                    return false;
+                }
+            }
+            
+            private void closeSafe() {
+                try {
+                    fc.close();
+                } catch (IOException e) {
+                    LOG.log(DEBUG, "Failed to close file channel.", e);
+                }
+            }
+            
+            private class Handler implements CompletionHandler<Integer, ByteBuffer> {
+                private final SeriallyRunnable op = new SeriallyRunnable(this::initiate, true);;
+                private boolean eos;
+                private int pos;
+                
+                void tryScheduleRead() {
+                    if (contents.size() < MAX_READ_AHEAD) {
+                        op.run();
+                    }
+                }
+                
+                private void initiate() {
+                    if (eos) {
+                        return;
+                    }
+                    ByteBuffer b = ByteBuffer.allocateDirect(BUF_SIZE);
+                    try {
+                        fc.read(b, pos, b, this);
+                    } catch (Throwable t) {
+                        failed(t, null);
+                        throw t;
+                    }
+                }
+                
+                @Override
+                public void completed(Integer res, ByteBuffer b) {
+                    if (res == -1) {
+                        eos = true;
+                        contents.add(EOS);
+                    } else {
+                        b.flip();
+                        pos += b.remaining();
+                        contents.add(b);
+                    }
+                    announce();
+                    op.complete();
+                    if (!eos) {
+                        tryScheduleRead();
+                    }
+                }
+                
+                @Override
+                public void failed(Throwable exc, ByteBuffer ignored) {
+                    announcer.error(exc);
+                    closeSafe();
+                }
+                
+                private void announce() {
+                    try {
+                        announcer.announce();
+                    } catch (Throwable t) {
+                        closeSafe();
+                        throw t;
+                    }
+                }
             }
         }
     }

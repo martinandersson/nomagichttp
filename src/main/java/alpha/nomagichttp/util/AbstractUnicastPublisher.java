@@ -1,18 +1,12 @@
-package alpha.nomagichttp.internal;
+package alpha.nomagichttp.util;
 
-import alpha.nomagichttp.message.ClosedPublisherException;
 import alpha.nomagichttp.message.PooledByteBufferHolder;
-import alpha.nomagichttp.message.Request;
-import alpha.nomagichttp.util.Publishers;
-import alpha.nomagichttp.util.Subscribers;
-import alpha.nomagichttp.util.Subscriptions;
 
 import java.util.concurrent.Flow;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Predicate;
 
 import static alpha.nomagichttp.util.Subscribers.noopNew;
-import static alpha.nomagichttp.util.Subscriptions.canOnlyBeCancelled;
 import static java.lang.System.Logger.Level.DEBUG;
 import static java.util.Objects.requireNonNull;
 
@@ -44,7 +38,7 @@ import static java.util.Objects.requireNonNull;
  * Almost all exceptions from delivering a signal to the end receiver propagates
  * to the calling thread as-is. The only exception is {@code signalError()}
  * which catches all exceptions from the subscriber, then log- and ignores them
- * (documented in {@link Request.Body}).<p>
+ * (documented in {@link Publishers}).<p>
  * 
  * Exceptions propagate only after a possibly terminating effect (underlying
  * subscription reference removed). E.g., even if {@code signalComplete()}
@@ -63,15 +57,16 @@ import static java.util.Objects.requireNonNull;
  * @apiNote
  * The restriction to allow only one subscriber at a time was made in order to
  * better suit publishers of bytebuffers; which are not thread-safe and carries
- * bytes that most likely should be processed sequentially. This constraint does
- * not <i>stop</i> a multi-subscriber behavior to be implemented and documented
- * separately by a "fan-out" or "pipeline" {@code Flow.Processor} subscriber.
+ * bytes that most likely should be processed sequentially. Technically
+ * speaking, this can easily be circumvented in several ways. A processor could
+ * subscribe and "fan-out" to multiple subscribers or a concrete instance of
+ * this class could be created as a delegate for each new subscriber.
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  * 
  * @param <T> type of item to publish
  */
-abstract class AbstractUnicastPublisher<T> implements Flow.Publisher<T>
+public abstract class AbstractUnicastPublisher<T> implements Flow.Publisher<T>
 {
     private static final System.Logger LOG
             = System.getLogger(AbstractUnicastPublisher.class.getPackageName());
@@ -108,6 +103,11 @@ abstract class AbstractUnicastPublisher<T> implements Flow.Publisher<T>
     private final boolean reusable;
     private final AtomicReference<Flow.Subscriber<? super T>> ref;
     
+    /**
+     * Constructs a {@code AbstractUnicastPublisher}.
+     * 
+     * @param reusable yes or no
+     */
     protected AbstractUnicastPublisher(boolean reusable) {
         this.reusable = reusable;
         this.ref = new AtomicReference<>(T(ACCEPTING));
@@ -136,8 +136,8 @@ abstract class AbstractUnicastPublisher<T> implements Flow.Publisher<T>
      * Given the non-serial nature of {@code newSubscription()}; in order to
      * ensure the right subscriber is signalled, method implementations that
      * need to synchronously signal the subscriber must only interact with the
-     * provided subscriber reference directly or use the signalling methods that
-     * accept an expected target-subscriber reference.<p>
+     * provided subscriber reference directly or use the signalling methods in
+     * this class that accept an expected target-subscriber reference.<p>
      * 
      * The actual subscription object - that was already passed to the
      * subscriber before this method executes - is a proxy that delegates to the
@@ -164,9 +164,10 @@ abstract class AbstractUnicastPublisher<T> implements Flow.Publisher<T>
      * 
      * However, the {@code request()} signal - apart from a potential delay
      * during initialization - is always routed through as-is. Yes, even after
-     * the subscription has completed (!). Therefore, the reusable publisher
-     * must ensure that an old subscriber can not accidentally increase the
-     * demand [or trigger an invalid-demand error] for a new subscriber.<p>
+     * the subscription has completed (!). Therefore, the <i>reusable</i>
+     * publisher must ensure that an old subscriber can not accidentally
+     * increase the demand [or trigger an invalid-demand error] for a new
+     * subscriber.<p>
      * 
      * A call to {@code newSubscription()} happens-before a subsequent call to
      * {@code newSubscription()}.
@@ -213,7 +214,8 @@ abstract class AbstractUnicastPublisher<T> implements Flow.Publisher<T>
         } else if (witness == CLOSED) {
             // Publisher called shutdown() during initialization
             if (!proxy.isCancelled()) {
-                Subscribers.signalErrorSafe(newS, new ClosedPublisherException());
+                Subscribers.signalErrorSafe(newS,
+                        new IllegalStateException("Publisher shutdown during initialization."));
             }
         } else if (witness != ACCEPTING && witness != NOT_REUSABLE) {
             throw new AssertionError("During initialization, only reset was expected. Saw: " + witness);
@@ -233,8 +235,8 @@ abstract class AbstractUnicastPublisher<T> implements Flow.Publisher<T>
         
         LOG.log(DEBUG, () -> "Rejected " + newS + ". " + reason);
         
-        Subscriptions.CanOnlyBeCancelled tmp = canOnlyBeCancelled();
-        newS.onSubscribe(tmp);
+        Subscriptions.CanOnlyBeCancelled tmp = Subscriptions.canOnlyBeCancelled();
+        Subscribers.signalOnSubscribeOrTerminate(newS, tmp);
         if (!tmp.isCancelled()) {
             Subscribers.signalErrorSafe(newS, new IllegalStateException(reason));
         }
@@ -261,6 +263,7 @@ abstract class AbstractUnicastPublisher<T> implements Flow.Publisher<T>
      * 
      * @param  item to deliver
      * @return {@code true} if successful, otherwise no subscriber was active
+     * @throws NullPointerException if {@code item} is {@code null}
      */
     protected final boolean signalNext(T item) {
         return signalNext(item, T(ANYONE));
@@ -273,10 +276,11 @@ abstract class AbstractUnicastPublisher<T> implements Flow.Publisher<T>
      * If {@code signalNext()} can not deliver the item to a subscriber and the
      * runtime type of the item is a {@link PooledByteBufferHolder}, then the
      * buffer will be immediately released.<p>
-     *
+     * 
      * @param  item to deliver
-     * @return {@code true} if successful, otherwise no subscriber was active
-     * @throws NullPointerException if {@code expected} is {@code null}
+     * @param  expected subscriber reference
+     * @return {@code true} if successful, otherwise {@code false}
+     * @throws NullPointerException if any arg is {@code null}
      */
     protected final boolean signalNext(T item, Flow.Subscriber<? super T> expected) {
         final boolean signalled;
@@ -301,7 +305,7 @@ abstract class AbstractUnicastPublisher<T> implements Flow.Publisher<T>
         requireNonNull(expected);
         final Flow.Subscriber<? super T> s = get();
         
-        if (s == expected || expected == ANYONE) {
+        if (s != null && (s == expected || expected == ANYONE)) {
             s.onNext(item);
             return true;
         }
@@ -337,8 +341,9 @@ abstract class AbstractUnicastPublisher<T> implements Flow.Publisher<T>
      * signalled by this class, but only if the current subscriber {@code ==}
      * the {@code expected} reference.<p>
      * 
-     * @return {@code true} if successful,
-     *         otherwise no subscriber was active or wrong subscriber was active
+     * @param expected subscriber
+     * 
+     * @return {@code true} if successful, otherwise {@code false}
      * 
      * @throws NullPointerException if {@code expected} is {@code null}
      */
@@ -389,9 +394,9 @@ abstract class AbstractUnicastPublisher<T> implements Flow.Publisher<T>
      * the {@code expected} reference.<p>
      * 
      * @param t error to signal
+     * @param expected subscriber
      * 
-     * @return {@code true} if successful,
-     *         otherwise no subscriber was active or wrong subscriber was active
+     * @return {@code true} if successful, otherwise {@code false}
      * 
      * @throws NullPointerException if {@code expected} is {@code null}
      */

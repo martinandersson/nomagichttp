@@ -2,8 +2,8 @@ package alpha.nomagichttp.util;
 
 import alpha.nomagichttp.HttpConstants;
 import alpha.nomagichttp.message.BadHeaderException;
-import alpha.nomagichttp.message.MediaTypeParseException;
 import alpha.nomagichttp.message.MediaType;
+import alpha.nomagichttp.message.MediaTypeParseException;
 
 import java.net.http.HttpHeaders;
 import java.util.ArrayList;

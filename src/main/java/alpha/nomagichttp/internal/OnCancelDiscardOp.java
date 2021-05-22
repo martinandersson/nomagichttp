@@ -50,8 +50,8 @@ final class OnCancelDiscardOp extends AbstractOp<PooledByteBufferHolder>
     
     @Override
     protected void fromDownstreamCancel() {
-        // Replace cancel signal
-        start();
+        // Replace cancel signal (no call to super)
+        discarding = true;
     }
     
     /**
@@ -62,13 +62,10 @@ final class OnCancelDiscardOp extends AbstractOp<PooledByteBufferHolder>
      */
     void discardIfNoSubscriber() {
         if (!discarding && tryShutdown()) {
-            start();
+            discarding = true;
+            trySubscribeToUpstream();
+            fromDownstreamRequest(MAX_VALUE);
         }
-    }
-    
-    private void start() {
-        discarding = true;
-        fromDownstreamRequest(MAX_VALUE);
     }
     
     private static void discard(PooledByteBufferHolder item) {

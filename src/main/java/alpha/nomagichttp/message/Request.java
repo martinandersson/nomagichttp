@@ -5,10 +5,10 @@ import alpha.nomagichttp.HttpServer;
 import alpha.nomagichttp.handler.ClientChannel;
 import alpha.nomagichttp.handler.ErrorHandler;
 import alpha.nomagichttp.route.Route;
+import alpha.nomagichttp.util.AttributeHolder;
 import alpha.nomagichttp.util.Publishers;
 
 import java.net.URLDecoder;
-import java.net.http.HttpHeaders;
 import java.nio.channels.AsynchronousByteChannel;
 import java.nio.channels.AsynchronousFileChannel;
 import java.nio.channels.GatheringByteChannel;
@@ -23,7 +23,6 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.CompletionStage;
-import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Flow;
 import java.util.function.BiFunction;
@@ -45,7 +44,7 @@ import java.util.stream.Stream;
  * @see <a href="https://tools.ietf.org/html/rfc7230#section-3.1.1">RFC 7230 §3.1.1</a>
  * @see <a href="https://tools.ietf.org/html/rfc7230#section-3.3">RFC 7230 §3.3</a>
  */
-public interface Request
+public interface Request extends HeaderHolder, AttributeHolder
 {
     /**
      * Returns the request-line's method token.<p>
@@ -122,50 +121,6 @@ public interface Request
     Parameters parameters();
     
     /**
-     * Returns the HTTP headers.<p>
-     * 
-     * The order is not significant (
-     * <a href="https://tools.ietf.org/html/rfc7230#section-3.2.2">RFC 7230 §3.2.2</a>
-     * ).
-     * 
-     * @return the HTTP headers
-     * 
-     * @see HttpConstants.HeaderKey
-     */
-    HttpHeaders headers();
-    
-    /**
-     * If a header is present, check if it contains a value substring.<p>
-     * 
-     * This method operate without regard to case for both header key and
-     * value substring.<p>
-     * 
-     * Suppose the server receives this request:
-     * <pre>
-     *   GET /where?q=now HTTP/1.1
-     *   Host: www.example.com
-     *   User-Agent: curl/7.68.0
-     * </pre>
-     * 
-     * Returns true:
-     * <pre>
-     *   request.headerContains("user-agent", "cUrL");
-     * </pre>
-     * 
-     * This method searches through repeated headers.<p>
-     * 
-     * This method returns {@code false} if the header is not present.
-     * 
-     * @param headerKey header key filter
-     * @param valueSubstring value substring to look for
-     * 
-     * @return {@code true} if found, otherwise {@code false}
-     * 
-     * @throws NullPointerException if any argument is {@code null}
-     */
-    boolean headerContains(String headerKey, String valueSubstring);
-    
-    /**
      * Returns a body API object bound to this request.
      * 
      * @return a body API object bound to this request
@@ -173,16 +128,6 @@ public interface Request
      * @see Body
      */
     Body body();
-    
-    /**
-     * Returns an attributes API bound to this request.<p>
-     * 
-     * Attributes are application-provided objects associated with the request
-     * for passing data through the request object and across boundaries.
-     * 
-     * @return an attributes API object bound to this request
-     */
-    Attributes attributes();
     
     /**
      * Is a thread-safe and non-blocking API for accessing immutable request
@@ -500,8 +445,8 @@ public interface Request
      * IllegalStateException}.<p>
      * 
      * And, it does not matter if a {@code Flow.Subscription} is immediately
-     * cancelled with or without actually consuming any bytes (application is
-     * assumed to ignore the body, followed by a server-side discard of it).<p>
+     * cancelled with or without actually consuming any bytes. Subscription
+     * cancellation will cause the body to be discarded.<p>
      * 
      * Some utility methods such as {@code toText()} cache the result and will
      * return the same stage on future invocations.<p>
@@ -526,12 +471,14 @@ public interface Request
      * thread wherever warranted.<p>
      * 
      * In general, high-level exception types - in particular, when documented -
-     * does not close the underlying channel's read stream and so the
-     * application can choose to recover from them. The opposite is true for
-     * unexpected errors, in particular, errors that originate from the
-     * channel's read operation. The safest bet for an application when
-     * attempting error recovery is to always check first if {@link
-     * ClientChannel#isOpenForReading() theClientChannel.isOpenForReading()}.
+     * occurs without a real subscription and will leave the channel read stream
+     * open. The application can generally attempt a new operation to recover
+     * the body (e.g. {@code toText() >} {@code IllegalCharsetNameException}).
+     * Unexpected errors - in particular, errors that originate from the
+     * channel's read operation - have used up a real subscription and also
+     * closed the read stream (e.g. {@code RequestBodyTimeoutException}). Before
+     * attempting to recover the body, always check first if the {@link
+     * ClientChannel#isOpenForReading()}.
      * 
      * 
      * <h2>Subscribing to bytes with a {@code Flow.Subscriber}</h2>
@@ -569,7 +516,7 @@ public interface Request
      * The subscriber may request/demand any number of bytebuffers, but will
      * only receive the next bytebuffer after the previous one has been
      * released. So, awaiting more buffers before releasing old ones will
-     * inevitably halt progress.<p>
+     * inevitably result in a {@link RequestBodyTimeoutException}.<p>
      * 
      * For the Body API to support concurrent processing of many
      * bytebuffers without the risk of adding unnecessary delays or blockages,
@@ -590,14 +537,16 @@ public interface Request
      * at a time to {@link AsynchronousByteChannel}, releasing each in the
      * completion handler.<p>
      * 
-     * Given how only one bytebuffer at a time is published, then there's really
-     * no difference between requesting {@code Long.MAX_VALUE} versus requesting
+     * Given how only one bytebuffer at a time is published then there's no
+     * difference between requesting {@code Long.MAX_VALUE} versus requesting
      * one at a time. Unfortunately, the
      * <a href="https://github.com/reactive-streams/reactive-streams-jvm/blob/v1.0.3/README.md">
      * Reactive Streams</a> calls the latter approach an "inherently inefficient
      * 'stop-and-wait' protocol". In our context, this is wrong. The bytebuffers
      * are pooled and cached upstream already. Requesting a bytebuffer is
-     * essentially the same as polling a stupidly fast queue of buffers.<p>
+     * essentially the same as polling a stupidly fast queue of buffers. The
+     * advantage of requesting {@code Long.MAX_VALUE} is implementation
+     * simplicity.<p>
      * 
      * The default implementation uses <i>direct</i> bytebuffers in order to
      * support "zero-copy" transfers. I.e., no data is moved into Java heap
@@ -607,28 +556,28 @@ public interface Request
      * 
      * <h3>The HTTP exchange and body discarding</h3>
      * 
-     * The HTTP exchange is considered done as soon as both the server's
-     * final response body subscription <i>and</i> the application's request
-     * body subscription have both completed. Not until then will the next HTTP
-     * message-exchange commence on the same channel.<p>
+     * The HTTP exchange is considered done as soon as 1) the request handler
+     * invocation has returned, and 2) the request body subscription completes,
+     * and 3) the final response body subscription completes. Not until then
+     * will the next HTTP message-exchange commence on the same channel.<p>
      * 
-     * This means that a request body subscriber must ensure his subscription
-     * runs all the way to the end or is cancelled. Subscribing to the body but
-     * never completing the subscription may lead to a progress halt for the
-     * underlying channel (there is no timeout in the NoMagicHTTP library
-     * code).<p>
+     * This means that a request body subscriber should ensure his subscription
+     * runs all the way to the end or is cancelled. Failure to request items in
+     * a timely manner will result in a {@link RequestBodyTimeoutException}.<p>
      * 
-     * When the server's final response body subscription completes and earliest
-     * at that point no request body subscriber has arrived, then the server
-     * will assume that the body was intentionally ignored and proceed to
-     * discard it - after which it can not be subscribed to by the application
-     * any more.<p>
+     * But the application does not have to consume the body explicitly. When
+     * the server's final response body subscription completes and earliest at
+     * that point no request body subscriber has arrived, then the server will
+     * assume that the body was intentionally ignored and proceed to discard it
+     * - after which it can not be subscribed to by the application any more.<p>
      * 
-     * If a final response must be sent back immediately but processing the
-     * request body bytes must be delayed, then there's at least two ways of
-     * solving this. Either delay completing the server's response body
-     * subscription or register a request body subscriber but delay requesting
-     * items.
+     * If a final response must be sent back immediately but reading the request
+     * body bytes must be delayed, then there's at least two ways of solving
+     * this. Either register a request body subscriber but delay requesting
+     * items, or delay completing the server's response body subscription. Both
+     * approaches are still subject to {@link
+     * HttpServer.Config#timeoutIdleConnection()}. There is currently no API
+     * support to temporarily suspend timeouts.
      * 
      * <h3>Exception Handling</h3>
      * 
@@ -771,160 +720,5 @@ public interface Request
          * @see Body
          */
         boolean isEmpty();
-    }
-    
-    /**
-     * Is an API for accessing objects associated with a particular request.
-     * Useful when passing data across boundaries, such as from a request
-     * handler to an error handler.
-     * 
-     * <pre>{@code
-     *   // In a request handler
-     *   request.attributes().set("my.stuff", new MyClass());
-     *   // Somewhere else
-     *   MyClass obj = request.attributes().getAny("my.stuff");
-     * }</pre>
-     * 
-     * The implementation is thread-safe.<p>
-     * 
-     * The NoMagicHTTP library reserves the right to use the namespace
-     * "alpha.nomagichttp.*" exclusively. Applications are encouraged to avoid
-     * using this prefix in their names.
-     * 
-     * @author Martin Andersson (webmaster at martinandersson.com)
-     */
-    interface Attributes
-    {
-        /**
-         * Returns the value of the named attribute as an object.
-         * 
-         * @param name of attribute
-         * 
-         * @return the value of the named attribute as an object (may be {@code null})
-         * 
-         * @throws NullPointerException if {@code name} is {@code null}
-         */
-        Object get(String name);
-        
-        /**
-         * Set the value of the named attribute.<p>
-         * 
-         * @param name  of attribute (any non-null string)
-         * @param value of attribute (may be {@code null})
-         * 
-         * @return the old value (may be {@code null})
-         * 
-         * @throws NullPointerException if {@code name} is {@code null}
-         */
-        Object set(String name, Object value);
-        
-        /**
-         * Returns the value of the named attribute cast to V.
-         * 
-         * This method is equivalent to:
-         * <pre>{@code
-         *   V v = (V) request.attributes().get(name);
-         * }</pre>
-         * 
-         * Except the cast is implicit and the type is inferred by the Java
-         * compiler. The call site will still blow up with a {@code
-         * ClassCastException} if a non-null object can not be cast to the
-         * inferred type.
-         * 
-         * <pre>{@code
-         *   // Given
-         *   request.attributes().set("name", "my string");
-         *   
-         *   // Okay
-         *   String str = request.attributes().getAny("name");
-         *   
-         *   // ClassCastException
-         *   DateTimeFormatter oops = request.attributes().getAny("name");
-         * }</pre>
-         * 
-         * @param <V>  value type (explicitly provided on call site or inferred 
-         *             by Java compiler)
-         * @param name of attribute
-         * 
-         * @return the value of the named attribute as an object (may be {@code null})
-         *
-         * @throws NullPointerException if {@code name} is {@code null}
-         */
-        <V> V getAny(String name);
-        
-        /**
-         * Returns the value of the named attribute described as an Optional of
-         * an object.<p>
-         * 
-         * @param name of attribute
-         * 
-         * @return the value of the named attribute described as an Optional of
-         *         an object (never {@code null} but possibly empty)
-         *
-         * @throws NullPointerException if {@code name} is {@code null}
-         */
-        Optional<Object> getOpt(String name);
-        
-        /**
-         * Returns the value of the named attribute described as an Optional of
-         * V.<p>
-         * 
-         * Unlike {@link #getAny(String)} where the {@code ClassCastException}
-         * is immediate for non-null and assignment-incompatible types, this
-         * method should generally be considered unsafe as the
-         * ClassCastException is delayed (known as "heap pollution").
-         * 
-         * <pre>{@code
-         *   // Given
-         *   request.attributes().set("name", "my string");
-         *   
-         *   // Okay
-         *   Optional<String> str = request.attributes().getOptAny("name");
-         *   
-         *   // No ClassCastException!
-         *   Optional<DateTimeFormatter> poison = request.attributes().getOptAny("name");
-         *   
-         *   // Let's give the problem to someone else in the future
-         *   anotherDestination(poison);
-         * }</pre>
-         * 
-         * @param <V>  value type (explicitly provided on call site or inferred 
-         *             by Java compiler)
-         * @param name of attribute
-         * 
-         * @return the value of the named attribute described as an Optional of
-         *         V (never {@code null} but possibly empty)
-         * 
-         * @throws NullPointerException if {@code name} is {@code null}
-         */
-        <V> Optional<V> getOptAny(String name);
-        
-        /**
-         * Returns a modifiable map view of the attributes. Changes to the map
-         * are reflected in the attributes, and vice-versa.
-         * 
-         * @return a modifiable map view of the attributes
-         */
-        ConcurrentMap<String, Object> asMap();
-        
-        /**
-         * Returns a modifiable map view of the attributes. Changes to the map
-         * are reflected in the attributes, and vice-versa.<p>
-         * 
-         * Unlike {@link #getOptAny(String)}, using this method does not lead to
-         * heap pollution if you immediately use the returned map to work with
-         * the values directly. For example: 
-         * 
-         * <pre>{@code
-         *   int v = req.attributes().<Integer>asMapAny()
-         *                   .merge("request.counter", 1, Integer::sum);
-         * }</pre>
-         * 
-         * @param <V> value type (explicitly provided on call site or inferred 
-         *            by Java compiler)
-         * 
-         * @return a modifiable map view of the attributes
-         */
-        <V> ConcurrentMap<String, V> asMapAny();
     }
 }

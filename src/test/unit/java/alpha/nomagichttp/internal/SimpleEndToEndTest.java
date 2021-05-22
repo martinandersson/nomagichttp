@@ -13,7 +13,7 @@ import static alpha.nomagichttp.handler.RequestHandler.GET;
 import static alpha.nomagichttp.handler.RequestHandler.POST;
 import static alpha.nomagichttp.message.Responses.processing;
 import static alpha.nomagichttp.message.Responses.text;
-import static alpha.nomagichttp.testutil.ClientOperations.CRLF;
+import static alpha.nomagichttp.testutil.TestClient.CRLF;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
@@ -158,7 +158,7 @@ class SimpleEndToEndTest extends AbstractEndToEndTest
         
         // 2. By default, existing files are not overwritten
         // ---
-        String res2 = client().writeRead(reqHead + "Bar", "3");
+        String res2 = client().writeRead(reqHead + "Bar");
         
         assertThat(res2).isEqualTo(
             "HTTP/1.1 500 Internal Server Error" + CRLF +

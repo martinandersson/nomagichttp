@@ -3,6 +3,7 @@ package alpha.nomagichttp.internal;
 import alpha.nomagichttp.HttpServer;
 import alpha.nomagichttp.handler.ClientChannel;
 import alpha.nomagichttp.message.Response;
+import alpha.nomagichttp.util.Attributes;
 
 import java.io.IOException;
 import java.net.SocketAddress;
@@ -15,6 +16,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.concurrent.CompletionStage;
 
+import static alpha.nomagichttp.internal.DefaultServer.becauseChannelOrGroupClosed;
 import static java.lang.System.Logger.Level.DEBUG;
 import static java.lang.System.Logger.Level.ERROR;
 import static java.util.Objects.requireNonNull;
@@ -27,7 +29,10 @@ final class DefaultClientChannel implements ClientChannel
     private final AsynchronousSocketChannel child;
     private final HttpServer server;
     private final List<Runnable> onClose;
-    private ResponsePipeline pipe;
+    private final Attributes attr;
+    // Request thread will always see the updated pipe.
+    // Marked volatile only for the sake of foreign threads keeping a stale copy of the channel.
+    private volatile ResponsePipeline pipe;
     
     private volatile boolean readShutdown,
                             writeShutdown;
@@ -47,6 +52,7 @@ final class DefaultClientChannel implements ClientChannel
         this.child   = requireNonNull(child);
         this.server  = requireNonNull(server);
         this.onClose = new ArrayList<>(1);
+        this.attr    = new DefaultAttributes();
         this.pipe    = null;
         readShutdown = writeShutdown = false;
     }
@@ -118,6 +124,10 @@ final class DefaultClientChannel implements ClientChannel
         return false;
     }
     
+    public boolean isAnythingOpen() {
+        return !readShutdown || !writeShutdown || child.isOpen();
+    }
+    
     @Override
     public boolean isEverythingOpen() {
         return !readShutdown && !writeShutdown && child.isOpen();
@@ -130,8 +140,7 @@ final class DefaultClientChannel implements ClientChannel
         }
         
         try {
-            child.shutdownInput();
-            readShutdown = true;
+            shutdownInputImpl();
         } catch (ClosedChannelException e) {
             readShutdown = true;
             return;
@@ -153,6 +162,12 @@ final class DefaultClientChannel implements ClientChannel
         }
     }
     
+    private void shutdownInputImpl() throws IOException {
+        child.shutdownInput();
+        readShutdown = true;
+        LOG.log(DEBUG, () -> "Shutdown input stream of child: " + child);
+    }
+    
     @Override
     public void shutdownOutput() throws IOException {
         if (writeShutdown) {
@@ -160,8 +175,7 @@ final class DefaultClientChannel implements ClientChannel
         }
         
         try {
-            child.shutdownOutput();
-            writeShutdown = true;
+            shutdownOutputImpl();
         } catch (ClosedChannelException e) {
             writeShutdown = true;
             return;
@@ -183,6 +197,12 @@ final class DefaultClientChannel implements ClientChannel
         }
     }
     
+    private void shutdownOutputImpl() throws IOException {
+        child.shutdownOutput();
+        writeShutdown = true;
+        LOG.log(DEBUG, () -> "Shutdown output stream of child: " + child);
+    }
+    
     @Override
     public void close() throws IOException {
         if (!child.isOpen()) {
@@ -191,15 +211,17 @@ final class DefaultClientChannel implements ClientChannel
         
         // https://stackoverflow.com/a/20749656/1268003
         try {
-            child.shutdownInput();
-            readShutdown = true;
+            if (!readShutdown) {
+                shutdownInputImpl();
+            }
         } catch (IOException t) {
             LOG.log(DEBUG, "Failed to shutdown child channel's input stream.", t);
         }
         
         try {
-            child.shutdownOutput();
-            writeShutdown = true;
+            if (!writeShutdown) {
+                shutdownOutputImpl();
+            }
         } catch (IOException t) {
             LOG.log(DEBUG, "Failed to shutdown child channel's output stream.", t);
         }
@@ -214,8 +236,14 @@ final class DefaultClientChannel implements ClientChannel
         try {
             close();
         } catch (IOException e) {
-            LOG.log(ERROR, () -> "Failed to close child: " + child, e);
-        }
+            LOG.log(DEBUG, () -> "Failed to close child: " + child, e);
+        } catch (Throwable t) {
+            if (becauseChannelOrGroupClosed(t)) {
+                LOG.log(DEBUG, () -> "Child already closed: " + child, t);
+            } else {
+                throw t;
+            }
+        } 
     }
     
     private NetworkChannel proxy;
@@ -249,6 +277,11 @@ final class DefaultClientChannel implements ClientChannel
     @Override
     public HttpServer getServer() {
         return server;
+    }
+    
+    @Override
+    public Attributes attributes() {
+        return attr;
     }
     
     private final class ProxiedNetworkChannel implements NetworkChannel

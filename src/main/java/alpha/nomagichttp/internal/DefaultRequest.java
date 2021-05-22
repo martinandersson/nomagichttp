@@ -1,10 +1,13 @@
 package alpha.nomagichttp.internal;
 
 import alpha.nomagichttp.HttpConstants.Version;
+import alpha.nomagichttp.HttpServer;
 import alpha.nomagichttp.message.MediaType;
 import alpha.nomagichttp.message.PooledByteBufferHolder;
 import alpha.nomagichttp.message.Request;
+import alpha.nomagichttp.message.RequestBodyTimeoutException;
 import alpha.nomagichttp.route.RouteRegistry;
+import alpha.nomagichttp.util.Attributes;
 import alpha.nomagichttp.util.Publishers;
 
 import java.net.http.HttpHeaders;
@@ -13,14 +16,13 @@ import java.nio.charset.Charset;
 import java.nio.file.OpenOption;
 import java.nio.file.Path;
 import java.nio.file.attribute.FileAttribute;
+import java.time.Duration;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.Flow;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.BiFunction;
@@ -29,17 +31,18 @@ import java.util.stream.Stream;
 import static alpha.nomagichttp.internal.AtomicReferences.lazyInit;
 import static alpha.nomagichttp.util.Headers.contentLength;
 import static alpha.nomagichttp.util.Headers.contentType;
-import static alpha.nomagichttp.util.Strings.containsIgnoreCase;
+import static java.lang.System.Logger.Level.DEBUG;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.nio.file.StandardOpenOption.CREATE_NEW;
 import static java.nio.file.StandardOpenOption.WRITE;
 import static java.util.Objects.requireNonNull;
-import static java.util.Optional.ofNullable;
 import static java.util.concurrent.CompletableFuture.completedStage;
 import static java.util.concurrent.CompletableFuture.failedStage;
 
 final class DefaultRequest implements Request
 {
+    private static final System.Logger LOG = System.getLogger(DefaultRequest.class.getPackageName());
+    
     private static final CompletionStage<Void> COMPLETED = completedStage(null);
     
     // Copy-pasted from AsynchronousFileChannel.NO_ATTRIBUTES
@@ -55,17 +58,88 @@ final class DefaultRequest implements Request
     private final OnCancelDiscardOp bodyDiscard;
     private final Attributes attributes;
     
-    DefaultRequest(
+    /**
+     * Creates a complete request with access to parameters.
+     * 
+     * @param ver HTTP version
+     * @param head request head
+     * @param paramsQuery params from query
+     * @param paramsPath params from path
+     * @param bodySource body bytes
+     * @param child client channel
+     * @param timeout see {@link HttpServer.Config#timeoutIdleConnection()}
+     * @param afterNonEmptyBodySubscription if {@code null}, no callback
+     * 
+     * @throws NullPointerException if a required argument is {@code null}
+     * 
+     * @return a request
+     */
+    static DefaultRequest withParams(
             Version ver,
             RequestHead head,
             RequestTarget paramsQuery,
             RouteRegistry.Match paramsPath,
             Flow.Publisher<DefaultPooledByteBufferHolder> bodySource,
             DefaultClientChannel child,
-            Runnable onBodySubscription)
+            Duration timeout,
+            Runnable beforeNonEmptyBodySubscription,
+            Runnable afterNonEmptyBodySubscription)
     {
-        this.ver = ver;
-        this.head = head;
+        return new DefaultRequest(
+                ver, head, paramsQuery, paramsPath, bodySource, child, timeout,
+                beforeNonEmptyBodySubscription, afterNonEmptyBodySubscription);
+    }
+    
+    /**
+     * Creates a request without support for parameters.<p>
+     * 
+     * The benefit of this variant is that there's no need for the call site to
+     * have local access to a parsed {@link RequestTarget} (query params) or a
+     * {@link RouteRegistry.Match} (path params). This is the case if either of
+     * the two failed to be produced, yet the HTTP exchange may need an API to
+     * discard the request body.<p>
+     * 
+     * Accessing a parameter method will throw NPE.
+     * 
+     * @param ver HTTP version
+     * @param head request head
+     * @param bodySource body bytes
+     * @param child client channel
+     * @param timeout see {@link HttpServer.Config#timeoutIdleConnection()}
+     * @param beforeNonEmptyBodySubscription if {@code null}, no callback
+     * @param afterNonEmptyBodySubscription if {@code null}, no callback
+     * 
+     * @throws NullPointerException if a required argument is {@code null}
+     * 
+     * @return a request
+     */
+    static DefaultRequest withoutParams(
+            Version ver,
+            RequestHead head,
+            Flow.Publisher<DefaultPooledByteBufferHolder> bodySource,
+            DefaultClientChannel child,
+            Duration timeout,
+            Runnable beforeNonEmptyBodySubscription,
+            Runnable afterNonEmptyBodySubscription)
+    {
+        return new DefaultRequest(
+                ver, head, null, null, bodySource, child, timeout,
+                beforeNonEmptyBodySubscription, afterNonEmptyBodySubscription);
+    }
+    
+    private DefaultRequest(
+            Version ver,
+            RequestHead head,
+            RequestTarget paramsQuery,
+            RouteRegistry.Match paramsPath,
+            Flow.Publisher<DefaultPooledByteBufferHolder> bodySource,
+            DefaultClientChannel child,
+            Duration timeout,
+            Runnable beforeNonEmptyBodySubscription,
+            Runnable afterNonEmptyBodySubscription)
+    {
+        this.ver = requireNonNull(ver);
+        this.head = requireNonNull(head);
         this.paramsQuery = paramsQuery;
         this.paramsPath = paramsPath;
         
@@ -78,17 +152,30 @@ final class DefaultRequest implements Request
         final long len = contentLength(head.headers()).orElse(0);
         
         if (len <= 0) {
+            requireNonNull(bodySource);
+            requireNonNull(child);
+            requireNonNull(timeout);
             bodyStage   = COMPLETED;
             bodyApi     = DefaultBody.empty(headers());
             bodyDiscard = null;
         } else {
             var bounded = new LengthLimitedOp(len, bodySource);
-            var observe = new SubscriptionAsStageOp(bounded);
+            // Upstream is ChannelByteBufferPublisher, he can handle async cancel
+            var timeOut = new TimeoutOp.Flow<>(false, true, bounded, timeout, () -> {
+                if (LOG.isLoggable(DEBUG) && child.isOpenForReading()) {
+                    LOG.log(DEBUG, "Request body timed out, shutting down child channel's read stream.");
+                }
+                child.shutdownInputSafe();
+                return new RequestBodyTimeoutException();
+            });
+            var observe = new SubscriptionAsStageOp(timeOut);
             var onError = new OnErrorCloseReadStream<>(observe, child);
             bodyDiscard = new OnCancelDiscardOp(onError);
+            timeOut.start();
             
             bodyStage = observe.asCompletionStage();
-            bodyApi = DefaultBody.of(headers(), bodyDiscard, onBodySubscription);
+            bodyApi = DefaultBody.of(headers(), bodyDiscard,
+                    beforeNonEmptyBodySubscription, afterNonEmptyBodySubscription);
         }
         
         this.attributes = new DefaultAttributes();
@@ -128,13 +215,6 @@ final class DefaultRequest implements Request
     }
     
     @Override
-    public boolean headerContains(String headerKey, String valueSubstring) {
-        // NPE is unfortunately not documented in JDK
-        return headers().allValues(requireNonNull(headerKey)).stream()
-                .anyMatch(v -> containsIgnoreCase(v, valueSubstring));
-    }
-    
-    @Override
     public Body body() {
         return bodyApi;
     }
@@ -167,35 +247,47 @@ final class DefaultRequest implements Request
         if (body().isEmpty()) {
             return;
         }
-        
         bodyDiscard.discardIfNoSubscriber();
     }
     
     private static final class DefaultBody implements Request.Body
     {
-        private final HttpHeaders headers;
-        private final Flow.Publisher<PooledByteBufferHolder> source;
-        private final AtomicReference<CompletionStage<String>> cachedText;
-        private final Runnable onBodySubscription;
-        
         static Request.Body empty(HttpHeaders headers) {
             // Even an empty body must still validate the arguments,
             // for example toText() may complete with IllegalCharsetNameException.
             requireNonNull(headers);
-            return new DefaultBody(headers, null, null);
+            return new DefaultBody(headers, null, null, null);
         }
-        
-        static Request.Body of(HttpHeaders headers, Flow.Publisher<PooledByteBufferHolder> source, Runnable onBodySubscription) {
+    
+        static Request.Body of(
+                HttpHeaders headers,
+                Flow.Publisher<PooledByteBufferHolder> source,
+                Runnable beforeNonEmptyBodySubscription,
+                Runnable afterNonEmptyBodySubscription)
+        {
             requireNonNull(headers);
             requireNonNull(source);
-            return new DefaultBody(headers, source, onBodySubscription);
+            return new DefaultBody(headers, source,
+                    beforeNonEmptyBodySubscription, afterNonEmptyBodySubscription);
         }
         
-        private DefaultBody(HttpHeaders headers, Flow.Publisher<PooledByteBufferHolder> source, Runnable onBodySubscription) {
+        private final HttpHeaders headers;
+        private final Flow.Publisher<PooledByteBufferHolder> source;
+        private final AtomicReference<CompletionStage<String>> cachedText;
+        private final Runnable beforeSubscription;
+        private final Runnable afterSubscription;
+        
+        private DefaultBody(
+                HttpHeaders headers,
+                Flow.Publisher<PooledByteBufferHolder> source,
+                Runnable beforeSubscription,
+                Runnable afterSubscription)
+        {
             this.headers = headers;
             this.source  = source;
             this.cachedText = new AtomicReference<>(null);
-            this.onBodySubscription = onBodySubscription;
+            this.beforeSubscription = beforeSubscription;
+            this.afterSubscription = afterSubscription;
         }
         
         @Override
@@ -258,10 +350,13 @@ final class DefaultRequest implements Request
             if (isEmpty()) {
                 Publishers.<PooledByteBufferHolder>empty().subscribe(subscriber);
             } else {
-                if (onBodySubscription != null) {
-                    onBodySubscription.run();
+                if (beforeSubscription != null) {
+                    beforeSubscription.run();
                 }
                 source.subscribe(subscriber);
+                if (afterSubscription != null) {
+                    afterSubscription.run();
+                }
             }
         }
         
@@ -287,7 +382,7 @@ final class DefaultRequest implements Request
         private final Map<String, List<String>> q, qRaw;
         
         DefaultParameters(RouteRegistry.Match paramsPath, RequestTarget paramsQuery) {
-            p = paramsPath;
+            p = requireNonNull(paramsPath);
             q = paramsQuery.queryMapPercentDecoded();
             qRaw = paramsQuery.queryMapNotPercentDecoded();
         }
@@ -336,58 +431,10 @@ final class DefaultRequest implements Request
         public Map<String, List<String>> queryMap() {
             return q;
         }
-    
+        
         @Override
         public Map<String, List<String>> queryMapRaw() {
             return qRaw;
-        }
-    }
-    
-    private static final class DefaultAttributes implements Attributes
-    {
-        // does not allow null as key or value
-        private final ConcurrentMap<String, Object> map = new ConcurrentHashMap<>();
-        
-        @Override
-        public Object get(String name) {
-            return map.get(name);
-        }
-        
-        @Override
-        public Object set(String name, Object value) {
-            return map.put(name, value);
-        }
-        
-        @Override
-        public <V> V getAny(String name) {
-            return this.<V>asMapAny().get(name);
-        }
-        
-        @Override
-        public Optional<Object> getOpt(String name) {
-            return ofNullable(get(name));
-        }
-        
-        @Override
-        public <V> Optional<V> getOptAny(String name) {
-            return ofNullable(getAny(name));
-        }
-        
-        @Override
-        public ConcurrentMap<String, Object> asMap() {
-            return map;
-        }
-        
-        @Override
-        public <V> ConcurrentMap<String, V> asMapAny() {
-            @SuppressWarnings("unchecked")
-            ConcurrentMap<String, V> m = (ConcurrentMap<String, V>) map;
-            return m;
-        }
-        
-        @Override
-        public String toString() {
-            return map.toString();
         }
     }
 }

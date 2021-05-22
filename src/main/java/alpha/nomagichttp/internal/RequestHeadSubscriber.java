@@ -1,7 +1,7 @@
 package alpha.nomagichttp.internal;
 
 import alpha.nomagichttp.message.Char;
-import alpha.nomagichttp.message.ClosedPublisherException;
+import alpha.nomagichttp.message.EndOfStreamException;
 import alpha.nomagichttp.message.MaxRequestHeadSizeExceededException;
 import alpha.nomagichttp.message.PooledByteBufferHolder;
 
@@ -12,14 +12,6 @@ import java.util.concurrent.Flow;
 
 import static java.lang.System.Logger.Level.DEBUG;
 
-// TODO: Should we have a timeout for how long we allow a client to send the head?
-//       Or do we accept that server+client may have an "infinitely" slow connection?
-//       Why we might want to add such a limit is because the connection might be
-//       fast but the request bad, so our parser get's "stuck waiting" on a a particular
-//       token that never arrives. An alternative would be to have a timeout that gets
-//       cleared on each new read, almost like a heartbeat. So, if we don't get a single
-//       byte despite us waiting for bytes, then we timeout.
-
 /**
  * A subscriber of bytebuffers processed into a {@code RequestHead}, accessible
  * using {@link #asCompletionStage()}.
@@ -28,7 +20,6 @@ import static java.lang.System.Logger.Level.DEBUG;
  */
 final class RequestHeadSubscriber implements SubscriberAsStage<PooledByteBufferHolder, RequestHead>
 {
-    
     private static final System.Logger LOG
             = System.getLogger(RequestHeadSubscriber.class.getPackageName());
     
@@ -36,20 +27,20 @@ final class RequestHeadSubscriber implements SubscriberAsStage<PooledByteBufferH
     private final RequestHeadProcessor processor;
     private final CompletableFuture<RequestHead> result;
     
+    
     RequestHeadSubscriber(int maxRequestHeadSize) {
-        maxHeadSize = maxRequestHeadSize;
-        processor   = new RequestHeadProcessor();
-        result      = new CompletableFuture<>();
+        this.maxHeadSize = maxRequestHeadSize;
+        this.processor   = new RequestHeadProcessor();
+        this.result      = new CompletableFuture<>();
     }
     
     /**
      * Returns a stage that completes with the result.<p>
      * 
      * If the sourced publisher (ChannelByteBufferPublisher) terminates the
-     * subscription with a {@link ClosedPublisherException} having the message
-     * "EOS" <i>and</i> no bytes have been processed by this subscriber, then
-     * the stage will complete exceptionally with a {@link
-     * ClientAbortedException}. 
+     * subscription with an {@link EndOfStreamException} <i>and</i> no bytes
+     * have been processed by this subscriber, then the stage will complete
+     * exceptionally with a {@link ClientAbortedException}.
      * 
      * @return a stage that completes with the result
      */
@@ -73,7 +64,6 @@ final class RequestHeadSubscriber implements SubscriberAsStage<PooledByteBufferH
     @Override
     public void onNext(PooledByteBufferHolder item) {
         final RequestHead head;
-        
         try {
             head = process(item.get());
         } catch (Throwable t) {
@@ -109,10 +99,7 @@ final class RequestHeadSubscriber implements SubscriberAsStage<PooledByteBufferH
     
     @Override
     public void onError(final Throwable t) {
-        if (t instanceof ClosedPublisherException &&
-            "EOS".equals(t.getMessage()) &&
-            !processor.hasStarted())
-        {
+        if (t instanceof EndOfStreamException && !processor.hasStarted()) {
             result.completeExceptionally(new ClientAbortedException(t));
         } else {
             result.completeExceptionally(t);
@@ -121,6 +108,6 @@ final class RequestHeadSubscriber implements SubscriberAsStage<PooledByteBufferH
     
     @Override
     public void onComplete() {
-        // Accept that he is shutting down. Reason must have already been logged.
+        // Never mind the result carrier, channel read stream is shutting down
     }
 }

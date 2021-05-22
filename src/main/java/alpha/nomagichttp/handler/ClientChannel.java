@@ -3,6 +3,7 @@ package alpha.nomagichttp.handler;
 import alpha.nomagichttp.HttpServer;
 import alpha.nomagichttp.message.Request;
 import alpha.nomagichttp.message.Response;
+import alpha.nomagichttp.util.AttributeHolder;
 
 import java.io.Closeable;
 import java.io.IOException;
@@ -41,8 +42,18 @@ import java.util.concurrent.CompletionStage;
  * reference in a global scope somewhere and sporadically and randomly use it to
  * write responses.<p>
  * 
- * Closing a channel will silently discard enqueued responses. They will not be
- * logged.<p>
+ * The life-cycle of the channel is managed by the server. The application
+ * should have no need to directly use shutdown/close methods in this class.
+ * For a graceful close of the client connection, set the "Connection: close"
+ * header. More abruptly terminating methods may be scheduled using {@link
+ * Response.Builder#mustShutdownOutputAfterWrite(boolean)}
+ * and {@link Response.Builder#mustCloseAfterWrite(boolean)}. Invoking {@link
+ * #close()} on this class is equivalent to an instant "kill".<p>
+ * 
+ * When using low-level methods to operate the channel, or when storing
+ * attributes on the channel, then have in mind that the "client" in {@code
+ * ClientChannel} may be a proxy which represents many different human end
+ * users.<p>
  * 
  * The implementation is thread-safe and mostly non-blocking. Underlying channel
  * life-cycle APIs used to query the state of a channel or close it may block
@@ -51,7 +62,7 @@ import java.util.concurrent.CompletionStage;
  * @author Martin Andersson (webmaster at martinandersson.com)
  */
 // https://stackoverflow.com/a/61117435/1268003
-public interface ClientChannel extends Closeable
+public interface ClientChannel extends Closeable, AttributeHolder
 {
     /**
      * Write a response.<p>
@@ -62,17 +73,13 @@ public interface ClientChannel extends Closeable
      * operation immediately, or the response will be enqueued for future
      * transmission (unbounded queue).<p>
      * 
-     * At the time of transmission, a response may be rejected if:
-     * 
-     * <ul>
-     *   <li>A final response has already been transmitted (in parts or in
-     *       whole), i.e. the HTTP exchange is no longer active.</li>
-     *   <li>The response status-code is 1XX and HTTP version used is {@literal <} 1.1.</li>
-     * </ul><p>
-     * 
-     * If the response is rejected, a {@link ResponseRejectedException} will
-     * pass through the server's chain of {@link ErrorHandler error
-     * handlers}.<p>
+     * At the time of transmission, a response may be rejected. If it is
+     * rejected because a final response has already been transmitted (in parts
+     * or in whole) - i.e. the HTTP exchange is no longer active - then the
+     * response is logged but otherwise ignored. This is the same also for
+     * exceptions that complete a response stage. Otherwise (exchange active), a
+     * {@link ResponseRejectedException} will pass through the server's error
+     * handler.<p>
      * 
      * The {@link HttpServer.Config#ignoreRejectedInformational() default server
      * behavior} is to ignore failed 1XX (Informational) responses if the reason
@@ -80,7 +87,26 @@ public interface ClientChannel extends Closeable
      * 
      * Only at most one 100 (Continue) response will be sent. Repeated 100
      * (Continue) responses will be ignored. Attempts to send more than two will
-     * log a warning on each offense.
+     * log a warning on each offense.<p>
+     * 
+     * Responses will be sent in the same order they are given to this method
+     * and {@link #write(CompletionStage)}. It does not matter if a previously
+     * enqueued stage did not complete before this method is called with an
+     * already built response.<p>
+     * 
+     * In this example, the already built response will be sent last because it
+     * was added last:
+     * <pre>{@code
+     *   CompletionStage<Response> completesSoon = ...
+     *   Response alreadyBuilt = ...
+     *   channel.write(completesSoon);
+     *   channel.write(alreadyBuilt);
+     * }</pre>
+     * 
+     * Having the response be sent in order of stage completion is as simple as:
+     * <pre>{@code
+     *   myResponseStage.thenAccept(channel::write);
+     * }</pre>
      * 
      * @param response the response
      * 
@@ -91,13 +117,11 @@ public interface ClientChannel extends Closeable
     /**
      * Write a response.<p>
      * 
-     * This method is equivalent to:
-     * <pre>
-     *   response.thenAccept(channel::{@link #write(Response) write});
-     * </pre>
-     * 
      * If the stage completes exceptionally, the error will pass through the
-     * server's chain of {@link ErrorHandler error handlers}.
+     * server's chain of {@link ErrorHandler error handlers}.<p>
+     * 
+     * All JavaDoc of {@link #write(Response)} applies to this method as
+     * well.
      * 
      * @param response the response
      * 
@@ -209,14 +233,17 @@ public interface ClientChannel extends Closeable
     boolean isEverythingOpen();
     
     /**
-     * Shutdown the channel's input stream.<p>
+     * Shutdown the channel's input/read stream.<p>
      * 
      * If this operation fails or effectively terminates the connection (output
      * stream was also shutdown), then this method propagates to {@link
      * #close()}.<p>
      * 
-     * Is NOP if input already shutdown or channel is closed.
-     *
+     * Is NOP if input already shutdown or channel is closed.<p>
+     * 
+     * A shutdown will interrupt a client request in-flight. After shutdown, no
+     * more requests will be received.
+     * 
      * @throws IOException if a propagated channel-close failed
      */
     void shutdownInput() throws IOException;
@@ -228,13 +255,16 @@ public interface ClientChannel extends Closeable
     void shutdownInputSafe();
     
     /**
-     * Shutdown the channel's output stream.<p>
+     * Shutdown the channel's output/write stream.<p>
      * 
      * If this operation fails or effectively terminates the connection (input
      * stream was also shutdown), then this method propagates to {@link
      * #close()}.<p>
      * 
-     * Is NOP if output already shutdown or channel is closed.
+     * Is NOP if output already shutdown or channel is closed.<p>
+     * 
+     * A shutdown will interrupt a client response in-flight. After shutdown, no
+     * more responses can be sent.
      * 
      * @throws IOException if a propagated channel-close failed
      */
@@ -247,18 +277,23 @@ public interface ClientChannel extends Closeable
     void shutdownOutputSafe();
     
     /**
-     * End the channel's connection and then close the channel.<p>
+     * End the channel's connection (stop input/output streams) and then close
+     * the channel.<p>
      * 
      * Is NOP if channel is already closed.
-     *
+     * 
      * @throws IOException if closing the channel failed
+     * 
+     * @see #shutdownInput()
+     * @see #shutdownOutput()
      */
     @Override
     void close() throws IOException;
     
     /**
-     * Same as {@link #close()}, except {@code IOException} is logged but
-     * otherwise ignored.
+     * Same as {@link #close()}, except {@code IOException} and any throwable
+     * thrown because the channel (or group of channel) is already closed, will
+     * be ignored.
      */
     void closeSafe();
     

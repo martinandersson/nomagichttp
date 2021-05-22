@@ -20,6 +20,7 @@ import static alpha.nomagichttp.testutil.Assertions.assertFailed;
 import static alpha.nomagichttp.util.Headers.of;
 import static java.nio.charset.StandardCharsets.US_ASCII;
 import static java.nio.file.Files.notExists;
+import static java.time.Duration.ofDays;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
@@ -134,13 +135,15 @@ class DefaultRequestTest
                 "test-httpVersion",
                 headers);
         
-        return new DefaultRequest(
+        return DefaultRequest.withParams(
                 HTTP_1_1,
                 rh,
                 RequestTarget.parse("/"),
                 null,
                 Publishers.just(wrap(body, US_ASCII)),
                 Mockito.mock(DefaultClientChannel.class),
+                ofDays(99),
+                null,
                 null);
     }
     

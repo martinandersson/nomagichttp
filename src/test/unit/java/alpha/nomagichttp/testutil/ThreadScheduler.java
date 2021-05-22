@@ -600,6 +600,7 @@ public final class ThreadScheduler
             self.waitOnMyTurn();
         }
         
+        // Good read: http://gee.cs.oswego.edu/dl/html/j9mm.html
         private static final VarHandle STACK;
         static {
             try {

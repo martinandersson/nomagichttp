@@ -30,6 +30,7 @@ import static alpha.nomagichttp.internal.AtomicReferences.lazyInitOrElse;
 import static java.lang.System.Logger.Level.DEBUG;
 import static java.lang.System.Logger.Level.ERROR;
 import static java.lang.System.Logger.Level.INFO;
+import static java.lang.System.Logger.Level.WARNING;
 import static java.util.Objects.requireNonNull;
 import static java.util.concurrent.CompletableFuture.completedStage;
 import static java.util.concurrent.CompletableFuture.failedStage;
@@ -84,7 +85,7 @@ public final class DefaultServer implements HttpServer
         try {
             // result immediately available because thread was initializer
             ParentWithHandler pwh = res.join();
-            pwh.initiateAccept();
+            pwh.startAccepting();
         } catch (Throwable t) {
             IOException io = null;
             if (t instanceof CompletionException) {
@@ -147,19 +148,19 @@ public final class DefaultServer implements HttpServer
         
         return pwh == null ?
                 completedStage(null) :
-                pwh.onAccept().lastChildStage();
+                pwh.handler().lastChildStage();
     }
     
     @Override
     public void stopNow() throws IOException {
         ParentWithHandler pwh = stopServer();
         if (pwh != null) {
-            Iterator<DefaultClientChannel> it = pwh.onAccept().children();
+            Iterator<DefaultClientChannel> it = pwh.handler().children();
             while (it.hasNext()) {
                 it.next().closeSafe();
                 it.remove();
             }
-            pwh.onAccept().tryCompleteLastChildStage();
+            pwh.handler().tryCompleteLastChildStage();
         }
     }
     
@@ -189,7 +190,7 @@ public final class DefaultServer implements HttpServer
                 AsyncGroup.shutdown();
             }
             assert n >= 0;
-            pwh.onAccept().tryCompleteLastChildStage();
+            pwh.handler().tryCompleteLastChildStage();
             return pwh;
         } else {
             return null;
@@ -268,11 +269,11 @@ public final class DefaultServer implements HttpServer
             return parent;
         }
         
-        OnAccept onAccept() {
+        OnAccept handler() {
             return onAccept;
         }
         
-        void initiateAccept() {
+        void startAccepting() {
             parent.accept(null, onAccept);
         }
         
@@ -283,8 +284,6 @@ public final class DefaultServer implements HttpServer
     
     private class OnAccept implements CompletionHandler<AsynchronousSocketChannel, Void>
     {
-        private static final String NO_MORE = " Will accept no more children.";
-        
         private final AsynchronousServerSocketChannel parent;
         private final Set<DefaultClientChannel> children;
         private final CompletableFuture<Void> lastChild;
@@ -319,8 +318,10 @@ public final class DefaultServer implements HttpServer
                 LOG.log(DEBUG, () -> "Discarding child.");
                 try {
                     child.close();
-                } catch (IOException e) {
+                } catch (IOException | ShutdownChannelGroupException e) {
                     // Ignore
+                } catch (Throwable next) {
+                    LOG.log(WARNING, "Unknown (and ignored) exception from discarding close() call.", next);
                 }
                 failed(t, null);
                 return;
@@ -334,7 +335,12 @@ public final class DefaultServer implements HttpServer
             DefaultClientChannel chan = new DefaultClientChannel(child, DefaultServer.this);
             ChannelByteBufferPublisher bytes = new ChannelByteBufferPublisher(chan);
             children.add(chan);
-            chan.onClose(() -> shutdown(chan, bytes));
+            chan.onClose(() -> {
+                children.remove(chan);
+                if (!parent.isOpen()) {
+                    tryCompleteLastChildStage();
+                }
+            });
             
             startExchange(chan, bytes);
             
@@ -353,35 +359,38 @@ public final class DefaultServer implements HttpServer
                 if (exc == null && parent.isOpen() && chan.isEverythingOpen()) {
                     startExchange(chan, bytes);
                 } else {
-                    shutdown(chan, bytes);
+                    chan.closeSafe();
                 }
             });
         }
         
-        private void shutdown(DefaultClientChannel chan, ChannelByteBufferPublisher bytes) {
-            bytes.close();
-            chan.closeSafe();
-            children.remove(chan);
-            if (!parent.isOpen()) {
-                tryCompleteLastChildStage();
-            }
-        }
-        
         @Override
         public void failed(Throwable t, Void noAttachment) {
-            if (t instanceof ClosedChannelException) { // note: AsynchronousCloseException extends ClosedChannelException
-                LOG.log(DEBUG, "Parent channel closed." + NO_MORE);
+            if (becauseChannelOrGroupClosed(t)) {
+                return;
             }
-            else if (t instanceof ShutdownChannelGroupException) {
-                LOG.log(DEBUG, "Group already closed when initiating a new accept." + NO_MORE);
-            }
-            else if (t instanceof IOException && t.getCause() instanceof ShutdownChannelGroupException) {
-                LOG.log(DEBUG, "Connection accepted and immediately closed, because group is shutting down/was shutdown." + NO_MORE);
-            }
-            else {
-                LOG.log(ERROR, "Unexpected or unknown failure. Stopping server (without force-closing children).", t);
-                stop();
-            }
+            LOG.log(ERROR, "Unexpected or unknown failure. Stopping server (without force-closing children).", t);
+            stop();
         }
+    }
+    
+    /**
+     * Returns {@code true} if the channel operation failed because the channel
+     * or the group to which the channel belongs, was closed - otherwise {@code
+     * false}.<p>
+     * 
+     * For a long time, these errors were observed only on failed accept and
+     * read/write initiating operations. Only once on MacOS, however, was a
+     * {@code ShutdownChannelGroupException} also observed on a child channel
+     * {@code close()}.
+     * 
+     * @param t throwable to test
+     * 
+     * @return see JavaDoc
+     */
+    static boolean becauseChannelOrGroupClosed(Throwable t) {
+        return t instanceof ClosedChannelException || // note: AsynchronousCloseException extends ClosedChannelException
+               t instanceof ShutdownChannelGroupException ||
+               t instanceof IOException && t.getCause() instanceof ShutdownChannelGroupException;
     }
 }

@@ -1,18 +1,17 @@
 package alpha.nomagichttp.internal;
 
-import alpha.nomagichttp.message.ClosedPublisherException;
 import alpha.nomagichttp.message.Request;
+import alpha.nomagichttp.util.SubscriberFailedException;
 
 import java.util.concurrent.Flow;
 
-import static alpha.nomagichttp.message.ClosedPublisherException.SIGNAL_FAILURE;
 import static java.lang.System.Logger.Level.ERROR;
 import static java.util.Objects.requireNonNull;
 
 /**
- * On downstream signal failure; 1) close the channel's read stream, 2) pass the
- * exception back to subscriber's {@code onError()} and lastly 3) re-throw the
- * exception.<p>
+ * On downstream {@code onNext} failure; 1) close the channel's read stream, 2)
+ * pass the exception back to subscriber's {@code onError()} and lastly 3)
+ * re-throw the exception.<p>
  * 
  * This behavior is specified by {@link Request.Body}.
  * 
@@ -32,32 +31,23 @@ final class OnErrorCloseReadStream<T> extends AbstractOp<T>
     
     @Override
     protected void fromUpstreamNext(T item) {
-        interceptThrowable(() -> signalNext(item));
-    }
-    
-    @Override
-    protected void fromUpstreamComplete() {
-        interceptThrowable(this::signalComplete);
-    }
-    
-    private void interceptThrowable(Runnable action) {
         try {
-            action.run();
+            signalNext(item);
         } catch (Throwable t) {
             /*
-              * Note, this isn't the only place where the read stream is closed
-              * on an exceptional signal return. See also
-              * ChannelByteBufferPublisher.subscriberAnnounce().
-              * 
-              * This class guarantees the behavior though, as not all paths to
-              * the subscriber run through the subscriberAnnounce() method.
+             * Note, this isn't the only place where the read stream is closed
+             * on an exceptional signal return. See also
+             * ChannelByteBufferPublisher.subscriberAnnounce().
+             * 
+             * This class guarantees the behavior though, as not all paths to
+             * the subscriber run through the subscriberAnnounce() method.
              */
+            var e = SubscriberFailedException.onNext(t);
             if (child.isOpenForReading()) {
-                LOG.log(ERROR, SIGNAL_FAILURE + " Will close the channel's read stream.");
+                LOG.log(ERROR, e.getMessage() + " Will close the channel's read stream.");
                 child.shutdownInputSafe();
             } // else assume whoever closed the stream also logged the exception
-            
-            signalError(new ClosedPublisherException(SIGNAL_FAILURE, t));
+            signalError(e);
             throw t;
         }
     }

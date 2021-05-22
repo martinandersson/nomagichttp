@@ -32,7 +32,7 @@ An item ~~crossed out~~ is complete, an item in __bold__ is work in progress.
 [Stage: Improved Content Negotiation](#stage-improved-content-negotiation)  
 [~~Stage: Pseudo-Mutable Types~~](#stage-pseudo-mutable-types)  
 [~~Stage: Multiple Responses~~](#stage-multiple-responses)  
-[**Stage: Connection Life-Cycle/Management**](#stage-connection-life-cyclemanagement)  
+[~~Stage: Connection Life-Cycle/Management~~](#stage-connection-life-cyclemanagement)  
 [Stage: Actions](#stage-actions)  
 [Stage: Codings, Part 1/3 (Chunked Transfer)](#stage-codings-part-13-chunked-transfer)  
 [Stage: Codings, Part 2/3 (Response Body Compression)](#stage-codings-part-23-response-body-compression)  
@@ -44,7 +44,7 @@ An item ~~crossed out~~ is complete, an item in __bold__ is work in progress.
 [Stage: Improved File Serving](#stage-improved-file-serving)  
 [Stage: Cookies](#stage-cookies)  
 [Stage: Session Management](#stage-session-management)  
-[Stage: Timeouts](#stage-timeouts)  
+[~~Stage: Timeouts~~](#stage-timeouts)  
 [Stage: Logging](#stage-logging)  
 [Stage: Misc](#stage-misc)  
 [Upcoming](#upcoming)  
@@ -243,38 +243,43 @@ doesn't finish the exchange.~~
     skipped by the server if when initiating the write-operation, the request
     body has already begun transmitting.~~
 
-## **Stage: Connection Life-Cycle/Management**
+## ~~Stage: Connection Life-Cycle/Management~~
 
-_Status: **In Progress**_
+_Status: **Delivered**_
 
-Goal is to make the connection life-cycle more solid and specified with docs; a
-connection may represent many users aka "request isolation", as well as one
-user may utilize many connections. In particular, docs should clarify when do
-the connection close and under what circumstances. Future multiplexing in HTTP/2
-will most likely abstract a connection into one or many _channels_.
+Goal is to make the connection life-cycle more solid and specified with docs. In
+particular, docs should clarify when do the connection close and under what
+circumstances. Future multiplexing in HTTP/2 will most likely abstract a
+connection into one or many _channels_.
 
-- Default `Content-Length: 0` if no response body is set (RFC 7231 §3.3.2).  
-  Will later be moved to action.
-- Auto-close connection after final response if no `Transfer-Encoding` nor
+End result: Lots of the items listed here belongs to future work, specifically
+chunked encoding and HTTP/2. The connection life-cycle is greatly improved,
+however. Can not default to `Content-Length: 0` on empty body. Lots of response
+variants have no body, and also no content-length. `Responses` will create valid
+responses. `ResponsePipeline` will handle unknown length by setting
+`Connection: close`. HTTP/1.0 keep-alive will likely never be implemented.
+
+- ~~Default `Content-Length: 0` if no response body is set (RFC 7231 §3.3.2).  
+  Will later be moved to action.~~
+- ~~Auto-close connection after final response if no `Transfer-Encoding` nor
   `Content-Length` have been set, or if `Transfer-Encoding` is set but `chunked`
   is not the last token.  
   Should *not* be implemented as a post-action as this is a protocol- and
-  therefor server-specific detail.
-- Unroll theoretically possible recursion in `HttpExchange`.
-- New exchange does not begin if `Connection: close`
-- Add `Response.mustCloseAfterWrite(boolean)` and rename to `thenCloseChannel`.
-  - Will close even if response is interim (future warning log may take place).
-- Research
-  - Controlled request queues to enable fair use.
-  - Detection of denial-of-service attacks.
-  - Graceful close.
-- Add `request.channel().close/kill()` (graceful or hard).  
-  Will be used in the future after a rewrite of `thenCloseChannel`.
-- Perhaps
-  - Split `HttpExchange` into different types depending on HTTP version.  
-    May remove the need for some "if-version" checks in code?
-- Implement persistent connections (`Connection: keep-alive`) also for HTTP/1.0
-  clients.
+  therefor server-specific detail.~~
+- ~~Unroll theoretically possible recursion in `HttpExchange`.~~
+- ~~New exchange does not begin if `Connection: close`~~
+- ~~Add `Response.mustCloseAfterWrite(boolean)` and rename to
+  `thenCloseChannel`.~~
+  - ~~Will close even if response is interim (future warning log may take
+    place).~~
+- ~~Graceful close~~
+- ~~Add `request.channel().close/kill()` (graceful or hard).  
+  Will be used in the future after a rewrite of `thenCloseChannel`.~~
+- ~~Perhaps~~
+  - ~~Split `HttpExchange` into different types depending on HTTP version.  
+    May remove the need for some "if-version" checks in code?~~
+- ~~Implement persistent connections (`Connection: keep-alive`) also for
+  HTTP/1.0 clients.~~
 
 ## Stage: Actions
 
@@ -782,25 +787,31 @@ session ID/key saved in cookie.
 - Research but probably do not use less secure fallbacks such as storing session
   id in request path/query if client disabled cookies.
 
-## Stage: Timeouts
+## ~~Stage: Timeouts~~
 
-Most timeouts should probably result in a 408 (Request Timeout).
+_Status: **Delivered**_
 
-For many other servers, timeouts are often quite short, specifically designed
+End result: Added `HttpServer.Config.timeoutIdleConnection()`,
+`RequestHeadTimeoutException`, `RequestBodyTimeoutException`, and
+`ResponseTimeoutException`.
+
+~~Most timeouts should probably result in a 408 (Request Timeout).~~
+
+~~For many other servers, timeouts are often quite short, specifically designed
 that way to save server threads. Fotunately, NoMagicHTTP is fully asynchronous
 so even if a request/exchange "hangs" and doesn't make any progress, no thread
 is blocked. But it's still not good for a million reasons to have idle
 connections and loaded buffers sitting around doing nothing. The upside is that
-the timeout configuration can be quite lenient and forgiving.
+the timeout configuration can be quite lenient and forgiving.~~
 
-- Max time spent receiving request head- and body respectively.
+- ~~Max time spent receiving request head- and body respectively.
   Currently, send a request that doesn't end with `CRLF` + `CRLF` and the
-  exchange "hangs" indefinetely. 
-- Same for response.  
+  exchange "hangs" indefinetely.~~
+- ~~Same for response.  
   Default for receiving/writing head should be low.  
-  Default for receiving/writing body should be super high.
-- Max _idle_ time for receiving/writing request/response.  
-  No need to split timers for head and body.
+  Default for receiving/writing body should be super high.~~
+- ~~Max _idle_ time for receiving/writing request/response.  
+  No need to split timers for head and body.~~
 
 ## Stage: Logging
 
@@ -842,10 +853,18 @@ the timeout configuration can be quite lenient and forgiving.
   The alternative is to add `HttpServer.Config.autoHead()` with all that
   behavior baked in. Alas this config would be global and application would not
   be able to scope it to a particular resource namespace.
+- Research
+  - Controlled request queues to enable fair use.
 - Improved security
   - Cross-Site Scripting (XSS) (see `HeaderKey.CONTENT_SECURITY_POLICY`)
   - Cross-Site Tracing (XST)
   - Cross-Site Request Forgery (CSRF)
+  - Detection of denial-of-service attacks.
+- Put a mechanism in place to unblock an indefinetely blocked request thread.  
+  Subject to configuration.  
+  Idle connection times out after 90 sec, the unblock should happen shortly
+  after?  
+  Log warning, then attempt unblock by interrupt?
 
 ## Upcoming
 

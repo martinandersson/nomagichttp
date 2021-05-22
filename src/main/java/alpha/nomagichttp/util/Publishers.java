@@ -1,17 +1,21 @@
 package alpha.nomagichttp.util;
 
-import alpha.nomagichttp.message.ClosedPublisherException;
 import alpha.nomagichttp.message.Response;
 
 import java.net.http.HttpRequest;
+import java.util.ArrayDeque;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Objects;
+import java.util.Queue;
 import java.util.concurrent.Flow;
-import java.util.function.Consumer;
+import java.util.function.BiConsumer;
 import java.util.function.Function;
 
+import static alpha.nomagichttp.util.Arrays.stream;
 import static alpha.nomagichttp.util.Subscriptions.CanOnlyBeCancelled;
 import static alpha.nomagichttp.util.Subscriptions.TurnOnProxy;
+import static java.lang.Long.MAX_VALUE;
 import static java.util.Objects.requireNonNull;
 
 /**
@@ -72,7 +76,7 @@ import static java.util.Objects.requireNonNull;
  * Exceptions thrown by {@code Subscriber.onSubscribe()} and {@code onNext()}
  * propagates to the calling thread - after having been forwarded to {@code
  * Subscriber.onError()} as the <i>cause</i> of a {@link
- * ClosedPublisherException}. Having said that, the subscription is voided and
+ * SubscriberFailedException}. Having said that, the subscription is voided and
  * the publisher will no longer interact with the subscriber that failed.<p>
  * 
  * Exceptions from {@code Subscriber.onComplete()} will also propagate to the
@@ -170,7 +174,7 @@ public final class Publishers
     /**
      * Creates a {@code Flow.Publisher} that for each new subscriber, retrieves
      * a subscription-dedicated Iterator from the given source which is
-     * then used to pull items handed off to the subscriber.<p>
+     * then used to pull the items (on-demand) published to the subscriber.<p>
      * 
      * The publisher does not limit how many subscriptions at a time can be
      * active. Thus, either care should be exercised so that the publisher is
@@ -197,11 +201,63 @@ public final class Publishers
         return new PullPublisher<>(source);
     }
     
+    /**
+     * Creates a {@code Flow.Publisher} that immediately signals {@code onError}
+     * for each new subscriber.
+     * 
+     * @param error to complete subscriptions with
+     * @param <T> type of item
+     * 
+     * @return a failing publisher
+     * 
+     * @throws NullPointerException if {@code error} is {@code null}
+     */
+    public static <T> Flow.Publisher<T> failed(Throwable error) {
+        return new FailedPublisher<>(error);
+    }
+    
+    /**
+     * Creates a publisher composed of the given publishers. Each new subscriber
+     * will implicitly subscribe to the first, and will upon normal subscription
+     * completion of the first implicitly subscribe to the next, and so on.<p>
+     * 
+     * The subscriber of the returned publisher will only receive one call to
+     * {@code onSubscribe()} with a reference to a subscription object which
+     * remains valid independent on which underlying publisher is sourced at the
+     * moment.<p>
+     * 
+     * The returned publisher keeps track of the subscriber's demand and moves
+     * any residue across the sourced boundaries. For example, if subscriber
+     * requests two items, but the first publisher only emits one item, then one
+     * item will be automagically requested from the second publisher.<p>
+     * 
+     * The returned publisher adheres to the contract of {@link Publishers} only
+     * if all of the given publishers do.
+     * 
+     * @param first publisher
+     * @param second publisher
+     * @param more optionally
+     * @param <T> type of item
+     * 
+     * @return all given publishers orderly concatenated into one
+     * @throws NullPointerException if any arg or array element is {@code null}
+     * @see BetterBodyPublishers#concat(Flow.Publisher, Flow.Publisher, Flow.Publisher[])
+     */
+    @SafeVarargs
+    @SuppressWarnings("varargs")
+    public static <T> Flow.Publisher<T> concat(
+            Flow.Publisher<? extends T> first,
+            Flow.Publisher<? extends T> second,
+            Flow.Publisher<? extends T>... more)
+    {
+        return new ComposedPublisher<>(first, second, more);
+    }
+    
     private static final class PullPublisher<T> implements Flow.Publisher<T>
     {
         private final Iterable<? extends T> items;
         
-        private PullPublisher(Iterable<? extends T> items) {
+        PullPublisher(Iterable<? extends T> items) {
             this.items = requireNonNull(items);
         }
         
@@ -249,26 +305,212 @@ public final class Publishers
         }
         
         private SerialTransferService<T> newService(
-                Iterator<? extends T> it, Flow.Subscriber<? super T> subsc)
+                Iterator<? extends T> it, Flow.Subscriber<? super T> s)
         {
             Function<SerialTransferService<T>, ? extends T> generator = self -> {
                 if (it.hasNext()) {
                     T t = it.next();
                     if (t == null) {
                         var exc = new NullPointerException("Item is null.");
-                        self.finish(() -> Subscribers.signalErrorSafe(subsc, exc));
+                        self.finish(() -> Subscribers.signalErrorSafe(s, exc));
                     }
                     return t;
                 } else {
-                    self.finish(subsc::onComplete);
+                    self.finish(s::onComplete);
                     return null;
                 }
             };
             
-            Consumer<? super T> receiver = item ->
-                    Subscribers.signalNextOrTerminate(subsc, item);
+            BiConsumer<SerialTransferService<T>, ? super T> receiver = (self, item) -> {
+                Subscribers.signalNextOrTerminate(s, item);
+                if (!it.hasNext()) {
+                    self.finish(s::onComplete);
+                }
+            };
             
             return new SerialTransferService<>(generator, receiver);
+        }
+    }
+    
+    private static final class FailedPublisher<T> implements Flow.Publisher<T> {
+        private final Throwable err;
+        
+        FailedPublisher(Throwable err) {
+            this.err = requireNonNull(err);
+        }
+        
+        @Override
+        public void subscribe(Flow.Subscriber<? super T> s) {
+            requireNonNull(s);
+            CanOnlyBeCancelled tmp = Subscriptions.canOnlyBeCancelled();
+            Subscribers.signalOnSubscribeOrTerminate(s, tmp);
+            if (!tmp.isCancelled()) {
+                Subscribers.signalErrorSafe(s, err);
+            }
+        }
+    }
+    
+    private static final class ComposedPublisher<T> implements Flow.Publisher<T> {
+        private final Flow.Publisher<T>[] sources;
+        
+        @SafeVarargs
+        ComposedPublisher(Flow.Publisher<? extends T> first,
+                          Flow.Publisher<? extends T> second,
+                          Flow.Publisher<? extends T>... more)
+        {
+            @SuppressWarnings({"unchecked", "varargs"})
+            Flow.Publisher<T>[] s = stream(first, second, more)
+                    .peek(Objects::requireNonNull)
+                    .toArray(Flow.Publisher[]::new);
+            sources = s;
+        }
+        
+        @Override
+        public void subscribe(Flow.Subscriber<? super T> s) {
+            new Toggler(s);
+        }
+        
+        private class Toggler implements Flow.Subscriber<T> {
+            private static final long STOP = -1;
+            
+            private final Flow.Subscriber<? super T> sink;
+            private final Queue<Runnable> missed;
+            private final SerialExecutor exec;
+            private long demand;
+            private Flow.Subscription active;
+            private boolean notified;
+            private int pos;
+            
+            Toggler(Flow.Subscriber<? super T> sink) {
+                this.sink     = requireNonNull(sink);
+                this.missed   = new ArrayDeque<>();
+                this.demand   = 0;
+                this.active   = null;
+                this.notified = false;
+                this.pos      = 0;
+                this.exec     = new SerialExecutor();
+                subscribe();
+            }
+            
+            private void subscribe() {
+                sources[pos].subscribe(this);
+            }
+            
+            @Override
+            public void onSubscribe(Flow.Subscription s) {
+                requireNonNull(s);
+                exec.execute(() -> {
+                    if (demand == STOP) {
+                        return;
+                    }
+                    active = s;
+                    if (!notified) {
+                        // First upstream
+                        notified = true;
+                        sink.onSubscribe(new Proxy());
+                    } else {
+                        // A subsequent upstream
+                        if (demand > 0) {
+                            // Push residue to new upstream
+                            active.request(demand);
+                        }
+                        drainMissedSignals();
+                    }
+                });
+            }
+            
+            private void drainMissedSignals() {
+                Runnable r;
+                while ((r = missed.poll()) != null) {
+                    r.run();
+                }
+            }
+            
+            @Override
+            public void onNext(T item) {
+                exec.execute(() -> {
+                    if (demand == STOP) {
+                        return;
+                    }
+                    if (demand != MAX_VALUE) {
+                        --demand;
+                    }
+                    sink.onNext(item);
+                });
+            }
+            
+            @Override
+            public void onError(Throwable thr) {
+                exec.execute(() -> {
+                    if (demand == STOP) {
+                        return;
+                    }
+                    sink.onError(thr);
+                });
+            }
+            
+            @Override
+            public void onComplete() {
+                exec.execute(() -> {
+                    if (demand == STOP) {
+                        return;
+                    }
+                    // Well, this guy is out
+                    active = null;
+                    if (pos == sources.length - 1) {
+                        // And that was the end of it
+                        demand = STOP;
+                        sink.onComplete();
+                    } else {
+                        // On to next
+                        ++pos;
+                        subscribe();
+                    }
+                });
+            }
+            
+            private class Proxy implements Flow.Subscription {
+                @Override
+                public void request(long n) {
+                    exec.execute(() -> runOrSchedule(() -> {
+                        assert demand != STOP;
+                        if (n > 0) {
+                            // Update local memory
+                            try {
+                                demand = Math.addExact(demand, n);
+                            } catch (ArithmeticException e) {
+                                // Cap
+                                demand = MAX_VALUE;
+                            }
+                        }
+                        // Push arg received (upstream deals with IllegalArgExc)
+                        active.request(n);
+                    }));
+                }
+                
+                @Override
+                public void cancel() {
+                    exec.execute(() -> runOrSchedule(() -> {
+                        assert demand != STOP;
+                        active.cancel();
+                    }));
+                }
+                
+                /**
+                 * Run signal immediately if we have an active upstream
+                 * subscription, otherwise enqueue for a future upstream.
+                 */
+                private void runOrSchedule(Runnable signal) {
+                    if (demand == STOP) {
+                        return;
+                    }
+                    if (active == null) {
+                        missed.add(signal);
+                    } else {
+                        signal.run();
+                    }
+                }
+            }
         }
     }
 }

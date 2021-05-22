@@ -8,6 +8,7 @@ import alpha.nomagichttp.util.BetterBodyPublishers;
 import alpha.nomagichttp.util.Publishers;
 
 import java.net.http.HttpHeaders;
+import java.net.http.HttpRequest;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.util.concurrent.CompletableFuture;
@@ -17,6 +18,7 @@ import java.util.concurrent.Flow;
 import static alpha.nomagichttp.HttpConstants.ReasonPhrase;
 import static alpha.nomagichttp.HttpConstants.StatusCode;
 import static alpha.nomagichttp.message.Response.builder;
+import static java.net.http.HttpRequest.BodyPublisher;
 
 /**
  * A {@code Response} contains a status line, followed by optional headers and
@@ -31,8 +33,9 @@ import static alpha.nomagichttp.message.Response.builder;
  * }</pre>
  * 
  * {@code Response} is immutable but may be converted back into a builder for
- * templating. This example uses a factory from {@link Responses} and is
- * equivalent to the previous example:
+ * templating. This effectively makes ready-built {@link Responses} also serve
+ * as a repository of commonly used status lines. This example is equivalent to
+ * the previous:
  * 
  * <pre>{@code
  *   Response r = Responses.noContent()
@@ -58,6 +61,18 @@ import static alpha.nomagichttp.message.Response.builder;
  * StandardCharsets#US_ASCII US_ASCII} (UTF-8 is backwards compatible with
  * ASCII).<p>
  * 
+ * When the headers are written on the wire, name and value will be concatenated
+ * using a colon followed by a space (": "). Adding many values to the same
+ * name replicates the header across multiple rows in the response. It does
+ * <strong>not</strong> join the values on the same row. If this is desired,
+ * first join multiple values and then pass it to the builder as one.<p>
+ * 
+ * Header order is not significant (
+ * <a href="https://tools.ietf.org/html/rfc7230#section-3.2.2">RFC 7230 §3.2.2</a>
+ * ), but will be preserved on the wire (FIFO) except for duplicated names which
+ * will be grouped together and inserted at the occurrence of the first
+ * value.<p>
+ * 
  * The {@code Response} object can safely be reused sequentially over time to
  * the same client. The response can also be shared concurrently to different
  * clients, assuming the {@linkplain Builder#body(Flow.Publisher) body
@@ -73,7 +88,7 @@ import static alpha.nomagichttp.message.Response.builder;
  * @see RequestHandler
  * @see HttpServer
  */
-public interface Response
+public interface Response extends HeaderHolder
 {
     /**
      * Returns a {@code Response} builder.<p>
@@ -130,11 +145,15 @@ public interface Response
     String reasonPhrase();
     
     /**
-     * Returns the headers.
+     * Returns the headers as they are written on the wire out to client.<p>
      * 
-     * @return the headers (unmodifiable and possibly empty)
+     * The default implementation adheres to the contract as defined in JavaDoc
+     * of {@link Response}. A custom implementation can change this however it
+     * sees fit.
+     * 
+     * @return the headers as they are written on the wire (unmodifiable)
      */
-    Iterable<String> headers();
+    Iterable<String> headersForWriting();
     
     /**
      * Returns the message body (possibly empty).
@@ -149,18 +168,16 @@ public interface Response
      * 
      * @implSpec
      * The default implementation is equivalent to:
-     * <pre>{@code
-     *   return statusCode() >= 100 && statusCode() < 200;
-     * }</pre>
+     * <pre>
+     *   return StatusCode.{@link StatusCode#isInformational(int)
+     *       isInformational}(this.statusCode());
+     * </pre>
      * 
      * @return {@code true} if the status-code is 1XX (Informational),
      *         otherwise {@code false}
-     * 
-     * @see HttpConstants.StatusCode
-     * @see ClientChannel
      */
     default boolean isInformational() {
-        return statusCode() >= 100 && statusCode() < 200;
+        return StatusCode.isInformational(statusCode());
     }
     
     /**
@@ -170,31 +187,79 @@ public interface Response
      * @implSpec
      * The default implementation is equivalent to:
      * <pre>
-     *   return !isInformational();
+     *   return StatusCode.{@link StatusCode#isFinal(int)
+     *       isFinal}(this.statusCode());
      * </pre>
      * 
      * @return {@code true} if the status-code is not 1XX (Informational),
      *         otherwise {@code false}
-     * 
-     * @see HttpConstants.StatusCode
-     * @see ClientChannel
      */
     default boolean isFinal() {
-        return !isInformational();
+        return StatusCode.isFinal(statusCode());
     }
     
     /**
-     * Returns {@code true} if the server must close the underlying client
-     * channel after writing the response, otherwise {@code false}.<p>
+     * Returns {@code true} if the body is assumed to be empty, otherwise
+     * {@code false}.<p>
      * 
-     * The server is always free to close the channel even if this method
-     * returns {@code false}, for example if the server run into channel-related
-     * problems.
+     * The body is assumed to be empty, if {@code this.body()} returns the same
+     * object instance as {@link Publishers#empty()}, or it returns a
+     * {@link HttpRequest.BodyPublisher} implementation with {@code
+     * contentLength()} set to 0, or the response has a {@code Content-Length}
+     * header set to 0 [in future: and no chunked encoding].
      * 
-     * @return {@code true} if the server must close the underlying client
-     * channel, otherwise {@code false}
+     * @return {@code true} if the body is assumed to be empty,
+     *         otherwise {@code false}
      */
-    // TODO: Param that accepts mayInterruptRequestBodySubscriberOtherwiseWeWillWantForHim
+    boolean isBodyEmpty();
+    
+    /**
+     * Command the server to shutdown the client channel's output/write stream
+     * after <i>first attempt</i> to send the response.<p>
+     * 
+     * The command will also cause the server to close the channel at the end of
+     * the HTTP exchange (after an in-flight request and the processing of it
+     * completes).<p>
+     * 
+     * The write stream will close whether or not the response was successfully
+     * transmitted. So, on failure, an alternative subsequent response will not
+     * succeed. If it is desired to close the connection only after a successful
+     * request and response pair (a so called "graceful close"), then set the
+     * "Connection: close" header.<p>
+     * 
+     * If the application desires to also stop the read stream no matter if a
+     * client-request is in-flight, use {@link #mustCloseAfterWrite()}.<p>
+     * 
+     * The server manages the client channel's life-cycle and so, a {@code
+     * false} returned value has no effect.
+     * 
+     * @return {@code true} if the server must shutdown the output/write stream,
+     *         otherwise {@code false}
+     * 
+     * @see ClientChannel#shutdownOutput()
+     */
+    boolean mustShutdownOutputAfterWrite();
+    
+    /**
+     * Command the server to close the client channel after first attempt to
+     * send the response.<p>
+     * 
+     * Returning {@code true} will forcefully close the channel. A client
+     * request in-flight will fail. In order to end the channel more gracefully,
+     * signal {@link #mustShutdownOutputAfterWrite()} instead.<p>
+     * 
+     * The application can always kill the channel immediately and abruptly by
+     * calling {@link ClientChannel#close()} instead of passing a lazy command
+     * to the server through the response object.<p>
+     * 
+     * The server manages the client channel's life-cycle and so, a {@code
+     * false} returned value has no effect.
+     * 
+     * @return {@code true} if the server must close the client channel,
+     *         otherwise {@code false}
+     * 
+     * @see ClientChannel#close()
+     */
     boolean mustCloseAfterWrite();
     
     /**
@@ -238,17 +303,6 @@ public interface Response
      * variants may build just fine but {@linkplain HttpServer blow up
      * later}.<p>
      * 
-     * Header key and values are taken at face value (case-sensitive),
-     * concatenated using a colon followed by a space ": ". Adding many values
-     * to the same header name replicates the name across multiple rows in the
-     * response. It does <strong>not</strong> join the values on the same row.
-     * If this is desired, first join multiple values and then pass it to the
-     * builder as one.<p>
-     * 
-     * Header order is not significant (
-     * <a href="https://tools.ietf.org/html/rfc7230#section-3.2.2">RFC 7230 §3.2.2</a>
-     * ), but will be preserved (FIFO) except for duplicated names which will be
-     * grouped together and inserted at the occurrence of the first value.<p>
      * 
      * The implementation is thread-safe.<p>
      * 
@@ -294,10 +348,23 @@ public interface Response
          * Remove all previously set values for the given header name.
          * 
          * @param name of the header
-         * 
          * @return a new builder representing the new state
+         * @throws  NullPointerException if {@code name} is {@code null}
          */
         Builder removeHeader(String name);
+        
+        /**
+         * Remove all occurrences of a header that has the given value.
+         * 
+         * This method operates without regard to casing for both header name
+         * and value.
+         * 
+         * @param name of the header
+         * @param presentValue predicate
+         * @return a new builder representing the new state
+         * @throws  NullPointerException if any argument is {@code null}
+         */
+        Builder removeHeaderIf(String name, String presentValue);
         
         /**
          * Add a header to this response. If the header is already present then
@@ -371,10 +438,10 @@ public interface Response
          * must be thread-safe and designed for concurrency; producing new
          * bytebuffers with the same data for each new subscriber.<p>
          * 
-         * Please note that multiple response objects derived/templated from the
-         * same builder(s) will share the same underlying body publisher
-         * reference. So same rule apply; the publisher must be thread-safe if
-         * the derivatives go out to different clients.<p>
+         * Multiple response objects derived/templated from the same builder(s)
+         * will share the same underlying body publisher reference. So same rule
+         * apply; the publisher must be thread-safe if the derivatives go out to
+         * different clients.<p>
          * 
          * Response objects created by factory methods from the NoMagicHTTP
          * library API (and derivatives created from them) are fully thread-safe
@@ -384,14 +451,30 @@ public interface Response
          * BetterBodyPublishers}. Not only are these defined to be thread-safe,
          * they are also non-blocking.<p>
          * 
-         * If you desire to remove an already set body, pass {@link
-         * Publishers#empty()} or a {@code BodyPublisher} with {@code
-         * contentLength() == 0} to this method. Any other body instance will
-         * cause the build to fail with an {@link IllegalBodyException}
-         * <strong>if</strong> the status-code is 1XX (Informational). There is
-         * unfortunately no other pragmatic alternative since the {@code
-         * Flow.Publisher} API does not support a method equivalent to {@code
-         * isEmpty()} <i>and</i> still keep the fail-fast behavior.
+         * If the body argument is a {@link BodyPublisher} and {@code
+         * BodyPublisher.contentLength()} returns a negative value, then any
+         * present {@code Content-Length} header will be removed (unknown
+         * length). A positive value ({@code >= 0}) will set the header value
+         * (possibly overwriting an old). So, it's unnecessary to set the header
+         * manually as long as the body is a {@code BodyPublisher}.<p>
+         * 
+         * To remove an already set body, it's as easy as passing in as argument
+         * to this method a {@link Publishers#empty()} or a {@code
+         * BodyPublisher} with {@code contentLength() == 0}. Both cases will
+         * also set the {@code Content-Length} header to 0.<p>
+         * 
+         * Any other publisher implementation must also be accompanied with an
+         * explicit builder-call to either remove the {@code Content-Length}
+         * header (for unknown length) or set it to the new length (or in
+         * future; apply chunked encoding). Failure to comply may end up
+         * re-using an old legacy {@code Content-Length} value with unspecified
+         * application behavior as a result.<p>
+         * 
+         * A known length is always preferred over an unknown length as in the
+         * latter case, the server will have to schedule a close of the
+         * connection after the active exchange (in future: or apply chunked
+         * encoding). There's no other way around that and still maintain proper
+         * HTTP message framing.
          * 
          * @param   body publisher
          * @return  a new builder representing the new state
@@ -400,8 +483,28 @@ public interface Response
         Builder body(Flow.Publisher<ByteBuffer> body);
         
         /**
-         * Set the {@code must-close-after-write} setting. If never set, will
-         * default to false.
+         * Enable the {@code must-shutdown-output-after-write} command. If
+         * never set, will default to {@code false}.<p>
+         * 
+         * If {@code enabled} is {@code true}, the builder will also set (or
+         * silently replace) a {@code Connection: close} header. If {@code
+         * enabled} is {@code false}, the header is removed but only if it has
+         * value "close".
+         * 
+         * @param   enabled true or false
+         * @return  a new builder representing the new state
+         * @see     Response#mustShutdownOutputAfterWrite()
+         */
+        Builder mustShutdownOutputAfterWrite(boolean enabled);
+        
+        /**
+         * Enable the {@code must-close-after-write} command. If never set, will
+         * default to {@code false}.<p>
+         * 
+         * If {@code enabled} is {@code true}, the builder will also set (or
+         * silently replace) a {@code Connection: close} header. If {@code
+         * enabled} is {@code false}, the header is removed but only if it has
+         * value "close".
          * 
          * @param   enabled true or false
          * @return  a new builder representing the new state
@@ -410,14 +513,26 @@ public interface Response
         Builder mustCloseAfterWrite(boolean enabled);
         
         /**
-         * Builds the response.<p>
-         * 
-         * The returned response may be a cached object if previously built.<p>
+         * Builds the response.
          * 
          * @return a response
          * 
          * @throws IllegalBodyException
-         *             if body is present and status-code is 1XX (Informational)
+         *             if status code is 1XX (Informational) and a body is
+         *             presumably not empty (see {@link Response#isBodyEmpty()})
+         * 
+         * @throws IllegalStateException
+         *             if any stream of the channel or the channel itself has
+         *             been marked to shutdown/close and status-code is 1XX
+         *             (Informational)
+         * 
+         * @throws IllegalStateException
+         *             if response contains multiple {@code Content-Length} headers
+         * 
+         * @throws IllegalStateException
+         *             if status code is 1XX (Informational) and header {@code
+         *             Connection: close} is set (see
+         *             <a href="https://tools.ietf.org/html/rfc7230#section-6.1">RFC 7231 §6.1</a>)
          */
         Response build();
     }

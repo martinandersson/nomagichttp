@@ -432,6 +432,84 @@ public final class HttpConstants {
         }
         
         /**
+         * Returns {@code true} if the status-code is 1XX (Informational),
+         * otherwise {@code false}.
+         * 
+         * @param statusCode to check
+         * 
+         * @return {@code true} if the status-code is 1XX (Informational),
+         *         otherwise {@code false}
+         */
+        public static boolean isInformational(int statusCode) {
+            return statusCode >= 100 && statusCode <= 199;
+        }
+        
+        /**
+         * Returns {@code true} if the status-code is not 1XX (Informational),
+         * otherwise {@code false}.
+         * 
+         * @param statusCode to check
+         * 
+         * @return {@code true} if the status-code is not 1XX (Informational),
+         *         otherwise {@code false}
+         */
+        public static boolean isFinal(int statusCode) {
+            return !isInformational(statusCode);
+        }
+        
+        /**
+         * Returns {@code true} if the status-code is 2XX (Successful),
+         * otherwise {@code false}.
+         *
+         * @param statusCode to check
+         *
+         * @return {@code true} if the status-code is 2XX (Successful),
+         *         otherwise {@code false}
+         */
+        public static boolean isSuccessful(int statusCode) {
+            return statusCode >= 200 && statusCode <= 299;
+        }
+        
+        /**
+         * Returns {@code true} if the status-code is 3XX (Redirection),
+         * otherwise {@code false}.
+         *
+         * @param statusCode to check
+         *
+         * @return {@code true} if the status-code is 3XX (Redirection),
+         *         otherwise {@code false}
+         */
+        public static boolean isRedirection(int statusCode) {
+            return statusCode >= 300 && statusCode <= 399;
+        }
+        
+        /**
+         * Returns {@code true} if the status-code is 4XX (Client Error),
+         * otherwise {@code false}.
+         *
+         * @param statusCode to check
+         *
+         * @return {@code true} if the status-code is 4XX (Client Error),
+         *         otherwise {@code false}
+         */
+        public static boolean isClientError(int statusCode) {
+            return statusCode >= 400 && statusCode <= 499;
+        }
+        
+        /**
+         * Returns {@code true} if the status-code is 5XX (Server Error),
+         * otherwise {@code false}.
+         *
+         * @param statusCode to check
+         *
+         * @return {@code true} if the status-code is 5XX (Server Error),
+         *         otherwise {@code false}
+         */
+        public static boolean isServerError(int statusCode) {
+            return statusCode >= 500 && statusCode <= 599;
+        }
+        
+        /**
          * {@value} {@value ReasonPhrase#CONTINUE}.<p>
          * 
          * The server has received the request headers and accepted them, the
@@ -459,6 +537,7 @@ public final class HttpConstants {
          * 
          * @see HttpServer.Config#immediatelyContinueExpect100() 
          * @see <a href="https://tools.ietf.org/html/rfc7231#section-6.2.1">RFC 7231 §6.2.1</a>
+         * @see <a href="https://tools.ietf.org/html/rfc7231#section-6.3">RFC 7231 §6.3</a>
          */
         public static final int ONE_HUNDRED = 100;
         
@@ -837,10 +916,9 @@ public final class HttpConstants {
         public static final int FOUR_HUNDRED_SEVEN = 407;
         
         /**
-         * {@value} {@value ReasonPhrase#REQUEST_TIMEOUT}.<p>
+         * {@value} {@value ReasonPhrase#REQUEST_TIMEOUT}.
          * 
-         * TODO: write something
-         * 
+         * @see HttpServer.Config#timeoutIdleConnection()
          * @see <a href="https://tools.ietf.org/html/rfc7231#section-6.5.7">RFC 7231 §6.5.7</a>
          */
         public static final int FOUR_HUNDRED_EIGHT = 408;
@@ -1058,10 +1136,9 @@ public final class HttpConstants {
         public static final int FIVE_HUNDRED_TWO = 502;
         
         /**
-         * {@value} {@value ReasonPhrase#SERVICE_UNAVAILABLE}.<p>
+         * {@value} {@value ReasonPhrase#SERVICE_UNAVAILABLE}.
          * 
-         * TODO: write something
-         * 
+         * @see HttpServer.Config#timeoutIdleConnection()
          * @see <a href="https://tools.ietf.org/html/rfc7231#section-6.6.4">RFC 7731 §6.6.4</a>
          */
         public static final int FIVE_HUNDRED_THREE = 503;

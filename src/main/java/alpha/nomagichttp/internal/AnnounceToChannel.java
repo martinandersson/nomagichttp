@@ -1,24 +1,28 @@
 package alpha.nomagichttp.internal;
 
+import alpha.nomagichttp.HttpServer;
+import alpha.nomagichttp.util.IOExceptions;
 import alpha.nomagichttp.util.SeriallyRunnable;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.nio.channels.ClosedChannelException;
-import java.nio.channels.ShutdownChannelGroupException;
+import java.nio.channels.AsynchronousCloseException;
+import java.nio.channels.InterruptedByTimeoutException;
+import java.time.Duration;
 import java.util.Deque;
-import java.util.Queue;
 import java.util.concurrent.ConcurrentLinkedDeque;
-import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
+import java.util.function.Supplier;
 
+import static alpha.nomagichttp.internal.DefaultServer.becauseChannelOrGroupClosed;
 import static java.lang.Long.MAX_VALUE;
 import static java.lang.Math.addExact;
 import static java.lang.System.Logger.Level.DEBUG;
 import static java.lang.System.Logger.Level.ERROR;
 import static java.util.Locale.ROOT;
 import static java.util.Objects.requireNonNull;
+import static java.util.concurrent.TimeUnit.NANOSECONDS;
 
 /**
  * A service used to {@link #announce(ByteBuffer) announce} the availability of
@@ -45,11 +49,17 @@ import static java.util.Objects.requireNonNull;
  * callback executes exactly-once whenever the last pending operation
  * completes.<p>
  * 
+ * In write mode, the service will self-{@link #stop(Throwable)} with an {@link
+ * InterruptedByTimeoutException} if the operation takes longer than the
+ * configured timeout. Read operations never time out (by this class). See
+ * {@link HttpServer.Config#timeoutIdleConnection}.<p>
+ * 
  * Please note that the responsibility of this class is to manage a particular
  * type of channel <i>operations</i> (read or write) for as long as the service
  * remains running, not the channel's life cycle itself. In particular note; the
- * only two occasions when this class closes the channel's stream in use is if a
- * channel operation completes exceptionally or end-of-stream is reached.<p>
+ * only two occasions when this class shuts down the channel's stream in use is
+ * if a channel operation completes exceptionally or end-of-stream is
+ * reached.<p>
  * 
  * This class is thread-safe and mostly non-blocking (closing stream may block).
  * 
@@ -76,14 +86,15 @@ final class AnnounceToChannel
             Consumer<? super ByteBuffer> onComplete,
             WhenDone whenDone)
     {
-        return new AnnounceToChannel(Mode.READ, source, onComplete, whenDone);
+        return new AnnounceToChannel(Mode.READ, source, onComplete, whenDone, null);
     }
     
     static AnnounceToChannel write(
             DefaultClientChannel destination,
-            WhenDone whenDone)
+            WhenDone whenDone,
+            Duration timeout)
     {
-        return new AnnounceToChannel(Mode.WRITE, destination, null, whenDone);
+        return new AnnounceToChannel(Mode.WRITE, destination, null, whenDone, timeout);
     }
     
     /**
@@ -109,17 +120,22 @@ final class AnnounceToChannel
         
         @Override
         public String toString() {
-            return name().charAt(0) + name().toLowerCase(ROOT).substring(1);
+            return name().toLowerCase(ROOT);
+        }
+        
+        public String capitalized() {
+            return name().charAt(0) + toString().substring(1);
         }
     }
     
     private final Mode mode;
     private final DefaultClientChannel channel;
     private final Consumer<? super ByteBuffer> onComplete;
+    private final long timeoutNs;
     
     private final SeriallyRunnable operation;
     private final Handler handler;
-    private final Queue<ByteBuffer> buffers;
+    private final Deque<ByteBuffer> buffers;
     private final AtomicReference<Throwable> state;
     
     private WhenDone whenDone;
@@ -129,17 +145,19 @@ final class AnnounceToChannel
             Mode mode,
             DefaultClientChannel channel,
             Consumer<? super ByteBuffer> onComplete,
-            WhenDone whenDone)
+            WhenDone whenDone,
+            Duration timeout)
     {
         this.mode       = requireNonNull(mode);
         this.channel    = requireNonNull(channel);
         this.onComplete = onComplete != null ? onComplete : ignored -> {};
         this.whenDone   = requireNonNull(whenDone);
+        // with nanos, no further unit conversions in JDK's ScheduledThreadPoolExecutor
+        this.timeoutNs  = mode == Mode.READ ? -1 : timeout.toNanos();
         
         this.operation = new SeriallyRunnable(this::pollAndInitiate, true);
         this.handler   = new Handler();
-        this.buffers   = mode == Mode.READ ?
-                new ConcurrentLinkedQueue<>() : new ConcurrentLinkedDeque<>();
+        this.buffers   = new ConcurrentLinkedDeque<>();
         
         this.byteCount = 0;
         this.state = new AtomicReference<>(RUNNING);
@@ -203,11 +221,14 @@ final class AnnounceToChannel
      * already.<p>
      * 
      * If this method returns {@code true}, then the specified exception is what
-     * will be delivered to the {@code whenDone} callback. In addition, similar
-     * to a Java try-with-resources statement; if an ongoing asynchronous
-     * operation completes exceptionally, the channel-related error will be
-     * added as <i>suppressed</i> but does not stop the original exception from
-     * being propagated.
+     * will be delivered to the {@code whenDone} callback.<p>
+     * 
+     * Similar to a Java try-with-resources statement; if an ongoing
+     * asynchronous operation completes exceptionally and the exception fails to
+     * be marked for delivery to the {@code whenDone} callback, then the error
+     * will be added as <i>suppressed</i> by the given error (or whichever other
+     * error was marked for delivery). The asynchronous failure does not stop
+     * the marked exception from being propagated.
      * 
      * @param t a throwable
      * 
@@ -232,6 +253,32 @@ final class AnnounceToChannel
         return false;
     }
     
+    /**
+     * First call {@link #stop(Throwable)} with the given exception, then
+     * shutdown the stream in use, then return what {@code stop(Throwable)}
+     * returned.<p>
+     * 
+     * An ongoing operation will be aborted with an {@link
+     * AsynchronousCloseException}. If this methods returns {@code true}, then
+     * the close exception will be added as suppressed by the given error.<p>
+     * 
+     * Note: The stream will always shutdown, no matter the boolean return value
+     * from this method.
+     * 
+     * @param t a throwable
+     * 
+     * @return same as {@link #stop(Throwable)}
+     */
+    boolean stopNow(Throwable t) {
+        boolean s = stop(t);
+        if (isStreamOpen()) {
+            LOG.log(DEBUG, () ->
+                "Asked to shutdown channel's " + mode + " stream, will shutdown the stream.");
+            shutdownStream();
+        }
+        return s;
+    }
+    
     private void pollAndInitiate() {
         if (state.get() != RUNNING) {
             buffers.clear();
@@ -245,17 +292,23 @@ final class AnnounceToChannel
         if (b == null) {
             operation.complete();
             return;
-        } else if (b == NO_MORE || !isStreamOpen()) {
+        } else if (b == NO_MORE) {
             stop();
             operation.complete();
             return;
         }
         
+        var ch = channel.getDelegateNoProxy();
         try {
             switch (mode) {
-                case READ:  channel.getDelegateNoProxy().read( b, b, handler); break;
-                case WRITE: channel.getDelegateNoProxy().write(b, b, handler); break;
-                default:    throw new UnsupportedOperationException("What is this?: " + mode);
+                case READ:
+                    ch.read(b, b, handler);
+                    break;
+                case WRITE:
+                    ch.write(b, timeoutNs, NANOSECONDS, b, handler);
+                    break;
+                default:
+                    throw new UnsupportedOperationException("What is this?: " + mode);
             }
         } catch (Throwable t) {
             handler.failed(t, null);
@@ -283,7 +336,7 @@ final class AnnounceToChannel
                 channel.isOpenForWriting();
     }
     
-    private void closeStream() {
+    private void shutdownStream() {
         if (mode == Mode.READ) {
             channel.shutdownInputSafe();
         } else {
@@ -300,8 +353,9 @@ final class AnnounceToChannel
             
             if (r == -1) {
                 assert mode == Mode.READ;
-                LOG.log(DEBUG, "End of stream; other side must have closed. Will close channel's input stream.");
-                closeStream(); // <-- will cause stop() to be called next run
+                LOG.log(DEBUG, "End of stream. Will shut down channel's input stream.");
+                shutdownStream();
+                buffers.addFirst(NO_MORE); // <-- will cause stop() to be called next run
                 buf = EOS;
             } else {
                 try {
@@ -315,8 +369,9 @@ final class AnnounceToChannel
                 buf.flip();
             } else if (buf.hasRemaining()) {
                 assert mode == Mode.WRITE;
-                LOG.log(DEBUG, () -> mode + " operation didn't read all of the buffer, adding back as head of queue.");
-                ((Deque<ByteBuffer>) buffers).addFirst(buf);
+                LOG.log(DEBUG, () -> mode.capitalized() +
+                    " operation didn't read all of the buffer, adding back as head of queue.");
+                buffers.addFirst(buf);
             }
             
             onComplete.accept(buf);
@@ -326,31 +381,47 @@ final class AnnounceToChannel
         
         @Override
         public void failed(Throwable exc, ByteBuffer ignored) {
+            final boolean pushed = stop(exc);
             boolean loggedStack = false;
             
-            if (!stop(exc)) {
+            // If we manage to push the error to someone else, we need not bother
+            if (!pushed) {
                 Throwable t = state.get();
                 if (t == STOPPED) {
-                    // Was "stopped normally", we only log ours - if need be
-                    if (!failedBecauseChannelWasAlreadyClosed(exc)) {
+                    // Service "stopped normally", we only log ours - if need be
+                    if (!becauseChannelOrGroupClosed(exc)) {
                         loggedStack = true;
-                        LOG.log(ERROR, () ->
-                            mode + " operation failed and service already stopped normally; " +
-                            "can not propagate the error anywhere.", exc);
-                    } // else channel was effectively closed AND service stopped already, really not a problem then
+                        LOG.log(ERROR, () -> mode.capitalized() +
+                            " operation failed and service already stopped normally; " +
+                            "can not propagate this error anywhere.", exc);
+                    } // else channel was effectively closed AND service stopped already, nothing to do
                 } else {
                     // Someone else has scheduled a different error to propagate
                     t.addSuppressed(exc);
                 }
             }
             
+            // All errors will shutdown the stream, and we ought to always log WHY stream was shut down
             if (isStreamOpen()) {
                 if (loggedStack) {
-                    LOG.log(ERROR, "Will close connection's used stream.");
+                    // Simply append to what was logged already
+                    LOG.log(DEBUG, "Will shutdown connection's used stream.");
+                } else if (isCausedByBrokenStream(exc)) {
+                    // Log "broken pipe", but no stack dump
+                    LOG.log(DEBUG, () -> mode.capitalized() +
+                        " operation failed (broken pipe), will shutdown stream.");
                 } else {
-                    LOG.log(ERROR, () -> mode + " operation failed and channel's used stream is still open, will close it.", exc);
+                    Supplier<String> msg = () -> mode.capitalized() +
+                        " operation failed and stream is still open, will shut it down.";
+                    if (pushed) {
+                        // Only message
+                        LOG.log(DEBUG, msg);
+                    } else {
+                        // Full stack trace
+                        LOG.log(DEBUG, msg, exc);
+                    }
                 }
-                closeStream();
+                shutdownStream();
             } // else assume reason for closing has been logged already
             
             operation.run();
@@ -358,10 +429,15 @@ final class AnnounceToChannel
         }
     }
     
-    private static boolean failedBecauseChannelWasAlreadyClosed(Throwable t) {
-        // Copy-paste from DefaultServer class (has the descriptions as well)
-        return t instanceof ClosedChannelException || // note: AsynchronousCloseException extends ClosedChannelException
-               t instanceof ShutdownChannelGroupException ||
-               t instanceof IOException && t.getCause() instanceof ShutdownChannelGroupException;
+    private boolean isCausedByBrokenStream(Throwable t) {
+        if (!(t instanceof IOException)) {
+            return false;
+        }
+        IOException io = (IOException) t;
+        switch (mode) {
+            case READ:  return IOExceptions.isCausedByBrokenInputStream(io);
+            case WRITE: return IOExceptions.isCausedByBrokenOutputStream(io);
+            default:    throw new AssertionError("What is this?: " + mode);
+        }
     }
 }
