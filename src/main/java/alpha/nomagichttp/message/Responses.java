@@ -383,17 +383,21 @@ public final class Responses
      */
     private static final class ResponseCache {
         static final Response
-            CONTINUE              = builder(ONE_HUNDRED, ReasonPhrase.CONTINUE).build(),
-            PROCESSING            = builder(ONE_HUNDRED_TWO, ReasonPhrase.PROCESSING).build(),
-            ACCEPTED              = builder(TWO_HUNDRED_TWO, ReasonPhrase.ACCEPTED).header(CONTENT_LENGTH, "0").build(),
-            NO_CONTENT            = builder(TWO_HUNDRED_FOUR, ReasonPhrase.NO_CONTENT).build(),
-            BAD_REQUEST           = respond(FOUR_HUNDRED, ReasonPhrase.BAD_REQUEST),
-            NOT_FOUND             = respond(FOUR_HUNDRED_FOUR, ReasonPhrase.NOT_FOUND),
-            INTERNAL_SERVER_ERROR = respond(FIVE_HUNDRED, ReasonPhrase.INTERNAL_SERVER_ERROR),
-            NOT_IMPLEMENTED       = respond(FIVE_HUNDRED_ONE, ReasonPhrase.NOT_IMPLEMENTED);
+            CONTINUE              = respond(ONE_HUNDRED, ReasonPhrase.CONTINUE, false),
+            PROCESSING            = respond(ONE_HUNDRED_TWO, ReasonPhrase.PROCESSING, false),
+            ACCEPTED              = respond(TWO_HUNDRED_TWO, ReasonPhrase.ACCEPTED, true),
+            NO_CONTENT            = respond(TWO_HUNDRED_FOUR, ReasonPhrase.NO_CONTENT, false),
+            BAD_REQUEST           = respond(FOUR_HUNDRED, ReasonPhrase.BAD_REQUEST, true),
+            NOT_FOUND             = respond(FOUR_HUNDRED_FOUR, ReasonPhrase.NOT_FOUND, true),
+            INTERNAL_SERVER_ERROR = respond(FIVE_HUNDRED, ReasonPhrase.INTERNAL_SERVER_ERROR, true),
+            NOT_IMPLEMENTED       = respond(FIVE_HUNDRED_ONE, ReasonPhrase.NOT_IMPLEMENTED, true);
         
-        private static Response respond(int code, String phrase) {
-            return builder(code, phrase).header(CONTENT_LENGTH, "0").build();
+        private static Response respond(int code, String phrase, boolean addContentLengthZero) {
+            var b = builder(code, phrase);
+            if (addContentLengthZero) {
+                b = b.header(CONTENT_LENGTH, "0");
+            }
+            return b.build();
         }
     }
 }
