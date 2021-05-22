@@ -57,8 +57,9 @@ import static java.util.concurrent.TimeUnit.NANOSECONDS;
  * Please note that the responsibility of this class is to manage a particular
  * type of channel <i>operations</i> (read or write) for as long as the service
  * remains running, not the channel's life cycle itself. In particular note; the
- * only two occasions when this class closes the channel's stream in use is if a
- * channel operation completes exceptionally or end-of-stream is reached.<p>
+ * only two occasions when this class shuts down the channel's stream in use is
+ * if a channel operation completes exceptionally or end-of-stream is
+ * reached.<p>
  * 
  * This class is thread-safe and mostly non-blocking (closing stream may block).
  * 
@@ -273,7 +274,7 @@ final class AnnounceToChannel
         if (isStreamOpen()) {
             LOG.log(DEBUG, () ->
                 "Asked to shutdown channel's " + mode + " stream, will shutdown the stream.");
-            closeStream();
+            shutdownStream();
         }
         return s;
     }
@@ -335,7 +336,7 @@ final class AnnounceToChannel
                 channel.isOpenForWriting();
     }
     
-    private void closeStream() {
+    private void shutdownStream() {
         if (mode == Mode.READ) {
             channel.shutdownInputSafe();
         } else {
@@ -352,8 +353,8 @@ final class AnnounceToChannel
             
             if (r == -1) {
                 assert mode == Mode.READ;
-                LOG.log(DEBUG, "End of stream. Will close channel's input stream.");
-                closeStream();
+                LOG.log(DEBUG, "End of stream. Will shut down channel's input stream.");
+                shutdownStream();
                 buffers.addFirst(NO_MORE); // <-- will cause stop() to be called next run
                 buf = EOS;
             } else {
@@ -400,18 +401,18 @@ final class AnnounceToChannel
                 }
             }
             
-            // All errors will close the stream, and we ought to always log WHY stream was closed
+            // All errors will shutdown the stream, and we ought to always log WHY stream was shut down
             if (isStreamOpen()) {
                 if (loggedStack) {
                     // Simply append to what was logged already
-                    LOG.log(DEBUG, "Will close connection's used stream.");
+                    LOG.log(DEBUG, "Will shutdown connection's used stream.");
                 } else if (isCausedByBrokenStream(exc)) {
                     // Log "broken pipe", but no stack dump
                     LOG.log(DEBUG, () -> mode.capitalized() +
-                        " operation failed (broken pipe), will close stream.");
+                        " operation failed (broken pipe), will shutdown stream.");
                 } else {
                     Supplier<String> msg = () -> mode.capitalized() +
-                        " operation failed and stream is still open, will close it.";
+                        " operation failed and stream is still open, will shut it down.";
                     if (pushed) {
                         // Only message
                         LOG.log(DEBUG, msg);
@@ -420,7 +421,7 @@ final class AnnounceToChannel
                         LOG.log(DEBUG, msg, exc);
                     }
                 }
-                closeStream();
+                shutdownStream();
             } // else assume reason for closing has been logged already
             
             operation.run();
