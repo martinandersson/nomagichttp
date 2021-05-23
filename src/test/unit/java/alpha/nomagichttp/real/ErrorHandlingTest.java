@@ -1,10 +1,11 @@
-package alpha.nomagichttp.internal;
+package alpha.nomagichttp.real;
 
 import alpha.nomagichttp.Config;
 import alpha.nomagichttp.HttpServer;
 import alpha.nomagichttp.handler.ErrorHandler;
 import alpha.nomagichttp.handler.RequestHandler;
 import alpha.nomagichttp.message.Response;
+import alpha.nomagichttp.real.DetailedEndToEndTest;
 import alpha.nomagichttp.route.NoRouteFoundException;
 import alpha.nomagichttp.testutil.Logging;
 import alpha.nomagichttp.testutil.TestClient;

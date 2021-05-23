@@ -39,6 +39,7 @@ final class ChannelByteBufferPublisher implements Flow.Publisher<DefaultPooledBy
     private static final int BUF_COUNT = 5;
     
     /** Size of each pooled bytebuffer (same as jdk.internal.net.http.common.Utils.DEFAULT_BUFSIZE). */
+    // If this value ever changes, also change test case "responseBodyBufferOversized"
     /* package-private */ static final int BUF_SIZE = 16 * 1_024;
     
     /*

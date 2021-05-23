@@ -1,4 +1,4 @@
-package alpha.nomagichttp.internal;
+package alpha.nomagichttp.real;
 
 import alpha.nomagichttp.handler.ErrorHandler;
 import alpha.nomagichttp.handler.RequestHandler;
@@ -90,7 +90,7 @@ class DetailedEndToEndTest extends AbstractEndToEndTest
      * Client immediately closes the channel. Error handler is not called and no
      * other form of error logging occurs.
      * 
-     * {@link RequestHeadSubscriber#asCompletionStage()}. 
+     * {@code RequestHeadSubscriber#asCompletionStage()}. 
      */
     @Test
     void client_closeChannel_serverReceivedNoBytes_ignored()
@@ -577,7 +577,8 @@ class DetailedEndToEndTest extends AbstractEndToEndTest
         
         // TODO: Need improved "HTTP message" API in TestClient
         
-        byte[] rspBody = new byte[ChannelByteBufferPublisher.BUF_SIZE + 1];
+        // Same as ChannelByteBufferPublisher.BUF_SIZE/**/
+        byte[] rspBody = new byte[16 * 1_024 + 1];
         rspBody[rspBody.length - 1] = eom;
         Response r = Responses.ok(ofByteArray(rspBody));
         server().add("/", GET().respond(r));

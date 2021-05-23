@@ -1,6 +1,7 @@
-package alpha.nomagichttp;
+package alpha.nomagichttp.real;
 
-import alpha.nomagichttp.internal.AbstractEndToEndTest;
+import alpha.nomagichttp.HttpServer;
+import alpha.nomagichttp.real.AbstractEndToEndTest;
 import alpha.nomagichttp.message.Responses;
 import alpha.nomagichttp.testutil.TestClient;
 import org.junit.jupiter.api.Test;

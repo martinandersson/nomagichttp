@@ -1,4 +1,4 @@
-package alpha.nomagichttp.internal;
+package alpha.nomagichttp.real;
 
 import alpha.nomagichttp.handler.RequestHandler;
 import alpha.nomagichttp.message.Responses;

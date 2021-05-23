@@ -1,6 +1,6 @@
-package alpha.nomagichttp;
+package alpha.nomagichttp.real;
 
-import alpha.nomagichttp.internal.AbstractEndToEndTest;
+import alpha.nomagichttp.real.AbstractEndToEndTest;
 import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
