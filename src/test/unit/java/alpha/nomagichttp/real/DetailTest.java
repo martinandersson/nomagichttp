@@ -4,7 +4,6 @@ import alpha.nomagichttp.handler.ErrorHandler;
 import alpha.nomagichttp.handler.RequestHandler;
 import alpha.nomagichttp.message.EndOfStreamException;
 import alpha.nomagichttp.message.PooledByteBufferHolder;
-import alpha.nomagichttp.message.Request;
 import alpha.nomagichttp.message.Response;
 import alpha.nomagichttp.message.Responses;
 import alpha.nomagichttp.testutil.IORunnable;
@@ -38,6 +37,9 @@ import static alpha.nomagichttp.message.Responses.noContent;
 import static alpha.nomagichttp.message.Responses.ok;
 import static alpha.nomagichttp.message.Responses.processing;
 import static alpha.nomagichttp.message.Responses.text;
+import static alpha.nomagichttp.real.TestRequests.get;
+import static alpha.nomagichttp.real.TestRequests.post;
+import static alpha.nomagichttp.real.TestRoutes.respondIsBodyEmpty;
 import static alpha.nomagichttp.testutil.Logging.toJUL;
 import static alpha.nomagichttp.testutil.MemorizingSubscriber.Signal.MethodName.ON_COMPLETE;
 import static alpha.nomagichttp.testutil.MemorizingSubscriber.Signal.MethodName.ON_ERROR;
@@ -80,19 +82,6 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  */
 class DetailTest extends AbstractRealTest
 {
-    @Test
-    void empty_request_body() throws IOException {
-        addEndpointIsBodyEmpty();
-        
-        String res = client().writeRead(requestWithBody(""), "true");
-        
-        assertThat(res).isEqualTo(
-            "HTTP/1.1 200 OK"                         + CRLF +
-            "Content-Type: text/plain; charset=utf-8" + CRLF +
-            "Content-Length: 4"                       + CRLF + CRLF +
-            
-            "true");
-    }
     
     /**
      * Client immediately closes the channel. Error handler is not called and no
@@ -163,20 +152,20 @@ class DetailTest extends AbstractRealTest
         
         Channel ch = client().openConnection();
         try (ch) {
-            String res1 = client().writeRead(requestWithBody("ABC"), "ABC");
+            String res1 = client().writeRead(post("ABC"), "ABC");
             assertThat(res1).isEqualTo(resHead + "ABC");
             
-            String res2 = client().writeRead(requestWithBody("DEF"), "DEF");
+            String res2 = client().writeRead(post("DEF"), "DEF");
             assertThat(res2).isEqualTo(resHead + "DEF");
         }
     }
     
     @Test
     void request_body_discard_all() throws IOException {
-        addEndpointIsBodyEmpty();
+        server().add(respondIsBodyEmpty());
         
         IORunnable exchange = () -> {
-            String req = requestWithBody("x".repeat(10)),
+            String req = post("x".repeat(10)),
                    res = client().writeRead(req, "false");
             
             assertThat(res).isEqualTo(
@@ -212,7 +201,7 @@ class DetailTest extends AbstractRealTest
         server().add("/", discardMidway);
         
         IORunnable exchange = () -> {
-            String req = requestWithBody("x".repeat(length)),
+            String req = post("x".repeat(length)),
                    res = client().writeRead(req);
             
             assertThat(res).isEqualTo(
@@ -318,8 +307,8 @@ class DetailTest extends AbstractRealTest
         
         String req;
         switch (method) {
-            case "GET":  req = requestWithoutBody(); break;
-            case "POST": req = requestWithBody("not empty"); break;
+            case "GET":  req = get(); break;
+            case "POST": req = post("not empty"); break;
             default: throw new AssertionError();
         }
         
@@ -351,7 +340,7 @@ class DetailTest extends AbstractRealTest
             req.body().subscribe(sub);
         }));
         
-        String rsp = client().writeRead(requestWithBody("not empty"));
+        String rsp = client().writeRead(post("not empty"));
         
         assertThat(rsp).isEqualTo(
                 "HTTP/1.1 500 Internal Server Error" + CRLF +
@@ -385,7 +374,7 @@ class DetailTest extends AbstractRealTest
             req.body().subscribe(sub);
         }));
         
-        String rsp = client().writeRead(requestWithBody("not empty"));
+        String rsp = client().writeRead(post("not empty"));
         
         assertThat(rsp).isEqualTo(
             "HTTP/1.1 500 Internal Server Error" + CRLF +
@@ -433,8 +422,8 @@ class DetailTest extends AbstractRealTest
         
         String req;
         switch (method) {
-            case "GET":  req = requestWithoutBody(); break;
-            case "POST": req = requestWithBody("1"); break; // Small body to ensure we stay within one ByteBuff
+            case "GET":  req = get(); break;
+            case "POST": req = post("1"); break; // Small body to make sure we stay within one ByteBuff
             default: throw new AssertionError();
         }
         
@@ -461,7 +450,7 @@ class DetailTest extends AbstractRealTest
         server().add("/", GET().respond(badRequest()));
         
         IORunnable sendBadRequest = () -> {
-            String rsp = client().writeRead(requestWithoutBody());
+            String rsp = client().writeRead(get());
             assertThat(rsp).startsWith("HTTP/1.1 400 Bad Request");
         };
         
@@ -485,7 +474,7 @@ class DetailTest extends AbstractRealTest
                            .removeHeader(CONTENT_LENGTH)
                            .build()));
         
-        String rsp = client().writeRead(requestWithoutBody(), "Hi");
+        String rsp = client().writeRead(get(), "Hi");
         assertThat(rsp).isEqualTo(
             "HTTP/1.1 200 OK"                         + CRLF +
             "Content-Type: text/plain; charset=utf-8" + CRLF +
@@ -501,7 +490,7 @@ class DetailTest extends AbstractRealTest
         var empty = Publishers.just(ByteBuffer.allocate(0));
         server().add("/", GET().respond(ok(empty, "application/octet-stream", -1)));
         
-        String rsp = client().writeRead(requestWithoutBody(), "Hi");
+        String rsp = client().writeRead(get(), "Hi");
         assertThat(rsp).isEqualTo(
             "HTTP/1.1 200 OK"                         + CRLF +
             "Content-Type: application/octet-stream"  + CRLF +
@@ -523,7 +512,7 @@ class DetailTest extends AbstractRealTest
             first.complete(processing().toBuilder().header("ID", "1").build());
         }));
         
-        String rsp = client().writeRead(requestWithoutBody(), "done");
+        String rsp = client().writeRead(get(), "done");
         assertThat(rsp).isEqualTo(
             "HTTP/1.1 102 Processing"                 + CRLF +
             "ID: 1"                                   + CRLF + CRLF +
@@ -626,49 +615,12 @@ class DetailTest extends AbstractRealTest
     }
     
     /**
-     * Add a "/" endpoint which responds a body with the value of {@link
-     * Request.Body#isEmpty()}
-     */
-    private void addEndpointIsBodyEmpty() {
-        server().add("/", POST().apply(req ->
-                text(String.valueOf(req.body().isEmpty())).completedStage()));
-    }
-    
-    /**
      * Add a "/" endpoint which responds a body with the text-contents of the
      * request body.
      */
     private void addEndpointEchoBody() {
         server().add("/", POST().apply(req ->
                 req.body().toText().thenApply(Responses::text)));
-    }
-    
-    /**
-     * Make a "GET / HTTP/1.1" request.
-     * 
-     * @return the request
-     */
-    private static String requestWithoutBody() {
-        return "GET / HTTP/1.1"                           + CRLF +
-                "Accept: text/plain; charset=utf-8"       + CRLF +
-                "Content-Type: text/plain; charset=utf-8" + CRLF +
-                "Content-Length: " + 0                    + CRLF + CRLF;
-    }
-    
-    /**
-     * Make a HTTP/1.1 POST request with a body and request target "/".
-     * 
-     * @param body of request
-     * 
-     * @return the request
-     */
-    private static String requestWithBody(String body) {
-        return "POST / HTTP/1.1"                         + CRLF +
-               "Accept: text/plain; charset=utf-8"       + CRLF +
-               "Content-Type: text/plain; charset=utf-8" + CRLF +
-               "Content-Length: " + body.length()        + CRLF + CRLF +
-               
-               body;
     }
     
     private static class AfterByteTargetStop implements Flow.Subscriber<PooledByteBufferHolder>
