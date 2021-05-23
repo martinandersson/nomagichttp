@@ -48,8 +48,8 @@ import static org.assertj.core.api.Assertions.assertThat;
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  */
-// TODO: Rename to ErrorTest and extend AbstractRealTest
-class ErrorHandlingTest
+// TODO: Extend AbstractRealTest
+class ErrorTest
 {
     HttpServer s;
     

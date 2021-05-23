@@ -222,7 +222,7 @@ class DetailTest extends AbstractRealTest
     /**
      * Can make a HTTP/1.0 request (and get HTTP/1.0 response).<p>
      * 
-     * See {@link ErrorHandlingTest} for cases related to unsupported versions.
+     * See {@link ErrorTest} for cases related to unsupported versions.
      */
     @Test
     void http_1_0() throws IOException {
@@ -530,7 +530,7 @@ class DetailTest extends AbstractRealTest
             "done");
     }
     
-    // TODO: This needs to go to ErrorHandlingTest; after test refactoring
+    // TODO: This needs to go to ErrorTest; after test refactoring
     @Test
     void afterHttpExchange_responseIsLoggedButIgnored() throws IOException, InterruptedException {
         server().add("/", GET().accept((req, ch) -> {
@@ -549,7 +549,7 @@ class DetailTest extends AbstractRealTest
         // Superclass asserts no error sent to error handler
     }
     
-    // TODO: This needs to go to ErrorHandlingTest; after test refactoring
+    // TODO: This needs to go to ErrorTest; after test refactoring
     @Test
     void afterHttpExchange_responseExceptionIsLoggedButIgnored() throws IOException, InterruptedException {
         server().add("/", GET().accept((req, ch) -> {
