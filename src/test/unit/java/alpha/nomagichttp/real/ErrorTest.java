@@ -172,8 +172,6 @@ class ErrorTest
     /**
      * Server may be configured to reject HTTP/1.0 clients.
      * 
-     * See {@link DetailTest#http_1_0()} for the inverse test case. 
-     * 
      * @throws IOException if an I/O error occurs
      */
     @Test
