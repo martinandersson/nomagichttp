@@ -368,13 +368,12 @@ class ErrorHandlingTest
                 .add("/", GET().accept((req, ch) ->
                     ch.write(ok(blockSubscriber()))))
                 .start();
-        
-        String rsp = new TestClient(s).writeRead(
+    
+        // Response may be empty, may be 503 (Service Unavailable).
+        // What this test currently is that the client get's a response or connection closes.
+        // (otherwise our client would have timed out on this side)
+        String responseIgnored = new TestClient(s).writeRead(
                 "GET / HTTP/1.1" + CRLF + CRLF);
-        
-        // Thread setting up the response chain is completely blocked and makes no progress.
-        // What this test assert is that the connection was closed.
-        assertThat(rsp).isEmpty();
         
         // TODO: Need to figure out how to release the permit on timeout and then assert log
     }
