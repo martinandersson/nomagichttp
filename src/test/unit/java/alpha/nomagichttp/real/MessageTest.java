@@ -1,10 +1,12 @@
 package alpha.nomagichttp.real;
 
+import alpha.nomagichttp.message.Responses;
 import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
 
 import static alpha.nomagichttp.handler.RequestHandler.GET;
+import static alpha.nomagichttp.handler.RequestHandler.POST;
 import static alpha.nomagichttp.message.Responses.text;
 import static alpha.nomagichttp.real.TestRequests.post;
 import static alpha.nomagichttp.real.TestRoutes.respondIsBodyEmpty;
@@ -59,5 +61,31 @@ class MessageTest extends AbstractRealTest
             "Connection: close"                       + CRLF + CRLF +
             
             "Received HTTP/1.0");
+    }
+    
+    // TODO: Some sucky clients will likely not be able to receive multiple responses,
+    //       just ignore them.
+    @Test
+    void expect100Continue_onFirstBodyAccess() throws IOException {
+        server().add("/", POST().apply(req ->
+            req.body().toText().thenApply(Responses::text)));
+        
+        String req = "POST / HTTP/1.1"          + CRLF +
+            "Expect: 100-continue"     + CRLF +
+            "Content-Length: 2"        + CRLF +
+            "Content-Type: text/plain" + CRLF + CRLF +
+            
+            "Hi";
+        
+        String rsp = client().writeRead(req, "Hi");
+        
+        assertThat(rsp).isEqualTo(
+            "HTTP/1.1 100 Continue"                   + CRLF + CRLF +
+            
+            "HTTP/1.1 200 OK"                         + CRLF +
+            "Content-Type: text/plain; charset=utf-8" + CRLF +
+            "Content-Length: 2"                       + CRLF + CRLF +
+            
+            "Hi");
     }
 }
