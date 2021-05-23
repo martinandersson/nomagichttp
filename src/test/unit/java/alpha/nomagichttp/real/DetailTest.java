@@ -1,8 +1,6 @@
 package alpha.nomagichttp.real;
 
-import alpha.nomagichttp.handler.ErrorHandler;
 import alpha.nomagichttp.handler.RequestHandler;
-import alpha.nomagichttp.message.EndOfStreamException;
 import alpha.nomagichttp.message.PooledByteBufferHolder;
 import alpha.nomagichttp.message.Response;
 import alpha.nomagichttp.message.Responses;
@@ -20,9 +18,7 @@ import java.nio.ByteBuffer;
 import java.nio.channels.Channel;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Flow;
-import java.util.concurrent.TimeoutException;
 import java.util.function.Consumer;
 import java.util.logging.LogRecord;
 
@@ -40,6 +36,7 @@ import static alpha.nomagichttp.message.Responses.text;
 import static alpha.nomagichttp.real.TestRequests.get;
 import static alpha.nomagichttp.real.TestRequests.post;
 import static alpha.nomagichttp.real.TestRoutes.respondIsBodyEmpty;
+import static alpha.nomagichttp.real.TestRoutes.respondRequestBody;
 import static alpha.nomagichttp.testutil.Logging.toJUL;
 import static alpha.nomagichttp.testutil.MemorizingSubscriber.Signal.MethodName.ON_COMPLETE;
 import static alpha.nomagichttp.testutil.MemorizingSubscriber.Signal.MethodName.ON_ERROR;
@@ -57,8 +54,6 @@ import static java.lang.System.Logger.Level.WARNING;
 import static java.nio.charset.StandardCharsets.US_ASCII;
 import static java.util.List.of;
 import static java.util.concurrent.CompletableFuture.failedStage;
-import static java.util.concurrent.TimeUnit.SECONDS;
-import static java.util.logging.Level.INFO;
 import static java.util.stream.Collectors.toList;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.tuple;
@@ -84,7 +79,7 @@ class DetailTest extends AbstractRealTest
 {
     @Test
     void connection_reuse() throws IOException {
-        addEndpointEchoBody();
+        server().add(respondRequestBody());
         
         final String resHead =
             "HTTP/1.1 200 OK"                         + CRLF +
@@ -367,8 +362,8 @@ class DetailTest extends AbstractRealTest
     void response_unknownLength_bodyNonEmpty() throws IOException, InterruptedException {
         server().add("/", GET().respond(
                 text("Hi").toBuilder()
-                           .removeHeader(CONTENT_LENGTH)
-                           .build()));
+                          .removeHeader(CONTENT_LENGTH)
+                          .build()));
         
         String rsp = client().writeRead(get(), "Hi");
         assertThat(rsp).isEqualTo(
@@ -508,15 +503,6 @@ class DetailTest extends AbstractRealTest
                 .isSameAs(OOPS)
                 .hasNoCause()
                 .hasNoSuppressedExceptions();
-    }
-    
-    /**
-     * Add a "/" endpoint which responds a body with the text-contents of the
-     * request body.
-     */
-    private void addEndpointEchoBody() {
-        server().add("/", POST().apply(req ->
-                req.body().toText().thenApply(Responses::text)));
     }
     
     private static class AfterByteTargetStop implements Flow.Subscriber<PooledByteBufferHolder>
