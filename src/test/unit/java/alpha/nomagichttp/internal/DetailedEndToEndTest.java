@@ -60,6 +60,7 @@ import static java.util.logging.Level.INFO;
 import static java.util.stream.Collectors.toList;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.tuple;
+import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
@@ -325,9 +326,8 @@ class DetailedEndToEndTest extends AbstractEndToEndTest
         
         var s = sub.signals();
         assertThat(s).hasSize(2);
-        
-        assertTrue(s.get(0).getMethodName() == ON_SUBSCRIBE &&
-                   s.get(1).getMethodName() == ON_ERROR);
+        assertSame(s.get(0).getMethodName(), ON_SUBSCRIBE);
+        assertSame(s.get(1).getMethodName(), ON_ERROR);
         
         assertOnErrorThrowable(s.get(1), "Signalling Flow.Subscriber.onSubscribe() failed.");
         assertThatErrorHandlerCaughtOops();
@@ -358,9 +358,9 @@ class DetailedEndToEndTest extends AbstractEndToEndTest
         var s = sub.signals();
         assertThat(s).hasSize(3);
         
-        assertTrue(s.get(0).getMethodName() == ON_SUBSCRIBE &&
-                   s.get(1).getMethodName() == ON_NEXT &&
-                   s.get(2).getMethodName() == ON_ERROR);
+        assertSame(s.get(0).getMethodName(), ON_SUBSCRIBE);
+        assertSame(s.get(1).getMethodName(), ON_NEXT);
+        assertSame(s.get(2).getMethodName(), ON_ERROR);
         
         assertOnErrorThrowable(s.get(2), "Signalling Flow.Subscriber.onNext() failed.");
         assertThatErrorHandlerCaughtOops();
@@ -403,9 +403,9 @@ class DetailedEndToEndTest extends AbstractEndToEndTest
         var s = sub.signals();
         assertThat(s).hasSize(3);
         
-        assertTrue(s.get(0).getMethodName() == ON_SUBSCRIBE &&
-                   s.get(1).getMethodName() == ON_NEXT &&
-                   s.get(2).getMethodName() == ON_ERROR);
+        assertSame(s.get(0).getMethodName(), ON_SUBSCRIBE);
+        assertSame(s.get(1).getMethodName(), ON_NEXT);
+        assertSame(s.get(2).getMethodName(), ON_ERROR);
         
         assertOnErrorThrowable(s.get(2), "Signalling Flow.Subscriber.onNext() failed.");
         assertThatErrorHandlerCaughtOops();
