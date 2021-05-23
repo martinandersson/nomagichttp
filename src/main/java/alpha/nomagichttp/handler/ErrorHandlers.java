@@ -1,6 +1,6 @@
 package alpha.nomagichttp.handler;
 
-import alpha.nomagichttp.HttpServer;
+import alpha.nomagichttp.Config;
 import alpha.nomagichttp.message.Request;
 
 import java.util.concurrent.ThreadLocalRandom;
@@ -63,7 +63,7 @@ public final class ErrorHandlers {
      * 
      * @param onError which error triggers the retry
      * @param maxRetries maximum number of retries of a failed request
-     *     (capped by {@link HttpServer.Config#maxErrorRecoveryAttempts()})
+     *     (capped by {@link Config#maxErrorRecoveryAttempts()})
      * @param delayBase in milliseconds
      * @param jitterBound in milliseconds (inclusive)
      * 

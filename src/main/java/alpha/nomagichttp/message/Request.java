@@ -1,5 +1,6 @@
 package alpha.nomagichttp.message;
 
+import alpha.nomagichttp.Config;
 import alpha.nomagichttp.HttpConstants;
 import alpha.nomagichttp.HttpServer;
 import alpha.nomagichttp.handler.ClientChannel;
@@ -576,8 +577,8 @@ public interface Request extends HeaderHolder, AttributeHolder
      * this. Either register a request body subscriber but delay requesting
      * items, or delay completing the server's response body subscription. Both
      * approaches are still subject to {@link
-     * HttpServer.Config#timeoutIdleConnection()}. There is currently no API
-     * support to temporarily suspend timeouts.
+     * Config#timeoutIdleConnection()}. There is currently no API support to
+     * temporarily suspend timeouts.
      * 
      * <h3>Exception Handling</h3>
      * 

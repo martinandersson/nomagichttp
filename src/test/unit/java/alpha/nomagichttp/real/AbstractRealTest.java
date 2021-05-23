@@ -1,4 +1,4 @@
-package alpha.nomagichttp.internal;
+package alpha.nomagichttp.real;
 
 import alpha.nomagichttp.HttpServer;
 import alpha.nomagichttp.handler.ErrorHandler;
@@ -44,11 +44,10 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  * 
- * @see SimpleEndToEndTest
- * @see DetailedEndToEndTest
+ * @see ExampleTest
+ * @see DetailTest
  */
-// TODO: Move to alpha.nomagichttp package
-public abstract class AbstractEndToEndTest
+abstract class AbstractRealTest
 {
     final Logger LOG =  Logger.getLogger(getClass().getPackageName());
     

@@ -1,6 +1,5 @@
-package alpha.nomagichttp;
+package alpha.nomagichttp.real;
 
-import alpha.nomagichttp.internal.AbstractEndToEndTest;
 import alpha.nomagichttp.message.Responses;
 import alpha.nomagichttp.testutil.TestClient;
 import org.junit.jupiter.api.Test;
@@ -17,11 +16,11 @@ import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
 import static org.assertj.core.api.AssertionsForClassTypes.assertThatThrownBy;
 
 /**
- * Small tests of the {@link HttpServer}'s life-cycle.
+ * Server life-cycle tests.
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  */
-class HttpServerLifeCycleTest extends AbstractEndToEndTest
+class ServerLifeCycleTest extends AbstractRealTest
 {
     @Test
     void serverStop_serverCompletesActiveExchange() throws IOException, InterruptedException {

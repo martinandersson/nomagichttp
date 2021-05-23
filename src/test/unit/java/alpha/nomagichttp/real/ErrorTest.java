@@ -1,10 +1,10 @@
-package alpha.nomagichttp.internal;
+package alpha.nomagichttp.real;
 
+import alpha.nomagichttp.Config;
 import alpha.nomagichttp.HttpServer;
 import alpha.nomagichttp.handler.ErrorHandler;
 import alpha.nomagichttp.handler.RequestHandler;
 import alpha.nomagichttp.message.Response;
-import alpha.nomagichttp.message.Responses;
 import alpha.nomagichttp.route.NoRouteFoundException;
 import alpha.nomagichttp.testutil.Logging;
 import alpha.nomagichttp.testutil.TestClient;
@@ -13,9 +13,6 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
-import java.nio.ByteBuffer;
-import java.nio.channels.Channel;
-import java.time.Duration;
 import java.util.List;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
@@ -23,20 +20,22 @@ import java.util.concurrent.CompletionStage;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Supplier;
 
+import static alpha.nomagichttp.Config.configuration;
 import static alpha.nomagichttp.HttpServer.create;
 import static alpha.nomagichttp.handler.RequestHandler.GET;
 import static alpha.nomagichttp.handler.RequestHandler.HEAD;
 import static alpha.nomagichttp.handler.RequestHandler.POST;
 import static alpha.nomagichttp.handler.RequestHandler.TRACE;
 import static alpha.nomagichttp.message.Responses.noContent;
+import static alpha.nomagichttp.message.Responses.ok;
 import static alpha.nomagichttp.message.Responses.processing;
 import static alpha.nomagichttp.message.Responses.text;
 import static alpha.nomagichttp.testutil.TestClient.CRLF;
+import static alpha.nomagichttp.testutil.TestConfig.timeoutIdleConnection;
 import static alpha.nomagichttp.testutil.TestPublishers.blockSubscriber;
 import static alpha.nomagichttp.testutil.TestSubscribers.onError;
 import static alpha.nomagichttp.util.BetterBodyPublishers.concat;
 import static alpha.nomagichttp.util.BetterBodyPublishers.ofString;
-import static alpha.nomagichttp.util.Publishers.just;
 import static java.lang.System.Logger.Level.ALL;
 import static java.time.Duration.ofMillis;
 import static java.util.concurrent.CompletableFuture.failedFuture;
@@ -45,12 +44,15 @@ import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * End-to-end tests of a server with error handlers.
+ * Tests concerning server errors.<p>
+ * 
+ * In particular, tests here install custom error handlers and/or runs asserts
+ * on errors delivered to the error handler.
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  */
-// Rename to ErrorEndToEndTest and extend AbstractEndToEndTest
-class ErrorHandlingTest
+// TODO: Extend AbstractRealTest
+class ErrorTest
 {
     HttpServer s;
     
@@ -170,19 +172,12 @@ class ErrorHandlingTest
     /**
      * Server may be configured to reject HTTP/1.0 clients.
      * 
-     * See {@link DetailedEndToEndTest#http_1_0()} for the inverse test case. 
-     * 
      * @throws IOException if an I/O error occurs
      */
     @Test
     void httpVersionRejected_tooOld_thruConfig() throws IOException {
-        HttpServer.Config rejectHttp1_0 = new HttpServer.Config(){
-            @Override public boolean rejectClientsUsingHTTP1_0() {
-                return true;
-            }
-        };
-        
-        s = create(rejectHttp1_0).start();;
+        var cfg = configuration().rejectClientsUsingHTTP1_0(true).build();
+        s = create(cfg).start();
         String r = new TestClient(s).writeRead(
             "GET /not-found HTTP/1.0" + CRLF + CRLF);
         
@@ -209,7 +204,7 @@ class ErrorHandlingTest
         }
     }
     
-    // TODO: When this class extends AbstractEndToEndTest, assert default handler caught
+    // TODO: When this class extends AbstractRealTest, assert default handler caught
     //       IllegalBodyException: Body in response to a HEAD request.
     @Test
     void IllegalBodyException_inResponseToHEAD() throws IOException {
@@ -286,13 +281,7 @@ class ErrorHandlingTest
     void RequestHeadTimeoutException() throws IOException {
         // Return uber low timeout on the first poll, i.e. for the request head,
         // but use default timeout for request body and response.
-        HttpServer.Config lowHeadTimeout = new HttpServer.Config() {
-            final AtomicInteger pollCnt = new AtomicInteger(0);
-            @Override public Duration timeoutIdleConnection() {
-                return pollCnt.incrementAndGet() == 1 ? ofMillis(0) : HttpServer.Config.super.timeoutIdleConnection();
-            }
-        };
-        
+        Config lowHeadTimeout = timeoutIdleConnection(1, ofMillis(0));
         s = create(lowHeadTimeout).start();
         
         String res = new TestClient(s)
@@ -304,26 +293,19 @@ class ErrorHandlingTest
             "Content-Length: 0"            + CRLF +
             "Connection: close"            + CRLF + CRLF);
         
-        // TODO: When we extend AbstractEndToEndTest
+        // TODO: When we extend AbstractRealTest
         //         1) poll and assert RequestHeadTimeoutException
         //         2) assert log
     }
     
     @Test
     void RequestBodyTimeoutException_caughtByServer() throws IOException, InterruptedException {
-        HttpServer.Config lowBodyTimeout = new HttpServer.Config() {
-            final AtomicInteger pollCnt = new AtomicInteger(0);
-            @Override public Duration timeoutIdleConnection() {
-                return pollCnt.incrementAndGet() == 2 ? ofMillis(0) : HttpServer.Config.super.timeoutIdleConnection();
-            }
-        };
-        
         final BlockingQueue<Throwable> appErr = new ArrayBlockingQueue<>(1);
-        s = create(lowBodyTimeout)
+        s = create(timeoutIdleConnection(2, ofMillis(0)))
                 // The async timeout, even though instant in this case, does
                 // not abort the eminent request handler invocation.
                 .add("/", POST().accept((req, ch) -> {
-                    // TODO: When extending AbstractEndToEndTest,
+                    // TODO: When extending AbstractRealTest,
                     //       poll and await RequestBodyTimeoutException instead of this
                     try {
                         // This suffer from the same "blocked thread" problem
@@ -354,7 +336,7 @@ class ErrorHandlingTest
                 .isExactlyInstanceOf(IllegalStateException.class)
                 .hasMessage("Publisher was already subscribed to and is not reusable.");
         
-        // TODO: When we extend AbstractEndToEndTest, assert log
+        // TODO: When we extend AbstractRealTest, assert log
     }
     
     // RequestBodyTimeoutException_caughtByApp() ??
@@ -365,13 +347,9 @@ class ErrorHandlingTest
     
     @Test
     void ResponseTimeoutException_fromPipeline() throws IOException {
-        HttpServer.Config lowBodyTimeout = new HttpServer.Config() {
-            final AtomicInteger pollCnt = new AtomicInteger(0);
-            @Override public Duration timeoutIdleConnection() {
-                return pollCnt.incrementAndGet() == 3 ? ofMillis(0) : HttpServer.Config.super.timeoutIdleConnection();
-            }
-        };
-        s = create(lowBodyTimeout).add("/", GET().accept((ign,ored) -> {})).start();
+        s = create(timeoutIdleConnection(3, ofMillis(0)))
+                .add("/", GET().accept((ign,ored) -> {}))
+                .start();
         
         String res = new TestClient(s).writeRead(
             "GET / HTTP/1.1"                   + CRLF + CRLF);
@@ -380,30 +358,23 @@ class ErrorHandlingTest
             "Content-Length: 0"                + CRLF +
             "Connection: close"                + CRLF + CRLF);
         
-        // TODO: When we extend AbstractEndToEndTest
+        // TODO: When we extend AbstractRealTest
         //         1) poll and assert ResponseTimeoutException: "Gave up waiting on a response."
         //         2) assert log
     }
     
     @Test
     void ResponseTimeoutException_fromResponseBody_immediately() throws IOException {
-        HttpServer.Config lowBodyTimeout = new HttpServer.Config() {
-            final AtomicInteger pollCnt = new AtomicInteger(0);
-            @Override public Duration timeoutIdleConnection() {
-                return pollCnt.incrementAndGet() == 4 ? ofMillis(0) : HttpServer.Config.super.timeoutIdleConnection();
-            }
-        };
-        
-        s = create(lowBodyTimeout).add("/", GET().accept((req, ch) -> {
-            ch.write(Responses.ok(blockSubscriber()));
-        })).start();
-        
-        String rsp = new TestClient(s).writeRead(
+        s = create(timeoutIdleConnection(4, ofMillis(0)))
+                .add("/", GET().accept((req, ch) ->
+                    ch.write(ok(blockSubscriber()))))
+                .start();
+    
+        // Response may be empty, may be 503 (Service Unavailable).
+        // What this test currently is that the client get's a response or connection closes.
+        // (otherwise our client would have timed out on this side)
+        String responseIgnored = new TestClient(s).writeRead(
                 "GET / HTTP/1.1" + CRLF + CRLF);
-        
-        // Thread setting up the response chain is completely blocked and makes no progress.
-        // What this test assert is that the connection was closed.
-        assertThat(rsp).isEmpty();
         
         // TODO: Need to figure out how to release the permit on timeout and then assert log
     }
@@ -413,16 +384,10 @@ class ErrorHandlingTest
     
     @Test
     void ResponseTimeoutException_fromResponseBody_afterOneChar() throws IOException {
-        HttpServer.Config lowBodyTimeout = new HttpServer.Config() {
-            final AtomicInteger pollCnt = new AtomicInteger(0);
-            @Override public Duration timeoutIdleConnection() {
-                return pollCnt.incrementAndGet() == 4 ? ofMillis(1) : HttpServer.Config.super.timeoutIdleConnection();
-            }
-        };
-        
-        s = create(lowBodyTimeout).add("/", GET().accept((req, ch) -> {
-            ch.write(Responses.ok(concat(ofString("X"), blockSubscriber())));
-        })).start();
+        s = create(timeoutIdleConnection(4, ofMillis(0)))
+                .add("/", GET().accept((req, ch) ->
+                    ch.write(ok(concat(ofString("X"), blockSubscriber())))))
+                .start();
         
         String responseIgnored = new TestClient(s).writeRead(
                 "GET / HTTP/1.1" + CRLF + CRLF, "until server close plz");
@@ -435,15 +400,10 @@ class ErrorHandlingTest
     
     @Test
     void request_too_large() throws IOException {
-        HttpServer.Config tinyHead = new HttpServer.Config() {
-            @Override public int maxRequestHeadSize() {
-                return 1;
-            }
-        };
-        
-        s = create(tinyHead).add("/", GET().accept((req, ch) -> {
-            throw new AssertionError();
-        })).start();
+        s = create(configuration().maxRequestHeadSize(1).build())
+                .add("/", GET().accept((req, ch) -> {
+                    throw new AssertionError(); }))
+                .start();
     
         String rsp = new TestClient(s).writeRead("AB");
         assertThat(rsp).isEqualTo(

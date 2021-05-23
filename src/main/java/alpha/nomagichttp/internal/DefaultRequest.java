@@ -1,7 +1,7 @@
 package alpha.nomagichttp.internal;
 
+import alpha.nomagichttp.Config;
 import alpha.nomagichttp.HttpConstants.Version;
-import alpha.nomagichttp.HttpServer;
 import alpha.nomagichttp.message.MediaType;
 import alpha.nomagichttp.message.PooledByteBufferHolder;
 import alpha.nomagichttp.message.Request;
@@ -67,7 +67,7 @@ final class DefaultRequest implements Request
      * @param paramsPath params from path
      * @param bodySource body bytes
      * @param child client channel
-     * @param timeout see {@link HttpServer.Config#timeoutIdleConnection()}
+     * @param timeout see {@link Config#timeoutIdleConnection()}
      * @param afterNonEmptyBodySubscription if {@code null}, no callback
      * 
      * @throws NullPointerException if a required argument is {@code null}
@@ -105,7 +105,7 @@ final class DefaultRequest implements Request
      * @param head request head
      * @param bodySource body bytes
      * @param child client channel
-     * @param timeout see {@link HttpServer.Config#timeoutIdleConnection()}
+     * @param timeout see {@link Config#timeoutIdleConnection()}
      * @param beforeNonEmptyBodySubscription if {@code null}, no callback
      * @param afterNonEmptyBodySubscription if {@code null}, no callback
      * 

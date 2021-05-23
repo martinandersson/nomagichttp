@@ -28,7 +28,7 @@ An item ~~crossed out~~ is complete, an item in __bold__ is work in progress.
 [Stage: Project Enhancements](#stage-project-enhancements)  
 [~~Stage: HTTP Constants~~](#stage-http-constants)  
 [~~Stage: HTTP Versioning~~](#stage-http-versioning)  
-[Stage: Improved Testing](#stage-improved-testing)  
+[**Stage: Improved Testing**](#stage-improved-testing)  
 [Stage: Improved Content Negotiation](#stage-improved-content-negotiation)  
 [~~Stage: Pseudo-Mutable Types~~](#stage-pseudo-mutable-types)  
 [~~Stage: Multiple Responses~~](#stage-multiple-responses)  
@@ -116,7 +116,9 @@ The server must be in full control of which HTTP version is in use and
 Supported) "for any reason, to refuse service of the client's major protocol
 version" (RFC 7230 §2.6).~~
 
-## Stage: Improved Testing
+## **Stage: Improved Testing**
+
+_Status: **In Progress**_
 
 - Each end-to-end test should run over many combinations of different clients
   and HTTP versions.
@@ -510,7 +512,7 @@ _Auto-compression_ will also be implemented as a post action. This action
 executes before the actual compression action. The auto-compress action will
 simply automate the selection and invocation of a tryCompressXXX() method.
 
-- Add `HttpServer.Config.autoCompress()`.  
+- Add `Config.autoCompress()`.  
   The value is a codec config to apply; feature disabled if `null`.  
 
 The auto-compressor will only have an effect if all of the following conditions
@@ -850,9 +852,9 @@ the timeout configuration can be quite lenient and forgiving.~~
   body. Could be very useful, but then, the pre action would need API to
   re-write an immutable request, and a method to signal to the server that he
   should ignore the response body! So, perhaps complicated to implement.  
-  The alternative is to add `HttpServer.Config.autoHead()` with all that
-  behavior baked in. Alas this config would be global and application would not
-  be able to scope it to a particular resource namespace.
+  The alternative is to add `Config.autoHead()` with all that behavior baked in.
+  Alas this config would be global and application would not be able to scope it
+  to a particular resource namespace.
 - Research
   - Controlled request queues to enable fair use.
 - Improved security

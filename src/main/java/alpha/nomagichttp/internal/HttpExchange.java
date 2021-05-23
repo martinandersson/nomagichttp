@@ -1,7 +1,7 @@
 package alpha.nomagichttp.internal;
 
+import alpha.nomagichttp.Config;
 import alpha.nomagichttp.HttpConstants.Version;
-import alpha.nomagichttp.HttpServer;
 import alpha.nomagichttp.handler.ErrorHandler;
 import alpha.nomagichttp.handler.RequestHandler;
 import alpha.nomagichttp.message.HttpVersionTooNewException;
@@ -59,7 +59,7 @@ final class HttpExchange
 {
     private static final System.Logger LOG = System.getLogger(HttpExchange.class.getPackageName());
     
-    private final HttpServer.Config config;
+    private final Config config;
     private final RouteRegistry registry;
     private final Collection<ErrorHandler> handlers;
     private final ChannelByteBufferPublisher bytes;
@@ -86,7 +86,7 @@ final class HttpExchange
     private ErrorResolver errRes;
     
     HttpExchange(
-            HttpServer.Config config,
+            Config config,
             RouteRegistry registry,
             Collection<ErrorHandler> handlers,
             ChannelByteBufferPublisher bytes,

@@ -1,6 +1,6 @@
 package alpha.nomagichttp.handler;
 
-import alpha.nomagichttp.HttpServer;
+import alpha.nomagichttp.Config;
 import alpha.nomagichttp.message.BadHeaderException;
 import alpha.nomagichttp.message.EndOfStreamException;
 import alpha.nomagichttp.message.HttpVersionParseException;
@@ -116,7 +116,7 @@ import static java.lang.System.Logger.Level.ERROR;
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  * 
- * @see HttpServer.Config#maxErrorRecoveryAttempts() 
+ * @see Config#maxErrorRecoveryAttempts() 
  * @see ErrorHandler#apply(Throwable, ClientChannel, Request, RequestHandler)
  * @see ErrorHandlers
  */
@@ -284,7 +284,7 @@ public interface ErrorHandler
      *          rejected reason is {@link Reason#PROTOCOL_NOT_SUPPORTED
      *          PROTOCOL_NOT_SUPPORTED}, and <br>
      *          HTTP version is {@literal <} 1.1, and <br>
-     *          {@link HttpServer.Config#ignoreRejectedInformational()
+     *          {@link Config#ignoreRejectedInformational()
      *          ignoreRejectedInformational()} is {@code true}</td>
      *     <td> No </td>
      *     <td> No response, the failed interim response is ignored. </td>

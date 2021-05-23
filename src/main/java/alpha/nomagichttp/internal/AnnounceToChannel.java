@@ -1,6 +1,6 @@
 package alpha.nomagichttp.internal;
 
-import alpha.nomagichttp.HttpServer;
+import alpha.nomagichttp.Config;
 import alpha.nomagichttp.util.IOExceptions;
 import alpha.nomagichttp.util.SeriallyRunnable;
 
@@ -52,7 +52,7 @@ import static java.util.concurrent.TimeUnit.NANOSECONDS;
  * In write mode, the service will self-{@link #stop(Throwable)} with an {@link
  * InterruptedByTimeoutException} if the operation takes longer than the
  * configured timeout. Read operations never time out (by this class). See
- * {@link HttpServer.Config#timeoutIdleConnection}.<p>
+ * {@link Config#timeoutIdleConnection}.<p>
  * 
  * Please note that the responsibility of this class is to manage a particular
  * type of channel <i>operations</i> (read or write) for as long as the service

@@ -1,6 +1,6 @@
 package alpha.nomagichttp.message;
 
-import alpha.nomagichttp.HttpServer;
+import alpha.nomagichttp.Config;
 
 /**
  * Thrown by the server or delivered to the request body subscriber, either
@@ -8,7 +8,7 @@ import alpha.nomagichttp.HttpServer;
  * body subscriber delayed processing items.
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
- * @see HttpServer.Config#timeoutIdleConnection()
+ * @see Config#timeoutIdleConnection()
  */
 public class RequestBodyTimeoutException extends RuntimeException {
     private static final long serialVersionUID = 1L;
