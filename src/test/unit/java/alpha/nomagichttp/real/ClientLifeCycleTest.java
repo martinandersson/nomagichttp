@@ -14,9 +14,10 @@ import static alpha.nomagichttp.handler.RequestHandler.GET;
 import static alpha.nomagichttp.message.Responses.noContent;
 import static alpha.nomagichttp.testutil.TestClient.CRLF;
 import static java.util.concurrent.TimeUnit.SECONDS;
-import static java.util.logging.Level.FINE;
 import static java.util.logging.Level.INFO;
+import static java.util.logging.Level.WARNING;
 import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * Client-connection life-cycle tests.<p>
@@ -72,10 +73,10 @@ class ClientLifeCycleTest extends AbstractRealTest
             
             assertThat(rsp).isEmpty();
             
-            logRecorder().await(FINE,
+            assertTrue(logRecorder().await(WARNING,
                 "Child channel is closed for writing. " +
                 "Can not resolve this error. " +
-                "HTTP exchange is over.");
+                "HTTP exchange is over."));
             
             // Clean close from server will cause our end to close as well
             assertThat(ch.isOpen()).isFalse();
