@@ -21,6 +21,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  */
 class MessageTest extends AbstractRealTest
 {
+    // TODO: If this can't run using different clients, just do GET instead of POST
     @Test
     void request_body_empty() throws IOException {
         server().add(respondIsBodyEmpty());
