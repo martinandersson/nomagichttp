@@ -97,6 +97,21 @@ class ErrorTest
             "HTTP/1.1 499 Custom Not Found!" + CRLF + CRLF);
     }
     
+    @Test
+    void request_too_large() throws IOException {
+        s = create(configuration().maxRequestHeadSize(1).build())
+                .add("/", GET().accept((req, ch) -> {
+                    throw new AssertionError(); }))
+                .start();
+        
+        String rsp = new TestClient(s).writeRead("AB");
+        assertThat(rsp).isEqualTo(
+            "HTTP/1.1 413 Entity Too Large" + CRLF +
+            "Connection: close"             + CRLF + CRLF);
+        
+        // TODO: Error handler received MaxRequestHeadSizeExceededException, and assert log
+    }
+    
     /** Request handler fails synchronously. */
     @Test
     void retry_failed_request_sync() throws IOException {
@@ -396,20 +411,5 @@ class ErrorTest
         
         // TODO: Same here, release permit and assert log.
         //       We should then also be able to assert the start of the 200 OK response?
-    }
-    
-    @Test
-    void request_too_large() throws IOException {
-        s = create(configuration().maxRequestHeadSize(1).build())
-                .add("/", GET().accept((req, ch) -> {
-                    throw new AssertionError(); }))
-                .start();
-    
-        String rsp = new TestClient(s).writeRead("AB");
-        assertThat(rsp).isEqualTo(
-            "HTTP/1.1 413 Entity Too Large" + CRLF +
-            "Connection: close"             + CRLF + CRLF);
-        
-        // TODO: Error handler received MaxRequestHeadSizeExceededException, and assert log
     }
 }
