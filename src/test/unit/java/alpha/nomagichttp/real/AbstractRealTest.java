@@ -47,7 +47,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * @see SimpleEndToEndTest
  * @see DetailedEndToEndTest
  */
-abstract class AbstractEndToEndTest
+abstract class AbstractRealTest
 {
     final Logger LOG =  Logger.getLogger(getClass().getPackageName());
     

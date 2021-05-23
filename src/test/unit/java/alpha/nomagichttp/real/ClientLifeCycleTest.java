@@ -1,6 +1,5 @@
 package alpha.nomagichttp.real;
 
-import alpha.nomagichttp.real.AbstractEndToEndTest;
 import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
@@ -30,7 +29,7 @@ import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  */
-class ClientLifeCycleTest extends AbstractEndToEndTest
+class ClientLifeCycleTest extends AbstractRealTest
 {
     // Good src on investigating connection status
     // https://stackoverflow.com/questions/10240694/java-socket-api-how-to-tell-if-a-connection-has-been-closed/10241044#10241044

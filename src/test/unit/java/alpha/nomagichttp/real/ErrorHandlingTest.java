@@ -49,7 +49,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  */
-// Rename to ErrorEndToEndTest and extend AbstractEndToEndTest
+// TODO: Rename to ErrorTest and extend AbstractRealTest
 class ErrorHandlingTest
 {
     HttpServer s;
@@ -204,7 +204,7 @@ class ErrorHandlingTest
         }
     }
     
-    // TODO: When this class extends AbstractEndToEndTest, assert default handler caught
+    // TODO: When this class extends AbstractRealTest, assert default handler caught
     //       IllegalBodyException: Body in response to a HEAD request.
     @Test
     void IllegalBodyException_inResponseToHEAD() throws IOException {
@@ -293,7 +293,7 @@ class ErrorHandlingTest
             "Content-Length: 0"            + CRLF +
             "Connection: close"            + CRLF + CRLF);
         
-        // TODO: When we extend AbstractEndToEndTest
+        // TODO: When we extend AbstractRealTest
         //         1) poll and assert RequestHeadTimeoutException
         //         2) assert log
     }
@@ -305,7 +305,7 @@ class ErrorHandlingTest
                 // The async timeout, even though instant in this case, does
                 // not abort the eminent request handler invocation.
                 .add("/", POST().accept((req, ch) -> {
-                    // TODO: When extending AbstractEndToEndTest,
+                    // TODO: When extending AbstractRealTest,
                     //       poll and await RequestBodyTimeoutException instead of this
                     try {
                         // This suffer from the same "blocked thread" problem
@@ -336,7 +336,7 @@ class ErrorHandlingTest
                 .isExactlyInstanceOf(IllegalStateException.class)
                 .hasMessage("Publisher was already subscribed to and is not reusable.");
         
-        // TODO: When we extend AbstractEndToEndTest, assert log
+        // TODO: When we extend AbstractRealTest, assert log
     }
     
     // RequestBodyTimeoutException_caughtByApp() ??
@@ -358,7 +358,7 @@ class ErrorHandlingTest
             "Content-Length: 0"                + CRLF +
             "Connection: close"                + CRLF + CRLF);
         
-        // TODO: When we extend AbstractEndToEndTest
+        // TODO: When we extend AbstractRealTest
         //         1) poll and assert ResponseTimeoutException: "Gave up waiting on a response."
         //         2) assert log
     }
