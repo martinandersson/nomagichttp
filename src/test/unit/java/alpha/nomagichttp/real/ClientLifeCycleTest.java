@@ -60,7 +60,7 @@ class ClientLifeCycleTest extends AbstractRealTest
     }
     
     @Test
-    void closeChannelBeforeResponse() throws IOException, InterruptedException {
+    void closeChannel_beforeResponse() throws IOException, InterruptedException {
         server().add("/", GET().accept((req, ch) -> {
             ch.closeSafe();
             ch.write(noContent());
@@ -91,7 +91,7 @@ class ClientLifeCycleTest extends AbstractRealTest
      * {@code RequestHeadSubscriber#asCompletionStage()}. 
      */
     @Test
-    void client_closeChannel_serverReceivedNoBytes_ignored()
+    void closeChannel_serverReceivedNoBytes_ignored()
             throws IOException, InterruptedException, TimeoutException, ExecutionException
     {
         client().openConnection().close();
@@ -127,7 +127,7 @@ class ClientLifeCycleTest extends AbstractRealTest
      * @see ErrorHandler
      */
     @Test
-    void client_closeChannel_serverReceivedSomeBytes_ignored()
+    void closeChannel_serverReceivedSomeBytes_ignored()
             throws IOException, InterruptedException, TimeoutException, ExecutionException
     {
         client().write("XXX /incomplete");
