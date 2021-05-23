@@ -12,12 +12,11 @@ import static java.util.logging.Level.FINE;
 import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
 
 /**
- * This is the future home of client-connection life-cycle tests.<p>
+ * Client-connection life-cycle tests.<p>
  * 
  * There's a couple of them in {@code DetailedTest}, specifically the
  * "client_closeChannel" test cases, and more. These will be reworked and moved
- * to this class. DetailedTest should be focused on HTTP message
- * semantics.<p>
+ * to this class. DetailedTest should be focused on HTTP message semantics.<p>
  * 
  * Then, we want to discriminate between client closing his input/output
  * streams. Server should, for example, not close channel if client closed only

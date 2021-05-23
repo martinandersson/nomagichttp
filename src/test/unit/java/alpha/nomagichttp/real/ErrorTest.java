@@ -44,7 +44,10 @@ import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * End-to-end tests of a server with error handlers.
+ * Tests concerning server errors.<p>
+ * 
+ * In particular, tests here install custom error handlers and/or runs asserts
+ * on errors delivered to the error handler.
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  */

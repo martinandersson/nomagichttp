@@ -64,11 +64,19 @@ import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * Detailed end-to-end tests that target specific details of the API.
+ * Tests concerning details of the server.<p>
+ * 
+ * Not so much "GET ..." and then expect "HTTP/1.1 200 ..." - the "casual"
+ * exchange. Rather;.perhaps make semi-weird calls and expect a particular
+ * server behavior. You know, details.<p>
+ * 
+ * Many tests will likely require a fine-grained control of the client and do
+ * lot of assertions on the server's log.<p>
+ * 
+ * Note: life-cycle details ought to go to {@link ClientLifeCycleTest} or
+ * {@link ServerLifeCycleTest}.
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
- * 
- * @see ExampleTest
  */
 class DetailTest extends AbstractRealTest
 {
