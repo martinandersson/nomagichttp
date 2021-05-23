@@ -23,7 +23,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  * 
- * @see DetailedEndToEndTest
+ * @see DetailTest
  */
 class SimpleEndToEndTest extends AbstractRealTest
 {

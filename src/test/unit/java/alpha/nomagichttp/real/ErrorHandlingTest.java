@@ -5,7 +5,6 @@ import alpha.nomagichttp.HttpServer;
 import alpha.nomagichttp.handler.ErrorHandler;
 import alpha.nomagichttp.handler.RequestHandler;
 import alpha.nomagichttp.message.Response;
-import alpha.nomagichttp.real.DetailedEndToEndTest;
 import alpha.nomagichttp.route.NoRouteFoundException;
 import alpha.nomagichttp.testutil.Logging;
 import alpha.nomagichttp.testutil.TestClient;
@@ -170,7 +169,7 @@ class ErrorHandlingTest
     /**
      * Server may be configured to reject HTTP/1.0 clients.
      * 
-     * See {@link DetailedEndToEndTest#http_1_0()} for the inverse test case. 
+     * See {@link DetailTest#http_1_0()} for the inverse test case. 
      * 
      * @throws IOException if an I/O error occurs
      */

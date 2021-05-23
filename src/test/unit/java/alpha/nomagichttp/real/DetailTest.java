@@ -70,7 +70,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * 
  * @see SimpleEndToEndTest
  */
-class DetailedEndToEndTest extends AbstractRealTest
+class DetailTest extends AbstractRealTest
 {
     @Test
     void empty_request_body() throws IOException {
