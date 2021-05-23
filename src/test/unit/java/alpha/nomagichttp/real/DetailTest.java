@@ -82,65 +82,6 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  */
 class DetailTest extends AbstractRealTest
 {
-    
-    /**
-     * Client immediately closes the channel. Error handler is not called and no
-     * other form of error logging occurs.
-     * 
-     * {@code RequestHeadSubscriber#asCompletionStage()}. 
-     */
-    @Test
-    void client_closeChannel_serverReceivedNoBytes_ignored()
-            throws IOException, InterruptedException, TimeoutException, ExecutionException
-    {
-        client().openConnection().close();
-        awaitChildAccept();
-        // In reality, whole test cycle over in less than 100 ms
-        server().stop().toCompletableFuture().get(3, SECONDS);
-        
-        /*
-         Just for the "record" (no pun intended), the log would as of 2021-03-21
-         been something like this:
-         
-           {tstamp} | Test worker | INFO | {pkg}.DefaultServer initialize | Opened server channel: {...}
-           {tstamp} | dead-25     | FINE | {pkg}.DefaultServer$OnAccept setup | Accepted child: {...}
-           {tstamp} | Test worker | INFO | {pkg}.DefaultServer stopServer | Closed server channel: {...}
-           {tstamp} | dead-24     | FINE | {pkg}.DefaultServer$OnAccept failed | Parent channel closed. Will accept no more children.
-           {tstamp} | dead-24     | FINE | {pkg}.AnnounceToChannel$Handler completed | End of stream; other side must have closed. Will close channel's input stream.
-           {tstamp} | dead-25     | FINE | {pkg}.AbstractUnicastPublisher accept | PollPublisher has a new subscriber: {...}
-           {tstamp} | dead-25     | FINE | {pkg}.HttpExchange resolve | Client aborted the HTTP exchange.
-           {tstamp} | dead-25     | FINE | {pkg}.DefaultChannelOperations orderlyClose | Closed child: {...}
-         */
-        assertThat(stopLogRecording()
-                .mapToInt(r -> r.getLevel().intValue()))
-                .noneMatch(v -> v > INFO.intValue());
-        
-        // that no error was thrown is asserted by super class
-    }
-    
-    /**
-     * Client writes an incomplete request and then closes the channel. Error
-     * handler is called, but default handler notices that the error is due to a
-     * disconnect and subsequently ignores it without logging.
-     * 
-     * @see ErrorHandler
-     */
-    @Test
-    void client_closeChannel_serverReceivedSomeBytes_ignored()
-            throws IOException, InterruptedException, TimeoutException, ExecutionException
-    {
-        client().write("XXX /incomplete");
-        awaitChildAccept();
-        server().stop().toCompletableFuture().get(3, SECONDS);
-        
-        assertThat(stopLogRecording()
-                .mapToInt(r -> r.getLevel().intValue()))
-                .noneMatch(v -> v > INFO.intValue());
-        
-        assertThat(pollServerError())
-                .isExactlyInstanceOf(EndOfStreamException.class);
-    }
-    
     @Test
     void connection_reuse() throws IOException {
         addEndpointEchoBody();

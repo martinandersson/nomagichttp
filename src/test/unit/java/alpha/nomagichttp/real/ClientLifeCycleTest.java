@@ -1,14 +1,21 @@
 package alpha.nomagichttp.real;
 
+import alpha.nomagichttp.handler.ErrorHandler;
+import alpha.nomagichttp.message.EndOfStreamException;
+import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
 import java.nio.channels.Channel;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeoutException;
 
 import static alpha.nomagichttp.handler.RequestHandler.GET;
 import static alpha.nomagichttp.message.Responses.noContent;
 import static alpha.nomagichttp.testutil.TestClient.CRLF;
+import static java.util.concurrent.TimeUnit.SECONDS;
 import static java.util.logging.Level.FINE;
+import static java.util.logging.Level.INFO;
 import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
 
 /**
@@ -75,5 +82,63 @@ class ClientLifeCycleTest extends AbstractRealTest
         }
         
         // <implicit assert that no error was delivered to the error handler>
+    }
+    
+    /**
+     * Client immediately closes the channel. Error handler is not called and no
+     * other form of error logging occurs.
+     * 
+     * {@code RequestHeadSubscriber#asCompletionStage()}. 
+     */
+    @Test
+    void client_closeChannel_serverReceivedNoBytes_ignored()
+            throws IOException, InterruptedException, TimeoutException, ExecutionException
+    {
+        client().openConnection().close();
+        awaitChildAccept();
+        // In reality, whole test cycle over in less than 100 ms
+        server().stop().toCompletableFuture().get(3, SECONDS);
+        
+        /*
+         Just for the "record" (no pun intended), the log would as of 2021-03-21
+         been something like this:
+         
+           {tstamp} | Test worker | INFO | {pkg}.DefaultServer initialize | Opened server channel: {...}
+           {tstamp} | dead-25     | FINE | {pkg}.DefaultServer$OnAccept setup | Accepted child: {...}
+           {tstamp} | Test worker | INFO | {pkg}.DefaultServer stopServer | Closed server channel: {...}
+           {tstamp} | dead-24     | FINE | {pkg}.DefaultServer$OnAccept failed | Parent channel closed. Will accept no more children.
+           {tstamp} | dead-24     | FINE | {pkg}.AnnounceToChannel$Handler completed | End of stream; other side must have closed. Will close channel's input stream.
+           {tstamp} | dead-25     | FINE | {pkg}.AbstractUnicastPublisher accept | PollPublisher has a new subscriber: {...}
+           {tstamp} | dead-25     | FINE | {pkg}.HttpExchange resolve | Client aborted the HTTP exchange.
+           {tstamp} | dead-25     | FINE | {pkg}.DefaultChannelOperations orderlyClose | Closed child: {...}
+         */
+        Assertions.assertThat(stopLogRecording()
+                .mapToInt(r -> r.getLevel().intValue()))
+                .noneMatch(v -> v > INFO.intValue());
+        
+        // that no error was thrown is asserted by super class
+    }
+    
+    /**
+     * Client writes an incomplete request and then closes the channel. Error
+     * handler is called, but default handler notices that the error is due to a
+     * disconnect and subsequently ignores it without logging.
+     * 
+     * @see ErrorHandler
+     */
+    @Test
+    void client_closeChannel_serverReceivedSomeBytes_ignored()
+            throws IOException, InterruptedException, TimeoutException, ExecutionException
+    {
+        client().write("XXX /incomplete");
+        awaitChildAccept();
+        server().stop().toCompletableFuture().get(3, SECONDS);
+        
+        Assertions.assertThat(stopLogRecording()
+                .mapToInt(r -> r.getLevel().intValue()))
+                .noneMatch(v -> v > INFO.intValue());
+        
+        Assertions.assertThat(pollServerError())
+                .isExactlyInstanceOf(EndOfStreamException.class);
     }
 }
