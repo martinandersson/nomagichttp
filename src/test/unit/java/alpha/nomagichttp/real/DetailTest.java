@@ -159,6 +159,7 @@ class DetailTest extends AbstractRealTest
     
     // TODO: Respond 100 Continue thru config (subclass must expose config)
     
+    // Also see MessageTest.expect100Continue_onFirstBodyAccess()
     @Test
     void expect100Continue_repeatedIgnored() throws IOException {
         server().add("/", GET().accept((req, ch) -> {
