@@ -73,7 +73,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * server behavior. You know, details.<p>
  * 
  * Many tests will likely require a fine-grained control of the client and do
- * lot of assertions on the server's log.<p>
+ * lots of assertions on the server's log.<p>
  * 
  * Note: life-cycle details ought to go to {@link ClientLifeCycleTest} or
  * {@link ServerLifeCycleTest}.
@@ -214,28 +214,6 @@ class DetailTest extends AbstractRealTest
             exchange.run();
             exchange.run();
         }
-    }
-    
-    /**
-     * Can make a HTTP/1.0 request (and get HTTP/1.0 response).<p>
-     * 
-     * See {@link ErrorTest} for cases related to unsupported versions.
-     */
-    @Test
-    void http_1_0() throws IOException {
-        server().add("/", GET().apply(req ->
-                text("Received " + req.httpVersion()).completedStage()));
-        
-        String resp = client().writeRead(
-                "GET / HTTP/1.0" + CRLF + CRLF, "Received HTTP/1.0");
-        
-        assertThat(resp).isEqualTo(
-            "HTTP/1.0 200 OK"                         + CRLF +
-            "Content-Type: text/plain; charset=utf-8" + CRLF +
-            "Content-Length: 17"                      + CRLF +
-            "Connection: close"                       + CRLF + CRLF +
-            
-            "Received HTTP/1.0");
     }
     
     @Test

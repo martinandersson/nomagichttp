@@ -4,6 +4,8 @@ import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
 
+import static alpha.nomagichttp.handler.RequestHandler.GET;
+import static alpha.nomagichttp.message.Responses.text;
 import static alpha.nomagichttp.real.TestRequests.post;
 import static alpha.nomagichttp.real.TestRoutes.respondIsBodyEmpty;
 import static alpha.nomagichttp.testutil.TestClient.CRLF;
@@ -21,6 +23,8 @@ import static org.assertj.core.api.Assertions.assertThat;
  */
 class MessageTest extends AbstractRealTest
 {
+    // TODO: Run tests using different clients
+    
     // TODO: If this can't run using different clients, just do GET instead of POST
     @Test
     void request_body_empty() throws IOException {
@@ -32,5 +36,28 @@ class MessageTest extends AbstractRealTest
             "Content-Length: 4"                       + CRLF + CRLF +
             
             "true");
+    }
+    
+    // TODO: Any client that can't do HTTP/1.0 can simply be ignored
+    /**
+     * Can make a HTTP/1.0 request (and get HTTP/1.0 response).<p>
+     * 
+     * See {@link ErrorTest} for cases related to unsupported versions.
+     */
+    @Test
+    void http_1_0() throws IOException {
+        server().add("/", GET().apply(req ->
+                text("Received " + req.httpVersion()).completedStage()));
+        
+        String resp = client().writeRead(
+            "GET / HTTP/1.0" + CRLF + CRLF, "Received HTTP/1.0");
+        
+        assertThat(resp).isEqualTo(
+            "HTTP/1.0 200 OK"                         + CRLF +
+            "Content-Type: text/plain; charset=utf-8" + CRLF +
+            "Content-Length: 17"                      + CRLF +
+            "Connection: close"                       + CRLF + CRLF +
+            
+            "Received HTTP/1.0");
     }
 }
