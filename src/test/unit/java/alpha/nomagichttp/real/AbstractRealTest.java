@@ -44,7 +44,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  * 
- * @see SimpleEndToEndTest
+ * @see ExampleTest
  * @see DetailTest
  */
 abstract class AbstractRealTest

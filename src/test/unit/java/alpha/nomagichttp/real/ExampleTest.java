@@ -25,7 +25,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  * 
  * @see DetailTest
  */
-class SimpleEndToEndTest extends AbstractRealTest
+class ExampleTest extends AbstractRealTest
 {
     @Test
     void helloworld() throws IOException {
