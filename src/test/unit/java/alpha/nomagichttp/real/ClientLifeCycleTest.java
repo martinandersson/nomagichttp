@@ -20,19 +20,7 @@ import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * Client-connection life-cycle tests.<p>
- * 
- * There's a couple of them in {@code DetailedTest}, specifically the
- * "client_closeChannel" test cases, and more. These will be reworked and moved
- * to this class. DetailedTest should be focused on HTTP message semantics.<p>
- * 
- * Then, we want to discriminate between client closing his input/output
- * streams. Server should, for example, not close channel if client closed only
- * his output stream but is still waiting on a response.<p>
- * 
- * Disconnects are easy to reproduce, for example, just run an exchange on
- * client and close. Server thought exchange would continue but receives a weird
- * IOException.<p>
+ * Client-connection life-cycle tests.
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  */
@@ -142,4 +130,8 @@ class ClientLifeCycleTest extends AbstractRealTest
         Assertions.assertThat(pollServerError())
                 .isExactlyInstanceOf(EndOfStreamException.class);
     }
+    
+    // TODO: Partial connection shut downs. E.g. client close his write stream,
+    //       but still expects a complete response in return before server then
+    //       close his write stream.
 }
