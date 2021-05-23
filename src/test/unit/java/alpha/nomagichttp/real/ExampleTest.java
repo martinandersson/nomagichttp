@@ -17,9 +17,10 @@ import static alpha.nomagichttp.testutil.TestClient.CRLF;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * "Simple" end-to-end tests that mimics all the examples provided in {@link
- * alpha.nomagichttp.examples} and other similar high-level use-scenarios of the
- * library.
+ * Mimics all the examples provided in {@link alpha.nomagichttp.examples}.<p>
+ * 
+ * The main purpose is to have a guarantee that new code changes doesn't break
+ * code examples.
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  * 
@@ -28,7 +29,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 class ExampleTest extends AbstractRealTest
 {
     @Test
-    void helloworld() throws IOException {
+    void HelloWorld() throws IOException {
         server().add("/hello-response", GET().respond(text("Hello World!")));
         
         String req =
@@ -46,7 +47,7 @@ class ExampleTest extends AbstractRealTest
     }
     
     @Test
-    void greet_param() throws IOException {
+    void GreetParameter() throws IOException {
         server().add("/hello/:name", GET().apply(req -> {
             String name = req.parameters().path("name");
             String text = "Hello " + name + "!";
@@ -80,7 +81,7 @@ class ExampleTest extends AbstractRealTest
     }
     
     @Test
-    void greet_requestbody() throws IOException {
+    void GreetBody() throws IOException {
         RequestHandler echo = POST().apply(req ->
                 req.body().toText().thenApply(name ->
                         text("Hello " + name + "!")));
@@ -106,7 +107,7 @@ class ExampleTest extends AbstractRealTest
     }
     
     @Test
-    void echo_headers() throws IOException {
+    void EchoHeaders() throws IOException {
         RequestHandler echo = GET().apply(req ->
                 Responses.noContent()
                          .toBuilder()
@@ -128,7 +129,30 @@ class ExampleTest extends AbstractRealTest
     }
     
     @Test
-    void post_small_file() throws IOException, InterruptedException {
+    public void KeepClientInformed() throws IOException {
+        server().add("/", GET().accept((req, ch) -> {
+            ch.write(processing());
+            ch.write(processing());
+            ch.write(text("Done!"));
+        }));
+        
+        String rsp = client().writeRead("GET / HTTP/1.1" + CRLF + CRLF, "Done!");
+        
+        assertThat(rsp).isEqualTo(
+            "HTTP/1.1 102 Processing"                 + CRLF + CRLF +
+            
+            "HTTP/1.1 102 Processing"                 + CRLF + CRLF +
+            
+            "HTTP/1.1 200 OK"                         + CRLF +
+            "Content-Type: text/plain; charset=utf-8" + CRLF +
+            "Content-Length: 5"                       + CRLF + CRLF +
+            
+            "Done!");
+    }
+    
+    // Will wait until after we have done improved file serving
+    @Test
+    void todo_UploadFile() throws IOException, InterruptedException {
         // 1. Save to new file
         // ---
         Path file = Files.createTempDirectory("nomagic")
@@ -155,7 +179,6 @@ class ExampleTest extends AbstractRealTest
             "3");
         assertThat(Files.readString(file)).isEqualTo("Foo");
         
-        
         // 2. By default, existing files are not overwritten
         // ---
         String res2 = client().writeRead(reqHead + "Bar");
@@ -165,27 +188,5 @@ class ExampleTest extends AbstractRealTest
             "Content-Length: 0"                  + CRLF + CRLF);
         assertThat(pollServerError()).isExactlyInstanceOf(FileAlreadyExistsException.class);
         assertThat(Files.readString(file)).isEqualTo("Foo");
-    }
-    
-    @Test
-    public void multiple_responses() throws IOException {
-        server().add("/", GET().accept((req, ch) -> {
-            ch.write(processing());
-            ch.write(processing());
-            ch.write(text("Done!"));
-        }));
-        
-        String rsp = client().writeRead("GET / HTTP/1.1" + CRLF + CRLF, "Done!");
-        
-        assertThat(rsp).isEqualTo(
-            "HTTP/1.1 102 Processing"                 + CRLF + CRLF +
-            
-            "HTTP/1.1 102 Processing"                 + CRLF + CRLF +
-            
-            "HTTP/1.1 200 OK"                         + CRLF +
-            "Content-Type: text/plain; charset=utf-8" + CRLF +
-            "Content-Length: 5"                       + CRLF + CRLF +
-            
-            "Done!");
     }
 }
