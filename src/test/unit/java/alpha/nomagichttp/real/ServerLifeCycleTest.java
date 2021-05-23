@@ -21,7 +21,7 @@ import static org.assertj.core.api.AssertionsForClassTypes.assertThatThrownBy;
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  */
-class HttpServerLifeCycleTest extends AbstractRealTest
+class ServerLifeCycleTest extends AbstractRealTest
 {
     @Test
     void serverStop_serverCompletesActiveExchange() throws IOException, InterruptedException {
