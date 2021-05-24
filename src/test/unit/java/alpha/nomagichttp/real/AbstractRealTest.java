@@ -260,8 +260,15 @@ abstract class AbstractRealTest
      */
     protected final void assertThatNoErrorWasLogged() {
         var logs = stopLogRecording();
-        assertThat(logs).extracting(LogRecord::getThrown)
-                .containsOnlyNulls();
+        assertThat(logs).extracting(r -> {
+            var t = r.getThrown();
+            if (t != null) {
+                LOG.log(WARNING, () ->
+                    "Log record that has a throwable also has this message: " +
+                    r.getMessage());
+            }
+            return t;
+        }).containsOnlyNulls();
     }
     
     /**
