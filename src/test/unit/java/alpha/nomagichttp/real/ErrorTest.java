@@ -13,9 +13,10 @@ import alpha.nomagichttp.message.ResponseTimeoutException;
 import alpha.nomagichttp.route.NoRouteFoundException;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
 import java.io.IOException;
-import java.util.List;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.CompletionStage;
@@ -155,22 +156,21 @@ class ErrorTest extends AbstractRealTest
      * 
      * @throws IOException if an I/O error occurs
      */
-    @Test
-    void httpVersionRejected_tooOld_byDefault() throws IOException, InterruptedException {
-        for (String v : List.of("-1.23", "0.5", "0.8", "0.9")) {
-             String rsp = client().writeRead(
-                 "GET / HTTP/" + v               + CRLF + CRLF);
-             assertThat(rsp).isEqualTo(
-                 "HTTP/1.1 426 Upgrade Required" + CRLF +
-                 "Upgrade: HTTP/1.1"             + CRLF +
-                 "Connection: Upgrade"           + CRLF +
-                 "Content-Length: 0"             + CRLF + CRLF);
-             assertThat(pollServerError())
-                 .isExactlyInstanceOf(HttpVersionTooOldException.class)
-                 .hasNoCause()
-                 .hasNoSuppressedExceptions()
-                 .hasMessage(null);
-        }
+    @ParameterizedTest
+    @ValueSource(strings = {"-1.23", "0.5", "0.8", "0.9"})
+    void httpVersionRejected_tooOld_byDefault(String version) throws IOException, InterruptedException {
+        String rsp = client().writeRead(
+            "GET / HTTP/" + version         + CRLF + CRLF);
+        assertThat(rsp).isEqualTo(
+            "HTTP/1.1 426 Upgrade Required" + CRLF +
+            "Upgrade: HTTP/1.1"             + CRLF +
+            "Connection: Upgrade"           + CRLF +
+            "Content-Length: 0"             + CRLF + CRLF);
+        assertThat(pollServerError())
+            .isExactlyInstanceOf(HttpVersionTooOldException.class)
+            .hasNoCause()
+            .hasNoSuppressedExceptions()
+            .hasMessage(null);
     }
     
     /**
@@ -196,21 +196,20 @@ class ErrorTest extends AbstractRealTest
             .hasMessage(null);
     }
     
-    @Test
-    void httpVersionRejected_tooNew() throws IOException, InterruptedException {
-        for (String v : List.of("2", "3", "999")) {
-             String rsp = client().writeRead(
-                 "GET / HTTP/" + v                         + CRLF + CRLF);
-             assertThat(rsp).isEqualTo(
-                 "HTTP/1.1 505 HTTP Version Not Supported" + CRLF +
-                 "Content-Length: 0"                       + CRLF +
-                 "Connection: close"                       + CRLF + CRLF);
-             assertThat(pollServerError())
-                 .isExactlyInstanceOf(HttpVersionTooNewException.class)
-                 .hasNoCause()
-                 .hasNoSuppressedExceptions()
-                 .hasMessage(null);
-        }
+    @ParameterizedTest
+    @ValueSource(strings = {"2", "3", "999"})
+    void httpVersionRejected_tooNew(String version) throws IOException, InterruptedException {
+        String rsp = client().writeRead(
+            "GET / HTTP/" + version                   + CRLF + CRLF);
+        assertThat(rsp).isEqualTo(
+            "HTTP/1.1 505 HTTP Version Not Supported" + CRLF +
+            "Content-Length: 0"                       + CRLF +
+            "Connection: close"                       + CRLF + CRLF);
+        assertThat(pollServerError())
+            .isExactlyInstanceOf(HttpVersionTooNewException.class)
+            .hasNoCause()
+            .hasNoSuppressedExceptions()
+            .hasMessage(null);
     }
     
     @Test
