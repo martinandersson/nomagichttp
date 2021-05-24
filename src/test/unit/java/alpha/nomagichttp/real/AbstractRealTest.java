@@ -219,21 +219,6 @@ abstract class AbstractRealTest
         return Logging.stopRecording(key);
     }
     
-    /**
-     * Stop log recording and assert the records.
-     * 
-     * @param values produced by {@link #rec(System.Logger.Level, String)}
-     */
-    protected final void assertThatLogContainsOnlyOnce(Tuple... values) {
-        assertThat(stopLogRecording())
-                .extracting(LogRecord::getLevel, LogRecord::getMessage)
-                .containsOnlyOnce(values);
-    }
-    
-    protected static Tuple rec(System.Logger.Level level, String msg) {
-        return tuple(toJUL(level), msg);
-    }
-    
     protected final void awaitLog(System.Logger.Level level, String messageStartsWith)
             throws InterruptedException
     {
@@ -253,6 +238,21 @@ abstract class AbstractRealTest
             return false;
         }));
         return thr.get();
+    }
+    
+    /**
+     * Stop log recording and assert the records.
+     *
+     * @param values produced by {@link #rec(System.Logger.Level, String)}
+     */
+    protected final void assertThatLogContainsOnlyOnce(Tuple... values) {
+        assertThat(stopLogRecording())
+                .extracting(LogRecord::getLevel, LogRecord::getMessage)
+                .containsOnlyOnce(values);
+    }
+    
+    protected static Tuple rec(System.Logger.Level level, String msg) {
+        return tuple(toJUL(level), msg);
     }
     
     /**
