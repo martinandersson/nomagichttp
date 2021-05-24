@@ -22,6 +22,7 @@ import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Supplier;
+import java.util.logging.LogRecord;
 
 import static alpha.nomagichttp.handler.RequestHandler.GET;
 import static alpha.nomagichttp.handler.RequestHandler.HEAD;
@@ -38,7 +39,6 @@ import static alpha.nomagichttp.testutil.TestPublishers.blockSubscriber;
 import static alpha.nomagichttp.testutil.TestSubscribers.onError;
 import static alpha.nomagichttp.util.BetterBodyPublishers.concat;
 import static alpha.nomagichttp.util.BetterBodyPublishers.ofString;
-import static java.lang.System.Logger.Level.DEBUG;
 import static java.time.Duration.ofMillis;
 import static java.util.concurrent.CompletableFuture.failedFuture;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
@@ -62,7 +62,7 @@ class ErrorTest extends AbstractRealTest
         assertThat(rsp).isEqualTo(
             "HTTP/1.1 404 Not Found" + CRLF +
             "Content-Length: 0"      + CRLF + CRLF);
-        assertThat(pollServerError())
+        assertThatServerErrorObservedAndLogged()
             .isExactlyInstanceOf(NoRouteFoundException.class)
             .hasNoCause()
             .hasNoSuppressedExceptions()
@@ -82,23 +82,23 @@ class ErrorTest extends AbstractRealTest
             "GET /404 HTTP/1.1"              + CRLF + CRLF);
         assertThat(rsp).isEqualTo(
             "HTTP/1.1 499 Custom Not Found!" + CRLF + CRLF);
+        assertThatNoErrorWasLogged();
     }
     
     @Test
     void request_too_large() throws IOException, InterruptedException {
-        usingConfiguration().maxRequestHeadSize(1);
+        usingConfiguration()
+            .maxRequestHeadSize(1);
         String rsp = client().writeRead(
             "AB");
         assertThat(rsp).isEqualTo(
             "HTTP/1.1 413 Entity Too Large" + CRLF +
             "Connection: close"             + CRLF + CRLF);
-        assertThat(pollServerError())
+        assertThatServerErrorObservedAndLogged()
             .isExactlyInstanceOf(MaxRequestHeadSizeExceededException.class)
             .hasNoCause()
             .hasNoSuppressedExceptions()
             .hasMessage(null);
-        awaitLog(
-            DEBUG, "No request head parsed. (end of HTTP exchange)");
     }
     
     /** Request handler fails synchronously. */
@@ -135,6 +135,7 @@ class ErrorTest extends AbstractRealTest
         assertThat(rsp).isEqualTo(
             "HTTP/1.1 204 No Content" + CRLF +
             "N: 3"                    + CRLF + CRLF);
+        assertThatNoErrorWasLogged();
     }
     
     @Test
@@ -149,6 +150,7 @@ class ErrorTest extends AbstractRealTest
             .hasNoCause()
             .hasNoSuppressedExceptions()
             .hasMessage("No forward slash.");
+        assertThatNoErrorWasLogged();
     }
     
     /**
@@ -171,6 +173,7 @@ class ErrorTest extends AbstractRealTest
             .hasNoCause()
             .hasNoSuppressedExceptions()
             .hasMessage(null);
+        assertThatNoErrorWasLogged();
     }
     
     /**
@@ -180,8 +183,8 @@ class ErrorTest extends AbstractRealTest
      */
     @Test
     void httpVersionRejected_tooOld_thruConfig() throws IOException, InterruptedException {
-        usingConfiguration().rejectClientsUsingHTTP1_0(true);
-        
+        usingConfiguration()
+            .rejectClientsUsingHTTP1_0(true);
         String rsp = client().writeRead(
             "GET /not-found HTTP/1.0"       + CRLF + CRLF);
         assertThat(rsp).isEqualTo(
@@ -194,6 +197,7 @@ class ErrorTest extends AbstractRealTest
             .hasNoCause()
             .hasNoSuppressedExceptions()
             .hasMessage(null);
+        assertThatNoErrorWasLogged();
     }
     
     @ParameterizedTest
@@ -210,12 +214,13 @@ class ErrorTest extends AbstractRealTest
             .hasNoCause()
             .hasNoSuppressedExceptions()
             .hasMessage(null);
+        assertThatNoErrorWasLogged();
     }
     
     @Test
     void IllegalBodyException_inResponseToHEAD() throws IOException, InterruptedException {
-        server().add("/", HEAD().respond(text("Body!")));
-        
+        server().add("/",
+            HEAD().respond(text("Body!")));
         String rsp = client().writeRead(
             "HEAD / HTTP/1.1"                    + CRLF + CRLF);
         assertThat(rsp).isEqualTo(
@@ -228,12 +233,10 @@ class ErrorTest extends AbstractRealTest
             .hasMessage("Body in response to a HEAD request.");
     }
     
-    // TODO: Same here as last test, assert log
     @Test
     void IllegalBodyException_inRequestFromTRACE() throws IOException, InterruptedException {
-        server().add("/", TRACE().accept((req, ch) -> {
-            throw new AssertionError("Not invoked.");
-        }));
+        server().add("/",
+            TRACE().accept((req, ch) -> { throw new AssertionError("Not invoked."); }));
         String rsp = client().writeRead(
             "TRACE / HTTP/1.1"         + CRLF +
             "Content-Length: 1"        + CRLF + CRLF +
@@ -243,26 +246,25 @@ class ErrorTest extends AbstractRealTest
             "HTTP/1.1 400 Bad Request" + CRLF +
             "Content-Length: 0"        + CRLF + CRLF);
         assertThat(pollServerError())
-                .isExactlyInstanceOf(IllegalBodyException.class)
-                .hasNoCause()
-                .hasNoSuppressedExceptions()
-                .hasMessage("Body in a TRACE request.");
+            .isExactlyInstanceOf(IllegalBodyException.class)
+            .hasNoCause()
+            .hasNoSuppressedExceptions()
+            .hasMessage("Body in a TRACE request.");
+        assertThatNoErrorWasLogged();
     }
     
     @Test
     void IllegalBodyException_in1xxResponse() throws IOException, InterruptedException {
-        server().add("/", GET().respond(() ->
-                Response.builder(123)
-                        .body(ofString("Body!"))
-                        .build()
-                        .completedStage()));
-        
+        server().add("/",
+            GET().respond(() -> Response.builder(123)
+                    .body(ofString("Body!"))
+                    .build().completedStage()));
         String rsp = client().writeRead(
             "GET / HTTP/1.1"                     + CRLF + CRLF);
         assertThat(rsp).isEqualTo(
             "HTTP/1.1 500 Internal Server Error" + CRLF +
             "Content-Length: 0"                  + CRLF + CRLF);
-        assertThat(pollServerError())
+        assertThatServerErrorObservedAndLogged()
             .isExactlyInstanceOf(IllegalBodyException.class)
             .hasNoCause()
             .hasNoSuppressedExceptions()
@@ -272,7 +274,7 @@ class ErrorTest extends AbstractRealTest
     @Test
     void ResponseRejectedException_interimIgnoredForOldClient() throws IOException, InterruptedException {
         server().add("/", GET().accept((req, ch) -> {
-            ch.write(processing()); // <-- ignored...
+            ch.write(processing()); // <-- rejected
             ch.write(text("Done!"));
         }));
         
@@ -294,15 +296,16 @@ class ErrorTest extends AbstractRealTest
                 .hasNoSuppressedExceptions()
                 .hasMessage("HTTP/1.0 does not support 1XX (Informational) responses.");
         
-        // TODO: but exception NOT logged. That's the "ignored" part.
+        // but exception NOT logged. That's the "ignored" part.
+        assertThatNoErrorWasLogged();
     }
     
     @Test
     void RequestHeadTimeoutException() throws IOException, InterruptedException {
         // Return uber low timeout on the first poll, i.e. for the request head,
         // but use default timeout for request body and response.
-        usingConfig(timeoutIdleConnection(1, ofMillis(0)));
-        
+        usingConfig(
+            timeoutIdleConnection(1, ofMillis(0)));
         String rsp = client().writeRead(
             // Server waits for CRLF + CRLF, but times out instead
             "GET / HTTP...");
@@ -315,8 +318,7 @@ class ErrorTest extends AbstractRealTest
             .hasNoCause()
             .hasNoSuppressedExceptions()
             .hasMessage(null);
-        
-        // TODO: When we extend AbstractRealTest, assert log
+        assertThatNoErrorWasLogged();
     }
     
     @Test
@@ -362,7 +364,7 @@ class ErrorTest extends AbstractRealTest
                 .hasNoSuppressedExceptions()
                 .hasMessage(null);
         
-        // TODO: When we extend AbstractRealTest, assert log
+        assertThatNoErrorWasLogged();
     }
     
     // RequestBodyTimeoutException_caughtByApp() ??

@@ -229,7 +229,7 @@ public interface ErrorHandler
      *   <tr>
      *     <th scope="row"> {@link MaxRequestHeadSizeExceededException} </th>
      *     <td> None </td>
-     *     <td> No </td>
+     *     <td> Yes </td>
      *     <td> {@link Responses#entityTooLarge()} </td>
      *   </tr>
      *   <tr>
@@ -331,6 +331,7 @@ public interface ErrorHandler
             log(thr);
             res = notFound();
         } catch (MaxRequestHeadSizeExceededException e) {
+            log(thr);
             res = entityTooLarge();
         } catch (NoHandlerFoundException e) { // + AmbiguousNoHandlerFoundException
             log(thr);

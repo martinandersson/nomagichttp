@@ -113,7 +113,7 @@ abstract class AbstractRealTest
      * 
      * @return a proxy intercepting the setter calls
      */
-    protected Config.Builder usingConfiguration() {
+    protected final Config.Builder usingConfiguration() {
         InvocationHandler handler = (proxy, method, args) -> {
             Config.Builder b = config == null ?
                     DEFAULT.toBuilder() : config.toBuilder();
@@ -256,6 +256,15 @@ abstract class AbstractRealTest
     }
     
     /**
+     * Stop log recording and assert no log record contains a throwable.
+     */
+    protected final void assertThatNoErrorWasLogged() {
+        var logs = stopLogRecording();
+        assertThat(logs).extracting(LogRecord::getThrown)
+                .containsOnlyNulls();
+    }
+    
+    /**
      * Short-cut for {@link #pollServerError()} and
      * {@link #awaitFirstLogError()} with an extra assert that the error
      * instance observed is the error instance logged.<p>
@@ -265,8 +274,8 @@ abstract class AbstractRealTest
      * 
      * @return an assert API of sorts
      */
-    protected AbstractThrowableAssert<?, ? extends Throwable> assertThatServerErrorObservedAndLogged()
-            throws InterruptedException
+    protected final AbstractThrowableAssert<?, ? extends Throwable>
+            assertThatServerErrorObservedAndLogged() throws InterruptedException
     {
         Throwable t = pollServerError();
         assertSame(t, awaitFirstLogError());
