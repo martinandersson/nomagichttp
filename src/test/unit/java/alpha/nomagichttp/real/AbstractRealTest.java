@@ -28,6 +28,7 @@ import static java.lang.System.Logger.Level.ALL;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static java.util.logging.Level.FINE;
 import static java.util.logging.Level.INFO;
+import static java.util.logging.Level.WARNING;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.tuple;
 import static org.junit.jupiter.api.Assertions.assertSame;
