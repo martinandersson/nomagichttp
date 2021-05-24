@@ -10,7 +10,9 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.TestInfo;
 
 import java.io.IOException;
+import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Method;
+import java.lang.reflect.Proxy;
 import java.util.concurrent.BlockingDeque;
 import java.util.concurrent.LinkedBlockingDeque;
 import java.util.logging.LogRecord;
@@ -84,6 +86,43 @@ abstract class AbstractRealTest
     protected final void usingConfig(Config config) {
         requireServerNotStarted();
         this.config = config;
+    }
+    
+    /**
+     * Short-cut for
+     * <pre>{@code
+     *  Config modified = current.toBuilder().
+     *     <all set calls goes here>
+     *     .build();
+     *  usingConfig(modified.build());
+     * }</pre>
+     * 
+     * Or, what it would look like on call-site:
+     * <pre>
+     *  usingConfiguration()
+     *      .thisConfig(newVal)
+     *      .thatConfig(newVal);
+     * </pre>
+     * ...and that's it.
+     * 
+     * @return a proxy intercepting the setter calls
+     */
+    protected Config.Builder usingConfiguration() {
+        InvocationHandler handler = (proxy, method, args) -> {
+            Config.Builder b = config == null ?
+                    DEFAULT.toBuilder() : config.toBuilder();
+            if (method.getName().equals("build")) {
+                throw new UnsupportedOperationException(
+                        "Don't call build() explicitly. " +
+                        "Config will be built and used for each new value set.");
+            }
+            b = (Config.Builder) method.invoke(b, args);
+            usingConfig(b.build());
+            return proxy;
+        };
+        return (Config.Builder) Proxy.newProxyInstance(Config.Builder.class.getClassLoader(),
+                new Class<?>[] { Config.Builder.class },
+                handler);
     }
     
     /**
