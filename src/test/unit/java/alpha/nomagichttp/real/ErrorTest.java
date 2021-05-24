@@ -46,8 +46,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 /**
  * Tests concerning server errors.<p>
  * 
- * In particular, tests here install custom error handlers and/or runs asserts
- * on errors delivered to the error handler.
+ * In particular, tests here usually install custom error handlers and/or run
+ * asserts on errors delivered to the error handler.
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  */
