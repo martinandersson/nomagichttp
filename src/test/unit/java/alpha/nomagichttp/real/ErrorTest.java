@@ -375,22 +375,21 @@ class ErrorTest extends AbstractRealTest
     
     @Test
     void ResponseTimeoutException_fromPipeline() throws IOException, InterruptedException {
-        usingConfig(timeoutIdleConnection(3, ofMillis(0)));
-        server().add("/", GET().accept((ign,ored) -> {}));
-        
+        usingConfig(
+            timeoutIdleConnection(3, ofMillis(0)));
+        server().add("/",
+             GET().accept((does,nothing) -> {}));
         String rsp = client().writeRead(
             "GET / HTTP/1.1"                   + CRLF + CRLF);
         assertThat(rsp).isEqualTo(
             "HTTP/1.1 503 Service Unavailable" + CRLF +
             "Content-Length: 0"                + CRLF +
             "Connection: close"                + CRLF + CRLF);
-        assertThat(pollServerError())
+        assertThatServerErrorObservedAndLogged()
             .isExactlyInstanceOf(ResponseTimeoutException.class)
             .hasNoCause()
             .hasNoSuppressedExceptions()
             .hasMessage("Gave up waiting on a response.");
-        
-        // TODO: When we extend AbstractRealTest, assert log
     }
     
     @Disabled // Unreliable at the moment, error handler may/may not observe ResponseTimeoutException?
