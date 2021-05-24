@@ -1,15 +1,16 @@
 package alpha.nomagichttp.real;
 
-import alpha.nomagichttp.Config;
-import alpha.nomagichttp.HttpServer;
-import alpha.nomagichttp.handler.ErrorHandler;
-import alpha.nomagichttp.handler.RequestHandler;
+import alpha.nomagichttp.handler.ResponseRejectedException;
+import alpha.nomagichttp.message.HttpVersionParseException;
+import alpha.nomagichttp.message.HttpVersionTooNewException;
+import alpha.nomagichttp.message.HttpVersionTooOldException;
+import alpha.nomagichttp.message.IllegalBodyException;
+import alpha.nomagichttp.message.MaxRequestHeadSizeExceededException;
+import alpha.nomagichttp.message.RequestBodyTimeoutException;
+import alpha.nomagichttp.message.RequestHeadTimeoutException;
 import alpha.nomagichttp.message.Response;
+import alpha.nomagichttp.message.ResponseTimeoutException;
 import alpha.nomagichttp.route.NoRouteFoundException;
-import alpha.nomagichttp.testutil.Logging;
-import alpha.nomagichttp.testutil.TestClient;
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
@@ -20,8 +21,6 @@ import java.util.concurrent.CompletionStage;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Supplier;
 
-import static alpha.nomagichttp.Config.configuration;
-import static alpha.nomagichttp.HttpServer.create;
 import static alpha.nomagichttp.handler.RequestHandler.GET;
 import static alpha.nomagichttp.handler.RequestHandler.HEAD;
 import static alpha.nomagichttp.handler.RequestHandler.POST;
@@ -36,7 +35,6 @@ import static alpha.nomagichttp.testutil.TestPublishers.blockSubscriber;
 import static alpha.nomagichttp.testutil.TestSubscribers.onError;
 import static alpha.nomagichttp.util.BetterBodyPublishers.concat;
 import static alpha.nomagichttp.util.BetterBodyPublishers.ofString;
-import static java.lang.System.Logger.Level.ALL;
 import static java.time.Duration.ofMillis;
 import static java.util.concurrent.CompletableFuture.failedFuture;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
@@ -51,46 +49,33 @@ import static org.assertj.core.api.Assertions.assertThat;
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  */
-// TODO: Extend AbstractRealTest
-class ErrorTest
+class ErrorTest extends AbstractRealTest
 {
-    HttpServer s;
-    
-    @BeforeAll
-    static void setLogging() {
-        Logging.setLevel(ALL);
-    }
-    
-    @AfterEach
-    void stopServer() throws IOException {
-        if (s != null) {
-            s.stopNow();
-        }
-    }
-    
     @Test
-    void not_found_default() throws IOException {
-        s = create().start();
-        String r = new TestClient(s).writeRead(
-            "GET /404 HTTP/1.1" + CRLF + CRLF);
-        
-        assertThat(r).isEqualTo(
+    void not_found_default() throws IOException, InterruptedException {
+        String rsp = client().writeRead(
+            "GET /404 HTTP/1.1"      + CRLF + CRLF);
+        assertThat(rsp).isEqualTo(
             "HTTP/1.1 404 Not Found" + CRLF +
             "Content-Length: 0"      + CRLF + CRLF);
+        assertThat(pollServerError())
+            .isExactlyInstanceOf(NoRouteFoundException.class)
+            .hasNoCause()
+            .hasNoSuppressedExceptions()
+            .hasMessage("/404");
     }
     
     @Test
     void not_found_custom() throws IOException {
-        ErrorHandler eh = (exc, ch, req, han) -> {
+        usingErrorHandler((exc, ch, req, han) -> {
             if (exc instanceof NoRouteFoundException) {
                 ch.write(Response.builder(499, "Custom Not Found!").build());
                 return;
             }
             throw exc;
-        };
+        });
         
-        s = create(eh).start();
-        String res = new TestClient(s).writeRead(
+        String res = client().writeRead(
             "GET /404 HTTP/1.1" + CRLF + CRLF);
         
         assertThat(res).isEqualTo(
@@ -98,18 +83,20 @@ class ErrorTest
     }
     
     @Test
-    void request_too_large() throws IOException {
-        s = create(configuration().maxRequestHeadSize(1).build())
-                .add("/", GET().accept((req, ch) -> {
-                    throw new AssertionError(); }))
-                .start();
-        
-        String rsp = new TestClient(s).writeRead("AB");
+    void request_too_large() throws IOException, InterruptedException {
+        usingConfiguration().maxRequestHeadSize(1);
+        String rsp = client().writeRead(
+            "AB");
         assertThat(rsp).isEqualTo(
             "HTTP/1.1 413 Entity Too Large" + CRLF +
             "Connection: close"             + CRLF + CRLF);
+        assertThat(pollServerError())
+            .isExactlyInstanceOf(MaxRequestHeadSizeExceededException.class)
+            .hasNoCause()
+            .hasNoSuppressedExceptions()
+            .hasMessage(null);
         
-        // TODO: Error handler received MaxRequestHeadSizeExceededException, and assert log
+        // TODO: assert log
     }
     
     /** Request handler fails synchronously. */
@@ -127,39 +114,39 @@ class ErrorTest
     private void firstTwoRequestsResponds(Supplier<CompletionStage<Response>> response)
             throws IOException
     {
-        AtomicInteger c = new AtomicInteger();
+        // Always retry
+        usingErrorHandler((t, ch, r, h) -> h.logic().accept(r, ch));
         
-        RequestHandler h1 = GET().respond(() -> {
+        AtomicInteger c = new AtomicInteger();
+        server().add("/", GET().respond(() -> {
             if (c.incrementAndGet() < 3) {
                 return response.get();
             }
-            
             return noContent().toBuilder()
-                              .header("N", Integer.toString(c.get()))
-                              .build()
-                              .completedStage();
-        });
+                    .header("N", Integer.toString(c.get()))
+                    .build()
+                    .completedStage();
+        }));
         
-        ErrorHandler retry = (t, ch, r, h2) -> h2.logic().accept(r, ch);
-        
-        s = create(retry).add("/", h1).start();;
-        String r = new TestClient(s).writeRead(
-            "GET / HTTP/1.1" + CRLF + CRLF);
-        
-        assertThat(r).isEqualTo(
+        String rsp = client().writeRead(
+            "GET / HTTP/1.1" + CRLF   + CRLF);
+        assertThat(rsp).isEqualTo(
             "HTTP/1.1 204 No Content" + CRLF +
             "N: 3"                    + CRLF + CRLF);
     }
     
     @Test
-    void httpVersionBad() throws IOException {
-        s = create().start();;
-        String res = new TestClient(s).writeRead(
-            "GET / Ooops" + CRLF + CRLF);
-        
-        assertThat(res).isEqualTo(
+    void httpVersionBad() throws IOException, InterruptedException {
+        String rsp = client().writeRead(
+            "GET / Ooops"              + CRLF + CRLF);
+        assertThat(rsp).isEqualTo(
             "HTTP/1.1 400 Bad Request" + CRLF +
             "Content-Length: 0"        + CRLF + CRLF);
+        assertThat(pollServerError())
+            .isExactlyInstanceOf(HttpVersionParseException.class)
+            .hasNoCause()
+            .hasNoSuppressedExceptions()
+            .hasMessage("No forward slash.");
     }
     
     /**
@@ -168,19 +155,20 @@ class ErrorTest
      * @throws IOException if an I/O error occurs
      */
     @Test
-    void httpVersionRejected_tooOld_byDefault() throws IOException {
-        s = create().start();;
-        TestClient c = new TestClient(s);
-        
+    void httpVersionRejected_tooOld_byDefault() throws IOException, InterruptedException {
         for (String v : List.of("-1.23", "0.5", "0.8", "0.9")) {
-             String res = c.writeRead(
-                 "GET / HTTP/" + v + CRLF + CRLF);
-             
-             assertThat(res).isEqualTo(
+             String rsp = client().writeRead(
+                 "GET / HTTP/" + v               + CRLF + CRLF);
+             assertThat(rsp).isEqualTo(
                  "HTTP/1.1 426 Upgrade Required" + CRLF +
                  "Upgrade: HTTP/1.1"             + CRLF +
                  "Connection: Upgrade"           + CRLF +
                  "Content-Length: 0"             + CRLF + CRLF);
+             assertThat(pollServerError())
+                 .isExactlyInstanceOf(HttpVersionTooOldException.class)
+                 .hasNoCause()
+                 .hasNoSuppressedExceptions()
+                 .hasMessage(null);
         }
     }
     
@@ -190,138 +178,155 @@ class ErrorTest
      * @throws IOException if an I/O error occurs
      */
     @Test
-    void httpVersionRejected_tooOld_thruConfig() throws IOException {
-        var cfg = configuration().rejectClientsUsingHTTP1_0(true).build();
-        s = create(cfg).start();
-        String r = new TestClient(s).writeRead(
-            "GET /not-found HTTP/1.0" + CRLF + CRLF);
+    void httpVersionRejected_tooOld_thruConfig() throws IOException, InterruptedException {
+        usingConfiguration().rejectClientsUsingHTTP1_0(true);
         
-        assertThat(r).isEqualTo(
+        String rsp = client().writeRead(
+            "GET /not-found HTTP/1.0"       + CRLF + CRLF);
+        assertThat(rsp).isEqualTo(
             "HTTP/1.0 426 Upgrade Required" + CRLF +
             "Upgrade: HTTP/1.1"             + CRLF +
             "Connection: close"             + CRLF +
             "Content-Length: 0"             + CRLF + CRLF);
+        assertThat(pollServerError())
+            .isExactlyInstanceOf(HttpVersionTooOldException.class)
+            .hasNoCause()
+            .hasNoSuppressedExceptions()
+            .hasMessage(null);
     }
     
     @Test
-    void httpVersionRejected_tooNew() throws IOException {
-        s = create().start();;
-        TestClient c = new TestClient(s);
-        
+    void httpVersionRejected_tooNew() throws IOException, InterruptedException {
         for (String v : List.of("2", "3", "999")) {
-             String r = c.writeRead(
-                 "GET / HTTP/" + v + CRLF + CRLF);
-             
-             assertThat(r).isEqualTo(
+             String rsp = client().writeRead(
+                 "GET / HTTP/" + v                         + CRLF + CRLF);
+             assertThat(rsp).isEqualTo(
                  "HTTP/1.1 505 HTTP Version Not Supported" + CRLF +
                  "Content-Length: 0"                       + CRLF +
                  "Connection: close"                       + CRLF + CRLF);
+             assertThat(pollServerError())
+                 .isExactlyInstanceOf(HttpVersionTooNewException.class)
+                 .hasNoCause()
+                 .hasNoSuppressedExceptions()
+                 .hasMessage(null);
         }
     }
     
-    // TODO: When this class extends AbstractRealTest, assert default handler caught
-    //       IllegalBodyException: Body in response to a HEAD request.
     @Test
-    void IllegalBodyException_inResponseToHEAD() throws IOException {
-        s = create().start();
-        s.add("/", HEAD().respond(text("Body!")));
+    void IllegalBodyException_inResponseToHEAD() throws IOException, InterruptedException {
+        server().add("/", HEAD().respond(text("Body!")));
         
-        String res = new TestClient(s)
-                .writeRead("HEAD / HTTP/1.1" + CRLF + CRLF);
-        
-        assertThat(res).isEqualTo(
-                "HTTP/1.1 500 Internal Server Error" + CRLF +
-                "Content-Length: 0"                  + CRLF + CRLF);
+        String rsp = client().writeRead(
+            "HEAD / HTTP/1.1"                    + CRLF + CRLF);
+        assertThat(rsp).isEqualTo(
+            "HTTP/1.1 500 Internal Server Error" + CRLF +
+            "Content-Length: 0"                  + CRLF + CRLF);
+        assertThat(pollServerError())
+            .isExactlyInstanceOf(IllegalBodyException.class)
+            .hasNoCause()
+            .hasNoSuppressedExceptions()
+            .hasMessage("Body in response to a HEAD request.");
     }
     
     // TODO: Same here as last test, assert log
     @Test
-    void IllegalBodyException_inRequestFromTRACE() throws IOException {
-        s = create().start();
-        s.add("/", TRACE().accept((req, ch) -> {
+    void IllegalBodyException_inRequestFromTRACE() throws IOException, InterruptedException {
+        server().add("/", TRACE().accept((req, ch) -> {
             throw new AssertionError("Not invoked.");
         }));
-        
-        String res = new TestClient(s).writeRead(
-                "TRACE / HTTP/1.1"  + CRLF +
-                "Content-Length: 1" + CRLF + CRLF +
-                
-                "X");
-        
-        assertThat(res).isEqualTo(
-                "HTTP/1.1 400 Bad Request" + CRLF +
-                "Content-Length: 0"        + CRLF + CRLF);
+        String rsp = client().writeRead(
+            "TRACE / HTTP/1.1"         + CRLF +
+            "Content-Length: 1"        + CRLF + CRLF +
+            
+            "X");
+        assertThat(rsp).isEqualTo(
+            "HTTP/1.1 400 Bad Request" + CRLF +
+            "Content-Length: 0"        + CRLF + CRLF);
+        assertThat(pollServerError())
+                .isExactlyInstanceOf(IllegalBodyException.class)
+                .hasNoCause()
+                .hasNoSuppressedExceptions()
+                .hasMessage("Body in a TRACE request.");
     }
     
     @Test
-    void IllegalBodyException_in1xxResponse() throws IOException {
-        s = create().start();
-        s.add("/", GET().respond(() ->
+    void IllegalBodyException_in1xxResponse() throws IOException, InterruptedException {
+        server().add("/", GET().respond(() ->
                 Response.builder(123)
                         .body(ofString("Body!"))
                         .build()
                         .completedStage()));
         
-        String res = new TestClient(s)
-                .writeRead("GET / HTTP/1.1" + CRLF + CRLF);
-        
-        assertThat(res).isEqualTo(
-                "HTTP/1.1 500 Internal Server Error" + CRLF +
-                "Content-Length: 0"                  + CRLF + CRLF);
+        String rsp = client().writeRead(
+            "GET / HTTP/1.1"                     + CRLF + CRLF);
+        assertThat(rsp).isEqualTo(
+            "HTTP/1.1 500 Internal Server Error" + CRLF +
+            "Content-Length: 0"                  + CRLF + CRLF);
+        assertThat(pollServerError())
+            .isExactlyInstanceOf(IllegalBodyException.class)
+            .hasNoCause()
+            .hasNoSuppressedExceptions()
+            .hasMessage("Presumably a body in a 1XX (Informational) response.");
     }
     
     @Test
-    void ResponseRejectedException_interimIgnoredForOldClient() throws IOException {
-        s = create().start();
-        
-        s.add("/", GET().accept((req, ch) -> {
+    void ResponseRejectedException_interimIgnoredForOldClient() throws IOException, InterruptedException {
+        server().add("/", GET().accept((req, ch) -> {
             ch.write(processing()); // <-- ignored...
             ch.write(text("Done!"));
         }));
         
         // ... because "HTTP/1.0"
-        String res = new TestClient(s)
-                .writeRead("GET / HTTP/1.0" + CRLF + CRLF, "Done!");
-        
-        assertThat(res).isEqualTo(
+        String rsp = client().writeRead(
+            "GET / HTTP/1.0"                          + CRLF + CRLF, "Done!");
+        assertThat(rsp).isEqualTo(
             "HTTP/1.0 200 OK"                         + CRLF +
             "Content-Type: text/plain; charset=utf-8" + CRLF +
             "Content-Length: 5"                       + CRLF +
             "Connection: close"                       + CRLF + CRLF +
             
             "Done!");
+        
+        // Exception delivered to error handler, yes
+        assertThat(pollServerError())
+                .isExactlyInstanceOf(ResponseRejectedException.class)
+                .hasNoCause()
+                .hasNoSuppressedExceptions()
+                .hasMessage("HTTP/1.0 does not support 1XX (Informational) responses.");
+        
+        // TODO: but exception NOT logged. That's the "ignored" part.
     }
     
     @Test
-    void RequestHeadTimeoutException() throws IOException {
+    void RequestHeadTimeoutException() throws IOException, InterruptedException {
         // Return uber low timeout on the first poll, i.e. for the request head,
         // but use default timeout for request body and response.
-        Config lowHeadTimeout = timeoutIdleConnection(1, ofMillis(0));
-        s = create(lowHeadTimeout).start();
+        usingConfig(timeoutIdleConnection(1, ofMillis(0)));
         
-        String res = new TestClient(s)
-                // Server waits for CRLF + CRLF, but times out instead
-                .writeRead("GET / HTTP...");
-        
-        assertThat(res).isEqualTo(
+        String rsp = client().writeRead(
+            // Server waits for CRLF + CRLF, but times out instead
+            "GET / HTTP...");
+        assertThat(rsp).isEqualTo(
             "HTTP/1.1 408 Request Timeout" + CRLF +
             "Content-Length: 0"            + CRLF +
             "Connection: close"            + CRLF + CRLF);
+        assertThat(pollServerError())
+            .isExactlyInstanceOf(RequestHeadTimeoutException.class)
+            .hasNoCause()
+            .hasNoSuppressedExceptions()
+            .hasMessage(null);
         
-        // TODO: When we extend AbstractRealTest
-        //         1) poll and assert RequestHeadTimeoutException
-        //         2) assert log
+        // TODO: When we extend AbstractRealTest, assert log
     }
     
     @Test
     void RequestBodyTimeoutException_caughtByServer() throws IOException, InterruptedException {
+        usingConfig(timeoutIdleConnection(2, ofMillis(0)));
         final BlockingQueue<Throwable> appErr = new ArrayBlockingQueue<>(1);
-        s = create(timeoutIdleConnection(2, ofMillis(0)))
+        server()
                 // The async timeout, even though instant in this case, does
                 // not abort the eminent request handler invocation.
                 .add("/", POST().accept((req, ch) -> {
-                    // TODO: When extending AbstractRealTest,
-                    //       poll and await RequestBodyTimeoutException instead of this
                     try {
                         // This suffer from the same "blocked thread" problem
                         // other not-written test cases related to timeouts have.
@@ -333,23 +338,29 @@ class ErrorTest
                     }
                     // or body().toText().exceptionally(), doesn't matter
                     req.body().subscribe(onError(appErr::add));
-                }))
-                .start();
+                }));
         
-        String res = new TestClient(s).writeRead(
-                "POST / HTTP/1.1"   + CRLF +
-                "Content-Length: 2" + CRLF + CRLF +
-                
-                "1");
-        
-        assertThat(res).isEqualTo(
+        String rsp = client().writeRead(
+            "POST / HTTP/1.1"              + CRLF +
+            "Content-Length: 2"            + CRLF + CRLF +
+            
+            "1");
+        assertThat(rsp).isEqualTo(
             "HTTP/1.1 408 Request Timeout" + CRLF +
             "Content-Length: 0"            + CRLF +
             "Connection: close"            + CRLF + CRLF);
         
         assertThat(appErr.poll(3, SECONDS))
                 .isExactlyInstanceOf(IllegalStateException.class)
+                .hasNoCause()
+                .hasNoSuppressedExceptions()
                 .hasMessage("Publisher was already subscribed to and is not reusable.");
+        
+        assertThat(pollServerError())
+                .isExactlyInstanceOf(RequestBodyTimeoutException.class)
+                .hasNoCause()
+                .hasNoSuppressedExceptions()
+                .hasMessage(null);
         
         // TODO: When we extend AbstractRealTest, assert log
     }
@@ -361,34 +372,35 @@ class ErrorTest
     // Same. Can't do deterministically. Need to mock the channel.
     
     @Test
-    void ResponseTimeoutException_fromPipeline() throws IOException {
-        s = create(timeoutIdleConnection(3, ofMillis(0)))
-                .add("/", GET().accept((ign,ored) -> {}))
-                .start();
+    void ResponseTimeoutException_fromPipeline() throws IOException, InterruptedException {
+        usingConfig(timeoutIdleConnection(3, ofMillis(0)));
+        server().add("/", GET().accept((ign,ored) -> {}));
         
-        String res = new TestClient(s).writeRead(
+        String rsp = client().writeRead(
             "GET / HTTP/1.1"                   + CRLF + CRLF);
-        assertThat(res).isEqualTo(
+        assertThat(rsp).isEqualTo(
             "HTTP/1.1 503 Service Unavailable" + CRLF +
             "Content-Length: 0"                + CRLF +
             "Connection: close"                + CRLF + CRLF);
+        assertThat(pollServerError())
+            .isExactlyInstanceOf(ResponseTimeoutException.class)
+            .hasNoCause()
+            .hasNoSuppressedExceptions()
+            .hasMessage("Gave up waiting on a response.");
         
-        // TODO: When we extend AbstractRealTest
-        //         1) poll and assert ResponseTimeoutException: "Gave up waiting on a response."
-        //         2) assert log
+        // TODO: When we extend AbstractRealTest, assert log
     }
     
     @Test
     void ResponseTimeoutException_fromResponseBody_immediately() throws IOException {
-        s = create(timeoutIdleConnection(4, ofMillis(0)))
-                .add("/", GET().accept((req, ch) ->
-                    ch.write(ok(blockSubscriber()))))
-                .start();
-    
+        usingConfig(timeoutIdleConnection(4, ofMillis(0)));
+        server().add("/", GET().accept((req, ch) ->
+                ch.write(ok(blockSubscriber()))));
+        
         // Response may be empty, may be 503 (Service Unavailable).
         // What this test currently is that the client get's a response or connection closes.
         // (otherwise our client would have timed out on this side)
-        String responseIgnored = new TestClient(s).writeRead(
+        String responseIgnored = client().writeRead(
                 "GET / HTTP/1.1" + CRLF + CRLF);
         
         // TODO: Need to figure out how to release the permit on timeout and then assert log
@@ -399,12 +411,11 @@ class ErrorTest
     
     @Test
     void ResponseTimeoutException_fromResponseBody_afterOneChar() throws IOException {
-        s = create(timeoutIdleConnection(4, ofMillis(0)))
-                .add("/", GET().accept((req, ch) ->
-                    ch.write(ok(concat(ofString("X"), blockSubscriber())))))
-                .start();
+        usingConfig(timeoutIdleConnection(4, ofMillis(0)));
+        server().add("/", GET().accept((req, ch) ->
+                ch.write(ok(concat(ofString("X"), blockSubscriber())))));
         
-        String responseIgnored = new TestClient(s).writeRead(
+        String responseIgnored = client().writeRead(
                 "GET / HTTP/1.1" + CRLF + CRLF, "until server close plz");
         
         // <res> may/may not contain none, parts, or all of the response

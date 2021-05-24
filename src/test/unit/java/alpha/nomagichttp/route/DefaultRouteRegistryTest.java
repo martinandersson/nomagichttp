@@ -185,7 +185,7 @@ class DefaultRouteRegistryTest
                 "/src/a%20b",      r, Map.of("p", "/a%20b"));
         assertNoMatch(
                 "/",
-                "xxx");
+                "/xxx");
     }
     
     // Remove
@@ -294,7 +294,7 @@ class DefaultRouteRegistryTest
         stream(paths).forEach(p ->
             assertThatThrownBy(() -> testee.lookup(toSegments(p)))
                 .isExactlyInstanceOf(NoRouteFoundException.class)
-                .hasMessage(null));
+                .hasMessage(p));
     }
     
     private static Route dummyRoute(String pattern) {
