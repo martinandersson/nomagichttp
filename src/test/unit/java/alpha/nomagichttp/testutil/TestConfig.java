@@ -8,7 +8,11 @@ import java.util.function.Function;
 
 /**
  * A configuration object that delegates all calls to the {@code DEFAULT},
- * except for a specific call {@code n} which returns a different value.
+ * except for a specific call {@code n} which returns a different value.<p>
+ * 
+ * Using this class requires knowledge how the server's source code runs,
+ * particularly, which poll count of a certain configuration is desired to
+ * inject with a hacked test-only value.
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  */
@@ -16,7 +20,7 @@ public final class TestConfig implements Config {
     /**
      * Intercept call {@code n} and return {@code injectedVal}.
      * 
-     * @param n call count target
+     * @param n call count target (starts at 1)
      * @param injectedVal new value to return
      * @return a sneaky config object
      */
