@@ -28,6 +28,7 @@ import static alpha.nomagichttp.handler.RequestHandler.TRACE;
 import static alpha.nomagichttp.message.Responses.noContent;
 import static alpha.nomagichttp.message.Responses.ok;
 import static alpha.nomagichttp.message.Responses.processing;
+import static alpha.nomagichttp.message.Responses.status;
 import static alpha.nomagichttp.message.Responses.text;
 import static alpha.nomagichttp.testutil.TestClient.CRLF;
 import static alpha.nomagichttp.testutil.TestConfig.timeoutIdleConnection;
@@ -69,16 +70,14 @@ class ErrorTest extends AbstractRealTest
     void not_found_custom() throws IOException {
         usingErrorHandler((exc, ch, req, han) -> {
             if (exc instanceof NoRouteFoundException) {
-                ch.write(Response.builder(499, "Custom Not Found!").build());
+                ch.write(status(499, "Custom Not Found!"));
                 return;
             }
             throw exc;
         });
-        
-        String res = client().writeRead(
-            "GET /404 HTTP/1.1" + CRLF + CRLF);
-        
-        assertThat(res).isEqualTo(
+        String rsp = client().writeRead(
+            "GET /404 HTTP/1.1"              + CRLF + CRLF);
+        assertThat(rsp).isEqualTo(
             "HTTP/1.1 499 Custom Not Found!" + CRLF + CRLF);
     }
     
