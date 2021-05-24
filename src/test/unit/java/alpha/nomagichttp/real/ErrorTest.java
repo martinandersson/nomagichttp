@@ -221,12 +221,7 @@ class ErrorTest extends AbstractRealTest
         assertThat(rsp).isEqualTo(
             "HTTP/1.1 500 Internal Server Error" + CRLF +
             "Content-Length: 0"                  + CRLF + CRLF);
-        assertThat(pollServerError())
-            .isExactlyInstanceOf(IllegalBodyException.class)
-            .hasNoCause()
-            .hasNoSuppressedExceptions()
-            .hasMessage("Body in response to a HEAD request.");
-        assertThat(awaitFirstLogError())
+        assertThatServerErrorObservedAndLogged()
             .isExactlyInstanceOf(IllegalBodyException.class)
             .hasNoCause()
             .hasNoSuppressedExceptions()

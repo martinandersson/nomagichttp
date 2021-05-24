@@ -5,6 +5,7 @@ import alpha.nomagichttp.HttpServer;
 import alpha.nomagichttp.handler.ErrorHandler;
 import alpha.nomagichttp.testutil.Logging;
 import alpha.nomagichttp.testutil.TestClient;
+import org.assertj.core.api.AbstractThrowableAssert;
 import org.assertj.core.groups.Tuple;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -17,7 +18,6 @@ import java.lang.reflect.Proxy;
 import java.util.concurrent.BlockingDeque;
 import java.util.concurrent.LinkedBlockingDeque;
 import java.util.concurrent.atomic.AtomicReference;
-import java.util.function.Predicate;
 import java.util.logging.LogRecord;
 import java.util.logging.Logger;
 import java.util.stream.Stream;
@@ -25,12 +25,12 @@ import java.util.stream.Stream;
 import static alpha.nomagichttp.Config.DEFAULT;
 import static alpha.nomagichttp.testutil.Logging.toJUL;
 import static java.lang.System.Logger.Level.ALL;
-import static java.lang.System.Logger.Level.ERROR;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static java.util.logging.Level.FINE;
 import static java.util.logging.Level.INFO;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.tuple;
+import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
@@ -253,6 +253,24 @@ abstract class AbstractRealTest
             return false;
         }));
         return thr.get();
+    }
+    
+    /**
+     * Short-cut for {@link #pollServerError()} and
+     * {@link #awaitFirstLogError()} with an extra assert that the error
+     * instance observed is the error instance logged.<p>
+     * 
+     * May be used when test case needs to assert the default error handler was
+     * delivered a particular error <i>and</i> logged it (or, someone did).
+     * 
+     * @return an assert API of sorts
+     */
+    protected AbstractThrowableAssert<?, ? extends Throwable> assertThatServerErrorObservedAndLogged()
+            throws InterruptedException
+    {
+        Throwable t = pollServerError();
+        assertSame(t, awaitFirstLogError());
+        return assertThat(t);
     }
     
     /**
