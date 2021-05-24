@@ -1,5 +1,6 @@
 package alpha.nomagichttp.real;
 
+import alpha.nomagichttp.Config;
 import alpha.nomagichttp.HttpServer;
 import alpha.nomagichttp.handler.ErrorHandler;
 import alpha.nomagichttp.testutil.Logging;
@@ -16,6 +17,7 @@ import java.util.logging.LogRecord;
 import java.util.logging.Logger;
 import java.util.stream.Stream;
 
+import static alpha.nomagichttp.Config.DEFAULT;
 import static java.lang.System.Logger.Level.ALL;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static java.util.logging.Level.FINE;
@@ -24,28 +26,26 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * Will setup a {@link #server()} and a {@link #client()}, the latter configured
- * with the server's port. Both scoped to each test.<p>
+ * Will setup a {@link #server()} (on first access) and a {@link #client()} (on
+ * first access), the latter configured with the server's port. Both scoped to
+ * each test.<p>
  * 
  * The server has no routes added and so most test cases will probably have to
  * add those in manually.<p>
  * 
  * This class registers en error handler which collects all server exceptions
  * into a {@code BlockingDeque} and then delegates the error handling to the
- * default error handler.<p>
+ * default error handler (by re-throw).<p>
  * 
  * By default, after-each will assert that no errors were delivered to the error
  * handler. If errors are expected, then the test must consume all errors from
  * the deque using {@link #pollServerError()}.<p>
  * 
- * Log recording will be activated before starting the server. The recorder can
- * be retrieved using {@link #logRecorder()}. Records can be retrieved at any
- * time using {@link #stopLogRecording()}.
+ * Log recording will be activated for each test. The recorder can be retrieved
+ * using {@link #logRecorder()}. Records can be retrieved at any time using
+ * {@link #stopLogRecording()}.
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
- * 
- * @see ExampleTest
- * @see DetailTest
  */
 abstract class AbstractRealTest
 {
@@ -53,36 +53,47 @@ abstract class AbstractRealTest
     
     private Logging.Recorder key;
     private HttpServer server;
+    private Config config;
+    private ErrorHandler custom;
+    private BlockingDeque<Throwable> errors;
     private int port;
     private TestClient client;
-    private final BlockingDeque<Throwable> errors = new LinkedBlockingDeque<>();
     
     @BeforeEach
-    void __start(TestInfo test) throws IOException {
+    void beforeEach(TestInfo test) {
         Logging.setLevel(ALL);
         LOG.log(INFO, "Executing " + toString(test));
         key = Logging.startRecording();
-        
-        ErrorHandler collect = (t, r, c, h) -> {
-            errors.add(t);
-            throw t;
-        };
-        
-        server = HttpServer.create(collect).start();
-        port   = server.getLocalAddress().getPort();
-        client = new TestClient(server);
     }
     
     @AfterEach
-    void __stopNow(TestInfo test) throws IOException {
-        server.stopNow();
+    void afterEach(TestInfo test) throws IOException {
+        if (server != null) {
+            server.stopNow();
+            assertThat(errors).isEmpty();
+        }
         stopLogRecording();
         LOG.log(INFO, "Finished " + toString(test));
     }
     
-    @AfterEach
-    void __assertNoErrors() {
-        assertThat(errors).isEmpty();
+    /**
+     * Tailor the server's configuration.
+     * 
+     * @param config of server
+     */
+    protected final void usingConfig(Config config) {
+        requireServerNotStarted();
+        this.config = config;
+    }
+    
+    /**
+     * Set a custom error handler to use.
+     * 
+     * @param handler error handler
+     */
+    protected final void usingErrorHandler(ErrorHandler handler) {
+        requireServerNotStarted();
+        this.custom = handler;
     }
     
     /**
@@ -90,7 +101,20 @@ abstract class AbstractRealTest
      * 
      * @return the server instance
      */
-    protected final HttpServer server() {
+    protected final HttpServer server() throws IOException {
+        if (server == null) {
+            errors = new LinkedBlockingDeque<>();
+            ErrorHandler collect = (t, r, c, h) -> {
+                errors.add(t);
+                throw t;
+            };
+            Config arg1 = config != null ? config : DEFAULT;
+            ErrorHandler[] arg2 = custom != null ?
+                    new ErrorHandler[]{custom, collect} :
+                    new ErrorHandler[]{collect};
+            server = HttpServer.create(arg1, arg2).start();
+            port = server.getLocalAddress().getPort();
+        }
         return server;
     }
     
@@ -104,15 +128,19 @@ abstract class AbstractRealTest
      * @return the cached server port
      */
     protected final int serverPort() {
+        requireServerStartedOnce();
         return port;
     }
     
     /**
      * Returns the client instance.
-     *
+     * 
      * @return the client instance
      */
-    protected final TestClient client() {
+    protected final TestClient client() throws IOException {
+        if (client == null) {
+            client = new TestClient(server());
+        }
         return client;
     }
     
@@ -124,6 +152,7 @@ abstract class AbstractRealTest
      * @throws InterruptedException if interrupted while waiting
      */
     protected final Throwable pollServerError() throws InterruptedException {
+        requireServerStartedOnce();
         return errors.poll(3, SECONDS);
     }
     
@@ -153,6 +182,7 @@ abstract class AbstractRealTest
      *             if the current thread is interrupted while waiting
      */
     protected final void awaitChildAccept() throws InterruptedException {
+        requireServerStartedOnce();
         assertTrue(logRecorder().await(FINE, "Accepted child:"));
     }
     
@@ -164,11 +194,25 @@ abstract class AbstractRealTest
      *             if the current thread is interrupted while waiting
      */
     protected final void awaitChildClose() throws InterruptedException {
+        requireServerStartedOnce();
         assertTrue(logRecorder().await(FINE, "Closed child:"));
     }
     
     private static String toString(TestInfo test) {
         Method m = test.getTestMethod().get();
         return m.getDeclaringClass().getSimpleName() + "." + m.getName() + "()";
+    }
+    
+    private void requireServerNotStarted() {
+        if (server != null) {
+            throw new IllegalStateException("Server already started.");
+        }
+    }
+    
+    private void requireServerStartedOnce() {
+        if (server == null) {
+            throw new IllegalStateException(
+                    "Server never started. Call server() first.");
+        }
     }
 }
