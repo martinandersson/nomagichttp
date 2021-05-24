@@ -36,6 +36,7 @@ import static alpha.nomagichttp.testutil.TestPublishers.blockSubscriber;
 import static alpha.nomagichttp.testutil.TestSubscribers.onError;
 import static alpha.nomagichttp.util.BetterBodyPublishers.concat;
 import static alpha.nomagichttp.util.BetterBodyPublishers.ofString;
+import static java.lang.System.Logger.Level.DEBUG;
 import static java.time.Duration.ofMillis;
 import static java.util.concurrent.CompletableFuture.failedFuture;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
@@ -94,8 +95,8 @@ class ErrorTest extends AbstractRealTest
             .hasNoCause()
             .hasNoSuppressedExceptions()
             .hasMessage(null);
-        
-        // TODO: assert log
+        awaitLog(
+            DEBUG, "No request head parsed. (end of HTTP exchange)");
     }
     
     /** Request handler fails synchronously. */

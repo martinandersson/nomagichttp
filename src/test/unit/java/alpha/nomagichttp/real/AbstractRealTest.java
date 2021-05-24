@@ -5,6 +5,7 @@ import alpha.nomagichttp.HttpServer;
 import alpha.nomagichttp.handler.ErrorHandler;
 import alpha.nomagichttp.testutil.Logging;
 import alpha.nomagichttp.testutil.TestClient;
+import org.assertj.core.groups.Tuple;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.TestInfo;
@@ -20,11 +21,13 @@ import java.util.logging.Logger;
 import java.util.stream.Stream;
 
 import static alpha.nomagichttp.Config.DEFAULT;
+import static alpha.nomagichttp.testutil.Logging.toJUL;
 import static java.lang.System.Logger.Level.ALL;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static java.util.logging.Level.FINE;
 import static java.util.logging.Level.INFO;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.tuple;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
@@ -211,6 +214,25 @@ abstract class AbstractRealTest
      */
     protected final Stream<LogRecord> stopLogRecording() {
         return Logging.stopRecording(key);
+    }
+    
+    /**
+     * Stop log recording and assert the records.
+     * 
+     * @param values produced by {@link #rec(System.Logger.Level, String)}
+     */
+    protected final void assertThatLogContainsOnlyOnce(Tuple... values) {
+        assertThat(stopLogRecording())
+                .extracting(LogRecord::getLevel, LogRecord::getMessage)
+                .containsOnlyOnce(values);
+    }
+    
+    protected static Tuple rec(System.Logger.Level level, String msg) {
+        return tuple(toJUL(level), msg);
+    }
+    
+    protected final void awaitLog(System.Logger.Level level, String messageStartsWith) throws InterruptedException {
+        assertTrue(logRecorder().await(toJUL(level), messageStartsWith));
     }
     
     /**

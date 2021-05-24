@@ -175,13 +175,11 @@ class DetailTest extends AbstractRealTest
             "Content-Length: 0"      + CRLF + CRLF);
         
         // Logging specified in JavaDoc of ClientChannel.write()
-        assertThat(stopLogRecording())
-            .extracting(LogRecord::getLevel, LogRecord::getMessage)
-            .containsOnlyOnce(
+        assertThatLogContainsOnlyOnce(
                 // First ignored 100 Continue silently logged
-                tuple(toJUL(DEBUG),   "Ignoring repeated 100 (Continue)."),
+                rec(DEBUG, "Ignoring repeated 100 (Continue)."),
                 // But any more than that and level escalates
-                tuple(toJUL(WARNING), "Ignoring repeated 100 (Continue)."));
+                rec(WARNING, "Ignoring repeated 100 (Continue)."));
     }
     
     @ParameterizedTest
