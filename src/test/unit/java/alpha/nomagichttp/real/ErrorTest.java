@@ -226,6 +226,11 @@ class ErrorTest extends AbstractRealTest
             .hasNoCause()
             .hasNoSuppressedExceptions()
             .hasMessage("Body in response to a HEAD request.");
+        assertThat(awaitFirstLogError())
+            .isExactlyInstanceOf(IllegalBodyException.class)
+            .hasNoCause()
+            .hasNoSuppressedExceptions()
+            .hasMessage("Body in response to a HEAD request.");
     }
     
     // TODO: Same here as last test, assert log

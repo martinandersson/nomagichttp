@@ -16,6 +16,8 @@ import java.lang.reflect.Method;
 import java.lang.reflect.Proxy;
 import java.util.concurrent.BlockingDeque;
 import java.util.concurrent.LinkedBlockingDeque;
+import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Predicate;
 import java.util.logging.LogRecord;
 import java.util.logging.Logger;
 import java.util.stream.Stream;
@@ -23,6 +25,7 @@ import java.util.stream.Stream;
 import static alpha.nomagichttp.Config.DEFAULT;
 import static alpha.nomagichttp.testutil.Logging.toJUL;
 import static java.lang.System.Logger.Level.ALL;
+import static java.lang.System.Logger.Level.ERROR;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static java.util.logging.Level.FINE;
 import static java.util.logging.Level.INFO;
@@ -231,8 +234,25 @@ abstract class AbstractRealTest
         return tuple(toJUL(level), msg);
     }
     
-    protected final void awaitLog(System.Logger.Level level, String messageStartsWith) throws InterruptedException {
+    protected final void awaitLog(System.Logger.Level level, String messageStartsWith)
+            throws InterruptedException
+    {
         assertTrue(logRecorder().await(toJUL(level), messageStartsWith));
+    }
+    
+    protected final Throwable awaitFirstLogError()
+            throws InterruptedException
+    {
+        AtomicReference<Throwable> thr = new AtomicReference<>();
+        assertTrue(logRecorder().await(rec -> {
+            var t = rec.getThrown();
+            if (t != null) {
+                thr.set(t);
+                return true;
+            }
+            return false;
+        }));
+        return thr.get();
     }
     
     /**
