@@ -76,9 +76,11 @@ abstract class AbstractRealTest
     }
     
     @AfterEach
-    void afterEach(TestInfo test) throws IOException {
+    void afterEach(TestInfo test) {
         if (server != null) {
-            server.stopNow();
+            assertThat(server.stop())
+                    .succeedsWithin(1, SECONDS)
+                    .isNull();
             assertThat(errors).isEmpty();
         }
         stopLogRecording();
