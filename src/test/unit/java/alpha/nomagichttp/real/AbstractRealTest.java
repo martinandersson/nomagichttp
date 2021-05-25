@@ -78,6 +78,8 @@ abstract class AbstractRealTest
     @AfterEach
     void afterEach(TestInfo test) {
         if (server != null) {
+            // Don't stopNow(). Async logging spilling into a new test may
+            // wrongfully fail that test if it run assertions on the log.
             assertThat(server.stop())
                     .succeedsWithin(1, SECONDS)
                     .isNull();
