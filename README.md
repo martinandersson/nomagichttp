@@ -3,19 +3,18 @@
 
 # NoMagicHTTP
 
-**A server-side Java library used to receive HTTP requests and
-respond to them.**
+**A server-side Java library used to receive HTTP requests and respond to
+them.**
 
-The NoMagicHTTP server is natively asynchronous and doesn't even use event
-polling or selector threads. What you get is an _elegant_ and modern API that is
-just about as fast and scalable as any cross-platform JDK-based HTTP server
-implementation could possibly be.
+The NoMagicHTTP server is natively asynchronous and completely lock-free. It
+doesn't even use event polling or selector threads. What you get is an _elegant_
+and modern API that is just about as fast and scalable as any cross-platform
+JDK-based HTTP server implementation could possibly be.
 
-Best of all, the API design is based on the firmly held principle that all forms
+Best of all, the API design is based on the firmly held belief that all forms
 of magic are evil. Annotations, "beans" and God-like "context" objects will
 never be a part of the library. Top priority is killer JavaDocs, developer joy,
-and no waste of time. The only way to deliver on this promise was to build the
-server from scratch, using 100% Java.
+and no waste of time.
 
 [JavaDoc is available.][0-1]
 
