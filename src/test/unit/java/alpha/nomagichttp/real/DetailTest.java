@@ -322,15 +322,15 @@ class DetailTest extends AbstractRealTest
                 "HTTP/1.1 500 Internal Server Error" + CRLF +
                 "Content-Length: 0"                  + CRLF + CRLF);
         
-        List<Signal.MethodName> exp;
+        List<Signal.MethodName> expected;
         switch (method) {
-            case "GET":  exp = of(ON_SUBSCRIBE, ON_COMPLETE); break;
-            case "POST": exp = of(ON_SUBSCRIBE, ON_NEXT, ON_COMPLETE); break;
+            case "GET":  expected = of(ON_SUBSCRIBE, ON_COMPLETE); break;
+            case "POST": expected = of(ON_SUBSCRIBE, ON_NEXT, ON_COMPLETE); break;
             default:
                 throw new AssertionError();
         }
         
-        assertThat(sub.methodNames()).isEqualTo(exp);
+        assertThat(sub.methodNames()).isEqualTo(expected);
         assertThatErrorHandlerCaughtOops();
     }
     
