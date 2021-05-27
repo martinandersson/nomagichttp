@@ -333,24 +333,17 @@ final class HttpExchange
                 DefaultRequest.withoutParams(ver, head, bytes, chan, config.timeoutIdleConnection(), null, null);
         
         req.bodyDiscardIfNoSubscriber();
-        req.bodyStage().whenComplete((Null, t) -> {
-            if (t == null) {
-                if (req.headerContains(CONNECTION, "close") && chan.isOpenForReading()) {
-                    LOG.log(DEBUG, "Request set \"Connection: close\", shutting down input.");
-                    chan.shutdownInputSafe();
-                }
-                // ResponsePipeline shuts down output on "Connection: close".
-                // DefaultServer will not start a new exchange if child or any stream thereof is closed.
-                LOG.log(DEBUG, "Normal end of HTTP exchange.");
-                result.complete(null);
-            } else {
-                LOG.log(DEBUG,
-                    // see SubscriptionAsStageOp.asCompletionStage()
-                    "Request upstream/channel error. " +
-                    "Assuming reason and/or stacktrace was logged already. " +
-                    "HTTP exchange is over.");
-                result.completeExceptionally(t);
+        req.bodyStage().whenComplete((Null, thr) -> {
+            // Prepping new exchange = thr is ignored (already dealt with, hopefully lol)
+            if (req.headerContains(CONNECTION, "close") && chan.isOpenForReading()) {
+                LOG.log(DEBUG, "Request set \"Connection: close\", shutting down input.");
+                chan.shutdownInputSafe();
             }
+            // Note
+            //   ResponsePipeline shuts down output on "Connection: close".
+            //   DefaultServer will not start a new exchange if child or any stream thereof is closed.
+            LOG.log(DEBUG, "Normal end of HTTP exchange.");
+            result.complete(null);
         });
     }
     
