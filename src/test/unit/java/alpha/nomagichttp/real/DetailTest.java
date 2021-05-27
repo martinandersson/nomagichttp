@@ -187,7 +187,7 @@ class DetailTest extends AbstractRealTest
     void requestBodySubscriberFails_onSubscribe(String method) throws IOException, InterruptedException {
         MemorizingSubscriber<PooledByteBufferHolder> sub = new MemorizingSubscriber<>(
                 // GET:  Caught by Publishers.empty()
-                // POST: Caught by ChannelByteBufferPublisher > AnnounceToSubscriber > AbstractUnicastPublisher
+                // POST: Caught by ChannelByteBufferPublisher > PushPullPublisher > AbstractUnicastPublisher
                 onSubscribe(i -> { throw OOPS; }));
         
         server().add("/", builder(method).accept((req, ch) -> {
