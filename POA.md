@@ -867,6 +867,8 @@ the timeout configuration can be quite lenient and forgiving.~~
   Idle connection times out after 90 sec, the unblock should happen shortly
   after?  
   Log warning, then attempt unblock by interrupt?
+- Mechanism to not accept more connections when server already "too busy"
+  serving requests.
 
 ## Upcoming
 
