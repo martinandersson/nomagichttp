@@ -77,15 +77,23 @@ abstract class AbstractRealTest
     
     @AfterEach
     void afterEach(TestInfo test) {
-        if (server != null) {
-            // Don't stopNow(). Async logging spilling into a new test may
-            // wrongfully fail that test if it run assertions on the log.
-            assertThat(server.stop())
-                    .succeedsWithin(1, SECONDS)
-                    .isNull();
-            assertThat(errors).isEmpty();
+        try {
+            if (server != null) {
+                // stop() instead of stopNow() because..
+                //   1) Asynchronous logging may spill into a subsequent new test
+                //      and consequently and wrongfully fail that test if it run
+                //      assertions on the log.
+                //   2) It boosts our confidence significantly if we know the
+                //      server will manage to cleanly reach a full stop after
+                //      each test - i.e. no open/leaked children!
+                assertThat(server.stop())
+                        .succeedsWithin(1, SECONDS)
+                        .isNull();
+                assertThat(errors).isEmpty();
+            }
+        } finally {
+            stopLogRecording();
         }
-        stopLogRecording();
         LOG.log(INFO, "Finished " + toString(test));
     }
     
