@@ -379,7 +379,7 @@ class DetailTest extends AbstractRealTest
         var empty = Publishers.just(ByteBuffer.allocate(0));
         server().add("/", GET().respond(ok(empty, "application/octet-stream", -1)));
         
-        String rsp = client().writeRead(get(), "Hi");
+        String rsp = client().writeRead(get());
         assertThat(rsp).isEqualTo(
             "HTTP/1.1 200 OK"                         + CRLF +
             "Content-Type: application/octet-stream"  + CRLF +
