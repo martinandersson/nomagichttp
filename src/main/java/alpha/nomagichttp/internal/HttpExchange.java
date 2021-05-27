@@ -336,7 +336,7 @@ final class HttpExchange
         req.bodyStage().whenComplete((Null, t) -> {
             if (t == null) {
                 if (req.headerContains(CONNECTION, "close") && chan.isOpenForReading()) {
-                    LOG.log(DEBUG, "Request has \"Connection: close\", shutting down input.");
+                    LOG.log(DEBUG, "Request set \"Connection: close\", shutting down input.");
                     chan.shutdownInputSafe();
                 }
                 // ResponsePipeline shuts down output on "Connection: close".
