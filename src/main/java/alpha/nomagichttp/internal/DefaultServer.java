@@ -15,7 +15,6 @@ import java.nio.channels.AsynchronousSocketChannel;
 import java.nio.channels.ClosedChannelException;
 import java.nio.channels.CompletionHandler;
 import java.nio.channels.ShutdownChannelGroupException;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.CancellationException;
@@ -156,12 +155,7 @@ public final class DefaultServer implements HttpServer
     public void stopNow() throws IOException {
         ParentWithHandler pwh = stopServer();
         if (pwh != null) {
-            Iterator<DefaultClientChannel> it = pwh.handler().children();
-            while (it.hasNext()) {
-                it.next().closeSafe();
-                it.remove();
-            }
-            pwh.handler().tryCompleteLastChildStage();
+            pwh.handler().closeAllChildren();
         }
     }
     
@@ -291,8 +285,15 @@ public final class DefaultServer implements HttpServer
             this.lastChild = new CompletableFuture<>();
         }
         
-        Iterator<DefaultClientChannel> children() {
-            return children.iterator();
+        void closeAllChildren() {
+            while (!children.isEmpty()) {
+                children.forEach(c -> {
+                    if (children.remove(c)) {
+                        c.closeSafe();
+                    }
+                });
+            }
+            tryCompleteLastChildStage();
         }
         
         CompletionStage<Void> lastChildStage() {
