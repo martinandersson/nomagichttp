@@ -176,13 +176,9 @@ public final class DefaultServer implements HttpServer
             // great, never started
             return null;
         }
-        
         if (pwh.markTerminated()) {
             parent.set(null);
             AsynchronousServerSocketChannel ch = pwh.channel();
-            if (!ch.isOpen()) {
-                return null;
-            }
             ch.close();
             LOG.log(INFO, () -> "Closed server channel: " + ch);
             int n = SERVER_COUNT.decrementAndGet();
