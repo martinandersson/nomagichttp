@@ -334,8 +334,10 @@ public interface HttpServer
      * server's listening port, then this method will block until the startup
      * routine is completed before initiating the shutdown.<p>
      * 
-     * If the server is not {@link #isRunning() running} then the returned stage
-     * is already completed.<p>
+     * If the server is not {@link #isRunning() running} (listening on a port)
+     * then the returned stage is already completed. This is true even if
+     * exchanges from a previous run cycle is still executing (i.e. a
+     * previously returned stage has yet to complete).<p>
      * 
      * Upon failure to close the server's listening port, the stage will
      * complete exceptionally with an {@code IOException}.<p>
@@ -358,7 +360,8 @@ public interface HttpServer
      * exchanges.<p>
      * 
      * The server's listening port will be immediately closed and then all
-     * active HTTP exchanges will be aborted.<p>
+     * active HTTP exchanges will be aborted. This method blocks until the job
+     * is done.<p>
      * 
      * If the server was just started and is still in the midst of opening the
      * server's listening port, then this method will block until the startup
