@@ -312,7 +312,7 @@ class DetailTest extends AbstractRealTest
         String req;
         switch (method) {
             case "GET":  req = get(); break;
-            case "POST": req = post("1"); break; // Small body to make sure we stay within one ByteBuff
+            case "POST": req = post("1"); break; // Small body to make sure we stay within one ByteBuffer
             default: throw new AssertionError();
         }
         
