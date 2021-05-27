@@ -146,7 +146,9 @@ final class HttpExchange
                if (cntDown.decrementAndGet() == 0) {
                    LOG.log(WARNING,
                        "Request handler returned exceptionally but final response already sent. " +
-                       "This error is ignored.", thr);
+                       "This error is ignored. " +
+                       "Preparing for a new HTTP exchange.", thr);
+                   tryPrepareForNewExchange();
                } else {
                    pipe.startTimeout();
                    handleError(thr);
