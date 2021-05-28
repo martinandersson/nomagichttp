@@ -192,7 +192,7 @@ class ErrorTest extends AbstractRealTest
     }
     
     @Test
-    void httpVersionBad() throws IOException, InterruptedException {
+    void HttpVersionParseException() throws IOException, InterruptedException {
         String rsp = client().writeRead(
             "GET / " + OOPS            + CRLF + CRLF);
         assertThat(rsp).isEqualTo(
@@ -206,14 +206,10 @@ class ErrorTest extends AbstractRealTest
         assertThatNoErrorWasLogged();
     }
     
-    /**
-     * By default, server rejects clients older than HTTP/1.0.
-     * 
-     * @throws IOException if an I/O error occurs
-     */
+    // By default, server rejects clients older than HTTP/1.0
     @ParameterizedTest
     @ValueSource(strings = {"-1.23", "0.5", "0.8", "0.9"})
-    void httpVersionRejected_tooOld_byDefault(String version) throws IOException, InterruptedException {
+    void HttpVersionTooOldException_lessThan1_0(String version) throws IOException, InterruptedException {
         String rsp = client().writeRead(
             "GET / HTTP/" + version         + CRLF + CRLF);
         assertThat(rsp).isEqualTo(
@@ -229,13 +225,9 @@ class ErrorTest extends AbstractRealTest
         assertThatNoErrorWasLogged();
     }
     
-    /**
-     * Server may be configured to reject HTTP/1.0 clients.
-     * 
-     * @throws IOException if an I/O error occurs
-     */
+    // Server may be configured to reject also HTTP/1.0 clients
     @Test
-    void httpVersionRejected_tooOld_thruConfig() throws IOException, InterruptedException {
+    void HttpVersionTooOldException_eq1_0() throws IOException, InterruptedException {
         usingConfiguration()
             .rejectClientsUsingHTTP1_0(true);
         String rsp = client().writeRead(
@@ -253,9 +245,10 @@ class ErrorTest extends AbstractRealTest
         assertThatNoErrorWasLogged();
     }
     
+    // Some newer versions are currently not supported
     @ParameterizedTest
     @ValueSource(strings = {"2", "3", "999"})
-    void httpVersionRejected_tooNew(String version) throws IOException, InterruptedException {
+    void HttpVersionTooNewException(String version) throws IOException, InterruptedException {
         String rsp = client().writeRead(
             "GET / HTTP/" + version                   + CRLF + CRLF);
         assertThat(rsp).isEqualTo(
