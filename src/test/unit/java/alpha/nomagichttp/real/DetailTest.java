@@ -19,7 +19,6 @@ import static alpha.nomagichttp.HttpConstants.HeaderKey.CONTENT_LENGTH;
 import static alpha.nomagichttp.handler.RequestHandler.GET;
 import static alpha.nomagichttp.handler.RequestHandler.POST;
 import static alpha.nomagichttp.message.Responses.accepted;
-import static alpha.nomagichttp.message.Responses.badRequest;
 import static alpha.nomagichttp.message.Responses.continue_;
 import static alpha.nomagichttp.message.Responses.noContent;
 import static alpha.nomagichttp.message.Responses.ok;
@@ -178,28 +177,6 @@ class DetailTest extends AbstractRealTest
                 rec(DEBUG, "Ignoring repeated 100 (Continue)."),
                 // But any more than that and level escalates
                 rec(WARNING, "Ignoring repeated 100 (Continue)."));
-    }
-    
-    @Test
-    void maxUnsuccessfulResponses() throws IOException, InterruptedException {
-        server().add("/", GET().respond(badRequest()));
-        
-        IORunnable sendBadRequest = () -> {
-            String rsp = client().writeRead(get());
-            assertThat(rsp).startsWith("HTTP/1.1 400 Bad Request");
-        };
-        
-        try (Channel ch = client().openConnection()) {
-            for (int i = server().getConfig().maxUnsuccessfulResponses(); i > 1; --i) {
-                sendBadRequest.run();
-                assertTrue(ch.isOpen());
-            }
-            sendBadRequest.run();
-            
-            awaitChildClose();
-            assertTrue(client().serverClosedOutput());
-            assertTrue(client().serverClosedInput());
-        }
     }
     
     @Test

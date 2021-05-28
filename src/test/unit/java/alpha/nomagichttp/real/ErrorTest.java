@@ -12,6 +12,7 @@ import alpha.nomagichttp.message.RequestHeadTimeoutException;
 import alpha.nomagichttp.message.Response;
 import alpha.nomagichttp.message.ResponseTimeoutException;
 import alpha.nomagichttp.route.NoRouteFoundException;
+import alpha.nomagichttp.testutil.IORunnable;
 import alpha.nomagichttp.testutil.MemorizingSubscriber;
 import alpha.nomagichttp.util.SubscriberFailedException;
 import org.junit.jupiter.api.Test;
@@ -19,6 +20,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 
 import java.io.IOException;
+import java.nio.channels.Channel;
 import java.util.List;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
@@ -34,6 +36,7 @@ import static alpha.nomagichttp.handler.RequestHandler.HEAD;
 import static alpha.nomagichttp.handler.RequestHandler.POST;
 import static alpha.nomagichttp.handler.RequestHandler.TRACE;
 import static alpha.nomagichttp.handler.RequestHandler.builder;
+import static alpha.nomagichttp.message.Responses.badRequest;
 import static alpha.nomagichttp.message.Responses.noContent;
 import static alpha.nomagichttp.message.Responses.ok;
 import static alpha.nomagichttp.message.Responses.processing;
@@ -65,6 +68,7 @@ import static java.util.stream.Collectors.toList;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.tuple;
 import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * Tests concerning server errors.<p>
@@ -626,6 +630,28 @@ class ErrorTest extends AbstractRealTest
         
         assertThat(sub.methodNames()).isEqualTo(expected);
         assertOopsException(pollServerError());
+    }
+    
+    @Test
+    void maxUnsuccessfulResponses() throws IOException, InterruptedException {
+        server().add("/", GET().respond(badRequest()));
+        
+        IORunnable sendBadRequest = () -> {
+            String rsp = client().writeRead(get());
+            assertThat(rsp).startsWith("HTTP/1.1 400 Bad Request");
+        };
+        
+        try (Channel ch = client().openConnection()) {
+            for (int i = server().getConfig().maxUnsuccessfulResponses(); i > 1; --i) {
+                sendBadRequest.run();
+                assertTrue(ch.isOpen());
+            }
+            sendBadRequest.run();
+            
+            awaitChildClose();
+            assertTrue(client().serverClosedOutput());
+            assertTrue(client().serverClosedInput());
+        }
     }
     
     private static void assertOnErrorReceived(MemorizingSubscriber.Signal onError, String msg) {
