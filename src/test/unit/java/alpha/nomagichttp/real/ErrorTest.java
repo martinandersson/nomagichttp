@@ -553,6 +553,8 @@ class ErrorTest extends AbstractRealTest
                         item -> { throw new OopsException(); },
                         thr  -> { throw new OopsException("is logged but not re-thrown"); }));
         
+        onErrorAccept(OopsException.class, channel ->
+            assertThat(channel.isOpenForReading()).isFalse());
         server().add("/", POST().accept((req, ch) -> {
             req.body().subscribe(sub);
         }));
@@ -562,8 +564,6 @@ class ErrorTest extends AbstractRealTest
         assertThat(rsp).isEqualTo(
             "HTTP/1.1 500 Internal Server Error" + CRLF +
             "Content-Length: 0"                  + CRLF + CRLF);
-        
-        // TODO: Assert that read stream was closed before error handler called.
         
         var log = stopLogRecording().collect(toList());
         assertThat(log).extracting(LogRecord::getLevel, LogRecord::getMessage)
