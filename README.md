@@ -13,8 +13,8 @@ JDK-based HTTP server implementation could possibly be.
 
 Best of all, the API design is based on the firmly held belief that all forms
 of magic are evil. Annotations, "beans" and God-like "context" objects will
-never be a part of the library. Top priority is killer JavaDocs, developer joy,
-and no waste of time.
+never be a part of the library. Top priority is killer JavaDocs, developer
+happiness, and no waste of time.
 
 [JavaDoc is available.][0-1]
 
