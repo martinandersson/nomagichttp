@@ -61,7 +61,6 @@ import static java.lang.System.Logger.Level.ERROR;
 import static java.time.Duration.ofMillis;
 import static java.util.List.of;
 import static java.util.concurrent.CompletableFuture.failedFuture;
-import static java.util.concurrent.TimeUnit.MILLISECONDS;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static java.util.stream.Collectors.toList;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -373,20 +372,28 @@ class ErrorTest extends AbstractRealTest
             .hasMessage("Gave up waiting on a response.");
     }
     
-    @Disabled // Unreliable at the moment, error handler may/may not observe ResponseTimeoutException?
     @Test
-    void ResponseTimeoutException_fromResponseBody_immediately() throws IOException {
-        usingConfig(timeoutIdleConnection(4, ofMillis(0)));
+    void ResponseTimeoutException_fromResponseBody_immediately() throws IOException, InterruptedException {
+        usingConfig(
+            timeoutIdleConnection(4, ofMillis(0)));
         server().add("/", GET().accept((req, ch) ->
-                ch.write(ok(blockSubscriber()))));
+            ch.write(ok(blockSubscriber()))));
         
         // Response may be empty, may be 503 (Service Unavailable).
-        // What this test currently is that the client get's a response or connection closes.
-        // (otherwise our client would have timed out on this side)
-        String responseIgnored = client().writeRead(
-            "GET / HTTP/1.1" + CRLF + CRLF);
+        // The objective of this test is to ensure the connection closes.
+        // Otherwise, our client would have timed out on this side.
+        String responseIgnored
+                = client().writeRead("GET / HTTP/1.1" + CRLF + CRLF);
         
-        // TODO: Need to figure out how to release the permit on timeout and then assert log
+        // Someone did log the ResponseTimeoutException
+        assertThat(awaitFirstLogError())
+                .isExactlyInstanceOf(ResponseTimeoutException.class)
+                .hasNoCause()
+                .hasNoSuppressedExceptions()
+                .hasMessage("Gave up waiting on a response body bytebuffer.");
+        
+        // As with response, no guarantee it was delivered to error handler
+        var errorIgnored = pollServerErrorNow();
     }
     
     // ResponseTimeoutException_fromResponseBody_afterOneChar?

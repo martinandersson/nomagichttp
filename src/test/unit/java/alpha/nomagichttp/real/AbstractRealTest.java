@@ -249,6 +249,16 @@ abstract class AbstractRealTest
     }
     
     /**
+     * Retrieves and removes the first error caught by the error handler.
+     * 
+     * @return an error, or {@code null} if none is available
+     */
+    protected final Throwable pollServerErrorNow() {
+        requireServerStartedOnce();
+        return errors.pollFirst();
+    }
+    
+    /**
      * Returns the test log recorder.
      * 
      * @return the test log recorder
