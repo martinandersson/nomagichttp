@@ -409,11 +409,12 @@ class ErrorTest extends AbstractRealTest
         assertThat(awaitFirstLogError())
                 .isExactlyInstanceOf(ResponseTimeoutException.class)
                 .hasNoCause()
-                .hasNoSuppressedExceptions()
+                // (may have suppressed ClosedChannelException)
                 .hasMessage("Gave up waiting on a response body bytebuffer.");
         
-        // As with response, no guarantee it was delivered to error handler
-        // (so must read away this error or else superclass failure)
+        // As with the response, there' no guarantee the exception was delivered
+        // to the error handler (and so must read away this error or else
+        // superclass failure)
         var errorIgnored = pollServerErrorNow();
     }
     
