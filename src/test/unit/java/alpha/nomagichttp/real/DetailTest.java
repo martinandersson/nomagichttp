@@ -152,7 +152,7 @@ class DetailTest extends AbstractRealTest
             "end");
     }
     
-    // Also see MessageTest.expect100Continue_onFirstBodyAccess()
+    /** Also see {@link MessageTest#expect100Continue_onFirstBodyAccess()} */
     @Test
     void expect100Continue_repeatedIgnored() throws IOException {
         server().add("/", GET().accept((req, ch) -> {
