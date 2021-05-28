@@ -5,27 +5,21 @@ import alpha.nomagichttp.message.PooledByteBufferHolder;
 import alpha.nomagichttp.message.Response;
 import alpha.nomagichttp.message.Responses;
 import alpha.nomagichttp.testutil.IORunnable;
-import alpha.nomagichttp.testutil.MemorizingSubscriber;
 import alpha.nomagichttp.testutil.MemorizingSubscriber.Signal;
 import alpha.nomagichttp.util.Publishers;
 import alpha.nomagichttp.util.SubscriberFailedException;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.ValueSource;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.Channel;
-import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Flow;
 import java.util.function.Consumer;
-import java.util.logging.LogRecord;
 
 import static alpha.nomagichttp.HttpConstants.HeaderKey.CONTENT_LENGTH;
 import static alpha.nomagichttp.handler.RequestHandler.GET;
 import static alpha.nomagichttp.handler.RequestHandler.POST;
-import static alpha.nomagichttp.handler.RequestHandler.builder;
 import static alpha.nomagichttp.message.Responses.accepted;
 import static alpha.nomagichttp.message.Responses.badRequest;
 import static alpha.nomagichttp.message.Responses.continue_;
@@ -38,26 +32,14 @@ import static alpha.nomagichttp.real.TestRequests.post;
 import static alpha.nomagichttp.real.TestRoutes.respondIsBodyEmpty;
 import static alpha.nomagichttp.real.TestRoutes.respondRequestBody;
 import static alpha.nomagichttp.testutil.Logging.toJUL;
-import static alpha.nomagichttp.testutil.MemorizingSubscriber.Signal.MethodName.ON_COMPLETE;
-import static alpha.nomagichttp.testutil.MemorizingSubscriber.Signal.MethodName.ON_ERROR;
-import static alpha.nomagichttp.testutil.MemorizingSubscriber.Signal.MethodName.ON_NEXT;
-import static alpha.nomagichttp.testutil.MemorizingSubscriber.Signal.MethodName.ON_SUBSCRIBE;
 import static alpha.nomagichttp.testutil.TestClient.CRLF;
-import static alpha.nomagichttp.testutil.TestSubscribers.onNextAndComplete;
-import static alpha.nomagichttp.testutil.TestSubscribers.onNextAndError;
-import static alpha.nomagichttp.testutil.TestSubscribers.onSubscribe;
 import static alpha.nomagichttp.util.BetterBodyPublishers.ofByteArray;
-import static alpha.nomagichttp.util.Subscribers.onNext;
 import static java.lang.System.Logger.Level.DEBUG;
 import static java.lang.System.Logger.Level.ERROR;
 import static java.lang.System.Logger.Level.WARNING;
 import static java.nio.charset.StandardCharsets.US_ASCII;
-import static java.util.List.of;
 import static java.util.concurrent.CompletableFuture.failedStage;
-import static java.util.stream.Collectors.toList;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.tuple;
-import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
@@ -180,158 +162,6 @@ class DetailTest extends AbstractRealTest
                 rec(DEBUG, "Ignoring repeated 100 (Continue)."),
                 // But any more than that and level escalates
                 rec(WARNING, "Ignoring repeated 100 (Continue)."));
-    }
-    
-    @ParameterizedTest
-    @ValueSource(strings = {"GET", "POST"})
-    void requestBodySubscriberFails_onSubscribe(String method) throws IOException, InterruptedException {
-        MemorizingSubscriber<PooledByteBufferHolder> sub = new MemorizingSubscriber<>(
-                // GET:  Caught by Publishers.empty()
-                // POST: Caught by ChannelByteBufferPublisher > PushPullPublisher > AbstractUnicastPublisher
-                onSubscribe(i -> { throw OOPS; }));
-        
-        server().add("/", builder(method).accept((req, ch) -> {
-            req.body().subscribe(sub);
-        }));
-        
-        String req;
-        switch (method) {
-            case "GET":  req = get(); break;
-            case "POST": req = post("not empty"); break;
-            default: throw new AssertionError();
-        }
-        
-        String rsp = client().writeRead(req);
-        
-        assertThat(rsp).isEqualTo(
-            "HTTP/1.1 500 Internal Server Error" + CRLF +
-            "Content-Length: 0"                  + CRLF + CRLF);
-        
-        // TODO: Would ideally like to assert that when the error handler was called,
-        //       read stream remained open. Requires subclass to export API for this.
-        
-        var s = sub.signals();
-        assertThat(s).hasSize(2);
-        assertSame(s.get(0).getMethodName(), ON_SUBSCRIBE);
-        assertSame(s.get(1).getMethodName(), ON_ERROR);
-        
-        assertOnErrorThrowable(s.get(1), "Signalling Flow.Subscriber.onSubscribe() failed.");
-        assertThatErrorHandlerCaughtOops();
-    }
-    
-    @Test
-    void requestBodySubscriberFails_onNext() throws IOException, InterruptedException {
-        MemorizingSubscriber<PooledByteBufferHolder> sub = new MemorizingSubscriber<>(
-                // Intercepted by DefaultRequest > OnErrorCloseReadStream
-                onNext(i -> { throw OOPS; }));
-        
-        server().add("/", POST().accept((req, ch) -> {
-            req.body().subscribe(sub);
-        }));
-        
-        String rsp = client().writeRead(post("not empty"));
-        
-        assertThat(rsp).isEqualTo(
-                "HTTP/1.1 500 Internal Server Error" + CRLF +
-                "Content-Length: 0"                  + CRLF + CRLF);
-        
-        // TODO: Assert that read stream was closed before error handler called.
-        //       Next statement kind of works as a substitute.
-        assertThat(stopLogRecording()).extracting(LogRecord::getLevel, LogRecord::getMessage)
-                .contains(tuple(toJUL(ERROR),
-                    "Signalling Flow.Subscriber.onNext() failed. Will close the channel's read stream."));
-        
-        var s = sub.signals();
-        assertThat(s).hasSize(3);
-        
-        assertSame(s.get(0).getMethodName(), ON_SUBSCRIBE);
-        assertSame(s.get(1).getMethodName(), ON_NEXT);
-        assertSame(s.get(2).getMethodName(), ON_ERROR);
-        
-        assertOnErrorThrowable(s.get(2), "Signalling Flow.Subscriber.onNext() failed.");
-        assertThatErrorHandlerCaughtOops();
-    }
-    
-    @Test
-    void requestBodySubscriberFails_onError() throws IOException, InterruptedException {
-        MemorizingSubscriber<PooledByteBufferHolder> sub = new MemorizingSubscriber<>(
-                onNextAndError(
-                    item -> { throw OOPS; },
-                    thr  -> { throw new RuntimeException("is logged but not re-thrown"); }));
-        
-        server().add("/", POST().accept((req, ch) -> {
-            req.body().subscribe(sub);
-        }));
-        
-        String rsp = client().writeRead(post("not empty"));
-        
-        assertThat(rsp).isEqualTo(
-            "HTTP/1.1 500 Internal Server Error" + CRLF +
-            "Content-Length: 0"                  + CRLF + CRLF);
-        
-        // TODO: Assert that read stream was closed before error handler called.
-        
-        var log = stopLogRecording().collect(toList());
-        assertThat(log).extracting(LogRecord::getLevel, LogRecord::getMessage)
-            .contains(tuple(toJUL(ERROR),
-                "Signalling Flow.Subscriber.onNext() failed. Will close the channel's read stream."));
-        
-        LogRecord fromOnError = log.stream().filter(
-                    r -> r.getLevel().equals(toJUL(ERROR)) &&
-                    r.getMessage().equals("Subscriber.onError() returned exceptionally. This new error is only logged but otherwise ignored."))
-                .findAny()
-                .get();
-        
-        assertThat(fromOnError.getThrown())
-                .isExactlyInstanceOf(RuntimeException.class)
-                .hasMessage("is logged but not re-thrown");
-        
-        var s = sub.signals();
-        assertThat(s).hasSize(3);
-        
-        assertSame(s.get(0).getMethodName(), ON_SUBSCRIBE);
-        assertSame(s.get(1).getMethodName(), ON_NEXT);
-        assertSame(s.get(2).getMethodName(), ON_ERROR);
-        
-        assertOnErrorThrowable(s.get(2), "Signalling Flow.Subscriber.onNext() failed.");
-        assertThatErrorHandlerCaughtOops();
-    }
-    
-    @ParameterizedTest
-    @ValueSource(strings = {"GET", "POST"})
-    void requestBodySubscriberFails_onComplete(String method) throws IOException, InterruptedException {
-        MemorizingSubscriber<PooledByteBufferHolder> sub = new MemorizingSubscriber<>(
-                onNextAndComplete(
-                    buf -> { buf.get().position(buf.get().limit()); buf.release(); }, // Discard
-                    ()   -> { throw OOPS; }));
-        
-        server().add("/", builder(method).accept((req, ch) -> {
-            req.body().subscribe(sub);
-        }));
-        
-        String req;
-        switch (method) {
-            case "GET":  req = get(); break;
-            case "POST": req = post("1"); break; // Small body to make sure we stay within one ByteBuffer
-            default: throw new AssertionError();
-        }
-        
-        String rsp = client().writeRead(req);
-        
-        assertThat(rsp).isEqualTo(
-                "HTTP/1.1 500 Internal Server Error" + CRLF +
-                "Content-Length: 0"                  + CRLF + CRLF);
-        
-        List<Signal.MethodName> expected;
-        switch (method) {
-            case "GET":  expected = of(ON_SUBSCRIBE, ON_COMPLETE); break;
-            case "POST": expected = of(ON_SUBSCRIBE, ON_NEXT, ON_COMPLETE); break;
-            default:
-                throw new AssertionError();
-        }
-        
-        assertThat(sub.methodNames()).isEqualTo(expected);
-        assertThatErrorHandlerCaughtOops();
     }
     
     @Test
@@ -483,24 +313,6 @@ class DetailTest extends AbstractRealTest
         
         byte[] rsp = client().writeRead(req, new byte[]{eom});
         assertThat(rsp).isEqualTo(merged.array());
-    }
-    
-    private static void assertOnErrorThrowable(Signal onError, String msg) {
-        assertThat(onError.<Throwable>getArgument())
-                .isExactlyInstanceOf(SubscriberFailedException.class)
-                .hasMessage(msg)
-                .hasNoSuppressedExceptions()
-                .getCause()
-                .isSameAs(OOPS);
-    }
-    
-    private static final RuntimeException OOPS = new RuntimeException("Oops!");
-    
-    private void assertThatErrorHandlerCaughtOops() throws InterruptedException {
-        assertThat(pollServerError())
-                .isSameAs(OOPS)
-                .hasNoCause()
-                .hasNoSuppressedExceptions();
     }
     
     private static class AfterByteTargetStop implements Flow.Subscriber<PooledByteBufferHolder>
