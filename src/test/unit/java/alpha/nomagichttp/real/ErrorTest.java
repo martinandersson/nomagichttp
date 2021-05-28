@@ -509,7 +509,7 @@ class ErrorTest extends AbstractRealTest
         assertSame(s.get(0).getMethodName(), ON_SUBSCRIBE);
         assertSame(s.get(1).getMethodName(), ON_ERROR);
         
-        assertOnErrorThrowable(s.get(1), "Signalling Flow.Subscriber.onSubscribe() failed.");
+        assertOnErrorReceived(s.get(1), "Signalling Flow.Subscriber.onSubscribe() failed.");
         assertOopsException(pollServerError());
     }
     
@@ -542,7 +542,7 @@ class ErrorTest extends AbstractRealTest
         assertSame(s.get(1).getMethodName(), ON_NEXT);
         assertSame(s.get(2).getMethodName(), ON_ERROR);
         
-        assertOnErrorThrowable(s.get(2), "Signalling Flow.Subscriber.onNext() failed.");
+        assertOnErrorReceived(s.get(2), "Signalling Flow.Subscriber.onNext() failed.");
         assertOopsException(pollServerError());
     }
     
@@ -587,7 +587,7 @@ class ErrorTest extends AbstractRealTest
         assertSame(s.get(1).getMethodName(), ON_NEXT);
         assertSame(s.get(2).getMethodName(), ON_ERROR);
         
-        assertOnErrorThrowable(s.get(2), "Signalling Flow.Subscriber.onNext() failed.");
+        assertOnErrorReceived(s.get(2), "Signalling Flow.Subscriber.onNext() failed.");
         assertOopsException(pollServerError());
     }
     
@@ -628,7 +628,7 @@ class ErrorTest extends AbstractRealTest
         assertOopsException(pollServerError());
     }
     
-    private static void assertOnErrorThrowable(MemorizingSubscriber.Signal onError, String msg) {
+    private static void assertOnErrorReceived(MemorizingSubscriber.Signal onError, String msg) {
         assertThat(onError.<Throwable>getArgument())
                 .isExactlyInstanceOf(SubscriberFailedException.class)
                 .hasMessage(msg)
