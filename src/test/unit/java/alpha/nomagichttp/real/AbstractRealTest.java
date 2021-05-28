@@ -109,7 +109,7 @@ abstract class AbstractRealTest
     }
     
     /**
-     * Short-cut for
+     * Proxied short-cut equivalent to
      * <pre>{@code
      *  Config modified = current.toBuilder().
      *     <all set calls goes here>
@@ -117,13 +117,13 @@ abstract class AbstractRealTest
      *  usingConfig(modified.build());
      * }</pre>
      * 
-     * Or, what it would look like on call-site:
+     * Now, this is all what the call-site has to do:
      * <pre>
      *  usingConfiguration()
      *      .thisConfig(newVal)
      *      .thatConfig(newVal);
      * </pre>
-     * ...and that's it.
+     * ...and the new values are automagically applied.
      * 
      * @return a proxy intercepting the setter calls
      */
