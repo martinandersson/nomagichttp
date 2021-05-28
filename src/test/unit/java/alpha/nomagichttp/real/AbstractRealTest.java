@@ -40,7 +40,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * each test.<p>
  * 
  * The server has no routes added and so most test cases will probably have to
- * add those in manually.<p>
+ * add those manually.<p>
  * 
  * This class registers en error handler which collects all server exceptions
  * into a {@code BlockingDeque} and then delegates the error handling to the

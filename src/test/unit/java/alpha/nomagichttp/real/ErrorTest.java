@@ -70,8 +70,8 @@ import static org.junit.jupiter.api.Assertions.assertSame;
 /**
  * Tests concerning server errors.<p>
  * 
- * In particular, tests here usually install custom error handlers and/or run
- * asserts on errors delivered to the error handler.
+ * Tests in this class usually provoke errors, run asserts on errors delivered
+ * to the error handler, and of course, assert the response.
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  */
