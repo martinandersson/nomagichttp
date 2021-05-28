@@ -79,43 +79,6 @@ class ErrorTest extends AbstractRealTest
 {
     private static final String OOPS = "Oops";
     
-    // Is treated as a new error, having suppressed the previous one
-    @Test
-    void ErrorHandler_fails() throws IOException, InterruptedException {
-        Consumer<Throwable> assertSecond = thr -> {
-            assertThat(thr)
-                .isExactlyInstanceOf(RuntimeException.class)
-                .hasMessage("second")
-                .hasNoCause();
-            var oops = thr.getSuppressed()[0];
-            assertRuntimeOopsException(oops);
-        };
-        usingConfiguration().maxErrorRecoveryAttempts(2);
-        AtomicInteger n = new AtomicInteger();
-        usingErrorHandler((thr, ch, req, rh) -> {
-            if (n.incrementAndGet() == 1) {
-                assertRuntimeOopsException(thr);
-                assertThat(ch.isEverythingOpen()).isTrue();
-                throw new RuntimeException("second");
-            } else {
-                assertSecond.accept(thr);
-                // Pass forward to superclass' collector
-                throw thr;
-            }
-        });
-        server().add("/", GET().respond(() -> {
-            throw new RuntimeException(OOPS);
-        }));
-        
-        String rsp = client().writeRead(
-            "GET / HTTP/1.1"                     + CRLF + CRLF);
-        assertThat(rsp).isEqualTo(
-            "HTTP/1.1 500 Internal Server Error" + CRLF +
-            "Content-Length: 0"                  + CRLF + CRLF);
-        
-        assertSecond.accept(pollServerError());
-    }
-    
     @Test
     void NoRouteFoundException_default() throws IOException, InterruptedException {
         String rsp = client().writeRead(
@@ -444,6 +407,43 @@ class ErrorTest extends AbstractRealTest
         
         // TODO: Same here, release permit and assert log.
         //       We should then also be able to assert the start of the 200 OK response?
+    }
+    
+    // Is treated as a new error, having suppressed the previous one
+    @Test
+    void errorHandlerFails() throws IOException, InterruptedException {
+        Consumer<Throwable> assertSecond = thr -> {
+            assertThat(thr)
+                    .isExactlyInstanceOf(RuntimeException.class)
+                    .hasMessage("second")
+                    .hasNoCause();
+            var oops = thr.getSuppressed()[0];
+            assertRuntimeOopsException(oops);
+        };
+        usingConfiguration().maxErrorRecoveryAttempts(2);
+        AtomicInteger n = new AtomicInteger();
+        usingErrorHandler((thr, ch, req, rh) -> {
+            if (n.incrementAndGet() == 1) {
+                assertRuntimeOopsException(thr);
+                assertThat(ch.isEverythingOpen()).isTrue();
+                throw new RuntimeException("second");
+            } else {
+                assertSecond.accept(thr);
+                // Pass forward to superclass' collector
+                throw thr;
+            }
+        });
+        server().add("/", GET().respond(() -> {
+            throw new RuntimeException(OOPS);
+        }));
+        
+        String rsp = client().writeRead(
+            "GET / HTTP/1.1"                     + CRLF + CRLF);
+        assertThat(rsp).isEqualTo(
+            "HTTP/1.1 500 Internal Server Error" + CRLF +
+            "Content-Length: 0"                  + CRLF + CRLF);
+        
+        assertSecond.accept(pollServerError());
     }
     
     @ParameterizedTest
