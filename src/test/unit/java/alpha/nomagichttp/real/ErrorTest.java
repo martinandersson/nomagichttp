@@ -14,7 +14,6 @@ import alpha.nomagichttp.message.ResponseTimeoutException;
 import alpha.nomagichttp.route.NoRouteFoundException;
 import alpha.nomagichttp.testutil.MemorizingSubscriber;
 import alpha.nomagichttp.util.SubscriberFailedException;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
@@ -49,7 +48,6 @@ import static alpha.nomagichttp.testutil.MemorizingSubscriber.Signal.MethodName.
 import static alpha.nomagichttp.testutil.MemorizingSubscriber.Signal.MethodName.ON_SUBSCRIBE;
 import static alpha.nomagichttp.testutil.TestClient.CRLF;
 import static alpha.nomagichttp.testutil.TestConfig.timeoutIdleConnection;
-import static alpha.nomagichttp.testutil.TestPublishers.blockSubscriber;
 import static alpha.nomagichttp.testutil.TestPublishers.blockSubscriberUntil;
 import static alpha.nomagichttp.testutil.TestSubscribers.onError;
 import static alpha.nomagichttp.testutil.TestSubscribers.onNextAndComplete;
@@ -373,22 +371,27 @@ class ErrorTest extends AbstractRealTest
             .hasMessage("Gave up waiting on a response.");
     }
     
-    @Test
-    void ResponseTimeoutException_fromResponseBody_immediately() throws IOException, InterruptedException {
+    @ParameterizedTest
+    @ValueSource(booleans = {true, false})
+    void ResponseTimeoutException_fromResponseBody(boolean blockImmediately) throws IOException, InterruptedException {
         Semaphore unblock = new Semaphore(0);
+        Response rsp = blockImmediately ?
+                ok(blockSubscriberUntil(unblock)) :
+                // If not immediately, send 1 char first, then block
+                ok(concat(ofString("X"), blockSubscriberUntil(unblock)));
+        
         usingConfig(
             timeoutIdleConnection(4, ofMillis(0)));
-        server().add("/", GET().accept((req, ch) ->
-            ch.write(ok(blockSubscriberUntil(unblock)))));
+        server().add("/",
+            GET().respond(rsp));
         
         // Response may be empty, may be 503 (Service Unavailable).
         // The objective of this test is to ensure the connection closes.
-        // Otherwise, our client would have timed out on this side.
+        // Otherwise, our client would time out on this side.
         String responseIgnored
                 = client().writeRead("GET / HTTP/1.1" + CRLF + CRLF);
         
-        // Someone did log the ResponseTimeoutException
-        unblock.release();
+        unblock.release(); // <-- must unblock request thread to guarantee log
         assertThat(awaitFirstLogError())
                 .isExactlyInstanceOf(ResponseTimeoutException.class)
                 .hasNoCause()
@@ -396,23 +399,8 @@ class ErrorTest extends AbstractRealTest
                 .hasMessage("Gave up waiting on a response body bytebuffer.");
         
         // As with response, no guarantee it was delivered to error handler
+        // (so must read away this error or else superclass failure)
         var errorIgnored = pollServerErrorNow();
-    }
-    
-    @Disabled // Unreliable at the moment, error handler may/may not observe ResponseTimeoutException
-    @Test
-    void ResponseTimeoutException_fromResponseBody_afterOneChar() throws IOException {
-        usingConfig(timeoutIdleConnection(4, ofMillis(0)));
-        server().add("/", GET().accept((req, ch) ->
-                ch.write(ok(concat(ofString("X"), blockSubscriber())))));
-        
-        String responseIgnored = client().writeRead(
-            "GET / HTTP/1.1" + CRLF + CRLF, "until server close plz");
-        
-        // <res> may/may not contain none, parts, or all of the response
-        
-        // TODO: Same here, release permit and assert log.
-        //       We should then also be able to assert the start of the 200 OK response?
     }
     
     // Is treated as a new error, having suppressed the previous one
