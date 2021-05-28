@@ -15,6 +15,10 @@ import java.io.IOException;
 import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Method;
 import java.lang.reflect.Proxy;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.concurrent.BlockingDeque;
 import java.util.concurrent.LinkedBlockingDeque;
 import java.util.concurrent.atomic.AtomicReference;
@@ -25,6 +29,7 @@ import java.util.stream.Stream;
 import static alpha.nomagichttp.Config.DEFAULT;
 import static alpha.nomagichttp.testutil.Logging.toJUL;
 import static java.lang.System.Logger.Level.ALL;
+import static java.util.Objects.requireNonNull;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static java.util.logging.Level.FINE;
 import static java.util.logging.Level.INFO;
@@ -65,6 +70,8 @@ abstract class AbstractRealTest
     private Config config;
     private ErrorHandler custom;
     private BlockingDeque<Throwable> errors;
+    // permits null values and keys
+    private final Map<Class<? extends Throwable>, List<Runnable>> onError = new HashMap<>();
     private int port;
     private TestClient client;
     
@@ -156,6 +163,27 @@ abstract class AbstractRealTest
     }
     
     /**
+     * Schedule an action to run on observed exception types.<p>
+     * 
+     * Note: Named "onErrorRun" to avoid symbol clashes with Flow's onError.
+     * 
+     * @param thr throwable class
+     * @param action to run
+     */
+    protected final void onErrorRun(Class<? extends Throwable> thr, Runnable action) {
+        requireNonNull(thr);
+        requireNonNull(action);
+        requireServerNotStarted();
+        onError.compute(thr, (k, v) -> {
+            if (v == null) {
+                v = new ArrayList<>();
+            }
+            v.add(action);
+            return v;
+        });
+    }
+    
+    /**
      * Returns the server instance.
      * 
      * @return the server instance
@@ -165,6 +193,11 @@ abstract class AbstractRealTest
             errors = new LinkedBlockingDeque<>();
             ErrorHandler collect = (t, r, c, h) -> {
                 errors.add(t);
+                onError.forEach((k, v) -> {
+                    if (k.isInstance(t)) {
+                        v.forEach(Runnable::run);
+                    }
+                });
                 throw t;
             };
             Config arg1 = config != null ? config : DEFAULT;
