@@ -79,13 +79,14 @@ abstract class AbstractRealTest
     void afterEach(TestInfo test) {
         try {
             if (server != null) {
-                // stop() instead of stopNow() because..
-                //   1) Asynchronous logging may spill into a subsequent new test
-                //      and consequently and wrongfully fail that test if it run
-                //      assertions on the log.
-                //   2) It boosts our confidence significantly if we know the
-                //      server will manage to cleanly reach a full stop after
-                //      each test - i.e. no open/leaked children!
+                // Not stopNow() and then move on because...
+                //    asynchronous/delayed logging from active exchanges may
+                //    spill into a subsequent new test and consequently and
+                //    wrongfully fail that test if it were to run assertions on
+                //    the server log (which many tests do).
+                // Await stop() also...
+                //    boosts our confidence significantly that children are
+                //    never leaked.
                 assertThat(server.stop())
                         .succeedsWithin(1, SECONDS)
                         .isNull();
