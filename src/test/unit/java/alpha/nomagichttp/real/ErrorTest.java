@@ -260,8 +260,8 @@ class ErrorTest extends AbstractRealTest
         String rsp = client().writeRead(req);
         
         assertThat(rsp).isEqualTo(
-                "HTTP/1.1 500 Internal Server Error" + CRLF +
-                        "Content-Length: 0"                  + CRLF + CRLF);
+            "HTTP/1.1 500 Internal Server Error" + CRLF +
+            "Content-Length: 0"                  + CRLF + CRLF);
         
         // TODO: Would ideally like to assert that when the error handler was called,
         //       read stream remained open. Requires subclass to export API for this.
@@ -288,8 +288,8 @@ class ErrorTest extends AbstractRealTest
         String rsp = client().writeRead(post("not empty"));
         
         assertThat(rsp).isEqualTo(
-                "HTTP/1.1 500 Internal Server Error" + CRLF +
-                        "Content-Length: 0"                  + CRLF + CRLF);
+            "HTTP/1.1 500 Internal Server Error" + CRLF +
+            "Content-Length: 0"                  + CRLF + CRLF);
         
         // TODO: Assert that read stream was closed before error handler called.
         //       Next statement kind of works as a substitute.
@@ -322,8 +322,8 @@ class ErrorTest extends AbstractRealTest
         String rsp = client().writeRead(post("not empty"));
         
         assertThat(rsp).isEqualTo(
-                "HTTP/1.1 500 Internal Server Error" + CRLF +
-                        "Content-Length: 0"                  + CRLF + CRLF);
+            "HTTP/1.1 500 Internal Server Error" + CRLF +
+            "Content-Length: 0"                  + CRLF + CRLF);
         
         // TODO: Assert that read stream was closed before error handler called.
         
