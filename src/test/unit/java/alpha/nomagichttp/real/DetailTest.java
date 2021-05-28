@@ -5,9 +5,7 @@ import alpha.nomagichttp.message.PooledByteBufferHolder;
 import alpha.nomagichttp.message.Response;
 import alpha.nomagichttp.message.Responses;
 import alpha.nomagichttp.testutil.IORunnable;
-import alpha.nomagichttp.testutil.MemorizingSubscriber.Signal;
 import alpha.nomagichttp.util.Publishers;
-import alpha.nomagichttp.util.SubscriberFailedException;
 import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
