@@ -50,6 +50,7 @@ import static alpha.nomagichttp.testutil.MemorizingSubscriber.Signal.MethodName.
 import static alpha.nomagichttp.testutil.TestClient.CRLF;
 import static alpha.nomagichttp.testutil.TestConfig.timeoutIdleConnection;
 import static alpha.nomagichttp.testutil.TestPublishers.blockSubscriber;
+import static alpha.nomagichttp.testutil.TestPublishers.blockSubscriberUntil;
 import static alpha.nomagichttp.testutil.TestSubscribers.onError;
 import static alpha.nomagichttp.testutil.TestSubscribers.onNextAndComplete;
 import static alpha.nomagichttp.testutil.TestSubscribers.onNextAndError;
@@ -374,10 +375,11 @@ class ErrorTest extends AbstractRealTest
     
     @Test
     void ResponseTimeoutException_fromResponseBody_immediately() throws IOException, InterruptedException {
+        Semaphore unblock = new Semaphore(0);
         usingConfig(
             timeoutIdleConnection(4, ofMillis(0)));
         server().add("/", GET().accept((req, ch) ->
-            ch.write(ok(blockSubscriber()))));
+            ch.write(ok(blockSubscriberUntil(unblock)))));
         
         // Response may be empty, may be 503 (Service Unavailable).
         // The objective of this test is to ensure the connection closes.
@@ -386,6 +388,7 @@ class ErrorTest extends AbstractRealTest
                 = client().writeRead("GET / HTTP/1.1" + CRLF + CRLF);
         
         // Someone did log the ResponseTimeoutException
+        unblock.release();
         assertThat(awaitFirstLogError())
                 .isExactlyInstanceOf(ResponseTimeoutException.class)
                 .hasNoCause()
@@ -395,9 +398,6 @@ class ErrorTest extends AbstractRealTest
         // As with response, no guarantee it was delivered to error handler
         var errorIgnored = pollServerErrorNow();
     }
-    
-    // ResponseTimeoutException_fromResponseBody_afterOneChar?
-    // No way to do deterministically, at least without tapping into the production code.
     
     @Disabled // Unreliable at the moment, error handler may/may not observe ResponseTimeoutException
     @Test
