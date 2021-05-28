@@ -60,9 +60,11 @@ import static alpha.nomagichttp.util.BetterBodyPublishers.concat;
 import static alpha.nomagichttp.util.BetterBodyPublishers.ofString;
 import static alpha.nomagichttp.util.Subscribers.onNext;
 import static java.lang.System.Logger.Level.ERROR;
+import static java.lang.System.Logger.Level.WARNING;
 import static java.time.Duration.ofMillis;
 import static java.util.List.of;
 import static java.util.concurrent.CompletableFuture.failedFuture;
+import static java.util.concurrent.CompletableFuture.failedStage;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static java.util.stream.Collectors.toList;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -652,6 +654,43 @@ class ErrorTest extends AbstractRealTest
             assertTrue(client().serverClosedOutput());
             assertTrue(client().serverClosedInput());
         }
+    }
+    
+    @Test
+    void afterHttpExchange_responseIsLoggedButIgnored() throws IOException, InterruptedException {
+        server().add("/", GET().accept((req, ch) -> {
+            ch.write(noContent());
+            ch.write(Response.builder(123).build());
+        }));
+        
+        String rsp = client().writeRead(
+            "GET / HTTP/1.1"          + CRLF + CRLF);
+        assertThat(rsp).isEqualTo(
+            "HTTP/1.1 204 No Content" + CRLF + CRLF);
+        
+        assertTrue(logRecorder().await(toJUL(WARNING),
+            "HTTP exchange not active. This response is ignored: DefaultResponse{statusCode=123"));
+        
+        // Superclass asserts no error sent to error handler
+    }
+    
+    @Test
+    void afterHttpExchange_responseExceptionIsLoggedButIgnored() throws IOException, InterruptedException {
+        server().add("/", GET().accept((req, ch) -> {
+            ch.write(noContent());
+            ch.write(failedStage(new RuntimeException("Oops!")));
+        }));
+        
+        String rsp = client().writeRead(
+            "GET / HTTP/1.1"          + CRLF + CRLF);
+        assertThat(rsp).isEqualTo(
+            "HTTP/1.1 204 No Content" + CRLF + CRLF);
+        
+        assertTrue(logRecorder().await(toJUL(ERROR),
+            "Application's response stage completed exceptionally, " +
+            "but HTTP exchange is not active. This error does not propagate anywhere."));
+        
+        // Superclass asserts no error sent to error handler
     }
     
     private static void assertOnErrorReceived(MemorizingSubscriber.Signal onError, String msg) {

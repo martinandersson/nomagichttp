@@ -20,7 +20,6 @@ import static alpha.nomagichttp.handler.RequestHandler.GET;
 import static alpha.nomagichttp.handler.RequestHandler.POST;
 import static alpha.nomagichttp.message.Responses.accepted;
 import static alpha.nomagichttp.message.Responses.continue_;
-import static alpha.nomagichttp.message.Responses.noContent;
 import static alpha.nomagichttp.message.Responses.ok;
 import static alpha.nomagichttp.message.Responses.processing;
 import static alpha.nomagichttp.message.Responses.text;
@@ -28,16 +27,12 @@ import static alpha.nomagichttp.real.TestRequests.get;
 import static alpha.nomagichttp.real.TestRequests.post;
 import static alpha.nomagichttp.real.TestRoutes.respondIsBodyEmpty;
 import static alpha.nomagichttp.real.TestRoutes.respondRequestBody;
-import static alpha.nomagichttp.testutil.Logging.toJUL;
 import static alpha.nomagichttp.testutil.TestClient.CRLF;
 import static alpha.nomagichttp.util.BetterBodyPublishers.ofByteArray;
 import static java.lang.System.Logger.Level.DEBUG;
-import static java.lang.System.Logger.Level.ERROR;
 import static java.lang.System.Logger.Level.WARNING;
 import static java.nio.charset.StandardCharsets.US_ASCII;
-import static java.util.concurrent.CompletableFuture.failedStage;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * Tests concerning details of the server.<p>
@@ -237,45 +232,6 @@ class DetailTest extends AbstractRealTest
             "Content-Length: 4"                       + CRLF + CRLF +
             
             "done");
-    }
-    
-    // TODO: This needs to go to ErrorTest; after test refactoring
-    @Test
-    void afterHttpExchange_responseIsLoggedButIgnored() throws IOException, InterruptedException {
-        server().add("/", GET().accept((req, ch) -> {
-            ch.write(noContent());
-            ch.write(Response.builder(123).build());
-        }));
-        
-        String rsp = client().writeRead(
-                "GET / HTTP/1.1"          + CRLF + CRLF);
-        assertThat(rsp).isEqualTo(
-                "HTTP/1.1 204 No Content" + CRLF + CRLF);
-        
-        assertTrue(logRecorder().await(toJUL(WARNING),
-                "HTTP exchange not active. This response is ignored: DefaultResponse{statusCode=123"));
-        
-        // Superclass asserts no error sent to error handler
-    }
-    
-    // TODO: This needs to go to ErrorTest; after test refactoring
-    @Test
-    void afterHttpExchange_responseExceptionIsLoggedButIgnored() throws IOException, InterruptedException {
-        server().add("/", GET().accept((req, ch) -> {
-            ch.write(noContent());
-            ch.write(failedStage(new RuntimeException("Oops!")));
-        }));
-        
-        String rsp = client().writeRead(
-                "GET / HTTP/1.1"          + CRLF + CRLF);
-        assertThat(rsp).isEqualTo(
-                "HTTP/1.1 204 No Content" + CRLF + CRLF);
-        
-        assertTrue(logRecorder().await(toJUL(ERROR),
-                "Application's response stage completed exceptionally, " +
-                "but HTTP exchange is not active. This error does not propagate anywhere."));
-        
-        // Superclass asserts no error sent to error handler
     }
     
     // See ResponseBodySubscriber.sliceIntoChunks()
