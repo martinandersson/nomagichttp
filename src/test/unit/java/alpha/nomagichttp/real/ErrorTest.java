@@ -519,6 +519,8 @@ class ErrorTest extends AbstractRealTest
                 // Intercepted by DefaultRequest > OnErrorCloseReadStream
                 onNext(i -> { throw new OopsException(); }));
         
+        onErrorAccept(OopsException.class, channel ->
+            assertThat(channel.isOpenForReading()).isFalse());
         server().add("/", POST().accept((req, ch) -> {
             req.body().subscribe(sub);
         }));
@@ -529,8 +531,6 @@ class ErrorTest extends AbstractRealTest
             "HTTP/1.1 500 Internal Server Error" + CRLF +
             "Content-Length: 0"                  + CRLF + CRLF);
         
-        // TODO: Assert that read stream was closed before error handler called.
-        //       Next statement kind of works as a substitute.
         assertThat(stopLogRecording()).extracting(LogRecord::getLevel, LogRecord::getMessage)
                 .contains(tuple(toJUL(ERROR),
                         "Signalling Flow.Subscriber.onNext() failed. Will close the channel's read stream."));
