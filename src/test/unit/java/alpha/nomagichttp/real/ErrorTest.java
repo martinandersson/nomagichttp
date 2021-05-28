@@ -244,7 +244,7 @@ class ErrorTest extends AbstractRealTest
         MemorizingSubscriber<PooledByteBufferHolder> sub = new MemorizingSubscriber<>(
                 // GET:  Caught by Publishers.empty()
                 // POST: Caught by ChannelByteBufferPublisher > PushPullPublisher > AbstractUnicastPublisher
-                onSubscribe(i -> { throw OOPS; }));
+                onSubscribe(i -> { throw new RuntimeException("Oops!"); }));
         
         server().add("/", builder(method).accept((req, ch) -> {
             req.body().subscribe(sub);
@@ -279,7 +279,7 @@ class ErrorTest extends AbstractRealTest
     void requestBodySubscriberFails_onNext() throws IOException, InterruptedException {
         MemorizingSubscriber<PooledByteBufferHolder> sub = new MemorizingSubscriber<>(
                 // Intercepted by DefaultRequest > OnErrorCloseReadStream
-                onNext(i -> { throw OOPS; }));
+                onNext(i -> { throw new RuntimeException("Oops!"); }));
         
         server().add("/", POST().accept((req, ch) -> {
             req.body().subscribe(sub);
@@ -312,7 +312,7 @@ class ErrorTest extends AbstractRealTest
     void requestBodySubscriberFails_onError() throws IOException, InterruptedException {
         MemorizingSubscriber<PooledByteBufferHolder> sub = new MemorizingSubscriber<>(
                 onNextAndError(
-                        item -> { throw OOPS; },
+                        item -> { throw new RuntimeException("Oops!"); },
                         thr  -> { throw new RuntimeException("is logged but not re-thrown"); }));
         
         server().add("/", POST().accept((req, ch) -> {
@@ -359,7 +359,7 @@ class ErrorTest extends AbstractRealTest
         MemorizingSubscriber<PooledByteBufferHolder> sub = new MemorizingSubscriber<>(
                 onNextAndComplete(
                         buf -> { buf.get().position(buf.get().limit()); buf.release(); }, // Discard
-                        ()   -> { throw OOPS; }));
+                        ()   -> { throw new RuntimeException("Oops!"); }));
         
         server().add("/", builder(method).accept((req, ch) -> {
             req.body().subscribe(sub);
@@ -396,14 +396,14 @@ class ErrorTest extends AbstractRealTest
                 .hasMessage(msg)
                 .hasNoSuppressedExceptions()
                 .getCause()
-                .isSameAs(OOPS);
+                .isExactlyInstanceOf(RuntimeException.class)
+                .hasMessage("Oops!");
     }
-    
-    private static final RuntimeException OOPS = new RuntimeException("Oops!");
     
     private void assertThatErrorHandlerCaughtOops() throws InterruptedException {
         assertThat(pollServerError())
-                .isSameAs(OOPS)
+                .isExactlyInstanceOf(RuntimeException.class)
+                .hasMessage("Oops!")
                 .hasNoCause()
                 .hasNoSuppressedExceptions();
     }
