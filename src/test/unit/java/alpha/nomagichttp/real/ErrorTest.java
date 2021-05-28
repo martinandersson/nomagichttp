@@ -238,89 +238,6 @@ class ErrorTest extends AbstractRealTest
         assertThatNoErrorWasLogged();
     }
     
-    @Test
-    void IllegalBodyException_inResponseToHEAD() throws IOException, InterruptedException {
-        server().add("/",
-            HEAD().respond(text("Body!")));
-        String rsp = client().writeRead(
-            "HEAD / HTTP/1.1"                    + CRLF + CRLF);
-        assertThat(rsp).isEqualTo(
-            "HTTP/1.1 500 Internal Server Error" + CRLF +
-            "Content-Length: 0"                  + CRLF + CRLF);
-        assertThatServerErrorObservedAndLogged()
-            .isExactlyInstanceOf(IllegalBodyException.class)
-            .hasNoCause()
-            .hasNoSuppressedExceptions()
-            .hasMessage("Body in response to a HEAD request.");
-    }
-    
-    @Test
-    void IllegalBodyException_inRequestFromTRACE() throws IOException, InterruptedException {
-        server().add("/",
-            TRACE().accept((req, ch) -> { throw new AssertionError("Not invoked."); }));
-        String rsp = client().writeRead(
-            "TRACE / HTTP/1.1"         + CRLF +
-            "Content-Length: 1"        + CRLF + CRLF +
-            
-            "X");
-        assertThat(rsp).isEqualTo(
-            "HTTP/1.1 400 Bad Request" + CRLF +
-            "Content-Length: 0"        + CRLF + CRLF);
-        assertThat(pollServerError())
-            .isExactlyInstanceOf(IllegalBodyException.class)
-            .hasNoCause()
-            .hasNoSuppressedExceptions()
-            .hasMessage("Body in a TRACE request.");
-        assertThatNoErrorWasLogged();
-    }
-    
-    @Test
-    void IllegalBodyException_in1xxResponse() throws IOException, InterruptedException {
-        server().add("/",
-            GET().respond(() -> Response.builder(123)
-                    .body(ofString("Body!"))
-                    .build().completedStage()));
-        String rsp = client().writeRead(
-            "GET / HTTP/1.1"                     + CRLF + CRLF);
-        assertThat(rsp).isEqualTo(
-            "HTTP/1.1 500 Internal Server Error" + CRLF +
-            "Content-Length: 0"                  + CRLF + CRLF);
-        assertThatServerErrorObservedAndLogged()
-            .isExactlyInstanceOf(IllegalBodyException.class)
-            .hasNoCause()
-            .hasNoSuppressedExceptions()
-            .hasMessage("Presumably a body in a 1XX (Informational) response.");
-    }
-    
-    @Test
-    void ResponseRejectedException_interimIgnoredForOldClient() throws IOException, InterruptedException {
-        server().add("/", GET().accept((req, ch) -> {
-            ch.write(processing()); // <-- rejected
-            ch.write(text("Done!"));
-        }));
-        
-        // ... because "HTTP/1.0"
-        String rsp = client().writeRead(
-            "GET / HTTP/1.0"                          + CRLF + CRLF, "Done!");
-        assertThat(rsp).isEqualTo(
-            "HTTP/1.0 200 OK"                         + CRLF +
-            "Content-Type: text/plain; charset=utf-8" + CRLF +
-            "Content-Length: 5"                       + CRLF +
-            "Connection: close"                       + CRLF + CRLF +
-            
-            "Done!");
-        
-        // Exception delivered to error handler, yes
-        assertThat(pollServerError())
-                .isExactlyInstanceOf(ResponseRejectedException.class)
-                .hasNoCause()
-                .hasNoSuppressedExceptions()
-                .hasMessage("HTTP/1.0 does not support 1XX (Informational) responses.");
-        
-        // but exception NOT logged. That's the "ignored" part.
-        assertThatNoErrorWasLogged();
-    }
-    
     @ParameterizedTest
     @ValueSource(strings = {"GET", "POST"})
     void requestBodySubscriberFails_onSubscribe(String method) throws IOException, InterruptedException {
@@ -473,6 +390,107 @@ class ErrorTest extends AbstractRealTest
         assertThatErrorHandlerCaughtOops();
     }
     
+    private static void assertOnErrorThrowable(MemorizingSubscriber.Signal onError, String msg) {
+        assertThat(onError.<Throwable>getArgument())
+                .isExactlyInstanceOf(SubscriberFailedException.class)
+                .hasMessage(msg)
+                .hasNoSuppressedExceptions()
+                .getCause()
+                .isSameAs(OOPS);
+    }
+    
+    private static final RuntimeException OOPS = new RuntimeException("Oops!");
+    
+    private void assertThatErrorHandlerCaughtOops() throws InterruptedException {
+        assertThat(pollServerError())
+                .isSameAs(OOPS)
+                .hasNoCause()
+                .hasNoSuppressedExceptions();
+    }
+    
+    @Test
+    void IllegalBodyException_inResponseToHEAD() throws IOException, InterruptedException {
+        server().add("/",
+            HEAD().respond(text("Body!")));
+        String rsp = client().writeRead(
+            "HEAD / HTTP/1.1"                    + CRLF + CRLF);
+        assertThat(rsp).isEqualTo(
+            "HTTP/1.1 500 Internal Server Error" + CRLF +
+            "Content-Length: 0"                  + CRLF + CRLF);
+        assertThatServerErrorObservedAndLogged()
+            .isExactlyInstanceOf(IllegalBodyException.class)
+            .hasNoCause()
+            .hasNoSuppressedExceptions()
+            .hasMessage("Body in response to a HEAD request.");
+    }
+    
+    @Test
+    void IllegalBodyException_inRequestFromTRACE() throws IOException, InterruptedException {
+        server().add("/",
+            TRACE().accept((req, ch) -> { throw new AssertionError("Not invoked."); }));
+        String rsp = client().writeRead(
+            "TRACE / HTTP/1.1"         + CRLF +
+            "Content-Length: 1"        + CRLF + CRLF +
+            
+            "X");
+        assertThat(rsp).isEqualTo(
+            "HTTP/1.1 400 Bad Request" + CRLF +
+            "Content-Length: 0"        + CRLF + CRLF);
+        assertThat(pollServerError())
+            .isExactlyInstanceOf(IllegalBodyException.class)
+            .hasNoCause()
+            .hasNoSuppressedExceptions()
+            .hasMessage("Body in a TRACE request.");
+        assertThatNoErrorWasLogged();
+    }
+    
+    @Test
+    void IllegalBodyException_in1xxResponse() throws IOException, InterruptedException {
+        server().add("/",
+            GET().respond(() -> Response.builder(123)
+                    .body(ofString("Body!"))
+                    .build().completedStage()));
+        String rsp = client().writeRead(
+            "GET / HTTP/1.1"                     + CRLF + CRLF);
+        assertThat(rsp).isEqualTo(
+            "HTTP/1.1 500 Internal Server Error" + CRLF +
+            "Content-Length: 0"                  + CRLF + CRLF);
+        assertThatServerErrorObservedAndLogged()
+            .isExactlyInstanceOf(IllegalBodyException.class)
+            .hasNoCause()
+            .hasNoSuppressedExceptions()
+            .hasMessage("Presumably a body in a 1XX (Informational) response.");
+    }
+    
+    @Test
+    void ResponseRejectedException_interimIgnoredForOldClient() throws IOException, InterruptedException {
+        server().add("/", GET().accept((req, ch) -> {
+            ch.write(processing()); // <-- rejected
+            ch.write(text("Done!"));
+        }));
+        
+        // ... because "HTTP/1.0"
+        String rsp = client().writeRead(
+            "GET / HTTP/1.0"                          + CRLF + CRLF, "Done!");
+        assertThat(rsp).isEqualTo(
+            "HTTP/1.0 200 OK"                         + CRLF +
+            "Content-Type: text/plain; charset=utf-8" + CRLF +
+            "Content-Length: 5"                       + CRLF +
+            "Connection: close"                       + CRLF + CRLF +
+            
+            "Done!");
+        
+        // Exception delivered to error handler, yes
+        assertThat(pollServerError())
+                .isExactlyInstanceOf(ResponseRejectedException.class)
+                .hasNoCause()
+                .hasNoSuppressedExceptions()
+                .hasMessage("HTTP/1.0 does not support 1XX (Informational) responses.");
+        
+        // but exception NOT logged. That's the "ignored" part.
+        assertThatNoErrorWasLogged();
+    }
+    
     // TODO: Each timeout test case must be deterministic and not block
     
     @Test
@@ -600,23 +618,5 @@ class ErrorTest extends AbstractRealTest
         
         // TODO: Same here, release permit and assert log.
         //       We should then also be able to assert the start of the 200 OK response?
-    }
-    
-    private static void assertOnErrorThrowable(MemorizingSubscriber.Signal onError, String msg) {
-        assertThat(onError.<Throwable>getArgument())
-                .isExactlyInstanceOf(SubscriberFailedException.class)
-                .hasMessage(msg)
-                .hasNoSuppressedExceptions()
-                .getCause()
-                .isSameAs(OOPS);
-    }
-    
-    private static final RuntimeException OOPS = new RuntimeException("Oops!");
-    
-    private void assertThatErrorHandlerCaughtOops() throws InterruptedException {
-        assertThat(pollServerError())
-                .isSameAs(OOPS)
-                .hasNoCause()
-                .hasNoSuppressedExceptions();
     }
 }
