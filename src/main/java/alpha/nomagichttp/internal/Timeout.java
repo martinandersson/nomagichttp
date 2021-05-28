@@ -2,6 +2,7 @@ package alpha.nomagichttp.internal;
 
 import java.time.Duration;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.ScheduledThreadPoolExecutor;
 import java.util.concurrent.ThreadFactory;
@@ -80,12 +81,23 @@ final class Timeout
     void schedule(Runnable action) {
         requireNonNull(action);
         Object set = lazyInitOrElse(task, CompletableFuture::new, f -> {
-            Runnable onCondition = () -> {
-                if (takeIfSame(task, f).isPresent()) {
-                    action.run();
+            Runnable conditionally = () -> {
+                if (takeIfSame(task, f).isEmpty()) {
+                    // Not our box, abort
+                    return;
                 }
+                ScheduledFuture<?> scheduled;
+                try {
+                    scheduled = f.get();
+                } catch (InterruptedException | ExecutionException e) {
+                    throw new AssertionError(e);
+                }
+                if (scheduled.isCancelled()) {
+                    return;
+                }
+                action.run();
             };
-            f.complete(schedule(nanos, onCondition));
+            f.complete(schedule(nanos, conditionally));
         }, null);
         if (set == null) {
             throw new IllegalStateException();
