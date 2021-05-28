@@ -162,35 +162,6 @@ class ErrorTest extends AbstractRealTest
             .hasMessage(null);
     }
     
-    @ParameterizedTest
-    @ValueSource(booleans = {false, true})
-    void retryFailedRequest(boolean async) throws IOException {
-        Supplier<CompletionStage<Response>> impl = !async ?
-                () -> { throw new RuntimeException(); } :
-                () -> failedFuture(new RuntimeException());
-        
-        // Always retry
-        usingErrorHandler((t, ch, r, h) ->h.logic().accept(r, ch));
-        
-        AtomicInteger n = new AtomicInteger();
-        server().add("/", GET().respond(() -> {
-            if (n.incrementAndGet() < 3) {
-                return impl.get();
-            }
-            return noContent().toBuilder()
-                    .header("N", Integer.toString(n.get()))
-                    .build()
-                    .completedStage();
-        }));
-        
-        String rsp = client().writeRead(
-            "GET / HTTP/1.1"          + CRLF + CRLF);
-        assertThat(rsp).isEqualTo(
-            "HTTP/1.1 204 No Content" + CRLF +
-            "N: 3"                    + CRLF + CRLF);
-        assertThatNoErrorWasLogged();
-    }
-    
     @Test
     void HttpVersionParseException() throws IOException, InterruptedException {
         String rsp = client().writeRead(
@@ -473,6 +444,35 @@ class ErrorTest extends AbstractRealTest
         
         // TODO: Same here, release permit and assert log.
         //       We should then also be able to assert the start of the 200 OK response?
+    }
+    
+    @ParameterizedTest
+    @ValueSource(booleans = {false, true})
+    void retryFailedRequest(boolean async) throws IOException {
+        Supplier<CompletionStage<Response>> impl = !async ?
+                () -> { throw new RuntimeException(); } :
+                () -> failedFuture(new RuntimeException());
+        
+        // Always retry
+        usingErrorHandler((t, ch, r, h) ->h.logic().accept(r, ch));
+        
+        AtomicInteger n = new AtomicInteger();
+        server().add("/", GET().respond(() -> {
+            if (n.incrementAndGet() < 3) {
+                return impl.get();
+            }
+            return noContent().toBuilder()
+                    .header("N", Integer.toString(n.get()))
+                    .build()
+                    .completedStage();
+        }));
+        
+        String rsp = client().writeRead(
+            "GET / HTTP/1.1"          + CRLF + CRLF);
+        assertThat(rsp).isEqualTo(
+            "HTTP/1.1 204 No Content" + CRLF +
+            "N: 3"                    + CRLF + CRLF);
+        assertThatNoErrorWasLogged();
     }
     
     @ParameterizedTest
