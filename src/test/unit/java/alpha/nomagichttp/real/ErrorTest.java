@@ -24,6 +24,7 @@ import java.util.List;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.CompletionStage;
+import java.util.concurrent.Semaphore;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
@@ -304,25 +305,23 @@ class ErrorTest extends AbstractRealTest
     }
     
     @Test
-    void RequestBodyTimeoutException_caughtByServer() throws IOException, InterruptedException {
+    void RequestBodyTimeoutException_beforeSubscriber() throws IOException, InterruptedException {
         usingConfig(timeoutIdleConnection(2, ofMillis(0)));
+        Semaphore subscribe = new Semaphore(0);
+        onErrorRun(RequestBodyTimeoutException.class, subscribe::release);
         final BlockingQueue<Throwable> appErr = new ArrayBlockingQueue<>(1);
-        server()
-                // The async timeout, even though instant in this case, does
-                // not abort the eminent request handler invocation.
-                .add("/", POST().accept((req, ch) -> {
-                    try {
-                        // This suffer from the same "blocked thread" problem
-                        // other not-written test cases related to timeouts have.
-                        // Need to figure out a better way.
-                        MILLISECONDS.sleep(100);
-                    } catch (InterruptedException e) {
-                        appErr.add(e);
-                        return;
-                    }
-                    // or body().toText().exceptionally(), doesn't matter
-                    req.body().subscribe(onError(appErr::add));
-                }));
+        // The async timeout, even though instant in this case, does
+        // not abort the eminent request handler invocation.
+        server().add("/", POST().accept((req, ch) -> {
+            try {
+                subscribe.acquire();
+            } catch (InterruptedException e) {
+                appErr.add(e);
+                return;
+            }
+            // or body().toText().exceptionally(), doesn't matter
+            req.body().subscribe(onError(appErr::add));
+        }));
         
         String rsp = client().writeRead(
             "POST / HTTP/1.1"              + CRLF +
@@ -334,7 +333,7 @@ class ErrorTest extends AbstractRealTest
             "Content-Length: 0"            + CRLF +
             "Connection: close"            + CRLF + CRLF);
         
-        assertThat(appErr.poll(3, SECONDS))
+        assertThat(appErr.poll(1, SECONDS))
                 .isExactlyInstanceOf(IllegalStateException.class)
                 .hasNoCause()
                 .hasNoSuppressedExceptions()
@@ -349,7 +348,7 @@ class ErrorTest extends AbstractRealTest
         assertThatNoErrorWasLogged();
     }
     
-    // RequestBodyTimeoutException_caughtByApp() ??
+    // RequestBodyTimeoutException_afterSubscriber() ??
     // Super tricky to do deterministically without also blocking the test. Skipping for now.
     
     // Low-level write timeout by InterruptedByTimeoutException?
