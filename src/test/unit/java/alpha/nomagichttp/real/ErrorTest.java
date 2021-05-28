@@ -117,7 +117,7 @@ class ErrorTest extends AbstractRealTest
     }
     
     @Test
-    void not_found_default() throws IOException, InterruptedException {
+    void NoRouteFoundException_default() throws IOException, InterruptedException {
         String rsp = client().writeRead(
             "GET /404 HTTP/1.1"      + CRLF + CRLF);
         assertThat(rsp).isEqualTo(
@@ -131,7 +131,7 @@ class ErrorTest extends AbstractRealTest
     }
     
     @Test
-    void not_found_custom() throws IOException {
+    void NoRouteFoundException_custom() throws IOException {
         usingErrorHandler((exc, ch, req, han) -> {
             if (exc instanceof NoRouteFoundException) {
                 ch.write(status(499, "Custom Not Found!"));
@@ -147,7 +147,7 @@ class ErrorTest extends AbstractRealTest
     }
     
     @Test
-    void request_too_large() throws IOException, InterruptedException {
+    void MaxRequestHeadSizeExceededException() throws IOException, InterruptedException {
         usingConfiguration()
             .maxRequestHeadSize(1);
         String rsp = client().writeRead(
