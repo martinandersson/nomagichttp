@@ -475,6 +475,8 @@ class ErrorTest extends AbstractRealTest
                 // POST: Caught by ChannelByteBufferPublisher > PushPullPublisher > AbstractUnicastPublisher
                 onSubscribe(i -> { throw new RuntimeException(OOPS); }));
         
+        onErrorAccept(RuntimeException.class, channel ->
+            assertThat(channel.isEverythingOpen()).isTrue());
         server().add("/", builder(method).accept((req, ch) -> {
             req.body().subscribe(sub);
         }));
@@ -491,9 +493,6 @@ class ErrorTest extends AbstractRealTest
         assertThat(rsp).isEqualTo(
             "HTTP/1.1 500 Internal Server Error" + CRLF +
             "Content-Length: 0"                  + CRLF + CRLF);
-        
-        // TODO: Would ideally like to assert that when the error handler was called,
-        //       read stream remained open. Requires subclass to export API for this.
         
         var s = sub.signals();
         assertThat(s).hasSize(2);

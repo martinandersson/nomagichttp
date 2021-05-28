@@ -2,6 +2,7 @@ package alpha.nomagichttp.real;
 
 import alpha.nomagichttp.Config;
 import alpha.nomagichttp.HttpServer;
+import alpha.nomagichttp.handler.ClientChannel;
 import alpha.nomagichttp.handler.ErrorHandler;
 import alpha.nomagichttp.testutil.Logging;
 import alpha.nomagichttp.testutil.TestClient;
@@ -22,6 +23,7 @@ import java.util.Map;
 import java.util.concurrent.BlockingDeque;
 import java.util.concurrent.LinkedBlockingDeque;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Consumer;
 import java.util.logging.LogRecord;
 import java.util.logging.Logger;
 import java.util.stream.Stream;
@@ -71,7 +73,7 @@ abstract class AbstractRealTest
     private ErrorHandler custom;
     private BlockingDeque<Throwable> errors;
     // permits null values and keys
-    private final Map<Class<? extends Throwable>, List<Runnable>> onError = new HashMap<>();
+    private final Map<Class<? extends Throwable>, List<Consumer<ClientChannel>>> onError = new HashMap<>();
     private int port;
     private TestClient client;
     
@@ -163,14 +165,23 @@ abstract class AbstractRealTest
     }
     
     /**
-     * Schedule an action to run on observed exception types.<p>
-     * 
-     * Note: Named "onErrorRun" to avoid symbol clashes with Flow's onError.
+     * Schedule an action to run on observed exception types.
      * 
      * @param thr throwable class
      * @param action to run
      */
     protected final void onErrorRun(Class<? extends Throwable> thr, Runnable action) {
+        onErrorAccept(thr, channelIgnored -> action.run());
+    }
+    
+    /**
+     * Schedule a consumer of the client channel to run on observed exception
+     * types.
+     * 
+     * @param thr throwable class
+     * @param action to run
+     */
+    protected final void onErrorAccept(Class<? extends Throwable> thr, Consumer<ClientChannel> action) {
         requireNonNull(thr);
         requireNonNull(action);
         requireServerNotStarted();
@@ -191,11 +202,11 @@ abstract class AbstractRealTest
     protected final HttpServer server() throws IOException {
         if (server == null) {
             errors = new LinkedBlockingDeque<>();
-            ErrorHandler collect = (t, r, c, h) -> {
+            ErrorHandler collect = (t, channel, r, h) -> {
                 errors.add(t);
                 onError.forEach((k, v) -> {
                     if (k.isInstance(t)) {
-                        v.forEach(Runnable::run);
+                        v.forEach(action -> action.accept(channel));
                     }
                 });
                 throw t;
