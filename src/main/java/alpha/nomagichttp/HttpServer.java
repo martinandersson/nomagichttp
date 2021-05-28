@@ -334,22 +334,26 @@ public interface HttpServer
      * server's listening port, then this method will block until the startup
      * routine is completed before initiating the shutdown.<p>
      * 
-     * If the server is not {@link #isRunning() running} (listening on a port)
-     * then the returned stage is already completed. This is true even if
-     * exchanges from a previous run cycle is still executing (i.e. a
-     * previously returned stage has yet to complete).<p>
-     * 
      * Upon failure to close the server's listening port, the stage will
      * complete exceptionally with an {@code IOException}.<p>
      * 
      * The returned stage can not be used to abort the shutdown.<p>
      * 
-     * There are no locks involved between a server's start and the completion
-     * of the returned stage. If the application starts the same server
-     * concurrent to the completion of the last HTTP exchange from the previous
-     * run cycle, then technically it is possible for the returned stage to
-     * complete at the same time the server is considered to be in a running
-     * state.<p>
+     * The returned stage represents uniquely the invocation of this method.
+     * This has a few noteworthy consequences.<p>
+     * 
+     * 1. If the server is not {@link #isRunning() running} (listening
+     * on a port) then the returned stage is already completed. This is true
+     * even if exchanges from a previous run cycle is still executing (i.e. a
+     * previously returned stage has yet to complete).<p>
+     * 
+     * 2. If the application starts the same server again concurrent to the
+     * completion of the last HTTP exchange, then technically it is possible for
+     * the returned stage to complete at the same time the server is considered
+     * to be in a running state.<p>
+     * 
+     * 3. A concurrent (or subsequent) start can not hinder the returned stage
+     * from completing.
      * 
      * @return the result
      */
