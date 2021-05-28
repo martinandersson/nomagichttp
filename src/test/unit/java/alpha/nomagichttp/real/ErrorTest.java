@@ -279,8 +279,6 @@ class ErrorTest extends AbstractRealTest
         assertThatNoErrorWasLogged();
     }
     
-    // TODO: Each timeout test case must be deterministic and not block
-    
     @Test
     void RequestHeadTimeoutException() throws IOException, InterruptedException {
         // Return uber low timeout on the first poll, i.e. for the request head,
