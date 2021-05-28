@@ -132,7 +132,25 @@ class DetailTest extends AbstractRealTest
         }
     }
     
-    // TODO: Respond 100 Continue thru config (subclass must expose config)
+    @Test
+    void expect100Continue_immediatelyThroughConfig() throws IOException {
+        usingConfiguration()
+            .immediatelyContinueExpect100(true);
+        server().add("/",
+            // Request body doesn't matter
+            GET().respond(text("end")));
+        String rsp = client().writeRead(
+            "GET / HTTP/1.1"                          + CRLF + 
+            "Expect: 100-continue"                    + CRLF + CRLF, "end");
+        assertThat(rsp).isEqualTo(
+            "HTTP/1.1 100 Continue"                   + CRLF + CRLF +
+            
+            "HTTP/1.1 200 OK"                         + CRLF +
+            "Content-Type: text/plain; charset=utf-8" + CRLF +
+            "Content-Length: 3"                       + CRLF + CRLF +
+            
+            "end");
+    }
     
     // Also see MessageTest.expect100Continue_onFirstBodyAccess()
     @Test
