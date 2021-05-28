@@ -25,6 +25,7 @@ import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Consumer;
 import java.util.function.Supplier;
 import java.util.logging.LogRecord;
 
@@ -77,6 +78,43 @@ import static org.junit.jupiter.api.Assertions.assertSame;
 class ErrorTest extends AbstractRealTest
 {
     private static final String OOPS = "Oops";
+    
+    // Is treated as a new error, having suppressed the previous one
+    @Test
+    void ErrorHandler_fails() throws IOException, InterruptedException {
+        Consumer<Throwable> assertSecond = thr -> {
+            assertThat(thr)
+                .isExactlyInstanceOf(RuntimeException.class)
+                .hasMessage("second")
+                .hasNoCause();
+            var oops = thr.getSuppressed()[0];
+            assertRuntimeOopsException(oops);
+        };
+        usingConfiguration().maxErrorRecoveryAttempts(2);
+        AtomicInteger n = new AtomicInteger();
+        usingErrorHandler((thr, ch, req, rh) -> {
+            if (n.incrementAndGet() == 1) {
+                assertRuntimeOopsException(thr);
+                assertThat(ch.isEverythingOpen()).isTrue();
+                throw new RuntimeException("second");
+            } else {
+                assertSecond.accept(thr);
+                // Pass forward to superclass' collector
+                throw thr;
+            }
+        });
+        server().add("/", GET().respond(() -> {
+            throw new RuntimeException(OOPS);
+        }));
+        
+        String rsp = client().writeRead(
+            "GET / HTTP/1.1"                     + CRLF + CRLF);
+        assertThat(rsp).isEqualTo(
+            "HTTP/1.1 500 Internal Server Error" + CRLF +
+            "Content-Length: 0"                  + CRLF + CRLF);
+        
+        assertSecond.accept(pollServerError());
+    }
     
     @Test
     void not_found_default() throws IOException, InterruptedException {
@@ -274,7 +312,7 @@ class ErrorTest extends AbstractRealTest
         assertSame(s.get(1).getMethodName(), ON_ERROR);
         
         assertOnErrorThrowable(s.get(1), "Signalling Flow.Subscriber.onSubscribe() failed.");
-        assertThatErrorHandlerCaughtOops();
+        assertRuntimeOopsException(pollServerError());
     }
     
     @Test
@@ -307,7 +345,7 @@ class ErrorTest extends AbstractRealTest
         assertSame(s.get(2).getMethodName(), ON_ERROR);
         
         assertOnErrorThrowable(s.get(2), "Signalling Flow.Subscriber.onNext() failed.");
-        assertThatErrorHandlerCaughtOops();
+        assertRuntimeOopsException(pollServerError());
     }
     
     @Test
@@ -352,7 +390,7 @@ class ErrorTest extends AbstractRealTest
         assertSame(s.get(2).getMethodName(), ON_ERROR);
         
         assertOnErrorThrowable(s.get(2), "Signalling Flow.Subscriber.onNext() failed.");
-        assertThatErrorHandlerCaughtOops();
+        assertRuntimeOopsException(pollServerError());
     }
     
     @ParameterizedTest
@@ -389,7 +427,7 @@ class ErrorTest extends AbstractRealTest
         }
         
         assertThat(sub.methodNames()).isEqualTo(expected);
-        assertThatErrorHandlerCaughtOops();
+        assertRuntimeOopsException(pollServerError());
     }
     
     private static void assertOnErrorThrowable(MemorizingSubscriber.Signal onError, String msg) {
@@ -400,14 +438,6 @@ class ErrorTest extends AbstractRealTest
                 .getCause()
                 .isExactlyInstanceOf(RuntimeException.class)
                 .hasMessage(OOPS);
-    }
-    
-    private void assertThatErrorHandlerCaughtOops() throws InterruptedException {
-        assertThat(pollServerError())
-                .isExactlyInstanceOf(RuntimeException.class)
-                .hasMessage(OOPS)
-                .hasNoCause()
-                .hasNoSuppressedExceptions();
     }
     
     @Test
@@ -620,5 +650,13 @@ class ErrorTest extends AbstractRealTest
         
         // TODO: Same here, release permit and assert log.
         //       We should then also be able to assert the start of the 200 OK response?
+    }
+    
+    private void assertRuntimeOopsException(Throwable oops) {
+        assertThat(oops)
+                .isExactlyInstanceOf(RuntimeException.class)
+                .hasMessage(OOPS)
+                .hasNoCause()
+                .hasNoSuppressedExceptions();
     }
 }
