@@ -1,5 +1,6 @@
 package alpha.nomagichttp.real;
 
+import alpha.nomagichttp.examples.RetryRequestOnError;
 import alpha.nomagichttp.handler.RequestHandler;
 import alpha.nomagichttp.message.Responses;
 import org.junit.jupiter.api.Test;
@@ -17,7 +18,10 @@ import static alpha.nomagichttp.testutil.TestClient.CRLF;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * Mimics all the examples provided in {@link alpha.nomagichttp.examples}.<p>
+ * Mimics almost all the examples provided in {@link
+ * alpha.nomagichttp.examples}. The only exception is {@link
+ * RetryRequestOnError} whose equivalent test is {@link
+ * ErrorTest#retryFailedRequest(boolean)}.<p>
  * 
  * The main purpose is to have a guarantee that new code changes doesn't break
  * code examples.

@@ -162,37 +162,29 @@ class ErrorTest extends AbstractRealTest
             .hasMessage(null);
     }
     
-    /** Request handler fails synchronously. */
-    @Test
-    void retry_failed_request_sync() throws IOException {
-        firstTwoRequestsResponds(() -> { throw new RuntimeException(); });
-    }
-    
-    /** Returned stage completes exceptionally. */
-    @Test
-    void retry_failed_request_async() throws IOException {
-        firstTwoRequestsResponds(() -> failedFuture(new RuntimeException()));
-    }
-    
-    private void firstTwoRequestsResponds(Supplier<CompletionStage<Response>> response)
-            throws IOException
-    {
-        // Always retry
-        usingErrorHandler((t, ch, r, h) -> h.logic().accept(r, ch));
+    @ParameterizedTest
+    @ValueSource(booleans = {false, true})
+    void retryFailedRequest(boolean async) throws IOException {
+        Supplier<CompletionStage<Response>> impl = !async ?
+                () -> { throw new RuntimeException(); } :
+                () -> failedFuture(new RuntimeException());
         
-        AtomicInteger c = new AtomicInteger();
+        // Always retry
+        usingErrorHandler((t, ch, r, h) ->h.logic().accept(r, ch));
+        
+        AtomicInteger n = new AtomicInteger();
         server().add("/", GET().respond(() -> {
-            if (c.incrementAndGet() < 3) {
-                return response.get();
+            if (n.incrementAndGet() < 3) {
+                return impl.get();
             }
             return noContent().toBuilder()
-                    .header("N", Integer.toString(c.get()))
+                    .header("N", Integer.toString(n.get()))
                     .build()
                     .completedStage();
         }));
         
         String rsp = client().writeRead(
-            "GET / HTTP/1.1" + CRLF   + CRLF);
+            "GET / HTTP/1.1"          + CRLF + CRLF);
         assertThat(rsp).isEqualTo(
             "HTTP/1.1 204 No Content" + CRLF +
             "N: 3"                    + CRLF + CRLF);
