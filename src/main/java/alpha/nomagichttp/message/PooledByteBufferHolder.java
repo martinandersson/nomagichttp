@@ -34,6 +34,23 @@ import java.util.function.IntConsumer;
 public interface PooledByteBufferHolder
 {
     /**
+     * Discard bytebuffer.<p>
+     * 
+     * The bytebuffer's position will be set to its limit (i.e. no more
+     * remaining bytes) and then released.
+     * 
+     * @param holder of bytebuffer
+     * @throws NullPointerException if {@code holder} is {@code null}
+     */
+    // static coz application code should never have a need to use this method?
+    // (less visibility, so to speak)
+    static void discard(PooledByteBufferHolder holder) {
+        ByteBuffer b = holder.get();
+        b.position(b.limit());
+        holder.release();
+    }
+    
+    /**
      * Get the bytebuffer.<p>
      * 
      * The returned instance should only be used for read operations. Any other

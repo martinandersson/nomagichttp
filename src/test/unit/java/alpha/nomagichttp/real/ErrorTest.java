@@ -603,7 +603,7 @@ class ErrorTest extends AbstractRealTest
     void requestBodySubscriberFails_onComplete(String method) throws IOException, InterruptedException {
         MemorizingSubscriber<PooledByteBufferHolder> sub = new MemorizingSubscriber<>(
                 onNextAndComplete(
-                        buf -> { buf.get().position(buf.get().limit()); buf.release(); }, // Discard
+                        PooledByteBufferHolder::discard,
                         ()   -> { throw new OopsException(); }));
         
         server().add("/", builder(method).accept((req, ch) -> {
