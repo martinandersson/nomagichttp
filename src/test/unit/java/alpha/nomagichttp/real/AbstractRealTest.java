@@ -9,6 +9,7 @@ import alpha.nomagichttp.testutil.TestClient;
 import org.assertj.core.api.AbstractThrowableAssert;
 import org.assertj.core.groups.Tuple;
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.TestInfo;
 
@@ -77,9 +78,13 @@ abstract class AbstractRealTest
     private int port;
     private TestClient client;
     
+    @BeforeAll
+    static void beforeAll() {
+        Logging.setLevel(ALL);
+    }
+    
     @BeforeEach
     void beforeEach(TestInfo test) {
-        Logging.setLevel(ALL);
         LOG.log(INFO, "Executing " + toString(test));
         key = Logging.startRecording();
     }
