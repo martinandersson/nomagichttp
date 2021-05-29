@@ -2,7 +2,6 @@ package alpha.nomagichttp.real;
 
 import alpha.nomagichttp.handler.ErrorHandler;
 import alpha.nomagichttp.message.EndOfStreamException;
-import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
@@ -17,7 +16,7 @@ import static alpha.nomagichttp.testutil.TestClient.CRLF;
 import static java.lang.System.Logger.Level.WARNING;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static java.util.logging.Level.INFO;
-import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
+import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * Client-connection life-cycle tests.
@@ -30,6 +29,7 @@ class ClientLifeCycleTest extends AbstractRealTest
     // https://stackoverflow.com/questions/10240694/java-socket-api-how-to-tell-if-a-connection-has-been-closed/10241044#10241044
     // https://stackoverflow.com/questions/155243/why-is-it-impossible-without-attempting-i-o-to-detect-that-tcp-socket-was-grac
     
+    // For HTTP/1.0, server will respond "Connection: close"
     @Test
     void http1_0_nonPersistent() throws IOException, InterruptedException {
         server().add("/", GET().respond(noContent()));
@@ -103,7 +103,7 @@ class ClientLifeCycleTest extends AbstractRealTest
            {tstamp} | dead-25     | FINE | {pkg}.HttpExchange resolve | Client aborted the HTTP exchange.
            {tstamp} | dead-25     | FINE | {pkg}.DefaultChannelOperations orderlyClose | Closed child: {...}
          */
-        Assertions.assertThat(stopLogRecording()
+        assertThat(stopLogRecording()
                 .mapToInt(r -> r.getLevel().intValue()))
                 .noneMatch(v -> v > INFO.intValue());
         
@@ -118,19 +118,22 @@ class ClientLifeCycleTest extends AbstractRealTest
      * @see ErrorHandler
      */
     @Test
-    void clientClosesChannel_serverReceivedSomeBytes_ignored()
-            throws IOException, InterruptedException, TimeoutException, ExecutionException
-    {
+    void clientClosesChannel_serverReceivedSomeBytes() throws IOException, InterruptedException, ExecutionException, TimeoutException {
+        onErrorAssert(EndOfStreamException.class, channel ->
+                assertThat(channel.isOpenForReading()).isFalse());
+        
         client().write("XXX /incomplete");
         awaitChildAccept();
-        server().stop().toCompletableFuture().get(3, SECONDS);
         
-        Assertions.assertThat(stopLogRecording()
+        assertThat(pollServerError())
+                .isExactlyInstanceOf(EndOfStreamException.class);
+        
+        // Eager stop to capture all logs
+        server().stop().toCompletableFuture().get(1, SECONDS);
+        
+        assertThat(stopLogRecording()
                 .mapToInt(r -> r.getLevel().intValue()))
                 .noneMatch(v -> v > INFO.intValue());
-        
-        Assertions.assertThat(pollServerError())
-                .isExactlyInstanceOf(EndOfStreamException.class);
     }
     
     // TODO: Partial connection shut downs. E.g. client close his write stream,
