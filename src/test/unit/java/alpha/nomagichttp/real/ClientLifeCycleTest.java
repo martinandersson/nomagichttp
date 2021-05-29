@@ -48,6 +48,7 @@ class ClientLifeCycleTest extends AbstractRealTest
         }
     }
     
+    // Writing to a closed channel logs ClosedChannelException
     @Test
     void serverClosesChannel_beforeResponse() throws IOException, InterruptedException {
         server().add("/", GET().accept((req, ch) -> {
@@ -75,12 +76,9 @@ class ClientLifeCycleTest extends AbstractRealTest
         // <implicit assert that no error was delivered to the error handler>
     }
     
-    /**
-     * Client immediately closes the channel. Error handler is not called and no
-     * other form of error logging occurs.
-     * 
-     * {@code RequestHeadSubscriber#asCompletionStage()}. 
-     */
+    // Client immediately closes the channel,
+    // is completely ignored (no error handler and no logging).
+    // See RequestHeadSubscriber.asCompletionStage()
     @Test
     void clientClosesChannel_serverReceivedNoBytes_ignored()
             throws IOException, InterruptedException, TimeoutException, ExecutionException
