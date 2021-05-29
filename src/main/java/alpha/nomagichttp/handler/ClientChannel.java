@@ -53,7 +53,7 @@ import java.util.concurrent.CompletionStage;
  * 
  * When using low-level methods to operate the channel, or when storing
  * attributes on the channel, then have in mind that the "client" in {@code
- * ClientChannel} may be a proxy which represents many different human end
+ * ClientChannel} may be a HTTP proxy which represents many different human end
  * users.<p>
  * 
  * The implementation is thread-safe and mostly non-blocking. Underlying channel
