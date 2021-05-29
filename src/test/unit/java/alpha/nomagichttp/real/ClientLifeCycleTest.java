@@ -118,7 +118,7 @@ class ClientLifeCycleTest extends AbstractRealTest
      * @see ErrorHandler
      */
     @Test
-    void clientClosesChannel_serverReceivedSomeBytes() throws IOException, InterruptedException, ExecutionException, TimeoutException {
+    void clientClosesChannel_serverReceivedPartialHead() throws IOException, InterruptedException, ExecutionException, TimeoutException {
         onErrorAssert(EndOfStreamException.class, channel ->
                 assertThat(channel.isOpenForReading()).isFalse());
         
