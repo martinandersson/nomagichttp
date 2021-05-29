@@ -84,10 +84,10 @@ class ClientLifeCycleTest extends AbstractRealTest
             throws IOException, InterruptedException, TimeoutException, ExecutionException
     {
         client().openConnection().close();
-        awaitChildAccept();
         
         // Eager stop to capture all logs
         // (In reality, whole test cycle over in less than 100 ms)
+        awaitChildAccept();
         server().stop().toCompletableFuture().get(1, SECONDS);
         
         /*
@@ -123,7 +123,6 @@ class ClientLifeCycleTest extends AbstractRealTest
                 assertThat(channel.isOpenForReading()).isFalse());
         
         client().write("XXX /incomplete");
-        awaitChildAccept();
         
         assertThat(pollServerError())
                 .isExactlyInstanceOf(EndOfStreamException.class);
