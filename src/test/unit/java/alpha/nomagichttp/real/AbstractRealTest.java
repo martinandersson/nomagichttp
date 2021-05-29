@@ -165,31 +165,64 @@ abstract class AbstractRealTest
     }
     
     /**
-     * Schedule an action to run on observed exception types.
+     * Schedule an action to run on error handler observed exceptions.<p>
      * 
-     * @param thr throwable class
+     * Useful, for example, to release blocked threads and other low-level hacks
+     * employed by test cases.<p>
+     * 
+     * The action executes within a server-registered error handler. And so, the
+     * action should not throw an exception. If it does, then the exception will
+     * likely be feed right back to the error handler(s), which is probably not
+     * what the test intended. Furthermore, if the action is triggered on {@code
+     * Throwable} (i.e. for all exceptions) and always throws the same exception
+     * on each invocation, then we'll end up in a loop which only breaks when
+     * all error attempts run out.<p>
+     * 
+     * I.e., do not run <i>asserts</i> in the action. For this reason, use
+     * {@link #onErrorAssert(Class, Consumer)} instead.
+     * 
+     * @param trigger exception type (instance of)
      * @param action to run
      */
-    protected final void onErrorRun(Class<? extends Throwable> thr, Runnable action) {
-        onErrorAccept(thr, channelIgnored -> action.run());
-    }
-    
-    /**
-     * Schedule a consumer of the client channel to run on observed exception
-     * types.
-     * 
-     * @param thr throwable class
-     * @param action to run
-     */
-    protected final void onErrorAccept(Class<? extends Throwable> thr, Consumer<ClientChannel> action) {
-        requireNonNull(thr);
+    protected final void onErrorRun(Class<? extends Throwable> trigger, Runnable action) {
+        requireNonNull(trigger);
         requireNonNull(action);
         requireServerNotStarted();
-        onError.compute(thr, (k, v) -> {
+        onError.compute(trigger, (k, v) -> {
             if (v == null) {
                 v = new ArrayList<>();
             }
-            v.add(action);
+            v.add(channelIgnored -> action.run());
+            return v;
+        });
+    }
+    
+    /**
+     * Execute assert statements on error handler observed exceptions.<p>
+     * 
+     * If the action throws a throwable (any type), then the new error is not
+     * re-thrown to the server but instead added to the internally held
+     * collection of server errors and will consequently fail the test unless
+     * polled explicitly.
+     * 
+     * @param trigger exception type (instance of)
+     * @param action to run
+     */
+    protected final void onErrorAssert(Class<? extends Throwable> trigger, Consumer<ClientChannel> action) {
+        requireNonNull(trigger);
+        requireNonNull(action);
+        requireServerNotStarted();
+        onError.compute(trigger, (k, v) -> {
+            if (v == null) {
+                v = new ArrayList<>();
+            }
+            v.add(channel -> {
+                try {
+                    action.accept(channel);
+                } catch (Throwable t) {
+                    errors.add(t);
+                }
+            });
             return v;
         });
     }
@@ -202,7 +235,7 @@ abstract class AbstractRealTest
     protected final HttpServer server() throws IOException {
         if (server == null) {
             errors = new LinkedBlockingDeque<>();
-            ErrorHandler collect = (t, channel, r, h) -> {
+            ErrorHandler collectAndExecute = (t, channel, r, h) -> {
                 errors.add(t);
                 onError.forEach((k, v) -> {
                     if (k.isInstance(t)) {
@@ -213,8 +246,8 @@ abstract class AbstractRealTest
             };
             Config arg1 = config != null ? config : DEFAULT;
             ErrorHandler[] arg2 = custom != null ?
-                    new ErrorHandler[]{custom, collect} :
-                    new ErrorHandler[]{collect};
+                    new ErrorHandler[]{custom, collectAndExecute} :
+                    new ErrorHandler[]{collectAndExecute};
             server = HttpServer.create(arg1, arg2).start();
             port = server.getLocalAddress().getPort();
         }

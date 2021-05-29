@@ -491,8 +491,8 @@ class ErrorTest extends AbstractRealTest
                 // GET:  Caught by Publishers.empty()
                 // POST: Caught by ChannelByteBufferPublisher > PushPullPublisher > AbstractUnicastPublisher
                 onSubscribe(i -> { throw new OopsException(); }));
-        
-        onErrorAccept(OopsException.class, channel ->
+    
+        onErrorAssert(OopsException.class, channel ->
             assertThat(channel.isEverythingOpen()).isTrue());
         server().add("/", builder(method).accept((req, ch) -> {
             req.body().subscribe(sub);
@@ -525,8 +525,8 @@ class ErrorTest extends AbstractRealTest
         MemorizingSubscriber<PooledByteBufferHolder> sub = new MemorizingSubscriber<>(
                 // Intercepted by DefaultRequest > OnErrorCloseReadStream
                 onNext(i -> { throw new OopsException(); }));
-        
-        onErrorAccept(OopsException.class, channel ->
+    
+        onErrorAssert(OopsException.class, channel ->
             assertThat(channel.isOpenForReading()).isFalse());
         server().add("/", POST().accept((req, ch) -> {
             req.body().subscribe(sub);
@@ -560,7 +560,7 @@ class ErrorTest extends AbstractRealTest
                         item -> { throw new OopsException(); },
                         thr  -> { throw new OopsException("is logged but not re-thrown"); }));
         
-        onErrorAccept(OopsException.class, channel ->
+        onErrorAssert(OopsException.class, channel ->
             assertThat(channel.isOpenForReading()).isFalse());
         server().add("/", POST().accept((req, ch) -> {
             req.body().subscribe(sub);
