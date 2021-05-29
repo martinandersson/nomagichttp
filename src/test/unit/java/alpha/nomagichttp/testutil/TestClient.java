@@ -141,6 +141,30 @@ public final class TestClient
     }
     
     /**
+     * Shutdown the channel's output stream.
+     * 
+     * @throws IllegalStateException if a connection is not open
+     * @throws IOException like for other weird stuff
+     */
+    public void shutdownOutput() throws IOException {
+        requireConnectionIsOpen();
+        ch.shutdownOutput();
+        LOG.log(DEBUG, "Shut down channel's output stream.");
+    }
+    
+    /**
+     * Shutdown the channel's input stream.
+     * 
+     * @throws IllegalStateException if a connection is not open
+     * @throws IOException like for other weird stuff
+     */
+    public void shutdownInput() throws IOException {
+        requireConnectionIsOpen();
+        ch.shutdownInput();
+        LOG.log(DEBUG, "Shut down channel's input stream.");
+    }
+    
+    /**
      * Will return {@code true} if it can be assumed that the other peer closed
      * his output stream (analogous to our input stream and reading ability).<p>
      * 

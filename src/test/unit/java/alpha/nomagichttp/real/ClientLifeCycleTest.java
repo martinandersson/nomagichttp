@@ -2,17 +2,22 @@ package alpha.nomagichttp.real;
 
 import alpha.nomagichttp.handler.ErrorHandler;
 import alpha.nomagichttp.message.EndOfStreamException;
+import alpha.nomagichttp.message.PooledByteBufferHolder;
 import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
 import java.nio.channels.Channel;
 import java.nio.channels.ClosedChannelException;
+import java.util.concurrent.ArrayBlockingQueue;
+import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeoutException;
 
 import static alpha.nomagichttp.handler.RequestHandler.GET;
 import static alpha.nomagichttp.message.Responses.noContent;
 import static alpha.nomagichttp.testutil.TestClient.CRLF;
+import static alpha.nomagichttp.testutil.TestSubscribers.onNextAndError;
 import static java.lang.System.Logger.Level.WARNING;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static java.util.logging.Level.INFO;
@@ -133,6 +138,38 @@ class ClientLifeCycleTest extends AbstractRealTest
         assertThat(stopLogRecording()
                 .mapToInt(r -> r.getLevel().intValue()))
                 .noneMatch(v -> v > INFO.intValue());
+    }
+    
+    // A variant of the previous test, except EOS goes to body subscriber
+    @Test
+    void clientShutsDownWriteStream_serverReceivedPartialBody() throws IOException, InterruptedException {
+        BlockingQueue<Throwable> appErr = new ArrayBlockingQueue<>(1);
+        Semaphore shutdown = new Semaphore(0);
+        server().add("/", GET().accept((req, ch) -> {
+            req.body().subscribe(onNextAndError(
+                    PooledByteBufferHolder::discard,
+                    thr -> {
+                        appErr.add(thr);
+                        ch.closeSafe();
+                    }));
+            shutdown.release();
+        }));
+        Channel ch = client().openConnection();
+        try (ch) {
+            client().write(
+                "GET / HTTP/1.1"    + CRLF +
+                "Content-Length: 2" + CRLF + CRLF +
+                
+                "1");
+            assertThat(shutdown.tryAcquire(1, SECONDS)).isTrue();
+            client().shutdownOutput();
+            
+            assertThat(appErr.poll(1, SECONDS))
+                    .isExactlyInstanceOf(EndOfStreamException.class)
+                    .hasNoCause()
+                    .hasNoSuppressedExceptions();
+        }
+        assertThatNoErrorWasLogged();
     }
     
     // TODO: Partial connection shut downs. E.g. client close his write stream,
