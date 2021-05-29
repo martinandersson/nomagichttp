@@ -91,8 +91,8 @@ class ClientLifeCycleTest extends AbstractRealTest
         server().stop().toCompletableFuture().get(1, SECONDS);
         
         /*
-         Just for the "record" (no pun intended), the log would as of 2021-03-21
-         been something like this:
+         Just for the "record" (no pun intended), the log is as of 2021-03-21
+         something like this:
          
            {tstamp} | Test worker | INFO | {pkg}.DefaultServer initialize | Opened server channel: {...}
            {tstamp} | dead-25     | FINE | {pkg}.DefaultServer$OnAccept setup | Accepted child: {...}
