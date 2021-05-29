@@ -157,12 +157,7 @@ public final class TestClient
      *                               or we closed our channel
      */
     public boolean serverClosedOutput() {
-        if (ch == null) {
-            throw new IllegalStateException("No connection active.");
-        }
-        if (!ch.isOpen()) {
-            throw new IllegalStateException("Channel closed on our side.");
-        }
+        requireConnectionIsOpen();
         int size = setSmallBufferGetActual(SO_RCVBUF);
         ByteBuffer buf = allocate(size + 1);
         try {
@@ -199,12 +194,7 @@ public final class TestClient
      *                               or we closed our channel
      */
     public boolean serverClosedInput() {
-        if (ch == null) {
-            throw new IllegalStateException("No connection active.");
-        }
-        if (!ch.isOpen()) {
-            throw new IllegalStateException("Channel closed on our side.");
-        }
+        requireConnectionIsOpen();
         int size = setSmallBufferGetActual(SO_SNDBUF);
         ByteBuffer buf = allocate(size + 1);
         try {
@@ -230,6 +220,15 @@ public final class TestClient
                 LOG.log(DEBUG, "Exception not considered broken write.", e);
             }
             return broken;
+        }
+    }
+    
+    private void requireConnectionIsOpen() {
+        if (ch == null) {
+            throw new IllegalStateException("No connection active.");
+        }
+        if (!ch.isOpen()) {
+            throw new IllegalStateException("Channel closed on our side.");
         }
     }
     
