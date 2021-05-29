@@ -294,6 +294,13 @@ abstract class AbstractRealTest
         assertTrue(logRecorder().await(toJUL(level), messageStartsWith));
     }
     
+    protected final void awaitLog(System.Logger.Level level, String messageStartsWith, Class<? extends Throwable> error)
+            throws InterruptedException
+    {
+        requireServerStartedOnce();
+        assertTrue(logRecorder().await(toJUL(level), messageStartsWith, error));
+    }
+    
     protected final Throwable awaitFirstLogError()
             throws InterruptedException
     {

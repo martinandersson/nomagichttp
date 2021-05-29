@@ -462,6 +462,40 @@ public final class Logging
                               r.getMessage().startsWith(messageStartsWith));
         }
         
+        /**
+         * Return immediately if a log record of the given level with the given
+         * message-prefix and error has been published, or await it's arrival
+         * for a maximum of 3 seconds.<p>
+         * 
+         * Uses {@link #await(Predicate)} under the hood. Same warning apply.
+         * 
+         * @param level record level predicate
+         * @param messageStartsWith record message predicate
+         * @param error record error predicate (record's level must be instance of)
+         * 
+         * @return {@code true} when target record is observed, or
+         *         {@code false} if 3 seconds passes without observing the record
+         * 
+         * @throws NullPointerException
+         *             if any arg is {@code null}
+         * 
+         * @throws IllegalStateException
+         *             if an {@code await} method was used before
+         * 
+         * @throws InterruptedException
+         *             if the current thread is interrupted while waiting
+         */
+        public boolean await(Level level, String messageStartsWith, Class<? extends Throwable> error)
+                throws InterruptedException
+        {
+            requireNonNull(level);
+            requireNonNull(messageStartsWith);
+            requireNonNull(error);
+            return await(r -> r.getLevel().equals(level) &&
+                              r.getMessage().startsWith(messageStartsWith) &&
+                              error.isInstance(r.getThrown()));
+        }
+        
         Stream<RecordListener> listeners() {
             return Stream.of(l);
         }

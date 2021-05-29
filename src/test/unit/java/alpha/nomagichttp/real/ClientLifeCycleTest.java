@@ -60,10 +60,12 @@ class ClientLifeCycleTest extends AbstractRealTest
             
             assertThat(rsp).isEmpty();
             
-            awaitLog(WARNING,
-                "Child channel is closed for writing. " +
-                "Can not resolve this error. " +
-                "HTTP exchange is over.");
+            awaitLog(
+                WARNING,
+                    "Child channel is closed for writing. " +
+                    "Can not resolve this error. " +
+                    "HTTP exchange is over.",
+                ClosedChannelException.class);
             
             // Clean close from server will cause our end to close as well
             assertThat(ch.isOpen()).isFalse();
