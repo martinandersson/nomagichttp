@@ -290,12 +290,14 @@ abstract class AbstractRealTest
     protected final void awaitLog(System.Logger.Level level, String messageStartsWith)
             throws InterruptedException
     {
+        requireServerStartedOnce();
         assertTrue(logRecorder().await(toJUL(level), messageStartsWith));
     }
     
     protected final Throwable awaitFirstLogError()
             throws InterruptedException
     {
+        requireServerStartedOnce();
         AtomicReference<Throwable> thr = new AtomicReference<>();
         assertTrue(logRecorder().await(rec -> {
             var t = rec.getThrown();
@@ -314,6 +316,7 @@ abstract class AbstractRealTest
      * @param values produced by {@link #rec(System.Logger.Level, String)}
      */
     protected final void assertThatLogContainsOnlyOnce(Tuple... values) {
+        requireServerStartedOnce();
         assertThat(stopLogRecording())
                 .extracting(LogRecord::getLevel, LogRecord::getMessage)
                 .containsOnlyOnce(values);
@@ -327,6 +330,7 @@ abstract class AbstractRealTest
      * Stop log recording and assert no log record contains a throwable.
      */
     protected final void assertThatNoErrorWasLogged() {
+        requireServerStartedOnce();
         var logs = stopLogRecording();
         assertThat(logs).extracting(r -> {
             var t = r.getThrown();
@@ -352,6 +356,7 @@ abstract class AbstractRealTest
     protected final AbstractThrowableAssert<?, ? extends Throwable>
             assertThatServerErrorObservedAndLogged() throws InterruptedException
     {
+        requireServerStartedOnce();
         Throwable t = pollServerError();
         assertSame(t, awaitFirstLogError());
         return assertThat(t);
