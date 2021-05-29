@@ -12,11 +12,11 @@ and modern API that is just about as fast and scalable as any cross-platform
 JDK-based HTTP server implementation could possibly be.
 
 Best of all, the API design is based on the firmly held belief that all forms
-of magic are evil. Annotations, "beans" and God-like "context" objects will
-never be a part of the library. Top priority is killer JavaDocs, developer
-happiness, and no waste of time.
+of magic are evil. Error-prone annotations, missing "beans" and God-like
+"context" objects will never be a part of the library. Top priority is killer
+JavaDocs, developer happiness, and absolutely no waste of time.
 
-[JavaDoc is available.][0-1]
+[JavaDoc is here.][0-1]
 
 **WARNING:** This project is fresh out of the oven without proper release
 management in place and likely not very useful at the moment. The document
