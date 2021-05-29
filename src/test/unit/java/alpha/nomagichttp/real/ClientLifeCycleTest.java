@@ -85,8 +85,10 @@ class ClientLifeCycleTest extends AbstractRealTest
     {
         client().openConnection().close();
         awaitChildAccept();
-        // In reality, whole test cycle over in less than 100 ms
-        server().stop().toCompletableFuture().get(3, SECONDS);
+        
+        // Eager stop to capture all logs
+        // (In reality, whole test cycle over in less than 100 ms)
+        server().stop().toCompletableFuture().get(1, SECONDS);
         
         /*
          Just for the "record" (no pun intended), the log would as of 2021-03-21
