@@ -669,8 +669,8 @@ class ErrorTest extends AbstractRealTest
         assertThat(rsp).isEqualTo(
             "HTTP/1.1 204 No Content" + CRLF + CRLF);
         
-        assertTrue(logRecorder().await(toJUL(WARNING),
-            "HTTP exchange not active. This response is ignored: DefaultResponse{statusCode=123"));
+        awaitLog(WARNING,
+            "HTTP exchange not active. This response is ignored: DefaultResponse{statusCode=123");
         
         // Superclass asserts no error sent to error handler
     }
@@ -687,9 +687,9 @@ class ErrorTest extends AbstractRealTest
         assertThat(rsp).isEqualTo(
             "HTTP/1.1 204 No Content" + CRLF + CRLF);
         
-        assertTrue(logRecorder().await(toJUL(ERROR),
+        awaitLog(ERROR,
             "Application's response stage completed exceptionally, " +
-            "but HTTP exchange is not active. This error does not propagate anywhere."));
+            "but HTTP exchange is not active. This error does not propagate anywhere.");
         
         // Superclass asserts no error sent to error handler
     }
