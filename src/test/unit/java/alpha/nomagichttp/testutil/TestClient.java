@@ -133,8 +133,7 @@ public final class TestClient
             
             @Override
             public void close() throws IOException {
-                TestClient.this.ch = null;
-                ch.close();
+                closeChannel();
             }
         }
         
