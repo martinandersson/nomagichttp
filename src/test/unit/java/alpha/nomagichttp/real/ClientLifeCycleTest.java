@@ -80,7 +80,7 @@ class ClientLifeCycleTest extends AbstractRealTest
     // is completely ignored (no error handler and no logging).
     // See RequestHeadSubscriber.asCompletionStage()
     @Test
-    void clientClosesChannel_serverReceivedNoBytes_ignored()
+    void clientClosesChannel_serverReceivedNoBytes()
             throws IOException, InterruptedException, TimeoutException, ExecutionException
     {
         client().openConnection().close();
