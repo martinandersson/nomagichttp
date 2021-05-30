@@ -21,7 +21,7 @@ public final class IOExceptions
     private static final String[] BROKEN_READ = {
             // Windows
             "The specified network name is no longer available",
-            "The specified network name is no longer available.", // <-- with an ending dot
+            "The specified network name is no longer available.\n", // <-- with an ending dot and newline (!)
             "An existing connection was forcibly closed by the remote host",
             "An established connection was aborted by the software in your host machine",
             // Linux
