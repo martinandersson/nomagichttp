@@ -12,6 +12,7 @@ import alpha.nomagichttp.message.RequestBodyTimeoutException;
 import alpha.nomagichttp.message.RequestHeadTimeoutException;
 import alpha.nomagichttp.route.RouteRegistry;
 
+import java.io.IOException;
 import java.nio.channels.InterruptedByTimeoutException;
 import java.util.Collection;
 import java.util.concurrent.CompletableFuture;
@@ -28,6 +29,8 @@ import static alpha.nomagichttp.HttpConstants.Version.HTTP_1_1;
 import static alpha.nomagichttp.message.Responses.continue_;
 import static alpha.nomagichttp.util.Headers.accept;
 import static alpha.nomagichttp.util.Headers.contentType;
+import static alpha.nomagichttp.util.IOExceptions.isCausedByBrokenInputStream;
+import static alpha.nomagichttp.util.IOExceptions.isCausedByBrokenOutputStream;
 import static alpha.nomagichttp.util.Subscribers.onNext;
 import static java.lang.Integer.parseInt;
 import static java.lang.System.Logger.Level.DEBUG;
@@ -354,16 +357,8 @@ final class HttpExchange
     private synchronized void handleError(Throwable exc) {
         final Throwable unpacked = unpackCompletionException(exc);
         
-        if (unpacked instanceof ClientAbortedException) {
-            LOG.log(DEBUG, "Client aborted the HTTP exchange.");
-            result.completeExceptionally(unpacked);
-            return;
-        }
-        
-        if (unpacked instanceof InterruptedByTimeoutException) {
-            LOG.log(DEBUG, "Low-level write timed out. Closing channel. (end of HTTP exchange)", unpacked);
-            chan.closeSafe();
-            result.completeExceptionally(unpacked);
+        if (isTerminatingException(unpacked, chan)) {
+            result.completeExceptionally(exc);
             return;
         }
         
@@ -387,6 +382,27 @@ final class HttpExchange
                 "HTTP exchange is over.", unpacked);
             result.completeExceptionally(unpacked);
         }
+    }
+    
+    private static boolean isTerminatingException(Throwable thr, DefaultClientChannel chan) {
+        if (thr instanceof ClientAbortedException) {
+            LOG.log(DEBUG, "Client aborted the HTTP exchange.");
+            return true;
+        }
+        if (thr instanceof InterruptedByTimeoutException) {
+            LOG.log(DEBUG, "Low-level write timed out. Closing channel. (end of HTTP exchange)", thr);
+            chan.closeSafe();
+            return true;
+        }
+        if (thr instanceof IOException) {
+            IOException io = (IOException) thr;
+            if (isCausedByBrokenInputStream(io) || isCausedByBrokenOutputStream(io)) {
+                LOG.log(DEBUG, "Broken pipe, closing channel. (end of HTTP exchange)");
+                chan.closeSafe();
+                return true;
+            }
+        }
+        return false;
     }
     
     private class ErrorResolver {

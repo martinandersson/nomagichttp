@@ -3,10 +3,12 @@ package alpha.nomagichttp.real;
 import alpha.nomagichttp.handler.ErrorHandler;
 import alpha.nomagichttp.message.EndOfStreamException;
 import alpha.nomagichttp.message.PooledByteBufferHolder;
+import alpha.nomagichttp.testutil.TestClient;
 import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
 import java.nio.channels.Channel;
+import java.nio.channels.ClosedByInterruptException;
 import java.nio.channels.ClosedChannelException;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
@@ -18,9 +20,14 @@ import static alpha.nomagichttp.handler.RequestHandler.GET;
 import static alpha.nomagichttp.message.Responses.noContent;
 import static alpha.nomagichttp.testutil.TestClient.CRLF;
 import static alpha.nomagichttp.testutil.TestSubscribers.onNextAndError;
+import static alpha.nomagichttp.util.Strings.containsIgnoreCase;
+import static java.lang.System.Logger.Level.DEBUG;
 import static java.lang.System.Logger.Level.WARNING;
+import static java.util.concurrent.TimeUnit.MILLISECONDS;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 /**
  * Client-connection life-cycle tests.
@@ -161,6 +168,29 @@ class ClientLifeCycleTest extends AbstractRealTest
                     .hasNoSuppressedExceptions();
         }
         assertThatNoErrorWasLogged();
+    }
+    
+    // Broken pipe always end the exchange, no error handling no logging
+    @Test
+    void brokenPipe() throws InterruptedException, IOException, ExecutionException, TimeoutException {
+        // It would arguably be weird if we had access to an API to cause a broken pipe.
+        // The following implementation was found to work on Windows, albeit not on Linux.
+        assumeTrue(containsIgnoreCase(System.getProperty("os.name"), "Windows"));
+        
+        Channel ch = client().openConnection();
+        try (ch) {
+            assertThatThrownBy(() ->
+                    client().interruptReadAfter(1, MILLISECONDS)
+                            .writeRead(new byte[]{1}, new byte[]{1}))
+                    .isExactlyInstanceOf(ClosedByInterruptException.class);
+            Thread.interrupted(); // Clear flag
+            
+            awaitLog(DEBUG, "Read operation failed (broken pipe), will shutdown stream.");
+            awaitLog(DEBUG, "Broken pipe, closing channel. (end of HTTP exchange)");
+        }
+        
+        // Test client will have logged a WARNING, "about to crash". This we allow.
+        assertThatNoWarningOrErrorIsLogged(TestClient.class);
     }
     
     // TODO: Partial connection shut downs. E.g. client close his write stream,
