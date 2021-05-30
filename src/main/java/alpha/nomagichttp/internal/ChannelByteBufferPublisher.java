@@ -5,6 +5,7 @@ import alpha.nomagichttp.message.PooledByteBufferHolder;
 import alpha.nomagichttp.message.Request;
 import alpha.nomagichttp.util.PushPullPublisher;
 
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Deque;
 import java.util.concurrent.ConcurrentLinkedDeque;
@@ -13,6 +14,7 @@ import java.util.stream.IntStream;
 
 import static alpha.nomagichttp.internal.AnnounceToChannel.EOS;
 import static alpha.nomagichttp.internal.DefaultServer.becauseChannelOrGroupClosed;
+import static alpha.nomagichttp.util.IOExceptions.isCausedByBrokenInputStream;
 import static java.lang.System.Logger.Level.ERROR;
 import static java.lang.System.Logger.Level.WARNING;
 
@@ -109,7 +111,7 @@ final class ChannelByteBufferPublisher implements Flow.Publisher<DefaultPooledBy
     
     private void afterChannelFinished(DefaultClientChannel ignored1, long ignored2, Throwable t) {
         if (t != null) {
-            if (!subscriber.error(t) && !becauseChannelOrGroupClosed(t)) {
+            if (!subscriber.error(t) && shouldRaiseConcern(t)) {
                 LOG.log(WARNING, "Failed to deliver this error to a subscriber.", t);
             }
             subscriber.stop();
@@ -146,5 +148,15 @@ final class ChannelByteBufferPublisher implements Flow.Publisher<DefaultPooledBy
     @Override
     public void subscribe(Flow.Subscriber<? super DefaultPooledByteBufferHolder> s) {
         subscriber.subscribe(s);
+    }
+    
+    private static boolean shouldRaiseConcern(Throwable t) {
+        if (becauseChannelOrGroupClosed(t)) {
+            return false;
+        }
+        if (!(t instanceof IOException)) {
+            return true;
+        }
+        return !isCausedByBrokenInputStream((IOException) t);
     }
 }
