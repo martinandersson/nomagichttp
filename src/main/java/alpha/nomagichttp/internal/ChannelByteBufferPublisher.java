@@ -12,7 +12,7 @@ import java.util.concurrent.Flow;
 import java.util.stream.IntStream;
 
 import static alpha.nomagichttp.internal.AnnounceToChannel.EOS;
-import static java.lang.System.Logger.Level.DEBUG;
+import static alpha.nomagichttp.internal.DefaultServer.becauseChannelOrGroupClosed;
 import static java.lang.System.Logger.Level.ERROR;
 import static java.lang.System.Logger.Level.WARNING;
 
@@ -109,9 +109,8 @@ final class ChannelByteBufferPublisher implements Flow.Publisher<DefaultPooledBy
     
     private void afterChannelFinished(DefaultClientChannel ignored1, long ignored2, Throwable t) {
         if (t != null) {
-            if (!subscriber.error(t)) {
-                // DEBUG coz this would just be channel-related noise for the application
-                LOG.log(DEBUG, "Failed to deliver this error to a subscriber.", t);
+            if (!subscriber.error(t) && !becauseChannelOrGroupClosed(t)) {
+                LOG.log(WARNING, "Failed to deliver this error to a subscriber.", t);
             }
             subscriber.stop();
             readable.clear();
