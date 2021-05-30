@@ -7,7 +7,9 @@ import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.lang.management.ManagementFactory;
 import java.lang.management.ThreadInfo;
+import java.util.ArrayList;
 import java.util.Deque;
+import java.util.List;
 import java.util.concurrent.ConcurrentLinkedDeque;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -391,9 +393,6 @@ public final class Logging
          * Return immediately if a log record passing the given test has been
          * published, or await it's arrival for a maximum of 3 seconds.<p>
          * 
-         * Currently, due to implementation simplicity, only one await per
-         * recorder instance is allowed.<p>
-         * 
          * WARNING: This method may block the publication of a log record
          * temporarily and if so, the block is minuscule. Nonetheless, awaiting
          * should not be done by time-critical code.
@@ -405,9 +404,6 @@ public final class Logging
          * 
          * @throws NullPointerException
          *             if {@code test} is {@code null}
-         * 
-         * @throws IllegalStateException
-         *             if this method was used before
          *
          * @throws InterruptedException
          *             if the current thread is interrupted while waiting
@@ -449,9 +445,6 @@ public final class Logging
          * @throws NullPointerException
          *             if any arg is {@code null}
          * 
-         * @throws IllegalStateException
-         *             if an {@code await} method was used before
-         * 
          * @throws InterruptedException
          *             if the current thread is interrupted while waiting
          */
@@ -479,9 +472,6 @@ public final class Logging
          * @throws NullPointerException
          *             if any arg is {@code null}
          * 
-         * @throws IllegalStateException
-         *             if an {@code await} method was used before
-         * 
          * @throws InterruptedException
          *             if the current thread is interrupted while waiting
          */
@@ -504,12 +494,12 @@ public final class Logging
     private static class RecordListener extends Handler {
         private final Class<?> cmp;
         private final Deque<LogRecord> deq;
-        private Consumer<LogRecord> mon;
+        private final List<Consumer<LogRecord>> mon;
         
         RecordListener(Class<?> component) {
             cmp = component;
             deq = new ConcurrentLinkedDeque<>();
-            mon = null;
+            mon = new ArrayList<>();
             setLevel(ALL);
         }
         
@@ -521,11 +511,9 @@ public final class Logging
          * @param consumer code to execute with the records
          */
         synchronized void monitor(Consumer<LogRecord> consumer) {
-            if (mon != null) {
-                throw new IllegalStateException();
-            }
+            requireNonNull(consumer);
             records().forEach(consumer);
-            mon = consumer;
+            mon.add(consumer);
         }
         
         Class<?> component() {
@@ -539,9 +527,7 @@ public final class Logging
         @Override
         public synchronized void publish(LogRecord record) {
             deq.add(record);
-            if (mon != null) {
-                mon.accept(record);
-            }
+            mon.forEach(c -> c.accept(record));
         }
         
         @Override
