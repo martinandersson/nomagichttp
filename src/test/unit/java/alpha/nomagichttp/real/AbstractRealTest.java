@@ -21,10 +21,14 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.BlockingDeque;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.LinkedBlockingDeque;
+import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
+import java.util.function.Predicate;
 import java.util.logging.LogRecord;
 import java.util.logging.Logger;
 import java.util.stream.Stream;
@@ -37,6 +41,7 @@ import static java.util.concurrent.TimeUnit.SECONDS;
 import static java.util.logging.Level.FINE;
 import static java.util.logging.Level.INFO;
 import static java.util.logging.Level.WARNING;
+import static java.util.stream.Collectors.toSet;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.tuple;
 import static org.junit.jupiter.api.Assertions.assertSame;
@@ -405,6 +410,35 @@ abstract class AbstractRealTest
         Throwable t = pollServerError();
         assertSame(t, awaitFirstLogError());
         return assertThat(t);
+    }
+    
+    /**
+     * Will gracefully stop the server (to capture all log records) and assert
+     * that no log record was found with a level greater than {@code INFO}.
+     * 
+     * @param excludeClasses classes that are allowed to log waring/error
+     * 
+     * @throws IOException if server stop fails
+     * @throws ExecutionException if waiting for server stop fails
+     * @throws InterruptedException if interrupted while waiting
+     * @throws TimeoutException if waiting for server stop fails
+     */
+    // TODO: boolean to check also record throwable
+    protected final void assertThatNoWarningOrErrorIsLogged(Class<?>... excludeClasses)
+            throws IOException, ExecutionException, InterruptedException, TimeoutException
+    {
+        server().stop().toCompletableFuture().get(1, SECONDS);
+        
+        Set<String> excl = excludeClasses.length == 0 ? Set.of() :
+                Stream.of(excludeClasses).map(Class::getName).collect(toSet());
+        
+        Predicate<String> match = source -> source != null &&
+                                  excl.stream().anyMatch(source::startsWith);
+        
+        assertThat(stopLogRecording()
+                .filter(r -> !match.test(r.getSourceClassName()))
+                .mapToInt(r -> r.getLevel().intValue()))
+                .noneMatch(v -> v > INFO.intValue());
     }
     
     /**

@@ -20,7 +20,6 @@ import static alpha.nomagichttp.testutil.TestClient.CRLF;
 import static alpha.nomagichttp.testutil.TestSubscribers.onNextAndError;
 import static java.lang.System.Logger.Level.WARNING;
 import static java.util.concurrent.TimeUnit.SECONDS;
-import static java.util.logging.Level.INFO;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
@@ -93,7 +92,6 @@ class ClientLifeCycleTest extends AbstractRealTest
         // Eager stop to capture all logs
         // (In reality, whole test cycle over in less than 100 ms)
         awaitChildAccept();
-        server().stop().toCompletableFuture().get(1, SECONDS);
         
         /*
          Just for the "record" (no pun intended), the log is as of 2021-03-21
@@ -108,10 +106,8 @@ class ClientLifeCycleTest extends AbstractRealTest
            {tstamp} | dead-25     | FINE | {pkg}.HttpExchange resolve | Client aborted the HTTP exchange.
            {tstamp} | dead-25     | FINE | {pkg}.DefaultChannelOperations orderlyClose | Closed child: {...}
          */
-        assertThat(stopLogRecording()
-                .mapToInt(r -> r.getLevel().intValue()))
-                .noneMatch(v -> v > INFO.intValue());
         
+        assertThatNoWarningOrErrorIsLogged();
         // that no error was thrown is asserted by super class
     }
     
@@ -132,12 +128,7 @@ class ClientLifeCycleTest extends AbstractRealTest
         assertThat(pollServerError())
                 .isExactlyInstanceOf(EndOfStreamException.class);
         
-        // Eager stop to capture all logs
-        server().stop().toCompletableFuture().get(1, SECONDS);
-        
-        assertThat(stopLogRecording()
-                .mapToInt(r -> r.getLevel().intValue()))
-                .noneMatch(v -> v > INFO.intValue());
+        assertThatNoWarningOrErrorIsLogged();
     }
     
     // A variant of the previous test, except EOS goes to body subscriber
