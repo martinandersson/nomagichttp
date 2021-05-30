@@ -35,7 +35,11 @@ public class Interrupt
     /**
      * Retrieves the result of the given action and interrupts the current
      * thread after a specified amount of time, unless the action completes
-     * sooner.
+     * sooner.<p>
+     * 
+     * If {@code duration} is zero or negative, the calling thread will be
+     * interrupted immediately and enter the action in an interrupted state.
+     * Otherwise, the interrupt is done by a background thread.
      * 
      * @param duration duration of timeout
      * @param unit unit of duration
@@ -49,6 +53,12 @@ public class Interrupt
      */
     public static <V> V after(long duration, TimeUnit unit, IOSupplier<V> action) throws IOException {
         final Thread worker = Thread.currentThread();
+        
+        if (duration <= 0) {
+            worker.interrupt();
+            return action.get();
+        }
+        
         final boolean[] timer = {true};
         ScheduledFuture<?> task = SCHEDULER.schedule(() -> {
             synchronized (timer) {
@@ -80,8 +90,6 @@ public class Interrupt
             throw t;
         }
     }
-    
-    private static final System.Logger LOG = System.getLogger(Interrupt.class.getPackageName());
     
     private static final ScheduledExecutorService SCHEDULER
             = Executors.newSingleThreadScheduledExecutor(r -> {
