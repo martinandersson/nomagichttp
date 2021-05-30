@@ -344,7 +344,7 @@ public final class Logging
         
         private static String getSource(LogRecord r) {
             String s;
-        
+            
             if (r.getSourceClassName() != null) {
                 s = r.getSourceClassName();
                 if (r.getSourceMethodName() != null) {
@@ -353,7 +353,7 @@ public final class Logging
             } else {
                 s = r.getLoggerName();
             }
-        
+            
             return s;
         }
         

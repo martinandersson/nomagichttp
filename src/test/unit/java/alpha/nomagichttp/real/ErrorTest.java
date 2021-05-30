@@ -579,7 +579,7 @@ class ErrorTest extends AbstractRealTest
         
         LogRecord fromOnError = log.stream().filter(
                 r -> r.getLevel().equals(toJUL(ERROR)) &&
-                        r.getMessage().equals("Subscriber.onError() returned exceptionally. This new error is only logged but otherwise ignored."))
+                     r.getMessage().equals("Subscriber.onError() returned exceptionally. This new error is only logged but otherwise ignored."))
                 .findAny()
                 .get();
         
