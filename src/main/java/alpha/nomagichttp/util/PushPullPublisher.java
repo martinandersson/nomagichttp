@@ -156,11 +156,16 @@ public class PushPullPublisher<T> extends AugmentedAbstractUnicastPublisher<T, S
      * exception is logged but otherwise ignored.<p>
      * 
      * Is NOP if there is no subscriber active.
-     *
+     * 
      * @param t the throwable
+     * @return {@code true} only if an active subscriber will be delivered the error
      */
-    public void error(Throwable t) {
-        ifPresent(s -> errorThroughService(t, s));
+    public boolean error(Throwable t) {
+        var s = get();
+        if (s == null) {
+            return false;
+        }
+        return errorThroughService(t, s);
     }
     
     /**
@@ -203,8 +208,8 @@ public class PushPullPublisher<T> extends AugmentedAbstractUnicastPublisher<T, S
         action.accept(s);
     }
     
-    private void errorThroughService(Throwable t, SubscriberWithAttachment<T, SerialTransferService<T>> s) {
-        s.attachment().finish(() -> {
+    private boolean errorThroughService(Throwable t, SubscriberWithAttachment<T, SerialTransferService<T>> s) {
+        return s.attachment().finish(() -> {
             // Attempt to terminate subscription
             if (!signalError(t, s)) {
                 // stale subscription, still need to communicate error to our guy
