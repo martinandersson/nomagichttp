@@ -2,6 +2,7 @@ package alpha.nomagichttp.internal;
 
 import alpha.nomagichttp.Config;
 import alpha.nomagichttp.HttpConstants.Version;
+import alpha.nomagichttp.handler.ClientChannel;
 import alpha.nomagichttp.handler.ErrorHandler;
 import alpha.nomagichttp.handler.RequestHandler;
 import alpha.nomagichttp.message.HttpVersionTooNewException;
@@ -367,7 +368,6 @@ final class HttpExchange
             // HTTP exchange will not continue after response
             // RequestBodyTimeoutException already shut down the input stream (see DefaultRequest)
             chan.shutdownInputSafe();
-            // Continue
         }
         
         if (chan.isOpenForWriting())  {
@@ -384,24 +384,54 @@ final class HttpExchange
         }
     }
     
-    private static boolean isTerminatingException(Throwable thr, DefaultClientChannel chan) {
+    /**
+     * Returns {@code true} if it is meaningless to attempt resolving the
+     * exception and/or logging it would just be noise.<p>
+     * 
+     * If this method returns true, then it will also have logged a DEBUG
+     * message.
+     * 
+     * @param thr to examine
+     * @param chan child channel
+     * @return see JavaDoc
+     */
+    private static boolean isTerminatingException(Throwable thr, ClientChannel chan) {
         if (thr instanceof ClientAbortedException) {
             LOG.log(DEBUG, "Client aborted the HTTP exchange.");
             return true;
         }
+        
+        if (!(thr instanceof IOException)) {
+            // EndOfStreamException goes to error handler
+            return false;
+        }
+        
+        // Okay we've got an I/O error, but is it from our child?
+        if (chan.isEverythingOpen()) {
+            // Nope. AnnounceToChannel closes the stream. Has to be from application code.
+            // (we should probably examine stacktrace or mark our exceptions somehow)
+            return false;
+        }
+        
         if (thr instanceof InterruptedByTimeoutException) {
-            LOG.log(DEBUG, "Low-level write timed out. Closing channel. (end of HTTP exchange)", thr);
+            LOG.log(DEBUG, "Low-level write timed out. Closing channel. (end of HTTP exchange)");
             chan.closeSafe();
             return true;
         }
-        if (thr instanceof IOException) {
-            IOException io = (IOException) thr;
-            if (isCausedByBrokenInputStream(io) || isCausedByBrokenOutputStream(io)) {
-                LOG.log(DEBUG, "Broken pipe, closing channel. (end of HTTP exchange)");
-                chan.closeSafe();
-                return true;
-            }
+        
+        var io = (IOException) thr;
+        if (isCausedByBrokenInputStream(io) || isCausedByBrokenOutputStream(io)) {
+            LOG.log(DEBUG, "Broken pipe, closing channel. (end of HTTP exchange)");
+            chan.closeSafe();
+            return true;
         }
+        
+        // From our child, yes, but it can not be deduced as abruptly terminating
+        // and so we'd rather pass it to the error handler or log it.
+        // E.g., if app write a response on a closed channel (ClosedChannelException),
+        // then we still want to log the problem - actually required by
+        // ClientChannel.write().
+        // See test "ClientLifeCycleTest.serverClosesChannel_beforeResponse()".
         return false;
     }
     

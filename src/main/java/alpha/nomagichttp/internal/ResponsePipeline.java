@@ -336,7 +336,6 @@ final class ResponsePipeline implements Flow.Publisher<ResponsePipeline.Result>
         }
         
         tryActOnChannelCommands(rsp);
-        
         if (res != null) {
             actOnWriteSuccess(res, rsp);
         } else {

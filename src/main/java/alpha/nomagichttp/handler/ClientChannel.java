@@ -77,7 +77,7 @@ public interface ClientChannel extends Closeable, AttributeHolder
      * At the time of transmission, a response may be rejected. If it is
      * rejected because a final response has already been transmitted (in parts
      * or in whole) - i.e. the HTTP exchange is no longer active - then the
-     * response is logged but otherwise ignored. This is the same also for
+     * error is logged but otherwise ignored. This is the same also for
      * exceptions that complete a response stage. Otherwise (exchange active), a
      * {@link ResponseRejectedException} will pass through the server's error
      * handler.<p>
