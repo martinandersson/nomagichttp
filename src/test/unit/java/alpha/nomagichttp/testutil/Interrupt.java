@@ -25,7 +25,7 @@ public class Interrupt
      * @throws IOException if an I/O error occurs
      *                     (this includes {@link ClosedByInterruptException}!)
      */
-    public static void after(int duration, TimeUnit unit, IORunnable action) throws IOException {
+    public static void after(long duration, TimeUnit unit, IORunnable action) throws IOException {
         after(duration, unit, () -> {
             action.run();
             return null;
@@ -47,7 +47,7 @@ public class Interrupt
      * @throws IOException if an I/O error occurs
      *                     (this includes {@link ClosedByInterruptException}!)
      */
-    public static <V> V after(int duration, TimeUnit unit, IOSupplier<V> action) throws IOException {
+    public static <V> V after(long duration, TimeUnit unit, IOSupplier<V> action) throws IOException {
         final Thread worker = Thread.currentThread();
         final boolean[] timer = {true};
         ScheduledFuture<?> task = SCHEDULER.schedule(() -> {
