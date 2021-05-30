@@ -15,6 +15,7 @@ import java.nio.channels.SocketChannel;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 
 import static alpha.nomagichttp.util.IOExceptions.isCausedByBrokenInputStream;
 import static alpha.nomagichttp.util.IOExceptions.isCausedByBrokenOutputStream;
@@ -34,18 +35,20 @@ import static org.assertj.core.api.Assertions.assertThat;
  * A utility API on top of a {@code SocketChannel}.<p>
  * 
  * This class provides low-level access for test cases that need direct control
- * over what bytes are put on the wire and monitor what is received. This class
+ * over what bytes are put on the wire and observe bytes received. This class
  * has no knowledge about the HTTP protocol.<p>
  * 
  * All write methods will by default open/close a new connection for each call.
  * In order to re-use a persistent connection across method calls, manually
  * {@link #openConnection()} and close the returned channel after the last
  * message exchange.<p>
- *  
+ * 
  * When to stop reading from the channel has to be specified by proving the last
  * bytes expected in the server's response. This will trigger the test client to
  * assert there's no more bytes left in the channel and return all bytes
- * received.
+ * received.<p>
+ * 
+ * This class is not thread-safe and all I/O operations block.
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  */
@@ -67,7 +70,7 @@ public final class TestClient
     }
     
     /**
-     * An HTTP newline.
+     * A HTTP newline.
      */
     public static final String CRLF = "\r\n";
     
@@ -105,6 +108,53 @@ public final class TestClient
      */
     public TestClient(SocketChannelSupplier factory) {
         this.factory = requireNonNull(factory);
+    }
+    
+    private long     rAmount = 1,
+                     wAmount = 1;
+    private TimeUnit rUnit   = SECONDS,
+                     wUnit   = SECONDS;
+    
+    /**
+     * Interrupt the read operation after a given timeout.<p>
+     * 
+     * On timeout, the operation will fail with a {@link
+     * ClosedByInterruptException}.
+     * 
+     * If this method is never called, the default timeout for the client's
+     * read+write operations is 1 second each. For very large messages this
+     * ought to be increased.
+     * 
+     * @param amount of duration
+     * @param unit unit of amount
+     * 
+     * @return this for chaining/fluency
+     */
+    public TestClient interruptReadAfter(long amount, TimeUnit unit) {
+        rAmount = amount;
+        rUnit = unit;
+        return this;
+    }
+    
+    /**
+     * Interrupt the write operation after a given timeout.<p>
+     *
+     * On timeout, the operation will fail with a {@link
+     * ClosedByInterruptException}.
+     *
+     * If this method is never called, the default timeout for the client's
+     * read+write operations is 1 second each. For very large messages this
+     * ought to be increased.
+     *
+     * @param amount of duration
+     * @param unit unit of amount
+     *
+     * @return this for chaining/fluency
+     */
+    public TestClient interruptWriteAfter(long amount, TimeUnit unit) {
+        wAmount = amount;
+        wUnit = unit;
+        return this;
     }
     
     /**
@@ -246,36 +296,6 @@ public final class TestClient
         }
     }
     
-    private void requireConnectionIsOpen() {
-        if (ch == null) {
-            throw new IllegalStateException("No connection active.");
-        }
-        if (!ch.isOpen()) {
-            throw new IllegalStateException("Channel closed on our side.");
-        }
-    }
-    
-    private int setSmallBufferGetActual(SocketOption<Integer> sendOrReceive) {
-        // TODO: To future proof this, we should accept default on "Invalid arg" crash
-        try {
-            // Windows 10 and Ubuntu 20.04 accepts a 0 as argument.
-            // Although it has no effect on Ubuntu.
-            // MacOS won't accept 0 as argument; java.net.SocketException: Invalid argument
-            ch.setOption(sendOrReceive, 1);
-            return ch.getOption(sendOrReceive);
-        } catch (IOException e) {
-            throw new UncheckedIOException("Failed to set/get socket option.", e);
-        }
-    }
-    
-    private void closeChannel() throws IOException {
-        if (ch != null) {
-            ch.close();
-            LOG.log(DEBUG, "Closed client channel.");
-            ch = null;
-        }
-    }
-    
     /**
      * Decode and subsequently write the bytes on the connection using {@code
      * US_ASCII}.<p>
@@ -366,31 +386,12 @@ public final class TestClient
     public byte[] writeRead(byte[] request, byte[] responseEnd) throws IOException {
         final FiniteByteBufferSink sink = new FiniteByteBufferSink(128, responseEnd);
         final boolean persistent = ch != null;
-        
         try {
             if (!persistent) {
                 openConnection();
             }
-            
-            Interrupt.after(3, SECONDS, () -> {
-                int r = ch.write(wrap(request));
-                assertThat(r).isEqualTo(request.length);
-                
-                ByteBuffer buf = allocate(128);
-                
-                while (!sink.hasReachedEnd()) {
-                    if (ch.read(buf) == -1) {
-                        LOG.log(DEBUG, "EOS; server closed channel's read stream. Closing our channel.");
-                        ch.close();
-                        break;
-                    }
-                    
-                    buf.flip();
-                    sink.write(buf);
-                    buf.clear();
-                }
-            });
-            
+            doWrite(request);
+            doRead(sink);
             return sink.toByteArray();
         } catch (Exception e) {
             sink.dumpToLog();
@@ -403,16 +404,63 @@ public final class TestClient
         }
     }
     
-    /**
-     * Read until end-of-stream.
-     * 
-     * @return what's left in the channel's read stream
-     * 
-     * @throws ClosedByInterruptException if operation takes longer than 3 seconds
-     * @throws IOException for other weird reasons lol
-     */
-    public byte[] drain() throws IOException {
-        return writeRead(new byte[0], null);
+    private void requireConnectionIsOpen() {
+        if (ch == null) {
+            throw new IllegalStateException("No connection active.");
+        }
+        if (!ch.isOpen()) {
+            throw new IllegalStateException("Channel closed on our side.");
+        }
+    }
+    
+    private int setSmallBufferGetActual(SocketOption<Integer> sendOrReceive) {
+        // TODO: To future proof this, we should accept default on "Invalid arg" crash
+        try {
+            // Windows 10 and Ubuntu 20.04 accepts a 0 as argument.
+            // Although it has no effect on Ubuntu.
+            // MacOS won't accept 0 as argument; java.net.SocketException: Invalid argument
+            ch.setOption(sendOrReceive, 1);
+            return ch.getOption(sendOrReceive);
+        } catch (IOException e) {
+            throw new UncheckedIOException("Failed to set/get socket option.", e);
+        }
+    }
+    
+    private void doWrite(byte[] request) throws IOException {
+        if (request.length == 0) {
+            return;
+        }
+        Interrupt.after(wAmount, wUnit, () -> {
+            int r = ch.write(wrap(request));
+            assertThat(r).isEqualTo(request.length);
+        });
+        // TODO: Consider shutting down output stream
+    }
+    
+    // TODO: Need to document EOS. I think that if response-end is not provided, this reads until EOS?
+    private void doRead(FiniteByteBufferSink sink) throws IOException {
+        Interrupt.after(rAmount, rUnit, () -> {
+            ByteBuffer buf = allocate(128);
+            while (!sink.hasReachedEnd()) {
+                if (ch.read(buf) == -1) {
+                    LOG.log(DEBUG, "EOS; server closed channel's read stream. Closing our channel.");
+                    ch.close();
+                    break;
+                }
+                buf.flip();
+                sink.write(buf);
+                buf.clear();
+            }
+        });
+        // TODO: Consider shutting down input stream
+    }
+    
+    private void closeChannel() throws IOException {
+        if (ch != null) {
+            ch.close();
+            LOG.log(DEBUG, "Closed client channel.");
+            ch = null;
+        }
     }
     
     private static class FiniteByteBufferSink {
