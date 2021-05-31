@@ -344,14 +344,19 @@ abstract class AbstractRealTest
         assertTrue(logRecorder().await(toJUL(level), messageStartsWith, error));
     }
     
-    protected final Throwable awaitFirstLogError()
+    protected final Throwable awaitFirstLogError() throws InterruptedException {
+        return awaitFirstLogError(Throwable.class);
+    }
+    
+    protected final Throwable awaitFirstLogError(Class<? extends Throwable> filter)
             throws InterruptedException
     {
         requireServerStartedOnce();
+        requireNonNull(filter);
         AtomicReference<Throwable> thr = new AtomicReference<>();
         assertTrue(logRecorder().await(rec -> {
             var t = rec.getThrown();
-            if (t != null) {
+            if (filter.isInstance(t)) {
                 thr.set(t);
                 return true;
             }
