@@ -150,7 +150,7 @@ public class PushPullPublisher<T> extends AugmentedAbstractUnicastPublisher<T, S
      * Signal error to- and unregister the active subscriber.<p>
      * 
      * A reusable publisher may get a new subscriber even after this method
-     * returns. If this is not desired, call {@link #stop()}.<p>
+     * returns. If this is not desired, call {@link #stop(Throwable)}.<p>
      * 
      * If the receiving subscriber itself throws an exception, then the new
      * exception is logged but otherwise ignored.<p>
@@ -184,20 +184,37 @@ public class PushPullPublisher<T> extends AugmentedAbstractUnicastPublisher<T, S
      * Do no longer accept new subscribers.<p>
      * 
      * An active as well as future subscribers will be signalled an {@link
-     * IllegalStateException} without a message.<p>
+     * IllegalStateException}.<p>
      * 
-     * It is advisable to first call {@link #error(Throwable)} in order to
-     * tailor the error for an active subscriber and then call this method.<p>
+     * It is advisable to call {@link #stop(Throwable)} in preference over this
+     * method.<p>
      * 
      * Is NOP if already stopped.
+     * 
+     * @return {@code true} only if an active subscriber will be delivered the error
      */
-    public void stop() {
+    public boolean stop() {
+        return stop(new IllegalStateException());
+    }
+    
+    /**
+     * Do no longer accept new subscribers.<p>
+     * 
+     * An active subscriber will be signalled the given exception. Future
+     * subscribers will be signalled an {@link IllegalStateException}.
+     * 
+     * Is NOP if already stopped.
+     * 
+     * @param t the throwable
+     * @return {@code true} only if an active subscriber will be delivered the error
+     */
+    public boolean stop(Throwable t) {
         var s = shutdown();
         if (s == null) {
-            return;
+            return false;
         }
-        s.attachment().finish(() ->
-                Subscribers.signalErrorSafe(s, new IllegalStateException()));
+        return s.attachment().finish(() ->
+                Subscribers.signalErrorSafe(s, t));
     }
     
     private void ifPresent(Consumer<SubscriberWithAttachment<T, SerialTransferService<T>>> action) {
