@@ -80,8 +80,7 @@ final class ChannelByteBufferPublisher implements Flow.Publisher<DefaultPooledBy
             return null;
         } else if (b == EOS) {
             // Channel dried up
-            subscriber.error(new EndOfStreamException());
-            subscriber.stop();
+            subscriber.stop(new EndOfStreamException());
             readable.clear();
             return null;
         } else if (!b.hasRemaining()) {
@@ -89,8 +88,7 @@ final class ChannelByteBufferPublisher implements Flow.Publisher<DefaultPooledBy
                 "Empty ByteBuffer in subscriber's queue. " +
                 "Please do not operate on a ByteBuffer after release; can have devastating consequences." +
                 CLOSE_MSG);
-            subscriber.error(new IllegalStateException("Empty ByteBuffer"));
-            subscriber.stop();
+            subscriber.stop(new IllegalStateException("Empty ByteBuffer"));
             channel.stop();
             child.shutdownInputSafe();
             readable.clear();
@@ -111,10 +109,9 @@ final class ChannelByteBufferPublisher implements Flow.Publisher<DefaultPooledBy
     
     private void afterChannelFinished(DefaultClientChannel ignored1, long ignored2, Throwable t) {
         if (t != null) {
-            if (!subscriber.error(t) && shouldRaiseConcern(t)) {
+            if (!subscriber.stop(t) && shouldRaiseConcern(t)) {
                 LOG.log(WARNING, "Failed to deliver this error to a subscriber.", t);
             }
-            subscriber.stop();
             readable.clear();
         } // else normal completion; subscriber will be stopped when EOS is observed
     }
