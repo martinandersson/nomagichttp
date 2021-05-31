@@ -39,9 +39,10 @@ import static org.assertj.core.api.Assertions.assertThat;
  * has no knowledge about the HTTP protocol.<p>
  * 
  * All write methods will by default open/close a new connection for each call.
- * In order to re-use a persistent connection across method calls, manually
- * {@link #openConnection()} and close the returned channel after the last
- * message exchange.<p>
+ * The output stream remains open and is not immediately closed after sending
+ * the requested data. For manual control over the connection, such as re-using
+ * the same connection across method calls, manually {@link
+ * #openConnection()}.<p>
  * 
  * When to stop reading from the channel has to be specified by proving the last
  * bytes expected in the server's response. This will trigger the test client to
@@ -434,7 +435,6 @@ public final class TestClient
             int r = ch.write(wrap(request));
             assertThat(r).isEqualTo(request.length);
         });
-        // TODO: Consider shutting down output stream
     }
     
     // TODO: Need to document EOS. I think that if response-end is not provided, this reads until EOS?
@@ -443,8 +443,7 @@ public final class TestClient
             ByteBuffer buf = allocate(128);
             while (!sink.hasReachedEnd()) {
                 if (ch.read(buf) == -1) {
-                    LOG.log(DEBUG, "EOS; server closed channel's read stream. Closing our channel.");
-                    ch.close();
+                    LOG.log(DEBUG, "EOS; server closed channel's read stream.");
                     break;
                 }
                 buf.flip();
@@ -452,7 +451,6 @@ public final class TestClient
                 buf.clear();
             }
         });
-        // TODO: Consider shutting down input stream
     }
     
     private void closeChannel() throws IOException {

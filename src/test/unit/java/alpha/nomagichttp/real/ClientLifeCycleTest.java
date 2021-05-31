@@ -80,8 +80,8 @@ class ClientLifeCycleTest extends AbstractRealTest
                     "HTTP exchange is over.",
                 ClosedChannelException.class);
             
-            // Clean close from server will cause our end to close as well
-            assertThat(ch.isOpen()).isFalse();
+            // Clean close from server caused our end to receive EOS
+            awaitLog(DEBUG, "EOS; server closed channel's read stream.");
         }
         
         // <implicit assert that no error was delivered to the error handler>
