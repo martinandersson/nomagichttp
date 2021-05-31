@@ -34,20 +34,34 @@ import static org.assertj.core.api.Assertions.assertThat;
 /**
  * A utility API on top of a {@code SocketChannel}.<p>
  * 
- * This class provides low-level access for test cases that need direct control
- * over what bytes are put on the wire and observe bytes received. This class
- * has no knowledge about the HTTP protocol.<p>
+ * This class provides low-level access for test cases in direct control over
+ * what bytes are put on the wire and to observe what bytes are received. This
+ * class has no knowledge about the HTTP protocol. The test must implement the
+ * protocol.<p>
  * 
- * All write methods will by default open/close a new connection for each call.
- * The output stream remains open and is not immediately closed after sending
- * the requested data. For manual control over the connection, such as re-using
- * the same connection across method calls, manually {@link
- * #openConnection()}.<p>
+ * Low-level read methods accept a terminator (an expected "response end"). This
+ * is a sequence of bytes after which, the client stops reading. If trailing
+ * [unexpected] bytes are observed, an {@code AssertionError} is thrown. To read
+ * all available data until EOS, the terminator can be specified as {@code
+ * null}, or more conveniently use an override with a name ending in "EOS".
+ * Specifying an empty terminator (empty String or 0-length byte array)
+ * effectively asserts that no bytes were received prior to EOS.<p>
  * 
- * When to stop reading from the channel has to be specified by proving the last
- * bytes expected in the server's response. This will trigger the test client to
- * assert there's no more bytes left in the channel and return all bytes
- * received.<p>
+ * Each read/write operation will by default timeout after 1 second, at which
+ * point the operation will fail with a {@link ClosedByInterruptException}. Test
+ * cases that need more time can override the default using {@link
+ * #interruptWriteAfter(long, TimeUnit)} and {@link
+ * #interruptReadAfter(long, TimeUnit)} respectively.<p>
+ * 
+ * All methods in this class will by default open/close a new connection for
+ * each call, unless one is already opened. The write operation does not
+ * explicitly close the output stream when it completes. For manual control over
+ * the connection, such as closing individual streams, or re-using the
+ * same connection across method calls, manually {@link #openConnection()}
+ * first.<p>
+ * 
+ * Strings will be encoded/decoded using {@code US_ASCII}. Please note that
+ * UTF-8 is backwards compatible with ASCII.<p>
  * 
  * This class is not thread-safe and all I/O operations block.
  * 
@@ -56,14 +70,14 @@ import static org.assertj.core.api.Assertions.assertThat;
 public final class TestClient
 {
     /**
-     * Client/delegate factory.
+     * Factory of the channel to use for all operations.
      */
     @FunctionalInterface
     public interface SocketChannelSupplier {
         /**
-         * Creates the client delegate.
+         * Creates the channel.
          * 
-         * @return the client delegate
+         * @return the channel
          * 
          * @throws IOException if an I/O error occurs
          */
@@ -117,19 +131,13 @@ public final class TestClient
                      wUnit   = SECONDS;
     
     /**
-     * Interrupt the read operation after a given timeout.<p>
-     * 
-     * On timeout, the operation will fail with a {@link
-     * ClosedByInterruptException}.
-     * 
-     * If this method is never called, the default timeout for the client's
-     * read+write operations is 1 second each. For very large messages this
-     * ought to be increased.
+     * Interrupt the read operation after a given timeout.
      * 
      * @param amount of duration
      * @param unit unit of amount
-     * 
      * @return this for chaining/fluency
+     * @see TestClient
+     * @see Interrupt
      */
     public TestClient interruptReadAfter(long amount, TimeUnit unit) {
         rAmount = amount;
@@ -139,18 +147,12 @@ public final class TestClient
     
     /**
      * Interrupt the write operation after a given timeout.<p>
-     *
-     * On timeout, the operation will fail with a {@link
-     * ClosedByInterruptException}.
-     *
-     * If this method is never called, the default timeout for the client's
-     * read+write operations is 1 second each. For very large messages this
-     * ought to be increased.
-     *
+     * 
      * @param amount of duration
      * @param unit unit of amount
-     *
      * @return this for chaining/fluency
+     * @see TestClient
+     * @see Interrupt
      */
     public TestClient interruptWriteAfter(long amount, TimeUnit unit) {
         wAmount = amount;
@@ -166,7 +168,7 @@ public final class TestClient
      * @return the channel
      * 
      * @throws IllegalStateException if a connection is already active
-     * @throws IOException like for other weird stuff
+     * @throws IOException if an I/O error occurs
      */
     public Channel openConnection() throws IOException {
         if (ch != null) {
@@ -195,7 +197,7 @@ public final class TestClient
      * Shutdown the channel's output stream.
      * 
      * @throws IllegalStateException if a connection is not open
-     * @throws IOException like for other weird stuff
+     * @throws IOException if an I/O error occurs
      */
     public void shutdownOutput() throws IOException {
         requireConnectionIsOpen();
@@ -207,7 +209,7 @@ public final class TestClient
      * Shutdown the channel's input stream.
      * 
      * @throws IllegalStateException if a connection is not open
-     * @throws IOException like for other weird stuff
+     * @throws IOException if an I/O error occurs
      */
     public void shutdownInput() throws IOException {
         requireConnectionIsOpen();
@@ -297,114 +299,6 @@ public final class TestClient
         }
     }
     
-    /**
-     * Decode and subsequently write the bytes on the connection using {@code
-     * US_ASCII}.<p>
-     * 
-     * Please note that UTF-8 is backwards compatible with ASCII.
-     * 
-     * @param text to write
-     * 
-     * @throws ClosedByInterruptException
-     *             if operation takes longer than 3 seconds
-     * 
-     * @throws IOException
-     *             for other weird reasons lol
-     */
-    public void write(String text) throws IOException {
-        writeRead(text, "");
-    }
-    
-    /**
-     * Same as {@link #writeRead(String, String)} but with a response end
-     * hardcoded to be "\r\n\r\n".<p>
-     * 
-     * Useful when <i>not</i> expecting a response body, in which case the
-     * response should end after the headers with two newlines.
-     * 
-     * @param request to write
-     * 
-     * @return the response
-     * 
-     * @throws ClosedByInterruptException
-     *             if operation takes longer than 3 seconds
-     * 
-     * @throws IOException
-     *             for other weird reasons lol
-     */
-    public String writeRead(String request) throws IOException {
-        return writeRead(request, CRLF + CRLF);
-    }
-    
-    /**
-     * Same as {@link #writeRead(byte[], byte[])} except this method decodes the
-     * arguments and encodes the response using {@code US_ASCII}.<p>
-     * 
-     * Useful when sending ASCII data and expecting an ASCII response.<p>
-     * 
-     * Please note that UTF-8 is backwards compatible with ASCII.
-     * 
-     * @param request to write
-     * @param responseEnd last expected chunk in response
-     * 
-     * @return the response
-     * 
-     * @throws ClosedByInterruptException
-     *             if operation takes longer than 3 seconds
-     * 
-     * @throws IOException
-     *             for other weird reasons lol
-     */
-    public String writeRead(String request, String responseEnd) throws IOException {
-        byte[] bytes = writeRead(
-                request.getBytes(US_ASCII),
-                responseEnd.getBytes(US_ASCII));
-        
-        return new String(bytes, US_ASCII);
-    }
-    
-    /**
-     * Write a bunch of bytes to the server, and receive a bunch of bytes back.<p>
-     * 
-     * This method will not stop reading the response from the server until the
-     * last chunk of bytes specified by {@code responseEnd} has been received.<p>
-     * 
-     * Please note that if this method throws an {@code InterruptedException}
-     * then this could be because the test case expected a different end of the
-     * response than what was received.<p>
-     * 
-     * @param request bytes to write
-     * @param responseEnd last chunk of expected bytes in response
-     * 
-     * @return the response
-     * 
-     * @throws ClosedByInterruptException
-     *             if operation takes longer than 3 seconds
-     * 
-     * @throws IOException
-     *             for other weird reasons lol
-     */
-    public byte[] writeRead(byte[] request, byte[] responseEnd) throws IOException {
-        final FiniteByteBufferSink sink = new FiniteByteBufferSink(128, responseEnd);
-        final boolean persistent = ch != null;
-        try {
-            if (!persistent) {
-                openConnection();
-            }
-            doWrite(request);
-            doRead(sink);
-            return sink.toByteArray();
-        } catch (Exception e) {
-            sink.dumpToLog();
-            throw e;
-        }
-        finally {
-            if (!persistent) {
-                closeChannel();
-            }
-        }
-    }
-    
     private void requireConnectionIsOpen() {
         if (ch == null) {
             throw new IllegalStateException("No connection active.");
@@ -427,17 +321,178 @@ public final class TestClient
         }
     }
     
-    private void doWrite(byte[] request) throws IOException {
-        if (request.length == 0) {
-            return;
+    /**
+     * Write bytes.
+     * 
+     * @param data to write
+     * 
+     * @throws NullPointerException if {@code data} is {@code null}
+     * @throws IllegalArgumentException if {@code data} is empty
+     * @throws IOException if an I/O error occurs
+     */
+    public void write(byte[] data) throws IOException {
+        requireContent(data);
+        usingConnection(() -> doWrite(data));
+    }
+    
+    /**
+     * Write text.
+     * 
+     * @param data to write
+     * 
+     * @throws NullPointerException if {@code data} is {@code null}
+     * @throws IllegalArgumentException if {@code data} is empty
+     * @throws IOException if an I/O error occurs
+     */
+    public void write(String data) throws IOException {
+        write(data.getBytes(US_ASCII));
+    }
+    
+    /**
+     * Read bytes.
+     * 
+     * @param terminator end-of-message
+     * @return bytes read
+     * @throws IOException if an I/O error occurs
+     */
+    public byte[] readBytesUntil(byte[] terminator) throws IOException {
+        final FiniteByteBufferSink sink = new FiniteByteBufferSink(128, terminator);
+        try {
+            usingConnection(() -> doRead(sink));
+        } catch (IOException e) {
+            sink.dumpToLog();
+            throw e;
         }
-        Interrupt.after(wAmount, wUnit, () -> {
-            int r = ch.write(wrap(request));
-            assertThat(r).isEqualTo(request.length);
+        return sink.toByteArray();
+    }
+    
+    /**
+     * Read bytes until end-of-stream.
+     * 
+     * @return bytes read
+     * @throws IOException if an I/O error occurs
+     */
+    public byte[] readBytesUntilEOS() throws IOException {
+        return readBytesUntil(null);
+    }
+    
+    /**
+     * Read bytes until {@code CRLF + CRLF} (end of HTTP headers).
+     * 
+     * @return bytes read
+     * @throws IOException if an I/O error occurs
+     */
+    public byte[] readBytesUntilNewlines() throws IOException {
+        return readBytesUntil((CRLF + CRLF).getBytes(US_ASCII));
+    }
+    
+    /**
+     * Read text.
+     * 
+     * @return text read
+     * @param terminator end-of-message
+     * @throws IOException if an I/O error occurs
+     */
+    public String readTextUntil(String terminator) throws IOException {
+        byte[] rsp = readBytesUntil(
+                terminator == null ? null : terminator.getBytes(US_ASCII));
+        return new String(rsp, US_ASCII);
+    }
+    
+    /**
+     * Read text until end-of-stream.
+     * 
+     * @return text read
+     * @throws IOException if an I/O error occurs
+     */
+    public String readTextUntilEOS() throws IOException {
+        return readTextUntil(null);
+    }
+    
+    /**
+     * Read text until {@code CRLF + CRLF} (end of HTTP headers).
+     * 
+     * @return text read
+     * @throws IOException if an I/O error occurs
+     */
+    public String readTextUntilNewlines() throws IOException {
+        return readTextUntil(CRLF + CRLF);
+    }
+    
+    /**
+     * Write + read text until {@code CRLF + CRLF} (end of HTTP headers).<p>
+     * 
+     * This method is the most high-level method that can be used to write
+     * a request and get a response without a body in return.
+     * 
+     * @param data to write
+     * 
+     * @return text read
+     * 
+     * @throws NullPointerException if {@code data} is {@code null}
+     * @throws IllegalArgumentException if {@code data} is empty
+     * @throws IOException if an I/O error occurs
+     */
+    public String writeRead(String data) throws IOException {
+        return writeRead(data, CRLF + CRLF);
+    }
+    
+    /**
+     * Write + read text.<p>
+     * 
+     * This method is the most high-level method that can be used to write
+     * a request and get a response with a body in return. The end of the body
+     * ought to be the terminator specified.<p>
+     * 
+     * Note: There currently is no method "writeReadUntilEOS". This is
+     * equivalent to calling this method with a null terminator. But if that
+     * need ever arises, we should add the "writeReadUntilEOS" overload.
+     * 
+     * @param data to write
+     * @param terminator end-of-message
+     * 
+     * @return text read
+     * 
+     * @throws NullPointerException if {@code data} is {@code null}
+     * @throws IllegalArgumentException if {@code data} is empty
+     * @throws IOException if an I/O error occurs
+     */
+    public String writeRead(String data, String terminator) throws IOException {
+        byte[] rsp = writeRead(
+                data.getBytes(US_ASCII),
+                terminator == null ? null : terminator.getBytes(US_ASCII));
+        
+        return new String(rsp, US_ASCII);
+    }
+    
+    /**
+     * Write + read bytes.
+     * 
+     * @param data to write
+     * @param terminator end-of-message
+     * 
+     * @return bytes read
+     * 
+     * @throws NullPointerException if {@code data} is {@code null}
+     * @throws IllegalArgumentException if {@code data} is empty
+     * @throws IOException if an I/O error occurs
+     */
+    public byte[] writeRead(byte[] data, byte[] terminator) throws IOException {
+        requireContent(data);
+        return usingConnection(() -> {
+            write(data);
+            return readBytesUntil(terminator);
         });
     }
     
-    // TODO: Need to document EOS. I think that if response-end is not provided, this reads until EOS?
+    private void doWrite(byte[] data) throws IOException {
+        requireContent(data);
+        Interrupt.after(wAmount, wUnit, () -> {
+            int r = ch.write(wrap(data));
+            assertThat(r).isEqualTo(data.length);
+        });
+    }
+    
     private void doRead(FiniteByteBufferSink sink) throws IOException {
         Interrupt.after(rAmount, rUnit, () -> {
             ByteBuffer buf = allocate(128);
@@ -451,6 +506,34 @@ public final class TestClient
                 buf.clear();
             }
         });
+    }
+    
+    private void usingConnection(IORunnable op) throws IOException {
+        IOSupplier<byte[]> wrapper = () -> {
+            op.run();
+            return null;
+        };
+        usingConnection(wrapper);
+    }
+    
+    private byte[] usingConnection(IOSupplier<byte[]> op) throws IOException {
+        final boolean persistent = ch != null;
+        try {
+            if (!persistent) {
+                openConnection();
+            }
+            return op.get();
+        } finally {
+            if (!persistent) {
+                closeChannel();
+            }
+        }
+    }
+    
+    private void requireContent(byte[] bytes) {
+        if (bytes.length == 0) {
+            throw new IllegalArgumentException("No data specified.");
+        }
     }
     
     private void closeChannel() throws IOException {
@@ -474,15 +557,13 @@ public final class TestClient
         
         void write(ByteBuffer data) {
             if (hasReachedEnd()) {
-                throw new IllegalStateException();
+                assert data.hasRemaining();
+                throw new AssertionError(
+                    "Unexpected trailing bytes in response: " + dump(data));
             }
             
             int start = data.arrayOffset() + data.position(),
                 end   = start + data.remaining();
-            
-            // TODO: Rework this. We can't assert that we read and consume everything from the channel.
-            //       We should read our data until we reach end, then not consume the remaining.
-            //       AbstractRealTest must @AfterEach assert that at that point all data in channel was consumed.
             
             for (int i = start; i < end; ++i) {
                 byte b = data.array()[i];
@@ -530,6 +611,12 @@ public final class TestClient
             Collection<String> chars = dump(b, 0, b.length);
             LOG.log(WARNING, "About to crash. We received this many bytes: " + chars.size() + ". Will log each as a char.");
             dump(b, 0, b.length).forEach(c -> LOG.log(WARNING, c));
+        }
+        
+        private static Collection<String> dump(ByteBuffer bytes) {
+            int start = bytes.arrayOffset() + bytes.position(),
+                end   = start + bytes.remaining();
+            return dump(bytes.array(), start, end);
         }
         
         private static Collection<String> dump(byte[] bytes, int start, int end) {
