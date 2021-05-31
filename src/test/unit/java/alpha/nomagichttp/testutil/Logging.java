@@ -464,7 +464,7 @@ public final class Logging
          * 
          * @param level record level predicate
          * @param messageStartsWith record message predicate
-         * @param error record error predicate (record's level must be instance of)
+         * @param error record error predicate (record's error must be instance of)
          * 
          * @return {@code true} when target record is observed, or
          *         {@code false} if 3 seconds passes without observing the record
