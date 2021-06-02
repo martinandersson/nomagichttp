@@ -125,7 +125,7 @@ class ExampleTest extends AbstractRealTest
             "GET /echo-headers HTTP/1.1"        + CRLF +
             "Accept: text/plain; charset=utf-8" + CRLF + CRLF;
         
-        String res = client().writeRead(req);
+        String res = client().writeReadTextUntilNewlines(req);
         
         assertThat(res).isEqualTo(
             "HTTP/1.1 204 No Content"           + CRLF +
@@ -185,7 +185,7 @@ class ExampleTest extends AbstractRealTest
         
         // 2. By default, existing files are not overwritten
         // ---
-        String res2 = client().writeRead(reqHead + "Bar");
+        String res2 = client().writeReadTextUntilNewlines(reqHead + "Bar");
         
         assertThat(res2).isEqualTo(
             "HTTP/1.1 500 Internal Server Error" + CRLF +

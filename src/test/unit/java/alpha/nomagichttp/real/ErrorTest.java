@@ -96,7 +96,7 @@ class ErrorTest extends AbstractRealTest
     
     @Test
     void NoRouteFoundException_default() throws IOException, InterruptedException {
-        String rsp = client().writeRead(
+        String rsp = client().writeReadTextUntilNewlines(
             "GET /404 HTTP/1.1"      + CRLF + CRLF);
         assertThat(rsp).isEqualTo(
             "HTTP/1.1 404 Not Found" + CRLF +
@@ -117,7 +117,7 @@ class ErrorTest extends AbstractRealTest
             }
             throw exc;
         });
-        String rsp = client().writeRead(
+        String rsp = client().writeReadTextUntilNewlines(
             "GET /404 HTTP/1.1"              + CRLF + CRLF);
         assertThat(rsp).isEqualTo(
             "HTTP/1.1 499 Custom Not Found!" + CRLF + CRLF);
@@ -128,7 +128,7 @@ class ErrorTest extends AbstractRealTest
     void MaxRequestHeadSizeExceededException() throws IOException, InterruptedException {
         usingConfiguration()
             .maxRequestHeadSize(1);
-        String rsp = client().writeRead(
+        String rsp = client().writeReadTextUntilNewlines(
             "AB");
         assertThat(rsp).isEqualTo(
             "HTTP/1.1 413 Entity Too Large" + CRLF +
@@ -142,7 +142,7 @@ class ErrorTest extends AbstractRealTest
     
     @Test
     void HttpVersionParseException() throws IOException, InterruptedException {
-        String rsp = client().writeRead(
+        String rsp = client().writeReadTextUntilNewlines(
             "GET / Oops"               + CRLF + CRLF);
         assertThat(rsp).isEqualTo(
             "HTTP/1.1 400 Bad Request" + CRLF +
@@ -159,7 +159,7 @@ class ErrorTest extends AbstractRealTest
     @ParameterizedTest
     @ValueSource(strings = {"-1.23", "0.5", "0.8", "0.9"})
     void HttpVersionTooOldException_lessThan1_0(String version) throws IOException, InterruptedException {
-        String rsp = client().writeRead(
+        String rsp = client().writeReadTextUntilNewlines(
             "GET / HTTP/" + version         + CRLF + CRLF);
         assertThat(rsp).isEqualTo(
             "HTTP/1.1 426 Upgrade Required" + CRLF +
@@ -179,7 +179,7 @@ class ErrorTest extends AbstractRealTest
     void HttpVersionTooOldException_eq1_0() throws IOException, InterruptedException {
         usingConfiguration()
             .rejectClientsUsingHTTP1_0(true);
-        String rsp = client().writeRead(
+        String rsp = client().writeReadTextUntilNewlines(
             "GET /not-found HTTP/1.0"       + CRLF + CRLF);
         assertThat(rsp).isEqualTo(
             "HTTP/1.0 426 Upgrade Required" + CRLF +
@@ -198,7 +198,7 @@ class ErrorTest extends AbstractRealTest
     @ParameterizedTest
     @ValueSource(strings = {"2", "3", "999"})
     void HttpVersionTooNewException(String version) throws IOException, InterruptedException {
-        String rsp = client().writeRead(
+        String rsp = client().writeReadTextUntilNewlines(
             "GET / HTTP/" + version                   + CRLF + CRLF);
         assertThat(rsp).isEqualTo(
             "HTTP/1.1 505 HTTP Version Not Supported" + CRLF +
@@ -216,7 +216,7 @@ class ErrorTest extends AbstractRealTest
     void IllegalBodyException_inResponseToHEAD() throws IOException, InterruptedException {
         server().add("/",
             HEAD().respond(text("Body!")));
-        String rsp = client().writeRead(
+        String rsp = client().writeReadTextUntilNewlines(
             "HEAD / HTTP/1.1"                    + CRLF + CRLF);
         assertThat(rsp).isEqualTo(
             "HTTP/1.1 500 Internal Server Error" + CRLF +
@@ -232,7 +232,7 @@ class ErrorTest extends AbstractRealTest
     void IllegalBodyException_inRequestFromTRACE() throws IOException, InterruptedException {
         server().add("/",
             TRACE().accept((req, ch) -> { throw new AssertionError("Not invoked."); }));
-        String rsp = client().writeRead(
+        String rsp = client().writeReadTextUntilNewlines(
             "TRACE / HTTP/1.1"         + CRLF +
             "Content-Length: 1"        + CRLF + CRLF +
             
@@ -254,7 +254,7 @@ class ErrorTest extends AbstractRealTest
             GET().respond(() -> Response.builder(123)
                     .body(ofString("Body!"))
                     .build().completedStage()));
-        String rsp = client().writeRead(
+        String rsp = client().writeReadTextUntilNewlines(
             "GET / HTTP/1.1"                     + CRLF + CRLF);
         assertThat(rsp).isEqualTo(
             "HTTP/1.1 500 Internal Server Error" + CRLF +
@@ -301,7 +301,7 @@ class ErrorTest extends AbstractRealTest
         // but use default timeout for request body and response.
         usingConfig(
             timeoutIdleConnection(1, ofMillis(0)));
-        String rsp = client().writeRead(
+        String rsp = client().writeReadTextUntilNewlines(
             // Server waits for CRLF + CRLF, but times out instead
             "GET / HTTP...");
         assertThat(rsp).isEqualTo(
@@ -335,7 +335,7 @@ class ErrorTest extends AbstractRealTest
             req.body().subscribe(onError(appErr::add));
         }));
         
-        String rsp = client().writeRead(
+        String rsp = client().writeReadTextUntilNewlines(
             "POST / HTTP/1.1"              + CRLF +
             "Content-Length: 2"            + CRLF + CRLF +
             
@@ -372,7 +372,7 @@ class ErrorTest extends AbstractRealTest
             timeoutIdleConnection(3, ofMillis(0)));
         server().add("/",
              GET().accept((does,nothing) -> {}));
-        String rsp = client().writeRead(
+        String rsp = client().writeReadTextUntilNewlines(
             "GET / HTTP/1.1"                   + CRLF + CRLF);
         assertThat(rsp).isEqualTo(
             "HTTP/1.1 503 Service Unavailable" + CRLF +
@@ -453,7 +453,7 @@ class ErrorTest extends AbstractRealTest
             throw new OopsException();
         }));
         
-        String rsp = client().writeRead(
+        String rsp = client().writeReadTextUntilNewlines(
             "GET / HTTP/1.1"                     + CRLF + CRLF);
         assertThat(rsp).isEqualTo(
             "HTTP/1.1 500 Internal Server Error" + CRLF +
@@ -483,7 +483,7 @@ class ErrorTest extends AbstractRealTest
                     .completedStage();
         }));
         
-        String rsp = client().writeRead(
+        String rsp = client().writeReadTextUntilNewlines(
             "GET / HTTP/1.1"          + CRLF + CRLF);
         assertThat(rsp).isEqualTo(
             "HTTP/1.1 204 No Content" + CRLF +
@@ -512,7 +512,7 @@ class ErrorTest extends AbstractRealTest
             default: throw new AssertionError();
         }
         
-        String rsp = client().writeRead(req);
+        String rsp = client().writeReadTextUntilNewlines(req);
         
         assertThat(rsp).isEqualTo(
             "HTTP/1.1 500 Internal Server Error" + CRLF +
@@ -539,7 +539,7 @@ class ErrorTest extends AbstractRealTest
             req.body().subscribe(sub);
         }));
         
-        String rsp = client().writeRead(post("not empty"));
+        String rsp = client().writeReadTextUntilNewlines(post("not empty"));
         
         assertThat(rsp).isEqualTo(
             "HTTP/1.1 500 Internal Server Error" + CRLF +
@@ -573,7 +573,7 @@ class ErrorTest extends AbstractRealTest
             req.body().subscribe(sub);
         }));
         
-        String rsp = client().writeRead(post("not empty"));
+        String rsp = client().writeReadTextUntilNewlines(post("not empty"));
         
         assertThat(rsp).isEqualTo(
             "HTTP/1.1 500 Internal Server Error" + CRLF +
@@ -624,7 +624,7 @@ class ErrorTest extends AbstractRealTest
             default: throw new AssertionError();
         }
         
-        String rsp = client().writeRead(req);
+        String rsp = client().writeReadTextUntilNewlines(req);
         
         assertThat(rsp).isEqualTo(
             "HTTP/1.1 500 Internal Server Error" + CRLF +
@@ -647,7 +647,7 @@ class ErrorTest extends AbstractRealTest
         server().add("/", GET().respond(badRequest()));
         
         IORunnable sendBadRequest = () -> {
-            String rsp = client().writeRead(get());
+            String rsp = client().writeReadTextUntilNewlines(get());
             assertThat(rsp).startsWith("HTTP/1.1 400 Bad Request");
         };
         
@@ -671,7 +671,7 @@ class ErrorTest extends AbstractRealTest
             ch.write(Response.builder(123).build());
         }));
         
-        String rsp = client().writeRead(
+        String rsp = client().writeReadTextUntilNewlines(
             "GET / HTTP/1.1"          + CRLF + CRLF);
         assertThat(rsp).isEqualTo(
             "HTTP/1.1 204 No Content" + CRLF + CRLF);
@@ -689,7 +689,7 @@ class ErrorTest extends AbstractRealTest
             ch.write(failedStage(new RuntimeException("Oops!")));
         }));
         
-        String rsp = client().writeRead(
+        String rsp = client().writeReadTextUntilNewlines(
             "GET / HTTP/1.1"          + CRLF + CRLF);
         assertThat(rsp).isEqualTo(
             "HTTP/1.1 204 No Content" + CRLF + CRLF);

@@ -47,7 +47,7 @@ class ClientLifeCycleTest extends AbstractRealTest
         
         Channel ch = client().openConnection();
         try (ch) {
-            String rsp = client().writeRead(
+            String rsp = client().writeReadTextUntilNewlines(
                 "GET / HTTP/1.0"         + CRLF +
                 "Connection: keep-alive" + CRLF + CRLF); // <-- does not matter
             
@@ -69,7 +69,7 @@ class ClientLifeCycleTest extends AbstractRealTest
         
         Channel ch = client().openConnection();
         try (ch) {
-            String rsp = client().writeRead("GET / HTTP/1.1" + CRLF + CRLF);
+            String rsp = client().writeReadTextUntilNewlines("GET / HTTP/1.1" + CRLF + CRLF);
             
             assertThat(rsp).isEmpty();
             

@@ -438,7 +438,7 @@ public final class TestClient
      * @throws IllegalArgumentException if {@code data} is empty
      * @throws IOException if an I/O error occurs
      */
-    public String writeRead(String data) throws IOException {
+    public String writeReadTextUntilNewlines(String data) throws IOException {
         return writeReadTextUntil(data, CRLF + CRLF);
     }
     

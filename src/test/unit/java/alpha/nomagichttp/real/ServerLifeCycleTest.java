@@ -38,8 +38,8 @@ class ServerLifeCycleTest extends AbstractRealTest
         CompletableFuture<Void> fut;
         Channel ch = client().openConnection();
         try (ch) {
-            String rsp1 = client().writeRead(
-                "POST / HTTP/1.1"                         + CRLF +
+            String rsp1 = client().writeReadTextUntilNewlines(
+                "POST / HTTP/1.1"                        + CRLF +
                 "Content-Type: text/plain;charset=utf-8" + CRLF +
                 "Content-Length: 3"                      + CRLF +
                 "Expect: 100-continue"                   + CRLF + CRLF);
@@ -52,8 +52,8 @@ class ServerLifeCycleTest extends AbstractRealTest
             assertThat(server().isRunning()).isFalse();
             assertNewConnectionIsRejected();
             
-            String rsp2 = client().writeReadTextUntil("Hi!" + CRLF + CRLF, "Hi!");
-            
+            String rsp2 = client().writeReadTextUntil(
+                "Hi!"                                     + CRLF + CRLF, "Hi!");
             assertThat(rsp2).isEqualTo(
                 "HTTP/1.1 200 OK"                         + CRLF +
                 "Content-Type: text/plain; charset=utf-8" + CRLF +

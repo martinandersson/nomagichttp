@@ -112,7 +112,7 @@ class DetailTest extends AbstractRealTest
         
         IORunnable exchange = () -> {
             String req = post("x".repeat(length)),
-                   res = client().writeRead(req);
+                   res = client().writeReadTextUntilNewlines(req);
             
             assertThat(res).isEqualTo(
                 "HTTP/1.1 202 Accepted" + CRLF +
@@ -197,7 +197,7 @@ class DetailTest extends AbstractRealTest
         var empty = Publishers.just(ByteBuffer.allocate(0));
         server().add("/", GET().respond(ok(empty, "application/octet-stream", -1)));
         
-        String rsp = client().writeRead(get());
+        String rsp = client().writeReadTextUntilNewlines(get());
         assertThat(rsp).isEqualTo(
             "HTTP/1.1 200 OK"                         + CRLF +
             "Content-Type: application/octet-stream"  + CRLF +
