@@ -1,11 +1,15 @@
 package alpha.nomagichttp.real;
 
 import alpha.nomagichttp.handler.ErrorHandler;
+import alpha.nomagichttp.handler.RequestHandler;
 import alpha.nomagichttp.message.Char;
 import alpha.nomagichttp.message.EndOfStreamException;
 import alpha.nomagichttp.message.PooledByteBufferHolder;
+import alpha.nomagichttp.message.Response;
 import alpha.nomagichttp.testutil.TestClient;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 
 import java.io.IOException;
 import java.nio.channels.Channel;
@@ -13,12 +17,16 @@ import java.nio.channels.ClosedByInterruptException;
 import java.nio.channels.ClosedChannelException;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeoutException;
+import java.util.logging.LogRecord;
 
 import static alpha.nomagichttp.handler.RequestHandler.GET;
 import static alpha.nomagichttp.message.Responses.noContent;
+import static alpha.nomagichttp.real.TestRequests.get;
+import static alpha.nomagichttp.real.TestRequests.post;
 import static alpha.nomagichttp.testutil.TestClient.CRLF;
 import static alpha.nomagichttp.testutil.TestSubscribers.onNextAndError;
 import static alpha.nomagichttp.util.Strings.containsIgnoreCase;
@@ -257,7 +265,46 @@ class ClientLifeCycleTest extends AbstractRealTest
         assertThatNoWarningOrErrorIsLoggedExcept(TestClient.class, ErrorHandler.class);
     }
     
-    // TODO: Partial connection shut downs. E.g. client close his write stream,
-    //       but still expects a complete response in return before server then
-    //       close his write stream.
+    // Client shuts down output stream after request, still receives the full response
+    @ParameterizedTest
+    @CsvSource({"true,false", "false,false", "true,true", "false,true"})
+    void intermittentStreamShutdown_clientOutput(
+            boolean setConnectionCloseHeader, boolean useRequestBody)
+            throws IOException, InterruptedException
+    {
+        var resp  = new CompletableFuture<Response>();
+        var meth = useRequestBody ? RequestHandler.POST() : GET();
+        server().add("/", meth.respond(resp));
+        Channel ch = client().openConnection();
+        try (ch) {
+            String[] conn = setConnectionCloseHeader ?
+                    new String[]{"Connection: close"} :
+                    new String[0];
+            String req = useRequestBody ?
+                    post("body", conn) :
+                    get(conn);
+            client().write(req);
+            client().shutdownOutput();
+            resp.complete(noContent());
+            String rsp = client().readTextUntilEOS();
+            assertThat(rsp).isEqualTo(
+                "HTTP/1.1 204 No Content" + CRLF + CRLF);
+        }
+        
+        awaitChildClose();
+        
+        if (!setConnectionCloseHeader) {
+            awaitLog(DEBUG, "Input stream was shut down. HTTP exchange is over.");
+        } else {
+            // There is no guarantee that the client's shutdown is observed before
+            // the close-header. But, we assert only one of them is logged.
+            long n = stopLogRecording()
+                         .map(LogRecord::getMessage)
+                         .filter(m ->
+                             "Input stream was shut down. HTTP exchange is over.".equals(m) ||
+                             "Request set \"Connection: close\", shutting down input.".equals(m))
+                         .count();
+            assertThat(n).isOne();
+        }
+    }
 }

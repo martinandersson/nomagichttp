@@ -16,11 +16,14 @@ final class TestRequests
     /**
      * Make a "GET / HTTP/1.1" request.
      * 
+     * @param additionalHeaders optional
      * @return the request
      */
-    public static String get() {
+    public static String get(String... additionalHeaders) {
+        
         return "GET / HTTP/1.1"                    + CRLF +
                "Accept: text/plain; charset=utf-8" + CRLF +
+               join(additionalHeaders)             +
                "Content-Length: " + 0              + CRLF + CRLF;
     }
     
@@ -28,14 +31,20 @@ final class TestRequests
      * Make a "POST / HTTP/1.1" request with a body.
      * 
      * @param body of request
+     * @param additionalHeaders optional
      * @return the request
      */
-    public static String post(String body) {
+    public static String post(String body, String... additionalHeaders) {
         return "POST / HTTP/1.1"                         + CRLF +
                "Accept: text/plain; charset=utf-8"       + CRLF +
                "Content-Type: text/plain; charset=utf-8" + CRLF +
+               join(additionalHeaders)                   +
                "Content-Length: " + body.length()        + CRLF + CRLF +
                
                body;
+    }
+    
+    private static String join(String... headers) {
+        return headers.length == 0 ? "" : String.join(CRLF, headers) + CRLF;
     }
 }
