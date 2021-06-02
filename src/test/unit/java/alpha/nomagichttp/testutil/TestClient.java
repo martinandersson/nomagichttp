@@ -445,6 +445,21 @@ public final class TestClient
     }
     
     /**
+     * Write + read bytes until end-of-stream.
+     * 
+     * @param data to write
+     * 
+     * @return bytes read
+     * 
+     * @throws NullPointerException if {@code data} is {@code null}
+     * @throws IllegalArgumentException if {@code data} is empty
+     * @throws IOException if an I/O error occurs
+     */
+    public byte[] writeReadBytesUntilEOS(byte[] data) throws IOException {
+        return writeReadBytesUntil(data, null);
+    }
+    
+    /**
      * Write + read text.<p>
      * 
      * This method is the most high-level method that can be used to write
