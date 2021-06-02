@@ -447,11 +447,7 @@ public final class TestClient
      * 
      * This method is the most high-level method that can be used to write
      * a request and get a response with a body in return. The end of the body
-     * ought to be the terminator specified.<p>
-     * 
-     * Note: There currently is no method "writeReadUntilEOS". This is
-     * equivalent to calling this method with a null terminator. But if that
-     * need ever arises, we should add the "writeReadUntilEOS" overload.
+     * ought to be the terminator specified.
      * 
      * @param data to write
      * @param terminator end-of-message
