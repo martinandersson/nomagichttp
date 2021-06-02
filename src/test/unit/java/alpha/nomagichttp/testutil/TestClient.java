@@ -41,11 +41,16 @@ import static org.assertj.core.api.Assertions.assertThat;
  * 
  * Low-level read methods accept a terminator (an expected "response end"). This
  * is a sequence of bytes after which, the client stops reading. If trailing
- * [unexpected] bytes are observed, an {@code AssertionError} is thrown. To read
- * all available data until EOS, the terminator can be specified as {@code
- * null}, or more conveniently use an override with a name ending in "EOS".
- * Specifying an empty terminator (empty String or 0-length byte array)
- * effectively asserts that no bytes were received prior to EOS.<p>
+ * [unexpected] bytes are observed, an {@code AssertionError} is thrown. The
+ * read will stop at end-of-stream and not fail the test even if not all of the
+ * terminator has been observed. The test should always run asserts on the
+ * returned response.<p>
+ * 
+ * To read all available data until EOS, the terminator can either be a sequence
+ * of bytes never expected or {@code null}. More conveniently, use an override
+ * with a name ending in "EOS". Specifying an empty terminator (empty String or
+ * 0-length byte array) effectively asserts that no bytes were received prior to
+ * EOS.<p>
  * 
  * Each read/write operation will by default timeout after 1 second, at which
  * point the operation will fail with a {@link ClosedByInterruptException}. Test
