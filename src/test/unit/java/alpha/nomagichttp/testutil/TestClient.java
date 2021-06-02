@@ -449,7 +449,11 @@ public final class TestClient
      * 
      * This method is the most high-level method that can be used to write
      * a request and get a response with a body in return. The end of the body
-     * ought to be the terminator specified.
+     * ought to be the terminator specified.<p>
+     * 
+     * Or, consider using {@link #writeReadTextUntilEOS(String)} if it is
+     * expected that the server will close the client's read stream after the
+     * response.
      * 
      * @param data to write
      * @param terminator end-of-message
@@ -472,7 +476,11 @@ public final class TestClient
      * Write + read text until {@code CRLF + CRLF} (end of HTTP headers).<p>
      * 
      * This method is the most high-level method that can be used to write
-     * a request and get a response without a body in return.
+     * a request and get a response without a body in return.<p>
+     * 
+     * Or, consider using {@link #writeReadTextUntilEOS(String)} if it is
+     * expected that the server will close the client's read stream after the
+     * response.
      * 
      * @param data to write
      * 
@@ -484,6 +492,25 @@ public final class TestClient
      */
     public String writeReadTextUntilNewlines(String data) throws IOException {
         return writeReadTextUntil(data, CRLF + CRLF);
+    }
+    
+    /**
+     * Write + read text until end-of-stream.<p>
+     * 
+     * This method is the most high-level method that can be used to write
+     * a request and get a response in return where it is expected that the
+     * server also closes the client's read stream afterwards.
+     * 
+     * @param data to write
+     * 
+     * @return text read
+     * 
+     * @throws NullPointerException if {@code data} is {@code null}
+     * @throws IllegalArgumentException if {@code data} is empty
+     * @throws IOException if an I/O error occurs
+     */
+    public String writeReadTextUntilEOS(String data) throws IOException {
+        return writeReadTextUntil(data, null);
     }
     
     private void doWrite(byte[] data) throws IOException {

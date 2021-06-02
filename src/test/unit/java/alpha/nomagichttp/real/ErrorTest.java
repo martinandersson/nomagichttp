@@ -405,8 +405,8 @@ class ErrorTest extends AbstractRealTest
         //   3) 503 (Service Unavailable).
         // The objective of this test is to ensure the connection closes.
         // Otherwise, our client would time out on this side.
-        String responseIgnored = client().writeReadTextUntil(
-                "GET / HTTP/1.1" + CRLF + CRLF, "until server closes plz");
+        String responseIgnored = client().writeReadTextUntilEOS(
+                "GET / HTTP/1.1" + CRLF + CRLF);
         
         unblock.release(); // <-- must unblock request thread to guarantee log
         var fromLog = awaitFirstLogError();
