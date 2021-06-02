@@ -289,22 +289,20 @@ class ClientLifeCycleTest extends AbstractRealTest
             String rsp = client().readTextUntilEOS();
             assertThat(rsp).isEqualTo(
                 "HTTP/1.1 204 No Content" + CRLF + CRLF);
+            awaitChildClose();
         }
         
-        awaitChildClose();
+        var log = stopLogRecording()
+                      .map(LogRecord::getMessage)
+                      .filter(m ->
+                          // There is no guarantee that the client's shutdown is observed...
+                          "Input stream was shut down. HTTP exchange is over.".equals(m) ||
+                          // before the close-header is, or if no header was set, ...
+                          "Request set \"Connection: close\", shutting down input. (end of HTTP exchange)".equals(m) ||
+                          // before the next exchange followed by an immediate "client aborted".
+                          "Client aborted the HTTP exchange.".equals(m));
         
-        if (!setConnectionCloseHeader) {
-            awaitLog(DEBUG, "Input stream was shut down. HTTP exchange is over.");
-        } else {
-            // There is no guarantee that the client's shutdown is observed before
-            // the close-header. But, we assert only one of them is logged.
-            long n = stopLogRecording()
-                         .map(LogRecord::getMessage)
-                         .filter(m ->
-                             "Input stream was shut down. HTTP exchange is over.".equals(m) ||
-                             "Request set \"Connection: close\", shutting down input.".equals(m))
-                         .count();
-            assertThat(n).isOne();
-        }
+        // But for sure, only one of them is expected.
+        assertThat(log.count()).isOne();
     }
 }
