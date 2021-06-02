@@ -439,7 +439,7 @@ public final class TestClient
      * @throws IOException if an I/O error occurs
      */
     public String writeRead(String data) throws IOException {
-        return writeRead(data, CRLF + CRLF);
+        return writeReadTextUntil(data, CRLF + CRLF);
     }
     
     /**
@@ -458,7 +458,7 @@ public final class TestClient
      * @throws IllegalArgumentException if {@code data} is empty
      * @throws IOException if an I/O error occurs
      */
-    public String writeRead(String data, String terminator) throws IOException {
+    public String writeReadTextUntil(String data, String terminator) throws IOException {
         byte[] rsp = writeReadBytesUntil(
                 data.getBytes(US_ASCII),
                 terminator == null ? null : terminator.getBytes(US_ASCII));

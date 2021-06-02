@@ -274,7 +274,7 @@ class ErrorTest extends AbstractRealTest
         }));
         
         // ... because "HTTP/1.0"
-        String rsp = client().writeRead(
+        String rsp = client().writeReadTextUntil(
             "GET / HTTP/1.0"                          + CRLF + CRLF, "Done!");
         assertThat(rsp).isEqualTo(
             "HTTP/1.0 200 OK"                         + CRLF +
@@ -405,7 +405,7 @@ class ErrorTest extends AbstractRealTest
         //   3) 503 (Service Unavailable).
         // The objective of this test is to ensure the connection closes.
         // Otherwise, our client would time out on this side.
-        String responseIgnored = client().writeRead(
+        String responseIgnored = client().writeReadTextUntil(
                 "GET / HTTP/1.1" + CRLF + CRLF, "until server closes plz");
         
         unblock.release(); // <-- must unblock request thread to guarantee log

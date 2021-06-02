@@ -31,7 +31,7 @@ class MessageTest extends AbstractRealTest
     @Test
     void request_body_empty() throws IOException {
         server().add(respondIsBodyEmpty());
-        String res = client().writeRead(post(""), "true");
+        String res = client().writeReadTextUntil(post(""), "true");
         assertThat(res).isEqualTo(
             "HTTP/1.1 200 OK"                         + CRLF +
             "Content-Type: text/plain; charset=utf-8" + CRLF +
@@ -51,7 +51,7 @@ class MessageTest extends AbstractRealTest
         server().add("/", GET().apply(req ->
                 text("Received " + req.httpVersion()).completedStage()));
         
-        String resp = client().writeRead(
+        String resp = client().writeReadTextUntil(
             "GET / HTTP/1.0" + CRLF + CRLF, "Received HTTP/1.0");
         
         assertThat(resp).isEqualTo(
@@ -78,7 +78,7 @@ class MessageTest extends AbstractRealTest
             
             "Hi";
         
-        String rsp = client().writeRead(req, "Hi");
+        String rsp = client().writeReadTextUntil(req, "Hi");
         
         assertThat(rsp).isEqualTo(
             "HTTP/1.1 100 Continue"                   + CRLF + CRLF +

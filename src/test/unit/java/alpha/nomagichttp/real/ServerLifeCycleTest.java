@@ -52,7 +52,7 @@ class ServerLifeCycleTest extends AbstractRealTest
             assertThat(server().isRunning()).isFalse();
             assertNewConnectionIsRejected();
             
-            String rsp2 = client().writeRead("Hi!" + CRLF + CRLF, "Hi!");
+            String rsp2 = client().writeReadTextUntil("Hi!" + CRLF + CRLF, "Hi!");
             
             assertThat(rsp2).isEqualTo(
                 "HTTP/1.1 200 OK"                         + CRLF +

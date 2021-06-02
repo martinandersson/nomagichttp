@@ -62,10 +62,10 @@ class DetailTest extends AbstractRealTest
         
         Channel ch = client().openConnection();
         try (ch) {
-            String res1 = client().writeRead(post("ABC"), "ABC");
+            String res1 = client().writeReadTextUntil(post("ABC"), "ABC");
             assertThat(res1).isEqualTo(resHead + "ABC");
             
-            String res2 = client().writeRead(post("DEF"), "DEF");
+            String res2 = client().writeReadTextUntil(post("DEF"), "DEF");
             assertThat(res2).isEqualTo(resHead + "DEF");
         }
     }
@@ -76,7 +76,7 @@ class DetailTest extends AbstractRealTest
         
         IORunnable exchange = () -> {
             String req = post("x".repeat(10)),
-                   res = client().writeRead(req, "false");
+                   res = client().writeReadTextUntil(req, "false");
             
             assertThat(res).isEqualTo(
                 "HTTP/1.1 200 OK"                         + CRLF +
@@ -133,7 +133,7 @@ class DetailTest extends AbstractRealTest
         server().add("/",
             // Request body doesn't matter
             GET().respond(text("end")));
-        String rsp = client().writeRead(
+        String rsp = client().writeReadTextUntil(
             "GET / HTTP/1.1"                          + CRLF + 
             "Expect: 100-continue"                    + CRLF + CRLF, "end");
         assertThat(rsp).isEqualTo(
@@ -158,7 +158,7 @@ class DetailTest extends AbstractRealTest
         }));
         
         String req = "GET / HTTP/1.1" + CRLF + CRLF;
-        String rsp = client().writeRead(req, "Content-Length: 0" + CRLF + CRLF);
+        String rsp = client().writeReadTextUntil(req, "Content-Length: 0" + CRLF + CRLF);
         
         assertThat(rsp).isEqualTo(
             "HTTP/1.1 100 Continue"  + CRLF + CRLF +
@@ -181,7 +181,7 @@ class DetailTest extends AbstractRealTest
                           .removeHeader(CONTENT_LENGTH)
                           .build()));
         
-        String rsp = client().writeRead(get(), "Hi");
+        String rsp = client().writeReadTextUntil(get(), "Hi");
         assertThat(rsp).isEqualTo(
             "HTTP/1.1 200 OK"                         + CRLF +
             "Content-Type: text/plain; charset=utf-8" + CRLF +
@@ -219,7 +219,7 @@ class DetailTest extends AbstractRealTest
             first.complete(processing().toBuilder().header("ID", "1").build());
         }));
         
-        String rsp = client().writeRead(get(), "done");
+        String rsp = client().writeReadTextUntil(get(), "done");
         assertThat(rsp).isEqualTo(
             "HTTP/1.1 102 Processing"                 + CRLF +
             "ID: 1"                                   + CRLF + CRLF +

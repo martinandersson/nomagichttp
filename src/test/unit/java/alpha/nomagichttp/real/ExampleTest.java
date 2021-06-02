@@ -40,7 +40,7 @@ class ExampleTest extends AbstractRealTest
             "GET /hello-response HTTP/1.1"      + CRLF +
             "Accept: text/plain; charset=utf-8" + CRLF + CRLF;
         
-        String res = client().writeRead(req, "World!");
+        String res = client().writeReadTextUntil(req, "World!");
         
         assertThat(res).isEqualTo(
             "HTTP/1.1 200 OK"                         + CRLF +
@@ -72,7 +72,7 @@ class ExampleTest extends AbstractRealTest
             "GET /hello?name=John HTTP/1.1"     + CRLF +
             "Accept: text/plain; charset=utf-8" + CRLF + CRLF;
         
-        String res1 = client().writeRead(req1, "John!");
+        String res1 = client().writeReadTextUntil(req1, "John!");
         assertThat(res1).isEqualTo(
             "HTTP/1.1 200 OK"                         + CRLF +
             "Content-Type: text/plain; charset=utf-8" + CRLF +
@@ -80,7 +80,7 @@ class ExampleTest extends AbstractRealTest
             
             "Hello John!");
         
-        String res2 = client().writeRead(req2, "John!");
+        String res2 = client().writeReadTextUntil(req2, "John!");
         assertThat(res2).isEqualTo(res1);
     }
     
@@ -100,7 +100,7 @@ class ExampleTest extends AbstractRealTest
             
             "John";
         
-        String res = client().writeRead(req, "John!");
+        String res = client().writeReadTextUntil(req, "John!");
         
         assertThat(res).isEqualTo(
             "HTTP/1.1 200 OK"                         + CRLF +
@@ -140,7 +140,7 @@ class ExampleTest extends AbstractRealTest
             ch.write(text("Done!"));
         }));
         
-        String rsp = client().writeRead("GET / HTTP/1.1" + CRLF + CRLF, "Done!");
+        String rsp = client().writeReadTextUntil("GET / HTTP/1.1" + CRLF + CRLF, "Done!");
         
         assertThat(rsp).isEqualTo(
             "HTTP/1.1 102 Processing"                 + CRLF + CRLF +
@@ -173,7 +173,7 @@ class ExampleTest extends AbstractRealTest
             "POST /small-file HTTP/1.1" + CRLF +
             "Content-Length: 3"         + CRLF + CRLF;
         
-        String res1 = client().writeRead(reqHead + "Foo", "3");
+        String res1 = client().writeReadTextUntil(reqHead + "Foo", "3");
         
         assertThat(res1).isEqualTo(
             "HTTP/1.1 200 OK"                          + CRLF +
