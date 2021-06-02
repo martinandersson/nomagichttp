@@ -459,7 +459,7 @@ public final class TestClient
      * @throws IOException if an I/O error occurs
      */
     public String writeRead(String data, String terminator) throws IOException {
-        byte[] rsp = writeRead(
+        byte[] rsp = writeReadBytesUntil(
                 data.getBytes(US_ASCII),
                 terminator == null ? null : terminator.getBytes(US_ASCII));
         
@@ -478,7 +478,7 @@ public final class TestClient
      * @throws IllegalArgumentException if {@code data} is empty
      * @throws IOException if an I/O error occurs
      */
-    public byte[] writeRead(byte[] data, byte[] terminator) throws IOException {
+    public byte[] writeReadBytesUntil(byte[] data, byte[] terminator) throws IOException {
         requireContent(data);
         return usingConnection(() -> {
             write(data);

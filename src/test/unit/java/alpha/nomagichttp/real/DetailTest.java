@@ -260,7 +260,7 @@ class DetailTest extends AbstractRealTest
         for (byte b : expHead) merged.put(b);
         for (byte b : rspBody) merged.put(b);
         
-        byte[] rsp = client().writeRead(req, new byte[]{eom});
+        byte[] rsp = client().writeReadBytesUntil(req, new byte[]{eom});
         assertThat(rsp).isEqualTo(merged.array());
     }
     

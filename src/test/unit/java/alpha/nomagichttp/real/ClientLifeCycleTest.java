@@ -181,7 +181,7 @@ class ClientLifeCycleTest extends AbstractRealTest
         try (ch) {
             assertThatThrownBy(() ->
                     client().interruptReadAfter(1, MILLISECONDS)
-                            .writeRead(new byte[]{1}, new byte[]{1}))
+                            .writeReadBytesUntil(new byte[]{1}, new byte[]{1}))
                     .isExactlyInstanceOf(ClosedByInterruptException.class);
             Thread.interrupted(); // Clear flag
             
