@@ -1,6 +1,7 @@
 package alpha.nomagichttp.real;
 
 import alpha.nomagichttp.handler.ErrorHandler;
+import alpha.nomagichttp.message.Char;
 import alpha.nomagichttp.message.EndOfStreamException;
 import alpha.nomagichttp.message.PooledByteBufferHolder;
 import alpha.nomagichttp.testutil.TestClient;
@@ -36,6 +37,9 @@ import static org.junit.jupiter.api.Assumptions.assumeTrue;
  */
 class ClientLifeCycleTest extends AbstractRealTest
 {
+    private static final System.Logger LOG
+            = System.getLogger(ClientLifeCycleTest.class.getPackageName());
+    
     // Good src on investigating connection status
     // https://stackoverflow.com/questions/10240694/java-socket-api-how-to-tell-if-a-connection-has-been-closed/10241044#10241044
     // https://stackoverflow.com/questions/155243/why-is-it-impossible-without-attempting-i-o-to-detect-that-tcp-socket-was-grac
@@ -179,12 +183,37 @@ class ClientLifeCycleTest extends AbstractRealTest
         
         Channel ch = client().openConnection();
         try (ch) {
-            assertThatThrownBy(() ->
-                    client().interruptReadAfter(1, MILLISECONDS)
-                            .writeReadBytesUntil(new byte[]{1}, new byte[]{1}))
-                    .isExactlyInstanceOf(ClosedByInterruptException.class);
-            Thread.interrupted(); // Clear flag
+            try {
+                assertThatThrownBy(() ->
+                        client().interruptReadAfter(1, MILLISECONDS)
+                                .writeReadTextUntilEOS("X"))
+                        .isExactlyInstanceOf(ClosedByInterruptException.class);
+            } catch (AssertionError ae) {
+                // GitHub's slow Windows Server is observing an IOException not
+                // considered broken pipe. This is for debugging.
+                if (!LOG.isLoggable(DEBUG)) {
+                    throw ae;
+                }
+                var ioe = pollServerError();
+                if (ioe == null) {
+                    LOG.log(WARNING, "Unexpectedly, no I/O error was delivered.");
+                    throw ae;
+                } else if (ioe.getMessage() == null) {
+                    LOG.log(WARNING, "Unexpectedly, I/O error has no message.");
+                } else {
+                    var msg = ioe.getMessage();
+                    LOG.log(DEBUG, "Message of I/O error: \"" + msg + "\".");
+                    LOG.log(DEBUG, "Will dump details on the last five chars.");
+                    int cap = Math.min(msg.length(), 5);
+                    msg.substring(msg.length() - cap).chars().forEach(c -> {
+                        LOG.log(DEBUG, Char.toDebugString((char) c));
+                    });
+                    ae.addSuppressed(ioe);
+                }
+                throw ae;
+            }
             
+            Thread.interrupted(); // Clear flag
             awaitLog(DEBUG, "Read operation failed (broken pipe), will shutdown stream.");
             // <here>, log may be different, see next comment
             awaitLog(DEBUG, "Broken pipe, closing channel. (end of HTTP exchange)");
