@@ -14,6 +14,7 @@ import alpha.nomagichttp.message.RequestHeadTimeoutException;
 import alpha.nomagichttp.route.RouteRegistry;
 
 import java.io.IOException;
+import java.nio.channels.AsynchronousCloseException;
 import java.nio.channels.InterruptedByTimeoutException;
 import java.util.Collection;
 import java.util.concurrent.CompletableFuture;
@@ -388,8 +389,8 @@ final class HttpExchange
      * Returns {@code true} if it is meaningless to attempt resolving the
      * exception and/or logging it would just be noise.<p>
      * 
-     * If this method returns true, then it will also have logged a DEBUG
-     * message.
+     * If this method returns true and need be, then this method will also have
+     * logged a DEBUG message.
      * 
      * @param thr to examine
      * @param chan child channel
@@ -416,6 +417,14 @@ final class HttpExchange
         if (thr instanceof InterruptedByTimeoutException) {
             LOG.log(DEBUG, "Low-level write timed out. Closing channel. (end of HTTP exchange)");
             chan.closeSafe();
+            return true;
+        }
+        
+        if (thr instanceof AsynchronousCloseException) {
+            // No need to log anything. Outstanding async operation was aborted
+            // because channel closed already. I.e. exchange ended already, and
+            // we assume that the reason for closing and ending the exchange has
+            // already been logged. E.g. timeout exceptions will cause this.
             return true;
         }
         

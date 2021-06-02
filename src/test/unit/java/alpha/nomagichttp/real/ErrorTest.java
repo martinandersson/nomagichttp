@@ -20,7 +20,6 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 
 import java.io.IOException;
-import java.nio.channels.AsynchronousCloseException;
 import java.nio.channels.Channel;
 import java.util.List;
 import java.util.concurrent.ArrayBlockingQueue;
@@ -400,41 +399,29 @@ class ErrorTest extends AbstractRealTest
         server().add("/",
             GET().respond(rsp));
         
-        // Response may be empty, may be 503 (Service Unavailable).
+        // Response may be
+        //   1) empty,
+        //   2) any portion of 200 (OK) - but never including the two ending CRLFs,
+        //   3) 503 (Service Unavailable).
         // The objective of this test is to ensure the connection closes.
         // Otherwise, our client would time out on this side.
         String responseIgnored = client().writeRead(
                 "GET / HTTP/1.1" + CRLF + CRLF, "until server closes plz");
         
         unblock.release(); // <-- must unblock request thread to guarantee log
-        
-        // ResponseTimeoutException we expect.
-        // But it MAY be preempted- by or followed by an AsynchronousCloseException.
-        // (we await this error as to not fail a subsequent test also running log assertions)
-        // TODO: Reduce max time waiting from 3 sec to 1 sec; need a better API
-        try {
-            awaitLog(
-                WARNING,
-                    "Child channel is closed for writing. " +
-                    "Can not resolve this error. " +
-                    "HTTP exchange is over.",
-                AsynchronousCloseException.class);
-        } catch (AssertionError ignored) {
-            // Empty
-        }
-        
-        var rte = awaitFirstLogError(ResponseTimeoutException.class);
-        assertThat(rte)
-                .hasNoCause()
-                // (may have suppressed ClosedChannelException)
-                .hasMessage("Gave up waiting on a response body bytebuffer.");
+        var fromLog = awaitFirstLogError();
+        assertThat(fromLog)
+            .isExactlyInstanceOf(ResponseTimeoutException.class)
+            .hasNoCause()
+            // (may have suppressed ClosedChannelException)
+            .hasMessage("Gave up waiting on a response body bytebuffer.");
         
         // As with the response, there's no guarantee the exception was
         // delivered to the error handler (and so must read away this error or
         // else superclass failure)
-        var err = pollServerErrorNow();
-        if (err != null) {
-            assertSame(rte, err);
+        var fromServer = pollServerErrorNow();
+        if (fromServer != null) {
+            assertSame(fromLog, fromServer);
         }
     }
     
