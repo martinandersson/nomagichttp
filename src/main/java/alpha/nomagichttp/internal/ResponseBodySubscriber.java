@@ -1,7 +1,6 @@
 package alpha.nomagichttp.internal;
 
 import alpha.nomagichttp.Config;
-import alpha.nomagichttp.HttpServer;
 import alpha.nomagichttp.message.IllegalBodyException;
 import alpha.nomagichttp.message.Response;
 import alpha.nomagichttp.message.ResponseTimeoutException;
@@ -18,7 +17,6 @@ import static alpha.nomagichttp.internal.ChannelByteBufferPublisher.BUF_SIZE;
 import static alpha.nomagichttp.internal.ResponseBodySubscriber.Result;
 import static java.lang.String.join;
 import static java.lang.System.Logger.Level.DEBUG;
-import static java.lang.System.Logger.Level.ERROR;
 import static java.lang.System.Logger.Level.WARNING;
 import static java.nio.charset.StandardCharsets.US_ASCII;
 import static java.util.Objects.requireNonNull;
