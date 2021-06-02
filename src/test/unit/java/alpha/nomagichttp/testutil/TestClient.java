@@ -372,16 +372,6 @@ public final class TestClient
     }
     
     /**
-     * Read bytes until end-of-stream.
-     * 
-     * @return bytes read
-     * @throws IOException if an I/O error occurs
-     */
-    public byte[] readBytesUntilEOS() throws IOException {
-        return readBytesUntil(null);
-    }
-    
-    /**
      * Read bytes until {@code CRLF + CRLF} (end of HTTP headers).
      * 
      * @return bytes read
@@ -389,6 +379,16 @@ public final class TestClient
      */
     public byte[] readBytesUntilNewlines() throws IOException {
         return readBytesUntil((CRLF + CRLF).getBytes(US_ASCII));
+    }
+    
+    /**
+     * Read bytes until end-of-stream.
+     * 
+     * @return bytes read
+     * @throws IOException if an I/O error occurs
+     */
+    public byte[] readBytesUntilEOS() throws IOException {
+        return readBytesUntil(null);
     }
     
     /**
@@ -405,16 +405,6 @@ public final class TestClient
     }
     
     /**
-     * Read text until end-of-stream.
-     * 
-     * @return text read
-     * @throws IOException if an I/O error occurs
-     */
-    public String readTextUntilEOS() throws IOException {
-        return readTextUntil(null);
-    }
-    
-    /**
      * Read text until {@code CRLF + CRLF} (end of HTTP headers).
      * 
      * @return text read
@@ -425,21 +415,33 @@ public final class TestClient
     }
     
     /**
-     * Write + read text until {@code CRLF + CRLF} (end of HTTP headers).<p>
-     * 
-     * This method is the most high-level method that can be used to write
-     * a request and get a response without a body in return.
-     * 
-     * @param data to write
+     * Read text until end-of-stream.
      * 
      * @return text read
+     * @throws IOException if an I/O error occurs
+     */
+    public String readTextUntilEOS() throws IOException {
+        return readTextUntil(null);
+    }
+    
+    /**
+     * Write + read bytes.
+     * 
+     * @param data to write
+     * @param terminator end-of-message
+     * 
+     * @return bytes read
      * 
      * @throws NullPointerException if {@code data} is {@code null}
      * @throws IllegalArgumentException if {@code data} is empty
      * @throws IOException if an I/O error occurs
      */
-    public String writeReadTextUntilNewlines(String data) throws IOException {
-        return writeReadTextUntil(data, CRLF + CRLF);
+    public byte[] writeReadBytesUntil(byte[] data, byte[] terminator) throws IOException {
+        requireContent(data);
+        return usingConnection(() -> {
+            write(data);
+            return readBytesUntil(terminator);
+        });
     }
     
     /**
@@ -467,23 +469,21 @@ public final class TestClient
     }
     
     /**
-     * Write + read bytes.
+     * Write + read text until {@code CRLF + CRLF} (end of HTTP headers).<p>
+     * 
+     * This method is the most high-level method that can be used to write
+     * a request and get a response without a body in return.
      * 
      * @param data to write
-     * @param terminator end-of-message
      * 
-     * @return bytes read
+     * @return text read
      * 
      * @throws NullPointerException if {@code data} is {@code null}
      * @throws IllegalArgumentException if {@code data} is empty
      * @throws IOException if an I/O error occurs
      */
-    public byte[] writeReadBytesUntil(byte[] data, byte[] terminator) throws IOException {
-        requireContent(data);
-        return usingConnection(() -> {
-            write(data);
-            return readBytesUntil(terminator);
-        });
+    public String writeReadTextUntilNewlines(String data) throws IOException {
+        return writeReadTextUntil(data, CRLF + CRLF);
     }
     
     private void doWrite(byte[] data) throws IOException {
