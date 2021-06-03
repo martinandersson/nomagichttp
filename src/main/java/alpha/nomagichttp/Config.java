@@ -284,13 +284,13 @@ public interface Config
      * 
      * Unlike the first timer discussed, a response body timeout will never be
      * delivered to the error handler(s). The exception will immediately
-     * forcefully close the channel.<p>
+     * and forcefully close the channel.<p>
      * 
      * Analogous to the built-in protection against slow clients when receiving
      * data, a third response timer will cause the underlying channel write
      * operation to abort for response body bytebuffers not fully sent before
-     * the duration elapses. The exception too will not be delivered to the
-     * error handler(s). The application can still chose to publish very large
+     * the duration elapses. This exception will also not be delivered to the
+     * error handler(s). The application can chose to publish very large
      * response body bytebuffers without worrying about a possible timeout due
      * to the increased time it may take to send a large buffer. The server will
      * internally slice the buffer if need be.<p>
@@ -302,8 +302,8 @@ public interface Config
      * a stuck thread. For example, if the server's thread who subscribes to the
      * response body is immediately and indefinitely blocked, then no error
      * handler will ever be called and the timeout exception will never be
-     * logged. The connection will close, but that's it. Never block a
-     * thread.<p>
+     * logged. The connection will close, but that's it. Never block a thread
+     * from the server.<p>
      * 
      * The default implementation returns {@code Duration.ofSeconds(90)}.
      * 
