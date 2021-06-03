@@ -76,9 +76,10 @@ public interface ClientChannel extends Closeable, AttributeHolder
      * 
      * At the time of transmission, a response may be rejected. If it is
      * rejected because a final response has already been transmitted (in parts
-     * or in whole) - i.e. the HTTP exchange is no longer active - then the
-     * error is logged but otherwise ignored. This is the same also for
-     * exceptions that complete a response stage. Otherwise (exchange active), a
+     * or in whole) - i.e. the HTTP exchange is no longer active - or, because
+     * the channel's write stream has shut down - then the error is logged but
+     * otherwise ignored. This is the same also for exceptions that complete a
+     * response stage. Otherwise (exchange is active and channel is writable), a
      * {@link ResponseRejectedException} will pass through the server's error
      * handler.<p>
      * 
@@ -106,7 +107,7 @@ public interface ClientChannel extends Closeable, AttributeHolder
      * 
      * Having the response be sent in order of stage completion is as simple as:
      * <pre>{@code
-     *   myResponseStage.thenAccept(channel::write);
+     *   completesSoon.thenAccept(channel::write);
      * }</pre>
      * 
      * @param response the response
