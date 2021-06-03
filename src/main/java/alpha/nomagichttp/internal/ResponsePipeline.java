@@ -180,7 +180,7 @@ final class ResponsePipeline implements Flow.Publisher<ResponsePipeline.Result>
     
     private void enqueue(CompletionStage<Response> resp, Consumer<CompletionStage<Response>> sink) {
         requireNonNull(resp);
-        resp.thenRun(this::timeoutReset);
+        resp.whenComplete((ign,ored) -> timeoutReset());
         sink.accept(resp);
         op.run();
     }
