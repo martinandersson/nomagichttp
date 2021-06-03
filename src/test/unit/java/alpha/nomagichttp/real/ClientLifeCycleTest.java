@@ -284,11 +284,24 @@ class ClientLifeCycleTest extends AbstractRealTest
             client().shutdownOutput();
             resp.complete(noContent());
             String rsp = client().readTextUntilEOS();
-            assertThat(rsp).isEqualTo(
-                "HTTP/1.1 204 No Content" + CRLF + CRLF);
+            
+            if (setConnectionCloseHeader) {
+                assertThat(rsp).isEqualTo(
+                    "HTTP/1.1 204 No Content" + CRLF +
+                    "Connection: close"       + CRLF + CRLF);
+            } else {
+                // No guarantee the server observes the half-close before response,
+                // so no guarantee the close header has been set in response.
+                assertThat(rsp).startsWith(
+                    "HTTP/1.1 204 No Content" + CRLF);
+            }
+            
+            // Sooner or later the half-close will be observed
             awaitChildClose();
         }
         
+        // Eager stop to capture all of the log
+        stopServer();
         var log = stopLogRecording()
                       .map(LogRecord::getMessage)
                       .filter(m ->
@@ -299,7 +312,7 @@ class ClientLifeCycleTest extends AbstractRealTest
                           // before the next exchange followed by an immediate "client aborted".
                           "Client aborted the HTTP exchange.".equals(m));
         
-        // But for sure, only one of them is expected.
+        // But, for sure, only one of the endings is expected.
         assertThat(log.count()).isOne();
     }
 }

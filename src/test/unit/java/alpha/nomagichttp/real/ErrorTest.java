@@ -543,7 +543,8 @@ class ErrorTest extends AbstractRealTest
         
         assertThat(rsp).isEqualTo(
             "HTTP/1.1 500 Internal Server Error" + CRLF +
-            "Content-Length: 0"                  + CRLF + CRLF);
+            "Content-Length: 0"                  + CRLF + 
+            "Connection: close"                  + CRLF + CRLF);
         
         assertThat(stopLogRecording()).extracting(LogRecord::getLevel, LogRecord::getMessage)
                 .contains(tuple(toJUL(ERROR),
@@ -577,7 +578,8 @@ class ErrorTest extends AbstractRealTest
         
         assertThat(rsp).isEqualTo(
             "HTTP/1.1 500 Internal Server Error" + CRLF +
-            "Content-Length: 0"                  + CRLF + CRLF);
+            "Content-Length: 0"                  + CRLF + 
+            "Connection: close"                  + CRLF + CRLF);
         
         var log = stopLogRecording().collect(toList());
         assertThat(log).extracting(LogRecord::getLevel, LogRecord::getMessage)
