@@ -19,7 +19,6 @@ import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Semaphore;
-import java.util.logging.LogRecord;
 
 import static alpha.nomagichttp.handler.RequestHandler.GET;
 import static alpha.nomagichttp.message.Responses.noContent;
@@ -34,6 +33,7 @@ import static java.util.concurrent.TimeUnit.MILLISECONDS;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 /**
@@ -296,19 +296,14 @@ class ClientLifeCycleTest extends AbstractRealTest
             awaitChildClose();
         }
         
-        // Eager stop to capture all of the log
-        stopServer();
-        var log = stopLogRecording()
-                      .map(LogRecord::getMessage)
-                      .filter(m ->
-                          // There is no guarantee that the client's shutdown is observed...
-                          "Input stream was shut down. HTTP exchange is over.".equals(m) ||
-                          // before the close-header is, or if no header was set, ...
-                          "Request set \"Connection: close\", shutting down input.".equals(m) ||
-                          // before the next exchange followed by an immediate "client aborted".
-                          "Client aborted the HTTP exchange.".equals(m));
-        
-        // But, for sure, only one of the endings is expected.
-        assertThat(log.count()).isOne();
+        // We can't say exactly how the HTTP exchange ends,
+        // except it's going to end in one of three ways:
+        assertTrue(logRecorder().await(rec ->
+            // 1) Client's shutdown may be observed...
+            "Input stream was shut down. HTTP exchange is over.".equals(rec.getMessage()) ||
+            // 2) before the close-header, or if none of these, ...
+            "Request set \"Connection: close\", shutting down input.".equals(rec.getMessage()) ||
+            // 3) the next logical exchange will immediately abort.
+            "Client aborted the HTTP exchange.".equals(rec.getMessage())));
     }
 }
