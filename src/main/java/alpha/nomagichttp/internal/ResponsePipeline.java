@@ -206,8 +206,8 @@ final class ResponsePipeline implements Flow.Publisher<ResponsePipeline.Result>
     private void pollAndProcessAsync() {
         if (timedOut && !timeoutPublished) {
             scheduleClose(chan);
-            publish(null, null, new ResponseTimeoutException(
-                    "Gave up waiting on a response."));
+            publish(null, null,
+                new ResponseTimeoutException("Gave up waiting on a response."));
             timeoutPublished = true;
         }
         
