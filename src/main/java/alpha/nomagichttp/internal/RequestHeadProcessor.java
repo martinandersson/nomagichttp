@@ -96,6 +96,8 @@ import static java.util.Objects.requireNonNull;
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  */
+// TODO: Document, impl, and test various forms for request-target?
+//       https://datatracker.ietf.org/doc/html/rfc7230#section-5.3
 final class RequestHeadProcessor
 {
     private static final System.Logger LOG = System.getLogger(RequestHeadProcessor.class.getPackageName());

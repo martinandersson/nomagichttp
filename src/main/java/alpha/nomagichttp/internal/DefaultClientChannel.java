@@ -238,6 +238,9 @@ final class DefaultClientChannel implements ClientChannel
         } catch (IOException e) {
             LOG.log(DEBUG, () -> "Failed to close child: " + child, e);
         } catch (Throwable t) {
+            // TODO: Only one third of the tests inside this method applies,
+            //       because we catched IOException already. Consider merging
+            //       these two clauses.
             if (becauseChannelOrGroupClosed(t)) {
                 LOG.log(DEBUG, () -> "Child already closed: " + child, t);
             } else {

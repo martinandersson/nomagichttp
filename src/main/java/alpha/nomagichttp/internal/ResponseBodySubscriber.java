@@ -216,6 +216,8 @@ final class ResponseBodySubscriber implements SubscriberAsStage<ByteBuffer, Resu
                      vals = join(CRLF, resp.headersForWriting()),
                      head = line + (vals.isEmpty() ? CRLF : vals + CRLF + CRLF);
         
+        // TODO: For each component, including headers, we can cache the
+        //       ByteBuffers and feed the channel slices.
         ByteBuffer b = ByteBuffer.wrap(head.getBytes(US_ASCII));
         pushedHead = true;
         feedChannel(b);

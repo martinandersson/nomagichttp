@@ -333,6 +333,8 @@ public final class DefaultServer implements HttpServer
             DefaultClientChannel chan = new DefaultClientChannel(child, DefaultServer.this);
             ChannelByteBufferPublisher bytes = new ChannelByteBufferPublisher(chan);
             children.add(chan);
+            // TODO: Wanna complete only when the LAST async I/O operation completes
+            //       (will likely require 1 ChannelByteBufferSubscriber per channel?)
             chan.onClose(() -> {
                 children.remove(chan);
                 if (!parent.isOpen()) {

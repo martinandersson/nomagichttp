@@ -171,6 +171,7 @@ public interface ErrorHandler
      * 
      * @see ErrorHandler
      */
+    // TODO: Reduce args down to thr + Extra, with Optional<Response>
     void apply(Throwable thr, ClientChannel ch, Request req, RequestHandler rh) throws Throwable;
     
     /**
