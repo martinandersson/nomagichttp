@@ -149,7 +149,7 @@ final class ResponsePipeline implements Flow.Publisher<ResponsePipeline.Result>
         this.exch  = requireNonNull(exch);
         this.queue = new ConcurrentLinkedDeque<>();
         this.op    = new SeriallyRunnable(this::pollAndProcessAsync, true);
-        this.subs  = new ArrayList<>();
+        this.subs  = new ArrayList<>(1);
         this.timer = new AtomicReference<>();
         this.timedOut = false;
         this.timeoutPublished = false;
