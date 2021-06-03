@@ -298,7 +298,7 @@ class ClientLifeCycleTest extends AbstractRealTest
                           // There is no guarantee that the client's shutdown is observed...
                           "Input stream was shut down. HTTP exchange is over.".equals(m) ||
                           // before the close-header is, or if no header was set, ...
-                          "Request set \"Connection: close\", shutting down input. (end of HTTP exchange)".equals(m) ||
+                          "Request set \"Connection: close\", shutting down input.".equals(m) ||
                           // before the next exchange followed by an immediate "client aborted".
                           "Client aborted the HTTP exchange.".equals(m));
         
