@@ -327,8 +327,9 @@ public interface HttpServer
      * exchanges.<p>
      * 
      * The server's listening port will be immediately closed and then this
-     * method returns. All active HTTP exchanges will be allowed to complete
-     * before the returned stage completes with {@code null}.<p>
+     * method returns. No HTTP exchanges are aborted, but no new exchanges will
+     * commence. When all child connections that were accepted through the port
+     * have been closed the return stage completes.<p>
      * 
      * If the server was just started and is still in the midst of opening the
      * server's listening port, then this method will block until the startup
