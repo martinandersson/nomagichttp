@@ -18,9 +18,7 @@ import java.nio.channels.ClosedChannelException;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Semaphore;
-import java.util.concurrent.TimeoutException;
 import java.util.logging.LogRecord;
 
 import static alpha.nomagichttp.handler.RequestHandler.GET;
@@ -103,9 +101,7 @@ class ClientLifeCycleTest extends AbstractRealTest
     // is completely ignored (no error handler and no logging).
     // See RequestHeadSubscriber.asCompletionStage()
     @Test
-    void clientClosesChannel_serverReceivedNoBytes()
-            throws IOException, InterruptedException, TimeoutException, ExecutionException
-    {
+    void clientClosesChannel_serverReceivedNoBytes() throws IOException, InterruptedException {
         client().openConnection().close();
         
         /*
@@ -135,7 +131,7 @@ class ClientLifeCycleTest extends AbstractRealTest
      * @see ErrorHandler
      */
     @Test
-    void clientClosesChannel_serverReceivedPartialHead() throws IOException, InterruptedException, ExecutionException, TimeoutException {
+    void clientClosesChannel_serverReceivedPartialHead() throws IOException, InterruptedException {
         onErrorAssert(EndOfStreamException.class, channel ->
                 assertThat(channel.isOpenForReading()).isFalse());
         
@@ -181,7 +177,7 @@ class ClientLifeCycleTest extends AbstractRealTest
     
     // Broken pipe always end the exchange, no error handling no logging
     @Test
-    void brokenPipe() throws InterruptedException, IOException, ExecutionException, TimeoutException {
+    void brokenPipe() throws InterruptedException, IOException {
         // It would be weird if we could use an API to cause a broken pipe.
         // This implementation was found to work on Windows, albeit not on Linux.
         assumeTrue(containsIgnoreCase(System.getProperty("os.name"), "Windows"));
