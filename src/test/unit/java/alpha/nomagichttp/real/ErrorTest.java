@@ -532,7 +532,7 @@ class ErrorTest extends AbstractRealTest
         MemorizingSubscriber<PooledByteBufferHolder> sub = new MemorizingSubscriber<>(
                 // Intercepted by DefaultRequest > OnErrorCloseReadStream
                 onNext(i -> { throw new OopsException(); }));
-    
+        
         onErrorAssert(OopsException.class, channel ->
             assertThat(channel.isOpenForReading()).isFalse());
         server().add("/", POST().accept((req, ch) -> {

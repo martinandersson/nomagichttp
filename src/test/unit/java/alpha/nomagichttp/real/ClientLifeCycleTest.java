@@ -108,10 +108,6 @@ class ClientLifeCycleTest extends AbstractRealTest
     {
         client().openConnection().close();
         
-        // Eager stop to capture all logs
-        // (In reality, whole test cycle over in less than 100 ms)
-        awaitChildAccept();
-        
         /*
          Just for the "record" (no pun intended), the log is as of 2021-03-21
          something like this:
@@ -126,6 +122,7 @@ class ClientLifeCycleTest extends AbstractRealTest
            {tstamp} | dead-25     | FINE | {pkg}.DefaultChannelOperations orderlyClose | Closed child: {...}
          */
         
+        awaitChildAccept();
         assertThatNoWarningOrErrorIsLogged();
         // that no error was thrown is asserted by super class
     }
