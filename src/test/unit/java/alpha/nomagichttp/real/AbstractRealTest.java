@@ -23,9 +23,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.BlockingDeque;
-import java.util.concurrent.ExecutionException;
 import java.util.concurrent.LinkedBlockingDeque;
-import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
@@ -106,9 +104,7 @@ abstract class AbstractRealTest
                 // Await stop() also...
                 //    boosts our confidence significantly that children are
                 //    never leaked.
-                assertThat(server.stop())
-                        .succeedsWithin(1, SECONDS)
-                        .isNull();
+                stopServer();
                 assertThat(errors).isEmpty();
             }
         } finally {
@@ -330,6 +326,16 @@ abstract class AbstractRealTest
         return Logging.stopRecording(key);
     }
     
+    /**
+     * Stop server gracefully and await the completion of all HTTP exchanges.
+     */
+    protected final void stopServer() {
+        requireServerStartedOnce();
+        assertThat(server.stop())
+                .succeedsWithin(1, SECONDS)
+                .isNull();
+    }
+    
     protected final void awaitLog(System.Logger.Level level, String messageStartsWith)
             throws InterruptedException
     {
@@ -420,16 +426,9 @@ abstract class AbstractRealTest
     /**
      * Will gracefully stop the server (to capture all log records) and assert
      * that no log record was found with a level greater than {@code INFO}.
-     *
-     * @throws IOException if server stop fails
-     * @throws ExecutionException if waiting for server stop fails
-     * @throws InterruptedException if interrupted while waiting
-     * @throws TimeoutException if waiting for server stop fails
      */
     // TODO: boolean to check also record throwable
-    protected final void assertThatNoWarningOrErrorIsLogged()
-            throws IOException, ExecutionException, InterruptedException, TimeoutException
-    {
+    protected final void assertThatNoWarningOrErrorIsLogged() {
         assertThatNoWarningOrErrorIsLoggedExcept();
     }
     
@@ -438,17 +437,10 @@ abstract class AbstractRealTest
      * that no log record was found with a level greater than {@code INFO}.
      * 
      * @param excludeClasses classes that are allowed to log waring/error
-     * 
-     * @throws IOException if server stop fails
-     * @throws ExecutionException if waiting for server stop fails
-     * @throws InterruptedException if interrupted while waiting
-     * @throws TimeoutException if waiting for server stop fails
      */
     // TODO: boolean to check also record throwable
-    protected final void assertThatNoWarningOrErrorIsLoggedExcept(Class<?>... excludeClasses)
-            throws IOException, ExecutionException, InterruptedException, TimeoutException
-    {
-        server().stop().toCompletableFuture().get(1, SECONDS);
+    protected final void assertThatNoWarningOrErrorIsLoggedExcept(Class<?>... excludeClasses) {
+        stopServer();
         
         Set<String> excl = excludeClasses.length == 0 ? Set.of() :
                 Stream.of(excludeClasses).map(Class::getName).collect(toSet());
