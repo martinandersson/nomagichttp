@@ -368,4 +368,32 @@ class ClientLifeCycleTest extends AbstractRealTest
               "Normal end of HTTP exchange.".equals(rec.getMessage())));
         }
     }
+    
+    // Server shuts down output after response, can still read request
+    @Test
+    void intermittentStreamShutdown_serverOutput() throws IOException, InterruptedException {
+        BlockingQueue<String> received = new ArrayBlockingQueue<>(1);
+        server().add("/", POST().accept((req, ch) -> {
+            req.body().toText().thenAccept(received::add);
+            ch.write(noContent()
+                    .toBuilder()
+                    .mustShutdownOutputAfterWrite(true)
+                    .build());
+        }));
+        Channel ch = client().openConnection();
+        try (ch) {
+            assertThat(client().writeReadTextUntilEOS(
+                    "POST / HTTP/1.1"         + CRLF +
+                    "Content-Length: 2"       + CRLF + CRLF))
+                .isEqualTo(
+                    "HTTP/1.1 204 No Content" + CRLF +
+                    "Connection: close"       + CRLF + CRLF);
+            
+            // Send the rest of the request
+            client().write("Hi");
+            awaitChildClose();
+        }
+        
+        assertThat(received.poll(1, SECONDS)).isEqualTo("Hi");
+    }
 }
