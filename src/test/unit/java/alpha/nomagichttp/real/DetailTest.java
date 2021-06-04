@@ -38,7 +38,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  * Tests concerning details of the server.<p>
  * 
  * Not so much "GET ..." and then expect "HTTP/1.1 200 ..." - the "casual"
- * exchange. Rather;.perhaps make semi-weird calls and expect a particular
+ * exchange. Rather; perhaps make semi-weird calls and expect a particular
  * server behavior. You know, details.<p>
  * 
  * Many tests will likely require a fine-grained control of the client and do
@@ -205,6 +205,11 @@ class DetailTest extends AbstractRealTest
         
         awaitChildClose();
     }
+    
+    // And what about @Test request_unknownLength() ?
+    // The request must specify Content-Length, or chunked encoding.
+    // Only the server's response may have unknown length terminated by
+    // connection close (RFC 7230 §3.3.3 Message Body Length; bullet item 6).
     
     @Test
     void responseOrderMaintained() throws IOException {
