@@ -10,6 +10,7 @@ import alpha.nomagichttp.testutil.TestClient;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
+import org.junit.jupiter.params.provider.ValueSource;
 
 import java.io.IOException;
 import java.nio.channels.Channel;
@@ -21,6 +22,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Semaphore;
 
 import static alpha.nomagichttp.handler.RequestHandler.GET;
+import static alpha.nomagichttp.handler.RequestHandler.POST;
 import static alpha.nomagichttp.message.Responses.noContent;
 import static alpha.nomagichttp.real.TestRequests.get;
 import static alpha.nomagichttp.real.TestRequests.post;
@@ -305,5 +307,60 @@ class ClientLifeCycleTest extends AbstractRealTest
             "Request set \"Connection: close\", shutting down input.".equals(rec.getMessage()) ||
             // 3) the next logical exchange will immediately abort.
             "Client aborted the HTTP exchange.".equals(rec.getMessage())));
+    }
+    
+    // Client receives response first, then shuts down input stream, then server get the request
+    @ParameterizedTest
+    @ValueSource(booleans = {true, false})
+    void intermittentStreamShutdown_clientInput(boolean setConnectionCloseHeader) throws IOException, InterruptedException {
+        BlockingQueue<String> received = new ArrayBlockingQueue<>(1);
+        server().add("/", POST().accept((req, ch) -> {
+            ch.write(noContent());
+            req.body().toText().thenAccept(received::add);
+        }));
+        Channel ch = client().openConnection();
+        try (ch) {
+            client().write(
+                "POST / HTTP/1.1"   + CRLF +
+                "Content-Length: 5" + CRLF);
+            if (setConnectionCloseHeader) {
+                client().write(
+                    "Connection: close" + CRLF + CRLF);
+            } else {
+                client().write(CRLF);
+            }
+            
+            String rsp = client().readTextUntilNewlines();
+            if (setConnectionCloseHeader) {
+                assertThat(rsp).isEqualTo(
+                    "HTTP/1.1 204 No Content" + CRLF +
+                    "Connection: close"       + CRLF + CRLF);
+            } else {
+                assertThat(rsp).startsWith(
+                    "HTTP/1.1 204 No Content" + CRLF);
+            }
+            
+            // Done reading, but not done sending
+            client().shutdownInput();
+            // Server is still able to receive this:
+            client().write("Body!");
+            
+            assertThat(received.poll(1, SECONDS)).isEqualTo("Body!");
+            
+            // Half-closed is NOT observed by server
+            // (coz there's no outstanding channel operation after having sent the response)
+            if (setConnectionCloseHeader) {
+                awaitChildClose();
+            }
+        }
+        
+        if (setConnectionCloseHeader) {
+            awaitLog(DEBUG, "Normal end of HTTP exchange.");
+        } else {
+            // As with the previous test, no guarantee how (when) exactly the exchange ends
+            assertTrue(logRecorder().await(rec ->
+              "Input stream was shut down. HTTP exchange is over.".equals(rec.getMessage()) ||
+              "Normal end of HTTP exchange.".equals(rec.getMessage())));
+        }
     }
 }
