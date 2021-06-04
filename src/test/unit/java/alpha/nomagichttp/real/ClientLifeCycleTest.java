@@ -72,10 +72,15 @@ class ClientLifeCycleTest extends AbstractRealTest
     }
     
     // Writing to a closed channel logs ClosedChannelException
-    @Test
-    void serverClosesChannel_beforeResponse() throws IOException, InterruptedException {
+    @ParameterizedTest
+    @ValueSource(booleans = {true, false})
+    void serverClosesChannel_beforeResponse(boolean streamOnly) throws IOException, InterruptedException {
         server().add("/", GET().accept((req, ch) -> {
-            ch.closeSafe();
+            if (streamOnly) {
+                ch.shutdownOutputSafe();
+            } else {
+                ch.closeSafe();
+            }
             ch.write(noContent());
         }));
         
@@ -92,7 +97,7 @@ class ClientLifeCycleTest extends AbstractRealTest
                     "HTTP exchange is over.",
                 ClosedChannelException.class);
             
-            // Clean close from server caused our end to receive EOS
+            // Clean close from server caused our end (test worker) to receive EOS
             awaitLog(DEBUG, "EOS; server closed channel's read stream.");
         }
         
