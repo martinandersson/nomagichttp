@@ -66,6 +66,8 @@ import static java.util.List.of;
 import static java.util.concurrent.CompletableFuture.failedFuture;
 import static java.util.concurrent.CompletableFuture.failedStage;
 import static java.util.concurrent.TimeUnit.SECONDS;
+import static java.util.logging.Level.FINE;
+import static java.util.logging.Level.INFO;
 import static java.util.stream.Collectors.toList;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.tuple;
@@ -653,11 +655,18 @@ class ErrorTest extends AbstractRealTest
             assertThat(rsp).startsWith("HTTP/1.1 400 Bad Request");
         };
         
+        final int max = server().getConfig().maxUnsuccessfulResponses();
+        LOG.log(INFO, () -> "Max unsuccessful: " + max);
+        
         try (Channel ch = client().openConnection()) {
-            for (int i = server().getConfig().maxUnsuccessfulResponses(); i > 1; --i) {
+            for (int i = max; i > 1; --i) {
+                if (LOG.isLoggable(FINE)) {
+                    LOG.log(FINE, "Running #" + i);
+                }
                 sendBadRequest.run();
                 assertTrue(ch.isOpen());
             }
+            LOG.log(FINE, () -> "Running last.");
             sendBadRequest.run();
             
             awaitChildClose();
