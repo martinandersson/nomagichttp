@@ -396,4 +396,18 @@ class ClientLifeCycleTest extends AbstractRealTest
         
         assertThat(received.poll(1, SECONDS)).isEqualTo("Hi");
     }
+    
+    // Server shuts down input after request, can still write response
+    @Test
+    void intermittentStreamShutdown_serverInput() throws IOException {
+        server().add("/", GET().accept((req, ch) -> {
+            ch.shutdownInputSafe();
+            ch.write(noContent());
+        }));
+        assertThat(client().writeReadTextUntilEOS(
+                get()))
+            .isEqualTo(
+                "HTTP/1.1 204 No Content" + CRLF +
+                "Connection: close"       + CRLF + CRLF);
+    }
 }
