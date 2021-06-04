@@ -16,7 +16,10 @@ import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
 import static org.assertj.core.api.AssertionsForClassTypes.assertThatThrownBy;
 
 /**
- * Server life-cycle tests.
+ * Server life-cycle tests; essentially start/stop.<p>
+ * 
+ * For tests concerning client <i>connections</i>, see {@link
+ * ClientLifeCycleTest}.
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  */
