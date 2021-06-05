@@ -328,7 +328,7 @@ public interface HttpServer
      * 
      * The server's listening port will be immediately closed and then this
      * method returns. No HTTP exchanges are aborted, but no new exchanges will
-     * commence. When all child connections that were accepted through the port
+     * begin. When all client connections that were accepted through the port
      * have been closed the return stage completes.<p>
      * 
      * If the server was just started and is still in the midst of opening the
@@ -361,12 +361,12 @@ public interface HttpServer
     CompletionStage<Void> stop();
     
     /**
-     * Stop listening for client connections and immediately abort all HTTP
-     * exchanges.<p>
+     * Stop listening for client connections and immediately close all active
+     * client connections (no HTTP exchanges will be able to progress
+     * further).<p>
      * 
-     * The server's listening port will be immediately closed and then all
-     * active HTTP exchanges will be aborted. This method blocks until the job
-     * is done.<p>
+     * This method blocks until the listening port and all connections have been
+     * closed.<p>
      * 
      * If the server was just started and is still in the midst of opening the
      * server's listening port, then this method will block until the startup
