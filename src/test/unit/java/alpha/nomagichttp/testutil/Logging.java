@@ -12,6 +12,7 @@ import java.util.Deque;
 import java.util.List;
 import java.util.concurrent.ConcurrentLinkedDeque;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
@@ -378,20 +379,42 @@ public final class Logging
     }
     
     /**
-     * Is essentially a subscription key and API for waiting on a record.
+     * Is essentially a subscription key and API for waiting on a record.<p>
+     * 
+     * {@code await()} methods will by default wait at most 3 seconds. This can
+     * be configured differently using {@link #timeoutAfter(long, TimeUnit)}.
      * 
      * @see #startRecording(Class, Class[])
      */
     public static class Recorder {
         private final RecordListener[] l;
+        private long timeout;
+        private TimeUnit unit;
         
         Recorder(RecordListener[] listeners) {
             l = listeners;
+            timeout = 3;
+            unit = SECONDS;
+        }
+        
+        /**
+         * Set a new timeout for {@code await()} methods.<p>
+         * 
+         * This method is not thread-safe.
+         * 
+         * @param timeout value
+         * @param unit of timeout
+         * @return this for chaining/fluency
+         */
+        public Recorder timeoutAfter(long timeout, TimeUnit unit) {
+            this.timeout = timeout;
+            this.unit = unit;
+            return this;
         }
         
         /**
          * Return immediately if a log record passing the given test has been
-         * published, or await it's arrival for a maximum of 3 seconds.<p>
+         * published, or await its arrival.<p>
          * 
          * WARNING: This method may block the publication of a log record
          * temporarily and if so, the block is minuscule. Nonetheless, awaiting
@@ -400,7 +423,7 @@ public final class Logging
          * @param test of record
          *
          * @return {@code true} when target record is observed, or
-         *         {@code false} if 3 seconds passes without observing the record
+         *         {@code false} on timeout (record not observed)
          * 
          * @throws NullPointerException
          *             if {@code test} is {@code null}
@@ -426,13 +449,12 @@ public final class Logging
                 }
             }
             
-            return cl.await(3, SECONDS);
+            return cl.await(timeout, unit);
         }
         
         /**
          * Return immediately if a log record of the given level with the given
-         * message-prefix has been published, or await it's arrival for a
-         * maximum of 3 seconds.<p>
+         * message-prefix has been published, or await its arrival.<p>
          * 
          * Uses {@link #await(Predicate)} under the hood. Same warning apply.
          * 
@@ -440,7 +462,7 @@ public final class Logging
          * @param messageStartsWith record message predicate
          * 
          * @return {@code true} when target record is observed, or
-         *         {@code false} if 3 seconds passes without observing the record
+         *         {@code false} on timeout (record not observed)
          * 
          * @throws NullPointerException
          *             if any arg is {@code null}
@@ -457,8 +479,7 @@ public final class Logging
         
         /**
          * Return immediately if a log record of the given level with the given
-         * message-prefix and error has been published, or await it's arrival
-         * for a maximum of 3 seconds.<p>
+         * message-prefix and error has been published, or await its arrival.<p>
          * 
          * Uses {@link #await(Predicate)} under the hood. Same warning apply.
          * 
@@ -467,7 +488,7 @@ public final class Logging
          * @param error record error predicate (record's error must be instance of)
          * 
          * @return {@code true} when target record is observed, or
-         *         {@code false} if 3 seconds passes without observing the record
+         *         {@code false} on timeout (record not observed)
          * 
          * @throws NullPointerException
          *             if any arg is {@code null}
