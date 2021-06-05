@@ -21,6 +21,7 @@ import org.junit.jupiter.params.provider.ValueSource;
 
 import java.io.IOException;
 import java.nio.channels.Channel;
+import java.nio.channels.ClosedChannelException;
 import java.util.List;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
@@ -424,6 +425,20 @@ class ErrorTest extends AbstractRealTest
         var fromServer = pollServerErrorNow();
         if (fromServer != null) {
             assertSame(fromLog, fromServer);
+        }
+        
+        // Read away a trailing (failed) attempt to write 503 (Service Unavailable)
+        // (as to not fail a subsequent test assertion on the log)
+        logRecorder().timeoutAfter(1, SECONDS);
+        try {
+            awaitLog(
+                WARNING,
+                    "Child channel is closed for writing. " +
+                    "Can not resolve this error. " +
+                    "HTTP exchange is over.",
+                ClosedChannelException.class);
+        } catch (AssertionError ignored) {
+            // Empty
         }
     }
     
