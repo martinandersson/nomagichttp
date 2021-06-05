@@ -99,6 +99,7 @@ public class Interrupt
     private static final ScheduledExecutorService SCHEDULER
             = Executors.newSingleThreadScheduledExecutor(r -> {
                     Thread t = new Thread(r);
+                    t.setName("Test interrupter");
                     t.setDaemon(true);
                     return t; });
 }
