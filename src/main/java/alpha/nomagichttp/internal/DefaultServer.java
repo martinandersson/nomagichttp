@@ -23,7 +23,6 @@ import java.util.concurrent.CompletionException;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
 import static alpha.nomagichttp.internal.AtomicReferences.lazyInitOrElse;
@@ -51,7 +50,6 @@ public final class DefaultServer implements HttpServer
             = System.getLogger(DefaultServer.class.getPackageName());
     
     private static final int INITIAL_CAPACITY = 10_000;
-    private static final AtomicInteger SERVER_COUNT = new AtomicInteger();
     
     private final Config config;
     private final RouteRegistry registry;
@@ -117,22 +115,24 @@ public final class DefaultServer implements HttpServer
     }
     
     private void initialize(SocketAddress addr, CompletableFuture<ParentWithHandler> v) {
+        final AsynchronousChannelGroup grp;
+        try {
+            grp = AsyncGroup.register(getConfig().threadPoolSize());
+        } catch (IOException e) {
+            v.completeExceptionally(e);
+            return;
+        }
+        
         final AsynchronousServerSocketChannel ch;
         try {
-            AsynchronousChannelGroup grp = AsyncGroup.getOrCreate(getConfig().threadPoolSize())
-                    .toCompletableFuture().join();
             ch = AsynchronousServerSocketChannel.open(grp).bind(addr);
         } catch (Throwable t) {
-            if (SERVER_COUNT.get() == 0) {
-                // benign race with other servers starting in parallel,
-                // if they fail because we shutdown the group here, then like whatever
-                AsyncGroup.shutdown();
-            }
+            AsyncGroup.unregister();
             v.completeExceptionally(t);
             return;
         }
+        
         LOG.log(INFO, () -> "Opened server channel: " + ch);
-        SERVER_COUNT.incrementAndGet();
         v.complete(new ParentWithHandler(ch));
     }
     
@@ -175,12 +175,7 @@ public final class DefaultServer implements HttpServer
             AsynchronousServerSocketChannel ch = pwh.channel();
             ch.close();
             LOG.log(INFO, () -> "Closed server channel: " + ch);
-            int n = SERVER_COUNT.decrementAndGet();
-            if (n == 0) {
-                // benign race
-                AsyncGroup.shutdown();
-            }
-            assert n >= 0;
+            AsyncGroup.unregister();
             pwh.handler().tryCompleteLastChildStage();
             return pwh;
         } else {
