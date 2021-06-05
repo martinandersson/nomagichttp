@@ -191,11 +191,14 @@ class ClientLifeCycleTest extends AbstractRealTest
         
         Channel ch = client().openConnection();
         try (ch) {
+            assertThatThrownBy(() ->
+                client().interruptReadAfter(1, MILLISECONDS)
+                        .writeReadTextUntilEOS("X"))
+                .isExactlyInstanceOf(ClosedByInterruptException.class);
+            
+            Thread.interrupted(); // Clear flag
             try {
-                assertThatThrownBy(() ->
-                        client().interruptReadAfter(1, MILLISECONDS)
-                                .writeReadTextUntilEOS("X"))
-                        .isExactlyInstanceOf(ClosedByInterruptException.class);
+                awaitLog(DEBUG, "Read operation failed (broken pipe), will shutdown stream.");
             } catch (AssertionError rethrow) {
                 // GitHub's slow Windows Server is observing an IOException not
                 // considered broken pipe. This is for debugging.
@@ -221,9 +224,8 @@ class ClientLifeCycleTest extends AbstractRealTest
                 throw rethrow;
             }
             
-            Thread.interrupted(); // Clear flag
-            awaitLog(DEBUG, "Read operation failed (broken pipe), will shutdown stream.");
             // <here>, log may be different, see next comment
+            
             awaitLog(DEBUG, "Broken pipe, closing channel. (end of HTTP exchange)");
         }
         
