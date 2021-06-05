@@ -18,7 +18,7 @@ import static alpha.nomagichttp.testutil.TestClient.CRLF;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * Mimics almost all the examples provided in {@link
+ * Mimics almost all of the examples provided in {@link
  * alpha.nomagichttp.examples}. The only exception is {@link
  * RetryRequestOnError} whose equivalent test is {@link
  * ErrorTest#retryFailedRequest(boolean)}.<p>
