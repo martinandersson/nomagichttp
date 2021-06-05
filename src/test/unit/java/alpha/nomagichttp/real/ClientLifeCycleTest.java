@@ -196,16 +196,16 @@ class ClientLifeCycleTest extends AbstractRealTest
                         client().interruptReadAfter(1, MILLISECONDS)
                                 .writeReadTextUntilEOS("X"))
                         .isExactlyInstanceOf(ClosedByInterruptException.class);
-            } catch (AssertionError ae) {
+            } catch (AssertionError rethrow) {
                 // GitHub's slow Windows Server is observing an IOException not
                 // considered broken pipe. This is for debugging.
                 if (!LOG.isLoggable(DEBUG)) {
-                    throw ae;
+                    throw rethrow;
                 }
                 var ioe = pollServerError();
                 if (ioe == null) {
                     LOG.log(WARNING, "Unexpectedly, no I/O error was delivered.");
-                    throw ae;
+                    throw rethrow;
                 } else if (ioe.getMessage() == null) {
                     LOG.log(WARNING, "Unexpectedly, I/O error has no message.");
                 } else {
@@ -216,9 +216,9 @@ class ClientLifeCycleTest extends AbstractRealTest
                     msg.substring(msg.length() - cap).chars().forEach(c -> {
                         LOG.log(DEBUG, Char.toDebugString((char) c));
                     });
-                    ae.addSuppressed(ioe);
+                    rethrow.addSuppressed(ioe);
                 }
-                throw ae;
+                throw rethrow;
             }
             
             Thread.interrupted(); // Clear flag
