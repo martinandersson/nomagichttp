@@ -507,6 +507,17 @@ public final class Logging
                               error.isInstance(r.getThrown()));
         }
         
+        /**
+         * Stream all records observed until now.
+         * 
+         * @return all records observed until now
+         */
+        public Stream<LogRecord> records() {
+            return listeners()
+                    .flatMap(RecordListener::records)
+                    .sorted(comparing(LogRecord::getInstant));
+        }
+        
         Stream<RecordListener> listeners() {
             return Stream.of(l);
         }

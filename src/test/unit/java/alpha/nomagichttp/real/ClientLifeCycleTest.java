@@ -16,10 +16,12 @@ import java.io.IOException;
 import java.nio.channels.Channel;
 import java.nio.channels.ClosedByInterruptException;
 import java.nio.channels.ClosedChannelException;
+import java.util.Objects;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Semaphore;
+import java.util.logging.LogRecord;
 
 import static alpha.nomagichttp.handler.RequestHandler.GET;
 import static alpha.nomagichttp.handler.RequestHandler.POST;
@@ -205,21 +207,26 @@ class ClientLifeCycleTest extends AbstractRealTest
                 if (!LOG.isLoggable(DEBUG)) {
                     throw rethrow;
                 }
-                var ioe = pollServerError();
-                if (ioe == null) {
-                    LOG.log(WARNING, "Unexpectedly, no I/O error was delivered.");
-                    throw rethrow;
-                } else if (ioe.getMessage() == null) {
-                    LOG.log(WARNING, "Unexpectedly, I/O error has no message.");
+                
+                var err = logRecorder().records()
+                                       .map(LogRecord::getThrown)
+                                       .filter(Objects::nonNull)
+                                       .findFirst()
+                                       .orElseThrow(() -> {
+                                           LOG.log(WARNING, "Unexpectedly, no error was logged.");
+                                           return rethrow;
+                                       });
+                
+                if (err.getMessage() == null) {
+                    LOG.log(WARNING, "Unexpectedly, logged error has no message.");
                 } else {
-                    var msg = ioe.getMessage();
-                    LOG.log(DEBUG, "Message of I/O error: \"" + msg + "\".");
+                    var msg = err.getMessage();
+                    LOG.log(DEBUG, "Message of error: \"" + msg + "\".");
                     LOG.log(DEBUG, "Will dump details on the last five chars.");
                     int cap = Math.min(msg.length(), 5);
                     msg.substring(msg.length() - cap).chars().forEach(c -> {
                         LOG.log(DEBUG, Char.toDebugString((char) c));
                     });
-                    rethrow.addSuppressed(ioe);
                 }
                 throw rethrow;
             }
