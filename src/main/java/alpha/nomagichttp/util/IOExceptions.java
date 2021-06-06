@@ -21,8 +21,8 @@ public final class IOExceptions
     private static final String[] BROKEN_READ = {
             // Windows
             "The specified network name is no longer available",
-            // Java 11 on Windows Server 2019 added a dot and newline lol
-            "The specified network name is no longer available.\n",
+            // Java 11+13 on Windows Server 2019 added a dot and newline lol
+            "The specified network name is no longer available.\r\n",
             "An existing connection was forcibly closed by the remote host",
             "An established connection was aborted by the software in your host machine",
             // Linux
