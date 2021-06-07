@@ -64,7 +64,7 @@ version = '0.5-SNAPSHOT'
 def Werror = !(System.env.HACKING ?: false).toBoolean()
 
 wrapper {
-    gradleVersion = '6.8.3'
+    gradleVersion = '7.0'
     distributionType = Wrapper.DistributionType.ALL
 }
 
