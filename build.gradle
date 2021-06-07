@@ -14,6 +14,16 @@ sourceSets {
         output.resourcesDir = file("$buildDir/resources/test/small")
     }
     
+    // Define medium tests in '/test/medium'
+    mediumTest {
+        java.srcDirs = ['src/test/medium/java']
+        java.outputDir = file("$buildDir/classes/java/test/medium")
+        resources.srcDirs = ['src/test/medium/resources']
+        output.resourcesDir = file("$buildDir/resources/test/medium")
+        compileClasspath += sourceSets.main.output
+        runtimeClasspath += sourceSets.main.output
+    }
+    
     // Define large tests in '/test/large'
     largeTest {
         java.srcDirs = ['src/test/large/java']
@@ -26,9 +36,11 @@ sourceSets {
 }
 
 configurations {
-    // All small test dependencies are also large test dependencies
+    // All small test dependencies are also medium+large test dependencies
     largeTestImplementation.extendsFrom testImplementation
     largeTestRuntimeOnly.extendsFrom testRuntimeOnly
+    mediumTestImplementation.extendsFrom testImplementation
+    mediumTestRuntimeOnly.extendsFrom testRuntimeOnly
 }
 
 repositories {
@@ -77,6 +89,17 @@ test {
     useJUnitPlatform()
 }
 
+task mediumTest(type: Test) {
+    description = 'Runs the medium tests.'
+    group = 'verification'
+    
+    useJUnitPlatform()
+    
+    testClassesDirs = sourceSets.mediumTest.output.classesDirs
+    classpath = sourceSets.mediumTest.runtimeClasspath
+    shouldRunAfter test
+}
+
 task largeTest(type: Test) {
     description = 'Runs the large tests.'
     group = 'verification'
@@ -85,7 +108,7 @@ task largeTest(type: Test) {
     
     testClassesDirs = sourceSets.largeTest.output.classesDirs
     classpath = sourceSets.largeTest.runtimeClasspath
-    shouldRunAfter test
+    shouldRunAfter mediumTest
 }
 
 check.dependsOn largeTest
@@ -113,7 +136,11 @@ task javadocAll(type: Javadoc) {
     description = 'Generates all Javadoc API documentation (public+private symbols and test classes).'
     group = 'documentation'
     
-    source = [sourceSets.main.allJava, sourceSets.test.allJava, sourceSets.largeTest.allJava]
+    source = [
+        sourceSets.main.allJava,
+        sourceSets.test.allJava,
+        sourceSets.mediumTest.allJava,
+        sourceSets.largeTest.allJava ]
     classpath = sourceSets.largeTest.compileClasspath
     
     options.memberLevel = JavadocMemberLevel.PRIVATE
