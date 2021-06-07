@@ -6,7 +6,7 @@ plugins {
 }
 
 sourceSets {
-    // Move unit test locations from default '/test' to '/test/small'
+    // Move "unit" test locations from default '/test' to '/test/small'
     test {
         java.srcDirs = ['src/test/small/java']
         java.outputDir = file("$buildDir/classes/java/test/small")
@@ -144,7 +144,7 @@ tasks.withType(Javadoc) {
     // Text to be injected as overview
     options.overview = 'src/main/java/overview.html'
     
-    // Link to Java 11 API
+    // Link to JDK JavaDoc
     def v = compileJava.options.release.get()
     options.links("https://docs.oracle.com/en/java/javase/$v/docs/api")
 }
