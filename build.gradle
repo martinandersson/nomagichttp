@@ -111,7 +111,8 @@ task largeTest(type: Test) {
     shouldRunAfter mediumTest
 }
 
-check.dependsOn largeTest
+// Tell Gradle the obvious: build task runs all tests
+check.dependsOn tasks.withType(Test)
 
 // Generate report after tests
 tasks.withType(Test).configureEach {
