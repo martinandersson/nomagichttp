@@ -28,6 +28,7 @@ import static java.nio.ByteBuffer.allocate;
 import static java.nio.ByteBuffer.wrap;
 import static java.nio.charset.StandardCharsets.US_ASCII;
 import static java.util.Objects.requireNonNull;
+import static java.util.concurrent.TimeUnit.MILLISECONDS;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -52,9 +53,10 @@ import static org.assertj.core.api.Assertions.assertThat;
  * 0-length byte array) effectively asserts that no bytes were received prior to
  * EOS.<p>
  * 
- * Each read/write operation will by default timeout after 1 second, at which
- * point the operation will fail with a {@link ClosedByInterruptException}. Test
- * cases that need more time can override the default using {@link
+ * Each read/write operation will by default timeout after 1.5 seconds, giving
+ * the average HTTP exchange 3 seconds to complete. On timeout, the operation
+ * will fail with a {@link ClosedByInterruptException}. Test cases that need
+ * more time can override the default using {@link
  * #interruptWriteAfter(long, TimeUnit)} and {@link
  * #interruptReadAfter(long, TimeUnit)} respectively.<p>
  * 
@@ -130,10 +132,10 @@ public final class TestClient
         this.factory = requireNonNull(factory);
     }
     
-    private long     rAmount = 1,
-                     wAmount = 1;
-    private TimeUnit rUnit   = SECONDS,
-                     wUnit   = SECONDS;
+    private long     rAmount = 1_500,
+                     wAmount = 1_500;
+    private TimeUnit rUnit   = MILLISECONDS,
+                     wUnit   = MILLISECONDS;
     
     /**
      * Interrupt the read operation after a given timeout.
