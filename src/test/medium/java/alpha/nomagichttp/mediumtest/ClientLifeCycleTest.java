@@ -323,7 +323,7 @@ class ClientLifeCycleTest extends AbstractRealTest
             "Client aborted the HTTP exchange.".equals(rec.getMessage())));
     }
     
-    // Client receives response first, then shuts down input stream, then server get the request
+    // Client receives response first, then shuts down input stream, then server gets the request
     @ParameterizedTest
     @ValueSource(booleans = {true, false})
     void intermittentStreamShutdown_clientInput(boolean setConnectionCloseHeader) throws IOException, InterruptedException {
