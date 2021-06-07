@@ -32,6 +32,8 @@ import static org.assertj.core.api.Assertions.assertThat;
  */
 class ExampleTest extends AbstractRealTest
 {
+    // TODO: This should - like MessageTest - run using different clients
+    
     @Test
     void HelloWorld() throws IOException {
         server().add("/hello-response", GET().respond(text("Hello World!")));

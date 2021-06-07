@@ -6,12 +6,12 @@ plugins {
 }
 
 sourceSets {
-    // Move unit test locations from default '/test' to '/test/unit'
+    // Move unit test locations from default '/test' to '/test/small'
     test {
-        java.srcDirs = ['src/test/unit/java']
-        java.outputDir = file("$buildDir/classes/java/test/unit")
-        resources.srcDirs = ['src/test/unit/resources']
-        output.resourcesDir = file("$buildDir/resources/test/unit")
+        java.srcDirs = ['src/test/small/java']
+        java.outputDir = file("$buildDir/classes/java/test/small")
+        resources.srcDirs = ['src/test/small/resources']
+        output.resourcesDir = file("$buildDir/resources/test/small")
     }
     
     // Define large tests in '/test/large'
@@ -26,7 +26,7 @@ sourceSets {
 }
 
 configurations {
-    // All unit test dependencies are also large test dependencies
+    // All small test dependencies are also large test dependencies
     largeTestImplementation.extendsFrom testImplementation
     largeTestRuntimeOnly.extendsFrom testRuntimeOnly
 }
