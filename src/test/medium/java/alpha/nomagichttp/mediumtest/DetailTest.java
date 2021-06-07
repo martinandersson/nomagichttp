@@ -1,4 +1,4 @@
-package alpha.nomagichttp.real;
+package alpha.nomagichttp.mediumtest;
 
 import alpha.nomagichttp.handler.RequestHandler;
 import alpha.nomagichttp.message.PooledByteBufferHolder;
@@ -23,11 +23,11 @@ import static alpha.nomagichttp.message.Responses.continue_;
 import static alpha.nomagichttp.message.Responses.ok;
 import static alpha.nomagichttp.message.Responses.processing;
 import static alpha.nomagichttp.message.Responses.text;
-import static alpha.nomagichttp.real.TestRequests.get;
-import static alpha.nomagichttp.real.TestRequests.post;
-import static alpha.nomagichttp.real.TestRoutes.respondIsBodyEmpty;
-import static alpha.nomagichttp.real.TestRoutes.respondRequestBody;
 import static alpha.nomagichttp.testutil.TestClient.CRLF;
+import static alpha.nomagichttp.testutil.TestRequests.get;
+import static alpha.nomagichttp.testutil.TestRequests.post;
+import static alpha.nomagichttp.testutil.TestRoutes.respondIsBodyEmpty;
+import static alpha.nomagichttp.testutil.TestRoutes.respondRequestBody;
 import static alpha.nomagichttp.util.BetterBodyPublishers.ofByteArray;
 import static java.lang.System.Logger.Level.DEBUG;
 import static java.lang.System.Logger.Level.WARNING;

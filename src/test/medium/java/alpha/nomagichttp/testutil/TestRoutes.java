@@ -1,4 +1,4 @@
-package alpha.nomagichttp.real;
+package alpha.nomagichttp.testutil;
 
 import alpha.nomagichttp.handler.RequestHandler;
 import alpha.nomagichttp.message.Responses;
@@ -12,7 +12,7 @@ import static alpha.nomagichttp.message.Responses.text;
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  */
-final class TestRoutes {
+public final class TestRoutes {
     private TestRoutes() {
         // Empty
     }
@@ -20,6 +20,8 @@ final class TestRoutes {
     /**
      * Expect {@code POST} requests on "/" and respond a text-body with the
      * value of {@code request.body().isEmpty()}.
+     * 
+     * @return a route
      */
     public static Route respondIsBodyEmpty() {
         return root(POST().apply(req ->
@@ -29,6 +31,8 @@ final class TestRoutes {
     /**
      * Expect {@code POST} requests on "/" and respond a text-body with the
      * value of {@code request.body().toText()}.
+     * 
+     * @return a route
      */
     public static Route respondRequestBody() {
         return root(POST().apply(req ->

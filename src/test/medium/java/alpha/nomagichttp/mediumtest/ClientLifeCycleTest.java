@@ -1,4 +1,4 @@
-package alpha.nomagichttp.real;
+package alpha.nomagichttp.mediumtest;
 
 import alpha.nomagichttp.handler.ErrorHandler;
 import alpha.nomagichttp.handler.RequestHandler;
@@ -26,9 +26,9 @@ import java.util.logging.LogRecord;
 import static alpha.nomagichttp.handler.RequestHandler.GET;
 import static alpha.nomagichttp.handler.RequestHandler.POST;
 import static alpha.nomagichttp.message.Responses.noContent;
-import static alpha.nomagichttp.real.TestRequests.get;
-import static alpha.nomagichttp.real.TestRequests.post;
 import static alpha.nomagichttp.testutil.TestClient.CRLF;
+import static alpha.nomagichttp.testutil.TestRequests.get;
+import static alpha.nomagichttp.testutil.TestRequests.post;
 import static alpha.nomagichttp.testutil.TestSubscribers.onNextAndError;
 import static alpha.nomagichttp.util.Strings.containsIgnoreCase;
 import static java.lang.System.Logger.Level.DEBUG;

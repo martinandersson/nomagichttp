@@ -1,4 +1,4 @@
-package alpha.nomagichttp.real;
+package alpha.nomagichttp.mediumtest;
 
 import alpha.nomagichttp.examples.RetryRequestOnError;
 import alpha.nomagichttp.handler.RequestHandler;

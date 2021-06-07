@@ -1,4 +1,4 @@
-package alpha.nomagichttp.real;
+package alpha.nomagichttp.testutil;
 
 import static alpha.nomagichttp.testutil.TestClient.CRLF;
 
@@ -7,7 +7,7 @@ import static alpha.nomagichttp.testutil.TestClient.CRLF;
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  */
-final class TestRequests
+public final class TestRequests
 {
     private TestRequests() {
         // Empty

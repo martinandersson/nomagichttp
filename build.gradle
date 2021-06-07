@@ -20,8 +20,8 @@ sourceSets {
         java.outputDir = file("$buildDir/classes/java/test/medium")
         resources.srcDirs = ['src/test/medium/resources']
         output.resourcesDir = file("$buildDir/resources/test/medium")
-        compileClasspath += sourceSets.main.output
-        runtimeClasspath += sourceSets.main.output
+        compileClasspath += sourceSets.main.output + sourceSets.test.output
+        runtimeClasspath += sourceSets.main.output + sourceSets.test.output
     }
     
     // Define large tests in '/test/large'

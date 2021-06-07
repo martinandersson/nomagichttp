@@ -1,4 +1,4 @@
-package alpha.nomagichttp.real;
+package alpha.nomagichttp.mediumtest;
 
 import alpha.nomagichttp.message.Responses;
 import alpha.nomagichttp.testutil.TestClient;

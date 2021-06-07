@@ -1,4 +1,4 @@
-package alpha.nomagichttp.real;
+package alpha.nomagichttp.mediumtest;
 
 import alpha.nomagichttp.handler.ResponseRejectedException;
 import alpha.nomagichttp.message.HttpVersionParseException;
@@ -43,8 +43,6 @@ import static alpha.nomagichttp.message.Responses.ok;
 import static alpha.nomagichttp.message.Responses.processing;
 import static alpha.nomagichttp.message.Responses.status;
 import static alpha.nomagichttp.message.Responses.text;
-import static alpha.nomagichttp.real.TestRequests.get;
-import static alpha.nomagichttp.real.TestRequests.post;
 import static alpha.nomagichttp.testutil.Logging.toJUL;
 import static alpha.nomagichttp.testutil.MemorizingSubscriber.Signal.MethodName.ON_COMPLETE;
 import static alpha.nomagichttp.testutil.MemorizingSubscriber.Signal.MethodName.ON_ERROR;
@@ -53,6 +51,8 @@ import static alpha.nomagichttp.testutil.MemorizingSubscriber.Signal.MethodName.
 import static alpha.nomagichttp.testutil.TestClient.CRLF;
 import static alpha.nomagichttp.testutil.TestConfig.timeoutIdleConnection;
 import static alpha.nomagichttp.testutil.TestPublishers.blockSubscriberUntil;
+import static alpha.nomagichttp.testutil.TestRequests.get;
+import static alpha.nomagichttp.testutil.TestRequests.post;
 import static alpha.nomagichttp.testutil.TestSubscribers.onError;
 import static alpha.nomagichttp.testutil.TestSubscribers.onNextAndComplete;
 import static alpha.nomagichttp.testutil.TestSubscribers.onNextAndError;

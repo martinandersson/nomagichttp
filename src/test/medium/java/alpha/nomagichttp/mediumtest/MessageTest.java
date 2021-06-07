@@ -1,4 +1,4 @@
-package alpha.nomagichttp.real;
+package alpha.nomagichttp.mediumtest;
 
 import alpha.nomagichttp.message.Responses;
 import org.junit.jupiter.api.Test;
@@ -8,9 +8,9 @@ import java.io.IOException;
 import static alpha.nomagichttp.handler.RequestHandler.GET;
 import static alpha.nomagichttp.handler.RequestHandler.POST;
 import static alpha.nomagichttp.message.Responses.text;
-import static alpha.nomagichttp.real.TestRequests.post;
-import static alpha.nomagichttp.real.TestRoutes.respondIsBodyEmpty;
 import static alpha.nomagichttp.testutil.TestClient.CRLF;
+import static alpha.nomagichttp.testutil.TestRequests.post;
+import static alpha.nomagichttp.testutil.TestRoutes.respondIsBodyEmpty;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
