@@ -120,7 +120,7 @@ tasks.withType(Test).configureEach {
 }
 
 jacocoTestReport {
-    // Use data file not just from test but also largeTest
+    // Use data file not just from test but also from medium+large
     getExecutionData().setFrom(
             fileTree(dir: "$buildDir/jacoco", includes: ['*.exec']))
 }
