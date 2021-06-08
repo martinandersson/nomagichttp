@@ -36,10 +36,11 @@ class ExampleTest extends AbstractRealTest
     
     @Test
     void HelloWorld() throws IOException {
-        server().add("/hello-response", GET().respond(text("Hello World!")));
+        server().add("/hello",
+            GET().respond(text("Hello World!")));
         
         String req =
-            "GET /hello-response HTTP/1.1"      + CRLF +
+            "GET /hello HTTP/1.1"               + CRLF +
             "Accept: text/plain; charset=utf-8" + CRLF + CRLF;
         
         String res = client().writeReadTextUntil(req, "World!");
