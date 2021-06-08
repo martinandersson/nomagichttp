@@ -1,6 +1,11 @@
 package alpha.nomagichttp.testutil;
 
 import alpha.nomagichttp.HttpConstants;
+import alpha.nomagichttp.util.Headers;
+import okhttp3.OkHttpClient;
+import okhttp3.Protocol;
+import okhttp3.Request;
+import okhttp3.ResponseBody;
 
 import java.io.IOException;
 import java.net.URI;
@@ -93,15 +98,24 @@ public abstract class HttpClientFacade
          *   <li>No public API for managing the connection.</li>
          * </ol>
          */
-        JDK (JDK::new);
+        JDK (JDK::new),
+        
+        /**
+         * What HTTP version this client supports is slightly unknown. JavaDoc
+         * for OkHttp 4 (used as delegate) is - perhaps not surprisingly,
+         * <a href="https://square.github.io/okhttp/4.x/okhttp/okhttp3/-ok-http-client/protocols/">empty</a>.
+         * <a href="https://square.github.io/okhttp/3.x/okhttp/okhttp3/OkHttpClient.Builder.html#protocols-java.util.List-">OkHttp 3</a>
+         * indicates HTTP/1.0 (and consequently 0.9?) is not supported. I guess
+         * we'll find out.
+         */
+        OKHTTP (OkHttp::new);
         
         // TODO:
-        //   OkHttp
         //   Spring's WebClient
         //   Apache HttpClient
         //   More??
         
-        private IntFunction<HttpClientFacade> factory;
+        private final IntFunction<HttpClientFacade> factory;
         
         Implementation(IntFunction<HttpClientFacade> f) {
             factory = f;
@@ -219,17 +233,17 @@ public abstract class HttpClientFacade
         public Response<byte[]> getBytes(String path, HttpConstants.Version version)
                 throws IOException, InterruptedException
         {
-            return getAny(path, version, ofByteArray());
+            return get(path, version, ofByteArray());
         }
     
         @Override
         public Response<String> getText(String path, HttpConstants.Version version)
                 throws IOException, InterruptedException
         {
-            return getAny(path, version, ofString());
+            return get(path, version, ofString());
         }
         
-        private <B> Response<B> getAny(
+        private <B> Response<B> get(
                 String path, HttpConstants.Version version, HttpResponse.BodyHandler<B> converter)
                 throws IOException, InterruptedException
         {
@@ -265,6 +279,69 @@ public abstract class HttpClientFacade
         }
     }
     
+    private static class OkHttp extends HttpClientFacade {
+        OkHttp(int port) {
+            super(port);
+        }
+        
+        @Override
+        public Response<byte[]> getBytes(String path, HttpConstants.Version version)
+                throws IOException
+        {
+            return get(path, version, ResponseBody::bytes);
+        }
+        
+        @Override
+        public Response<String> getText(String path, HttpConstants.Version version)
+                throws IOException
+        {
+            return get(path, version, ResponseBody::string);
+        }
+        
+        private <B> Response<B> get(
+                String path, HttpConstants.Version version,
+                IOFunction<? super ResponseBody, ? extends B> converter)
+                throws IOException
+        {
+            OkHttpClient c = new OkHttpClient.Builder()
+                    .protocols(List.of(toSquare(version)))
+                    .build();
+            
+            Request req = new Request.Builder()
+                    .url(withBase(path).toURL())
+                    .build();
+            
+            // No close callback from our Response type, so must consume eagerly
+            okhttp3.Response rsp = c.newCall(req).execute();
+            B b;
+            try (rsp) {
+                b = converter.apply(rsp.body());
+            }
+            return Response.of(rsp, b);
+        }
+        
+        private static Protocol toSquare(HttpConstants.Version v) {
+            final Protocol square;
+            switch (v) {
+                case HTTP_0_9:
+                case HTTP_3:
+                    throw new IllegalArgumentException("Not supported.");
+                case HTTP_1_0:
+                    square = Protocol.HTTP_1_0;
+                    break;
+                case HTTP_1_1:
+                    square = Protocol.HTTP_1_1;
+                    break;
+                case HTTP_2:
+                    square = Protocol.HTTP_2;
+                    break;
+                default:
+                    throw new IllegalArgumentException("No mapping.");
+            }
+            return square;
+        }
+    }
+    
     /**
      * A HTTP response facade.<p>
      * 
@@ -278,6 +355,11 @@ public abstract class HttpClientFacade
         static <B> Response<B> of(java.net.http.HttpResponse<? extends B> jdk) {
             Supplier<String> phrase = () -> {throw new UnsupportedOperationException();};
             return new Response<>(jdk::statusCode, phrase, jdk::headers, jdk::body);
+        }
+        
+        static <B> Response <B> of(okhttp3.Response okhttp, B body) {
+            Supplier<HttpHeaders> headers = () -> Headers.of(okhttp.headers().toMultimap());
+            return new Response<>(okhttp::code, okhttp::message, headers, () -> body);
         }
         
         private final IntSupplier statusCode;

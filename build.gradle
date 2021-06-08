@@ -54,6 +54,9 @@ dependencies {
     testImplementation 'org.assertj:assertj-core:3.19.0'
     testImplementation 'org.mockito:mockito-core:3.9.0'
     testImplementation 'org.junit.jupiter:junit-jupiter-params:5.7.1'
+    
+    // HTTP client implementations for HttpClientFacade
+    mediumTestImplementation 'com.squareup.okhttp3:okhttp:4.9.1'
 }
 
 // To be bumped by task in future or perhaps not even set in this file
