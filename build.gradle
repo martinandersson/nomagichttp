@@ -37,10 +37,10 @@ sourceSets {
 
 configurations {
     // All small test dependencies are also medium+large test dependencies
-    largeTestImplementation.extendsFrom testImplementation
-    largeTestRuntimeOnly.extendsFrom testRuntimeOnly
     mediumTestImplementation.extendsFrom testImplementation
     mediumTestRuntimeOnly.extendsFrom testRuntimeOnly
+    largeTestImplementation.extendsFrom testImplementation
+    largeTestRuntimeOnly.extendsFrom testRuntimeOnly
 }
 
 repositories {
