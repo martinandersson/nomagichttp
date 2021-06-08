@@ -20,7 +20,6 @@ public final class TestRequests
      * @return the request
      */
     public static String get(String... additionalHeaders) {
-        
         return "GET / HTTP/1.1"                    + CRLF +
                "Accept: text/plain; charset=utf-8" + CRLF +
                join(additionalHeaders)             +
