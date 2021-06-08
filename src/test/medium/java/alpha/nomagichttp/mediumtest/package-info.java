@@ -1,4 +1,4 @@
 /**
- * Contains real end-to-end test cases using a server running on a local port.
+ * Executes HTTP exchanges on a local port, aka. "real tests".
  */
 package alpha.nomagichttp.mediumtest;
