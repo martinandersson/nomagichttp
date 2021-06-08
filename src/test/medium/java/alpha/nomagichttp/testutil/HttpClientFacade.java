@@ -25,6 +25,7 @@ import java.util.function.Supplier;
 import static java.net.http.HttpClient.Version;
 import static java.net.http.HttpResponse.BodyHandlers.ofByteArray;
 import static java.net.http.HttpResponse.BodyHandlers.ofString;
+import static java.util.Locale.ROOT;
 import static java.util.Objects.requireNonNull;
 
 /**
@@ -353,30 +354,52 @@ public abstract class HttpClientFacade
     public static final class Response<B> {
         
         static <B> Response<B> of(java.net.http.HttpResponse<? extends B> jdk) {
-            Supplier<String> phrase = () -> {throw new UnsupportedOperationException();};
-            return new Response<>(jdk::statusCode, phrase, jdk::headers, jdk::body);
+            Supplier<String> version = () -> HttpConstants.Version.valueOf(jdk.version().name()).toString(),
+                             phrase  = () -> {throw new UnsupportedOperationException();};
+            return new Response<>(
+                    version,
+                    jdk::statusCode,
+                    phrase,
+                    jdk::headers,
+                    jdk::body);
         }
         
         static <B> Response <B> of(okhttp3.Response okhttp, B body) {
             Supplier<HttpHeaders> headers = () -> Headers.of(okhttp.headers().toMultimap());
-            return new Response<>(okhttp::code, okhttp::message, headers, () -> body);
+            return new Response<>(
+                    () -> okhttp.protocol().toString().toUpperCase(ROOT),
+                    okhttp::code,
+                    okhttp::message,
+                    headers, () -> body);
         }
         
+        private final Supplier<String> version;
         private final IntSupplier statusCode;
         private final Supplier<String> reasonPhrase;
         private final Supplier<HttpHeaders> headers;
         private final Supplier<? extends B> body;
         
         private Response(
+                Supplier<String> version,
                 IntSupplier statusCode,
                 Supplier<String> reasonPhrase,
                 Supplier<HttpHeaders> headers,
                 Supplier<? extends B> body)
         {
+            this.version = version;
             this.statusCode   = statusCode;
             this.reasonPhrase = reasonPhrase;
             this.headers      = headers;
             this.body         = body;
+        }
+        
+        /**
+         * Returns the HTTP version.
+         * 
+         * @return the HTTP version
+         */
+        public String version() {
+            return version.get();
         }
         
         /**

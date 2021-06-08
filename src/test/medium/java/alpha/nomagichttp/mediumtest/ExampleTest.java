@@ -71,6 +71,7 @@ class ExampleTest extends AbstractRealTest
                 .addHeader("Accept", "text/plain; charset=utf-8")
                 .getText("/hello", HTTP_1_1);
         
+        assertThat(rsp.version()).isEqualTo("HTTP/1.1");
         assertThat(rsp.statusCode()).isEqualTo(200);
         if (impl != JDK) {
             // Assume all other supports retrieving the reason-phrase
