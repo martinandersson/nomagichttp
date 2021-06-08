@@ -12,6 +12,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.OptionalLong;
+import java.util.function.BiPredicate;
 
 import static alpha.nomagichttp.HttpConstants.HeaderKey.ACCEPT;
 import static alpha.nomagichttp.HttpConstants.HeaderKey.CONTENT_LENGTH;
@@ -68,6 +69,21 @@ public final class Headers
             map.computeIfAbsent(k, k0 -> new ArrayList<>(1)).add(v);
         }
         
+        return of(map);
+    }
+    
+    /**
+     * Equivalent to {@link HttpHeaders#of(Map, BiPredicate)} where the
+     * filter used accepts all entries.<p>
+     * 
+     * Seriously, why does the filter even exist lol? Is a code smell miles
+     * away.
+     * 
+     * @param map all header mappings
+     * 
+     * @return HttpHeaders
+     */
+    public static HttpHeaders of(Map<String,List<String>> map) {
         return HttpHeaders.of(map, (k, v) -> true);
     }
     
