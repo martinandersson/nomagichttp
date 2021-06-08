@@ -142,7 +142,9 @@ task javadocAll(type: Javadoc) {
         sourceSets.test.allJava,
         sourceSets.mediumTest.allJava,
         sourceSets.largeTest.allJava ]
-    classpath = sourceSets.largeTest.compileClasspath
+    
+    classpath = sourceSets.mediumTest.compileClasspath +
+                sourceSets.largeTest.compileClasspath
     
     options.memberLevel = JavadocMemberLevel.PRIVATE
     destinationDir = file("$buildDir/docs/javadoc-all")
