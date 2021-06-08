@@ -40,8 +40,8 @@ import static java.util.Objects.requireNonNull;
  * read strings). Where suitable, a subsequent "compatibility" test using the
  * client facade can then be declared whose purpose is to ensure, well,
  * compatibility. E.g.
- * <pre>{@code
- *   @Test
+ * <pre>
+ *   {@literal @}Test
  *   void helloWorld() {
  *       // Very clear for human, and also very detailed, explicit (we like)
  *       TestClient client = ...
@@ -49,16 +49,16 @@ import static java.util.Objects.requireNonNull;
  *       assertThat(response).isEqualTo("HTTP/1.1 200 OK ...");
  *   }
  *   
- *   @ParameterizedTest
- *   @EnumSource
+ *   {@literal @}ParameterizedTest
+ *   {@literal @}EnumSource
  *   void helloWorld_compatibility(HttpClientFacade.Implementation impl) {
  *       // Explosion of types and methods. Only God knows what happens. But okay, good having.
  *       int serverPort = ...
  *       HttpClientFacade client = impl.create(serverPort);
- *       Response<String> response = client.getText("/", HTTP_1_1);
+ *       Response{@literal <}String{@literal >} response = client.getText("/", HTTP_1_1);
  *       assertThat(response.statusCode())...
  *   }
- * }</pre>
+ * </pre>
  * 
  * Currently, the only provided implementation JDK has no API for closing the
  * connection. Nor does the JDK accept a "Connection: close" header (throws
