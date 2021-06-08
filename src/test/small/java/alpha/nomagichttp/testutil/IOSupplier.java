@@ -1,9 +1,10 @@
 package alpha.nomagichttp.testutil;
 
 import java.io.IOException;
+import java.util.function.Supplier;
 
 /**
- * A {@code Supplier} that may throw an {@code IOException}.
+ * A {@link Supplier} that may throw an {@code IOException}.
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  */

@@ -3,11 +3,10 @@ package alpha.nomagichttp.testutil;
 import java.io.IOException;
 
 /**
- * A {@code Runnable} that may throw {@code IOException}.
+ * A {@link Runnable} that may throw {@code IOException}.
  */
 @FunctionalInterface
-public interface IORunnable 
-{
+public interface IORunnable  {
     /**
      * Run.
      * 
