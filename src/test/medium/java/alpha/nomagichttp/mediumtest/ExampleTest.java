@@ -3,18 +3,25 @@ package alpha.nomagichttp.mediumtest;
 import alpha.nomagichttp.examples.RetryRequestOnError;
 import alpha.nomagichttp.handler.RequestHandler;
 import alpha.nomagichttp.message.Responses;
+import alpha.nomagichttp.testutil.HttpClientFacade;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
 
 import java.io.IOException;
 import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 
+import static alpha.nomagichttp.HttpConstants.Version.HTTP_1_1;
 import static alpha.nomagichttp.handler.RequestHandler.GET;
 import static alpha.nomagichttp.handler.RequestHandler.POST;
 import static alpha.nomagichttp.message.Responses.processing;
 import static alpha.nomagichttp.message.Responses.text;
+import static alpha.nomagichttp.testutil.HttpClientFacade.Implementation.JDK;
+import static alpha.nomagichttp.testutil.HttpClientFacade.Response;
 import static alpha.nomagichttp.testutil.TestClient.CRLF;
+import static alpha.nomagichttp.util.Headers.of;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
@@ -32,8 +39,6 @@ import static org.assertj.core.api.Assertions.assertThat;
  */
 class ExampleTest extends AbstractRealTest
 {
-    // TODO: This should - like MessageTest - run using different clients
-    
     @Test
     void HelloWorld() throws IOException {
         server().add("/hello",
@@ -50,6 +55,32 @@ class ExampleTest extends AbstractRealTest
             "Content-Type: text/plain; charset=utf-8" + CRLF +
             "Content-Length: 12"                      + CRLF + CRLF +
             
+            "Hello World!");
+    }
+    
+    @ParameterizedTest
+    @EnumSource // <-- in case JUnit didn't know an enum parameter is a..
+    void HelloWorld_compatibility(HttpClientFacade.Implementation impl)
+            throws IOException, InterruptedException
+    {
+        server().add("/hello",
+                GET().respond(text("Hello World!")
+                        .toBuilder().mustCloseAfterWrite(true).build()));
+        
+        Response<String> rsp = impl.create(serverPort())
+                .addHeader("Accept", "text/plain; charset=utf-8")
+                .getText("/hello", HTTP_1_1);
+        
+        assertThat(rsp.statusCode()).isEqualTo(200);
+        if (impl != JDK) {
+            // Assume all other supports retrieving the reason-phrase
+            assertThat(rsp.reasonPhrase()).isEqualTo("OK");
+        }
+        assertThat(rsp.headers()).isEqualTo(of(
+            "Content-Type",   "text/plain; charset=utf-8",
+            "Content-Length", "12",
+            "Connection",     "close"));
+        assertThat(rsp.body()).isEqualTo(
             "Hello World!");
     }
     
