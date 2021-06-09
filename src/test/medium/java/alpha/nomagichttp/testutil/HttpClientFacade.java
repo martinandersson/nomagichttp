@@ -51,7 +51,7 @@ import static java.util.concurrent.TimeUnit.SECONDS;
  * assertions such as expect-no-trailing-bytes from the server) at the same time
  * it also makes the HTTP exchange more readable (most usages simply write and
  * read strings). Where suitable, a subsequent "compatibility" test using the
- * client facade can then be declared whose purpose is to ensure, well,
+ * client facade can then be declared whose purpose it is to ensure, well,
  * compatibility. E.g.
  * <pre>
  *   {@literal @}Test
@@ -73,19 +73,25 @@ import static java.util.concurrent.TimeUnit.SECONDS;
  *   }
  * </pre>
  * 
- * Currently, the only provided implementation JDK has no API for closing the
- * connection. Nor does the JDK accept a "Connection: close" header (throws
- * {@code IllegalArgumentException}). And, this is unfortunately more or less
- * what to expect from most clients that will be supported in the future: lots
- * of magic, no documentation and no user control. So, the test is better off
- * closing the connection from the server. Failure to close the connection will
- * cause {@code AbstractRealTest} to timeout when stopping the server and
- * awaiting child channel closures after the test.<p>
+ * Let's be honest here. The clients used are expected to not expose an API for
+ * user-control of the connection, and to add insult to injury, they are also
+ * expected to not documented at all what the life-cycle of the connection is.
+ * Hence, the facade implementation can do no better either. It will, however,
+ * attempt to create the client eagerly (in the constructor) and reuse the same
+ * object across the facade's exchange-method calls. The facade is not
+ * closeable, but if the the client is - which is a hint that the client object
+ * itself represents the connection - then the client will be created and closed
+ * for each exchange-executing method called.<p>
  * 
- * One instance of this class represents one request. The request may be
- * modified and re-executed over time. The life-cycle of the underlying delegate
- * is implementation specific. Currently - for the JDK - one client is created
- * for each new exchange.<p>
+ * So, no guarantees can be made about the connection. Likely, it will live in a
+ * client-specific connection pool until timeout. Furthermore, attempts to hack
+ * the connection may fail. For example, the JDK client will throw an {@code
+ * IllegalArgumentException} if the "Connection: close" header is set.<p>
+ * 
+ * But, if the connection is never closed, then a test class extending {@code
+ * AbstractRealTest} will timeout after each test when the superclass stops the
+ * server and gracefully awaits child channel closures. To fix this problem, the
+ * test ought to close the child from the server-installed request handler.<p>
  * 
  * This class is not thread-safe and does not implement {@code hashCode} or
  * {@code equals}.
@@ -95,28 +101,25 @@ import static java.util.concurrent.TimeUnit.SECONDS;
 public abstract class HttpClientFacade
 {
     /**
-     * Supported delegate implementations.<p>
-     * 
-     * Individual characteristics may be studied by reading the JavaDoc of each
-     * enum literal.
+     * Supported delegate implementations.
      */
     public enum Implementation {
         /**
          * Supports version HTTP/1.1 and HTTP/2.<p>
          * 
-         * Perks:
+         * Known perks:
          * <ol>
          *   <li>Has no API for retrieval of the reason-phrase.</li>
          *   <li>Does not support setting a "Connection" header.</li>
          *   <li>Does not support HTTP method CONNECT.</li>
-         *   <li>No public API for managing the connection.</li>
          * </ol>
          */
         JDK (JDK::new),
         
         /**
          * What HTTP version this client supports is slightly unknown. JavaDoc
-         * for OkHttp 4 (used as delegate) is - perhaps not surprisingly,
+         * for OkHttp 4 (the client version currently used) is - perhaps not
+         * surprisingly,
          * <a href="https://square.github.io/okhttp/4.x/okhttp/okhttp3/-ok-http-client/protocols/">empty</a>.
          * <a href="https://square.github.io/okhttp/3.x/okhttp/okhttp3/OkHttpClient.Builder.html#protocols-java.util.List-">OkHttp 3</a>
          * indicates HTTP/1.0 (and consequently 0.9?) is not supported. I guess
@@ -415,7 +418,7 @@ public abstract class HttpClientFacade
     }
     
     /**
-     * A HTTP response facade.<p>
+     * A HTTP response API.<p>
      * 
      * Delegates all operations to the underlying client's response
      * implementation.

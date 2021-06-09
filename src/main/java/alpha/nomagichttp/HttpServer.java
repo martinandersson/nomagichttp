@@ -25,11 +25,23 @@ import java.util.function.BiConsumer;
 import static java.net.InetAddress.getLoopbackAddress;
 
 /**
- * Listens on a port for HTTP requests.<p>
+ * Listens on a port for HTTP connections.<p>
+ * 
+ * The server's function is to provide port- and channel management, parse
+ * an inbound request head and resolve a handler within a target route (also
+ * known as a "server resource") that is qualified to handle the request. Once
+ * the handler has been invoked, it has almost total freedom in regards to how
+ * it interprets the request headers- and body as well as what headers and body
+ * it responds.<p>
+ * 
+ * The process of receiving a request and respond responses (any number of
+ * intermittent responses, followed by a final response) is often called an
+ * "exchange".<p>
  * 
  * This interface declares static <i>{@code create}</i> methods that construct
  * and return the default implementation {@link DefaultServer}. Once the server
- * has been constructed, it needs to <i>{@code start()}</i>.<p>
+ * has been constructed, it needs to <i>{@code start()}</i> which will open the
+ * server's listening port.<p>
  * 
  * Routes can be dynamically added and removed using {@link #add(Route)} and
  * {@link #remove(Route)}. A legal server variant is to not even have any routes
@@ -45,16 +57,6 @@ import static java.net.InetAddress.getLoopbackAddress;
  *           respond}({@link Responses#text(String)
  *             text}("Hello"))).{@link #start() start}();
  * </pre>
- * 
- * The server's function is to provide port- and channel management, parse
- * an inbound request head and resolve which handler of a route is qualified to
- * handle the request. Once the handler has been invoked, it has almost total
- * freedom in regards to how it interprets the request headers- and body as well
- * as what headers and body it responds.<p>
- * 
- * The process of receiving a request and respond responses (any number of
- * intermittent responses, followed by a final response) is often called an
- * "exchange".
  * 
  * <h2>Server Life-Cycle</h2>
  * 
@@ -99,14 +101,14 @@ import static java.net.InetAddress.getLoopbackAddress;
  * For all other variants of requests and responses, the body is optional and
  * the server does not reject the message based on the presence of a body. This
  * is mostly true for all other message variants as well; the server does not
- * have an opinionated view unless warranted. The request handler is largely in
- * control over how it interprets the request message and what response it
- * returns.<p>
+ * have an opinionated view unless an opinionated view is warranted. The request
+ * handler is mostly in control over how it interprets the request message and
+ * what response it returns with no interference.<p>
  * 
  * For example, it might not be common but it <i>is</i>
- * possible (and legit) for {@link HttpConstants.Method#GET GET} requests (
+ * allowed for {@link HttpConstants.Method#GET GET} requests (
  * <a href="https://tools.ietf.org/html/rfc7231#section-4.3.1">RFC 7231 §4.3.1</a>
- * ) to have a body and for {@link HttpConstants.Method#POST POST} responses to
+ * ) to have a body and for {@link HttpConstants.Method#POST POST} requests to
  * not have a body (
  * <a href="https://tools.ietf.org/html/rfc7230#section-3.3.2">RFC 7230 §3.3.2</a>
  * ). Similarly, the {@link HttpConstants.StatusCode#TWO_HUNDRED_ONE 201
