@@ -8,10 +8,13 @@ import okhttp3.Request;
 import okhttp3.ResponseBody;
 import org.apache.hc.client5.http.async.methods.SimpleHttpResponse;
 import org.apache.hc.client5.http.async.methods.SimpleRequestBuilder;
-import org.apache.hc.client5.http.impl.async.CloseableHttpAsyncClient;
 import org.apache.hc.client5.http.impl.async.HttpAsyncClients;
 import org.apache.hc.core5.http.ProtocolVersion;
 import org.eclipse.jetty.client.api.ContentResponse;
+import reactor.core.publisher.Mono;
+import reactor.netty.ByteBufMono;
+import reactor.netty.http.HttpProtocol;
+import reactor.netty.http.client.HttpClientResponse;
 
 import java.io.IOException;
 import java.net.URI;
@@ -137,10 +140,14 @@ public abstract class HttpClientFacade
          * 
          * @see <a href="https://www.eclipse.org/jetty/documentation/jetty-11/programming-guide/index.html#pg-client-http">website</a>
          */
-        JETTY (Jetty::new);
+        JETTY (Jetty::new),
         
-        // TODO:
-        //   Reactor-Netty
+        /**
+         * Reactor Netty HttpClient.
+         * 
+         * @see <a href="https://projectreactor.io/docs/netty/release/reference/index.html#http-client">website</a>
+         */
+        REACTOR (Reactor::new);
         
         private final IntFunction<HttpClientFacade> factory;
         
@@ -486,6 +493,53 @@ public abstract class HttpClientFacade
         }
     }
     
+    private static class Reactor extends HttpClientFacade {
+        Reactor(int port) {
+            super(port);
+        }
+        
+        @Override
+        public Response<byte[]> getBytes(String path, HttpConstants.Version ver) {
+            return get(path, ver, ByteBufMono::asByteArray);
+        }
+        
+        @Override
+        public Response<String> getText(String path, HttpConstants.Version ver) {
+            return get(path, ver, ByteBufMono::asString);
+        }
+        
+        private <B> Response<B> get(
+                String path, HttpConstants.Version ver,
+                Function<? super ByteBufMono, ? extends Mono<B>> bodyConverter)
+        {
+            var req = reactor.netty.http.client.HttpClient.create()
+                    .protocol(toReactorVersion(ver));
+            
+            copyHeaders((k, v) ->
+                req.headers(h -> h.add(k, v)));
+            
+            // "uri() should be invoked before request()" says the JavaDoc.
+            // Except that doesn't compile lol.
+            return req.request(io.netty.handler.codec.http.HttpMethod.GET)
+                      .uri(withBase(path))
+                      .responseSingle((head, body) ->
+                          bodyConverter.apply(body).map(s ->
+                               Response.fromReactor(head, s)))
+                      .block();
+        }
+        
+        private static HttpProtocol toReactorVersion(HttpConstants.Version ver) {
+            switch (ver) {
+                case HTTP_1_1:
+                    return HttpProtocol.HTTP11;
+                case HTTP_2:
+                    return HttpProtocol.H2;
+                default:
+                    throw new IllegalArgumentException("No mapping.");
+            }
+        }
+    }
+    
     /**
      * A HTTP response API.<p>
      * 
@@ -548,6 +602,22 @@ public abstract class HttpClientFacade
                     jetty::getReason,
                     headers,
                     () -> bodyConverter.apply(jetty));
+        }
+        
+        static <B> Response<B> fromReactor(HttpClientResponse reactor, B body) {
+            Supplier<HttpHeaders> headers = () -> {
+                var exploded = reactor.responseHeaders().entries().stream()
+                        .flatMap(e -> Stream.of(e.getKey(), e.getValue()))
+                        .toArray(String[]::new);
+                
+                return Headers.of(exploded);
+            };
+            return new Response<>(
+                    () -> reactor.version().toString(),
+                    () -> reactor.status().code(),
+                    () -> reactor.status().reasonPhrase(),
+                    headers,
+                    () -> body);
         }
         
         private final Supplier<String> version;

@@ -59,6 +59,7 @@ dependencies {
     mediumTestImplementation 'com.squareup.okhttp3:okhttp:4.9.1'
     mediumTestImplementation 'org.apache.httpcomponents.client5:httpclient5:5.1'
     mediumTestImplementation 'org.eclipse.jetty:jetty-client:11.0.4'
+    mediumTestImplementation 'io.projectreactor.netty:reactor-netty-http:1.0.7'
 }
 
 // To be bumped by task in future or perhaps not even set in this file
