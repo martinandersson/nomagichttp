@@ -675,13 +675,13 @@ class ErrorTest extends AbstractRealTest
         
         try (Channel ch = client().openConnection()) {
             for (int i = max; i > 1; --i) {
-                if (LOG.isLoggable(FINE)) {
-                    LOG.log(FINE, "Running #" + i);
+                if (LOG.isLoggable(INFO)) {
+                    LOG.log(INFO, "Running #" + i);
                 }
                 sendBadRequest.run();
                 assertTrue(ch.isOpen());
             }
-            LOG.log(FINE, () -> "Running last.");
+            LOG.log(INFO, () -> "Running last.");
             sendBadRequest.run();
             
             awaitChildClose();
