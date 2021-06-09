@@ -254,43 +254,43 @@ public abstract class HttpClientFacade
             throws IOException, InterruptedException, TimeoutException;
     
     private static class JDK extends HttpClientFacade {
+        private final HttpClient c;
+        
         JDK(int port) {
             super(port);
+            c = HttpClient.newHttpClient();
         }
         
         @Override
-        public Response<byte[]> getBytes(String path, HttpConstants.Version version)
+        public Response<byte[]> getBytes(String path, HttpConstants.Version ver)
                 throws IOException, InterruptedException
         {
-            return get(path, version, ofByteArray());
+            return get(path, ver, ofByteArray());
         }
-    
+        
         @Override
-        public Response<String> getText(String path, HttpConstants.Version version)
+        public Response<String> getText(String path, HttpConstants.Version ver)
                 throws IOException, InterruptedException
         {
-            return get(path, version, ofString());
+            return get(path, ver, ofString());
         }
         
         private <B> Response<B> get(
-                String path, HttpConstants.Version version, HttpResponse.BodyHandler<B> converter)
+                String path, HttpConstants.Version ver, HttpResponse.BodyHandler<B> bodyConverter)
                 throws IOException, InterruptedException
         {
             var b = HttpRequest.newBuilder()
-                    .version(toJDK(version))
+                    .version(toJDKVersion(ver))
                     .GET().uri(withBase(path));
-            
             copyHeaders(b::header);
             
-            var rsp = HttpClient.newHttpClient()
-                    .send(b.build(), converter);
-            
-            return Response.of(rsp);
+            var rsp = c.send(b.build(), bodyConverter);
+            return Response.fromJDK(rsp);
         }
         
-        private static Version toJDK(HttpConstants.Version v) {
+        private static Version toJDKVersion(HttpConstants.Version ver) {
             final Version jdk;
-            switch (v) {
+            switch (ver) {
                 case HTTP_0_9:
                 case HTTP_1_0:
                 case HTTP_3:
@@ -314,26 +314,26 @@ public abstract class HttpClientFacade
         }
         
         @Override
-        public Response<byte[]> getBytes(String path, HttpConstants.Version version)
+        public Response<byte[]> getBytes(String path, HttpConstants.Version ver)
                 throws IOException
         {
-            return get(path, version, ResponseBody::bytes);
+            return get(path, ver, ResponseBody::bytes);
         }
         
         @Override
-        public Response<String> getText(String path, HttpConstants.Version version)
+        public Response<String> getText(String path, HttpConstants.Version ver)
                 throws IOException
         {
-            return get(path, version, ResponseBody::string);
+            return get(path, ver, ResponseBody::string);
         }
         
         private <B> Response<B> get(
-                String path, HttpConstants.Version version,
-                IOFunction<? super ResponseBody, ? extends B> converter)
+                String path, HttpConstants.Version ver,
+                IOFunction<? super ResponseBody, ? extends B> bodyConverter)
                 throws IOException
         {
             OkHttpClient c = new OkHttpClient.Builder()
-                    .protocols(List.of(toSquare(version)))
+                    .protocols(List.of(toSquareVersion(ver)))
                     .build();
             
             Request req = new Request.Builder()
@@ -344,14 +344,14 @@ public abstract class HttpClientFacade
             okhttp3.Response rsp = c.newCall(req).execute();
             B b;
             try (rsp) {
-                b = converter.apply(rsp.body());
+                b = bodyConverter.apply(rsp.body());
             }
-            return Response.of(rsp, b);
+            return Response.fromOkHttp(rsp, b);
         }
         
-        private static Protocol toSquare(HttpConstants.Version v) {
+        private static Protocol toSquareVersion(HttpConstants.Version ver) {
             final Protocol square;
-            switch (v) {
+            switch (ver) {
                 case HTTP_0_9:
                 case HTTP_3:
                     throw new IllegalArgumentException("Not supported.");
@@ -377,26 +377,26 @@ public abstract class HttpClientFacade
         }
         
         @Override
-        public Response<byte[]> getBytes(String path, HttpConstants.Version version)
+        public Response<byte[]> getBytes(String path, HttpConstants.Version ver)
                 throws IOException, InterruptedException, TimeoutException
         {
-            return get(path, version, SimpleHttpResponse::getBodyBytes);
+            return get(path, ver, SimpleHttpResponse::getBodyBytes);
         }
         
         @Override
-        public Response<String> getText(String path, HttpConstants.Version version)
+        public Response<String> getText(String path, HttpConstants.Version ver)
                 throws IOException, InterruptedException, TimeoutException
         {
-            return get(path, version, SimpleHttpResponse::getBodyText);
+            return get(path, ver, SimpleHttpResponse::getBodyText);
         }
         
         private <B> Response<B> get(
-                String path, HttpConstants.Version version,
-                Function<? super SimpleHttpResponse, ? extends B> converter)
+                String path, HttpConstants.Version ver,
+                Function<? super SimpleHttpResponse, ? extends B> bodyConverter)
                 throws IOException, InterruptedException, TimeoutException
         {
             var req =  SimpleRequestBuilder.get(withBase(path))
-                    .setVersion(toApacheVersion(version))
+                    .setVersion(toApacheVersion(ver))
                     .build();
             
             try (CloseableHttpAsyncClient c = HttpAsyncClients.createDefault()) {
@@ -405,15 +405,15 @@ public abstract class HttpClientFacade
                 c.start();
                 try {
                     var rsp = c.execute(req, null).get(3, SECONDS);
-                    return Response.of(rsp, converter.apply(rsp));
+                    return Response.fromApache(rsp, bodyConverter.apply(rsp));
                 } catch (ExecutionException e) {
                     throw new CompletionException(e);
                 }
             }
         }
         
-        private static ProtocolVersion toApacheVersion(HttpConstants.Version v) {
-            return HttpVersion.get(v.major(), v.minor().orElse(0));
+        private static ProtocolVersion toApacheVersion(HttpConstants.Version ver) {
+            return HttpVersion.get(ver.major(), ver.minor().orElse(0));
         }
     }
     
@@ -427,7 +427,7 @@ public abstract class HttpClientFacade
      */
     public static final class Response<B> {
         
-        static <B> Response<B> of(java.net.http.HttpResponse<? extends B> jdk) {
+        static <B> Response<B> fromJDK(java.net.http.HttpResponse<? extends B> jdk) {
             Supplier<String> version = () -> HttpConstants.Version.valueOf(jdk.version().name()).toString(),
                              phrase  = () -> {throw new UnsupportedOperationException();};
             return new Response<>(
@@ -438,7 +438,7 @@ public abstract class HttpClientFacade
                     jdk::body);
         }
         
-        static <B> Response <B> of(okhttp3.Response okhttp, B body) {
+        static <B> Response <B> fromOkHttp(okhttp3.Response okhttp, B body) {
             Supplier<HttpHeaders> headers = () -> Headers.of(okhttp.headers().toMultimap());
             return new Response<>(
                     () -> okhttp.protocol().toString().toUpperCase(ROOT),
@@ -447,7 +447,7 @@ public abstract class HttpClientFacade
                     headers, () -> body);
         }
         
-        static <B> Response <B> of(SimpleHttpResponse apache, B body) {
+        static <B> Response <B> fromApache(SimpleHttpResponse apache, B body) {
             Supplier<HttpHeaders> headers = () -> {
                 var exploded = stream(apache.getHeaders())
                         .flatMap(h -> Stream.of(h.getName(), h.getValue()))
@@ -476,7 +476,7 @@ public abstract class HttpClientFacade
                 Supplier<HttpHeaders> headers,
                 Supplier<? extends B> body)
         {
-            this.version = version;
+            this.version      = version;
             this.statusCode   = statusCode;
             this.reasonPhrase = reasonPhrase;
             this.headers      = headers;
