@@ -349,6 +349,8 @@ public abstract class HttpClientFacade
                     .method("GET", null)
                     .url(withBase(path).toURL());
             
+            copyHeaders(req::header);
+            
             // No close callback from our Response type, so must consume eagerly
             var rsp = cli.newCall(req.build()).execute();
             B bdy;
@@ -404,15 +406,17 @@ public abstract class HttpClientFacade
                 Function<? super SimpleHttpResponse, ? extends B> bodyConverter)
                 throws IOException, InterruptedException, TimeoutException, ExecutionException
         {
-            var req =  SimpleRequestBuilder.get(withBase(path))
-                    .setVersion(toApacheVersion(ver))
-                    .build();
+            var req = SimpleRequestBuilder
+                    .get(withBase(path))
+                    .setVersion(toApacheVersion(ver));
+            
+            copyHeaders(req::addHeader);
             
             try (var c = HttpAsyncClients.createDefault()) {
                 // Must "start" first, otherwise
                 //     java.util.concurrent.CancellationException: Request execution cancelled
                 c.start();
-                var rsp = c.execute(req, null).get(3, SECONDS);
+                var rsp = c.execute(req.build(), null).get(3, SECONDS);
                 return Response.fromApache(rsp, bodyConverter.apply(rsp));
             }
         }
@@ -456,10 +460,14 @@ public abstract class HttpClientFacade
             
             ContentResponse rsp;
             try {
-                rsp = c.newRequest(withBase(path))
+                var req = c.newRequest(withBase(path))
                        .method(GET)
-                       .version(toJettyVersion(ver))
-                       .send();
+                       .version(toJettyVersion(ver));
+                
+                copyHeaders((k, v) ->
+                    req.headers(h -> h.add(k, v)));
+                
+                rsp = req.send();
             } finally {
                 try {
                     c.stop();
