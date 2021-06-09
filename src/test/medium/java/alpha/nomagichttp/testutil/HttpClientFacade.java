@@ -341,21 +341,21 @@ public abstract class HttpClientFacade
                 IOFunction<? super ResponseBody, ? extends B> bodyConverter)
                 throws IOException
         {
-            OkHttpClient c = new OkHttpClient.Builder()
+            var cli = new OkHttpClient.Builder()
                     .protocols(List.of(toSquareVersion(ver)))
                     .build();
             
-            Request req = new Request.Builder()
-                    .url(withBase(path).toURL())
-                    .build();
+            var req = new Request.Builder()
+                    .method("GET", null)
+                    .url(withBase(path).toURL());
             
             // No close callback from our Response type, so must consume eagerly
-            okhttp3.Response rsp = c.newCall(req).execute();
-            B b;
+            var rsp = cli.newCall(req.build()).execute();
+            B bdy;
             try (rsp) {
-                b = bodyConverter.apply(rsp.body());
+                bdy = bodyConverter.apply(rsp.body());
             }
-            return Response.fromOkHttp(rsp, b);
+            return Response.fromOkHttp(rsp, bdy);
         }
         
         private static Protocol toSquareVersion(HttpConstants.Version ver) {
@@ -408,7 +408,7 @@ public abstract class HttpClientFacade
                     .setVersion(toApacheVersion(ver))
                     .build();
             
-            try (CloseableHttpAsyncClient c = HttpAsyncClients.createDefault()) {
+            try (var c = HttpAsyncClients.createDefault()) {
                 // Must "start" first, otherwise
                 //     java.util.concurrent.CancellationException: Request execution cancelled
                 c.start();
@@ -446,10 +446,7 @@ public abstract class HttpClientFacade
                 Function<? super ContentResponse, ? extends B> bodyConverter)
                 throws InterruptedException, TimeoutException, ExecutionException
         {
-            // And the winner of the ugliest API goes to ....
-            
-            org.eclipse.jetty.client.HttpClient c
-                    = new org.eclipse.jetty.client.HttpClient();
+            var c = new org.eclipse.jetty.client.HttpClient();
             
             try {
                 c.start();
