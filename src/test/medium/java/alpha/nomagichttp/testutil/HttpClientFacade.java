@@ -72,17 +72,19 @@ import static org.eclipse.jetty.http.HttpMethod.GET;
  *   }
  * </pre>
  * 
- * Let's be honest here. The clients used are expected to not expose an API for
- * user-control of the connection, and so, the facade implementation can do no
- * better. The facade will, however, attempt to create the client eagerly (in
- * the constructor) if possible, and reuse the same object across the facade's
- * exchange-method calls. Otherwise, the client will be created and closed for
- * each exchange-executing method called.<p>
+ * The clients used does not expose an API for user-control of the connection,
+ * and so, the facade implementation can do no better. In fact, the life-cycle
+ * and performance characteristics of the facade and its underlying client
+ * objects are pretty much unknown. Most of them have - unfortunately quite
+ * expectedly - zero documentation regarding the client's life-cycle and how it
+ * should be cached and used. Never mind concerns such as thread-safety and
+ * identity lol. Hence, this class will mostly keep the client's life as short
+ * as possible and so should definitely not be used in production.<p>
  * 
- * So, no guarantees can be made about the connection. Likely, it will live in a
- * client-specific connection pool until timeout. Furthermore, attempts to hack
- * the connection may fail. For example, the JDK client will throw an {@code
- * IllegalArgumentException} if the "Connection: close" header is set.<p>
+ * Likely, the underlying client connection will live in a client-specific
+ * connection pool until timeout. Attempts to hack the connection may fail. For
+ * example, the JDK client will throw an {@code IllegalArgumentException} if
+ * the "Connection: close" header is set.<p>
  * 
  * But, if the connection is never closed, then a test class extending {@code
  * AbstractRealTest} will timeout after each test when the superclass stops the
