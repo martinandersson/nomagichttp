@@ -57,6 +57,7 @@ dependencies {
     
     // HTTP client implementations for HttpClientFacade
     mediumTestImplementation 'com.squareup.okhttp3:okhttp:4.9.1'
+    mediumTestImplementation 'org.apache.httpcomponents.client5:httpclient5:5.1'
 }
 
 // To be bumped by task in future or perhaps not even set in this file

@@ -6,6 +6,12 @@ import okhttp3.OkHttpClient;
 import okhttp3.Protocol;
 import okhttp3.Request;
 import okhttp3.ResponseBody;
+import org.apache.hc.client5.http.async.methods.SimpleHttpResponse;
+import org.apache.hc.client5.http.async.methods.SimpleRequestBuilder;
+import org.apache.hc.client5.http.impl.async.CloseableHttpAsyncClient;
+import org.apache.hc.client5.http.impl.async.HttpAsyncClients;
+import org.apache.hc.core5.http.HttpVersion;
+import org.apache.hc.core5.http.ProtocolVersion;
 
 import java.io.IOException;
 import java.net.URI;
@@ -17,16 +23,23 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CompletionException;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeoutException;
 import java.util.function.BiConsumer;
+import java.util.function.Function;
 import java.util.function.IntFunction;
 import java.util.function.IntSupplier;
 import java.util.function.Supplier;
+import java.util.stream.Stream;
 
 import static java.net.http.HttpClient.Version;
 import static java.net.http.HttpResponse.BodyHandlers.ofByteArray;
 import static java.net.http.HttpResponse.BodyHandlers.ofString;
+import static java.util.Arrays.stream;
 import static java.util.Locale.ROOT;
 import static java.util.Objects.requireNonNull;
+import static java.util.concurrent.TimeUnit.SECONDS;
 
 /**
  * A HTTP client API that delegates to another {@link Implementation
@@ -109,12 +122,18 @@ public abstract class HttpClientFacade
          * indicates HTTP/1.0 (and consequently 0.9?) is not supported. I guess
          * we'll find out.
          */
-        OKHTTP (OkHttp::new);
+        OKHTTP (OkHttp::new),
+        
+        /**
+         * Apache HttpClient.
+         * 
+         * @see <a href="https://hc.apache.org/httpcomponents-client-5.1.x/index.html">website</a>
+         */
+        APACHE (Apache::new);
         
         // TODO:
-        //   Spring's WebClient
-        //   Apache HttpClient
-        //   More??
+        //   Jetty
+        //   Reactor-Netty
         
         private final IntFunction<HttpClientFacade> factory;
         
@@ -199,9 +218,12 @@ public abstract class HttpClientFacade
      *             if an I/O error occurs when sending or receiving
      * @throws InterruptedException
      *             if the operation is interrupted
+     * @throws TimeoutException
+     *             if an otherwise asynchronous operation times out
+     *             (timeout duration not specified)
      */
     public abstract Response<byte[]> getBytes(String path, HttpConstants.Version version)
-            throws IOException, InterruptedException;
+            throws IOException, InterruptedException, TimeoutException;
     
     /**
      * Execute a GET request expecting text in the response body.<p>
@@ -221,9 +243,12 @@ public abstract class HttpClientFacade
      *             if an I/O error occurs when sending or receiving
      * @throws InterruptedException
      *             if the operation is interrupted
+     * @throws TimeoutException
+     *             if an otherwise asynchronous operation times out
+     *             (timeout duration not specified)
      */
     public abstract Response<String> getText(String path, HttpConstants.Version version)
-            throws IOException, InterruptedException;
+            throws IOException, InterruptedException, TimeoutException;
     
     private static class JDK extends HttpClientFacade {
         JDK(int port) {
@@ -343,6 +368,52 @@ public abstract class HttpClientFacade
         }
     }
     
+    private static class Apache extends HttpClientFacade {
+        Apache(int port) {
+            super(port);
+        }
+        
+        @Override
+        public Response<byte[]> getBytes(String path, HttpConstants.Version version)
+                throws IOException, InterruptedException, TimeoutException
+        {
+            return get(path, version, SimpleHttpResponse::getBodyBytes);
+        }
+        
+        @Override
+        public Response<String> getText(String path, HttpConstants.Version version)
+                throws IOException, InterruptedException, TimeoutException
+        {
+            return get(path, version, SimpleHttpResponse::getBodyText);
+        }
+        
+        private <B> Response<B> get(
+                String path, HttpConstants.Version version,
+                Function<? super SimpleHttpResponse, ? extends B> converter)
+                throws IOException, InterruptedException, TimeoutException
+        {
+            var req =  SimpleRequestBuilder.get(withBase(path))
+                    .setVersion(toApacheVersion(version))
+                    .build();
+            
+            try (CloseableHttpAsyncClient c = HttpAsyncClients.createDefault()) {
+                // Must "start" first, otherwise
+                //     java.util.concurrent.CancellationException: Request execution cancelled
+                c.start();
+                try {
+                    var rsp = c.execute(req, null).get(3, SECONDS);
+                    return Response.of(rsp, converter.apply(rsp));
+                } catch (ExecutionException e) {
+                    throw new CompletionException(e);
+                }
+            }
+        }
+        
+        private static ProtocolVersion toApacheVersion(HttpConstants.Version v) {
+            return HttpVersion.get(v.major(), v.minor().orElse(0));
+        }
+    }
+    
     /**
      * A HTTP response facade.<p>
      * 
@@ -371,6 +442,22 @@ public abstract class HttpClientFacade
                     okhttp::code,
                     okhttp::message,
                     headers, () -> body);
+        }
+        
+        static <B> Response <B> of(SimpleHttpResponse apache, B body) {
+            Supplier<HttpHeaders> headers = () -> {
+                var exploded = stream(apache.getHeaders())
+                        .flatMap(h -> Stream.of(h.getName(), h.getValue()))
+                        .toArray(String[]::new);
+                
+                return Headers.of(exploded);
+            };
+            return new Response<>(
+                    () -> apache.getVersion().toString(),
+                    apache::getCode,
+                    apache::getReasonPhrase,
+                    headers,
+                    () -> body);
         }
         
         private final Supplier<String> version;

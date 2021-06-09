@@ -12,6 +12,7 @@ import java.io.IOException;
 import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.concurrent.TimeoutException;
 
 import static alpha.nomagichttp.HttpConstants.Version.HTTP_1_1;
 import static alpha.nomagichttp.handler.RequestHandler.GET;
@@ -61,8 +62,7 @@ class ExampleTest extends AbstractRealTest
     @ParameterizedTest
     @EnumSource // <-- in case JUnit didn't know an enum parameter is a..
     void HelloWorld_compatibility(HttpClientFacade.Implementation impl)
-            throws IOException, InterruptedException
-    {
+            throws IOException, InterruptedException, TimeoutException {
         server().add("/hello",
                 GET().respond(text("Hello World!")
                         .toBuilder().mustCloseAfterWrite(true).build()));
