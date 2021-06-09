@@ -12,6 +12,7 @@ import java.io.IOException;
 import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeoutException;
 
 import static alpha.nomagichttp.HttpConstants.Version.HTTP_1_1;
@@ -20,6 +21,7 @@ import static alpha.nomagichttp.handler.RequestHandler.POST;
 import static alpha.nomagichttp.message.Responses.processing;
 import static alpha.nomagichttp.message.Responses.text;
 import static alpha.nomagichttp.testutil.HttpClientFacade.Implementation.JDK;
+import static alpha.nomagichttp.testutil.HttpClientFacade.Implementation.JETTY;
 import static alpha.nomagichttp.testutil.HttpClientFacade.Response;
 import static alpha.nomagichttp.testutil.TestClient.CRLF;
 import static alpha.nomagichttp.util.Headers.of;
@@ -62,7 +64,8 @@ class ExampleTest extends AbstractRealTest
     @ParameterizedTest
     @EnumSource // <-- in case JUnit didn't know an enum parameter is a..
     void HelloWorld_compatibility(HttpClientFacade.Implementation impl)
-            throws IOException, InterruptedException, TimeoutException {
+            throws IOException, InterruptedException, TimeoutException, ExecutionException
+    {
         server().add("/hello",
                 GET().respond(text("Hello World!")
                         .toBuilder().mustCloseAfterWrite(true).build()));
@@ -78,7 +81,9 @@ class ExampleTest extends AbstractRealTest
             assertThat(rsp.reasonPhrase()).isEqualTo("OK");
         }
         assertThat(rsp.headers()).isEqualTo(of(
-            "Content-Type",   "text/plain; charset=utf-8",
+            "Content-Type",   "text/plain; charset=" +
+                // Lowercase version is what the server sends.
+                (impl == JETTY ? "UTF-8" : "utf-8"),
             "Content-Length", "12",
             "Connection",     "close"));
         assertThat(rsp.body()).isEqualTo(

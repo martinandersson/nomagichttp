@@ -10,12 +10,11 @@ import org.apache.hc.client5.http.async.methods.SimpleHttpResponse;
 import org.apache.hc.client5.http.async.methods.SimpleRequestBuilder;
 import org.apache.hc.client5.http.impl.async.CloseableHttpAsyncClient;
 import org.apache.hc.client5.http.impl.async.HttpAsyncClients;
-import org.apache.hc.core5.http.HttpVersion;
 import org.apache.hc.core5.http.ProtocolVersion;
+import org.eclipse.jetty.client.api.ContentResponse;
 
 import java.io.IOException;
 import java.net.URI;
-import java.net.http.HttpClient;
 import java.net.http.HttpHeaders;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
@@ -23,7 +22,6 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.CompletionException;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeoutException;
 import java.util.function.BiConsumer;
@@ -40,6 +38,7 @@ import static java.util.Arrays.stream;
 import static java.util.Locale.ROOT;
 import static java.util.Objects.requireNonNull;
 import static java.util.concurrent.TimeUnit.SECONDS;
+import static org.eclipse.jetty.http.HttpMethod.GET;
 
 /**
  * A HTTP client API that delegates to another {@link Implementation
@@ -74,14 +73,11 @@ import static java.util.concurrent.TimeUnit.SECONDS;
  * </pre>
  * 
  * Let's be honest here. The clients used are expected to not expose an API for
- * user-control of the connection, and to add insult to injury, they are also
- * expected to not documented at all what the life-cycle of the connection is.
- * Hence, the facade implementation can do no better either. It will, however,
- * attempt to create the client eagerly (in the constructor) and reuse the same
- * object across the facade's exchange-method calls. The facade is not
- * closeable, but if the the client is - which is a hint that the client object
- * itself represents the connection - then the client will be created and closed
- * for each exchange-executing method called.<p>
+ * user-control of the connection, and so, the facade implementation can do no
+ * better. The facade will, however, attempt to create the client eagerly (in
+ * the constructor) if possible, and reuse the same object across the facade's
+ * exchange-method calls. Otherwise, the client will be created and closed for
+ * each exchange-executing method called.<p>
  * 
  * So, no guarantees can be made about the connection. Likely, it will live in a
  * client-specific connection pool until timeout. Furthermore, attempts to hack
@@ -132,10 +128,16 @@ public abstract class HttpClientFacade
          * 
          * @see <a href="https://hc.apache.org/httpcomponents-client-5.1.x/index.html">website</a>
          */
-        APACHE (Apache::new);
+        APACHE (Apache::new),
+        
+        /**
+         * Jetty HttpClient.
+         * 
+         * @see <a href="https://www.eclipse.org/jetty/documentation/jetty-11/programming-guide/index.html#pg-client-http">website</a>
+         */
+        JETTY (Jetty::new);
         
         // TODO:
-        //   Jetty
         //   Reactor-Netty
         
         private final IntFunction<HttpClientFacade> factory;
@@ -143,7 +145,7 @@ public abstract class HttpClientFacade
         Implementation(IntFunction<HttpClientFacade> f) {
             factory = f;
         }
-    
+        
         /**
          * Create the client facade.
          * 
@@ -224,9 +226,11 @@ public abstract class HttpClientFacade
      * @throws TimeoutException
      *             if an otherwise asynchronous operation times out
      *             (timeout duration not specified)
+     * @throws ExecutionException
+     *             if an underlying asynchronous operation fails
      */
     public abstract Response<byte[]> getBytes(String path, HttpConstants.Version version)
-            throws IOException, InterruptedException, TimeoutException;
+            throws IOException, InterruptedException, TimeoutException, ExecutionException;
     
     /**
      * Execute a GET request expecting text in the response body.<p>
@@ -249,16 +253,18 @@ public abstract class HttpClientFacade
      * @throws TimeoutException
      *             if an otherwise asynchronous operation times out
      *             (timeout duration not specified)
+     * @throws ExecutionException
+     *             if an underlying asynchronous operation fails
      */
     public abstract Response<String> getText(String path, HttpConstants.Version version)
-            throws IOException, InterruptedException, TimeoutException;
+            throws IOException, InterruptedException, TimeoutException, ExecutionException;
     
     private static class JDK extends HttpClientFacade {
-        private final HttpClient c;
+        private final java.net.http.HttpClient c;
         
         JDK(int port) {
             super(port);
-            c = HttpClient.newHttpClient();
+            c = java.net.http.HttpClient.newHttpClient();
         }
         
         @Override
@@ -378,14 +384,14 @@ public abstract class HttpClientFacade
         
         @Override
         public Response<byte[]> getBytes(String path, HttpConstants.Version ver)
-                throws IOException, InterruptedException, TimeoutException
+                throws IOException, InterruptedException, TimeoutException, ExecutionException
         {
             return get(path, ver, SimpleHttpResponse::getBodyBytes);
         }
         
         @Override
         public Response<String> getText(String path, HttpConstants.Version ver)
-                throws IOException, InterruptedException, TimeoutException
+                throws IOException, InterruptedException, TimeoutException, ExecutionException
         {
             return get(path, ver, SimpleHttpResponse::getBodyText);
         }
@@ -393,7 +399,7 @@ public abstract class HttpClientFacade
         private <B> Response<B> get(
                 String path, HttpConstants.Version ver,
                 Function<? super SimpleHttpResponse, ? extends B> bodyConverter)
-                throws IOException, InterruptedException, TimeoutException
+                throws IOException, InterruptedException, TimeoutException, ExecutionException
         {
             var req =  SimpleRequestBuilder.get(withBase(path))
                     .setVersion(toApacheVersion(ver))
@@ -403,17 +409,72 @@ public abstract class HttpClientFacade
                 // Must "start" first, otherwise
                 //     java.util.concurrent.CancellationException: Request execution cancelled
                 c.start();
-                try {
-                    var rsp = c.execute(req, null).get(3, SECONDS);
-                    return Response.fromApache(rsp, bodyConverter.apply(rsp));
-                } catch (ExecutionException e) {
-                    throw new CompletionException(e);
-                }
+                var rsp = c.execute(req, null).get(3, SECONDS);
+                return Response.fromApache(rsp, bodyConverter.apply(rsp));
             }
         }
         
         private static ProtocolVersion toApacheVersion(HttpConstants.Version ver) {
-            return HttpVersion.get(ver.major(), ver.minor().orElse(0));
+            return org.apache.hc.core5.http.HttpVersion.get(ver.major(), ver.minor().orElse(0));
+        }
+    }
+    
+    private static class Jetty extends HttpClientFacade {
+        Jetty(int port) {
+            super(port);
+        }
+        
+        @Override
+        public Response<byte[]> getBytes(String path, HttpConstants.Version ver)
+                throws InterruptedException, TimeoutException, ExecutionException
+        {
+            return get(path, ver, ContentResponse::getContent);
+        }
+        
+        @Override
+        public Response<String> getText(String path, HttpConstants.Version ver)
+                throws InterruptedException, TimeoutException, ExecutionException
+        {
+            return get(path, ver, ContentResponse::getContentAsString);
+        }
+        
+        private <B> Response<B> get(
+                String path, HttpConstants.Version ver,
+                Function<? super ContentResponse, ? extends B> bodyConverter)
+                throws InterruptedException, TimeoutException, ExecutionException
+        {
+            // And the winner of the ugliest API goes to ....
+            
+            org.eclipse.jetty.client.HttpClient c
+                    = new org.eclipse.jetty.client.HttpClient();
+            
+            try {
+                c.start();
+            } catch (Exception e) { // <-- oh, wow...
+                throw new RuntimeException(e);
+            }
+            
+            ContentResponse rsp;
+            try {
+                rsp = c.newRequest(withBase(path))
+                       .method(GET)
+                       .version(toJettyVersion(ver))
+                       .send();
+            } finally {
+                try {
+                    c.stop();
+                } catch (Exception e) {
+                    throw new RuntimeException(e);
+                }
+            }
+            
+            return Response.fromJetty(rsp, bodyConverter);
+        }
+        
+        private static org.eclipse.jetty.http.HttpVersion
+                toJettyVersion(HttpConstants.Version ver)
+        {
+            return org.eclipse.jetty.http.HttpVersion.fromString(ver.toString());
         }
     }
     
@@ -438,7 +499,7 @@ public abstract class HttpClientFacade
                     jdk::body);
         }
         
-        static <B> Response <B> fromOkHttp(okhttp3.Response okhttp, B body) {
+        static <B> Response<B> fromOkHttp(okhttp3.Response okhttp, B body) {
             Supplier<HttpHeaders> headers = () -> Headers.of(okhttp.headers().toMultimap());
             return new Response<>(
                     () -> okhttp.protocol().toString().toUpperCase(ROOT),
@@ -447,12 +508,11 @@ public abstract class HttpClientFacade
                     headers, () -> body);
         }
         
-        static <B> Response <B> fromApache(SimpleHttpResponse apache, B body) {
+        static <B> Response<B> fromApache(SimpleHttpResponse apache, B body) {
             Supplier<HttpHeaders> headers = () -> {
                 var exploded = stream(apache.getHeaders())
                         .flatMap(h -> Stream.of(h.getName(), h.getValue()))
                         .toArray(String[]::new);
-                
                 return Headers.of(exploded);
             };
             return new Response<>(
@@ -461,6 +521,25 @@ public abstract class HttpClientFacade
                     apache::getReasonPhrase,
                     headers,
                     () -> body);
+        }
+        
+        static <B> Response<B> fromJetty(
+                org.eclipse.jetty.client.api.ContentResponse jetty,
+                Function<? super ContentResponse, ? extends B> bodyConverter)
+        {
+            Supplier<HttpHeaders> headers = () -> {
+                var exploded = jetty.getHeaders().stream()
+                        .flatMap(h -> Stream.of(h.getName(), h.getValue()))
+                        .toArray(String[]::new);
+                
+                return Headers.of(exploded);
+            };
+            return new Response<>(
+                    () -> jetty.getVersion().toString(),
+                    jetty::getStatus,
+                    jetty::getReason,
+                    headers,
+                    () -> bodyConverter.apply(jetty));
         }
         
         private final Supplier<String> version;
