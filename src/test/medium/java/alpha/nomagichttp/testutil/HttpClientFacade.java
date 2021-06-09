@@ -288,8 +288,9 @@ public abstract class HttpClientFacade
                 throws IOException, InterruptedException
         {
             var b = HttpRequest.newBuilder()
-                    .version(toJDKVersion(ver))
-                    .GET().uri(withBase(path));
+                    .GET()
+                    .uri(withBase(path))
+                    .version(toJDKVersion(ver));
             copyHeaders(b::header);
             
             var rsp = c.send(b.build(), bodyConverter);
