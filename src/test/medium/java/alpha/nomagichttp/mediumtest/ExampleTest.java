@@ -36,7 +36,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  * RetryRequestOnError} whose equivalent test is {@link
  * ErrorTest#retryFailedRequest(boolean)}.<p>
  * 
- * The main purpose is to have a guarantee that new code changes doesn't break
+ * The main purpose is to have a guarantee that new code changes won't break
  * code examples.
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
