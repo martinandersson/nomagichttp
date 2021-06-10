@@ -38,8 +38,9 @@ import java.util.function.Supplier;
 import java.util.stream.Stream;
 
 import static java.net.http.HttpClient.Version;
-import static java.net.http.HttpResponse.BodyHandlers.ofByteArray;
-import static java.net.http.HttpResponse.BodyHandlers.ofString;
+import static java.net.http.HttpRequest.BodyPublisher;
+import static java.net.http.HttpRequest.BodyPublishers;
+import static java.net.http.HttpResponse.BodyHandlers;
 import static java.util.Arrays.stream;
 import static java.util.Locale.ROOT;
 import static java.util.Objects.deepEquals;
@@ -279,6 +280,29 @@ public abstract class HttpClientFacade
     public abstract ResponseFacade<String> getText(String path, HttpConstants.Version version)
             throws IOException, InterruptedException, TimeoutException, ExecutionException;
     
+    /**
+     * Execute a POST request expecting text in the response body.<p>
+     * 
+     * Which charset to use for decoding is for the client implementation to
+     * decide.
+     * 
+     * @param path of server resource
+     * @param version of HTTP
+     * @param body of request
+     * @return the response
+     * 
+     * @throws IllegalArgumentException
+     *             if no equivalent implementation-specific version exists, or
+     *             if the version is otherwise not supported (too old or too new) 
+     * @throws IOException
+     *             if an I/O error occurs when sending or receiving
+     * @throws InterruptedException
+     *             if the operation is interrupted
+     */
+    public abstract ResponseFacade<String> postAndReceiveText(
+            String path, HttpConstants.Version version, String body)
+            throws IOException, InterruptedException;
+    
     private static class JDK extends HttpClientFacade {
         private final java.net.http.HttpClient c;
         
@@ -291,27 +315,50 @@ public abstract class HttpClientFacade
         public ResponseFacade<byte[]> getBytes(String path, HttpConstants.Version ver)
                 throws IOException, InterruptedException
         {
-            return get(path, ver, ofByteArray());
+            return get(path, ver, BodyHandlers.ofByteArray());
         }
         
         @Override
         public ResponseFacade<String> getText(String path, HttpConstants.Version ver)
                 throws IOException, InterruptedException
         {
-            return get(path, ver, ofString());
+            return get(path, ver, BodyHandlers.ofString());
         }
         
         private <B> ResponseFacade<B> get(
-                String path, HttpConstants.Version ver, HttpResponse.BodyHandler<B> bodyConverter)
+                String path, HttpConstants.Version ver, HttpResponse.BodyHandler<B> rspBodyConverter)
                 throws IOException, InterruptedException
         {
+            var req = newRequest("GET", path, ver, BodyPublishers.noBody());
+            return execute(req, rspBodyConverter);
+        }
+        
+        @Override
+        public ResponseFacade<String> postAndReceiveText(
+                String path, HttpConstants.Version ver, String body)
+                throws IOException, InterruptedException
+        {
+            var req = newRequest("POST", path, ver, BodyPublishers.ofString(body));
+            return execute(req, BodyHandlers.ofString());
+        }
+        
+        private HttpRequest.Builder newRequest(
+                String method, String path, HttpConstants.Version ver, BodyPublisher reqBody)
+        {
             var b = HttpRequest.newBuilder()
-                    .GET()
+                    .method(method, reqBody)
                     .uri(withBase(path))
                     .version(toJDKVersion(ver));
             copyHeaders(b::header);
-            
-            var rsp = c.send(b.build(), bodyConverter);
+            return b;
+        }
+        
+        private <B> ResponseFacade<B> execute(
+                HttpRequest.Builder builder,
+                HttpResponse.BodyHandler<B> rspBodyConverter)
+                throws IOException, InterruptedException
+        {
+            var rsp = c.send(builder.build(), rspBodyConverter);
             return ResponseFacade.fromJDK(rsp);
         }
         
@@ -378,6 +425,13 @@ public abstract class HttpClientFacade
             return ResponseFacade.fromOkHttp(rsp, bdy);
         }
         
+        @Override
+        public ResponseFacade<String> postAndReceiveText(
+                String path, HttpConstants.Version version, String body)
+        {
+            throw new AbstractMethodError("Implement me");
+        }
+        
         private static Protocol toSquareVersion(HttpConstants.Version ver) {
             final Protocol square;
             switch (ver) {
@@ -439,9 +493,17 @@ public abstract class HttpClientFacade
             }
         }
         
+        @Override
+        public ResponseFacade<String> postAndReceiveText(
+                String path, HttpConstants.Version version, String body)
+        {
+            throw new AbstractMethodError("Implement me");
+        }
+        
         private static ProtocolVersion toApacheVersion(HttpConstants.Version ver) {
             return org.apache.hc.core5.http.HttpVersion.get(ver.major(), ver.minor().orElse(0));
         }
+        
     }
     
     private static class Jetty extends HttpClientFacade {
@@ -497,6 +559,13 @@ public abstract class HttpClientFacade
             return ResponseFacade.fromJetty(rsp, bodyConverter);
         }
         
+        @Override
+        public ResponseFacade<String> postAndReceiveText(
+                String path, HttpConstants.Version version, String body)
+        {
+            throw new AbstractMethodError("Implement me");
+        }
+        
         private static org.eclipse.jetty.http.HttpVersion
                 toJettyVersion(HttpConstants.Version ver)
         {
@@ -537,6 +606,13 @@ public abstract class HttpClientFacade
                           bodyConverter.apply(body).map(s ->
                                ResponseFacade.fromReactor(head, s)))
                       .block();
+        }
+        
+        @Override
+        public ResponseFacade<String> postAndReceiveText(
+                String path, HttpConstants.Version version, String body)
+        {
+            throw new AbstractMethodError("Implement me");
         }
         
         private static HttpProtocol toReactorVersion(HttpConstants.Version ver) {
