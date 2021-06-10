@@ -98,6 +98,11 @@ import static org.eclipse.jetty.http.HttpMethod.GET;
  * server and gracefully awaits child channel closures. To fix this problem, the
  * test ought to close the child from the server-installed request handler.<p>
  * 
+ * A specified HTTP version may be rejected with an {@code
+ * IllegalArgumentException}, but only on a best-effort basis. Which versions
+ * specifically a client implementation supports is not always that clear
+ * hahaha. Regardless, the argument will be passed forward to the client.<p>
+ * 
  * This class is not thread-safe and does not implement {@code hashCode} or
  * {@code equals}.
  * 
@@ -250,7 +255,7 @@ public abstract class HttpClientFacade
     /**
      * Execute a GET request expecting text in the response body.<p>
      * 
-     * What charset to use for decoding is for the client implementation to
+     * Which charset to use for decoding is for the client implementation to
      * decide. In practice, this will likely be extracted from the Content-Type
      * header.
      * 
