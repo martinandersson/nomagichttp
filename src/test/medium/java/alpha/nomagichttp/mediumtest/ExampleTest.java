@@ -22,7 +22,7 @@ import static alpha.nomagichttp.message.Responses.processing;
 import static alpha.nomagichttp.message.Responses.text;
 import static alpha.nomagichttp.testutil.HttpClientFacade.Implementation.JDK;
 import static alpha.nomagichttp.testutil.HttpClientFacade.Implementation.JETTY;
-import static alpha.nomagichttp.testutil.HttpClientFacade.Response;
+import static alpha.nomagichttp.testutil.HttpClientFacade.ResponseFacade;
 import static alpha.nomagichttp.testutil.TestClient.CRLF;
 import static alpha.nomagichttp.util.Headers.of;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -70,7 +70,7 @@ class ExampleTest extends AbstractRealTest
                 GET().respond(text("Hello World!")
                         .toBuilder().mustCloseAfterWrite(true).build()));
         
-        Response<String> rsp = impl.create(serverPort())
+        ResponseFacade<String> rsp = impl.create(serverPort())
                 .addHeader("Accept", "text/plain; charset=utf-8")
                 .getText("/hello", HTTP_1_1);
         

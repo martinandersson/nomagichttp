@@ -70,7 +70,7 @@ import static org.eclipse.jetty.http.HttpMethod.GET;
  *       // Explosion of types and methods. Only God knows what happens. But okay, good having.
  *       int serverPort = ...
  *       HttpClientFacade client = impl.create(serverPort);
- *       Response{@literal <}String{@literal >} response = client.getText("/", HTTP_1_1);
+ *       ResponseFacade{@literal <}String{@literal >} response = client.getText("/", HTTP_1_1);
  *       assertThat(response.statusCode())...
  *   }
  * </pre>
@@ -240,7 +240,7 @@ public abstract class HttpClientFacade
      * @throws ExecutionException
      *             if an underlying asynchronous operation fails
      */
-    public abstract Response<byte[]> getBytes(String path, HttpConstants.Version version)
+    public abstract ResponseFacade<byte[]> getBytes(String path, HttpConstants.Version version)
             throws IOException, InterruptedException, TimeoutException, ExecutionException;
     
     /**
@@ -267,7 +267,7 @@ public abstract class HttpClientFacade
      * @throws ExecutionException
      *             if an underlying asynchronous operation fails
      */
-    public abstract Response<String> getText(String path, HttpConstants.Version version)
+    public abstract ResponseFacade<String> getText(String path, HttpConstants.Version version)
             throws IOException, InterruptedException, TimeoutException, ExecutionException;
     
     private static class JDK extends HttpClientFacade {
@@ -279,20 +279,20 @@ public abstract class HttpClientFacade
         }
         
         @Override
-        public Response<byte[]> getBytes(String path, HttpConstants.Version ver)
+        public ResponseFacade<byte[]> getBytes(String path, HttpConstants.Version ver)
                 throws IOException, InterruptedException
         {
             return get(path, ver, ofByteArray());
         }
         
         @Override
-        public Response<String> getText(String path, HttpConstants.Version ver)
+        public ResponseFacade<String> getText(String path, HttpConstants.Version ver)
                 throws IOException, InterruptedException
         {
             return get(path, ver, ofString());
         }
         
-        private <B> Response<B> get(
+        private <B> ResponseFacade<B> get(
                 String path, HttpConstants.Version ver, HttpResponse.BodyHandler<B> bodyConverter)
                 throws IOException, InterruptedException
         {
@@ -303,7 +303,7 @@ public abstract class HttpClientFacade
             copyHeaders(b::header);
             
             var rsp = c.send(b.build(), bodyConverter);
-            return Response.fromJDK(rsp);
+            return ResponseFacade.fromJDK(rsp);
         }
         
         private static Version toJDKVersion(HttpConstants.Version ver) {
@@ -332,20 +332,20 @@ public abstract class HttpClientFacade
         }
         
         @Override
-        public Response<byte[]> getBytes(String path, HttpConstants.Version ver)
+        public ResponseFacade<byte[]> getBytes(String path, HttpConstants.Version ver)
                 throws IOException
         {
             return get(path, ver, ResponseBody::bytes);
         }
         
         @Override
-        public Response<String> getText(String path, HttpConstants.Version ver)
+        public ResponseFacade<String> getText(String path, HttpConstants.Version ver)
                 throws IOException
         {
             return get(path, ver, ResponseBody::string);
         }
         
-        private <B> Response<B> get(
+        private <B> ResponseFacade<B> get(
                 String path, HttpConstants.Version ver,
                 IOFunction<? super ResponseBody, ? extends B> bodyConverter)
                 throws IOException
@@ -366,7 +366,7 @@ public abstract class HttpClientFacade
             try (rsp) {
                 bdy = bodyConverter.apply(rsp.body());
             }
-            return Response.fromOkHttp(rsp, bdy);
+            return ResponseFacade.fromOkHttp(rsp, bdy);
         }
         
         private static Protocol toSquareVersion(HttpConstants.Version ver) {
@@ -397,20 +397,20 @@ public abstract class HttpClientFacade
         }
         
         @Override
-        public Response<byte[]> getBytes(String path, HttpConstants.Version ver)
+        public ResponseFacade<byte[]> getBytes(String path, HttpConstants.Version ver)
                 throws IOException, InterruptedException, TimeoutException, ExecutionException
         {
             return get(path, ver, SimpleHttpResponse::getBodyBytes);
         }
         
         @Override
-        public Response<String> getText(String path, HttpConstants.Version ver)
+        public ResponseFacade<String> getText(String path, HttpConstants.Version ver)
                 throws IOException, InterruptedException, TimeoutException, ExecutionException
         {
             return get(path, ver, SimpleHttpResponse::getBodyText);
         }
         
-        private <B> Response<B> get(
+        private <B> ResponseFacade<B> get(
                 String path, HttpConstants.Version ver,
                 Function<? super SimpleHttpResponse, ? extends B> bodyConverter)
                 throws IOException, InterruptedException, TimeoutException, ExecutionException
@@ -426,7 +426,7 @@ public abstract class HttpClientFacade
                 //     java.util.concurrent.CancellationException: Request execution cancelled
                 c.start();
                 var rsp = c.execute(req.build(), null).get(3, SECONDS);
-                return Response.fromApache(rsp, bodyConverter.apply(rsp));
+                return ResponseFacade.fromApache(rsp, bodyConverter.apply(rsp));
             }
         }
         
@@ -441,20 +441,20 @@ public abstract class HttpClientFacade
         }
         
         @Override
-        public Response<byte[]> getBytes(String path, HttpConstants.Version ver)
+        public ResponseFacade<byte[]> getBytes(String path, HttpConstants.Version ver)
                 throws InterruptedException, TimeoutException, ExecutionException
         {
             return get(path, ver, ContentResponse::getContent);
         }
         
         @Override
-        public Response<String> getText(String path, HttpConstants.Version ver)
+        public ResponseFacade<String> getText(String path, HttpConstants.Version ver)
                 throws InterruptedException, TimeoutException, ExecutionException
         {
             return get(path, ver, ContentResponse::getContentAsString);
         }
         
-        private <B> Response<B> get(
+        private <B> ResponseFacade<B> get(
                 String path, HttpConstants.Version ver,
                 Function<? super ContentResponse, ? extends B> bodyConverter)
                 throws InterruptedException, TimeoutException, ExecutionException
@@ -485,7 +485,7 @@ public abstract class HttpClientFacade
                 }
             }
             
-            return Response.fromJetty(rsp, bodyConverter);
+            return ResponseFacade.fromJetty(rsp, bodyConverter);
         }
         
         private static org.eclipse.jetty.http.HttpVersion
@@ -501,16 +501,16 @@ public abstract class HttpClientFacade
         }
         
         @Override
-        public Response<byte[]> getBytes(String path, HttpConstants.Version ver) {
+        public ResponseFacade<byte[]> getBytes(String path, HttpConstants.Version ver) {
             return get(path, ver, ByteBufMono::asByteArray);
         }
         
         @Override
-        public Response<String> getText(String path, HttpConstants.Version ver) {
+        public ResponseFacade<String> getText(String path, HttpConstants.Version ver) {
             return get(path, ver, ByteBufMono::asString);
         }
         
-        private <B> Response<B> get(
+        private <B> ResponseFacade<B> get(
                 String path, HttpConstants.Version ver,
                 Function<? super ByteBufMono, ? extends Mono<B>> bodyConverter)
         {
@@ -526,7 +526,7 @@ public abstract class HttpClientFacade
                       .uri(withBase(path))
                       .responseSingle((head, body) ->
                           bodyConverter.apply(body).map(s ->
-                               Response.fromReactor(head, s)))
+                               ResponseFacade.fromReactor(head, s)))
                       .block();
         }
         
@@ -550,12 +550,12 @@ public abstract class HttpClientFacade
      * 
      * @param <B> body type
      */
-    public static final class Response<B> {
+    public static final class ResponseFacade<B> {
         
-        static <B> Response<B> fromJDK(java.net.http.HttpResponse<? extends B> jdk) {
+        static <B> ResponseFacade<B> fromJDK(java.net.http.HttpResponse<? extends B> jdk) {
             Supplier<String> version = () -> HttpConstants.Version.valueOf(jdk.version().name()).toString(),
                              phrase  = () -> {throw new UnsupportedOperationException();};
-            return new Response<>(
+            return new ResponseFacade<>(
                     version,
                     jdk::statusCode,
                     phrase,
@@ -563,23 +563,23 @@ public abstract class HttpClientFacade
                     jdk::body);
         }
         
-        static <B> Response<B> fromOkHttp(okhttp3.Response okhttp, B body) {
+        static <B> ResponseFacade<B> fromOkHttp(okhttp3.Response okhttp, B body) {
             Supplier<HttpHeaders> headers = () -> Headers.of(okhttp.headers().toMultimap());
-            return new Response<>(
+            return new ResponseFacade<>(
                     () -> okhttp.protocol().toString().toUpperCase(ROOT),
                     okhttp::code,
                     okhttp::message,
                     headers, () -> body);
         }
         
-        static <B> Response<B> fromApache(SimpleHttpResponse apache, B body) {
+        static <B> ResponseFacade<B> fromApache(SimpleHttpResponse apache, B body) {
             Supplier<HttpHeaders> headers = () -> {
                 var exploded = stream(apache.getHeaders())
                         .flatMap(h -> Stream.of(h.getName(), h.getValue()))
                         .toArray(String[]::new);
                 return Headers.of(exploded);
             };
-            return new Response<>(
+            return new ResponseFacade<>(
                     () -> apache.getVersion().toString(),
                     apache::getCode,
                     apache::getReasonPhrase,
@@ -587,7 +587,7 @@ public abstract class HttpClientFacade
                     () -> body);
         }
         
-        static <B> Response<B> fromJetty(
+        static <B> ResponseFacade<B> fromJetty(
                 org.eclipse.jetty.client.api.ContentResponse jetty,
                 Function<? super ContentResponse, ? extends B> bodyConverter)
         {
@@ -598,7 +598,7 @@ public abstract class HttpClientFacade
                 
                 return Headers.of(exploded);
             };
-            return new Response<>(
+            return new ResponseFacade<>(
                     () -> jetty.getVersion().toString(),
                     jetty::getStatus,
                     jetty::getReason,
@@ -606,7 +606,7 @@ public abstract class HttpClientFacade
                     () -> bodyConverter.apply(jetty));
         }
         
-        static <B> Response<B> fromReactor(HttpClientResponse reactor, B body) {
+        static <B> ResponseFacade<B> fromReactor(HttpClientResponse reactor, B body) {
             Supplier<HttpHeaders> headers = () -> {
                 var exploded = reactor.responseHeaders().entries().stream()
                         .flatMap(e -> Stream.of(e.getKey(), e.getValue()))
@@ -614,7 +614,7 @@ public abstract class HttpClientFacade
                 
                 return Headers.of(exploded);
             };
-            return new Response<>(
+            return new ResponseFacade<>(
                     () -> reactor.version().toString(),
                     () -> reactor.status().code(),
                     () -> reactor.status().reasonPhrase(),
@@ -628,7 +628,7 @@ public abstract class HttpClientFacade
         private final Supplier<HttpHeaders> headers;
         private final Supplier<? extends B> body;
         
-        private Response(
+        private ResponseFacade(
                 Supplier<String> version,
                 IntSupplier statusCode,
                 Supplier<String> reasonPhrase,
