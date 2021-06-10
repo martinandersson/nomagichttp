@@ -81,8 +81,8 @@ import static org.eclipse.jetty.http.HttpMethod.GET;
  * objects are pretty much unknown. Most of them have - unfortunately quite
  * expectedly - zero documentation regarding the client's life-cycle and how it
  * should be cached and used. Never mind concerns such as thread-safety and
- * identity lol. Hence, this class will mostly keep the client's life as short
- * as possible and so should definitely not be used in production.<p>
+ * identity lol. Hence, this class will mostly not cache the client object,
+ * using one new client for each request executed.<p>
  * 
  * Likely, the underlying client connection will live in a client-specific
  * connection pool until timeout. Attempts to hack the connection may fail. For
