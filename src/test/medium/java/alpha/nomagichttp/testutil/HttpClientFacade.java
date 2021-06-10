@@ -143,7 +143,7 @@ public abstract class HttpClientFacade
         JETTY (Jetty::new),
         
         /**
-         * Reactor Netty HttpClient.
+         * Reactor-Netty HttpClient.
          * 
          * @see <a href="https://projectreactor.io/docs/netty/release/reference/index.html#http-client">website</a>
          */
@@ -181,7 +181,9 @@ public abstract class HttpClientFacade
     }
     
     /**
-     * Add a header.
+     * Add a global header.<p>
+     * 
+     * Will be sent with each request.
      * 
      * @param name of header
      * @param value of header
