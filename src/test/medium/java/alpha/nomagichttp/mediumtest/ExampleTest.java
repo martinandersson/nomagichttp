@@ -44,8 +44,7 @@ class ExampleTest extends AbstractRealTest
 {
     @Test
     void HelloWorld() throws IOException {
-        server().add("/hello",
-            GET().respond(text("Hello World!")));
+        addHelloWorldRoute(false);
         
         String req =
             "GET /hello HTTP/1.1"               + CRLF +
@@ -66,9 +65,7 @@ class ExampleTest extends AbstractRealTest
     void HelloWorld_compatibility(HttpClientFacade.Implementation impl)
             throws IOException, InterruptedException, TimeoutException, ExecutionException
     {
-        server().add("/hello",
-                GET().respond(text("Hello World!")
-                        .toBuilder().mustCloseAfterWrite(true).build()));
+        addHelloWorldRoute(true);
         
         ResponseFacade<String> rsp = impl.create(serverPort())
                 .addHeader("Accept", "text/plain; charset=utf-8")
@@ -88,6 +85,14 @@ class ExampleTest extends AbstractRealTest
             "Connection",     "close"));
         assertThat(rsp.body()).isEqualTo(
             "Hello World!");
+    }
+    
+    private void addHelloWorldRoute(boolean closeChildAfterResponse) throws IOException {
+        var rsp = text("Hello World!");
+        if (closeChildAfterResponse) {
+            rsp = rsp.toBuilder().mustCloseAfterWrite(true).build();
+        }
+        server().add("/hello", GET().respond(rsp));
     }
     
     @Test
