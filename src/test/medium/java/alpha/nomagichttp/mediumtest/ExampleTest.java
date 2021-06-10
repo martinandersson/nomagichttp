@@ -2,6 +2,7 @@ package alpha.nomagichttp.mediumtest;
 
 import alpha.nomagichttp.examples.RetryRequestOnError;
 import alpha.nomagichttp.handler.RequestHandler;
+import alpha.nomagichttp.message.Response;
 import alpha.nomagichttp.message.Responses;
 import alpha.nomagichttp.testutil.HttpClientFacade;
 import org.junit.jupiter.api.Test;
@@ -12,8 +13,10 @@ import java.io.IOException;
 import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeoutException;
+import java.util.function.Function;
 
 import static alpha.nomagichttp.HttpConstants.Version.HTTP_1_1;
 import static alpha.nomagichttp.handler.RequestHandler.GET;
@@ -97,17 +100,7 @@ class ExampleTest extends AbstractRealTest
     
     @Test
     void GreetParameter() throws IOException {
-        server().add("/hello/:name", GET().apply(req -> {
-            String name = req.parameters().path("name");
-            String text = "Hello " + name + "!";
-            return text(text).completedStage();
-        }));
-        
-        server().add("/hello", GET().apply(req -> {
-            String name = req.parameters().queryFirst("name").get();
-            String text = "Hello " + name + "!";
-            return text(text).completedStage();
-        }));
+        addGreetParameterRoutes(false);
         
         String req1 =
             "GET /hello/John HTTP/1.1"          + CRLF +
@@ -127,6 +120,58 @@ class ExampleTest extends AbstractRealTest
         
         String res2 = client().writeReadTextUntil(req2, "John!");
         assertThat(res2).isEqualTo(res1);
+    }
+    
+    @ParameterizedTest
+    @EnumSource
+    void GreetParameter_compatibility(HttpClientFacade.Implementation impl)
+            throws IOException, ExecutionException, InterruptedException, TimeoutException
+    {
+        addGreetParameterRoutes(true);
+        
+        HttpClientFacade req = impl.create(serverPort())
+                .addHeader("Accept", "text/plain; charset=utf-8");
+        
+        var rsp1 = req.getText("/hello/John", HTTP_1_1);
+        
+        assertThat(rsp1.version()).isEqualTo("HTTP/1.1");
+        assertThat(rsp1.statusCode()).isEqualTo(200);
+        if (impl != JDK) {
+            // Assume all other supports retrieving the reason-phrase
+            assertThat(rsp1.reasonPhrase()).isEqualTo("OK");
+        }
+        assertThat(rsp1.headers()).isEqualTo(of(
+            "Content-Type",   "text/plain; charset=" +
+                (impl == JETTY ? "UTF-8" : "utf-8"),
+            "Content-Length", "11",
+            "Connection",     "close"));
+        assertThat(rsp1.body()).isEqualTo(
+            "Hello John!");
+        
+        // TODO: a path/query parameter API in the facade that uses the
+        //       implementation's API for building the encoded URI
+        var rsp2 = req.getText("/hello?name=John", HTTP_1_1);
+        assertThat(rsp1).isEqualTo(rsp2);
+    }
+    
+    private void addGreetParameterRoutes(boolean closeChildAfterResponse) throws IOException {
+        Function<String, CompletionStage<Response>> factory = name -> {
+            var rsp = text("Hello " + name + "!");
+            if (closeChildAfterResponse) {
+                rsp = rsp.toBuilder().mustCloseAfterWrite(true).build();
+            }
+            return rsp.completedStage();
+        };
+        
+        server().add("/hello/:name", GET().apply(req -> {
+            String n = req.parameters().path("name");
+            return factory.apply(n);
+        }));
+        
+        server().add("/hello", GET().apply(req -> {
+            String n = req.parameters().queryFirst("name").get();
+            return factory.apply(n);
+        }));
     }
     
     @Test
