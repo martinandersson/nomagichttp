@@ -25,12 +25,15 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeoutException;
 import java.util.function.BiConsumer;
+import java.util.function.BiFunction;
 import java.util.function.Function;
 import java.util.function.IntFunction;
 import java.util.function.IntSupplier;
+import java.util.function.Predicate;
 import java.util.function.Supplier;
 import java.util.stream.Stream;
 
@@ -39,6 +42,7 @@ import static java.net.http.HttpResponse.BodyHandlers.ofByteArray;
 import static java.net.http.HttpResponse.BodyHandlers.ofString;
 import static java.util.Arrays.stream;
 import static java.util.Locale.ROOT;
+import static java.util.Objects.deepEquals;
 import static java.util.Objects.requireNonNull;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.eclipse.jetty.http.HttpMethod.GET;
@@ -546,7 +550,14 @@ public abstract class HttpClientFacade
      * A HTTP response API.<p>
      * 
      * Delegates all operations to the underlying client's response
-     * implementation.
+     * implementation (if possible, lazily) without caching.<p>
+     * 
+     * Two instances are equal only if each operation-pair return equal values
+     * (as determined by using {@link Objects#deepEquals(Object, Object)}), or
+     * if they both throw two equal {@code UnsupportedOperationException}s. Any
+     * other exception will be rethrown from the {@code equals} method.<p>
+     * 
+     * {@code hashCode} is not implemented.
      * 
      * @param <B> body type
      */
@@ -688,6 +699,59 @@ public abstract class HttpClientFacade
          */
         public B body() {
             return body.get();
+        }
+        
+        @Override
+        public int hashCode() {
+            // Pseudo-implementation to stop compilation warning, which stops the build
+            // (equals implemented but not hashCode)
+            return super.hashCode();
+        }
+        
+        private static final List<Function<ResponseFacade<?>, ?>> GETTERS = List.of(
+                // Add new getters for inclusion into equals() here please
+                ResponseFacade::version,
+                ResponseFacade::statusCode,
+                ResponseFacade::reasonPhrase,
+                ResponseFacade::headers,
+                ResponseFacade::body );
+        
+        @Override
+        public boolean equals(Object other) {
+            if (other == null || other.getClass() != getClass()) {
+                return false;
+            }
+            
+            BiFunction<ResponseFacade<?>, Function<ResponseFacade<?>, ?>, ?>
+                    getVal = (container, operation) -> {
+                            try {
+                                return operation.apply(container);
+                            } catch (UnsupportedOperationException e) {
+                                // This is also considered a value lol
+                                return e;
+                            }
+                    };
+            
+            var that = (ResponseFacade<?>) other;
+            Predicate<Function<ResponseFacade<?>, ?>> check = method ->
+                    almostDeepEquals(getVal.apply(this, method), getVal.apply(that, method));
+            
+            for (var m : GETTERS) {
+                if (!check.test(m)) {
+                    return false;
+                }
+            }
+            return true;
+        }
+        
+        private boolean almostDeepEquals(Object v1, Object v2) {
+            if ((v1 != null && v1.getClass() == UnsupportedOperationException.class) &&
+                (v2 != null && v2.getClass() == UnsupportedOperationException.class)) {
+                // Same class, compare message
+                v1 = ((Throwable) v1).getMessage();
+                v2 = ((Throwable) v2).getMessage();
+            }
+            return deepEquals(v1, v2);
         }
     }
 }
