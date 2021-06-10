@@ -90,11 +90,8 @@ class ExampleTest extends AbstractRealTest
             "Hello World!");
     }
     
-    private void addHelloWorldRoute(boolean closeChildAfterResponse) throws IOException {
-        var rsp = text("Hello World!");
-        if (closeChildAfterResponse) {
-            rsp = rsp.toBuilder().mustCloseAfterWrite(true).build();
-        }
+    private void addHelloWorldRoute(boolean closeChild) throws IOException {
+        var rsp = tryScheduleClose(text("Hello World!"), closeChild);
         server().add("/hello", GET().respond(rsp));
     }
     
@@ -154,12 +151,9 @@ class ExampleTest extends AbstractRealTest
         assertThat(rsp1).isEqualTo(rsp2);
     }
     
-    private void addGreetParameterRoutes(boolean closeChildAfterResponse) throws IOException {
+    private void addGreetParameterRoutes(boolean closeChild) throws IOException {
         Function<String, CompletionStage<Response>> factory = name -> {
-            var rsp = text("Hello " + name + "!");
-            if (closeChildAfterResponse) {
-                rsp = rsp.toBuilder().mustCloseAfterWrite(true).build();
-            }
+            var rsp = tryScheduleClose(text("Hello " + name + "!"), closeChild);
             return rsp.completedStage();
         };
         
@@ -176,14 +170,10 @@ class ExampleTest extends AbstractRealTest
     
     @Test
     void GreetBody() throws IOException {
-        RequestHandler echo = POST().apply(req ->
-                req.body().toText().thenApply(name ->
-                        text("Hello " + name + "!")));
-        
-        server().add("/greet-body", echo);
+        addGreetBodyRoute(false);
         
         String req =
-            "POST /greet-body HTTP/1.1"               + CRLF +
+            "POST /hello HTTP/1.1"                    + CRLF +
             "Accept: text/plain; charset=utf-8"       + CRLF +
             "Content-Type: text/plain; charset=utf-8" + CRLF +
             "Content-Length: 4"                       + CRLF + CRLF +
@@ -198,6 +188,41 @@ class ExampleTest extends AbstractRealTest
             "Content-Length: 11"                      + CRLF + CRLF +
             
             "Hello John!");
+    }
+    
+    @ParameterizedTest
+    @EnumSource
+    void GreetBody_compatibility(HttpClientFacade.Implementation impl)
+            throws IOException, InterruptedException
+    {
+        addGreetBodyRoute(true);
+        
+        HttpClientFacade req = impl.create(serverPort())
+                .addHeader("Accept", "text/plain; charset=utf-8");
+        
+        ResponseFacade<String> rsp = req.postAndReceiveText(
+                "/hello", HTTP_1_1, "John");
+        
+        assertThat(rsp.version()).isEqualTo("HTTP/1.1");
+        assertThat(rsp.statusCode()).isEqualTo(200);
+        if (impl != JDK) {
+            assertThat(rsp.reasonPhrase()).isEqualTo("OK");
+        }
+        assertThat(rsp.headers()).isEqualTo(of(
+            "Content-Type",   "text/plain; charset=" +
+                (impl == JETTY ? "UTF-8" : "utf-8"),
+            "Content-Length", "11",
+            "Connection",     "close"));
+        assertThat(rsp.body()).isEqualTo(
+            "Hello John!");
+    }
+    
+    private void addGreetBodyRoute(boolean closeChild) throws IOException {
+        RequestHandler echo = POST().apply(req ->
+                req.body().toText().thenApply(name ->
+                        tryScheduleClose(text("Hello " + name + "!"), closeChild)));
+        
+        server().add("/hello", echo);
     }
     
     @Test
@@ -282,5 +307,12 @@ class ExampleTest extends AbstractRealTest
             "Content-Length: 0"                  + CRLF + CRLF);
         assertThat(pollServerError()).isExactlyInstanceOf(FileAlreadyExistsException.class);
         assertThat(Files.readString(file)).isEqualTo("Foo");
+    }
+    
+    private static final Response tryScheduleClose(Response rsp, boolean close) {
+        if (!close) {
+            return rsp;
+        }
+        return rsp.toBuilder().mustCloseAfterWrite(true).build();
     }
 }
