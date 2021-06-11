@@ -102,7 +102,8 @@ import static org.eclipse.jetty.http.HttpMethod.GET;
  * A specified HTTP version may be rejected with an {@code
  * IllegalArgumentException}, but only on a best-effort basis. Which versions
  * specifically a client implementation supports is not always that clear
- * hahaha. Regardless, the argument will be passed forward to the client.<p>
+ * hahaha. The argument will be passed forward to the client who may then blow
+ * up with another exception.<p>
  * 
  * This class is not thread-safe and does not implement {@code hashCode} or
  * {@code equals}.
