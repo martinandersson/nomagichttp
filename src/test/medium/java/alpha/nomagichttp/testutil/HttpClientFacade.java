@@ -5,6 +5,7 @@ import alpha.nomagichttp.util.Headers;
 import okhttp3.OkHttpClient;
 import okhttp3.Protocol;
 import okhttp3.Request;
+import okhttp3.RequestBody;
 import okhttp3.ResponseBody;
 import org.apache.hc.client5.http.async.methods.SimpleHttpResponse;
 import org.apache.hc.client5.http.async.methods.SimpleRequestBuilder;
@@ -17,6 +18,7 @@ import reactor.netty.http.HttpProtocol;
 import reactor.netty.http.client.HttpClientResponse;
 
 import java.io.IOException;
+import java.net.MalformedURLException;
 import java.net.URI;
 import java.net.http.HttpHeaders;
 import java.net.http.HttpRequest;
@@ -407,30 +409,47 @@ public abstract class HttpClientFacade
                 IOFunction<? super ResponseBody, ? extends B> bodyConverter)
                 throws IOException
         {
-            var cli = new OkHttpClient.Builder()
-                    .protocols(List.of(toSquareVersion(ver)))
-                    .build();
-            
-            var req = new Request.Builder()
-                    .method("GET", null)
-                    .url(withBase(path).toURL());
-            
-            copyHeaders(req::header);
-            
-            // No close callback from our Response type, so must consume eagerly
-            var rsp = cli.newCall(req.build()).execute();
-            B bdy;
-            try (rsp) {
-                bdy = bodyConverter.apply(rsp.body());
-            }
-            return ResponseFacade.fromOkHttp(rsp, bdy);
+            var req = newRequest("GET", path, null);
+            return execute(ver, req, bodyConverter);
         }
         
         @Override
         public ResponseFacade<String> postAndReceiveText(
-                String path, HttpConstants.Version version, String body)
+                String path, HttpConstants.Version ver, String body)
+                throws IOException
         {
-            throw new AbstractMethodError("Implement me");
+            var req = newRequest("POST", path, RequestBody.create(body, null));
+            return execute(ver, req, ResponseBody::string);
+        }
+        
+        private Request.Builder newRequest(
+                String method, String path, RequestBody reqBody)
+                throws MalformedURLException
+        {
+            var req = new Request.Builder()
+                    .method(method, reqBody)
+                    .url(withBase(path).toURL());
+            copyHeaders(req::header);
+            return req;
+        }
+        
+        private <B> ResponseFacade<B> execute(
+                HttpConstants.Version ver,
+                Request.Builder request,
+                IOFunction<? super ResponseBody, ? extends B> rspBodyConverter)
+                throws IOException
+        {
+            var cli= new OkHttpClient.Builder()
+                    .protocols(List.of(toSquareVersion(ver)))
+                    .build();
+            
+            // No close callback from our Response type, so must consume eagerly
+            var rsp = cli.newCall(request.build()).execute();
+            B bdy;
+            try (rsp) {
+                bdy = rspBodyConverter.apply(rsp.body());
+            }
+            return ResponseFacade.fromOkHttp(rsp, bdy);
         }
         
         private static Protocol toSquareVersion(HttpConstants.Version ver) {
