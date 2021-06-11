@@ -7,6 +7,7 @@ import okhttp3.Protocol;
 import okhttp3.Request;
 import okhttp3.RequestBody;
 import okhttp3.ResponseBody;
+import org.apache.hc.client5.http.async.methods.SimpleHttpRequest;
 import org.apache.hc.client5.http.async.methods.SimpleHttpResponse;
 import org.apache.hc.client5.http.async.methods.SimpleRequestBuilder;
 import org.apache.hc.client5.http.impl.async.HttpAsyncClients;
@@ -247,14 +248,14 @@ public abstract class HttpClientFacade
      *             if an I/O error occurs when sending or receiving
      * @throws InterruptedException
      *             if the operation is interrupted
+     * @throws ExecutionException
+     *             if an underlying asynchronous operation fails
      * @throws TimeoutException
      *             if an otherwise asynchronous operation times out
      *             (timeout duration not specified)
-     * @throws ExecutionException
-     *             if an underlying asynchronous operation fails
      */
     public abstract ResponseFacade<byte[]> getBytes(String path, HttpConstants.Version version)
-            throws IOException, InterruptedException, TimeoutException, ExecutionException;
+            throws IOException, InterruptedException, ExecutionException, TimeoutException;
     
     /**
      * Execute a GET request expecting text in the response body.<p>
@@ -274,14 +275,14 @@ public abstract class HttpClientFacade
      *             if an I/O error occurs when sending or receiving
      * @throws InterruptedException
      *             if the operation is interrupted
+     * @throws ExecutionException
+     *             if an underlying asynchronous operation fails
      * @throws TimeoutException
      *             if an otherwise asynchronous operation times out
      *             (timeout duration not specified)
-     * @throws ExecutionException
-     *             if an underlying asynchronous operation fails
      */
     public abstract ResponseFacade<String> getText(String path, HttpConstants.Version version)
-            throws IOException, InterruptedException, TimeoutException, ExecutionException;
+            throws IOException, InterruptedException, ExecutionException, TimeoutException;
     
     /**
      * Execute a POST request expecting text in the response body.<p>
@@ -301,10 +302,15 @@ public abstract class HttpClientFacade
      *             if an I/O error occurs when sending or receiving
      * @throws InterruptedException
      *             if the operation is interrupted
+     * @throws ExecutionException
+     *             if an underlying asynchronous operation fails
+     * @throws TimeoutException
+     *             if an otherwise asynchronous operation times out
+     *             (timeout duration not specified)
      */
     public abstract ResponseFacade<String> postAndReceiveText(
             String path, HttpConstants.Version version, String body)
-            throws IOException, InterruptedException;
+            throws IOException, InterruptedException, ExecutionException, TimeoutException;
     
     private static class JDK extends HttpClientFacade {
         private final java.net.http.HttpClient c;
@@ -481,14 +487,14 @@ public abstract class HttpClientFacade
         
         @Override
         public ResponseFacade<byte[]> getBytes(String path, HttpConstants.Version ver)
-                throws IOException, InterruptedException, TimeoutException, ExecutionException
+                throws IOException, InterruptedException, ExecutionException, TimeoutException
         {
             return get(path, ver, SimpleHttpResponse::getBodyBytes);
         }
         
         @Override
         public ResponseFacade<String> getText(String path, HttpConstants.Version ver)
-                throws IOException, InterruptedException, TimeoutException, ExecutionException
+                throws IOException, ExecutionException, InterruptedException, TimeoutException
         {
             return get(path, ver, SimpleHttpResponse::getBodyText);
         }
@@ -496,28 +502,46 @@ public abstract class HttpClientFacade
         private <B> ResponseFacade<B> get(
                 String path, HttpConstants.Version ver,
                 Function<? super SimpleHttpResponse, ? extends B> bodyConverter)
-                throws IOException, InterruptedException, TimeoutException, ExecutionException
+                throws IOException, InterruptedException, ExecutionException, TimeoutException
         {
-            var req = SimpleRequestBuilder
-                    .get(withBase(path))
-                    .setVersion(toApacheVersion(ver));
-            
-            copyHeaders(req::addHeader);
-            
-            try (var c = HttpAsyncClients.createDefault()) {
-                // Must "start" first, otherwise
-                //     java.util.concurrent.CancellationException: Request execution cancelled
-                c.start();
-                var rsp = c.execute(req.build(), null).get(3, SECONDS);
-                return ResponseFacade.fromApache(rsp, bodyConverter.apply(rsp));
-            }
+            var req = newRequestBuilder("GET", path, ver).build();
+            return execute(req, bodyConverter);
         }
         
         @Override
         public ResponseFacade<String> postAndReceiveText(
-                String path, HttpConstants.Version version, String body)
+                String path, HttpConstants.Version ver, String body)
+                throws IOException, InterruptedException, ExecutionException, TimeoutException
         {
-            throw new AbstractMethodError("Implement me");
+            var req = newRequestBuilder("POST", path, ver)
+                    .setBody(body, null)
+                    .build();
+            return execute(req, SimpleHttpResponse::getBodyText);
+        }
+        
+        private SimpleRequestBuilder newRequestBuilder(
+                String method, String path, HttpConstants.Version ver)
+        {
+            var b = SimpleRequestBuilder
+                    .create(method)
+                    .setUri(withBase(path))
+                    .setVersion(toApacheVersion(ver));
+            copyHeaders(b::addHeader);
+            return b;
+        }
+        
+        private <B> ResponseFacade<B> execute(
+                SimpleHttpRequest req,
+                Function<? super SimpleHttpResponse, ? extends B> rspBodyConverter)
+                throws IOException, InterruptedException, ExecutionException, TimeoutException
+        {
+            try (var c = HttpAsyncClients.createDefault()) {
+                // Must "start" first, otherwise
+                //     java.util.concurrent.CancellationException: Request execution cancelled
+                c.start();
+                var rsp = c.execute(req, null).get(3, SECONDS);
+                return ResponseFacade.fromApache(rsp, rspBodyConverter.apply(rsp));
+            }
         }
         
         private static ProtocolVersion toApacheVersion(HttpConstants.Version ver) {
@@ -533,14 +557,14 @@ public abstract class HttpClientFacade
         
         @Override
         public ResponseFacade<byte[]> getBytes(String path, HttpConstants.Version ver)
-                throws InterruptedException, TimeoutException, ExecutionException
+                throws InterruptedException, ExecutionException, TimeoutException
         {
             return get(path, ver, ContentResponse::getContent);
         }
         
         @Override
         public ResponseFacade<String> getText(String path, HttpConstants.Version ver)
-                throws InterruptedException, TimeoutException, ExecutionException
+                throws InterruptedException, ExecutionException, TimeoutException
         {
             return get(path, ver, ContentResponse::getContentAsString);
         }
@@ -548,7 +572,7 @@ public abstract class HttpClientFacade
         private <B> ResponseFacade<B> get(
                 String path, HttpConstants.Version ver,
                 Function<? super ContentResponse, ? extends B> bodyConverter)
-                throws InterruptedException, TimeoutException, ExecutionException
+                throws InterruptedException, ExecutionException, TimeoutException
         {
             var c = new org.eclipse.jetty.client.HttpClient();
             

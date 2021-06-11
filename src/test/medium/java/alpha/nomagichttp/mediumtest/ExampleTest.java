@@ -193,7 +193,7 @@ class ExampleTest extends AbstractRealTest
     @ParameterizedTest
     @EnumSource
     void GreetBody_compatibility(HttpClientFacade.Implementation impl)
-            throws IOException, InterruptedException
+            throws IOException, InterruptedException, ExecutionException, TimeoutException
     {
         addGreetBodyRoute(true);
         
