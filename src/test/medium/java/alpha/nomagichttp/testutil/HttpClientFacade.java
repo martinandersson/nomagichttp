@@ -345,7 +345,7 @@ public abstract class HttpClientFacade
             return execute(req, BodyHandlers.ofString());
         }
         
-        private HttpRequest.Builder newRequest(
+        private HttpRequest newRequest(
                 String method, String path, HttpConstants.Version ver, BodyPublisher reqBody)
         {
             var b = HttpRequest.newBuilder()
@@ -353,15 +353,15 @@ public abstract class HttpClientFacade
                     .uri(withBase(path))
                     .version(toJDKVersion(ver));
             copyHeaders(b::header);
-            return b;
+            return b.build();
         }
         
         private <B> ResponseFacade<B> execute(
-                HttpRequest.Builder builder,
+                HttpRequest req,
                 HttpResponse.BodyHandler<B> rspBodyConverter)
                 throws IOException, InterruptedException
         {
-            var rsp = c.send(builder.build(), rspBodyConverter);
+            var rsp = c.send(req, rspBodyConverter);
             return ResponseFacade.fromJDK(rsp);
         }
         
@@ -422,7 +422,7 @@ public abstract class HttpClientFacade
             return execute(ver, req, ResponseBody::string);
         }
         
-        private Request.Builder newRequest(
+        private Request newRequest(
                 String method, String path, RequestBody reqBody)
                 throws MalformedURLException
         {
@@ -430,12 +430,12 @@ public abstract class HttpClientFacade
                     .method(method, reqBody)
                     .url(withBase(path).toURL());
             copyHeaders(req::header);
-            return req;
+            return req.build();
         }
         
         private <B> ResponseFacade<B> execute(
                 HttpConstants.Version ver,
-                Request.Builder request,
+                Request req,
                 IOFunction<? super ResponseBody, ? extends B> rspBodyConverter)
                 throws IOException
         {
@@ -444,7 +444,7 @@ public abstract class HttpClientFacade
                     .build();
             
             // No close callback from our Response type, so must consume eagerly
-            var rsp = cli.newCall(request.build()).execute();
+            var rsp = cli.newCall(req).execute();
             B bdy;
             try (rsp) {
                 bdy = rspBodyConverter.apply(rsp.body());
