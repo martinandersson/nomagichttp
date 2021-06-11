@@ -400,23 +400,14 @@ public abstract class HttpClientFacade
         public ResponseFacade<byte[]> getBytes(String path, HttpConstants.Version ver)
                 throws IOException
         {
-            return get(path, ver, ResponseBody::bytes);
+            return execute(GET(path), ver, ResponseBody::bytes);
         }
         
         @Override
         public ResponseFacade<String> getText(String path, HttpConstants.Version ver)
                 throws IOException
         {
-            return get(path, ver, ResponseBody::string);
-        }
-        
-        private <B> ResponseFacade<B> get(
-                String path, HttpConstants.Version ver,
-                IOFunction<? super ResponseBody, ? extends B> bodyConverter)
-                throws IOException
-        {
-            var req = newRequest("GET", path, null);
-            return execute(ver, req, bodyConverter);
+            return execute(GET(path), ver, ResponseBody::string);
         }
         
         @Override
@@ -425,7 +416,11 @@ public abstract class HttpClientFacade
                 throws IOException
         {
             var req = newRequest("POST", path, RequestBody.create(body, null));
-            return execute(ver, req, ResponseBody::string);
+            return execute(req, ver, ResponseBody::string);
+        }
+        
+        private Request GET(String path) throws MalformedURLException {
+            return newRequest("GET", path, null);
         }
         
         private Request newRequest(
@@ -440,8 +435,8 @@ public abstract class HttpClientFacade
         }
         
         private <B> ResponseFacade<B> execute(
-                HttpConstants.Version ver,
                 Request req,
+                HttpConstants.Version ver,
                 IOFunction<? super ResponseBody, ? extends B> rspBodyConverter)
                 throws IOException
         {
