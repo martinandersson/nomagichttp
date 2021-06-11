@@ -324,22 +324,14 @@ public abstract class HttpClientFacade
         public ResponseFacade<byte[]> getBytes(String path, HttpConstants.Version ver)
                 throws IOException, InterruptedException
         {
-            return get(path, ver, BodyHandlers.ofByteArray());
+            return execute(GET(path, ver), BodyHandlers.ofByteArray());
         }
         
         @Override
         public ResponseFacade<String> getText(String path, HttpConstants.Version ver)
                 throws IOException, InterruptedException
         {
-            return get(path, ver, BodyHandlers.ofString());
-        }
-        
-        private <B> ResponseFacade<B> get(
-                String path, HttpConstants.Version ver, HttpResponse.BodyHandler<B> rspBodyConverter)
-                throws IOException, InterruptedException
-        {
-            var req = newRequest("GET", path, ver, BodyPublishers.noBody());
-            return execute(req, rspBodyConverter);
+            return execute(GET(path, ver), BodyHandlers.ofString());
         }
         
         @Override
@@ -349,6 +341,10 @@ public abstract class HttpClientFacade
         {
             var req = newRequest("POST", path, ver, BodyPublishers.ofString(body));
             return execute(req, BodyHandlers.ofString());
+        }
+        
+        private HttpRequest GET(String path, HttpConstants.Version ver) {
+            return newRequest("GET", path, ver, BodyPublishers.noBody());
         }
         
         private HttpRequest newRequest(
