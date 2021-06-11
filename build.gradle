@@ -55,7 +55,7 @@ dependencies {
     testImplementation 'org.mockito:mockito-core:3.9.0'
     testImplementation 'org.junit.jupiter:junit-jupiter-params:5.7.1'
     
-    // HTTP client implementations for HttpClientFacade
+    // HTTP client implementations used by HttpClientFacade
     mediumTestImplementation 'com.squareup.okhttp3:okhttp:4.9.1'
     mediumTestImplementation 'org.apache.httpcomponents.client5:httpclient5:5.1'
     mediumTestImplementation 'org.eclipse.jetty:jetty-client:11.0.4'
