@@ -489,23 +489,14 @@ public abstract class HttpClientFacade
         public ResponseFacade<byte[]> getBytes(String path, HttpConstants.Version ver)
                 throws IOException, InterruptedException, ExecutionException, TimeoutException
         {
-            return get(path, ver, SimpleHttpResponse::getBodyBytes);
+            return execute(GET(path, ver), SimpleHttpResponse::getBodyBytes);
         }
         
         @Override
         public ResponseFacade<String> getText(String path, HttpConstants.Version ver)
                 throws IOException, ExecutionException, InterruptedException, TimeoutException
         {
-            return get(path, ver, SimpleHttpResponse::getBodyText);
-        }
-        
-        private <B> ResponseFacade<B> get(
-                String path, HttpConstants.Version ver,
-                Function<? super SimpleHttpResponse, ? extends B> bodyConverter)
-                throws IOException, InterruptedException, ExecutionException, TimeoutException
-        {
-            var req = newRequestBuilder("GET", path, ver).build();
-            return execute(req, bodyConverter);
+            return execute(GET(path, ver), SimpleHttpResponse::getBodyText);
         }
         
         @Override
@@ -517,6 +508,10 @@ public abstract class HttpClientFacade
                     .setBody(body, null)
                     .build();
             return execute(req, SimpleHttpResponse::getBodyText);
+        }
+        
+        private SimpleHttpRequest GET(String path, HttpConstants.Version ver) {
+            return newRequestBuilder("GET", path, ver).build();
         }
         
         private SimpleRequestBuilder newRequestBuilder(
