@@ -83,13 +83,13 @@ import static java.util.concurrent.TimeUnit.SECONDS;
  *   }
  * </pre>
  * 
- * The clients used does not expose an API for user-control of the connection,
- * and so, the facade implementation can do no better. In fact, the life-cycle
- * and performance characteristics of the facade and its underlying client
- * objects are pretty much unknown. Most of them have - unfortunately quite
- * expectedly - zero documentation regarding the client's life-cycle and how it
- * should be cached and used. Never mind concerns such as thread-safety and
- * identity lol. Hence, this class will mostly not cache the client object,
+ * The underlying clients used does not expose an API for user-control of the
+ * connection, and so, the facade implementation can do no better. In fact, the
+ * life-cycle and performance characteristics of the facade and its underlying
+ * client objects are pretty much unknown. Most of them have - unfortunately
+ * quite expectedly - zero documentation regarding the client's life-cycle and
+ * how it should be cached and used. Never mind concerns such as thread-safety
+ * and identity lol. Hence, this class will mostly not cache the client object,
  * using one new client for each request executed.<p>
  * 
  * Likely, the underlying client connection will live in a client-specific
@@ -225,7 +225,7 @@ public abstract class HttpClientFacade
     }
     
     /**
-     * Copy all headers contained in this class into the given sink.
+     * Copy all headers contained in this class into the given [mutable] sink.
      * 
      * @param sink target
      */
