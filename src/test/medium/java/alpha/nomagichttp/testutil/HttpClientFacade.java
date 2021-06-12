@@ -2,6 +2,7 @@ package alpha.nomagichttp.testutil;
 
 import alpha.nomagichttp.HttpConstants;
 import alpha.nomagichttp.util.Headers;
+import io.netty.buffer.ByteBuf;
 import okhttp3.OkHttpClient;
 import okhttp3.Protocol;
 import okhttp3.Request;
@@ -15,8 +16,11 @@ import org.apache.hc.core5.http.ProtocolVersion;
 import org.eclipse.jetty.client.api.ContentResponse;
 import org.eclipse.jetty.client.util.StringRequestContent;
 import reactor.core.publisher.Mono;
+import reactor.netty.ByteBufFlux;
 import reactor.netty.ByteBufMono;
 import reactor.netty.http.HttpProtocol;
+import reactor.netty.http.client.HttpClient;
+import reactor.netty.http.client.HttpClient.ResponseReceiver;
 import reactor.netty.http.client.HttpClientResponse;
 
 import java.io.IOException;
@@ -232,6 +236,15 @@ public abstract class HttpClientFacade
     protected void copyHeaders(BiConsumer<String, String> sink) {
         headers.forEach((name, values) ->
                 values.forEach(v -> sink.accept(name, v)));
+    }
+    
+    /**
+     * Iterate all headers contained in this class.
+     * 
+     * @return an iterator
+     */
+    protected Iterable<Map.Entry<String, List<String>>> headers() {
+        return headers.entrySet();
     }
     
     /**
@@ -628,29 +641,70 @@ public abstract class HttpClientFacade
         
         private <B> ResponseFacade<B> get(
                 String path, HttpConstants.Version ver,
-                Function<? super ByteBufMono, ? extends Mono<B>> bodyConverter)
+                Function<? super ByteBufMono, ? extends Mono<B>> rspBodyConverter)
         {
-            var req = reactor.netty.http.client.HttpClient.create()
-                    .protocol(toReactorVersion(ver));
-            
-            copyHeaders((k, v) ->
-                req.headers(h -> h.add(k, v)));
-            
-            // "uri() should be invoked before request()" says the JavaDoc.
-            // Except that doesn't compile lol.
-            return req.request(io.netty.handler.codec.http.HttpMethod.GET)
-                      .uri(withBase(path))
-                      .responseSingle((head, body) ->
-                          bodyConverter.apply(body).map(s ->
-                               ResponseFacade.fromReactor(head, s)))
-                      .block();
+            return executeReq(
+                    io.netty.handler.codec.http.HttpMethod.GET, path, ver, 
+                    0, null,
+                    rspBodyConverter);
         }
         
         @Override
         public ResponseFacade<String> postAndReceiveText(
-                String path, HttpConstants.Version version, String body)
+                String path, HttpConstants.Version ver, String body)
         {
-            throw new AbstractMethodError("Implement me");
+            return executeReq(
+                    io.netty.handler.codec.http.HttpMethod.POST, path, ver,
+                    // Erm, yeah, it gets worse...
+                    body.length(), ByteBufFlux.fromString(Mono.just(body)),
+                    ByteBufMono::asString);
+        }
+        
+        private <B> ResponseFacade<B> executeReq(
+                io.netty.handler.codec.http.HttpMethod method,
+                String path, HttpConstants.Version ver,
+                long contentLength,
+                org.reactivestreams.Publisher<? extends ByteBuf> reqBody,
+                Function<? super ByteBufMono, ? extends Mono<B>> rspBodyConverter)
+        {
+            var client = reactor.netty.http.client.HttpClient.create()
+                    .protocol(toReactorVersion(ver));
+            
+            // Otherwise they do chunked encoding; there is no BodyPublisher,
+            // sensible default behavior, utility methods, shortcuts, et cetera
+            addHeader("Content-Length", Long.toString(contentLength));
+            
+            for (var entry : headers()) {
+                var name = entry.getKey();
+                for (var value : entry.getValue()) {
+                    // Jupp, you "consume" a mutable object, but... also returns a new client
+                    // (who doesn't love a good surprise huh!)
+                    client = client.headers(h -> h.add(name, value));
+                }
+            }
+            
+            // "uri() should be invoked before request()" says the JavaDoc.
+            // Except that doesn't compile lol
+            HttpClient.RequestSender sender
+                    = client.request(method)
+                            .uri(withBase(path));
+            
+            // Yes, wildcard
+            ResponseReceiver<?> receiver;
+            if (reqBody != null) {
+                // Because of this
+                // (oh, and nothing was quote unquote "sent", btw)
+                receiver = sender.send(reqBody);
+            } else {
+                // Sender is actually a... *drumroll* ....
+                receiver = sender;
+            }
+            
+            // Okay seriously, someone give them an award in API design......
+            return receiver.responseSingle((head, body) ->
+                rspBodyConverter.apply(body).map(s ->
+                        ResponseFacade.fromReactor(head, s)))
+                .block();
         }
         
         private static HttpProtocol toReactorVersion(HttpConstants.Version ver) {
