@@ -1,6 +1,7 @@
 package alpha.nomagichttp.internal;
 
 import alpha.nomagichttp.message.RequestHeadParseException;
+import alpha.nomagichttp.util.Headers;
 
 import java.net.http.HttpHeaders;
 import java.util.ArrayList;
@@ -330,9 +331,8 @@ final class RequestHeadProcessor
     }
     
     private void complete() {
-        HttpHeaders headers = HttpHeaders.of(
-                headerValues != null ? headerValues : Map.of(),
-                (k, v) -> true);
+        HttpHeaders headers = Headers.of(
+                headerValues != null ? headerValues : Map.of());
         
         completed = new RequestHead(
                 method, requestTarget, httpVersion, headers);
