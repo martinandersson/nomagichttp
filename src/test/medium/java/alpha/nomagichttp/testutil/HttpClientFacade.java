@@ -13,6 +13,7 @@ import org.apache.hc.client5.http.async.methods.SimpleRequestBuilder;
 import org.apache.hc.client5.http.impl.async.HttpAsyncClients;
 import org.apache.hc.core5.http.ProtocolVersion;
 import org.eclipse.jetty.client.api.ContentResponse;
+import org.eclipse.jetty.client.util.StringRequestContent;
 import reactor.core.publisher.Mono;
 import reactor.netty.ByteBufMono;
 import reactor.netty.http.HttpProtocol;
@@ -49,7 +50,6 @@ import static java.util.Locale.ROOT;
 import static java.util.Objects.deepEquals;
 import static java.util.Objects.requireNonNull;
 import static java.util.concurrent.TimeUnit.SECONDS;
-import static org.eclipse.jetty.http.HttpMethod.GET;
 
 /**
  * A HTTP client API that delegates to another {@link Implementation
@@ -545,20 +545,34 @@ public abstract class HttpClientFacade
         public ResponseFacade<byte[]> getBytes(String path, HttpConstants.Version ver)
                 throws InterruptedException, ExecutionException, TimeoutException
         {
-            return get(path, ver, ContentResponse::getContent);
+            return executeReq("GET", path, ver, null,
+                    ContentResponse::getContent);
         }
         
         @Override
         public ResponseFacade<String> getText(String path, HttpConstants.Version ver)
                 throws InterruptedException, ExecutionException, TimeoutException
         {
-            return get(path, ver, ContentResponse::getContentAsString);
+            return executeReq("GET", path, ver, null,
+                    ContentResponse::getContentAsString);
         }
         
-        private <B> ResponseFacade<B> get(
-                String path, HttpConstants.Version ver,
-                Function<? super ContentResponse, ? extends B> bodyConverter)
-                throws InterruptedException, ExecutionException, TimeoutException
+        @Override
+        public ResponseFacade<String> postAndReceiveText(
+                String path, HttpConstants.Version ver, String body
+            ) throws ExecutionException, InterruptedException, TimeoutException
+        {
+            return executeReq("POST", path, ver,
+                    new StringRequestContent(body),
+                    ContentResponse::getContentAsString);
+        }
+        
+        private <B> ResponseFacade<B> executeReq(
+                String method, String path,
+                HttpConstants.Version ver,
+                org.eclipse.jetty.client.api.Request.Content reqBody,
+                Function<? super ContentResponse, ? extends B> rspBodyConverter
+                ) throws ExecutionException, InterruptedException, TimeoutException
         {
             var c = new org.eclipse.jetty.client.HttpClient();
             
@@ -571,11 +585,12 @@ public abstract class HttpClientFacade
             ContentResponse rsp;
             try {
                 var req = c.newRequest(withBase(path))
-                       .method(GET)
-                       .version(toJettyVersion(ver));
+                           .method(method)
+                           .version(toJettyVersion(ver))
+                           .body(reqBody);
                 
                 copyHeaders((k, v) ->
-                    req.headers(h -> h.add(k, v)));
+                        req.headers(h -> h.add(k, v)));
                 
                 rsp = req.send();
             } finally {
@@ -586,14 +601,7 @@ public abstract class HttpClientFacade
                 }
             }
             
-            return ResponseFacade.fromJetty(rsp, bodyConverter);
-        }
-        
-        @Override
-        public ResponseFacade<String> postAndReceiveText(
-                String path, HttpConstants.Version version, String body)
-        {
-            throw new AbstractMethodError("Implement me");
+            return ResponseFacade.fromJetty(rsp, rspBodyConverter);
         }
         
         private static org.eclipse.jetty.http.HttpVersion
