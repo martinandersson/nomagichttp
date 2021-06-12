@@ -12,8 +12,11 @@ import static java.util.Objects.requireNonNull;
  * An API to access message headers.<p>
  * 
  * Header key and values when stored will have leading and trailing whitespaces
- * removed. They also maintain letter capitalization but are case insensitive
- * for methods querying headers.<p>
+ * removed. They will also maintain letter capitalization when stored and
+ * consequently when retrieved, but are case insensitive when querying.<p>
+ * 
+ * Please note that the order of header entries (header keys) are not specified
+ * (see {@link HttpHeaders}).
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  */
