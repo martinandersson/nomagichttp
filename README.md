@@ -7,16 +7,16 @@
 them.**
 
 The NoMagicHTTP server is natively asynchronous and almost completely lock-free
-(only a channel's start/close _may_ use non-contended locks). The server doesn't
-even use event polling or selector threads. What you get is an _elegant_ and
-modern API that is just about as fast and scalable as any cross-platform
+(only a channel's open/close _may_ use [non-contended] locks). The server
+doesn't even use event polling or selector threads. What you get is an _elegant_
+and modern API that is just about as fast and scalable as any cross-platform
 JDK-based HTTP server implementation could possibly be.
 
 Best of all, the API design is based on the firmly held belief that all forms
 of magic are evil. Error-prone annotations, missing "beans" and God-like
 "context" objects will never be a part of the library. Top priorities are
-elegant source-code crafted by artsmen seeking perfection, developer happiness,
-and a minimal waste of time.
+elegant source-code crafted by artsmen seeking perfection through simplicity,
+developer happiness, and a minimal waste of time.
 
 [All-you-need JavaDoc is here.][0-1]
 
@@ -80,7 +80,6 @@ foo@bar:~$  curl localhost:8080/greeting
 Hello Stranger!
 ```
 
-We just started the app using Gradle. Even so, the start-up time is negligible.
 In a real-world scenario where Java is used directly, the start-up time is
 pretty much instantaneous. Be prepared for uber-fast development cycles and
 running real HTTP exchanges in your test cases, _because you can_.
