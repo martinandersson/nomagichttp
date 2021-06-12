@@ -238,13 +238,15 @@ class ExampleTest extends AbstractRealTest
         
         String req =
             "GET /echo-headers HTTP/1.1"        + CRLF +
-            "Accept: text/plain; charset=utf-8" + CRLF + CRLF;
+            "My-Header: Value 1"                + CRLF +
+            "My-Header: Value 2"                + CRLF + CRLF;
         
         String res = client().writeReadTextUntilNewlines(req);
         
         assertThat(res).isEqualTo(
             "HTTP/1.1 204 No Content"           + CRLF +
-            "Accept: text/plain; charset=utf-8" + CRLF + CRLF);
+            "My-Header: Value 1"                + CRLF + 
+            "My-Header: Value 2"                + CRLF + CRLF);
     }
     
     @Test
