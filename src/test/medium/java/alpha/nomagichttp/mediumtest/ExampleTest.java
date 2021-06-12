@@ -2,6 +2,7 @@ package alpha.nomagichttp.mediumtest;
 
 import alpha.nomagichttp.examples.RetryRequestOnError;
 import alpha.nomagichttp.handler.RequestHandler;
+import alpha.nomagichttp.message.Request;
 import alpha.nomagichttp.message.Response;
 import alpha.nomagichttp.message.Responses;
 import alpha.nomagichttp.testutil.HttpClientFacade;
@@ -29,6 +30,7 @@ import static alpha.nomagichttp.testutil.HttpClientFacade.ResponseFacade;
 import static alpha.nomagichttp.testutil.TestClient.CRLF;
 import static alpha.nomagichttp.util.Headers.of;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.params.provider.EnumSource.Mode.EXCLUDE;
 
 /**
  * Mimics almost all of the examples provided in {@link
@@ -227,26 +229,58 @@ class ExampleTest extends AbstractRealTest
     
     @Test
     void EchoHeaders() throws IOException {
-        RequestHandler echo = GET().apply(req ->
-                Responses.noContent()
-                         .toBuilder()
-                         .addHeaders(req.headers())
-                         .build()
-                         .completedStage());
-        
-        server().add("/echo-headers", echo);
+        addEchoHeadersRoute(false);
         
         String req =
-            "GET /echo-headers HTTP/1.1"        + CRLF +
-            "My-Header: Value 1"                + CRLF +
-            "My-Header: Value 2"                + CRLF + CRLF;
+            "GET /echo HTTP/1.1"        + CRLF +
+            "My-Header: Value 1"        + CRLF +
+            "My-Header: Value 2"        + CRLF + CRLF;
         
         String res = client().writeReadTextUntilNewlines(req);
         
         assertThat(res).isEqualTo(
-            "HTTP/1.1 204 No Content"           + CRLF +
-            "My-Header: Value 1"                + CRLF + 
-            "My-Header: Value 2"                + CRLF + CRLF);
+            "HTTP/1.1 204 No Content"   + CRLF +
+            "My-Header: Value 1"        + CRLF + 
+            "My-Header: Value 2"        + CRLF + CRLF);
+    }
+    
+    @ParameterizedTest
+    // OkHttp will drop "Value 1" and only report "Value 2".
+    // Am I surprised? No. Do I care? No.
+    // Is it excluded from the test so that my life can go on? Yes.
+    @EnumSource(mode = EXCLUDE, names = "OKHTTP")
+    void EchoHeaders_compatibility(HttpClientFacade.Implementation impl)
+            throws IOException, ExecutionException, InterruptedException, TimeoutException
+    {
+        addEchoHeadersRoute(true);
+        
+        var rsp = impl.create(serverPort())
+                .addHeader("My-Header", "Value 1")
+                .addHeader("My-Header", "Value 2")
+                .getEmpty("/echo", HTTP_1_1);
+        
+        assertThat(rsp.version()).isEqualTo("HTTP/1.1");
+        assertThat(rsp.statusCode()).isEqualTo(204);
+        if (impl != JDK) {
+            assertThat(rsp.reasonPhrase()).isEqualTo("No Content");
+        }
+        
+        // The clients send - and thus receive - different headers.
+        // Most obviously the value of the "Host: " header.
+        // What we care about here is getting our custom headers back.
+        assertThat(rsp.headers().allValues(
+            "My-Header")).containsExactly("Value 1", "Value 2");
+    }
+    
+    private void addEchoHeadersRoute(boolean closeChild) throws IOException {
+        Function<Request, Response> rsp = req -> Responses.noContent()
+                .toBuilder()
+                .addHeaders(req.headers())
+                .build();
+        
+        server().add("/echo", GET().apply(req ->
+                tryScheduleClose(rsp.apply(req), closeChild)
+                        .completedStage()));
     }
     
     @Test
@@ -311,7 +345,7 @@ class ExampleTest extends AbstractRealTest
         assertThat(Files.readString(file)).isEqualTo("Foo");
     }
     
-    private static final Response tryScheduleClose(Response rsp, boolean close) {
+    private static Response tryScheduleClose(Response rsp, boolean close) {
         if (!close) {
             return rsp;
         }

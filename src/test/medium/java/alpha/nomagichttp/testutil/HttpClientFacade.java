@@ -54,6 +54,7 @@ import static java.util.Locale.ROOT;
 import static java.util.Objects.deepEquals;
 import static java.util.Objects.requireNonNull;
 import static java.util.concurrent.TimeUnit.SECONDS;
+import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * A HTTP client API that delegates to another {@link Implementation
@@ -248,6 +249,44 @@ public abstract class HttpClientFacade
     }
     
     /**
+     * Execute a GET request expecting no response body.
+     * 
+     * @param path of server resource
+     * @param version of HTTP
+     * @return the response
+     *
+     * @throws IllegalArgumentException
+     *             if no equivalent implementation-specific version exists, or
+     *             if the version is otherwise not supported (too old or too new) 
+     * @throws IOException
+     *             if an I/O error occurs when sending or receiving
+     * @throws InterruptedException
+     *             if the operation is interrupted
+     * @throws ExecutionException
+     *             if an underlying asynchronous operation fails
+     * @throws TimeoutException
+     *             if an otherwise asynchronous operation times out
+     *             (timeout duration not specified)
+     */
+    // Is not final only because Reactor-Netty needs a custom hacked solution
+    public ResponseFacade<Void> getEmpty(String path, HttpConstants.Version version)
+            throws IOException, InterruptedException, ExecutionException, TimeoutException {
+        
+        ResponseFacade<byte[]> rsp = getBytes(path, version);
+        var b = rsp.body();
+        if (b != null) {
+            assertThat(b).isEmpty();
+        }
+        return retype(rsp);
+    }
+    
+    private static <T, U> T retype(U u) {
+        @SuppressWarnings("unchecked")
+        T t = (T) u;
+        return t;
+    }
+    
+    /**
      * Execute a GET request expecting bytes in the response body.
      * 
      * @param path of server resource
@@ -400,7 +439,7 @@ public abstract class HttpClientFacade
         }
     }
     
-    private static class OkHttp extends HttpClientFacade {
+    private static final class OkHttp extends HttpClientFacade {
         OkHttp(int port) {
             super(port);
         }
@@ -484,7 +523,7 @@ public abstract class HttpClientFacade
         }
     }
     
-    private static class Apache extends HttpClientFacade {
+    private static final class Apache extends HttpClientFacade {
         Apache(int port) {
             super(port);
         }
@@ -549,7 +588,7 @@ public abstract class HttpClientFacade
         
     }
     
-    private static class Jetty extends HttpClientFacade {
+    private static final class Jetty extends HttpClientFacade {
         Jetty(int port) {
             super(port);
         }
@@ -624,9 +663,16 @@ public abstract class HttpClientFacade
         }
     }
     
-    private static class Reactor extends HttpClientFacade {
+    private static final class Reactor extends HttpClientFacade {
         Reactor(int port) {
             super(port);
+        }
+        
+        // On Reactor, the default implementation in HttpClientFacade returns NULL (!), causing NPE.
+        // It is conceivable the we'll have to drop support for Reactor, being ridiculous as it is.
+        @Override
+        public ResponseFacade<Void> getEmpty(String path, HttpConstants.Version ver) {
+            return get(path, ver, null);
         }
         
         @Override
@@ -677,7 +723,7 @@ public abstract class HttpClientFacade
             for (var entry : headers()) {
                 var name = entry.getKey();
                 for (var value : entry.getValue()) {
-                    // Jupp, you "consume" a mutable object, but... also returns a new client
+                    // Yup, you "consume" a mutable object, but... also returns a new client
                     // (who doesn't love a good surprise huh!)
                     client = client.headers(h -> h.add(name, value));
                 }
@@ -701,9 +747,15 @@ public abstract class HttpClientFacade
             }
             
             // Okay seriously, someone give them an award in API design......
-            return receiver.responseSingle((head, body) ->
-                rspBodyConverter.apply(body).map(s ->
-                        ResponseFacade.fromReactor(head, s)))
+            // (compare this method impl with everyone else; even Jetty that
+            //  throws Exception is a better option lol)
+            if (rspBodyConverter == null) {
+                return retype(receiver.response().map(rsp ->
+                        ResponseFacade.fromReactor(rsp, null)).block());
+            }
+            return receiver.responseSingle((head, firstBody) ->
+                rspBodyConverter.apply(firstBody).map(anotherBody ->
+                        ResponseFacade.fromReactor(head, anotherBody)))
                 .block();
         }
         
