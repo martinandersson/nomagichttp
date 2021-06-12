@@ -231,6 +231,8 @@ final class RequestHeadProcessor
         }
     }
     
+    // TODO: Consider not using LinkedHashMap.
+    //       JDK's HttpHeaders will do alphabetic order. Coz of faster lookup?
     private LinkedHashMap<String, List<String>> headerValues;
     
     // TODO: Document this accepts trailing whitespace
