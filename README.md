@@ -6,11 +6,10 @@
 **A server-side Java library used to receive HTTP requests and respond to
 them.**
 
-The NoMagicHTTP server is natively asynchronous and almost completely lock-free
-(only a channel's open/close _may_ use [non-contended] locks). The server
-doesn't even use event polling or selector threads. What you get is an _elegant_
-and modern API that is just about as fast and scalable as any cross-platform
-JDK-based HTTP server implementation could possibly be.
+The NoMagicHTTP server is natively asynchronous and almost completely lock-free.
+The server doesn't even use event polling or selector threads. What you get is
+an _elegant_ and modern API that is just about as fast and scalable as any
+cross-platform JDK-based HTTP server implementation could possibly be.
 
 Best of all, the API design is based on the firmly held belief that all forms
 of magic are evil. Error-prone annotations, missing "beans" and God-like
