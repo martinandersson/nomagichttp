@@ -31,6 +31,7 @@ import static alpha.nomagichttp.testutil.TestClient.CRLF;
 import static alpha.nomagichttp.util.Headers.of;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.params.provider.EnumSource.Mode.EXCLUDE;
+import static org.junit.jupiter.params.provider.EnumSource.Mode.INCLUDE;
 
 /**
  * Mimics almost all of the examples provided in {@link
@@ -285,14 +286,10 @@ class ExampleTest extends AbstractRealTest
     
     @Test
     public void KeepClientInformed() throws IOException {
-        server().add("/", GET().accept((req, ch) -> {
-            ch.write(processing());
-            ch.write(processing());
-            ch.write(text("Done!"));
-        }));
+        addKeepClientInformedRoute(false);
         
-        String rsp = client().writeReadTextUntil("GET / HTTP/1.1" + CRLF + CRLF, "Done!");
-        
+        String rsp = client().writeReadTextUntil(
+            "GET / HTTP/1.1" + CRLF + CRLF, "Done!");
         assertThat(rsp).isEqualTo(
             "HTTP/1.1 102 Processing"                 + CRLF + CRLF +
             
@@ -303,6 +300,28 @@ class ExampleTest extends AbstractRealTest
             "Content-Length: 5"                       + CRLF + CRLF +
             
             "Done!");
+    }
+    
+    @ParameterizedTest
+    // Only Apache (and curl!) will pass this test lol.
+    // JDK takes everything after the first 102 (Processing) as the response body.
+    // OkHttp and Jetty yields an empty body ("").
+    // Reactor does what Reactor does best; crashes with a NullPointerException.
+    @EnumSource(mode = INCLUDE, names = "APACHE")
+    public void KeepClientInformed_compatibility(HttpClientFacade.Implementation impl)
+            throws IOException, ExecutionException, InterruptedException, TimeoutException
+    {
+        addKeepClientInformedRoute(true);
+        var rsp = impl.create(serverPort()).getText("/", HTTP_1_1);
+        assertThat(rsp.body()).isEqualTo("Done!");
+    }
+    
+    private void addKeepClientInformedRoute(boolean closeChild) throws IOException {
+        server().add("/", GET().accept((req, ch) -> {
+            ch.write(processing());
+            ch.write(processing());
+            ch.write(tryScheduleClose(text("Done!"), closeChild));
+        }));
     }
     
     // Will wait until after we have done improved file serving
