@@ -324,9 +324,11 @@ class ExampleTest extends AbstractRealTest
         }));
     }
     
-    // Will wait until after we have done improved file serving
+    // TODO: Currently not a "public" example in the docs.
+    //       Will wait until after we have done improved file serving.
+    //       The compatibility test ought to use a client-native API for uploading a file.
     @Test
-    void todo_UploadFile() throws IOException, InterruptedException {
+    void UploadFile() throws IOException, InterruptedException {
         // 1. Save to new file
         // ---
         Path file = Files.createTempDirectory("nomagic")
