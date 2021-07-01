@@ -5,6 +5,11 @@ plugins {
     id 'maven-publish'
 }
 
+final var RELEASE_FOR = JavaVersion.VERSION_11
+if (!JavaVersion.current().isCompatibleWith(RELEASE_FOR)) {
+    throw new Exception("Java ${JavaVersion.current()} is not supported. Please use at least ${RELEASE_FOR}.");
+}
+
 sourceSets {
     // Move "unit" test locations from default '/test' to '/test/small'
     test {
@@ -88,7 +93,7 @@ wrapper {
 // https://stackoverflow.com/a/43103038/1268003
 // https://docs.gradle.org/6.6/release-notes.html#javacompile-release
 compileJava {
-    options.release = 11
+    options.release = RELEASE_FOR.getMajorVersion().toInteger()
 }
 
 tasks.withType(JavaCompile) {
@@ -178,7 +183,7 @@ tasks.withType(Javadoc) {
     // https://stackoverflow.com/a/49544352/1268003
     // https://github.com/gradle/gradle/issues/2354#issuecomment-364857181
     if (Werror) {
-        def opt = JavaVersion.current().isCompatibleWith(JavaVersion.VERSION_15) ?
+        var opt = JavaVersion.current().isCompatibleWith(JavaVersion.VERSION_15) ?
             "Werror" : "Xwerror";
         
         options.addBooleanOption(opt, true)
@@ -191,7 +196,7 @@ tasks.withType(Javadoc) {
     options.overview = 'src/main/java/overview.html'
     
     // Link to JDK JavaDoc
-    def v = compileJava.options.release.get()
+    var v = compileJava.options.release.get()
     options.links("https://docs.oracle.com/en/java/javase/$v/docs/api")
 }
 
