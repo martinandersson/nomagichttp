@@ -40,12 +40,12 @@ import static org.assertj.core.api.Assertions.assertThat;
  * class has no knowledge about the HTTP protocol. The test must implement the
  * protocol.<p>
  * 
- * Low-level read methods accept a terminator (an expected "response end"). This
- * is a sequence of bytes after which, the client stops reading. If trailing
- * [unexpected] bytes are observed, an {@code AssertionError} is thrown. The
- * read will stop at end-of-stream and not fail the test even if not all of the
- * terminator has been observed. The test should always run asserts on the
- * returned response.<p>
+ * Low-level read methods accept a terminator; an expected "response end" or
+ * "end of message". The terminator is a sequence of bytes after which, the
+ * client stops reading. If trailing - i.e. unexpected - bytes, are observed
+ * after the terminator, an {@code AssertionError} is thrown. The read will stop
+ * at end-of-stream and not fail the test even if the terminator wasn't
+ * observed. The test should always run asserts on the returned response.<p>
  * 
  * To read all available data until EOS, the terminator can either be a sequence
  * of bytes never expected or {@code null}. More conveniently, use an override
@@ -54,16 +54,16 @@ import static org.assertj.core.api.Assertions.assertThat;
  * EOS.<p>
  * 
  * Each read/write operation will by default timeout after 1.5 seconds, giving
- * the average HTTP exchange 3 seconds to complete. On timeout, the operation
+ * the HTTP exchange a total of 3 seconds to complete. On timeout, the operation
  * will fail with a {@link ClosedByInterruptException}. Test cases that need
  * more time can override the default using {@link
  * #interruptWriteAfter(long, TimeUnit)} and {@link
  * #interruptReadAfter(long, TimeUnit)} respectively.<p>
  * 
  * All methods in this class will by default open/close a new connection for
- * each call, unless one is already opened. The write operation does not
- * explicitly close the output stream when it completes. For manual control over
- * the connection, such as closing individual streams, or re-using the
+ * each call, unless a connection is already opened. The write operation does
+ * not explicitly close the output stream when it completes. For manual control
+ * over the connection, such as closing individual streams, or re-using the
  * same connection across method calls, manually {@link #openConnection()}
  * first.<p>
  * 
@@ -244,7 +244,8 @@ public final class TestClient
         int size = setSmallBufferGetActual(SO_RCVBUF);
         ByteBuffer buf = allocate(size + 1);
         try {
-            int r = Interrupt.after(1, SECONDS, () -> ch.read(buf));
+            int r = Interrupt.after(1, SECONDS, "serverClosedOutput",
+                        () -> ch.read(buf));
             return r == -1;
         } catch (IOException e) {
             boolean broken = isCausedByBrokenInputStream(e);
@@ -282,7 +283,7 @@ public final class TestClient
         ByteBuffer buf = allocate(size + 1);
         try {
             // Test 1
-            Interrupt.after(1, SECONDS, () -> {
+            Interrupt.after(1, SECONDS, "serverClosedInput", () -> {
                 while (buf.hasRemaining()) {
                     int r = ch.write(buf);
                     assertThat(r).isPositive().describedAs(
@@ -532,14 +533,14 @@ public final class TestClient
     
     private void doWrite(byte[] data) throws IOException {
         requireContent(data);
-        Interrupt.after(wAmount, wUnit, () -> {
+        Interrupt.after(wAmount, wUnit, "doWrite", () -> {
             int r = ch.write(wrap(data));
             assertThat(r).isEqualTo(data.length);
         });
     }
     
     private void doRead(FiniteByteBufferSink sink) throws IOException {
-        Interrupt.after(rAmount, rUnit, () -> {
+        Interrupt.after(rAmount, rUnit, "doRead", () -> {
             ByteBuffer buf = allocate(128);
             while (!sink.hasReachedEnd()) {
                 if (ch.read(buf) == -1) {
@@ -595,9 +596,9 @@ public final class TestClient
         private int matched;
         
         FiniteByteBufferSink(int initialSize, byte[] terminator) {
-            this.delegate = new ByteArrayOutputStream(initialSize);
+            this.delegate   = new ByteArrayOutputStream(initialSize);
             this.terminator = terminator;
-            matched = 0;
+            this.matched    = 0;
         }
         
         void write(ByteBuffer data) {
@@ -624,14 +625,25 @@ public final class TestClient
         }
         
         private void memorize(byte b) {
-            if (terminator == null) {
+            if (terminator == null || terminator.length == 0) {
                 return;
             }
-            
+            // <matched> is both an index (which byte need to be matched next)
+            // and a count on how many bytes have been matched so far.
             if (b == terminator[matched]) {
+                // Next input byte just observed at correct terminator index, bump!
                 ++matched;
-            } else {
-                matched = 0;
+                // In all other cases, there's no match with current index.
+                // But we can't just undo previous matches and set matched = 0.
+                // Ex.
+                //   Input = "abcdEEOM"   <-- 'E' is repeated
+                //   Terminator = "EOM"
+                //   First 'E' is a match. Matched = 1 and next index to check = 1.
+                //   Second 'E' != terminator[matched]/'O',
+                //   but it was a match against previous index.
+                //   I.e. no rollback and matched = 1 remains valid.
+            } else while (matched > 0 && b != terminator[matched - 1]) {
+                --matched;
             }
         }
         
@@ -639,7 +651,6 @@ public final class TestClient
             if (terminator == null) {
                 return false;
             }
-            
             return matched == terminator.length;
         }
         
@@ -651,11 +662,9 @@ public final class TestClient
             if (!LOG.isLoggable(WARNING)) {
                 return;
             }
-            
-            byte[] b = delegate.toByteArray();
-            Collection<String> chars = dump(b, 0, b.length);
-            LOG.log(WARNING, "About to crash. We received this many bytes: " + chars.size() + ". Will log each as a char.");
-            dump(b, 0, b.length).forEach(c -> LOG.log(WARNING, c));
+            Collection<String> chars = dump(delegate.toByteArray());
+            LOG.log(WARNING, "About to crash. Will log start+end of what we received thus far.");
+            chars.forEach(c -> LOG.log(WARNING, c));
         }
         
         private static Collection<String> dump(ByteBuffer bytes) {
@@ -664,11 +673,29 @@ public final class TestClient
             return dump(bytes.array(), start, end);
         }
         
+        private static Collection<String> dump(byte[] bytes) {
+            return dump(bytes, 0, bytes.length);
+        }
+        
         private static Collection<String> dump(byte[] bytes, int start, int end) {
+            // Max number of chars in beginning and end
+            final int max = 5;
+            final String prefix = "\n    ";
+            
             List<String> l = new ArrayList<>();
             
+            // TODO: Ultra simplified iteration of all indices.
+            //       Mathematically just SKIP the middle section instead of iterating through it.
+            int skipped = 0;
             for (int i = start; i < end; ++i) {
-                l.add("\n" + Char.toDebugString((char) bytes[i]));
+                if (i > max - 1 && i < end - max) {
+                    ++skipped;
+                    continue;
+                } else if (skipped > 0) {
+                    l.add(prefix + "<...skipped " + skipped + " byte(s)...>");
+                    skipped = -1;
+                }
+                l.add(prefix + Char.toDebugString((char) bytes[i]));
             }
             
             return l;

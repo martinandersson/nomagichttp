@@ -7,7 +7,7 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 
-import static java.lang.System.Logger.Level.DEBUG;
+import static java.lang.System.Logger.Level.INFO;
 
 /**
  * Interrupt current thread after a given amount of time.<p>
@@ -28,13 +28,16 @@ public class Interrupt
      * 
      * @param duration duration of timeout
      * @param unit unit of duration
+     * @param op operation name (for logging)
      * @param action to execute
      * 
      * @throws IOException if an I/O error occurs
      *                     (this includes {@link ClosedByInterruptException}!)
      */
-    public static void after(long duration, TimeUnit unit, IORunnable action) throws IOException {
-        after(duration, unit, () -> {
+    public static void after(
+            long duration, TimeUnit unit, String op, IORunnable action)
+                throws IOException {
+        after(duration, unit, op, () -> {
             action.run();
             return null;
         });
@@ -47,6 +50,7 @@ public class Interrupt
      * 
      * @param duration duration of timeout
      * @param unit unit of duration
+     * @param op operation name (for logging)
      * @param action to execute
      * @param <V> action result type
      * 
@@ -55,7 +59,7 @@ public class Interrupt
      * @throws IOException if an I/O error occurs
      *                     (this includes {@link ClosedByInterruptException}!)
      */
-    public static <V> V after(long duration, TimeUnit unit, IOSupplier<V> action) throws IOException {
+    public static <V> V after(long duration, TimeUnit unit, String op, IOSupplier<V> action) throws IOException {
         final Thread worker = Thread.currentThread();
         
         if (duration <= 0) {
@@ -67,7 +71,7 @@ public class Interrupt
         ScheduledFuture<?> task = SCHEDULER.schedule(() -> {
             synchronized (timer) {
                 if (timer[0]) {
-                    LOG.log(DEBUG, "Interrupting.");
+                    LOG.log(INFO, () -> "Interrupting operation \"" + op + "\".");
                     worker.interrupt();
                     timer[0] = false;
                 }
