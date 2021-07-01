@@ -75,7 +75,7 @@ class ExampleTest extends AbstractRealTest
         addHelloWorldRoute(true);
         
         ResponseFacade<String> rsp = impl.create(serverPort())
-                .addHeader("Accept", "text/plain; charset=utf-8")
+                .addClientHeader("Accept", "text/plain; charset=utf-8")
                 .getText("/hello", HTTP_1_1);
         
         assertThat(rsp.version()).isEqualTo("HTTP/1.1");
@@ -131,7 +131,7 @@ class ExampleTest extends AbstractRealTest
         addGreetParameterRoutes(true);
         
         HttpClientFacade req = impl.create(serverPort())
-                .addHeader("Accept", "text/plain; charset=utf-8");
+                .addClientHeader("Accept", "text/plain; charset=utf-8");
         
         var rsp1 = req.getText("/hello/John", HTTP_1_1);
         
@@ -202,7 +202,7 @@ class ExampleTest extends AbstractRealTest
         addGreetBodyRoute(true);
         
         HttpClientFacade req = impl.create(serverPort())
-                .addHeader("Accept", "text/plain; charset=utf-8");
+                .addClientHeader("Accept", "text/plain; charset=utf-8");
         
         ResponseFacade<String> rsp = req.postAndReceiveText(
                 "/hello", HTTP_1_1, "John");
@@ -257,8 +257,8 @@ class ExampleTest extends AbstractRealTest
         addEchoHeadersRoute(true);
         
         var rsp = impl.create(serverPort())
-                .addHeader("My-Header", "Value 1")
-                .addHeader("My-Header", "Value 2")
+                .addClientHeader("My-Header", "Value 1")
+                .addClientHeader("My-Header", "Value 2")
                 .getEmpty("/echo", HTTP_1_1);
         
         assertThat(rsp.version()).isEqualTo("HTTP/1.1");

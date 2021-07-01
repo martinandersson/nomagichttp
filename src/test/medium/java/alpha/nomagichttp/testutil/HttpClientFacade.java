@@ -30,6 +30,8 @@ import java.net.http.HttpHeaders;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.EnumSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -39,7 +41,6 @@ import java.util.concurrent.TimeoutException;
 import java.util.function.BiConsumer;
 import java.util.function.BiFunction;
 import java.util.function.Function;
-import java.util.function.IntFunction;
 import java.util.function.IntSupplier;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
@@ -54,6 +55,7 @@ import static java.util.Locale.ROOT;
 import static java.util.Objects.deepEquals;
 import static java.util.Objects.requireNonNull;
 import static java.util.concurrent.TimeUnit.SECONDS;
+import static java.util.function.Predicate.not;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
@@ -168,9 +170,37 @@ public abstract class HttpClientFacade
          */
         REACTOR (Reactor::new);
         
-        private final IntFunction<HttpClientFacade> factory;
+        // TODO: Helidon has a client built on top of Netty. Add?
         
-        Implementation(IntFunction<HttpClientFacade> f) {
+        /**
+         * Construct all implementations.
+         * 
+         * @param port of server
+         * @return a stream of client facades
+         */
+        public static Stream<HttpClientFacade> createAll(int port) {
+            return createAllExceptFor(port);
+        }
+        
+        /**
+         * Construct almost all implementations, excluding some.
+         * 
+         * @param port of server
+         * @param impl implementations to exclude
+         * @return a stream of client facades
+         */
+        public static Stream<HttpClientFacade> createAllExceptFor(int port, Implementation... impl) {
+            var stream = Arrays.stream(values());
+            if (impl.length > 0) {
+                var set = EnumSet.of(impl[0], impl);
+                stream = stream.filter(not(set::contains));
+            }
+            return stream.map(i -> i.create(port));
+        }
+        
+        private final BiFunction<Implementation, Integer, HttpClientFacade> factory;
+        
+        Implementation(BiFunction<Implementation, Integer, HttpClientFacade> f) {
             factory = f;
         }
         
@@ -181,10 +211,11 @@ public abstract class HttpClientFacade
          * @return a client facade
          */
         public final HttpClientFacade create(int port) {
-            return factory.apply(port);
+            return factory.apply(this, port);
         }
     }
     
+    private final Implementation impl;
     private final int port;
     // "permits null elements", whatever that means
     private Map<String, List<String>> headers;
@@ -192,23 +223,37 @@ public abstract class HttpClientFacade
     /**
      * Constructs a {@code HttpClientFacade}.
      * 
+     * @param impl enum instance
      * @param port of server
      */
-    protected HttpClientFacade(int port) {
-         this.port = port;
-         this.headers = Map.of();
+    protected HttpClientFacade(Implementation impl, int port) {
+        this.impl = impl;
+        this.port = port;
+        this.headers = Map.of();
     }
     
     /**
-     * Add a global header.<p>
+     * Returns the enum instance representing this implementation.
      * 
-     * Will be sent with each request.
+     * @return the enum instance representing this implementation
+     */
+    public final Implementation toEnum() {
+        return impl;
+    }
+    
+    @Override
+    public final String toString() {
+        return getClass().getSimpleName();
+    }
+    
+    /**
+     * Add a header that will be added to each request this client sends.
      * 
      * @param name of header
      * @param value of header
      * @return this for chaining/fluency
      */
-    public final HttpClientFacade addHeader(String name, String value) {
+    public final HttpClientFacade addClientHeader(String name, String value) {
         requireNonNull(name);
         requireNonNull(value);
         if (headers.isEmpty()) { // i.e. == Map.of()
@@ -234,17 +279,17 @@ public abstract class HttpClientFacade
      * 
      * @param sink target
      */
-    protected void copyHeaders(BiConsumer<String, String> sink) {
+    protected void copyClientHeaders(BiConsumer<String, String> sink) {
         headers.forEach((name, values) ->
                 values.forEach(v -> sink.accept(name, v)));
     }
     
     /**
-     * Iterate all headers contained in this class.
+     * Iterate all headers contained in this client.
      * 
      * @return an iterator
      */
-    protected Iterable<Map.Entry<String, List<String>>> headers() {
+    protected Iterable<Map.Entry<String, List<String>>> clientHeaders() {
         return headers.entrySet();
     }
     
@@ -367,8 +412,8 @@ public abstract class HttpClientFacade
     private static class JDK extends HttpClientFacade {
         private final java.net.http.HttpClient c;
         
-        JDK(int port) {
-            super(port);
+        JDK(Implementation impl, int port) {
+            super(impl, port);
             c = java.net.http.HttpClient.newHttpClient();
         }
         
@@ -406,7 +451,7 @@ public abstract class HttpClientFacade
                     .method(method, reqBody)
                     .uri(withBase(path))
                     .version(toJDKVersion(ver));
-            copyHeaders(b::header);
+            copyClientHeaders(b::header);
             return b.build();
         }
         
@@ -440,8 +485,8 @@ public abstract class HttpClientFacade
     }
     
     private static final class OkHttp extends HttpClientFacade {
-        OkHttp(int port) {
-            super(port);
+        OkHttp(Implementation impl, int port) {
+            super(impl, port);
         }
         
         @Override
@@ -478,7 +523,7 @@ public abstract class HttpClientFacade
             var req = new Request.Builder()
                     .method(method, reqBody)
                     .url(withBase(path).toURL());
-            copyHeaders(req::header);
+            copyClientHeaders(req::header);
             return req.build();
         }
         
@@ -524,8 +569,8 @@ public abstract class HttpClientFacade
     }
     
     private static final class Apache extends HttpClientFacade {
-        Apache(int port) {
-            super(port);
+        Apache(Implementation impl, int port) {
+            super(impl, port);
         }
         
         @Override
@@ -564,7 +609,7 @@ public abstract class HttpClientFacade
                     .create(method)
                     .setUri(withBase(path))
                     .setVersion(toApacheVersion(ver));
-            copyHeaders(b::addHeader);
+            copyClientHeaders(b::addHeader);
             return b;
         }
         
@@ -589,8 +634,8 @@ public abstract class HttpClientFacade
     }
     
     private static final class Jetty extends HttpClientFacade {
-        Jetty(int port) {
-            super(port);
+        Jetty(Implementation impl, int port) {
+            super(impl, port);
         }
         
         @Override
@@ -641,7 +686,7 @@ public abstract class HttpClientFacade
                            .version(toJettyVersion(ver))
                            .body(reqBody);
                 
-                copyHeaders((k, v) ->
+                copyClientHeaders((k, v) ->
                         req.headers(h -> h.add(k, v)));
                 
                 rsp = req.send();
@@ -664,8 +709,8 @@ public abstract class HttpClientFacade
     }
     
     private static final class Reactor extends HttpClientFacade {
-        Reactor(int port) {
-            super(port);
+        Reactor(Implementation impl, int port) {
+            super(impl, port);
         }
         
         // On Reactor, the default implementation in HttpClientFacade returns NULL (!), causing NPE.
@@ -716,11 +761,7 @@ public abstract class HttpClientFacade
             var client = reactor.netty.http.client.HttpClient.create()
                     .protocol(toReactorVersion(ver));
             
-            // Otherwise they do chunked encoding; there is no BodyPublisher,
-            // sensible default behavior, utility methods, shortcuts, et cetera
-            addHeader("Content-Length", Long.toString(contentLength));
-            
-            for (var entry : headers()) {
+            for (var entry : clientHeaders()) {
                 var name = entry.getKey();
                 for (var value : entry.getValue()) {
                     // Yup, you "consume" a mutable object, but... also returns a new client
@@ -728,6 +769,12 @@ public abstract class HttpClientFacade
                     client = client.headers(h -> h.add(name, value));
                 }
             }
+            
+            // Otherwise they do chunked encoding; there is no BodyPublisher,
+            // sensible default behavior, utility methods, shortcuts, et cetera
+            // TODO: Remove whenever we have chunked decoding implemented.
+            client = client.headers(h ->
+                    h.add("Content-Length", Long.toString(contentLength)));
             
             // "uri() should be invoked before request()" says the JavaDoc.
             // Except that doesn't compile lol
