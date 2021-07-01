@@ -20,6 +20,8 @@ sourceSets {
         java.outputDir = file("$buildDir/classes/java/test/medium")
         resources.srcDirs = ['src/test/medium/resources']
         output.resourcesDir = file("$buildDir/resources/test/medium")
+        // Medium can also pull in utils from small
+        // (e.g. alpha.nomagichttp.testutil.Logging)
         compileClasspath += main.output + test.output
         runtimeClasspath += main.output + test.output
     }
@@ -30,17 +32,25 @@ sourceSets {
         java.outputDir = file("$buildDir/classes/java/test/large")
         resources.srcDirs = ['src/test/large/resources']
         output.resourcesDir = file("$buildDir/resources/test/large")
-        compileClasspath += main.output
-        runtimeClasspath += main.output
+        // Large can also pull in utils from medium (and small)
+        // (e.g. alpha.nomagichttp.testutil.AbstractRealTest)
+        compileClasspath += main.output + mediumTest.output + test.output
+        runtimeClasspath += main.output + mediumTest.output + test.output
     }
 }
 
 configurations {
     // All small test dependencies are also medium+large test dependencies
+    // (e.g. @org.junit.jupiter.params.ParameterizedTest)
     mediumTestImplementation.extendsFrom testImplementation
     mediumTestRuntimeOnly.extendsFrom testRuntimeOnly
     largeTestImplementation.extendsFrom testImplementation
     largeTestRuntimeOnly.extendsFrom testRuntimeOnly
+    
+    // All medium test dependencies are also large test dependencies
+    // (e.g. HTTP client implementations)
+    largeTestImplementation.extendsFrom mediumTestImplementation
+    largeTestRuntimeOnly.extendsFrom mediumTestRuntimeOnly
 }
 
 repositories {
