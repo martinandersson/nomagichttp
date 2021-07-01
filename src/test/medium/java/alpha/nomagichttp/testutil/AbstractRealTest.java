@@ -1,11 +1,9 @@
-package alpha.nomagichttp.mediumtest;
+package alpha.nomagichttp.testutil;
 
 import alpha.nomagichttp.Config;
 import alpha.nomagichttp.HttpServer;
 import alpha.nomagichttp.handler.ClientChannel;
 import alpha.nomagichttp.handler.ErrorHandler;
-import alpha.nomagichttp.testutil.Logging;
-import alpha.nomagichttp.testutil.TestClient;
 import org.assertj.core.api.AbstractThrowableAssert;
 import org.assertj.core.groups.Tuple;
 import org.junit.jupiter.api.AfterEach;
@@ -27,6 +25,7 @@ import java.util.concurrent.LinkedBlockingDeque;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
+import java.util.logging.Level;
 import java.util.logging.LogRecord;
 import java.util.logging.Logger;
 import java.util.stream.Stream;
@@ -47,37 +46,146 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * Will setup a {@link #server()} (on first access) and a {@link #client()} (on
- * first access), the latter configured with the server's port. Both scoped to
- * each test.<p>
+ * first access), the latter configured with the server's port.<p>
  * 
- * The server has no routes added and so most test cases will probably have to
- * add those manually.<p>
+ * Both the server- and client APIs are pretty easy-to-use already. The added
+ * value of this class are related details such as automatic- log recording and
+ * collection/memorization of server errors.<p>
  * 
- * This class registers en error handler which collects all server exceptions
- * into a {@code BlockingDeque} and then delegates the error handling to the
- * default error handler (by re-throw).<p>
+ * This class will assert on server stop that no errors were delivered to the
+ * error handler. If errors are expected, then the test must consume all errors
+ * using {@link #pollServerError()}.<p>
  * 
- * By default, after-each will assert that no errors were delivered to the error
- * handler. If errors are expected, then the test must consume all errors from
- * the deque using {@link #pollServerError()}.<p>
+ * After each test - by default - the server will be stopped and the
+ * server+client reference will be set to null ({@linkplain
+ * TestClient#openConnection() a persistent connection} opened by the test must
+ * be closed by the test). This is great for test isolation.
  * 
- * Log recording will be activated for each test. The recorder can be retrieved
- * using {@link #logRecorder()}. Records can be retrieved at any time using
- * {@link #stopLogRecording()}.
+ * <pre>
+ *   class MyTest extends AbstractRealTest {
+ *      {@literal @}Test
+ *       void first() {
+ *           // Implicit start of server on access
+ *           server().add(someRoute)...
+ *           // Implicit connection from client to server
+ *           String response = client().writeReadTextUntilEOS(myRequest)...
+ *           assertThat(response)...
+ *           // Implicit server stop
+ *       }
+ *      {@literal @}Test
+ *       void second() {
+ *           // Uses another server instance
+ *           server()...
+ *       }
+ *   }
+ * </pre>
+ * 
+ * The automatic stop and set-reference-to-null actions can be disabled through
+ * a constructor argument, and thus, the life of the server and/or client can be
+ * extended at the discretion of the subclass. An extended server scope can be
+ * used to save on port resources when running a large number of test cases
+ * where isolation is not needed or perhaps even unwanted. A client with an
+ * extended scoped is useful when it is desired to have many tests share a
+ * persistent connection.<p>
+ * 
+ * Log recording will by default be activated for each test. The recorder can be
+ * retrieved using {@link #logRecorder()}. Records can be retrieved at any time
+ * using {@link #stopLogRecording()}.<p>
+ * 
+ * Log recording is intended for detailed tests that are awaiting log events
+ * and/or running asserts on log records. Tests concerned with performance ought
+ * to not use log recording which can be disabled with a constructor
+ * argument.
+ * 
+ * <pre>
+ *  {@literal @}TestInstance(PER_CLASS)
+ *   class MyRepeatedTest extends AbstractRealTest {
+ *       private final Channel conn;
+ *       MyRepeatedTest() {
+ *           // Save server + client references across tests,
+ *           // and disable log recording.
+ *           super(false, false, false);
+ *           conn = client().openConnection();
+ *       }
+ *      {@literal @}RepeatedTest(999_999_999)
+ *       void httpExchange() {
+ *           server()...
+ *           client().writeReadTextUntilNewlines(...)
+ *       }
+ *      {@literal @}AfterAll
+ *       void afterAll() { //  {@literal <}-- no need to be static (coz of PER_CLASS thing)
+ *           stopServer();
+ *           conn.close();
+ *       }
+ *       // Or alternatively, save on annotations and just loop inside one test method lol
+ *   }
+ * </pre>
+ * 
+ * This class will in a static {@code @BeforeAll} method named "beforeAll" call
+ * {@code Logging.setLevel(ALL)} in order to enable very detailed logging, such
+ * as each char processed in the request head processor. Tests that run a large
+ * number of requests and/or are concerned about performance ought to stop JUnit
+ * from calling the method by hiding it.
+ * 
+ * <pre>
+ *   class MyQuietTest extends AbstractRealTest {
+ *       static void beforeAll() {
+ *           // Use default log level
+ *       }
+ *       ...
+ *   }
+ * </pre>
+ * 
+ * Please note that currently, the {@code TestClient} is not thread-safe nor is
+ * this class (well, except for the collection and retrieval of server errors).
+ * This will likely change when work commence to add tests that executes
+ * requests in parallel.
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  */
-abstract class AbstractRealTest
+public abstract class AbstractRealTest
 {
-    final Logger LOG =  Logger.getLogger(getClass().getPackageName());
+    private final static Logger LOG =  Logger.getLogger(AbstractRealTest.class.getPackageName());
+    
+    private final boolean stopServerAfterEach,
+                          nullifyClientAfterEach,
+                          useLogRecording;
+    
+    // impl permits null values and keys
+    private final Map<Class<? extends Throwable>, List<Consumer<ClientChannel>>> onError;
+    
+    /**
+     * Same as {@code AbstractRealTest(true, true, true)}.
+     * 
+     * @see AbstractRealTest
+     */
+    protected AbstractRealTest() {
+        this(true, true, true);
+    }
+    
+    /**
+     * Constructs this object.
+     * 
+     * @param stopServerAfterEach see {@link AbstractRealTest}
+     * @param nullifyClientAfterEach see {@link AbstractRealTest}
+     * @param useLogRecording see {@link AbstractRealTest}
+     */
+    protected AbstractRealTest(
+            boolean stopServerAfterEach,
+            boolean nullifyClientAfterEach,
+            boolean useLogRecording)
+    {
+        this.stopServerAfterEach = stopServerAfterEach;
+        this.nullifyClientAfterEach = nullifyClientAfterEach;
+        this.useLogRecording = useLogRecording;
+        this.onError = new HashMap<>();
+    }
     
     private Logging.Recorder key;
     private HttpServer server;
     private Config config;
     private ErrorHandler custom;
     private BlockingDeque<Throwable> errors;
-    // permits null values and keys
-    private final Map<Class<? extends Throwable>, List<Consumer<ClientChannel>>> onError = new HashMap<>();
     private int port;
     private TestClient client;
     
@@ -87,30 +195,37 @@ abstract class AbstractRealTest
     }
     
     @BeforeEach
-    void beforeEach(TestInfo test) {
-        LOG.log(INFO, "Executing " + toString(test));
-        key = Logging.startRecording();
+    final void beforeEach(TestInfo test) {
+        LOG.log(INFO, () -> "Executing " + toString(test));
+        if (useLogRecording) {
+            key = Logging.startRecording();
+        }
     }
     
     @AfterEach
-    void afterEach(TestInfo test) {
+    final void afterEach(TestInfo test) {
         try {
-            if (server != null) {
+            if (nullifyClientAfterEach) {
+                client = null;
+            }
+            if (server != null && stopServerAfterEach) {
                 // Not stopNow() and then move on because...
                 //    asynchronous/delayed logging from active exchanges may
                 //    spill into a subsequent new test and consequently and
                 //    wrongfully fail that test if it were to run assertions on
                 //    the server log (which many tests do).
-                // Await stop() also...
+                // Awaiting stop() also...
                 //    boosts our confidence significantly that children are
                 //    never leaked.
                 stopServer();
                 assertThat(errors).isEmpty();
             }
         } finally {
-            stopLogRecording();
+            if (useLogRecording) {
+                stopLogRecording();
+            }
         }
-        LOG.log(INFO, "Finished " + toString(test));
+        LOG.log(INFO, () -> "Finished " + toString(test));
     }
     
     /**
@@ -161,7 +276,7 @@ abstract class AbstractRealTest
     }
     
     /**
-     * Set a custom error handler to use.
+     * Pre-empty this class' error handler with a custom one.
      * 
      * @param handler error handler
      */
@@ -237,6 +352,8 @@ abstract class AbstractRealTest
      * Returns the server instance.
      * 
      * @return the server instance
+     * 
+     * @throws IOException if an I/O error occurs
      */
     protected final HttpServer server() throws IOException {
         if (server == null) {
@@ -278,6 +395,8 @@ abstract class AbstractRealTest
      * Returns the client instance.
      * 
      * @return the client instance
+     * 
+     * @throws IOException if an I/O error occurs
      */
     protected final TestClient client() throws IOException {
         if (client == null) {
@@ -331,11 +450,25 @@ abstract class AbstractRealTest
      */
     protected final void stopServer() {
         requireServerStartedOnce();
-        assertThat(server.stop())
-                .succeedsWithin(1, SECONDS)
-                .isNull();
+        try {
+            assertThat(server.stop())
+                    .succeedsWithin(1, SECONDS)
+                    .isNull();
+        } finally {
+            server = null;
+        }
     }
     
+    /**
+     * Shortcut for {@link Logging.Recorder#await(Level, String)}.
+     * 
+     * @param level record level predicate
+     * @param messageStartsWith record message predicate
+     * 
+     * @throws NullPointerException   if any arg is {@code null}
+     * @throws IllegalStateException  if server hasn't started once
+     * @throws InterruptedException   if the current thread is interrupted while waiting
+     */
     protected final void awaitLog(System.Logger.Level level, String messageStartsWith)
             throws InterruptedException
     {
@@ -343,17 +476,55 @@ abstract class AbstractRealTest
         assertTrue(logRecorder().await(toJUL(level), messageStartsWith));
     }
     
-    protected final void awaitLog(System.Logger.Level level, String messageStartsWith, Class<? extends Throwable> error)
-            throws InterruptedException
+    /**
+     * Shortcut for {@link Logging.Recorder#await(Level, String, Class)}.
+     * 
+     * @param level record level predicate
+     * @param messageStartsWith record message predicate
+     * @param error record error predicate (record's error must be instance of)
+     * 
+     * @throws NullPointerException   if any arg is {@code null}
+     * @throws IllegalStateException  if server hasn't started once
+     * @throws InterruptedException   if the current thread is interrupted while waiting
+     */
+    protected final void awaitLog(
+            System.Logger.Level level,
+            String messageStartsWith,
+            Class<? extends Throwable> error)
+                throws InterruptedException
     {
         requireServerStartedOnce();
         assertTrue(logRecorder().await(toJUL(level), messageStartsWith, error));
     }
     
+    // TODO: Move all "await" util methods to the [Log-]Recorder class.
+    //       Concrete test class do assertXxx() or consider extending Recorder
+    //       API to offer an assert-service, or have his API throw an exception
+    //       instead of returning true/false.
+    
+    /**
+     * Await first logged error.
+     * 
+     * @return the error
+     * 
+     * @throws NullPointerException   if {@code filter} is {@code null}
+     * @throws IllegalStateException  if server hasn't started once
+     * @throws InterruptedException   if the current thread is interrupted while waiting
+     */
     protected final Throwable awaitFirstLogError() throws InterruptedException {
         return awaitFirstLogError(Throwable.class);
     }
     
+    /**
+     * Await first logged error that is an instance of the given type.
+     * 
+     * @param filter type expected
+     * @return the error
+     * 
+     * @throws NullPointerException   if {@code filter} is {@code null}
+     * @throws IllegalStateException  if server hasn't started once
+     * @throws InterruptedException   if the current thread is interrupted while waiting
+     */
     protected final Throwable awaitFirstLogError(Class<? extends Throwable> filter)
             throws InterruptedException
     {
@@ -373,7 +544,7 @@ abstract class AbstractRealTest
     
     /**
      * Stop log recording and assert the records.
-     *
+     * 
      * @param values produced by {@link #rec(System.Logger.Level, String)}
      */
     protected final void assertThatLogContainsOnlyOnce(Tuple... values) {
@@ -383,6 +554,16 @@ abstract class AbstractRealTest
                 .containsOnlyOnce(values);
     }
     
+    /**
+     * Create an AssertJ Tuple consisting of a log- level and message.
+     * 
+     * @param level of log record
+     * @param msg of log record
+     * @return a tuple
+     * 
+     * @throws NullPointerException
+     *             if {@code level} is {@code null}, perhaps also for {@code msg}
+     */
     protected static Tuple rec(System.Logger.Level level, String msg) {
         return tuple(toJUL(level), msg);
     }
@@ -413,6 +594,8 @@ abstract class AbstractRealTest
      * delivered a particular error <i>and</i> logged it (or, someone did).
      * 
      * @return an assert API of sorts
+     * 
+     * @throws InterruptedException if interrupted while waiting
      */
     protected final AbstractThrowableAssert<?, ? extends Throwable>
             assertThatServerErrorObservedAndLogged() throws InterruptedException

@@ -12,6 +12,7 @@ import alpha.nomagichttp.message.RequestHeadTimeoutException;
 import alpha.nomagichttp.message.Response;
 import alpha.nomagichttp.message.ResponseTimeoutException;
 import alpha.nomagichttp.route.NoRouteFoundException;
+import alpha.nomagichttp.testutil.AbstractRealTest;
 import alpha.nomagichttp.testutil.IORunnable;
 import alpha.nomagichttp.testutil.MemorizingSubscriber;
 import alpha.nomagichttp.util.SubscriberFailedException;
@@ -31,6 +32,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
 import java.util.logging.LogRecord;
+import java.util.logging.Logger;
 
 import static alpha.nomagichttp.handler.RequestHandler.GET;
 import static alpha.nomagichttp.handler.RequestHandler.HEAD;
@@ -67,7 +69,6 @@ import static java.util.List.of;
 import static java.util.concurrent.CompletableFuture.failedFuture;
 import static java.util.concurrent.CompletableFuture.failedStage;
 import static java.util.concurrent.TimeUnit.SECONDS;
-import static java.util.logging.Level.FINE;
 import static java.util.logging.Level.INFO;
 import static java.util.stream.Collectors.toList;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -85,6 +86,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  */
 class ErrorTest extends AbstractRealTest
 {
+    private static final Logger LOG =  Logger.getLogger(ErrorTest.class.getPackageName());
+    
     private static final class OopsException extends RuntimeException {
         private static final long serialVersionUID = 1L;
         
@@ -681,7 +684,7 @@ class ErrorTest extends AbstractRealTest
                 sendBadRequest.run();
                 assertTrue(ch.isOpen());
             }
-            LOG.log(INFO, () -> "Running last.");
+            LOG.log(INFO, "Running last.");
             sendBadRequest.run();
             
             awaitChildClose();

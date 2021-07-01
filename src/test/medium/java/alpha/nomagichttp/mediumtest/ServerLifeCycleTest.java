@@ -1,6 +1,7 @@
 package alpha.nomagichttp.mediumtest;
 
 import alpha.nomagichttp.message.Responses;
+import alpha.nomagichttp.testutil.AbstractRealTest;
 import alpha.nomagichttp.testutil.TestClient;
 import org.junit.jupiter.api.Test;
 

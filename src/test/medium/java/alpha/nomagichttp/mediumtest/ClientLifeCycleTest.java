@@ -6,6 +6,7 @@ import alpha.nomagichttp.message.Char;
 import alpha.nomagichttp.message.EndOfStreamException;
 import alpha.nomagichttp.message.PooledByteBufferHolder;
 import alpha.nomagichttp.message.Response;
+import alpha.nomagichttp.testutil.AbstractRealTest;
 import alpha.nomagichttp.testutil.TestClient;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;

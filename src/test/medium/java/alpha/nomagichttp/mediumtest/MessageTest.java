@@ -1,6 +1,7 @@
 package alpha.nomagichttp.mediumtest;
 
 import alpha.nomagichttp.message.Responses;
+import alpha.nomagichttp.testutil.AbstractRealTest;
 import org.junit.jupiter.api.Test;
 
 import java.io.IOException;

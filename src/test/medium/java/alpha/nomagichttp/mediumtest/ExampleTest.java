@@ -5,6 +5,7 @@ import alpha.nomagichttp.handler.RequestHandler;
 import alpha.nomagichttp.message.Request;
 import alpha.nomagichttp.message.Response;
 import alpha.nomagichttp.message.Responses;
+import alpha.nomagichttp.testutil.AbstractRealTest;
 import alpha.nomagichttp.testutil.HttpClientFacade;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
