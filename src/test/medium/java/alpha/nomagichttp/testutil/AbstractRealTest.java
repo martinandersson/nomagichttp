@@ -4,6 +4,7 @@ import alpha.nomagichttp.Config;
 import alpha.nomagichttp.HttpServer;
 import alpha.nomagichttp.handler.ClientChannel;
 import alpha.nomagichttp.handler.ErrorHandler;
+import alpha.nomagichttp.message.Response;
 import org.assertj.core.api.AbstractThrowableAssert;
 import org.assertj.core.groups.Tuple;
 import org.junit.jupiter.api.AfterEach;
@@ -208,17 +209,8 @@ public abstract class AbstractRealTest
             if (nullifyClientAfterEach) {
                 client = null;
             }
-            if (server != null && stopServerAfterEach) {
-                // Not stopNow() and then move on because...
-                //    asynchronous/delayed logging from active exchanges may
-                //    spill into a subsequent new test and consequently and
-                //    wrongfully fail that test if it were to run assertions on
-                //    the server log (which many tests do).
-                // Awaiting stop() also...
-                //    boosts our confidence significantly that children are
-                //    never leaked.
+            if (stopServerAfterEach) {
                 stopServer();
-                assertThat(errors).isEmpty();
             }
         } finally {
             if (useLogRecording) {
@@ -446,14 +438,28 @@ public abstract class AbstractRealTest
     }
     
     /**
-     * Stop server gracefully and await the completion of all HTTP exchanges.
+     * Stop server gracefully and await the completion of all HTTP exchanges.<p>
+     * 
+     * Is NOP if server never started.
      */
     protected final void stopServer() {
-        requireServerStartedOnce();
+        if (server == null) {
+            return;
+        }
         try {
+            // Not stopNow() and then move on because...
+            //    asynchronous/delayed logging from active exchanges may
+            //    spill into a subsequent new test and consequently and
+            //    wrongfully fail that test if it were to run assertions on
+            //    the server log (which many tests do).
+            // Awaiting stop() also...
+            //    boosts our confidence significantly that children are
+            //    never leaked.
             assertThat(server.stop())
                     .succeedsWithin(1, SECONDS)
                     .isNull();
+            assertThat(errors)
+                    .isEmpty();
         } finally {
             server = null;
         }
@@ -623,6 +629,7 @@ public abstract class AbstractRealTest
      */
     // TODO: boolean to check also record throwable
     protected final void assertThatNoWarningOrErrorIsLoggedExcept(Class<?>... excludeClasses) {
+        requireServerStartedOnce();
         stopServer();
         
         Set<String> excl = excludeClasses.length == 0 ? Set.of() :
@@ -659,6 +666,21 @@ public abstract class AbstractRealTest
     protected final void awaitChildClose() throws InterruptedException {
         requireServerStartedOnce();
         assertTrue(logRecorder().await(FINE, "Closed child:"));
+    }
+    
+    /**
+     * Shortcut for opening up the response and set the must-close-after-write
+     * command.<p>
+     * 
+     * Useful for tests where the HTTP client would keep the connection alive
+     * which would hinder a graceful server stop from completing in a timely
+     * manner.
+     * 
+     * @param rsp response
+     * @return with command set
+     */
+    protected static Response setMustCloseAfterWrite(Response rsp) {
+        return rsp.toBuilder().mustCloseAfterWrite(true).build();
     }
     
     private static String toString(TestInfo test) {

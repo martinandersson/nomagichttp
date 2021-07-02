@@ -67,6 +67,7 @@ class ExampleTest extends AbstractRealTest
             "Hello World!");
     }
     
+    // TODO: Add name displaying the client impl. See largeTest
     @ParameterizedTest
     @EnumSource // <-- in case JUnit didn't know an enum parameter is a..
     void HelloWorld_compatibility(HttpClientFacade.Implementation impl)
@@ -367,10 +368,7 @@ class ExampleTest extends AbstractRealTest
         assertThat(Files.readString(file)).isEqualTo("Foo");
     }
     
-    private static Response tryScheduleClose(Response rsp, boolean close) {
-        if (!close) {
-            return rsp;
-        }
-        return rsp.toBuilder().mustCloseAfterWrite(true).build();
+    private static Response tryScheduleClose(Response rsp, boolean ifTrue) {
+        return ifTrue ? setMustCloseAfterWrite(rsp) : rsp;
     }
 }
