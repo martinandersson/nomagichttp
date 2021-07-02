@@ -4,8 +4,10 @@ import alpha.nomagichttp.testutil.AbstractLargeRealTest;
 import alpha.nomagichttp.testutil.HttpClientFacade;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.MethodOrderer.OrderAnnotation;
 import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestMethodOrder;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
 
@@ -26,6 +28,7 @@ import static alpha.nomagichttp.util.BetterBodyPublishers.ofFile;
 import static java.nio.file.StandardOpenOption.CREATE;
 import static java.nio.file.StandardOpenOption.TRUNCATE_EXISTING;
 import static java.nio.file.StandardOpenOption.WRITE;
+import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assumptions.assumeTrue;
 import static org.junit.jupiter.params.provider.EnumSource.Mode.EXCLUDE;
@@ -35,6 +38,7 @@ import static org.junit.jupiter.params.provider.EnumSource.Mode.EXCLUDE;
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  */
+@TestMethodOrder(OrderAnnotation.class)
 class BigFileRequest extends AbstractLargeRealTest
 {
     private final static int FILE_SIZE = 50 * 1_000_000;
@@ -89,15 +93,21 @@ class BigFileRequest extends AbstractLargeRealTest
         final byte[] body;
         Channel conn = client().openConnection();
         try (conn) {
-            assertThat(client().writeReadTextUntilNewlines(
-                "GET /file HTTP/1.1"                     + CRLF +
-                "Connection: close"                      + CRLF + CRLF))
-                    .isEqualTo(
+            String req = "GET /file HTTP/1.1" + CRLF +
+                         "Connection: close"  + CRLF + CRLF;
+            String head = client().write(req)
+                                  .shutdownOutput()
+                                  .readTextUntilNewlines();
+            
+            assertThat(head).isEqualTo(
                 "HTTP/1.1 200 OK"                        + CRLF +
                 "Content-Type: application/octet-stream" + CRLF +
-                "Content-Length: " + contents.length     + CRLF +
+                // (No Content-Length. File did not exist at time-of-size check.)
                 "Connection: close"                      + CRLF + CRLF);
-            body = client().readBytesUntilEOS();
+            
+            // Need a bit extra time to notice EOS
+            body = client().interruptReadAfter(3, SECONDS)
+                           .readBytesUntilEOS();
         }
         assertThat(body).isEqualTo(contents);
     }
