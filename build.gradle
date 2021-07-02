@@ -82,7 +82,7 @@ version = '0.5-SNAPSHOT'
 
 // By default, all compiler- and JavaDoc warnings are errors.
 // Unless environment variable HACKING=true.
-def Werror = !(System.env.HACKING ?: false).toBoolean()
+var Werror = !(System.env.HACKING ?: false).toBoolean()
 
 wrapper {
     gradleVersion = '7.0'
