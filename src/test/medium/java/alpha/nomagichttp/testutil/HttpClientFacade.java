@@ -14,6 +14,7 @@ import org.apache.hc.client5.http.async.methods.SimpleRequestBuilder;
 import org.apache.hc.client5.http.impl.async.HttpAsyncClients;
 import org.apache.hc.core5.http.ProtocolVersion;
 import org.eclipse.jetty.client.api.ContentResponse;
+import org.eclipse.jetty.client.util.BytesRequestContent;
 import org.eclipse.jetty.client.util.StringRequestContent;
 import reactor.core.publisher.Mono;
 import reactor.netty.ByteBufFlux;
@@ -387,6 +388,10 @@ public abstract class HttpClientFacade
      * Which charset to use for decoding is for the client implementation to
      * decide.
      * 
+     * @implSpec
+     * The implementation must <i>assert</i> that no body was received without
+     * discarding.
+     * 
      * @param path of server resource
      * @param version of HTTP
      * @param body of request
@@ -394,7 +399,7 @@ public abstract class HttpClientFacade
      * 
      * @throws IllegalArgumentException
      *             if no equivalent implementation-specific version exists, or
-     *             if the version is otherwise not supported (too old or too new) 
+     *             if the version is otherwise not supported (too old or too new)
      * @throws IOException
      *             if an I/O error occurs when sending or receiving
      * @throws InterruptedException
@@ -407,6 +412,31 @@ public abstract class HttpClientFacade
      */
     public abstract ResponseFacade<String> postAndReceiveText(
             String path, HttpConstants.Version version, String body)
+            throws IOException, InterruptedException, ExecutionException, TimeoutException;
+    
+    /**
+     * Execute a POST request expecting no response body.
+     * 
+     * @param path of server resource
+     * @param version of HTTP
+     * @param body of request
+     * @return the response
+     * 
+     * @throws IllegalArgumentException
+     *             if no equivalent implementation-specific version exists, or
+     *             if the version is otherwise not supported (too old or too new)
+     * @throws IOException
+     *             if an I/O error occurs when sending or receiving
+     * @throws InterruptedException
+     *             if the operation is interrupted
+     * @throws ExecutionException
+     *             if an underlying asynchronous operation fails
+     * @throws TimeoutException
+     *             if an otherwise asynchronous operation times out
+     *             (timeout duration not specified)
+     */
+    public abstract ResponseFacade<Void> postBytesAndReceiveEmpty(
+            String path, HttpConstants.Version version, byte[] body)
             throws IOException, InterruptedException, ExecutionException, TimeoutException;
     
     private static class JDK extends HttpClientFacade {
@@ -436,12 +466,26 @@ public abstract class HttpClientFacade
                 String path, HttpConstants.Version ver, String body)
                 throws IOException, InterruptedException
         {
-            var req = newRequest("POST", path, ver, BodyPublishers.ofString(body));
+            var req = POST(path, ver, BodyPublishers.ofString(body));
             return execute(req, BodyHandlers.ofString());
+        }
+        
+        @Override
+        public ResponseFacade<Void> postBytesAndReceiveEmpty(
+                String path, HttpConstants.Version ver, byte[] body)
+                throws IOException, InterruptedException
+        {
+            var req = POST(path, ver, BodyPublishers.ofByteArray(body));
+            return execute(req, BodyHandlers.ofByteArray())
+                    .assertEmpty();
         }
         
         private HttpRequest GET(String path, HttpConstants.Version ver) {
             return newRequest("GET", path, ver, BodyPublishers.noBody());
+        }
+        
+        private HttpRequest POST(String path, HttpConstants.Version ver, BodyPublisher body) {
+            return newRequest("POST", path, ver, body);
         }
         
         private HttpRequest newRequest(
@@ -508,12 +552,26 @@ public abstract class HttpClientFacade
                 String path, HttpConstants.Version ver, String body)
                 throws IOException
         {
-            var req = newRequest("POST", path, RequestBody.create(body, null));
+            var req = POST(path, RequestBody.create(body, null));
             return execute(req, ver, ResponseBody::string);
+        }
+        
+        @Override
+        public ResponseFacade<Void> postBytesAndReceiveEmpty(
+                String path, HttpConstants.Version ver, byte[] body)
+                throws IOException
+        {
+            var req = POST(path, RequestBody.create(body, null));
+            return execute(req, ver, ResponseBody::bytes)
+                    .assertEmpty();
         }
         
         private Request GET(String path) throws MalformedURLException {
             return newRequest("GET", path, null);
+        }
+        
+        private Request POST(String path, RequestBody reqBody) throws MalformedURLException {
+            return newRequest("POST", path, reqBody);
         }
         
         private Request newRequest(
@@ -598,6 +656,18 @@ public abstract class HttpClientFacade
             return execute(req, SimpleHttpResponse::getBodyText);
         }
         
+        @Override
+        public ResponseFacade<Void> postBytesAndReceiveEmpty(
+                String path, HttpConstants.Version ver, byte[] body)
+                throws IOException, ExecutionException, InterruptedException, TimeoutException
+        {
+            var req = newRequestBuilder("POST", path, ver)
+                    .setBody(body, null)
+                    .build();
+            return execute(req, SimpleHttpResponse::getBodyBytes)
+                    .assertEmpty();
+        }
+        
         private SimpleHttpRequest GET(String path, HttpConstants.Version ver) {
             return newRequestBuilder("GET", path, ver).build();
         }
@@ -664,6 +734,17 @@ public abstract class HttpClientFacade
                     ContentResponse::getContentAsString);
         }
         
+        @Override
+        public ResponseFacade<Void> postBytesAndReceiveEmpty(
+                String path, HttpConstants.Version ver, byte[] body)
+                throws ExecutionException, InterruptedException, TimeoutException
+        {
+            return executeReq("POST", path, ver,
+                    new BytesRequestContent(body),
+                    ContentResponse::getContent)
+                        .assertEmpty();
+        }
+        
         private <B> ResponseFacade<B> executeReq(
                 String method, String path,
                 HttpConstants.Version ver,
@@ -717,27 +798,17 @@ public abstract class HttpClientFacade
         // It is conceivable the we'll have to drop support for Reactor, being ridiculous as it is.
         @Override
         public ResponseFacade<Void> getEmpty(String path, HttpConstants.Version ver) {
-            return get(path, ver, null);
+            return GET(path, ver, null);
         }
         
         @Override
         public ResponseFacade<byte[]> getBytes(String path, HttpConstants.Version ver) {
-            return get(path, ver, ByteBufMono::asByteArray);
+            return GET(path, ver, ByteBufMono::asByteArray);
         }
         
         @Override
         public ResponseFacade<String> getText(String path, HttpConstants.Version ver) {
-            return get(path, ver, ByteBufMono::asString);
-        }
-        
-        private <B> ResponseFacade<B> get(
-                String path, HttpConstants.Version ver,
-                Function<? super ByteBufMono, ? extends Mono<B>> rspBodyConverter)
-        {
-            return executeReq(
-                    io.netty.handler.codec.http.HttpMethod.GET, path, ver, 
-                    0, null,
-                    rspBodyConverter);
+            return GET(path, ver, ByteBufMono::asString);
         }
         
         @Override
@@ -749,6 +820,28 @@ public abstract class HttpClientFacade
                     // Erm, yeah, it gets worse...
                     body.length(), ByteBufFlux.fromString(Mono.just(body)),
                     ByteBufMono::asString);
+        }
+        
+        @Override
+        public ResponseFacade<Void> postBytesAndReceiveEmpty(
+                String path, HttpConstants.Version ver, byte[] body)
+        {
+            return executeReq(
+                    io.netty.handler.codec.http.HttpMethod.POST, path, ver,
+                    // "from inbound" hahahahahaha
+                    body.length, ByteBufFlux.fromInbound(Mono.just(body)),
+                    ByteBufMono::asByteArray)
+                        .assertEmpty();
+        }
+        
+        private <B> ResponseFacade<B> GET(
+                String path, HttpConstants.Version ver,
+                Function<? super ByteBufMono, ? extends Mono<B>> rspBodyConverter)
+        {
+            return executeReq(
+                    io.netty.handler.codec.http.HttpMethod.GET, path, ver,
+                    0, null,
+                    rspBodyConverter);
         }
         
         private <B> ResponseFacade<B> executeReq(
@@ -971,6 +1064,20 @@ public abstract class HttpClientFacade
          */
         public B body() {
             return body.get();
+        }
+        
+        ResponseFacade<Void> assertEmpty() {
+            B b = body();
+            if (b == null) {
+                return retype(this);
+            } else if (b instanceof byte[]) {
+                assertThat((byte[]) b).isEmpty();
+            } else if (b instanceof CharSequence) {
+                assertThat((CharSequence) b).isEmpty();
+            } else {
+                throw new AssertionError("Unexpected type: " + b.getClass());
+            }
+            return retype(this);
         }
         
         @Override
