@@ -205,11 +205,13 @@ public final class TestClient
      * 
      * @throws IllegalStateException if a connection is not open
      * @throws IOException if an I/O error occurs
+     * @return this for chaining/fluency
      */
-    public void shutdownOutput() throws IOException {
+    public TestClient shutdownOutput() throws IOException {
         requireConnectionIsOpen();
         ch.shutdownOutput();
         LOG.log(DEBUG, "Shut down channel's output stream.");
+        return this;
     }
     
     /**
@@ -217,11 +219,13 @@ public final class TestClient
      * 
      * @throws IllegalStateException if a connection is not open
      * @throws IOException if an I/O error occurs
+     * @return this for chaining/fluency
      */
-    public void shutdownInput() throws IOException {
+    public TestClient shutdownInput() throws IOException {
         requireConnectionIsOpen();
         ch.shutdownInput();
         LOG.log(DEBUG, "Shut down channel's input stream.");
+        return this;
     }
     
     /**
@@ -337,10 +341,12 @@ public final class TestClient
      * @throws NullPointerException if {@code data} is {@code null}
      * @throws IllegalArgumentException if {@code data} is empty
      * @throws IOException if an I/O error occurs
+     * @return this for chaining/fluency
      */
-    public void write(byte[] data) throws IOException {
+    public TestClient write(byte[] data) throws IOException {
         requireContent(data);
         usingConnection(() -> doWrite(data));
+        return this;
     }
     
     /**
@@ -351,9 +357,10 @@ public final class TestClient
      * @throws NullPointerException if {@code data} is {@code null}
      * @throws IllegalArgumentException if {@code data} is empty
      * @throws IOException if an I/O error occurs
+     * @return this for chaining/fluency
      */
-    public void write(String data) throws IOException {
-        write(data.getBytes(US_ASCII));
+    public TestClient write(String data) throws IOException {
+        return write(data.getBytes(US_ASCII));
     }
     
     /**
