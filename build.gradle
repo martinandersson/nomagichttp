@@ -13,8 +13,10 @@ if (!JavaVersion.current().isCompatibleWith(RELEASE_FOR)) {
 sourceSets {
     // Move "unit" test locations from default '/test' to '/test/small'
     test {
+        // Syntax 1:
         java.srcDirs = ['src/test/small/java']
-        java.outputDir = file("$buildDir/classes/java/test/small")
+        // ...and syntax 2 (because confusion is so much fun):
+        java.destinationDirectory.set file("$buildDir/classes/java/test/small")
         resources.srcDirs = ['src/test/small/resources']
         output.resourcesDir = file("$buildDir/resources/test/small")
     }
@@ -22,7 +24,7 @@ sourceSets {
     // Define medium tests in '/test/medium'
     mediumTest {
         java.srcDirs = ['src/test/medium/java']
-        java.outputDir = file("$buildDir/classes/java/test/medium")
+        java.destinationDirectory.set file("$buildDir/classes/java/test/medium")
         resources.srcDirs = ['src/test/medium/resources']
         output.resourcesDir = file("$buildDir/resources/test/medium")
         // Medium can also pull in utils from small
@@ -34,7 +36,7 @@ sourceSets {
     // Define large tests in '/test/large'
     largeTest {
         java.srcDirs = ['src/test/large/java']
-        java.outputDir = file("$buildDir/classes/java/test/large")
+        java.destinationDirectory.set file("$buildDir/classes/java/test/large")
         resources.srcDirs = ['src/test/large/resources']
         output.resourcesDir = file("$buildDir/resources/test/large")
         // Large can also pull in utils from medium (and small)
