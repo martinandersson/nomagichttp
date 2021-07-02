@@ -40,14 +40,20 @@ import static org.assertj.core.api.Assertions.assertThat;
  */
 class TwoHundredRequestsFromSameClient extends AbstractLargeRealTest
 {
-    private static final int REQUESTS_PER_BATCH = 10;//TEST
+    private static final int REQUESTS_PER_BATCH = 100;
     
     private Channel conn;
     
     @BeforeAll
     void addHandler() throws IOException {
         server().add("/", POST().apply(req ->
-                req.body().toText().thenApply(Responses::text)));
+                req.body().toText().thenApply(txt -> {
+                    var rsp = Responses.text(txt);
+                    if (!req.headerContains("User-Agent", "TestClient")) {
+                        rsp = setMustCloseAfterWrite(rsp);
+                    }
+                    return rsp;
+                })));
         conn = client().openConnection();
     }
     
@@ -94,6 +100,7 @@ class TwoHundredRequestsFromSameClient extends AbstractLargeRealTest
         
         String rsp  = client().writeReadTextUntil(
             "POST / HTTP/1.1"                         + CRLF +
+            "User-Agent: TestClient"                  + CRLF +
             "Content-Length: " + b.length()           + CRLF + CRLF +
             
             b, "EOM");
