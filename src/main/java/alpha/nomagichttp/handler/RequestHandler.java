@@ -25,11 +25,14 @@ import static java.util.Objects.requireNonNull;
  * Holder of a request-processing function coupled together with metadata
  * describing semantics of the function.<p>
  * 
- * The metadata consists of a HTTP {@link #method() method} token and
- * {@link #consumes() consumes}/{@link #produces() produces} media types. This
- * information is only used as filters for a lookup algorithm when the server
+ * The metadata is only used as filters for a lookup algorithm when the server
  * has matched a request against a {@link Route} and needs to select which
  * handler of the route to process the request.<p>
+ * 
+ * The metadata consists of a required HTTP {@link #method() method} token and
+ * {@link #consumes() consumes}/{@link #produces() produces} media types. The
+ * media types, if not specified, defaults to wildcard sentinel values that has
+ * no opinion on what types the handler consumes or produces.<p>
  * 
  * A {@code RequestHandler} can be built using {@link #builder(String)
  * builder(String method)}. Commonly used methods exist in the form of {@link
