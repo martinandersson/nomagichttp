@@ -1,5 +1,6 @@
 package alpha.nomagichttp.testutil;
 
+import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.TestInstance;
 
 import static org.junit.jupiter.api.TestInstance.Lifecycle.PER_CLASS;
@@ -14,6 +15,11 @@ import static org.junit.jupiter.api.TestInstance.Lifecycle.PER_CLASS;
 public abstract class AbstractLargeRealTest extends AbstractRealTest {
     static void beforeAll() {
         // Use default log level
+    }
+    
+    @AfterAll
+    void afterAll() {
+        stopServer();
     }
     
     /**
