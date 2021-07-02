@@ -3,6 +3,7 @@ package alpha.nomagichttp.largetest;
 import alpha.nomagichttp.testutil.AbstractLargeRealTest;
 import alpha.nomagichttp.testutil.HttpClientFacade;
 import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -57,6 +58,7 @@ class BigFileRequest extends AbstractLargeRealTest
     }
     
     @Test
+    @DisplayName("post/TestClient")
     @Order(1)
     void post() throws IOException {
         final String rsp;
@@ -80,6 +82,7 @@ class BigFileRequest extends AbstractLargeRealTest
     }
     
     @Test
+    @DisplayName("get/TestClient")
     @Order(2)
     void get() throws IOException {
         assumeTrue(saved);

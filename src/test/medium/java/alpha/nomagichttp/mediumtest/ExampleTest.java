@@ -7,6 +7,7 @@ import alpha.nomagichttp.message.Response;
 import alpha.nomagichttp.message.Responses;
 import alpha.nomagichttp.testutil.AbstractRealTest;
 import alpha.nomagichttp.testutil.HttpClientFacade;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
@@ -50,6 +51,7 @@ import static org.junit.jupiter.params.provider.EnumSource.Mode.INCLUDE;
 class ExampleTest extends AbstractRealTest
 {
     @Test
+    @DisplayName("HelloWorld/TestClient")
     void HelloWorld() throws IOException {
         addHelloWorldRoute(false);
         
@@ -67,8 +69,7 @@ class ExampleTest extends AbstractRealTest
             "Hello World!");
     }
     
-    // TODO: Add name displaying the client impl. See largeTest
-    @ParameterizedTest
+    @ParameterizedTest(name = "HelloWorld/{0}")
     @EnumSource // <-- in case JUnit didn't know an enum parameter is a..
     void HelloWorld_compatibility(HttpClientFacade.Implementation impl)
             throws IOException, InterruptedException, TimeoutException, ExecutionException
@@ -101,6 +102,7 @@ class ExampleTest extends AbstractRealTest
     }
     
     @Test
+    @DisplayName("GreetParameter/TestClient")
     void GreetParameter() throws IOException {
         addGreetParameterRoutes(false);
         
@@ -124,7 +126,7 @@ class ExampleTest extends AbstractRealTest
         assertThat(res2).isEqualTo(res1);
     }
     
-    @ParameterizedTest
+    @ParameterizedTest(name = "GreetParameter/{0}")
     @EnumSource
     void GreetParameter_compatibility(HttpClientFacade.Implementation impl)
             throws IOException, ExecutionException, InterruptedException, TimeoutException
@@ -174,6 +176,7 @@ class ExampleTest extends AbstractRealTest
     }
     
     @Test
+    @DisplayName("GreetBody/TestClient")
     void GreetBody() throws IOException {
         addGreetBodyRoute(false);
         
@@ -195,7 +198,7 @@ class ExampleTest extends AbstractRealTest
             "Hello John!");
     }
     
-    @ParameterizedTest
+    @ParameterizedTest(name = "GreetBody/{0}")
     @EnumSource
     void GreetBody_compatibility(HttpClientFacade.Implementation impl)
             throws IOException, InterruptedException, ExecutionException, TimeoutException
@@ -231,6 +234,7 @@ class ExampleTest extends AbstractRealTest
     }
     
     @Test
+    @DisplayName("EchoHeaders/TestClient")
     void EchoHeaders() throws IOException {
         addEchoHeadersRoute(false);
         
@@ -247,7 +251,7 @@ class ExampleTest extends AbstractRealTest
             "My-Header: Value 2"        + CRLF + CRLF);
     }
     
-    @ParameterizedTest
+    @ParameterizedTest(name = "EchoHeaders/{0}")
     // OkHttp will drop "Value 1" and only report "Value 2".
     // Am I surprised? No. Do I care? No.
     // Is it excluded from the test so that my life can go on? Yes.
@@ -287,6 +291,7 @@ class ExampleTest extends AbstractRealTest
     }
     
     @Test
+    @DisplayName("KeepClientInformed/TestClient")
     public void KeepClientInformed() throws IOException {
         addKeepClientInformedRoute(false);
         
@@ -304,7 +309,7 @@ class ExampleTest extends AbstractRealTest
             "Done!");
     }
     
-    @ParameterizedTest
+    @ParameterizedTest(name = "KeepClientInformed/{0}")
     // Only Apache (and curl!) will pass this test lol.
     // JDK takes everything after the first 102 (Processing) as the response body.
     // OkHttp and Jetty yields an empty body ("").
@@ -330,6 +335,7 @@ class ExampleTest extends AbstractRealTest
     //       Will wait until after we have done improved file serving.
     //       The compatibility test ought to use a client-native API for uploading a file.
     @Test
+    @DisplayName("UploadFile/TestClient")
     void UploadFile() throws IOException, InterruptedException {
         // 1. Save to new file
         // ---
