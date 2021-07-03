@@ -1,8 +1,8 @@
 package alpha.nomagichttp.internal;
 
 import alpha.nomagichttp.message.PooledByteBufferHolder;
+import alpha.nomagichttp.util.ExposedByteArrayOutputStream;
 
-import java.io.ByteArrayOutputStream;
 import java.nio.ByteBuffer;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
@@ -38,7 +38,7 @@ final class HeapSubscriber<R> implements SubscriberAsStage<PooledByteBufferHolde
     
     HeapSubscriber(BiFunction<byte[], Integer, ? extends R> finisher) {
         this.finisher = finisher;
-        this.sink = new ExposedByteArrayOutputStream();
+        this.sink = new ExposedByteArrayOutputStream(128);
         this.result = new CompletableFuture<>();
         this.subscription = null;
     }
@@ -90,23 +90,5 @@ final class HeapSubscriber<R> implements SubscriberAsStage<PooledByteBufferHolde
                 finisher.apply(sink.buffer(), len);
         
         result.complete(product);
-    }
-    
-    /**
-     * The purpose of this class is to not perform an "unnecessary" array-copy
-     * when retrieving the collected bytes.
-     */
-    private final static class ExposedByteArrayOutputStream extends ByteArrayOutputStream {
-        ExposedByteArrayOutputStream() {
-            super(128);
-        }
-        
-        int count() {
-            return super.count;
-        }
-        
-        byte[] buffer() {
-            return super.buf;
-        }
     }
 }
