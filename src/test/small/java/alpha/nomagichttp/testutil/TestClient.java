@@ -42,16 +42,18 @@ import static org.assertj.core.api.Assertions.assertThat;
  * 
  * Low-level read methods accept a terminator; an expected "response end" or
  * "end of message". The terminator is a sequence of bytes after which, the
- * client stops reading. If trailing - i.e. unexpected - bytes, are observed
- * after the terminator, an {@code AssertionError} is thrown. The read will stop
- * at end-of-stream and not fail the test even if the terminator wasn't
- * observed. The test should always run asserts on the returned response.<p>
+ * client stops the current read operation. When the client closes and if
+ * unconsumed bytes remains in the read buffer, an {@code AssertionError} is
+ * thrown.<p>
+ * 
+ * The read will stop at end-of-stream even if the terminator wasn't observed;
+ * the terminator is not a "required" sequence of bytes. The test should always
+ * run asserts on the returned response.<p>
  * 
  * To read all available data until EOS, the terminator can either be a sequence
  * of bytes never expected or {@code null}. More conveniently, use an override
  * with a name ending in "EOS". Specifying an empty terminator (empty String or
- * 0-length byte array) effectively asserts that no bytes were received prior to
- * EOS.<p>
+ * 0-length byte array) will make the read operation NOP.<p>
  * 
  * Each read/write operation will by default timeout after 1.5 seconds, giving
  * the HTTP exchange a total of 3 seconds to complete. On timeout, the operation
@@ -76,6 +78,8 @@ import static org.assertj.core.api.Assertions.assertThat;
  */
 public final class TestClient
 {
+    private static final int BUF_SIZE = 128;
+    
     /**
      * Factory of the channel to use for all operations.
      */
@@ -100,6 +104,7 @@ public final class TestClient
     
     private final SocketChannelSupplier factory;
     private SocketChannel ch;
+    private final ByteBuffer unconsumed;
     
     /**
      * Constructs a {@code TestClient} using a {@code SocketChannel} opened on
@@ -130,6 +135,7 @@ public final class TestClient
      */
     public TestClient(SocketChannelSupplier factory) {
         this.factory = requireNonNull(factory);
+        this.unconsumed = allocate(BUF_SIZE);
     }
     
     private long     rAmount = 1_500,
@@ -371,7 +377,26 @@ public final class TestClient
      * @throws IOException if an I/O error occurs
      */
     public byte[] readBytesUntil(byte[] terminator) throws IOException {
-        final FiniteByteBufferSink sink = new FiniteByteBufferSink(128, terminator);
+        final var sink = new FiniteByteBufferSink(terminator);
+        // Drain unconsumed
+        if (unconsumed.flip().hasRemaining()) {
+            sink.write(unconsumed);
+            if (unconsumed.hasRemaining()) {
+                assert sink.hasReachedEnd();
+                ByteBuffer residue = ByteBuffer.wrap(
+                        unconsumed.array(),
+                        unconsumed.position(),
+                        unconsumed.remaining());
+                unconsumed.clear();
+                unconsumed.put(residue);
+                return sink.toByteArray();
+            }
+        }
+        unconsumed.clear();
+        if (sink.hasReachedEnd()) {
+            return sink.toByteArray();
+        }
+        // Thirsty for more, read from channel
         try {
             usingConnection(() -> doRead(sink));
         } catch (IOException e) {
@@ -548,7 +573,7 @@ public final class TestClient
     
     private void doRead(FiniteByteBufferSink sink) throws IOException {
         Interrupt.after(rAmount, rUnit, "doRead", () -> {
-            ByteBuffer buf = allocate(128);
+            ByteBuffer buf = allocate(BUF_SIZE);
             while (!sink.hasReachedEnd()) {
                 if (ch.read(buf) == -1) {
                     LOG.log(DEBUG, "EOS; server closed channel's read stream.");
@@ -556,6 +581,10 @@ public final class TestClient
                 }
                 buf.flip();
                 sink.write(buf);
+                if (buf.hasRemaining()) {
+                    assert sink.hasReachedEnd();
+                    unconsumed.put(buf);
+                }
                 buf.clear();
             }
         });
@@ -595,39 +624,36 @@ public final class TestClient
             LOG.log(DEBUG, "Closed client channel.");
             ch = null;
         }
+        if (unconsumed.flip().hasRemaining()) {
+            throw new AssertionError(
+                "Unconsumed bytes in buffer: " + FiniteByteBufferSink.dump(unconsumed));
+        }
     }
     
     private static class FiniteByteBufferSink {
+        private static final byte[] EMPTY = new byte[0];
+        
         private final ByteArrayOutputStream delegate;
         private final byte[] terminator;
         private int matched;
         
-        FiniteByteBufferSink(int initialSize, byte[] terminator) {
-            this.delegate   = new ByteArrayOutputStream(initialSize);
+        FiniteByteBufferSink(byte[] terminator) {
+            this.delegate   = new ByteArrayOutputStream(BUF_SIZE);
             this.terminator = terminator;
             this.matched    = 0;
         }
         
+        /**
+         * Consumes the data, up until and including the terminator, which is
+         * not necessary all of the given bytebuffer.
+         * 
+         * @param data to consume
+         */
         void write(ByteBuffer data) {
-            if (hasReachedEnd()) {
-                assert data.hasRemaining();
-                throw new AssertionError(
-                    "Unexpected trailing bytes in response: " + dump(data));
-            }
-            
-            int start = data.arrayOffset() + data.position(),
-                end   = start + data.remaining();
-            
-            for (int i = start; i < end; ++i) {
-                byte b = data.array()[i];
+            while (!hasReachedEnd() && data.hasRemaining()) {
+                byte b = data.get();
                 delegate.write(b);
                 memorize(b);
-                
-                if (hasReachedEnd()) {
-                    assertThat(i + 1 == end)
-                            .as("Unexpected trailing bytes in response: " + dump(data.array(), i + 1, end))
-                            .isTrue();
-                }
             }
         }
         
