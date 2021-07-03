@@ -39,7 +39,7 @@ import static org.junit.jupiter.params.provider.EnumSource.Mode.EXCLUDE;
  * @author Martin Andersson (webmaster at martinandersson.com)
  */
 @TestMethodOrder(OrderAnnotation.class)
-class BigFileRequest extends AbstractLargeRealTest
+class BigFileRequestTest extends AbstractLargeRealTest
 {
     private final static int FILE_SIZE = 50 * 1_000_000;
     
