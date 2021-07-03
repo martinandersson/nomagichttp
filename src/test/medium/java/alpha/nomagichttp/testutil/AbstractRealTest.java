@@ -685,7 +685,8 @@ public abstract class AbstractRealTest
     
     private static String toString(TestInfo test) {
         Method m = test.getTestMethod().get();
-        return m.getDeclaringClass().getSimpleName() + "." + m.getName() + "()";
+        String n = m.getDeclaringClass().getSimpleName() + "." + m.getName() + "()";
+        return n + " -> " + test.getDisplayName();
     }
     
     private void requireServerNotStarted() {
