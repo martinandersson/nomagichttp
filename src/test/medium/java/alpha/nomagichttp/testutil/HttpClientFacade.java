@@ -692,7 +692,8 @@ public abstract class HttpClientFacade
                 // Must "start" first, otherwise
                 //     java.util.concurrent.CancellationException: Request execution cancelled
                 c.start();
-                var rsp = c.execute(req, null).get(3, SECONDS);
+                // Same as timeout given to TestClient in BigFileRequestTest
+                var rsp = c.execute(req, null).get(5, SECONDS);
                 return ResponseFacade.fromApache(rsp, rspBodyConverter.apply(rsp));
             }
         }
