@@ -18,6 +18,7 @@ import java.util.Iterator;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentLinkedDeque;
 import java.util.concurrent.Flow;
+import java.util.function.LongSupplier;
 import java.util.function.Supplier;
 
 import static alpha.nomagichttp.util.Arrays.stream;
@@ -207,15 +208,15 @@ public final class BetterBodyPublishers
      * @return a BodyPublisher
      */
     public static BodyPublisher ofFile(Path path) {
-        long len;
-        try {
-            len = Files.size(path);
-        } catch (IOException e) {
-            if (e instanceof FileNotFoundException) {
-                return new Adapter(0, Publishers.failed(e));
+        LongSupplier len = () -> {
+            try {
+                return Files.size(path);
+            } catch (IOException e) {
+                // Even on FileNotFoundException we return -1
+                // (file may exist when the subscription starts)
+                return -1;
             }
-            len = -1;
-        }
+        };
         return new Adapter(len, new FilePublisher(path));
     }
     
@@ -271,17 +272,21 @@ public final class BetterBodyPublishers
     }
     
     private static class Adapter implements BodyPublisher {
-        private final long length;
+        private final LongSupplier length;
         private final Flow.Publisher<? extends ByteBuffer> delegate;
         
         Adapter(long length, Flow.Publisher<? extends ByteBuffer> delegate) {
-            this.length = length;
+            this(() -> length, delegate);
+        }
+        
+        Adapter(LongSupplier length, Flow.Publisher<? extends ByteBuffer> delegate) {
+            this.length   = requireNonNull(length);
             this.delegate = requireNonNull(delegate);
         }
         
         @Override
         public long contentLength() {
-            return length;
+            return length.getAsLong();
         }
         
         @Override
