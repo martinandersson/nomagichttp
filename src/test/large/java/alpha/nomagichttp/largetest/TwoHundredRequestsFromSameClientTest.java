@@ -38,7 +38,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  */
-class TwoHundredRequestsFromSameClient extends AbstractLargeRealTest
+class TwoHundredRequestsFromSameClientTest extends AbstractLargeRealTest
 {
     private static final int REQUESTS_PER_BATCH = 100;
     
@@ -134,7 +134,7 @@ class TwoHundredRequestsFromSameClient extends AbstractLargeRealTest
     }
     
     private Stream<Arguments> smallBodiesAndClient() {
-        return augmentWithClientExceptFor(TwoHundredRequestsFromSameClient::smallBodies,
+        return augmentWithClientExceptFor(TwoHundredRequestsFromSameClientTest::smallBodies,
                 // smallBodies() may return a 0-length body, and Reactor (surprise!)
                 // will then return a null response causing NPE.
                 // TODO: Either remove this phenomenally shitty client altogether or hack
@@ -143,7 +143,7 @@ class TwoHundredRequestsFromSameClient extends AbstractLargeRealTest
     }
     
     private Stream<Arguments> bigBodiesAndClient() {
-        return augmentWithClientExceptFor(TwoHundredRequestsFromSameClient::bigBodies,
+        return augmentWithClientExceptFor(TwoHundredRequestsFromSameClientTest::bigBodies,
                 // Apache will for some reason switch to chunked encoding. Not
                 // compressed, either. So not sure what the hell they are up to.
                 // Currently, the server does not decode chunked. The effect was
