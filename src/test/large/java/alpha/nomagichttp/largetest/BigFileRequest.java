@@ -72,6 +72,8 @@ class BigFileRequest extends AbstractLargeRealTest
                       .write(
                           "POST /file HTTP/1.1"          + CRLF +
                           "Content-Length: " + FILE_SIZE + CRLF + CRLF)
+                      // Give a little bit extra time (1 sec per 10Mb)
+                      .interruptWriteAfter(5, SECONDS)
                       .write(
                           contents)
                       .shutdownOutput()
@@ -105,8 +107,7 @@ class BigFileRequest extends AbstractLargeRealTest
                 // (No Content-Length. File did not exist at time-of-size check.)
                 "Connection: close"                      + CRLF + CRLF);
             
-            // Need a bit extra time to notice EOS
-            body = client().interruptReadAfter(3, SECONDS)
+            body = client().interruptReadAfter(5, SECONDS)
                            .readBytesUntilEOS();
         }
         assertThat(body).isEqualTo(contents);
