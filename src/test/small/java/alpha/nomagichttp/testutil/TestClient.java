@@ -2,8 +2,8 @@ package alpha.nomagichttp.testutil;
 
 import alpha.nomagichttp.HttpServer;
 import alpha.nomagichttp.message.Char;
+import alpha.nomagichttp.util.ExposedByteArrayOutputStream;
 
-import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.net.InetSocketAddress;
@@ -105,6 +105,7 @@ public final class TestClient
     private final SocketChannelSupplier factory;
     private SocketChannel ch;
     private final ByteBuffer unconsumed;
+    private int initialSize;
     
     /**
      * Constructs a {@code TestClient} using a {@code SocketChannel} opened on
@@ -136,6 +137,7 @@ public final class TestClient
     public TestClient(SocketChannelSupplier factory) {
         this.factory = requireNonNull(factory);
         this.unconsumed = allocate(BUF_SIZE);
+        this.initialSize = BUF_SIZE;
     }
     
     private long     rAmount = 1_500,
@@ -340,6 +342,21 @@ public final class TestClient
     }
     
     /**
+     * Set the initial size of the response buffer.<p>
+     * 
+     * All response bytes are collected into a {@code byte[]} that grows on
+     * demand. To reduce GC pressure, it's advisable to increase the size when
+     * expecting a large response.
+     * 
+     * @param size new initial size
+     * @return this for chaining/fluency
+     */
+    public TestClient responseBufferInitialSize(int size) {
+        initialSize = size;
+        return this;
+    }
+    
+    /**
      * Write bytes.
      * 
      * @param data to write
@@ -376,8 +393,8 @@ public final class TestClient
      * @return bytes read
      * @throws IOException if an I/O error occurs
      */
-    public byte[] readBytesUntil(byte[] terminator) throws IOException {
-        final var sink = new FiniteByteBufferSink(terminator);
+    public ByteBuffer readBytesUntil(byte[] terminator) throws IOException {
+        final var sink = new FiniteByteBufferSink(initialSize, terminator);
         // Drain unconsumed
         if (unconsumed.flip().hasRemaining()) {
             sink.write(unconsumed);
@@ -389,12 +406,12 @@ public final class TestClient
                         unconsumed.remaining());
                 unconsumed.clear();
                 unconsumed.put(residue);
-                return sink.toByteArray();
+                return sink.toByteBuffer();
             }
         }
         unconsumed.clear();
         if (sink.hasReachedEnd()) {
-            return sink.toByteArray();
+            return sink.toByteBuffer();
         }
         // Thirsty for more, read from channel
         try {
@@ -403,7 +420,7 @@ public final class TestClient
             sink.dumpToLog();
             throw e;
         }
-        return sink.toByteArray();
+        return sink.toByteBuffer();
     }
     
     /**
@@ -412,7 +429,7 @@ public final class TestClient
      * @return bytes read
      * @throws IOException if an I/O error occurs
      */
-    public byte[] readBytesUntilNewlines() throws IOException {
+    public ByteBuffer readBytesUntilNewlines() throws IOException {
         return readBytesUntil((CRLF + CRLF).getBytes(US_ASCII));
     }
     
@@ -422,7 +439,7 @@ public final class TestClient
      * @return bytes read
      * @throws IOException if an I/O error occurs
      */
-    public byte[] readBytesUntilEOS() throws IOException {
+    public ByteBuffer readBytesUntilEOS() throws IOException {
         return readBytesUntil(null);
     }
     
@@ -434,9 +451,9 @@ public final class TestClient
      * @throws IOException if an I/O error occurs
      */
     public String readTextUntil(String terminator) throws IOException {
-        byte[] rsp = readBytesUntil(
+        ByteBuffer bytes = readBytesUntil(
                 terminator == null ? null : terminator.getBytes(US_ASCII));
-        return new String(rsp, US_ASCII);
+        return new String(bytes.array(), 0, bytes.remaining(), US_ASCII);
     }
     
     /**
@@ -471,7 +488,7 @@ public final class TestClient
      * @throws IllegalArgumentException if {@code data} is empty
      * @throws IOException if an I/O error occurs
      */
-    public byte[] writeReadBytesUntil(byte[] data, byte[] terminator) throws IOException {
+    public ByteBuffer writeReadBytesUntil(byte[] data, byte[] terminator) throws IOException {
         requireContent(data);
         return usingConnection(() -> {
             write(data);
@@ -490,7 +507,7 @@ public final class TestClient
      * @throws IllegalArgumentException if {@code data} is empty
      * @throws IOException if an I/O error occurs
      */
-    public byte[] writeReadBytesUntilEOS(byte[] data) throws IOException {
+    public ByteBuffer writeReadBytesUntilEOS(byte[] data) throws IOException {
         return writeReadBytesUntil(data, null);
     }
     
@@ -515,11 +532,10 @@ public final class TestClient
      * @throws IOException if an I/O error occurs
      */
     public String writeReadTextUntil(String data, String terminator) throws IOException {
-        byte[] rsp = writeReadBytesUntil(
+        ByteBuffer bytes = writeReadBytesUntil(
                 data.getBytes(US_ASCII),
                 terminator == null ? null : terminator.getBytes(US_ASCII));
-        
-        return new String(rsp, US_ASCII);
+        return new String(bytes.array(), 0, bytes.remaining(), US_ASCII);
     }
     
     /**
@@ -591,14 +607,14 @@ public final class TestClient
     }
     
     private void usingConnection(IORunnable op) throws IOException {
-        IOSupplier<byte[]> wrapper = () -> {
+        IOSupplier<ByteBuffer> wrapper = () -> {
             op.run();
             return null;
         };
         usingConnection(wrapper);
     }
     
-    private byte[] usingConnection(IOSupplier<byte[]> op) throws IOException {
+    private ByteBuffer usingConnection(IOSupplier<ByteBuffer> op) throws IOException {
         final boolean persistent = ch != null;
         try {
             if (!persistent) {
@@ -631,14 +647,12 @@ public final class TestClient
     }
     
     private static class FiniteByteBufferSink {
-        private static final byte[] EMPTY = new byte[0];
-        
-        private final ByteArrayOutputStream delegate;
+        private final ExposedByteArrayOutputStream delegate;
         private final byte[] terminator;
         private int matched;
         
-        FiniteByteBufferSink(byte[] terminator) {
-            this.delegate   = new ByteArrayOutputStream(BUF_SIZE);
+        FiniteByteBufferSink(int initialSize, byte[] terminator) {
+            this.delegate   = new ExposedByteArrayOutputStream(initialSize);
             this.terminator = terminator;
             this.matched    = 0;
         }
@@ -687,15 +701,15 @@ public final class TestClient
             return matched == terminator.length;
         }
         
-        byte[] toByteArray() {
-            return delegate.toByteArray();
+        ByteBuffer toByteBuffer() {
+            return ByteBuffer.wrap(delegate.buffer(), 0, delegate.count());
         }
         
         void dumpToLog() {
             if (!LOG.isLoggable(WARNING)) {
                 return;
             }
-            Collection<String> chars = dump(delegate.toByteArray());
+            Collection<String> chars = dump(delegate.buffer(), 0, delegate.count());
             LOG.log(WARNING, "About to crash. Will log start+end of what we received thus far.");
             chars.forEach(c -> LOG.log(WARNING, c));
         }
@@ -704,10 +718,6 @@ public final class TestClient
             int start = bytes.arrayOffset() + bytes.position(),
                 end   = start + bytes.remaining();
             return dump(bytes.array(), start, end);
-        }
-        
-        private static Collection<String> dump(byte[] bytes) {
-            return dump(bytes, 0, bytes.length);
         }
         
         private static Collection<String> dump(byte[] bytes, int start, int end) {

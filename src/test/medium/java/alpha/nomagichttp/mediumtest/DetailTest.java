@@ -265,9 +265,10 @@ class DetailTest extends AbstractRealTest
         ByteBuffer merged = ByteBuffer.allocate(expHead.length + rspBody.length);
         for (byte b : expHead) merged.put(b);
         for (byte b : rspBody) merged.put(b);
+        merged.flip();
         
-        byte[] rsp = client().writeReadBytesUntil(req, new byte[]{eom});
-        assertThat(rsp).isEqualTo(merged.array());
+        ByteBuffer rsp = client().writeReadBytesUntil(req, new byte[]{eom});
+        assertThat(rsp).isEqualTo(merged);
     }
     
     private static class AfterByteTargetStop implements Flow.Subscriber<PooledByteBufferHolder>

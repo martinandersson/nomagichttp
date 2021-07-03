@@ -12,6 +12,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
 
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.nio.channels.Channel;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -30,6 +31,7 @@ import static java.nio.file.StandardOpenOption.TRUNCATE_EXISTING;
 import static java.nio.file.StandardOpenOption.WRITE;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assumptions.assumeTrue;
 import static org.junit.jupiter.params.provider.EnumSource.Mode.EXCLUDE;
 
@@ -92,7 +94,7 @@ class BigFileRequestTest extends AbstractLargeRealTest
     @Order(2)
     void get() throws IOException {
         assumeTrue(saved);
-        final byte[] body;
+        final ByteBuffer body;
         Channel conn = client().openConnection();
         try (conn) {
             String req = "GET /file HTTP/1.1" + CRLF +
@@ -108,9 +110,13 @@ class BigFileRequestTest extends AbstractLargeRealTest
                 "Connection: close"                      + CRLF + CRLF);
             
             body = client().interruptReadAfter(5, SECONDS)
+                           .responseBufferInitialSize(contents.length)
                            .readBytesUntilEOS();
         }
-        assertThat(body).isEqualTo(contents);
+        assertThat(body.remaining()).isEqualTo(contents.length);
+        for (byte b : contents) {
+            assertEquals(body.get(), b);
+        }
     }
     
     @ParameterizedTest(name = "post/{0}")
