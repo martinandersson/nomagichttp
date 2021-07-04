@@ -22,8 +22,8 @@ import static java.util.Optional.ofNullable;
  * next HTTP exchange pair may commence.<p>
  * 
  * Unlike the default operator behavior, this operator subscribes eagerly to the
- * upstream in order in order to catch all errors. The error is caught even if
- * at that time no downstream subscriber was active.<p>
+ * upstream for the purpose of catching all errors. The upstream error is caught
+ * even if at that time no downstream subscriber has arrived.<p>
  * 
  * This operator doesn't change any semantics regarding the flow between the
  * upstream and downstream. All signals are passed through as-is, even
@@ -69,11 +69,11 @@ final class SubscriptionAsStageOp extends AbstractOp<PooledByteBufferHolder>
     }
     
     /**
-     * Returns a stage that completes only when the downstream subscription
-     * completes (through upstream completion/error or downstream cancellation)
-     * <i>and</i> all published bytebuffers have been released.<p>
+     * Returns a stage that completes only when the subscription completes
+     * (through upstream completion/error or downstream cancellation) <i>and</i>
+     * all published bytebuffers have been released.<p>
      * 
-     * If the upstreams signals an error, then this exception instance will be
+     * If the upstream signals an error, then this exception instance will be
      * passed to the downstream subscriber and become the exception that
      * completes the stage returned from this method.<p>
      * 
@@ -96,26 +96,16 @@ final class SubscriptionAsStageOp extends AbstractOp<PooledByteBufferHolder>
      * exceptionally as determined by the upstream.<p>
      * 
      * The stage may never complete if C) the application's subscriber never
-     * arrives, or D) any terminating method that this class delegates to
-     * ({@code Subscriber.onComplete} or {@code Subscription.cancel()}) returns
-     * exceptionally.<p>
+     * arrives. The cure for C is for the server to have a point in time when he
+     * gives up waiting (documented in {@code Request.Body} to be the point
+     * when the final response-body subscription completes. Additionally, an
+     * upstream operator will end the subscription on {@link
+     * RequestBodyTimeoutException}.<p>
      * 
-     * The cure for C is for the server to have a point in time when he gives up
-     * waiting (documented in {@code Request.Body} to be the point when
-     * the response-body subscription completes or on {@code
-     * RequestBodyTimeoutException}). For this reason, the returned stage
-     * supports being cast to a {@code CompletableFuture} (or do {@code
-     * CompletionStage.toCompletableFuture()}) so that client code may complete
-     * the stage or query about its state {@code CompletableFuture.isDone()}.<p>
-     * 
-     * D "should" never happen as the reactive streams specification mandates
-     * that all methods should return normally (§2.13, §3.15). However, in the
-     * event shit does hit the fan, the exception propagates as-is, eventually
-     * reaching the top layer which on the server's side is a thread running
-     * through the {@code ChannelByteBufferPublisher} which logs the error and
-     * closes the channel's read stream. So as long as no thread is
-     * <i>blocked</i> waiting on the returned stage, then a stage that never
-     * completes is simply not a problem.
+     * The terminating signal is passed through first, then the stage completes.
+     * The stage will complete in a finally-block, meaning that even if {@code
+     * onError}/{@code onComplete} or {@code cancel} returns exceptionally, the
+     * returned stage will still complete (the event is never lost).
      * 
      * @return a stage bound to the life-cycle of the singleton subscription
      */
@@ -130,35 +120,39 @@ final class SubscriptionAsStageOp extends AbstractOp<PooledByteBufferHolder>
                 tryCompleteStage();
             }
         });
-        
         processing.incrementAndGet();
         super.fromUpstreamNext(item);
     }
     
     @Override
     protected void fromUpstreamError(Throwable t) {
-        boolean updated = terminated.compareAndSet(null, TerminationCause.ofError(t));
-        super.fromUpstreamError(t);
-        if (updated) {
-            tryCompleteStage();
-        }
+        alwaysTryComplete(
+                () -> super.fromUpstreamError(t),
+                TerminationCause.ofError(t));
     }
     
     @Override
     protected void fromUpstreamComplete() {
-        boolean updated = terminated.compareAndSet(null, TerminationCause.ofCompletion());
-        super.fromUpstreamComplete();
-        if (updated) {
-            tryCompleteStage();
-        }
+        alwaysTryComplete(
+                super::fromUpstreamComplete,
+                TerminationCause.ofCompletion());
     }
     
     @Override
     protected void fromDownstreamCancel() {
-        boolean updated = terminated.compareAndSet(null, TerminationCause.ofCancellation());
-        super.fromDownstreamCancel();
-        if (updated) {
-            tryCompleteStage();
+        alwaysTryComplete(
+                super::fromDownstreamCancel,
+                TerminationCause.ofCancellation());
+    }
+    
+    private void alwaysTryComplete(Runnable signal, TerminationCause cause) {
+        boolean success = terminated.compareAndSet(null, cause);
+        try {
+            signal.run();
+        } finally {
+            if (success) {
+                tryCompleteStage();
+            }
         }
     }
     

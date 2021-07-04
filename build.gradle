@@ -5,46 +5,78 @@ plugins {
     id 'maven-publish'
 }
 
+final var RELEASE_FOR = JavaVersion.VERSION_11
+if (!JavaVersion.current().isCompatibleWith(RELEASE_FOR)) {
+    throw new Exception("Java ${JavaVersion.current()} is not supported. Please use at least ${RELEASE_FOR}.");
+}
+
 sourceSets {
-    // Move unit test locations from default '/test' to '/test/unit'
+    // Move "unit" test locations from default '/test' to '/test/small'
     test {
-        java.srcDirs = ['src/test/unit/java']
-        java.outputDir = file("$buildDir/classes/java/test/unit")
-        resources.srcDirs = ['src/test/unit/resources']
-        output.resourcesDir = file("$buildDir/resources/test/unit")
+        // Syntax 1:
+        java.srcDirs = ['src/test/small/java']
+        // ...and syntax 2 (because confusion is so much fun):
+        java.destinationDirectory.set file("$buildDir/classes/java/test/small")
+        resources.srcDirs = ['src/test/small/resources']
+        output.resourcesDir = file("$buildDir/resources/test/small")
+    }
+    
+    // Define medium tests in '/test/medium'
+    mediumTest {
+        java.srcDirs = ['src/test/medium/java']
+        java.destinationDirectory.set file("$buildDir/classes/java/test/medium")
+        resources.srcDirs = ['src/test/medium/resources']
+        output.resourcesDir = file("$buildDir/resources/test/medium")
+        // Medium can also pull in utils from small
+        // (e.g. alpha.nomagichttp.testutil.Logging)
+        compileClasspath += main.output + test.output
+        runtimeClasspath += main.output + test.output
     }
     
     // Define large tests in '/test/large'
     largeTest {
         java.srcDirs = ['src/test/large/java']
-        java.outputDir = file("$buildDir/classes/java/test/large")
+        java.destinationDirectory.set file("$buildDir/classes/java/test/large")
         resources.srcDirs = ['src/test/large/resources']
         output.resourcesDir = file("$buildDir/resources/test/large")
-        compileClasspath += sourceSets.main.output
-        runtimeClasspath += sourceSets.main.output
+        // Large can also pull in utils from medium (and small)
+        // (e.g. alpha.nomagichttp.testutil.AbstractRealTest)
+        compileClasspath += main.output + mediumTest.output + test.output
+        runtimeClasspath += main.output + mediumTest.output + test.output
     }
 }
 
 configurations {
-    // All unit test dependencies are also large test dependencies
+    // All small test dependencies are also medium+large test dependencies
+    // (e.g. @org.junit.jupiter.params.ParameterizedTest)
+    mediumTestImplementation.extendsFrom testImplementation
+    mediumTestRuntimeOnly.extendsFrom testRuntimeOnly
     largeTestImplementation.extendsFrom testImplementation
     largeTestRuntimeOnly.extendsFrom testRuntimeOnly
+    
+    // All medium test dependencies are also large test dependencies
+    // (e.g. HTTP client implementations)
+    largeTestImplementation.extendsFrom mediumTestImplementation
+    largeTestRuntimeOnly.extendsFrom mediumTestRuntimeOnly
 }
 
 repositories {
-    jcenter()
+    mavenCentral()
 }
 
 dependencies {
-    // Use JUnit Jupiter for testing.
-    testImplementation 'org.junit.jupiter:junit-jupiter-api:5.7.1'
-    testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine:5.7.1'
+    testImplementation 'org.junit.jupiter:junit-jupiter-api:5.7.2'
+    testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine:5.7.2'
     
-    testImplementation 'org.assertj:assertj-core:3.19.0'
-    testImplementation 'org.mockito:mockito-core:3.9.0'
+    testImplementation 'org.assertj:assertj-core:3.20.2'
+    testImplementation 'org.mockito:mockito-core:3.11.1'
+    testImplementation 'org.junit.jupiter:junit-jupiter-params:5.7.2'
     
-    // Used by DetailedTest and TwoHundredRequestsFromSameClient
-    testImplementation 'org.junit.jupiter:junit-jupiter-params:5.7.1'
+    // HTTP client implementations used by HttpClientFacade
+    mediumTestImplementation 'com.squareup.okhttp3:okhttp:4.9.1'
+    mediumTestImplementation 'org.apache.httpcomponents.client5:httpclient5:5.1'
+    mediumTestImplementation 'org.eclipse.jetty:jetty-client:11.0.5'
+    mediumTestImplementation 'io.projectreactor.netty:reactor-netty-http:1.0.8'
 }
 
 // To be bumped by task in future or perhaps not even set in this file
@@ -52,10 +84,10 @@ version = '0.5-SNAPSHOT'
 
 // By default, all compiler- and JavaDoc warnings are errors.
 // Unless environment variable HACKING=true.
-def Werror = !(System.env.HACKING ?: false).toBoolean()
+var Werror = !(System.env.HACKING ?: false).toBoolean()
 
 wrapper {
-    gradleVersion = '6.8.3'
+    gradleVersion = '7.1.1'
     distributionType = Wrapper.DistributionType.ALL
 }
 
@@ -63,7 +95,7 @@ wrapper {
 // https://stackoverflow.com/a/43103038/1268003
 // https://docs.gradle.org/6.6/release-notes.html#javacompile-release
 compileJava {
-    options.release = 11
+    options.release = RELEASE_FOR.getMajorVersion().toInteger()
 }
 
 tasks.withType(JavaCompile) {
@@ -80,6 +112,17 @@ test {
     useJUnitPlatform()
 }
 
+task mediumTest(type: Test) {
+    description = 'Runs the medium tests.'
+    group = 'verification'
+    
+    useJUnitPlatform()
+    
+    testClassesDirs = sourceSets.mediumTest.output.classesDirs
+    classpath = sourceSets.mediumTest.runtimeClasspath
+    shouldRunAfter test
+}
+
 task largeTest(type: Test) {
     description = 'Runs the large tests.'
     group = 'verification'
@@ -88,10 +131,11 @@ task largeTest(type: Test) {
     
     testClassesDirs = sourceSets.largeTest.output.classesDirs
     classpath = sourceSets.largeTest.runtimeClasspath
-    shouldRunAfter test
+    shouldRunAfter mediumTest
 }
 
-check.dependsOn largeTest
+// Tell Gradle the obvious: build task runs all tests
+check.dependsOn tasks.withType(Test)
 
 // Generate report after tests
 tasks.withType(Test).configureEach {
@@ -99,7 +143,7 @@ tasks.withType(Test).configureEach {
 }
 
 jacocoTestReport {
-    // Use data file not just from test but also largeTest
+    // Use data file not just from test but also from medium+large
     getExecutionData().setFrom(
             fileTree(dir: "$buildDir/jacoco", includes: ['*.exec']))
 }
@@ -116,8 +160,14 @@ task javadocAll(type: Javadoc) {
     description = 'Generates all Javadoc API documentation (public+private symbols and test classes).'
     group = 'documentation'
     
-    source = [sourceSets.main.allJava, sourceSets.test.allJava, sourceSets.largeTest.allJava]
-    classpath = sourceSets.largeTest.compileClasspath
+    source = [
+        sourceSets.main.allJava,
+        sourceSets.test.allJava,
+        sourceSets.mediumTest.allJava,
+        sourceSets.largeTest.allJava ]
+    
+    classpath = sourceSets.mediumTest.compileClasspath +
+                sourceSets.largeTest.compileClasspath
     
     options.memberLevel = JavadocMemberLevel.PRIVATE
     destinationDir = file("$buildDir/docs/javadoc-all")
@@ -135,7 +185,7 @@ tasks.withType(Javadoc) {
     // https://stackoverflow.com/a/49544352/1268003
     // https://github.com/gradle/gradle/issues/2354#issuecomment-364857181
     if (Werror) {
-        def opt = JavaVersion.current().isCompatibleWith(JavaVersion.VERSION_15) ?
+        var opt = JavaVersion.current().isCompatibleWith(JavaVersion.VERSION_15) ?
             "Werror" : "Xwerror";
         
         options.addBooleanOption(opt, true)
@@ -147,8 +197,8 @@ tasks.withType(Javadoc) {
     // Text to be injected as overview
     options.overview = 'src/main/java/overview.html'
     
-    // Link to Java 11 API
-    def v = compileJava.options.release.get()
+    // Link to JDK JavaDoc
+    var v = compileJava.options.release.get()
     options.links("https://docs.oracle.com/en/java/javase/$v/docs/api")
 }
 

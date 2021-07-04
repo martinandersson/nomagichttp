@@ -58,14 +58,15 @@ import static java.lang.System.Logger.Level.ERROR;
  * request handler invocation has returned.<p>
  * 
  * 2) Exceptions that completes exceptionally the {@code
- * CompletionStage<Response>} written to the {@link ClientChannel} if and only
- * if the HTTP exchange is active at the time.<p>
+ * CompletionStage<Response>} written to the {@link
+ * ClientChannel#write(Response) ClientChannel} but only if a final response has
+ * not yet been sent.<p>
  * 
  * 3) Exceptions signalled to the server's {@code Flow.Subscriber} of the {@code
- * Response.body()} if and only if the body publisher has not yet published
- * any bytebuffers before the error was signalled. It doesn't make much sense
- * trying to recover the situation after the point where a response has already
- * begun transmitting back to the client.<p>
+ * Response.body()} but only if the body publisher has not yet published any
+ * bytebuffers before the error was signalled. It doesn't make much sense trying
+ * to recover the situation after the point where a response has already begun
+ * transmitting back to the client.<p>
  * 
  * The server will <strong>not</strong> call error handlers for errors that are
  * not directly involved in the HTTP exchange or for errors that occur
@@ -171,6 +172,7 @@ public interface ErrorHandler
      * 
      * @see ErrorHandler
      */
+    // TODO: Reduce args down to thr + Extra, with Optional<Response>
     void apply(Throwable thr, ClientChannel ch, Request req, RequestHandler rh) throws Throwable;
     
     /**
@@ -229,7 +231,7 @@ public interface ErrorHandler
      *   <tr>
      *     <th scope="row"> {@link MaxRequestHeadSizeExceededException} </th>
      *     <td> None </td>
-     *     <td> No </td>
+     *     <td> Yes </td>
      *     <td> {@link Responses#entityTooLarge()} </td>
      *   </tr>
      *   <tr>
@@ -331,6 +333,7 @@ public interface ErrorHandler
             log(thr);
             res = notFound();
         } catch (MaxRequestHeadSizeExceededException e) {
+            log(thr);
             res = entityTooLarge();
         } catch (NoHandlerFoundException e) { // + AmbiguousNoHandlerFoundException
             log(thr);

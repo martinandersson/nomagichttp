@@ -3,21 +3,21 @@
 
 # NoMagicHTTP
 
-**A server-side Java library used to receive HTTP requests and
-respond to them.**
+**A server-side Java library used to receive HTTP requests and respond to
+them.**
 
-The NoMagicHTTP server is natively asynchronous and doesn't even use event
-polling or selector threads. What you get is an _elegant_ and modern API that is
-just about as fast and scalable as any cross-platform JDK-based HTTP server
+The API is _elegant_ and based on the firmly held belief that all forms of magic
+are evil. Reflection code, error-prone annotations, missing "beans" and God-like
+"context" objects will never be a part of the library. The source code is
+crafted by artsmen seeking perfection through simplicity, developer happiness,
+and a minimal waste of time.
+
+The NoMagicHTTP server is natively asynchronous and almost completely lock-free.
+The server doesn't even use event polling or selector threads. What you get is
+a server as fast and scalable as any cross-platform JDK-based HTTP server
 implementation could possibly be.
 
-Best of all, the API design is based on the firmly held principle that all forms
-of magic are evil. Annotations, "beans" and God-like "context" objects will
-never be a part of the library. Top priority is killer JavaDocs, developer joy,
-and no waste of time. The only way to deliver on this promise was to build the
-server from scratch, using 100% Java.
-
-[JavaDoc is available.][0-1]
+[All-you-need JavaDoc is here.][0-1]
 
 **WARNING:** This project is fresh out of the oven without proper release
 management in place and likely not very useful at the moment. The document
@@ -79,7 +79,6 @@ foo@bar:~$  curl localhost:8080/greeting
 Hello Stranger!
 ```
 
-We just started the app using Gradle. Even so, the start-up time is negligible.
 In a real-world scenario where Java is used directly, the start-up time is
 pretty much instantaneous. Be prepared for uber-fast development cycles and
 running real HTTP exchanges in your test cases, _because you can_.

@@ -1,18 +1,11 @@
 package alpha.nomagichttp.internal;
 
+import java.io.IOException;
 import java.nio.channels.AsynchronousChannelGroup;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.CompletionStage;
 import java.util.concurrent.Executors;
-import java.util.concurrent.atomic.AtomicReference;
-
-import static alpha.nomagichttp.internal.AtomicReferences.lazyInit;
 
 /**
- * Manager of a global {@link AsynchronousChannelGroup}.<p>
- * 
- * If creating the group fails, then a new group can never be created again.
- * A new group can only be created if an old group successfully shutdown.
+ * Manager of a global {@link AsynchronousChannelGroup}.
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  */
@@ -21,29 +14,41 @@ final class AsyncGroup
     // Good info on async groups:
     // https://openjdk.java.net/projects/nio/resources/AsynchronousIo.html
     
-    private static final AtomicReference<CompletableFuture<AsynchronousChannelGroup>>
-            holder = new AtomicReference<>();
+    private static AsynchronousChannelGroup grp = null;
+    private static int count = 0;
     
-    static CompletionStage<AsynchronousChannelGroup> getOrCreate(int nThreads) {
-        return lazyInit(holder, CompletableFuture::new, v -> {
-            try {
-                v.complete(
-                    AsynchronousChannelGroup.withFixedThreadPool(nThreads,
+    /**
+     * Get existing- or create a new channel group.<p>
+     * 
+     * This method must be called for each new group member and will internally
+     * increment a member count (only if this methods returns normally).
+     * 
+     * @param nThreads of group
+     * @return the group (never {@code null})
+     * @throws IOException If an I/O error occurs
+     */
+    static synchronized AsynchronousChannelGroup register(int nThreads) throws IOException {
+        if (grp == null) {
+            grp = AsynchronousChannelGroup.withFixedThreadPool(nThreads,
                     // Default-group uses daemon threads, we use non-daemon
-                    Executors.defaultThreadFactory()));
-            } catch (Throwable t) {
-                v.completeExceptionally(t);
-            }
-        });
+                    Executors.defaultThreadFactory());
+        }
+        ++count;
+        return grp;
     }
     
-    static void shutdown() {
-        CompletableFuture<AsynchronousChannelGroup> res = holder.get();
-        if (res != null) {
-            res.thenAccept(grp -> {
-                grp.shutdown();
-                holder.compareAndSet(res, null);
-            });
+    /**
+     * Shutdown the group, if the active member count reaches 0.
+     * 
+     * @throws IllegalStateException if the member count is 0
+     */
+    static synchronized void unregister() {
+        if (count == 0) {
+            throw new IllegalStateException();
+        }
+        if (--count == 0) {
+            grp.shutdown();
+            grp = null;
         }
     }
 }

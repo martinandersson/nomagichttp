@@ -64,6 +64,31 @@ public final class Responses
     }
     
     /**
+     * Returns a Response with the specified status code.
+     * 
+     * @param code HTTP status code
+     * @return a Response with the specified status code
+     * @see HttpConstants.StatusCode
+     */
+    public static Response status(int code) {
+        return builder(code).build();
+    }
+    
+    /**
+     * Returns a Response with the specified status code and reason phrase.
+     * 
+     * @param code HTTP status code
+     * @param phrase reason phrase
+     * @return a Response with the specified status code and reason phrase
+     * @throws NullPointerException if {@code phrase} is {@code null}
+     * @see HttpConstants.StatusCode
+     * @see HttpConstants.ReasonPhrase
+     */
+    public static Response status(int code, String phrase) {
+        return builder(code, phrase).build();
+    }
+    
+    /**
      * Returns a 100 (Continue) interim response.
      * 
      * @return a 100 (Continue) response

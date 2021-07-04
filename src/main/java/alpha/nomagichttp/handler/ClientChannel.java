@@ -2,12 +2,12 @@ package alpha.nomagichttp.handler;
 
 import alpha.nomagichttp.Config;
 import alpha.nomagichttp.HttpServer;
-import alpha.nomagichttp.message.Request;
 import alpha.nomagichttp.message.Response;
 import alpha.nomagichttp.util.AttributeHolder;
 
 import java.io.Closeable;
 import java.io.IOException;
+import java.nio.channels.ClosedChannelException;
 import java.nio.channels.NetworkChannel;
 import java.util.concurrent.CompletionStage;
 
@@ -30,19 +30,6 @@ import java.util.concurrent.CompletionStage;
  * So yes, 90% of the internet is wrong when they label HTTP as a synchronous
  * one-to-one protocol.<p>
  * 
- * There's only one small catch. A response can not be written <i>before</i> a
- * request has begun transmitting to the server, i.e. outside the scope of an
- * active HTTP exchange. This would make the client very confused (
- * <a href="https://tools.ietf.org/html/rfc7230#section-5.6">RFC 7230 §5.6</a>).
- * The HTTP exchange begins as soon as a request starts transmitting and is
- * considered done when both the server's final response body subscription
- * completes and the request body has been either consumed or discarded (see
- * {@link Request.Body}). A new exchange will not commence before the previous
- * one ends. In other words, no form of orchestration is needed by the
- * application. Just don't do something stupid like tucking away the channel
- * reference in a global scope somewhere and sporadically and randomly use it to
- * write responses.<p>
- * 
  * The life-cycle of the channel is managed by the server. The application
  * should have no need to directly use shutdown/close methods in this class.
  * For a graceful close of the client connection, set the "Connection: close"
@@ -53,7 +40,7 @@ import java.util.concurrent.CompletionStage;
  * 
  * When using low-level methods to operate the channel, or when storing
  * attributes on the channel, then have in mind that the "client" in {@code
- * ClientChannel} may be a proxy which represents many different human end
+ * ClientChannel} may be a HTTP proxy which represents many different human end
  * users.<p>
  * 
  * The implementation is thread-safe and mostly non-blocking. Underlying channel
@@ -74,22 +61,6 @@ public interface ClientChannel extends Closeable, AttributeHolder
      * operation immediately, or the response will be enqueued for future
      * transmission (unbounded queue).<p>
      * 
-     * At the time of transmission, a response may be rejected. If it is
-     * rejected because a final response has already been transmitted (in parts
-     * or in whole) - i.e. the HTTP exchange is no longer active - then the
-     * response is logged but otherwise ignored. This is the same also for
-     * exceptions that complete a response stage. Otherwise (exchange active), a
-     * {@link ResponseRejectedException} will pass through the server's error
-     * handler.<p>
-     * 
-     * The {@link Config#ignoreRejectedInformational() default server behavior}
-     * is to ignore failed 1XX (Informational) responses if the reason is
-     * because the HTTP client is using an old protocol version.<p>
-     * 
-     * Only at most one 100 (Continue) response will be sent. Repeated 100
-     * (Continue) responses will be ignored. Attempts to send more than two will
-     * log a warning on each offense.<p>
-     * 
      * Responses will be sent in the same order they are given to this method
      * and {@link #write(CompletionStage)}. It does not matter if a previously
      * enqueued stage did not complete before this method is called with an
@@ -106,8 +77,30 @@ public interface ClientChannel extends Closeable, AttributeHolder
      * 
      * Having the response be sent in order of stage completion is as simple as:
      * <pre>{@code
-     *   myResponseStage.thenAccept(channel::write);
+     *   completesSoon.thenAccept(channel::write);
      * }</pre>
+     * 
+     * At the time of transmission, a response may be rejected. Normally, this
+     * will cause a {@link ResponseRejectedException} to pass through the
+     * server's error handler. But not if the response is rejected because a
+     * final response has already been transmitted (in parts or in whole), then,
+     * the response is logged but otherwise ignored. Same is true if the
+     * response can not be sent because the channel's write stream has shut
+     * down, then, a {@link ClosedChannelException} is logged but otherwise
+     * ignored.<p>
+     * 
+     * The same is also true for exceptions that complete a response stage -
+     * normally, the exception will go through the error handler, but not if the
+     * final response has been sent or the write stream has shut down. Then, the
+     * exception is logged but otherwise ignored.<p>
+     * 
+     * The {@link Config#ignoreRejectedInformational() default server behavior}
+     * is to ignore failed 1XX (Informational) responses if the reason is
+     * because the HTTP client is using an old protocol version.<p>
+     * 
+     * Only at most one 100 (Continue) response will be sent. Repeated 100
+     * (Continue) responses will be ignored. Attempts to send more than two will
+     * log a warning on each offense.<p>
      * 
      * @param response the response
      * 

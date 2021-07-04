@@ -25,11 +25,23 @@ import java.util.function.BiConsumer;
 import static java.net.InetAddress.getLoopbackAddress;
 
 /**
- * Listens on a port for HTTP requests.<p>
+ * Listens on a port for HTTP connections.<p>
+ * 
+ * The server's function is to provide port- and channel management, parse
+ * an inbound request head and resolve a handler within a target route (also
+ * known as a "server resource") that is qualified to handle the request. Once
+ * the handler has been invoked, it has almost total freedom in regards to how
+ * it interprets the request headers- and body as well as what headers and body
+ * it responds.<p>
+ * 
+ * The process of receiving a request and respond responses (any number of
+ * intermittent responses, followed by a final response) is often called an
+ * "exchange".<p>
  * 
  * This interface declares static <i>{@code create}</i> methods that construct
  * and return the default implementation {@link DefaultServer}. Once the server
- * has been constructed, it needs to <i>{@code start()}</i>.<p>
+ * has been constructed, it needs to <i>{@code start()}</i> which will open the
+ * server's listening port.<p>
  * 
  * Routes can be dynamically added and removed using {@link #add(Route)} and
  * {@link #remove(Route)}. A legal server variant is to not even have any routes
@@ -45,16 +57,6 @@ import static java.net.InetAddress.getLoopbackAddress;
  *           respond}({@link Responses#text(String)
  *             text}("Hello"))).{@link #start() start}();
  * </pre>
- * 
- * The server's function is to provide port- and channel management, parse
- * an inbound request head and resolve which handler of a route is qualified to
- * handle the request. Once the handler has been invoked, it has almost total
- * freedom in regards to how it interprets the request headers- and body as well
- * as what headers and body it responds.<p>
- * 
- * The process of receiving a request and respond responses (any number of
- * intermittent responses, followed by a final response) is often called an
- * "exchange".
  * 
  * <h2>Server Life-Cycle</h2>
  * 
@@ -99,14 +101,14 @@ import static java.net.InetAddress.getLoopbackAddress;
  * For all other variants of requests and responses, the body is optional and
  * the server does not reject the message based on the presence of a body. This
  * is mostly true for all other message variants as well; the server does not
- * have an opinionated view unless warranted. The request handler is largely in
- * control over how it interprets the request message and what response it
- * returns.<p>
+ * have an opinionated view unless an opinionated view is warranted. The request
+ * handler is mostly in control over how it interprets the request message and
+ * what response it returns with no interference.<p>
  * 
  * For example, it might not be common but it <i>is</i>
- * possible (and legit) for {@link HttpConstants.Method#GET GET} requests (
+ * allowed for {@link HttpConstants.Method#GET GET} requests (
  * <a href="https://tools.ietf.org/html/rfc7231#section-4.3.1">RFC 7231 §4.3.1</a>
- * ) to have a body and for {@link HttpConstants.Method#POST POST} responses to
+ * ) to have a body and for {@link HttpConstants.Method#POST POST} requests to
  * not have a body (
  * <a href="https://tools.ietf.org/html/rfc7230#section-3.3.2">RFC 7230 §3.3.2</a>
  * ). Similarly, the {@link HttpConstants.StatusCode#TWO_HUNDRED_ONE 201
@@ -327,38 +329,46 @@ public interface HttpServer
      * exchanges.<p>
      * 
      * The server's listening port will be immediately closed and then this
-     * method returns. All active HTTP exchanges will be allowed to complete
-     * before the returned stage completes with {@code null}.<p>
+     * method returns. No HTTP exchanges are aborted, but no new exchanges will
+     * begin. When all client connections that were accepted through the port
+     * have been closed the return stage completes.<p>
      * 
      * If the server was just started and is still in the midst of opening the
      * server's listening port, then this method will block until the startup
      * routine is completed before initiating the shutdown.<p>
-     * 
-     * If the server is not {@link #isRunning() running} then the returned stage
-     * is already completed.<p>
      * 
      * Upon failure to close the server's listening port, the stage will
      * complete exceptionally with an {@code IOException}.<p>
      * 
      * The returned stage can not be used to abort the shutdown.<p>
      * 
-     * There are no locks involved between a server's start and the completion
-     * of the returned stage. If the application starts the same server
-     * concurrent to the completion of the last HTTP exchange from the previous
-     * run cycle, then technically it is possible for the returned stage to
-     * complete at the same time the server is considered to be in a running
-     * state.<p>
+     * The returned stage represents uniquely the invocation of this method.
+     * This has a few noteworthy consequences.<p>
+     * 
+     * 1. If the server is not {@link #isRunning() running} (listening
+     * on a port) then the returned stage is already completed. This is true
+     * even if exchanges from a previous run cycle is still executing (i.e. a
+     * previously returned stage has yet to complete).<p>
+     * 
+     * 2. If the application starts the same server again concurrent to the
+     * completion of the last HTTP exchange, then technically it is possible for
+     * the returned stage to complete at the same time the server is considered
+     * to be in a running state.<p>
+     * 
+     * 3. A concurrent (or subsequent) start can not hinder the returned stage
+     * from completing.
      * 
      * @return the result
      */
     CompletionStage<Void> stop();
     
     /**
-     * Stop listening for client connections and immediately abort all HTTP
-     * exchanges.<p>
+     * Stop listening for client connections and immediately close all active
+     * client connections (no HTTP exchanges will be able to progress
+     * further).<p>
      * 
-     * The server's listening port will be immediately closed and then all
-     * active HTTP exchanges will be aborted.<p>
+     * This method blocks until the listening port and all connections have been
+     * closed.<p>
      * 
      * If the server was just started and is still in the midst of opening the
      * server's listening port, then this method will block until the startup

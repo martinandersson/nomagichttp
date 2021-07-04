@@ -192,8 +192,6 @@ public abstract class AbstractUnicastPublisher<T> implements Flow.Publisher<T>
     
     private void accept(final IsInitializing wrapper) {
         final Flow.Subscriber<? super T> newS = wrapper.get();
-        
-        LOG.log(DEBUG, () -> getClass().getSimpleName() + " has a new subscriber: " + newS);
         Subscriptions.TurnOnProxy proxy = new OnCancelResetReference(newS);
         
         try {
@@ -210,6 +208,7 @@ public abstract class AbstractUnicastPublisher<T> implements Flow.Publisher<T>
         
         if (witness == wrapper) {
             // The expected case; subscriber was installed
+            LOG.log(DEBUG, () -> getClass().getSimpleName() + " has a new subscriber: " + newS);
             proxy.activate(newSubscription(newS));
         } else if (witness == CLOSED) {
             // Publisher called shutdown() during initialization

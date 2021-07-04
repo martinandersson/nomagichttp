@@ -2,6 +2,7 @@ package alpha.nomagichttp.internal;
 
 import alpha.nomagichttp.Config;
 import alpha.nomagichttp.HttpConstants.Version;
+import alpha.nomagichttp.handler.ClientChannel;
 import alpha.nomagichttp.handler.ErrorHandler;
 import alpha.nomagichttp.handler.RequestHandler;
 import alpha.nomagichttp.message.HttpVersionTooNewException;
@@ -12,6 +13,8 @@ import alpha.nomagichttp.message.RequestBodyTimeoutException;
 import alpha.nomagichttp.message.RequestHeadTimeoutException;
 import alpha.nomagichttp.route.RouteRegistry;
 
+import java.io.IOException;
+import java.nio.channels.AsynchronousCloseException;
 import java.nio.channels.InterruptedByTimeoutException;
 import java.util.Collection;
 import java.util.concurrent.CompletableFuture;
@@ -28,6 +31,8 @@ import static alpha.nomagichttp.HttpConstants.Version.HTTP_1_1;
 import static alpha.nomagichttp.message.Responses.continue_;
 import static alpha.nomagichttp.util.Headers.accept;
 import static alpha.nomagichttp.util.Headers.contentType;
+import static alpha.nomagichttp.util.IOExceptions.isCausedByBrokenInputStream;
+import static alpha.nomagichttp.util.IOExceptions.isCausedByBrokenOutputStream;
 import static alpha.nomagichttp.util.Subscribers.onNext;
 import static java.lang.Integer.parseInt;
 import static java.lang.System.Logger.Level.DEBUG;
@@ -146,7 +151,9 @@ final class HttpExchange
                if (cntDown.decrementAndGet() == 0) {
                    LOG.log(WARNING,
                        "Request handler returned exceptionally but final response already sent. " +
-                       "This error is ignored.", thr);
+                       "This error is ignored. " +
+                       "Preparing for a new HTTP exchange.", thr);
+                   tryPrepareForNewExchange();
                } else {
                    pipe.startTimeout();
                    handleError(thr);
@@ -331,24 +338,17 @@ final class HttpExchange
                 DefaultRequest.withoutParams(ver, head, bytes, chan, config.timeoutIdleConnection(), null, null);
         
         req.bodyDiscardIfNoSubscriber();
-        req.bodyStage().whenComplete((Null, t) -> {
-            if (t == null) {
-                if (req.headerContains(CONNECTION, "close") && chan.isOpenForReading()) {
-                    LOG.log(DEBUG, "Request has \"Connection: close\", shutting down input.");
-                    chan.shutdownInputSafe();
-                }
-                // ResponsePipeline shuts down output on "Connection: close".
-                // DefaultServer will not start a new exchange if child or any stream thereof is closed.
-                LOG.log(DEBUG, "Normal end of HTTP exchange.");
-                result.complete(null);
-            } else {
-                LOG.log(DEBUG,
-                    // see SubscriptionAsStageOp.asCompletionStage()
-                    "Request upstream/channel error. " +
-                    "Assuming reason and/or stacktrace was logged already. " +
-                    "HTTP exchange is over.");
-                result.completeExceptionally(t);
+        req.bodyStage().whenComplete((Null, thr) -> {
+            // Prepping new exchange = thr is ignored (already dealt with, hopefully lol)
+            if (req.headerContains(CONNECTION, "close") && chan.isOpenForReading()) {
+                LOG.log(DEBUG, "Request set \"Connection: close\", shutting down input.");
+                chan.shutdownInputSafe();
             }
+            // Note
+            //   ResponsePipeline shuts down output on "Connection: close".
+            //   DefaultServer will not start a new exchange if child or any stream thereof is closed.
+            LOG.log(DEBUG, "Normal end of HTTP exchange.");
+            result.complete(null);
         });
     }
     
@@ -359,16 +359,8 @@ final class HttpExchange
     private synchronized void handleError(Throwable exc) {
         final Throwable unpacked = unpackCompletionException(exc);
         
-        if (unpacked instanceof ClientAbortedException) {
-            LOG.log(DEBUG, "Client aborted the HTTP exchange.");
-            result.completeExceptionally(unpacked);
-            return;
-        }
-        
-        if (unpacked instanceof InterruptedByTimeoutException) {
-            LOG.log(DEBUG, "Low-level write timed out. Closing channel. (end of HTTP exchange)", unpacked);
-            chan.closeSafe();
-            result.completeExceptionally(unpacked);
+        if (isTerminatingException(unpacked, chan)) {
+            result.completeExceptionally(exc);
             return;
         }
         
@@ -377,7 +369,6 @@ final class HttpExchange
             // HTTP exchange will not continue after response
             // RequestBodyTimeoutException already shut down the input stream (see DefaultRequest)
             chan.shutdownInputSafe();
-            // Continue
         }
         
         if (chan.isOpenForWriting())  {
@@ -392,6 +383,65 @@ final class HttpExchange
                 "HTTP exchange is over.", unpacked);
             result.completeExceptionally(unpacked);
         }
+    }
+    
+    /**
+     * Returns {@code true} if it is meaningless to attempt resolving the
+     * exception and/or logging it would just be noise.<p>
+     * 
+     * If this method returns true and need be, then this method will also have
+     * logged a DEBUG message.
+     * 
+     * @param thr to examine
+     * @param chan child channel
+     * @return see JavaDoc
+     */
+    private static boolean isTerminatingException(Throwable thr, ClientChannel chan) {
+        if (thr instanceof ClientAbortedException) {
+            LOG.log(DEBUG, "Client aborted the HTTP exchange.");
+            return true;
+        }
+        
+        if (!(thr instanceof IOException)) {
+            // EndOfStreamException goes to error handler
+            return false;
+        }
+        
+        // Okay we've got an I/O error, but is it from our child?
+        if (chan.isEverythingOpen()) {
+            // Nope. AnnounceToChannel closes the stream. Has to be from application code.
+            // (we should probably examine stacktrace or mark our exceptions somehow)
+            return false;
+        }
+        
+        if (thr instanceof InterruptedByTimeoutException) {
+            LOG.log(DEBUG, "Low-level write timed out. Closing channel. (end of HTTP exchange)");
+            chan.closeSafe();
+            return true;
+        }
+        
+        if (thr instanceof AsynchronousCloseException) {
+            // No need to log anything. Outstanding async operation was aborted
+            // because channel closed already. I.e. exchange ended already, and
+            // we assume that the reason for closing and ending the exchange has
+            // already been logged. E.g. timeout exceptions will cause this.
+            return true;
+        }
+        
+        var io = (IOException) thr;
+        if (isCausedByBrokenInputStream(io) || isCausedByBrokenOutputStream(io)) {
+            LOG.log(DEBUG, "Broken pipe, closing channel. (end of HTTP exchange)");
+            chan.closeSafe();
+            return true;
+        }
+        
+        // From our child, yes, but it can not be deduced as abruptly terminating
+        // and so we'd rather pass it to the error handler or log it.
+        // E.g., if app write a response on a closed channel (ClosedChannelException),
+        // then we still want to log the problem - actually required by
+        // ClientChannel.write().
+        // See test "ClientLifeCycleTest.serverClosesChannel_beforeResponse()".
+        return false;
     }
     
     private class ErrorResolver {

@@ -1,6 +1,7 @@
 package alpha.nomagichttp.internal;
 
 import alpha.nomagichttp.message.RequestHeadParseException;
+import alpha.nomagichttp.util.Headers;
 
 import java.net.http.HttpHeaders;
 import java.util.ArrayList;
@@ -96,6 +97,8 @@ import static java.util.Objects.requireNonNull;
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  */
+// TODO: Document, impl, and test various forms for request-target?
+//       https://datatracker.ietf.org/doc/html/rfc7230#section-5.3
 final class RequestHeadProcessor
 {
     private static final System.Logger LOG = System.getLogger(RequestHeadProcessor.class.getPackageName());
@@ -228,6 +231,8 @@ final class RequestHeadProcessor
         }
     }
     
+    // TODO: Consider not using LinkedHashMap.
+    //       JDK's HttpHeaders will do alphabetic order. Coz of faster lookup?
     private LinkedHashMap<String, List<String>> headerValues;
     
     // TODO: Document this accepts trailing whitespace
@@ -328,9 +333,8 @@ final class RequestHeadProcessor
     }
     
     private void complete() {
-        HttpHeaders headers = HttpHeaders.of(
-                headerValues != null ? headerValues : Map.of(),
-                (k, v) -> true);
+        HttpHeaders headers = Headers.of(
+                headerValues != null ? headerValues : Map.of());
         
         completed = new RequestHead(
                 method, requestTarget, httpVersion, headers);

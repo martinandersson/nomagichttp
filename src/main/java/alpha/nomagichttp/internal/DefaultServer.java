@@ -15,7 +15,6 @@ import java.nio.channels.AsynchronousSocketChannel;
 import java.nio.channels.ClosedChannelException;
 import java.nio.channels.CompletionHandler;
 import java.nio.channels.ShutdownChannelGroupException;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.CancellationException;
@@ -24,7 +23,6 @@ import java.util.concurrent.CompletionException;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
 import static alpha.nomagichttp.internal.AtomicReferences.lazyInitOrElse;
@@ -52,7 +50,6 @@ public final class DefaultServer implements HttpServer
             = System.getLogger(DefaultServer.class.getPackageName());
     
     private static final int INITIAL_CAPACITY = 10_000;
-    private static final AtomicInteger SERVER_COUNT = new AtomicInteger();
     
     private final Config config;
     private final RouteRegistry registry;
@@ -118,22 +115,24 @@ public final class DefaultServer implements HttpServer
     }
     
     private void initialize(SocketAddress addr, CompletableFuture<ParentWithHandler> v) {
+        final AsynchronousChannelGroup grp;
+        try {
+            grp = AsyncGroup.register(getConfig().threadPoolSize());
+        } catch (IOException e) {
+            v.completeExceptionally(e);
+            return;
+        }
+        
         final AsynchronousServerSocketChannel ch;
         try {
-            AsynchronousChannelGroup grp = AsyncGroup.getOrCreate(getConfig().threadPoolSize())
-                    .toCompletableFuture().join();
             ch = AsynchronousServerSocketChannel.open(grp).bind(addr);
         } catch (Throwable t) {
-            if (SERVER_COUNT.get() == 0) {
-                // benign race with other servers starting in parallel,
-                // if they fail because we shutdown the group here, then like whatever
-                AsyncGroup.shutdown();
-            }
+            AsyncGroup.unregister();
             v.completeExceptionally(t);
             return;
         }
+        
         LOG.log(INFO, () -> "Opened server channel: " + ch);
-        SERVER_COUNT.incrementAndGet();
         v.complete(new ParentWithHandler(ch));
     }
     
@@ -156,12 +155,7 @@ public final class DefaultServer implements HttpServer
     public void stopNow() throws IOException {
         ParentWithHandler pwh = stopServer();
         if (pwh != null) {
-            Iterator<DefaultClientChannel> it = pwh.handler().children();
-            while (it.hasNext()) {
-                it.next().closeSafe();
-                it.remove();
-            }
-            pwh.handler().tryCompleteLastChildStage();
+            pwh.handler().closeAllChildren();
         }
     }
     
@@ -176,21 +170,12 @@ public final class DefaultServer implements HttpServer
             // great, never started
             return null;
         }
-        
         if (pwh.markTerminated()) {
             parent.set(null);
             AsynchronousServerSocketChannel ch = pwh.channel();
-            if (!ch.isOpen()) {
-                return null;
-            }
             ch.close();
             LOG.log(INFO, () -> "Closed server channel: " + ch);
-            int n = SERVER_COUNT.decrementAndGet();
-            if (n == 0) {
-                // benign race
-                AsyncGroup.shutdown();
-            }
-            assert n >= 0;
+            AsyncGroup.unregister();
             pwh.handler().tryCompleteLastChildStage();
             return pwh;
         } else {
@@ -295,8 +280,15 @@ public final class DefaultServer implements HttpServer
             this.lastChild = new CompletableFuture<>();
         }
         
-        Iterator<DefaultClientChannel> children() {
-            return children.iterator();
+        void closeAllChildren() {
+            while (!children.isEmpty()) {
+                children.forEach(c -> {
+                    if (children.remove(c)) {
+                        c.closeSafe();
+                    }
+                });
+            }
+            tryCompleteLastChildStage();
         }
         
         CompletionStage<Void> lastChildStage() {
@@ -336,6 +328,8 @@ public final class DefaultServer implements HttpServer
             DefaultClientChannel chan = new DefaultClientChannel(child, DefaultServer.this);
             ChannelByteBufferPublisher bytes = new ChannelByteBufferPublisher(chan);
             children.add(chan);
+            // TODO: Wanna complete only when the LAST async I/O operation completes
+            //       (will likely require 1 ChannelByteBufferSubscriber per channel?)
             chan.onClose(() -> {
                 children.remove(chan);
                 if (!parent.isOpen()) {

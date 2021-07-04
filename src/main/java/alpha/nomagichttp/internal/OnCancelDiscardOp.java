@@ -2,9 +2,9 @@ package alpha.nomagichttp.internal;
 
 import alpha.nomagichttp.message.PooledByteBufferHolder;
 
-import java.nio.ByteBuffer;
 import java.util.concurrent.Flow;
 
+import static alpha.nomagichttp.message.PooledByteBufferHolder.discard;
 import static java.lang.Long.MAX_VALUE;
 
 /**
@@ -13,12 +13,10 @@ import static java.lang.Long.MAX_VALUE;
  * logic that proceeds to discard all remaining bytes of all received
  * bytebuffers until no more bytebuffers are received from the upstream.<p>
  * 
- * With "discard" means that the bytebuffer's position will be set to its limit
- * (i.e. no more remaining bytes!) and then released. Hence this operator should
- * be attached <strong>after</strong> other operators that modifies the
- * bytebuffer view (or we risk clearing bytes that crosses over a message
- * boundary) and <strong>never</strong> to an infinite stream (by definition
- * pretty pointless).<p>
+ * This operator should be attached <strong>after</strong> other operators that
+ * modifies the bytebuffer view (or we risk clearing bytes that crosses over a
+ * message boundary) and <strong>never</strong> to an infinite stream (by
+ * definition pretty pointless).<p>
  * 
  * Is used by the server's request thread to make sure that if and when the
  * application's body subscription is prematurely cancelled, the read-position
@@ -29,6 +27,7 @@ import static java.lang.Long.MAX_VALUE;
  * faster than accepting the rest of a large message that we don't care about).
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
+ * @see PooledByteBufferHolder#discard(PooledByteBufferHolder) 
  */
 final class OnCancelDiscardOp extends AbstractOp<PooledByteBufferHolder>
 {
@@ -42,7 +41,6 @@ final class OnCancelDiscardOp extends AbstractOp<PooledByteBufferHolder>
     protected void fromUpstreamNext(PooledByteBufferHolder item) {
         if (discarding) {
             discard(item);
-            item.release();
         } else {
             super.fromUpstreamNext(item);
         }
@@ -66,10 +64,5 @@ final class OnCancelDiscardOp extends AbstractOp<PooledByteBufferHolder>
             trySubscribeToUpstream();
             fromDownstreamRequest(MAX_VALUE);
         }
-    }
-    
-    private static void discard(PooledByteBufferHolder item) {
-        ByteBuffer b = item.get();
-        b.position(b.limit());
     }
 }

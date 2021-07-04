@@ -8,7 +8,7 @@ import alpha.nomagichttp.message.Responses;
 import java.io.IOException;
 
 /**
- * Responds "Hello World!" to client.
+ * Responds "Hello World!" to the client.
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  */
@@ -16,9 +16,9 @@ public class HelloWorld
 {
     /**
      * Application entry point.
-     *
+     * 
      * @param args ignored
-     *
+     * 
      * @throws IOException If an I/O error occurs
      */
     public static void main(String... args) throws IOException {

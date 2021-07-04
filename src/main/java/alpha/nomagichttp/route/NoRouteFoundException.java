@@ -2,7 +2,6 @@ package alpha.nomagichttp.route;
 
 import alpha.nomagichttp.handler.ErrorHandler;
 
-import static java.util.Objects.requireNonNull;
 import static java.util.stream.Collectors.joining;
 import static java.util.stream.StreamSupport.stream;
 
@@ -27,7 +26,8 @@ public class NoRouteFoundException extends RuntimeException
      * @param pathSegments of request target (normalized- and percent-decoded)
      */
     public NoRouteFoundException(Iterable<String> pathSegments) {
-        this.segments = requireNonNull(pathSegments);
+        super(path(pathSegments));
+        this.segments = pathSegments;
     }
     
     /**
@@ -50,6 +50,10 @@ public class NoRouteFoundException extends RuntimeException
      *         (never {@code null} or the empty string)
      */
     public String getPath() {
-        return "/" + stream(getSegments().spliterator(), false).collect(joining("/"));
+        return path(getSegments());
     }
+    
+    private static String path(Iterable<String> pathSegments) {
+        return "/" + stream(pathSegments.spliterator(), false).collect(joining("/"));
+    } 
 }

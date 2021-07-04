@@ -42,12 +42,13 @@ public abstract class AbstractImmutableBuilder<S> {
     }
     
     /**
-     * Construct the mutable state container and replay all modifiers against
-     * it.<p>
+     * Construct the mutable state container and play all modifiers against it.
+     * <p>
      * 
      * It is expected that the concrete builder's {@code build()} method call
-     * this method to get the state which is then used to set the state of the
-     * built object.
+     * this method to get the state which is then transferred to the constructor
+     * of the built object. The state object can either be copied by the built
+     * object or referenced directly for "value lookup".
      * 
      * @param factory of state
      * @return the populated state

@@ -2,6 +2,7 @@ package alpha.nomagichttp.internal;
 
 import alpha.nomagichttp.Config;
 import alpha.nomagichttp.handler.ResponseRejectedException;
+import alpha.nomagichttp.message.HeaderHolder;
 import alpha.nomagichttp.message.Response;
 import alpha.nomagichttp.message.ResponseTimeoutException;
 import alpha.nomagichttp.util.SeriallyRunnable;
@@ -148,7 +149,7 @@ final class ResponsePipeline implements Flow.Publisher<ResponsePipeline.Result>
         this.exch  = requireNonNull(exch);
         this.queue = new ConcurrentLinkedDeque<>();
         this.op    = new SeriallyRunnable(this::pollAndProcessAsync, true);
-        this.subs  = new ArrayList<>();
+        this.subs  = new ArrayList<>(1);
         this.timer = new AtomicReference<>();
         this.timedOut = false;
         this.timeoutPublished = false;
@@ -180,7 +181,7 @@ final class ResponsePipeline implements Flow.Publisher<ResponsePipeline.Result>
     
     private void enqueue(CompletionStage<Response> resp, Consumer<CompletionStage<Response>> sink) {
         requireNonNull(resp);
-        resp.thenRun(this::timeoutReset);
+        resp.whenComplete((ign,ored) -> timeoutReset());
         sink.accept(resp);
         op.run();
     }
@@ -206,8 +207,8 @@ final class ResponsePipeline implements Flow.Publisher<ResponsePipeline.Result>
     private void pollAndProcessAsync() {
         if (timedOut && !timeoutPublished) {
             scheduleClose(chan);
-            publish(null, null, new ResponseTimeoutException(
-                    "Gave up waiting on a response."));
+            publish(null, null,
+                new ResponseTimeoutException("Gave up waiting on a response."));
             timeoutPublished = true;
         }
         
@@ -235,9 +236,9 @@ final class ResponsePipeline implements Flow.Publisher<ResponsePipeline.Result>
         // No support for HTTP 1.0 Keep-Alive
         if (rsp.isFinal() &&
             exch.getHttpVersion().isLessThan(HTTP_1_1) &&
-            !rsp.headerContains(CONNECTION, "close"))
+            !hasConnectionClose(rsp))
         {
-            return rsp.toBuilder().header(CONNECTION, "close").build();
+            return setConnectionClose(rsp);
         }
         return rsp;
     }
@@ -248,25 +249,44 @@ final class ResponsePipeline implements Flow.Publisher<ResponsePipeline.Result>
             !rsp.mustCloseAfterWrite()                  &&
             // If not, we need to dig a little bit
              rsp.headerIsMissingOrEmpty(CONTENT_LENGTH) &&
-            !rsp.headerContains(CONNECTION, "close")    &&
+            !hasConnectionClose(rsp)                    &&
             !rsp.isBodyEmpty())
         {
             // TODO: In the future when implemented, chunked encoding may also be an option
             LOG.log(DEBUG, "Response body of unknown length and not marked to close connection, setting \"Connection: close\".");
-            return rsp.toBuilder().header(CONNECTION, "close").build();
+            return setConnectionClose(rsp);
         }
         return rsp;
     }
     
-    private Response trackConnectionClose(Response rsp) {
-        if (rsp.headerContains(CONNECTION, "close")) {
+    private Response trackConnectionClose(Response in) {
+        final Response out;
+        
+        if (sawConnectionClose) {
+            if (in.isFinal() && !hasConnectionClose(in)) {
+                // Flag propagates to response
+                out = setConnectionClose(in);
+            } else {
+                // Message not final or already has the header = NOP
+                out = in;
+            }
+        } else if (hasConnectionClose(in)) {
+            // Update flag, but no need to modify response
             sawConnectionClose = true;
-            // will return rsp
-        } else if (sawConnectionClose && rsp.isFinal()) {
-            // "Connection: close" propagates from previous response(s) even if they failed
-            return rsp.toBuilder().header(CONNECTION, "close").build();
+            out = in;
+        } else if (in.isFinal() &&
+                  (exch.getRequest() != null && hasConnectionClose(exch.getRequest()) ||
+                  !chan.isOpenForReading()))
+        {
+            // Flag also propagates from request or current half-closed state of channel
+            sawConnectionClose = true;
+            out = setConnectionClose(in);
+        } else {
+            // Haven't seen the header before and no current state indicates we need it = NOP
+            out = in;
         }
-        return rsp;
+        
+        return out;
     }
     
     private Response trackUnsuccessful(final Response in) {
@@ -336,7 +356,6 @@ final class ResponsePipeline implements Flow.Publisher<ResponsePipeline.Result>
         }
         
         tryActOnChannelCommands(rsp);
-        
         if (res != null) {
             actOnWriteSuccess(res, rsp);
         } else {
@@ -420,5 +439,13 @@ final class ResponsePipeline implements Flow.Publisher<ResponsePipeline.Result>
                 "Response stage or response writing failed, " +
                 "but no subscriber consumed this error.", thr);
         }
+    }
+    
+    private static boolean hasConnectionClose(HeaderHolder msg) {
+        return msg.headerContains(CONNECTION, "close");
+    }
+    
+    private static Response setConnectionClose(Response rsp) {
+        return rsp.toBuilder().header(CONNECTION, "close").build();
     }
 }

@@ -588,13 +588,13 @@ public interface Request extends HeaderHolder, AttributeHolder
      * 
      * An exception thrown by {@code
      * Flow.Subscriber.onSubscribe()/onNext()/onComplete()} propagates to the
-     * calling thread, i.e., the one calling {@code Body.subscribe()}. If this
-     * thread is the HTTP server's request thread, then standard {@link
-     * ErrorHandler error handling} is kicked off.<p>
+     * calling thread. If this thread is the HTTP server's request thread, then
+     * standard {@link ErrorHandler error handling} is kicked off.<p>
      * 
      * An exception thrown by the subscriber's {@code onNext()} will cause the
      * server to close the channel's read stream (the write stream remains
-     * untouched so that a response in-flight can complete).<p>
+     * untouched so that a response in-flight can complete or a new one
+     * commence).<p>
      * 
      * Exceptions signalled to {@code Subscriber.onError()} that are <i>not
      * caused by</i> the subscriber itself can safely be assumed to indicate
