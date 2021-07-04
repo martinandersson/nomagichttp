@@ -117,7 +117,14 @@ class BigFileRequestTest extends AbstractLargeRealTest
                 // (No Content-Length. File did not exist at time-of-size check.)
                 "Connection: close"                      + CRLF + CRLF);
             
-            body = client().interruptReadAfter(5, SECONDS)
+            // The TestClient can sometimes take time to complete. Most of the
+            // time - on my machine - it takes roughly 2.2 seconds. Reactor
+            // about 1.5 seconds, and all other clients from 0.8 to 1 second.
+            // The time cost for the TestClient can be significant, observed as
+            // much as 5 seconds. Can also be because the TestClient is first to
+            // execute, i.e. it could be the file system who is at fault, being
+            // slow on the first read access of the file.
+            body = client().interruptReadAfter(8, SECONDS)
                            .responseBufferInitialSize(contents.length)
                            .readBytesUntilEOS();
         }
