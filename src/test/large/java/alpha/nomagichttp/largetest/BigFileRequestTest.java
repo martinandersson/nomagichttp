@@ -26,6 +26,8 @@ import static alpha.nomagichttp.handler.RequestHandler.POST;
 import static alpha.nomagichttp.message.Responses.noContent;
 import static alpha.nomagichttp.message.Responses.ok;
 import static alpha.nomagichttp.testutil.HttpClientFacade.Implementation.APACHE;
+import static alpha.nomagichttp.testutil.HttpClientFacade.Implementation.JETTY;
+import static alpha.nomagichttp.testutil.HttpClientFacade.Implementation.REACTOR;
 import static alpha.nomagichttp.testutil.TestClient.CRLF;
 import static alpha.nomagichttp.util.BetterBodyPublishers.ofFile;
 import static java.nio.file.StandardOpenOption.CREATE;
@@ -35,7 +37,6 @@ import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assumptions.assumeTrue;
-import static org.junit.jupiter.params.provider.EnumSource.Mode.EXCLUDE;
 
 /**
  * POST a big file (50 MB) to server, verify disk contents, respond same file.
@@ -122,13 +123,16 @@ class BigFileRequestTest extends AbstractLargeRealTest
     }
     
     @ParameterizedTest(name = "post/{0}")
-    @EnumSource(mode = EXCLUDE,
-            // Reactor do what Reactor does best: NPE.
-            names = "REACTOR")
+    @EnumSource
     void post_compatibility(HttpClientFacade.Implementation impl)
             throws IOException, ExecutionException, InterruptedException, TimeoutException
     {
         assumeTrue(saved);
+        
+        if (impl == REACTOR) {
+            // Reactor do what Reactor does best: NPE.
+            throw new TestAbortedException();
+        }
         
         var rsp = impl.create(serverPort())
                 .postBytesAndReceiveEmpty("/file", HTTP_1_1, contents);
@@ -140,18 +144,21 @@ class BigFileRequestTest extends AbstractLargeRealTest
     }
     
     @ParameterizedTest(name = "get/{0}")
-    @EnumSource(mode = EXCLUDE,
-            // Jetty has some kind of internal capacity buffer constraint.
-            //   java.lang.IllegalArgumentException: Buffering capacity 2097152 exceeded
-            // There's a fix for it:
-            // https://stackoverflow.com/questions/65941299/buffering-capacity-2097152-exceeded-from-jetty-when-response-is-large
-            // ..but not too keen on wasting time tweaking individual clients
-            // when all others work.
-            names = "JETTY")
+    @EnumSource
     void get_compatibility(HttpClientFacade.Implementation impl)
             throws IOException, ExecutionException, InterruptedException, TimeoutException
     {
         assumeTrue(saved);
+        
+        if (impl == JETTY) {
+            // Jetty has some kind of internal capacity buffer constraint.
+            //   java.lang.IllegalArgumentException: Buffering capacity 2097152 exceeded
+            // There's a fix for it:
+            // https://stackoverflow.com/questions/65941299/buffering-capacity-2097152-exceeded-from-jetty-when-response-is-large
+            // ..but I'm not too keen wasting time tweaking individual clients
+            // when all others work.
+            throw new TestAbortedException();
+        }
         
         if (impl == APACHE && "true".equals(System.getenv("GITHUB_ACTIONS"))) {
             // On local Windows WSLs Ubuntu using Java 11+, Apache completes

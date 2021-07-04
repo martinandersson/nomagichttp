@@ -11,11 +11,13 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
+import org.opentest4j.TestAbortedException;
 
 import java.io.IOException;
 import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.EnumSet;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeoutException;
@@ -28,12 +30,12 @@ import static alpha.nomagichttp.message.Responses.processing;
 import static alpha.nomagichttp.message.Responses.text;
 import static alpha.nomagichttp.testutil.HttpClientFacade.Implementation.JDK;
 import static alpha.nomagichttp.testutil.HttpClientFacade.Implementation.JETTY;
+import static alpha.nomagichttp.testutil.HttpClientFacade.Implementation.OKHTTP;
+import static alpha.nomagichttp.testutil.HttpClientFacade.Implementation.REACTOR;
 import static alpha.nomagichttp.testutil.HttpClientFacade.ResponseFacade;
 import static alpha.nomagichttp.testutil.TestClient.CRLF;
 import static alpha.nomagichttp.util.Headers.of;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.jupiter.params.provider.EnumSource.Mode.EXCLUDE;
-import static org.junit.jupiter.params.provider.EnumSource.Mode.INCLUDE;
 
 /**
  * Mimics almost all of the examples provided in {@link
@@ -252,13 +254,17 @@ class ExampleTest extends AbstractRealTest
     }
     
     @ParameterizedTest(name = "EchoHeaders/{0}")
-    // OkHttp will drop "Value 1" and only report "Value 2".
-    // Am I surprised? No. Do I care? No.
-    // Is it excluded from the test so that my life can go on? Yes.
-    @EnumSource(mode = EXCLUDE, names = "OKHTTP")
+    @EnumSource
     void EchoHeaders_compatibility(HttpClientFacade.Implementation impl)
             throws IOException, ExecutionException, InterruptedException, TimeoutException
     {
+        if (impl == OKHTTP) {
+            // OkHttp will drop "Value 1" and only report "Value 2".
+            // Am I surprised? No. Do I care? No.
+            // Is it excluded from the test so that my life can go on? Yes.
+            throw new TestAbortedException();
+        }
+        
         addEchoHeadersRoute(true);
         
         var rsp = impl.create(serverPort())
@@ -310,14 +316,20 @@ class ExampleTest extends AbstractRealTest
     }
     
     @ParameterizedTest(name = "KeepClientInformed/{0}")
-    // Only Apache (and curl!) will pass this test lol.
-    // JDK takes everything after the first 102 (Processing) as the response body.
-    // OkHttp and Jetty yields an empty body ("").
-    // Reactor does what Reactor does best; crashes with a NullPointerException.
-    @EnumSource(mode = INCLUDE, names = "APACHE")
+    @EnumSource
     public void KeepClientInformed_compatibility(HttpClientFacade.Implementation impl)
             throws IOException, ExecutionException, InterruptedException, TimeoutException
     {
+        if (EnumSet.of(JDK, OKHTTP, JETTY, REACTOR).contains(impl)) {
+            // Only Apache (and curl!) will pass this test lol.
+            // JDK takes everything after the first 102 (Processing) as the response body.
+            // OkHttp and Jetty yields an empty body ("").
+            // Reactor does what Reactor does best; crashes with a NullPointerException.
+            // Oh, and checking a Set instead of "impl != APACHE" for the type system.
+            // Prefer to have a trace of failed clients instead of successful ones.
+            throw new TestAbortedException();
+        }
+        
         addKeepClientInformedRoute(true);
         var rsp = impl.create(serverPort()).getText("/", HTTP_1_1);
         assertThat(rsp.body()).isEqualTo("Done!");
