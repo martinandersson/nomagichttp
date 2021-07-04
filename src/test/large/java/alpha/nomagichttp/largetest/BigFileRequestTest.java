@@ -160,9 +160,8 @@ class BigFileRequestTest extends AbstractLargeRealTest
             // On GitHub Actions + Ubuntu + Java 11, Apache sometimes times out
             // (after 5 seconds), sometimes throw OutOfMemoryError. I suspect a
             // small heap space combined with a not so diligent Apache
-            // implementation facing and/or Java 11 bug which unfortunately
-            // happened to hit Apache only. Regardless, pretty clear it's an
-            // exceptional situation and so excluded here.
+            // implementation possibly facing a Java 11 bug. Regardless, pretty
+            // clear it's an exceptional situation and so excluded here.
             // TODO: When we release for a Java version greater than 11, remove this.
             throw new TestAbortedException();
         }
