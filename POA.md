@@ -28,7 +28,7 @@ An item ~~crossed out~~ is complete, an item in __bold__ is work in progress.
 [Stage: Project Enhancements](#stage-project-enhancements)  
 [~~Stage: HTTP Constants~~](#stage-http-constants)  
 [~~Stage: HTTP Versioning~~](#stage-http-versioning)  
-[**Stage: Improved Testing**](#stage-improved-testing)  
+[~~Stage: Improved Testing~~](#stage-improved-testing)  
 [Stage: Improved Content Negotiation](#stage-improved-content-negotiation)  
 [~~Stage: Pseudo-Mutable Types~~](#stage-pseudo-mutable-types)  
 [~~Stage: Multiple Responses~~](#stage-multiple-responses)  
@@ -116,12 +116,12 @@ The server must be in full control of which HTTP version is in use and
 Supported) "for any reason, to refuse service of the client's major protocol
 version" (RFC 7230 §2.6).~~
 
-## **Stage: Improved Testing**
+## ~~Stage: Improved Testing~~
 
-_Status: **In Progress**_
+_Status: **Delivered**_
 
-- Each end-to-end test should run over many combinations of different clients
-  and HTTP versions.
+- ~~Each end-to-end test should run over many combinations of different clients
+  and HTTP versions.~~
 
 ## Stage: Improved Content Negotiation
 
