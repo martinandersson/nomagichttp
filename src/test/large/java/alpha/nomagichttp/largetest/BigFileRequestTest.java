@@ -2,6 +2,7 @@ package alpha.nomagichttp.largetest;
 
 import alpha.nomagichttp.testutil.AbstractLargeRealTest;
 import alpha.nomagichttp.testutil.HttpClientFacade;
+import alpha.nomagichttp.testutil.Logging;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.MethodOrderer.OrderAnnotation;
@@ -30,6 +31,7 @@ import static alpha.nomagichttp.testutil.HttpClientFacade.Implementation.JETTY;
 import static alpha.nomagichttp.testutil.HttpClientFacade.Implementation.REACTOR;
 import static alpha.nomagichttp.testutil.TestClient.CRLF;
 import static alpha.nomagichttp.util.BetterBodyPublishers.ofFile;
+import static java.lang.System.Logger.Level.ALL;
 import static java.nio.file.StandardOpenOption.CREATE;
 import static java.nio.file.StandardOpenOption.TRUNCATE_EXISTING;
 import static java.nio.file.StandardOpenOption.WRITE;
