@@ -2,6 +2,8 @@ package alpha.nomagichttp;
 
 import alpha.nomagichttp.events.EventHub;
 import alpha.nomagichttp.events.ScatteringEventEmitter;
+import alpha.nomagichttp.events.ServerStarted;
+import alpha.nomagichttp.events.ServerStopped;
 import alpha.nomagichttp.handler.ClientChannel;
 import alpha.nomagichttp.handler.ErrorHandler;
 import alpha.nomagichttp.handler.RequestHandler;
@@ -21,6 +23,7 @@ import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
 import java.nio.channels.AsynchronousServerSocketChannel;
+import java.time.Instant;
 import java.util.concurrent.CompletionStage;
 import java.util.function.BiConsumer;
 
@@ -509,16 +512,60 @@ public interface HttpServer
     /**
      * Returns the event hub associated with this server.<p>
      * 
-     * The event hub can be used to subscribe to server-related events, as well
-     * as to emit application-specific events programmatically. If the
-     * application runs multiple servers, a JVM-global hub can be created like
-     * so:
+     * The event hub can be used to subscribe to server-related events. For
+     * example:
+     * <pre>{@code
+     *   HttpServer server = ...
+     *   server.events().on(ServerStarted.class, (event, when) ->
+     *           System.out.println("Server started at " + when));
+     * }</pre>
+     * 
+     * The hub can also be used to emit application-specific events
+     * programmatically.
+     * <pre>{@code
+     *   server.events().on(String.class, msg ->
+     *           System.out.println("Received message: " + msg));
+     *   server.events().dispatch("Hello!");
+     * }</pre>
+     * 
+     * The hub is not bound to the running state of the server. The hub can be
+     * used before the server has started as well as it can be used after the
+     * server has stopped.<p>
+     * 
+     * The server and its related components use the hub to dispatch <i>only</i>
+     * the events listed below. Any other event type can freely be dispatched by
+     * the application without concerns for interfering with the correctness of
+     * the server implementation or its performance.<p>
+     * 
+     * If the application runs multiple servers, a JVM-global hub can be created
+     * like so:
      * <pre>
      *   EventHub global = EventHub.{@link
      *   EventHub#combine(ScatteringEventEmitter, ScatteringEventEmitter, ScatteringEventEmitter...) combine}(server1, server2, ...);
      * </pre>
      * 
-     * TODO: List events emitted.
+     * <table class="striped">
+     *   <caption style="display:none">Events emitted</caption>
+     *   <thead>
+     *   <tr>
+     *     <th scope="col">Type</th>
+     *     <th scope="col">Attachment 1</th>
+     *     <th scope="col">Attachment 2</th>
+     *   </tr>
+     *   </thead>
+     *   <tbody>
+     *   <tr>
+     *     <th scope="row"> {@link ServerStarted} </th>
+     *     <td> {@link Instant} </td>
+     *     <td> {@code null} </td>
+     *   </tr>
+     *   <tr>
+     *     <th scope="row"> {@link ServerStopped} </th>
+     *     <td> {@link Instant} </td>
+     *     <td> {@link Instant} </td>
+     *   </tr>
+     *   </tbody>
+     * </table>
      * 
      * @return the event hub associated with this server (never {@code null})
      */

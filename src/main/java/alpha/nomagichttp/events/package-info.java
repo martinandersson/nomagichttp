@@ -5,6 +5,12 @@
  * can be used to redistribute events from other event emitters and to
  * programmatically emit events from application code.<p>
  * 
+ * Event classes are normally co-located in the same feature/component package
+ * from where they originate. For the moment, all events emitted by the {@link
+ * alpha.nomagichttp.HttpServer#events() HttpServer} are enum types located in
+ * this package. A future release when the NoMagicHTTP project becomes
+ * modularized may change this.<p>
+ * 
  * The API has been carefully crafted for high performance and throughput. For
  * example, listeners are grouped by event runtime types which makes the default
  * implementation able to use a simple {@code Map} as a backing store of

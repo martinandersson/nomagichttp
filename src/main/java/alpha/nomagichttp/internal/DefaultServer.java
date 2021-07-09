@@ -4,6 +4,8 @@ import alpha.nomagichttp.Config;
 import alpha.nomagichttp.HttpServer;
 import alpha.nomagichttp.events.DefaultEventHub;
 import alpha.nomagichttp.events.EventHub;
+import alpha.nomagichttp.events.ServerStarted;
+import alpha.nomagichttp.events.ServerStopped;
 import alpha.nomagichttp.handler.ErrorHandler;
 import alpha.nomagichttp.route.Route;
 import alpha.nomagichttp.route.RouteRegistry;
@@ -17,6 +19,7 @@ import java.nio.channels.AsynchronousSocketChannel;
 import java.nio.channels.ClosedChannelException;
 import java.nio.channels.CompletionHandler;
 import java.nio.channels.ShutdownChannelGroupException;
+import java.time.Instant;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.CancellationException;
@@ -128,8 +131,10 @@ public final class DefaultServer implements HttpServer
         }
         
         final AsynchronousServerSocketChannel ch;
+        final Instant when;
         try {
             ch = AsynchronousServerSocketChannel.open(grp).bind(addr);
+            when = Instant.now();
         } catch (Throwable t) {
             AsyncGroup.unregister();
             v.completeExceptionally(t);
@@ -137,7 +142,8 @@ public final class DefaultServer implements HttpServer
         }
         
         LOG.log(INFO, () -> "Opened server channel: " + ch);
-        v.complete(new ParentWithHandler(ch));
+        v.complete(new ParentWithHandler(ch, when));
+        events().dispatch(ServerStarted.INSTANCE, when);
     }
     
     @Override
@@ -178,9 +184,11 @@ public final class DefaultServer implements HttpServer
             parent.set(null);
             AsynchronousServerSocketChannel ch = pwh.channel();
             ch.close();
+            final Instant when = Instant.now();
             LOG.log(INFO, () -> "Closed server channel: " + ch);
             AsyncGroup.unregister();
             pwh.handler().tryCompleteLastChildStage();
+            events().dispatch(ServerStopped.INSTANCE, when, pwh.started());
             return pwh;
         } else {
             return null;
@@ -251,17 +259,23 @@ public final class DefaultServer implements HttpServer
     
     private final class ParentWithHandler {
         private final AsynchronousServerSocketChannel parent;
+        private final Instant started;
         private final OnAccept onAccept;
         private final AtomicBoolean terminated;
         
-        ParentWithHandler(AsynchronousServerSocketChannel parent) {
-            this.parent = parent;
-            this.onAccept = new OnAccept(parent);
+        ParentWithHandler(AsynchronousServerSocketChannel parent, Instant started) {
+            this.parent     = parent;
+            this.started    = started;
+            this.onAccept   = new OnAccept(parent);
             this.terminated = new AtomicBoolean();
         }
         
         AsynchronousServerSocketChannel channel() {
             return parent;
+        }
+        
+        Instant started() {
+            return started;
         }
         
         OnAccept handler() {
