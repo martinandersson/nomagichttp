@@ -10,8 +10,8 @@ import java.util.function.Supplier;
 import static java.util.Objects.requireNonNull;
 
 /**
- * Is a thread-safe, non-blocking, "hot" (event-driven, not cached), and unicast
- * publisher driven by a generator function (constructor arg).<p>
+ * Is a thread-safe, non-blocking, and unicast publisher driven by a generator
+ * function (constructor arg).<p>
  * 
  * The function is implicitly polled by the producer {@link #announce()
  * announcing} the availability of items (the push) and also polled by the
@@ -35,7 +35,7 @@ import static java.util.Objects.requireNonNull;
  * AbstractUnicastPublisher}).<p>
  * 
  * The transfer of items from the generator to the subscriber is implemented
- * using a subscriber unique {@link SerialTransferService}. This means that for
+ * using a subscriber-unique {@link SerialTransferService}. This means that for
  * a non-reusable publisher (constructor arg), the generator function will never
  * be called concurrently.<p>
  * 
