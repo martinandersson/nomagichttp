@@ -34,7 +34,7 @@ import java.util.function.Consumer;
  * result. If all events are sought after, consider subscribing to a {@link
  * ScatteringEventEmitter}
  * 
- * <pre>
+ * <pre>{@code
  *   EventEmitter source = ...
  *   // Receives new Object(), not "string"
  *   source.on(Object.class, new MyConsumer());
@@ -43,7 +43,7 @@ import java.util.function.Consumer;
  *   Consumer{@literal <}Object> receivesBoth = System.out::println;
  *   source.on(Object.class, receivesBoth);
  *   source.on(String.class, receivesBoth);
- * </pre>
+ * }</pre>
  * 
  * Semantics concerning attachments are normally documented and defined by the
  * event type, and, normally always present or never present. For example, a
