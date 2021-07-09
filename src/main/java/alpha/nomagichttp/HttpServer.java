@@ -1,5 +1,7 @@
 package alpha.nomagichttp;
 
+import alpha.nomagichttp.events.EventHub;
+import alpha.nomagichttp.events.ScatteringEventEmitter;
 import alpha.nomagichttp.handler.ClientChannel;
 import alpha.nomagichttp.handler.ErrorHandler;
 import alpha.nomagichttp.handler.RequestHandler;
@@ -503,6 +505,24 @@ public interface HttpServer
      * @throws NullPointerException if {@code route} is {@code null}
      */
     boolean remove(Route route);
+    
+    /**
+     * Returns the event hub associated with this server.<p>
+     * 
+     * The event hub can be used to subscribe to server-related events, as well
+     * as to emit application-specific events programmatically. If the
+     * application runs multiple servers, a JVM-global hub can be created like
+     * so:
+     * <pre>
+     *   EventHub global = EventHub.{@link
+     *   EventHub#combine(ScatteringEventEmitter, ScatteringEventEmitter, ScatteringEventEmitter...) combine}(server1, server2, ...);
+     * </pre>
+     * 
+     * TODO: List events emitted.
+     * 
+     * @return the event hub associated with this server (never {@code null})
+     */
+    EventHub events();
     
     /**
      * Returns the server's configuration.

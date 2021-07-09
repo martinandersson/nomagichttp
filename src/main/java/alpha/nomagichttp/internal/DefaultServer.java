@@ -2,6 +2,8 @@ package alpha.nomagichttp.internal;
 
 import alpha.nomagichttp.Config;
 import alpha.nomagichttp.HttpServer;
+import alpha.nomagichttp.events.DefaultEventHub;
+import alpha.nomagichttp.events.EventHub;
 import alpha.nomagichttp.handler.ErrorHandler;
 import alpha.nomagichttp.route.Route;
 import alpha.nomagichttp.route.RouteRegistry;
@@ -55,6 +57,7 @@ public final class DefaultServer implements HttpServer
     private final RouteRegistry registry;
     private final List<ErrorHandler> eh;
     private final AtomicReference<CompletableFuture<ParentWithHandler>> parent;
+    private final EventHub events;
     
     /**
      * Constructs a {@code DefaultServer}.
@@ -68,6 +71,7 @@ public final class DefaultServer implements HttpServer
         this.registry = requireNonNull(registry);
         this.eh       = List.of(eh);
         this.parent   = new AtomicReference<>();
+        this.events   = new DefaultEventHub();
     }
     
     @Override
@@ -197,6 +201,11 @@ public final class DefaultServer implements HttpServer
     @Override
     public boolean remove(Route route) {
         return getRouteRegistry().remove(route);
+    }
+    
+    @Override
+    public EventHub events() {
+        return events;
     }
     
     @Override
