@@ -197,18 +197,18 @@ public final class DefaultServer implements HttpServer
     
     @Override
     public HttpServer add(Route route) {
-        getRouteRegistry().add(route);
+        registry.add(route);
         return this;
     }
     
     @Override
     public Route remove(String pattern) {
-        return getRouteRegistry().remove(pattern);
+        return registry.remove(pattern);
     }
     
     @Override
     public boolean remove(Route route) {
-        return getRouteRegistry().remove(route);
+        return registry.remove(route);
     }
     
     @Override
@@ -231,10 +231,6 @@ public final class DefaultServer implements HttpServer
             assert !(e instanceof ClassCastException);
             throw new IllegalStateException("Server is not running.", e);
         }
-    }
-    
-    RouteRegistry getRouteRegistry() {
-        return registry;
     }
     
     private ParentWithHandler getParent(boolean waitOnBoot) {
