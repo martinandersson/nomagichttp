@@ -1,6 +1,7 @@
 package alpha.nomagichttp;
 
 import alpha.nomagichttp.events.EventHub;
+import alpha.nomagichttp.events.RequestHeadParsed;
 import alpha.nomagichttp.events.ScatteringEventEmitter;
 import alpha.nomagichttp.events.ServerStarted;
 import alpha.nomagichttp.events.ServerStopped;
@@ -10,6 +11,7 @@ import alpha.nomagichttp.handler.RequestHandler;
 import alpha.nomagichttp.internal.DefaultServer;
 import alpha.nomagichttp.message.HttpVersionTooOldException;
 import alpha.nomagichttp.message.IllegalBodyException;
+import alpha.nomagichttp.message.RequestHead;
 import alpha.nomagichttp.message.Response;
 import alpha.nomagichttp.message.Responses;
 import alpha.nomagichttp.route.DefaultRouteRegistry;
@@ -563,6 +565,11 @@ public interface HttpServer
      *     <th scope="row"> {@link ServerStopped} </th>
      *     <td> {@link Instant} </td>
      *     <td> {@link Instant} </td>
+     *   </tr>
+     *   <tr>
+     *     <th scope="row"> {@link RequestHeadParsed} </th>
+     *     <td> {@link RequestHead} </td>
+     *     <td> {@code null} </td>
      *   </tr>
      *   </tbody>
      * </table>

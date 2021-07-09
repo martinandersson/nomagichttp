@@ -1,5 +1,6 @@
 package alpha.nomagichttp.internal;
 
+import alpha.nomagichttp.message.RequestHead;
 import alpha.nomagichttp.message.RequestHeadParseException;
 import alpha.nomagichttp.util.Headers;
 
@@ -336,7 +337,7 @@ final class RequestHeadProcessor
         HttpHeaders headers = Headers.of(
                 headerValues != null ? headerValues : Map.of());
         
-        completed = new RequestHead(
+        completed = new DefaultRequestHead(
                 method, requestTarget, httpVersion, headers);
     }
 }

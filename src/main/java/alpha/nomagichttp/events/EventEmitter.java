@@ -1,5 +1,8 @@
 package alpha.nomagichttp.events;
 
+import alpha.nomagichttp.HttpServer;
+import alpha.nomagichttp.message.RequestHead;
+
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 
@@ -29,29 +32,31 @@ import java.util.function.Consumer;
  * 
  * Event listeners observe events of a particular runtime type of said event
  * object. Listeners can not subscribe to a superclass and then receive all
- * events that are an instance of the superclass. The same listener instance can
- * be re-subscribed against different event types to accomplish a similar
- * result. If all events are sought after, consider subscribing to a {@link
- * ScatteringEventEmitter}
+ * events that are an instance of the superclass.
+ * <pre>
  * 
- * <pre>{@code
  *   EventEmitter source = ...
+ *   
  *   // Receives new Object(), not "string"
  *   source.on(Object.class, new MyConsumer());
+ *   
  *    // Receives "string", not new Object()
  *   source.on(String.class, new MyConsumer());
- *   Consumer{@literal <}Object> receivesBoth = System.out::println;
+ *   
+ *   Consumer{@literal <}Object{@literal >} receivesBoth = System.out::println;
  *   source.on(Object.class, receivesBoth);
  *   source.on(String.class, receivesBoth);
- * }</pre>
+ * </pre>
+ *
+ * The same listener instance can be re-subscribed against different event types
+ * to accomplish a similar result. If all events are sought after, consider
+ * subscribing to a {@link ScatteringEventEmitter}.<p>
  * 
  * Semantics concerning attachments are normally documented and defined by the
  * event type, and, normally always present or never present. For example, a
- * {@code RequestHeadReceived} event raised by the {@code HttpServer} will
- * always carry with it the {@code RequestHead} object as the first and only
- * attachment.<p>
- * 
- * TODO: Give counter example.<p>
+ * {@link RequestHeadParsed} event raised by the {@link HttpServer#events()
+ * HttpServer} will always carry with it the {@link RequestHead} object as the
+ * first and only attachment.<p>
  * 
  * However, the {@code EventEmitter} interface does not define any requirements
  * what so ever concerning the presence or type of the attachments. Technically,

@@ -2,6 +2,7 @@ package alpha.nomagichttp.internal;
 
 import alpha.nomagichttp.Config;
 import alpha.nomagichttp.HttpConstants.Version;
+import alpha.nomagichttp.HttpServer;
 import alpha.nomagichttp.handler.ClientChannel;
 import alpha.nomagichttp.handler.ErrorHandler;
 import alpha.nomagichttp.handler.RequestHandler;
@@ -10,6 +11,7 @@ import alpha.nomagichttp.message.HttpVersionTooOldException;
 import alpha.nomagichttp.message.IllegalBodyException;
 import alpha.nomagichttp.message.Request;
 import alpha.nomagichttp.message.RequestBodyTimeoutException;
+import alpha.nomagichttp.message.RequestHead;
 import alpha.nomagichttp.message.RequestHeadTimeoutException;
 import alpha.nomagichttp.route.RouteRegistry;
 
@@ -64,6 +66,7 @@ final class HttpExchange
 {
     private static final System.Logger LOG = System.getLogger(HttpExchange.class.getPackageName());
     
+    private final HttpServer server;
     private final Config config;
     private final RouteRegistry registry;
     private final Collection<ErrorHandler> handlers;
@@ -91,13 +94,14 @@ final class HttpExchange
     private ErrorResolver errRes;
     
     HttpExchange(
-            Config config,
+            HttpServer server,
             RouteRegistry registry,
             Collection<ErrorHandler> handlers,
             ChannelByteBufferPublisher bytes,
             DefaultClientChannel chan)
     {
-        this.config   = config;
+        this.server   = server;
+        this.config   = server.getConfig();
         this.registry = registry;
         this.handlers = handlers;
         this.bytes    = bytes;
@@ -168,7 +172,7 @@ final class HttpExchange
     }
     
     private CompletionStage<RequestHead> parseRequestHead() {
-        RequestHeadSubscriber rhs = new RequestHeadSubscriber(config.maxRequestHeadSize());
+        RequestHeadSubscriber rhs = new RequestHeadSubscriber(server);
         
         var to = new TimeoutOp.Flow<>(false, true, bytes,
                 config.timeoutIdleConnection(), RequestHeadTimeoutException::new);

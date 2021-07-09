@@ -370,7 +370,7 @@ public final class DefaultServer implements HttpServer
                 ChannelByteBufferPublisher bytes)
         {
             var exch = new HttpExchange(
-                    getConfig(), getRouteRegistry(), eh, bytes, chan);
+                    DefaultServer.this, registry, eh, bytes, chan);
             
             exch.begin().whenComplete((Null, exc) -> {
                 // Both open-calls are volatile reads, no locks
