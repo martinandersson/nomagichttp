@@ -111,7 +111,7 @@ public final class Subscriptions
      * Useful for publisher implementations that wish to supply a dormant
      * subscription to {@code Subscriber.onSubscribe()}. This eliminates the
      * risk of subscriber reentrancy or other surprises that could have been a
-     * result of an immediately request for demand; for example, demand from a
+     * result of an immediate request for demand; for example, demand from a
      * subscriber which hasn't yet been fully installed on the publisher's
      * side.<p>
      * 
