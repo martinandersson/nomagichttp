@@ -37,8 +37,7 @@ public final class Environment {
      * @return see JavaDoc
      */
     public static boolean isWindows() {
-        var os = System.getProperty("os.name");
-        return os != null && os.startsWith("Windows");
+        return isOS("Windows");
     }
     
     /**
@@ -48,8 +47,7 @@ public final class Environment {
      * @return see JavaDoc
      */
     public static boolean isLinux() {
-        var os = System.getProperty("os.name");
-        return os != null && os.startsWith("Linux");
+        return isOS("Linux");
     }
     
     /**
@@ -59,7 +57,26 @@ public final class Environment {
      * @return see JavaDoc
      */
     public static boolean isJava11() {
-        var java = System.getProperty("java.version");
-        return java != null && java.startsWith("11.");
+        return isJava(11);
+    }
+    
+    /**
+     * Returns {@code true} if it is safe to assume that the executing
+     * JVM is Java 13, otherwise {@code false}.
+     * 
+     * @return see JavaDoc
+     */
+    public static boolean isJava13() {
+        return isJava(13);
+    }
+    
+    private static boolean isOS(String os) {
+        var v = System.getProperty("os.name");
+        return v != null && v.startsWith(os);
+    }
+    
+    private static boolean isJava(int major) {
+        var v = System.getProperty("java.version");
+        return v != null && v.startsWith(major + ".");
     }
 }
