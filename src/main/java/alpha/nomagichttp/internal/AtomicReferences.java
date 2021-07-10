@@ -197,7 +197,7 @@ final class AtomicReferences
     }
     
     /**
-     * Take the value from the atomic reference, and set it to {@code null}.
+     * Take the value from the atomic reference and set it to {@code null}.
      * 
      * @param ref reference target
      * @param <V> value type
@@ -239,13 +239,21 @@ final class AtomicReferences
     }
     
     /**
-     * Take the value from the atomic reference, and set it to {@code null}, but
-     * only if the current value {@code == val}.<p>
+     * Overload of {@link #takeIf(AtomicReference, Predicate)} where the
+     * predicate is a reference equality check ({@code ==}).
+     * 
+     * For example,
+     * <pre>
+     *   // Wife obviously does not implement equals(), only what reference we have counts
+     *   Wife mine = new Wife();
+     *   AtomicReference{@literal <}Wife{@literal >} crashingCarDriver = ...
+     *   takeIfSame(crashingCarDriver, mine).ifPresent(me::abandon);
+     * </pre>
      * 
      * @param ref reference target
-     * @param val wanted value
+     * @param val tested reference value
      * @param <V> value type
-     * @return an optional with {@code val} if {@code val} was current value
+     * @return an optional with {@code val} if {@code val} was the current value
      * @throws NullPointerException if any arg is {@code null}
      */
     static <V> Optional<V> takeIfSame(AtomicReference<V> ref, V val) {
