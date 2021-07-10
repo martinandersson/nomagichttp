@@ -181,8 +181,14 @@ public abstract class AbstractEventEmitter implements EventEmitter
     
     private boolean removeListener(Class<?> eventType, Object listener) {
         requireNotInterface(eventType);
+        requireNonNull(listener);
         var set = listeners.get(eventType);
-        return set != null && set.remove(listener);
+        boolean s =  set != null && set.remove(listener);
+        if (s && set.isEmpty()) {
+            listeners.computeIfPresent(eventType,
+                    (k, v) -> v.isEmpty() ? null : v);
+        }
+        return s;
     }
     
     private static void requireNotInterface(Class<?> eventType) {
