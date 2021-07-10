@@ -17,7 +17,7 @@ import java.time.Instant;
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  */
-public enum ServerStopped {
+public enum HttpServerStopped {
     /**
      * A singleton instance representing the event.
      */

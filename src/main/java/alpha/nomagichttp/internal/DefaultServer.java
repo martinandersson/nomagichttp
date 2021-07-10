@@ -5,7 +5,7 @@ import alpha.nomagichttp.HttpServer;
 import alpha.nomagichttp.events.DefaultEventHub;
 import alpha.nomagichttp.events.EventHub;
 import alpha.nomagichttp.events.HttpServerStarted;
-import alpha.nomagichttp.events.ServerStopped;
+import alpha.nomagichttp.events.HttpServerStopped;
 import alpha.nomagichttp.handler.ErrorHandler;
 import alpha.nomagichttp.route.Route;
 import alpha.nomagichttp.route.RouteRegistry;
@@ -188,7 +188,7 @@ public final class DefaultServer implements HttpServer
             LOG.log(INFO, () -> "Closed server channel: " + ch);
             AsyncGroup.unregister();
             pwh.handler().tryCompleteLastChildStage();
-            events().dispatch(ServerStopped.INSTANCE, when, pwh.started());
+            events().dispatch(HttpServerStopped.INSTANCE, when, pwh.started());
             return pwh;
         } else {
             return null;

@@ -4,7 +4,7 @@ import alpha.nomagichttp.events.EventHub;
 import alpha.nomagichttp.events.RequestHeadParsed;
 import alpha.nomagichttp.events.ScatteringEventEmitter;
 import alpha.nomagichttp.events.HttpServerStarted;
-import alpha.nomagichttp.events.ServerStopped;
+import alpha.nomagichttp.events.HttpServerStopped;
 import alpha.nomagichttp.handler.ClientChannel;
 import alpha.nomagichttp.handler.ErrorHandler;
 import alpha.nomagichttp.handler.RequestHandler;
@@ -562,7 +562,7 @@ public interface HttpServer
      *     <td> {@code null} </td>
      *   </tr>
      *   <tr>
-     *     <th scope="row"> {@link ServerStopped} </th>
+     *     <th scope="row"> {@link HttpServerStopped} </th>
      *     <td> {@link Instant} </td>
      *     <td> {@link Instant} </td>
      *   </tr>
