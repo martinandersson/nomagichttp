@@ -39,7 +39,7 @@ import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.junit.jupiter.api.Assumptions.assumeFalse;
+import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 /**
  * Client-connection life-cycle tests.
@@ -189,8 +189,8 @@ class ClientLifeCycleTest extends AbstractRealTest
     @Test
     void brokenPipe() throws InterruptedException, IOException {
         // It would be weird if we could use an API to cause a broken pipe.
-        // This implementation was found to work on Windows, albeit not on Linux.
-        assumeFalse(Environment.isLinux());
+        // This implementation was found to work on Windows, albeit not on Linux or macOS.
+        assumeTrue(Environment.isWindows());
         
         Channel ch = client().openConnection();
         try (ch) {
