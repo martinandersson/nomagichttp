@@ -1,4 +1,7 @@
 # Tell Jitpack to build using Java 15 (defaults to 8)
 before_install:
-   - sdk install java 15.0.2-zulu
-   - sdk use java 15.0.2-zulu
+  # Fix: https://github.com/jitpack/jitpack.io/issues/4506#issuecomment-864562270
+  - source "$HOME/.sdkman/bin/sdkman-init.sh"
+  - sdk update
+  - sdk install java 15.0.2-zulu
+  - sdk use java 15.0.2-zulu
