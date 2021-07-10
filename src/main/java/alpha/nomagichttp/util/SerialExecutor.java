@@ -10,11 +10,9 @@ import static java.lang.ThreadLocal.withInitial;
  * Executes actions serially in FIFO order without overlapping unless configured
  * to allow for recursion.<p>
  * 
- * Actions are executed using the same thread calling, or if the executor is
- * already busy running a previously added action, possibly schedules the action
- * to be executed in the future, either by the active thread currently operating
- * the executor or another inbound thread - whichever thread wins a race to
- * start at that time.<p>
+ * This class is quite simple, really. It holds an unbounded concurrent {@link
+ * Queue} of actions to execute, and a {@link SeriallyRunnable} is used to run
+ * them (so, same memory visibility rules apply).<p>
  * 
  * If the executor is busy and a new action arrives, whether or not the action
  * executes directly or is scheduled depends on thread identity and a boolean
@@ -39,17 +37,7 @@ import static java.lang.ThreadLocal.withInitial;
  * will recursively execute new actions posted from the same thread without
  * regards to how many other actions is sitting in the queue. This may be vital
  * for program correctness and also comes with a performance improvement since
- * recursive actions impose virtually no overhead at all.<p>
- * 
- * Actions are executed with full memory synchronization in-between. I.e., the
- * actions may safely read and write common non-volatile fields. Further,
- * anything done by a thread prior to enqueuing an action happens-before the
- * execution of that action.<p>
- * 
- * The first action's earliest synchronization-with point is the constructor of
- * this class; so, any state accessed by the first action must be safely
- * published. For example, initialize all state fields first, then create the
- * {@code SerialExecutor} instance afterwards.
+ * recursive actions impose virtually no overhead at all.
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  */
