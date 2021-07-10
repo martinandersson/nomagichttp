@@ -1,7 +1,9 @@
 package alpha.nomagichttp.events;
 
 /**
- * Non-blocking implementation of {@link EventHub}.
+ * Non-blocking implementation of {@link EventHub}.<p>
+ * 
+ * The behavior of this class is documented in {@link EventEmitter}.
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  */

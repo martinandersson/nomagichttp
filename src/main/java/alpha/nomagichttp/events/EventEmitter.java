@@ -112,9 +112,26 @@ import java.util.function.Consumer;
  * structure. Duplicates not allowed (based on event type key and listener
  * equality).<p>
  * 
- * There is nothing special about exceptions. If a listener crash, then that
- * executing thread crash and remaining listeners in the call chain will miss
- * out on the event.<p>
+ * Lambdas create a new instance. This will subscribe but fail to unsubscribe:
+ * <pre>
+ *   EventEmitter emitter = ...
+ *   // True
+ *   emitter.on(Something.class, System.out::println);
+ *   // False
+ *   emitter.off(Something.class, System.out::println);
+ * </pre>
+ * 
+ * Solution:
+ * <pre>
+ * 
+ *   Consumer{@literal <}Something{@literal >} listener = event -{@literal >} {};
+ *   emitter.on(Something.class, listener);
+ *   emitter.off(Something.class, listener);
+ * </pre>
+ * 
+ * There is no special handling/logic concerning exceptions. If a listener
+ * throws an exception, then that exception will propagate up the call stack and
+ * remaining listeners in the call chain will miss out on the event.<p>
  * 
  * References are kept using strong references (not weak, soft or whatever
  * else). If you need to subscribe magical beans as listeners with a "scope"
