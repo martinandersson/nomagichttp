@@ -14,9 +14,15 @@ import static java.util.Objects.requireNonNull;
  * EventEmitter} servicing the subclass with a protected
  * {@link #emit(Object, Object, Object)} method.<p>
  * 
+ * The implementation is backed by a {@code Map} of event types to a {@code Set}
+ * of listeners.<p>
+ * 
+ * Implementations that know in advance what events will be emitted ought to
+ * override {@link #supports(Class)}.<p>
+ * 
  * By default, the emitter will be backed by concurrent data structures. But
  * this can be customized. For example, here's how to created an emitter which
- * is not thread-safe:
+ * is not thread-safe: 
  * <pre>
  *   class UnsafeLocalEmitter extends AbstractEventEmitter {
  *       UnsafeLocalEmitter() {
@@ -146,6 +152,21 @@ public abstract class AbstractEventEmitter implements EventEmitter
     @Override
     public <T> boolean off(Class<T> eventType, TriConsumer<? super T, ?, ?> listener) {
         return removeListener(eventType, listener);
+    }
+    
+    /**
+     * Returns {@code true} if the event type is knowingly not supported,
+     * otherwise {@code false}, in which case an {@code
+     * IllegalArgumentException} will be thrown by the {@code on} methods.<p>
+     * 
+     * The implementation in this class always returns true.
+     * 
+     * @param eventType event type (never {@code null})
+     * @return {@code true} if the event type is knowingly not supported,
+     *         otherwise {@code false}
+     */
+    protected boolean supports(Class<?> eventType) {
+        return true;
     }
     
     private boolean addListener(Class<?> eventType, Object listener) {
