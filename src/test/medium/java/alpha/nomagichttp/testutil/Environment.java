@@ -51,4 +51,15 @@ public final class Environment {
         var os = System.getProperty("os.name");
         return os != null && os.startsWith("Linux");
     }
+    
+    /**
+     * Returns {@code true} if it is safe to assume that the executing
+     * JVM is Java 11, otherwise {@code false}.
+     * 
+     * @return see JavaDoc
+     */
+    public static boolean isJava11() {
+        var java = System.getProperty("java.version");
+        return java != null && java.startsWith("11.");
+    }
 }

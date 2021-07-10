@@ -1,7 +1,6 @@
 package alpha.nomagichttp.largetest;
 
 import alpha.nomagichttp.testutil.AbstractLargeRealTest;
-import alpha.nomagichttp.testutil.Environment;
 import alpha.nomagichttp.testutil.HttpClientFacade;
 import alpha.nomagichttp.testutil.Logging;
 import org.junit.jupiter.api.BeforeAll;
@@ -27,6 +26,10 @@ import static alpha.nomagichttp.handler.RequestHandler.GET;
 import static alpha.nomagichttp.handler.RequestHandler.POST;
 import static alpha.nomagichttp.message.Responses.noContent;
 import static alpha.nomagichttp.message.Responses.ok;
+import static alpha.nomagichttp.testutil.Environment.isGitHubActions;
+import static alpha.nomagichttp.testutil.Environment.isJava11;
+import static alpha.nomagichttp.testutil.Environment.isJitPack;
+import static alpha.nomagichttp.testutil.Environment.isLinux;
 import static alpha.nomagichttp.testutil.HttpClientFacade.Implementation.APACHE;
 import static alpha.nomagichttp.testutil.HttpClientFacade.Implementation.JETTY;
 import static alpha.nomagichttp.testutil.HttpClientFacade.Implementation.REACTOR;
@@ -181,13 +184,13 @@ class BigFileRequestTest extends AbstractLargeRealTest
                 // small heap space combined with a not so diligent Apache
                 // implementation possibly facing a Java 11 bug. Regardless, pretty
                 // clear it's an exceptional situation and so excluded here.
-                // TODO: When we release for a Java version greater than 11, remove this.
-                Environment.isGitHubActions() ||
+                (isGitHubActions() && isLinux() && isJava11()) ||
                 // Well, turns out JitPack is having the same issue, on Java 15 (!).
                 // Not sure what OS they are running. JitPack is notoriously
                 // under-documented. But, suspect a low heap in both environments
                 // is one factor (bad Apache client being the other).
-                Environment.isJitPack())
+                isJitPack())
+                // TODO: Over time, try updated Apache versions
         {
             throw new TestAbortedException();
         }
