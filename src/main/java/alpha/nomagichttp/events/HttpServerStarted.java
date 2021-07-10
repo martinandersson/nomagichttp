@@ -14,5 +14,5 @@ public enum HttpServerStarted {
     /**
      * A singleton instance representing the event.
      */
-    INSTANCE;
+    INSTANCE
 }

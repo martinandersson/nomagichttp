@@ -19,7 +19,7 @@ import java.util.function.Consumer;
  * 
  * <pre>
  *   class ShoppingCart extends {@link AbstractEventEmitter} {
- *       enum ItemAdded { INSTANCE; }
+ *       enum ItemAdded { INSTANCE }
  *       public void addItem(Item thing) {
  *           this.doStuff();
  *           super.emit(ItemAdded.INSTANCE, thing); // {@literal <}-- look, no objects created

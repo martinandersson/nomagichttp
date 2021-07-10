@@ -21,5 +21,5 @@ public enum HttpServerStopped {
     /**
      * A singleton instance representing the event.
      */
-    INSTANCE;
+    INSTANCE
 }
