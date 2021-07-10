@@ -158,6 +158,42 @@ final class AtomicReferences
     }
     
     /**
+     * Lazily initialize a new value of an atomic reference, or else throw an
+     * exception.<p>
+     * 
+     * This method behaves the same as {@link
+     * #lazyInitOrElse(AtomicReference, Supplier, Consumer, Object)}, except
+     * instead of returning an alternative value, an exception is thrown.
+     * 
+     * @param ref value container/store
+     * @param factory value creator
+     * @param postInit value initializer
+     * @param excSupplier exception supplier
+     * @param <V> value type
+     * @param <A> accumulation type
+     *
+     * @return the value if initialized, otherwise the alternative
+     *
+     * @throws NullPointerException
+     *             if any arg is {@code null}, or
+     *             if factory returns {@code null} upon invocation
+     */
+    static <V, A extends V, X extends Throwable> V lazyInitOrElseThrow (
+            AtomicReference<V> ref,
+            Supplier<? extends A> factory,
+            Consumer<? super A> postInit,
+            Supplier<? extends X> excSupplier)
+            throws X
+    {
+        requireNonNull(excSupplier);
+        V v = lazyInitOrElse(ref, factory, postInit, null);
+        if (v == null) {
+            throw excSupplier.get();
+        }
+        return v;
+    }
+    
+    /**
      * Atomically set the value of the reference to the factory-produced value
      * only if the actual value is {@code null}.
      * 
