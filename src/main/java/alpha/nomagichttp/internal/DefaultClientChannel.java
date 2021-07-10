@@ -30,8 +30,6 @@ final class DefaultClientChannel implements ClientChannel
     private final HttpServer server;
     private final List<Runnable> onClose;
     private final Attributes attr;
-    // Request thread will always see the updated pipe.
-    // Marked volatile only for the sake of foreign threads keeping a stale copy of the channel.
     private volatile ResponsePipeline pipe;
     
     private volatile boolean readShutdown,
@@ -79,7 +77,13 @@ final class DefaultClientChannel implements ClientChannel
      * Initialize this channel with a pipeline or replace an old.<p>
      * 
      * This operation will enable the response-writing API of the interface.
-     * Until then, only the channel state-management API is useful.
+     * Until then, only the channel state-management API is useful.<p>
+     * 
+     * The write is volatile. For two reasons. 1) any thread enqueuing responses
+     * must use the "latest" pipe (the channel instance's scope outlives the
+     * HTTP exchange), and 2) {@link ResponsePipeline} can now safely be a
+     * {@link AbstractLocalEventEmitter}, given that the listeners subscriber before
+     * this method is called (before first emission takes place).
      * 
      * @param pipe response pipeline
      */

@@ -13,6 +13,7 @@ import alpha.nomagichttp.message.Request;
 import alpha.nomagichttp.message.RequestBodyTimeoutException;
 import alpha.nomagichttp.message.RequestHead;
 import alpha.nomagichttp.message.RequestHeadTimeoutException;
+import alpha.nomagichttp.message.Response;
 import alpha.nomagichttp.route.RouteRegistry;
 
 import java.io.IOException;
@@ -30,12 +31,13 @@ import static alpha.nomagichttp.HttpConstants.Method.TRACE;
 import static alpha.nomagichttp.HttpConstants.StatusCode.ONE_HUNDRED;
 import static alpha.nomagichttp.HttpConstants.Version.HTTP_1_0;
 import static alpha.nomagichttp.HttpConstants.Version.HTTP_1_1;
+import static alpha.nomagichttp.internal.ResponsePipeline.Error;
+import static alpha.nomagichttp.internal.ResponsePipeline.Success;
 import static alpha.nomagichttp.message.Responses.continue_;
 import static alpha.nomagichttp.util.Headers.accept;
 import static alpha.nomagichttp.util.Headers.contentType;
 import static alpha.nomagichttp.util.IOExceptions.isCausedByBrokenInputStream;
 import static alpha.nomagichttp.util.IOExceptions.isCausedByBrokenOutputStream;
-import static alpha.nomagichttp.util.Subscribers.onNext;
 import static java.lang.Integer.parseInt;
 import static java.lang.System.Logger.Level.DEBUG;
 import static java.lang.System.Logger.Level.ERROR;
@@ -167,7 +169,8 @@ final class HttpExchange
     }
     
     private void setupPipeline() {
-        pipe.subscribe(onNext(this::handlePipeResult));
+        pipe.on(Success.class, (ev, rsp) -> handleWriteSuccess((Response) rsp));
+        pipe.on(Error.class, (ev, thr) -> handleError((Throwable) thr));
         chan.usePipeline(pipe);
     }
     
@@ -289,10 +292,8 @@ final class HttpExchange
         }
     }
     
-    private void handlePipeResult(ResponsePipeline.Result res) {
-        if (res.error() != null) {
-            handleError(res.error());
-        } else if (res.response().isFinal()) {
+    private void handleWriteSuccess(Response rsp) {
+        if (rsp.isFinal()) {
             // No need to tryRespond100Continue() after this point
             sent100c = true;
             if (cntDown.decrementAndGet() == 0) {
@@ -304,7 +305,7 @@ final class HttpExchange
                     "HTTP exchange remains active.");
             }
         } else {
-            if (res.response().statusCode() == ONE_HUNDRED) {
+            if (rsp.statusCode() == ONE_HUNDRED) {
                 sent100c = true;
             }
             LOG.log(DEBUG, "Response sent is not final. HTTP exchange remains active.");
