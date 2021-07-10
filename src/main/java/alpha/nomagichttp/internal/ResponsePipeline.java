@@ -270,7 +270,7 @@ final class ResponsePipeline extends AbstractLocalEventEmitter
         return out;
     }
     
-    private CompletionStage<ResponseBodySubscriber.Result> subscribeToResponse(Response rsp) {
+    private CompletionStage<Long> subscribeToResponse(Response rsp) {
         if (wroteFinal) {
             LOG.log(WARNING, () -> "HTTP exchange not active. This response is ignored: " + rsp);
             return failedStage(IGNORE);
@@ -305,7 +305,7 @@ final class ResponsePipeline extends AbstractLocalEventEmitter
         return sub.asCompletionStage();
     }
     
-    private void handleResult(ResponseBodySubscriber.Result res, Throwable thr) {
+    private void handleResult(/* This: */ Long bytesWritten, /* Or: */ Throwable thr) {
         Response rsp = inFlight;
         inFlight = null;
         
@@ -316,8 +316,8 @@ final class ResponsePipeline extends AbstractLocalEventEmitter
         }
         
         tryActOnChannelCommands(rsp);
-        if (res != null) {
-            actOnWriteSuccess(res, rsp);
+        if (bytesWritten != null) {
+            actOnWriteSuccess(bytesWritten, rsp);
         } else {
             assert thr != null;
             actOnWriteFailure(thr, rsp);
@@ -342,8 +342,8 @@ final class ResponsePipeline extends AbstractLocalEventEmitter
         }
     }
     
-    private void actOnWriteSuccess(ResponseBodySubscriber.Result res, Response rsp) {
-        LOG.log(DEBUG, () -> "Sent response (" + res.bytesWritten() + " bytes).");
+    private void actOnWriteSuccess(Long bytesWritten, Response rsp) {
+        LOG.log(DEBUG, () -> "Sent response (" + bytesWritten + " bytes).");
         if (wroteFinal && sawConnectionClose && chan.isOpenForWriting()) {
             LOG.log(DEBUG, "Saw \"Connection: close\", shutting down output.");
             chan.shutdownOutputSafe();

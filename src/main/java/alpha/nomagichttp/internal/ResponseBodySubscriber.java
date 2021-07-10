@@ -14,7 +14,6 @@ import java.util.stream.Stream;
 import static alpha.nomagichttp.HttpConstants.Method.HEAD;
 import static alpha.nomagichttp.internal.AnnounceToChannel.NO_MORE;
 import static alpha.nomagichttp.internal.ChannelByteBufferPublisher.BUF_SIZE;
-import static alpha.nomagichttp.internal.ResponseBodySubscriber.Result;
 import static java.lang.String.join;
 import static java.lang.System.Logger.Level.DEBUG;
 import static java.lang.System.Logger.Level.WARNING;
@@ -52,31 +51,8 @@ import static java.util.Objects.requireNonNull;
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  */
-final class ResponseBodySubscriber implements SubscriberAsStage<ByteBuffer, Result>
+final class ResponseBodySubscriber implements SubscriberAsStage<ByteBuffer, Long>
 {
-    /**
-     * The result of this subscriber, as a stage.
-     * 
-     * @see #asCompletionStage()
-     */
-    static final class Result {
-        private final Response rsp;
-        private final long len;
-        
-        private Result(Response rsp, long len) {
-            this.rsp = rsp;
-            this.len = len;
-        }
-        
-        Response response() {
-            return rsp;
-        }
-        
-        long bytesWritten() {
-            return len;
-        }
-    }
-    
     private static final System.Logger LOG
             = System.getLogger(ResponseBodySubscriber.class.getPackageName());
     
@@ -94,7 +70,7 @@ final class ResponseBodySubscriber implements SubscriberAsStage<ByteBuffer, Resu
     private final HttpExchange exch;
     private final AnnounceToChannel sink;
     private final DefaultClientChannel chan;
-    private final CompletableFuture<Result> resu;
+    private final CompletableFuture<Long> resu;
     
     private Flow.Subscription subscription;
     private boolean pushedHead;
@@ -114,8 +90,7 @@ final class ResponseBodySubscriber implements SubscriberAsStage<ByteBuffer, Resu
      * Returns the response-body-to-channel write process as a stage.<p>
      * 
      * The returned stage completes normally when the last byte has been written
-     * to the channel. The result container has a reference to the response
-     * written as well as a count of all bytes written.<p>
+     * to the channel. The result will be a count of all bytes written.<p>
      * 
      * Errors passed down from the source publisher (the response) as well as
      * errors related to the channel write operations completes the returned
@@ -135,7 +110,7 @@ final class ResponseBodySubscriber implements SubscriberAsStage<ByteBuffer, Resu
      * @return the response-body-to-channel write process as a stage
      */
     @Override
-    public CompletionStage<Result> asCompletionStage() {
+    public CompletionStage<Long> asCompletionStage() {
         return resu;
     }
     
@@ -226,7 +201,7 @@ final class ResponseBodySubscriber implements SubscriberAsStage<ByteBuffer, Resu
     private void afterChannelFinished(DefaultClientChannel child, long byteCount, Throwable exc) {
         if (exc == null) {
             assert byteCount > 0;
-            resu.complete(new Result(resp, byteCount));
+            resu.complete(byteCount);
         } else {
             if (byteCount > 0 && child.isOpenForWriting()) {
                 LOG.log(DEBUG, "Failed writing all of the response to channel. Will close the output stream.");
@@ -241,7 +216,8 @@ final class ResponseBodySubscriber implements SubscriberAsStage<ByteBuffer, Resu
         if (buf.remaining() <= BUF_SIZE) {
             sink.announce(buf);
         } else {
-            sliceIntoChunks(buf, BUF_SIZE).forEach(sink::announce);
+            sliceIntoChunks(buf, BUF_SIZE)
+                  .forEach(sink::announce);
         }
     }
     
