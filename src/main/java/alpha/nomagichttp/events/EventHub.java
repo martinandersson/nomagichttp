@@ -113,13 +113,13 @@ public interface EventHub extends ScatteringEventEmitter, EventEmitter
      * <pre>{@code
      *   server1.events().on(ThingCreated.class, (ev) -> globalCounter.increment());
      *   server2.events().on(ThingCreated.class, (ev) -> globalCounter.increment());
-     *   // Somewhere else smarty pants creates a "global hub"
+     *   // Somewhere else smarty pants creates a "global hub" and exposes it globally
      *   server2.events().redistribute(server1.events());
      *   EventHub global = server2.events();
-     *   // Someone uses the global reference and unintentionally subscribes a duplicated counter
+     *   // Someone uses the reference and unintentionally subscribes a duplicated counter
      *   global.on(ThingCreated.class, (ev) -> globalCounter.increment());
+     *   // This will now bump the counter twice
      *   global.dispatch(ThingCreated.INSTANCE);
-     *   // ...which bumps the counter twice
      * }</pre>
      * 
      * Solution:

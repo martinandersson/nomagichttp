@@ -10,8 +10,20 @@ import java.util.function.Supplier;
 import static java.util.Objects.requireNonNull;
 
 /**
- * A synchronous implementation of {@link EventEmitter} servicing the subclass
- * with a protected {@link #emit(Object, Object, Object)} method.
+ * A synchronous, non-blocking and thread-safe implementation of {@link
+ * EventEmitter} servicing the subclass with a protected
+ * {@link #emit(Object, Object, Object)} method.<p>
+ * 
+ * By default, the emitter will be backed by concurrent data structures. But
+ * this can be customized. For example, here's how to created an emitter which
+ * is not thread-safe:
+ * <pre>
+ *   class UnsafeLocalEmitter extends AbstractEventEmitter {
+ *       UnsafeLocalEmitter() {
+ *           super(new HashMap{@literal <}{@literal >}(), HashSet::new);
+ *       }
+ *   }
+ * </pre>
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  */
