@@ -171,6 +171,10 @@ public abstract class AbstractEventEmitter implements EventEmitter
     
     private boolean addListener(Class<?> eventType, Object listener) {
         requireNotInterface(eventType);
+        requireNonNull(listener);
+        if (!supports(eventType)) {
+            throw new IllegalArgumentException("Event type not supported.");
+        }
         return listeners.computeIfAbsent(eventType, k -> setImpl.get())
                 .add(listener);
     }
