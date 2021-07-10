@@ -4,7 +4,7 @@ import alpha.nomagichttp.Config;
 import alpha.nomagichttp.HttpServer;
 import alpha.nomagichttp.events.DefaultEventHub;
 import alpha.nomagichttp.events.EventHub;
-import alpha.nomagichttp.events.ServerStarted;
+import alpha.nomagichttp.events.HttpServerStarted;
 import alpha.nomagichttp.events.ServerStopped;
 import alpha.nomagichttp.handler.ErrorHandler;
 import alpha.nomagichttp.route.Route;
@@ -143,7 +143,7 @@ public final class DefaultServer implements HttpServer
         
         LOG.log(INFO, () -> "Opened server channel: " + ch);
         v.complete(new ParentWithHandler(ch, when));
-        events().dispatch(ServerStarted.INSTANCE, when);
+        events().dispatch(HttpServerStarted.INSTANCE, when);
     }
     
     @Override

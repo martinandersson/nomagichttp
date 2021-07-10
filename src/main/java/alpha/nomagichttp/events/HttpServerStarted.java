@@ -10,7 +10,7 @@ import java.time.Instant;
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  */
-public enum ServerStarted {
+public enum HttpServerStarted {
     /**
      * A singleton instance representing the event.
      */
