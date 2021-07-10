@@ -4,3 +4,4 @@ before_install:
   - source "$HOME/.sdkman/bin/sdkman-init.sh"
   - sdk update
   - sdk install java 15.0.2-zulu
+  - sdk use java 15.0.2-zulu
