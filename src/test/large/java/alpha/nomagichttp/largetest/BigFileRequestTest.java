@@ -27,8 +27,6 @@ import static alpha.nomagichttp.handler.RequestHandler.POST;
 import static alpha.nomagichttp.message.Responses.noContent;
 import static alpha.nomagichttp.message.Responses.ok;
 import static alpha.nomagichttp.testutil.Environment.isGitHubActions;
-import static alpha.nomagichttp.testutil.Environment.isJava11;
-import static alpha.nomagichttp.testutil.Environment.isJava13;
 import static alpha.nomagichttp.testutil.Environment.isJitPack;
 import static alpha.nomagichttp.testutil.Environment.isLinux;
 import static alpha.nomagichttp.testutil.HttpClientFacade.Implementation.APACHE;
@@ -180,17 +178,15 @@ class BigFileRequestTest extends AbstractLargeRealTest
                 // On local Windows WSLs Ubuntu using Java 11+, Apache completes
                 // just fine in about half a second, as do all other clients, well,
                 // except for Reactor of course which takes about 6 seconds (!).
-                // On GitHub Actions + Ubuntu + Java 11/13, Apache sometimes times
-                // out (after 5 seconds), sometimes throw OutOfMemoryError. I
-                // suspect a small heap space combined with a not so diligent Apache
-                // implementation possibly facing a Java bug (seems to be working on
-                // Java 15). Regardless, pretty clear it's an exceptional situation
-                // and so excluded here.
-                (isGitHubActions() && isLinux() && (isJava11() || isJava13())) ||
-                // Well, turns out JitPack is having the same issue, on Java 15 (!).
-                // Not sure what OS they are running. JitPack is notoriously
-                // under-documented. But, suspect a low heap in both environments
-                // is one factor (bad Apache client being the other).
+                // On GitHub Actions + Ubuntu, Apache sometimes times out (after
+                // 5 seconds), sometimes throw OutOfMemoryError. I suspect a small
+                // heap space combined with a not so diligent Apache implementation
+                // possibly facing a Java bug. Regardless, pretty clear it's an
+                // exceptional situation and so excluded here.
+                (isGitHubActions() && isLinux()) ||
+                // Well, turns out JitPack is having the same issue. Not sure what
+                // OS they are running, but should be Linux lol (JitPack is notoriously
+                // under-documented).
                 isJitPack())
                 // TODO: Over time, try updated Apache versions
         {
