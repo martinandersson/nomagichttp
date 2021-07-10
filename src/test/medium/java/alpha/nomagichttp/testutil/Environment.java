@@ -40,4 +40,15 @@ public final class Environment {
         var os = System.getProperty("os.name");
         return os != null && os.startsWith("Windows");
     }
+    
+    /**
+     * Returns {@code true} if it is safe to assume that the executing
+     * operating system is Linux, otherwise {@code false}.
+     *
+     * @return see JavaDoc
+     */
+    public static boolean isLinux() {
+        var os = System.getProperty("os.name");
+        return os != null && os.startsWith("Linux");
+    }
 }
