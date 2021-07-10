@@ -1,6 +1,7 @@
 package alpha.nomagichttp.largetest;
 
 import alpha.nomagichttp.testutil.AbstractLargeRealTest;
+import alpha.nomagichttp.testutil.Environment;
 import alpha.nomagichttp.testutil.HttpClientFacade;
 import alpha.nomagichttp.testutil.Logging;
 import org.junit.jupiter.api.BeforeAll;
@@ -171,16 +172,23 @@ class BigFileRequestTest extends AbstractLargeRealTest
             throw new TestAbortedException();
         }
         
-        if (impl == APACHE && "true".equals(System.getenv("GITHUB_ACTIONS"))) {
-            // On local Windows WSLs Ubuntu using Java 11+, Apache completes
-            // just fine in about half a second, as do all other clients, well,
-            // except for Reactor of course which takes about 6 seconds (!).
-            // On GitHub Actions + Ubuntu + Java 11, Apache sometimes times out
-            // (after 5 seconds), sometimes throw OutOfMemoryError. I suspect a
-            // small heap space combined with a not so diligent Apache
-            // implementation possibly facing a Java 11 bug. Regardless, pretty
-            // clear it's an exceptional situation and so excluded here.
-            // TODO: When we release for a Java version greater than 11, remove this.
+        if (impl == APACHE &&
+                // On local Windows WSLs Ubuntu using Java 11+, Apache completes
+                // just fine in about half a second, as do all other clients, well,
+                // except for Reactor of course which takes about 6 seconds (!).
+                // On GitHub Actions + Ubuntu + Java 11, Apache sometimes times out
+                // (after 5 seconds), sometimes throw OutOfMemoryError. I suspect a
+                // small heap space combined with a not so diligent Apache
+                // implementation possibly facing a Java 11 bug. Regardless, pretty
+                // clear it's an exceptional situation and so excluded here.
+                // TODO: When we release for a Java version greater than 11, remove this.
+                Environment.isGitHubActions() ||
+                // Well, turns out JitPack is having the same issue, on Java 15 (!).
+                // Not sure what OS they are running. JitPack is notoriously
+                // under-documented. But, suspect a low heap in both environments
+                // is one factor (bad Apache client being the other).
+                Environment.isJitPack())
+        {
             throw new TestAbortedException();
         }
         
