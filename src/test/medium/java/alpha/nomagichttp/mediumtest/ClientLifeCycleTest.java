@@ -7,6 +7,7 @@ import alpha.nomagichttp.message.EndOfStreamException;
 import alpha.nomagichttp.message.PooledByteBufferHolder;
 import alpha.nomagichttp.message.Response;
 import alpha.nomagichttp.testutil.AbstractRealTest;
+import alpha.nomagichttp.testutil.Environment;
 import alpha.nomagichttp.testutil.TestClient;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -31,7 +32,6 @@ import static alpha.nomagichttp.testutil.TestClient.CRLF;
 import static alpha.nomagichttp.testutil.TestRequests.get;
 import static alpha.nomagichttp.testutil.TestRequests.post;
 import static alpha.nomagichttp.testutil.TestSubscribers.onNextAndError;
-import static alpha.nomagichttp.util.Strings.containsIgnoreCase;
 import static java.lang.System.Logger.Level.DEBUG;
 import static java.lang.System.Logger.Level.WARNING;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
@@ -190,7 +190,7 @@ class ClientLifeCycleTest extends AbstractRealTest
     void brokenPipe() throws InterruptedException, IOException {
         // It would be weird if we could use an API to cause a broken pipe.
         // This implementation was found to work on Windows, albeit not on Linux.
-        assumeTrue(containsIgnoreCase(System.getProperty("os.name"), "Windows"));
+        assumeTrue(Environment.isWindows());
         
         Channel ch = client().openConnection();
         try (ch) {

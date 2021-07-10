@@ -11,8 +11,8 @@ public final class Environment {
     }
     
     /**
-     * Returns {@code true} if the executing environment is GitHub Actions,
-     * otherwise {@code false}.
+     * Returns {@code true} if it is safe to assume that the executing
+     * environment is GitHub Actions, otherwise {@code false}.
      * 
      * @return see JavaDoc
      */
@@ -21,12 +21,23 @@ public final class Environment {
     }
     
     /**
-     * Returns {@code true} if the executing environment is JitPack,
-     * otherwise {@code false}.
+     * Returns {@code true} if it is safe to assume that the executing
+     * environment is JitPack, otherwise {@code false}.
      *
      * @return see JavaDoc
      */
     public static boolean isJitPack() {
         return "true".equals(System.getenv("JITPACK"));
+    }
+    
+    /**
+     * Returns {@code true} if it is safe to assume that the executing
+     * operating system is Windows, otherwise {@code false}.
+     * 
+     * @return see JavaDoc
+     */
+    public static boolean isWindows() {
+        var os = System.getProperty("os.name");
+        return os != null && os.startsWith("Windows");
     }
 }
