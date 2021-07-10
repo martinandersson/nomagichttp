@@ -15,6 +15,7 @@ import alpha.nomagichttp.message.RequestHead;
 import alpha.nomagichttp.message.RequestHeadTimeoutException;
 import alpha.nomagichttp.message.Response;
 import alpha.nomagichttp.route.RouteRegistry;
+import alpha.nomagichttp.util.SerialExecutor;
 
 import java.io.IOException;
 import java.nio.channels.AsynchronousCloseException;
@@ -357,13 +358,10 @@ final class HttpExchange
         });
     }
     
-    // Lock not expected to be contended. But in theory, this method can be
-    // invoked concurrently by a synchronous error from the request handler
-    // invocation as well as an asynchronous error from the response pipeline.
-    // TODO: Improve?
-    private synchronized void handleError(Throwable exc) {
+    private final SerialExecutor serially = new SerialExecutor();
+    
+    private void handleError(Throwable exc) {
         final Throwable unpacked = unpackCompletionException(exc);
-        
         if (isTerminatingException(unpacked, chan)) {
             result.completeExceptionally(exc);
             return;
@@ -377,10 +375,21 @@ final class HttpExchange
         }
         
         if (chan.isOpenForWriting())  {
-            if (errRes == null) {
-                errRes = new ErrorResolver();
-            }
-            errRes.resolve(unpacked);
+            // We don't expect errors to be arriving concurrently from the same
+            // exchange, this would be kind of weird. But technically, it could
+            // happen, e.g. a synchronous error from the request handler and an
+            // asynchronous error from the response pipeline. That's the only
+            // reason a serial executor is used here. It's either that or the
+            // synchronized keyword. The latter normally being the preferred
+            // choice when the lock is expected to not be contended. However,
+            // the thread is likely the server's request thread, and this guy
+            // must under no circumstances - ever - be blocked.
+            serially.execute(() -> {
+                if (errRes == null) {
+                    errRes = new ErrorResolver();
+                }
+                errRes.resolve(unpacked);
+            });
         } else {
             LOG.log(WARNING, () ->
                 "Child channel is closed for writing. " +
