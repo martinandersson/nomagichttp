@@ -46,7 +46,7 @@ import java.util.concurrent.atomic.AtomicInteger;
  *   }
  *   
  *   private void pollAndProcessAsync() {
- *       Item i = op.poll();
+ *       Item i = items.poll();
  *       if (i == null) {
  *           operation.complete();
  *       } else {
@@ -59,7 +59,7 @@ import java.util.concurrent.atomic.AtomicInteger;
  *   }
  * }</pre>
  * 
- * In the previous example, order between {@code run} and {@code complete}
+ * In the previous example, order between {@code .run()} and {@code .complete()}
  * doesn't really matter for program correctness, but if run comes after then we
  * increase the chance that a competing thread wins the race to run a scheduled
  * re-run with the benefit of unloading the current thread from being kept
@@ -100,7 +100,13 @@ import java.util.concurrent.atomic.AtomicInteger;
  * happens between the point in time where an object of this class was created
  * up until the first run of said object by thread B, then client code has the
  * responsibility to make sure these actions are visible to thread B executing
- * the first run.
+ * the first run.<p>
+ * 
+ * There is only one running-state variable in this class, which also embeds the
+ * flag/value of a scheduled re-run. Thus, a run happens-before the
+ * re-scheduling of the run. This means that the actions of the thread
+ * initiating a re-run will be observed by the thread executing it (no need to
+ * write volatile fields).
  * 
  * 
  * <h2>Modes Of Completion</h2>
