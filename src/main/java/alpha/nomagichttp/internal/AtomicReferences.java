@@ -8,6 +8,8 @@ import java.util.function.Predicate;
 import java.util.function.Supplier;
 
 import static java.util.Objects.requireNonNull;
+import static java.util.Optional.empty;
+import static java.util.Optional.of;
 import static java.util.Optional.ofNullable;
 
 /**
@@ -207,22 +209,33 @@ final class AtomicReferences
     }
     
     /**
-     * Take the value from the atomic reference, and set it to {@code null}, but
-     * only if the current value pass the test.<p>
+     * Take the value from the atomic reference and set it to {@code null}, but
+     * only if the current value is not {@code null} and passes the test.<p>
      * 
-     * Note: an empty optional means the value did not pass the test, or test
-     * approved null, effectively making an empty optional semantically
-     * worthless. The test ought to perform checks on real values and call-site
-     * ought to act only on the presence of a value returned.
+     * Useful when there's an expectation of the present value and only then is
+     * it useful, and, reserved for the call-site's exclusive use.<p>
+     * 
+     * For example,
+     * <pre>
+     *   AtomicReference{@literal <}BankAccount{@literal >} acc = ...
+     *   takeIf(acc, BankAccount::isLoaded).ifPresent(me::give);
+     * </pre>
+     * 
+     * Note: a returned empty optional means the value was either {@code null}
+     * <i>or</i> did not pass the test. There is no support for "take null".
      * 
      * @param ref reference target
-     * @param test of current value (value may be {@code null}!)
+     * @param test of current value
      * @param <V> value type
-     * @return an optional with the value if it passed the test
+     * @return an optional with the value if it was present and passed the test
      * @throws NullPointerException if any arg is {@code null}
      */
     static <V> Optional<V> takeIf(AtomicReference<V> ref, Predicate<? super V> test) {
-        return ofNullable(ref.getAndUpdate(v -> test.test(v) ? null : v));
+        boolean[] memory = new boolean[1];
+        V old = ref.getAndUpdate(v ->
+                v != null && (memory[0] = test.test(v)) ?
+                        /* reset */ null : /* keep */ v);
+        return memory[0] ? of(old) : empty();
     }
     
     /**
