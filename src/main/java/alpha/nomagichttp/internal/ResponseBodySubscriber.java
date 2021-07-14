@@ -24,9 +24,9 @@ import static java.util.Objects.requireNonNull;
  * Writes a {@link Response} to the child channel.<p>
  * 
  * The response head will be written lazily, on first item published from
- * upstream or on complete. This means that an immediate error pushed from
- * upstream will give the application a chance to recover with an alternative
- * response.<p>
+ * upstream or on complete. This means that an error pushed from upstream before
+ * the body bytes will give the application a chance to recover with an
+ * alternative response.<p>
  * 
  * It is absolutely not anticipated that the application pushes error to the
  * <i>body</i> subscriber for something it wish to resolve through an error

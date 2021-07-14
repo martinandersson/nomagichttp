@@ -39,8 +39,7 @@ interface SubscriberAsStage<T, R> extends Flow.Subscriber<T>
      * Returns {@code argument} if {@code field} is {@code null}.<p>
      * 
      * This is a utility method meant to be used by the subscriber's {@code
-     * onSubscribe()} implementation if and only if the subscriber does not
-     * support being reused.
+     * onSubscribe()} implementation.
      * 
      * @param field subscription instance field of subscriber
      * @param argument subscription instance passed to {@code onSubscribe()}
