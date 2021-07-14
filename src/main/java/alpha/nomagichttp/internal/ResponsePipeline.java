@@ -7,12 +7,9 @@ import alpha.nomagichttp.message.Response;
 import alpha.nomagichttp.message.ResponseTimeoutException;
 import alpha.nomagichttp.util.SeriallyRunnable;
 
-import java.util.ArrayList;
 import java.util.Deque;
-import java.util.List;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ConcurrentLinkedDeque;
-import java.util.concurrent.Flow;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 
@@ -54,67 +51,37 @@ import static java.util.concurrent.TimeUnit.SECONDS;
  *   <li>Implements {@link Config#maxUnsuccessfulResponses()}</li>
  * </ol>
  * 
- * The result of each attempt to transmit a response is published to all active
- * subscribers. If there are no active subscribers, a successful result is
- * logged on {@code DEBUG} level and errors are logged on {@code WARNING}.<p>
- * 
- * The pipeline life-cycle is bound to/dependent on {@code HttpExchange} who is
- * the only subscriber at the moment. For any other subscriber in the future,
- * note that as a {@code Flow.Publisher}, this class currently makes a few
- * assumptions about its usage:
- * 
- * <ol>
- *   <li>There will be no concurrent invocations of {@code subscribe()}. As a
- *       <i>publisher</i>, this class is not thread-safe. The {@code add} method
- *       is.</li>
- *   <li>The subscriber is called serially.</li>
- *   <li>The only method called on the subscriber is {@code onNext()}, passing
- *       to it a result object containing the status of a response
- *       transmission. This includes failures from the client-given  {@code
- *       CompletionStage<Response>} and failures from the underlying {@link
- *       ResponseBodySubscriber#asCompletionStage()}.</li>
- *   <li>The last emission to the subscriber will be the result of any bytes
- *       sent of a final response. This ends the pipeline's life. Subsequent
- *       responses from the application will be logged, but otherwise
- *       ignored.</li>
- *   <li>Implicitly, the subscriber requests {@code Long.MAX_VALUE}.</li>
- *   <li>Subscriber identity is not tracked. Reuse equals duplication.</li>
- *   <li>The behavior is undefined if the subscriber throws an exception.</li>
- * </ol>
+ * All events are emitted serially.
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  */
-final class ResponsePipeline implements Flow.Publisher<ResponsePipeline.Result>
+final class ResponsePipeline extends AbstractLocalEventEmitter
 {
-    interface Result {
-        /**
-         * Returns the response that was transmitted or attempted to transmit.
-         * 
-         * The response object is provided whether transmission of it was
-         * successful or not. On response timeout, this method returns {@code
-         * null}.
-         * 
-         * @return the response
-         */
-        Response response();
-        
-        /**
-         * Returns the number of bytes written, only if response completed
-         * successfully, otherwise {@code null}.
-         * 
-         * @return byte count if successful, otherwise {@code null}
-         */
-        Long length();
-        
-        /**
-         * Returns an error if response-writing failed or response timed out,
-         * otherwise {@code null}.
-         * 
-         * @return an error if response-writing failed or response timed out,
-         *         otherwise {@code null}
-         */
-        Throwable error();
-    }
+    /**
+     * Sent when a response has been successfully written on the wire.<p>
+     * 
+     * Only one attachment is provided, the {@code Response} object.<p>
+     * 
+     * The <i>final</i> response is the last successful emission.
+     */
+    enum Success { INSTANCE }
+    
+    /**
+     * Sent on response failure.<p>
+     * 
+     * The first attachment will always be a {@code Throwable}.<p>
+     * 
+     * The second attachment may or may not be present depending on the nature
+     * of the error. If the error is propagated to the pipeline from the
+     * response stage provided by the client, then the second attachment is
+     * {@code null}. After this point in time, however, we have the {@code
+     * Response} object and so it will be present as the second attachment.<p>
+     * 
+     * No errors are emitted after the <i>final</i> response. Errors from
+     * the client are logged but otherwise ignored. And, there's obviously no
+     * pending writes from the channel that could go wrong.
+     */
+    enum Error { INSTANCE }
     
     private static final System.Logger LOG
             = System.getLogger(ResponsePipeline.class.getPackageName());
@@ -127,12 +94,11 @@ final class ResponsePipeline implements Flow.Publisher<ResponsePipeline.Result>
     private final DefaultClientChannel chan;
     private final Deque<CompletionStage<Response>> queue;
     private final SeriallyRunnable op;
-    private final List<Flow.Subscriber<? super Result>> subs;
     // This timer times out delays from app to give us a response.
     // Response body timer is set by method subscribeToResponse().
     private final AtomicReference<Timeout> timer;
-    private volatile boolean timedOut;
-    private boolean timeoutPublished;
+    private boolean timedOut;
+    private boolean timeoutEmitted;
     
     /**
      * Constructs a {@code ResponsePipeline}.<p>
@@ -149,15 +115,9 @@ final class ResponsePipeline implements Flow.Publisher<ResponsePipeline.Result>
         this.exch  = requireNonNull(exch);
         this.queue = new ConcurrentLinkedDeque<>();
         this.op    = new SeriallyRunnable(this::pollAndProcessAsync, true);
-        this.subs  = new ArrayList<>(1);
         this.timer = new AtomicReference<>();
         this.timedOut = false;
-        this.timeoutPublished = false;
-    }
-    
-    @Override
-    public void subscribe(Flow.Subscriber<? super Result> s) {
-        subs.add(s);
+        this.timeoutEmitted = false;
     }
     
     // HttpExchange starts the timer after the request
@@ -205,11 +165,11 @@ final class ResponsePipeline implements Flow.Publisher<ResponsePipeline.Result>
     }
     
     private void pollAndProcessAsync() {
-        if (timedOut && !timeoutPublished) {
+        if (timedOut && !timeoutEmitted) {
             scheduleClose(chan);
-            publish(null, null,
-                new ResponseTimeoutException("Gave up waiting on a response."));
-            timeoutPublished = true;
+            var thr = new ResponseTimeoutException("Gave up waiting on a response.");
+            emit(Error.INSTANCE, thr, null);
+            timeoutEmitted = true;
         }
         
         CompletionStage<Response> r = queue.poll();
@@ -310,7 +270,7 @@ final class ResponsePipeline implements Flow.Publisher<ResponsePipeline.Result>
         return out;
     }
     
-    private CompletionStage<ResponseBodySubscriber.Result> subscribeToResponse(Response rsp) {
+    private CompletionStage<Long> subscribeToResponse(Response rsp) {
         if (wroteFinal) {
             LOG.log(WARNING, () -> "HTTP exchange not active. This response is ignored: " + rsp);
             return failedStage(IGNORE);
@@ -345,7 +305,7 @@ final class ResponsePipeline implements Flow.Publisher<ResponsePipeline.Result>
         return sub.asCompletionStage();
     }
     
-    private void handleResult(ResponseBodySubscriber.Result res, Throwable thr) {
+    private void handleResult(/* This: */ Long bytesWritten, /* Or: */ Throwable thr) {
         Response rsp = inFlight;
         inFlight = null;
         
@@ -356,9 +316,10 @@ final class ResponsePipeline implements Flow.Publisher<ResponsePipeline.Result>
         }
         
         tryActOnChannelCommands(rsp);
-        if (res != null) {
-            actOnWriteSuccess(res, rsp);
+        if (bytesWritten != null) {
+            actOnWriteSuccess(bytesWritten, rsp);
         } else {
+            assert thr != null;
             actOnWriteFailure(thr, rsp);
         }
         
@@ -381,27 +342,25 @@ final class ResponsePipeline implements Flow.Publisher<ResponsePipeline.Result>
         }
     }
     
-    private void actOnWriteSuccess(ResponseBodySubscriber.Result res, Response rsp) {
-        assert rsp != null;
-        LOG.log(DEBUG, () -> "Sent response (" + res.bytesWritten() + " bytes).");
+    private void actOnWriteSuccess(Long bytesWritten, Response rsp) {
+        LOG.log(DEBUG, () -> "Sent response (" + bytesWritten + " bytes).");
         if (wroteFinal && sawConnectionClose && chan.isOpenForWriting()) {
             LOG.log(DEBUG, "Saw \"Connection: close\", shutting down output.");
             chan.shutdownOutputSafe();
         }
-        publish(rsp, res.bytesWritten(), null);
+        emit(Success.INSTANCE, rsp, null);
     }
     
     private void actOnWriteFailure(Throwable thr, Response rsp) {
-        assert thr != null;
         if (rsp == null) {
             // thr originates from application
             if (wroteFinal) {
                 LOG.log(ERROR,
                     "Application's response stage completed exceptionally, " +
                     "but HTTP exchange is not active. This error does not propagate anywhere.", thr);
-                // no publish
+                // no emission
             } else {
-                publish(null, null, thr);
+                emit(Error.INSTANCE, thr, null);
             }
         } else {
             // thr originates from response writer
@@ -409,35 +368,22 @@ final class ResponsePipeline implements Flow.Publisher<ResponsePipeline.Result>
                 // and no bytes were written on the wire, rollback
                 wroteFinal = false;
             }
-            publish(rsp, null, thr);
+            emit(Error.INSTANCE, thr, rsp);
         }
     }
     
-    private void publish(Response rsp, Long len, Throwable thr) {
-        Result r = new Result() {
-            public Response response() {
-                return rsp; }
-            public Long length() {
-                return len; }
-            public Throwable error() {
-                return thr; }
-        };
-        
-        boolean sent = false;
-        for (Flow.Subscriber<? super Result> s : subs) {
-            s.onNext(r);
-            sent = true;
+    private void emit(Enum<?> event, Object att1, Object att2) {
+        int n = super.emit(event, att1, att2);
+        if (n > 0) {
+            return;
         }
-        if (sent) { return; }
-        
-        if (len != null) {
-            LOG.log(DEBUG, () ->
-                "Successfully wrote " + len + " response bytes, " +
-                "but no subscriber consumed the result.");
+        if (event == Success.INSTANCE) {
+            LOG.log(DEBUG, "Successfully wrote a response, but no listener consumed the result.");
         } else {
+            assert event == Error.INSTANCE;
             LOG.log(WARNING,
                 "Response stage or response writing failed, " +
-                "but no subscriber consumed this error.", thr);
+                "but no listener consumed this error.", (Throwable) att1);
         }
     }
     

@@ -1,34 +1,45 @@
 package alpha.nomagichttp.internal;
 
+import alpha.nomagichttp.message.RequestHead;
+
 import java.net.http.HttpHeaders;
 
 import static java.lang.String.join;
 
-final class RequestHead
+final class DefaultRequestHead implements RequestHead
 {
     private final String method, requestTarget, httpVersion;
     private final HttpHeaders headers;
     
-    RequestHead(String method, String requestTarget, String httpVersion, HttpHeaders headers) {
+    DefaultRequestHead(
+            String method,
+            String requestTarget,
+            String httpVersion,
+            HttpHeaders headers)
+    {
         this.method = method;
         this.requestTarget = requestTarget;
         this.httpVersion = httpVersion;
         this.headers = headers;
     }
     
-    String method() {
+    @Override
+    public String method() {
         return method;
     }
     
-    String requestTarget() {
+    @Override
+    public String requestTarget() {
         return requestTarget;
     }
     
-    String httpVersion() {
+    @Override
+    public String httpVersion() {
         return httpVersion;
     }
     
-    HttpHeaders headers() {
+    @Override
+    public HttpHeaders headers() {
         return headers;
     }
     

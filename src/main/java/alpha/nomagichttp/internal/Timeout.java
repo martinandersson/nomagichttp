@@ -8,7 +8,7 @@ import java.util.concurrent.ScheduledThreadPoolExecutor;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.atomic.AtomicReference;
 
-import static alpha.nomagichttp.internal.AtomicReferences.lazyInitOrElse;
+import static alpha.nomagichttp.internal.AtomicReferences.lazyInitOrElseThrow;
 import static alpha.nomagichttp.internal.AtomicReferences.take;
 import static alpha.nomagichttp.internal.AtomicReferences.takeIfSame;
 import static java.util.Objects.requireNonNull;
@@ -80,7 +80,7 @@ final class Timeout
      */
     void schedule(Runnable action) {
         requireNonNull(action);
-        Object set = lazyInitOrElse(task, CompletableFuture::new, f -> {
+        lazyInitOrElseThrow(task, CompletableFuture::new, f -> {
             Runnable conditionally = () -> {
                 if (takeIfSame(task, f).isEmpty()) {
                     // Not our box, abort
@@ -98,10 +98,7 @@ final class Timeout
                 action.run();
             };
             f.complete(schedule(nanos, conditionally));
-        }, null);
-        if (set == null) {
-            throw new IllegalStateException();
-        }
+        }, IllegalStateException::new);
     }
     
     /**

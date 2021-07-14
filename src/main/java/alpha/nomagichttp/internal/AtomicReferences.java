@@ -8,6 +8,8 @@ import java.util.function.Predicate;
 import java.util.function.Supplier;
 
 import static java.util.Objects.requireNonNull;
+import static java.util.Optional.empty;
+import static java.util.Optional.of;
 import static java.util.Optional.ofNullable;
 
 /**
@@ -156,6 +158,42 @@ final class AtomicReferences
     }
     
     /**
+     * Lazily initialize a new value of an atomic reference, or else throw an
+     * exception.<p>
+     * 
+     * This method behaves the same as {@link
+     * #lazyInitOrElse(AtomicReference, Supplier, Consumer, Object)}, except
+     * instead of returning an alternative value, an exception is thrown.
+     * 
+     * @param ref value container/store
+     * @param factory value creator
+     * @param postInit value initializer
+     * @param excSupplier exception supplier
+     * @param <V> value type
+     * @param <A> accumulation type
+     *
+     * @return the value if initialized, otherwise the alternative
+     *
+     * @throws NullPointerException
+     *             if any arg is {@code null}, or
+     *             if factory returns {@code null} upon invocation
+     */
+    static <V, A extends V, X extends Throwable> V lazyInitOrElseThrow (
+            AtomicReference<V> ref,
+            Supplier<? extends A> factory,
+            Consumer<? super A> postInit,
+            Supplier<? extends X> excSupplier)
+            throws X
+    {
+        requireNonNull(excSupplier);
+        V v = lazyInitOrElse(ref, factory, postInit, null);
+        if (v == null) {
+            throw excSupplier.get();
+        }
+        return v;
+    }
+    
+    /**
      * Atomically set the value of the reference to the factory-produced value
      * only if the actual value is {@code null}.
      * 
@@ -195,7 +233,7 @@ final class AtomicReferences
     }
     
     /**
-     * Take the value from the atomic reference, and set it to {@code null}.
+     * Take the value from the atomic reference and set it to {@code null}.
      * 
      * @param ref reference target
      * @param <V> value type
@@ -207,32 +245,51 @@ final class AtomicReferences
     }
     
     /**
-     * Take the value from the atomic reference, and set it to {@code null}, but
-     * only if the current value pass the test.<p>
+     * Take the value from the atomic reference and set it to {@code null}, but
+     * only if the current value is not {@code null} and passes the test.<p>
      * 
-     * Note: an empty optional means the value did not pass the test, or test
-     * approved null, effectively making an empty optional semantically
-     * worthless. The test ought to perform checks on real values and call-site
-     * ought to act only on the presence of a value returned.
+     * Useful when there's an expectation of the present value and only then is
+     * it useful, and, reserved for the call-site's exclusive use.<p>
+     * 
+     * For example,
+     * <pre>
+     *   AtomicReference{@literal <}BankAccount{@literal >} acc = ...
+     *   takeIf(acc, BankAccount::isLoaded).ifPresent(me::give);
+     * </pre>
+     * 
+     * Note: a returned empty optional means the value was either {@code null}
+     * <i>or</i> did not pass the test. There is no support for "take null".
      * 
      * @param ref reference target
-     * @param test of current value (value may be {@code null}!)
+     * @param test of current value
      * @param <V> value type
-     * @return an optional with the value if it passed the test
+     * @return an optional with the value if it was present and passed the test
      * @throws NullPointerException if any arg is {@code null}
      */
     static <V> Optional<V> takeIf(AtomicReference<V> ref, Predicate<? super V> test) {
-        return ofNullable(ref.getAndUpdate(v -> test.test(v) ? null : v));
+        boolean[] memory = new boolean[1];
+        V old = ref.getAndUpdate(v ->
+                v != null && (memory[0] = test.test(v)) ?
+                        /* reset */ null : /* keep */ v);
+        return memory[0] ? of(old) : empty();
     }
     
     /**
-     * Take the value from the atomic reference, and set it to {@code null}, but
-     * only if the current value {@code == val}.<p>
+     * Overload of {@link #takeIf(AtomicReference, Predicate)} where the
+     * predicate is a reference equality check ({@code ==}).
+     * 
+     * For example,
+     * <pre>
+     *   // Wife obviously does not implement equals(), only what reference we have counts
+     *   Wife mine = new Wife();
+     *   AtomicReference{@literal <}Wife{@literal >} crashingCarDriver = ...
+     *   takeIfSame(crashingCarDriver, mine).ifPresent(me::abandon);
+     * </pre>
      * 
      * @param ref reference target
-     * @param val wanted value
+     * @param val tested reference value
      * @param <V> value type
-     * @return an optional with {@code val} if {@code val} was current value
+     * @return an optional with {@code val} if {@code val} was the current value
      * @throws NullPointerException if any arg is {@code null}
      */
     static <V> Optional<V> takeIfSame(AtomicReference<V> ref, V val) {

@@ -2,6 +2,7 @@ package alpha.nomagichttp.internal;
 
 import alpha.nomagichttp.message.BadHeaderException;
 import alpha.nomagichttp.message.Request;
+import alpha.nomagichttp.message.RequestHead;
 import alpha.nomagichttp.util.Publishers;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
@@ -129,7 +130,7 @@ class DefaultRequestTest
     }
     
     private static DefaultRequest createRequest(HttpHeaders headers, String body) {
-        RequestHead rh = new RequestHead(
+        RequestHead rh = new DefaultRequestHead(
                 "test-method",
                 "test-requestTarget",
                 "test-httpVersion",

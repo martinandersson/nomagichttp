@@ -1,9 +1,13 @@
 package alpha.nomagichttp.internal;
 
+import alpha.nomagichttp.HttpServer;
+import alpha.nomagichttp.events.EventHub;
+import alpha.nomagichttp.events.RequestHeadParsed;
 import alpha.nomagichttp.message.Char;
 import alpha.nomagichttp.message.EndOfStreamException;
 import alpha.nomagichttp.message.MaxRequestHeadSizeExceededException;
 import alpha.nomagichttp.message.PooledByteBufferHolder;
+import alpha.nomagichttp.message.RequestHead;
 
 import java.nio.ByteBuffer;
 import java.util.concurrent.CompletableFuture;
@@ -24,12 +28,14 @@ final class RequestHeadSubscriber implements SubscriberAsStage<PooledByteBufferH
             = System.getLogger(RequestHeadSubscriber.class.getPackageName());
     
     private final int maxHeadSize;
+    private final EventHub events;
     private final RequestHeadProcessor processor;
     private final CompletableFuture<RequestHead> result;
     
     
-    RequestHeadSubscriber(int maxRequestHeadSize) {
-        this.maxHeadSize = maxRequestHeadSize;
+    RequestHeadSubscriber(HttpServer server) {
+        this.maxHeadSize = server.getConfig().maxRequestHeadSize();
+        this.events      = server.events();
         this.processor   = new RequestHeadProcessor();
         this.result      = new CompletableFuture<>();
     }
@@ -76,6 +82,7 @@ final class RequestHeadSubscriber implements SubscriberAsStage<PooledByteBufferH
         
         if (head != null) {
             subscription.cancel();
+            events.dispatch(RequestHeadParsed.INSTANCE, head);
             result.complete(head);
         }
     }

@@ -7,7 +7,7 @@ plugins {
 
 final var RELEASE_FOR = JavaVersion.VERSION_11
 if (!JavaVersion.current().isCompatibleWith(RELEASE_FOR)) {
-    throw new Exception("Java ${JavaVersion.current()} is not supported. Please use at least ${RELEASE_FOR}.");
+    throw new Exception("Java ${JavaVersion.current()} is not supported. Please use at least version ${RELEASE_FOR}.");
 }
 
 sourceSets {

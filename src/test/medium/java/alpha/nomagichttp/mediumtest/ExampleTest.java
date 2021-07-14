@@ -1,10 +1,13 @@
 package alpha.nomagichttp.mediumtest;
 
+import alpha.nomagichttp.events.RequestHeadParsed;
 import alpha.nomagichttp.examples.RetryRequestOnError;
 import alpha.nomagichttp.handler.RequestHandler;
 import alpha.nomagichttp.message.Request;
+import alpha.nomagichttp.message.RequestHead;
 import alpha.nomagichttp.message.Response;
 import alpha.nomagichttp.message.Responses;
+import alpha.nomagichttp.route.NoRouteFoundException;
 import alpha.nomagichttp.testutil.AbstractRealTest;
 import alpha.nomagichttp.testutil.HttpClientFacade;
 import org.junit.jupiter.api.DisplayName;
@@ -18,9 +21,13 @@ import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.EnumSet;
+import java.util.Map;
 import java.util.concurrent.CompletionStage;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeoutException;
+import java.util.concurrent.atomic.LongAdder;
+import java.util.function.BiConsumer;
 import java.util.function.Function;
 
 import static alpha.nomagichttp.HttpConstants.Version.HTTP_1_1;
@@ -384,6 +391,24 @@ class ExampleTest extends AbstractRealTest
             "Content-Length: 0"                  + CRLF + CRLF);
         assertThat(pollServerError()).isExactlyInstanceOf(FileAlreadyExistsException.class);
         assertThat(Files.readString(file)).isEqualTo("Foo");
+    }
+    
+    // TODO: Currently not a public example. Update docs.
+    @Test
+    @DisplayName("CountRequestsByMethod/TestClient")
+    void CountRequestsByMethod() throws IOException, InterruptedException {
+        Map<String, LongAdder> freqs = new ConcurrentHashMap<>();
+        
+        BiConsumer<RequestHeadParsed, RequestHead> bump = (event, head) ->
+                freqs.computeIfAbsent(head.method(), m -> new LongAdder()).increment();
+        
+        // We don't need to add routes here, sort of the whole point lol
+        server().events().on(RequestHeadParsed.class, bump);
+        // Must await the server before we assert the counter
+        client().writeReadTextUntilNewlines("GET / HTTP/1.1" + CRLF + CRLF);
+        
+        assertThat(freqs.get("GET").sum()).isOne();
+        assertThat(pollServerError()).isExactlyInstanceOf(NoRouteFoundException.class);
     }
     
     private static Response tryScheduleClose(Response rsp, boolean ifTrue) {

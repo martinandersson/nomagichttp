@@ -1,11 +1,17 @@
 package alpha.nomagichttp;
 
+import alpha.nomagichttp.events.EventHub;
+import alpha.nomagichttp.events.RequestHeadParsed;
+import alpha.nomagichttp.events.ScatteringEventEmitter;
+import alpha.nomagichttp.events.HttpServerStarted;
+import alpha.nomagichttp.events.HttpServerStopped;
 import alpha.nomagichttp.handler.ClientChannel;
 import alpha.nomagichttp.handler.ErrorHandler;
 import alpha.nomagichttp.handler.RequestHandler;
 import alpha.nomagichttp.internal.DefaultServer;
 import alpha.nomagichttp.message.HttpVersionTooOldException;
 import alpha.nomagichttp.message.IllegalBodyException;
+import alpha.nomagichttp.message.RequestHead;
 import alpha.nomagichttp.message.Response;
 import alpha.nomagichttp.message.Responses;
 import alpha.nomagichttp.route.DefaultRouteRegistry;
@@ -19,6 +25,7 @@ import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
 import java.nio.channels.AsynchronousServerSocketChannel;
+import java.time.Instant;
 import java.util.concurrent.CompletionStage;
 import java.util.function.BiConsumer;
 
@@ -503,6 +510,73 @@ public interface HttpServer
      * @throws NullPointerException if {@code route} is {@code null}
      */
     boolean remove(Route route);
+    
+    /**
+     * Returns the event hub associated with this server.<p>
+     * 
+     * The event hub can be used to subscribe to server-related events. For
+     * example:
+     * <pre>{@code
+     *   HttpServer server = ...
+     *   server.events().on(ServerStarted.class, (event, when) ->
+     *           System.out.println("Server started at " + when));
+     * }</pre>
+     * 
+     * The hub can also be used to emit application-specific events
+     * programmatically.
+     * <pre>{@code
+     *   server.events().on(String.class, msg ->
+     *           System.out.println("Received message: " + msg));
+     *   server.events().dispatch("Hello!");
+     * }</pre>
+     * 
+     * The hub is not bound to the running state of the server. The hub can be
+     * used before the server has started as well as it can be used after the
+     * server has stopped.<p>
+     * 
+     * The server and its related components use the hub to dispatch <i>only</i>
+     * the events listed below. Any other event type can freely be dispatched by
+     * the application without concerns for interfering with the correctness of
+     * the server implementation or its performance.<p>
+     * 
+     * If the application runs multiple servers, a JVM-global hub can be created
+     * like so:
+     * <pre>
+     *   EventHub global = EventHub.{@link
+     *   EventHub#combine(ScatteringEventEmitter, ScatteringEventEmitter, ScatteringEventEmitter...) combine}(server1, server2, ...);
+     * </pre>
+     * 
+     * <table class="striped">
+     *   <caption style="display:none">Events emitted</caption>
+     *   <thead>
+     *   <tr>
+     *     <th scope="col">Type</th>
+     *     <th scope="col">Attachment 1</th>
+     *     <th scope="col">Attachment 2</th>
+     *   </tr>
+     *   </thead>
+     *   <tbody>
+     *   <tr>
+     *     <th scope="row"> {@link HttpServerStarted} </th>
+     *     <td> {@link Instant} </td>
+     *     <td> {@code null} </td>
+     *   </tr>
+     *   <tr>
+     *     <th scope="row"> {@link HttpServerStopped} </th>
+     *     <td> {@link Instant} </td>
+     *     <td> {@link Instant} </td>
+     *   </tr>
+     *   <tr>
+     *     <th scope="row"> {@link RequestHeadParsed} </th>
+     *     <td> {@link RequestHead} </td>
+     *     <td> {@code null} </td>
+     *   </tr>
+     *   </tbody>
+     * </table>
+     * 
+     * @return the event hub associated with this server (never {@code null})
+     */
+    EventHub events();
     
     /**
      * Returns the server's configuration.
