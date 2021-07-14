@@ -41,7 +41,6 @@ import static alpha.nomagichttp.HttpConstants.StatusCode.TWO_HUNDRED;
 import static alpha.nomagichttp.HttpConstants.StatusCode.TWO_HUNDRED_FOUR;
 import static alpha.nomagichttp.HttpConstants.StatusCode.TWO_HUNDRED_TWO;
 import static alpha.nomagichttp.message.MediaType.APPLICATION_OCTET_STREAM;
-import static alpha.nomagichttp.message.MediaType.parse;
 import static alpha.nomagichttp.message.Response.builder;
 import static alpha.nomagichttp.util.BetterBodyPublishers.ofString;
 import static java.net.http.HttpRequest.BodyPublisher;
@@ -296,21 +295,27 @@ public final class Responses
     }
     
     /**
-     * Returns a 200 (OK) response with the given body.
+     * Returns a 200 (OK) response with the given body.<p>
+     * 
+     * The given content-type will not be validated. For validation, do
+     * <pre>
+     *   {@link #ok(BodyPublisher, MediaType)
+     *       ok}(body, MediaType.{@link MediaType#parse(CharSequence) parse}(contentType))
+     * </pre>
      * 
      * @param body data
      * @param contentType header value
      * 
      * @return a 200 (OK) response
      * 
-     * @throws MediaTypeParseException
-     *             if content-type failed to {@linkplain MediaType#parse(CharSequence) parse}
-     * 
      * @see StatusCode#TWO_HUNDRED
      * @see HttpConstants.HeaderKey#CONTENT_TYPE
      */
     public static Response ok(BodyPublisher body, String contentType) {
-        return ok(body, parse(contentType));
+        return BuilderCache.OK
+                .header(CONTENT_TYPE, contentType)
+                .body(body)
+                .build();
     }
     
     /**
@@ -325,19 +330,21 @@ public final class Responses
      * @see HttpConstants.HeaderKey#CONTENT_TYPE
      */
     public static Response ok(BodyPublisher body, MediaType contentType) {
-        return BuilderCache.OK
-                .header(CONTENT_TYPE, contentType.toString())
-                .body(body)
-                .build();
+        return ok(body, contentType.toString());
     }
     
     /**
      * Returns a 200 (OK) response with the given body.<p>
      * 
-     * This method is equivalent to:
+     * For an unknown body length, the length argument must be negative. For an
+     * empty publisher, the length argument must be zero. Otherwise, the length
+     * argument must be equal to the number of bytes emitted by the publisher.
+     * Discrepancies has unknown application behavior.
+     * 
+     * The given content-type will not be validated. For validation, do
      * <pre>
      *   {@link #ok(Flow.Publisher, MediaType, long)
-     *       ok}(body, MediaType.parse(contentType), contentLength)
+     *       ok}(body, MediaType.{@link MediaType#parse(CharSequence) parse}(contentType), long)
      * </pre>
      * 
      * @param body data
@@ -346,27 +353,29 @@ public final class Responses
      * 
      * @return a 200 (OK) response
      * 
-     * @throws MediaTypeParseException
-     *             if content-type failed to {@linkplain MediaType#parse(CharSequence) parse}
-     * 
      * @see StatusCode#TWO_HUNDRED
+     * @see Response.Builder#body(Flow.Publisher)
      * @see HttpConstants.HeaderKey#CONTENT_TYPE
      * @see HttpConstants.HeaderKey#CONTENT_LENGTH
      */
     public static Response ok(Flow.Publisher<ByteBuffer> body, String contentType, long contentLength) {
-        return ok(body, parse(contentType), contentLength);
+        Response.Builder b = BuilderCache.OK
+                .header(CONTENT_TYPE, contentType);
+        
+        if (contentLength >= 0) {
+            b = b.header(CONTENT_LENGTH, Long.toString(contentLength));
+        } // else unknown length, ResponsePipeline will deal with it
+        
+        return b.body(body).build();
     }
     
     /**
      * Returns a 200 (OK) response with the given body.<p>
      * 
-     * The server subscribing to the response body does not limit his
-     * subscription based on the given length value. The value should be equal
-     * to the number of bytes emitted by the publisher, never greater.<p>
-     * 
      * For an unknown body length, the length argument must be negative. For an
-     * empty publisher, the length argument must be zero. Discrepancies has
-     * unknown application behavior.
+     * empty publisher, the length argument must be zero. Otherwise, the length
+     * argument must be equal to the number of bytes emitted by the publisher.
+     * Discrepancies has unknown application behavior.
      * 
      * @param body data
      * @param contentType header value
@@ -380,14 +389,7 @@ public final class Responses
      * @see HttpConstants.HeaderKey#CONTENT_LENGTH
      */
     public static Response ok(Flow.Publisher<ByteBuffer> body, MediaType contentType, long contentLength) {
-        Response.Builder b = BuilderCache.OK
-                 .header(CONTENT_TYPE, contentType.toString());
-        
-        if (contentLength >= 0) {
-            b = b.header(CONTENT_LENGTH, Long.toString(contentLength));
-        } // else unknown length, ResponsePipeline will deal with it
-        
-        return b.body(body).build();
+        return ok(body, contentType.toString(), contentLength);
     }
     
     /**
