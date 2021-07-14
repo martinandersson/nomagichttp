@@ -35,10 +35,10 @@ import java.util.Map;
  * <h2>Quality value</h2>
  * 
  * For requests specifying an "Accept" header; the media type parameters may be
- * followed by a special parameter "q" also known as the "quality value", also
- * known as "weight", also known as "declared order of preference", also known
- * as an undefined "lowest acceptable markdown of quality", also known as "put
- * whatever else in here".<p>
+ * followed by a special parameter "q" (case-insensitive) also known as the
+ * "quality value", also known as "weight", also known as "declared order of
+ * preference", also known as an undefined "lowest acceptable markdown of
+ * quality", also known as "put whatever else in here".<p>
  * 
  * Without media parameters declared, the media type might look something like
  * this: "text/plain; q=0.5".<p>
