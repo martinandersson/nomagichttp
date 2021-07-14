@@ -127,7 +127,7 @@ _Status: **Delivered**_
 
 _Status: **In Progress**_
 
-- Fix: media type parameter `q` is case insensitive.
+- ~~Fix: media type parameter `q` is case insensitive.~~
 - Revise `charset` parameter; can potentially be used in combination with `q`
   param to indicate charset preference?
 - Revise `Accept-Charset`. Will most likely keep ignoring it. But if so, improve
