@@ -109,13 +109,13 @@ public final class BetterBodyPublishers
      * 
      * Published bytebuffers are read-only.
      * 
-     * @param   s the String containing the body
+     * @param   str the String containing the body
      * @param   charset the character set to convert the string to bytes
      * @return  a BodyPublisher
      * @throws  NullPointerException if any argument is {@code null}
      */
-    public static BodyPublisher ofString(String s, Charset charset) {
-        return ofByteArray(s.getBytes(charset));
+    public static BodyPublisher ofString(String str, Charset charset) {
+        return ofByteArray(str.getBytes(charset));
     }
     
     /**

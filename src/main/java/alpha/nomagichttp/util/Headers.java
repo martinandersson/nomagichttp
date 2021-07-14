@@ -13,6 +13,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.OptionalLong;
 import java.util.function.BiPredicate;
+import java.util.stream.Stream;
 
 import static alpha.nomagichttp.HttpConstants.HeaderKey.ACCEPT;
 import static alpha.nomagichttp.HttpConstants.HeaderKey.CONTENT_LENGTH;
@@ -21,6 +22,7 @@ import static alpha.nomagichttp.util.Strings.split;
 import static java.lang.Long.parseLong;
 import static java.util.Arrays.stream;
 import static java.util.Collections.emptyMap;
+import static java.util.Optional.empty;
 
 /**
  * Utility methods for {@link HttpHeaders}.
@@ -90,7 +92,7 @@ public final class Headers
     /**
      * Parses all "Accept" values from the specified headers.<p>
      * 
-     * This header may be specified by clients that wish to retrieve a
+     * The accept-header may be specified by clients that wish to retrieve a
      * particular resource representation.<p>
      * 
      * <i>All</i> accept-header keys are taken into account in order, splitting
@@ -99,17 +101,20 @@ public final class Headers
      * MediaType#parse(CharSequence)}.
      * 
      * @param  headers source to parse from
-     * @return parsed values (may be empty, but not {@code null})
+     * @return parsed values (may be empty, or stream has at least one value)
      * 
      * @throws MediaTypeParseException see {@link MediaType#parse(CharSequence)}}
      * 
      * @see HttpConstants.HeaderKey#ACCEPT
      */
-    public static MediaType[] accept(HttpHeaders headers) {
-        return headers.allValues(ACCEPT).stream()
+    public static Optional<Stream<MediaType>> accept(HttpHeaders headers) {
+        var l = headers.allValues(ACCEPT);
+        if (l.isEmpty()) {
+            return empty();
+        }
+        return Optional.of(l.stream()
                 .flatMap(v -> stream(split(v, ',', '"')))
-                .map(MediaType::parse)
-                .toArray(MediaType[]::new);
+                .map(MediaType::parse));
     }
     
     /**
@@ -135,7 +140,7 @@ public final class Headers
         final List<String> values = headers.allValues(CONTENT_TYPE);
         
         if (values.isEmpty()) {
-            return Optional.empty();
+            return empty();
         }
         else if (values.size() == 1) {
             return Optional.of(MediaType.parse(values.get(0)));
