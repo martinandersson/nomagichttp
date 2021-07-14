@@ -29,7 +29,7 @@ An item ~~crossed out~~ is complete, an item in __bold__ is work in progress.
 [~~Stage: HTTP Constants~~](#stage-http-constants)  
 [~~Stage: HTTP Versioning~~](#stage-http-versioning)  
 [~~Stage: Improved Testing~~](#stage-improved-testing)  
-[Stage: Improved Content Negotiation](#stage-improved-content-negotiation)  
+[**Stage: Improved Content Negotiation**](#stage-improved-content-negotiation)  
 [~~Stage: Pseudo-Mutable Types~~](#stage-pseudo-mutable-types)  
 [~~Stage: Multiple Responses~~](#stage-multiple-responses)  
 [~~Stage: Connection Life-Cycle/Management~~](#stage-connection-life-cyclemanagement)  
@@ -124,6 +124,8 @@ _Status: **Delivered**_
   and HTTP versions.~~
 
 ## Stage: Improved Content Negotiation
+
+_Status: **In Progress**_
 
 - Fix: media type parameter `q` is case insensitive.
 - Revise `charset` parameter; can potentially be used in combination with `q`
