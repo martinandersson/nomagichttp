@@ -408,6 +408,7 @@ public class MediaType
     private final Map<String, String> params;
     
     
+    /* package-private for tests */
     MediaType(String text, String type, String subtype, Map<String, String> params) {
         this.text    = text;
         this.type    = type;
