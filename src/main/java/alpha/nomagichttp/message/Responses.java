@@ -61,9 +61,16 @@ import static java.util.Locale.ROOT;
  *                              .build();
  * </pre>
  * 
- * <strong>WARNING:</strong> Using {@link BodyPublishers} to create the response
- * body may not be thread-safe where thread-safety matters or may block the HTTP
- * server thread. Consider using {@link BetterBodyPublishers} instead.
+ * All methods herein as well as the responses they return are thread-safe and
+ * non-blocking.<p>
+ * 
+ * Response objects may be created anew, or retrieved from a cache. This is
+ * documented on a per-method level. Creating a response object is very fast,
+ * but obviously the cache will be faster.<p>
+ * 
+ * <strong>WARNING:</strong> Using an instance from {@link BodyPublishers} as a
+ * response body may not be thread-safe where thread-safety matters or may block
+ * the HTTP server thread. Consider using {@link BetterBodyPublishers} instead.
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  */
@@ -74,10 +81,10 @@ public final class Responses
     }
     
     /**
-     * Returns a Response with the specified status code.
+     * Creates a new response with the specified status code.
      * 
      * @param code HTTP status code
-     * @return a Response with the specified status code
+     * @return a new response with the specified status code
      * @see HttpConstants.StatusCode
      */
     public static Response status(int code) {
@@ -85,11 +92,11 @@ public final class Responses
     }
     
     /**
-     * Returns a Response with the specified status code and reason phrase.
+     * Creates a new response with the specified status code and reason phrase.
      * 
      * @param code HTTP status code
      * @param phrase reason phrase
-     * @return a Response with the specified status code and reason phrase
+     * @return a new response with the specified status code and reason phrase
      * @throws NullPointerException if {@code phrase} is {@code null}
      * @see HttpConstants.StatusCode
      * @see HttpConstants.ReasonPhrase
@@ -99,9 +106,9 @@ public final class Responses
     }
     
     /**
-     * Returns a 100 (Continue) interim response.
+     * Retrieves a cached 100 (Continue) interim response.
      * 
-     * @return a 100 (Continue) response
+     * @return a cached 100 (Continue) response
      * 
      * @see StatusCode#ONE_HUNDRED
      */
@@ -110,9 +117,9 @@ public final class Responses
     }
     
     /**
-     * Returns a 102 (Processing) interim response.
-     *
-     * @return a 102 (Processing) response
+     * Retrieves a cached 102 (Processing) interim response.
+     * 
+     * @return a cached 102 (Processing) response
      *
      * @see StatusCode#ONE_HUNDRED_TWO
      */
@@ -121,9 +128,9 @@ public final class Responses
     }
     
     /**
-     * Returns a 204 (No Content) response with no body.
+     * Retrieves a cached 204 (No Content) response with no body.
      * 
-     * @return a 204 (No Content) response
+     * @return a cached 204 (No Content) response
      * 
      * @see StatusCode#TWO_HUNDRED_FOUR
      */
@@ -132,12 +139,12 @@ public final class Responses
     }
     
     /**
-     * Returns a 200 (OK) response with a text body.<p>
+     * Creates a new 200 (OK) response with a text body.<p>
      * 
      * The content-type header will be set to "text/plain; charset=utf-8".
      * 
      * @param   textPlain message body
-     * @return  a 200 (OK) response
+     * @return  a new 200 (OK) response
      * @see     StatusCode#TWO_HUNDRED
      */
     public static Response text(String textPlain) {
@@ -145,14 +152,14 @@ public final class Responses
     }
     
     /**
-     * Returns a 200 (OK) response with a text body.<p>
+     * Creates a new 200 (OK) response with a text body.<p>
      * 
      * The content-type header will be set to "text/plain; charset=" + lower
      * cased canonical name of the given charset, e.g. "utf-8".
      * 
      * @param   textPlain message body
      * @param   charset for encoding
-     * @return  a 200 (OK) response
+     * @return  a new 200 (OK) response
      * @see     StatusCode#TWO_HUNDRED
      */
     public static Response text(String textPlain, Charset charset) {
@@ -160,7 +167,7 @@ public final class Responses
     }
     
     /**
-     * Returns a 200 (OK) response with a text body.<p>
+     * Creates a new 200 (OK) response with a text body.<p>
      * 
      * The content-type's type/subtype will be set to "text/plain".<p>
      * 
@@ -182,7 +189,7 @@ public final class Responses
      * 
      * @param   textPlain message body
      * @param   charsetSource to extract charset from
-     * @return  a 200 (OK) response
+     * @return  a new 200 (OK) response
      * @see     StatusCode#TWO_HUNDRED
      * @see     MediaRange
      */
@@ -191,12 +198,12 @@ public final class Responses
     }
     
     /**
-     * Returns a 200 (OK) response with a HTML body.<p>
+     * Creates a new 200 (OK) response with a HTML body.<p>
      * 
      * The content-type header will be set to "text/html; charset=utf-8".
      * 
      * @param   textHtml message body
-     * @return  a 200 (OK) response
+     * @return  a new 200 (OK) response
      * @see     StatusCode#TWO_HUNDRED
      */
     public static Response html(String textHtml) {
@@ -204,14 +211,14 @@ public final class Responses
     }
     
     /**
-     * Returns a 200 (OK) response with a HTML body.<p>
+     * Creates a new 200 (OK) response with a HTML body.<p>
      * 
      * The content-type header will be set to "text/html; charset=" + lower
      * cased canonical name of the given charset, e.g. "utf-8".
      * 
      * @param   textHtml message body
      * @param   charset for encoding
-     * @return  a 200 (OK) response
+     * @return  a new 200 (OK) response
      * @see     StatusCode#TWO_HUNDRED
      */
     public static Response html(String textHtml, Charset charset) {
@@ -219,7 +226,7 @@ public final class Responses
     }
     
     /**
-     * Returns a 200 (OK) response with a HTML body.<p>
+     * Creates a new 200 (OK) response with a HTML body.<p>
      * 
      * The content-type header will be set to "text/html".<p>
      * 
@@ -227,7 +234,7 @@ public final class Responses
      * 
      * @param   textHtml message body
      * @param   charsetSource to extract charset from
-     * @return  a 200 (OK) response
+     * @return  a new 200 (OK) response
      * @see     StatusCode#TWO_HUNDRED
      */
     public static Response html(String textHtml, Request charsetSource) {
@@ -235,12 +242,13 @@ public final class Responses
     }
     
     /**
-     * Returns a 200 (OK) response with a JSON body.<p>
+     * Creates a new 200 (OK) response with a JSON body.<p>
      * 
-     * The content-type header will be set to "application/json; charset=utf-8".
+     * The content-type header will be set to "application/json;
+     * charset=utf-8".
      * 
      * @param   json message body
-     * @return  a 200 (OK) response
+     * @return  a new 200 (OK) response
      * @see     StatusCode#TWO_HUNDRED
      */
     public static Response json(String json) {
@@ -248,14 +256,14 @@ public final class Responses
     }
     
     /**
-     * Returns a 200 (OK) response with a JSON body.<p>
+     * Creates a new 200 (OK) response with a JSON body.<p>
      * 
      * The content-type header will be set to "application/json; charset=" +
      * lower cased canonical name of the given charset, e.g. "utf-8".
      * 
      * @param   json message body
      * @param   charset for encoding
-     * @return  a 200 (OK) response
+     * @return  a new 200 (OK) response
      * @see     StatusCode#TWO_HUNDRED
      */
     public static Response json(String json, Charset charset) {
@@ -264,7 +272,7 @@ public final class Responses
     
     
     /**
-     * Returns a 200 (OK) response with a HTML body.<p>
+     * Creates a new 200 (OK) response with a HTML body.<p>
      * 
      * The content-type header will be set to "application/json".<p>
      * 
@@ -272,7 +280,7 @@ public final class Responses
      * 
      * @param   json message body
      * @param   charsetSource to extract charset from
-     * @return  a 200 (OK) response
+     * @return  a new 200 (OK) response
      * @see     StatusCode#TWO_HUNDRED
      */
     public static Response json(String json, Request charsetSource) {
@@ -280,13 +288,13 @@ public final class Responses
     }
     
     /**
-     * Returns a 200 (OK) response with the given body.<p>
+     * Creates a new 200 (OK) response with the given body.<p>
      * 
      * The content-type will be set to "application/octet-stream".
      * 
      * @param body data
      * 
-     * @return a 200 (OK) response
+     * @return a new 200 (OK) response
      *
      * @see StatusCode#TWO_HUNDRED
      */
@@ -295,7 +303,7 @@ public final class Responses
     }
     
     /**
-     * Returns a 200 (OK) response with the given body.<p>
+     * Creates a new 200 (OK) response with the given body.<p>
      * 
      * The given content-type will not be validated. For validation, do
      * <pre>
@@ -306,7 +314,7 @@ public final class Responses
      * @param body data
      * @param contentType header value
      * 
-     * @return a 200 (OK) response
+     * @return a new 200 (OK) response
      * 
      * @see StatusCode#TWO_HUNDRED
      * @see HttpConstants.HeaderKey#CONTENT_TYPE
@@ -319,12 +327,12 @@ public final class Responses
     }
     
     /**
-     * Returns a 200 (OK) response with the given body.
+     * Creates a new 200 (OK) response with the given body.
      * 
      * @param body data
      * @param contentType header value
      * 
-     * @return a 200 (OK) response
+     * @return a new 200 (OK) response
      * 
      * @see StatusCode#TWO_HUNDRED
      * @see HttpConstants.HeaderKey#CONTENT_TYPE
@@ -334,7 +342,7 @@ public final class Responses
     }
     
     /**
-     * Returns a 200 (OK) response with the given body.<p>
+     * Creates a new 200 (OK) response with the given body.<p>
      * 
      * For an unknown body length, the length argument must be negative. For an
      * empty publisher, the length argument must be zero. Otherwise, the length
@@ -351,7 +359,7 @@ public final class Responses
      * @param contentType header value
      * @param contentLength header value
      * 
-     * @return a 200 (OK) response
+     * @return a new 200 (OK) response
      * 
      * @see StatusCode#TWO_HUNDRED
      * @see Response.Builder#body(Flow.Publisher)
@@ -370,7 +378,7 @@ public final class Responses
     }
     
     /**
-     * Returns a 200 (OK) response with the given body.<p>
+     * Creates a new 200 (OK) response with the given body.<p>
      * 
      * For an unknown body length, the length argument must be negative. For an
      * empty publisher, the length argument must be zero. Otherwise, the length
@@ -381,7 +389,7 @@ public final class Responses
      * @param contentType header value
      * @param contentLength header value
      * 
-     * @return a 200 (OK) response
+     * @return a new 200 (OK) response
      * 
      * @see StatusCode#TWO_HUNDRED
      * @see Response.Builder#body(Flow.Publisher) 
@@ -393,9 +401,9 @@ public final class Responses
     }
     
     /**
-     * Returns a 202 (Accepted) response with no body.
+     * Retrieves a cached 202 (Accepted) response with no body.
      * 
-     * @return  a 202 (Accepted)
+     * @return  a cached 202 (Accepted)
      * @see    StatusCode#TWO_HUNDRED_TWO
      */
     public static Response accepted() {
@@ -403,9 +411,9 @@ public final class Responses
     }
     
     /**
-     * Returns a 400 (Bad Request) response with no body.
+     * Retrieves a cached 400 (Bad Request) response with no body.
      * 
-     * @return  a 400 (Bad Request) response
+     * @return  a cached 400 (Bad Request) response
      * @see     StatusCode#FOUR_HUNDRED
      */
     public static Response badRequest() {
@@ -413,9 +421,9 @@ public final class Responses
     }
     
     /**
-     * Returns a 404 (Not Found) response with no body.
+     * Retrieves a cached 404 (Not Found) response with no body.
      * 
-     * @return a 404 (Not Found)
+     * @return a cached 404 (Not Found)
      * @see     StatusCode#FOUR_HUNDRED_FOUR
      */
     public static Response notFound() {
@@ -423,12 +431,12 @@ public final class Responses
     }
     
     /**
-     * Returns a 413 (Entity Too Large) response with no body.<p>
+     * Creates a new 413 (Entity Too Large) response with no body.<p>
      * 
      * The response will also {@linkplain Response#mustCloseAfterWrite()
      * close the client channel}.
      * 
-     * @return  a 413 (Entity Too Large)
+     * @return  a new 413 (Entity Too Large)
      * @see    StatusCode#FOUR_HUNDRED_THIRTEEN
      */
     public static Response entityTooLarge() {
@@ -437,9 +445,9 @@ public final class Responses
     }
     
     /**
-     * Returns a 500 (Internal Server Error) response with no body.
+     * Retrieve a cached 500 (Internal Server Error) response with no body.
      * 
-     * @return  a 500 (Internal Server Error) response
+     * @return  a cached 500 (Internal Server Error) response
      * @see     StatusCode#FIVE_HUNDRED
      */
     public static Response internalServerError() {
@@ -447,9 +455,9 @@ public final class Responses
     }
     
     /**
-     * Returns a 501 (Not Implemented) response with no body.
+     * Retrieves a cached 501 (Not Implemented) response with no body.
      * 
-     * @return  a 501 (Not Implemented) response
+     * @return  a cached 501 (Not Implemented) response
      * @see     StatusCode#FIVE_HUNDRED_ONE
      */
     public static Response notImplemented() {
@@ -457,10 +465,10 @@ public final class Responses
     }
     
     /**
-     * Returns a 426 (Upgrade Required) response with no body.<p>
+     * Creates a new 426 (Upgrade Required) response with no body.
      * 
      * @param   upgrade header value (proposition for new protocol version)
-     * @return  a 426 (Upgrade Required) response
+     * @return  a new 426 (Upgrade Required) response
      * @see     StatusCode#FOUR_HUNDRED_TWENTY_SIX
      */
     public static Response upgradeRequired(String upgrade) {
@@ -473,12 +481,12 @@ public final class Responses
     }
     
     /**
-     * Returns a 505 (HTTP Version Not Supported) response with no body.<p>
+     * Creates a new 505 (HTTP Version Not Supported) response with no body.<p>
      * 
      * The response will {@linkplain Response#mustCloseAfterWrite() close the
      * client channel}.
      * 
-     * @return  a 505 (HTTP Version Not Supported) response
+     * @return  a new 505 (HTTP Version Not Supported) response
      * @see     StatusCode#FIVE_HUNDRED_FIVE
      */
     public static Response httpVersionNotSupported() {
@@ -489,11 +497,11 @@ public final class Responses
     }
     
     /**
-     * Returns a 408 (Request Timeout) response with no body.<p>
+     * Creates a new 408 (Request Timeout) response with no body.<p>
      * 
      * The header "Connection: close" will be set.
      * 
-     * @return  a 408 (Request Timeout) response
+     * @return  a new 408 (Request Timeout) response
      * @see     StatusCode#FOUR_HUNDRED_EIGHT
      */
     public static Response requestTimeout() {
@@ -504,11 +512,11 @@ public final class Responses
     }
     
     /**
-     * Returns a 503 (Service Unavailable) response with no body.<p>
+     * Creates a new 503 (Service Unavailable) response with no body.<p>
      * 
      * The header "Connection: close" will be set.
      * 
-     * @return  a 503 (Service Unavailable) response
+     * @return  a new 503 (Service Unavailable) response
      * @see     StatusCode#FIVE_HUNDRED_THREE
      */
     public static Response serviceUnavailable() {
