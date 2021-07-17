@@ -101,7 +101,7 @@ public interface Config
     int maxErrorRecoveryAttempts();
     
     /**
-     * Returns the number of request threads that are allocated for executing
+     * Returns the number of request threads that are allocated for processing
      * HTTP exchanges.<p>
      * 
      * The value is retrieved only once at the time of the start of the first
@@ -427,14 +427,13 @@ public interface Config
         /**
          * Set a new value.
          * 
-         * The value can be any duration, although a short (or negative) duration
-         * will likely immediate timeout exceptions, effectively making the
-         * server useless.
+         * The value can be any duration, although a too short (or negative)
+         * duration will effectively make the server useless.
          * 
          * @param newVal new value
          * @return a new builder representing the new state
          * @throws NullPointerException if {@code newVal} is {@code null}
-         * @see Config#threadPoolSize()
+         * @see Config#timeoutIdleConnection()
          */
         Builder timeoutIdleConnection(Duration newVal);
         
