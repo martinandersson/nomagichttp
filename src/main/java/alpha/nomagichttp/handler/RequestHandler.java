@@ -402,13 +402,13 @@ public interface RequestHandler
      * The first two are adapters that repackages the given function into the
      * {@code BiConsumer} type required by {@code accept}.<p>
      * 
-     * {@code respond()} is great when the function does not need access to the
-     * request object:
+     * {@code respond()} is a good choice when the function does not need to
+     * access the request object:
      * <pre>
      *   RequestHandler static = GET().respond(text("Hello!"));
      * </pre>
      * 
-     * {@code apply()} is great when the function need access to the request
+     * {@code apply()} is a good choice when the function needs to the request
      * object and produces an asynchronous response (the request body is the
      * asynchronous part in this example which returns a {@code
      * CompletionStage}):
