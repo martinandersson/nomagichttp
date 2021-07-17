@@ -732,8 +732,9 @@ class ErrorTest extends AbstractRealTest
         // Superclass asserts no error sent to error handler
     }
     
+    // Expect 405 (Method Not Allowed)
     @Test
-    void MethodNotAllowedException() throws IOException, InterruptedException {
+    void MethodNotAllowedException_BLABLA() throws IOException, InterruptedException {
         server().add("/",
             GET().respond(internalServerError()),
             POST().respond(internalServerError()));
@@ -747,10 +748,29 @@ class ErrorTest extends AbstractRealTest
             "Allow: POST, GET"                + CRLF + CRLF);
         
         Throwable t = awaitFirstLogError();
-        
         assertThat(t).isExactlyInstanceOf(MethodNotAllowedException.class)
                      .hasMessage("No handler found for method token \"BLABLA\".");
         assertSame(t, pollServerErrorNow());
+    }
+    
+    // ...but if the method is OPTIONS, the default configuration implements it
+    @Test
+    void MethodNotAllowedException_OPTIONS() throws IOException, InterruptedException {
+        server().add("/",
+                GET().respond(internalServerError()),
+                POST().respond(internalServerError()));
+        
+        String rsp = client().writeReadTextUntilNewlines(
+                "OPTIONS / HTTP/1.1"              + CRLF + CRLF);
+        assertThat(rsp).isEqualTo(
+                "HTTP/1.1 204 No Content"         + CRLF +
+                "Allow: OPTIONS, POST, GET"       + CRLF + CRLF);
+        
+        assertThat(pollServerError())
+                .isExactlyInstanceOf(MethodNotAllowedException.class)
+                .hasMessage("No handler found for method token \"OPTIONS\".");
+        
+        assertThatNoWarningOrErrorIsLogged();
     }
     
     private static void assertOnErrorReceived(MemorizingSubscriber.Signal onError, String msg) {

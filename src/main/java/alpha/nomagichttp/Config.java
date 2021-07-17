@@ -9,6 +9,7 @@ import alpha.nomagichttp.message.RequestBodyTimeoutException;
 import alpha.nomagichttp.message.RequestHeadTimeoutException;
 import alpha.nomagichttp.message.ResponseTimeoutException;
 import alpha.nomagichttp.message.Responses;
+import alpha.nomagichttp.route.MethodNotAllowedException;
 
 import java.time.Duration;
 import java.util.concurrent.Flow;
@@ -336,6 +337,34 @@ public interface Config
      */
     Duration timeoutIdleConnection();
     
+    /**
+     * If {@code true} (which is the default), the {@link ErrorHandler#DEFAULT
+     * default error handler} will respond 204 (No Content) with the {@value
+     * HttpConstants.HeaderKey#ALLOW} header populated to a request handler
+     * resolution that ends with a {@link MethodNotAllowedException} if the
+     * requested HTTP method is {@value HttpConstants.Method#OPTIONS}.<p>
+     * 
+     * Even if the default value for this configuration is {@code true}, the
+     * application's route can still freely implement the {@code OPTIONS} method
+     * or the application can configure an error handler that handles the {@code
+     * MethodNotAllowedException} however it sees fit.<p>
+     * 
+     * If this methods returns {@code false}, then the default error handler
+     * will simply respond a 405 (Method Not Allowed) response as it normally
+     * do for all {@code MethodNotAllowedException}s.<p>
+     * 
+     * In human speech; if the application does not implement the {@code
+     * OPTIONS} method for a given route, and this configuration value returns
+     * false, the error would have been treated as a <i>client error</i>. But by
+     * default, even if the application does not implement the {@code OPTIONS}
+     * method, a <i>successful</i> response will be returned. Disabling this
+     * configuration disables the {@code OPTIONS} method completely unless the
+     * application explicitly add a request handler that supports the method.
+     * 
+     * @return see JavaDoc
+     */
+    boolean implementMissingOptions();
+    
      /**
      * Returns the builder instance that built this configuration.<p>
      * 
@@ -461,6 +490,15 @@ public interface Config
          * @see Config#timeoutIdleConnection()
          */
         Builder timeoutIdleConnection(Duration newVal);
+        
+        /**
+         * Set a new value.
+         * 
+         * @param newVal new value
+         * @return a new builder representing the new state
+         * @see Config#implementMissingOptions()
+         */
+        Builder implementMissingOptions(boolean newVal);
         
         /**
          * Builds a configuration object.

@@ -29,7 +29,7 @@ An item ~~crossed out~~ is complete, an item in __bold__ is work in progress.
 [~~Stage: HTTP Constants~~](#stage-http-constants)  
 [~~Stage: HTTP Versioning~~](#stage-http-versioning)  
 [~~Stage: Improved Testing~~](#stage-improved-testing)  
-[**Stage: Improved Content Negotiation**](#stage-improved-content-negotiation)  
+[~~Stage: Improved Content Negotiation~~](#stage-improved-content-negotiation)  
 [~~Stage: Pseudo-Mutable Types~~](#stage-pseudo-mutable-types)  
 [~~Stage: Multiple Responses~~](#stage-multiple-responses)  
 [~~Stage: Connection Life-Cycle/Management~~](#stage-connection-life-cyclemanagement)  
@@ -123,9 +123,9 @@ _Status: **Delivered**_
 - ~~Each end-to-end test should run over many combinations of different clients
   and HTTP versions.~~
 
-## Stage: Improved Content Negotiation
+## ~~Stage: Improved Content Negotiation~~
 
-_Status: **In Progress**_
+_Status: **Delivered**_
 
 - ~~Fix: media type parameter `q` is case insensitive.~~
 - ~~Revise `charset` parameter; can potentially be used in combination with `q`
@@ -133,25 +133,25 @@ _Status: **In Progress**_
 - ~~Revise `Accept-Charset`. Will most likely keep ignoring it. But if so,
   improve docs.~~
 
-Currently, `NoHandlerResolvedException` very broadly translates to 501 (Not
-Implemented), which is wrong.
+~~Currently, `NoHandlerResolvedException` very broadly translates to 501 (Not
+Implemented), which is wrong.~~
 
-- `Route.lookup()` should throw `MethodNotAllowedException` when no handler was
-  found given the HTTP method, which is translated to 405 (Method Not Allowed).
-  Response should have the "Allow: " header set and populated with the route's
-  supported methods.
-  - If the original request was `OPTIONS`, then the default error handler
+- ~~`Route.lookup()` should throw `MethodNotAllowedException` when no handler
+  was found given the HTTP method, which is translated to 405 (Method Not
+  Allowed). Response should have the "Allow: " header set and populated with the
+  route's supported methods.~~
+  - ~~If the original request was `OPTIONS`, then the default error handler
     returns a `204 (No Content)` response with the "Allow" header set. May be
-    disabled in configuration, `config.autoAllow()`. Handler also populates
-    the list of values with "OPTIONS" if not already set.
-- 501 should only be used when the server globally rejects a method, for example
-  if TRACE is disabled by server configuration.
-- `Route.lookup()` should also introduce specialized exceptions;
-  - `MediaTypeNotAcceptedException` that signals the failure of content
+    disabled in configuration, `config.implementMissingOptions()`. Handler also
+    populates the list of values with "OPTIONS" if not already set.~~
+- ~~501 should only be used when the server globally rejects a method, for
+  example if TRACE is disabled by server configuration.~~
+- ~~`Route.lookup()` should also introduce specialized exceptions;~~
+  - ~~`MediaTypeNotAcceptedException` that signals the failure of content
     negotiation (handler's produced media type), translated to 406 (Not
-    Acceptable),
-  - `MediaTypeUnsupportedException` signals no handler consumes the message
-    payload, translated to 415 (Unsupported Media Type).
+    Acceptable),~~
+  - ~~`MediaTypeUnsupportedException` signals no handler consumes the message
+    payload, translated to 415 (Unsupported Media Type).~~
 
 ## ~~Stage: Pseudo-Mutable Types~~
 

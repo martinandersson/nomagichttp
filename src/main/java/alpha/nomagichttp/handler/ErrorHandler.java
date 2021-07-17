@@ -25,8 +25,10 @@ import alpha.nomagichttp.route.NoHandlerResolvedException;
 import alpha.nomagichttp.route.NoRouteFoundException;
 
 import java.util.concurrent.CompletionException;
+import java.util.stream.Stream;
 
 import static alpha.nomagichttp.HttpConstants.HeaderKey.ALLOW;
+import static alpha.nomagichttp.HttpConstants.Method.OPTIONS;
 import static alpha.nomagichttp.HttpConstants.Version.HTTP_1_1;
 import static alpha.nomagichttp.handler.ResponseRejectedException.Reason;
 import static alpha.nomagichttp.handler.ResponseRejectedException.Reason.PROTOCOL_NOT_SUPPORTED;
@@ -37,12 +39,15 @@ import static alpha.nomagichttp.message.Responses.internalServerError;
 import static alpha.nomagichttp.message.Responses.mediaTypeNotAccepted;
 import static alpha.nomagichttp.message.Responses.mediaTypeUnsupported;
 import static alpha.nomagichttp.message.Responses.methodNotAllowed;
+import static alpha.nomagichttp.message.Responses.noContent;
 import static alpha.nomagichttp.message.Responses.notFound;
 import static alpha.nomagichttp.message.Responses.requestTimeout;
 import static alpha.nomagichttp.message.Responses.serviceUnavailable;
 import static alpha.nomagichttp.message.Responses.upgradeRequired;
 import static java.lang.System.Logger.Level.ERROR;
 import static java.util.stream.Collectors.joining;
+import static java.util.stream.Stream.concat;
+import static java.util.stream.Stream.of;
 
 /**
  * Handles a {@code Throwable}, presumably by translating it into a response as
@@ -239,7 +244,16 @@ public interface ErrorHandler
      *   </tr>
      *   <tr>
      *     <th scope="row"> {@link MethodNotAllowedException} </th>
-     *     <td> None </td>
+     *     <td> HTTP method is {@value HttpConstants.Method#OPTIONS} and
+     *          {@link Config#implementMissingOptions()} returns {@code true}</td>
+     *     <td> No </td>
+     *     <td> {@link Responses#noContent()} with the header
+     *          {@value HttpConstants.HeaderKey#ALLOW} populated.</td>
+     *   </tr>
+     *   <tr>
+     *     <th scope="row"> {@link MethodNotAllowedException} </th>
+     *     <td> HTTP method is not {@value HttpConstants.Method#OPTIONS} or
+     *          {@link Config#implementMissingOptions()} returns {@code false}</td>
      *     <td> Yes </td>
      *     <td> {@link Responses#methodNotAllowed()} with the header
      *          {@value HttpConstants.HeaderKey#ALLOW} populated.</td>
@@ -364,10 +378,16 @@ public interface ErrorHandler
             log(thr);
             res = entityTooLarge();
         } catch (MethodNotAllowedException e) {
-            log(thr);
-            res = methodNotAllowed().toBuilder().addHeader(
-                        ALLOW, e.getRoute().supportedMethods().collect(joining(", ")))
-                    .build();
+            Response status = methodNotAllowed();
+            Stream<String> allow = e.getRoute().supportedMethods();
+            if (req.method().equals(OPTIONS) && ch.getServer().getConfig().implementMissingOptions()) {
+                status = noContent();
+                // Now OPTIONS is a supported method lol
+                allow = concat(of(OPTIONS), allow);
+            } else {
+                log(thr);
+            }
+            res = status.toBuilder().addHeader(ALLOW, allow.collect(joining(", "))).build();
         } catch (MediaTypeNotAcceptedException e) {
             log(thr);
             res = mediaTypeNotAccepted();

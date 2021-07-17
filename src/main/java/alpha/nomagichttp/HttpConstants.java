@@ -324,11 +324,7 @@ public final class HttpConstants {
          *   {@literal <}--
          *   HTTP/1.1 204 No Content
          *   Allow: OPTIONS, GET, HEAD, PATCH
-         *   Content-Length: 0
          * </pre>
-         * 
-         * Future work is scheduled to have the NoMagicHTTP server automate the
-         * discovery of allowed methods.<p>
          * 
          * Ping-pong example:
          * 
@@ -343,6 +339,12 @@ public final class HttpConstants {
          *   Content-Length: 4
          *   PONG
          * </pre>
+         * 
+         * Please note that currently, the NoMagicHTTP server only implements a
+         * request target of the origin form, meaning that "*" would be
+         * rejected. Otherwise, the OPTIONS method - as in the first example -
+         * is by default implemented ({@link Config#implementMissingOptions()})
+         * with no need for the application to add an explicit handler.<p>
          * 
          * Safe? Yes. Idempotent? Yes. Response cacheable? No.
          * 

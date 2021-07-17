@@ -25,6 +25,7 @@ final class DefaultConfig implements Config {
                            ignoreRejectedInformational,
                            immediatelyContinueExpect100;
     private final Duration timeoutIdleConnection;
+    private final boolean  implementMissingOptions;
     
     DefaultConfig(Builder b, DefaultBuilder.MutableState s) {
         builder                      = b;
@@ -36,6 +37,7 @@ final class DefaultConfig implements Config {
         ignoreRejectedInformational  = s.ignoreRejectedInformational;
         immediatelyContinueExpect100 = s.immediatelyContinueExpect100;
         timeoutIdleConnection        = s.timeoutIdleConnection;
+        implementMissingOptions      = s.implementMissingOptions;
     }
     
     @Override
@@ -79,6 +81,11 @@ final class DefaultConfig implements Config {
     }
     
     @Override
+    public boolean implementMissingOptions() {
+        return implementMissingOptions;
+    }
+    
+    @Override
     public Builder toBuilder() {
         return builder;
     }
@@ -98,6 +105,7 @@ final class DefaultConfig implements Config {
                      ignoreRejectedInformational  = true,
                      immediatelyContinueExpect100 = false;
             Duration timeoutIdleConnection        = ofSeconds(90);
+            boolean  implementMissingOptions      = true;
         }
         
         private DefaultBuilder() {
@@ -147,6 +155,11 @@ final class DefaultConfig implements Config {
         public Builder timeoutIdleConnection(Duration newVal) {
             requireNonNull(newVal);
             return new DefaultBuilder(this, s -> s.timeoutIdleConnection = newVal);
+        }
+        
+        @Override
+        public Builder implementMissingOptions(boolean newVal) {
+            return new DefaultBuilder(this, s -> s.implementMissingOptions = newVal);
         }
         
         @Override
