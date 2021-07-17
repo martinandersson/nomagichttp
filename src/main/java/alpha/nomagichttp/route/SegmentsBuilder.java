@@ -5,6 +5,8 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
+import static java.util.Collections.unmodifiableCollection;
+
 /**
  * Builds a {@code Iterable<String>} of segments.<p>
  * 
@@ -85,7 +87,7 @@ final class SegmentsBuilder
     }
     
     Iterable<String> asIterable() {
-        return segments;
+        return unmodifiableCollection(segments);
     }
     
     private void addParam(char prefix, String name) {

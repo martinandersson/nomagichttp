@@ -32,7 +32,10 @@ import static alpha.nomagichttp.HttpConstants.StatusCode.FIVE_HUNDRED_ONE;
 import static alpha.nomagichttp.HttpConstants.StatusCode.FIVE_HUNDRED_THREE;
 import static alpha.nomagichttp.HttpConstants.StatusCode.FOUR_HUNDRED;
 import static alpha.nomagichttp.HttpConstants.StatusCode.FOUR_HUNDRED_EIGHT;
+import static alpha.nomagichttp.HttpConstants.StatusCode.FOUR_HUNDRED_FIFTEEN;
+import static alpha.nomagichttp.HttpConstants.StatusCode.FOUR_HUNDRED_FIVE;
 import static alpha.nomagichttp.HttpConstants.StatusCode.FOUR_HUNDRED_FOUR;
+import static alpha.nomagichttp.HttpConstants.StatusCode.FOUR_HUNDRED_SIX;
 import static alpha.nomagichttp.HttpConstants.StatusCode.FOUR_HUNDRED_THIRTEEN;
 import static alpha.nomagichttp.HttpConstants.StatusCode.FOUR_HUNDRED_TWENTY_SIX;
 import static alpha.nomagichttp.HttpConstants.StatusCode.ONE_HUNDRED;
@@ -465,6 +468,36 @@ public final class Responses
     }
     
     /**
+     * Retrieves a cached 405 (Method Not Allowed) response with no body.
+     * 
+     * @return  a cached 405 (Method Not Allowed) response
+     * @see     StatusCode#FOUR_HUNDRED_FIVE
+     */
+    public static Response methodNotAllowed() {
+        return ResponseCache.METHOD_NOT_ALLOWED;
+    }
+    
+    /**
+     * Retrieves a cached 406 (Not Acceptable) response with no body.
+     * 
+     * @return  a cached 406 (Not Acceptable) response
+     * @see     StatusCode#FOUR_HUNDRED_SIX
+     */
+    public static Response mediaTypeNotAccepted() {
+        return ResponseCache.MEDIATYPE_NOT_ACCEPTED;
+    }
+    
+    /**
+     * Retrieves a cached 415 (Unsupported Media Type) response with no body.
+     * 
+     * @return  a cached 415 (Unsupported Media Type) response
+     * @see     StatusCode#FOUR_HUNDRED_FIFTEEN
+     */
+    public static Response mediaTypeUnsupported() {
+        return ResponseCache.MEDIATYPE_UNSUPPORTED;
+    }
+    
+    /**
      * Creates a new 426 (Upgrade Required) response with no body.
      * 
      * @param   upgrade header value (proposition for new protocol version)
@@ -582,14 +615,17 @@ public final class Responses
      */
     private static final class ResponseCache {
         static final Response
-            CONTINUE              = respond(ONE_HUNDRED, ReasonPhrase.CONTINUE, false),
-            PROCESSING            = respond(ONE_HUNDRED_TWO, ReasonPhrase.PROCESSING, false),
-            ACCEPTED              = respond(TWO_HUNDRED_TWO, ReasonPhrase.ACCEPTED, true),
-            NO_CONTENT            = respond(TWO_HUNDRED_FOUR, ReasonPhrase.NO_CONTENT, false),
-            BAD_REQUEST           = respond(FOUR_HUNDRED, ReasonPhrase.BAD_REQUEST, true),
-            NOT_FOUND             = respond(FOUR_HUNDRED_FOUR, ReasonPhrase.NOT_FOUND, true),
-            INTERNAL_SERVER_ERROR = respond(FIVE_HUNDRED, ReasonPhrase.INTERNAL_SERVER_ERROR, true),
-            NOT_IMPLEMENTED       = respond(FIVE_HUNDRED_ONE, ReasonPhrase.NOT_IMPLEMENTED, true);
+            CONTINUE               = respond(ONE_HUNDRED, ReasonPhrase.CONTINUE, false),
+            PROCESSING             = respond(ONE_HUNDRED_TWO, ReasonPhrase.PROCESSING, false),
+            ACCEPTED               = respond(TWO_HUNDRED_TWO, ReasonPhrase.ACCEPTED, true),
+            NO_CONTENT             = respond(TWO_HUNDRED_FOUR, ReasonPhrase.NO_CONTENT, false),
+            BAD_REQUEST            = respond(FOUR_HUNDRED, ReasonPhrase.BAD_REQUEST, true),
+            NOT_FOUND              = respond(FOUR_HUNDRED_FOUR, ReasonPhrase.NOT_FOUND, true),
+            INTERNAL_SERVER_ERROR  = respond(FIVE_HUNDRED, ReasonPhrase.INTERNAL_SERVER_ERROR, true),
+            NOT_IMPLEMENTED        = respond(FIVE_HUNDRED_ONE, ReasonPhrase.NOT_IMPLEMENTED, true),
+            METHOD_NOT_ALLOWED     = respond(FOUR_HUNDRED_FIVE, ReasonPhrase.METHOD_NOT_ALLOWED, true),
+            MEDIATYPE_NOT_ACCEPTED = respond(FOUR_HUNDRED_SIX, ReasonPhrase.NOT_ACCEPTABLE, true),
+            MEDIATYPE_UNSUPPORTED  = respond(FOUR_HUNDRED_FIFTEEN, ReasonPhrase.UNSUPPORTED_MEDIA_TYPE, true);
         
         private static Response respond(int code, String phrase, boolean addContentLengthZero) {
             var b = builder(code, phrase);

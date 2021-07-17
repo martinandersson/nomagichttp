@@ -5,9 +5,9 @@ import alpha.nomagichttp.message.MediaType;
 import alpha.nomagichttp.message.MediaTypeParseException;
 import alpha.nomagichttp.message.Request;
 import alpha.nomagichttp.message.Response;
-import alpha.nomagichttp.route.AmbiguousNoHandlerFoundException;
+import alpha.nomagichttp.route.AmbiguousHandlerException;
 import alpha.nomagichttp.route.HandlerCollisionException;
-import alpha.nomagichttp.route.NoHandlerFoundException;
+import alpha.nomagichttp.route.NoHandlerResolvedException;
 import alpha.nomagichttp.route.Route;
 
 import java.util.concurrent.CompletionStage;
@@ -47,7 +47,8 @@ import static java.util.Objects.requireNonNull;
  * MediaType#specificity() specific} will be used. More details will be
  * discussed throughout subsequent sections.<p>
  * 
- * A {@link NoHandlerFoundException} is thrown if no handler can be matched.<p>
+ * A subtype of {@link NoHandlerResolvedException} is thrown if no handler can
+ * be matched.<p>
  * 
  * It is possible for an inbound request to be matched against many handlers
  * which are from the request's perspective an equally good fit. For example,
@@ -56,7 +57,7 @@ import static java.util.Objects.requireNonNull;
  * They would both match a "GET" request with header "Content-Type: text/plain"
  * and "Accept: *&#47;*". For this request, the matched handlers are
  * ambiguous. When the handler resolution ends ambiguously, an {@link
- * AmbiguousNoHandlerFoundException} is thrown<p>
+ * AmbiguousHandlerException} is thrown<p>
  * 
  * It isn't possible to add completely equivalent handlers to a route as
  * this would fail-fast with a {@link HandlerCollisionException}.<p>

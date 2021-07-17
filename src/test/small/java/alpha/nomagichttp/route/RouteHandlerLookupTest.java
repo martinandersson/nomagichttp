@@ -37,47 +37,42 @@ class RouteHandlerLookupTest
                                 create("text/plain", "text/html");
         RequestHandler target = create("text/plain", "text/plain");
                                 create("text/html",  "*/*");
-        
         assertThat(exec("text/plain", "text/plain")).isSameAs(target);
     }
     
     @Test
     void no_match_1() { 
         create("text/plain", "text/plain");
-        
         assertThatThrownBy(() -> exec("gEt", TEXT_PLAIN, TEXT_PLAIN))
-                .isExactlyInstanceOf(NoHandlerFoundException.class)
+                .isExactlyInstanceOf(MethodNotAllowedException.class)
                 .hasMessage("No handler found for method token \"gEt\".");
     }
     
     @Test
     void no_match_2() {
         create("text/plain", "text/plain");
-        
         // Try lookup content-type "text/html"
         assertThatThrownBy(() -> exec("text/html", "text/plain"))
-                .isExactlyInstanceOf(NoHandlerFoundException.class)
-                .hasMessage("No handler found matching \"Content-Type: text/html\" and/or \"Accept: text/plain\" header in request.");
+                .isExactlyInstanceOf(MediaTypeUnsupportedException.class)
+                .hasMessage("No handler found matching \"Content-Type: text/html\" header in request.");
     }
     
     @Test
     void no_match_3() {
         create("text/plain", "text/plain");
-        
         // Try lookup accept "text/html"
         assertThatThrownBy(() -> exec("text/plain", "text/html"))
-                .isExactlyInstanceOf(NoHandlerFoundException.class)
-                .hasMessage("No handler found matching \"Content-Type: text/plain\" and/or \"Accept: text/html\" header in request.");
+                .isExactlyInstanceOf(MediaTypeNotAcceptedException.class)
+                .hasMessage("No handler found matching \"Accept: text/html\" header in request.");
     }
     
     @Test
     void no_match_4() {
         create("text/plain", "text/plain");
-        
         // Try lookup accept "text/plain; q=0"
         assertThatThrownBy(() -> exec("text/plain", "text/plain; q=0"))
-                .isExactlyInstanceOf(NoHandlerFoundException.class)
-                .hasMessage("No handler found matching \"Content-Type: text/plain\" and/or \"Accept: text/plain; q=0\" header in request.");
+                .isExactlyInstanceOf(MediaTypeNotAcceptedException.class)
+                .hasMessage("No handler found matching \"Accept: text/plain; q=0\" header in request.");
     }
     
     @Test
@@ -85,11 +80,10 @@ class RouteHandlerLookupTest
         Set<RequestHandler> ambiguous = Set.of(
                 create("text/plain", "text/what"),
                 create("text/plain", "text/ever"));
-        
         // Accepts "*/*"
         assertThatThrownBy(() -> exec("text/plain"))
-                .isExactlyInstanceOf(AmbiguousNoHandlerFoundException.class)
-                .extracting(e -> ((AmbiguousNoHandlerFoundException) e).getCandidates())
+                .isExactlyInstanceOf(AmbiguousHandlerException.class)
+                .extracting(e -> ((AmbiguousHandlerException) e).getCandidates())
                 .isEqualTo(ambiguous);
     }
     
@@ -99,7 +93,6 @@ class RouteHandlerLookupTest
                                 create("text/plain", "text/what");
                                 create("text/plain", "text/ever");
         RequestHandler target = create("text/*",     "text/html");
-        
         assertThat(exec("text/plain")).isSameAs(target);
     }
     
@@ -108,7 +101,6 @@ class RouteHandlerLookupTest
     void ambiguous_solution_2() {
                                 create("text/plain", "*/*");
         RequestHandler target = create("text/plain", "more/specific");
-        
         assertThat(exec("text/plain")).isSameAs(target);
     }
     
@@ -116,7 +108,6 @@ class RouteHandlerLookupTest
     void order_by_specificity_1() {
                                 create(__NOTHING_AND_ALL, __ALL);
         RequestHandler target = create(__NOTHING_AND_ALL, TEXT_PLAIN);
-        
         assertThat(exec(null, "text/*")).isSameAs(target);
     }
     
@@ -124,7 +115,6 @@ class RouteHandlerLookupTest
     void order_by_specificity_2() {
         RequestHandler target = create(__NOTHING, __ALL);
                                 create(__NOTHING_AND_ALL, __ALL);
-        
         // In this case, NOTHING is more specific than NOTHING_AND_ALL
         assertThat(exec((MediaType) null)).isSameAs(target);
     }
@@ -133,7 +123,6 @@ class RouteHandlerLookupTest
     void order_by_specificity_3() {
                                 create(__NOTHING, __ALL);
         RequestHandler target = create(__NOTHING_AND_ALL, __ALL);
-        
         // In this case, NOTHING_AND_ALL is more specific than NOTHING
         assertThat(exec("bla/bla")).isSameAs(target);
     }
@@ -142,7 +131,6 @@ class RouteHandlerLookupTest
     void order_by_specificity_4() {
                                 create(__NOTHING_AND_ALL, __ALL);
         RequestHandler target = create(__ALL, __ALL);
-        
         // In this case, ALL is more specific than NOTHING_AND_ALL
         assertThat(exec("bla/bla")).isSameAs(target);
     }
@@ -152,8 +140,8 @@ class RouteHandlerLookupTest
         RequestHandler target = create("text/plain; charset=utf-8; something=else", "*/*");
         
         assertThatThrownBy(() -> exec("text/plain", "*/*"))
-                .isExactlyInstanceOf(NoHandlerFoundException.class)
-                .hasMessage("No handler found matching \"Content-Type: text/plain\" and/or \"Accept: */*\" header in request.");
+                .isExactlyInstanceOf(MediaTypeUnsupportedException.class)
+                .hasMessage("No handler found matching \"Content-Type: text/plain\" header in request.");
         
         assertThat(exec("text/plain; something = else; chArsEt=\"  UtF-8  \"", "*/*"))
                 .isSameAs(target);
@@ -172,8 +160,8 @@ class RouteHandlerLookupTest
         RequestHandler target = create(__NOTHING_AND_ALL, parse("text/plain; charset=utf-8; something=else"));
         
         assertThatThrownBy(() -> exec(null, "*/*"))
-                .isExactlyInstanceOf(NoHandlerFoundException.class)
-                .hasMessage("No handler found matching \"Content-Type: [N/A]\" and/or \"Accept: */*\" header in request.");
+                .isExactlyInstanceOf(MediaTypeNotAcceptedException.class)
+                .hasMessage("No handler found matching \"Accept: */*\" header in request.");
         
         assertThat(exec(null, "text/plain; something = else; chArsEt=\"  UtF-8  \""))
                 .isSameAs(target);
@@ -192,8 +180,8 @@ class RouteHandlerLookupTest
         create(__NOTHING_AND_ALL, __ALL);
         // Client has nothing to provide us and accepts nothing in return.
         assertThatThrownBy(() -> exec(null, "*/*;q=0"))
-                .isExactlyInstanceOf(NoHandlerFoundException.class)
-                .hasMessage("No handler found matching \"Content-Type: [N/A]\" and/or \"Accept: */*;q=0\" header in request.");
+                .isExactlyInstanceOf(MediaTypeNotAcceptedException.class)
+                .hasMessage("No handler found matching \"Accept: */*;q=0\" header in request.");
     }
     
     // RFC 7231, section "5.3.2. Accept", gives this example:

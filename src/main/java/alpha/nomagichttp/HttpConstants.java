@@ -373,6 +373,7 @@ public final class HttpConstants {
          * 
          * @see Method
          * @see HeaderKey#MAX_FORWARDS
+         * @see StatusCode#FIVE_HUNDRED_ONE
          * @see <a href="https://tools.ietf.org/html/rfc7231#section-4.3.8">RFC 7231 §4.3.8</a>
          */
         public static final String TRACE = "TRACE";
@@ -890,7 +891,9 @@ public final class HttpConstants {
         /**
          * {@value} {@value ReasonPhrase#METHOD_NOT_ALLOWED}.<p>
          * 
-         * TODO: write something
+         * This is the {@link ErrorHandler#DEFAULT default response} when a
+         * route/resource exists, but no request handler is mapped to the
+         * request-provided HTTP method.
          * 
          * @see HeaderKey#ALLOW
          * @see <a href="https://tools.ietf.org/html/rfc7231#section-6.5.5">RFC 7231 §6.5.5</a>
@@ -900,7 +903,9 @@ public final class HttpConstants {
         /**
          * {@value} {@value ReasonPhrase#NOT_ACCEPTABLE}.<p>
          * 
-         * TODO: write something
+         * This is the {@link ErrorHandler#DEFAULT default response} when a
+         * route/resource exists, but no request handler produces the requested
+         * media type.
          * 
          * @see <a href="https://tools.ietf.org/html/rfc7231#section-6.5.6">RFC 7231 §6.5.6</a>
          */
@@ -1120,7 +1125,8 @@ public final class HttpConstants {
         /**
          * {@value} {@value ReasonPhrase#NOT_IMPLEMENTED}.<p>
          * 
-         * TODO: write something
+         * Should be the response when a requested HTTP method has been banned
+         * by the server, such as {@link Method#TRACE}.
          * 
          * @see <a href="https://tools.ietf.org/html/rfc7231#section-6.6.2">RFC 7731 §6.6.2</a>
          */

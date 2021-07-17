@@ -16,7 +16,11 @@ import alpha.nomagichttp.message.RequestHeadTimeoutException;
 import alpha.nomagichttp.message.Response;
 import alpha.nomagichttp.message.ResponseTimeoutException;
 import alpha.nomagichttp.message.Responses;
-import alpha.nomagichttp.route.NoHandlerFoundException;
+import alpha.nomagichttp.route.AmbiguousHandlerException;
+import alpha.nomagichttp.route.MediaTypeNotAcceptedException;
+import alpha.nomagichttp.route.MediaTypeUnsupportedException;
+import alpha.nomagichttp.route.MethodNotAllowedException;
+import alpha.nomagichttp.route.NoHandlerResolvedException;
 import alpha.nomagichttp.route.NoRouteFoundException;
 
 import java.util.concurrent.CompletionException;
@@ -28,8 +32,10 @@ import static alpha.nomagichttp.message.Responses.badRequest;
 import static alpha.nomagichttp.message.Responses.entityTooLarge;
 import static alpha.nomagichttp.message.Responses.httpVersionNotSupported;
 import static alpha.nomagichttp.message.Responses.internalServerError;
+import static alpha.nomagichttp.message.Responses.mediaTypeNotAccepted;
+import static alpha.nomagichttp.message.Responses.mediaTypeUnsupported;
+import static alpha.nomagichttp.message.Responses.methodNotAllowed;
 import static alpha.nomagichttp.message.Responses.notFound;
-import static alpha.nomagichttp.message.Responses.notImplemented;
 import static alpha.nomagichttp.message.Responses.requestTimeout;
 import static alpha.nomagichttp.message.Responses.serviceUnavailable;
 import static alpha.nomagichttp.message.Responses.upgradeRequired;
@@ -148,10 +154,10 @@ public interface ErrorHandler
      * 
      * However, the true nature of the error can only be determined by looking
      * into the error object itself, which also might reveal what to expect from
-     * the succeeding arguments. For example, if {@code thr} is a {@link
-     * NoHandlerFoundException}, then the request object was built and will not
-     * be null, but since the request handler wasn't found then obviously the
-     * request handler argument is going to be null.<p>
+     * the succeeding arguments. For example, if {@code thr} is an instance of
+     * {@link NoHandlerResolvedException}, then the request object was built and
+     * will not be null, but since the request handler wasn't resolved then
+     * the request handler argument is going to be null.<p>
      * 
      * It is a design goal of the NoMagicHTTP library to have each exception
      * type provide whatever API necessary to investigate and possibly resolve
@@ -229,16 +235,34 @@ public interface ErrorHandler
      *     <td> {@link Responses#notFound()} </td>
      *   </tr>
      *   <tr>
+     *     <th scope="row"> {@link MethodNotAllowedException} </th>
+     *     <td> None </td>
+     *     <td> Yes </td>
+     *     <td> {@link Responses#methodNotAllowed()} </td>
+     *   </tr>
+     *   <tr>
+     *     <th scope="row"> {@link MediaTypeNotAcceptedException} </th>
+     *     <td> None </td>
+     *     <td> Yes </td>
+     *     <td> {@link Responses#mediaTypeNotAccepted()} </td>
+     *   </tr>
+     *   <tr>
+     *     <th scope="row"> {@link MediaTypeUnsupportedException} </th>
+     *     <td> None </td>
+     *     <td> Yes </td>
+     *     <td> {@link Responses#mediaTypeUnsupported()} </td>
+     *   </tr>
+     *   <tr>
+     *     <th scope="row"> {@link AmbiguousHandlerException} </th>
+     *     <td> None </td>
+     *     <td> Yes </td>
+     *     <td> {@link Responses#internalServerError()} </td>
+     *   </tr>
+     *   <tr>
      *     <th scope="row"> {@link MaxRequestHeadSizeExceededException} </th>
      *     <td> None </td>
      *     <td> Yes </td>
      *     <td> {@link Responses#entityTooLarge()} </td>
-     *   </tr>
-     *   <tr>
-     *     <th scope="row"> {@link NoHandlerFoundException} </th>
-     *     <td> None </td>
-     *     <td> Yes </td>
-     *     <td> {@link Responses#notImplemented()} </td>
      *   </tr>
      *   <tr>
      *     <th scope="row"> {@link MediaTypeParseException} </th>
@@ -335,9 +359,18 @@ public interface ErrorHandler
         } catch (MaxRequestHeadSizeExceededException e) {
             log(thr);
             res = entityTooLarge();
-        } catch (NoHandlerFoundException e) { // + AmbiguousNoHandlerFoundException
+        } catch (MethodNotAllowedException e) {
             log(thr);
-            res = notImplemented();
+            res = methodNotAllowed();
+        } catch (MediaTypeNotAcceptedException e) {
+            log(thr);
+            res = mediaTypeNotAccepted();
+        } catch (MediaTypeUnsupportedException e) {
+            log(thr);
+            res = mediaTypeUnsupported();
+        } catch (AmbiguousHandlerException e) {
+            log(thr);
+            res = internalServerError();
         } catch (MediaTypeParseException | IllegalBodyException e) {
             if (rh == null) {
                 res = badRequest();
