@@ -1,6 +1,7 @@
 package alpha.nomagichttp.handler;
 
 import alpha.nomagichttp.Config;
+import alpha.nomagichttp.HttpConstants;
 import alpha.nomagichttp.message.BadHeaderException;
 import alpha.nomagichttp.message.EndOfStreamException;
 import alpha.nomagichttp.message.HttpVersionParseException;
@@ -25,6 +26,7 @@ import alpha.nomagichttp.route.NoRouteFoundException;
 
 import java.util.concurrent.CompletionException;
 
+import static alpha.nomagichttp.HttpConstants.HeaderKey.ALLOW;
 import static alpha.nomagichttp.HttpConstants.Version.HTTP_1_1;
 import static alpha.nomagichttp.handler.ResponseRejectedException.Reason;
 import static alpha.nomagichttp.handler.ResponseRejectedException.Reason.PROTOCOL_NOT_SUPPORTED;
@@ -40,6 +42,7 @@ import static alpha.nomagichttp.message.Responses.requestTimeout;
 import static alpha.nomagichttp.message.Responses.serviceUnavailable;
 import static alpha.nomagichttp.message.Responses.upgradeRequired;
 import static java.lang.System.Logger.Level.ERROR;
+import static java.util.stream.Collectors.joining;
 
 /**
  * Handles a {@code Throwable}, presumably by translating it into a response as
@@ -238,7 +241,8 @@ public interface ErrorHandler
      *     <th scope="row"> {@link MethodNotAllowedException} </th>
      *     <td> None </td>
      *     <td> Yes </td>
-     *     <td> {@link Responses#methodNotAllowed()} </td>
+     *     <td> {@link Responses#methodNotAllowed()} with the header
+     *          {@value HttpConstants.HeaderKey#ALLOW} populated.</td>
      *   </tr>
      *   <tr>
      *     <th scope="row"> {@link MediaTypeNotAcceptedException} </th>
@@ -361,7 +365,9 @@ public interface ErrorHandler
             res = entityTooLarge();
         } catch (MethodNotAllowedException e) {
             log(thr);
-            res = methodNotAllowed();
+            res = methodNotAllowed().toBuilder().addHeader(
+                        ALLOW, e.getRoute().supportedMethods().collect(joining(", ")))
+                    .build();
         } catch (MediaTypeNotAcceptedException e) {
             log(thr);
             res = mediaTypeNotAccepted();

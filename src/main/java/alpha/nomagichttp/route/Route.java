@@ -9,7 +9,7 @@ import alpha.nomagichttp.message.Request;
 import java.net.URI;
 import java.net.URLDecoder;
 import java.nio.charset.Charset;
-import java.util.SortedSet;
+import java.util.stream.Stream;
 
 /**
  * A {@code Route} is "a target resource upon which to apply semantics"
@@ -249,11 +249,11 @@ public interface Route
     Iterable<String> segments();
     
     /**
-     * Returns all method tokens of all handlers registered with this route.
+     * Returns unique method tokens of all handlers registered with this route.
      * 
-     * @return all method tokens of all handlers registered with this route (unmodifiable)
+     * @return unique method tokens of all handlers registered with this route
      */
-    SortedSet<String> supportedMethods();
+    Stream<String> supportedMethods();
     
     /**
      * Returns '/' concatenated with '/'-joined {@link #segments()}.<p>

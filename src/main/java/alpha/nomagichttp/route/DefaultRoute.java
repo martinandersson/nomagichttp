@@ -11,8 +11,8 @@ import java.util.Map;
 import java.util.NavigableSet;
 import java.util.Optional;
 import java.util.Set;
-import java.util.SortedSet;
 import java.util.TreeSet;
+import java.util.stream.Stream;
 
 import static alpha.nomagichttp.message.MediaType.Score.NOPE;
 import static alpha.nomagichttp.message.MediaType.__ALL;
@@ -22,7 +22,6 @@ import static alpha.nomagichttp.route.AmbiguousHandlerException.createAmbiguousE
 import static java.lang.String.join;
 import static java.text.MessageFormat.format;
 import static java.util.Arrays.stream;
-import static java.util.Collections.unmodifiableSortedSet;
 import static java.util.Comparator.comparingDouble;
 import static java.util.Comparator.comparingInt;
 import static java.util.Objects.requireNonNull;
@@ -203,8 +202,8 @@ public final class DefaultRoute implements Route
     }
     
     @Override
-    public SortedSet<String> supportedMethods() {
-        return unmodifiableSortedSet(new TreeSet<>(handlers.keySet()));
+    public Stream<String> supportedMethods() {
+        return handlers.keySet().stream();
     }
     
     @Override

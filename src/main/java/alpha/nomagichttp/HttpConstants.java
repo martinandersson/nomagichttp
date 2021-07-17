@@ -1685,9 +1685,9 @@ public final class HttpConstants {
          * 
          * Example: {@code Allow: GET, HEAD}<p>
          * 
-         * Currently, this header key is not used by the NoMagicHTTP server.
-         * Planned future work will make use of this header in a response to
-         * {@value StatusCode#FOUR_HUNDRED_FIVE} (Method Not Allowed).
+         * This header is populated in the {@link ErrorHandler#DEFAULT default
+         * response} when a route/resource exists, but no request handler is
+         * mapped to the request-provided HTTP method.
          * 
          * @see <a href="https://tools.ietf.org/html/rfc7231#section-7.4.1">RFC 7231 §7.4.1</a>
          */
