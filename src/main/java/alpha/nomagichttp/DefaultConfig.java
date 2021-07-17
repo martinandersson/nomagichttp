@@ -5,6 +5,7 @@ import alpha.nomagichttp.util.AbstractImmutableBuilder;
 import java.time.Duration;
 import java.util.function.Consumer;
 
+import static java.lang.Math.max;
 import static java.lang.Runtime.getRuntime;
 import static java.time.Duration.ofSeconds;
 import static java.util.Objects.requireNonNull;
@@ -92,7 +93,7 @@ final class DefaultConfig implements Config {
             int      maxRequestHeadSize           = 8_000,
                      maxUnsuccessfulResponses     = 7,
                      maxErrorRecoveryAttempts     = 5,
-                     threadPoolSize               = getRuntime().availableProcessors();
+                     threadPoolSize               = max(3, getRuntime().availableProcessors());
             boolean  rejectClientsUsingHTTP1_0    = false,
                      ignoreRejectedInformational  = true,
                      immediatelyContinueExpect100 = false;

@@ -109,7 +109,32 @@ public interface Config
      * To effectively change the thread pool size, all server instances must
      * first stop.<p>
      * 
-     * The default implementation returns {@link Runtime#availableProcessors()}.
+     * The default implementation returns {@code 3} or {@link
+     * Runtime#availableProcessors()}, whichever one is the greatest.<p>
+     * 
+     * The request thread is only supposed to perform short CPU-bound work - not
+     * idling/being dormant awaiting I/O. Hence, the desired target is equal to
+     * the number of CPUs available. It is not very conceivable that the
+     * throughput will increase if the ceiling is raised - in particular since
+     * the HTTP server is natively asynchronous and therefore already possess
+     * the ability to switch which requests and responses are being processed
+     * based on what data is readily available for consumption - although to
+     * date no experiments on raising the ceiling have been made.<p>
+     * 
+     * The default implementation imposes a lower floor set to 3 as a minimum
+     * pool size.<p>
+     * 
+     * A modern computer can be expected to have many cores, in particular
+     * server machines (32+ cores). But all cores are not necessarily available
+     * to the JVM. A server machine in production often run a plethora of
+     * containers (including multiple instances of the same app), each of which
+     * is assigned a reserved or limited set of the machine's resources, which
+     * often translates to a very small number of CPU:s for any one particular
+     * JVM. It is not uncommon for a poorly configured environment to expose
+     * only 1 single CPUif not less. Without a floor on the pool size, this
+     * would be not so great for the throughput and that is why the default
+     * implementation has a minimum size of 3, which aims to increase the level
+     * of concurrency albeit at a small cost of OS context switching. 
      * 
      * @return thread pool size
      * @see HttpServer
