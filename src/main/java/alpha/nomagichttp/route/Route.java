@@ -9,6 +9,7 @@ import alpha.nomagichttp.message.Request;
 import java.net.URI;
 import java.net.URLDecoder;
 import java.nio.charset.Charset;
+import java.util.stream.Stream;
 
 /**
  * A {@code Route} is "a target resource upon which to apply semantics"
@@ -213,18 +214,6 @@ public interface Route
     }
     
     /**
-     * Returns all segments of this route.<p>
-     * 
-     * All routes are implicitly a descendant of the root which is never
-     * returned from this method, i.e., an empty string. The segment value
-     * follows the pattern specified in {@link #builder(String)}. For example,
-     * ["files", ":user", "*filepath"].
-     * 
-     * @return all the segments of this route
-     */
-    Iterable<String> segments();
-    
-    /**
      * Lookup a handler given a specified {@code method} and media types.
      * 
      * @param method       method ("GET", "POST", ...)
@@ -235,14 +224,36 @@ public interface Route
      * 
      * @throws NullPointerException
      *             if {@code method} is {@code null}
-     * 
-     * @throws NoHandlerFoundException
-     *             if no handler matching the criteria can be found
+     * @throws MethodNotAllowedException
+     *             if no handler matching the method can be found
+     * @throws MediaTypeNotAcceptedException
+     *             if no handler matching "Accept:" media type can be found
+     * @throws MediaTypeUnsupportedException
+     *             if no handler matching "Content-Type:" media type can be found
      * 
      * @see HttpConstants.Method
      * @see RequestHandler.Builder#builder(String) 
      */
     RequestHandler lookup(String method, MediaType contentType, MediaType[] accepts);
+    
+    /**
+     * Returns all segments of this route.<p>
+     * 
+     * All routes are implicitly a descendant of the root which is never
+     * returned from this method, i.e., an empty string. The segment value
+     * follows the pattern specified in {@link #builder(String)}. For example,
+     * ["files", ":user", "*filepath"].
+     * 
+     * @return all the segments of this route (unmodifiable)
+     */
+    Iterable<String> segments();
+    
+    /**
+     * Returns unique method tokens of all handlers registered with this route.
+     * 
+     * @return unique method tokens of all handlers registered with this route
+     */
+    Stream<String> supportedMethods();
     
     /**
      * Returns '/' concatenated with '/'-joined {@link #segments()}.<p>

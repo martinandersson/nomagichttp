@@ -5,6 +5,7 @@ import alpha.nomagichttp.util.AbstractImmutableBuilder;
 import java.time.Duration;
 import java.util.function.Consumer;
 
+import static java.lang.Math.max;
 import static java.lang.Runtime.getRuntime;
 import static java.time.Duration.ofSeconds;
 import static java.util.Objects.requireNonNull;
@@ -24,6 +25,7 @@ final class DefaultConfig implements Config {
                            ignoreRejectedInformational,
                            immediatelyContinueExpect100;
     private final Duration timeoutIdleConnection;
+    private final boolean  implementMissingOptions;
     
     DefaultConfig(Builder b, DefaultBuilder.MutableState s) {
         builder                      = b;
@@ -35,6 +37,7 @@ final class DefaultConfig implements Config {
         ignoreRejectedInformational  = s.ignoreRejectedInformational;
         immediatelyContinueExpect100 = s.immediatelyContinueExpect100;
         timeoutIdleConnection        = s.timeoutIdleConnection;
+        implementMissingOptions      = s.implementMissingOptions;
     }
     
     @Override
@@ -78,6 +81,11 @@ final class DefaultConfig implements Config {
     }
     
     @Override
+    public boolean implementMissingOptions() {
+        return implementMissingOptions;
+    }
+    
+    @Override
     public Builder toBuilder() {
         return builder;
     }
@@ -92,11 +100,12 @@ final class DefaultConfig implements Config {
             int      maxRequestHeadSize           = 8_000,
                      maxUnsuccessfulResponses     = 7,
                      maxErrorRecoveryAttempts     = 5,
-                     threadPoolSize               = getRuntime().availableProcessors();
+                     threadPoolSize               = max(3, getRuntime().availableProcessors());
             boolean  rejectClientsUsingHTTP1_0    = false,
                      ignoreRejectedInformational  = true,
                      immediatelyContinueExpect100 = false;
             Duration timeoutIdleConnection        = ofSeconds(90);
+            boolean  implementMissingOptions      = true;
         }
         
         private DefaultBuilder() {
@@ -146,6 +155,11 @@ final class DefaultConfig implements Config {
         public Builder timeoutIdleConnection(Duration newVal) {
             requireNonNull(newVal);
             return new DefaultBuilder(this, s -> s.timeoutIdleConnection = newVal);
+        }
+        
+        @Override
+        public Builder implementMissingOptions(boolean newVal) {
+            return new DefaultBuilder(this, s -> s.implementMissingOptions = newVal);
         }
         
         @Override

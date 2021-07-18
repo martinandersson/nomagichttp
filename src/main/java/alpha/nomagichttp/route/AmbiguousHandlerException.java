@@ -9,26 +9,25 @@ import java.util.Set;
 import static java.util.Collections.unmodifiableSet;
 
 /**
- * Thrown by the HTTP server if the {@link RequestHandler} resolution process
- * ends ambiguously. The response produced by {@link ErrorHandler#DEFAULT}
- * is "501 Not Implemented".
+ * The request handler resolution process ended ambiguously.
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
+ * @see ErrorHandler#DEFAULT
  */
-public final class AmbiguousNoHandlerFoundException extends NoHandlerFoundException
+public final class AmbiguousHandlerException extends NoHandlerResolvedException
 {
     private static final long serialVersionUID = 1L;
     
     private final Set<RequestHandler> ambiguous;
     
-    static AmbiguousNoHandlerFoundException createAmbiguousEx(
+    static AmbiguousHandlerException createAmbiguousEx(
             Set<RequestHandler> ambiguous,
             String method,
             Route route,
             MediaType contentType,
             MediaType[] accepts)
     {
-        return new AmbiguousNoHandlerFoundException(
+        return new AmbiguousHandlerException(
                 "Ambiguous: " + ambiguous,
                 ambiguous,
                 method,
@@ -37,7 +36,7 @@ public final class AmbiguousNoHandlerFoundException extends NoHandlerFoundExcept
                 accepts);
     }
     
-    private AmbiguousNoHandlerFoundException(
+    private AmbiguousHandlerException(
             String message,
             Set<RequestHandler> ambiguous,
             String method,

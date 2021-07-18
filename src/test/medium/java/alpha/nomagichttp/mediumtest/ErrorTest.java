@@ -11,6 +11,7 @@ import alpha.nomagichttp.message.RequestBodyTimeoutException;
 import alpha.nomagichttp.message.RequestHeadTimeoutException;
 import alpha.nomagichttp.message.Response;
 import alpha.nomagichttp.message.ResponseTimeoutException;
+import alpha.nomagichttp.route.MethodNotAllowedException;
 import alpha.nomagichttp.route.NoRouteFoundException;
 import alpha.nomagichttp.testutil.AbstractRealTest;
 import alpha.nomagichttp.testutil.IORunnable;
@@ -40,6 +41,7 @@ import static alpha.nomagichttp.handler.RequestHandler.POST;
 import static alpha.nomagichttp.handler.RequestHandler.TRACE;
 import static alpha.nomagichttp.handler.RequestHandler.builder;
 import static alpha.nomagichttp.message.Responses.badRequest;
+import static alpha.nomagichttp.message.Responses.internalServerError;
 import static alpha.nomagichttp.message.Responses.noContent;
 import static alpha.nomagichttp.message.Responses.ok;
 import static alpha.nomagichttp.message.Responses.processing;
@@ -728,6 +730,47 @@ class ErrorTest extends AbstractRealTest
             "but HTTP exchange is not active. This error does not propagate anywhere.");
         
         // Superclass asserts no error sent to error handler
+    }
+    
+    // Expect 405 (Method Not Allowed)
+    @Test
+    void MethodNotAllowedException_BLABLA() throws IOException, InterruptedException {
+        server().add("/",
+            GET().respond(internalServerError()),
+            POST().respond(internalServerError()));
+        
+        String rsp = client().writeReadTextUntilNewlines(
+            "BLABLA / HTTP/1.1"               + CRLF + CRLF);
+        assertThat(rsp).isEqualTo(
+            "HTTP/1.1 405 Method Not Allowed" + CRLF +
+            "Content-Length: 0"               + CRLF +
+            // Actually, order is not defined, let's see for how long this test pass
+            "Allow: POST, GET"                + CRLF + CRLF);
+        
+        Throwable t = awaitFirstLogError();
+        assertThat(t).isExactlyInstanceOf(MethodNotAllowedException.class)
+                     .hasMessage("No handler found for method token \"BLABLA\".");
+        assertSame(t, pollServerErrorNow());
+    }
+    
+    // ...but if the method is OPTIONS, the default configuration implements it
+    @Test
+    void MethodNotAllowedException_OPTIONS() throws IOException, InterruptedException {
+        server().add("/",
+                GET().respond(internalServerError()),
+                POST().respond(internalServerError()));
+        
+        String rsp = client().writeReadTextUntilNewlines(
+                "OPTIONS / HTTP/1.1"              + CRLF + CRLF);
+        assertThat(rsp).isEqualTo(
+                "HTTP/1.1 204 No Content"         + CRLF +
+                "Allow: OPTIONS, POST, GET"       + CRLF + CRLF);
+        
+        assertThat(pollServerError())
+                .isExactlyInstanceOf(MethodNotAllowedException.class)
+                .hasMessage("No handler found for method token \"OPTIONS\".");
+        
+        assertThatNoWarningOrErrorIsLogged();
     }
     
     private static void assertOnErrorReceived(MemorizingSubscriber.Signal onError, String msg) {

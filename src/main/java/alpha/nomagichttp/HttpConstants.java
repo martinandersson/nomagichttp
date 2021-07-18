@@ -324,11 +324,7 @@ public final class HttpConstants {
          *   {@literal <}--
          *   HTTP/1.1 204 No Content
          *   Allow: OPTIONS, GET, HEAD, PATCH
-         *   Content-Length: 0
          * </pre>
-         * 
-         * Future work is scheduled to have the NoMagicHTTP server automate the
-         * discovery of allowed methods.<p>
          * 
          * Ping-pong example:
          * 
@@ -343,6 +339,12 @@ public final class HttpConstants {
          *   Content-Length: 4
          *   PONG
          * </pre>
+         * 
+         * Please note that currently, the NoMagicHTTP server only implements a
+         * request target of the origin form, meaning that "*" would be
+         * rejected. Otherwise, the OPTIONS method - as in the first example -
+         * is by default implemented ({@link Config#implementMissingOptions()})
+         * with no need for the application to add an explicit handler.<p>
          * 
          * Safe? Yes. Idempotent? Yes. Response cacheable? No.
          * 
@@ -373,6 +375,7 @@ public final class HttpConstants {
          * 
          * @see Method
          * @see HeaderKey#MAX_FORWARDS
+         * @see StatusCode#FIVE_HUNDRED_ONE
          * @see <a href="https://tools.ietf.org/html/rfc7231#section-4.3.8">RFC 7231 §4.3.8</a>
          */
         public static final String TRACE = "TRACE";
@@ -890,7 +893,9 @@ public final class HttpConstants {
         /**
          * {@value} {@value ReasonPhrase#METHOD_NOT_ALLOWED}.<p>
          * 
-         * TODO: write something
+         * This is the {@link ErrorHandler#DEFAULT default response} when a
+         * route/resource exists, but no request handler is mapped to the
+         * request-provided HTTP method.
          * 
          * @see HeaderKey#ALLOW
          * @see <a href="https://tools.ietf.org/html/rfc7231#section-6.5.5">RFC 7231 §6.5.5</a>
@@ -900,7 +905,9 @@ public final class HttpConstants {
         /**
          * {@value} {@value ReasonPhrase#NOT_ACCEPTABLE}.<p>
          * 
-         * TODO: write something
+         * This is the {@link ErrorHandler#DEFAULT default response} when a
+         * route/resource exists, but no request handler produces the requested
+         * media type.
          * 
          * @see <a href="https://tools.ietf.org/html/rfc7231#section-6.5.6">RFC 7231 §6.5.6</a>
          */
@@ -1120,7 +1127,8 @@ public final class HttpConstants {
         /**
          * {@value} {@value ReasonPhrase#NOT_IMPLEMENTED}.<p>
          * 
-         * TODO: write something
+         * Should be the response when a requested HTTP method has been banned
+         * by the server, such as {@link Method#TRACE}.
          * 
          * @see <a href="https://tools.ietf.org/html/rfc7231#section-6.6.2">RFC 7731 §6.6.2</a>
          */
@@ -1679,9 +1687,9 @@ public final class HttpConstants {
          * 
          * Example: {@code Allow: GET, HEAD}<p>
          * 
-         * Currently, this header key is not used by the NoMagicHTTP server.
-         * Planned future work will make use of this header in a response to
-         * {@value StatusCode#FOUR_HUNDRED_FIVE} (Method Not Allowed).
+         * This header is populated in the {@link ErrorHandler#DEFAULT default
+         * response} when a route/resource exists, but no request handler is
+         * mapped to the request-provided HTTP method.
          * 
          * @see <a href="https://tools.ietf.org/html/rfc7231#section-7.4.1">RFC 7231 §7.4.1</a>
          */

@@ -12,6 +12,7 @@ import org.junit.jupiter.api.Test;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.Channel;
+import java.nio.charset.StandardCharsets;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Flow;
 import java.util.function.Consumer;
@@ -269,6 +270,38 @@ class DetailTest extends AbstractRealTest
         
         ByteBuffer rsp = client().writeReadBytesUntil(req, new byte[]{eom});
         assertThat(rsp).isEqualTo(merged);
+    }
+    
+    // "Accept: text/plain; charset=utf-8; q=0.9, text/plain; charset=iso-8859-1"
+    // ISO 8859 wins, coz implicit q = 1
+    @Test
+    void charsetPreferenceThroughQ() throws IOException {
+        server().add("/", GET().apply(req ->
+                text("hello", req).completedStage()));
+        
+        // Default is UTF-8
+        // (important to keep this here as we need to make sure the next test
+        //  pass for the right reasons)
+        var rsp1 = client().writeReadTextUntil(
+            "GET / HTTP/1.1"                          + CRLF + CRLF, "hello");
+        assertThat(rsp1).isEqualTo(
+            "HTTP/1.1 200 OK"                         + CRLF +
+            "Content-Type: text/plain; charset=utf-8" + CRLF +
+            "Content-Length: 5"                       + CRLF + CRLF +
+            
+            "hello");
+        
+        // Responses.text(String, Request) uses charset from request
+        var rsp2 = client().writeReadTextUntil(
+            "GET / HTTP/1.1"                          + CRLF +
+            "Accept: text/plain; charset=utf-8; q=0.9, " +
+                    "text/plain; charset=iso-8859-1"  + CRLF + CRLF, "hello");
+        assertThat(rsp2).isEqualTo(
+            "HTTP/1.1 200 OK"                         + CRLF +
+            "Content-Type: text/plain; charset=iso-8859-1" + CRLF +
+            "Content-Length: 5"                       + CRLF + CRLF +
+            
+            "hello");
     }
     
     private static class AfterByteTargetStop implements Flow.Subscriber<PooledByteBufferHolder>

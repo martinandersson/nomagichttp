@@ -12,12 +12,13 @@ import java.util.NavigableSet;
 import java.util.Optional;
 import java.util.Set;
 import java.util.TreeSet;
+import java.util.stream.Stream;
 
+import static alpha.nomagichttp.message.MediaType.Score.NOPE;
 import static alpha.nomagichttp.message.MediaType.__ALL;
 import static alpha.nomagichttp.message.MediaType.__NOTHING;
 import static alpha.nomagichttp.message.MediaType.__NOTHING_AND_ALL;
-import static alpha.nomagichttp.message.MediaType.Score.NOPE;
-import static alpha.nomagichttp.route.AmbiguousNoHandlerFoundException.createAmbiguousEx;
+import static alpha.nomagichttp.route.AmbiguousHandlerException.createAmbiguousEx;
 import static java.lang.String.join;
 import static java.text.MessageFormat.format;
 import static java.util.Arrays.stream;
@@ -45,7 +46,7 @@ public final class DefaultRoute implements Route
      * 
      * The segments are assumed to have been validated already (by the builder).
      * 
-     * @param segments  of the route
+     * @param segments  of the route (must be unmodifiable)
      * @param handlers  of the route
      * 
      * @throws NullPointerException   if any argument is {@code null}
@@ -55,14 +56,8 @@ public final class DefaultRoute implements Route
         if (handlers.isEmpty()) {
             throw new IllegalStateException("No handlers.");
         }
-        
         this.segments = segments;
         this.handlers = handlers.stream().collect(groupingBy(RequestHandler::method));
-    }
-    
-    @Override
-    public Iterable<String> segments() {
-        return segments;
     }
     
     @Override
@@ -76,10 +71,12 @@ public final class DefaultRoute implements Route
         NavigableSet<RankedHandler> candidates = null;
         Set<RankedHandler> ambiguous = null;
         
+        boolean consumedContentType = false;
         for (RequestHandler h : forMethod) {
             if (!filterByContentType(h, contentType)) {
                 continue;
             }
+            consumedContentType = true;
             
             RankedHandler r = filterByAccept(h, accepts);
             if (r == null) {
@@ -89,7 +86,6 @@ public final class DefaultRoute implements Route
             if (candidates == null) {
                 candidates = new TreeSet<>();
             }
-            
             if (!candidates.add(r)) {
                 if (ambiguous == null) {
                     // Initialize with the other ambiguous handler before adding this one.
@@ -100,8 +96,13 @@ public final class DefaultRoute implements Route
         }
         
         if (candidates == null) {
-            throw NoHandlerFoundException.unmatchedContentType(
-                    method, this, contentType, accepts);
+            if (consumedContentType) {
+                throw MediaTypeNotAcceptedException.unmatchedAccept(
+                        method, this, contentType, accepts);
+            } else {
+                throw MediaTypeUnsupportedException.unmatchedContentType(
+                        method, this, contentType, accepts);
+            }
         }
         
         if (ambiguous != null) {
@@ -127,12 +128,9 @@ public final class DefaultRoute implements Route
             MediaType[] accepts)
     {
         final List<RequestHandler> rh = handlers.get(method);
-        
         if (rh == null) {
-            throw NoHandlerFoundException.unmatchedMethod(
-                    method, this, contentType, accepts);
+            throw new MethodNotAllowedException(method, this, contentType, accepts);
         }
-        
         assert !rh.isEmpty();
         return rh;
     }
@@ -196,6 +194,16 @@ public final class DefaultRoute implements Route
                 ((MediaRange) specific).quality() : 1.;
         
         return new RankedHandler(q, handler);
+    }
+    
+    @Override
+    public Iterable<String> segments() {
+        return segments;
+    }
+    
+    @Override
+    public Stream<String> supportedMethods() {
+        return handlers.keySet().stream();
     }
     
     @Override

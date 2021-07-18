@@ -36,7 +36,8 @@ public final class TestConfig implements Config {
         rejectClientsUsingHTTP1_0    (Config::rejectClientsUsingHTTP1_0),
         ignoreRejectedInformational  (Config::ignoreRejectedInformational),
         immediatelyContinueExpect100 (Config::immediatelyContinueExpect100),
-        timeoutIdleConnection        (Config::timeoutIdleConnection);
+        timeoutIdleConnection        (Config::timeoutIdleConnection),
+        implementMissingOptions      (Config::implementMissingOptions);
         
         private final Function<Config, Object> get;
         
@@ -101,6 +102,11 @@ public final class TestConfig implements Config {
     @Override
     public Duration timeoutIdleConnection() {
         return get(Method.timeoutIdleConnection);
+    }
+    
+    @Override
+    public boolean implementMissingOptions() {
+        return get(Method.implementMissingOptions);
     }
     
     private <T> T get(Method m) {

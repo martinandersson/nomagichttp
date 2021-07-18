@@ -20,6 +20,8 @@ import static java.lang.Double.parseDouble;
 import static java.lang.System.Logger;
 import static java.lang.System.Logger.Level.WARNING;
 import static java.util.Collections.unmodifiableMap;
+import static java.util.OptionalDouble.empty;
+import static java.util.OptionalDouble.of;
 import static java.util.stream.Collectors.joining;
 
 /**
@@ -100,7 +102,7 @@ import static java.util.stream.Collectors.joining;
 public class MediaType
 {
     private static final Logger LOG = System.getLogger(MediaType.class.getPackageName());
-    private static final String WILDCARD = "*";
+    private static final String WILDCARD = "*", q = "q";
     private static final Pattern SEMICOLON = Pattern.compile(";");
     
     /**
@@ -279,41 +281,38 @@ public class MediaType
      * @return a parsed media type (never {@code null})
      */
     public static MediaType parse(final CharSequence text) {
-        // First part is type/subtype, possibly followed by ;params
+        // First part is "type/subtype", possibly followed by ";params"
         final String[] tokens = SEMICOLON.split(text);
-        
-        String[] types = parseTypes(tokens[0], text);
-        
+        final String[] types = parseTypes(tokens[0], text);
         final String type = types[0],
                   subtype = types[1];
         
         Map<String, String> params = parseParams(type, tokens, 1, true, text);
         final int size = params.size();
         
-        String qStr = params.remove("q");
-        OptionalDouble qVal = OptionalDouble.empty();
-        
+        String qStr = params.remove(q); // Most likely lower case..
+        if (qStr == null) {
+            qStr = params.remove("Q"); // ..but can be upper case.
+        }
+        OptionalDouble qVal = empty();
         if (qStr != null) {
             try {
-                qVal = OptionalDouble.of(parseDouble(qStr));
+                qVal = of(parseDouble(qStr));
             }
             catch (NumberFormatException e) {
                 throw new MediaTypeParseException(text,
-                        "Non-parsable value for q-parameter.", e);
+                        "Non-parsable value for " + q + "-parameter.", e);
             }
         }
         
         Map<String, String> extension = parseParams(type, tokens, 1 + size, false, text);
-        
         if (!extension.isEmpty()) {
             LOG.log(WARNING, () -> "Media type extension parameters ignored: " + extension);
         }
         
-        if (type.equals(WILDCARD) || subtype.equals(WILDCARD) || qVal.isPresent()) {
-            return new MediaRange(text.toString(), type, subtype, params, qVal.orElse(1));
-        }
-        
-        return new MediaType(text.toString(), type, subtype, params);
+        return type.equals(WILDCARD) || subtype.equals(WILDCARD) || qVal.isPresent() ?
+                new MediaRange(text.toString(), type, subtype, params, qVal.orElse(1)) :
+                new MediaType(text.toString(), type, subtype, params);
     }
     
     private static String[] parseTypes(String token, CharSequence text) {
@@ -361,7 +360,7 @@ public class MediaType
                 throw new MediaTypeParseException(text, "Duplicated parameters.");
             }
             
-            if (stopAfterQ && nameAndValue[0].equals("q")) {
+            if (stopAfterQ && nameAndValue[0].equalsIgnoreCase(q)) {
                 break;
             }
         }
@@ -409,6 +408,7 @@ public class MediaType
     private final Map<String, String> params;
     
     
+    /* package-private for tests */
     MediaType(String text, String type, String subtype, Map<String, String> params) {
         this.text    = text;
         this.type    = type;

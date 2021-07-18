@@ -146,7 +146,7 @@ public interface Attributes {
      * Returns a modifiable map view of the attributes. Changes to the map
      * are reflected in the attributes, and vice-versa.<p>
      * 
-     * Unlike {@link #getOptAny(String)}, using this method does not lead to
+     * Unlike {@link #getOptAny(String)}, using this method can not lead to
      * heap pollution if the returned map is immediately used to work with
      * the values. For example:
      * 

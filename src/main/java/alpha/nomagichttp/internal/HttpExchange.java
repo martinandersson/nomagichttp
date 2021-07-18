@@ -9,6 +9,7 @@ import alpha.nomagichttp.handler.RequestHandler;
 import alpha.nomagichttp.message.HttpVersionTooNewException;
 import alpha.nomagichttp.message.HttpVersionTooOldException;
 import alpha.nomagichttp.message.IllegalBodyException;
+import alpha.nomagichttp.message.MediaType;
 import alpha.nomagichttp.message.Request;
 import alpha.nomagichttp.message.RequestBodyTimeoutException;
 import alpha.nomagichttp.message.RequestHead;
@@ -266,11 +267,13 @@ final class HttpExchange
     }
     
     private static RequestHandler findRequestHandler(RequestHead rh, RouteRegistry.Match m) {
-        RequestHandler h = m.route().lookup(
-                rh.method(),
-                contentType(rh.headers()).orElse(null),
-                accept(rh.headers()));
-        
+        MediaType type = contentType(rh.headers()).orElse(null);
+        // TODO: Find a way to cache this and re-use in Responses factories that
+        //       parse a charset from request
+        MediaType[] accepts = accept(rh.headers())
+                .map(s -> s.toArray(MediaType[]::new))
+                .orElse(null);
+        RequestHandler h = m.route().lookup(rh.method(), type, accepts);
         LOG.log(DEBUG, () -> "Matched handler: " + h);
         return h;
     }

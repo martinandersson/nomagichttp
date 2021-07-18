@@ -77,7 +77,8 @@ import static java.net.http.HttpRequest.BodyPublisher;
  * the same client. The response can also be shared concurrently to different
  * clients, assuming the {@linkplain Builder#body(Flow.Publisher) body
  * publisher} is thread-safe. If the publisher instance was retrieved using any
- * method provided by the NoMagicHTTP library, then it is thread-safe.<p>
+ * method provided by the NoMagicHTTP library (e.g. {@link Responses}), then it
+ * is fully thread-safe and non-blocking (can be cached and freely reused).<p>
  * 
  * The {@code Response} implementation does not necessarily implement {@code
  * hashCode()} and {@code equals()}.
@@ -304,7 +305,7 @@ public interface Response extends HeaderHolder
      * variants may build just fine but {@linkplain HttpServer blow up
      * later}.<p>
      * 
-     * The implementation is thread-safe.<p>
+     * The implementation is thread-safe and non-blocking.<p>
      * 
      * The implementation does not necessarily implement {@code hashCode()} and
      * {@code equals()}.
@@ -513,7 +514,9 @@ public interface Response extends HeaderHolder
         Builder mustCloseAfterWrite(boolean enabled);
         
         /**
-         * Builds the response.
+         * Builds the response.<p>
+         * 
+         * This method returns a new response object on each call.
          * 
          * @return a response
          * 

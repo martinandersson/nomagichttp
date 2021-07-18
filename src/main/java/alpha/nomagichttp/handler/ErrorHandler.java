@@ -1,6 +1,7 @@
 package alpha.nomagichttp.handler;
 
 import alpha.nomagichttp.Config;
+import alpha.nomagichttp.HttpConstants;
 import alpha.nomagichttp.message.BadHeaderException;
 import alpha.nomagichttp.message.EndOfStreamException;
 import alpha.nomagichttp.message.HttpVersionParseException;
@@ -16,11 +17,18 @@ import alpha.nomagichttp.message.RequestHeadTimeoutException;
 import alpha.nomagichttp.message.Response;
 import alpha.nomagichttp.message.ResponseTimeoutException;
 import alpha.nomagichttp.message.Responses;
-import alpha.nomagichttp.route.NoHandlerFoundException;
+import alpha.nomagichttp.route.AmbiguousHandlerException;
+import alpha.nomagichttp.route.MediaTypeNotAcceptedException;
+import alpha.nomagichttp.route.MediaTypeUnsupportedException;
+import alpha.nomagichttp.route.MethodNotAllowedException;
+import alpha.nomagichttp.route.NoHandlerResolvedException;
 import alpha.nomagichttp.route.NoRouteFoundException;
 
 import java.util.concurrent.CompletionException;
+import java.util.stream.Stream;
 
+import static alpha.nomagichttp.HttpConstants.HeaderKey.ALLOW;
+import static alpha.nomagichttp.HttpConstants.Method.OPTIONS;
 import static alpha.nomagichttp.HttpConstants.Version.HTTP_1_1;
 import static alpha.nomagichttp.handler.ResponseRejectedException.Reason;
 import static alpha.nomagichttp.handler.ResponseRejectedException.Reason.PROTOCOL_NOT_SUPPORTED;
@@ -28,12 +36,18 @@ import static alpha.nomagichttp.message.Responses.badRequest;
 import static alpha.nomagichttp.message.Responses.entityTooLarge;
 import static alpha.nomagichttp.message.Responses.httpVersionNotSupported;
 import static alpha.nomagichttp.message.Responses.internalServerError;
+import static alpha.nomagichttp.message.Responses.mediaTypeNotAccepted;
+import static alpha.nomagichttp.message.Responses.mediaTypeUnsupported;
+import static alpha.nomagichttp.message.Responses.methodNotAllowed;
+import static alpha.nomagichttp.message.Responses.noContent;
 import static alpha.nomagichttp.message.Responses.notFound;
-import static alpha.nomagichttp.message.Responses.notImplemented;
 import static alpha.nomagichttp.message.Responses.requestTimeout;
 import static alpha.nomagichttp.message.Responses.serviceUnavailable;
 import static alpha.nomagichttp.message.Responses.upgradeRequired;
 import static java.lang.System.Logger.Level.ERROR;
+import static java.util.stream.Collectors.joining;
+import static java.util.stream.Stream.concat;
+import static java.util.stream.Stream.of;
 
 /**
  * Handles a {@code Throwable}, presumably by translating it into a response as
@@ -148,10 +162,10 @@ public interface ErrorHandler
      * 
      * However, the true nature of the error can only be determined by looking
      * into the error object itself, which also might reveal what to expect from
-     * the succeeding arguments. For example, if {@code thr} is a {@link
-     * NoHandlerFoundException}, then the request object was built and will not
-     * be null, but since the request handler wasn't found then obviously the
-     * request handler argument is going to be null.<p>
+     * the succeeding arguments. For example, if {@code thr} is an instance of
+     * {@link NoHandlerResolvedException}, then the request object was built and
+     * will not be null, but since the request handler wasn't resolved then
+     * the request handler argument is going to be null.<p>
      * 
      * It is a design goal of the NoMagicHTTP library to have each exception
      * type provide whatever API necessary to investigate and possibly resolve
@@ -229,16 +243,44 @@ public interface ErrorHandler
      *     <td> {@link Responses#notFound()} </td>
      *   </tr>
      *   <tr>
+     *     <th scope="row"> {@link MethodNotAllowedException} </th>
+     *     <td> HTTP method is {@value HttpConstants.Method#OPTIONS} and
+     *          {@link Config#implementMissingOptions()} returns {@code true}</td>
+     *     <td> No </td>
+     *     <td> {@link Responses#noContent()} with the header
+     *          {@value HttpConstants.HeaderKey#ALLOW} populated.</td>
+     *   </tr>
+     *   <tr>
+     *     <th scope="row"> {@link MethodNotAllowedException} </th>
+     *     <td> HTTP method is not {@value HttpConstants.Method#OPTIONS} or
+     *          {@link Config#implementMissingOptions()} returns {@code false}</td>
+     *     <td> Yes </td>
+     *     <td> {@link Responses#methodNotAllowed()} with the header
+     *          {@value HttpConstants.HeaderKey#ALLOW} populated.</td>
+     *   </tr>
+     *   <tr>
+     *     <th scope="row"> {@link MediaTypeNotAcceptedException} </th>
+     *     <td> None </td>
+     *     <td> Yes </td>
+     *     <td> {@link Responses#mediaTypeNotAccepted()} </td>
+     *   </tr>
+     *   <tr>
+     *     <th scope="row"> {@link MediaTypeUnsupportedException} </th>
+     *     <td> None </td>
+     *     <td> Yes </td>
+     *     <td> {@link Responses#mediaTypeUnsupported()} </td>
+     *   </tr>
+     *   <tr>
+     *     <th scope="row"> {@link AmbiguousHandlerException} </th>
+     *     <td> None </td>
+     *     <td> Yes </td>
+     *     <td> {@link Responses#internalServerError()} </td>
+     *   </tr>
+     *   <tr>
      *     <th scope="row"> {@link MaxRequestHeadSizeExceededException} </th>
      *     <td> None </td>
      *     <td> Yes </td>
      *     <td> {@link Responses#entityTooLarge()} </td>
-     *   </tr>
-     *   <tr>
-     *     <th scope="row"> {@link NoHandlerFoundException} </th>
-     *     <td> None </td>
-     *     <td> Yes </td>
-     *     <td> {@link Responses#notImplemented()} </td>
      *   </tr>
      *   <tr>
      *     <th scope="row"> {@link MediaTypeParseException} </th>
@@ -335,9 +377,23 @@ public interface ErrorHandler
         } catch (MaxRequestHeadSizeExceededException e) {
             log(thr);
             res = entityTooLarge();
-        } catch (NoHandlerFoundException e) { // + AmbiguousNoHandlerFoundException
+        } catch (MethodNotAllowedException e) {
+            Response status = methodNotAllowed();
+            Stream<String> allow = e.getRoute().supportedMethods();
+            if (req.method().equals(OPTIONS) && ch.getServer().getConfig().implementMissingOptions()) {
+                status = noContent();
+                // Now OPTIONS is a supported method lol
+                allow = concat(of(OPTIONS), allow);
+            } else {
+                log(thr);
+            }
+            res = status.toBuilder().addHeader(ALLOW, allow.collect(joining(", "))).build();
+        } catch (MediaTypeNotAcceptedException e) {
             log(thr);
-            res = notImplemented();
+            res = mediaTypeNotAccepted();
+        } catch (MediaTypeUnsupportedException e) {
+            log(thr);
+            res = mediaTypeUnsupported();
         } catch (MediaTypeParseException | IllegalBodyException e) {
             if (rh == null) {
                 res = badRequest();
@@ -365,7 +421,7 @@ public interface ErrorHandler
             log(thr);
             res = serviceUnavailable()
                     .toBuilder().mustCloseAfterWrite(true).build();
-        } catch (Throwable unknown) {
+        } catch (Throwable unknown) { // + AmbiguousHandlerException
             log(thr);
             res = internalServerError();
         }
