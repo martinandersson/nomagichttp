@@ -33,7 +33,7 @@ An item ~~crossed out~~ is complete, an item in __bold__ is work in progress.
 [~~Stage: Pseudo-Mutable Types~~](#stage-pseudo-mutable-types)  
 [~~Stage: Multiple Responses~~](#stage-multiple-responses)  
 [~~Stage: Connection Life-Cycle/Management~~](#stage-connection-life-cyclemanagement)  
-[Stage: Actions](#stage-actions)  
+[**Stage: Actions**](#stage-actions)  
 [Stage: Codings, Part 1/3 (Chunked Transfer)](#stage-codings-part-13-chunked-transfer)  
 [Stage: Codings, Part 2/3 (Response Body Compression)](#stage-codings-part-23-response-body-compression)  
 [Stage: Codings, Part 3/3 (Request Body Decompression)](#stage-codings-part-33-request-body-decompression)  
@@ -288,12 +288,15 @@ responses. `ResponsePipeline` will handle unknown length by setting
 
 ## Stage: Actions
 
+_Status: **In Progress**_
+
 Pre- and post request handler actions which are able to intercept- and modify
 the HTTP exchange. Naming not defined, either "filter", "action", "aspect" or
 something to that effect. "Filter" - although common in other projects - is also
 misleading. A pre action may have no opinion on whether or not a request is
 routed through and it would probably be outright bizarre to have a post action
-reject a prepared response.
+reject a prepared response. Update: Going with Pre/Post- Action, before and
+after request handler.
 
 Useful because
 
