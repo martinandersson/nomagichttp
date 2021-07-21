@@ -397,15 +397,16 @@ class ExampleTest extends AbstractRealTest
     @Test
     @DisplayName("CountRequestsByMethod/TestClient")
     void CountRequestsByMethod() throws IOException, InterruptedException {
-        Map<String, LongAdder> freqs = new ConcurrentHashMap<>();
+        final Map<String, LongAdder> freqs = new ConcurrentHashMap<>();
         
-        BiConsumer<RequestHeadParsed, RequestHead> bump = (event, head) ->
+        BiConsumer<RequestHeadParsed, RequestHead> incrementer = (event, head) ->
                 freqs.computeIfAbsent(head.method(), m -> new LongAdder()).increment();
         
         // We don't need to add routes here, sort of the whole point lol
-        server().events().on(RequestHeadParsed.class, bump);
+        server().events().on(RequestHeadParsed.class, incrementer);
         // Must await the server before we assert the counter
-        client().writeReadTextUntilNewlines("GET / HTTP/1.1" + CRLF + CRLF);
+        var responseIgnored = client()
+                .writeReadTextUntilNewlines("GET / HTTP/1.1" + CRLF + CRLF);
         
         assertThat(freqs.get("GET").sum()).isOne();
         assertThat(pollServerError()).isExactlyInstanceOf(NoRouteFoundException.class);
