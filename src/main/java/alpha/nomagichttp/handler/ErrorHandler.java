@@ -62,10 +62,14 @@ import static java.util.stream.Stream.of;
  * 
  * The server will call error handlers only during an active HTTP exchange and
  * only if the channel remains open for writing at the time of the error. The
- * purpose is to always provide the client with a response despite server
- * errors.<p>
+ * purpose of error handlers is to be able to cater the client with a response
+ * even in the event of failure.<p>
  * 
- * Specifically for:<p>
+ * The error handler should only be used for generic errors. It should not be
+ * used as a replacement for Java's ordinary error mechanisms, such as the
+ * {@code try-catch} block.
+ * 
+ * Specifically, the error handler may be called for:<p>
  * 
  * 1) Exceptions occurring on the request thread from after the point when the
  * server has begun receiving and parsing a request message until when the
@@ -81,6 +85,9 @@ import static java.util.stream.Stream.of;
  * bytebuffers before the error was signalled. It doesn't make much sense trying
  * to recover the situation after the point where a response has already begun
  * transmitting back to the client.<p>
+ * 
+ * 4) Exceptions thrown from {@link PostRequestAction}s and {@link
+ * PostResponseAction}s.<p>
  * 
  * The server will <strong>not</strong> call error handlers for errors that are
  * not directly involved in the HTTP exchange or for errors that occur
@@ -114,10 +121,12 @@ import static java.util.stream.Stream.of;
  *             throw throwable;
  *         } catch (ExpectedException e) {
  *             channel.{@link ClientChannel#writeFirst(Response) writeFirst}(myAlternativeResponse());
+ *             // normal return; breaks the call chain
  *         } catch (AnotherExpectedException e) {
  *             channel.writeFirst(someOtherAlternativeResponse());
+ *             // normal return; breaks the call chain
  *         }
- *         // else automagically re-thrown and propagated throughout the chain
+ *         // else not handled by this handler; propagates throughout the chain
  *     };
  * </pre>
  * 
@@ -151,21 +160,21 @@ public interface ErrorHandler
      * with.<p>
      * 
      * So, if the request argument is null, then the request handler argument
-     * will absolutely also be null (the server never got so far as to find
+     * will absolutely also be null (the server never got so far as to resolve
      * and/or invoke the request handler).<p>
      * 
      * If the request argument is not null, then the request handler argument
      * may or may not be null. If the request handler is not null, then the
      * "fault" of the error is most likely the request handlers' since the very
-     * next thing the server do after having found the request handler is to
-     * call it.<p>
+     * next thing the server do after having resolved the request handler is to
+     * call the guy.<p>
      * 
-     * However, the true nature of the error can only be determined by looking
-     * into the error object itself, which also might reveal what to expect from
-     * the succeeding arguments. For example, if {@code thr} is an instance of
-     * {@link NoHandlerResolvedException}, then the request object was built and
-     * will not be null, but since the request handler wasn't resolved then
-     * the request handler argument is going to be null.<p>
+     * However, the true nature of the error can often only be determined by
+     * looking into the error object itself, which also might reveal what to
+     * expect from the succeeding arguments. For example, if {@code thr} is an
+     * instance of {@link NoHandlerResolvedException}, then the request object
+     * was built and will not be null, but since the request handler wasn't
+     * resolved then the request handler argument is going to be null.<p>
      * 
      * It is a design goal of the NoMagicHTTP library to have each exception
      * type provide whatever API necessary to investigate and possibly resolve

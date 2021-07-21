@@ -168,12 +168,8 @@ public interface Route
      * parameters:
      * 
      * <pre>{@code
-     *     Route r = Route.builder("/").handler(...).build();
-     * }</pre>
-     * 
-     * Alternatively, import static {@code Routes.route()}, then:
-     * <pre>{@code
-     *     Route r = route("/", ...);
+     *     RequestHandler handler = ...
+     *     Route r = Route.builder("/").handler(handler).build();
      * }</pre>
      * 
      * The value given to this method as well as {@link Builder#append(String)}
@@ -189,6 +185,19 @@ public interface Route
      *    Route.builder("/files").append(":user/*filepath")...
      *    Route.builder("/files/:user/*filepath")...
      * }</pre>
+     * 
+     * As per the first example, using the builder makes it possible to avoid
+     * embedding syntax-driven tokens in favor of explicit {@code paramXXX()}
+     * method calls. This is of course always desired; the less magic the
+     * better. However, if the application declares a route using one single
+     * pattern string, as in the last example, then there's a shortcut available
+     * in the {@code HttpServer} interface that accomplishes the same thing:
+     * <pre>
+     *   RequestHandler handler = ...
+     *   HttpServer server = ...
+     *   server.{@link HttpServer#add(String, RequestHandler, RequestHandler...) add
+     *     }("/files/:user/*filepath", handler);
+     * </pre>
      * 
      * Technical jargon, just to have it stated: '/' serves as a segment
      * delimiter. Any leading or trailing '/' in the pattern will be discarded

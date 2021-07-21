@@ -411,7 +411,7 @@ public interface HttpServer
      *               builder}(pattern).{@link Route.Builder#handler(RequestHandler, RequestHandler...)
      *               handler}(first, more).{@link Route.Builder#build()
      *               build}();
-     *     return add(r);
+     *     return {@link #add(Route) add}(r);
      * </pre>
      * 
      * @param pattern of route path
