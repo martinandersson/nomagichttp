@@ -11,11 +11,18 @@ import java.util.function.Consumer;
  * 
  * Which events are emitted should be documented by the emitter. The emission
  * <i>may</i> also carry with it one or two attachments, which are arbitrary
- * objects for passing event-related data.<p>
+ * objects for passing event-related data. The event object itself can therefore
+ * be a constant without any need to create objects and produce unnecessary
+ * garbage.<p>
  * 
- * Events can be used to reduce code duplication and as an alternative to
- * callback arguments. Events can also make code traceability harder and add
- * unnecessary complexity.
+ * Events can be used to decouple components and to simplify the architecture,
+ * e.g. as an alternative to callback arguments. But, events can also make code
+ * traceability harder and add unnecessary complexity. With great power comes
+ * great responsibility! Events should never be a replacement of what would
+ * otherwise have been a simple method call even if that entails coupling.
+ * Normally, only when the side-effect is clearly a different concern <i>and</i>
+ * there are at least two side-effects happening should decoupling using events
+ * be considered an option.
  * 
  * <pre>
  *   class ShoppingCart extends {@link AbstractEventEmitter} {
@@ -28,29 +35,34 @@ import java.util.function.Consumer;
  *   // somewhere else
  *   Inventory inv = ...
  *   someCart.on(ItemAdded.class, inv::reserveAsync);
+ *   // and also somewhere else
+ *   Counter metrics = ...
+ *   someCart.on(ItemAdded.class, metrics::increment);
  * </pre>
  * 
- * Event listeners observe events of a particular runtime type of said event
- * object. Listeners can not subscribe to a superclass and then receive all
- * events that are an instance of the superclass.
+ * Event listeners observe events of the runtime type to which they subscribe.
+ * Listeners can not subscribe to a superclass and then receive events that are
+ * a subtype of the superclass. Think of the backing data structure as a {@code
+ * Map} from event runtime type to a bunch of listeners invoked for that
+ * specific event type (that's literally how the default implementation works).
  * <pre>
  * 
  *   EventEmitter source = ...
  *   
- *   // Receives new Object(), not "string"
+ *   // Receives only new Object(), not "string"
  *   source.on(Object.class, new MyConsumer());
  *   
- *    // Receives "string", not new Object()
+ *    // Receives only "string", not new Object()
  *   source.on(String.class, new MyConsumer());
  *   
+ *   // One may register the same listener for multiple types
  *   Consumer{@literal <}Object{@literal >} receivesBoth = System.out::println;
  *   source.on(Object.class, receivesBoth);
  *   source.on(String.class, receivesBoth);
  * </pre>
- *
- * The same listener instance can be re-subscribed against different event types
- * to accomplish a similar result. If all events are sought after, consider
- * subscribing to a {@link ScatteringEventEmitter}.<p>
+ * 
+ * A {@link ScatteringEventEmitter} supports subscribing to <i>all</i>
+ * events.<p>
  * 
  * Semantics concerning attachments are normally documented and defined by the
  * event type, and, normally always present or never present. For example, a
