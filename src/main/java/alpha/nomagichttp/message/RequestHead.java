@@ -44,4 +44,21 @@ public interface RequestHead {
      * @return the headers (never {@code null} but may be empty)
      */
     HttpHeaders headers();
+    
+    /**
+     * Returns the value from {@link System#nanoTime()} polled when the first
+     * char of the request head was read and processed.<p>
+     * 
+     * Useful to compute the time it took for the request head to be parsed
+     * (parsing occurs concurrently as chars are read, subject to upstream
+     * buffering; may or may not include time spent on the wire).
+     * <pre>
+     *   long elapsedNanos = System.nanoTime() - head.nanoTimeOnStart();
+     * </pre>
+     * 
+     * @return a previous value of the running Java Virtual Machine's
+     * high-resolution time source, in nanoseconds, as read when the first
+     * request head char was read and processed
+     */
+    long nanoTimeOnStart();
 }

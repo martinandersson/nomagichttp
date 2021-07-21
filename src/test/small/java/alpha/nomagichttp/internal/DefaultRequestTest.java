@@ -134,7 +134,8 @@ class DefaultRequestTest
                 "test-method",
                 "test-requestTarget",
                 "test-httpVersion",
-                headers);
+                headers,
+                -1);
         
         return DefaultRequest.withParams(
                 HTTP_1_1,
