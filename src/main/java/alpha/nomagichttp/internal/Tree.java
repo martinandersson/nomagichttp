@@ -1,4 +1,4 @@
-package alpha.nomagichttp.route;
+package alpha.nomagichttp.internal;
 
 import java.util.AbstractMap;
 import java.util.ArrayDeque;

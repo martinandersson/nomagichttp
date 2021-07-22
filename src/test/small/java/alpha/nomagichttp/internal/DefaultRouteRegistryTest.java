@@ -1,5 +1,9 @@
-package alpha.nomagichttp.route;
+package alpha.nomagichttp.internal;
 
+import alpha.nomagichttp.route.NoRouteFoundException;
+import alpha.nomagichttp.route.Route;
+import alpha.nomagichttp.route.RouteCollisionException;
+import alpha.nomagichttp.route.RouteRegistry;
 import org.junit.jupiter.api.Test;
 
 import java.util.AbstractMap;
@@ -26,7 +30,7 @@ class DefaultRouteRegistryTest
 {
     private static final Route ROOT_NOOP = dummyRoute("/");
     
-    private final RouteRegistry testee = new DefaultRouteRegistry();
+    private final DefaultRouteRegistry testee = new DefaultRouteRegistry(null);
     
     // Simple match cases
     // ----
@@ -102,7 +106,7 @@ class DefaultRouteRegistryTest
             e("/xxx",  "/*p1",  "Hierarchical position of \"*p1\" is occupied with non-compatible type."),
             e("/*p1",  "/*p2",  "Route \"/*p2\" is equivalent to an already added route \"/*p1\".")
         ).forEach(e -> {
-            RouteRegistry reg = new DefaultRouteRegistry();
+            RouteRegistry reg = new DefaultRouteRegistry(null);
             reg.add(dummyRoute(e[0]));
             assertThatThrownBy(() -> reg.add(dummyRoute(e[1])))
                     .isExactlyInstanceOf(RouteCollisionException.class)
@@ -196,7 +200,7 @@ class DefaultRouteRegistryTest
         Route r = dummyRoute("/download/:user/*filepath");
         testee.add(r);
         assertThat(testee.remove(r)).isTrue();
-        assertThat(dump()).containsOnlyKeys("/");
+        assertThat(testee.dump()).containsOnlyKeys("/");
     }
     
     @Test
@@ -204,7 +208,7 @@ class DefaultRouteRegistryTest
         Route r = dummyRoute("/download/:user/*filepath");
         testee.add(r);
         assertThat(testee.remove("/download/:user/*filepath")).isSameAs(r);
-        assertThat(dump()).containsOnlyKeys("/");
+        assertThat(testee.dump()).containsOnlyKeys("/");
     }
     
     @Test
@@ -212,7 +216,7 @@ class DefaultRouteRegistryTest
         Route r = dummyRoute("/download/:user/*filepath");
         testee.add(r);
         assertThat(testee.remove("/download/:/*")).isSameAs(r); // <-- empty
-        assertThat(dump()).containsOnlyKeys("/");
+        assertThat(testee.dump()).containsOnlyKeys("/");
     }
     
     @Test
@@ -220,7 +224,7 @@ class DefaultRouteRegistryTest
         Route r = dummyRoute("/download/:user/*filepath");
         testee.add(r);
         assertThat(testee.remove("/download/:bla/*bla")).isSameAs(r); // <-- duplicated
-        assertThat(dump()).containsOnlyKeys("/");
+        assertThat(testee.dump()).containsOnlyKeys("/");
     }
     
     // Bug fix
@@ -250,12 +254,12 @@ class DefaultRouteRegistryTest
         Route r = dummyRoute("*p");
         
         testee.add(r);
-        assertThat(dump()).containsExactly(
+        assertThat(testee.dump()).containsExactly(
                 // two nodes in the tree; the parent root "/" (value null) and the child "*" (value route)
                 entry("/", null), entry("/*", r));
         
         assertThat(testee.remove(r)).isTrue();
-        assertThat(dump()).containsExactly(
+        assertThat(testee.dump()).containsExactly(
                 // only root! (before fix the map also had the "*" node in it, albeit with a null value)
                 entry("/", null));
     }
@@ -273,7 +277,7 @@ class DefaultRouteRegistryTest
             Map<String, String> expectedParamValuesRaw,
             Object... repeatedCases)
     {
-        RouteRegistry.Match m = testee.lookup(toSegments(path));
+        DefaultRouteRegistry.Match m = testee.lookup(toSegments(path));
         assertThat(m.route()).isSameAs(expectSame);
         
         DefaultRouteRegistry.DefaultMatch df = (DefaultRouteRegistry.DefaultMatch) m;
@@ -307,10 +311,6 @@ class DefaultRouteRegistryTest
         return stream(path.split("/"))
                 .filter(not(String::isEmpty))
                 .collect(toList());
-    }
-    
-    private Map<String, Route> dump() {
-        return ((DefaultRouteRegistry) testee).dump();
     }
     
     /**

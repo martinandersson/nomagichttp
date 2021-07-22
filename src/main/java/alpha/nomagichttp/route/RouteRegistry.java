@@ -1,131 +1,130 @@
 package alpha.nomagichttp.route;
 
 import alpha.nomagichttp.HttpServer;
-import alpha.nomagichttp.internal.DefaultServer;
-import alpha.nomagichttp.message.Request;
+import alpha.nomagichttp.handler.RequestHandler;
 
 /**
- * Provides thread-safe operations over a bunch of routes. Also known in other
- * corners of the internet as a "router".<p>
+ * Provides thread-safe store- and retrieve operations over a bunch of routes.
+ * Also known in other corners of the internet as a "router".<p>
  * 
- * How routes are looked up depends very much on how they are stored, i.e. the
- * underlying data structure. The registry type encapsulates both store- and
- * retrieve.<p>
+ * The default implementation is similar in nature to many other router
+ * implementations. The internally used data structure is a concurrent tree with
+ * great performance characteristics.<p>
  * 
- * The {@link DefaultRouteRegistry} is constructed by {@code
- * HttpServer.create()} and passed to the {@link DefaultServer}. Registry-like
- * methods declared in the {@link HttpServer} interface are shortcuts that
- * delegate straight to the server's route registry instance.<p>
- * 
- * The registry can be replaced by a custom implementation of your choice,
- * simply create the {@code DefaultServer} manually. 
+ * How routes are matched and the details of the pattern to which routes match
+ * has been documented in the JavaDoc of {@link Route}.
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
- * 
- * @see Route
  */
 public interface RouteRegistry
 {
     /**
      * Add a route.
      * 
-     * @param route to add
+     * @param  route to add
+     * @return the HttpServer (for chaining/fluency)
      * 
      * @throws NullPointerException
-     *           if {@code route} is {@code null}
+     *             if {@code route} is {@code null}
      * 
      * @throws RouteCollisionException
-     *           if an equivalent route has already been added
+     *             if an equivalent route has already been added
      * 
      * @see Route
      */
-    void add(Route route);
+    HttpServer add(Route route);
     
     /**
-     * Remove a route.
-     *
-     * @param pattern of route to remove
-     *
-     * @return the route removed ({@code null} if non-existent)
-     *
-     * @throws IllegalArgumentException
-     *             if a static segment value is empty
-     *
-     * @throws IllegalStateException
+     * Build a route and add it to the server.
+     * 
+     * @implSpec
+     * The default implementation is equivalent to:
+     * <pre>
+     *     Route r = {@link Route}.{@link Route#builder(String)
+     *               builder}(pattern).{@link Route.Builder#handler(RequestHandler, RequestHandler...)
+     *               handler}(first, more).{@link Route.Builder#build()
+     *               build}();
+     *     return {@link #add(Route) add}(r);
+     * </pre>
+     * 
+     * @param pattern of route path
+     * @param first   request handler
+     * @param more    optionally more request handlers
+     * 
+     * @return the HttpServer (for chaining/fluency)
+     * 
+     * @throws NullPointerException
+     *             if any argument is {@code null}
+     * 
+     * @throws RouteParseException
+     *             if a static segment value is empty, or
+     *             if parameter names are repeated in the pattern, or
      *             if a catch-all parameter is not the last segment
      * 
-     * @see HttpServer#remove(String) 
+     * @throws HandlerCollisionException
+     *             if not all handlers are unique
+     * 
+     * @throws RouteCollisionException
+     *             if an equivalent route has already been added
+     */
+    default HttpServer add(String pattern, RequestHandler first, RequestHandler... more) {
+        Route r = Route.builder(pattern).handler(first, more).build();
+        return add(r);
+    }
+    
+    /**
+     * Remove any route on the given hierarchical position.<p>
+     * 
+     * This method is similar to {@link #remove(Route)}, except any route no
+     * matter its identity found at the hierarchical position will be removed.
+     * The pattern provided is the same path-describing pattern provided to
+     * methods such as {@link #add(String, RequestHandler, RequestHandler...)}
+     * and {@link Route#builder(String)}, except path parameter names can be
+     * anything, they simply do not matter. Other than that, the pattern will go
+     * through the same normalization and validation routine.<p>
+     * 
+     * For example:
+     * <pre>
+     *   Route route = ...
+     *   server.add("/download/:user/*filepath", route);
+     *   server.remove("/download/:/*"); // or "/download/:bla/*bla", doesn't matter
+     * </pre>
+     * 
+     * @param pattern of route to remove
+     * 
+     * @return the route removed ({@code null} if non-existent)
+     * 
+     * @throws IllegalArgumentException
+     *             if a static segment value is empty
+     * 
+     * @throws IllegalStateException
+     *             if a catch-all parameter is not the last segment
      */
     Route remove(String pattern);
     
     /**
-     * Remove a route.
+     * Remove a route of a particular identity.<p>
+     * 
+     * The route's currently active exchanges will run to completion and will
+     * not be aborted. Only when all of the exchanges have finished will the
+     * route effectively not be in use anymore. However, the route is guaranteed
+     * to not be <i>discoverable</i> for <i>new</i> requests once this method
+     * has returned.<p>
+     * 
+     * In order for the route to be removed, the current route in the registry
+     * occupying the same hierarchical position must be {@code equal} to the
+     * given route using {@code Route.equals(Object)}. Currently, route equality
+     * is not specified and the default implementation has not overridden the
+     * equals method. I.e., the route provided must be the same instance.<p>
+     * 
+     * In order to remove <i>any</i> route at the targeted position, use {@link
+     * #remove(String)} instead.
      * 
      * @param route to remove
      * 
-     * @return {@code true} if successful (route was added before), otherwise
-     *         {@code false} (the route is unknown)
+     * @return {@code true} if successful, otherwise {@code false}
      * 
      * @throws NullPointerException if {@code route} is {@code null}
-     * 
-     * @see HttpServer#remove(Route) 
      */
     boolean remove(Route route);
-    
-    /**
-     * Match the path segments from a request path against a route.<p>
-     * 
-     * The given segments must not be percent-decoded. Decoding is done by the
-     * route registry implementation before comparing starts with the segments
-     * of registered routes. Both non-decoded and decoded parameter values will
-     * be accessible in the returned match object.<p>
-     * 
-     * Empty strings must be normalized away. The root "/" can be matched by
-     * specifying an empty iterable.
-     * 
-     * @param pathSegments from request path (normalized but not percent-decoded)
-     * 
-     * @return a match (never {@code null})
-     * 
-     * @throws NullPointerException
-     *             if {@code pathSegments} is {@code null}
-     * 
-     * @throws IllegalArgumentException
-     *             if any encountered segment is the empty string
-     * 
-     * @throws NoRouteFoundException 
-     *             if a route can not be found
-     */
-    Match lookup(Iterable<String> pathSegments);
-    
-    /**
-     * A match of a route.
-     * 
-     * @author Martin Andersson (webmaster at martinandersson.com)
-     */
-    interface Match
-    {
-        /**
-         * Returns the matched route.
-         *
-         * @return the matched route (never {@code null})
-         */
-        Route route();
-        
-        /**
-         * Equivalent to {@link Request.Parameters#path(String)}.
-         * 
-         * @param name of path parameter (case sensitive)
-         * @return the path parameter value (percent-decoded)
-         */
-        String pathParam(String name);
-        
-        /**
-         * Equivalent to {@link Request.Parameters#pathRaw(String)}.
-         * 
-         * @param name of path parameter (case sensitive)
-         * @return the raw path parameter value (not decoded/unescaped)
-         */
-        String pathParamRaw(String name);
-    }
 }

@@ -72,7 +72,7 @@ final class HttpExchange
     
     private final HttpServer server;
     private final Config config;
-    private final RouteRegistry registry;
+    private final DefaultRouteRegistry registry;
     private final Collection<ErrorHandler> handlers;
     private final ChannelByteBufferPublisher bytes;
     private final ResponsePipeline pipe;
@@ -99,7 +99,7 @@ final class HttpExchange
     
     HttpExchange(
             HttpServer server,
-            RouteRegistry registry,
+            DefaultRouteRegistry registry,
             Collection<ErrorHandler> handlers,
             ChannelByteBufferPublisher bytes,
             DefaultClientChannel chan)
@@ -196,7 +196,7 @@ final class HttpExchange
             throw new HttpVersionTooOldException(h.httpVersion(), "HTTP/1.1");
         }
         
-        RouteRegistry.Match m = findRoute(t);
+        DefaultRouteRegistry.Match m = findRoute(t);
         
         // This order is actually specified in javadoc of ErrorHandler#apply
         request = createRequest(h, t, m);
@@ -238,11 +238,11 @@ final class HttpExchange
         }
     }
     
-    private RouteRegistry.Match findRoute(RequestTarget t) {
+    private DefaultRouteRegistry.Match findRoute(RequestTarget t) {
         return registry.lookup(t.segmentsNotPercentDecoded());
     }
     
-    private DefaultRequest createRequest(RequestHead h, RequestTarget t, RouteRegistry.Match m) {
+    private DefaultRequest createRequest(RequestHead h, RequestTarget t, DefaultRouteRegistry.Match m) {
         return DefaultRequest.withParams(ver, h, t, m, bytes, chan,
                 config.timeoutIdleConnection(),
                 this::tryRespond100Continue,
@@ -266,10 +266,10 @@ final class HttpExchange
         });
     }
     
-    private static RequestHandler findRequestHandler(RequestHead rh, RouteRegistry.Match m) {
+    private static RequestHandler findRequestHandler(RequestHead rh, DefaultRouteRegistry.Match m) {
         MediaType type = contentType(rh.headers()).orElse(null);
         // TODO: Find a way to cache this and re-use in Responses factories that
-        //       parse a charset from request
+        //       parse a charset from request (in this branch)
         MediaType[] accepts = accept(rh.headers())
                 .map(s -> s.toArray(MediaType[]::new))
                 .orElse(null);

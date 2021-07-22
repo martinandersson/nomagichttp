@@ -1,5 +1,12 @@
-package alpha.nomagichttp.route;
+package alpha.nomagichttp.internal;
 
+import alpha.nomagichttp.HttpServer;
+import alpha.nomagichttp.message.Request;
+import alpha.nomagichttp.route.NoRouteFoundException;
+import alpha.nomagichttp.route.Route;
+import alpha.nomagichttp.route.RouteCollisionException;
+import alpha.nomagichttp.route.RouteRegistry;
+import alpha.nomagichttp.route.SegmentsBuilder;
 import alpha.nomagichttp.util.PercentDecoder;
 
 import java.util.HashMap;
@@ -14,19 +21,23 @@ import static java.text.MessageFormat.format;
 import static java.util.stream.Collectors.toList;
 
 /**
- * Default implementation of {@link RouteRegistry}. Similar in nature to many
- * other "router" implementations; the internally used data structure is a
- * concurrent tree with great performance characteristics.<p>
+ * Default implementation of {@link RouteRegistry}.
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  */
-public final class DefaultRouteRegistry implements RouteRegistry
+final class DefaultRouteRegistry implements RouteRegistry
 {
     private static final char COLON_CH = ':',    // key for single- path params
                               ASTERISK_CH = '*'; // key for catch-all path params
     
     private static final String COLON_STR = ":",
                                 ASTERISK_STR = "*";
+    
+    private final HttpServer server;
+    
+    DefaultRouteRegistry(HttpServer server) {
+        this.server = server;
+    }
     
     /*
      * Implementation note:
@@ -50,7 +61,7 @@ public final class DefaultRouteRegistry implements RouteRegistry
     private final Tree<Route> tree = new Tree<>();
     
     @Override
-    public void add(Route r) {
+    public HttpServer add(Route r) {
         Iterator<String> it = r.segments().iterator();
         tree.write(n -> {
             if (!it.hasNext()) {
@@ -86,6 +97,7 @@ public final class DefaultRouteRegistry implements RouteRegistry
                 }
             }
         });
+        return server;
     }
     
     private static void setRouteIfAbsentGiven(
@@ -195,9 +207,61 @@ public final class DefaultRouteRegistry implements RouteRegistry
                 .collect(toList());
     }
     
-    @Override
-    public Match lookup(Iterable<String> rawSegments) {
-        Iterable<String> decoded = stream(rawSegments)
+    /**
+     * A match of a route.
+     * 
+     * @author Martin Andersson (webmaster at martinandersson.com)
+     */
+    interface Match
+    {
+        /**
+         * Returns the matched route.
+         * 
+         * @return the matched route (never {@code null})
+         */
+        Route route();
+        
+        /**
+         * Equivalent to {@link Request.Parameters#path(String)}.
+         * 
+         * @param name of path parameter (case sensitive)
+         * @return the path parameter value (percent-decoded)
+         */
+        String pathParam(String name);
+        
+        /**
+         * Equivalent to {@link Request.Parameters#pathRaw(String)}.
+         * 
+         * @param name of path parameter (case sensitive)
+         * @return the raw path parameter value (not decoded/unescaped)
+         */
+        String pathParamRaw(String name);
+    }
+    
+    /**
+     * Match the path segments from a request path against a route.<p>
+     * 
+     * The given segments must not be percent-decoded. Decoding is done by the
+     * implementation before comparing starts with the segments of registered
+     * routes. Both non-decoded and decoded parameter values will be accessible
+     * in the returned match object.<p>
+     *
+     * Empty strings must be normalized away. The root "/" can be matched by
+     * specifying an empty iterable.
+     *
+     * @param rawPathSegments from request path (normalized but not percent-decoded)
+     * 
+     * @return a match (never {@code null})
+     * 
+     * @throws NullPointerException
+     *             if {@code rawPathSegments} is {@code null}
+     * @throws IllegalArgumentException
+     *             if any encountered segment is the empty string
+     * @throws NoRouteFoundException
+     *             if a route can not be found
+     */
+    Match lookup(Iterable<String> rawPathSegments) {
+        Iterable<String> decoded = stream(rawPathSegments)
                 .map(PercentDecoder::decode)
                 .collect(toList());
         
@@ -210,7 +274,7 @@ public final class DefaultRouteRegistry implements RouteRegistry
         // check node's value for a route
         Route r;
         if ((r = n.get()) != null) {
-            return DefaultMatch.of(r, rawSegments, decoded);
+            return DefaultMatch.of(r, rawPathSegments, decoded);
         }
         
         // nothing was there? check for a catch-all child
@@ -221,7 +285,7 @@ public final class DefaultRouteRegistry implements RouteRegistry
         }
         
         if ((r = n.get()) != null) {
-            return DefaultMatch.of(r, rawSegments, decoded);
+            return DefaultMatch.of(r, rawPathSegments, decoded);
         }
         
         throw new NoRouteFoundException(decoded);

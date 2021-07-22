@@ -15,7 +15,7 @@ import java.util.stream.Stream;
  * A {@code Route} is "a target resource upon which to apply semantics"
  * (<a href="https://tools.ietf.org/html/rfc7230#section-5.1">RFC 7230 §5.1</a>).
  * It can be built using a {@link #builder(String)}. There's also a convenient
- * shortcut which both builds and add the route; {@link
+ * method available which both builds and add the route at the same time; {@link
  * HttpServer#add(String, RequestHandler, RequestHandler...)}.<p>
  * 
  * The route is associated with one or more <i>request handlers</i>. In HTTP
@@ -189,9 +189,9 @@ public interface Route
      * As per the first example, using the builder makes it possible to avoid
      * embedding syntax-driven tokens in favor of explicit {@code paramXXX()}
      * method calls. This is of course always desired; the less magic the
-     * better. However, if the application declares a route using one single
-     * pattern string, as in the last example, then there's a shortcut available
-     * in the {@code HttpServer} interface that accomplishes the same thing:
+     * better. If the application declares a route using one single pattern
+     * string, as in the last example, then there's a method available in the
+     * {@code HttpServer} interface that accomplishes the same thing:
      * <pre>
      *   RequestHandler handler = ...
      *   HttpServer server = ...
@@ -294,7 +294,7 @@ public interface Route
      * 
      * The pattern consuming methods will take (and remove) the first char - if
      * it is a ':' or '*' - as an indicator of the parameter type. The {@code
-     * param***()} builder methods accept the given string at face value.
+     * paramXXX()} builder methods accept the given string at face value.
      * <pre>{@code
      *   Route.builder("/:user")                    Access using request.parameters().path("user")
      *   Route.builder("/").paramSingle('user')     Same as above

@@ -10,8 +10,6 @@ import static java.util.stream.StreamSupport.stream;
  * was not added. {@link ErrorHandler#DEFAULT} maps this exception to a "404 Not
  * Found" response.
  * 
- * @see RouteRegistry#lookup(Iterable) 
- * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  */
 public class NoRouteFoundException extends RuntimeException

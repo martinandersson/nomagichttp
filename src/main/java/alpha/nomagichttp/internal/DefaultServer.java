@@ -8,7 +8,6 @@ import alpha.nomagichttp.events.HttpServerStarted;
 import alpha.nomagichttp.events.HttpServerStopped;
 import alpha.nomagichttp.handler.ErrorHandler;
 import alpha.nomagichttp.route.Route;
-import alpha.nomagichttp.route.RouteRegistry;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
@@ -57,7 +56,7 @@ public final class DefaultServer implements HttpServer
     private static final int INITIAL_CAPACITY = 10_000;
     
     private final Config config;
-    private final RouteRegistry registry;
+    private final DefaultRouteRegistry registry;
     private final List<ErrorHandler> eh;
     private final AtomicReference<CompletableFuture<ParentWithHandler>> parent;
     private final EventHub events;
@@ -66,12 +65,11 @@ public final class DefaultServer implements HttpServer
      * Constructs a {@code DefaultServer}.
      * 
      * @param config of server
-     * @param registry of server
      * @param eh error handlers
      */
-    public DefaultServer(Config config, RouteRegistry registry, ErrorHandler... eh) {
+    public DefaultServer(Config config, ErrorHandler... eh) {
         this.config   = requireNonNull(config);
-        this.registry = requireNonNull(registry);
+        this.registry = new DefaultRouteRegistry(this);
         this.eh       = List.of(eh);
         this.parent   = new AtomicReference<>();
         this.events   = new DefaultEventHub();
@@ -197,8 +195,7 @@ public final class DefaultServer implements HttpServer
     
     @Override
     public HttpServer add(Route route) {
-        registry.add(route);
-        return this;
+        return registry.add(route);
     }
     
     @Override
