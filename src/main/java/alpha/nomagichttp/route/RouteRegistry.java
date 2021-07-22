@@ -88,7 +88,7 @@ public interface RouteRegistry
      * @return a match (never {@code null})
      * 
      * @throws NullPointerException
-     *             if {@code v} is {@code null}
+     *             if {@code pathSegments} is {@code null}
      * 
      * @throws IllegalArgumentException
      *             if any encountered segment is the empty string
