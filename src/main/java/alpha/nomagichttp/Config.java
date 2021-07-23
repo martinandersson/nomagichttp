@@ -341,10 +341,12 @@ public interface Config
     
     /**
      * If {@code true} (which is the default), the {@link ErrorHandler#DEFAULT
-     * default error handler} will respond 204 (No Content) with the {@value
-     * HttpConstants.HeaderKey#ALLOW} header populated to a request handler
-     * resolution that ends with a {@link MethodNotAllowedException} if the
-     * requested HTTP method is {@value HttpConstants.Method#OPTIONS}.<p>
+     * default error handler} will respond a <i>successful</i> 204 (No Content)
+     * with the {@value HttpConstants.HeaderKey#ALLOW} header populated to a
+     * request handler resolution that ends with a {@link
+     * MethodNotAllowedException} if and only if the requested HTTP method is
+     * {@value HttpConstants.Method#OPTIONS}. In human speech; all routes will
+     * get a valid auto-implementation of the {@code OPTIONS} method.<p>
      * 
      * Even if the default value for this configuration is {@code true}, the
      * application's route can still freely implement the {@code OPTIONS} method
@@ -352,16 +354,8 @@ public interface Config
      * MethodNotAllowedException} however it sees fit.<p>
      * 
      * If this methods returns {@code false}, then the default error handler
-     * will simply respond a 405 (Method Not Allowed) response as it normally
-     * do for all {@code MethodNotAllowedException}s.<p>
-     * 
-     * In human speech; if the application does not implement the {@code
-     * OPTIONS} method for a given route, and this configuration value returns
-     * false, the error would have been treated as a <i>client error</i>. But by
-     * default, even if the application does not implement the {@code OPTIONS}
-     * method, a <i>successful</i> response will be returned. Disabling this
-     * configuration disables the {@code OPTIONS} method completely unless the
-     * application explicitly add a request handler that supports the method.
+     * will respond a <i>client error</i> 405 (Method Not Allowed) response as
+     * it normally do for all {@code MethodNotAllowedException}s.
      * 
      * @return see JavaDoc
      */
