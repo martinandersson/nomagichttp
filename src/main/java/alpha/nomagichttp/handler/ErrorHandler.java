@@ -55,9 +55,9 @@ import static java.util.stream.Stream.of;
  * Handles a {@code Throwable}, presumably by translating it into a response as
  * an alternative to the one that failed.<p>
  * 
- * One use case could be to retry a new execution of the request handler on
- * known and expected errors. Another use case could be to customize the
- * server's default error responses.<p>
+ * Error handler(s) should only be used for generic and server-global errors.
+ * Another use case could be to customize the server's default error
+ * responses.<p>
  * 
  * Many error handlers may be installed on the server. First to handle the error
  * breaks the call chain. Details follow later.<p>
@@ -66,10 +66,6 @@ import static java.util.stream.Stream.of;
  * only if the channel remains open for writing at the time of the error. The
  * purpose of error handlers is to be able to cater the client with a response
  * even in the event of failure.<p>
- * 
- * The error handler should only be used for generic errors. It should not be
- * used as a replacement for Java's ordinary error mechanisms, such as the
- * {@code try-catch} block.
  * 
  * Specifically, the error handler may be called for:<p>
  * 
@@ -105,9 +101,10 @@ import static java.util.stream.Stream.of;
  * channel.<p>
  * 
  * Any number of error handlers can be configured. If many are configured, they
- * will be called in the same order they were added. First handler to not throw
- * an exception breaks the call chain. The {@link #DEFAULT default handler}
- * will be used if no other handler is configured.<p>
+ * will be called in the same order they were added. First handler to return
+ * normally - i.e., first handler to not throw an exception - breaks the call
+ * chain. The {@link #DEFAULT default handler} will be used if no other handler
+ * is configured.<p>
  * 
  * An error handler that is unwilling to handle the exception must re-throw the
  * same throwable instance which will then propagate to the next handler,
@@ -116,7 +113,8 @@ import static java.util.stream.Stream.of;
  * If a handler throws a different throwable, then this is considered to be a
  * new error and the whole cycle is restarted.<p>
  * 
- * Example:
+ * This design was deliberately crafted to enable writing error handlers using
+ * Java's standard try-catch block:
  * <pre>
  *     ErrorHandler eh = (throwable, channel, request, requestHandler) -{@literal >} {
  *         try {
@@ -201,8 +199,8 @@ public interface ErrorHandler
     void apply(Throwable thr, ClientChannel ch, Request req, RequestHandler rh) throws Throwable;
     
     /**
-     * Is the default error handler used by the server if no other handler has
-     * been provided or no error handler handled the error.<p>
+     * Is the default error handler used by the server if no other
+     * application-provided handler handled the error.<p>
      * 
      * The error will be dealt with accordingly:
      * 

@@ -4,15 +4,15 @@ import alpha.nomagichttp.HttpServer;
 import alpha.nomagichttp.handler.RequestHandler;
 
 /**
- * Provides thread-safe store- and retrieve operations over a bunch of routes.
- * Also known in other corners of the internet as a "router".<p>
+ * Provides thread-safe add- and remove operations over a bunch of routes. Also
+ * known in other corners of the internet as a "router".<p>
  * 
  * The default implementation is similar in nature to many other router
  * implementations. The internally used data structure is a concurrent tree with
  * great performance characteristics.<p>
  * 
- * How routes are matched and the details of the pattern to which routes match
- * has been documented in the JavaDoc of {@link Route}.
+ * How routes are matched and the details of the pattern used to register routes
+ * have been documented in the JavaDoc of {@link Route}.
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  */

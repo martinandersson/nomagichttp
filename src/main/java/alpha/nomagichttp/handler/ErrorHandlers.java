@@ -59,7 +59,11 @@ public final class ErrorHandlers {
      * The delay for five retries using a base of 60 milliseconds and 0 jitter,
      * will become: 60, 240, 540, 960 and 1500. Adding 15 milliseconds jitter
      * will offset each delay within the bound. For example 70, 227, 530, 968
-     * and 1515.
+     * and 1515.<p>
+     * 
+     * Note: Normally, we would implement the retry mechanism higher up at the
+     * request handler level and reserve error handlers for failures that we
+     * "give up on".
      * 
      * @param onError which error triggers the retry
      * @param maxRetries maximum number of retries of a failed request

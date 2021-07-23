@@ -10,7 +10,7 @@ public class RouteParseException extends RuntimeException
     private static final long serialVersionUID = 1L;
     
     /**
-     * Constructs a {@code RouteParseException}.
+     * Constructs this object.
      * 
      * @param cause passed as-is to {@link Throwable#Throwable(Throwable)}
      */

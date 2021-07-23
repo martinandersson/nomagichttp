@@ -285,9 +285,9 @@ public interface Config
      * 
      * Like the request timeout, different response timeouts are active at
      * various stages of the HTTP exchange. Unlike the request timeout, there's
-     * only one exception type to be aware about: {@link
-     * ResponseTimeoutException}. The outcome of the exception is dependent on
-     * where the exception occurred.<p>
+     * only one exception type to be aware of: {@link ResponseTimeoutException}.
+     * The outcome of the exception is dependent on where the exception
+     * occurred.<p>
      * 
      * One response timer will timeout on failure of the application to deliver
      * a response to the {@link ClientChannel}. This timer starts when the

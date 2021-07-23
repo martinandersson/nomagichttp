@@ -61,6 +61,13 @@ class RouteBuilderTest
     }
     
     @Test
+    void param_emptyName() {
+        testee = builder("/").paramSingle("");
+        assertSegments(":");
+        assertToString("/:");
+    }
+    
+    @Test
     void mixed_pattern() {
         testee = builder("/user/:id/storage/:drive/*filepath");
         assertSegments("user", ":id", "storage", ":drive", "*filepath");

@@ -5,6 +5,8 @@ import alpha.nomagichttp.route.Route;
 import alpha.nomagichttp.route.RouteCollisionException;
 import alpha.nomagichttp.route.RouteRegistry;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
 import java.util.AbstractMap;
 import java.util.HashMap;
@@ -144,13 +146,14 @@ class DefaultRouteRegistryTest
                 "/a/b/c/x");
     }
     
-    @Test
-    void path_param_single_singleton() {
-        Route r = dummyRoute("/:p");
+    @ParameterizedTest
+    @ValueSource(strings = {"p", /* empty: */ ""})
+    void path_param_single_singleton(String name) {
+        Route r = dummyRoute("/:" + name);
         testee.add(r);
         
         assertMatch(
-                "/v", r, Map.of("p", "v"));
+                "/v", r, Map.of(name, "v"));
         assertNoMatch(
                 "/",
                 "/v/saturated");

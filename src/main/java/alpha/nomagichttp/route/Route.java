@@ -46,12 +46,15 @@ import java.util.stream.Stream;
  * whose dynamic value is given by the client through the request path. Path-
  * and query parameters may be retrieved using {@link Request#parameters()}<p>
  * 
- * Path parameters come in two forms; single-segment and catch-all.<p>
+ * Path parameters come in two forms; <i>single-segment</i> and
+ * <i>catch-all</i>.<p>
  * 
  * Single-segment path parameters match anything until the next '/' or the path
- * end. They are denoted using the prefix ':'. A request path must carry a value
- * for the segment in order to match with a route that has declared a
- * single-segment path parameter. They can not be configured as optional.
+ * end. They are denoted using the prefix ':'. All text following the prefix is
+ * the name/key by which the value is acquired. An inbound request path must
+ * contain a value for the segment in order to match with a route that has
+ * declared a single-segment path parameter (they can not be configured as
+ * optional).
  * 
  * <pre>
  *   Route registered: /user/:id
@@ -63,10 +66,10 @@ import java.util.stream.Stream;
  *   /user/foo/profile    no match (unknown segment "profile")
  * </pre>
  * 
- * Within the route registry, path parameters (both single-segment and
- * catch-all) are mutually exclusive for that segment position. For example, you
- * can not at the same time register a route {@code "/user/new"} and a route
- * {@code "/user/:id"}, or {@code "/user/:id"} and {@code "/user/:blabla"}.<p>
+ * Within the route registry, segments are mutually exclusive for that position.
+ * For example, you can not at the same time register a route {@code
+ * "/user/new"} and a route {@code "/user/:id"}, or {@code "/user/:id"} and
+ * {@code "/user/:foo"}.<p>
  * 
  * Static- and single segment path parameters may have any number of descendant
  * routes on the same hierarchical branch. In the following example, we register
@@ -82,7 +85,7 @@ import java.util.stream.Stream;
  * declare may still be different. A path parameter name is only required to be
  * unique for a specific {@code Route} object. The last route could have just as
  * well been expressed as {@code "/user/:id/file/:fid"} and added to the same
- * registry. But, this route can never be constructed: {@code
+ * registry. But, this route could not also have been added: {@code
  * "/user/:id/file/:id"} (duplicated name!)<p> 
  * 
  * Catch-all path parameters match everything until the path end. They must
@@ -288,9 +291,9 @@ public interface Route
      *   Rout cat = Route.builder("/ (=^・・^=)").handler(...).build();
      * }</pre>
      * 
-     * Parameter names can similarly be anything, as long as it is a unique name
-     * for the route. The only purpose of the name is for the HTTP server to use
-     * it as a key in a map.<p>
+     * Parameter names can similarly be anything (including the empty string),
+     * as long as it is a unique name for the route. The only purpose of the
+     * name is for the HTTP server to use it as a key in a map.<p>
      * 
      * The pattern consuming methods will take (and remove) the first char - if
      * it is a ':' or '*' - as an indicator of the parameter type. The {@code
