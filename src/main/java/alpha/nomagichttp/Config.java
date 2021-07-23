@@ -2,6 +2,7 @@ package alpha.nomagichttp;
 
 import alpha.nomagichttp.handler.ClientChannel;
 import alpha.nomagichttp.handler.ErrorHandler;
+import alpha.nomagichttp.handler.ResponseRejectedException;
 import alpha.nomagichttp.message.HttpVersionTooOldException;
 import alpha.nomagichttp.message.MaxRequestHeadSizeExceededException;
 import alpha.nomagichttp.message.Request;
@@ -178,14 +179,15 @@ public interface Config
      * 1XX (Informational) responses to the channel without concern for old
      * incompatible clients.<p>
      * 
-     * If this option is disabled (changed to return false), then the default
-     * error handler will instead of ignoring the failure, write a final 500
-     * (Internal Server Error) response as an alternative to the failed
-     * response, meaning that the application will then not be able to write its
-     * intended final response. This also means that the application would have
-     * to query the active HTTP version ({@link Request#httpVersion()}) and
-     * restrain itself from attempting to send interim responses to HTTP/1.0
-     * clients.<p>
+     * Caution: If this option is disabled (changed to return false), then the
+     * default error handler will instead of ignoring the failure, write a final
+     * 500 (Internal Server Error) response, meaning that the application will
+     * not be able to write its intended final response, or may even write its
+     * final response to a another subsequent HTTP exchange. Turning this option
+     * off necessitates that the application must query the active HTTP version
+     * ({@link Request#httpVersion()}) and restrain itself from attempting to
+     * send interim responses to HTTP/1.0 clients. Alternatively, install a
+     * custom error handler for {@link ResponseRejectedException}.<p>
      * 
      * The default implementation returns {@code true}.
      * 
