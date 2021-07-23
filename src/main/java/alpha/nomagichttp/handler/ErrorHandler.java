@@ -2,6 +2,8 @@ package alpha.nomagichttp.handler;
 
 import alpha.nomagichttp.Config;
 import alpha.nomagichttp.HttpConstants;
+import alpha.nomagichttp.action.AfterAction;
+import alpha.nomagichttp.action.BeforeAction;
 import alpha.nomagichttp.message.BadHeaderException;
 import alpha.nomagichttp.message.EndOfStreamException;
 import alpha.nomagichttp.message.HttpVersionParseException;
@@ -86,8 +88,8 @@ import static java.util.stream.Stream.of;
  * to recover the situation after the point where a response has already begun
  * transmitting back to the client.<p>
  * 
- * 4) Exceptions thrown from {@link PostRequestAction}s and {@link
- * PostResponseAction}s.<p>
+ * 4) Exceptions thrown from {@link BeforeAction}s and {@link
+ * AfterAction}s.<p>
  * 
  * The server will <strong>not</strong> call error handlers for errors that are
  * not directly involved in the HTTP exchange or for errors that occur

@@ -37,6 +37,7 @@ import static alpha.nomagichttp.HttpConstants.StatusCode.FOUR_HUNDRED_FIVE;
 import static alpha.nomagichttp.HttpConstants.StatusCode.FOUR_HUNDRED_FOUR;
 import static alpha.nomagichttp.HttpConstants.StatusCode.FOUR_HUNDRED_SIX;
 import static alpha.nomagichttp.HttpConstants.StatusCode.FOUR_HUNDRED_THIRTEEN;
+import static alpha.nomagichttp.HttpConstants.StatusCode.FOUR_HUNDRED_THREE;
 import static alpha.nomagichttp.HttpConstants.StatusCode.FOUR_HUNDRED_TWENTY_SIX;
 import static alpha.nomagichttp.HttpConstants.StatusCode.ONE_HUNDRED;
 import static alpha.nomagichttp.HttpConstants.StatusCode.ONE_HUNDRED_TWO;
@@ -559,6 +560,16 @@ public final class Responses
                 .build();
     }
     
+    /**
+     * Retrieves a cached 403 (Forbidden) response with no body.
+     * 
+     * @return  a cached 403 (Forbidden) response
+     * @see     StatusCode#FOUR_HUNDRED_THREE
+     */
+    public static Response forbidden() {
+        return ResponseCache.FORBIDDEN;
+    }
+    
     private static Response create(String mime, String body, Charset charset) {
         var pub = ofString(body, charset);
         var cType = mime + "; charset=" + charset.name().toLowerCase(ROOT);
@@ -625,7 +636,8 @@ public final class Responses
             NOT_IMPLEMENTED        = respond(FIVE_HUNDRED_ONE, ReasonPhrase.NOT_IMPLEMENTED, true),
             METHOD_NOT_ALLOWED     = respond(FOUR_HUNDRED_FIVE, ReasonPhrase.METHOD_NOT_ALLOWED, true),
             MEDIATYPE_NOT_ACCEPTED = respond(FOUR_HUNDRED_SIX, ReasonPhrase.NOT_ACCEPTABLE, true),
-            MEDIATYPE_UNSUPPORTED  = respond(FOUR_HUNDRED_FIFTEEN, ReasonPhrase.UNSUPPORTED_MEDIA_TYPE, true);
+            MEDIATYPE_UNSUPPORTED  = respond(FOUR_HUNDRED_FIFTEEN, ReasonPhrase.UNSUPPORTED_MEDIA_TYPE, true),
+            FORBIDDEN              = respond(FOUR_HUNDRED_THREE, ReasonPhrase.FORBIDDEN, true);
         
         private static Response respond(int code, String phrase, boolean addContentLengthZero) {
             var b = builder(code, phrase);
