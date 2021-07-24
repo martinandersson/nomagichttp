@@ -424,7 +424,7 @@ final class Tree<V>
      */
     private class NodeImpl implements ReadNode<V>, WriteNode<V>
     {
-        private final AtomicReference<V> v;
+        private final AtomicReference<V> ref;
         // Does not allow null to be used as key or value
         private final ConcurrentNavigableMap<String, NodeImpl> kids;
         // Used only for accessing the orphan flag
@@ -432,7 +432,7 @@ final class Tree<V>
         private boolean orphan;
         
         NodeImpl(V v) {
-            this.v = new AtomicReference<>(v);
+            this.ref = new AtomicReference<>(v);
             this.kids = new ConcurrentSkipListMap<>();
             
             ReentrantReadWriteLock l = new ReentrantReadWriteLock();
@@ -447,7 +447,7 @@ final class Tree<V>
         
         @Override
         public V get() {
-            return v.get();
+            return ref.get();
         }
         
         @Override
@@ -460,7 +460,7 @@ final class Tree<V>
         
         @Override
         public V set(V v) {
-            V o = this.v.getAndSet(v);
+            V o = ref.getAndSet(v);
             if (o != null && v == null) {
                 clean.set(true);
             }
@@ -469,12 +469,12 @@ final class Tree<V>
         
         @Override
         public V setIfAbsent(Supplier<? extends V> v) {
-            return AtomicReferences.setIfAbsent(this.v, v);
+            return AtomicReferences.setIfAbsent(ref, v);
         }
         
         @Override
         public V getAndSetIf(V v, Predicate<? super V> test) {
-            V o1 = this.v.getAndUpdate(o2 -> test.test(o2) ? v : o2);
+            V o1 = ref.getAndUpdate(o2 -> test.test(o2) ? v : o2);
             if (o1 != null && v == null) {
                 clean.set(true);
             }
@@ -582,7 +582,7 @@ final class Tree<V>
             }
             
             try {
-                orphan = kids.isEmpty() && v.get() == null;
+                orphan = kids.isEmpty() && ref.get() == null;
                 return orphan;
             } finally {
                 write.unlock();
