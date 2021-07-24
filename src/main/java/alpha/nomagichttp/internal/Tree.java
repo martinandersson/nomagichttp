@@ -101,12 +101,12 @@ final class Tree<V>
         
         /**
          * Set the node's value, if absent (i.e. {@code null}).<p>
-         *
+         * 
          * @param v new value
-         * @return old value
+         * @return {@code true} if successful, otherwise {@code false}
          */
-        default V setIfAbsent(V v) {
-            return getAndSetIf(v, Objects::isNull);
+        default boolean setIfAbsent(V v) {
+            return getAndSetIf(v, Objects::isNull) == null;
         }
         
         /**
@@ -290,27 +290,25 @@ final class Tree<V>
         }
     }
     
-    V setIfAbsent(Iterable<String> keySegments, V v) {
+    boolean setIfAbsent(Iterable<String> keySegments, V v) {
         final Iterator<String> it = keySegments.iterator();
         if (!it.hasNext()) {
             return root.setIfAbsent(v);
         } else {
-            Object[] old = new Object[1];
+            boolean[] success = new boolean[1];
             write(n -> {
                 final String s;
                 try {
                     s = it.next();
                 } catch (NoSuchElementException e) {
                     // Node found, set val and return
-                    old[0] = n.setIfAbsent(v);
+                    success[0] = n.setIfAbsent(v);
                     return null;
                 }
                 return n.nextOrCreate(s);
             });
             tryPruningTree();
-            @SuppressWarnings("unchecked")
-            V o = (V) old[0];
-            return o;
+            return success[0];
         }
     }
     
