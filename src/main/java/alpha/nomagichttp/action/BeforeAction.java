@@ -22,7 +22,7 @@ import alpha.nomagichttp.message.Request;
  * free to do anything, including ordering pizzas online.
  * 
  * <pre>
- *   BeforeAction giveRole = (request, channel, chain) -> {
+ *   BeforeAction giveRole = (request, channel, chain) -{@literal >} {
  *       String role = authenticate(request.headers());
  *       request.attributes().set("user.role", role);
  *       chain.proceed();
@@ -35,7 +35,7 @@ import alpha.nomagichttp.message.Request;
  * HTTP exchange. Interactions with the client channel has no magical effect at
  * all concerning what happens after the action completes.
  * <pre>
- *   BeforeAction onlyAdminsAllowed = (request, channel, chain) -> {
+ *   BeforeAction onlyAdminsAllowed = (request, channel, chain) -{@literal >} {
  *       String role = request.attributes().getAny("user.role");
  *       if ("admin".equals(role)) {
  *           chain.proceed();
@@ -51,7 +51,7 @@ import alpha.nomagichttp.message.Request;
  * Exceptions thrown from the before action is given to the {@link
  * ErrorHandler}. This is a variation of the previous example:
  * <pre>
- *   ErrorHandler weRatherHide = (throwable, channel, ign,ored) -> {
+ *   ErrorHandler weRatherHide = (throwable, channel, ign,ored) -{@literal >} {
  *       try {
  *           throw throwable;
  *       } catch (MySuspiciousRequestException e) {
@@ -60,7 +60,7 @@ import alpha.nomagichttp.message.Request;
  *       }
  *   };
  *   HttpServer server = HttpServer.create(weRatherHide);
- *   BeforeAction expectAdmin = (request, channel, chain) -> {
+ *   BeforeAction expectAdmin = (request, channel, chain) -{@literal >} {
  *       request.attributes()
  *              .getOpt("user.role")
  *              .filter("admin"::equals)
