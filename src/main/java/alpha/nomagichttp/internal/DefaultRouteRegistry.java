@@ -105,7 +105,7 @@ final class DefaultRouteRegistry implements RouteRegistry
             Tree.WriteNode<Route> target,
             Route newGuy)
     {
-        Route oldGuy = target.setIf(newGuy, v -> {
+        Route oldGuy = target.getAndSetIf(newGuy, v -> {
             if (v != null) {
                 // Someone's there already, abort
                 return false;

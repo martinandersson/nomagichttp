@@ -106,18 +106,18 @@ final class Tree<V>
          * @return old value
          */
         default V setIfAbsent(V v) {
-            return setIf(v, Objects::isNull);
+            return getAndSetIf(v, Objects::isNull);
         }
         
         /**
          * Set the node's value, if given predicate returns {@code true} for the
-         * old value.<p>
+         * current value.<p>
          * 
          * @param v new value
-         * @param test old value predicate
-         * @return old value
+         * @param test current value predicate
+         * @return current value (is old/previous if successful)
          */
-        V setIf(V v, Predicate<? super V> test);
+        V getAndSetIf(V v, Predicate<? super V> test);
         
         /**
          * Returns {@code true} if this node has no children, otherwise {@code
@@ -333,7 +333,7 @@ final class Tree<V>
             }
         }
         
-        V v = ((NodeImpl) n).setIf(null, test);
+        V v = ((NodeImpl) n).getAndSetIf(null, test);
         if (v != null) {
             tryPruningTree();
         }
@@ -467,7 +467,7 @@ final class Tree<V>
         }
         
         @Override
-        public V setIf(V v, Predicate<? super V> test) {
+        public V getAndSetIf(V v, Predicate<? super V> test) {
             V o1 = this.v.getAndUpdate(o2 -> test.test(o2) ? v : o2);
             if (o1 != null && v == null) {
                 clean.set(true);
