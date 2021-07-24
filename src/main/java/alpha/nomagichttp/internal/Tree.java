@@ -107,6 +107,14 @@ final class Tree<V>
         }
         
         /**
+         * Set the node's value, if absent (i.e. {@code null}).<p>
+         * 
+         * @param v new value supplier
+         * @return the value after operation (may be unchanged, or new value)
+         */
+        V setIfAbsent(Supplier<? extends V> v);
+        
+        /**
          * Set the node's value, if given predicate returns {@code true} for the
          * current value.<p>
          * 
@@ -457,6 +465,11 @@ final class Tree<V>
                 clean.set(true);
             }
             return o;
+        }
+        
+        @Override
+        public V setIfAbsent(Supplier<? extends V> v) {
+            return AtomicReferences.setIfAbsent(this.v, v);
         }
         
         @Override
