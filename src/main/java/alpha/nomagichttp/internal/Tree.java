@@ -473,12 +473,12 @@ final class Tree<V>
         }
         
         @Override
-        public V getAndSetIf(V v, Predicate<? super V> test) {
-            V o1 = ref.getAndUpdate(o2 -> test.test(o2) ? v : o2);
-            if (o1 != null && v == null) {
+        public V getAndSetIf(V newV, Predicate<? super V> test) {
+            V oldV = ref.getAndUpdate(currV -> test.test(currV) ? newV : currV);
+            if (oldV != null && newV == null) {
                 clean.set(true);
             }
-            return o1;
+            return oldV;
         }
         
         @Override
