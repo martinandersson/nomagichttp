@@ -51,10 +51,10 @@ import java.util.stream.Stream;
  * 
  * Single-segment path parameters match anything until the next '/' or the path
  * end. They are denoted using the prefix ':'. All text following the prefix is
- * the name/key by which the value is acquired. An inbound request path must
- * contain a value for the segment in order to match with a route that has
- * declared a single-segment path parameter (they can not be configured as
- * optional).
+ * the name/key by which the value is acquired through the request object. An
+ * inbound request path must contain a value for the segment in order to match
+ * with a route that has declared a single-segment path parameter (they can not
+ * be configured as optional).
  * 
  * <pre>
  *   Route registered: /user/:id
@@ -66,10 +66,12 @@ import java.util.stream.Stream;
  *   /user/foo/profile    no match (unknown segment "profile")
  * </pre>
  * 
- * Within the route registry, segments are mutually exclusive for that position.
- * For example, you can not at the same time register a route {@code
- * "/user/new"} and a route {@code "/user/:id"}, or {@code "/user/:id"} and
- * {@code "/user/:foo"}.<p>
+ * Non-static segments are mutually exclusive for that position in the registry.
+ * For example, one can not at the same time register a route {@code
+ * "/user/john"} and a route {@code "/user/:name"}, or {@code "/user/:name"} and
+ * {@code "/user/:id"}. This is by design as a request must match exactly one
+ * route or none at all. Branching based on dynamic segment values must be
+ * implemented by the route's handler(s).<p>
  * 
  * Static- and single segment path parameters may have any number of descendant
  * routes on the same hierarchical branch. In the following example, we register
@@ -111,14 +113,12 @@ import java.util.stream.Stream;
  * It is possible to mix both parameter styles, e.g. {@code
  * "/:drive/*filepath"}.<p>
  * 
- * As previously noted, static- and single segment parameters can build a route
- * hierarchy. Or in other words, a route position may have a parent route. For
- * example, you can have {@code "/user"}, {@code "/user/:id"} and {@code
- * "/user/:id/avatar"} all registered at the same time in the same registry. But
- * this is not true for catch-all since it matches everything including no value
- * at all. You can not register {@code "/src"} and {@code "/src/*filepath"} in
- * the same registry at the same time. Failure to register a route with the
- * registry causes a {@link RouteCollisionException} to be thrown.<p>
+ * As previously noted, static- and single-segment parameters can build a route
+ * hierarchy. For example, one can have {@code "/user"}, {@code "/user/:id"} and
+ * {@code "/user/:id/avatar"} all registered at the same time in the same
+ * registry. But this is not true for catch-all since it matches everything
+ * including no value at all. One can not register {@code "/src"} and {@code
+ * "/src/*filepath"} in the same registry at the same time.<p>
  * 
  * Query parameters are always optional, they can not be used to distinguish one
  * route from another, nor do they affect how a request path is matched against
