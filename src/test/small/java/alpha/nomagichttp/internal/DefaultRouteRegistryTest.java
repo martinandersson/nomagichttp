@@ -61,6 +61,16 @@ class DefaultRouteRegistryTest
         assertMatch("/a/b", r);
     }
     
+    @Test
+    void can_add_child_of_param() {
+        Route a = dummyRoute("/:a"),
+              b = dummyRoute("/:a/b");
+        testee.add(a);
+        testee.add(b);
+        assertMatch("/v",   a, Map.of("a", "v"));
+        assertMatch("/v/b", b, Map.of("a", "v"));
+    }
+    
     // We should be able to add "/" even if "/a" is registered
     @Test
     void can_add_parent_level_1() {
