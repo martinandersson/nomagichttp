@@ -211,14 +211,17 @@ final class AtomicReferences
     
     /**
      * Atomically set the value of the reference to the factory-produced value
-     * only if the actual value is {@code null}.
+     * only if the actual value is {@code null}.<p>
+     * 
+     * This method never returns {@code null} unless for some bizarre reason the
+     * supplier returns {@code null}, in which case the operation would be a
+     * very expensive NOP lol.
      * 
      * @param ref value container
      * @param newValue to set if actual value is {@code null}
      * @param <V> value type
      * 
-     * @return the value after operation
-     *         (may be old, or new value, but never {@code null})
+     * @return the value after operation (may be old, or new value)
      */
     static <V> V setIfAbsent(AtomicReference<V> ref, Supplier<? extends V> newValue) {
         return setIf(ref, newValue, Objects::isNull);
