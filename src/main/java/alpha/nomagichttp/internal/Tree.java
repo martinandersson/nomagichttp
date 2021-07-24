@@ -49,13 +49,11 @@ import static java.util.function.Function.identity;
  * running prune operation on the same branch (the node values are accessed
  * using atomic semantics, so read values are never stale).<p>
  * 
- * TODO: Give example.<p>
- * 
  * Segment keys can never be an empty string or {@code null}. The node value may
  * be {@code null} and if it is, the node will be eligible for being removed
  * from the tree, given it has no descendants carrying a value; also known as
- * "pruning". Pruning operations are transparently done by incoming writing
- * threads after having set a {@code null} value.
+ * "pruning". Pruning operations are transparently done by writer threads after
+ * having set a {@code null} value.
  * 
  * @param <V> type of the node's associated value
  * 
