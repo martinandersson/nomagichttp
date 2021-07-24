@@ -206,12 +206,7 @@ final class AtomicReferences
      * @return the value after operation (may be unchanged, or new value)
      */
     static <V> V setIf(AtomicReference<V> ref, Supplier<? extends V> newValue, Predicate<? super V> test) {
-        return ref.updateAndGet(v -> {
-            if (test.test(v)) {
-                return newValue.get();
-            }
-            return v;
-        });
+        return ref.updateAndGet(v -> test.test(v) ? newValue.get() : v);
     }
     
     /**
