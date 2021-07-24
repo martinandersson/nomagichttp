@@ -5,9 +5,9 @@ package alpha.nomagichttp.action;
  * subsequent request handler resolution.
  * 
  * The chain object is thread-safe and does not necessarily have to be called
- * by the same thread invoking the action. The chief purpose of this class is to
- * support asynchronous actions that does not necessarily complete their job
- * when the action's {@code apply} method returns.<p>
+ * by the same thread invoking the action. In fact, the chief purpose behind
+ * this class is to support asynchronous actions that does not complete their
+ * job when the action's {@code apply} method returns.<p>
  * 
  * Only the first invocation of a method declared in this interface has an
  * effect. Subsequent invocations are NOP.

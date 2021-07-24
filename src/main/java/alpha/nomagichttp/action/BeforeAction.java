@@ -23,11 +23,12 @@ import alpha.nomagichttp.message.Request;
  * 
  * <pre>
  *   BeforeAction giveRole = (request, channel, chain) -{@literal >} {
- *       String role = authenticate(request.headers());
+ *       String role = myAuthLogic(request.headers());
  *       request.attributes().set("user.role", role);
  *       chain.proceed();
  *   };
  *   HttpServer server = ...
+ *   // Apply to all requests
  *   server.before("/*", giveRole);
  * </pre>
  * 
@@ -45,6 +46,7 @@ import alpha.nomagichttp.message.Request;
  *       }
  *   };
  *   HttpServer server = ...
+ *   // Apply to the "admin" namespace
  *   server.before("/admin/*", onlyAdminsAllowed);
  * </pre>
  * 
@@ -90,6 +92,7 @@ import alpha.nomagichttp.message.Request;
  * of its collaborators. This likely includes fault tolerance (retry, fallback,
  * ...) and transaction demarcation.
  * 
+ * @author Martin Andersson (webmaster at martinandersson.com)
  * @see alpha.nomagichttp.action package-info
  */
 @FunctionalInterface
