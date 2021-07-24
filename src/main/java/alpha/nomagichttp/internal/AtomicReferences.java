@@ -1,5 +1,6 @@
 package alpha.nomagichttp.internal;
 
+import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.atomic.AtomicReference;
@@ -195,21 +196,37 @@ final class AtomicReferences
     
     /**
      * Atomically set the value of the reference to the factory-produced value
+     * only if the current value pass the given test.
+     * 
+     * @param ref value container
+     * @param newValue to set
+     * @param test predicate
+     * @param <V> value type
+     * 
+     * @return the value after operation (may be unchanged, or new value)
+     */
+    static <V> V setIf(AtomicReference<V> ref, Supplier<? extends V> newValue, Predicate<? super V> test) {
+        return ref.updateAndGet(v -> {
+            if (test.test(v)) {
+                return newValue.get();
+            }
+            return v;
+        });
+    }
+    
+    /**
+     * Atomically set the value of the reference to the factory-produced value
      * only if the actual value is {@code null}.
      * 
      * @param ref value container
      * @param newValue to set if actual value is {@code null}
      * @param <V> value type
      * 
-     * @return actual value if not {@code null}, otherwise {@code newValue}
+     * @return the value after operation
+     *         (may be old, or new value, but never {@code null})
      */
     static <V> V setIfAbsent(AtomicReference<V> ref, Supplier<? extends V> newValue) {
-        return ref.updateAndGet(act -> {
-            if (act != null) {
-                return act;
-            }
-            return newValue.get();
-        });
+        return setIf(ref, newValue, Objects::isNull);
     }
     
     /**
