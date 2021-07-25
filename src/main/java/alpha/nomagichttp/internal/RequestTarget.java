@@ -46,14 +46,11 @@ final class RequestTarget
      *   <li>Dot-segments (".", "..") are normalized.</li>
      * </ul>
      * 
-     * Parsing of the query string as well as percent-decoding tokens (path
-     * segments, query key- and values happens lazily and will take place upon
-     * first external access).
+     * Parsing- and percent-decoding the query string takes place lazily upon
+     * first access, and so, is a cost not paid by clients uninterested of it.
      * 
      * @param rt raw request target as read from the request-line
-     * 
      * @return a complex type representing the input
-     * 
      * @throws NullPointerException if {@code rt} is {@code null}
      */
     static RequestTarget parse(final String rt) {
@@ -131,7 +128,10 @@ final class RequestTarget
     }
     
     /**
-     * Returns the raw non-normalized and not percent-decoded request-target.
+     * Returns the raw non-normalized and not percent-decoded request-target.<p>
+     * 
+     * The returned value is in fact the same string passed to the parse method.
+     * I.e, what was received on the wire in the request head.
      * 
      * @return the raw non-normalized and not percent-decoded request-target
      */

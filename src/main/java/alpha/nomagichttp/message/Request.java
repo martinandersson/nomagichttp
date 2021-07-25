@@ -37,7 +37,8 @@ import java.util.stream.Stream;
  * discarded as late in the HTTP exchange process as possible, which is when the
  * server's {@link Response#body() response body} subscription completes.<p>
  * 
- * The implementation is thread-safe and non-blocking.
+ * The implementation is thread-safe and non-blocking. It does not implement
+ * {@code hashCode()} and {@code equals()}.
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  * 

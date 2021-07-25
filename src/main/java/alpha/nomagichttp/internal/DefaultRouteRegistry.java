@@ -245,10 +245,10 @@ final class DefaultRouteRegistry implements RouteRegistry
      * implementation before comparing starts with the segments of registered
      * routes. Both non-decoded and decoded parameter values will be accessible
      * in the returned match object.<p>
-     *
+     * 
      * Empty strings must be normalized away. The root "/" can be matched by
      * specifying an empty iterable.
-     *
+     * 
      * @param rawPathSegments from request path (normalized but not percent-decoded)
      * 
      * @return a match (never {@code null})
