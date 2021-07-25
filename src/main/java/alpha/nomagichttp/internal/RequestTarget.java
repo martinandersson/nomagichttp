@@ -75,7 +75,15 @@ final class RequestTarget
             path = parse.substring(skip, f);
         }
         
-        // ..into tokens that we normalize
+        // ..into tokens that we normalize, using .split(). E.g.
+        //     "a/b"  => ["a", "b"]
+        //     "a/"   => ["a"]         (here '/' is removed)
+        //     "/a"   => ["", "a"]     (not symmetric lol, here a magical empty token appears)
+        //     "a"    => ["a"]
+        //     ""     => [""]          (yikes! empty input produces array.length == 1)
+        //     "/"    => []            (...by themselves no magic tokens lol)
+        //     "//"   => []
+        //     "///"  => []
         String[] segments = path.split("/");
         ArrayList<String> keep = new ArrayList<>();
         

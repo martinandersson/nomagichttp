@@ -306,7 +306,7 @@ final class DefaultRouteRegistry implements RouteRegistry
                 n = c;
                 continue;
             }
-            // Catch-all or no match, in both cases we're done here
+            // Catch-all or no match (null), in both cases we're done here
             n = n.next(ASTERISK_STR);
             break;
         }
