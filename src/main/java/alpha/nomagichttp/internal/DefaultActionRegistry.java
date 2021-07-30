@@ -6,17 +6,13 @@ import alpha.nomagichttp.action.ActionPatternInvalidException;
 import alpha.nomagichttp.action.ActionRegistry;
 import alpha.nomagichttp.action.AfterAction;
 import alpha.nomagichttp.action.BeforeAction;
-import alpha.nomagichttp.message.Request;
 import alpha.nomagichttp.route.SegmentsBuilder;
 
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Deque;
-import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
-import java.util.Map;
-import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.CopyOnWriteArraySet;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -116,45 +112,15 @@ final class DefaultActionRegistry implements ActionRegistry
         });
     }
     
-    /**
-     * A match of an action.
-     */
-    // TODO: Share with DefaultRouteRegistry
-    interface Match<A>
-    {
-        /**
-         * Returns the matched action.
-         * 
-         * @return the matched action (never {@code null})
-         */
-        A action();
-        
-        /**
-         * Equivalent to {@link Request.Parameters#path(String)}.
-         * 
-         * @param name of path parameter (case sensitive)
-         * @return the path parameter value (percent-decoded)
-         */
-        String pathParam(String name);
-        
-        /**
-         * Equivalent to {@link Request.Parameters#pathRaw(String)}.
-         * 
-         * @param name of path parameter (case sensitive)
-         * @return the raw path parameter value (not decoded/unescaped)
-         */
-        String pathParamRaw(String name);
-    }
-    
-    List<Match<BeforeAction>> lookupBefore(RequestTarget rt) {
+    List<ResourceMatch<BeforeAction>> lookupBefore(RequestTarget rt) {
         return lookup(before, rt);
     }
     
-    List<Match<AfterAction>> lookupAfter(RequestTarget rt) {
+    List<ResourceMatch<AfterAction>> lookupAfter(RequestTarget rt) {
         return lookup(after, rt);
     }
     
-    private static <W extends AbstractWrapper<A>, A> List<Match<A>> lookup(
+    private static <W extends AbstractWrapper<A>, A> List<ResourceMatch<A>> lookup(
             Tree<Set<W>> tree, RequestTarget rt)
     {
         List<W>                      buf1 = get(BUF1);
@@ -179,7 +145,7 @@ final class DefaultActionRegistry implements ActionRegistry
         return t;
     }
     
-    private static <W extends AbstractWrapper<A>, A> List<Match<A>> lookup(
+    private static <W extends AbstractWrapper<A>, A> List<ResourceMatch<A>> lookup(
             Tree<Set<W>> tree, RequestTarget rt,
             List<W> matches,
             Deque<Tree.ReadNode<Set<W>>> trails,
@@ -234,7 +200,7 @@ final class DefaultActionRegistry implements ActionRegistry
         return matches.isEmpty() ? List.of() :
                matches.stream()
                       .sorted()
-                      .map(w -> DefaultMatch.of(w, rt))
+                      .map(w -> ResourceMatch.of(rt, w.get(), w.segments()))
                       .collect(toCollection(() ->
                               new ArrayList<>(matches.size())));
     }
@@ -314,129 +280,6 @@ final class DefaultActionRegistry implements ActionRegistry
         public boolean equals(Object obj) {
             var other = (AbstractWrapper<?>) obj;
             return action.equals(other.get());
-        }
-    }
-    
-    // TODO: copy paste from DefaultRouteReg, DRY
-    // Package-private only for tests
-    static class DefaultMatch<A> implements Match<A>
-    {
-        private final A action;
-        private final Map<String, String> paramsRaw, paramsDec;
-        
-        // TODO: Make path params lazy
-        static <W extends AbstractWrapper<A>, A> DefaultMatch<A>
-                of(W actionWrapper, RequestTarget rt)
-        {
-            // We need to map "request/path/segments" to "resource/:path/*parameters"
-            Iterator<String>    decIt  = rt.segmentsPercentDecoded().iterator(),
-                                segIt  = actionWrapper.segments().iterator();
-            Map<String, String> rawMap = Map.of(),
-                                decMap = Map.of();
-            
-            String catchAllKey = null;
-            
-            for (String r : rt.segmentsNotPercentDecoded()) {
-                String d = decIt.next();
-                
-                if (catchAllKey == null) {
-                    // Catch-all not activated, consume next resource segment
-                    String s = segIt.next();
-                    
-                    switch (s.charAt(0)) {
-                        case COLON_CH:
-                            // Single path param goes to map
-                            String k = s.substring(1),
-                                    o = (rawMap = mk(rawMap)).put(k, r);
-                            assert o == null;
-                            o = (decMap = mk(decMap)).put(k, d);
-                            assert o == null;
-                            break;
-                        case ASTERISK_CH:
-                            // Toggle catch-all phase with this segment as seed
-                            catchAllKey = s.substring(1);
-                            (rawMap = mk(rawMap)).put(catchAllKey, '/' + r);
-                            (decMap = mk(decMap)).put(catchAllKey, '/' + d);
-                            break;
-                        default:
-                            // Static segments we're not interested in
-                            break;
-                    }
-                } else {
-                    // Consume all remaining request segments as catch-all
-                    rawMap.merge(catchAllKey, '/' + r, String::concat);
-                    decMap.merge(catchAllKey, '/' + d, String::concat);
-                }
-            }
-            
-            // We're done with the request path, but resource may still have a catch-all segment in there
-            if (segIt.hasNext()) {
-                String s = segIt.next();
-                assert s.startsWith("*");
-                assert !segIt.hasNext();
-                assert catchAllKey == null;
-                catchAllKey = s.substring(1);
-            }
-            
-            // We could have toggled to catch-all, but no path segment was consumed for it, and
-            if (catchAllKey != null && !rawMap.containsKey(catchAllKey)) {
-                // route JavaDoc promises to default with a '/'
-                (rawMap = mk(rawMap)).put(catchAllKey, "/");
-                (decMap = mk(decMap)).put(catchAllKey, "/");
-            }
-            
-            assert !decIt.hasNext();
-            return new DefaultMatch<>(actionWrapper.get(), rawMap, decMap);
-        }
-        
-        private static <K, V> Map<K, V> mk(Map<K, V> map) {
-            return map.isEmpty() ? new HashMap<>() : map;
-        }
-        
-        // Package-private for tests
-        DefaultMatch(A action, Map<String, String> paramsRaw, Map<String, String> paramsDec) {
-            this.action = action;
-            this.paramsRaw = paramsRaw;
-            this.paramsDec = paramsDec;
-        }
-        
-        @Override
-        public A action() {
-            return action;
-        }
-        
-        @Override
-        public String pathParam(String name) {
-            return paramsDec.get(name);
-        }
-        
-        @Override
-        public String pathParamRaw(String name) {
-            return paramsRaw.get(name);
-        }
-        
-        @Override
-        public String toString() {
-            return DefaultMatch.class.getSimpleName() +  "{" +
-                    "action=" + action + ", " +
-                    "paramsRaw=" + paramsRaw + ", " +
-                    "paramsDec=" + paramsDec + '}';
-        }
-        
-        @Override
-        public int hashCode() {
-            return Objects.hash(action, paramsRaw, paramsDec);
-        }
-        
-        @Override
-        public boolean equals(Object obj) {
-            requireNonNull(obj);
-            assert obj instanceof DefaultMatch;
-            @SuppressWarnings("unchecked")
-            var that = (DefaultMatch<A>) obj;
-            return Objects.equals(this.action, that.action) &&
-                   Objects.equals(this.paramsRaw, that.paramsRaw) &&
-                   Objects.equals(this.paramsDec, that.paramsDec);
         }
     }
 }

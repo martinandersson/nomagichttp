@@ -257,13 +257,13 @@ public class DefaultActionRegistryTest {
     }
     
     private static class RunSpec<A> {
-        private Function<RequestTarget, List<DefaultActionRegistry.Match<A>>> method;
+        private Function<RequestTarget, List<ResourceMatch<A>>> method;
         private String pattern;
         private A expected;
         private Map<String, String> paramsRaw, paramsDec;
         private RunSpec<A> prev;
         
-        RunSpec(Function<RequestTarget, List<DefaultActionRegistry.Match<A>>> method, String pattern) {
+        RunSpec(Function<RequestTarget, List<ResourceMatch<A>>> method, String pattern) {
             this.method = method;
             this.pattern = pattern;
         }
@@ -288,7 +288,7 @@ public class DefaultActionRegistryTest {
         }
         
         void run() {
-            Deque<DefaultActionRegistry.Match<A>> steps = new ArrayDeque<>();
+            Deque<ResourceMatch<A>> steps = new ArrayDeque<>();
             RunSpec<A> s;
             for (s = this; s.pattern == null; s = s.prev) {
                 steps.addFirst(s.toMatch());
@@ -306,8 +306,8 @@ public class DefaultActionRegistryTest {
             return map;
         }
         
-        private DefaultActionRegistry.Match<A> toMatch() {
-            return new DefaultActionRegistry.DefaultMatch<>(
+        private ResourceMatch<A> toMatch() {
+            return new ResourceMatch<>(
                     expected,
                     paramsRaw == null ? Map.of() : paramsRaw,
                     paramsDec == null ? Map.of() : paramsDec);
