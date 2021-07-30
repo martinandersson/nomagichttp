@@ -19,30 +19,24 @@ import alpha.nomagichttp.route.RouteRegistry;
  * route registry; map an inbound request-target to decorative actions. The key
  * difference between this registry and the route registry is that
  * <i>multiple</i> actions can be stored at the same position, as long as they
- * are not equal objects. Further, whereas the route registry enforces
- * constructs such as mutual exclusivity in tree nodes for non-static segment
- * types, this registry does not. A request must match against only one route
- * with zero ambiguity, but a request (and/or the following response(s)) may
- * trigger a whole plethora of actions. For example, the route registry would
- * never accept {@code "/*path"} (all requests) and {@code "/admin"} (a subset
- * of requests) at the same time, but this is more or less the expected case for
- * the action registry. Except the normal convention will probably be to drop
- * optional parameter names, e.g. {@code "/*"}.<p>
+ * are not equal objects (duplicates allowed at different positions).<p>
  * 
- * If many before-actions are matched, then they will be called in the order
- * they are discovered and secondarily in the order they were added (discovery
- * starts at the root and walks down a branch of the tree one segment at a
- * time). This is quite important as it's expected to be common that action
- * implementations have an order dependency on other actions.<p>
+ * Further, whereas the route registry enforces constructs such as mutual
+ * exclusivity in tree nodes for non-static segment types, this registry does
+ * not. A request must match against only one route with zero ambiguity, but a
+ * request (and/or the following response(s)) may trigger a whole plethora of
+ * actions. For example, the route registry would never accept {@code "/*path"}
+ * (all requests) and {@code "/admin"} (a subset of all) at the same time, but
+ * this kind of overlapping usage is more or less the expected case for actions.
+ * The normal convention will probably be to drop optional parameter names, e.g.
+ * just {@code "/*"}.<p>
  * 
- * The invocation order of after-actions works must the same, with one key
- * difference. The primary order based on discovery is <i>reversed</i>. The
- * secondary order based on insertion remains the same. I.e. before-action
- * {@code /*} is called before {@code /admin}. After-action {@code /admin} is
- * called before {@code /*}.
+ * Matching actions against the request path works in exactly the same manner as
+ * it does for the route registry. A few examples:
  * 
  * <pre>
  *   Action registered: /user
+ *   (exactly one segment with value specified)
  *   
  *   Request path:
  *   /user                match
@@ -53,6 +47,7 @@ import alpha.nomagichttp.route.RouteRegistry;
  * 
  * <pre>
  *   Action registered: /:
+ *   (exactly one segment with any value)
  *   
  *   Request path:
  *   /user                match
@@ -64,6 +59,7 @@ import alpha.nomagichttp.route.RouteRegistry;
  * 
  * <pre>
  *   Action registered: /user/*
+ *   (first segment specified, followed by anything)
  *   
  *   Request path:
  *   /user                match
@@ -72,25 +68,95 @@ import alpha.nomagichttp.route.RouteRegistry;
  *   /foo                 no match
  * </pre>
  * 
+ * It is common for action implementations to have a dependency on other actions
+ * executing first (or later), and so, the invocation order of multiple matched
+ * actions is well defined.<p>
+ * 
+ * If many before-actions are matched, then they will be invoked primarily in
+ * the order segments are discovered (discovery starts at the root and walks
+ * down a branch of the tree one segment at a time), secondarily by their
+ * implicit unspecificity (catch-all first, then single-segment path, then
+ * static segment) and thirdly by their insertion order. The rule is to match
+ * from the most broad action first to the most niche action last, but still
+ * maintain the insertion order provided by the application. For instance:
+ * 
+ * <pre>
+ *   Request path: /
+ *   
+ *   Before-action execution order:
+ *   /*
+ *   /
+ * </pre>
+ * 
+ * <pre>
+ *   Request path: /foo/bar
+ *   
+ *   Before-action execution order:
+ *   /*
+ *   /:/bar
+ *   /foo/*
+ *   /foo/:
+ *   /foo/bar (added first)
+ *   /foo/bar (added last)
+ * </pre>
+ * 
+ * The invocation order of after-actions works sort of the same way, but in
+ * reverse. The rule is to match the most niche action first, followed by more
+ * generic ones, and as before, honor the application's insertion order.
+ * 
+ * <pre>
+ *   Request path: /
+ *   
+ *   After-action execution order:
+ *   /
+ *   /*
+ * </pre>
+ * 
+ * <pre>
+ *   Request path: /foo/bar
+ * 
+ *   After-action execution order:
+ *   /foo/bar (added first)
+ *   /foo/bar (added last)
+ *   /foo/:
+ *   /foo/*
+ *   /:/bar
+ *   /*
+ * </pre>
+ * 
+ * A combined high-level example of HTTP exchanges decorated by actions:
+ * <pre>
+ *   Before action:
+ *   /*             1) save request correlation id from header or perhaps generate new
+ *   /admin/*           2) authenticate, give role, authorize
+ *   
+ *   After action:
+ *   /admin/*path       3) if response is 403 (Forbidden), log warning with path
+ *   /*             4) copy correlation id to response header
+ * </pre>
+ * 
  * The request object is pseudo-immutable (has no setters) and the instance
  * remains the same throughout the HTTP exchange. This is great as attributes
  * propagates across executional boundaries. But it also means that
- * before-actions should not consume request body bytes unless it is known that
- * the request handler won't (there is currently no API support to cache the
- * bytes).<p>
+ * before-actions should not consume raw request body bytes unless it is known
+ * that the request handler won't, or otherwise consume the bytes and also make
+ * them available through the attributes (there is currently no API support in
+ * the request body object to cache the underlying bytes).<p>
  * 
  * The {@link Parameters} object returned from {@link Request#parameters()} may
- * be unique for each executable entity invoked or otherwise act as an
- * entity-unique view and supports solely retrieving path parameters if and only
- * if they were declared using the the key by which they were declared. For
- * example, although request "/hello" matches before-action "/:foo" and request
- * handler "/:bar", the former will have to use the key "foo" and the latter
- * will have to use the key "bar" when retrieving the segment value.<p>
+ * be unique for each executable entity invoked (request handler and actions) or
+ * otherwise act as an entity-unique view which supports solely retrieving path
+ * parameters if and only if they were declared, using the key by which they
+ * were declared. For example, although request "/hello" matches before-action
+ * "/:foo" and request handler "/:bar", the former will have to use the key
+ * "foo" when retrieving the segment value and the latter will have to use the
+ * key "bar". Both will still receive the same request object instance although
+ * the observed parameters are different.<p>
  * 
  * Unlike {@link RouteRegistry}, this interface does not declare remove
  * operations. The chief reasons behind this decision was to reduce the API
  * footprint as well as to enable certain performance optimizations in the
- * implementation. It is further expected not to hinder the demands of most
+ * implementation. Nor is this expected to hinder the demands of most
  * applications. Routes may come and go at runtime and serve specific purposes
  * only for a limited amount of time. Actions on the other hand represents
  * cross-cutting concerns. E.g. security and metrics are likely setup once

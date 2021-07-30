@@ -12,9 +12,9 @@ public class ActionNonUniqueException extends RuntimeException {
     /**
      * Constructs this object.
      * 
-     * @param cause passed as-is to {@link Throwable#Throwable(Throwable)}
+     * @param msg passed as-is to {@link Throwable#Throwable(String)}
      */
-    public ActionNonUniqueException(Throwable cause) {
-        super(cause);
+    public ActionNonUniqueException(String msg) {
+        super(msg);
     }
 }

@@ -1,6 +1,7 @@
 package alpha.nomagichttp.internal;
 
 import alpha.nomagichttp.route.Route;
+import alpha.nomagichttp.util.PercentDecoder;
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -11,6 +12,7 @@ import java.util.RandomAccess;
 import static alpha.nomagichttp.util.PercentDecoder.decode;
 import static java.util.Collections.unmodifiableList;
 import static java.util.Collections.unmodifiableMap;
+import static java.util.stream.Collectors.toList;
 import static java.util.stream.Collectors.toMap;
 
 /**
@@ -21,7 +23,13 @@ import static java.util.stream.Collectors.toMap;
  * iteration order as the query keys were declared in the query string.<p>
  * 
  * All lists returned by this class are unmodifiable and implements {@link
- * RandomAccess}.
+ * RandomAccess}.<p>
+ * 
+ * The root ("/") is not represented in the returned lists of segments. If the
+ * parsed request path was empty or effectively a single "/", then the returned
+ * lists will also be empty. This has been officially specified by {@link
+ * Route#segments()} and is an expected de-facto norm throughout the library
+ * code.<p>
  * 
  * The implementation is thread-safe and non-blocking.<p>
  * 
@@ -119,7 +127,8 @@ final class RequestTarget
     
     private final String rtRaw;
     private final String query;
-    private final List<String> segmentsNotPercentDecoded;
+    private final List<String> segmentsNotPercentDecoded,
+                               segmentsPercentDecoded;
     private Map<String, List<String>>
             queryMapNotPercentDecoded, queryMapPercentDecoded;
     
@@ -130,6 +139,8 @@ final class RequestTarget
         this.query = query;
         assert !query.startsWith("?");
         this.segmentsNotPercentDecoded = unmodifiableList(segmentsNotPercentDecoded);
+        this.segmentsPercentDecoded    = unmodifiableList(segmentsNotPercentDecoded.stream()
+                .map(PercentDecoder::decode).collect(toList()));
         
         this.queryMapNotPercentDecoded = null;
         this.queryMapPercentDecoded = null;
@@ -152,8 +163,17 @@ final class RequestTarget
      * 
      * @return normalized but possibly escaped segments
      */
-    List<String> segmentsNotPercentDecoded() {
+    List<String> segmentsNotPercentDecoded() { // TODO: rename to segmentsRaw
         return segmentsNotPercentDecoded;
+    }
+    
+    /**
+     * Returns normalized and escaped segments.
+     * 
+     * @return normalized and escaped segments
+     */
+    List<String> segmentsPercentDecoded() {
+        return segmentsPercentDecoded;
     }
     
     /**

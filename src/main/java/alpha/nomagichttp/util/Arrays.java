@@ -18,6 +18,22 @@ public final class Arrays {
      * Stream the given arguments.
      * 
      * @param first arg
+     * @param more args
+     * @param <T> type of element
+     * 
+     * @return a stream
+     */
+    @SafeVarargs
+    public static <T> Stream<T> stream(T first, T... more) {
+        @SuppressWarnings("varargs")
+        var m = java.util.Arrays.stream(more);
+        return Stream.concat(of(first), m);
+    }
+    
+    /**
+     * Stream the given arguments.
+     * 
+     * @param first arg
      * @param second arg
      * @param more args
      * @param <T> type of element

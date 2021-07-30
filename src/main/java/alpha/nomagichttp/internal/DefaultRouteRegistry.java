@@ -14,9 +14,13 @@ import java.util.Iterator;
 import java.util.Map;
 import java.util.Objects;
 import java.util.function.Consumer;
-import java.util.stream.Stream;
-import java.util.stream.StreamSupport;
 
+import static alpha.nomagichttp.internal.Segments.ASTERISK_CH;
+import static alpha.nomagichttp.internal.Segments.ASTERISK_STR;
+import static alpha.nomagichttp.internal.Segments.COLON_CH;
+import static alpha.nomagichttp.internal.Segments.COLON_STR;
+import static alpha.nomagichttp.internal.Segments.noParamNames;
+import static alpha.nomagichttp.internal.Segments.stream;
 import static java.text.MessageFormat.format;
 import static java.util.stream.Collectors.toList;
 
@@ -27,12 +31,6 @@ import static java.util.stream.Collectors.toList;
  */
 final class DefaultRouteRegistry implements RouteRegistry
 {
-    private static final char COLON_CH = ':',    // key for single- path params
-                              ASTERISK_CH = '*'; // key for catch-all path params
-    
-    private static final String COLON_STR = ":",
-                                ASTERISK_STR = "*";
-    
     private final HttpServer server;
     
     DefaultRouteRegistry(HttpServer server) {
@@ -199,14 +197,6 @@ final class DefaultRouteRegistry implements RouteRegistry
         return tree.clearIf(pos, v -> Objects.equals(v, r)) != null;
     }
     
-    private static Iterable<String> noParamNames(Iterable<String> segments) {
-        return stream(segments)
-                .map(s -> s.startsWith(COLON_STR) ? COLON_STR :
-                          s.startsWith(ASTERISK_STR) ? ASTERISK_STR :
-                          s)
-                .collect(toList());
-    }
-    
     /**
      * A match of a route.
      * 
@@ -296,7 +286,7 @@ final class DefaultRouteRegistry implements RouteRegistry
         for (String s : decoded) {
             Tree.ReadNode<Route> c = n.next(s);
             if (c != null) {
-                // Segment found, on to next
+                // Static segment found, on to next
                 n = c;
                 continue;
             }
@@ -419,10 +409,6 @@ final class DefaultRouteRegistry implements RouteRegistry
         Map<String, String> mapDec() {
             return paramsDec;
         }
-    }
-    
-    private static <T> Stream<T> stream(Iterable<T> it) {
-        return StreamSupport.stream(it.spliterator(), false);
     }
     
     /**
