@@ -17,8 +17,8 @@ import static java.util.Objects.requireNonNull;
  * This container carries the resource, but also the request path parameter
  * values as interpolated from the resource's declared segments.<p>
  * 
- * The match is not expected to be put in hash-based data structures. But,
- * {@code toString()}, {@code hashCode()} and {@code equals()} have been naively
+ * The match is not expected to be put in hash-based data structures. {@code
+ * toString()}, {@code hashCode()} and {@code equals()} have been naively
  * implemented for tests running asserts on match objects.
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
@@ -127,36 +127,36 @@ final class ResourceMatch<T>
         String catchAllKey = null;
         
         for (String r : rt.segmentsNotPercentDecoded()) {
-            String d = decIt.next();
-            
-            if (catchAllKey == null) {
-                // Catch-all not activated, consume next route segment
-                String s = segIt.next();
-                
-                switch (s.charAt(0)) {
-                    case COLON_CH:
-                        // Single path param goes to map
-                        String k = s.substring(1),
-                               o = (rawMap = mk(rawMap)).put(k, r);
-                        assert o == null;
-                               o = (decMap = mk(decMap)).put(k, d);
-                        assert o == null;
-                        break;
-                    case ASTERISK_CH:
-                        // Toggle catch-all phase with this segment as seed
-                        catchAllKey = s.substring(1);
-                        (rawMap = mk(rawMap)).put(catchAllKey, '/' + r);
-                        (decMap = mk(decMap)).put(catchAllKey, '/' + d);
-                        break;
-                    default:
-                        // Static segments we're not interested in
-                        break;
-                }
-            } else {
-                // Consume all remaining request segments as catch-all
-                rawMap.merge(catchAllKey, '/' + r, String::concat);
-                decMap.merge(catchAllKey, '/' + d, String::concat);
-            }
+             String d = decIt.next();
+             
+             if (catchAllKey == null) {
+                 // Catch-all not activated, consume next route segment
+                 String s = segIt.next();
+                 
+                 switch (s.charAt(0)) {
+                     case COLON_CH:
+                         // Single path param goes to map
+                         String k = s.substring(1),
+                                o = (rawMap = mk(rawMap)).put(k, r);
+                         assert o == null;
+                                o = (decMap = mk(decMap)).put(k, d);
+                         assert o == null;
+                         break;
+                     case ASTERISK_CH:
+                         // Toggle catch-all phase with this segment as seed
+                         catchAllKey = s.substring(1);
+                         (rawMap = mk(rawMap)).put(catchAllKey, '/' + r);
+                         (decMap = mk(decMap)).put(catchAllKey, '/' + d);
+                         break;
+                     default:
+                         // Static segments we're not interested in
+                         break;
+                 }
+             } else {
+                 // Consume all remaining request segments as catch-all
+                 rawMap.merge(catchAllKey, '/' + r, String::concat);
+                 decMap.merge(catchAllKey, '/' + d, String::concat);
+             }
         }
         
         // We're done with the request path, but route may still have a catch-all segment in there
