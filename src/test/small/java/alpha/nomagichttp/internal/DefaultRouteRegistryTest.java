@@ -10,16 +10,14 @@ import org.junit.jupiter.params.provider.ValueSource;
 
 import java.util.AbstractMap;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.stream.Stream;
 
 import static alpha.nomagichttp.handler.RequestHandler.GET;
+import static alpha.nomagichttp.internal.RequestTarget.parse;
 import static alpha.nomagichttp.message.Responses.accepted;
 import static alpha.nomagichttp.util.PercentDecoder.decode;
 import static java.util.Arrays.stream;
-import static java.util.function.Predicate.not;
-import static java.util.stream.Collectors.toList;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
@@ -98,13 +96,6 @@ class DefaultRouteRegistryTest
     
     // Throwables
     // ----
-    
-    @Test
-    void empty_segment() {
-        assertThatThrownBy(() -> testee.lookup(List.of("")))
-                .isExactlyInstanceOf(IllegalArgumentException.class)
-                .hasMessage("Segment value is empty.");
-    }
     
     @Test
     void route_collisions() {
@@ -290,7 +281,7 @@ class DefaultRouteRegistryTest
             Map<String, String> expectedParamValuesRaw,
             Object... repeatedCases)
     {
-        DefaultRouteRegistry.Match m = testee.lookup(toSegments(path));
+        DefaultRouteRegistry.Match m = testee.lookup(parse(path));
         assertThat(m.route()).isSameAs(expectSame);
         
         DefaultRouteRegistry.DefaultMatch df = (DefaultRouteRegistry.DefaultMatch) m;
@@ -309,21 +300,16 @@ class DefaultRouteRegistryTest
     
     private void assertNoMatch(String... paths) {
         stream(paths).forEach(p ->
-            assertThatThrownBy(() -> testee.lookup(toSegments(p)))
+            assertThatThrownBy(() -> testee.lookup(parse(p)))
                 .isExactlyInstanceOf(NoRouteFoundException.class)
                 .hasMessage(p));
     }
     
+    // TODO: Rename to dummy()
     private static Route dummyRoute(String pattern) {
         return Route.builder(pattern)
                 .handler(GET().apply(requestIgnored -> accepted().completedStage()))
                 .build();
-    }
-    
-    private static Iterable<String> toSegments(String path) {
-        return stream(path.split("/"))
-                .filter(not(String::isEmpty))
-                .collect(toList());
     }
     
     /**

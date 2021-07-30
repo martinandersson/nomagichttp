@@ -15,7 +15,6 @@ import alpha.nomagichttp.message.RequestBodyTimeoutException;
 import alpha.nomagichttp.message.RequestHead;
 import alpha.nomagichttp.message.RequestHeadTimeoutException;
 import alpha.nomagichttp.message.Response;
-import alpha.nomagichttp.route.RouteRegistry;
 import alpha.nomagichttp.util.SerialExecutor;
 
 import java.io.IOException;
@@ -196,7 +195,7 @@ final class HttpExchange
             throw new HttpVersionTooOldException(h.httpVersion(), "HTTP/1.1");
         }
         
-        DefaultRouteRegistry.Match m = findRoute(t);
+        DefaultRouteRegistry.Match m = registry.lookup(t);
         
         // This order is actually specified in javadoc of ErrorHandler#apply
         request = createRequest(h, t, m);
@@ -236,10 +235,6 @@ final class HttpExchange
         if (major > 1) { // for now
             throw new HttpVersionTooNewException(rejectedVersion);
         }
-    }
-    
-    private DefaultRouteRegistry.Match findRoute(RequestTarget t) {
-        return registry.lookup(t.segmentsNotPercentDecoded());
     }
     
     private DefaultRequest createRequest(RequestHead h, RequestTarget t, DefaultRouteRegistry.Match m) {

@@ -7,7 +7,6 @@ import alpha.nomagichttp.route.Route;
 import alpha.nomagichttp.route.RouteCollisionException;
 import alpha.nomagichttp.route.RouteRegistry;
 import alpha.nomagichttp.route.SegmentsBuilder;
-import alpha.nomagichttp.util.PercentDecoder;
 
 import java.util.HashMap;
 import java.util.Iterator;
@@ -20,9 +19,7 @@ import static alpha.nomagichttp.internal.Segments.ASTERISK_STR;
 import static alpha.nomagichttp.internal.Segments.COLON_CH;
 import static alpha.nomagichttp.internal.Segments.COLON_STR;
 import static alpha.nomagichttp.internal.Segments.noParamNames;
-import static alpha.nomagichttp.internal.Segments.stream;
 import static java.text.MessageFormat.format;
-import static java.util.stream.Collectors.toList;
 
 /**
  * Default implementation of {@link RouteRegistry}.
@@ -229,31 +226,20 @@ final class DefaultRouteRegistry implements RouteRegistry
     }
     
     /**
-     * Match the path segments from a request path against a route.<p>
+     * Match the path segments from a request path against a route.
      * 
-     * The given segments must not be percent-decoded. Decoding is done by the
-     * implementation before comparing starts with the segments of registered
-     * routes. Both non-decoded and decoded parameter values will be accessible
-     * in the returned match object.<p>
-     * 
-     * Empty strings must be normalized away. The root "/" can be matched by
-     * specifying an empty iterable.
-     * 
-     * @param rawPathSegments from request path (normalized but not percent-decoded)
+     * @param rt request target
      * 
      * @return a match (never {@code null})
      * 
      * @throws NullPointerException
-     *             if {@code rawPathSegments} is {@code null}
-     * @throws IllegalArgumentException
-     *             if any encountered segment is the empty string
+     *             if {@code rt} is {@code null}
      * @throws NoRouteFoundException
      *             if a route can not be found
      */
-    Match lookup(Iterable<String> rawPathSegments) {
-        Iterable<String> decoded = stream(rawPathSegments)
-                .map(PercentDecoder::decode)
-                .collect(toList());
+    Match lookup(RequestTarget rt) {
+        Iterable<String> raw = rt.segmentsNotPercentDecoded();
+        Iterable<String> decoded = rt.segmentsPercentDecoded();
         
         Tree.ReadNode<Route> n = findNodeFromSegments(decoded);
         
@@ -264,7 +250,7 @@ final class DefaultRouteRegistry implements RouteRegistry
         // check node's value for a route
         Route r;
         if ((r = n.get()) != null) {
-            return DefaultMatch.of(r, rawPathSegments, decoded);
+            return DefaultMatch.of(r, raw, decoded);
         }
         
         // nothing was there? check for a catch-all child
@@ -275,7 +261,7 @@ final class DefaultRouteRegistry implements RouteRegistry
         }
         
         if ((r = n.get()) != null) {
-            return DefaultMatch.of(r, rawPathSegments, decoded);
+            return DefaultMatch.of(r, raw, decoded);
         }
         
         throw new NoRouteFoundException(decoded);
