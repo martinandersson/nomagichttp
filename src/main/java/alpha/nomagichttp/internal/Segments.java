@@ -1,7 +1,6 @@
 package alpha.nomagichttp.internal;
 
 import java.util.List;
-import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
 import static java.util.stream.Collectors.toList;
@@ -24,17 +23,6 @@ final class Segments
     }
     
     /**
-     * Returns a stream of segments.
-     * 
-     * @param segments to stream
-     * @return stream of segments
-     */
-    // TODO: Remove this method, definitely need segments to be a List or something right from start
-    static Stream<String> stream(Iterable<String> segments) {
-        return StreamSupport.stream(segments.spliterator(), false);
-    }
-    
-    /**
      * Returns the given segments without parameter names. E.g. {@code
      * /some/:arg/*rest} becomes {@code /some/:/*}.
      * 
@@ -43,7 +31,7 @@ final class Segments
      * @return the given segments without parameter names
      */
     static List<String> noParamNames(Iterable<String> segments) {
-        return stream(segments)
+        return StreamSupport.stream(segments.spliterator(), false)
                 .map(s -> s.startsWith(COLON_STR)    ? COLON_STR :
                           s.startsWith(ASTERISK_STR) ? ASTERISK_STR :
                           s)
