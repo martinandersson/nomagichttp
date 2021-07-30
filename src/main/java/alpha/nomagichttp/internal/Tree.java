@@ -72,13 +72,79 @@ final class Tree<V>
         V get();
         
         /**
+         * Return this ode's value if non-null, otherwise {@code defaultValue}.
+         * 
+         * @param defaultValue default value
+         * @return this node's value, or {@code defaultValue}
+         */
+        V getOrElse(V defaultValue);
+        
+        /**
+         * Consume the node's value, but only if non-null.
+         * 
+         * @param action value consumer
+         * 
+         * @throws NullPointerException
+         *             if {@code action} is {@code null} and the item is
+         *             non-null (this method does not validate the argument if
+         *             the condition for consumption is not true)
+         */
+        void ifPresent(Consumer<? super V> action);
+        
+        /**
          * Traverse to the next node.
          * 
          * @param segment sub-key
          * @return the next node (or {@code null} if branch doesn't extend further)
+         * @throws NullPointerException if {@code segment} is {@code null}
          * @throws IllegalArgumentException if {@code segment} is empty
          */
         ReadNode<V> next(String segment);
+        
+        /**
+         * Consume the next node, but only if it exists.
+         * 
+         * @param segment sub-key
+         * @param action node consumer
+         * 
+         * @throws NullPointerException
+         *             if {@code segment} is {@code null}, or
+         *             if {@code action} is {@code null} and the child exists
+         *             (this method does not validate the argument if the
+         *             condition for consumption is not true)
+         * 
+         * @throws IllegalArgumentException
+         *             if {@code segment} is empty
+         */
+        void nextIfPresent(String segment, Consumer<ReadNode<V>> action);
+        
+        /**
+         * Traverse to the next node and consume the next node's value, but only
+         * if the child node exists and the node's value is non-null.
+         * 
+         * @param segment sub-key
+         * @param action value consumer
+         * 
+         * @throws IllegalArgumentException if {@code segment} is empty
+         * 
+         * @throws NullPointerException
+         *             if {@code segment} is {@code null}, or
+         *             if {@code action} is {@code null} and the child exist and
+         *             its item is non-null (this method does not validate the
+         *             argument if the condition for consumption is not true)
+         */
+        void nextValueIfPresent(String segment, Consumer<? super V> action);
+        
+        /**
+         * Traverse to the next node and get the next node's value if non-null,
+         * but only if the child node exists and the node's value is non-null,
+         * otherwise return {@code defaultValue}
+         * 
+         * @throws IllegalArgumentException if {@code segment} is empty
+         * 
+         * @return next node's value or default value
+         */
+        V nextValueOrElse(String segment, V defaultValue);
     }
     
     interface WriteNode<V> {
@@ -165,10 +231,10 @@ final class Tree<V>
          * ReadNode.next()} in that it will prune the tree first (to give a more
          * accurate answer whether or not the child exist). The behavior is also
          * different from {@code WriteNode.nextOrCreate**()} in that this method
-         * will not reserve the returned node, e.g. block concurrent prune
-         * operations from running. Again, the intent is to potentially fail the
-         * write operation if this method returns a non-null value, not to
-         * traverse the tree any further.<p>
+         * will not reserve the returned node, i.e. block concurrent prune
+         * operations from causing the node to become unreachable. Again, the
+         * intent is to potentially fail the write operation if this method
+         * returns a non-null value, not to traverse the tree any further.<p>
          * 
          * @param segment of child
          * 
@@ -253,7 +319,7 @@ final class Tree<V>
     }
     
     /**
-     * Traverse the tree in read mode.
+     * Traverse the tree from root in read mode.
      * 
      * @return the root (never {@code null})
      */
@@ -262,12 +328,12 @@ final class Tree<V>
     }
     
     /**
-     * Traverse the tree in write mode.<p>
+     * Traverse the tree from root in write mode.<p>
      * 
      * The first invocation of the given {@code digger} receives the tree's root
      * node as argument, then, the digger will be re-executed with whichever
-     * node it returned previously until the digger decides that the operation
-     * is done and returns null.<p>
+     * node it returned until the digger decides that the operation is done and
+     * returns null.<p>
      * 
      * The digger is free to dig only one or many levels at a time.<p>
      * 
@@ -422,7 +488,7 @@ final class Tree<V>
      * 
      * @author Martin Andersson (webmaster at martinandersson.com)
      */
-    private class NodeImpl implements ReadNode<V>, WriteNode<V>
+    private final class NodeImpl implements ReadNode<V>, WriteNode<V>
     {
         private final AtomicReference<V> ref;
         // Does not allow null to be used as key or value
@@ -451,8 +517,41 @@ final class Tree<V>
         }
         
         @Override
+        public V getOrElse(V defaultValue) {
+            V v = get();
+            return v != null ? v : defaultValue;
+        }
+        
+        @Override
+        public void ifPresent(Consumer<? super V> action) {
+            V v = get();
+            if (v != null) {
+                action.accept(v);
+            }
+        }
+        
+        @Override
         public NodeImpl next(String segment) {
             return kids.get(requireNotNullOrEmpty(segment));
+        }
+        
+        @Override
+        public void nextIfPresent(String segment, Consumer<ReadNode<V>> action) {
+            var n = next(segment);
+            if (n != null) {
+                action.accept(n);
+            }
+        }
+        
+        @Override
+        public void nextValueIfPresent(String segment, Consumer<? super V> action) {
+            nextIfPresent(segment, n -> n.ifPresent(action));
+        }
+        
+        @Override
+        public V nextValueOrElse(String segment, V defaultValue) {
+            var n = next(segment);
+            return n == null ? defaultValue : n.getOrElse(defaultValue);
         }
         
         // Write interface
@@ -630,8 +729,10 @@ final class Tree<V>
         
         @Override
         public String toString() {
-            return NodeImpl.class.getName() +
-                    "{v=" + get() + ", children.size()=" + kids.size() + "}";
+            return NodeImpl.class.getSimpleName() +
+                    "{extractKey()=" + extractKey("/", this) + ", " +
+                    " v=" + get() + ", " +
+                    "children.size()=" + kids.size() + "}";
         }
     }
     
