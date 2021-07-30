@@ -24,6 +24,7 @@ import static alpha.nomagichttp.internal.Segments.COLON_CH;
 import static alpha.nomagichttp.internal.Segments.COLON_STR;
 import static alpha.nomagichttp.internal.Segments.noParamNames;
 import static alpha.nomagichttp.util.Arrays.stream;
+import static java.lang.Integer.compare;
 import static java.lang.ThreadLocal.withInitial;
 import static java.util.Objects.requireNonNull;
 import static java.util.stream.Collectors.toCollection;
@@ -135,6 +136,9 @@ final class DefaultActionRegistry implements ActionRegistry
         }
     }
     
+    // We're reusing buffers only to minimize garbage, and, assuming that a
+    // single thread will never run through the lookup operation recursively.
+    // They are only performed once during HTTP exchange initialization.
     private static final ThreadLocal<List<?>>  BUF1 = withInitial(() -> new ArrayList<>(INITIAL_CAPACITY));
     private static final ThreadLocal<Deque<?>> BUF2 = withInitial(() -> new ArrayDeque<>(INITIAL_CAPACITY));
     private static final ThreadLocal<List<?>>  BUF3 = withInitial(() -> new ArrayList<>(INITIAL_CAPACITY));
@@ -161,8 +165,6 @@ final class DefaultActionRegistry implements ActionRegistry
         // check against the next segment. After all segments have been
         // iterated, the residue in <trails> are the furthermost leaves which
         // represents matched nodes.
-        //    Post-processing merges <catchAll> and <trails>, then map each to
-        // the result container and sort.
         
         trails.add(tree.read());
         
@@ -192,7 +194,7 @@ final class DefaultActionRegistry implements ActionRegistry
         
         // anything left is a match
         trails.forEach(n -> {
-            // but first, add leaves catch-all
+            // but first, add leaves' catch-all
             n.nextValueIfPresent(ASTERISK_STR, matches::addAll);
             n.ifPresent(matches::addAll);
         });
@@ -209,48 +211,65 @@ final class DefaultActionRegistry implements ActionRegistry
             extends AbstractWrapper<BeforeAction>
             implements Comparable<WrappedBeforeAction>
     {
-        private final String path;
-        
         WrappedBeforeAction(BeforeAction action, Iterable<String> segments) {
             super(action, segments);
-            var p = String.join("/", noParamNames(segments));
-            path = p.isEmpty() ? "-" : p;
         }
         
         @Override
         public int compareTo(WrappedBeforeAction other) {
-            int x = this.path.compareTo(other.path);
-            return x != 0 ? x : Integer.compare(insertionOrder(), other.insertionOrder());
+            int x = this.path().compareTo(other.path());
+            return x != 0 ? x : compare(insertionOrder(), other.insertionOrder());
         }
     }
     
-    private static final class WrappedAfterAction extends AbstractWrapper<AfterAction> implements Comparable<WrappedAfterAction> {
-        private final String path;
-        
+    private static final class WrappedAfterAction
+            extends AbstractWrapper<AfterAction>
+            implements Comparable<WrappedAfterAction>
+    {
         WrappedAfterAction(AfterAction action, Iterable<String> segments) {
             super(action, segments);
-            var p = String.join("/", noParamNames(segments));
-            path = p.isEmpty() ? "-" : p;
         }
         
         @Override
         public int compareTo(WrappedAfterAction other) {
-            int x = this.path.compareTo(other.path);
+            int x = this.path().compareTo(other.path());
             // NEG X
-            return x != 0 ? -x : Integer.compare(insertionOrder(), other.insertionOrder());
+            return x != 0 ? -x : compare(insertionOrder(), other.insertionOrder());
         }
     }
     
+    /**
+     * A wrapper of an action.<p>
+     * 
+     * This class computes a compressed {@link #path()} of the action's
+     * segments. The root (empty segments) will be normalized to "-". Other
+     * segments will be stripped of their parameter names (not necessarily for
+     * correctness, only for performance). This leaves a harmonized path
+     * suitable for stupidly fast sorting. "*" (catch-all) comes before "-"
+     * (root), which comes before ":" (single), which comes before "segment".
+     * For any inbound request path and segment, no different static segments
+     * will ever be compared. If the path is equal, the concrete wrapper class
+     * ought to compare the insertion order next, retrievable using
+     * {@link #insertionOrder()}.<p>
+     * 
+     * The hashcode and equals implementation delegates directly to the action
+     * object.
+     * 
+     * @param <A>
+     */
     private static abstract class AbstractWrapper<A> {
         private static final AtomicInteger SEQ = new AtomicInteger();
         private final A action;
         private final Iterable<String> segments;
+        private final String path;
         private final int order;
         
         AbstractWrapper(A action, Iterable<String> segments) {
             this.action   = requireNonNull(action);
             this.segments = segments;
             this.order    = SEQ.getAndIncrement();
+            var p = String.join("/", noParamNames(segments));
+            path = p.isEmpty() ? "-" : p;
         }
         
         A get() {
@@ -259,6 +278,10 @@ final class DefaultActionRegistry implements ActionRegistry
         
         Iterable<String> segments() {
             return segments;
+        }
+        
+        String path() {
+            return path;
         }
         
         int insertionOrder() {
