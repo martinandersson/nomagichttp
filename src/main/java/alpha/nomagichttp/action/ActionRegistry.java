@@ -1,8 +1,6 @@
 package alpha.nomagichttp.action;
 
 import alpha.nomagichttp.HttpServer;
-import alpha.nomagichttp.message.Request;
-import alpha.nomagichttp.message.Request.Parameters;
 import alpha.nomagichttp.route.Route;
 import alpha.nomagichttp.route.RouteRegistry;
 
@@ -70,15 +68,15 @@ import alpha.nomagichttp.route.RouteRegistry;
  * 
  * It is common for action implementations to have a dependency on other actions
  * executing first (or later), and so, the invocation order of multiple matched
- * actions is well defined.<p>
+ * actions is well-defined.<p>
  * 
  * If many before-actions are matched, then they will be invoked primarily in
  * the order segments are discovered (discovery starts at the root and walks
- * down a branch of the tree one segment at a time), secondarily by their
- * implicit unspecificity (catch-all first, then single-segment path, then
- * static segment) and thirdly by their insertion order. The rule is to match
- * from the most broad action first to the most niche action last, but still
- * maintain the insertion order provided by the application. For instance:
+ * a branch of the tree one segment at a time), secondarily by their implicit
+ * unspecificity (catch-all first, then single-segment path, then static
+ * segment) and thirdly by their registration order. The rule is to match from
+ * the most broad action first to the most niche action last, but still maintain
+ * the registration order provided by the application. For instance:
  * 
  * <pre>
  *   Request path: /
@@ -135,23 +133,27 @@ import alpha.nomagichttp.route.RouteRegistry;
  *   /*             4) copy correlation id to response header
  * </pre>
  * 
- * The request object is pseudo-immutable (has no setters) and the instance
- * remains the same throughout the HTTP exchange. This is great as attributes
- * propagates across executional boundaries. But it also means that
- * before-actions should not consume raw request body bytes unless it is known
- * that the request handler won't, or otherwise consume the bytes and also make
- * them available through the attributes (there is currently no API support in
- * the request body object to cache the underlying bytes).<p>
+ * The request object will be a unique instance per executional entity (request
+ * handler and actions). Firstly, let it be stated that the underlying request
+ * components will always be the same and shared; the request head, attributes
+ * and body. Therefore, changes to these structures propagates throughout the
+ * HTTP exchange across executional boundaries, such as consuming the body bytes
+ * (which should only be done once!) and setting attributes.<p>
  * 
- * The {@link Parameters} object returned from {@link Request#parameters()} may
- * be unique for each executable entity invoked (request handler and actions) or
- * otherwise act as an entity-unique view which supports solely retrieving path
- * parameters if and only if they were declared, using the key by which they
- * were declared. For example, although request "/hello" matches before-action
+ * Request parameters, however, are independently declared by the route and
+ * actions, and supports retrieval of values using the key by which they were
+ * declared. For example, although request "/hello" matches before-action
  * "/:foo" and request handler "/:bar", the former will have to use the key
  * "foo" when retrieving the segment value and the latter will have to use the
- * key "bar". Both will still receive the same request object instance although
- * the observed parameters are different.<p>
+ * key "bar". As another example, a before-action may register using the pattern
+ * "/*path" and a request handler may use the pattern "/hello/:path". For an
+ * inbound request "/hello/world", the former's "path" parameter will map to the
+ * value "/hello/world" and the latter will get the value "world" using the same
+ * key.<p>
+ * 
+ * Actions added to the registry is not immediately visible to active HTTP
+ * exchanges. Matched actions are retrieved only once at the beginning of each
+ * new HTTP exchange.<p>
  * 
  * Unlike {@link RouteRegistry}, this interface does not declare remove
  * operations. The chief reasons behind this decision was to reduce the API
