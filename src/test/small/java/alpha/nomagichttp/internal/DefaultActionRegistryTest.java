@@ -26,29 +26,31 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
  *
  * @author Martin Andersson (webmaster at martinandersson.com)
  */
-public class DefaultActionRegistryTest {
+public class DefaultActionRegistryTest
+{
     private DefaultActionRegistry testee;
     private BeforeAction bef_R, bef_Rx, bef_Rxz, bef_Rxzy;
     private AfterAction aft_R, aft_Rx, aft_Rxz, aft_Rxzy;
     {
-        // Salt the register with some dummies
         testee  = new DefaultActionRegistry(null);
-        bef_R = dummy("bef_R");
+        
+        // Salt the register with some dummies
+        bef_R = beforeDummy("bef_R");
         testee.before("/", bef_R);
-        bef_Rx = dummy("bef_Rx");
+        bef_Rx = beforeDummy("bef_Rx");
         testee.before("/x", bef_Rx);
-        bef_Rxz = dummy("bef_Rxz");
+        bef_Rxz = beforeDummy("bef_Rxz");
         testee.before("/x/z", bef_Rxz);
-        bef_Rxzy = dummy("bef_Rxzy");
+        bef_Rxzy = beforeDummy("bef_Rxzy");
         testee.before("/x/z/y", bef_Rxzy);
-    
-        aft_R = dummyAfter("aft_R");
+        
+        aft_R = afterDummy("aft_R");
         testee.after("/", aft_R);
-        aft_Rx = dummyAfter("aft_Rx");
+        aft_Rx = afterDummy("aft_Rx");
         testee.after("/x", aft_Rx);
-        aft_Rxz = dummyAfter("aft_Rxz");
+        aft_Rxz = afterDummy("aft_Rxz");
         testee.after("/x/z", aft_Rxz);
-        aft_Rxzy = dummyAfter("aft_Rxzy");
+        aft_Rxzy = afterDummy("aft_Rxzy");
         testee.after("/x/z/y", aft_Rxzy);
     }
     
@@ -69,7 +71,7 @@ public class DefaultActionRegistryTest {
      */
     @Test
     void javadoc_ex1() {
-        var action = dummy("action");
+        var action = beforeDummy("action");
         testee.before("/user", action);
         lookupBefore("/user").expect(action).run();
     }
@@ -87,7 +89,7 @@ public class DefaultActionRegistryTest {
      */
     @Test
     void javadoc_ex2() {
-        var action = dummy("action");
+        var action = beforeDummy("action");
         testee.before("/:", action);
         lookupBefore("/user").expect(action).hasParam("", "user").run();
         lookupBefore("/foo").expect(action).hasParam("", "foo").run();
@@ -105,7 +107,7 @@ public class DefaultActionRegistryTest {
      */
     @Test
     void javadoc_ex3() {
-        var action = dummy("action");
+        var action = beforeDummy("action");
         testee.before("/user/*", action);
         
         lookupBefore("/user").expect(action).hasParam("", "/").run();
@@ -122,7 +124,7 @@ public class DefaultActionRegistryTest {
      */
     @Test
     void javadoc_ex4() {
-        var action = dummy("action");
+        var action = beforeDummy("action");
         testee.before("/*", action);
         
         // We added R first, but action is more generic
@@ -144,8 +146,8 @@ public class DefaultActionRegistryTest {
      */
     @Test
     void javadoc_ex5() {
-        BeforeAction act1 = dummy("act1"),
-                     act2 = dummy("act2");
+        BeforeAction act1 = beforeDummy("act1"),
+                     act2 = beforeDummy("act2");
         
         of("/*", "/:/bar", "/foo/*", "/foo/:", "/foo/bar")
                 // Because why not
@@ -173,7 +175,7 @@ public class DefaultActionRegistryTest {
      */
     @Test
     void javadoc_ex6() {
-        var action = dummyAfter("action");
+        var action = afterDummy("action");
         testee.after("/*", action);
         
         // We added R first, but action is more generic and falls back
@@ -197,16 +199,16 @@ public class DefaultActionRegistryTest {
      */
     @Test
     void javadoc_ex7() {
-        AfterAction act1 = dummyAfter("act1"),
-                    act2 = dummyAfter("act2");
-    
+        AfterAction act1 = afterDummy("act1"),
+                    act2 = afterDummy("act2");
+        
         of("/*", "/:/bar", "/foo/*", "/foo/:", "/foo/bar")
                 // Because why not
                 .sorted(reverseOrder())
                 .forEach(p -> testee.after(p, act1));
-    
+        
         testee.after("/foo/bar", act2);
-    
+        
         lookupAfter("/foo/bar")
                 .expect(act1)
                 .expect(act2)
@@ -219,13 +221,13 @@ public class DefaultActionRegistryTest {
     
     @Test
     void ActionNonUniqueException() {
-        var dup = dummy("dup");
-        assertThatThrownBy(() -> testee.before("/c", dup, dup))
+        var dup = beforeDummy("dup");
+        assertThatThrownBy(() -> testee.before("/", dup, dup))
                 .isExactlyInstanceOf(ActionNonUniqueException.class)
                 .hasMessage("Already added: dup");
     }
     
-    private static BeforeAction dummy(String name) {
+    private static BeforeAction beforeDummy(String name) {
         return new BeforeAction() {
             @Override
             public void apply(Request request, ClientChannel channel, Chain chain) {
@@ -239,7 +241,7 @@ public class DefaultActionRegistryTest {
         };
     }
     
-    private static AfterAction dummyAfter(String name) {
+    private static AfterAction afterDummy(String name) {
         return new AfterAction() {
             @Override
             public String toString() {
