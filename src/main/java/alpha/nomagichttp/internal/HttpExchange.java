@@ -15,6 +15,7 @@ import alpha.nomagichttp.message.RequestBodyTimeoutException;
 import alpha.nomagichttp.message.RequestHead;
 import alpha.nomagichttp.message.RequestHeadTimeoutException;
 import alpha.nomagichttp.message.Response;
+import alpha.nomagichttp.route.Route;
 import alpha.nomagichttp.util.SerialExecutor;
 
 import java.io.IOException;
@@ -195,7 +196,7 @@ final class HttpExchange
             throw new HttpVersionTooOldException(h.httpVersion(), "HTTP/1.1");
         }
         
-        DefaultRouteRegistry.Match m = registry.lookup(t);
+        ResourceMatch<Route> m = registry.lookup(t);
         
         // This order is actually specified in javadoc of ErrorHandler#apply
         request = createRequest(h, t, m);
@@ -237,7 +238,7 @@ final class HttpExchange
         }
     }
     
-    private DefaultRequest createRequest(RequestHead h, RequestTarget t, DefaultRouteRegistry.Match m) {
+    private DefaultRequest createRequest(RequestHead h, RequestTarget t, ResourceMatch<?> m) {
         return DefaultRequest.withParams(ver, h, t, m, bytes, chan,
                 config.timeoutIdleConnection(),
                 this::tryRespond100Continue,
@@ -261,14 +262,14 @@ final class HttpExchange
         });
     }
     
-    private static RequestHandler findRequestHandler(RequestHead rh, DefaultRouteRegistry.Match m) {
+    private static RequestHandler findRequestHandler(RequestHead rh, ResourceMatch<Route> m) {
         MediaType type = contentType(rh.headers()).orElse(null);
         // TODO: Find a way to cache this and re-use in Responses factories that
         //       parse a charset from request (in this branch)
         MediaType[] accepts = accept(rh.headers())
                 .map(s -> s.toArray(MediaType[]::new))
                 .orElse(null);
-        RequestHandler h = m.route().lookup(rh.method(), type, accepts);
+        RequestHandler h = m.get().lookup(rh.method(), type, accepts);
         LOG.log(DEBUG, () -> "Matched handler: " + h);
         return h;
     }

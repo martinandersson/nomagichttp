@@ -52,7 +52,7 @@ final class DefaultRequest implements Request
     private final Version ver;
     private final RequestHead head;
     private final RequestTarget paramsQuery;
-    private final DefaultRouteRegistry.Match paramsPath;
+    private final ResourceMatch<?> paramsPath;
     private final CompletionStage<Void> bodyStage;
     private final Body bodyApi;
     private final OnCancelDiscardOp bodyDiscard;
@@ -78,7 +78,7 @@ final class DefaultRequest implements Request
             Version ver,
             RequestHead head,
             RequestTarget paramsQuery,
-            DefaultRouteRegistry.Match paramsPath,
+            ResourceMatch<?> paramsPath,
             Flow.Publisher<DefaultPooledByteBufferHolder> bodySource,
             DefaultClientChannel child,
             Duration timeout,
@@ -95,9 +95,9 @@ final class DefaultRequest implements Request
      * 
      * The benefit of this variant is that there's no need for the call site to
      * have local access to a parsed {@link RequestTarget} (query params) or a
-     * {@link DefaultRouteRegistry.Match} (path params). This is the case if
-     * either of the two failed to be produced, yet the HTTP exchange may need
-     * an API to discard the request body.<p>
+     * {@link ResourceMatch} (path params). This is the case if either of the
+     * two failed to be produced, yet the HTTP exchange may need an API to
+     * discard the request body.<p>
      * 
      * Accessing a parameter method will throw NPE.
      * 
@@ -131,7 +131,7 @@ final class DefaultRequest implements Request
             Version ver,
             RequestHead head,
             RequestTarget paramsQuery,
-            DefaultRouteRegistry.Match paramsPath,
+            ResourceMatch<?> paramsPath,
             Flow.Publisher<DefaultPooledByteBufferHolder> bodySource,
             DefaultClientChannel child,
             Duration timeout,
@@ -378,10 +378,10 @@ final class DefaultRequest implements Request
     
     private static final class DefaultParameters implements Parameters
     {
-        private final DefaultRouteRegistry.Match p;
+        private final ResourceMatch<?> p;
         private final Map<String, List<String>> q, qRaw;
         
-        DefaultParameters(DefaultRouteRegistry.Match paramsPath, RequestTarget paramsQuery) {
+        DefaultParameters(ResourceMatch<?> paramsPath, RequestTarget paramsQuery) {
             p = requireNonNull(paramsPath);
             q = paramsQuery.queryMapPercentDecoded();
             qRaw = paramsQuery.queryMapNotPercentDecoded();

@@ -1,14 +1,12 @@
 package alpha.nomagichttp.internal;
 
 import alpha.nomagichttp.HttpServer;
-import alpha.nomagichttp.message.Request;
 import alpha.nomagichttp.route.NoRouteFoundException;
 import alpha.nomagichttp.route.Route;
 import alpha.nomagichttp.route.RouteCollisionException;
 import alpha.nomagichttp.route.RouteRegistry;
 import alpha.nomagichttp.route.SegmentsBuilder;
 
-import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.Objects;
@@ -195,37 +193,6 @@ final class DefaultRouteRegistry implements RouteRegistry
     }
     
     /**
-     * A match of a route.
-     * 
-     * @author Martin Andersson (webmaster at martinandersson.com)
-     */
-    interface Match
-    {
-        /**
-         * Returns the matched route.
-         * 
-         * @return the matched route (never {@code null})
-         */
-        Route route();
-        
-        /**
-         * Equivalent to {@link Request.Parameters#path(String)}.
-         * 
-         * @param name of path parameter (case sensitive)
-         * @return the path parameter value (percent-decoded)
-         */
-        String pathParam(String name);
-        
-        /**
-         * Equivalent to {@link Request.Parameters#pathRaw(String)}.
-         * 
-         * @param name of path parameter (case sensitive)
-         * @return the raw path parameter value (not decoded/unescaped)
-         */
-        String pathParamRaw(String name);
-    }
-    
-    /**
      * Match the path segments from a request path against a route.
      * 
      * @param rt request target
@@ -237,7 +204,7 @@ final class DefaultRouteRegistry implements RouteRegistry
      * @throws NoRouteFoundException
      *             if a route can not be found
      */
-    Match lookup(RequestTarget rt) {
+    ResourceMatch<Route> lookup(RequestTarget rt) {
         Iterable<String> raw = rt.segmentsNotPercentDecoded();
         Iterable<String> decoded = rt.segmentsPercentDecoded();
         
@@ -250,7 +217,7 @@ final class DefaultRouteRegistry implements RouteRegistry
         // check node's value for a route
         Route r;
         if ((r = n.get()) != null) {
-            return DefaultMatch.of(r, raw, decoded);
+            return ResourceMatch.of(rt, r, r.segments());
         }
         
         // nothing was there? check for a catch-all child
@@ -261,7 +228,7 @@ final class DefaultRouteRegistry implements RouteRegistry
         }
         
         if ((r = n.get()) != null) {
-            return DefaultMatch.of(r, raw, decoded);
+            return ResourceMatch.of(rt, r, r.segments());
         }
         
         throw new NoRouteFoundException(decoded);
@@ -287,114 +254,6 @@ final class DefaultRouteRegistry implements RouteRegistry
             break;
         }
         return n;
-    }
-    
-    // Package-private only for tests
-    static class DefaultMatch implements Match
-    {
-        private final Route route;
-        private final Map<String, String> paramsRaw, paramsDec;
-        
-        static DefaultMatch of(Route route, Iterable<String> rawSrc, Iterable<String> decSrc) {
-            // We need to map "request/path/segments" to "route/:path/*parameters"
-            Iterator<String>    decIt  = decSrc.iterator(),
-                                segIt  = route.segments().iterator();
-            Map<String, String> rawMap = Map.of(),
-                                decMap = Map.of();
-            
-            String catchAllKey = null;
-            
-            for (String r : rawSrc) {
-                 String d = decIt.next();
-                
-                if (catchAllKey == null) {
-                    // Catch-all not activated, consume next route segment
-                    String s = segIt.next();
-                    
-                    switch (s.charAt(0)) {
-                        case COLON_CH:
-                            // Single path param goes to map
-                            String k = s.substring(1),
-                                   o = (rawMap = mk(rawMap)).put(k, r);
-                            assert o == null;
-                                   o = (decMap = mk(decMap)).put(k, d);
-                            assert o == null;
-                            break;
-                        case ASTERISK_CH:
-                            // Toggle catch-all phase with this segment as seed
-                            catchAllKey = s.substring(1);
-                            (rawMap = mk(rawMap)).put(catchAllKey, '/' + r);
-                            (decMap = mk(decMap)).put(catchAllKey, '/' + d);
-                            break;
-                        default:
-                            // Static segments we're not interested in
-                            break;
-                    }
-                } else {
-                    // Consume all remaining request segments as catch-all
-                    rawMap.merge(catchAllKey, '/' + r, String::concat);
-                    decMap.merge(catchAllKey, '/' + d, String::concat);
-                }
-            }
-            
-            // We're done with the request path, but route may still have a catch-all segment in there
-            if (segIt.hasNext()) {
-                String s = segIt.next();
-                assert s.startsWith("*");
-                assert !segIt.hasNext();
-                assert catchAllKey == null;
-                catchAllKey = s.substring(1);
-            }
-            
-            // We could have toggled to catch-all, but no path segment was consumed for it, and
-            if (catchAllKey != null && !rawMap.containsKey(catchAllKey)) {
-                // route JavaDoc promises to default with a '/'
-                (rawMap = mk(rawMap)).put(catchAllKey, "/");
-                (decMap = mk(decMap)).put(catchAllKey, "/");
-            }
-            
-            assert !decIt.hasNext();
-            return new DefaultMatch(route, rawMap, decMap);
-        }
-        
-        private static <K, V> Map<K, V> mk(Map<K, V> map) {
-            return map.isEmpty() ? new HashMap<>() : map;
-        }
-        
-        private DefaultMatch(Route route, Map<String, String> paramsRaw, Map<String, String> paramsDec) {
-            this.route = route;
-            this.paramsRaw = paramsRaw;
-            this.paramsDec = paramsDec;
-        }
-        
-        @Override
-        public Route route() {
-            return route;
-        }
-        
-        @Override
-        public String pathParam(String name) {
-            return paramsDec.get(name);
-        }
-        
-        @Override
-        public String pathParamRaw(String name) {
-            return paramsRaw.get(name);
-        }
-        
-        /**
-         * FOR TESTS ONLY:  Returns the internal map holding raw path parameter
-         * values.
-         * 
-         * @return the internal map holding raw path parameter values
-         */
-        Map<String, String> mapRaw() {
-            return paramsRaw;
-        }
-        
-        Map<String, String> mapDec() {
-            return paramsDec;
-        }
     }
     
     /**

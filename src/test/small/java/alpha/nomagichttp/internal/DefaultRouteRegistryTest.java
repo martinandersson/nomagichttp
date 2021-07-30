@@ -281,15 +281,14 @@ class DefaultRouteRegistryTest
             Map<String, String> expectedParamValuesRaw,
             Object... repeatedCases)
     {
-        DefaultRouteRegistry.Match m = testee.lookup(parse(path));
-        assertThat(m.route()).isSameAs(expectSame);
+        ResourceMatch<Route> m = testee.lookup(parse(path));
+        assertThat(m.get()).isSameAs(expectSame);
         
-        DefaultRouteRegistry.DefaultMatch df = (DefaultRouteRegistry.DefaultMatch) m;
-        assertThat(df.mapRaw()).isEqualTo(expectedParamValuesRaw);
+        assertThat(m.mapRaw()).isEqualTo(expectedParamValuesRaw);
         
         Map<String, String> decoded = new HashMap<>(expectedParamValuesRaw);
         decoded.replaceAll((k, v) -> decode(v));
-        assertThat(df.mapDec()).isEqualTo(decoded);
+        assertThat(m.mapDec()).isEqualTo(decoded);
         
         for (int arg1 = 0, arg2 = 1, arg3 = 2; arg3 < repeatedCases.length; arg1 += 3, arg2 += 3, arg3 += 3) {
             @SuppressWarnings({"unchecked"})
