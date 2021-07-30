@@ -13,6 +13,7 @@ import java.util.ArrayList;
 import java.util.Deque;
 import java.util.Iterator;
 import java.util.List;
+import java.util.RandomAccess;
 import java.util.Set;
 import java.util.concurrent.CopyOnWriteArraySet;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -113,10 +114,28 @@ final class DefaultActionRegistry implements ActionRegistry
         });
     }
     
+    /**
+     * Lookup before-actions.<p>
+     * 
+     * If the returned list is not empty, then it also implements {@link
+     * RandomAccess} and is mutable.
+     * 
+     * @param rt request target
+     * @return matches (never {@code null})
+     */
     List<ResourceMatch<BeforeAction>> lookupBefore(RequestTarget rt) {
         return lookup(before, rt);
     }
     
+    /**
+     * Lookup after-actions.<p>
+     * 
+     * If the returned list is not empty, then it also implements {@link
+     * RandomAccess} and is mutable.
+     * 
+     * @param rt request target
+     * @return matches (never {@code null})
+     */
     List<ResourceMatch<AfterAction>> lookupAfter(RequestTarget rt) {
         return lookup(after, rt);
     }
