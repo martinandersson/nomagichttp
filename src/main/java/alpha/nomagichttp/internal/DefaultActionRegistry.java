@@ -255,7 +255,7 @@ final class DefaultActionRegistry implements ActionRegistry
      * The hashcode and equals implementation delegates directly to the action
      * object.
      * 
-     * @param <A>
+     * @param <A> type of action
      */
     private static abstract class AbstractWrapper<A> {
         private static final AtomicInteger SEQ = new AtomicInteger();
