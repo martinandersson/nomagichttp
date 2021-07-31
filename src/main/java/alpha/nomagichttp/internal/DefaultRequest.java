@@ -42,8 +42,8 @@ final class DefaultRequest implements Request
      * @param head request head
      * @param paramsQuery params from query
      * @param paramsPath params from path
-     * @param bodySource body bytes
-     * @param child client channel
+     * @param chIn source of body bytes
+     * @param chApi client channel
      * @param timeout see {@link Config#timeoutIdleConnection()}
      * @param beforeNonEmptyBodySubscription if {@code null}, no callback
      * @param afterNonEmptyBodySubscription if {@code null}, no callback
@@ -57,14 +57,14 @@ final class DefaultRequest implements Request
             RequestHead head,
             RequestTarget paramsQuery,
             ResourceMatch<?> paramsPath,
-            Flow.Publisher<DefaultPooledByteBufferHolder> bodySource,
-            DefaultClientChannel child,
+            Flow.Publisher<DefaultPooledByteBufferHolder> chIn,
+            DefaultClientChannel chApi,
             Duration timeout,
             Runnable beforeNonEmptyBodySubscription,
             Runnable afterNonEmptyBodySubscription)
     {
         return new DefaultRequest(
-                ver, head, paramsQuery, paramsPath, bodySource, child, timeout,
+                ver, head, paramsQuery, paramsPath, chIn, chApi, timeout,
                 beforeNonEmptyBodySubscription, afterNonEmptyBodySubscription);
     }
     
@@ -81,8 +81,8 @@ final class DefaultRequest implements Request
      * 
      * @param ver HTTP version
      * @param head request head
-     * @param bodySource body bytes
-     * @param child client channel
+     * @param chIn source of body bytes
+     * @param chApi client channel
      * @param timeout see {@link Config#timeoutIdleConnection()}
      * @param beforeNonEmptyBodySubscription if {@code null}, no callback
      * @param afterNonEmptyBodySubscription if {@code null}, no callback
@@ -94,14 +94,14 @@ final class DefaultRequest implements Request
     static DefaultRequest withoutParams(
             Version ver,
             RequestHead head,
-            Flow.Publisher<DefaultPooledByteBufferHolder> bodySource,
-            DefaultClientChannel child,
+            Flow.Publisher<DefaultPooledByteBufferHolder> chIn,
+            DefaultClientChannel chApi,
             Duration timeout,
             Runnable beforeNonEmptyBodySubscription,
             Runnable afterNonEmptyBodySubscription)
     {
         return new DefaultRequest(
-                ver, head, null, null, bodySource, child, timeout,
+                ver, head, null, null, chIn, chApi, timeout,
                 beforeNonEmptyBodySubscription, afterNonEmptyBodySubscription);
     }
     
@@ -110,8 +110,8 @@ final class DefaultRequest implements Request
             RequestHead head,
             RequestTarget paramsQuery,
             ResourceMatch<?> paramsPath,
-            Flow.Publisher<DefaultPooledByteBufferHolder> bodySource,
-            DefaultClientChannel child,
+            Flow.Publisher<DefaultPooledByteBufferHolder> chIn,
+            DefaultClientChannel chApi,
             Duration timeout,
             Runnable beforeNonEmptyBodySubscription,
             Runnable afterNonEmptyBodySubscription)
@@ -130,24 +130,24 @@ final class DefaultRequest implements Request
         final long len = contentLength(head.headers()).orElse(0);
         
         if (len <= 0) {
-            requireNonNull(bodySource);
-            requireNonNull(child);
+            requireNonNull(chIn);
+            requireNonNull(chApi);
             requireNonNull(timeout);
             bodyStage   = COMPLETED;
             bodyApi     = RequestBody.empty(headers());
             bodyDiscard = null;
         } else {
-            var bounded = new LengthLimitedOp(len, bodySource);
+            var bounded = new LengthLimitedOp(len, chIn);
             // Upstream is ChannelByteBufferPublisher, he can handle async cancel
             var timeOut = new TimeoutOp.Flow<>(false, true, bounded, timeout, () -> {
-                if (LOG.isLoggable(DEBUG) && child.isOpenForReading()) {
+                if (LOG.isLoggable(DEBUG) && chApi.isOpenForReading()) {
                     LOG.log(DEBUG, "Request body timed out, shutting down child channel's read stream.");
                 }
-                child.shutdownInputSafe();
+                chApi.shutdownInputSafe();
                 return new RequestBodyTimeoutException();
             });
             var observe = new SubscriptionAsStageOp(timeOut);
-            var onError = new OnErrorCloseReadStream<>(observe, child);
+            var onError = new OnErrorCloseReadStream<>(observe, chApi);
             bodyDiscard = new OnCancelDiscardOp(onError);
             timeOut.start();
             

@@ -341,36 +341,36 @@ public final class DefaultServer implements HttpServer
         private void setup(AsynchronousSocketChannel child) {
             LOG.log(DEBUG, () -> "Accepted child: " + child);
             
-            DefaultClientChannel chan = new DefaultClientChannel(child, DefaultServer.this);
-            ChannelByteBufferPublisher bytes = new ChannelByteBufferPublisher(chan);
-            children.add(chan);
+            DefaultClientChannel chApi = new DefaultClientChannel(child, DefaultServer.this);
+            ChannelByteBufferPublisher chIn = new ChannelByteBufferPublisher(chApi);
+            children.add(chApi);
             // TODO: Wanna complete only when the LAST async I/O operation completes
             //       (will likely require 1 ChannelByteBufferSubscriber per channel?)
-            chan.onClose(() -> {
-                children.remove(chan);
+            chApi.onClose(() -> {
+                children.remove(chApi);
                 if (!parent.isOpen()) {
                     tryCompleteLastChildStage();
                 }
             });
             
-            startExchange(chan, bytes);
+            startExchange(chApi, chIn);
             
             // TODO: child.setOption(StandardSocketOptions.SO_KEEPALIVE, true); ??
         }
         
         private void startExchange(
-                DefaultClientChannel chan,
-                ChannelByteBufferPublisher bytes)
+                DefaultClientChannel chApi,
+                ChannelByteBufferPublisher chIn)
         {
             var exch = new HttpExchange(
-                    DefaultServer.this, registry, eh, bytes, chan);
+                    DefaultServer.this, registry, eh, chIn, chApi);
             
             exch.begin().whenComplete((Null, exc) -> {
                 // Both open-calls are volatile reads, no locks
-                if (exc == null && parent.isOpen() && chan.isEverythingOpen()) {
-                    startExchange(chan, bytes);
+                if (exc == null && parent.isOpen() && chApi.isEverythingOpen()) {
+                    startExchange(chApi, chIn);
                 } else {
-                    chan.closeSafe();
+                    chApi.closeSafe();
                 }
             });
         }
