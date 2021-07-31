@@ -69,21 +69,21 @@ final class ResponseBodySubscriber implements SubscriberAsStage<ByteBuffer, Long
     private final Response resp;
     private final HttpExchange exch;
     private final AnnounceToChannel sink;
-    private final DefaultClientChannel chan;
+    private final DefaultClientChannel chApi;
     private final CompletableFuture<Long> resu;
     
     private Flow.Subscription subscription;
     private boolean pushedHead;
     private int requested;
     
-    ResponseBodySubscriber(Response resp, HttpExchange exch, DefaultClientChannel ch) {
-        this.resp = requireNonNull(resp);
-        this.exch = requireNonNull(exch);
-        this.chan = requireNonNull(ch);
-        this.resu = new CompletableFuture<>();
-        this.sink = AnnounceToChannel.write(ch,
+    ResponseBodySubscriber(Response resp, HttpExchange exch, DefaultClientChannel chApi) {
+        this.resp  = requireNonNull(resp);
+        this.exch  = requireNonNull(exch);
+        this.chApi = requireNonNull(chApi);
+        this.resu  = new CompletableFuture<>();
+        this.sink  = AnnounceToChannel.write(chApi,
                 this::afterChannelFinished,
-                ch.getServer().getConfig().timeoutIdleConnection());
+                chApi.getServer().getConfig().timeoutIdleConnection());
     }
     
     /**
@@ -160,9 +160,9 @@ final class ResponseBodySubscriber implements SubscriberAsStage<ByteBuffer, Long
         if (t instanceof  ResponseTimeoutException) {
             propagates = sink.stopNow(t);
             // ...which closed only the stream. Finish the job:
-            if (chan.isAnythingOpen()) {
+            if (chApi.isAnythingOpen()) {
                 LOG.log(DEBUG, "Response timed out. Closing the child.");
-                chan.closeSafe();
+                chApi.closeSafe();
             }
         } else {
             // An application publisher hopefully never called onNext() first
@@ -198,14 +198,14 @@ final class ResponseBodySubscriber implements SubscriberAsStage<ByteBuffer, Long
         feedChannel(b);
     }
     
-    private void afterChannelFinished(DefaultClientChannel child, long byteCount, Throwable exc) {
+    private void afterChannelFinished(DefaultClientChannel chApi, long byteCount, Throwable exc) {
         if (exc == null) {
             assert byteCount > 0;
             resu.complete(byteCount);
         } else {
-            if (byteCount > 0 && child.isOpenForWriting()) {
+            if (byteCount > 0 && chApi.isOpenForWriting()) {
                 LOG.log(DEBUG, "Failed writing all of the response to channel. Will close the output stream.");
-                child.shutdownOutputSafe();
+                chApi.shutdownOutputSafe();
             }
             subscription.cancel();
             resu.completeExceptionally(exc);

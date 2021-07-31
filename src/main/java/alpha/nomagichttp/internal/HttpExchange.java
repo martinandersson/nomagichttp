@@ -74,9 +74,9 @@ final class HttpExchange
     private final Config config;
     private final DefaultRouteRegistry registry;
     private final Collection<ErrorHandler> handlers;
-    private final ChannelByteBufferPublisher bytes;
+    private final ChannelByteBufferPublisher chIn;
     private final ResponsePipeline pipe;
-    private final DefaultClientChannel chan;
+    private final DefaultClientChannel chApi;
     private final AtomicInteger cntDown;
     private final CompletableFuture<Void> result;
     
@@ -101,16 +101,16 @@ final class HttpExchange
             HttpServer server,
             DefaultRouteRegistry registry,
             Collection<ErrorHandler> handlers,
-            ChannelByteBufferPublisher bytes,
-            DefaultClientChannel chan)
+            ChannelByteBufferPublisher chIn,
+            DefaultClientChannel chApi)
     {
         this.server   = server;
         this.config   = server.getConfig();
         this.registry = registry;
         this.handlers = handlers;
-        this.bytes    = bytes;
-        this.chan     = chan;
-        this.pipe     = new ResponsePipeline(this, chan);
+        this.chIn     = chIn;
+        this.chApi    = chApi;
+        this.pipe     = new ResponsePipeline(this, chApi);
         this.cntDown  = new AtomicInteger(2); // <-- request handler + final response
         this.result   = new CompletableFuture<>();
         this.ver      = HTTP_1_1; // <-- default until updated
@@ -173,13 +173,13 @@ final class HttpExchange
     private void setupPipeline() {
         pipe.on(Success.class, (ev, rsp) -> handleWriteSuccess((Response) rsp));
         pipe.on(Error.class, (ev, thr) -> handleError((Throwable) thr));
-        chan.usePipeline(pipe);
+        chApi.usePipeline(pipe);
     }
     
     private CompletionStage<RequestHead> parseRequestHead() {
         RequestHeadSubscriber rhs = new RequestHeadSubscriber(server);
         
-        var to = new TimeoutOp.Flow<>(false, true, bytes,
+        var to = new TimeoutOp.Flow<>(false, true, chIn,
                 config.timeoutIdleConnection(), RequestHeadTimeoutException::new);
         to.subscribe(rhs);
         to.start();
@@ -239,7 +239,7 @@ final class HttpExchange
     }
     
     private DefaultRequest createRequest(RequestHead h, RequestTarget t, ResourceMatch<?> m) {
-        return DefaultRequest.withParams(ver, h, t, m, bytes, chan,
+        return DefaultRequest.withParams(ver, h, t, m, chIn, chApi,
                 config.timeoutIdleConnection(),
                 this::tryRespond100Continue,
                 () -> { subscriberArrived = true; });
@@ -280,12 +280,12 @@ final class HttpExchange
             !getHttpVersion().isLessThan(HTTP_1_1) &&
             request.headerContains(EXPECT, "100-continue"))
         {
-            chan.write(continue_());
+            chApi.write(continue_());
         }
     }
     
     private void invokeRequestHandler() {
-        handler.logic().accept(request, chan);
+        handler.logic().accept(request, chApi);
         if (cntDown.decrementAndGet() == 0) {
             LOG.log(DEBUG, "Request handler finished after final response. " +
                            "Preparing for a new HTTP exchange.");
@@ -318,20 +318,20 @@ final class HttpExchange
         if (head == null) {
             // e.g. RequestHeadParseException -> 400 (Bad Request)
             if (LOG.isLoggable(DEBUG)) {
-                if (chan.isEverythingOpen()) {
+                if (chApi.isEverythingOpen()) {
                     LOG.log(DEBUG, "No request head parsed. Closing child channel. (end of HTTP exchange)");
                 } else {
                     LOG.log(DEBUG, "No request head parsed. (end of HTTP exchange)");
                 }
             }
-            chan.closeSafe();
+            chApi.closeSafe();
             result.complete(null);
             return;
         }
         
         // To have a new HTTP exchange, we must first make sure all of the request body is read
         
-        if (!chan.isOpenForReading()) {
+        if (!chApi.isOpenForReading()) {
             // ...nothing to drain
             LOG.log(DEBUG, "Input stream was shut down. HTTP exchange is over.");
             result.complete(null);
@@ -341,14 +341,14 @@ final class HttpExchange
         final DefaultRequest req = request != null ? request :
                 // e.g. NoRouteFoundException -> 404 (Not Found)
                 // (use local request obj without API support for parameters)
-                DefaultRequest.withoutParams(ver, head, bytes, chan, config.timeoutIdleConnection(), null, null);
+                DefaultRequest.withoutParams(ver, head, chIn, chApi, config.timeoutIdleConnection(), null, null);
         
         req.bodyDiscardIfNoSubscriber();
         req.bodyStage().whenComplete((Null, thr) -> {
             // Prepping new exchange = thr is ignored (already dealt with, hopefully lol)
-            if (req.headerContains(CONNECTION, "close") && chan.isOpenForReading()) {
+            if (req.headerContains(CONNECTION, "close") && chApi.isOpenForReading()) {
                 LOG.log(DEBUG, "Request set \"Connection: close\", shutting down input.");
-                chan.shutdownInputSafe();
+                chApi.shutdownInputSafe();
             }
             // Note
             //   ResponsePipeline shuts down output on "Connection: close".
@@ -362,7 +362,7 @@ final class HttpExchange
     
     private void handleError(Throwable exc) {
         final Throwable unpacked = unpackCompletionException(exc);
-        if (isTerminatingException(unpacked, chan)) {
+        if (isTerminatingException(unpacked, chApi)) {
             result.completeExceptionally(exc);
             return;
         }
@@ -371,10 +371,10 @@ final class HttpExchange
             LOG.log(DEBUG, "Request head timed out, shutting down input stream.");
             // HTTP exchange will not continue after response
             // RequestBodyTimeoutException already shut down the input stream (see DefaultRequest)
-            chan.shutdownInputSafe();
+            chApi.shutdownInputSafe();
         }
         
-        if (chan.isOpenForWriting())  {
+        if (chApi.isOpenForWriting())  {
             // We don't expect errors to be arriving concurrently from the same
             // exchange, this would be kind of weird. But technically, it could
             // happen, e.g. a synchronous error from the request handler and an
@@ -490,7 +490,7 @@ final class HttpExchange
         
         private void usingDefault(Throwable t) {
             try {
-                ErrorHandler.DEFAULT.apply(t, chan, request, handler);
+                ErrorHandler.DEFAULT.apply(t, chApi, request, handler);
             } catch (Throwable next) {
                 next.addSuppressed(t);
                 unexpected(next);
@@ -500,7 +500,7 @@ final class HttpExchange
         private void usingHandlers(Throwable t) {
             for (ErrorHandler h : handlers) {
                 try {
-                    h.apply(t, chan, request, handler);
+                    h.apply(t, chApi, request, handler);
                     return;
                 } catch (Throwable next) {
                     if (t != next) {

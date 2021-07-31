@@ -91,7 +91,7 @@ final class ResponsePipeline extends AbstractLocalEventEmitter
     private final Config cfg;
     private final int maxUnssuccessful;
     private final HttpExchange exch;
-    private final DefaultClientChannel chan;
+    private final DefaultClientChannel chApi;
     private final Deque<CompletionStage<Response>> queue;
     private final SeriallyRunnable op;
     // This timer times out delays from app to give us a response.
@@ -104,14 +104,14 @@ final class ResponsePipeline extends AbstractLocalEventEmitter
      * Constructs a {@code ResponsePipeline}.<p>
      * 
      * @param exch the HTTP exchange
-     * @param chan channel's delegate used for writing
+     * @param chApi channel's delegate used for writing
      * 
      * @throws NullPointerException if any arg is {@code null}
      */
-    ResponsePipeline(HttpExchange exch, DefaultClientChannel chan) {
-        this.cfg = chan.getServer().getConfig();
+    ResponsePipeline(HttpExchange exch, DefaultClientChannel chApi) {
+        this.cfg = chApi.getServer().getConfig();
         this.maxUnssuccessful = cfg.maxUnsuccessfulResponses();
-        this.chan  = chan;
+        this.chApi = chApi;
         this.exch  = requireNonNull(exch);
         this.queue = new ConcurrentLinkedDeque<>();
         this.op    = new SeriallyRunnable(this::pollAndProcessAsync, true);
@@ -155,18 +155,18 @@ final class ResponsePipeline extends AbstractLocalEventEmitter
         ifPresent(timer, t -> t.reschedule(this::timeoutAction));
     }
     
-    private static void scheduleClose(DefaultClientChannel chan) {
+    private static void scheduleClose(DefaultClientChannel chApi) {
         Timeout.schedule(SECONDS.toNanos(5), () -> {
-            if (chan.isAnythingOpen()) {
+            if (chApi.isAnythingOpen()) {
                 LOG.log(WARNING, "Response timed out, but after 5 seconds more the channel is still not closed. Closing child.");
-                chan.closeSafe();
+                chApi.closeSafe();
             }
         });
     }
     
     private void pollAndProcessAsync() {
         if (timedOut && !timeoutEmitted) {
-            scheduleClose(chan);
+            scheduleClose(chApi);
             var thr = new ResponseTimeoutException("Gave up waiting on a response.");
             emit(Error.INSTANCE, thr, null);
             timeoutEmitted = true;
@@ -236,7 +236,7 @@ final class ResponsePipeline extends AbstractLocalEventEmitter
             out = in;
         } else if (in.isFinal() &&
                   (exch.getRequest() != null && hasConnectionClose(exch.getRequest()) ||
-                  !chan.isOpenForReading()))
+                  !chApi.isOpenForReading()))
         {
             // Flag also propagates from request or current half-closed state of channel
             sawConnectionClose = true;
@@ -253,7 +253,7 @@ final class ResponsePipeline extends AbstractLocalEventEmitter
         final Response out;
         if (isClientError(in.statusCode()) || isServerError(in.statusCode())) {
             // Bump error counter
-            int n = chan.attributes().<Integer>asMapAny()
+            int n = chApi.attributes().<Integer>asMapAny()
                     .merge("alpha.nomagichttp.responsepipeline.nUnssuccessful", 1, Integer::sum);
             
             if (n >= maxUnssuccessful && !in.mustCloseAfterWrite()) {
@@ -264,7 +264,7 @@ final class ResponsePipeline extends AbstractLocalEventEmitter
             }
         } else {
             // Reset
-            chan.attributes().set("alpha.nomagichttp.responsepipeline.nUnssuccessful", 0);
+            chApi.attributes().set("alpha.nomagichttp.responsepipeline.nUnssuccessful", 0);
             out = in;
         }
         return out;
@@ -296,11 +296,11 @@ final class ResponsePipeline extends AbstractLocalEventEmitter
         // Response.body() (app) -> operator -> ResponseBodySubscriber (server)
         // On timeout, operator will cancel upstream and error out downstream.
         var body = new TimeoutOp.Pub<>(true, false, rsp.body(), cfg.timeoutIdleConnection(), () -> {
-            scheduleClose(chan);
+            scheduleClose(chApi);
             return new ResponseTimeoutException(
                     "Gave up waiting on a response body bytebuffer.");
         });
-        var sub = new ResponseBodySubscriber(rsp, exch, chan);
+        var sub = new ResponseBodySubscriber(rsp, exch, chApi);
         body.subscribe(sub);
         return sub.asCompletionStage();
     }
@@ -334,19 +334,19 @@ final class ResponsePipeline extends AbstractLocalEventEmitter
         }
         if (rsp.mustCloseAfterWrite()) {
             LOG.log(DEBUG, "Response wants us to close the child, will close.");
-            chan.closeSafe();
+            chApi.closeSafe();
         } else if (rsp.mustShutdownOutputAfterWrite()) {
             LOG.log(DEBUG, "Response wants us to shutdown output, will shutdown.");
-            chan.shutdownOutputSafe();
+            chApi.shutdownOutputSafe();
             // DefaultServer will not start a new exchange
         }
     }
     
     private void actOnWriteSuccess(Long bytesWritten, Response rsp) {
         LOG.log(DEBUG, () -> "Sent response (" + bytesWritten + " bytes).");
-        if (wroteFinal && sawConnectionClose && chan.isOpenForWriting()) {
+        if (wroteFinal && sawConnectionClose && chApi.isOpenForWriting()) {
             LOG.log(DEBUG, "Saw \"Connection: close\", shutting down output.");
-            chan.shutdownOutputSafe();
+            chApi.shutdownOutputSafe();
         }
         emit(Success.INSTANCE, rsp, null);
     }
@@ -364,7 +364,7 @@ final class ResponsePipeline extends AbstractLocalEventEmitter
             }
         } else {
             // thr originates from response writer
-            if (chan.isOpenForWriting()) {
+            if (chApi.isOpenForWriting()) {
                 // and no bytes were written on the wire, rollback
                 wroteFinal = false;
             }

@@ -51,10 +51,10 @@ class RequestHeadSubscriberTest
         if (testee == null) {
             HttpServer fake = HttpServer.create(configuration()
                     .maxRequestHeadSize(MAX_VALUE).build());
-            DefaultClientChannel chan = new DefaultClientChannel(SERVER.accept(), fake);
-            Flow.Publisher<DefaultPooledByteBufferHolder> bytes = new ChannelByteBufferPublisher(chan);
+            DefaultClientChannel chApi = new DefaultClientChannel(SERVER.accept(), fake);
+            Flow.Publisher<DefaultPooledByteBufferHolder> chIn = new ChannelByteBufferPublisher(chApi);
             RequestHeadSubscriber rhp = new RequestHeadSubscriber(fake);
-            bytes.subscribe(rhp);
+            chIn.subscribe(rhp);
             testee = rhp.asCompletionStage();
         }
         return testee;
