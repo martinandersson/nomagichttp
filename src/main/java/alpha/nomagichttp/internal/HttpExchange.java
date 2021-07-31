@@ -254,6 +254,7 @@ final class HttpExchange
     
     private void monitorRequest() {
         request.bodyStage().whenComplete((Null, thr) -> {
+            // Note, an empty body is immediately completed
             pipe.startTimeout();
             if (thr instanceof RequestBodyTimeoutException && !subscriberArrived) {
                 // Then we need to deal with it
