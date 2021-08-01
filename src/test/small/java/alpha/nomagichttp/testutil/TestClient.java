@@ -55,8 +55,8 @@ import static org.assertj.core.api.Assertions.assertThat;
  * with a name ending in "EOS". Specifying an empty terminator (empty String or
  * 0-length byte array) will make the read operation NOP.<p>
  * 
- * Each read/write operation will by default timeout after 1.5 seconds, giving
- * the HTTP exchange a total of 3 seconds to complete. On timeout, the operation
+ * Each read/write operation will by default timeout after 2 seconds, giving the
+ * HTTP exchange a total of 4 seconds to complete. On timeout, the operation
  * will fail with a {@link ClosedByInterruptException}. Test cases that need
  * more time can override the default using {@link
  * #interruptWriteAfter(long, TimeUnit)} and {@link
@@ -140,8 +140,8 @@ public final class TestClient
         this.initialSize = BUF_SIZE;
     }
     
-    private long     rAmount = 1_500,
-                     wAmount = 1_500;
+    private long     rAmount = 2_000,
+                     wAmount = 2_000;
     private TimeUnit rUnit   = MILLISECONDS,
                      wUnit   = MILLISECONDS;
     
