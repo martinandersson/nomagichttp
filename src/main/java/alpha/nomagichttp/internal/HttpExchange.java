@@ -260,7 +260,9 @@ final class HttpExchange
     }
     
     private DefaultRequest createRequest(RequestHead h, RequestTarget t, ResourceMatch<?> m) {
-        return new DefaultRequest(ver, h, body, m, t);
+        return new DefaultRequest(ver, h, body,
+                new DefaultParameters(m, t),
+                new DefaultAttributes());
     }
     
     private void validateRequest() {

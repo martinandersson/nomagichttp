@@ -100,7 +100,8 @@ import alpha.nomagichttp.route.RouteRegistry;
  * 
  * The invocation order of after-actions works sort of the same way, but in
  * reverse. The rule is to match the most niche action first, followed by more
- * generic ones, and as before, honor the application's insertion order.
+ * generic ones, and as before, honor the application's insertion order whenever
+ * possible.
  * 
  * <pre>
  *   Request path: /

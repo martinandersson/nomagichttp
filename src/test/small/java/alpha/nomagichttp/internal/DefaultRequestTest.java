@@ -2,7 +2,6 @@ package alpha.nomagichttp.internal;
 
 import alpha.nomagichttp.message.BadHeaderException;
 import alpha.nomagichttp.message.Request;
-import alpha.nomagichttp.message.RequestHead;
 import alpha.nomagichttp.util.Publishers;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
@@ -22,7 +21,6 @@ import static alpha.nomagichttp.testutil.Assertions.assertFailed;
 import static alpha.nomagichttp.util.Headers.of;
 import static java.nio.charset.StandardCharsets.US_ASCII;
 import static java.nio.file.Files.notExists;
-import static java.time.Duration.ofDays;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
@@ -131,25 +129,26 @@ class DefaultRequestTest
     }
     
     private static DefaultRequest createRequest(HttpHeaders headers, String body) {
-        RequestHead rh = new DefaultRequestHead(
+        var rh = new DefaultRequestHead(
                 "test-method",
                 "test-requestTarget",
                 "test-httpVersion",
                 headers,
                 -1);
         
-        RequestBody rb = RequestBody.of(
+        var rb = RequestBody.of(
                 rh.headers(),
                 Publishers.just(wrap(body, US_ASCII)),
                 Mockito.mock(DefaultClientChannel.class),
                 null, null, null);
         
-        return new DefaultRequest(
-                HTTP_1_1,
-                rh,
-                rb,
-                new ResourceMatch<>(null, Map.of(), Map.of()),
-                RequestTarget.parse("/"));
+        var p = new DefaultParameters(
+                    new ResourceMatch<>(null, Map.of(), Map.of()),
+                    RequestTarget.parse("/?"));
+        
+        var a = new DefaultAttributes();
+        
+        return new DefaultRequest(HTTP_1_1, rh, rb, p, a);
     }
     
     private static DefaultRequest createEmptyRequest() {

@@ -6,29 +6,36 @@ import alpha.nomagichttp.message.RequestHead;
 import alpha.nomagichttp.util.Attributes;
 
 import java.net.http.HttpHeaders;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
-import java.util.stream.Stream;
 
 import static java.util.Objects.requireNonNull;
 
+/**
+ * The default implementation of {@code Request}.<p>
+ * 
+ * This class is immutable and one instance of it is reserved for each
+ * executional entity, all of them for any given HTTP exchange share the same
+ * underlying components such as the attributes. Except for parameters. Template
+ * a new instance for a new executional entity using {@link
+ * #withParams(Parameters)}
+ * 
+ * @author Martin Andersson (webmaster at martinandersson.com)
+ */
 final class DefaultRequest implements Request
 {
     private final Version ver;
     private final RequestHead head;
     private final Body body;
-    private final RequestTarget paramsQuery;
-    private final ResourceMatch<?> paramsPath;
-    private final Attributes attributes;
+    private final Parameters params;
+    private final Attributes attr;
     
     /**
      * Constructs this object.
      * 
      * @param ver HTTP version
      * @param head request head
-     * @param paramsQuery params from query
-     * @param paramsPath params from path
+     * @param body request body
+     * @param attr attributes
+     * @param params parameters
      * 
      * @throws NullPointerException if any argument is {@code null}
      */
@@ -36,15 +43,14 @@ final class DefaultRequest implements Request
             Version ver,
             RequestHead head,
             Body body,
-            ResourceMatch<?> paramsPath,
-            RequestTarget paramsQuery)
+            Parameters params,
+            Attributes attr)
     {
-        this.ver         = requireNonNull(ver);
-        this.head        = requireNonNull(head);
-        this.body        = requireNonNull(body);
-        this.paramsPath  = requireNonNull(paramsPath);
-        this.paramsQuery = requireNonNull(paramsQuery);
-        this.attributes  = new DefaultAttributes();
+        this.ver    = requireNonNull(ver);
+        this.head   = requireNonNull(head);
+        this.body   = requireNonNull(body);
+        this.params = requireNonNull(params);
+        this.attr   = requireNonNull(attr);
     }
     
     @Override
@@ -63,16 +69,8 @@ final class DefaultRequest implements Request
     }
     
     @Override
-    public String toString() {
-        return DefaultRequest.class.getSimpleName() + "{head=" + head + ", body=?}";
-    }
-    
-    private Parameters params;
-    
-    @Override
     public Parameters parameters() {
-        Parameters p = params;
-        return p != null ? p : (params = new DefaultParameters(paramsPath, paramsQuery));
+        return params;
     }
     
     @Override
@@ -87,68 +85,23 @@ final class DefaultRequest implements Request
     
     @Override
     public Attributes attributes() {
-        return attributes;
+        return attr;
     }
     
-    private static final class DefaultParameters implements Parameters
-    {
-        private final ResourceMatch<?> p;
-        private final Map<String, List<String>> q, qRaw;
-        
-        DefaultParameters(ResourceMatch<?> paramsPath, RequestTarget paramsQuery) {
-            p = requireNonNull(paramsPath);
-            q = paramsQuery.queryMapPercentDecoded();
-            qRaw = paramsQuery.queryMapNotPercentDecoded();
-        }
-        
-        @Override
-        public String path(String name) {
-            return p.pathParam(name);
-        }
-        
-        @Override
-        public String pathRaw(String name) {
-            return p.pathParamRaw(name);
-        }
-        
-        @Override
-        public Optional<String> queryFirst(String key) {
-            return queryStream(key).findFirst();
-        }
-        
-        @Override
-        public Optional<String> queryFirstRaw(String key) {
-            return queryStreamRaw(key).findFirst();
-        }
-        
-        @Override
-        public Stream<String> queryStream(String key) {
-            return queryList(key).stream();
-        }
+    /**
+     * Construct a new instance sharing all fields of this instance, except for
+     * the given new parameters.
+     * 
+     * @param params new parameters
+     * @return new instance
+     */
+    DefaultRequest withParams(Parameters params) {
+        return new DefaultRequest(ver, head, body, params, attr);
+    }
     
-        @Override
-        public Stream<String> queryStreamRaw(String key) {
-            return queryListRaw(key).stream();
-        }
-        
-        @Override
-        public List<String> queryList(String key) {
-            return queryMap().getOrDefault(key, List.of());
-        }
-        
-        @Override
-        public List<String> queryListRaw(String key) {
-            return queryMapRaw().getOrDefault(key, List.of());
-        }
-        
-        @Override
-        public Map<String, List<String>> queryMap() {
-            return q;
-        }
-        
-        @Override
-        public Map<String, List<String>> queryMapRaw() {
-            return qRaw;
-        }
+    @Override
+    public String toString() {
+        return DefaultRequest.class.getSimpleName() +
+                "{head=" + head + ", body=?}";
     }
 }
