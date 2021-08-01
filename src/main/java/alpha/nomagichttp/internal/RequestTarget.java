@@ -12,7 +12,7 @@ import java.util.RandomAccess;
 import static alpha.nomagichttp.util.PercentDecoder.decode;
 import static java.util.Collections.unmodifiableList;
 import static java.util.Collections.unmodifiableMap;
-import static java.util.stream.Collectors.toList;
+import static java.util.stream.Collectors.toCollection;
 import static java.util.stream.Collectors.toMap;
 
 /**
@@ -140,10 +140,11 @@ final class RequestTarget
         assert !query.startsWith("?");
         this.segmentsNotPercentDecoded = unmodifiableList(segmentsNotPercentDecoded);
         this.segmentsPercentDecoded    = unmodifiableList(segmentsNotPercentDecoded.stream()
-                .map(PercentDecoder::decode).collect(toList()));
+                .map(PercentDecoder::decode).collect(toCollection(() ->
+                        new ArrayList<>(segmentsNotPercentDecoded.size()))));
         
         this.queryMapNotPercentDecoded = null;
-        this.queryMapPercentDecoded = null;
+        this.queryMapPercentDecoded    = null;
     }
     
     /**

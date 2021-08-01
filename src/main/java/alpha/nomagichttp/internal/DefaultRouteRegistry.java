@@ -205,13 +205,12 @@ final class DefaultRouteRegistry implements RouteRegistry
      *             if a route can not be found
      */
     ResourceMatch<Route> lookup(RequestTarget rt) {
-        Iterable<String> raw = rt.segmentsNotPercentDecoded();
-        Iterable<String> decoded = rt.segmentsPercentDecoded();
+        Iterable<String> dec = rt.segmentsPercentDecoded();
         
-        Tree.ReadNode<Route> n = findNodeFromSegments(decoded);
+        Tree.ReadNode<Route> n = findNodeFromSegments(dec);
         
         if (n == null) {
-            throw new NoRouteFoundException(decoded);
+            throw new NoRouteFoundException(dec);
         }
         
         // check node's value for a route
@@ -224,14 +223,14 @@ final class DefaultRouteRegistry implements RouteRegistry
         n = n.next(ASTERISK_STR);
         
         if (n == null) {
-            throw new NoRouteFoundException(decoded);
+            throw new NoRouteFoundException(dec);
         }
         
         if ((r = n.get()) != null) {
             return ResourceMatch.of(rt, r, r.segments());
         }
         
-        throw new NoRouteFoundException(decoded);
+        throw new NoRouteFoundException(dec);
     }
     
     private Tree.ReadNode<Route> findNodeFromSegments(Iterable<String> decoded) {
