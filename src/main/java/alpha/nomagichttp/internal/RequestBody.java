@@ -3,6 +3,7 @@ package alpha.nomagichttp.internal;
 import alpha.nomagichttp.message.MediaType;
 import alpha.nomagichttp.message.PooledByteBufferHolder;
 import alpha.nomagichttp.message.Request;
+import alpha.nomagichttp.message.RequestBodyTimeoutException;
 import alpha.nomagichttp.util.Publishers;
 
 import java.net.http.HttpHeaders;
@@ -11,6 +12,7 @@ import java.nio.charset.Charset;
 import java.nio.file.OpenOption;
 import java.nio.file.Path;
 import java.nio.file.attribute.FileAttribute;
+import java.time.Duration;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
@@ -19,11 +21,14 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.BiFunction;
 
 import static alpha.nomagichttp.internal.AtomicReferences.lazyInit;
+import static alpha.nomagichttp.util.Headers.contentLength;
 import static alpha.nomagichttp.util.Headers.contentType;
+import static java.lang.System.Logger.Level.DEBUG;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.nio.file.StandardOpenOption.CREATE_NEW;
 import static java.nio.file.StandardOpenOption.WRITE;
 import static java.util.Objects.requireNonNull;
+import static java.util.concurrent.CompletableFuture.completedStage;
 import static java.util.concurrent.CompletableFuture.failedStage;
 
 /**
@@ -33,50 +38,121 @@ import static java.util.concurrent.CompletableFuture.failedStage;
  */
 final class RequestBody implements Request.Body
 {
+    private static final System.Logger LOG = System.getLogger(RequestBody.class.getPackageName());
+    private static final CompletionStage<Void> COMPLETED_NULL = completedStage(null);
+    private static final CompletionStage<String> COMPLETED_STR_EMPTY = completedStage("");
+    
     // Copy-pasted from AsynchronousFileChannel.NO_ATTRIBUTES
     @SuppressWarnings({"rawtypes"}) // generic array construction
     private static final FileAttribute<?>[] NO_ATTRIBUTES = new FileAttribute[0];
     
-    static Request.Body empty(HttpHeaders headers) {
-        // Even an empty body must still validate the arguments,
-        // for example toText() may complete with IllegalCharsetNameException.
-        requireNonNull(headers);
-        return new RequestBody(headers, null, null, null);
-    }
-    
-    static Request.Body of(
+    /**
+     * Construct a RequestBody.
+     * 
+     * The first three arguments are required.<p>
+     * 
+     * The {@code timeout} should always be provided, but may be skipped if the
+     * call-site knows the body is empty (in which case the HTTP exchange
+     * arranges for the response pipeline's timeout to start immediately) or the
+     * call-site intends to immediately discard the body with no further
+     * delay.<p>
+     * 
+     * The last two callbacks are also optional, and will naively be
+     * called decoratively before and after this class subscribes the downstream
+     * subscriber (application) to the upstream publisher (channel), but only if
+     * the body has contents (subscription to an empty body will delegate to an
+     * empty dummy). 
+     * 
+     * @param headers of request
+     * @param chIn reading channel
+     * @param chApi extended channel API (exceptional closure)
+     * @param timeout duration (may be {@code null})
+     * @param beforeNonEmptyBodySubscription before callback (may be {@code null})
+     * @param afterNonEmptyBodySubscription after callback (may be {@code null})
+     * 
+     * @return a request body
+     * @throws NullPointerException if any required argument is {@code null}
+     */
+    static RequestBody of(
             HttpHeaders headers,
-            Flow.Publisher<PooledByteBufferHolder> source,
+            Flow.Publisher<DefaultPooledByteBufferHolder> chIn,
+            DefaultClientChannel chApi,
+            Duration timeout,
             Runnable beforeNonEmptyBodySubscription,
             Runnable afterNonEmptyBodySubscription)
     {
-        requireNonNull(headers);
-        requireNonNull(source);
-        return new RequestBody(headers, source,
-                beforeNonEmptyBodySubscription, afterNonEmptyBodySubscription);
+        // TODO: If length is not present, then body is possibly chunked.
+        // https://tools.ietf.org/html/rfc7230#section-3.3.3
+        
+        // TODO: Server should throw BadRequestException if Content-Length is present AND Content-Encoding
+        // https://tools.ietf.org/html/rfc7230#section-3.3.2
+        
+        final long len = contentLength(headers).orElse(0);
+        
+        if (len <= 0) {
+            requireNonNull(chIn);
+            requireNonNull(chApi);
+            return new RequestBody(headers, COMPLETED_NULL, null, null, null);
+        } else {
+            var bounded = new LengthLimitedOp(len, chIn);
+            
+            // Upstream is ChannelByteBufferPublisher, he can handle async cancel
+            var timedOp = timeout == null ? null :
+                    new TimeoutOp.Flow<>(false, true, bounded, timeout, () -> {
+                        if (LOG.isLoggable(DEBUG) && chApi.isOpenForReading()) {
+                            LOG.log(DEBUG, "Request body timed out, shutting down child channel's read stream.");
+                        }
+                        chApi.shutdownInputSafe();
+                        return new RequestBodyTimeoutException();
+                    });
+            
+            var observe = new SubscriptionAsStageOp(timedOp != null ? timedOp : bounded);
+            var onError = new OnErrorCloseReadStream<>(observe, chApi);
+            var discard = new OnCancelDiscardOp(onError);
+            
+            if (timedOp != null) {
+                timedOp.start();
+            }
+            
+            return new RequestBody(
+                    headers,
+                    observe.asCompletionStage(),
+                    discard,
+                    beforeNonEmptyBodySubscription,
+                    afterNonEmptyBodySubscription);
+        }
     }
     
     private final HttpHeaders headers;
-    private final Flow.Publisher<PooledByteBufferHolder> source;
+    private final CompletionStage<Void> subscription;
+    private final OnCancelDiscardOp chIn;
+    private final Runnable beforeSubsc;
+    private final Runnable afterSubscr;
+
     private final AtomicReference<CompletionStage<String>> cachedText;
-    private final Runnable beforeSubscription;
-    private final Runnable afterSubscription;
     
     private RequestBody(
+            // Required
             HttpHeaders headers,
-            Flow.Publisher<PooledByteBufferHolder> source,
-            Runnable beforeSubscription,
-            Runnable afterSubscription)
+            CompletionStage<Void> subscription,
+            // All optional (relevant only for body contents)
+            OnCancelDiscardOp chIn,
+            Runnable beforeSubsc,
+            Runnable afterSubscr)
     {
-        this.headers = headers;
-        this.source  = source;
-        this.cachedText = new AtomicReference<>(null);
-        this.beforeSubscription = beforeSubscription;
-        this.afterSubscription = afterSubscription;
+        this.headers      = headers;
+        this.subscription = subscription;
+        this.chIn         = chIn;
+        this.beforeSubsc  = beforeSubsc;
+        this.afterSubscr  = afterSubscr;
+        this.cachedText   = chIn == null ? null : new AtomicReference<>(null);
     }
     
     @Override
     public CompletionStage<String> toText() {
+        if (isEmpty()) {
+            return COMPLETED_STR_EMPTY;
+        }
         return lazyInit(cachedText, CompletableFuture::new, v -> copyResult(mkText(), v));
     }
     
@@ -104,7 +180,9 @@ final class RequestBody implements Request.Body
     }
     
     @Override
-    public CompletionStage<Long> toFile(Path file, Set<? extends OpenOption> options, FileAttribute<?>... attrs) {
+    public CompletionStage<Long> toFile(
+            Path file, Set<? extends OpenOption> options, FileAttribute<?>... attrs)
+    {
         final Set<? extends OpenOption> opt = !options.isEmpty() ? options :
                 Set.of(WRITE, CREATE_NEW);
         
@@ -135,19 +213,45 @@ final class RequestBody implements Request.Body
         if (isEmpty()) {
             Publishers.<PooledByteBufferHolder>empty().subscribe(subscriber);
         } else {
-            if (beforeSubscription != null) {
-                beforeSubscription.run();
+            if (beforeSubsc != null) {
+                beforeSubsc.run();
             }
-            source.subscribe(subscriber);
-            if (afterSubscription != null) {
-                afterSubscription.run();
+            chIn.subscribe(subscriber);
+            if (afterSubscr != null) {
+                afterSubscr.run();
             }
         }
     }
     
     @Override
     public boolean isEmpty() {
-        return source == null;
+        return chIn == null;
+    }
+    
+    /**
+     * Returns a stage that completes when the body subscription completes.<p>
+     * 
+     * The returned stage is already completed if the request contains no body.
+     * 
+     * @return a stage that completes when the body subscription completes
+     *
+     * @see SubscriptionAsStageOp
+     */
+    CompletionStage<Void> asCompletionStage() {
+        return subscription;
+    }
+    
+    /**
+     * If no downstream body subscriber is active, complete downstream and
+     * discard upstream.<p>
+     *
+     * Is NOP if body is empty or already discarding.
+     */
+    void discardIfNoSubscriber() {
+        if (isEmpty()) {
+            return;
+        }
+        chIn.discardIfNoSubscriber();
     }
     
     private static <T> void copyResult(CompletionStage<? extends T> from, CompletableFuture<? super T> to) {

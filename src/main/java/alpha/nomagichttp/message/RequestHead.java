@@ -2,8 +2,6 @@ package alpha.nomagichttp.message;
 
 import alpha.nomagichttp.events.RequestHeadParsed;
 
-import java.net.http.HttpHeaders;
-
 /**
  * A "raw" request head where each component can be retrieved as observed on the
  * wire.<p>
@@ -16,7 +14,7 @@ import java.net.http.HttpHeaders;
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  */
-public interface RequestHead {
+public interface RequestHead extends HeaderHolder {
     /**
      * Returns the method token.
      * 
@@ -37,13 +35,6 @@ public interface RequestHead {
      * @return the HTTP version token
      */
     String httpVersion();
-    
-    /**
-     * Returns the headers.
-     * 
-     * @return the headers (never {@code null} but may be empty)
-     */
-    HttpHeaders headers();
     
     /**
      * Returns the value from {@link System#nanoTime()} polled when the first

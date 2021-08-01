@@ -91,6 +91,7 @@ final class HttpExchange
     
     private RequestHead head;
     private Version ver;
+    private RequestBody body;
     private DefaultRequest request;
     private RequestHandler handler;
     private volatile boolean sent100c;
@@ -114,6 +115,7 @@ final class HttpExchange
         this.cntDown  = new AtomicInteger(2); // <-- request handler + final response
         this.result   = new CompletableFuture<>();
         this.ver      = HTTP_1_1; // <-- default until updated
+        this.body     = null;
         this.request  = null;
         this.handler  = null;
         this.sent100c = false;
@@ -196,12 +198,13 @@ final class HttpExchange
             throw new HttpVersionTooOldException(h.httpVersion(), "HTTP/1.1");
         }
         
+        body = createBody(h);
+               monitorBody();
+        
         ResourceMatch<Route> m = registry.lookup(t);
         
-        // This order is actually specified in javadoc of ErrorHandler#apply
         request = createRequest(h, t, m);
                   validateRequest();
-                  monitorRequest();
         handler = findRequestHandler(h, m);
     }
     
@@ -238,22 +241,15 @@ final class HttpExchange
         }
     }
     
-    private DefaultRequest createRequest(RequestHead h, RequestTarget t, ResourceMatch<?> m) {
-        return DefaultRequest.withParams(ver, h, t, m, chIn, chApi,
+    private RequestBody createBody(RequestHead h) {
+        return RequestBody.of(h.headers(), chIn, chApi,
                 config.timeoutIdleConnection(),
                 this::tryRespond100Continue,
-                () -> { subscriberArrived = true; });
+                () -> subscriberArrived = true);
     }
     
-    private void validateRequest() {
-        // May become pre-action
-        if (request.method().equals(TRACE) && !request.body().isEmpty()) {
-            throw new IllegalBodyException("Body in a TRACE request.", request);
-        }
-    }
-    
-    private void monitorRequest() {
-        request.bodyStage().whenComplete((Null, thr) -> {
+    private void monitorBody() {
+        body.asCompletionStage().whenComplete((Null, thr) -> {
             // Note, an empty body is immediately completed
             pipe.startTimeout();
             if (thr instanceof RequestBodyTimeoutException && !subscriberArrived) {
@@ -261,6 +257,17 @@ final class HttpExchange
                 handleError(thr);
             }
         });
+    }
+    
+    private DefaultRequest createRequest(RequestHead h, RequestTarget t, ResourceMatch<?> m) {
+        return new DefaultRequest(ver, h, body, m, t);
+    }
+    
+    private void validateRequest() {
+        // May become pre-action
+        if (request.method().equals(TRACE) && !request.body().isEmpty()) {
+            throw new IllegalBodyException("Body in a TRACE request.", request);
+        }
     }
     
     private static RequestHandler findRequestHandler(RequestHead rh, ResourceMatch<Route> m) {
@@ -314,6 +321,12 @@ final class HttpExchange
     }
     
     private void tryPrepareForNewExchange() {
+        if (!chApi.isOpenForReading()) {
+            LOG.log(DEBUG, "Input stream was shut down. HTTP exchange is over.");
+            result.complete(null);
+            return;
+        }
+        
         // Super early failure means no new HTTP exchange
         if (head == null) {
             // e.g. RequestHeadParseException -> 400 (Bad Request)
@@ -329,24 +342,17 @@ final class HttpExchange
             return;
         }
         
-        // To have a new HTTP exchange, we must first make sure all of the request body is read
+        // To have a new HTTP exchange, we must first make sure the body is consumed
         
-        if (!chApi.isOpenForReading()) {
-            // ...nothing to drain
-            LOG.log(DEBUG, "Input stream was shut down. HTTP exchange is over.");
-            result.complete(null);
-            return;
-        }
+        final var b = body != null ? body :
+                // e.g. HttpVersionTooOldException -> 426 (Upgrade Required)
+                // (use a local dummy)
+                RequestBody.of(head.headers(), chIn, chApi, null, null, null);
         
-        final DefaultRequest req = request != null ? request :
-                // e.g. NoRouteFoundException -> 404 (Not Found)
-                // (use local request obj without API support for parameters)
-                DefaultRequest.withoutParams(ver, head, chIn, chApi, config.timeoutIdleConnection(), null, null);
-        
-        req.bodyDiscardIfNoSubscriber();
-        req.bodyStage().whenComplete((Null, thr) -> {
+        b.discardIfNoSubscriber();
+        b.asCompletionStage().whenComplete((Null, thr) -> {
             // Prepping new exchange = thr is ignored (already dealt with, hopefully lol)
-            if (req.headerContains(CONNECTION, "close") && chApi.isOpenForReading()) {
+            if (head.headerContains(CONNECTION, "close") && chApi.isOpenForReading()) {
                 LOG.log(DEBUG, "Request set \"Connection: close\", shutting down input.");
                 chApi.shutdownInputSafe();
             }

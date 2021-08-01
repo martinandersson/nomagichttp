@@ -14,6 +14,7 @@ import java.nio.charset.IllegalCharsetNameException;
 import java.nio.charset.UnsupportedCharsetException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.Map;
 import java.util.Optional;
 
 import static alpha.nomagichttp.HttpConstants.Version.HTTP_1_1;
@@ -137,16 +138,18 @@ class DefaultRequestTest
                 headers,
                 -1);
         
-        return DefaultRequest.withParams(
-                HTTP_1_1,
-                rh,
-                RequestTarget.parse("/"),
-                null,
+        RequestBody rb = RequestBody.of(
+                rh.headers(),
                 Publishers.just(wrap(body, US_ASCII)),
                 Mockito.mock(DefaultClientChannel.class),
-                ofDays(99),
-                null,
-                null);
+                null, null, null);
+        
+        return new DefaultRequest(
+                HTTP_1_1,
+                rh,
+                rb,
+                new ResourceMatch<>(null, Map.of(), Map.of()),
+                RequestTarget.parse("/"));
     }
     
     private static DefaultRequest createEmptyRequest() {
