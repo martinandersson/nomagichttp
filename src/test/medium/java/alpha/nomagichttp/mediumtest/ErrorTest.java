@@ -552,7 +552,7 @@ class ErrorTest extends AbstractRealTest
     @Test
     void requestBodySubscriberFails_onNext() throws IOException, InterruptedException {
         MemorizingSubscriber<PooledByteBufferHolder> sub = new MemorizingSubscriber<>(
-                // Intercepted by DefaultRequest > OnErrorCloseReadStream
+                // Intercepted by RequestBody > OnErrorCloseReadStream
                 onNext(i -> { throw new OopsException(); }));
         
         onErrorAssert(OopsException.class, channel ->

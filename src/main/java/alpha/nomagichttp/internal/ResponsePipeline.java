@@ -86,7 +86,7 @@ final class ResponsePipeline extends AbstractLocalEventEmitter
     private static final System.Logger LOG
             = System.getLogger(ResponsePipeline.class.getPackageName());
     
-    private static final Throwable IGNORE = new Throwable();
+    private static final Throwable ABORT = new Throwable();
     
     private final Config cfg;
     private final int maxUnssuccessful;
@@ -273,7 +273,7 @@ final class ResponsePipeline extends AbstractLocalEventEmitter
     private CompletionStage<Long> subscribeToResponse(Response rsp) {
         if (wroteFinal) {
             LOG.log(WARNING, () -> "HTTP exchange not active. This response is ignored: " + rsp);
-            return failedStage(IGNORE);
+            return failedStage(ABORT);
         }
         if (rsp.isInformational()) {
             if (exch.getHttpVersion().isLessThan(HTTP_1_1)) {
@@ -282,7 +282,7 @@ final class ResponsePipeline extends AbstractLocalEventEmitter
             }
             if (rsp.statusCode() == ONE_HUNDRED && ++n100continue > 1) {
                 LOG.log(n100continue == 2 ? DEBUG : WARNING, "Ignoring repeated 100 (Continue).");
-                return failedStage(IGNORE);
+                return failedStage(ABORT);
             }
         }
         
@@ -309,7 +309,7 @@ final class ResponsePipeline extends AbstractLocalEventEmitter
         Response rsp = inFlight;
         inFlight = null;
         
-        if (thr != null && thr.getCause() == IGNORE) {
+        if (thr != null && thr.getCause() == ABORT) {
             op.complete();
             op.run();
             return;

@@ -12,7 +12,8 @@ import alpha.nomagichttp.handler.ErrorHandler;
  * after the response ({@link Response#mustCloseAfterWrite()}). This is what
  * {@link ErrorHandler#DEFAULT the default error handler} do. The underlying
  * response pipeline who throws this exception will give up waiting on channel
- * closure after another 5 seconds and proceed to close it.
+ * closure after another 5 seconds have passed and proceed to close it without
+ * any further ado.
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  * @see Config#timeoutIdleConnection()

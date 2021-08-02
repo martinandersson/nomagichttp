@@ -2,6 +2,8 @@ package alpha.nomagichttp.internal;
 
 import alpha.nomagichttp.Config;
 import alpha.nomagichttp.HttpServer;
+import alpha.nomagichttp.action.AfterAction;
+import alpha.nomagichttp.action.BeforeAction;
 import alpha.nomagichttp.events.DefaultEventHub;
 import alpha.nomagichttp.events.EventHub;
 import alpha.nomagichttp.events.HttpServerStarted;
@@ -56,7 +58,8 @@ public final class DefaultServer implements HttpServer
     private static final int INITIAL_CAPACITY = 10_000;
     
     private final Config config;
-    private final DefaultRouteRegistry registry;
+    private final DefaultActionRegistry actions;
+    private final DefaultRouteRegistry routes;
     private final List<ErrorHandler> eh;
     private final AtomicReference<CompletableFuture<ParentWithHandler>> parent;
     private final EventHub events;
@@ -68,11 +71,12 @@ public final class DefaultServer implements HttpServer
      * @param eh error handlers
      */
     public DefaultServer(Config config, ErrorHandler... eh) {
-        this.config   = requireNonNull(config);
-        this.registry = new DefaultRouteRegistry(this);
-        this.eh       = List.of(eh);
-        this.parent   = new AtomicReference<>();
-        this.events   = new DefaultEventHub();
+        this.config  = requireNonNull(config);
+        this.actions = new DefaultActionRegistry(this);
+        this.routes  = new DefaultRouteRegistry(this);
+        this.eh      = List.of(eh);
+        this.parent  = new AtomicReference<>();
+        this.events  = new DefaultEventHub();
     }
     
     @Override
@@ -195,17 +199,27 @@ public final class DefaultServer implements HttpServer
     
     @Override
     public HttpServer add(Route route) {
-        return registry.add(route);
+        return routes.add(route);
     }
     
     @Override
     public Route remove(String pattern) {
-        return registry.remove(pattern);
+        return routes.remove(pattern);
     }
     
     @Override
     public boolean remove(Route route) {
-        return registry.remove(route);
+        return routes.remove(route);
+    }
+    
+    @Override
+    public HttpServer before(String pattern, BeforeAction first, BeforeAction... more) {
+        return actions.before(pattern, first, more);
+    }
+    
+    @Override
+    public HttpServer after(String pattern, AfterAction first, AfterAction... more) {
+        return actions.after(pattern, first, more);
     }
     
     @Override
@@ -363,7 +377,7 @@ public final class DefaultServer implements HttpServer
                 ChannelByteBufferPublisher chIn)
         {
             var exch = new HttpExchange(
-                    DefaultServer.this, registry, eh, chIn, chApi);
+                    DefaultServer.this, actions, routes, eh, chIn, chApi);
             
             exch.begin().whenComplete((Null, exc) -> {
                 // Both open-calls are volatile reads, no locks

@@ -94,7 +94,7 @@ public class MemorizingSubscriber<T> implements Flow.Subscriber<T>
         var s = new MemorizingSubscriber<>(Request.IMMEDIATELY_MAX());
         from.subscribe(s);
         return s.asCompletionStage()
-                .thenApply(Null -> s.signals());
+                .thenApply(nil -> s.signals());
     }
     
     /**
