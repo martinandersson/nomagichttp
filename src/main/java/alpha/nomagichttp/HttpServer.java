@@ -1,5 +1,6 @@
 package alpha.nomagichttp;
 
+import alpha.nomagichttp.action.ActionRegistry;
 import alpha.nomagichttp.events.EventHub;
 import alpha.nomagichttp.events.RequestHeadParsed;
 import alpha.nomagichttp.events.ScatteringEventEmitter;
@@ -188,7 +189,7 @@ import static java.net.InetAddress.getLoopbackAddress;
  * @see RequestHandler
  * @see ErrorHandler
  */
-public interface HttpServer extends RouteRegistry
+public interface HttpServer extends RouteRegistry, ActionRegistry
 {
     /**
      * Create a server using {@linkplain Config#DEFAULT default
