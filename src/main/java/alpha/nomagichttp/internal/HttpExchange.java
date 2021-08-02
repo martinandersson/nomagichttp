@@ -82,10 +82,11 @@ final class HttpExchange
     private final DefaultRouteRegistry routes;
     private final Collection<ErrorHandler> handlers;
     private final ChannelByteBufferPublisher chIn;
-    private final ResponsePipeline pipe;
     private final DefaultClientChannel chApi;
+    private final ResponsePipeline pipe;
     private final AtomicInteger cntDown;
     private final CompletableFuture<Void> result;
+    private final DefaultAttributes attr;
     
     /*
      * Mutable fields related to the request chain in this class are not
@@ -124,6 +125,7 @@ final class HttpExchange
         this.pipe     = new ResponsePipeline(this, chApi);
         this.cntDown  = new AtomicInteger(2); // <-- request handler + final response, then new exchange
         this.result   = new CompletableFuture<>();
+        this.attr     = new DefaultAttributes();
         this.ver      = HTTP_1_1; // <-- default until updated
     }
     
@@ -300,8 +302,7 @@ final class HttpExchange
     
     private DefaultRequest createRequest(ResourceMatch<?> resource) {
         return new DefaultRequest(ver, head, body,
-                   new DefaultParameters(resource, target),
-                   new DefaultAttributes());
+                   new DefaultParameters(resource, target), attr);
     }
     
     private void validateRequest() {
