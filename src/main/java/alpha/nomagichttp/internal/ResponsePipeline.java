@@ -235,7 +235,7 @@ final class ResponsePipeline extends AbstractLocalEventEmitter
             sawConnectionClose = true;
             out = in;
         } else if (in.isFinal() &&
-                  (exch.getRequest() != null && hasConnectionClose(exch.getRequest()) ||
+                  (exch.getRequestHead() != null && hasConnectionClose(exch.getRequestHead()) ||
                   !chApi.isOpenForReading()))
         {
             // Flag also propagates from request or current half-closed state of channel

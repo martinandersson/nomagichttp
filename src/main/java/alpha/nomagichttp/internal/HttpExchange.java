@@ -1,6 +1,7 @@
 package alpha.nomagichttp.internal;
 
 import alpha.nomagichttp.Config;
+import alpha.nomagichttp.HttpConstants;
 import alpha.nomagichttp.HttpConstants.Version;
 import alpha.nomagichttp.HttpServer;
 import alpha.nomagichttp.action.BeforeAction;
@@ -12,7 +13,6 @@ import alpha.nomagichttp.message.HttpVersionTooNewException;
 import alpha.nomagichttp.message.HttpVersionTooOldException;
 import alpha.nomagichttp.message.IllegalBodyException;
 import alpha.nomagichttp.message.MediaType;
-import alpha.nomagichttp.message.Request;
 import alpha.nomagichttp.message.RequestBodyTimeoutException;
 import alpha.nomagichttp.message.RequestHead;
 import alpha.nomagichttp.message.RequestHeadTimeoutException;
@@ -62,7 +62,7 @@ import static java.util.concurrent.CompletableFuture.completedStage;
  * 
  * In addition:
  * <ul>
- *   <li>Has package-private accessors for the HTTP version and request object</li>
+ *   <li>Has package-private accessors for the HTTP version and request head</li>
  *   <li>May pre-emptively send a 100 (Continue) depending on configuration</li>
  *   <li>Shuts down read stream if request has header "Connection: close"</li>
  *   <li>Shuts down read stream on request timeout</li>
@@ -125,19 +125,28 @@ final class HttpExchange
         this.cntDown  = new AtomicInteger(2); // <-- request handler + final response, then new exchange
         this.result   = new CompletableFuture<>();
         this.ver      = HTTP_1_1; // <-- default until updated
-        this.body     = null;
-        this.request  = null;
-        this.handler  = null;
-        this.sent100c = false;
-        this.errRes   = null;
     }
     
+    /**
+     * Returns the active HTTP version.<p>
+     * 
+     * Before having been parsed and accepted from the request, this method
+     * returns a default {@link HttpConstants.Version#HTTP_1_1}. The value may
+     * consequently be updated both down and up.
+     * 
+     * @return the active HTTP version
+     */
     Version getHttpVersion() {
         return ver;
     }
     
-    Request getRequest() {
-        return request;
+    /**
+     * Returns the parsed request head, if available, otherwise {@code null}.
+     * 
+     * @return the parsed request head, if available, otherwise {@code null}
+     */
+    RequestHead getRequestHead() {
+        return head;
     }
     
     /**
