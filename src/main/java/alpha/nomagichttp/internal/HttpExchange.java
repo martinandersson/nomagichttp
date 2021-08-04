@@ -4,28 +4,20 @@ import alpha.nomagichttp.Config;
 import alpha.nomagichttp.HttpConstants;
 import alpha.nomagichttp.HttpConstants.Version;
 import alpha.nomagichttp.HttpServer;
-import alpha.nomagichttp.action.BeforeAction;
-import alpha.nomagichttp.action.Chain;
 import alpha.nomagichttp.handler.ClientChannel;
 import alpha.nomagichttp.handler.ErrorHandler;
-import alpha.nomagichttp.handler.RequestHandler;
 import alpha.nomagichttp.message.HttpVersionTooNewException;
 import alpha.nomagichttp.message.HttpVersionTooOldException;
-import alpha.nomagichttp.message.IllegalBodyException;
-import alpha.nomagichttp.message.MediaType;
 import alpha.nomagichttp.message.RequestBodyTimeoutException;
 import alpha.nomagichttp.message.RequestHead;
 import alpha.nomagichttp.message.RequestHeadTimeoutException;
 import alpha.nomagichttp.message.Response;
-import alpha.nomagichttp.route.Route;
 import alpha.nomagichttp.util.SerialExecutor;
 
 import java.io.IOException;
 import java.nio.channels.AsynchronousCloseException;
 import java.nio.channels.InterruptedByTimeoutException;
 import java.util.Collection;
-import java.util.Iterator;
-import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
 import java.util.concurrent.CompletionStage;
@@ -33,15 +25,14 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import static alpha.nomagichttp.HttpConstants.HeaderKey.CONNECTION;
 import static alpha.nomagichttp.HttpConstants.HeaderKey.EXPECT;
-import static alpha.nomagichttp.HttpConstants.Method.TRACE;
 import static alpha.nomagichttp.HttpConstants.StatusCode.ONE_HUNDRED;
 import static alpha.nomagichttp.HttpConstants.Version.HTTP_1_0;
 import static alpha.nomagichttp.HttpConstants.Version.HTTP_1_1;
+import static alpha.nomagichttp.handler.ErrorHandler.DEFAULT;
+import static alpha.nomagichttp.internal.InvocationChain.ABORTED;
 import static alpha.nomagichttp.internal.ResponsePipeline.Error;
 import static alpha.nomagichttp.internal.ResponsePipeline.Success;
 import static alpha.nomagichttp.message.Responses.continue_;
-import static alpha.nomagichttp.util.Headers.accept;
-import static alpha.nomagichttp.util.Headers.contentType;
 import static alpha.nomagichttp.util.IOExceptions.isCausedByBrokenInputStream;
 import static alpha.nomagichttp.util.IOExceptions.isCausedByBrokenOutputStream;
 import static java.lang.Integer.parseInt;
@@ -49,16 +40,17 @@ import static java.lang.System.Logger.Level.DEBUG;
 import static java.lang.System.Logger.Level.ERROR;
 import static java.lang.System.Logger.Level.WARNING;
 import static java.util.Objects.requireNonNull;
-import static java.util.concurrent.CompletableFuture.completedStage;
 
 /**
- * Orchestrator of an HTTP exchange from request to response.<p>
+ * Orchestrator of an HTTP exchange from request to response, erm, "ish".<p>
  * 
  * Core responsibilities:
  * <ul>
+ *   <li>Setup channel with a new response pipeline</li>
  *   <li>Schedule a request head subscriber on the channel</li>
- *   <li>Invoke before-action(s) and request handler</li>
- *   <li>Invoke error handlers</li>
+ *   <li>Trigger the invocation chain</li>
+ *   <li>When invocation chain and response pipeline completes, prepare a new exchange</li>
+ *   <li>Hand off all errors to the error handler(s)</li>
  * </ul>
  * 
  * In addition:
@@ -74,20 +66,16 @@ import static java.util.concurrent.CompletableFuture.completedStage;
 final class HttpExchange
 {
     private static final System.Logger LOG = System.getLogger(HttpExchange.class.getPackageName());
-    private static final CompletionStage<Void> COMPLETED = completedStage(null);
-    private static final Throwable ABORT = new Throwable();
     
     private final HttpServer server;
     private final Config config;
-    private final DefaultActionRegistry actions;
-    private final DefaultRouteRegistry routes;
     private final Collection<ErrorHandler> handlers;
     private final ChannelByteBufferPublisher chIn;
     private final DefaultClientChannel chApi;
+    private final InvocationChain chain;
     private final ResponsePipeline pipe;
     private final AtomicInteger cntDown;
     private final CompletableFuture<Void> result;
-    private final DefaultAttributes attr;
     
     /*
      * Mutable fields related to the request chain in this class are not
@@ -102,8 +90,6 @@ final class HttpExchange
     private RequestTarget target;
     private Version ver;
     private RequestBody body;
-    private DefaultRequest request;
-    private RequestHandler handler;
     private volatile boolean sent100c;
     private volatile boolean subscriberArrived;
     private ErrorResolver errRes;
@@ -118,24 +104,22 @@ final class HttpExchange
     {
         this.server   = server;
         this.config   = server.getConfig();
-        this.actions  = actions;
-        this.routes   = routes;
         this.handlers = handlers;
         this.chIn     = chIn;
         this.chApi    = chApi;
+        this.chain    = new InvocationChain(actions, routes, chApi);
         this.pipe     = new ResponsePipeline(this, chApi);
-        this.cntDown  = new AtomicInteger(2); // <-- request handler + final response, then new exchange
+        this.cntDown  = new AtomicInteger(2); // <-- request chain + final response, then new exchange
         this.result   = new CompletableFuture<>();
-        this.attr     = new DefaultAttributes();
         this.ver      = HTTP_1_1; // <-- default until updated
     }
     
     /**
      * Returns the active HTTP version.<p>
      * 
-     * Before having been parsed and accepted from the request, this method
-     * returns a default {@link HttpConstants.Version#HTTP_1_1}. The value may
-     * consequently be updated both down and up.
+     * Before the version has been parsed and accepted from the request, this
+     * method returns a default {@link HttpConstants.Version#HTTP_1_1}. The
+     * value may consequently be updated both down and up.
      * 
      * @return the active HTTP version
      */
@@ -183,8 +167,7 @@ final class HttpExchange
            .thenAccept(this::initialize)
            .thenRun(() -> { if (config.immediatelyContinueExpect100())
                tryRespond100Continue(); })
-           .thenCompose(nil -> invokeBeforeActions())
-           .thenRun(this::invokeRequestHandler)
+           .thenCompose(nil -> chain.execute(head, target, ver, body))
            .whenComplete((nil, thr) -> handleChainCompletion(thr));
     }
     
@@ -278,54 +261,9 @@ final class HttpExchange
         }
     }
     
-    private CompletionStage<Void> invokeBeforeActions() {
-        List<ResourceMatch<BeforeAction>> matches = actions.lookupBefore(target);
-        if (matches.isEmpty()) {
-            return COMPLETED;
-            
-        }
-        CompletableFuture<Void> allOf = new CompletableFuture<>();
-        new BeforeChain(matches.iterator(), allOf).callAction();
-        return allOf;
-    }
-    
-    private void invokeRequestHandler() {
-        ResourceMatch<Route> route = routes.lookup(target);
-        
-        request = createRequest(route);
-                  validateRequest();
-        handler = findRequestHandler(head, route);
-        
-        handler.logic().accept(request, chApi);
-    }
-    
-    private DefaultRequest createRequest(ResourceMatch<?> resource) {
-        return new DefaultRequest(ver, head, body,
-                   new DefaultParameters(resource, target), attr);
-    }
-    
-    private void validateRequest() {
-        // MAY become before-action
-        if (request.method().equals(TRACE) && !request.body().isEmpty()) {
-            throw new IllegalBodyException("Body in a TRACE request.", request);
-        }
-    }
-    
-    private static RequestHandler findRequestHandler(RequestHead rh, ResourceMatch<Route> m) {
-        MediaType type = contentType(rh.headers()).orElse(null);
-        // TODO: Find a way to cache this and re-use in Responses factories that
-        //       parse a charset from request (in this branch)
-        MediaType[] accepts = accept(rh.headers())
-                .map(s -> s.toArray(MediaType[]::new))
-                .orElse(null);
-        RequestHandler h = m.get().lookup(rh.method(), type, accepts);
-        LOG.log(DEBUG, () -> "Matched handler: " + h);
-        return h;
-    }
-    
     private void handleChainCompletion(Throwable thr) {
         final int v = cntDown.decrementAndGet();
-        if (thr == null || thr.getCause() == ABORT) {
+        if (thr == null || thr.getCause() == ABORTED) {
             if (v == 0) {
                 LOG.log(DEBUG, "Invocation chain finished after final response. " +
                                "Preparing for a new HTTP exchange.");
@@ -541,7 +479,7 @@ final class HttpExchange
         
         private void usingDefault(Throwable t) {
             try {
-                ErrorHandler.DEFAULT.apply(t, chApi, request, handler);
+                invokeHandler(DEFAULT, t);
             } catch (Throwable next) {
                 next.addSuppressed(t);
                 unexpected(next);
@@ -551,7 +489,7 @@ final class HttpExchange
         private void usingHandlers(Throwable t) {
             for (ErrorHandler h : handlers) {
                 try {
-                    h.apply(t, chApi, request, handler);
+                    invokeHandler(h, t);
                     return;
                 } catch (Throwable next) {
                     if (t != next) {
@@ -564,6 +502,10 @@ final class HttpExchange
             // All handlers opted out
             usingDefault(t);
         }
+        
+        private void invokeHandler(ErrorHandler eh, Throwable t) throws Throwable {
+            eh.apply(t, chApi, chain.getRequest(), chain.getRequestHandler());
+        }
     }
     
     private static Throwable unpackCompletionException(Throwable t) {
@@ -572,94 +514,5 @@ final class HttpExchange
             return t;
         }
         return t.getCause() == null ? t : unpackCompletionException(t.getCause());
-    }
-    
-    private static final int AWAITING_BOTH = 0,
-                             AWAITING_EXPL = 1,
-                             AWAITING_IMPL = 2,
-                             AWAITING_NONE = 3;
-    
-    private class BeforeChain implements Chain {
-        private final Iterator<ResourceMatch<BeforeAction>> actions;
-        private final CompletableFuture<Void> allOf;
-        private final AtomicInteger state;
-        
-        BeforeChain(Iterator<ResourceMatch<BeforeAction>> actions, CompletableFuture<Void> allOf) {
-            this.actions = actions;
-            this.allOf   = allOf;
-            this.state   = new AtomicInteger(AWAITING_BOTH);
-        }
-        
-        void callAction() {
-            try {
-                var a = actions.next();
-                request = createRequest(a);
-                a.get().apply(request, chApi, this);
-            } catch (Throwable t) {
-                state.set(AWAITING_NONE);
-                if (!allOf.completeExceptionally(t)) {
-                    LOG.log(WARNING,
-                        "Before-action returned exceptionally, but the chain was already aborted. " +
-                        "This error is ignored.", t);
-                }
-                return;
-            }
-            if (implicitComplete()) {
-                tryCallNextAction();
-            }
-        }
-        
-        private void tryCallNextAction() {
-            if (!actions.hasNext()) {
-                allOf.complete(null);
-            } else {
-                new BeforeChain(actions, allOf).callAction();
-            }
-        }
-        
-        @Override
-        public void proceed() {
-            if (explicitComplete()) {
-                tryCallNextAction();
-            }
-        }
-        
-        @Override
-        public void abort() {
-            int old = state.getAndSet(AWAITING_NONE);
-            if (old != AWAITING_NONE) {
-                allOf.completeExceptionally(ABORT);
-            }
-        }
-        
-        private boolean implicitComplete() {
-            int old = state.getAndUpdate(v -> {
-                switch (v) {
-                    case AWAITING_BOTH:
-                        return AWAITING_EXPL;
-                    case AWAITING_IMPL:
-                    case AWAITING_NONE:
-                        return AWAITING_NONE;
-                    default:
-                        throw new AssertionError("Unexpected: + v");
-                }
-            });
-            return old == AWAITING_IMPL;
-        }
-        
-        private boolean explicitComplete() {
-            int old = state.getAndUpdate(v -> {
-                switch (v) {
-                    case AWAITING_BOTH:
-                        return AWAITING_IMPL;
-                    case AWAITING_EXPL:
-                    case AWAITING_NONE:
-                        return AWAITING_NONE;
-                    default:
-                        throw new AssertionError("Unexpected: + v");
-                }
-            });
-            return old == AWAITING_EXPL;
-        }
     }
 }

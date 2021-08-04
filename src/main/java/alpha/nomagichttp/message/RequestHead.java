@@ -38,7 +38,7 @@ public interface RequestHead extends HeaderHolder {
     
     /**
      * Returns the value from {@link System#nanoTime()} polled when the first
-     * char of the request head was read and processed.<p>
+     * char of the request head was read and processing started.<p>
      * 
      * Useful to compute the time it took for the request head to be parsed
      * (parsing occurs concurrently as chars are read, subject to upstream
@@ -49,7 +49,7 @@ public interface RequestHead extends HeaderHolder {
      * 
      * @return a previous value of the running Java Virtual Machine's
      * high-resolution time source, in nanoseconds, as read when the first
-     * request head char was read and processed
+     * request head char was read and processing started
      */
     long nanoTimeOnStart();
 }
