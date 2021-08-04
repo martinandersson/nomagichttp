@@ -57,11 +57,11 @@ final class RequestBody implements Request.Body
      * call-site intends to immediately discard the body with no further
      * delay.<p>
      * 
-     * The last two callbacks are also optional, and will naively be
-     * called decoratively before and after this class subscribes the downstream
-     * subscriber (application) to the upstream publisher (channel), but only if
-     * the body has contents (subscription to an empty body will delegate to an
-     * empty dummy). 
+     * The last two callbacks are also optional, and will be called decoratively
+     * before and after this class subscribes the downstream subscriber
+     * (application) to the upstream publisher (channel), but only if the body
+     * has contents (subscription to an empty body will delegate to an empty
+     * dummy). 
      * 
      * @param headers of request
      * @param chIn reading channel

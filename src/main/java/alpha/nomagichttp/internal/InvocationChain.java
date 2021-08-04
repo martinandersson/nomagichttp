@@ -33,8 +33,7 @@ import static java.util.concurrent.CompletableFuture.completedStage;
  * 
  * There's one instance of this class per HTTP exchange.<p>
  * 
- * The main entry point is {@link
- * #execute(RequestHead, RequestTarget, Version, Request.Body)}.
+ * The main entry point is {@link #execute(SkeletonRequest, Version)}.
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  */
@@ -114,49 +113,45 @@ final class InvocationChain
      * {@linkplain ResponsePipeline pipeline} is still waiting for the final
      * response, otherwise a new HTTP exchange.
      * 
-     * @param h request head
-     * @param t request target
-     * @param v HTTP version
-     * @param b request body
+     * @param req request
+     * @param ver HTTP version
      * 
      * @return see JavaDoc
      */
-    CompletionStage<Void> execute(RequestHead h, RequestTarget t, Version v, Request.Body b) {
-        return invokeBeforeActions(h, t, v, b)
-                .thenRun(() ->invokeRequestHandler(h, t, v, b));
+    CompletionStage<Void> execute(SkeletonRequest req, Version ver) {
+        return invokeBeforeActions(req, ver)
+                .thenRun(() -> invokeRequestHandler(req, ver));
     }
     
-    private CompletionStage<Void> invokeBeforeActions(
-            RequestHead h, RequestTarget t, Version v, Request.Body b)
-    {
-        List<ResourceMatch<BeforeAction>> matches = actions.lookupBefore(t);
+    private CompletionStage<Void> invokeBeforeActions(SkeletonRequest req, Version ver) {
+        List<ResourceMatch<BeforeAction>> matches = actions.lookupBefore(req.target());
         if (matches.isEmpty()) {
             return COMPLETED;
         }
         CompletableFuture<Void> allOf = new CompletableFuture<>();
-        new BeforeChain(matches.iterator(), allOf, h, t, v, b).callAction();
+        new BeforeChain(matches.iterator(), allOf, req, ver).callAction();
         return allOf;
     }
     
     private void invokeRequestHandler(
-            RequestHead h, RequestTarget t, Version v, Request.Body b)
+            SkeletonRequest req, Version ver)
     {
-        ResourceMatch<Route> r = routes.lookup(t);
+        ResourceMatch<Route> r = routes.lookup(req.target());
         
-        request = createRequest(h, t, v, b, r);
+        request = createRequest(req, ver, r);
                   validateRequest();
-        handler = findRequestHandler(h, r);
+        handler = findRequestHandler(req.head(), r);
         
         handler.logic().accept(request, chApi);
     }
     
     private DefaultRequest createRequest(
-            RequestHead h, RequestTarget t, Version v,
-            Request.Body b,
+            SkeletonRequest req,
+            Version ver,
             ResourceMatch<?> resource)
     {
-        return new DefaultRequest(v, h, b,
-                new DefaultParameters(resource, t), attr);
+        return new DefaultRequest(ver, req.head(), req.body(),
+                new DefaultParameters(resource, req.target()), attr);
     }
     
     private void validateRequest() {
@@ -169,7 +164,7 @@ final class InvocationChain
     private static RequestHandler findRequestHandler(RequestHead rh, ResourceMatch<Route> m) {
         MediaType type = contentType(rh.headers()).orElse(null);
         // TODO: Find a way to cache this and re-use in Responses factories that
-        //       parse a charset from request
+        //       parse a charset from request (in a branch)
         MediaType[] accepts = accept(rh.headers())
                 .map(s -> s.toArray(MediaType[]::new))
                 .orElse(null);
@@ -178,7 +173,7 @@ final class InvocationChain
         return h;
     }
     
-    // State of a before-action invocation;
+    // Status of a before-action invocation;
     //     both implicit- and explicit completion required for continuation
     private static final int
             AWAITING_BOTH = 0,
@@ -190,36 +185,33 @@ final class InvocationChain
         private final Iterator<ResourceMatch<BeforeAction>> actions;
         private final CompletableFuture<Void> allOf;
         private final AtomicInteger status;
-        private final RequestHead h;
-        private final RequestTarget t;
-        private final Version v;
-        private final Request.Body b;
+        private final SkeletonRequest shared;
+        private final Version ver;
         
         BeforeChain(
                 Iterator<ResourceMatch<BeforeAction>> actions,
                 CompletableFuture<Void> allOf,
-                RequestHead h, RequestTarget t, Version v, Request.Body b)
+                SkeletonRequest shared,
+                Version ver)
         {
             this.actions = actions;
             this.allOf   = allOf;
             this.status  = new AtomicInteger(AWAITING_BOTH);
-            this.h = h;
-            this.t = t;
-            this.v = v;
-            this.b = b;
+            this.shared  = shared;
+            this.ver     = ver;
         }
         
         void callAction() {
             try {
                 var a = actions.next();
-                request = createRequest(h, t, v, b, a);
+                request = createRequest(shared, ver, a);
                 a.get().apply(request, chApi, this);
             } catch (Throwable t) {
                 status.set(AWAITING_NONE);
                 if (!allOf.completeExceptionally(t)) {
                     LOG.log(WARNING,
-                            "Before-action returned exceptionally, but the chain was already aborted. " +
-                                    "This error is ignored.", t);
+                        "Before-action returned exceptionally, but the chain was already aborted. " +
+                        "This error is ignored.", t);
                 }
                 return;
             }
@@ -232,7 +224,7 @@ final class InvocationChain
             if (!actions.hasNext()) {
                 allOf.complete(null);
             } else {
-                new BeforeChain(actions, allOf, h, t, v, b).callAction();
+                new BeforeChain(actions, allOf, shared, ver).callAction();
             }
         }
         
@@ -260,7 +252,7 @@ final class InvocationChain
                     case AWAITING_NONE:
                         return AWAITING_NONE;
                     default:
-                        throw new AssertionError("Unexpected: + v");
+                        throw new AssertionError("Unexpected: " + v);
                 }
             });
             return old == AWAITING_IMPL;
@@ -275,7 +267,7 @@ final class InvocationChain
                     case AWAITING_NONE:
                         return AWAITING_NONE;
                     default:
-                        throw new AssertionError("Unexpected: + v");
+                        throw new AssertionError("Unexpected: " + v);
                 }
             });
             return old == AWAITING_EXPL;

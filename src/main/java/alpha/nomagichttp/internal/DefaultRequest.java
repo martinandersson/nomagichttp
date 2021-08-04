@@ -12,7 +12,7 @@ import static java.util.Objects.requireNonNull;
 /**
  * The default implementation of {@code Request}.<p>
  * 
- * This class is immutable and one instance of it is reserved for each
+ * This class is immutable and a unique instance of it is given to each
  * executional entity, all of them for any given HTTP exchange share the same
  * underlying components such as the attributes. Except for parameters. Template
  * a new instance for a new executional entity using {@link

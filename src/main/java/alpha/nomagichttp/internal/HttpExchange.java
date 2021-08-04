@@ -87,9 +87,8 @@ final class HttpExchange
      */
     
     private RequestHead head;
-    private RequestTarget target;
-    private Version ver;
-    private RequestBody body;
+    private Version version;
+    private SkeletonRequest request;
     private volatile boolean sent100c;
     private volatile boolean subscriberArrived;
     private ErrorResolver errRes;
@@ -111,20 +110,7 @@ final class HttpExchange
         this.pipe     = new ResponsePipeline(this, chApi);
         this.cntDown  = new AtomicInteger(2); // <-- request chain + final response, then new exchange
         this.result   = new CompletableFuture<>();
-        this.ver      = HTTP_1_1; // <-- default until updated
-    }
-    
-    /**
-     * Returns the active HTTP version.<p>
-     * 
-     * Before the version has been parsed and accepted from the request, this
-     * method returns a default {@link HttpConstants.Version#HTTP_1_1}. The
-     * value may consequently be updated both down and up.
-     * 
-     * @return the active HTTP version
-     */
-    Version getHttpVersion() {
-        return ver;
+        this.version = HTTP_1_1; // <-- default until updated
     }
     
     /**
@@ -134,6 +120,19 @@ final class HttpExchange
      */
     RequestHead getRequestHead() {
         return head;
+    }
+    
+    /**
+     * Returns the active HTTP version.<p>
+     * 
+     * Before the version has been parsed and accepted from the request, this
+     * method returns a default {@link HttpConstants.Version#HTTP_1_1}. The
+     * value may subsequently be updated both down and up.
+     * 
+     * @return the active HTTP version
+     */
+    Version getHttpVersion() {
+        return version;
     }
     
     /**
@@ -167,7 +166,7 @@ final class HttpExchange
            .thenAccept(this::initialize)
            .thenRun(() -> { if (config.immediatelyContinueExpect100())
                tryRespond100Continue(); })
-           .thenCompose(nil -> chain.execute(head, target, ver, body))
+           .thenCompose(nil -> chain.execute(request, version))
            .whenComplete((nil, thr) -> handleChainCompletion(thr));
     }
     
@@ -190,15 +189,15 @@ final class HttpExchange
     
     private void initialize(RequestHead h) {
         head = h;
-        target = RequestTarget.parse(h.requestTarget());
         
-        ver = parseHttpVersion(h);
-        if (ver == HTTP_1_0 && config.rejectClientsUsingHTTP1_0()) {
+        version = parseHttpVersion(h);
+        if (version == HTTP_1_0 && config.rejectClientsUsingHTTP1_0()) {
             throw new HttpVersionTooOldException(h.httpVersion(), "HTTP/1.1");
         }
         
-        body = createBody(h);
-               monitorBody();
+        request = new SkeletonRequest(h,
+                RequestTarget.parse(h.requestTarget()),
+                monitorBody(createBody(h)));
     }
     
     private static Version parseHttpVersion(RequestHead h) {
@@ -241,8 +240,8 @@ final class HttpExchange
                 () -> subscriberArrived = true);
     }
     
-    private void monitorBody() {
-        body.asCompletionStage().whenComplete((nil, thr) -> {
+    private RequestBody monitorBody(RequestBody b) {
+        b.asCompletionStage().whenComplete((nil, thr) -> {
             // Note, an empty body is immediately completed
             pipe.startTimeout();
             if (thr instanceof RequestBodyTimeoutException && !subscriberArrived) {
@@ -250,6 +249,7 @@ final class HttpExchange
                 handleError(thr);
             }
         });
+        return b;
     }
     
     private void tryRespond100Continue() {
@@ -327,7 +327,7 @@ final class HttpExchange
         
         // To have a new HTTP exchange, we must first make sure the body is consumed
         
-        final var b = body != null ? body :
+        final var b = request != null ? request.body() :
                 // e.g. HttpVersionTooOldException -> 426 (Upgrade Required)
                 // (use a local dummy)
                 RequestBody.of(head.headers(), chIn, chApi, null, null, null);

@@ -33,7 +33,7 @@ final class OnCancelDiscardOp extends AbstractOp<PooledByteBufferHolder>
 {
     private volatile boolean discarding;
     
-    protected OnCancelDiscardOp(Flow.Publisher<? extends PooledByteBufferHolder> upstream) {
+    OnCancelDiscardOp(Flow.Publisher<? extends PooledByteBufferHolder> upstream) {
         super(upstream);
     }
     

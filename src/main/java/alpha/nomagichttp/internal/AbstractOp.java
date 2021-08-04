@@ -120,7 +120,8 @@ abstract class AbstractOp<T> extends AbstractUnicastPublisher<T>
      * Serializes all signals to upstream- and/or downstream.<p>
      * 
      * Only <i>fromXXX()</i> methods are serialized. Calls directly to {@code
-     * AbstractUnicastPublisher} such as {@code signalNext()} is not serialized.
+     * AbstractUnicastPublisher} such as {@code signalNext()} are not
+     * serialized.
      * 
      * @param <T> type of item
      */
