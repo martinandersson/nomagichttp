@@ -204,7 +204,7 @@ final class ResponsePipeline extends AbstractLocalEventEmitter
     }
     
     private Response handleUnknownLength(Response rsp) {
-            // Two quick reads; assume "Connection: close" will be present
+        // Two quick reads; assume "Connection: close" will be present
         if (!rsp.mustShutdownOutputAfterWrite()         &&
             !rsp.mustCloseAfterWrite()                  &&
             // If not, we need to dig a little bit

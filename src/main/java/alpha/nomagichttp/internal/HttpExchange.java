@@ -24,6 +24,7 @@ import java.io.IOException;
 import java.nio.channels.AsynchronousCloseException;
 import java.nio.channels.InterruptedByTimeoutException;
 import java.util.Collection;
+import java.util.Iterator;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
@@ -281,13 +282,11 @@ final class HttpExchange
         List<ResourceMatch<BeforeAction>> matches = actions.lookupBefore(target);
         if (matches.isEmpty()) {
             return COMPLETED;
+            
         }
-        CompletableFuture<Void> res = new CompletableFuture<>();
-        
-        // TODO: implement
-        res.complete(null);
-        
-        return res;
+        CompletableFuture<Void> allOf = new CompletableFuture<>();
+        new BeforeChain(matches.iterator(), allOf).callAction();
+        return allOf;
     }
     
     private void invokeRequestHandler() {
@@ -575,22 +574,87 @@ final class HttpExchange
         return t.getCause() == null ? t : unpackCompletionException(t.getCause());
     }
     
-    private static class DefaultChain<A> implements Chain {
+    private static final int AWAITING_BOTH = 0,
+                             AWAITING_EXPL = 1,
+                             AWAITING_IMPL = 2,
+                             AWAITING_NONE = 3;
+    
+    private class BeforeChain implements Chain {
+        private final Iterator<ResourceMatch<BeforeAction>> actions;
+        private final CompletableFuture<Void> allOf;
+        private final AtomicInteger state;
         
-        private final List<ResourceMatch<A>> actions;
-        
-        DefaultChain(List<ResourceMatch<A>> actions) {
+        BeforeChain(Iterator<ResourceMatch<BeforeAction>> actions, CompletableFuture<Void> allOf) {
             this.actions = actions;
+            this.allOf   = allOf;
+            this.state   = new AtomicInteger();
+        }
+        
+        void callAction() {
+            try {
+                var a = actions.next();
+                request = createRequest(a);
+                a.get().apply(request, chApi, this);
+            } catch (Throwable t) {
+                state.set(AWAITING_NONE);
+                var upd = allOf.completeExceptionally(t);
+                assert upd;
+                return;
+            }
+            if (implicitComplete()) {
+                tryCallNextAction();
+            }
+        }
+        
+        private void tryCallNextAction() {
+            if (!actions.hasNext()) {
+                allOf.complete(null);
+            } else {
+                new BeforeChain(actions, allOf).callAction();
+            }
         }
         
         @Override
         public void proceed() {
-            // TODO: implement
+            if (explicitComplete()) {
+                tryCallNextAction();
+            }
         }
-    
+        
         @Override
         public void abort() {
-            // TODO: implement
+            if (explicitComplete()) {
+                allOf.completeExceptionally(ABORT);
+            }
+        }
+        
+        private boolean implicitComplete() {
+            int old = state.getAndUpdate(v -> {
+                switch (v) {
+                    case AWAITING_BOTH:
+                        return AWAITING_EXPL;
+                    case AWAITING_IMPL:
+                        return AWAITING_NONE;
+                    default:
+                        throw new AssertionError("Unexpected: + v");
+                }
+            });
+            return old == AWAITING_IMPL;
+        }
+        
+        private boolean explicitComplete() {
+            int old = state.getAndUpdate(v -> {
+                switch (v) {
+                    case AWAITING_BOTH:
+                        return AWAITING_IMPL;
+                    case AWAITING_EXPL:
+                    case AWAITING_NONE:
+                        return AWAITING_NONE;
+                    default:
+                        throw new AssertionError("Unexpected: + v");
+                }
+            });
+            return old == AWAITING_EXPL;
         }
     }
 }

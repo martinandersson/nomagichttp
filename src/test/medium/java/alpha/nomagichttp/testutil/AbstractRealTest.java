@@ -58,9 +58,9 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * using {@link #pollServerError()}.<p>
  * 
  * After each test - by default - the server will be stopped and the
- * server+client reference will be set to null ({@linkplain
- * TestClient#openConnection() a persistent connection} opened by the test must
- * be closed by the test). This is great for test isolation.
+ * server+client reference will be set to null (a test that manually opened a
+ * {@linkplain TestClient#openConnection() persistent connection} must also
+ * close it). This is great for test isolation.
  * 
  * <pre>
  *   class MyTest extends AbstractRealTest {

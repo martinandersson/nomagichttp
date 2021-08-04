@@ -3,7 +3,7 @@ package alpha.nomagichttp.action;
 import alpha.nomagichttp.message.ResponseTimeoutException;
 
 /**
- * Proceed or abort the continuation of the invocation of before actions and the
+ * Proceed or abort the continuation of the invocation of before-actions and the
  * subsequent request handler.
  * 
  * The chain object is thread-safe and does not necessarily have to be called
@@ -11,8 +11,9 @@ import alpha.nomagichttp.message.ResponseTimeoutException;
  * this class is to support asynchronous actions that does not complete their
  * job when the action's {@code apply} method returns.<p>
  * 
- * Only the first invocation of a method declared in this interface has an
- * effect. Subsequent invocations are NOP.
+ * Each chain object passed to the action is unique for that action invocation.
+ * Only the first call to a method declared in this interface has an effect.
+ * Subsequent invocations are NOP.
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  */
@@ -22,7 +23,8 @@ public interface Chain {
      * the request handler.<p>
      * 
      * The actual continuation will take place whenever <i>both</i> the
-     * invocation of the action returns and this method has been called.
+     * invocation of the action returns normally and this method has been
+     * called.
      * 
      * @see BeforeAction
      */
@@ -40,9 +42,7 @@ public interface Chain {
      * 
      * An action aborting the chain should normally also have first written a
      * final response. It is <i>possible</i> (but slightly obfuscating) to first
-     * abort and then write a response. Aborting and never write a response at
-     * all will eventually cause a {@link ResponseTimeoutException} to be
-     * thrown.
+     * abort and then write a response.
      * 
      * @see BeforeAction
      */

@@ -87,6 +87,9 @@ final class RequestBody implements Request.Body
         // TODO: Server should throw BadRequestException if Content-Length is present AND Content-Encoding
         // https://tools.ietf.org/html/rfc7230#section-3.3.2
         
+        // "If this is a request message and none of the above are true, then"
+        //  the message body length is zero (no message body is present)."
+        //  - RFC 7230 §3.3.3 Message Body Length
         final long len = contentLength(headers).orElse(0);
         
         if (len <= 0) {
