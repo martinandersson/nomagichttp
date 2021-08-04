@@ -1,26 +1,29 @@
 package alpha.nomagichttp.action;
 
-import alpha.nomagichttp.message.ResponseTimeoutException;
+import alpha.nomagichttp.Config;
 
 /**
- * Proceed or abort the continuation of the invocation of before-actions and the
- * subsequent request handler.
+ * Proceed or abort the invocation chain of before-actions and the request
+ * handler.<p>
  * 
  * The chain object is thread-safe and does not necessarily have to be called
- * by the same thread invoking the action. In fact, the chief purpose behind
+ * by the same thread running the action. In fact, the chief purpose behind
  * this class is to support asynchronous actions that does not complete their
  * job when the action's {@code apply} method returns.<p>
  * 
  * Each chain object passed to the action is unique for that action invocation.
  * Only the first call to a method declared in this interface has an effect.
- * Subsequent invocations are NOP.
+ * Subsequent invocations are NOP.<p>
+ * 
+ * Failure to interact with this object will likely cause a {@linkplain
+ * Config#timeoutIdleConnection() timeout} at some point.
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  */
 public interface Chain {
     /**
-     * Proceed with calling the next action if there is one, or continue with
-     * the request handler.<p>
+     * Proceed with calling the next action if there is one, or attempt to
+     * resolve and invoke the request handler.<p>
      * 
      * The actual continuation will take place whenever <i>both</i> the
      * invocation of the action returns normally and this method has been
@@ -31,8 +34,8 @@ public interface Chain {
     void proceed();
     
     /**
-     * Mark the current action invocation as complete and abort the call
-     * chain.<p>
+     * Mark the current action invocation as complete and do not continue the
+     * call chain.<p>
      * 
      * Aborting causes the server to simply stop executing the before-action and
      * request handler call chain. No subsequent actions will be invoked and the
@@ -40,9 +43,13 @@ public interface Chain {
      * by the application - remains open and may therefore serve a new HTTP
      * exchange as soon as the final response has been sent.<p>
      * 
-     * An action aborting the chain should normally also have first written a
-     * final response. It is <i>possible</i> (but slightly obfuscating) to first
-     * abort and then write a response.
+     * From the server's perspective, there's really no difference between a
+     * premature abort of the call chain and returning out normally from a
+     * request handler. The application must always ensure that a final response
+     * is at some point written to the channel. An action aborting the chain
+     * should normally have written the response first, but it is
+     * <i>possible</i> (albeit slightly obfuscating) to first abort and then
+     * write a response.
      * 
      * @see BeforeAction
      */

@@ -37,6 +37,11 @@ import static java.util.concurrent.TimeUnit.SECONDS;
  * The {@code write} methods of {@link DefaultClientChannel} is a direct facade
  * for the {@code add} methods declared in this class.<p>
  * 
+ * The lifetime of a pipeline is scoped to the HTTP exchange and not to the
+ * channel. The final response is the last response accepted by the pipeline.
+ * The channel will continuously be updated with a new delegate pipeline at the
+ * start of each new HTTP exchange.<p>
+ * 
  * Core responsibilities:
  * <ul>
  *   <li>From a queue of responses, schedule channel write operations</li>
@@ -69,13 +74,13 @@ final class ResponsePipeline extends AbstractLocalEventEmitter
     /**
      * Sent on response failure.<p>
      * 
-     * The first attachment will always be a {@code Throwable}.<p>
+     * The first attachment will always be the error, a {@code Throwable}.<p>
      * 
-     * The second attachment may or may not be present depending on the nature
-     * of the error. If the error is propagated to the pipeline from the
-     * response stage provided by the client, then the second attachment is
-     * {@code null}. After this point in time, however, we have the {@code
-     * Response} object and so it will be present as the second attachment.<p>
+     * The second attachment is the Response object, but only if available. If
+     * the error was propagated to the pipeline from the response stage provided
+     * by the client, then the second attachment is {@code null}. Errors
+     * occurring after this point in time, however, will have the response
+     * attachment present.<p>
      * 
      * No errors are emitted after the <i>final</i> response. Errors from
      * the client are logged but otherwise ignored. And, there's obviously no

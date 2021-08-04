@@ -50,7 +50,7 @@ import alpha.nomagichttp.message.Request;
  *   server.before("/admin/*", onlyAdminsAllowed);
  * </pre>
  * 
- * Exceptions thrown from the before action is given to the {@link
+ * Exceptions thrown from the before action is handed off to the {@link
  * ErrorHandler}. This is a variation of the previous example:
  * <pre>
  *   ErrorHandler weRatherHide = (throwable, channel, ign,ored) -{@literal >} {
@@ -79,8 +79,8 @@ import alpha.nomagichttp.message.Request;
  * 
  * An action that will be invoked for all valid requests hitting the server can
  * be registered using the path "/*". If the purpose for such an action is to
- * gather metrics, consider tapping into all requests instead - whether or not
- * they are valid - by subscribing to the {@link RequestHeadParsed} event (see
+ * gather metrics, consider tapping into all requests instead regardless if they
+ * are valid, by subscribing to the {@link RequestHeadParsed} event (see
  * {@link HttpServer#events()}).<p>
  * 
  * The action may be called concurrently and must be thread-safe. It is called
