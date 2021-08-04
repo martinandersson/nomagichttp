@@ -587,7 +587,7 @@ final class HttpExchange
         BeforeChain(Iterator<ResourceMatch<BeforeAction>> actions, CompletableFuture<Void> allOf) {
             this.actions = actions;
             this.allOf   = allOf;
-            this.state   = new AtomicInteger();
+            this.state   = new AtomicInteger(AWAITING_BOTH);
         }
         
         void callAction() {
@@ -597,8 +597,11 @@ final class HttpExchange
                 a.get().apply(request, chApi, this);
             } catch (Throwable t) {
                 state.set(AWAITING_NONE);
-                var upd = allOf.completeExceptionally(t);
-                assert upd;
+                if (!allOf.completeExceptionally(t)) {
+                    LOG.log(WARNING,
+                        "Before-action returned exceptionally, but the chain was already aborted. " +
+                        "This error is ignored.", t);
+                }
                 return;
             }
             if (implicitComplete()) {
@@ -623,7 +626,8 @@ final class HttpExchange
         
         @Override
         public void abort() {
-            if (explicitComplete()) {
+            int old = state.getAndSet(AWAITING_NONE);
+            if (old != AWAITING_NONE) {
                 allOf.completeExceptionally(ABORT);
             }
         }
@@ -634,6 +638,7 @@ final class HttpExchange
                     case AWAITING_BOTH:
                         return AWAITING_EXPL;
                     case AWAITING_IMPL:
+                    case AWAITING_NONE:
                         return AWAITING_NONE;
                     default:
                         throw new AssertionError("Unexpected: + v");

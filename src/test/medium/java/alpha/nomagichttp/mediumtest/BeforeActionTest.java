@@ -46,6 +46,7 @@ class BeforeActionTest extends AbstractRealTest
             "Connection: close"                       + CRLF + CRLF +
             
             "helloworld");
+        assertThatNoWarningOrErrorIsLogged();
     }
     
     @Test
