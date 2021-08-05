@@ -4,7 +4,6 @@ import alpha.nomagichttp.action.BeforeAction;
 import alpha.nomagichttp.action.Chain;
 import alpha.nomagichttp.handler.ClientChannel;
 import alpha.nomagichttp.handler.RequestHandler;
-import alpha.nomagichttp.message.IllegalBodyException;
 import alpha.nomagichttp.message.MediaType;
 import alpha.nomagichttp.message.Request;
 import alpha.nomagichttp.message.RequestHead;
@@ -17,7 +16,6 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import static alpha.nomagichttp.HttpConstants.Method.TRACE;
 import static alpha.nomagichttp.HttpConstants.Version;
 import static alpha.nomagichttp.util.Headers.accept;
 import static alpha.nomagichttp.util.Headers.contentType;
@@ -26,10 +24,10 @@ import static java.lang.System.Logger.Level.WARNING;
 import static java.util.concurrent.CompletableFuture.completedStage;
 
 /**
- * Represents a work flow of executional entities; before-actions and request
- * handlers. These entities will co-operate to write responses to a channel.
- * There is no other resulting outcome from this work flow, except of course
- * possible errors.<p>
+ * Represents a work flow of finding and executing request-consuming entities;
+ * before-actions and request handlers. These entities will co-operate to write
+ * responses to a channel. There is no other resulting outcome from this work
+ * flow, except of course possible errors.<p>
  * 
  * There's one instance of this class per HTTP exchange.<p>
  * 
@@ -65,12 +63,12 @@ final class InvocationChain
     /**
      * Returns the last request object created.<p>
      * 
-     * The request object is unique per executional entity, because each entity
-     * may declare different path parameters. The underlying request object is
-     * created anew just before the execution of the entity. The value returned
-     * from this method therefore progresses from {@code null} to different
-     * instances for different before-actions and finally ends up with the
-     * instance passed to the request handler.<p>
+     * The request object is unique per request-consuming entity, because each
+     * entity may declare different path parameters. The underlying request
+     * object is created anew just before the execution of the entity. The value
+     * returned from this method therefore progresses from {@code null} to
+     * different instances for different before-actions and finally ends up with
+     * the instance passed to the request handler.<p>
      * 
      * The error resolver attached to the HTTP exchange should pull this method
      * and pass forward the request to the error handler.
@@ -102,14 +100,14 @@ final class InvocationChain
      * completes normally.<p>
      * 
      * Otherwise, the stage completes exceptionally with an exception thrown by
-     * one of the executional entities, or a {@link NoRouteFoundException},<p>
+     * one of the executed entities, or a {@link NoRouteFoundException},<p>
      * 
      * or, if a before-action aborts the chain, the stage will complete with a
      * {@code CompletionException} with its cause set to the instance {@link
      * #ABORTED}.<p>
      * 
      * A normal completion as well as a throwable where {@code getCause() ==
-     * ABORTED} ought to have the same semantical outcome; i.e. none if the
+     * ABORTED} ought to semantically have the same outcome; i.e. none if the
      * {@linkplain ResponsePipeline pipeline} is still waiting for the final
      * response, otherwise a new HTTP exchange.
      * 
@@ -139,7 +137,6 @@ final class InvocationChain
         ResourceMatch<Route> r = routes.lookup(req.target());
         
         request = createRequest(req, ver, r);
-                  validateRequest();
         handler = findRequestHandler(req.head(), r);
         
         handler.logic().accept(request, chApi);
@@ -152,13 +149,6 @@ final class InvocationChain
     {
         return new DefaultRequest(ver, req.head(), req.body(),
                 new DefaultParameters(resource, req.target()), attr);
-    }
-    
-    private void validateRequest() {
-        // MAY become before-action
-        if (request.method().equals(TRACE) && !request.body().isEmpty()) {
-            throw new IllegalBodyException("Body in a TRACE request.", request);
-        }
     }
     
     private static RequestHandler findRequestHandler(RequestHead rh, ResourceMatch<Route> m) {

@@ -2,16 +2,17 @@ package alpha.nomagichttp;
 
 import alpha.nomagichttp.action.ActionRegistry;
 import alpha.nomagichttp.events.EventHub;
-import alpha.nomagichttp.events.RequestHeadParsed;
-import alpha.nomagichttp.events.ScatteringEventEmitter;
 import alpha.nomagichttp.events.HttpServerStarted;
 import alpha.nomagichttp.events.HttpServerStopped;
+import alpha.nomagichttp.events.RequestHeadParsed;
+import alpha.nomagichttp.events.ScatteringEventEmitter;
 import alpha.nomagichttp.handler.ClientChannel;
 import alpha.nomagichttp.handler.ErrorHandler;
 import alpha.nomagichttp.handler.RequestHandler;
 import alpha.nomagichttp.internal.DefaultServer;
 import alpha.nomagichttp.message.HttpVersionTooOldException;
-import alpha.nomagichttp.message.IllegalBodyException;
+import alpha.nomagichttp.message.IllegalRequestBodyException;
+import alpha.nomagichttp.message.IllegalResponseBodyException;
 import alpha.nomagichttp.message.RequestHead;
 import alpha.nomagichttp.message.Response;
 import alpha.nomagichttp.message.Responses;
@@ -87,21 +88,10 @@ import static java.net.InetAddress.getLoopbackAddress;
  * <h2>HTTP message semantics</h2>
  * 
  * Only a very few message variants are specified to <i>not</i> have a body and
- * will be rejected by the server if they do ({@link IllegalBodyException}):
- * 
- * <ul>
- *   <li>{@link HttpConstants.Method#TRACE TRACE} requests (
- *     <a href="https://tools.ietf.org/html/rfc7231#section-4.3.8">RFC 7231 §4.3.8</a>)</li>
- *   <li>Responses to {@link HttpConstants.Method#HEAD HEAD} (
- *     <a href="https://tools.ietf.org/html/rfc7231#section-4.3.2">RFC 7231 §4.3.8</a>)
- *     and {@link HttpConstants.Method#CONNECT CONNECT} (
- *     <a href="https://tools.ietf.org/html/rfc7231#section-4.3.6">RFC 7231 §4.3.6</a>)</li>
- *   <li>Responses with a 1XX (Informational) {@link HttpConstants.StatusCode status code} (
- *     <a href="https://tools.ietf.org/html/rfc7231#section-6.2">RFC 7231 §6.2</a>)</li>
- * </ul>
- * 
- * These variants <i>must</i> be rejected since including a body would have
- * likely killed the protocol.<p>
+ * will be rejected by the server if they do ({@link
+ * IllegalRequestBodyException}, {@link IllegalResponseBodyException}). These
+ * variants <i>must</i> be rejected since including a body would have likely
+ * killed the protocol.<p>
  * 
  * For all other variants of requests and responses, the body is optional and
  * the server does not reject the message based on the presence of a body. This

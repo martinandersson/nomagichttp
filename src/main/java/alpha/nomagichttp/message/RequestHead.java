@@ -7,7 +7,7 @@ import alpha.nomagichttp.events.RequestHeadParsed;
  * wire.<p>
  * 
  * A complex version of a processed and <i>accepted</i> request head is embedded
- * into the API of {@link Request}. This head-type is emitted together with the
+ * in the API of {@link Request}. This head-type is emitted together with the
  * {@link RequestHeadParsed} event.<p>
  * 
  * String tokens returned by this interface is never {@code null} or empty.

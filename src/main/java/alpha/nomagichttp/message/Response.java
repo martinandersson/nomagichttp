@@ -520,7 +520,7 @@ public interface Response extends HeaderHolder
          * 
          * @return a response
          * 
-         * @throws IllegalBodyException
+         * @throws IllegalResponseBodyException
          *             if status code is 1XX (Informational) and a body is
          *             presumably not empty (see {@link Response#isBodyEmpty()})
          * 

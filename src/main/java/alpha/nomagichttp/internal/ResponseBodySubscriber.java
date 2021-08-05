@@ -1,7 +1,7 @@
 package alpha.nomagichttp.internal;
 
 import alpha.nomagichttp.Config;
-import alpha.nomagichttp.message.IllegalBodyException;
+import alpha.nomagichttp.message.IllegalResponseBodyException;
 import alpha.nomagichttp.message.Response;
 import alpha.nomagichttp.message.ResponseTimeoutException;
 
@@ -36,10 +36,10 @@ import static java.util.Objects.requireNonNull;
  * 
  * One known use-case for the lazy-head behavior, however, is an illegal body to
  * a HEAD request - which, can only reliably be identifier by this class. The
- * resulting {@code IllegalBodyException} is an exception this subscriber
- * signals through the {@link #asCompletionStage() result stage}. This indicates
- * an illegal response message variant, all of which the application should have
- * the chance to recover from.<p>
+ * resulting {@code IllegalResponseBodyException} is an exception this
+ * subscriber signals through the {@link #asCompletionStage() result stage}.
+ * This indicates an illegal response message variant, all of which the
+ * application should have the chance to recover from.<p>
  * 
  * This class do expect to get a {@code ResponseTimeoutException} from the
  * upstream (well, hopefully not), and in fact, asynchronously (by {@link
@@ -130,7 +130,7 @@ final class ResponseBodySubscriber implements SubscriberAsStage<ByteBuffer, Long
         if (!pushedHead) {
             var rh = exch.getRequestHead();
             if (rh != null && rh.method().equalsIgnoreCase(HEAD)) {
-                var e = new IllegalBodyException(
+                var e = new IllegalResponseBodyException(
                         "Body in response to a HEAD request.", resp);
                 resu.completeExceptionally(e);
                 subscription.cancel();

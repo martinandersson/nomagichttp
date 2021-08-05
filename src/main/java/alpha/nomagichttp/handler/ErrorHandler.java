@@ -9,7 +9,8 @@ import alpha.nomagichttp.message.EndOfStreamException;
 import alpha.nomagichttp.message.HttpVersionParseException;
 import alpha.nomagichttp.message.HttpVersionTooNewException;
 import alpha.nomagichttp.message.HttpVersionTooOldException;
-import alpha.nomagichttp.message.IllegalBodyException;
+import alpha.nomagichttp.message.IllegalRequestBodyException;
+import alpha.nomagichttp.message.IllegalResponseBodyException;
 import alpha.nomagichttp.message.MaxRequestHeadSizeExceededException;
 import alpha.nomagichttp.message.MediaTypeParseException;
 import alpha.nomagichttp.message.Request;
@@ -306,18 +307,16 @@ public interface ErrorHandler
      *          Fault assumed to be the applications'.</td>
      *   </tr>
      *   <tr>
-     *     <th scope="row"> {@link IllegalBodyException} </th>
-     *     <td> Request handler argument is null </td>
+     *     <th scope="row"> {@link IllegalRequestBodyException} </th>
+     *     <td> None </td>
      *     <td> No </td>
-     *     <td> {@link Responses#badRequest()} <br>
-     *          Fault assumed to be the clients'.</td>
+     *     <td> {@link Responses#badRequest()} </td>
      *   </tr>
      *   <tr>
-     *     <th scope="row"> {@link IllegalBodyException} </th>
-     *     <td> Request handler argument is not null </td>
+     *     <th scope="row"> {@link IllegalResponseBodyException} </th>
+     *     <td> None </td>
      *     <td> Yes </td>
-     *     <td> {@link Responses#internalServerError()} <br>
-     *          Fault assumed to be the applications'.</td>
+     *     <td> {@link Responses#internalServerError()} </td>
      *   </tr>
      *   <tr>
      *     <th scope="row">{@link EndOfStreamException} </th>
@@ -374,7 +373,10 @@ public interface ErrorHandler
         final Response res;
         try {
             throw thr;
-        } catch (RequestHeadParseException | HttpVersionParseException | BadHeaderException e) {
+        } catch (RequestHeadParseException |
+                 HttpVersionParseException |
+                 BadHeaderException        |
+                 IllegalRequestBodyException e) {
             res = badRequest();
         } catch (HttpVersionTooOldException e) {
             res = upgradeRequired(e.getUpgrade());
@@ -403,13 +405,16 @@ public interface ErrorHandler
         } catch (MediaTypeUnsupportedException e) {
             log(thr);
             res = mediaTypeUnsupported();
-        } catch (MediaTypeParseException | IllegalBodyException e) {
+        } catch (MediaTypeParseException e) {
             if (rh == null) {
                 res = badRequest();
             } else {
                 log(thr);
                 res = internalServerError();
             }
+        } catch (IllegalResponseBodyException e) {
+            log(thr);
+            res = internalServerError();
         } catch (EndOfStreamException e) {
             ch.closeSafe();
             res = null;

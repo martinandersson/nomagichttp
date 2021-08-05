@@ -348,7 +348,7 @@ final class DefaultResponse implements Response
                             "\"Connection: close\" set on 1XX (Informational) response.");
                 }
                 if (!r.isBodyEmpty()) {
-                    throw new IllegalBodyException(
+                    throw new IllegalResponseBodyException(
                             "Presumably a body in a 1XX (Informational) response.", r);
                 }
             }

@@ -8,6 +8,7 @@ import alpha.nomagichttp.handler.ClientChannel;
 import alpha.nomagichttp.handler.ErrorHandler;
 import alpha.nomagichttp.message.HttpVersionTooNewException;
 import alpha.nomagichttp.message.HttpVersionTooOldException;
+import alpha.nomagichttp.message.IllegalRequestBodyException;
 import alpha.nomagichttp.message.RequestBodyTimeoutException;
 import alpha.nomagichttp.message.RequestHead;
 import alpha.nomagichttp.message.RequestHeadTimeoutException;
@@ -25,6 +26,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import static alpha.nomagichttp.HttpConstants.HeaderKey.CONNECTION;
 import static alpha.nomagichttp.HttpConstants.HeaderKey.EXPECT;
+import static alpha.nomagichttp.HttpConstants.Method.TRACE;
 import static alpha.nomagichttp.HttpConstants.StatusCode.ONE_HUNDRED;
 import static alpha.nomagichttp.HttpConstants.Version.HTTP_1_0;
 import static alpha.nomagichttp.HttpConstants.Version.HTTP_1_1;
@@ -198,6 +200,8 @@ final class HttpExchange
         request = new SkeletonRequest(h,
                 RequestTarget.parse(h.requestTarget()),
                 monitorBody(createBody(h)));
+        
+        validateRequest();
     }
     
     private static Version parseHttpVersion(RequestHead h) {
@@ -250,6 +254,14 @@ final class HttpExchange
             }
         });
         return b;
+    }
+    
+    private void validateRequest() {
+        // Is NOT suitable as a before-action; they are invoked only for valid requests
+        if (head.method().equals(TRACE) && !request.body().isEmpty()) {
+            throw new IllegalRequestBodyException(head, request.body(),
+                    "Body in a TRACE request.");
+        }
     }
     
     private void tryRespond100Continue() {
@@ -359,7 +371,7 @@ final class HttpExchange
         if (unpacked instanceof RequestHeadTimeoutException) {
             LOG.log(DEBUG, "Request head timed out, shutting down input stream.");
             // HTTP exchange will not continue after response
-            // RequestBodyTimeoutException already shut down the input stream (see DefaultRequest)
+            // RequestBodyTimeoutException already shut down the input stream (see RequestBody)
             chApi.shutdownInputSafe();
         }
         

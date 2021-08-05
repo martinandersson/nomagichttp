@@ -5,7 +5,7 @@ import alpha.nomagichttp.message.RequestHead;
 /**
  * A request embedding most of the complex components that a "real" request
  * would need. The missing pieces are HTTP version, resource-specific path
- * parameters and exchange-scoped attributes.
+ * parameters and request-scoped attributes.
  * 
  * @author Martin Andersson (webmaster@martinandersson.com)
  */
