@@ -11,6 +11,7 @@ import java.util.concurrent.CompletionStage;
 import java.util.concurrent.Flow;
 import java.util.stream.Stream;
 
+import static alpha.nomagichttp.HttpConstants.Method.CONNECT;
 import static alpha.nomagichttp.HttpConstants.Method.HEAD;
 import static alpha.nomagichttp.internal.AnnounceToChannel.NO_MORE;
 import static alpha.nomagichttp.internal.ChannelByteBufferPublisher.BUF_SIZE;
@@ -35,11 +36,10 @@ import static java.util.Objects.requireNonNull;
  * produce".<p>
  * 
  * One known use-case for the lazy-head behavior, however, is an illegal body to
- * a HEAD request - which, can only reliably be identifier by this class. The
- * resulting {@code IllegalResponseBodyException} is an exception this
- * subscriber signals through the {@link #asCompletionStage() result stage}.
- * This indicates an illegal response message variant, all of which the
- * application should have the chance to recover from.<p>
+ * a HEAD/CONNECT request - which, can only reliably be identifier by this
+ * class. The resulting {@code IllegalResponseBodyException} is an exception
+ * this subscriber signals through the {@link #asCompletionStage() result
+ * stage}.<p>
  * 
  * This class do expect to get a {@code ResponseTimeoutException} from the
  * upstream (well, hopefully not), and in fact, asynchronously (by {@link
@@ -128,10 +128,11 @@ final class ResponseBodySubscriber implements SubscriberAsStage<ByteBuffer, Long
         }
         
         if (!pushedHead) {
-            var rh = exch.getRequestHead();
-            if (rh != null && rh.method().equalsIgnoreCase(HEAD)) {
+            var reqHead = exch.getRequestHead();
+            var reqMethod = reqHead == null ? null : reqHead.method();
+            if (reqMethod != null && (reqMethod.equals(HEAD) || reqMethod.equals(CONNECT))) {
                 var e = new IllegalResponseBodyException(
-                        "Body in response to a HEAD request.", resp);
+                        "Body in response to a " + reqMethod + " request.", resp);
                 resu.completeExceptionally(e);
                 subscription.cancel();
                 return;

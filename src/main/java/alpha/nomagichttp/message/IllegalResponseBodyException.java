@@ -9,8 +9,9 @@ import static java.util.Objects.requireNonNull;
  * Is thrown:
  * <ul>
  *   <li>By {@link Response.Builder#build()} if the response status-code is 1XX
- *       (Informational) and the response presumably has a body (
- *       <a href="https://tools.ietf.org/html/rfc7231#section-6.2">RFC 7231 §6.2</a>).</li>
+ *       (Informational), or 204 (No Content), or 304 (Not Modified) - and, the
+ *       response presumably has a body (
+ *       <a href="https://tools.ietf.org/html/rfc7230#section-3.3.3">RFC 7230 §3.3.3</a>).</li>
  *   <li>By the server if a response body publisher publishes a bytebuffer in
  *       response to a {@link HttpConstants.Method#HEAD HEAD}
  *       (<a href="https://tools.ietf.org/html/rfc7231#section-4.3.2">RFC 7231 §4.3.8</a>)
