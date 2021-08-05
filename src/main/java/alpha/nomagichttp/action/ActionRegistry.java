@@ -19,11 +19,11 @@ import alpha.nomagichttp.route.RouteRegistry;
  * <i>multiple</i> actions can be stored at the same position, as long as they
  * are not equal objects (duplicates allowed at different positions).<p>
  * 
- * Further, whereas the route registry enforces constructs such as mutual
- * exclusivity in tree nodes for non-static segment types, this registry does
- * not. A request must match against only one route with zero ambiguity, but a
- * request (and/or the following response(s)) may trigger a whole plethora of
- * actions. For example, the route registry would never accept {@code "/*path"}
+ * Further, whereas the route registry enforces constructs such as positional
+ * mutual exclusivity for non-static segment types, this registry does not. A
+ * request must match against only one route with zero ambiguity, but a request
+ * (and/or the following response(s)) may trigger a whole plethora of actions.
+ * For example, the same route registry would never accept both {@code "/*path"}
  * (all requests) and {@code "/admin"} (a subset of all) at the same time, but
  * this kind of overlapping usage is more or less the expected case for actions.
  * The normal convention will probably be to drop optional parameter names, e.g.
@@ -71,12 +71,12 @@ import alpha.nomagichttp.route.RouteRegistry;
  * actions is well-defined.<p>
  * 
  * If many before-actions are matched, then they will be invoked primarily in
- * the order segments are discovered (discovery starts at the root and walks
- * a branch of the tree one segment at a time), secondarily by their implicit
- * unspecificity (catch-all first, then single-segment path, then static
- * segment) and thirdly by their registration order. The rule is to match from
- * the most broad action first to the most niche action last, but still maintain
- * the registration order provided by the application. For instance:
+ * the order that segments are discovered (discovery starts at the root and
+ * walks a branch of the tree one segment at a time), secondarily by their
+ * implicit unspecificity (catch-all first, then single-segment path, then
+ * static segment) and thirdly by their registration order. The rule is to match
+ * from the most broad action first to the most niche action last, but still
+ * maintain the registration order provided by the application. For instance:
  * 
  * <pre>
  *   Request path: /
@@ -134,27 +134,28 @@ import alpha.nomagichttp.route.RouteRegistry;
  *   /*             4) copy correlation id to response header
  * </pre>
  * 
- * The request object will be a unique instance per executional entity (request
- * handler and actions). Firstly, let it be stated that the underlying request
- * components will always be the same and shared; the request head, attributes
- * and body. Therefore, changes to these structures propagates throughout the
- * HTTP exchange across executional boundaries, such as consuming the body bytes
- * (which should only be done once!) and setting attributes.<p>
+ * Each request-consuming entity (request handler and actions) may declare
+ * different path parameters. For this reason, the request object instance will
+ * be unique per entity carrying with it entity-specific path parameters.<p>
  * 
- * Request parameters, however, are independently declared by the route and
- * actions, and supports retrieval of values using the key by which they were
- * declared. For example, although request "/hello" matches before-action
- * "/:foo" and request handler "/:bar", the former will have to use the key
- * "foo" when retrieving the segment value and the latter will have to use the
- * key "bar". As another example, a before-action may register using the pattern
- * "/*path" and a request handler may use the pattern "/hello/:path". For an
- * inbound request "/hello/world", the former's "path" parameter will map to the
- * value "/hello/world" and the latter will get the value "world" using the same
+ * For example, although request "/hello" matches before-action "/:foo" and
+ * request handler "/:bar", the former will have to use the key "foo" when
+ * retrieving the segment value and the latter will have to use the key "bar".
+ * As another example, a before-action may register using the pattern "/*path"
+ * and a request handler may use the pattern "/hello/:path". For an inbound
+ * request "/hello/world", the former's "path" parameter will map to the value
+ * "/hello/world" and the latter will get the value "world" using the same
  * key.<p>
  * 
- * Actions added to the registry is not immediately visible to active HTTP
- * exchanges. Matched actions are retrieved only once at the beginning of each
- * new HTTP exchange.<p>
+ * All other components of the request will be shared throughout the invocation
+ * chain, most importantly the request attributes and body. Therefore, changes
+ * to these structures propagates across execution boundaries, such as consuming
+ * the body bytes (which should only be done once!) and setting attribute
+ * values.<p>
+ * 
+ * Actions added to the registry is not immediately visible to currently active
+ * HTTP exchanges. Matched actions are retrieved only once at the beginning of
+ * each new HTTP exchange.<p>
  * 
  * Unlike {@link RouteRegistry}, this interface does not declare remove
  * operations. The chief reasons behind this decision was to reduce the API

@@ -9,6 +9,10 @@
  * alpha.nomagichttp.action.AfterAction AfterAction} is called after the channel
  * has received a response. The former must decide to proceed or abort the HTTP
  * exchange. The latter may return an alternative response (most likely a
- * derivative from the one who was scheduled to be written).
+ * derivative from the one who was scheduled to be written).<p>
+ * 
+ * Both types of actions are added to a {@link
+ * alpha.nomagichttp.action.ActionRegistry} (extended by {@link
+ * alpha.nomagichttp.HttpServer}).
  */
 package alpha.nomagichttp.action;

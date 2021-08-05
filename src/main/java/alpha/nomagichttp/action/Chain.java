@@ -15,8 +15,10 @@ import alpha.nomagichttp.Config;
  * Only the first call to a method declared in this interface has an effect.
  * Subsequent invocations are NOP.<p>
  * 
- * Failure to interact with this object will likely cause a {@linkplain
- * Config#timeoutIdleConnection() timeout} at some point.
+ * It is imperative that the before-action either returns exceptionally from the
+ * {@code apply} method or interacts with the given chain object. Failure to do
+ * so may at best produce a {@linkplain Config#timeoutIdleConnection() timeout}
+ * at some point.
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  */
@@ -44,12 +46,16 @@ public interface Chain {
      * exchange as soon as the final response has been sent.<p>
      * 
      * From the server's perspective, there's really no difference between a
-     * premature abort of the call chain and returning out normally from a
-     * request handler. The application must always ensure that a final response
-     * is at some point written to the channel. An action aborting the chain
-     * should normally have written the response first, but it is
-     * <i>possible</i> (albeit slightly obfuscating) to first abort and then
-     * write a response.
+     * aborting the call chain and returning out normally from a request
+     * handler. The application must always make that a final response is at
+     * some point written to the channel. An action aborting the chain should
+     * normally have written the response first, but it is <i>possible</i>
+     * (albeit slightly obfuscating) to first abort and then write a
+     * response.<p>
+     * 
+     * An alternative to aborting is to simply throw an exception from the
+     * before-action. An exception thrown from the action will be delivered to
+     * the error handler(s).
      * 
      * @see BeforeAction
      */

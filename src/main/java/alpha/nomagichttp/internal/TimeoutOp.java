@@ -29,7 +29,7 @@ import static java.util.Objects.requireNonNull;
  * publisher, downstream may take however long he wish to process the items or
  * run his own timeouts).<p>
  * 
- * The timeout signals cancel upstream and error downstream
+ * The timeout signal will cancel the upstream and error out the downstream
  * <i>asynchronously</i> and so, depending on the context of the use-site -
  * whether or not the up-/downstream can handle concurrent signals - boolean
  * constructor arguments can configure the operator to serialize signals in
@@ -43,7 +43,7 @@ abstract class TimeoutOp<T> extends AbstractOp.Async<T> {
      * downstream increase of demand and is active until the subscription
      * completes.<p>
      * 
-     * Currently used by {@link HttpExchange} to abort {@link
+     * Currently, used by {@link HttpExchange} to abort {@link
      * RequestHeadSubscriber} with a {@link RequestHeadTimeoutException} and
      * used by {@link DefaultRequest} to abort the body subscriber with a {@link
      * RequestBodyTimeoutException}.

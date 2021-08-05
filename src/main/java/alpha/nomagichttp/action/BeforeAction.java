@@ -50,8 +50,9 @@ import alpha.nomagichttp.message.Request;
  *   server.before("/admin/*", onlyAdminsAllowed);
  * </pre>
  * 
- * Exceptions thrown from the before action is handed off to the {@link
- * ErrorHandler}. This is a variation of the previous example:
+ * An exception thrown from the before-action is an alternative to explicitly
+ * aborting through the {@link Chain} object. The exception is handed off to the
+ * {@link ErrorHandler}. This is a variation of the previous example:
  * <pre>
  *   ErrorHandler weRatherHide = (throwable, channel, ign,ored) -{@literal >} {
  *       try {
@@ -93,7 +94,7 @@ import alpha.nomagichttp.message.Request;
  * ...) and transaction demarcation.
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
- * @see alpha.nomagichttp.action package-info
+ * @see ActionRegistry
  */
 @FunctionalInterface
 public interface BeforeAction {
