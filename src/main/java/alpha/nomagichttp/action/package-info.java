@@ -11,7 +11,7 @@
  * exchange. The latter may return an alternative response (most likely a
  * derivative from the one who was scheduled to be written).<p>
  * 
- * Both types of actions are added to a {@link
+ * Both types of actions are added to an {@link
  * alpha.nomagichttp.action.ActionRegistry} (extended by {@link
  * alpha.nomagichttp.HttpServer}).
  */

@@ -7,14 +7,14 @@ import alpha.nomagichttp.handler.ErrorHandler;
 import alpha.nomagichttp.message.Request;
 
 /**
- * An action executed after a valid request has been received and <i>before</i>
- * the server attempts at resolving the request handler. The action decides
- * whether to proceed or abort the HTTP exchange and may freely populate
- * attributes for future consumption.<p>
+ * An action executed after a valid request has been received and before the
+ * server attempts at resolving the request handler. The action decides whether
+ * to proceed or abort the HTTP exchange and may freely populate attributes for
+ * future consumption.<p>
  * 
- * Before-actions are useful to implement cross-cutting concerns on a
- * request-level such as authentication, rate-limiting, collecting metrics,
- * logging, auditing, and so on.<p>
+ * Before-actions are useful to implement cross-cutting concerns such as
+ * authentication, rate-limiting, collecting metrics, logging, auditing, and so
+ * on.<p>
  * 
  * An action is known on other corners of the internet as a "filter", although
  * the NoMagicHTTP library has avoided this naming convention due to the fact
@@ -32,9 +32,10 @@ import alpha.nomagichttp.message.Request;
  *   server.before("/*", giveRole);
  * </pre>
  * 
- * An action writing a final response to the channel ought to also abort the
- * HTTP exchange. Interactions with the client channel has no magical effect at
- * all concerning what happens after the action completes.
+ * An action writing a final response to the channel ought to also <i>abort</i>
+ * the HTTP exchange, or otherwise <i>proceed</i>. Interactions (or the lack
+ * thereof) with the client channel has no magical effect at all concerning what
+ * happens after the action completes.
  * <pre>
  *   BeforeAction onlyAdminsAllowed = (request, channel, chain) -{@literal >} {
  *       String role = request.attributes().getAny("user.role");
@@ -84,8 +85,8 @@ import alpha.nomagichttp.message.Request;
  * are valid, by subscribing to the {@link RequestHeadParsed} event (see
  * {@link HttpServer#events()}).<p>
  * 
- * The action may be called concurrently and must be thread-safe. It is called
- * by the server's request thread and so must not block.<p>
+ * The action may be called concurrently and must be thread-safe. It is likely
+ * called by the server's request thread and so must not block.<p>
  * 
  * As a word of advice; magic obfuscates and will render the architecture harder
  * to understand. Some features, although cross-cutting in nature, ought to be

@@ -17,7 +17,8 @@ import alpha.nomagichttp.route.RouteRegistry;
  * route registry; map an inbound request-target to decorative actions. The key
  * difference between this registry and the route registry is that
  * <i>multiple</i> actions can be stored at the same position, as long as they
- * are not equal objects (duplicates allowed at different positions).<p>
+ * are not equal objects as determined by {@code Object.equals(Object)}
+ * (duplicates allowed at different positions).<p>
  * 
  * Further, whereas the route registry enforces constructs such as positional
  * mutual exclusivity for non-static segment types, this registry does not. A
