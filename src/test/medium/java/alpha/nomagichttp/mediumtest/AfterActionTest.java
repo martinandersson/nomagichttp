@@ -1,5 +1,6 @@
 package alpha.nomagichttp.mediumtest;
 
+import alpha.nomagichttp.route.NoRouteFoundException;
 import alpha.nomagichttp.testutil.AbstractRealTest;
 import org.junit.jupiter.api.Test;
 
@@ -9,6 +10,7 @@ import static alpha.nomagichttp.HttpConstants.HeaderKey.X_CORRELATION_ID;
 import static alpha.nomagichttp.handler.RequestHandler.GET;
 import static alpha.nomagichttp.message.Responses.text;
 import static alpha.nomagichttp.testutil.TestClient.CRLF;
+import static java.lang.String.valueOf;
 import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
 
 /**
@@ -62,5 +64,28 @@ class AfterActionTest extends AbstractRealTest
             
             assertThatNoWarningOrErrorIsLogged();
         }
+    }
+    
+    @Test
+    void multistage() throws IOException, InterruptedException {
+        server()
+            .after("/*", (req, rsp) -> rsp.toBuilder().header("X-Count", "1").build().completedStage())
+            .after("/*", (req, rsp) -> {
+                long v = rsp.headers().firstValueAsLong("X-Count").getAsLong();
+                return rsp.toBuilder().header("X-Count", valueOf(++v)).build().completedStage();
+            });
+        
+        var rsp = client().writeReadTextUntilNewlines(
+            "GET /404 HTTP/1.1"      + CRLF + CRLF);
+        assertThat(rsp).isEqualTo(
+            "HTTP/1.1 404 Not Found" + CRLF +
+            "Content-Length: 0"      + CRLF +
+            "X-Count: 2"             + CRLF + CRLF);
+        
+        assertThatServerErrorObservedAndLogged()
+                .isExactlyInstanceOf(NoRouteFoundException.class)
+                .hasMessage("/404")
+                .hasNoCause()
+                .hasNoSuppressedExceptions();
     }
 }
