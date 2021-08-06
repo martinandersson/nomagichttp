@@ -24,10 +24,10 @@ import static java.lang.System.Logger.Level.WARNING;
 import static java.util.concurrent.CompletableFuture.completedStage;
 
 /**
- * Represents a work flow of finding and executing request-consuming entities;
- * before-actions and request handlers. These entities will co-operate to write
- * responses to a channel. There is no other resulting outcome from this work
- * flow, except of course possible errors.<p>
+ * Represents a work flow of finding and executing before-actions and request
+ * handlers. These entities will co-operate to write responses to a channel.
+ * There is no other resulting outcome from this work flow, except of course
+ * possible errors.<p>
  * 
  * There's one instance of this class per HTTP exchange.<p>
  * 
@@ -137,19 +137,10 @@ final class InvocationChain
     {
         ResourceMatch<Route> r = routes.lookup(req.target());
         
-        request = createRequest(req, ver, r);
+        request = new DefaultRequest(ver, req, r);
         handler = findRequestHandler(req.head(), r);
         
         handler.logic().accept(request, chApi);
-    }
-    
-    private DefaultRequest createRequest(
-            SkeletonRequest req,
-            Version ver,
-            ResourceMatch<?> resource)
-    {
-        return new DefaultRequest(ver, req.head(), req.body(),
-                new DefaultParameters(resource, req.target()), req.attributes());
     }
     
     private static RequestHandler findRequestHandler(RequestHead rh, ResourceMatch<Route> m) {
@@ -195,7 +186,7 @@ final class InvocationChain
         void callAction() {
             try {
                 var a = actions.next();
-                request = createRequest(shared, ver, a);
+                request = new DefaultRequest(ver, shared, a);
                 a.get().apply(request, chApi, this);
             } catch (Throwable t) {
                 status.set(AWAITING_NONE);

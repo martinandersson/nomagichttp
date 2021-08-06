@@ -142,13 +142,11 @@ class DefaultRequestTest
                 Mockito.mock(DefaultClientChannel.class),
                 null, null, null);
         
-        var p = new DefaultParameters(
-                    new ResourceMatch<>(null, Map.of(), Map.of()),
-                    RequestTarget.parse("/?"));
+        SkeletonRequest req = new SkeletonRequest(
+                rh, RequestTarget.parse("/?"), rb, new DefaultAttributes());
         
-        var a = new DefaultAttributes();
-        
-        return new DefaultRequest(HTTP_1_1, rh, rb, p, a);
+        return new DefaultRequest(HTTP_1_1,
+                req, new ResourceMatch<>(null, Map.of(), Map.of()));
     }
     
     private static DefaultRequest createEmptyRequest() {

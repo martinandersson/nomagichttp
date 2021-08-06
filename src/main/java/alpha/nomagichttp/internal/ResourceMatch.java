@@ -28,7 +28,7 @@ import static java.util.Objects.requireNonNull;
 final class ResourceMatch<T>
 {
     /**
-     * Construct a ResourceMatch.
+     * Constructs this object.
      * 
      * @param rt request-target (contains param values)
      * @param resource matched

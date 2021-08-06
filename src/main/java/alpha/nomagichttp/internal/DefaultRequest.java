@@ -25,15 +25,25 @@ final class DefaultRequest implements Request
     /**
      * Constructs this object.
      * 
-     * @param ver HTTP version
-     * @param head request head
-     * @param body request body
-     * @param attr attributes
-     * @param params parameters
+     * @param version of HTTP (as established by HTTP exchange)
+     * @param shared request components
+     * @param pathParams provider of path parameters
      * 
      * @throws NullPointerException if any argument is {@code null}
      */
     DefaultRequest(
+            Version version,
+            SkeletonRequest shared,
+            ResourceMatch<?> pathParams)
+    {
+        this(version,
+             shared.head(),
+             shared.body(),
+             new DefaultParameters(pathParams, shared.target()),
+             shared.attributes());
+    }
+    
+    private DefaultRequest(
             Version ver,
             RequestHead head,
             Body body,
@@ -41,10 +51,10 @@ final class DefaultRequest implements Request
             Attributes attr)
     {
         this.ver    = requireNonNull(ver);
-        this.head   = requireNonNull(head);
-        this.body   = requireNonNull(body);
-        this.params = requireNonNull(params);
-        this.attr   = requireNonNull(attr);
+        this.head   = head;
+        this.body   = body;
+        this.params = params;
+        this.attr   = attr;
     }
     
     @Override
