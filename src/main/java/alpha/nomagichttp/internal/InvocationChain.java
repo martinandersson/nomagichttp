@@ -48,16 +48,17 @@ final class InvocationChain
     private final DefaultActionRegistry actions;
     private final DefaultRouteRegistry routes;
     private final ClientChannel chApi;
-    private final DefaultAttributes attr;
     // Not volatile for same reasons that fields in HttpExchange are not volatile
     private DefaultRequest request;
     private RequestHandler handler;
     
     InvocationChain(DefaultActionRegistry actions, DefaultRouteRegistry routes, ClientChannel chApi) {
+        assert actions != null;
+        assert routes  != null;
+        assert chApi   != null;
         this.actions = actions;
         this.routes  = routes;
         this.chApi   = chApi;
-        this.attr    = new DefaultAttributes();
     }
     
     /**
@@ -148,7 +149,7 @@ final class InvocationChain
             ResourceMatch<?> resource)
     {
         return new DefaultRequest(ver, req.head(), req.body(),
-                new DefaultParameters(resource, req.target()), attr);
+                new DefaultParameters(resource, req.target()), req.attributes());
     }
     
     private static RequestHandler findRequestHandler(RequestHead rh, ResourceMatch<Route> m) {

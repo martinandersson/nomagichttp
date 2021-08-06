@@ -1,11 +1,11 @@
 package alpha.nomagichttp.internal;
 
 import alpha.nomagichttp.message.RequestHead;
+import alpha.nomagichttp.util.Attributes;
 
 /**
- * A request embedding most of the complex components that a "real" request
- * would need. The missing pieces are HTTP version, resource-specific path
- * parameters and request-scoped attributes.
+ * A container of most of the complex components that a "real" request needs.
+ * The missing pieces are HTTP version and resource-specific path parameters.
  * 
  * @author Martin Andersson (webmaster@martinandersson.com)
  */
@@ -14,6 +14,7 @@ final class SkeletonRequest
     private final RequestHead h;
     private final RequestTarget t;
     private final RequestBody b;
+    private final Attributes a;
     
     /**
      * Constructs this object.
@@ -21,14 +22,17 @@ final class SkeletonRequest
      * @param h request head
      * @param t request target
      * @param b request body
+     * @param a request attributes
      */
-    SkeletonRequest(RequestHead h, RequestTarget t, RequestBody b) {
+    SkeletonRequest(RequestHead h, RequestTarget t, RequestBody b, Attributes a) {
         assert h != null;
         assert t != null;
         assert b != null;
+        assert a != null;
         this.h = h;
         this.t = t;
         this.b = b;
+        this.a = a;
     }
     
     /**
@@ -56,5 +60,14 @@ final class SkeletonRequest
      */
     RequestBody body() {
         return b;
+    }
+    
+    /**
+     * Returns the request attributes.
+     * 
+     * @return the request attributes (never {@code null})
+     */
+    Attributes attributes() {
+        return a;
     }
 }

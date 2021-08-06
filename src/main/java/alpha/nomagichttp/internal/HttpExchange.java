@@ -199,7 +199,8 @@ final class HttpExchange
         
         request = new SkeletonRequest(h,
                 RequestTarget.parse(h.requestTarget()),
-                monitorBody(createBody(h)));
+                monitorBody(createBody(h)),
+                new DefaultAttributes());
         
         validateRequest();
     }
