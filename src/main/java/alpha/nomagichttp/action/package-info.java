@@ -8,8 +8,7 @@
  * the server has received a request and an {@link
  * alpha.nomagichttp.action.AfterAction AfterAction} is called after the channel
  * has received a response. The former must decide to proceed or abort the HTTP
- * exchange. The latter may return an alternative response (most likely a
- * derivative from the one who was scheduled to be written).<p>
+ * exchange. The latter may return an alternative response.<p>
  * 
  * Both types of actions are added to an {@link
  * alpha.nomagichttp.action.ActionRegistry} (extended by {@link
