@@ -81,18 +81,10 @@ public interface Config
      * Returns the max number of attempts at recovering a failed HTTP
      * exchange.<p>
      * 
-     * The configuration has an effect only if the application has provide one
-     * or more error handlers to the server.<p>
-     * 
-     * When all tries have been exhausted, the {@link ErrorHandler#DEFAULT
-     * default error handler} will be called with the original exception.<p>
-     * 
-     * Successfully invoking an error handler (handler does not throw a
-     * <i>different</i> exception instance) counts as one attempt.<p>
-     * 
-     * The recovery attempt count is saved and increment over the life span of
-     * the HTTP exchange. It is not directly related to any given invocation of
-     * a request handler.<p>
+     * The active count is bumped for each new error that the server attempts to
+     * resolve through the {@link ErrorHandler}. When all tries have been
+     * exhausted, the server will log the error and close the client channel, at
+     * which point any ongoing read or write operation will fail.<p>
      * 
      * The default implementation returns {@code 5}.
      * 
