@@ -1,6 +1,7 @@
 package alpha.nomagichttp.internal;
 
 import alpha.nomagichttp.Config;
+import alpha.nomagichttp.action.AfterAction;
 import alpha.nomagichttp.handler.ResponseRejectedException;
 import alpha.nomagichttp.message.HeaderHolder;
 import alpha.nomagichttp.message.Response;
@@ -8,6 +9,7 @@ import alpha.nomagichttp.message.ResponseTimeoutException;
 import alpha.nomagichttp.util.SeriallyRunnable;
 
 import java.util.Deque;
+import java.util.List;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ConcurrentLinkedDeque;
 import java.util.concurrent.atomic.AtomicReference;
@@ -39,14 +41,15 @@ import static java.util.concurrent.TimeUnit.SECONDS;
  * 
  * The lifetime of a pipeline is scoped to the HTTP exchange and not to the
  * channel. The final response is the last response accepted by the pipeline.
- * The channel will continuously be updated with a new delegate pipeline at the
+ * The channel will be updated with a new delegate pipeline instance at the
  * start of each new HTTP exchange.<p>
  * 
  * Core responsibilities:
  * <ul>
  *   <li>From a queue of responses, schedule channel write operations</li>
- *   <li>Apply response transformations such as setting "Connection: close" if
- *       no "Content-Length"</li>
+ *   <li>Invoke all after-actions</li>
+ *   <li>Apply low-level response transformations such as setting "Connection:
+ *       close" if no "Content-Length"</li>
  *   <li>Act on response-scheduled channel commands (must-close-after-write,
  *       "Connection: close", et cetera)</li>
  * </ul>
@@ -97,6 +100,7 @@ final class ResponsePipeline extends AbstractLocalEventEmitter
     private final int maxUnssuccessful;
     private final HttpExchange exch;
     private final DefaultClientChannel chApi;
+    private final DefaultActionRegistry actions;
     private final Deque<CompletionStage<Response>> queue;
     private final SeriallyRunnable op;
     // This timer times out delays from app to give us a response.
@@ -104,25 +108,27 @@ final class ResponsePipeline extends AbstractLocalEventEmitter
     private final AtomicReference<Timeout> timer;
     private boolean timedOut;
     private boolean timeoutEmitted;
+    private List<ResourceMatch<AfterAction>> matched;
     
     /**
      * Constructs a {@code ResponsePipeline}.<p>
      * 
      * @param exch the HTTP exchange
      * @param chApi channel's delegate used for writing
-     * 
-     * @throws NullPointerException if any arg is {@code null}
+     * @param actions registry used to lookup after-actions
      */
-    ResponsePipeline(HttpExchange exch, DefaultClientChannel chApi) {
+    ResponsePipeline(HttpExchange exch, DefaultClientChannel chApi, DefaultActionRegistry actions) {
         this.cfg = chApi.getServer().getConfig();
         this.maxUnssuccessful = cfg.maxUnsuccessfulResponses();
         this.chApi = chApi;
-        this.exch  = requireNonNull(exch);
+        this.actions = actions;
+        this.exch = exch;
         this.queue = new ConcurrentLinkedDeque<>();
-        this.op    = new SeriallyRunnable(this::pollAndProcessAsync, true);
+        this.op = new SeriallyRunnable(this::pollAndProcessAsync, true);
         this.timer = new AtomicReference<>();
         this.timedOut = false;
         this.timeoutEmitted = false;
+        this.matched = null;
     }
     
     // HttpExchange starts the timer after the request
@@ -177,19 +183,31 @@ final class ResponsePipeline extends AbstractLocalEventEmitter
             timeoutEmitted = true;
         }
         
-        CompletionStage<Response> r = queue.poll();
-        if (r == null) {
+        CompletionStage<Response> stage = queue.poll();
+        if (stage == null) {
             op.complete();
             return;
         }
         
-        // TODO: All thenApply() will become post-actions
-        r.thenApply(this::closeHttp1_0)
-         .thenApply(this::handleUnknownLength)
-         .thenApply(this::trackConnectionClose)
-         .thenApply(this::trackUnsuccessful)
-         .thenCompose(this::subscribeToResponse)
-         .whenComplete(this::handleResult);
+        var req = exch.getSkeletonRequest();
+        if (req == null) {
+            LOG.log(DEBUG, "No request available; will not run after-actions.");
+        } else {
+            if (matched == null) {
+                matched = actions.lookupAfter(req.target());
+            }
+            for (ResourceMatch<AfterAction> m : matched) {
+                stage = stage.thenCompose(rsp ->
+                        m.get().apply(new DefaultRequest(exch.getHttpVersion(), req, m), rsp));
+            }
+        }
+        
+        stage.thenApply(this::closeHttp1_0)
+             .thenApply(this::handleUnknownLength)
+             .thenApply(this::trackConnectionClose)
+             .thenApply(this::trackUnsuccessful)
+             .thenCompose(this::subscribeToResponse)
+             .whenComplete(this::handleResult);
     }
     
     private Response inFlight = null;

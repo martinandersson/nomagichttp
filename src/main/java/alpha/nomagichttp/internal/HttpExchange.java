@@ -109,7 +109,7 @@ final class HttpExchange
         this.chIn     = chIn;
         this.chApi    = chApi;
         this.chain    = new InvocationChain(actions, routes, chApi);
-        this.pipe     = new ResponsePipeline(this, chApi);
+        this.pipe     = new ResponsePipeline(this, chApi, actions);
         this.cntDown  = new AtomicInteger(2); // <-- request chain + final response, then new exchange
         this.result   = new CompletableFuture<>();
         this.version = HTTP_1_1; // <-- default until updated
@@ -135,6 +135,15 @@ final class HttpExchange
      */
     Version getHttpVersion() {
         return version;
+    }
+    
+    /**
+     * Returns the request, if available, otherwise {@code null}.
+     * 
+     * @return the request, if available, otherwise {@code null}
+     */
+    SkeletonRequest getSkeletonRequest() {
+        return request;
     }
     
     /**

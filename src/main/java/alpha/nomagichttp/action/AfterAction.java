@@ -22,11 +22,12 @@ import java.util.function.BiFunction;
  *   ...
  *   
  *   HttpServer server = ...
- *   AfterAction setId = (request, responseStage) -{@literal >} responseStage.thenApply(rsp -{@literal >}
- *           request.attributes().{@literal <}String{@literal >}getOptAny("my.saved.correlation-id")
- *                  .or(() -{@literal >} request.headers().firstValue(X_CORRELATION_ID))
- *                  .map(id -{@literal >} rsp.toBuilder().header(X_CORRELATION_ID, id).build())
- *                  .orElse(rsp));
+ *   AfterAction setId = (req, rsp) -{@literal >}
+ *           req.attributes().{@literal <}String{@literal >}getOptAny("my.saved.correlation-id")
+ *              .or(() -{@literal >} req.headers().firstValue(X_CORRELATION_ID))
+ *              .map(id -{@literal >} rsp.toBuilder().header(X_CORRELATION_ID, id).build())
+ *              .orElse(rsp)
+ *              .completedStage();
  *   server.after("/*", setId);
  * </pre>
  * 
@@ -48,8 +49,6 @@ import java.util.function.BiFunction;
  * @author Martin Andersson (webmaster at martinandersson.com)
  */
 @FunctionalInterface
-public interface AfterAction extends
-        BiFunction<Request, CompletionStage<Response>, CompletionStage<Response>>
-{
+public interface AfterAction extends BiFunction<Request, Response, CompletionStage<Response>> {
     // Empty
 }

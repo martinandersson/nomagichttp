@@ -246,8 +246,8 @@ public class DefaultActionRegistryTest
     private static AfterAction afterDummy(String name) {
         return new AfterAction() {
             @Override
-            public CompletionStage<Response> apply(Request req, CompletionStage<Response> rsp) {
-                return rsp;
+            public CompletionStage<Response> apply(Request req, Response rsp) {
+                return rsp.completedStage();
             }
             
             @Override
