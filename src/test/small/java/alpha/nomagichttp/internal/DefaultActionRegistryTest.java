@@ -6,6 +6,7 @@ import alpha.nomagichttp.action.BeforeAction;
 import alpha.nomagichttp.action.Chain;
 import alpha.nomagichttp.handler.ClientChannel;
 import alpha.nomagichttp.message.Request;
+import alpha.nomagichttp.message.Response;
 import org.junit.jupiter.api.Test;
 
 import java.util.ArrayDeque;
@@ -13,6 +14,7 @@ import java.util.Deque;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CompletionStage;
 import java.util.function.Function;
 
 import static alpha.nomagichttp.internal.RequestTarget.parse;
@@ -243,6 +245,11 @@ public class DefaultActionRegistryTest
     
     private static AfterAction afterDummy(String name) {
         return new AfterAction() {
+            @Override
+            public CompletionStage<Response> apply(Request req, CompletionStage<Response> rsp) {
+                return rsp;
+            }
+            
             @Override
             public String toString() {
                 return name;
