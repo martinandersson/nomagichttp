@@ -15,7 +15,7 @@ import java.util.function.BiFunction;
  * response.<p>
  * 
  * To build on the example provided in {@link ActionRegistry}, here is one way
- * to propagate a correlation id from the request- headers or attributes,
+ * to propagate a correlation id from the request headers- or attributes,
  * falling back to no response modification if the value is not present:
  * <pre>
  *   import static alpha.nomagichttp.HttpConstants.HeaderKey.X_CORRELATION_ID;
@@ -33,10 +33,11 @@ import java.util.function.BiFunction;
  * If the action returns exceptionally, then the exception is passed to the
  * server's error handler(s) which is just the same as with before-actions and
  * request handlers. An after-action should probably never throw an exception,
- * as this would be highly subject to an ever-ending loop: request handler ->
- * channel -> after-action -> exception handler -> channel -> after-action ->
- * exception handler -> channel -> after-action ... (see {@link
- * Config#maxErrorRecoveryAttempts()})<p>
+ * as this would be highly subject to a never-ending loop: request handler
+ * -{@literal >} channel -{@literal >} after-action -{@literal >} exception
+ * handler -{@literal >} channel -{@literal >} after-action -{@literal >}
+ * exception handler -{@literal >} channel -{@literal >} after-action ... (see
+ * {@link Config#maxErrorRecoveryAttempts()})<p>
  * 
  * Returning {@code null} is the same as throwing a {@code
  * NullPointerException}.<p>
@@ -45,7 +46,6 @@ import java.util.function.BiFunction;
  * called by the server's request thread and so must not block.
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
- * @see ActionRegistry
  */
 @FunctionalInterface
 public interface AfterAction extends
