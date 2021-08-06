@@ -2,12 +2,9 @@ package alpha.nomagichttp.internal;
 
 import alpha.nomagichttp.HttpConstants.Version;
 import alpha.nomagichttp.message.Request;
-import alpha.nomagichttp.message.RequestHead;
 import alpha.nomagichttp.util.Attributes;
 
 import java.net.http.HttpHeaders;
-
-import static java.util.Objects.requireNonNull;
 
 /**
  * The default implementation of {@code Request}.
@@ -16,11 +13,9 @@ import static java.util.Objects.requireNonNull;
  */
 final class DefaultRequest implements Request
 {
-    private final Version ver;
-    private final RequestHead head;
-    private final Body body;
+    private final Version version;
+    private final SkeletonRequest shared;
     private final Parameters params;
-    private final Attributes attr;
     
     /**
      * Constructs this object.
@@ -36,40 +31,26 @@ final class DefaultRequest implements Request
             SkeletonRequest shared,
             ResourceMatch<?> pathParams)
     {
-        this(version,
-             shared.head(),
-             shared.body(),
-             new DefaultParameters(pathParams, shared.target()),
-             shared.attributes());
-    }
-    
-    private DefaultRequest(
-            Version ver,
-            RequestHead head,
-            Body body,
-            Parameters params,
-            Attributes attr)
-    {
-        this.ver    = requireNonNull(ver);
-        this.head   = head;
-        this.body   = body;
-        this.params = params;
-        this.attr   = attr;
+        assert version != null;
+        assert shared != null;
+        this.version = version;
+        this.shared = shared;
+        this.params = new DefaultParameters(pathParams, shared.target());
     }
     
     @Override
     public String method() {
-        return head.method();
+        return shared.head().method();
     }
     
     @Override
     public String target() {
-        return head.requestTarget();
+        return shared.head().requestTarget();
     }
     
     @Override
     public Version httpVersion() {
-        return ver;
+        return version;
     }
     
     @Override
@@ -79,33 +60,22 @@ final class DefaultRequest implements Request
     
     @Override
     public HttpHeaders headers() {
-        return head.headers();
+        return shared.head().headers();
     }
     
     @Override
     public Body body() {
-        return body;
+        return shared.body();
     }
     
     @Override
     public Attributes attributes() {
-        return attr;
-    }
-    
-    /**
-     * Construct a new instance sharing all fields of this instance, except for
-     * the given new parameters.
-     * 
-     * @param params new parameters
-     * @return new instance
-     */
-    DefaultRequest withParams(Parameters params) {
-        return new DefaultRequest(ver, head, body, params, attr);
+        return shared.attributes();
     }
     
     @Override
     public String toString() {
         return DefaultRequest.class.getSimpleName() +
-                "{head=" + head + ", body=?}";
+                "{head=" + shared.head() + ", body=?}";
     }
 }
