@@ -12,6 +12,7 @@ import static alpha.nomagichttp.message.MediaType.__ALL;
 import static alpha.nomagichttp.message.MediaType.parse;
 import static java.util.logging.Level.WARNING;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.argThat;
 
@@ -21,6 +22,7 @@ class MediaTypeTest
     void cache() {
         assertTrue(__ALL == parse("*/*"));
         assertTrue(TEXT_PLAIN == parse("text/plain"));
+        assertFalse(parse("text/*") == parse("text/*"));
         // ...
     }
     
