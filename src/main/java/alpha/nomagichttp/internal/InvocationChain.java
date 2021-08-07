@@ -145,8 +145,6 @@ final class InvocationChain
     
     private static RequestHandler findRequestHandler(RequestHead rh, ResourceMatch<Route> m) {
         MediaType type = contentType(rh.headers()).orElse(null);
-        // TODO: Find a way to cache this and re-use in Responses factories that
-        //       parse a charset from request (in a branch)
         MediaType[] accepts = accept(rh.headers())
                 .map(s -> s.toArray(MediaType[]::new))
                 .orElse(null);
