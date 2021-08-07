@@ -70,7 +70,7 @@ final class Tree<V>
         V get();
         
         /**
-         * Return this ode's value if non-null, otherwise {@code defaultValue}.
+         * Return this node's value if non-null, otherwise {@code defaultValue}.
          * 
          * @param defaultValue default value
          * @return this node's value, or {@code defaultValue}
@@ -148,7 +148,7 @@ final class Tree<V>
     interface WriteNode<V> {
         /**
          * Returns this node's value, or {@code null} if not present.
-         *
+         * 
          * @return this node's value, or {@code null} if not present
          */
         V get();
@@ -189,6 +189,17 @@ final class Tree<V>
         V getAndSetIf(V v, Predicate<? super V> test);
         
         /**
+         * Returns {@code true} if this node has no child keyed by the given
+         * segment, otherwise {@code false}.
+         * 
+         * @return {@code true} if this node has no child keyed by the given
+         *         segment, otherwise {@code false}
+         * 
+         * @throws NullPointerException if {@code segment} is {@code null}
+         */
+        boolean hasNoChild(String segment);
+        
+        /**
          * Returns {@code true} if this node has no children, otherwise {@code
          * false}.
          * 
@@ -196,17 +207,6 @@ final class Tree<V>
          *         otherwise {@code false}
          */
         boolean hasNoChildren();
-        
-        /**
-         * Returns {@code true} if this node has a child keyed by the given
-         * segment, otherwise {@code false}.
-         * 
-         * @return {@code true} if this node has a child keyed by the given
-         *         segment, otherwise {@code false}
-         * 
-         * @throws NullPointerException if {@code segment} is {@code null}
-         */
-        boolean hasChild(String segment);
         
         /**
          * Returns the child keyed by the given segment.<p>
@@ -554,14 +554,14 @@ final class Tree<V>
         }
         
         @Override
-        public boolean hasNoChildren() {
-            return kids.isEmpty();
+        public boolean hasNoChild(String segment) {
+            prune();
+            return !kids.containsKey(segment);
         }
         
         @Override
-        public boolean hasChild(String segment) {
-            prune();
-            return kids.containsKey(segment);
+        public boolean hasNoChildren() {
+            return kids.isEmpty();
         }
         
         @Override
