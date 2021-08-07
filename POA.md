@@ -33,7 +33,7 @@ An item ~~crossed out~~ is complete, an item in __bold__ is work in progress.
 [~~Stage: Pseudo-Mutable Types~~](#stage-pseudo-mutable-types)  
 [~~Stage: Multiple Responses~~](#stage-multiple-responses)  
 [~~Stage: Connection Life-Cycle/Management~~](#stage-connection-life-cyclemanagement)  
-[Stage: Actions](#stage-actions)  
+[~~Stage: Actions~~](#stage-actions)  
 [Stage: Codings, Part 1/3 (Chunked Transfer)](#stage-codings-part-13-chunked-transfer)  
 [Stage: Codings, Part 2/3 (Response Body Compression)](#stage-codings-part-23-response-body-compression)  
 [Stage: Codings, Part 3/3 (Request Body Decompression)](#stage-codings-part-33-request-body-decompression)  
@@ -286,106 +286,113 @@ responses. `ResponsePipeline` will handle unknown length by setting
 - ~~Implement persistent connections (`Connection: keep-alive`) also for
   HTTP/1.0 clients.~~
 
-## Stage: Actions
+## ~~Stage: Actions~~
 
-Pre- and post request handler actions which are able to intercept- and modify
+_Status: **Delivered**_
+
+End result: Vastly different from originally drafted. There's now an
+`ActionRegistry`, `BeforeAction` and `AfterAction`.
+
+~~Pre- and post request handler actions which are able to intercept- and modify
 the HTTP exchange. Naming not defined, either "filter", "action", "aspect" or
 something to that effect. "Filter" - although common in other projects - is also
 misleading. A pre action may have no opinion on whether or not a request is
 routed through and it would probably be outright bizarre to have a post action
-reject a prepared response.
+reject a prepared response. Update: Going with Pre/Post- Action, before and
+after request handler.~~
 
-Useful because
+~~Useful because~~
 
-- Pre-actions can more cleanly address cross-cutting concerns, such as rate
-  limiting and authentication.
-- Post-actions are anticipated to be mostly used by the server itself, for
-  example to apply response compression.
+- ~~Pre-actions can more cleanly address cross-cutting concerns, such as rate
+  limiting and authentication.~~
+- ~~Post-actions are anticipated to be mostly used by the server itself, for
+  example to apply response compression.~~
 
-Semantically, actions co-exist with routes in a shared hierarchical namespace;
+~~Semantically, actions co-exist with routes in a shared hierarchical namespace;
 makes it easy to implement spaces/scopes (RFC 7235 §2.2, RFC 7617 §2.2). For
-example, a pre action doing authentication can be scoped to "/admin".
+example, a pre action doing authentication can be scoped to "/admin".~~
 
-### Usage
+### ~~Usage~~
 
-- Docs must specify
-  - Semantics, intended usage.
-  - When are they executed, under what conditions.
-  - Execution order; especially the order between server's actions and the
-    application's actions.
-  - What actions are added by the server.
-- Consider API `HttpServer.before/after("/my/path", myAction)`.  
+- ~~Docs must specify~~
+  - ~~Semantics, intended usage.~~
+  - ~~When are they executed, under what conditions.~~
+  - ~~Execution order; especially the order between server's actions and the
+    application's actions.~~
+  - ~~What actions are added by the server.~~
+- ~~Consider API `HttpServer.before/after("/my/path", myAction)`.  
   Implementation-wise, actions will most likely be stored in two distinct and
-  separeted registries/trees; not co-exist in the same tree as routes.
-- Both action types have a boolean metadata; indicating if the action is
-  exclusive for the node or also applies recursively for the rest of the branch.
-- In addition, pre action type has a second boolean indicating if it should be
+  separeted registries/trees; not co-exist in the same tree as routes.~~
+- ~~Both action types have a boolean metadata; indicating if the action is
+  exclusive for the node or also applies recursively for the rest of the
+  branch.~~
+- ~~In addition, pre action type has a second boolean indicating if it should be
   called pre- or post request handler resolution. Or in other words; whether or
   not the action is dependent on an actually matched resource.
   Example; `HttpServer.before("/", MyBeforeAction.create(true, true))` will
-  always be called for all successfully parsed requests hitting the server.
-- Post actions will always run just before a response is sent back to the client
-  whatever happened before that point in time.
-  - and so technically should probably not be called "post request handler",
-    because there might never have been a request handler to start with.
-  - Will not be called for responses not sent, for example a skipped 100
-    (Continue).
-  - They execute _after_ error handling.
+  always be called for all successfully parsed requests hitting the server.~~
+- ~~Post actions will always run just before a response is sent back to the
+  client whatever happened before that point in time.~~
+  - ~~and so technically should probably not be called "post request handler",
+    because there might never have been a request handler to start with.~~
+  - ~~Will not be called for responses not sent, for example a skipped 100
+    (Continue).~~
+  - ~~They execute _after_ error handling.~~
 
-### Signature
+### ~~Signature~~
 
-- **Pre action's logic** function has the same signature as
+- ~~**Pre action's logic** function has the same signature as
   `RequestHandler.logic()`, i.e. `Function<Request, CompletionStage<Response>>`.
-  When implementing, same rules apply, in particular;
-  - request arg is immutable and
-  - body bytes can not be consumed more than once.
-- The pre-action is expected to make heavy use of attributes, for example
-  `req.attributes().set("app.user.authenticated", true)`.
-- Action returns `null` if exchange should proceed (possibly more actions called
-  followed by request handler), or alternatively
-- a non-null `CompletionStage<Response>` which shortcuts the HTTP exchange and
-  preempts the rest of the call chain.
-  - No support for split work such as returning an interim response from the
-    action and then delegate the exchange to the rest of the call chain.
-  - Still legal for the action to respond an interim response, but action must
-    also make sure to finalize that response. Docs must be clear on this.
-- May return exceptionally, subject to standard error handling.
+  When implementing, same rules apply, in particular;~~
+  - ~~request arg is immutable and~~
+  - ~~body bytes can not be consumed more than once.~~
+- ~~The pre-action is expected to make heavy use of attributes, for example
+  `req.attributes().set("app.user.authenticated", true)`.~~
+- ~~Action returns `null` if exchange should proceed (possibly more actions
+  called followed by request handler), or alternatively~~
+- ~~a non-null `CompletionStage<Response>` which shortcuts the HTTP exchange and
+  preempts the rest of the call chain.~~
+  - ~~No support for split work such as returning an interim response from the
+    action and then delegate the exchange to the rest of the call chain.~~
+  - ~~Still legal for the action to respond an interim response, but action must
+    also make sure to finalize that response. Docs must be clear on this.~~
+- ~~May return exceptionally, subject to standard error handling.~~
 
   .
 
-- **Post action's logic** is a
-  `BiFunction<Request, Response, CompletionStage<Response>>`.
-- Post action must not return `null`. Returning null implicitly has the same
-  effect as throwing NPE from within the action itself.
-- In order to apply no effect, the action must return
-  `secondArg.completedStage()`.
-- Action can template a new response given the provided argument or build a
-  completely new one from scratch.
-- Action should never return exceptionally.
-  - Action's run _after_ error handling; there's semantically speaking no error
-    handling infrastructure in place for post actions. Post actions _are_ the
-    last pieces of code which may impose an opinion on the response.
-  - Rolling back the exchange progress to error handling would risk putting the
-    request thread in an infinite loop if the same post action repeatedly keeps
-    throwing the same exception.
-  - If the post action does throw an exception (or return `null`), the server
+- ~~**Post action's logic** is a
+  `BiFunction<Request, Response, CompletionStage<Response>>`.~~
+- ~~Post action must not return `null`. Returning null implicitly has the same
+  effect as throwing NPE from within the action itself.~~
+- ~~In order to apply no effect, the action must return
+  `secondArg.completedStage()`.~~
+- ~~Action can template a new response given the provided argument or build a
+  completely new one from scratch.~~
+- ~~Action should never return exceptionally.~~
+  - ~~Action's run _after_ error handling; there's semantically speaking no
+    error handling infrastructure in place for post actions. Post actions _are_
+    the last pieces of code which may impose an opinion on the response.~~
+  - ~~Rolling back the exchange progress to error handling would risk putting
+    the request thread in an infinite loop if the same post action repeatedly
+    keeps throwing the same exception.~~
+  - ~~If the post action does throw an exception (or return `null`), the server
     is hardwired to call the default exception handler which logs the exception
     and most likely returns a 500 (Internal Server Error) - no other
-    post-actions called!
+    post-actions called!~~
 
-### Library-native actions
+### ~~Library-native actions~~
 
-- DefaultServer should already default `Content-Length` to 0 for no response
-  body. Move to post action.
-- Add pre- and post-actions that rejects illegal message variants (see
-  HttpServer JavaDoc).
-- Rewrite `Response.thenCloseChannel()` to set header `Connection: close`.  
+- ~~DefaultServer should already default `Content-Length` to 0 for no response
+  body. Move to post action.~~
+- ~~Add pre- and post-actions that rejects illegal message variants (see
+  HttpServer JavaDoc).~~
+- ~~Rewrite `Response.thenCloseChannel()` to set header `Connection: close`.  
   Add post action which reacts to the header and calls
-  `Request.channel().close()`.
-- If not already set, automagically set `Vary: Accept` (?)
-  - If there are multiple request handlers for that resource which produces
-    different media types, and
-  - status code is 200 or 304
+  `Request.channel().close()`.~~
+- ~~If not already set, automagically set `Vary: Accept` (?)~~
+  - ~~If there are multiple request handlers for that resource which produces
+    different media types, and~~
+  - ~~status code is 200 or 304~~
 
 ## Stage: Codings, Part 1/3 (Chunked Transfer)
 

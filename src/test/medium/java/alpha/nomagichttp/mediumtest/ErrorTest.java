@@ -4,7 +4,8 @@ import alpha.nomagichttp.handler.ResponseRejectedException;
 import alpha.nomagichttp.message.HttpVersionParseException;
 import alpha.nomagichttp.message.HttpVersionTooNewException;
 import alpha.nomagichttp.message.HttpVersionTooOldException;
-import alpha.nomagichttp.message.IllegalBodyException;
+import alpha.nomagichttp.message.IllegalRequestBodyException;
+import alpha.nomagichttp.message.IllegalResponseBodyException;
 import alpha.nomagichttp.message.MaxRequestHeadSizeExceededException;
 import alpha.nomagichttp.message.PooledByteBufferHolder;
 import alpha.nomagichttp.message.RequestBodyTimeoutException;
@@ -221,23 +222,7 @@ class ErrorTest extends AbstractRealTest
     }
     
     @Test
-    void IllegalBodyException_inResponseToHEAD() throws IOException, InterruptedException {
-        server().add("/",
-            HEAD().respond(text("Body!")));
-        String rsp = client().writeReadTextUntilNewlines(
-            "HEAD / HTTP/1.1"                    + CRLF + CRLF);
-        assertThat(rsp).isEqualTo(
-            "HTTP/1.1 500 Internal Server Error" + CRLF +
-            "Content-Length: 0"                  + CRLF + CRLF);
-        assertThatServerErrorObservedAndLogged()
-            .isExactlyInstanceOf(IllegalBodyException.class)
-            .hasNoCause()
-            .hasNoSuppressedExceptions()
-            .hasMessage("Body in response to a HEAD request.");
-    }
-    
-    @Test
-    void IllegalBodyException_inRequestFromTRACE() throws IOException, InterruptedException {
+    void IllegalRequestBodyException() throws IOException, InterruptedException {
         server().add("/",
             TRACE().accept((req, ch) -> { throw new AssertionError("Not invoked."); }));
         String rsp = client().writeReadTextUntilNewlines(
@@ -249,7 +234,7 @@ class ErrorTest extends AbstractRealTest
             "HTTP/1.1 400 Bad Request" + CRLF +
             "Content-Length: 0"        + CRLF + CRLF);
         assertThat(pollServerError())
-            .isExactlyInstanceOf(IllegalBodyException.class)
+            .isExactlyInstanceOf(IllegalRequestBodyException.class)
             .hasNoCause()
             .hasNoSuppressedExceptions()
             .hasMessage("Body in a TRACE request.");
@@ -257,7 +242,7 @@ class ErrorTest extends AbstractRealTest
     }
     
     @Test
-    void IllegalBodyException_in1xxResponse() throws IOException, InterruptedException {
+    void IllegalResponseBodyException_in1xxResponse() throws IOException, InterruptedException {
         server().add("/",
             GET().respond(() -> Response.builder(123)
                     .body(ofString("Body!"))
@@ -268,10 +253,26 @@ class ErrorTest extends AbstractRealTest
             "HTTP/1.1 500 Internal Server Error" + CRLF +
             "Content-Length: 0"                  + CRLF + CRLF);
         assertThatServerErrorObservedAndLogged()
-            .isExactlyInstanceOf(IllegalBodyException.class)
+            .isExactlyInstanceOf(IllegalResponseBodyException.class)
             .hasNoCause()
             .hasNoSuppressedExceptions()
             .hasMessage("Presumably a body in a 1XX (Informational) response.");
+    }
+    
+    @Test
+    void IllegalResponseBodyException_inResponseToHEAD() throws IOException, InterruptedException {
+        server().add("/",
+            HEAD().respond(text("Body!")));
+        String rsp = client().writeReadTextUntilNewlines(
+            "HEAD / HTTP/1.1"                    + CRLF + CRLF);
+        assertThat(rsp).isEqualTo(
+            "HTTP/1.1 500 Internal Server Error" + CRLF +
+            "Content-Length: 0"                  + CRLF + CRLF);
+        assertThatServerErrorObservedAndLogged()
+            .isExactlyInstanceOf(IllegalResponseBodyException.class)
+            .hasNoCause()
+            .hasNoSuppressedExceptions()
+            .hasMessage("Body in response to a HEAD request.");
     }
     
     @Test
@@ -552,7 +553,7 @@ class ErrorTest extends AbstractRealTest
     @Test
     void requestBodySubscriberFails_onNext() throws IOException, InterruptedException {
         MemorizingSubscriber<PooledByteBufferHolder> sub = new MemorizingSubscriber<>(
-                // Intercepted by DefaultRequest > OnErrorCloseReadStream
+                // Intercepted by RequestBody > OnErrorCloseReadStream
                 onNext(i -> { throw new OopsException(); }));
         
         onErrorAssert(OopsException.class, channel ->

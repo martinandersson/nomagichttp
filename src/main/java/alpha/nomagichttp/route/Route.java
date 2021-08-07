@@ -15,7 +15,7 @@ import java.util.stream.Stream;
  * A {@code Route} is "a target resource upon which to apply semantics"
  * (<a href="https://tools.ietf.org/html/rfc7230#section-5.1">RFC 7230 §5.1</a>).
  * It can be built using a {@link #builder(String)}. There's also a convenient
- * shortcut which both builds and add the route; {@link
+ * method available which both builds and add the route at the same time; {@link
  * HttpServer#add(String, RequestHandler, RequestHandler...)}.<p>
  * 
  * The route is associated with one or more <i>request handlers</i>. In HTTP
@@ -46,12 +46,15 @@ import java.util.stream.Stream;
  * whose dynamic value is given by the client through the request path. Path-
  * and query parameters may be retrieved using {@link Request#parameters()}<p>
  * 
- * Path parameters come in two forms; single-segment and catch-all.<p>
+ * Path parameters come in two forms; <i>single-segment</i> and
+ * <i>catch-all</i>.<p>
  * 
  * Single-segment path parameters match anything until the next '/' or the path
- * end. They are denoted using the prefix ':'. A request path must carry a value
- * for the segment in order to match with a route that has declared a
- * single-segment path parameter. They can not be configured as optional.
+ * end. They are denoted using the prefix ':'. All text following the prefix is
+ * the name/key by which the value is acquired through the request object. An
+ * inbound request path must contain a value for the segment in order to match
+ * with a route that has declared a single-segment path parameter (they can not
+ * be configured as optional).
  * 
  * <pre>
  *   Route registered: /user/:id
@@ -63,10 +66,12 @@ import java.util.stream.Stream;
  *   /user/foo/profile    no match (unknown segment "profile")
  * </pre>
  * 
- * Within the route registry, path parameters (both single-segment and
- * catch-all) are mutually exclusive for that segment position. For example, you
- * can not at the same time register a route {@code "/user/new"} and a route
- * {@code "/user/:id"}, or {@code "/user/:id"} and {@code "/user/:blabla"}.<p>
+ * Non-static segments are mutually exclusive for that position in the registry.
+ * For example, one can not at the same time register a route {@code
+ * "/user/john"} and a route {@code "/user/:name"}, or {@code "/user/:name"} and
+ * {@code "/user/:id"}. This is by design as a request must match exactly one
+ * route or none at all. Branching based on dynamic segment values must be
+ * implemented by the route's handler(s).<p>
  * 
  * Static- and single segment path parameters may have any number of descendant
  * routes on the same hierarchical branch. In the following example, we register
@@ -82,7 +87,7 @@ import java.util.stream.Stream;
  * declare may still be different. A path parameter name is only required to be
  * unique for a specific {@code Route} object. The last route could have just as
  * well been expressed as {@code "/user/:id/file/:fid"} and added to the same
- * registry. But, this route can never be constructed: {@code
+ * registry. But, this route could not also have been added: {@code
  * "/user/:id/file/:id"} (duplicated name!)<p> 
  * 
  * Catch-all path parameters match everything until the path end. They must
@@ -108,14 +113,12 @@ import java.util.stream.Stream;
  * It is possible to mix both parameter styles, e.g. {@code
  * "/:drive/*filepath"}.<p>
  * 
- * As previously noted, static- and single segment parameters can build a route
- * hierarchy. Or in other words, a route position may have a parent route. For
- * example, you can have {@code "/user"}, {@code "/user/:id"} and {@code
- * "/user/:id/avatar"} all registered at the same time in the same registry. But
- * this is not true for catch-all since it matches everything including no value
- * at all. You can not register {@code "/src"} and {@code "/src/*filepath"} in
- * the same registry at the same time. Failure to register a route with the
- * registry causes a {@link RouteCollisionException} to be thrown.<p>
+ * As previously noted, static- and single-segment parameters can build a route
+ * hierarchy. For example, one can have {@code "/user"}, {@code "/user/:id"} and
+ * {@code "/user/:id/avatar"} all registered at the same time in the same
+ * registry. But this is not true for catch-all since it matches everything
+ * including no value at all. One can not register {@code "/src"} and {@code
+ * "/src/*filepath"} in the same registry at the same time.<p>
  * 
  * Query parameters are always optional, they can not be used to distinguish one
  * route from another, nor do they affect how a request path is matched against
@@ -168,12 +171,8 @@ public interface Route
      * parameters:
      * 
      * <pre>{@code
-     *     Route r = Route.builder("/").handler(...).build();
-     * }</pre>
-     * 
-     * Alternatively, import static {@code Routes.route()}, then:
-     * <pre>{@code
-     *     Route r = route("/", ...);
+     *     RequestHandler handler = ...
+     *     Route r = Route.builder("/").handler(handler).build();
      * }</pre>
      * 
      * The value given to this method as well as {@link Builder#append(String)}
@@ -189,6 +188,19 @@ public interface Route
      *    Route.builder("/files").append(":user/*filepath")...
      *    Route.builder("/files/:user/*filepath")...
      * }</pre>
+     * 
+     * As per the first example, using the builder makes it possible to avoid
+     * embedding syntax-driven tokens in favor of explicit {@code paramXXX()}
+     * method calls. This is of course always desired; the less magic the
+     * better. If the application declares a route using one single pattern
+     * string, as in the last example, then there's a method available in the
+     * {@code HttpServer} interface that accomplishes the same thing:
+     * <pre>
+     *   RequestHandler handler = ...
+     *   HttpServer server = ...
+     *   server.{@link HttpServer#add(String, RequestHandler, RequestHandler...) add
+     *     }("/files/:user/*filepath", handler);
+     * </pre>
      * 
      * Technical jargon, just to have it stated: '/' serves as a segment
      * delimiter. Any leading or trailing '/' in the pattern will be discarded
@@ -279,13 +291,13 @@ public interface Route
      *   Rout cat = Route.builder("/ (=^・・^=)").handler(...).build();
      * }</pre>
      * 
-     * Parameter names can similarly be anything, as long as it is a unique name
-     * for the route. The only purpose of the name is for the HTTP server to use
-     * it as a key in a map.<p>
+     * Parameter names can similarly be anything (including the empty string),
+     * as long as it is a unique name for the route. The only purpose of the
+     * name is for the HTTP server to use it as a key in a map.<p>
      * 
      * The pattern consuming methods will take (and remove) the first char - if
      * it is a ':' or '*' - as an indicator of the parameter type. The {@code
-     * param***()} builder methods accept the given string at face value.
+     * paramXXX()} builder methods accept the given string at face value.
      * <pre>{@code
      *   Route.builder("/:user")                    Access using request.parameters().path("user")
      *   Route.builder("/").paramSingle('user')     Same as above

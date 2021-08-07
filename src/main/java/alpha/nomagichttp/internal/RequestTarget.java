@@ -1,6 +1,7 @@
 package alpha.nomagichttp.internal;
 
 import alpha.nomagichttp.route.Route;
+import alpha.nomagichttp.util.PercentDecoder;
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -11,6 +12,7 @@ import java.util.RandomAccess;
 import static alpha.nomagichttp.util.PercentDecoder.decode;
 import static java.util.Collections.unmodifiableList;
 import static java.util.Collections.unmodifiableMap;
+import static java.util.stream.Collectors.toCollection;
 import static java.util.stream.Collectors.toMap;
 
 /**
@@ -21,7 +23,13 @@ import static java.util.stream.Collectors.toMap;
  * iteration order as the query keys were declared in the query string.<p>
  * 
  * All lists returned by this class are unmodifiable and implements {@link
- * RandomAccess}.
+ * RandomAccess}.<p>
+ * 
+ * The root ("/") is not represented in the returned lists of segments. If the
+ * parsed request path was empty or effectively a single "/", then the returned
+ * lists will also be empty. This has been officially specified by {@link
+ * Route#segments()} and is an expected de-facto norm throughout the library
+ * code.<p>
  * 
  * The implementation is thread-safe and non-blocking.<p>
  * 
@@ -46,14 +54,11 @@ final class RequestTarget
      *   <li>Dot-segments (".", "..") are normalized.</li>
      * </ul>
      * 
-     * Parsing of the query string as well as percent-decoding tokens (path
-     * segments, query key- and values happens lazily and will take place upon
-     * first external access).
+     * Parsing- and percent-decoding the query string takes place lazily upon
+     * first access, and so, is a cost not paid by clients uninterested of it.
      * 
      * @param rt raw request target as read from the request-line
-     * 
      * @return a complex type representing the input
-     * 
      * @throws NullPointerException if {@code rt} is {@code null}
      */
     static RequestTarget parse(final String rt) {
@@ -78,7 +83,15 @@ final class RequestTarget
             path = parse.substring(skip, f);
         }
         
-        // ..into tokens that we normalize
+        // ..into tokens that we normalize, using .split(). E.g.
+        //     "a/b"  => ["a", "b"]
+        //     "a/"   => ["a"]         (here '/' is removed)
+        //     "/a"   => ["", "a"]     (not symmetric lol, here a magical empty token appears)
+        //     "a"    => ["a"]
+        //     ""     => [""]          (yikes! empty input produces array.length == 1)
+        //     "/"    => []            (...by themselves no magic tokens lol)
+        //     "//"   => []
+        //     "///"  => []
         String[] segments = path.split("/");
         ArrayList<String> keep = new ArrayList<>();
         
@@ -114,7 +127,8 @@ final class RequestTarget
     
     private final String rtRaw;
     private final String query;
-    private final List<String> segmentsNotPercentDecoded;
+    private final List<String> segmentsNotPercentDecoded,
+                               segmentsPercentDecoded;
     private Map<String, List<String>>
             queryMapNotPercentDecoded, queryMapPercentDecoded;
     
@@ -125,13 +139,19 @@ final class RequestTarget
         this.query = query;
         assert !query.startsWith("?");
         this.segmentsNotPercentDecoded = unmodifiableList(segmentsNotPercentDecoded);
+        this.segmentsPercentDecoded    = unmodifiableList(segmentsNotPercentDecoded.stream()
+                .map(PercentDecoder::decode).collect(toCollection(() ->
+                        new ArrayList<>(segmentsNotPercentDecoded.size()))));
         
         this.queryMapNotPercentDecoded = null;
-        this.queryMapPercentDecoded = null;
+        this.queryMapPercentDecoded    = null;
     }
     
     /**
-     * Returns the raw non-normalized and not percent-decoded request-target.
+     * Returns the raw non-normalized and not percent-decoded request-target.<p>
+     * 
+     * The returned value is in fact the same string passed to the parse method.
+     * I.e, what was received on the wire in the request head.
      * 
      * @return the raw non-normalized and not percent-decoded request-target
      */
@@ -144,8 +164,17 @@ final class RequestTarget
      * 
      * @return normalized but possibly escaped segments
      */
-    List<String> segmentsNotPercentDecoded() {
+    List<String> segmentsNotPercentDecoded() { // TODO: rename to segmentsRaw
         return segmentsNotPercentDecoded;
+    }
+    
+    /**
+     * Returns normalized and escaped segments.
+     * 
+     * @return normalized and escaped segments
+     */
+    List<String> segmentsPercentDecoded() {
+        return segmentsPercentDecoded;
     }
     
     /**

@@ -33,11 +33,12 @@ import java.util.stream.Stream;
  * An inbound HTTP request.<p>
  * 
  * The request handler is not required to consume the request or its body. If
- * there is a body present and it is not consumed then it will be silently
+ * there is a body present, and it is not consumed then it will be silently
  * discarded as late in the HTTP exchange process as possible, which is when the
  * server's {@link Response#body() response body} subscription completes.<p>
  * 
- * The implementation is thread-safe and non-blocking.
+ * The implementation is thread-safe and non-blocking. It does not necessarily
+ * implement {@code hashCode()} and {@code equals()}.
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  * 

@@ -2,6 +2,7 @@ package alpha.nomagichttp;
 
 import alpha.nomagichttp.handler.ClientChannel;
 import alpha.nomagichttp.handler.ErrorHandler;
+import alpha.nomagichttp.handler.ResponseRejectedException;
 import alpha.nomagichttp.message.HttpVersionTooOldException;
 import alpha.nomagichttp.message.MaxRequestHeadSizeExceededException;
 import alpha.nomagichttp.message.Request;
@@ -80,18 +81,10 @@ public interface Config
      * Returns the max number of attempts at recovering a failed HTTP
      * exchange.<p>
      * 
-     * The configuration has an effect only if the application has provide one
-     * or more error handlers to the server.<p>
-     * 
-     * When all tries have been exhausted, the {@link ErrorHandler#DEFAULT
-     * default error handler} will be called with the original exception.<p>
-     * 
-     * Successfully invoking an error handler (handler does not throw a
-     * <i>different</i> exception instance) counts as one attempt.<p>
-     * 
-     * The recovery attempt count is saved and increment over the life span of
-     * the HTTP exchange. It is not directly related to any given invocation of
-     * a request handler.<p>
+     * The active count is bumped for each new error that the server attempts to
+     * resolve through the {@link ErrorHandler}. When all tries have been
+     * exhausted, the server will log the error and close the client channel, at
+     * which point any ongoing read or write operation will fail.<p>
      * 
      * The default implementation returns {@code 5}.
      * 
@@ -178,14 +171,15 @@ public interface Config
      * 1XX (Informational) responses to the channel without concern for old
      * incompatible clients.<p>
      * 
-     * If this option is disabled (changed to return false), then the default
-     * error handler will instead of ignoring the failure, write a final 500
-     * (Internal Server Error) response as an alternative to the failed
-     * response, meaning that the application will then not be able to write its
-     * intended final response. This also means that the application would have
-     * to query the active HTTP version ({@link Request#httpVersion()}) and
-     * restrain itself from attempting to send interim responses to HTTP/1.0
-     * clients.<p>
+     * Caution: If this option is disabled (changed to return false), then the
+     * default error handler will instead of ignoring the failure, write a final
+     * 500 (Internal Server Error) response, meaning that the application will
+     * not be able to write its intended final response, or may even write its
+     * final response to a another subsequent HTTP exchange. Turning this option
+     * off necessitates that the application must query the active HTTP version
+     * ({@link Request#httpVersion()}) and restrain itself from attempting to
+     * send interim responses to HTTP/1.0 clients. Alternatively, install a
+     * custom error handler for {@link ResponseRejectedException}.<p>
      * 
      * The default implementation returns {@code true}.
      * 
@@ -285,9 +279,9 @@ public interface Config
      * 
      * Like the request timeout, different response timeouts are active at
      * various stages of the HTTP exchange. Unlike the request timeout, there's
-     * only one exception type to be aware about: {@link
-     * ResponseTimeoutException}. The outcome of the exception is dependent on
-     * where the exception occurred.<p>
+     * only one exception type to be aware of: {@link ResponseTimeoutException}.
+     * The outcome of the exception is dependent on where the exception
+     * occurred.<p>
      * 
      * One response timer will timeout on failure of the application to deliver
      * a response to the {@link ClientChannel}. This timer starts when the
@@ -339,10 +333,12 @@ public interface Config
     
     /**
      * If {@code true} (which is the default), the {@link ErrorHandler#DEFAULT
-     * default error handler} will respond 204 (No Content) with the {@value
-     * HttpConstants.HeaderKey#ALLOW} header populated to a request handler
-     * resolution that ends with a {@link MethodNotAllowedException} if the
-     * requested HTTP method is {@value HttpConstants.Method#OPTIONS}.<p>
+     * default error handler} will respond a <i>successful</i> 204 (No Content)
+     * with the {@value HttpConstants.HeaderKey#ALLOW} header populated to a
+     * request handler resolution that ends with a {@link
+     * MethodNotAllowedException} if and only if the requested HTTP method is
+     * {@value HttpConstants.Method#OPTIONS}. In human speech; all routes will
+     * get a valid auto-implementation of the {@code OPTIONS} method.<p>
      * 
      * Even if the default value for this configuration is {@code true}, the
      * application's route can still freely implement the {@code OPTIONS} method
@@ -350,16 +346,8 @@ public interface Config
      * MethodNotAllowedException} however it sees fit.<p>
      * 
      * If this methods returns {@code false}, then the default error handler
-     * will simply respond a 405 (Method Not Allowed) response as it normally
-     * do for all {@code MethodNotAllowedException}s.<p>
-     * 
-     * In human speech; if the application does not implement the {@code
-     * OPTIONS} method for a given route, and this configuration value returns
-     * false, the error would have been treated as a <i>client error</i>. But by
-     * default, even if the application does not implement the {@code OPTIONS}
-     * method, a <i>successful</i> response will be returned. Disabling this
-     * configuration disables the {@code OPTIONS} method completely unless the
-     * application explicitly add a request handler that supports the method.
+     * will respond a <i>client error</i> 405 (Method Not Allowed) response as
+     * it normally do for all {@code MethodNotAllowedException}s.
      * 
      * @return see JavaDoc
      */

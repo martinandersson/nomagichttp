@@ -1,12 +1,11 @@
-package alpha.nomagichttp.route;
+package alpha.nomagichttp.internal;
 
-import alpha.nomagichttp.route.Tree;
 import org.junit.jupiter.api.Test;
 
 import java.util.Iterator;
 import java.util.List;
 
-import static alpha.nomagichttp.route.Tree.entry;
+import static alpha.nomagichttp.internal.Tree.entry;
 import static java.util.List.of;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -84,11 +83,10 @@ class TreeTest
     
     @Test
     void write_read() {
-        Iterable<String> path = List.of("a", "b");
-        Iterator<String> w = path.iterator();
+        Iterator<String> segments = List.of("a", "b").iterator();
         testee.write(n -> {
-            if (w.hasNext()) {
-                return n.nextOrCreate(w.next());
+            if (segments.hasNext()) {
+                return n.nextOrCreate(segments.next());
             }
             n.set("value");
             return null;

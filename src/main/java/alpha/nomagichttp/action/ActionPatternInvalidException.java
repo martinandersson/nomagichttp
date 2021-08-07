@@ -1,20 +1,19 @@
-package alpha.nomagichttp.route;
+package alpha.nomagichttp.action;
 
 /**
- * Thrown by {@link Route.Builder#builder(String)} if parsing a route fails.
+ * Thrown by {@link ActionRegistry} if an action pattern is invalid.
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  */
-public class RouteParseException extends RuntimeException
-{
+public class ActionPatternInvalidException extends RuntimeException {
     private static final long serialVersionUID = 1L;
     
     /**
      * Constructs this object.
-     * 
+     *
      * @param cause passed as-is to {@link Throwable#Throwable(Throwable)}
      */
-    public RouteParseException(Throwable cause) {
+    public ActionPatternInvalidException(Throwable cause) {
         super(cause);
     }
 }

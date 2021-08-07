@@ -1,7 +1,7 @@
 package alpha.nomagichttp.internal;
 
 import alpha.nomagichttp.Config;
-import alpha.nomagichttp.message.IllegalBodyException;
+import alpha.nomagichttp.message.IllegalResponseBodyException;
 import alpha.nomagichttp.message.Response;
 import alpha.nomagichttp.message.ResponseTimeoutException;
 
@@ -11,6 +11,7 @@ import java.util.concurrent.CompletionStage;
 import java.util.concurrent.Flow;
 import java.util.stream.Stream;
 
+import static alpha.nomagichttp.HttpConstants.Method.CONNECT;
 import static alpha.nomagichttp.HttpConstants.Method.HEAD;
 import static alpha.nomagichttp.internal.AnnounceToChannel.NO_MORE;
 import static alpha.nomagichttp.internal.ChannelByteBufferPublisher.BUF_SIZE;
@@ -35,11 +36,10 @@ import static java.util.Objects.requireNonNull;
  * produce".<p>
  * 
  * One known use-case for the lazy-head behavior, however, is an illegal body to
- * a HEAD request - which, can only reliably be identifier by this class. The
- * resulting {@code IllegalBodyException} is an exception this subscriber
- * signals through the {@link #asCompletionStage() result stage}. This indicates
- * an illegal response message variant, all of which the application should have
- * the chance to recover from.<p>
+ * a HEAD/CONNECT request - which, can only reliably be identifier by this
+ * class. The resulting {@code IllegalResponseBodyException} is an exception
+ * this subscriber signals through the {@link #asCompletionStage() result
+ * stage}.<p>
  * 
  * This class do expect to get a {@code ResponseTimeoutException} from the
  * upstream (well, hopefully not), and in fact, asynchronously (by {@link
@@ -69,21 +69,21 @@ final class ResponseBodySubscriber implements SubscriberAsStage<ByteBuffer, Long
     private final Response resp;
     private final HttpExchange exch;
     private final AnnounceToChannel sink;
-    private final DefaultClientChannel chan;
+    private final DefaultClientChannel chApi;
     private final CompletableFuture<Long> resu;
     
     private Flow.Subscription subscription;
     private boolean pushedHead;
     private int requested;
     
-    ResponseBodySubscriber(Response resp, HttpExchange exch, DefaultClientChannel ch) {
-        this.resp = requireNonNull(resp);
-        this.exch = requireNonNull(exch);
-        this.chan = requireNonNull(ch);
-        this.resu = new CompletableFuture<>();
-        this.sink = AnnounceToChannel.write(ch,
+    ResponseBodySubscriber(Response resp, HttpExchange exch, DefaultClientChannel chApi) {
+        this.resp  = requireNonNull(resp);
+        this.exch  = requireNonNull(exch);
+        this.chApi = requireNonNull(chApi);
+        this.resu  = new CompletableFuture<>();
+        this.sink  = AnnounceToChannel.write(chApi,
                 this::afterChannelFinished,
-                ch.getServer().getConfig().timeoutIdleConnection());
+                chApi.getServer().getConfig().timeoutIdleConnection());
     }
     
     /**
@@ -128,9 +128,11 @@ final class ResponseBodySubscriber implements SubscriberAsStage<ByteBuffer, Long
         }
         
         if (!pushedHead) {
-            if (exch.getRequest().method().equalsIgnoreCase(HEAD)) {
-                var e = new IllegalBodyException(
-                        "Body in response to a HEAD request.", resp);
+            var reqHead = exch.getRequestHead();
+            var reqMethod = reqHead == null ? null : reqHead.method();
+            if (reqMethod != null && (reqMethod.equals(HEAD) || reqMethod.equals(CONNECT))) {
+                var e = new IllegalResponseBodyException(
+                        "Body in response to a " + reqMethod + " request.", resp);
                 resu.completeExceptionally(e);
                 subscription.cancel();
                 return;
@@ -160,9 +162,9 @@ final class ResponseBodySubscriber implements SubscriberAsStage<ByteBuffer, Long
         if (t instanceof  ResponseTimeoutException) {
             propagates = sink.stopNow(t);
             // ...which closed only the stream. Finish the job:
-            if (chan.isAnythingOpen()) {
+            if (chApi.isAnythingOpen()) {
                 LOG.log(DEBUG, "Response timed out. Closing the child.");
-                chan.closeSafe();
+                chApi.closeSafe();
             }
         } else {
             // An application publisher hopefully never called onNext() first
@@ -198,14 +200,14 @@ final class ResponseBodySubscriber implements SubscriberAsStage<ByteBuffer, Long
         feedChannel(b);
     }
     
-    private void afterChannelFinished(DefaultClientChannel child, long byteCount, Throwable exc) {
+    private void afterChannelFinished(DefaultClientChannel chApi, long byteCount, Throwable exc) {
         if (exc == null) {
             assert byteCount > 0;
             resu.complete(byteCount);
         } else {
-            if (byteCount > 0 && child.isOpenForWriting()) {
+            if (byteCount > 0 && chApi.isOpenForWriting()) {
                 LOG.log(DEBUG, "Failed writing all of the response to channel. Will close the output stream.");
-                child.shutdownOutputSafe();
+                chApi.shutdownOutputSafe();
             }
             subscription.cancel();
             resu.completeExceptionally(exc);

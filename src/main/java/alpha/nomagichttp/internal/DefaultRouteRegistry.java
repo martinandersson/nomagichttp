@@ -1,32 +1,36 @@
-package alpha.nomagichttp.route;
+package alpha.nomagichttp.internal;
 
-import alpha.nomagichttp.util.PercentDecoder;
+import alpha.nomagichttp.HttpServer;
+import alpha.nomagichttp.route.NoRouteFoundException;
+import alpha.nomagichttp.route.Route;
+import alpha.nomagichttp.route.RouteCollisionException;
+import alpha.nomagichttp.route.RouteRegistry;
+import alpha.nomagichttp.route.SegmentsBuilder;
 
-import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.Objects;
 import java.util.function.Consumer;
-import java.util.stream.Stream;
-import java.util.stream.StreamSupport;
 
+import static alpha.nomagichttp.internal.Segments.ASTERISK_CH;
+import static alpha.nomagichttp.internal.Segments.ASTERISK_STR;
+import static alpha.nomagichttp.internal.Segments.COLON_CH;
+import static alpha.nomagichttp.internal.Segments.COLON_STR;
+import static alpha.nomagichttp.internal.Segments.noParamNames;
 import static java.text.MessageFormat.format;
-import static java.util.stream.Collectors.toList;
 
 /**
- * Default implementation of {@link RouteRegistry}. Similar in nature to many
- * other "router" implementations; the internally used data structure is a
- * concurrent tree with great performance characteristics.<p>
+ * Default implementation of {@link RouteRegistry}.
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  */
-public final class DefaultRouteRegistry implements RouteRegistry
+final class DefaultRouteRegistry implements RouteRegistry
 {
-    private static final char COLON_CH = ':',    // key for single- path params
-                              ASTERISK_CH = '*'; // key for catch-all path params
+    private final HttpServer server;
     
-    private static final String COLON_STR = ":",
-                                ASTERISK_STR = "*";
+    DefaultRouteRegistry(HttpServer server) {
+        this.server = server;
+    }
     
     /*
      * Implementation note:
@@ -50,7 +54,7 @@ public final class DefaultRouteRegistry implements RouteRegistry
     private final Tree<Route> tree = new Tree<>();
     
     @Override
-    public void add(Route r) {
+    public HttpServer add(Route r) {
         Iterator<String> it = r.segments().iterator();
         tree.write(n -> {
             if (!it.hasNext()) {
@@ -86,6 +90,7 @@ public final class DefaultRouteRegistry implements RouteRegistry
                 }
             }
         });
+        return server;
     }
     
     private static void setRouteIfAbsentGiven(
@@ -93,7 +98,7 @@ public final class DefaultRouteRegistry implements RouteRegistry
             Tree.WriteNode<Route> target,
             Route newGuy)
     {
-        Route oldGuy = target.setIf(newGuy, v -> {
+        Route oldGuy = target.getAndSetIf(newGuy, v -> {
             if (v != null) {
                 // Someone's there already, abort
                 return false;
@@ -187,44 +192,45 @@ public final class DefaultRouteRegistry implements RouteRegistry
         return tree.clearIf(pos, v -> Objects.equals(v, r)) != null;
     }
     
-    private static Iterable<String> noParamNames(Iterable<String> segments) {
-        return stream(segments)
-                .map(s -> s.startsWith(COLON_STR) ? COLON_STR :
-                          s.startsWith(ASTERISK_STR) ? ASTERISK_STR :
-                          s)
-                .collect(toList());
-    }
-    
-    @Override
-    public Match lookup(Iterable<String> rawSegments) {
-        Iterable<String> decoded = stream(rawSegments)
-                .map(PercentDecoder::decode)
-                .collect(toList());
+    /**
+     * Match the path segments from a request path against a route.
+     * 
+     * @param rt request target
+     * 
+     * @return a match (never {@code null})
+     * 
+     * @throws NullPointerException
+     *             if {@code rt} is {@code null}
+     * @throws NoRouteFoundException
+     *             if a route can not be found
+     */
+    ResourceMatch<Route> lookup(RequestTarget rt) {
+        Iterable<String> dec = rt.segmentsPercentDecoded();
         
-        Tree.ReadNode<Route> n = findNodeFromSegments(decoded);
+        Tree.ReadNode<Route> n = findNodeFromSegments(dec);
         
         if (n == null) {
-            throw new NoRouteFoundException(decoded);
+            throw new NoRouteFoundException(dec);
         }
         
         // check node's value for a route
         Route r;
         if ((r = n.get()) != null) {
-            return DefaultMatch.of(r, rawSegments, decoded);
+            return ResourceMatch.of(rt, r, r.segments());
         }
         
         // nothing was there? check for a catch-all child
         n = n.next(ASTERISK_STR);
         
         if (n == null) {
-            throw new NoRouteFoundException(decoded);
+            throw new NoRouteFoundException(dec);
         }
         
         if ((r = n.get()) != null) {
-            return DefaultMatch.of(r, rawSegments, decoded);
+            return ResourceMatch.of(rt, r, r.segments());
         }
         
-        throw new NoRouteFoundException(decoded);
+        throw new NoRouteFoundException(dec);
     }
     
     private Tree.ReadNode<Route> findNodeFromSegments(Iterable<String> decoded) {
@@ -232,7 +238,7 @@ public final class DefaultRouteRegistry implements RouteRegistry
         for (String s : decoded) {
             Tree.ReadNode<Route> c = n.next(s);
             if (c != null) {
-                // Segment found, on to next
+                // Static segment found, on to next
                 n = c;
                 continue;
             }
@@ -242,123 +248,11 @@ public final class DefaultRouteRegistry implements RouteRegistry
                 n = c;
                 continue;
             }
-            // Catch-all or no match, in both cases we're done here
+            // Catch-all or no match (null), in both cases we're done here
             n = n.next(ASTERISK_STR);
             break;
         }
         return n;
-    }
-    
-    // Package-private only for tests
-    static class DefaultMatch implements Match
-    {
-        private final Route route;
-        private final Map<String, String> paramsRaw, paramsDec;
-        
-        static DefaultMatch of(Route route, Iterable<String> rawSrc, Iterable<String> decSrc) {
-            // We need to map "request/path/segments" to "route/:path/*parameters"
-            Iterator<String>    decIt  = decSrc.iterator(),
-                                segIt  = route.segments().iterator();
-            Map<String, String> rawMap = Map.of(),
-                                decMap = Map.of();
-            
-            String catchAllKey = null;
-            
-            for (String r : rawSrc) {
-                 String d = decIt.next();
-                
-                if (catchAllKey == null) {
-                    // Catch-all not activated, consume next route segment
-                    String s = segIt.next();
-                    
-                    switch (s.charAt(0)) {
-                        case COLON_CH:
-                            // Single path param goes to map
-                            String k = s.substring(1),
-                                   o = (rawMap = mk(rawMap)).put(k, r);
-                            assert o == null;
-                                   o = (decMap = mk(decMap)).put(k, d);
-                            assert o == null;
-                            break;
-                        case ASTERISK_CH:
-                            // Toggle catch-all phase with this segment as seed
-                            catchAllKey = s.substring(1);
-                            (rawMap = mk(rawMap)).put(catchAllKey, '/' + r);
-                            (decMap = mk(decMap)).put(catchAllKey, '/' + d);
-                            break;
-                        default:
-                            // Static segments we're not interested in
-                            break;
-                    }
-                } else {
-                    // Consume all remaining request segments as catch-all
-                    rawMap.merge(catchAllKey, '/' + r, String::concat);
-                    decMap.merge(catchAllKey, '/' + d, String::concat);
-                }
-            }
-            
-            // We're done with the request path, but route may still have a catch-all segment in there
-            if (segIt.hasNext()) {
-                String s = segIt.next();
-                assert s.startsWith("*");
-                assert !segIt.hasNext();
-                assert catchAllKey == null;
-                catchAllKey = s.substring(1);
-            }
-            
-            // We could have toggled to catch-all, but no path segment was consumed for it, and
-            if (catchAllKey != null && !rawMap.containsKey(catchAllKey)) {
-                // route JavaDoc promises to default with a '/'
-                (rawMap = mk(rawMap)).put(catchAllKey, "/");
-                (decMap = mk(decMap)).put(catchAllKey, "/");
-            }
-            
-            assert !decIt.hasNext();
-            return new DefaultMatch(route, rawMap, decMap);
-        }
-        
-        private static <K, V> Map<K, V> mk(Map<K, V> map) {
-            return map.isEmpty() ? new HashMap<>() : map;
-        }
-        
-        private DefaultMatch(Route route, Map<String, String> paramsRaw, Map<String, String> paramsDec) {
-            this.route = route;
-            this.paramsRaw = paramsRaw;
-            this.paramsDec = paramsDec;
-        }
-        
-        @Override
-        public Route route() {
-            return route;
-        }
-        
-        @Override
-        public String pathParam(String name) {
-            return paramsDec.get(name);
-        }
-        
-        @Override
-        public String pathParamRaw(String name) {
-            return paramsRaw.get(name);
-        }
-        
-        /**
-         * FOR TESTS ONLY:  Returns the internal map holding raw path parameter
-         * values.
-         * 
-         * @return the internal map holding raw path parameter values
-         */
-        Map<String, String> mapRaw() {
-            return paramsRaw;
-        }
-        
-        Map<String, String> mapDec() {
-            return paramsDec;
-        }
-    }
-    
-    private static <T> Stream<T> stream(Iterable<T> it) {
-        return StreamSupport.stream(it.spliterator(), false);
     }
     
     /**

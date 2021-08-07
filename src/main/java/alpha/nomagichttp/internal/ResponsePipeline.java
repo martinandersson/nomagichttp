@@ -1,6 +1,7 @@
 package alpha.nomagichttp.internal;
 
 import alpha.nomagichttp.Config;
+import alpha.nomagichttp.action.AfterAction;
 import alpha.nomagichttp.handler.ResponseRejectedException;
 import alpha.nomagichttp.message.HeaderHolder;
 import alpha.nomagichttp.message.Response;
@@ -8,6 +9,7 @@ import alpha.nomagichttp.message.ResponseTimeoutException;
 import alpha.nomagichttp.util.SeriallyRunnable;
 
 import java.util.Deque;
+import java.util.List;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ConcurrentLinkedDeque;
 import java.util.concurrent.atomic.AtomicReference;
@@ -37,11 +39,17 @@ import static java.util.concurrent.TimeUnit.SECONDS;
  * The {@code write} methods of {@link DefaultClientChannel} is a direct facade
  * for the {@code add} methods declared in this class.<p>
  * 
+ * The lifetime of a pipeline is scoped to the HTTP exchange and not to the
+ * channel. The final response is the last response accepted by the pipeline.
+ * The channel will be updated with a new delegate pipeline instance at the
+ * start of each new HTTP exchange.<p>
+ * 
  * Core responsibilities:
  * <ul>
  *   <li>From a queue of responses, schedule channel write operations</li>
- *   <li>Apply response transformations such as setting "Connection: close" if
- *       no "Content-Length"</li>
+ *   <li>Invoke all after-actions</li>
+ *   <li>Apply low-level response transformations such as setting "Connection:
+ *       close" if no "Content-Length"</li>
  *   <li>Act on response-scheduled channel commands (must-close-after-write,
  *       "Connection: close", et cetera)</li>
  * </ul>
@@ -69,13 +77,13 @@ final class ResponsePipeline extends AbstractLocalEventEmitter
     /**
      * Sent on response failure.<p>
      * 
-     * The first attachment will always be a {@code Throwable}.<p>
+     * The first attachment will always be the error, a {@code Throwable}.<p>
      * 
-     * The second attachment may or may not be present depending on the nature
-     * of the error. If the error is propagated to the pipeline from the
-     * response stage provided by the client, then the second attachment is
-     * {@code null}. After this point in time, however, we have the {@code
-     * Response} object and so it will be present as the second attachment.<p>
+     * The second attachment is the Response object, but only if available. If
+     * the error was propagated to the pipeline from the response stage provided
+     * by the client, then the second attachment is {@code null}. Errors
+     * occurring after this point in time, however, will have the response
+     * attachment present.<p>
      * 
      * No errors are emitted after the <i>final</i> response. Errors from
      * the client are logged but otherwise ignored. And, there's obviously no
@@ -86,12 +94,13 @@ final class ResponsePipeline extends AbstractLocalEventEmitter
     private static final System.Logger LOG
             = System.getLogger(ResponsePipeline.class.getPackageName());
     
-    private static final Throwable IGNORE = new Throwable();
+    private static final Throwable ABORT = new Throwable();
     
     private final Config cfg;
     private final int maxUnssuccessful;
     private final HttpExchange exch;
-    private final DefaultClientChannel chan;
+    private final DefaultClientChannel chApi;
+    private final DefaultActionRegistry actions;
     private final Deque<CompletionStage<Response>> queue;
     private final SeriallyRunnable op;
     // This timer times out delays from app to give us a response.
@@ -99,25 +108,27 @@ final class ResponsePipeline extends AbstractLocalEventEmitter
     private final AtomicReference<Timeout> timer;
     private boolean timedOut;
     private boolean timeoutEmitted;
+    private List<ResourceMatch<AfterAction>> matched;
     
     /**
      * Constructs a {@code ResponsePipeline}.<p>
      * 
      * @param exch the HTTP exchange
-     * @param chan channel's delegate used for writing
-     * 
-     * @throws NullPointerException if any arg is {@code null}
+     * @param chApi channel's delegate used for writing
+     * @param actions registry used to lookup after-actions
      */
-    ResponsePipeline(HttpExchange exch, DefaultClientChannel chan) {
-        this.cfg = chan.getServer().getConfig();
+    ResponsePipeline(HttpExchange exch, DefaultClientChannel chApi, DefaultActionRegistry actions) {
+        this.cfg = chApi.getServer().getConfig();
         this.maxUnssuccessful = cfg.maxUnsuccessfulResponses();
-        this.chan  = chan;
-        this.exch  = requireNonNull(exch);
+        this.chApi = chApi;
+        this.actions = actions;
+        this.exch = exch;
         this.queue = new ConcurrentLinkedDeque<>();
-        this.op    = new SeriallyRunnable(this::pollAndProcessAsync, true);
+        this.op = new SeriallyRunnable(this::pollAndProcessAsync, true);
         this.timer = new AtomicReference<>();
         this.timedOut = false;
         this.timeoutEmitted = false;
+        this.matched = null;
     }
     
     // HttpExchange starts the timer after the request
@@ -155,36 +166,48 @@ final class ResponsePipeline extends AbstractLocalEventEmitter
         ifPresent(timer, t -> t.reschedule(this::timeoutAction));
     }
     
-    private static void scheduleClose(DefaultClientChannel chan) {
+    private static void scheduleClose(DefaultClientChannel chApi) {
         Timeout.schedule(SECONDS.toNanos(5), () -> {
-            if (chan.isAnythingOpen()) {
+            if (chApi.isAnythingOpen()) {
                 LOG.log(WARNING, "Response timed out, but after 5 seconds more the channel is still not closed. Closing child.");
-                chan.closeSafe();
+                chApi.closeSafe();
             }
         });
     }
     
     private void pollAndProcessAsync() {
         if (timedOut && !timeoutEmitted) {
-            scheduleClose(chan);
+            scheduleClose(chApi);
             var thr = new ResponseTimeoutException("Gave up waiting on a response.");
             emit(Error.INSTANCE, thr, null);
             timeoutEmitted = true;
         }
         
-        CompletionStage<Response> r = queue.poll();
-        if (r == null) {
+        CompletionStage<Response> stage = queue.poll();
+        if (stage == null) {
             op.complete();
             return;
         }
         
-        // TODO: All thenApply() will become post-actions
-        r.thenApply(this::closeHttp1_0)
-         .thenApply(this::handleUnknownLength)
-         .thenApply(this::trackConnectionClose)
-         .thenApply(this::trackUnsuccessful)
-         .thenCompose(this::subscribeToResponse)
-         .whenComplete(this::handleResult);
+        var req = exch.getSkeletonRequest();
+        if (req == null) {
+            LOG.log(DEBUG, "No request available; will not run after-actions.");
+        } else {
+            if (matched == null) {
+                matched = actions.lookupAfter(req.target());
+            }
+            for (ResourceMatch<AfterAction> m : matched) {
+                stage = stage.thenCompose(rsp ->
+                        m.get().apply(new DefaultRequest(exch.getHttpVersion(), req, m), rsp));
+            }
+        }
+        
+        stage.thenApply(this::closeHttp1_0)
+             .thenApply(this::handleUnknownLength)
+             .thenApply(this::trackConnectionClose)
+             .thenApply(this::trackUnsuccessful)
+             .thenCompose(this::subscribeToResponse)
+             .whenComplete(this::handleResult);
     }
     
     private Response inFlight = null;
@@ -204,7 +227,7 @@ final class ResponsePipeline extends AbstractLocalEventEmitter
     }
     
     private Response handleUnknownLength(Response rsp) {
-            // Two quick reads; assume "Connection: close" will be present
+        // Two quick reads; assume "Connection: close" will be present
         if (!rsp.mustShutdownOutputAfterWrite()         &&
             !rsp.mustCloseAfterWrite()                  &&
             // If not, we need to dig a little bit
@@ -235,8 +258,8 @@ final class ResponsePipeline extends AbstractLocalEventEmitter
             sawConnectionClose = true;
             out = in;
         } else if (in.isFinal() &&
-                  (exch.getRequest() != null && hasConnectionClose(exch.getRequest()) ||
-                  !chan.isOpenForReading()))
+                  (exch.getRequestHead() != null && hasConnectionClose(exch.getRequestHead()) ||
+                  !chApi.isOpenForReading()))
         {
             // Flag also propagates from request or current half-closed state of channel
             sawConnectionClose = true;
@@ -253,7 +276,7 @@ final class ResponsePipeline extends AbstractLocalEventEmitter
         final Response out;
         if (isClientError(in.statusCode()) || isServerError(in.statusCode())) {
             // Bump error counter
-            int n = chan.attributes().<Integer>asMapAny()
+            int n = chApi.attributes().<Integer>asMapAny()
                     .merge("alpha.nomagichttp.responsepipeline.nUnssuccessful", 1, Integer::sum);
             
             if (n >= maxUnssuccessful && !in.mustCloseAfterWrite()) {
@@ -264,7 +287,7 @@ final class ResponsePipeline extends AbstractLocalEventEmitter
             }
         } else {
             // Reset
-            chan.attributes().set("alpha.nomagichttp.responsepipeline.nUnssuccessful", 0);
+            chApi.attributes().set("alpha.nomagichttp.responsepipeline.nUnssuccessful", 0);
             out = in;
         }
         return out;
@@ -273,7 +296,7 @@ final class ResponsePipeline extends AbstractLocalEventEmitter
     private CompletionStage<Long> subscribeToResponse(Response rsp) {
         if (wroteFinal) {
             LOG.log(WARNING, () -> "HTTP exchange not active. This response is ignored: " + rsp);
-            return failedStage(IGNORE);
+            return failedStage(ABORT);
         }
         if (rsp.isInformational()) {
             if (exch.getHttpVersion().isLessThan(HTTP_1_1)) {
@@ -282,7 +305,7 @@ final class ResponsePipeline extends AbstractLocalEventEmitter
             }
             if (rsp.statusCode() == ONE_HUNDRED && ++n100continue > 1) {
                 LOG.log(n100continue == 2 ? DEBUG : WARNING, "Ignoring repeated 100 (Continue).");
-                return failedStage(IGNORE);
+                return failedStage(ABORT);
             }
         }
         
@@ -296,11 +319,11 @@ final class ResponsePipeline extends AbstractLocalEventEmitter
         // Response.body() (app) -> operator -> ResponseBodySubscriber (server)
         // On timeout, operator will cancel upstream and error out downstream.
         var body = new TimeoutOp.Pub<>(true, false, rsp.body(), cfg.timeoutIdleConnection(), () -> {
-            scheduleClose(chan);
+            scheduleClose(chApi);
             return new ResponseTimeoutException(
                     "Gave up waiting on a response body bytebuffer.");
         });
-        var sub = new ResponseBodySubscriber(rsp, exch, chan);
+        var sub = new ResponseBodySubscriber(rsp, exch, chApi);
         body.subscribe(sub);
         return sub.asCompletionStage();
     }
@@ -309,7 +332,7 @@ final class ResponsePipeline extends AbstractLocalEventEmitter
         Response rsp = inFlight;
         inFlight = null;
         
-        if (thr != null && thr.getCause() == IGNORE) {
+        if (thr != null && thr.getCause() == ABORT) {
             op.complete();
             op.run();
             return;
@@ -334,19 +357,19 @@ final class ResponsePipeline extends AbstractLocalEventEmitter
         }
         if (rsp.mustCloseAfterWrite()) {
             LOG.log(DEBUG, "Response wants us to close the child, will close.");
-            chan.closeSafe();
+            chApi.closeSafe();
         } else if (rsp.mustShutdownOutputAfterWrite()) {
             LOG.log(DEBUG, "Response wants us to shutdown output, will shutdown.");
-            chan.shutdownOutputSafe();
+            chApi.shutdownOutputSafe();
             // DefaultServer will not start a new exchange
         }
     }
     
     private void actOnWriteSuccess(Long bytesWritten, Response rsp) {
         LOG.log(DEBUG, () -> "Sent response (" + bytesWritten + " bytes).");
-        if (wroteFinal && sawConnectionClose && chan.isOpenForWriting()) {
+        if (wroteFinal && sawConnectionClose && chApi.isOpenForWriting()) {
             LOG.log(DEBUG, "Saw \"Connection: close\", shutting down output.");
-            chan.shutdownOutputSafe();
+            chApi.shutdownOutputSafe();
         }
         emit(Success.INSTANCE, rsp, null);
     }
@@ -364,7 +387,7 @@ final class ResponsePipeline extends AbstractLocalEventEmitter
             }
         } else {
             // thr originates from response writer
-            if (chan.isOpenForWriting()) {
+            if (chApi.isOpenForWriting()) {
                 // and no bytes were written on the wire, rollback
                 wroteFinal = false;
             }

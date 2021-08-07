@@ -87,7 +87,7 @@ public abstract class AbstractEventEmitter implements EventEmitter
      * @return a count of listeners invoked (capped at {@code Integer.MAX_VALUE})
      * @throws NullPointerException if {@code ev} is {@code null}
      */
-    protected static int emit(Iterable<? extends Object> listeners, Object ev, Object att1, Object att2) {
+    protected static int emit(Iterable<?> listeners, Object ev, Object att1, Object att2) {
         int n = 0;
         for (Object l : listeners) {
             // An early implementation used a "ListenerProxy" so that the type

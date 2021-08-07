@@ -19,14 +19,14 @@ import static java.util.Objects.requireNonNull;
  */
 final class OnErrorCloseReadStream<T> extends AbstractOp<T>
 {
-    private final DefaultClientChannel child;
+    private final DefaultClientChannel chApi;
     
     private static final System.Logger LOG
             = System.getLogger(OnErrorCloseReadStream.class.getPackageName());
     
-    protected OnErrorCloseReadStream(Flow.Publisher<? extends T> upstream, DefaultClientChannel child) {
+    protected OnErrorCloseReadStream(Flow.Publisher<? extends T> upstream, DefaultClientChannel chApi) {
         super(upstream);
-        this.child  = requireNonNull(child);
+        this.chApi  = requireNonNull(chApi);
     }
     
     @Override
@@ -43,9 +43,9 @@ final class OnErrorCloseReadStream<T> extends AbstractOp<T>
              * the subscriber run through the subscriberAnnounce() method.
              */
             var e = SubscriberFailedException.onNext(t);
-            if (child.isOpenForReading()) {
+            if (chApi.isOpenForReading()) {
                 LOG.log(ERROR, e.getMessage() + " Will close the channel's read stream.");
-                child.shutdownInputSafe();
+                chApi.shutdownInputSafe();
             } // else assume whoever closed the stream also logged the exception
             signalError(e);
             throw t;

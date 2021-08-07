@@ -1,21 +1,18 @@
 package alpha.nomagichttp.internal;
 
 import alpha.nomagichttp.Config;
+import alpha.nomagichttp.HttpConstants;
 import alpha.nomagichttp.HttpConstants.Version;
 import alpha.nomagichttp.HttpServer;
 import alpha.nomagichttp.handler.ClientChannel;
 import alpha.nomagichttp.handler.ErrorHandler;
-import alpha.nomagichttp.handler.RequestHandler;
 import alpha.nomagichttp.message.HttpVersionTooNewException;
 import alpha.nomagichttp.message.HttpVersionTooOldException;
-import alpha.nomagichttp.message.IllegalBodyException;
-import alpha.nomagichttp.message.MediaType;
-import alpha.nomagichttp.message.Request;
+import alpha.nomagichttp.message.IllegalRequestBodyException;
 import alpha.nomagichttp.message.RequestBodyTimeoutException;
 import alpha.nomagichttp.message.RequestHead;
 import alpha.nomagichttp.message.RequestHeadTimeoutException;
 import alpha.nomagichttp.message.Response;
-import alpha.nomagichttp.route.RouteRegistry;
 import alpha.nomagichttp.util.SerialExecutor;
 
 import java.io.IOException;
@@ -33,11 +30,11 @@ import static alpha.nomagichttp.HttpConstants.Method.TRACE;
 import static alpha.nomagichttp.HttpConstants.StatusCode.ONE_HUNDRED;
 import static alpha.nomagichttp.HttpConstants.Version.HTTP_1_0;
 import static alpha.nomagichttp.HttpConstants.Version.HTTP_1_1;
+import static alpha.nomagichttp.handler.ErrorHandler.DEFAULT;
+import static alpha.nomagichttp.internal.InvocationChain.ABORTED;
 import static alpha.nomagichttp.internal.ResponsePipeline.Error;
 import static alpha.nomagichttp.internal.ResponsePipeline.Success;
 import static alpha.nomagichttp.message.Responses.continue_;
-import static alpha.nomagichttp.util.Headers.accept;
-import static alpha.nomagichttp.util.Headers.contentType;
 import static alpha.nomagichttp.util.IOExceptions.isCausedByBrokenInputStream;
 import static alpha.nomagichttp.util.IOExceptions.isCausedByBrokenOutputStream;
 import static java.lang.Integer.parseInt;
@@ -47,18 +44,20 @@ import static java.lang.System.Logger.Level.WARNING;
 import static java.util.Objects.requireNonNull;
 
 /**
- * Orchestrator of an HTTP exchange from request to response.<p>
+ * Orchestrator of an HTTP exchange from request to response, erm, "ish".<p>
  * 
  * Core responsibilities:
  * <ul>
+ *   <li>Setup channel with a new response pipeline</li>
  *   <li>Schedule a request head subscriber on the channel</li>
- *   <li>Create request object and invoke request handler</li>
- *   <li>Handle errors from the exchange by possibly invoking error handlers</li>
+ *   <li>Trigger the invocation chain</li>
+ *   <li>When invocation chain and response pipeline completes, prepare a new exchange</li>
+ *   <li>Hand off all errors to the error handler(s)</li>
  * </ul>
  * 
  * In addition:
  * <ul>
- *   <li>Has package-private accessors for the HTTP version and request object</li>
+ *   <li>Has package-private accessors for the HTTP version and request head</li>
  *   <li>May pre-emptively send a 100 (Continue) depending on configuration</li>
  *   <li>Shuts down read stream if request has header "Connection: close"</li>
  *   <li>Shuts down read stream on request timeout</li>
@@ -72,11 +71,11 @@ final class HttpExchange
     
     private final HttpServer server;
     private final Config config;
-    private final RouteRegistry registry;
     private final Collection<ErrorHandler> handlers;
-    private final ChannelByteBufferPublisher bytes;
+    private final ChannelByteBufferPublisher chIn;
+    private final DefaultClientChannel chApi;
+    private final InvocationChain chain;
     private final ResponsePipeline pipe;
-    private final DefaultClientChannel chan;
     private final AtomicInteger cntDown;
     private final CompletableFuture<Void> result;
     
@@ -90,41 +89,60 @@ final class HttpExchange
      */
     
     private RequestHead head;
-    private Version ver;
-    private DefaultRequest request;
-    private RequestHandler handler;
+    private Version version;
+    private SkeletonRequest request;
     private volatile boolean sent100c;
     private volatile boolean subscriberArrived;
     private ErrorResolver errRes;
     
     HttpExchange(
             HttpServer server,
-            RouteRegistry registry,
+            DefaultActionRegistry actions,
+            DefaultRouteRegistry routes,
             Collection<ErrorHandler> handlers,
-            ChannelByteBufferPublisher bytes,
-            DefaultClientChannel chan)
+            ChannelByteBufferPublisher chIn,
+            DefaultClientChannel chApi)
     {
         this.server   = server;
         this.config   = server.getConfig();
-        this.registry = registry;
         this.handlers = handlers;
-        this.bytes    = bytes;
-        this.chan     = chan;
-        this.pipe     = new ResponsePipeline(this, chan);
-        this.cntDown  = new AtomicInteger(2); // <-- request handler + final response
+        this.chIn     = chIn;
+        this.chApi    = chApi;
+        this.chain    = new InvocationChain(actions, routes, chApi);
+        this.pipe     = new ResponsePipeline(this, chApi, actions);
+        this.cntDown  = new AtomicInteger(2); // <-- request chain + final response, then new exchange
         this.result   = new CompletableFuture<>();
-        this.ver      = HTTP_1_1; // <-- default until updated
-        this.request  = null;
-        this.handler  = null;
-        this.sent100c = false;
-        this.errRes   = null;
+        this.version = HTTP_1_1; // <-- default until updated
     }
     
+    /**
+     * Returns the parsed request head, if available, otherwise {@code null}.
+     * 
+     * @return the parsed request head, if available, otherwise {@code null}
+     */
+    RequestHead getRequestHead() {
+        return head;
+    }
+    
+    /**
+     * Returns the active HTTP version.<p>
+     * 
+     * Before the version has been parsed and accepted from the request, this
+     * method returns a default {@link HttpConstants.Version#HTTP_1_1}. The
+     * value may subsequently be updated both down and up.
+     * 
+     * @return the active HTTP version
+     */
     Version getHttpVersion() {
-        return ver;
+        return version;
     }
     
-    Request getRequest() {
+    /**
+     * Returns the request, if available, otherwise {@code null}.
+     * 
+     * @return the request, if available, otherwise {@code null}
+     */
+    SkeletonRequest getSkeletonRequest() {
         return request;
     }
     
@@ -148,38 +166,31 @@ final class HttpExchange
         return result;
     }
     
+    private void unexpected(Throwable t) {
+        LOG.log(ERROR, "Unexpected.", t);
+        result.completeExceptionally(t);
+    }
+    
     private void begin0() {
         setupPipeline();
         parseRequestHead()
            .thenAccept(this::initialize)
            .thenRun(() -> { if (config.immediatelyContinueExpect100())
                tryRespond100Continue(); })
-           .thenRun(this::invokeRequestHandler)
-           .exceptionally(thr -> {
-               if (cntDown.decrementAndGet() == 0) {
-                   LOG.log(WARNING,
-                       "Request handler returned exceptionally but final response already sent. " +
-                       "This error is ignored. " +
-                       "Preparing for a new HTTP exchange.", thr);
-                   tryPrepareForNewExchange();
-               } else {
-                   pipe.startTimeout();
-                   handleError(thr);
-               }
-               return null;
-           });
+           .thenCompose(nil -> chain.execute(request, version))
+           .whenComplete((nil, thr) -> handleChainCompletion(thr));
     }
     
     private void setupPipeline() {
         pipe.on(Success.class, (ev, rsp) -> handleWriteSuccess((Response) rsp));
         pipe.on(Error.class, (ev, thr) -> handleError((Throwable) thr));
-        chan.usePipeline(pipe);
+        chApi.usePipeline(pipe);
     }
     
     private CompletionStage<RequestHead> parseRequestHead() {
         RequestHeadSubscriber rhs = new RequestHeadSubscriber(server);
         
-        var to = new TimeoutOp.Flow<>(false, true, bytes,
+        var to = new TimeoutOp.Flow<>(false, true, chIn,
                 config.timeoutIdleConnection(), RequestHeadTimeoutException::new);
         to.subscribe(rhs);
         to.start();
@@ -189,20 +200,18 @@ final class HttpExchange
     
     private void initialize(RequestHead h) {
         head = h;
-        RequestTarget t = RequestTarget.parse(h.requestTarget());
         
-        ver = parseHttpVersion(h);
-        if (ver == HTTP_1_0 && config.rejectClientsUsingHTTP1_0()) {
+        version = parseHttpVersion(h);
+        if (version == HTTP_1_0 && config.rejectClientsUsingHTTP1_0()) {
             throw new HttpVersionTooOldException(h.httpVersion(), "HTTP/1.1");
         }
         
-        RouteRegistry.Match m = findRoute(t);
+        request = new SkeletonRequest(h,
+                RequestTarget.parse(h.requestTarget()),
+                monitorBody(createBody(h)),
+                new DefaultAttributes());
         
-        // This order is actually specified in javadoc of ErrorHandler#apply
-        request = createRequest(h, t, m);
-                  validateRequest();
-                  monitorRequest();
-        handler = findRequestHandler(h, m);
+        validateRequest();
     }
     
     private static Version parseHttpVersion(RequestHead h) {
@@ -238,61 +247,61 @@ final class HttpExchange
         }
     }
     
-    private RouteRegistry.Match findRoute(RequestTarget t) {
-        return registry.lookup(t.segmentsNotPercentDecoded());
-    }
-    
-    private DefaultRequest createRequest(RequestHead h, RequestTarget t, RouteRegistry.Match m) {
-        return DefaultRequest.withParams(ver, h, t, m, bytes, chan,
+    private RequestBody createBody(RequestHead h) {
+        return RequestBody.of(h.headers(), chIn, chApi,
                 config.timeoutIdleConnection(),
                 this::tryRespond100Continue,
-                () -> { subscriberArrived = true; });
+                () -> subscriberArrived = true);
     }
     
-    private void validateRequest() {
-        // May become pre-action
-        if (request.method().equals(TRACE) && !request.body().isEmpty()) {
-            throw new IllegalBodyException("Body in a TRACE request.", request);
-        }
-    }
-    
-    private void monitorRequest() {
-        request.bodyStage().whenComplete((Null, thr) -> {
+    private RequestBody monitorBody(RequestBody b) {
+        b.asCompletionStage().whenComplete((nil, thr) -> {
+            // Note, an empty body is immediately completed
             pipe.startTimeout();
             if (thr instanceof RequestBodyTimeoutException && !subscriberArrived) {
                 // Then we need to deal with it
                 handleError(thr);
             }
         });
+        return b;
     }
     
-    private static RequestHandler findRequestHandler(RequestHead rh, RouteRegistry.Match m) {
-        MediaType type = contentType(rh.headers()).orElse(null);
-        // TODO: Find a way to cache this and re-use in Responses factories that
-        //       parse a charset from request
-        MediaType[] accepts = accept(rh.headers())
-                .map(s -> s.toArray(MediaType[]::new))
-                .orElse(null);
-        RequestHandler h = m.route().lookup(rh.method(), type, accepts);
-        LOG.log(DEBUG, () -> "Matched handler: " + h);
-        return h;
+    private void validateRequest() {
+        // Is NOT suitable as a before-action; they are invoked only for valid requests
+        if (head.method().equals(TRACE) && !request.body().isEmpty()) {
+            throw new IllegalRequestBodyException(head, request.body(),
+                    "Body in a TRACE request.");
+        }
     }
     
     private void tryRespond100Continue() {
         if (!sent100c &&
-            !getHttpVersion().isLessThan(HTTP_1_1) &&
-            request.headerContains(EXPECT, "100-continue"))
+                !getHttpVersion().isLessThan(HTTP_1_1) &&
+                head.headerContains(EXPECT, "100-continue"))
         {
-            chan.write(continue_());
+            chApi.write(continue_());
         }
     }
     
-    private void invokeRequestHandler() {
-        handler.logic().accept(request, chan);
-        if (cntDown.decrementAndGet() == 0) {
-            LOG.log(DEBUG, "Request handler finished after final response. " +
-                           "Preparing for a new HTTP exchange.");
-            tryPrepareForNewExchange();
+    private void handleChainCompletion(Throwable thr) {
+        final int v = cntDown.decrementAndGet();
+        if (thr == null || thr.getCause() == ABORTED) {
+            if (v == 0) {
+                LOG.log(DEBUG, "Invocation chain finished after final response. " +
+                               "Preparing for a new HTTP exchange.");
+                tryPrepareForNewExchange();
+            } // normal finish = do nothing, final response will try to prepare next
+        } else {
+            if (v == 0) {
+                LOG.log(WARNING,
+                        "Processing returned exceptionally but final response already sent. " +
+                        "This error is ignored. " +
+                        "Preparing for a new HTTP exchange.", thr);
+                tryPrepareForNewExchange();
+            } else {
+                pipe.startTimeout();
+                handleError(thr);
+            }
         }
     }
     
@@ -305,7 +314,7 @@ final class HttpExchange
                 tryPrepareForNewExchange();
             } else {
                 LOG.log(DEBUG,
-                    "Response sent is final but request handler is still executing. " +
+                    "Response sent is final but request's processing chain is still executing. " +
                     "HTTP exchange remains active.");
             }
         } else {
@@ -317,41 +326,40 @@ final class HttpExchange
     }
     
     private void tryPrepareForNewExchange() {
-        // Super early failure means no new HTTP exchange
-        if (head == null) {
-            // e.g. RequestHeadParseException -> 400 (Bad Request)
-            if (LOG.isLoggable(DEBUG)) {
-                if (chan.isEverythingOpen()) {
-                    LOG.log(DEBUG, "No request head parsed. Closing child channel. (end of HTTP exchange)");
-                } else {
-                    LOG.log(DEBUG, "No request head parsed. (end of HTTP exchange)");
-                }
-            }
-            chan.closeSafe();
-            result.complete(null);
-            return;
-        }
-        
-        // To have a new HTTP exchange, we must first make sure all of the request body is read
-        
-        if (!chan.isOpenForReading()) {
-            // ...nothing to drain
+        if (!chApi.isOpenForReading()) {
             LOG.log(DEBUG, "Input stream was shut down. HTTP exchange is over.");
             result.complete(null);
             return;
         }
         
-        final DefaultRequest req = request != null ? request :
-                // e.g. NoRouteFoundException -> 404 (Not Found)
-                // (use local request obj without API support for parameters)
-                DefaultRequest.withoutParams(ver, head, bytes, chan, config.timeoutIdleConnection(), null, null);
+        // Super early failure means no new HTTP exchange
+        if (head == null) {
+            // e.g. RequestHeadParseException -> 400 (Bad Request)
+            if (LOG.isLoggable(DEBUG)) {
+                if (chApi.isEverythingOpen()) {
+                    LOG.log(DEBUG, "No request head parsed. Closing child channel. (end of HTTP exchange)");
+                } else {
+                    LOG.log(DEBUG, "No request head parsed. (end of HTTP exchange)");
+                }
+            }
+            chApi.closeSafe();
+            result.complete(null);
+            return;
+        }
         
-        req.bodyDiscardIfNoSubscriber();
-        req.bodyStage().whenComplete((Null, thr) -> {
+        // To have a new HTTP exchange, we must first make sure the body is consumed
+        
+        final var b = request != null ? request.body() :
+                // e.g. HttpVersionTooOldException -> 426 (Upgrade Required)
+                // (use a local dummy)
+                RequestBody.of(head.headers(), chIn, chApi, null, null, null);
+        
+        b.discardIfNoSubscriber();
+        b.asCompletionStage().whenComplete((nil, thr) -> {
             // Prepping new exchange = thr is ignored (already dealt with, hopefully lol)
-            if (req.headerContains(CONNECTION, "close") && chan.isOpenForReading()) {
+            if (head.headerContains(CONNECTION, "close") && chApi.isOpenForReading()) {
                 LOG.log(DEBUG, "Request set \"Connection: close\", shutting down input.");
-                chan.shutdownInputSafe();
+                chApi.shutdownInputSafe();
             }
             // Note
             //   ResponsePipeline shuts down output on "Connection: close".
@@ -365,7 +373,7 @@ final class HttpExchange
     
     private void handleError(Throwable exc) {
         final Throwable unpacked = unpackCompletionException(exc);
-        if (isTerminatingException(unpacked, chan)) {
+        if (isTerminatingException(unpacked, chApi)) {
             result.completeExceptionally(exc);
             return;
         }
@@ -373,11 +381,11 @@ final class HttpExchange
         if (unpacked instanceof RequestHeadTimeoutException) {
             LOG.log(DEBUG, "Request head timed out, shutting down input stream.");
             // HTTP exchange will not continue after response
-            // RequestBodyTimeoutException already shut down the input stream (see DefaultRequest)
-            chan.shutdownInputSafe();
+            // RequestBodyTimeoutException already shut down the input stream (see RequestBody)
+            chApi.shutdownInputSafe();
         }
         
-        if (chan.isOpenForWriting())  {
+        if (chApi.isOpenForWriting())  {
             // We don't expect errors to be arriving concurrently from the same
             // exchange, this would be kind of weird. But technically, it could
             // happen, e.g. a synchronous error from the request handler and an
@@ -482,8 +490,10 @@ final class HttpExchange
             }
             
             if (++attemptCount > config.maxErrorRecoveryAttempts()) {
-                LOG.log(WARNING, "Error recovery attempts depleted, will use default handler.");
-                usingDefault(t);
+                LOG.log(ERROR,
+                    "Error recovery attempts depleted, will close the channel. " +
+                    "This error is ignored.", t);
+                chApi.closeSafe();
                 return;
             }
             
@@ -493,7 +503,7 @@ final class HttpExchange
         
         private void usingDefault(Throwable t) {
             try {
-                ErrorHandler.DEFAULT.apply(t, chan, request, handler);
+                invokeHandler(DEFAULT, t);
             } catch (Throwable next) {
                 next.addSuppressed(t);
                 unexpected(next);
@@ -503,7 +513,7 @@ final class HttpExchange
         private void usingHandlers(Throwable t) {
             for (ErrorHandler h : handlers) {
                 try {
-                    h.apply(t, chan, request, handler);
+                    invokeHandler(h, t);
                     return;
                 } catch (Throwable next) {
                     if (t != next) {
@@ -516,6 +526,10 @@ final class HttpExchange
             // All handlers opted out
             usingDefault(t);
         }
+        
+        private void invokeHandler(ErrorHandler eh, Throwable t) throws Throwable {
+            eh.apply(t, chApi, chain.getRequest(), chain.getRequestHandler());
+        }
     }
     
     private static Throwable unpackCompletionException(Throwable t) {
@@ -524,10 +538,5 @@ final class HttpExchange
             return t;
         }
         return t.getCause() == null ? t : unpackCompletionException(t.getCause());
-    }
-    
-    private void unexpected(Throwable t) {
-        LOG.log(ERROR, "Unexpected.", t);
-        result.completeExceptionally(t);
     }
 }

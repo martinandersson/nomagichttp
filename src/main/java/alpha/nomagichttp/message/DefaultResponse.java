@@ -348,9 +348,10 @@ final class DefaultResponse implements Response
                             "\"Connection: close\" set on 1XX (Informational) response.");
                 }
                 if (!r.isBodyEmpty()) {
-                    throw new IllegalBodyException(
-                            "Presumably a body in a 1XX (Informational) response.", r);
+                    throw IllegalResponseBodyException(r);
                 }
+            } else if ((r.statusCode() == 204 || r.statusCode() == 304) && !r.isBodyEmpty()) {
+                throw IllegalResponseBodyException(r);
             }
             
             return r;
@@ -369,6 +370,11 @@ final class DefaultResponse implements Response
             
             if (s.mustCloseAfterWrite == null) {
                 s.mustCloseAfterWrite = false; }
+        }
+        
+        private static IllegalResponseBodyException IllegalResponseBodyException(Response r) {
+            return new IllegalResponseBodyException(
+                    "Presumably a body in a 1XX (Informational) response.", r);
         }
     }
 }

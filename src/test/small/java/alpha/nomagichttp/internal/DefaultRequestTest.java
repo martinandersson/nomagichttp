@@ -2,7 +2,6 @@ package alpha.nomagichttp.internal;
 
 import alpha.nomagichttp.message.BadHeaderException;
 import alpha.nomagichttp.message.Request;
-import alpha.nomagichttp.message.RequestHead;
 import alpha.nomagichttp.util.Publishers;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
@@ -14,6 +13,7 @@ import java.nio.charset.IllegalCharsetNameException;
 import java.nio.charset.UnsupportedCharsetException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.Map;
 import java.util.Optional;
 
 import static alpha.nomagichttp.HttpConstants.Version.HTTP_1_1;
@@ -21,7 +21,6 @@ import static alpha.nomagichttp.testutil.Assertions.assertFailed;
 import static alpha.nomagichttp.util.Headers.of;
 import static java.nio.charset.StandardCharsets.US_ASCII;
 import static java.nio.file.Files.notExists;
-import static java.time.Duration.ofDays;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
@@ -130,23 +129,24 @@ class DefaultRequestTest
     }
     
     private static DefaultRequest createRequest(HttpHeaders headers, String body) {
-        RequestHead rh = new DefaultRequestHead(
+        var rh = new DefaultRequestHead(
                 "test-method",
                 "test-requestTarget",
                 "test-httpVersion",
                 headers,
                 -1);
         
-        return DefaultRequest.withParams(
-                HTTP_1_1,
-                rh,
-                RequestTarget.parse("/"),
-                null,
+        var rb = RequestBody.of(
+                rh.headers(),
                 Publishers.just(wrap(body, US_ASCII)),
                 Mockito.mock(DefaultClientChannel.class),
-                ofDays(99),
-                null,
-                null);
+                null, null, null);
+        
+        SkeletonRequest req = new SkeletonRequest(
+                rh, RequestTarget.parse("/?"), rb, new DefaultAttributes());
+        
+        return new DefaultRequest(HTTP_1_1,
+                req, new ResourceMatch<>(null, Map.of(), Map.of()));
     }
     
     private static DefaultRequest createEmptyRequest() {

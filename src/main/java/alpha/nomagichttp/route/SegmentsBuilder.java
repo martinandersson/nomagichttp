@@ -6,19 +6,23 @@ import java.util.List;
 import java.util.Set;
 
 import static java.util.Collections.unmodifiableCollection;
+import static java.util.Objects.requireNonNull;
 
 /**
- * Builds a {@code Iterable<String>} of segments.<p>
+ * Builds an {@code Iterable<String>} of segments.<p>
  * 
  * For example {@code ["download", ":user", "*filepath"]}. Root - the empty
- * string - is never a segment encountered in the iterable.<p>
+ * string - is never a segment encountered in the built iterable.<p>
  * 
  * Duplicated parameter names can be accepted if specified to constructor
- * (useful to the route registry's remove(pattern) operation).
+ * (useful for the route registry's remove(pattern) operation).<p>
+ * 
+ * This class has the same characteristics as {@link Route.Builder};
+ * specifically, it is not thread-safe and should be disposed after use. 
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  */
-final class SegmentsBuilder
+public final class SegmentsBuilder
 {
     private static final int  INITIAL_CAPACITY = 3;
     private static final char SINGLE = ':',
@@ -26,32 +30,91 @@ final class SegmentsBuilder
     
     private final List<String> segments;
     private final boolean checkDupe;
+    // permits null
     private Set<String> params;
     private boolean catchAllSet;
     
-    SegmentsBuilder() {
+    /**
+     * Constructs this object.<p>
+     * 
+     * Duplicated parameter names will be rejected.
+     */
+    public SegmentsBuilder() {
         this(false);
     }
     
-    SegmentsBuilder(boolean duplicatedParamsAllowed) {
+    /**
+     * Constructs this object.<p>
+     * 
+     * Duplicated parameter names are not allowed when {@linkplain
+     * Route#builder(String) building a route}. But when {@linkplain
+     * RouteRegistry#remove(String) removing a route}, the name doesn't matter,
+     * even if it is duplicated.
+     * 
+     * @param duplicatedParamsAllowed allow or reject duplicated parameter names
+     */
+    public SegmentsBuilder(boolean duplicatedParamsAllowed) {
         segments    = new ArrayList<>(INITIAL_CAPACITY);
         checkDupe   = !duplicatedParamsAllowed;
         params      = checkDupe ? Set.of() : null;
         catchAllSet = false;
     }
     
-    SegmentsBuilder paramSingle(String name) {
+    /**
+     * Programmatically add a single-segment parameter name. The name will be
+     * prefixed with {@value SINGLE}.
+     * 
+     * @param name of parameter
+     * 
+     * @return this (for fluency/chaining)
+     * 
+     * @throws NullPointerException
+     *             if {@code name} is {@code null}
+     * @throws IllegalStateException
+     *             if a catch-all parameter has been set, or
+     *             if the name has already been used and duplicates are not allowed
+     */
+    public SegmentsBuilder paramSingle(String name) {
         addParam(SINGLE, name);
         return this;
     }
     
-    SegmentsBuilder paramCatchAll(String name) {
+    /**
+     * Programmatically add a catch-all parameter name. The name will be
+     * prefixed with {@value CATCH_ALL}.
+     * 
+     * @param name of parameter
+     * 
+     * @return this (for fluency/chaining)
+     * 
+     * @throws NullPointerException
+     *             if {@code name} is {@code null}
+     * @throws IllegalStateException
+     *             if a catch-all parameter has been set, or
+     *             if the name has already been used and duplicates are not allowed
+     */
+    public SegmentsBuilder paramCatchAll(String name) {
         addParam(CATCH_ALL, name);
         catchAllSet = true;
         return this;
     }
     
-    SegmentsBuilder append(String p) { // pattern
+    /**
+     * Append a pattern.
+     * 
+     * @param p pattern
+     * 
+     * @return this (for fluency/chaining)
+     * 
+     * @throws NullPointerException
+     *             if {@code p} is {@code null}
+     * @throws IllegalArgumentException
+     *             if a static segment value is empty
+     * @throws IllegalStateException
+     *             if a catch-all parameter has been set, or
+     *             if a name is repeated and duplicates are not allowed
+     */
+    public SegmentsBuilder append(String p) { // pattern
         if (p.endsWith("//")) {
             throw new IllegalArgumentException("Static segment value is empty.");
         }
@@ -86,11 +149,20 @@ final class SegmentsBuilder
         return this;
     }
     
-    Iterable<String> asIterable() {
+    /**
+     * Returns all segments.<p>
+     * 
+     * This is the "build" method.
+     * 
+     * @return all segments (non-null, unmodifiable)
+     * @see SegmentsBuilder
+     */
+    public Iterable<String> asIterable() {
         return unmodifiableCollection(segments);
     }
     
     private void addParam(char prefix, String name) {
+        requireNonNull(name);
         requireCatchAllNotSet();
         if (checkDupe) {
             if (params.isEmpty()) {

@@ -40,8 +40,7 @@ import java.util.concurrent.CompletionStage;
  * 
  * When using low-level methods to operate the channel, or when storing
  * attributes on the channel, then have in mind that the "client" in {@code
- * ClientChannel} may be a HTTP proxy which represents many different human end
- * users.<p>
+ * ClientChannel} may be an HTTP proxy which represents many human end users.<p>
  * 
  * The implementation is thread-safe and mostly non-blocking. Underlying channel
  * life-cycle APIs used to query the state of a channel or close it may block
@@ -82,17 +81,18 @@ public interface ClientChannel extends Closeable, AttributeHolder
      * 
      * At the time of transmission, a response may be rejected. Normally, this
      * will cause a {@link ResponseRejectedException} to pass through the
-     * server's error handler. But not if the response is rejected because a
-     * final response has already been transmitted (in parts or in whole), then,
-     * the response is logged but otherwise ignored. Same is true if the
-     * response can not be sent because the channel's write stream has shut
-     * down, then, a {@link ClosedChannelException} is logged but otherwise
-     * ignored.<p>
+     * server's error handler. But the error handler will not receive the
+     * exception if the response is rejected because a final response has
+     * already been transmitted (in parts or in whole), then, the response is
+     * logged but otherwise ignored. Same is true if the response can not be
+     * sent because the channel's write stream has shut down, then, a {@link
+     * ClosedChannelException} is logged but otherwise ignored. In both cases,
+     * it's futile to attempt writing an alternative response.<p>
      * 
-     * The same is also true for exceptions that complete a response stage -
-     * normally, the exception will go through the error handler, but not if the
-     * final response has been sent or the write stream has shut down. Then, the
-     * exception is logged but otherwise ignored.<p>
+     * The same is also true for any exception that completes a response stage.
+     * I.e. normally, the exception will go through the error handler, but not
+     * if the final response has been sent or the write stream has shut down.
+     * Then, the exception is logged but otherwise ignored.<p>
      * 
      * The {@link Config#ignoreRejectedInformational() default server behavior}
      * is to ignore failed 1XX (Informational) responses if the reason is

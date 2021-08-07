@@ -2,13 +2,14 @@ package alpha.nomagichttp.internal;
 
 import alpha.nomagichttp.Config;
 import alpha.nomagichttp.HttpServer;
+import alpha.nomagichttp.action.AfterAction;
+import alpha.nomagichttp.action.BeforeAction;
 import alpha.nomagichttp.events.DefaultEventHub;
 import alpha.nomagichttp.events.EventHub;
 import alpha.nomagichttp.events.HttpServerStarted;
 import alpha.nomagichttp.events.HttpServerStopped;
 import alpha.nomagichttp.handler.ErrorHandler;
 import alpha.nomagichttp.route.Route;
-import alpha.nomagichttp.route.RouteRegistry;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
@@ -57,7 +58,8 @@ public final class DefaultServer implements HttpServer
     private static final int INITIAL_CAPACITY = 10_000;
     
     private final Config config;
-    private final RouteRegistry registry;
+    private final DefaultActionRegistry actions;
+    private final DefaultRouteRegistry routes;
     private final List<ErrorHandler> eh;
     private final AtomicReference<CompletableFuture<ParentWithHandler>> parent;
     private final EventHub events;
@@ -66,15 +68,15 @@ public final class DefaultServer implements HttpServer
      * Constructs a {@code DefaultServer}.
      * 
      * @param config of server
-     * @param registry of server
      * @param eh error handlers
      */
-    public DefaultServer(Config config, RouteRegistry registry, ErrorHandler... eh) {
-        this.config   = requireNonNull(config);
-        this.registry = requireNonNull(registry);
-        this.eh       = List.of(eh);
-        this.parent   = new AtomicReference<>();
-        this.events   = new DefaultEventHub();
+    public DefaultServer(Config config, ErrorHandler... eh) {
+        this.config  = requireNonNull(config);
+        this.actions = new DefaultActionRegistry(this);
+        this.routes  = new DefaultRouteRegistry(this);
+        this.eh      = List.of(eh);
+        this.parent  = new AtomicReference<>();
+        this.events  = new DefaultEventHub();
     }
     
     @Override
@@ -197,18 +199,27 @@ public final class DefaultServer implements HttpServer
     
     @Override
     public HttpServer add(Route route) {
-        registry.add(route);
-        return this;
+        return routes.add(route);
     }
     
     @Override
     public Route remove(String pattern) {
-        return registry.remove(pattern);
+        return routes.remove(pattern);
     }
     
     @Override
     public boolean remove(Route route) {
-        return registry.remove(route);
+        return routes.remove(route);
+    }
+    
+    @Override
+    public HttpServer before(String pattern, BeforeAction first, BeforeAction... more) {
+        return actions.before(pattern, first, more);
+    }
+    
+    @Override
+    public HttpServer after(String pattern, AfterAction first, AfterAction... more) {
+        return actions.after(pattern, first, more);
     }
     
     @Override
@@ -344,36 +355,36 @@ public final class DefaultServer implements HttpServer
         private void setup(AsynchronousSocketChannel child) {
             LOG.log(DEBUG, () -> "Accepted child: " + child);
             
-            DefaultClientChannel chan = new DefaultClientChannel(child, DefaultServer.this);
-            ChannelByteBufferPublisher bytes = new ChannelByteBufferPublisher(chan);
-            children.add(chan);
+            DefaultClientChannel chApi = new DefaultClientChannel(child, DefaultServer.this);
+            ChannelByteBufferPublisher chIn = new ChannelByteBufferPublisher(chApi);
+            children.add(chApi);
             // TODO: Wanna complete only when the LAST async I/O operation completes
             //       (will likely require 1 ChannelByteBufferSubscriber per channel?)
-            chan.onClose(() -> {
-                children.remove(chan);
+            chApi.onClose(() -> {
+                children.remove(chApi);
                 if (!parent.isOpen()) {
                     tryCompleteLastChildStage();
                 }
             });
             
-            startExchange(chan, bytes);
+            startExchange(chApi, chIn);
             
             // TODO: child.setOption(StandardSocketOptions.SO_KEEPALIVE, true); ??
         }
         
         private void startExchange(
-                DefaultClientChannel chan,
-                ChannelByteBufferPublisher bytes)
+                DefaultClientChannel chApi,
+                ChannelByteBufferPublisher chIn)
         {
             var exch = new HttpExchange(
-                    DefaultServer.this, registry, eh, bytes, chan);
+                    DefaultServer.this, actions, routes, eh, chIn, chApi);
             
             exch.begin().whenComplete((Null, exc) -> {
                 // Both open-calls are volatile reads, no locks
-                if (exc == null && parent.isOpen() && chan.isEverythingOpen()) {
-                    startExchange(chan, bytes);
+                if (exc == null && parent.isOpen() && chApi.isEverythingOpen()) {
+                    startExchange(chApi, chIn);
                 } else {
-                    chan.closeSafe();
+                    chApi.closeSafe();
                 }
             });
         }

@@ -34,10 +34,11 @@ public final class HttpConstants {
      * 
      * Commonly used methods are registered in the
      * <a href="https://www.iana.org/assignments/http-methods">IANA method registry</a>
-     * which also features link to RFCs where the methods are defined. The
-     * method token is required and is a case-sensitive string. The value of the
-     * string can be anything. The method token was originally envisioned as the
-     * name of an object method in the back-end (
+     * which also features link to RFCs where the methods are defined.<p>
+     * 
+     * The method token is required and is a case-sensitive string. The value of
+     * the string can be anything. The method token was originally envisioned as
+     * the name of an object method in the back-end (
      * <a href="https://tools.ietf.org/html/rfc7231#section-4.1">RFC 7231 §4.1</a>
      * ).<p>
      * 
@@ -168,7 +169,6 @@ public final class HttpConstants {
          * 
          *   {@literal <}--
          *   HTTP/1.1 204 No Content
-         *   Content-Length: 0
          * </pre>
          * 
          * If the effect of the request created a new resource which did not
@@ -245,7 +245,6 @@ public final class HttpConstants {
          * 
          *   {@literal <}--
          *   HTTP/1.1 204 No Content
-         *   Content-Length: 0
          * </pre>
          * 
          * The JSON Patch equivalent request could skip the {@code If-Match}

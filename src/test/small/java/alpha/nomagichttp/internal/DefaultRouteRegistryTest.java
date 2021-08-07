@@ -1,19 +1,23 @@
-package alpha.nomagichttp.route;
+package alpha.nomagichttp.internal;
 
+import alpha.nomagichttp.route.NoRouteFoundException;
+import alpha.nomagichttp.route.Route;
+import alpha.nomagichttp.route.RouteCollisionException;
+import alpha.nomagichttp.route.RouteRegistry;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
 import java.util.AbstractMap;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.stream.Stream;
 
 import static alpha.nomagichttp.handler.RequestHandler.GET;
+import static alpha.nomagichttp.internal.RequestTarget.parse;
 import static alpha.nomagichttp.message.Responses.accepted;
 import static alpha.nomagichttp.util.PercentDecoder.decode;
 import static java.util.Arrays.stream;
-import static java.util.function.Predicate.not;
-import static java.util.stream.Collectors.toList;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
@@ -26,7 +30,7 @@ class DefaultRouteRegistryTest
 {
     private static final Route ROOT_NOOP = dummyRoute("/");
     
-    private final RouteRegistry testee = new DefaultRouteRegistry();
+    private final DefaultRouteRegistry testee = new DefaultRouteRegistry(null);
     
     // Simple match cases
     // ----
@@ -53,6 +57,16 @@ class DefaultRouteRegistryTest
         Route r = dummyRoute("/a/b");
         testee.add(r);
         assertMatch("/a/b", r);
+    }
+    
+    @Test
+    void can_add_child_of_param() {
+        Route a = dummyRoute("/:a"),
+              b = dummyRoute("/:a/b");
+        testee.add(a);
+        testee.add(b);
+        assertMatch("/v",   a, Map.of("a", "v"));
+        assertMatch("/v/b", b, Map.of("a", "v"));
     }
     
     // We should be able to add "/" even if "/a" is registered
@@ -84,13 +98,6 @@ class DefaultRouteRegistryTest
     // ----
     
     @Test
-    void empty_segment() {
-        assertThatThrownBy(() -> testee.lookup(List.of("")))
-                .isExactlyInstanceOf(IllegalArgumentException.class)
-                .hasMessage("Segment value is empty.");
-    }
-    
-    @Test
     void route_collisions() {
         Stream.of(
             // First add a route, then add another route, expect crash with message
@@ -102,7 +109,7 @@ class DefaultRouteRegistryTest
             e("/xxx",  "/*p1",  "Hierarchical position of \"*p1\" is occupied with non-compatible type."),
             e("/*p1",  "/*p2",  "Route \"/*p2\" is equivalent to an already added route \"/*p1\".")
         ).forEach(e -> {
-            RouteRegistry reg = new DefaultRouteRegistry();
+            RouteRegistry reg = new DefaultRouteRegistry(null);
             reg.add(dummyRoute(e[0]));
             assertThatThrownBy(() -> reg.add(dummyRoute(e[1])))
                     .isExactlyInstanceOf(RouteCollisionException.class)
@@ -140,13 +147,14 @@ class DefaultRouteRegistryTest
                 "/a/b/c/x");
     }
     
-    @Test
-    void path_param_single_singleton() {
-        Route r = dummyRoute("/:p");
+    @ParameterizedTest
+    @ValueSource(strings = {"p", /* empty: */ ""})
+    void path_param_single_singleton(String name) {
+        Route r = dummyRoute("/:" + name);
         testee.add(r);
         
         assertMatch(
-                "/v", r, Map.of("p", "v"));
+                "/v", r, Map.of(name, "v"));
         assertNoMatch(
                 "/",
                 "/v/saturated");
@@ -196,7 +204,7 @@ class DefaultRouteRegistryTest
         Route r = dummyRoute("/download/:user/*filepath");
         testee.add(r);
         assertThat(testee.remove(r)).isTrue();
-        assertThat(dump()).containsOnlyKeys("/");
+        assertThat(testee.dump()).containsOnlyKeys("/");
     }
     
     @Test
@@ -204,7 +212,7 @@ class DefaultRouteRegistryTest
         Route r = dummyRoute("/download/:user/*filepath");
         testee.add(r);
         assertThat(testee.remove("/download/:user/*filepath")).isSameAs(r);
-        assertThat(dump()).containsOnlyKeys("/");
+        assertThat(testee.dump()).containsOnlyKeys("/");
     }
     
     @Test
@@ -212,7 +220,7 @@ class DefaultRouteRegistryTest
         Route r = dummyRoute("/download/:user/*filepath");
         testee.add(r);
         assertThat(testee.remove("/download/:/*")).isSameAs(r); // <-- empty
-        assertThat(dump()).containsOnlyKeys("/");
+        assertThat(testee.dump()).containsOnlyKeys("/");
     }
     
     @Test
@@ -220,7 +228,7 @@ class DefaultRouteRegistryTest
         Route r = dummyRoute("/download/:user/*filepath");
         testee.add(r);
         assertThat(testee.remove("/download/:bla/*bla")).isSameAs(r); // <-- duplicated
-        assertThat(dump()).containsOnlyKeys("/");
+        assertThat(testee.dump()).containsOnlyKeys("/");
     }
     
     // Bug fix
@@ -250,12 +258,12 @@ class DefaultRouteRegistryTest
         Route r = dummyRoute("*p");
         
         testee.add(r);
-        assertThat(dump()).containsExactly(
+        assertThat(testee.dump()).containsExactly(
                 // two nodes in the tree; the parent root "/" (value null) and the child "*" (value route)
                 entry("/", null), entry("/*", r));
         
         assertThat(testee.remove(r)).isTrue();
-        assertThat(dump()).containsExactly(
+        assertThat(testee.dump()).containsExactly(
                 // only root! (before fix the map also had the "*" node in it, albeit with a null value)
                 entry("/", null));
     }
@@ -273,15 +281,14 @@ class DefaultRouteRegistryTest
             Map<String, String> expectedParamValuesRaw,
             Object... repeatedCases)
     {
-        RouteRegistry.Match m = testee.lookup(toSegments(path));
-        assertThat(m.route()).isSameAs(expectSame);
+        ResourceMatch<Route> m = testee.lookup(parse(path));
+        assertThat(m.get()).isSameAs(expectSame);
         
-        DefaultRouteRegistry.DefaultMatch df = (DefaultRouteRegistry.DefaultMatch) m;
-        assertThat(df.mapRaw()).isEqualTo(expectedParamValuesRaw);
+        assertThat(m.mapRaw()).isEqualTo(expectedParamValuesRaw);
         
         Map<String, String> decoded = new HashMap<>(expectedParamValuesRaw);
         decoded.replaceAll((k, v) -> decode(v));
-        assertThat(df.mapDec()).isEqualTo(decoded);
+        assertThat(m.mapDec()).isEqualTo(decoded);
         
         for (int arg1 = 0, arg2 = 1, arg3 = 2; arg3 < repeatedCases.length; arg1 += 3, arg2 += 3, arg3 += 3) {
             @SuppressWarnings({"unchecked"})
@@ -292,25 +299,16 @@ class DefaultRouteRegistryTest
     
     private void assertNoMatch(String... paths) {
         stream(paths).forEach(p ->
-            assertThatThrownBy(() -> testee.lookup(toSegments(p)))
+            assertThatThrownBy(() -> testee.lookup(parse(p)))
                 .isExactlyInstanceOf(NoRouteFoundException.class)
                 .hasMessage(p));
     }
     
+    // TODO: Rename to dummy()
     private static Route dummyRoute(String pattern) {
         return Route.builder(pattern)
                 .handler(GET().apply(requestIgnored -> accepted().completedStage()))
                 .build();
-    }
-    
-    private static Iterable<String> toSegments(String path) {
-        return stream(path.split("/"))
-                .filter(not(String::isEmpty))
-                .collect(toList());
-    }
-    
-    private Map<String, Route> dump() {
-        return ((DefaultRouteRegistry) testee).dump();
     }
     
     /**

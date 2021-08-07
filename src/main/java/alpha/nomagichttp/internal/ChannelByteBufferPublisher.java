@@ -55,17 +55,17 @@ final class ChannelByteBufferPublisher implements Flow.Publisher<DefaultPooledBy
      * back to the channel for new read operations.
      */
     
-    private final DefaultClientChannel child;
+    private final DefaultClientChannel chApi;
     private final Deque<ByteBuffer> readable;
     private final PushPullPublisher<DefaultPooledByteBufferHolder> subscriber;
     private final AnnounceToChannel channel;
     
-    ChannelByteBufferPublisher(DefaultClientChannel child) {
-        this.child      = child;
+    ChannelByteBufferPublisher(DefaultClientChannel chApi) {
+        this.chApi      = chApi;
         this.readable   = new ConcurrentLinkedDeque<>();
         this.subscriber = new PushPullPublisher<>(true, this::pollReadable);
         this.channel    = AnnounceToChannel.read(
-                child, this::putReadableLast, this::afterChannelFinished);
+                chApi, this::putReadableLast, this::afterChannelFinished);
         
         IntStream.generate(() -> BUF_SIZE)
                 .limit(BUF_COUNT)
@@ -90,7 +90,7 @@ final class ChannelByteBufferPublisher implements Flow.Publisher<DefaultPooledBy
                 CLOSE_MSG);
             subscriber.stop(new IllegalStateException("Empty ByteBuffer"));
             channel.stop();
-            child.shutdownInputSafe();
+            chApi.shutdownInputSafe();
             readable.clear();
             return null;
         }
@@ -131,9 +131,9 @@ final class ChannelByteBufferPublisher implements Flow.Publisher<DefaultPooledBy
     private void subscriberAnnounce() {
         try {
             subscriber.announce(exc -> {
-                if (child.isOpenForReading()) {
+                if (chApi.isOpenForReading()) {
                     LOG.log(ERROR, () -> "Signalling subscriber failed. " + CLOSE_MSG, exc);
-                    child.shutdownInputSafe();
+                    chApi.shutdownInputSafe();
                 } // else assume whoever closed the stream also logged the exception
             });
         } catch (Throwable t) {

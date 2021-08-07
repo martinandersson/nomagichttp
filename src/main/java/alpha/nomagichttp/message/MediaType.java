@@ -578,7 +578,7 @@ public class MediaType
     @Override
     public int hashCode() {
         int h = hash;
-        
+        // Copy-paste from String.hashCode()
         if (h == 0 && !hashIsZero) {
             h = Objects.hash(type, subtype, params);
             if (h == 0) {

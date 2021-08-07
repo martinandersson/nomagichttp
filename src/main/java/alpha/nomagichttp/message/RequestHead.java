@@ -2,21 +2,19 @@ package alpha.nomagichttp.message;
 
 import alpha.nomagichttp.events.RequestHeadParsed;
 
-import java.net.http.HttpHeaders;
-
 /**
  * A "raw" request head where each component can be retrieved as observed on the
  * wire.<p>
  * 
  * A complex version of a processed and <i>accepted</i> request head is embedded
- * into the API of {@link Request}. This head-type is emitted together with the
+ * in the API of {@link Request}. This head-type is emitted together with the
  * {@link RequestHeadParsed} event.<p>
  * 
  * String tokens returned by this interface is never {@code null} or empty.
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  */
-public interface RequestHead {
+public interface RequestHead extends HeaderHolder {
     /**
      * Returns the method token.
      * 
@@ -39,15 +37,8 @@ public interface RequestHead {
     String httpVersion();
     
     /**
-     * Returns the headers.
-     * 
-     * @return the headers (never {@code null} but may be empty)
-     */
-    HttpHeaders headers();
-    
-    /**
      * Returns the value from {@link System#nanoTime()} polled when the first
-     * char of the request head was read and processed.<p>
+     * char of the request head was read and processing started.<p>
      * 
      * Useful to compute the time it took for the request head to be parsed
      * (parsing occurs concurrently as chars are read, subject to upstream
@@ -58,7 +49,7 @@ public interface RequestHead {
      * 
      * @return a previous value of the running Java Virtual Machine's
      * high-resolution time source, in nanoseconds, as read when the first
-     * request head char was read and processed
+     * request head char was read and processing started
      */
     long nanoTimeOnStart();
 }

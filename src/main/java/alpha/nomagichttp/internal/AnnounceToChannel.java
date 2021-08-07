@@ -72,13 +72,13 @@ final class AnnounceToChannel
         /**
          * Called when the last operation completes.
          * 
-         * @param channel
+         * @param chApi
          *     the underlying channel (so that client code doesn't have to save the reference)
          * @param byteCount
          *     total number of bytes that was either read or written (capped at {@code Long.MAX_VALUE})
          * @param exc only non-null if there was a problem
          */
-        void accept(DefaultClientChannel channel, long byteCount, Throwable exc);
+        void accept(DefaultClientChannel chApi, long byteCount, Throwable exc);
     }
     
     static AnnounceToChannel read(
@@ -129,7 +129,7 @@ final class AnnounceToChannel
     }
     
     private final Mode mode;
-    private final DefaultClientChannel channel;
+    private final DefaultClientChannel chApi;
     private final Consumer<? super ByteBuffer> onComplete;
     private final long timeoutNs;
     
@@ -143,13 +143,13 @@ final class AnnounceToChannel
     
     private AnnounceToChannel(
             Mode mode,
-            DefaultClientChannel channel,
+            DefaultClientChannel chApi,
             Consumer<? super ByteBuffer> onComplete,
             WhenDone whenDone,
             Duration timeout)
     {
         this.mode       = requireNonNull(mode);
-        this.channel    = requireNonNull(channel);
+        this.chApi      = requireNonNull(chApi);
         this.onComplete = onComplete != null ? onComplete : ignored -> {};
         this.whenDone   = requireNonNull(whenDone);
         // with nanos, no further unit conversions in JDK's ScheduledThreadPoolExecutor
@@ -298,7 +298,7 @@ final class AnnounceToChannel
             return;
         }
         
-        var ch = channel.getDelegateNoProxy();
+        var ch = chApi.getDelegateNoProxy();
         try {
             switch (mode) {
                 case READ:
@@ -322,7 +322,7 @@ final class AnnounceToChannel
             // Propagate null instead of sentinel
             final Throwable real = prev == RUNNING || prev == STOPPED ? null : prev;
             try {
-                whenDone.accept(channel, byteCount, real);
+                whenDone.accept(chApi, byteCount, real);
             } finally {
                 // Ensure we don't execute callback again
                 whenDone = null;
@@ -332,16 +332,16 @@ final class AnnounceToChannel
     
     private boolean isStreamOpen() {
         return mode == Mode.READ ?
-                channel.isOpenForReading() :
-                channel.isOpenForWriting();
+                chApi.isOpenForReading() :
+                chApi.isOpenForWriting();
     }
     
     private void shutdownStream() {
         if (mode == Mode.READ) {
-            channel.shutdownInputSafe();
+            chApi.shutdownInputSafe();
         } else {
             assert mode == Mode.WRITE;
-            channel.shutdownOutputSafe();
+            chApi.shutdownOutputSafe();
         }
     }
     
