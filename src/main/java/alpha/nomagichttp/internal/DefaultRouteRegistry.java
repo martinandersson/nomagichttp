@@ -158,7 +158,7 @@ final class DefaultRouteRegistry implements RouteRegistry
     {
         Tree.WriteNode<Route> c = parent.nextOrCreateIf(key, () ->
                 // Static segment values only blend with each other and doesn't like weirdos
-                !parent.hasChild(COLON_STR) && !parent.hasChild(ASTERISK_STR));
+                parent.hasNoChild(COLON_STR) && parent.hasNoChild(ASTERISK_STR));
         
         return requireChildWasCreated(c, key);
     }
