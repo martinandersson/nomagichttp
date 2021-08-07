@@ -27,7 +27,8 @@ import static java.net.http.HttpRequest.BodyPublisher;
  * Can be built using a builder:
  * 
  * <pre>{@code
- *   Response r = Response.builder(204, "No Content") // Or use HttpConstants
+ *   // May use HttpConstants.StatusCode/ReasonPhrase instead of int and "string"
+ *   Response r = Response.builder(204, "No Content")
  *                        .header("My-Header", "value")
  *                        .build();
  * }</pre>
