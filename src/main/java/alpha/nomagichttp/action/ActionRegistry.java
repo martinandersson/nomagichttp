@@ -137,7 +137,8 @@ import alpha.nomagichttp.route.RouteRegistry;
  * 
  * Each request-consuming entity (request handler and actions) may declare
  * different path parameters. For this reason, the request object instance will
- * be unique per entity carrying with it entity-specific path parameters.<p>
+ * be unique per entity invoked carrying with it entity-specific path
+ * parameters.<p>
  * 
  * For example, although request "/hello" matches before-action "/:foo" and
  * request handler "/:bar", the former will have to use the key "foo" when
@@ -148,11 +149,11 @@ import alpha.nomagichttp.route.RouteRegistry;
  * "/hello/world" and the latter will get the value "world" using the same
  * key.<p>
  * 
- * All other components of the request will be shared throughout the invocation
- * chain, most importantly the request attributes and body. Therefore, changes
- * to these structures propagates across execution boundaries, such as consuming
- * the body bytes (which should only be done once!) and setting attribute
- * values.<p>
+ * All other components of the request will be shared throughout the HTTP
+ * exchange, most importantly the request attributes and body. Therefore,
+ * changes to these structures propagates across execution boundaries, such as
+ * consuming the body bytes (which should only be done once!) and setting
+ * attributes.<p>
  * 
  * Actions added to the registry is not immediately visible to currently active
  * HTTP exchanges. Matched actions are retrieved only once at the beginning of

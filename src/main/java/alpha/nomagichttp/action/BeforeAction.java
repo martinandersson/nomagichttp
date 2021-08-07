@@ -79,11 +79,11 @@ import alpha.nomagichttp.message.Request;
  * action is called even if a particular route turns out to not exist or the
  * route exists but has no applicable request handler.<p>
  * 
- * An action that will be invoked for all valid requests hitting the server can
- * be registered using the path "/*". If the purpose for such an action is to
- * gather metrics, consider tapping into all requests instead regardless if they
- * are valid, by subscribing to the {@link RequestHeadParsed} event (see
- * {@link HttpServer#events()}).<p>
+ * An action that will be invoked for all <i>valid</i> requests hitting the
+ * server can be registered using the path "/*". If the purpose for such an
+ * action is to gather metrics, consider tapping into all requests instead
+ * regardless if they are valid, by subscribing to the {@link RequestHeadParsed}
+ * event (see {@link HttpServer#events()}).<p>
  * 
  * The action may be called concurrently and must be thread-safe. It is likely
  * called by the server's request thread and so must not block.<p>

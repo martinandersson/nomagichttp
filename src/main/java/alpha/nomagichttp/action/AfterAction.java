@@ -9,10 +9,10 @@ import java.util.concurrent.CompletionStage;
 import java.util.function.BiFunction;
 
 /**
- * An action executed after a response has been received by the {@link
- * ClientChannel} and before it attempts to be sent on the wire. The action may
- * return the same response instance unmodified, or produce another alternative
- * response.<p>
+ * An action executed after a response to a valid request has been received by
+ * the {@link ClientChannel} and before it attempts to be sent on the wire. The
+ * action may return the same response instance unmodified, or produce another
+ * alternative response.<p>
  * 
  * To build on the example provided in {@link ActionRegistry}, here is one way
  * to propagate a correlation id from the request headers- or attributes,
@@ -42,6 +42,10 @@ import java.util.function.BiFunction;
  * 
  * Returning {@code null} is the same as throwing a {@code
  * NullPointerException}.<p>
+ * 
+ * As with {@link BeforeAction}, the after-action too is not called if the
+ * server did not accept the request as valid. For instance if a request head
+ * fails to be parsed or the HTTP version was rejected/unsupported.<p>
  * 
  * The action may be called concurrently and must be thread-safe. It may be
  * called by the server's request thread and so must not block.

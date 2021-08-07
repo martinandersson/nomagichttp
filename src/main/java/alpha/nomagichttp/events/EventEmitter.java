@@ -97,16 +97,14 @@ import java.util.function.Consumer;
  * 
  * <strong>The remaining JavaDoc</strong> describes the implementations of event
  * emitters provided by the NoMagicHTTP library, including the {@link EventHub}
- * returned from {@code HttpServer#events()}. A custom implementation is free
+ * returned from {@link HttpServer#events()}. A custom implementation is free
  * to behave differently.<p>
  * 
  * Events are not cached. A new listener does not receive past events.<p>
  * 
  * The thread emitting the event is also the thread that invokes listeners of
  * the event. This may be the server's request thread, and so, a listener must
- * not block or take time processing the event. The synchronous nature also
- * means that circular emissions could end up with a {@code
- * StackOverflowError}.<p>
+ * not block or take time processing the event.<p>
  * 
  * The event emitter (i.e. subscribing and unsubscribing a listener) is
  * non-blocking and thread-safe. The listener, however, may be invoked
@@ -119,10 +117,10 @@ import java.util.function.Consumer;
  * invocations is undefined. Listener B who subscribed last may be called before
  * listener A who subscribed first.<p>
  * 
- * The listener implementation must have well-behaved implementations of {@code
- * hashCode()} and {@code equals()} as it will be stored in a hash-based data
- * structure. Duplicates not allowed (based on event type key and listener
- * equality).<p>
+ * The listener implementation must have <i>well-behaved</i> implementations of
+ * {@code hashCode()} and {@code equals()} as it will be stored in a hash-based
+ * data structure. Duplicates not allowed (based on event type key and
+ * listener's object equality).<p>
  * 
  * Lambdas create a new instance. This will subscribe but fail to unsubscribe:
  * <pre>
@@ -143,13 +141,15 @@ import java.util.function.Consumer;
  * 
  * There is no special handling/logic concerning exceptions. If a listener
  * throws an exception, then that exception will propagate up the call stack and
- * remaining listeners in the call chain will miss out on the event.<p>
+ * remaining listeners in the call chain will miss out on the event. For the
+ * HTTP server's events, throwing an exception from the listener may have
+ * undefined application behavior.<p>
  * 
  * References are kept using strong references (not weak, soft or whatever
- * else). If you need to subscribe magical beans as listeners with a "scope"
- * smaller than the emitter itself, then you should probably also unsubscribe in
- * a "pre destroy" container callback - or you know, do your job and start
- * writing real code.
+ * else). If one need to subscribe magical beans as listeners with a "scope"
+ * smaller than the emitter itself, then one should probably also unsubscribe in
+ * a "pre destroy" container callback - or you know, just stop all the magic and
+ * start writing real code instead.
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  */

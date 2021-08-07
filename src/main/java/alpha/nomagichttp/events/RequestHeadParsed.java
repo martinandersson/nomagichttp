@@ -1,5 +1,7 @@
 package alpha.nomagichttp.events;
 
+import alpha.nomagichttp.message.RequestHead;
+
 /**
  * A request head has been received and parsed by the HTTP server.<p>
  * 
@@ -7,7 +9,10 @@ package alpha.nomagichttp.events;
  * begun. For example, it is possible that the request head is later rejected
  * for invalid token data or any other fault after the emission of the event.<p>
  * 
- * The intended purpose is for gathering metrics.
+ * The intended purpose is for gathering metrics.<p>
+ * 
+ * The first attachment given to the listener is the {@link RequestHead}. The
+ * second attachment will be {@code null}.
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  */
