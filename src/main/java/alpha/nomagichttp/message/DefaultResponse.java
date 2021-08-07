@@ -12,6 +12,8 @@ import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionStage;
 import java.util.concurrent.Flow;
 import java.util.function.Consumer;
 
@@ -107,6 +109,17 @@ final class DefaultResponse implements Response
     @Override
     public boolean mustCloseAfterWrite() {
         return mustCloseAfterWrite;
+    }
+    
+    private CompletionStage<Response> stage;
+    
+    @Override
+    public CompletionStage<Response> completedStage() {
+        var s = stage;
+        if (s == null) {
+            s = stage = CompletableFuture.completedStage(this);
+        }
+        return s;
     }
     
     @Override

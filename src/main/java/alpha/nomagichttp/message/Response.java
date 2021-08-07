@@ -265,24 +265,13 @@ public interface Response extends HeaderHolder
     boolean mustCloseAfterWrite();
     
     /**
-     * Returns this response object boxed in a completed stage.<p>
+     * Returns this response object boxed in an already completed stage.
      * 
-     * Useful for synchronous request handler implementations that are able to
-     * build the response immediately without blocking.
-     * 
-     * @implSpec
-     * The default implementation is equivalent to:
-     * <pre>{@code
-     *     return CompletableFuture.completedStage(this);
-     * }</pre>
-     * 
-     * @return this response object boxed in a completed stage
+     * @return this response object boxed in an already completed stage
      * 
      * @see HttpServer
      */
-    default CompletionStage<Response> completedStage() {
-        return CompletableFuture.completedStage(this);
-    }
+    CompletionStage<Response> completedStage();
     
     /**
      * Returns the builder instance that built this response.<p>
