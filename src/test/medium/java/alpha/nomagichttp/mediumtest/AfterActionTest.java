@@ -8,8 +8,10 @@ import java.io.IOException;
 
 import static alpha.nomagichttp.HttpConstants.HeaderKey.X_CORRELATION_ID;
 import static alpha.nomagichttp.handler.RequestHandler.GET;
+import static alpha.nomagichttp.message.Responses.serviceUnavailable;
 import static alpha.nomagichttp.message.Responses.text;
 import static alpha.nomagichttp.testutil.TestClient.CRLF;
+import static alpha.nomagichttp.util.BetterBodyPublishers.ofString;
 import static java.lang.String.valueOf;
 import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
 
@@ -85,6 +87,46 @@ class AfterActionTest extends AbstractRealTest
         assertThatServerErrorObservedAndLogged()
                 .isExactlyInstanceOf(NoRouteFoundException.class)
                 .hasMessage("/404")
+                .hasNoCause()
+                .hasNoSuppressedExceptions();
+    }
+    
+    @Test
+    void crash() throws IOException, InterruptedException {
+        // 1. NoRouteFoundException
+        // 2. default error handler writes 404
+        // 3. after-action crashes with IllegalStateException
+        // 4. custom error handler writes 503
+        
+        usingErrorHandler((thr, ch, req, han) -> {
+            try {
+                throw thr;
+            } catch (IllegalStateException e) {
+                // Weirdly translate ISE to 503
+                ch.write(serviceUnavailable().toBuilder()
+                        .body(ofString(e.getMessage())).build());
+            }
+        });
+        server().after("/", (req, rsp) -> {
+            if (rsp.statusCode() != 503) {
+                // Weirdly crash for everything but 503
+                throw new IllegalStateException("hello");
+            }
+            return rsp.completedStage();
+        });
+        
+        var rsp = client().writeReadTextUntilEOS(
+            "GET / HTTP/1.1"                   + CRLF + CRLF);
+        assertThat(rsp).isEqualTo(
+            "HTTP/1.1 503 Service Unavailable" + CRLF +
+            "Content-Length: 5"                + CRLF +
+            "Connection: close"                + CRLF + CRLF +
+            
+            "hello");
+        
+        assertThatServerErrorObservedAndLogged()
+                .isExactlyInstanceOf(NoRouteFoundException.class)
+                .hasMessage("/")
                 .hasNoCause()
                 .hasNoSuppressedExceptions();
     }
