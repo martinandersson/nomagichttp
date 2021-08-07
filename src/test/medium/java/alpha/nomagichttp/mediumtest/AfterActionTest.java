@@ -8,12 +8,16 @@ import java.io.IOException;
 
 import static alpha.nomagichttp.HttpConstants.HeaderKey.X_CORRELATION_ID;
 import static alpha.nomagichttp.handler.RequestHandler.GET;
+import static alpha.nomagichttp.message.Responses.noContent;
 import static alpha.nomagichttp.message.Responses.serviceUnavailable;
 import static alpha.nomagichttp.message.Responses.text;
+import static alpha.nomagichttp.testutil.Logging.toJUL;
 import static alpha.nomagichttp.testutil.TestClient.CRLF;
 import static alpha.nomagichttp.util.BetterBodyPublishers.ofString;
 import static java.lang.String.valueOf;
+import static java.lang.System.Logger.Level.ERROR;
 import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * Medium tests for after-actions.
@@ -129,5 +133,26 @@ class AfterActionTest extends AbstractRealTest
                 .hasMessage("/")
                 .hasNoCause()
                 .hasNoSuppressedExceptions();
+    }
+    
+    @Test
+    void NullPointerException() throws IOException, InterruptedException {
+        usingConfiguration()
+            .maxErrorRecoveryAttempts(0);
+        server()
+            .add("/", GET().respond(noContent()))
+            .after("/", (req, rsp) -> {
+                String npe = null;
+                npe.toString();
+                return null;
+            });
+        
+        var rsp = client().writeReadTextUntilEOS("GET / HTTP/1.1" + CRLF + CRLF);
+        
+        assertThat(rsp).isEmpty();
+        assertTrue(logRecorder().await(toJUL(ERROR),
+                "Error recovery attempts depleted, will close the channel. " +
+                "This error is ignored.",
+                NullPointerException.class));
     }
 }

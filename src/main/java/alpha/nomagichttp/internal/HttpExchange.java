@@ -490,7 +490,9 @@ final class HttpExchange
             }
             
             if (++attemptCount > config.maxErrorRecoveryAttempts()) {
-                LOG.log(ERROR, "Error recovery attempts depleted, will close the channel. This error is ignored.", t);
+                LOG.log(ERROR,
+                    "Error recovery attempts depleted, will close the channel. " +
+                    "This error is ignored.", t);
                 chApi.closeSafe();
                 return;
             }
