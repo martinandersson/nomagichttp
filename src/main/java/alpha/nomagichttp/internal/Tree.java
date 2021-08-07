@@ -5,13 +5,12 @@ import java.util.ArrayDeque;
 import java.util.Deque;
 import java.util.Iterator;
 import java.util.Map;
-import java.util.NavigableMap;
 import java.util.NoSuchElementException;
 import java.util.Objects;
 import java.util.SortedMap;
 import java.util.TreeMap;
-import java.util.concurrent.ConcurrentNavigableMap;
-import java.util.concurrent.ConcurrentSkipListMap;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.Lock;
@@ -24,7 +23,6 @@ import java.util.function.Supplier;
 import java.util.function.UnaryOperator;
 import java.util.stream.Stream;
 
-import static java.lang.Character.MAX_VALUE;
 import static java.util.Collections.unmodifiableMap;
 import static java.util.Objects.requireNonNull;
 import static java.util.function.Function.identity;
@@ -196,21 +194,15 @@ final class Tree<V>
          * 
          * @return {@code true} if this node has no children,
          *         otherwise {@code false}
-         * 
-         * @see #hasChildrenKeyedByPrefix(String)
          */
-        default boolean hasNoChildren() {
-            return !hasChildrenKeyedByPrefix("");
-        }
+        boolean hasNoChildren();
         
         /**
          * Returns {@code true} if this node has a child keyed by the given
          * segment, otherwise {@code false}.
          * 
          * @return {@code true} if this node has a child keyed by the given
-         *          * segment, otherwise {@code false}
-         * 
-         * @see #hasChildrenKeyedByPrefix(String)
+         *         segment, otherwise {@code false}
          * 
          * @throws NullPointerException if {@code segment} is {@code null}
          */
@@ -243,25 +235,6 @@ final class Tree<V>
          * @throws NullPointerException if {@code segment} is {@code null}
          */
         ReadNode<V> getChild(String segment);
-        
-        /**
-         * Returns {@code true} if there's any first-level children of this node
-         * whose key starts with the given prefix.<p>
-         * 
-         * This method is useful from inside a condition argument passed to
-         * {@link #nextOrCreateIf(String, BooleanSupplier)} when
-         * algorithmically enforcing a set of variants of children. For example,
-         * perhaps the next tree node should not be created if there's already a
-         * certain range of other nodes in there.
-         * 
-         * @param prefix of key segment
-         * 
-         * @return {@code true} if this node has any children whose key starts
-         *         with the given prefix, otherwise {@code false}
-         * 
-         * @throws NullPointerException if {@code prefix} is {@code null}
-         */
-        boolean hasChildrenKeyedByPrefix(String prefix);
         
         /**
          * Traverse the tree to a child node, creating the child if it does not
@@ -492,14 +465,14 @@ final class Tree<V>
     {
         private final AtomicReference<V> ref;
         // Does not allow null to be used as key or value
-        private final ConcurrentNavigableMap<String, NodeImpl> kids;
+        private final ConcurrentMap<String, NodeImpl> kids;
         // Used only for accessing the orphan flag
         private final Lock read, write;
         private boolean orphan;
         
         NodeImpl(V v) {
             this.ref = new AtomicReference<>(v);
-            this.kids = new ConcurrentSkipListMap<>();
+            this.kids = new ConcurrentHashMap<>();
             
             ReentrantReadWriteLock l = new ReentrantReadWriteLock();
             read = l.readLock();
@@ -581,6 +554,11 @@ final class Tree<V>
         }
         
         @Override
+        public boolean hasNoChildren() {
+            return kids.isEmpty();
+        }
+        
+        @Override
         public boolean hasChild(String segment) {
             prune();
             return kids.containsKey(segment);
@@ -590,12 +568,6 @@ final class Tree<V>
         public ReadNode<V> getChild(String segment) {
             prune();
             return kids.get(segment);
-        }
-        
-        @Override
-        public boolean hasChildrenKeyedByPrefix(String prefix) {
-            prune();
-            return !subMapFrom(kids, prefix).isEmpty();
         }
         
         @Override
@@ -765,62 +737,5 @@ final class Tree<V>
      */
     static <K, V> Map.Entry<K, V> entry(K k, V v) {
         return new AbstractMap.SimpleImmutableEntry<>(k, v);
-    }
-    
-    // https://stackoverflow.com/a/65825999/1268003
-    private static <V> NavigableMap<String, V> subMapFrom(
-            NavigableMap<String, V> map, String keyPrefix)
-    {
-        final String fromKey = keyPrefix, toKey; // undefined
-        
-        // Alias
-        String p = keyPrefix;
-        
-        if (p.isEmpty()) {
-            // No need for a sub map
-            return map;
-        }
-        
-        // ("ab" + MAX_VALUE + MAX_VALUE + ...) returns index 1
-        final int i = lastIndexOfNonMaxChar(p);
-        
-        if (i == -1) {
-            // Prefix is all MAX_VALUE through and through, so grab rest of map
-            return map.tailMap(p, true);
-        }
-        
-        if (i < p.length() - 1) {
-            // Target char for bumping is not last char; cut out the residue
-            // ("ab" + MAX_VALUE + MAX_VALUE + ...) becomes "ab"
-            p = p.substring(0, i + 1);
-        }
-        toKey = bumpChar(p, i);
-        
-        return map.subMap(fromKey, true, toKey, false);
-    }
-    
-    private static int lastIndexOfNonMaxChar(String str) {
-        int i = str.length();
-        
-        // Walk backwards, while we have a valid index
-        while (--i >= 0) {
-            if (str.charAt(i) < MAX_VALUE) {
-                return i;
-            }
-        }
-        
-        return -1;
-    }
-    
-    private static String bumpChar(String str, int pos) {
-        assert !str.isEmpty();
-        assert pos >= 0 && pos < str.length();
-        
-        final char c = str.charAt(pos);
-        assert c < MAX_VALUE;
-        
-        StringBuilder b = new StringBuilder(str);
-        b.setCharAt(pos, (char) (c + 1));
-        return b.toString();
     }
 }
