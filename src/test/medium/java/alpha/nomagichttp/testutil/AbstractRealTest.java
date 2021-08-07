@@ -221,7 +221,10 @@ public abstract class AbstractRealTest
     }
     
     /**
-     * Tailor the server's configuration.
+     * Tailor the server's configuration.<p>
+     * 
+     * Consider using the more compact form provided by {@link
+     * #usingConfiguration()}.
      * 
      * @param config of server
      */
@@ -268,7 +271,7 @@ public abstract class AbstractRealTest
     }
     
     /**
-     * Pre-empty this class' error handler with a custom one.
+     * Preempt this class' error handler with a custom one.
      * 
      * @param handler error handler
      */
