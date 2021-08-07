@@ -191,7 +191,7 @@ final class ResponsePipeline extends AbstractLocalEventEmitter
         
         var req = exch.getSkeletonRequest();
         if (req == null) {
-            LOG.log(DEBUG, "No request available; will not run after-actions.");
+            LOG.log(DEBUG, "No valid request available; will not run after-actions.");
         } else {
             if (matched == null) {
                 matched = actions.lookupAfter(req.target());
