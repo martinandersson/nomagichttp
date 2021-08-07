@@ -122,7 +122,8 @@ import java.util.function.Consumer;
  * data structure. Duplicates not allowed (based on event type key and
  * listener's object equality).<p>
  * 
- * Lambdas create a new instance. This will subscribe but fail to unsubscribe:
+ * Lambdas create different instances. This will subscribe but fail to
+ * unsubscribe:
  * <pre>
  *   EventEmitter emitter = ...
  *   // True
@@ -134,7 +135,7 @@ import java.util.function.Consumer;
  * Solution:
  * <pre>
  * 
- *   Consumer{@literal <}Something{@literal >} listener = event -{@literal >} {};
+ *   Consumer{@literal <}Something{@literal >} listener = System.out::println;
  *   emitter.on(Something.class, listener);
  *   emitter.off(Something.class, listener);
  * </pre>

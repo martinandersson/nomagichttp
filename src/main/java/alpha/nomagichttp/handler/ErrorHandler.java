@@ -53,15 +53,11 @@ import static java.util.stream.Stream.concat;
 import static java.util.stream.Stream.of;
 
 /**
- * Handles a {@code Throwable}, presumably by translating it into a response as
- * an alternative to the one that failed.<p>
+ * Handles a {@code Throwable}, presumably by translating it into a response.<p>
  * 
  * Error handler(s) should only be used for generic and server-global errors.
  * Another use case could be to customize the server's default error
  * responses.<p>
- * 
- * Many error handlers may be installed on the server. First to handle the error
- * breaks the call chain. Details follow later.<p>
  * 
  * The server will call error handlers only during an active HTTP exchange and
  * only if the channel remains open for writing at the time of the error. The
@@ -72,12 +68,12 @@ import static java.util.stream.Stream.of;
  * 
  * 1) Exceptions occurring on the request thread from after the point when the
  * server has begun receiving and parsing a request message until when the
- * request handler invocation has returned.<p>
+ * {@link RequestHandler} invocation has returned.<p>
  * 
  * 2) Exceptions that completes exceptionally the {@code
  * CompletionStage<Response>} written to the {@link
- * ClientChannel#write(Response) ClientChannel} but only if a final response has
- * not yet been sent.<p>
+ * ClientChannel#write(Response) ClientChannel} and those returned from an
+ * {@link AfterAction}, but only if a final response has not yet been sent.<p>
  * 
  * 3) Exceptions signalled to the server's {@code Flow.Subscriber} of the {@code
  * Response.body()} but only if the body publisher has not yet published any
@@ -85,8 +81,7 @@ import static java.util.stream.Stream.of;
  * to recover the situation after the point where a response has already begun
  * transmitting back to the client.<p>
  * 
- * 4) Exceptions thrown from {@link BeforeAction}s and {@link
- * AfterAction}s.<p>
+ * 4) Exceptions thrown from {@link BeforeAction}s and {@link AfterAction}s.<p>
  * 
  * The server will <strong>not</strong> call error handlers for errors that are
  * not directly involved in the HTTP exchange or for errors that occur
@@ -103,16 +98,16 @@ import static java.util.stream.Stream.of;
  * 
  * Any number of error handlers can be configured. If many are configured, they
  * will be called in the same order they were added. First handler to return
- * normally - i.e., first handler to not throw an exception - breaks the call
- * chain. The {@link #DEFAULT default handler} will be used if no other handler
- * is configured.<p>
+ * normally - i.e., first handler to <i>not</i> throw an exception - breaks the
+ * call chain. The {@link #DEFAULT default handler} will be used if no other
+ * handler is configured.<p>
  * 
  * An error handler that is unwilling to handle the exception must re-throw the
  * same throwable instance which will then propagate to the next handler,
  * eventually reaching the default handler.<p>
  * 
- * If a handler throws a different throwable, then this is considered to be a
- * new error and the whole cycle is restarted.<p>
+ * If a handler throws a different instance, then this is considered to be a new
+ * error and the whole cycle is restarted.<p>
  * 
  * This design was deliberately crafted to enable writing error handlers using
  * Java's standard try-catch block:
@@ -156,17 +151,13 @@ public interface ErrorHandler
      * {@code RequestHandler}) may be null or non-null depending on how much
      * progress was made in the HTTP exchange before the error occurred.<p>
      * 
-     * A little bit simplified; the server's procedure is to always first build
-     * a request object, which is then used to invoke the request handler
-     * with.<p>
-     * 
-     * So, if the request argument is null, then the request handler argument
-     * will absolutely also be null (the server never got so far as to resolve
-     * and/or invoke the request handler).<p>
+     * If the request argument is null, then the request handler argument will
+     * absolutely also be null because the server never got so far as to resolve
+     * and/or invoke the request handler.<p>
      * 
      * If the request argument is not null, then the request handler argument
      * may or may not be null. If the request handler is not null, then the
-     * "fault" of the error is most likely the request handlers' since the very
+     * "fault" of the error may very well be the request handlers' since the
      * next thing the server do after having resolved the request handler is to
      * call the guy.<p>
      * 
