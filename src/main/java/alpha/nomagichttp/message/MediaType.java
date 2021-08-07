@@ -5,6 +5,7 @@ import alpha.nomagichttp.handler.RequestHandler;
 import alpha.nomagichttp.route.Route;
 
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.Locale;
 import java.util.Map;
@@ -132,6 +133,14 @@ public class MediaType
     public static final MediaType __NOTHING_AND_ALL
             = new MediaType("<nothing and all>", null, null, Map.of()) {};
     
+    private static final Map<String, MediaType> CACHE = new HashMap<>();
+    
+    private MediaType putInCache() {
+        var v = CACHE.put(toString(), this);
+        assert v == null;
+        return this;
+    }
+    
     /**
      * A sentinel media type that can be used as a handler's consuming and/or
      * producing media type to indicate that the handler is willing to consume
@@ -143,91 +152,91 @@ public class MediaType
      * 
      * @see RequestHandler
      */
-    public static final MediaType __ALL = parse("*/*");
+    public static final MediaType __ALL = parse("*/*").putInCache();
     
     /** Text. Value: "text/plain". File extension: ".txt". */
-    public static final MediaType TEXT_PLAIN = parse("text/plain");
+    public static final MediaType TEXT_PLAIN = parse("text/plain").putInCache();
     
     /** HyperText Markup Language. Value: "text/html". File extension: ".html". */
-    public static final MediaType TEXT_HTML = parse("text/html");
+    public static final MediaType TEXT_HTML = parse("text/html").putInCache();
     
     /** Cascading Style Sheets. Value: "text/css". File extension: ".css". */
-    public static final MediaType TEXT_CSS = parse("text/css");
+    public static final MediaType TEXT_CSS = parse("text/css").putInCache();
     
     /** Comma-Separated Values. Value: "text/csv". File extension: ".csv". */
-    public static final MediaType TEXT_CSV = parse("text/csv");
+    public static final MediaType TEXT_CSV = parse("text/csv").putInCache();
     
     /** JavaScript. Value: "text/javascript". File extension: ".js". */
-    public static final MediaType TEXT_JAVASCRIPT = parse("text/javascript");
+    public static final MediaType TEXT_JAVASCRIPT = parse("text/javascript").putInCache();
     
     /** Any kind of binary data. Value: "application/octet-stream". */
-    public static final MediaType APPLICATION_OCTET_STREAM = parse("application/octet-stream");
+    public static final MediaType APPLICATION_OCTET_STREAM = parse("application/octet-stream").putInCache();
     
     /** JSON format. Value: "application/json". File extension: ".json". */
-    public static final MediaType APPLICATION_JSON = parse("application/json");
+    public static final MediaType APPLICATION_JSON = parse("application/json").putInCache();
     
     /** ZIP archive. Value: "application/zip". File extension: ".zip". */
-    public static final MediaType APPLICATION_ZIP = parse("application/zip");
+    public static final MediaType APPLICATION_ZIP = parse("application/zip").putInCache();
     
     /** GZip compressed archive. Value: "application/gzip". File extension: ".gz". */
-    public static final MediaType APPLICATION_GZIP = parse("application/gzip");
+    public static final MediaType APPLICATION_GZIP = parse("application/gzip").putInCache();
     
     /** RAR archive. Value: "application/vnd.rar". File extension: ".rar". */
-    public static final MediaType APPLICATION_VND_RAR = parse("application/vnd.rar");
+    public static final MediaType APPLICATION_VND_RAR = parse("application/vnd.rar").putInCache();
     
     /** TAR archive. Value: "application/x-tar". File extension: ".tar". */
-    public static final MediaType APPLICATION_X_TAR = parse("application/x-tar");
+    public static final MediaType APPLICATION_X_TAR = parse("application/x-tar").putInCache();
     
     /** 7-zip archive. Value: "application/x-7z-compressed". File extension: ".7z". */
-    public static final MediaType APPLICATION_X_7Z_COMPRESSED = parse("application/x-7z-compressed");
+    public static final MediaType APPLICATION_X_7Z_COMPRESSED = parse("application/x-7z-compressed").putInCache();
     
     /** Adobe Portable Document Format. Value: "application/pdf". File extension: ".pdf". */
-    public static final MediaType APPLICATION_PDF = parse("application/pdf");
+    public static final MediaType APPLICATION_PDF = parse("application/pdf").putInCache();
     
     /** Java archive. Value: "application/java-archive". File extension: ".jar". */
-    public static final MediaType APPLICATION_JAVA_ARCHIVE = parse("application/java-archive");
+    public static final MediaType APPLICATION_JAVA_ARCHIVE = parse("application/java-archive").putInCache();
     
     /** Portable Network Graphics. Value: "image/png". File extension: ".png". */
-    public static final MediaType IMAGE_PNG = parse("image/png");
+    public static final MediaType IMAGE_PNG = parse("image/png").putInCache();
     
     /** Graphics Interchange Format. Value: "image/gif". File extension: ".gif". */
-    public static final MediaType IMAGE_GIF = parse("image/gif");
+    public static final MediaType IMAGE_GIF = parse("image/gif").putInCache();
     
     /** JPEG image. Value: "image/jpeg". File extension: ".jpg". */
-    public static final MediaType IMAGE_JPEG = parse("image/jpeg");
+    public static final MediaType IMAGE_JPEG = parse("image/jpeg").putInCache();
     
     /** Windows OS/2 bitmap graphics. Value: "image/bmp". File extension: ".bmp". */
-    public static final MediaType IMAGE_BMP = parse("image/bmp");
+    public static final MediaType IMAGE_BMP = parse("image/bmp").putInCache();
     
     /** Scalable vector graphics. Value: "image/svg+xml". File extension: ".svg". */
-    public static final MediaType IMAGE_SVG_XML = parse("image/svg+xml");
+    public static final MediaType IMAGE_SVG_XML = parse("image/svg+xml").putInCache();
     
     /** Tagged Image File Format. Value: "image/tiff". File extension: ".tif/.tiff". */
-    public static final MediaType IMAGE_TIFF = parse("image/tiff");
+    public static final MediaType IMAGE_TIFF = parse("image/tiff").putInCache();
     
     /** Waveform Audio Format. Value: "audio/wav". File extension: ".wav". */
-    public static final MediaType AUDIO_WAV = parse("audio/wav");
+    public static final MediaType AUDIO_WAV = parse("audio/wav").putInCache();
     
     /** AAC audio. Value: "audio/aac". File extension: ".aac". */
-    public static final MediaType AUDIO_AAC = parse("audio/aac");
+    public static final MediaType AUDIO_AAC = parse("audio/aac").putInCache();
     
     /** Musical Instrument Digital Interface. Value: "audio/midi". File extension: ".mid/.midi". */
-    public static final MediaType AUDIO_MIDI = parse("audio/midi");
+    public static final MediaType AUDIO_MIDI = parse("audio/midi").putInCache();
     
     /** MP3 audio. Value: "audio/mpeg". File extension: ".mp3". */
-    public static final MediaType AUDIO_MPEG = parse("audio/mpeg");
+    public static final MediaType AUDIO_MPEG = parse("audio/mpeg").putInCache();
     
     /** OGG audio. Value: "audio/ogg". File extension: ".oga". */
-    public static final MediaType AUDIO_OGG = parse("audio/ogg");
+    public static final MediaType AUDIO_OGG = parse("audio/ogg").putInCache();
     
     /** OGG video. Value: "video/ogg". File extension: ".ogv". */
-    public static final MediaType VIDEO_OGG = parse("video/ogg");
+    public static final MediaType VIDEO_OGG = parse("video/ogg").putInCache();
     
     /** MP4 video. Value: "video/mp4". File extension: ".mp4". */
-    public static final MediaType VIDEO_MP4 = parse("video/mp4");
+    public static final MediaType VIDEO_MP4 = parse("video/mp4").putInCache();
     
     /** MPEG video. Value: "video/mpeg". File extension: ".mpeg". */
-    public static final MediaType VIDEO_MPEG = parse("video/mpeg");
+    public static final MediaType VIDEO_MPEG = parse("video/mpeg").putInCache();
     
     /**
      * Parse a text into a {@link MediaType} or a {@link MediaRange}.<p>
@@ -270,10 +279,10 @@ public class MediaType
      * @param text to parse
      * 
      * @throws NullPointerException
-     *             if {@code mediaType} is {@code null}
+     *             if {@code text} is {@code null}
      * 
      * @throws MediaTypeParseException
-     *             if the specified {@code mediaType} can not be parsed, for example
+     *             if {@code text} can not be parsed, for example
      *             a parameter has been specified more than once, or
      *             a parameter was named "q"/"Q" and it was not the last parameter declared,
      *             and so forth
@@ -281,6 +290,11 @@ public class MediaType
      * @return a parsed media type (never {@code null})
      */
     public static MediaType parse(final CharSequence text) {
+        var cached = CACHE.get(text);
+        return cached != null ? cached : parse0(text);
+    }
+    
+    static MediaType parse0(final CharSequence text) {
         // First part is "type/subtype", possibly followed by ";params"
         final String[] tokens = SEMICOLON.split(text);
         final String[] types = parseTypes(tokens[0], text);

@@ -7,16 +7,27 @@ import org.mockito.Mockito;
 import java.util.Map;
 import java.util.logging.Handler;
 
+import static alpha.nomagichttp.message.MediaType.TEXT_PLAIN;
+import static alpha.nomagichttp.message.MediaType.__ALL;
+import static alpha.nomagichttp.message.MediaType.parse;
 import static java.util.logging.Level.WARNING;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.argThat;
 
 class MediaTypeTest
 {
     @Test
+    void cache() {
+        assertTrue(__ALL == parse("*/*"));
+        assertTrue(TEXT_PLAIN == parse("text/plain"));
+        // ...
+    }
+    
+    @Test
     void no_params_specific() {
         final String s = "text/plain";
-        MediaType actual = MediaType.parse(s);
+        MediaType actual = parse(s);
         assertThat(actual).isEqualTo(new MediaType(s, "text", "plain", Map.of()));
         assertThat(actual.getClass()).isSameAs(MediaType.class);
         assertThat(actual.toString()).isEqualTo(s);
@@ -26,7 +37,7 @@ class MediaTypeTest
     @Test
     void no_params_range() {
         final String s = "text/*";
-        MediaType actual = MediaType.parse(s);
+        MediaType actual = parse(s);
         assertThat(actual).isEqualTo(new MediaRange(s, "text", "*", Map.of(), 1));
         assertThat(actual.getClass()).isSameAs(MediaRange.class);
         assertThat(actual.toString()).isEqualTo(s);
@@ -36,7 +47,7 @@ class MediaTypeTest
     @Test
     void one_param_type() {
         final String s = "text/plain; p=123";
-        MediaType actual = MediaType.parse(s);
+        MediaType actual = parse(s);
         assertThat(actual).isEqualTo(new MediaType(s, "text", "plain", Map.of("p", "123")));
         assertThat(actual.getClass()).isSameAs(MediaType.class);
         assertThat(actual.toString()).isEqualTo(s);
@@ -46,7 +57,7 @@ class MediaTypeTest
     @Test
     void one_param_range() {
         final String s = "  tExT/ * ; p=  123; q = 0.333";
-        MediaType actual = MediaType.parse(s);
+        MediaType actual = parse(s);
         assertThat(actual).isEqualTo(new MediaRange(s, "text", "*", Map.of("p", "123"), 1 / 3d));
         assertThat(actual.getClass()).isSameAs(MediaRange.class);
         assertThat(actual.toString()).isEqualTo(s);
@@ -56,7 +67,7 @@ class MediaTypeTest
     @Test
     void two_params_type() {
         final String s = "text/plain; a=123; b=\"x Y z\"";
-        MediaType actual = MediaType.parse(s);
+        MediaType actual = parse(s);
         assertThat(actual).isEqualTo(new MediaType(s, "text", "plain", Map.of("a", "123", "b", "x Y z")));
         assertThat(actual.getClass()).isSameAs(MediaType.class);
         assertThat(actual.toString()).isEqualTo(s);
@@ -67,7 +78,7 @@ class MediaTypeTest
     @Test
     void two_params_range() {
         final String s = "text/plain; b=123; a=4 5 6; q=1;";
-        MediaType actual = MediaType.parse(s);
+        MediaType actual = parse(s);
         
         // Different quality, doesn't matter
         assertThat(actual).isEqualTo(new MediaRange(s, "text", "plain", Map.of("a", "4 5 6", "b", "123"), 0.5));
@@ -84,7 +95,7 @@ class MediaTypeTest
         Handler h = Mockito.mock(Handler.class);
         Logging.addHandler(MediaType.class, h);
         
-        MediaType.parse("*/*; q=1; extension=param");
+        parse("*/*; q=1; extension=param");
         
         String expMsg = "Media type extension parameters ignored: " +
                 Map.of("extension", "param").toString();
@@ -98,7 +109,7 @@ class MediaTypeTest
     
     @Test
     void q_param_upperCase() {
-        MediaRange r = (MediaRange) MediaType.parse("bla/bla;Q=1.5");
+        MediaRange r = (MediaRange) parse("bla/bla;Q=1.5");
         assertThat(r.quality()).isEqualTo(1.5);
         assertThat(r.toString()).isEqualTo("bla/bla;Q=1.5");
         assertThat(r.toStringNormalized()).isEqualTo("bla/bla; q=1.5");
