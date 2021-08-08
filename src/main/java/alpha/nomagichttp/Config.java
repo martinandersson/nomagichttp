@@ -287,9 +287,11 @@ public interface Config
      * a response to the {@link ClientChannel}. This timer starts when the
      * request timer(s) end or times out, and so the ClientChannel will never
      * timeout while a request is still actively being processed. The timer is
-     * reset for each response given (after possible stage completion). A
-     * response producer that needs more time can reset the timer by sending a
-     * 1XX (Informational) interim response.<p>
+     * similarly active only while a response is <i>not</i> actively being
+     * transmitted on the wire. The timer is reset for each response given
+     * (after possible stage completion). A response producer that needs more
+     * time can reset the timer by sending a 1XX (Informational) interim
+     * response.<p>
      * 
      * Assuming that the write stream is still open when the exception occurs,
      * the ClientChannel's {@code ResponseTimeoutException} is delivered to the

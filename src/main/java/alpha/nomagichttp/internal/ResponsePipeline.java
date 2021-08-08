@@ -12,8 +12,6 @@ import java.util.Deque;
 import java.util.List;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ConcurrentLinkedDeque;
-import java.util.concurrent.atomic.AtomicReference;
-import java.util.function.Consumer;
 
 import static alpha.nomagichttp.HttpConstants.HeaderKey.CONNECTION;
 import static alpha.nomagichttp.HttpConstants.HeaderKey.CONTENT_LENGTH;
@@ -22,12 +20,10 @@ import static alpha.nomagichttp.HttpConstants.StatusCode.isClientError;
 import static alpha.nomagichttp.HttpConstants.StatusCode.isServerError;
 import static alpha.nomagichttp.HttpConstants.Version.HTTP_1_1;
 import static alpha.nomagichttp.handler.ResponseRejectedException.Reason.PROTOCOL_NOT_SUPPORTED;
-import static alpha.nomagichttp.internal.AtomicReferences.ifPresent;
-import static alpha.nomagichttp.internal.AtomicReferences.setIfAbsent;
-import static alpha.nomagichttp.internal.AtomicReferences.take;
 import static java.lang.System.Logger.Level.DEBUG;
 import static java.lang.System.Logger.Level.ERROR;
 import static java.lang.System.Logger.Level.WARNING;
+import static java.util.concurrent.CompletableFuture.completedStage;
 import static java.util.concurrent.CompletableFuture.failedStage;
 import static java.util.concurrent.TimeUnit.SECONDS;
 
@@ -55,6 +51,8 @@ import static java.util.concurrent.TimeUnit.SECONDS;
  * 
  * In addition:
  * <ol>
+ *   <li>Throws high-level {@link ResponseTimeoutException}s (channel delay and
+ *       response body emission delay)</li>
  *   <li>Implements {@link Config#maxUnsuccessfulResponses()}</li>
  * </ol>
  * 
@@ -93,6 +91,8 @@ final class ResponsePipeline extends AbstractLocalEventEmitter
     private static final System.Logger LOG
             = System.getLogger(ResponsePipeline.class.getPackageName());
     
+    private static final CompletionStage<Response> INIT_TIMER = completedStage(null);
+    
     private static final Throwable ABORT = new Throwable();
     
     private final Config cfg;
@@ -102,9 +102,6 @@ final class ResponsePipeline extends AbstractLocalEventEmitter
     private final DefaultActionRegistry actions;
     private final Deque<CompletionStage<Response>> queue;
     private final SeriallyRunnable op;
-    // This timer times out delays from app to give us a response.
-    // Response body timer is set by method subscribeToResponse().
-    private final AtomicReference<Timeout> timer;
     
     /**
      * Constructs a {@code ResponsePipeline}.<p>
@@ -121,46 +118,39 @@ final class ResponsePipeline extends AbstractLocalEventEmitter
         this.exch = exch;
         this.queue = new ConcurrentLinkedDeque<>();
         this.op = new SeriallyRunnable(this::pollAndProcessAsync, true);
-        this.timer = new AtomicReference<>();
     }
     
     /**
      * Start the timer that will result in a {@link ResponseTimeoutException} on
-     * timeout.<p>
+     * delay from the application to deliver response objects to the channel.<p>
      * 
      * This timer is started by the HTTP exchange once the request body has been
-     * consumed. Up until that point and for as long as progress is being made
-     * on the request-side, the application is free to take forever to yield
-     * responses.
+     * consumed (or immediately if body is empty). Up until that point and for
+     * as long as progress is being made on the request-side, the application is
+     * free to take forever to yield responses.
      */
+    // Note: The response body timer is set by method subscribeToResponse().
     void startTimeout() {
-        Timeout t = setIfAbsent(timer, () ->
-                new Timeout(cfg.timeoutIdleConnection()));
-        t.reschedule(this::timeoutAction);
-    }
-    
-    private void stopTimeout() {
-        take(timer).ifPresent(Timeout::abort);
+        // No need to addFirst/preempt; timer only active whilst waiting
+        add(INIT_TIMER);
     }
     
     void add(CompletionStage<Response> resp) {
-        enqueue(resp, queue::add);
-    }
-    
-    void addFirst(CompletionStage<Response> resp) {
-        enqueue(resp, queue::addFirst);
-    }
-    
-    private void enqueue(CompletionStage<Response> resp, Consumer<CompletionStage<Response>> sink) {
-        resp.whenComplete((ign,ored) -> timeoutReset());
-        sink.accept(resp);
+        queue.add(resp);
         op.run();
     }
     
-    // Except for <timedOut>, all other fields are accessed solely from within
-    // the serialized operation; no need for volatile. "timedOut = true" follows
-    // by a re-run, i.e. is safe to do by the timer's scheduling thread even
-    // without volatile (see JavaDoc of SeriallyRunnable).
+    void addFirst(CompletionStage<Response> resp) {
+        queue.addFirst(resp);
+        op.run();
+    }
+    
+    // Except for <timedOut>, all other fields in this class are accessed solely
+    // from within the serialized operation; no need for volatile. "timedOut =
+    // true" (see timeoutAction()) follows by a re-run, i.e. is safe to do by
+    // the timer's scheduling thread even without volatile (see JavaDoc of
+    // SeriallyRunnable).
+    private Timeout timer;
     private boolean timedOut;
     private boolean timeoutEmitted;
     private List<ResourceMatch<AfterAction>> matched;
@@ -168,10 +158,6 @@ final class ResponsePipeline extends AbstractLocalEventEmitter
     private void timeoutAction() {
         timedOut = true;
         op.run();
-    }
-    
-    private void timeoutReset() {
-        ifPresent(timer, t -> t.reschedule(this::timeoutAction));
     }
     
     private static void scheduleClose(DefaultClientChannel chApi) {
@@ -195,6 +181,18 @@ final class ResponsePipeline extends AbstractLocalEventEmitter
         if (stage == null) {
             op.complete();
             return;
+        }
+        
+        if (stage == INIT_TIMER) {
+            if (!wroteFinal) {
+                timer = new Timeout(cfg.timeoutIdleConnection());
+                timer.schedule(this::timeoutAction);
+            }
+            op.complete();
+            return;
+        } else if (timer != null && !wroteFinal) {
+            // Going to process response; timer active only while waiting
+            timer.abort();
         }
         
         var req = exch.getSkeletonRequest();
@@ -319,10 +317,7 @@ final class ResponsePipeline extends AbstractLocalEventEmitter
         
         LOG.log(DEBUG, () -> "Subscribing to response: " + rsp);
         inFlight = rsp;
-        if (rsp.isFinal()) {
-            wroteFinal = true;
-            stopTimeout();
-        }
+        wroteFinal = rsp.isFinal();
         
         // Response.body() (app) -> operator -> ResponseBodySubscriber (server)
         // On timeout, operator will cancel upstream and error out downstream.
@@ -339,6 +334,10 @@ final class ResponsePipeline extends AbstractLocalEventEmitter
     private void handleResult(/* This: */ Long bytesWritten, /* Or: */ Throwable thr) {
         Response rsp = inFlight;
         inFlight = null;
+        
+        if (!wroteFinal && timer != null) {
+            timer.reschedule(this::timeoutAction);
+        }
         
         if (thr != null && thr.getCause() == ABORT) {
             op.complete();
