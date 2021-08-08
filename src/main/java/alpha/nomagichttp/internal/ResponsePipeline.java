@@ -124,7 +124,15 @@ final class ResponsePipeline extends AbstractLocalEventEmitter
         this.timer = new AtomicReference<>();
     }
     
-    // HttpExchange starts the timer after the request
+    /**
+     * Start the timer that will result in a {@link ResponseTimeoutException} on
+     * timeout.<p>
+     * 
+     * This timer is started by the HTTP exchange once the request body has been
+     * consumed. Up until that point and for as long as progress is being made
+     * on the request-side, the application is free to take forever to yield
+     * responses.
+     */
     void startTimeout() {
         Timeout t = setIfAbsent(timer, () ->
                 new Timeout(cfg.timeoutIdleConnection()));
