@@ -102,11 +102,12 @@ import java.util.concurrent.atomic.AtomicInteger;
  * responsibility to make sure these actions are visible to thread B executing
  * the first run.<p>
  * 
- * There is only one running-state variable in this class, which also embeds the
- * flag/value of a scheduled re-run. Thus, the scheduling of a run
- * happens-before the re-run. This means that the actions of the thread
- * initiating a re-run will be observed by the thread executing it (no need to
- * write volatile fields if these updates are also followed by {@code run()}).
+ * There is only one atomic running-state variable in this class, which also
+ * embeds the flag/value of a scheduled re-run. Thus, the scheduling of a run
+ * happens-before the next run. This means that the actions of the thread
+ * initiating a run will be observed by whichever thread is executing it, i.e.
+ * there is no need to write to volatile fields if these updates are also
+ * followed by {@code run()}).
  * 
  * 
  * <h2>Modes Of Completion</h2>
@@ -146,7 +147,14 @@ import java.util.concurrent.atomic.AtomicInteger;
  * 
  * Just as with {@code run()}, {@code complete()} too can block or return
  * immediately depending on if a new run was scheduled concurrently to execute
- * and the calling thread was selected to perform the new run.
+ * and the calling thread was selected to perform the new run.<p>
+ * 
+ * Semantically, the same memory semantics applies as in synchronous mode. In
+ * particular, the state variable is touched after both the implicit completion
+ * (normal or exceptional return from the run method) and explicit completion
+ * (the complete method) meaning that updates from a thread running the serially
+ * runnable will be visible to the next run even if the logical run is completed
+ * by another thread.
  * 
  * 
  * <h2>Error Handling</h2>
