@@ -299,7 +299,6 @@ final class HttpExchange
                         "Preparing for a new HTTP exchange.", thr);
                 tryPrepareForNewExchange();
             } else {
-                pipe.startTimeout();
                 handleError(thr);
             }
         }
