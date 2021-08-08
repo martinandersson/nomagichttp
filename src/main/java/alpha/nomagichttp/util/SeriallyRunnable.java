@@ -53,7 +53,11 @@ import java.util.concurrent.atomic.AtomicInteger;
  *           myThreadPool.submit(() -> {
  *               doSomethingWithItem(i);
  *               operation.complete();
- *               operation.run(); // Signal re-run, perhaps more items
+ *               // We polled a non-null item,
+ *               //     so there could be more of them
+ *               //     and SeriallyRunnable doesn't catch-up,
+ *               //     so we must signal a re-run
+ *               operation.run();
  *           });
  *       }
  *   }
