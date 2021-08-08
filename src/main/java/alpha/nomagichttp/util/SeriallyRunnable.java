@@ -103,10 +103,10 @@ import java.util.concurrent.atomic.AtomicInteger;
  * the first run.<p>
  * 
  * There is only one running-state variable in this class, which also embeds the
- * flag/value of a scheduled re-run. Thus, a run happens-before the
- * re-scheduling of the run. This means that the actions of the thread
+ * flag/value of a scheduled re-run. Thus, the scheduling of a run
+ * happens-before the re-run. This means that the actions of the thread
  * initiating a re-run will be observed by the thread executing it (no need to
- * write volatile fields).
+ * write volatile fields if these updates are also followed by {@code run()}).
  * 
  * 
  * <h2>Modes Of Completion</h2>

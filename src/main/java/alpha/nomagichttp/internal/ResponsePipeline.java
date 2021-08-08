@@ -106,9 +106,6 @@ final class ResponsePipeline extends AbstractLocalEventEmitter
     // This timer times out delays from app to give us a response.
     // Response body timer is set by method subscribeToResponse().
     private final AtomicReference<Timeout> timer;
-    private boolean timedOut;
-    private boolean timeoutEmitted;
-    private List<ResourceMatch<AfterAction>> matched;
     
     /**
      * Constructs a {@code ResponsePipeline}.<p>
@@ -126,9 +123,6 @@ final class ResponsePipeline extends AbstractLocalEventEmitter
         this.queue = new ConcurrentLinkedDeque<>();
         this.op = new SeriallyRunnable(this::pollAndProcessAsync, true);
         this.timer = new AtomicReference<>();
-        this.timedOut = false;
-        this.timeoutEmitted = false;
-        this.matched = null;
     }
     
     // HttpExchange starts the timer after the request
@@ -156,6 +150,14 @@ final class ResponsePipeline extends AbstractLocalEventEmitter
         sink.accept(resp);
         op.run();
     }
+    
+    // Except for <timedOut>, all other fields are accessed solely from within
+    // the serialized operation; no need for volatile. "timedOut = true" follows
+    // by a re-run, i.e. is safe to do even without volatile (see JavaDoc of
+    // SeriallyRunnable).
+    private boolean timedOut;
+    private boolean timeoutEmitted;
+    private List<ResourceMatch<AfterAction>> matched;
     
     private void timeoutAction() {
         timedOut = true;
