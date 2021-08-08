@@ -28,7 +28,6 @@ import static alpha.nomagichttp.internal.AtomicReferences.take;
 import static java.lang.System.Logger.Level.DEBUG;
 import static java.lang.System.Logger.Level.ERROR;
 import static java.lang.System.Logger.Level.WARNING;
-import static java.util.Objects.requireNonNull;
 import static java.util.concurrent.CompletableFuture.failedStage;
 import static java.util.concurrent.TimeUnit.SECONDS;
 
@@ -145,7 +144,6 @@ final class ResponsePipeline extends AbstractLocalEventEmitter
     }
     
     private void enqueue(CompletionStage<Response> resp, Consumer<CompletionStage<Response>> sink) {
-        requireNonNull(resp);
         resp.whenComplete((ign,ored) -> timeoutReset());
         sink.accept(resp);
         op.run();
@@ -153,8 +151,8 @@ final class ResponsePipeline extends AbstractLocalEventEmitter
     
     // Except for <timedOut>, all other fields are accessed solely from within
     // the serialized operation; no need for volatile. "timedOut = true" follows
-    // by a re-run, i.e. is safe to do even without volatile (see JavaDoc of
-    // SeriallyRunnable).
+    // by a re-run, i.e. is safe to do by the timer's scheduling thread even
+    // without volatile (see JavaDoc of SeriallyRunnable).
     private boolean timedOut;
     private boolean timeoutEmitted;
     private List<ResourceMatch<AfterAction>> matched;
