@@ -171,10 +171,16 @@ final class ResponsePipeline extends AbstractLocalEventEmitter
     
     private void pollAndProcessAsync() {
         if (timedOut && !timeoutEmitted) {
-            scheduleClose(chApi);
-            var thr = new ResponseTimeoutException("Gave up waiting on a response.");
-            emit(Error.INSTANCE, thr, null);
             timeoutEmitted = true;
+            if (chApi.isOpenForWriting()) {
+                scheduleClose(chApi);
+                var thr = new ResponseTimeoutException("Gave up waiting on a response.");
+                emit(Error.INSTANCE, thr, null);
+            } else {
+                LOG.log(DEBUG,
+                    "Will not emit response timeout; channel closed for writing " +
+                    "- so, we were in effect not waiting.");
+            }
         }
         
         CompletionStage<Response> stage = queue.poll();
@@ -184,7 +190,7 @@ final class ResponsePipeline extends AbstractLocalEventEmitter
         }
         
         if (stage == INIT_TIMER) {
-            if (!wroteFinal) {
+            if (timer == null && !wroteFinal) {
                 timer = new Timeout(cfg.timeoutIdleConnection());
                 timer.schedule(this::timeoutAction);
             }
