@@ -25,8 +25,8 @@ import java.util.concurrent.atomic.AtomicInteger;
  * extra repetition will be scheduled in any given moment of time.<p>
  * 
  * This class is used throughout the codebase of NoMagicHTTP to solve several
- * problems that requires a serial solution. Asynchronous channels may have
- * concurrent pending read/write operations, but not concurrent pending
+ * problems that requires a serial solution. For instance asynchronous channels
+ * may have concurrent pending read/write operations, but not concurrent pending
  * operations of the same type. This class is also a core contributor behind the
  * awesome semantics defined in {@link Publishers} that completely eradicates
  * the need for the end-user to trouble himself with reentrancy and
@@ -50,7 +50,7 @@ import java.util.concurrent.atomic.AtomicInteger;
  *       if (i == null) {
  *           operation.complete();
  *       } else {
- *           threadPool.submit(() -> {
+ *           myThreadPool.submit(() -> {
  *               doSomethingWithItem(i);
  *               operation.complete();
  *               operation.run(); // Signal re-run, perhaps more items
