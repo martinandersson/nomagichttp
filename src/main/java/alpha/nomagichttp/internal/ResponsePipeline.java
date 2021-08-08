@@ -195,6 +195,7 @@ final class ResponsePipeline extends AbstractLocalEventEmitter
                 timer.schedule(this::timeoutAction);
             }
             op.complete();
+            op.run();
             return;
         } else if (timer != null && !wroteFinal) {
             // Going to process response; timer active only while waiting
