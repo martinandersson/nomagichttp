@@ -41,11 +41,11 @@ import static java.util.Objects.requireNonNull;
  * this subscriber signals through the {@link #asCompletionStage() result
  * stage}.<p>
  * 
- * This class do expect to get a {@code ResponseTimeoutException} from the
- * upstream (well, hopefully not), and in fact, asynchronously (by {@link
- * TimeoutOp}). Therefore, the implementation of {@code onError()} can handle
- * calls concurrent to other signals from upstream. In addition, the timeout
- * exception will cause this class to shutdown the write stream (see {@link
+ * This class do expect to get a {@link ResponseTimeoutException} from the
+ * upstream (well, hopefully not); asynchronously by {@link TimeoutOp}.
+ * Therefore, the implementation of {@code onError()} can handle calls
+ * concurrent to other signals from upstream. In addition, the timeout exception
+ * will cause this class to shutdown the write stream (see {@link
  * Config#timeoutIdleConnection()}). All other signals from upstream, however,
  * must be delivered serially.
  * 

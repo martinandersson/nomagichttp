@@ -459,12 +459,14 @@ final class HttpExchange
             return true;
         }
         
-        // From our child, yes, but it can not be deduced as abruptly terminating
-        // and so we'd rather pass it to the error handler or log it.
-        // E.g., if app write a response on a closed channel (ClosedChannelException),
-        // then we still want to log the problem - actually required by
-        // ClientChannel.write().
-        // See test "ClientLifeCycleTest.serverClosesChannel_beforeResponse()".
+        // IOExc from our child, yes, but it can not be deduced as abruptly
+        // terminating and so we'd rather pass it to the error handler (maybe)
+        // or log it.
+        //    For ex., if app write a response on a closed channel
+        // (ClosedChannelException), it will not pass to an error handler but it
+        // will be logged and thereafter end the HTTP exchange (also see JavaDoc
+        // of ClientChannel.write() and test case
+        // ClientLifeCycleTest.serverClosesChannel_beforeResponse().
         return false;
     }
     

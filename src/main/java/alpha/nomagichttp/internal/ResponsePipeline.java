@@ -8,6 +8,7 @@ import alpha.nomagichttp.message.Response;
 import alpha.nomagichttp.message.ResponseTimeoutException;
 import alpha.nomagichttp.util.SeriallyRunnable;
 
+import java.nio.channels.InterruptedByTimeoutException;
 import java.util.Deque;
 import java.util.List;
 import java.util.concurrent.CompletionStage;
@@ -34,10 +35,10 @@ import static java.util.concurrent.TimeUnit.SECONDS;
  * The {@code write} methods of {@link DefaultClientChannel} is a direct facade
  * for the {@code add} methods declared in this class.<p>
  * 
- * The lifetime of a pipeline is scoped to the HTTP exchange and not to the
- * channel. The final response is the last response accepted by the pipeline.
- * The channel will be updated with a new delegate pipeline instance at the
- * start of each new HTTP exchange.<p>
+ * The life of a pipeline is scoped to the HTTP exchange and not to the channel.
+ * The final response is the last response accepted by the pipeline. The channel
+ * will be updated with a new delegate pipeline instance at the start of each
+ * new HTTP exchange.<p>
  * 
  * Core responsibilities:
  * <ul>
@@ -51,8 +52,10 @@ import static java.util.concurrent.TimeUnit.SECONDS;
  * 
  * In addition:
  * <ol>
- *   <li>Throws high-level {@link ResponseTimeoutException}s (channel delay and
- *       response body emission delay)</li>
+ *   <li>Emits the high-level {@link ResponseTimeoutException} on response
+ *       enqueuing - and response body emission delay</li>
+ *   <li>Also emits low-level exceptions from the underlying channel
+ *       implementation (such as {@link InterruptedByTimeoutException}.</li>
  *   <li>Implements {@link Config#maxUnsuccessfulResponses()}</li>
  * </ol>
  * 
@@ -67,24 +70,30 @@ final class ResponsePipeline extends AbstractLocalEventEmitter
      * 
      * Only one attachment is provided, the {@code Response} object.<p>
      * 
-     * The <i>final</i> response is the last successful emission.
+     * No more emissions will occur after the final response.
      */
     enum Success { INSTANCE }
     
     /**
-     * Sent on response failure.<p>
+     * Sent on timeout or response failure.<p>
      * 
      * The first attachment will always be the error, a {@code Throwable}.<p>
      * 
-     * The second attachment is the Response object, but only if available. If
-     * the error was propagated to the pipeline from the response stage provided
-     * by the client, then the second attachment is {@code null}. Errors
-     * occurring after this point in time, however, will have the response
-     * attachment present.<p>
+     * The second attachment is the Response object, but only if available. The
+     * response will always be available after the response stage has completed
+     * normally. And so, if the response is available, the origin of the error
+     * is most likely the underlying channel, for instance trying to write a
+     * response to a closed channel.<p>
+     * 
+     * If the response is not available, then the error comes straight from the
+     * application-provided stage itself, or it is a {@link
+     * ResponseTimeoutException}.<p>
      * 
      * No errors are emitted after the <i>final</i> response. Errors from
-     * the client are logged but otherwise ignored. And, there's obviously no
-     * pending writes from the channel that could go wrong.
+     * the application are logged but otherwise ignored. And, there's obviously
+     * no pending writes from the channel that could go wrong. And, the timer
+     * that drives the timeout exception is only active whilst the pipeline is
+     * waiting for a response.
      */
     enum Error { INSTANCE }
     
@@ -127,7 +136,7 @@ final class ResponsePipeline extends AbstractLocalEventEmitter
      * This timer is started by the HTTP exchange once the request body has been
      * consumed (or immediately if body is empty). Up until that point and for
      * as long as progress is being made on the request-side, the application is
-     * free to take forever to yield responses.
+     * free to take forever yielding responses.
      */
     // Note: The response body timer is set by method subscribeToResponse().
     void startTimeout() {
@@ -145,11 +154,12 @@ final class ResponsePipeline extends AbstractLocalEventEmitter
         op.run();
     }
     
-    // Except for <timedOut>, all other fields in this class are accessed solely
-    // from within the serialized operation; no need for volatile. "timedOut =
-    // true" (see timeoutAction()) follows by a re-run, i.e. is safe to do by
-    // the timer's scheduling thread even without volatile (see JavaDoc of
-    // SeriallyRunnable).
+    // Except for <timedOut>, all other [non-final] fields in this class are
+    // accessed solely from within the serialized operation; no need for
+    // volatile. "timedOut = true" (see timeoutAction()) follows by a re-run,
+    // i.e. is safe to do by the timer's scheduling thread even without volatile
+    // (see JavaDoc of SeriallyRunnable).
+    
     private Timeout timer;
     private boolean timedOut;
     private boolean timeoutEmitted;

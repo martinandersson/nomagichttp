@@ -81,11 +81,11 @@ public interface ClientChannel extends Closeable, AttributeHolder
      * 
      * At the time of transmission, a response may be rejected. Normally, this
      * will cause a {@link ResponseRejectedException} to pass through the
-     * server's error handler. But the error handler will not receive the
-     * exception if the response is rejected because a final response has
-     * already been transmitted (in parts or in whole), then, the response is
-     * logged but otherwise ignored. Same is true if the response can not be
-     * sent because the channel's write stream has shut down, then, a {@link
+     * server's error handler. But the error handler will not be called if the
+     * response is rejected because a final response has already been
+     * transmitted (in parts or in whole), then, the response is logged but
+     * otherwise ignored. Same is true if the response can not be sent because
+     * the channel's write stream has shut down, then, a {@link
      * ClosedChannelException} is logged but otherwise ignored. In both cases,
      * it's futile to attempt writing an alternative response.<p>
      * 
