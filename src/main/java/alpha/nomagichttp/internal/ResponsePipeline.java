@@ -25,7 +25,6 @@ import static java.lang.System.Logger.Level.DEBUG;
 import static java.lang.System.Logger.Level.ERROR;
 import static java.lang.System.Logger.Level.WARNING;
 import static java.util.concurrent.CompletableFuture.completedStage;
-import static java.util.concurrent.CompletableFuture.failedStage;
 import static java.util.concurrent.TimeUnit.SECONDS;
 
 /**
@@ -100,9 +99,13 @@ final class ResponsePipeline extends AbstractLocalEventEmitter
     private static final System.Logger LOG
             = System.getLogger(ResponsePipeline.class.getPackageName());
     
-    private static final CompletionStage<Response> INIT_TIMER = completedStage(null);
-    
-    private static final Throwable ABORT = new Throwable();
+    // Internal sentinel values used as commands to or within the serial queue-item processor
+    private static final CompletionStage<Response>
+            // Start timer
+            TIMER_INIT = completedStage(null);
+    private static final RuntimeException
+            // Response processing aborted (response ignored)
+            ABORT = new RuntimeException();
     
     private final Config cfg;
     private final int maxUnssuccessful;
@@ -140,8 +143,8 @@ final class ResponsePipeline extends AbstractLocalEventEmitter
      */
     // Note: The response body timer is set by method subscribeToResponse().
     void startTimeout() {
-        // No need to addFirst/preempt; timer only active whilst waiting
-        add(INIT_TIMER);
+        // No need to addFirst/preempt; timer only active whilst waiting on response
+        add(TIMER_INIT);
     }
     
     void add(CompletionStage<Response> resp) {
@@ -162,8 +165,6 @@ final class ResponsePipeline extends AbstractLocalEventEmitter
     
     private Timeout timer;
     private boolean timedOut;
-    private boolean timeoutEmitted;
-    private List<ResourceMatch<AfterAction>> matched;
     
     private void timeoutAction() {
         timedOut = true;
@@ -180,26 +181,21 @@ final class ResponsePipeline extends AbstractLocalEventEmitter
     }
     
     private void pollAndProcessAsync() {
-        if (timedOut && !timeoutEmitted) {
-            timeoutEmitted = true;
-            if (chApi.isOpenForWriting()) {
-                scheduleClose(chApi);
-                var thr = new ResponseTimeoutException("Gave up waiting on a response.");
-                emit(Error.INSTANCE, thr, null);
-            } else {
-                LOG.log(DEBUG,
-                    "Will not emit response timeout; channel closed for writing " +
-                    "- so, we were in effect not waiting.");
-            }
-        }
+        actOnTimerTimeout();
         
-        CompletionStage<Response> stage = queue.poll();
+        // Wait waaat! Why do we continue even after a possible timeout?
+        // Coz ResponseTimeoutException doesn't immediately close the channel or
+        // render the channel/pipeline useless. In fact, application (or our
+        // very own error handler) is supposed to be able to produce (and send!)
+        // an alternative response. For that we need an operating pipeline lol 
+        
+        var stage = queue.poll();
         if (stage == null) {
             op.complete();
             return;
         }
         
-        if (stage == INIT_TIMER) {
+        if (stage == TIMER_INIT) {
             if (timer == null && !wroteFinal) {
                 timer = new Timeout(cfg.timeoutIdleConnection());
                 timer.schedule(this::timeoutAction);
@@ -207,36 +203,82 @@ final class ResponsePipeline extends AbstractLocalEventEmitter
             op.complete();
             op.run();
             return;
-        } else if (timer != null && !wroteFinal) {
+        }
+        
+        if (timer != null) {
             // Going to process response; timer active only while waiting
             timer.abort();
         }
         
+        stage.thenApply   (this::acceptRejectOrAbort)
+             .thenCompose (this::invokeAfterActions)
+             .thenApply   (this::closeHttp1_0)
+             .thenApply   (this::fixUnknownLength)
+             .thenApply   (this::trackConnectionClose)
+             .thenApply   (this::trackUnsuccessful)
+             .thenCompose (this::subscribeToResponse)
+             .whenComplete(this::handleResult); // <-- this re-schedules the timer
+    }
+    
+    private boolean timeoutEmitted;
+    
+    private void actOnTimerTimeout() {
+        if (!timedOut || timeoutEmitted) {
+            return;
+        }
+        assert !wroteFinal : "No timer was supposed to be active after final response.";
+        timeoutEmitted = true;
+        if (chApi.isOpenForWriting()) {
+            scheduleClose(chApi);
+            var thr = new ResponseTimeoutException("Gave up waiting on a response.");
+            emit(Error.INSTANCE, thr, null);
+        } else {
+            LOG.log(DEBUG,
+                "Will not emit response timeout; channel closed for writing " +
+                "- so, we were in effect not waiting for a response.");
+        }
+    }
+    
+    private boolean wroteFinal; // <-- set on subscription to final
+    private int n100continue;
+    
+    private Response acceptRejectOrAbort(Response rsp) {
+        if (wroteFinal) {
+            LOG.log(WARNING, () -> "HTTP exchange not active. This response is ignored: " + rsp);
+            throw ABORT;
+        }
+        if (rsp.isInformational()) {
+            if (exch.getHttpVersion().isLessThan(HTTP_1_1)) {
+                throw new ResponseRejectedException(rsp, PROTOCOL_NOT_SUPPORTED,
+                        exch.getHttpVersion() + " does not support 1XX (Informational) responses.");
+            }
+            if (rsp.statusCode() == ONE_HUNDRED && ++n100continue > 1) {
+                LOG.log(n100continue == 2 ? DEBUG : WARNING, "Ignoring repeated 100 (Continue).");
+                throw ABORT;
+            }
+        }
+        return rsp;
+    }
+    
+    private List<ResourceMatch<AfterAction>> matched;
+    
+    private CompletionStage<Response> invokeAfterActions(Response rsp) {
+        var res = rsp.completedStage();
         var req = exch.getSkeletonRequest();
         if (req == null) {
             LOG.log(DEBUG, "No valid request available; will not run after-actions.");
+            // return <res>
         } else {
             if (matched == null) {
                 matched = actions.lookupAfter(req.target());
             }
             for (ResourceMatch<AfterAction> m : matched) {
-                stage = stage.thenCompose(rsp ->
-                        m.get().apply(new DefaultRequest(exch.getHttpVersion(), req, m), rsp));
+                res = res.thenCompose(r ->
+                        m.get().apply(new DefaultRequest(exch.getHttpVersion(), req, m), r));
             }
         }
-        
-        stage.thenApply(this::closeHttp1_0)
-             .thenApply(this::handleUnknownLength)
-             .thenApply(this::trackConnectionClose)
-             .thenApply(this::trackUnsuccessful)
-             .thenCompose(this::subscribeToResponse)
-             .whenComplete(this::handleResult);
+        return res;
     }
-    
-    private Response inFlight = null;
-    private boolean wroteFinal = false;
-    private boolean sawConnectionClose = false;
-    private int n100continue = 0;
     
     private Response closeHttp1_0(Response rsp) {
         // No support for HTTP 1.0 Keep-Alive
@@ -249,7 +291,7 @@ final class ResponsePipeline extends AbstractLocalEventEmitter
         return rsp;
     }
     
-    private Response handleUnknownLength(Response rsp) {
+    private Response fixUnknownLength(Response rsp) {
         // Two quick reads; assume "Connection: close" will be present
         if (!rsp.mustShutdownOutputAfterWrite()         &&
             !rsp.mustCloseAfterWrite()                  &&
@@ -264,6 +306,8 @@ final class ResponsePipeline extends AbstractLocalEventEmitter
         }
         return rsp;
     }
+    
+    private boolean sawConnectionClose;
     
     private Response trackConnectionClose(Response in) {
         final Response out;
@@ -316,22 +360,9 @@ final class ResponsePipeline extends AbstractLocalEventEmitter
         return out;
     }
     
+    private Response inFlight;
+    
     private CompletionStage<Long> subscribeToResponse(Response rsp) {
-        if (wroteFinal) {
-            LOG.log(WARNING, () -> "HTTP exchange not active. This response is ignored: " + rsp);
-            return failedStage(ABORT);
-        }
-        if (rsp.isInformational()) {
-            if (exch.getHttpVersion().isLessThan(HTTP_1_1)) {
-                throw new ResponseRejectedException(rsp, PROTOCOL_NOT_SUPPORTED,
-                        exch.getHttpVersion() + " does not support 1XX (Informational) responses.");
-            }
-            if (rsp.statusCode() == ONE_HUNDRED && ++n100continue > 1) {
-                LOG.log(n100continue == 2 ? DEBUG : WARNING, "Ignoring repeated 100 (Continue).");
-                return failedStage(ABORT);
-            }
-        }
-        
         LOG.log(DEBUG, () -> "Subscribing to response: " + rsp);
         inFlight = rsp;
         wroteFinal = rsp.isFinal();
@@ -352,9 +383,7 @@ final class ResponsePipeline extends AbstractLocalEventEmitter
         Response rsp = inFlight;
         inFlight = null;
         
-        if (!wroteFinal && timer != null) {
-            timer.reschedule(this::timeoutAction);
-        }
+        tryRescheduleTimer();
         
         if (thr != null && thr.getCause() == ABORT) {
             op.complete();
@@ -372,6 +401,16 @@ final class ResponsePipeline extends AbstractLocalEventEmitter
         
         op.complete();
         op.run();
+    }
+    
+    private void tryRescheduleTimer() {
+        // No need to re-schedule if
+        //   we're not going to wait for more responses (wrote final), or
+        //   timer haven't been started yet (timer is null), or
+        //   already timed out (will always end with channel closure)
+        if (!wroteFinal && timer != null && !timedOut) {
+            timer.reschedule(this::timeoutAction);
+        }
     }
     
     private void tryActOnChannelCommands(Response rsp) {
@@ -414,6 +453,7 @@ final class ResponsePipeline extends AbstractLocalEventEmitter
             if (chApi.isOpenForWriting()) {
                 // and no bytes were written on the wire, rollback
                 wroteFinal = false;
+                tryRescheduleTimer();
             }
             emit(Error.INSTANCE, thr, rsp);
         }
