@@ -214,13 +214,13 @@ public interface ErrorHandler
      *     <td> {@link Responses#badRequest()} </td>
      *   </tr>
      *   <tr>
-     *     <th scope="row"> {@link HttpVersionParseException} </th>
+     *     <th scope="row"> {@link MaxRequestHeadSizeExceededException} </th>
      *     <td> None </td>
-     *     <td> No </td>
-     *     <td> {@link Responses#badRequest()} </td>
+     *     <td> Yes </td>
+     *     <td> {@link Responses#entityTooLarge()} </td>
      *   </tr>
      *   <tr>
-     *     <th scope="row"> {@link BadHeaderException} </th>
+     *     <th scope="row"> {@link HttpVersionParseException} </th>
      *     <td> None </td>
      *     <td> No </td>
      *     <td> {@link Responses#badRequest()} </td>
@@ -236,6 +236,12 @@ public interface ErrorHandler
      *     <td> None </td>
      *     <td> No </td>
      *     <td> {@link Responses#httpVersionNotSupported()} </td>
+     *   </tr>
+     *   <tr>
+     *     <th scope="row"> {@link BadHeaderException} </th>
+     *     <td> None </td>
+     *     <td> No </td>
+     *     <td> {@link Responses#badRequest()} </td>
      *   </tr>
      *   <tr>
      *     <th scope="row"> {@link NoRouteFoundException} </th>
@@ -276,12 +282,6 @@ public interface ErrorHandler
      *     <td> None </td>
      *     <td> Yes </td>
      *     <td> {@link Responses#internalServerError()} </td>
-     *   </tr>
-     *   <tr>
-     *     <th scope="row"> {@link MaxRequestHeadSizeExceededException} </th>
-     *     <td> None </td>
-     *     <td> Yes </td>
-     *     <td> {@link Responses#entityTooLarge()} </td>
      *   </tr>
      *   <tr>
      *     <th scope="row"> {@link MediaTypeParseException} </th>
@@ -369,6 +369,9 @@ public interface ErrorHandler
                  BadHeaderException        |
                  IllegalRequestBodyException e) {
             res = badRequest();
+        } catch (MaxRequestHeadSizeExceededException e) {
+            log(thr);
+            res = entityTooLarge();
         } catch (HttpVersionTooOldException e) {
             res = upgradeRequired(e.getUpgrade());
         } catch (HttpVersionTooNewException e) {
@@ -376,9 +379,6 @@ public interface ErrorHandler
         } catch (NoRouteFoundException e) {
             log(thr);
             res = notFound();
-        } catch (MaxRequestHeadSizeExceededException e) {
-            log(thr);
-            res = entityTooLarge();
         } catch (MethodNotAllowedException e) {
             Response status = methodNotAllowed();
             Stream<String> allow = e.getRoute().supportedMethods();
