@@ -312,7 +312,7 @@ public final class DefaultRoute implements Route
                 try {
                     append(pattern);
                 } catch (IllegalArgumentException | IllegalStateException e) {
-                    throw new RouteParseException(e);
+                    throw new RoutePatternInvalidException(e);
                 }
             }
         }
