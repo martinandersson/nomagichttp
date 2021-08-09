@@ -132,17 +132,6 @@ public final class Responses
     }
     
     /**
-     * Retrieves a cached 204 (No Content) response with no body.
-     * 
-     * @return a cached 204 (No Content) response
-     * 
-     * @see StatusCode#TWO_HUNDRED_FOUR
-     */
-    public static Response noContent() {
-        return ResponseCache.NO_CONTENT;
-    }
-    
-    /**
      * Creates a new 200 (OK) response with a text body.<p>
      * 
      * The content-type header will be set to "text/plain; charset=utf-8".
@@ -415,6 +404,17 @@ public final class Responses
     }
     
     /**
+     * Retrieves a cached 204 (No Content) response with no body.
+     * 
+     * @return a cached 204 (No Content) response
+     * 
+     * @see StatusCode#TWO_HUNDRED_FOUR
+     */
+    public static Response noContent() {
+        return ResponseCache.NO_CONTENT;
+    }
+    
+    /**
      * Retrieves a cached 400 (Bad Request) response with no body.
      * 
      * @return  a cached 400 (Bad Request) response
@@ -425,6 +425,16 @@ public final class Responses
     }
     
     /**
+     * Retrieves a cached 403 (Forbidden) response with no body.
+     * 
+     * @return  a cached 403 (Forbidden) response
+     * @see     StatusCode#FOUR_HUNDRED_THREE
+     */
+    public static Response forbidden() {
+        return ResponseCache.FORBIDDEN;
+    }
+    
+    /**
      * Retrieves a cached 404 (Not Found) response with no body.
      * 
      * @return a cached 404 (Not Found)
@@ -432,40 +442,6 @@ public final class Responses
      */
     public static Response notFound() {
         return ResponseCache.NOT_FOUND;
-    }
-    
-    /**
-     * Creates a new 413 (Entity Too Large) response with no body.<p>
-     * 
-     * The response will also {@linkplain Response#mustCloseAfterWrite()
-     * close the client channel}.
-     * 
-     * @return  a new 413 (Entity Too Large)
-     * @see    StatusCode#FOUR_HUNDRED_THIRTEEN
-     */
-    public static Response entityTooLarge() {
-        return Response.builder(FOUR_HUNDRED_THIRTEEN, ENTITY_TOO_LARGE)
-                .mustCloseAfterWrite(true).build();
-    }
-    
-    /**
-     * Retrieve a cached 500 (Internal Server Error) response with no body.
-     * 
-     * @return  a cached 500 (Internal Server Error) response
-     * @see     StatusCode#FIVE_HUNDRED
-     */
-    public static Response internalServerError() {
-        return ResponseCache.INTERNAL_SERVER_ERROR;
-    }
-    
-    /**
-     * Retrieves a cached 501 (Not Implemented) response with no body.
-     * 
-     * @return  a cached 501 (Not Implemented) response
-     * @see     StatusCode#FIVE_HUNDRED_ONE
-     */
-    public static Response notImplemented() {
-        return ResponseCache.NOT_IMPLEMENTED;
     }
     
     /**
@@ -489,6 +465,35 @@ public final class Responses
     }
     
     /**
+     * Creates a new 408 (Request Timeout) response with no body.<p>
+     * 
+     * The header "Connection: close" will be set.
+     * 
+     * @return  a new 408 (Request Timeout) response
+     * @see     StatusCode#FOUR_HUNDRED_EIGHT
+     */
+    public static Response requestTimeout() {
+        return builder(FOUR_HUNDRED_EIGHT, REQUEST_TIMEOUT)
+                .header(CONTENT_LENGTH, "0")
+                .header(CONNECTION, "close")
+                .build();
+    }
+    
+    /**
+     * Creates a new 413 (Entity Too Large) response with no body.<p>
+     * 
+     * The response will also {@linkplain Response#mustCloseAfterWrite()
+     * close the client channel}.
+     * 
+     * @return  a new 413 (Entity Too Large)
+     * @see    StatusCode#FOUR_HUNDRED_THIRTEEN
+     */
+    public static Response entityTooLarge() {
+        return Response.builder(FOUR_HUNDRED_THIRTEEN, ENTITY_TOO_LARGE)
+                .mustCloseAfterWrite(true).build();
+    }
+    
+    /**
      * Retrieves a cached 415 (Unsupported Media Type) response with no body.
      * 
      * @return  a cached 415 (Unsupported Media Type) response
@@ -507,42 +512,31 @@ public final class Responses
      */
     public static Response upgradeRequired(String upgrade) {
         return builder(FOUR_HUNDRED_TWENTY_SIX, UPGRADE_REQUIRED)
-                 .addHeaders(
-                     UPGRADE, upgrade,
-                     CONNECTION, UPGRADE,
-                     CONTENT_LENGTH, "0")
-                 .build();
-    }
-    
-    /**
-     * Creates a new 505 (HTTP Version Not Supported) response with no body.<p>
-     * 
-     * The response will {@linkplain Response#mustCloseAfterWrite() close the
-     * client channel}.
-     * 
-     * @return  a new 505 (HTTP Version Not Supported) response
-     * @see     StatusCode#FIVE_HUNDRED_FIVE
-     */
-    public static Response httpVersionNotSupported() {
-        return builder(FIVE_HUNDRED_FIVE, HTTP_VERSION_NOT_SUPPORTED)
-                 .header(CONTENT_LENGTH, "0")
-                 .mustCloseAfterWrite(true)
-                 .build();
-    }
-    
-    /**
-     * Creates a new 408 (Request Timeout) response with no body.<p>
-     * 
-     * The header "Connection: close" will be set.
-     * 
-     * @return  a new 408 (Request Timeout) response
-     * @see     StatusCode#FOUR_HUNDRED_EIGHT
-     */
-    public static Response requestTimeout() {
-        return builder(FOUR_HUNDRED_EIGHT, REQUEST_TIMEOUT)
-                .header(CONTENT_LENGTH, "0")
-                .header(CONNECTION, "close")
+                .addHeaders(
+                        UPGRADE, upgrade,
+                        CONNECTION, UPGRADE,
+                        CONTENT_LENGTH, "0")
                 .build();
+    }
+    
+    /**
+     * Retrieve a cached 500 (Internal Server Error) response with no body.
+     * 
+     * @return  a cached 500 (Internal Server Error) response
+     * @see     StatusCode#FIVE_HUNDRED
+     */
+    public static Response internalServerError() {
+        return ResponseCache.INTERNAL_SERVER_ERROR;
+    }
+    
+    /**
+     * Retrieves a cached 501 (Not Implemented) response with no body.
+     * 
+     * @return  a cached 501 (Not Implemented) response
+     * @see     StatusCode#FIVE_HUNDRED_ONE
+     */
+    public static Response notImplemented() {
+        return ResponseCache.NOT_IMPLEMENTED;
     }
     
     /**
@@ -561,13 +555,19 @@ public final class Responses
     }
     
     /**
-     * Retrieves a cached 403 (Forbidden) response with no body.
+     * Creates a new 505 (HTTP Version Not Supported) response with no body.<p>
      * 
-     * @return  a cached 403 (Forbidden) response
-     * @see     StatusCode#FOUR_HUNDRED_THREE
+     * The response will {@linkplain Response#mustCloseAfterWrite() close the
+     * client channel}.
+     * 
+     * @return  a new 505 (HTTP Version Not Supported) response
+     * @see     StatusCode#FIVE_HUNDRED_FIVE
      */
-    public static Response forbidden() {
-        return ResponseCache.FORBIDDEN;
+    public static Response httpVersionNotSupported() {
+        return builder(FIVE_HUNDRED_FIVE, HTTP_VERSION_NOT_SUPPORTED)
+                 .header(CONTENT_LENGTH, "0")
+                 .mustCloseAfterWrite(true)
+                 .build();
     }
     
     private static Response create(String mime, String body, Charset charset) {
@@ -590,10 +590,10 @@ public final class Responses
         // Stream modifiers
         Predicate<MediaType> correctType = mt ->
                 type.equals(mt.type()) && subtype.equals(mt.subtype());
-        ToDoubleFunction<MediaType> toQ = mt ->
+        ToDoubleFunction<MediaType> getQ = mt ->
                 mt instanceof MediaRange ? ((MediaRange) mt).quality() : 1.;
-        Comparator<MediaType> byQDesc = Comparator.comparingDouble(toQ).reversed();
-        Function<MediaType, Charset> toCharset = mt -> {
+        Comparator<MediaType> byQDesc = Comparator.comparingDouble(getQ).reversed();
+        Function<MediaType, Charset> getCharset = mt -> {
             try {
                 return Charset.forName(mt.parameters().get("charset"));
             } catch (IllegalArgumentException alsoForNPE) {
@@ -605,41 +605,41 @@ public final class Responses
         
         // Find it
         return mediaTypes.flatMap(all -> all
-                             .filter(correctType)
-                             .sorted(byQDesc)
-                             .map(toCharset)
-                             .filter(supportsEnc)
-                             .filter(discardNull)
-                             .findFirst())
+                         .filter(correctType)
+                         .sorted(byQDesc)
+                         .map(getCharset)
+                         .filter(supportsEnc)
+                         .filter(discardNull)
+                         .findFirst())
                          .orElse(UTF_8);
     }
     
     /**
-     * Pre-built builder objects.
+     * Pre-built status lines.
      */
     private static final class BuilderCache {
         static final Response.Builder OK = builder(TWO_HUNDRED, ReasonPhrase.OK);
     }
     
     /**
-     * Pre-built response objects with no payloads.
+     * Pre-built responses (no payloads).
      */
     private static final class ResponseCache {
         static final Response
-            CONTINUE               = respond(ONE_HUNDRED, ReasonPhrase.CONTINUE, false),
-            PROCESSING             = respond(ONE_HUNDRED_TWO, ReasonPhrase.PROCESSING, false),
-            ACCEPTED               = respond(TWO_HUNDRED_TWO, ReasonPhrase.ACCEPTED, true),
-            NO_CONTENT             = respond(TWO_HUNDRED_FOUR, ReasonPhrase.NO_CONTENT, false),
-            BAD_REQUEST            = respond(FOUR_HUNDRED, ReasonPhrase.BAD_REQUEST, true),
-            NOT_FOUND              = respond(FOUR_HUNDRED_FOUR, ReasonPhrase.NOT_FOUND, true),
-            INTERNAL_SERVER_ERROR  = respond(FIVE_HUNDRED, ReasonPhrase.INTERNAL_SERVER_ERROR, true),
-            NOT_IMPLEMENTED        = respond(FIVE_HUNDRED_ONE, ReasonPhrase.NOT_IMPLEMENTED, true),
-            METHOD_NOT_ALLOWED     = respond(FOUR_HUNDRED_FIVE, ReasonPhrase.METHOD_NOT_ALLOWED, true),
-            MEDIATYPE_NOT_ACCEPTED = respond(FOUR_HUNDRED_SIX, ReasonPhrase.NOT_ACCEPTABLE, true),
-            MEDIATYPE_UNSUPPORTED  = respond(FOUR_HUNDRED_FIFTEEN, ReasonPhrase.UNSUPPORTED_MEDIA_TYPE, true),
-            FORBIDDEN              = respond(FOUR_HUNDRED_THREE, ReasonPhrase.FORBIDDEN, true);
+            CONTINUE               = mk(ONE_HUNDRED, ReasonPhrase.CONTINUE, false),
+            PROCESSING             = mk(ONE_HUNDRED_TWO, ReasonPhrase.PROCESSING, false),
+            ACCEPTED               = mk(TWO_HUNDRED_TWO, ReasonPhrase.ACCEPTED, true),
+            NO_CONTENT             = mk(TWO_HUNDRED_FOUR, ReasonPhrase.NO_CONTENT, false),
+            BAD_REQUEST            = mk(FOUR_HUNDRED, ReasonPhrase.BAD_REQUEST, true),
+            FORBIDDEN              = mk(FOUR_HUNDRED_THREE, ReasonPhrase.FORBIDDEN, true),
+            NOT_FOUND              = mk(FOUR_HUNDRED_FOUR, ReasonPhrase.NOT_FOUND, true),
+            METHOD_NOT_ALLOWED     = mk(FOUR_HUNDRED_FIVE, ReasonPhrase.METHOD_NOT_ALLOWED, true),
+            MEDIATYPE_NOT_ACCEPTED = mk(FOUR_HUNDRED_SIX, ReasonPhrase.NOT_ACCEPTABLE, true),
+            MEDIATYPE_UNSUPPORTED  = mk(FOUR_HUNDRED_FIFTEEN, ReasonPhrase.UNSUPPORTED_MEDIA_TYPE, true),
+            INTERNAL_SERVER_ERROR  = mk(FIVE_HUNDRED, ReasonPhrase.INTERNAL_SERVER_ERROR, true),
+            NOT_IMPLEMENTED        = mk(FIVE_HUNDRED_ONE, ReasonPhrase.NOT_IMPLEMENTED, true);
         
-        private static Response respond(int code, String phrase, boolean addContentLengthZero) {
+        private static Response mk(int code, String phrase, boolean addContentLengthZero) {
             var b = builder(code, phrase);
             if (addContentLengthZero) {
                 b = b.header(CONTENT_LENGTH, "0");
