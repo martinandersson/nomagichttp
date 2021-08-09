@@ -109,7 +109,7 @@ class ClientLifeCycleTest extends AbstractRealTest
     
     // Client immediately closes the channel,
     // is completely ignored (no error handler and no logging).
-    // See RequestHeadSubscriber.asCompletionStage()
+    // See RequestHeadSubscriber.asCompletionStage() and ClientAbortedException
     @Test
     void clientClosesChannel_serverReceivedNoBytes() throws IOException, InterruptedException {
         client().openConnection().close();
