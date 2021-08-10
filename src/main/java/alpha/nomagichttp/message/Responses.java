@@ -87,9 +87,9 @@ import static java.util.Locale.ROOT;
  * In essence, responses (and therefore their builders as well) of all
  * well-known status codes and reason phrases are prebuilt and cached during
  * classloading. For instance, in the previous example, all steps before the
- * statement which sets the header traverses through fully cached entities. This
- * is true even if one replaces {@code processing()} with the more explicit
- * {@code status(102, "Processing")}. Pretty slick!<p>
+ * statement which sets the header traverses through cached entities. This is
+ * true even if one replaces {@code processing()} with the more explicit {@code
+ * status(102, "Processing")}. Pretty slick!<p>
  * 
  * All methods herein as well as the responses they return are thread-safe and
  * non-blocking.<p>
