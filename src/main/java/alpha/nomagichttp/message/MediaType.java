@@ -256,9 +256,9 @@ public class MediaType
      * values will be extracted at face value, except for quoted strings which
      * will be unquoted ("blabla" -&gt; blabla).<p>
      * 
-     * The only parameter value that will be lower cased is the "charset"
-     * parameter for all "text/*" media types. I.e., treated case-insensitively
-     * when routing a request to a handler (
+     * The only parameter value that will be lowered is the "charset" parameter
+     * for all "text/*" media types. I.e., treated case-insensitively when
+     * routing a request to a handler (
      * <a href="https://tools.ietf.org/html/rfc2046#section-4.1.2">
      * RFC 2046 §4.1.2</a>).<p>
      * 
