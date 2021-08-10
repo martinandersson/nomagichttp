@@ -72,7 +72,7 @@ import static java.util.Locale.ROOT;
  * of the response is easy to accomplish using {@code toBuilder()}.
  * 
  * <pre>
- *   Response status = Responses.processing() // 102 (Processing)
+ *   Response update = Responses.processing() // 102 (Processing)
  *                              .toBuilder()
  *                              .header("Progress", "45%")
  *                              .build();
