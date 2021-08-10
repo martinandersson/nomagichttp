@@ -11,7 +11,6 @@ import java.net.http.HttpHeaders;
 import java.net.http.HttpRequest;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
-import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.Flow;
 
@@ -78,8 +77,10 @@ import static java.net.http.HttpRequest.BodyPublisher;
  * the same client. The response can also be shared concurrently to different
  * clients, assuming the {@linkplain Builder#body(Flow.Publisher) body
  * publisher} is thread-safe. If the publisher instance was retrieved using any
- * method provided by the NoMagicHTTP library (e.g. {@link Responses}), then it
- * is fully thread-safe and non-blocking (can be cached and freely reused).<p>
+ * method provided by the NoMagicHTTP library (e.g. {@link
+ * BetterBodyPublishers}), then it is fully thread-safe and non-blocking. All
+ * responses created by {@link Responses} that does not accept the body
+ * publisher as an argument uses a thread-safe body publisher under the hood.<p>
  * 
  * The {@code Response} implementation does not necessarily implement {@code
  * hashCode()} and {@code equals()}.

@@ -69,8 +69,9 @@ import static java.util.Locale.ROOT;
  * non-blocking.<p>
  * 
  * Response objects may be created anew, or retrieved from a cache. This is
- * documented on a per-method level. Creating a response object is very fast,
- * but obviously the cache will be faster.<p>
+ * documented on a per-method level. Creating a new response object is very
+ * fast, but using the cache also has the benefit of reducing the memory
+ * footprint and GC pressure.<p>
  * 
  * <strong>WARNING:</strong> Using an instance from {@link BodyPublishers} as a
  * response body may not be thread-safe where thread-safety matters or may block
