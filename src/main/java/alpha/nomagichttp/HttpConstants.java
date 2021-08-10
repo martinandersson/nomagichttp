@@ -1213,6 +1213,75 @@ public final class HttpConstants {
          * @see <a href="https://tools.ietf.org/html/rfc6585#section-6">RFC 6585 §6</a>
          */
         public static final int FIVE_HUNDRED_ELEVEN = 511;
+        
+        /**
+         * All the status code constants, in ascending order.
+         * 
+         * @see ReasonPhrase#VALUES
+         */
+        public static final int[] VALUES = {
+                ONE_HUNDRED,
+                ONE_HUNDRED_ONE,
+                ONE_HUNDRED_TWO,
+                ONE_HUNDRED_THREE,
+                TWO_HUNDRED,
+                TWO_HUNDRED_ONE,
+                TWO_HUNDRED_TWO,
+                TWO_HUNDRED_THREE,
+                TWO_HUNDRED_FOUR,
+                TWO_HUNDRED_FIVE,
+                TWO_HUNDRED_SIX,
+                TWO_HUNDRED_SEVEN,
+                TWO_HUNDRED_EIGHT,
+                TWO_HUNDRED_TWENTY_SIX,
+                THREE_HUNDRED,
+                THREE_HUNDRED_ONE,
+                THREE_HUNDRED_TWO,
+                THREE_HUNDRED_THREE,
+                THREE_HUNDRED_FOUR,
+                THREE_HUNDRED_FIVE,
+                THREE_HUNDRED_SEVEN,
+                THREE_HUNDRED_EIGHT,
+                FOUR_HUNDRED,
+                FOUR_HUNDRED_ONE,
+                FOUR_HUNDRED_TWO,
+                FOUR_HUNDRED_THREE,
+                FOUR_HUNDRED_FOUR,
+                FOUR_HUNDRED_FIVE,
+                FOUR_HUNDRED_SIX,
+                FOUR_HUNDRED_SEVEN,
+                FOUR_HUNDRED_EIGHT,
+                FOUR_HUNDRED_NINE,
+                FOUR_HUNDRED_TEN,
+                FOUR_HUNDRED_ELEVEN,
+                FOUR_HUNDRED_TWELVE,
+                FOUR_HUNDRED_THIRTEEN,
+                FOUR_HUNDRED_FOURTEEN,
+                FOUR_HUNDRED_FIFTEEN,
+                FOUR_HUNDRED_SIXTEEN,
+                FOUR_HUNDRED_SEVENTEEN,
+                FOUR_HUNDRED_EIGHTEEN,
+                FOUR_HUNDRED_TWENTY_ONE,
+                FOUR_HUNDRED_TWENTY_TWO,
+                FOUR_HUNDRED_TWENTY_THREE,
+                FOUR_HUNDRED_TWENTY_FOUR,
+                FOUR_HUNDRED_TWENTY_FIVE,
+                FOUR_HUNDRED_TWENTY_SIX,
+                FOUR_HUNDRED_TWENTY_EIGHT,
+                FOUR_HUNDRED_TWENTY_NINE,
+                FOUR_HUNDRED_THIRTY_ONE,
+                FOUR_HUNDRED_FIFTY_ONE,
+                FIVE_HUNDRED,
+                FIVE_HUNDRED_ONE,
+                FIVE_HUNDRED_TWO,
+                FIVE_HUNDRED_THREE,
+                FIVE_HUNDRED_FOUR,
+                FIVE_HUNDRED_FIVE,
+                FIVE_HUNDRED_SIX,
+                FIVE_HUNDRED_SEVEN,
+                FIVE_HUNDRED_EIGHT,
+                FIVE_HUNDRED_TEN,
+                FIVE_HUNDRED_ELEVEN };
     }
     
     /**
@@ -1425,6 +1494,86 @@ public final class HttpConstants {
         
         /** Goes with status code {@value StatusCode#FIVE_HUNDRED_ELEVEN}. */
         public static final String NETWORK_AUTHENTICATION_REQUIRED = "Network Authentication Required";
+        
+        /**
+         * All reason phrase constants, in ascending order of the status code
+         * counterpart.<p>
+         * 
+         * {@value #UNKNOWN} is not included, as it has no status code
+         * counterpart.<p>
+         * 
+         * {@value #PAYLOAD_TOO_LARGE} is not included, the more abstract
+         * {@value #ENTITY_TOO_LARGE} is used instead.<p>
+         * 
+         * This array has the same length as its counterpart array
+         * {@link StatusCode#VALUES}. The index of one can be used to retrieve
+         * the counterpart value from the other. The intended purpose of
+         * providing these arrays is to provide non-reflective programmatic
+         * access of all constants.
+         */
+        public static final String[] VALUES = {
+                CONTINUE,
+                SWITCHING_PROTOCOLS,
+                PROCESSING,
+                EARLY_HINTS,
+                OK,
+                CREATED,
+                ACCEPTED,
+                NON_AUTHORITATIVE_INFORMATION,
+                NO_CONTENT,
+                RESET_CONTENT,
+                PARTIAL_CONTENT,
+                MULTI_STATUS,
+                ALREADY_REPORTED,
+                IM_USED,
+                MULTIPLE_CHOICES,
+                MOVED_PERMANENTLY,
+                FOUND,
+                SEE_OTHER,
+                NOT_MODIFIED,
+                USE_PROXY,
+                TEMPORARY_REDIRECT,
+                PERMANENT_REDIRECT,
+                BAD_REQUEST,
+                UNAUTHORIZED,
+                PAYMENT_REQUIRED,
+                FORBIDDEN,
+                NOT_FOUND,
+                METHOD_NOT_ALLOWED,
+                NOT_ACCEPTABLE,
+                PROXY_AUTHENTICATION_REQUIRED,
+                REQUEST_TIMEOUT,
+                CONFLICT,
+                GONE,
+                LENGTH_REQUIRED,
+                PRECONDITION_FAILED,
+                ENTITY_TOO_LARGE,
+                URI_TOO_LONG,
+                UNSUPPORTED_MEDIA_TYPE,
+                RANGE_NOT_SATISFIABLE,
+                EXPECTATION_FAILED,
+                IM_A_TEAPOT,
+                MISDIRECTED_REQUEST,
+                UNPROCESSABLE_ENTITY,
+                LOCKED,
+                FAILED_DEPENDENCY,
+                TOO_EARLY,
+                UPGRADE_REQUIRED,
+                PRECONDITION_REQUIRED,
+                TOO_MANY_REQUESTS,
+                REQUEST_HEADER_FIELDS_TOO_LARGE,
+                UNAVAILABLE_FOR_LEGAL_REASONS,
+                INTERNAL_SERVER_ERROR,
+                NOT_IMPLEMENTED,
+                BAD_GATEWAY,
+                SERVICE_UNAVAILABLE,
+                GATEWAY_TIMEOUT,
+                HTTP_VERSION_NOT_SUPPORTED,
+                VARIANT_ALSO_NEGOTIATES,
+                INSUFFICIENT_STORAGE,
+                LOOP_DETECTED,
+                NOT_EXTENDED,
+                NETWORK_AUTHENTICATION_REQUIRED };
     }
     
     /**
