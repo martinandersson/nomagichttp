@@ -211,13 +211,11 @@ final class DefaultResponse implements Response
         
         @Override
         public Response.Builder statusCode(int statusCode) {
-            // TODO: If this == ROOT, then retrieve returned builder from cache of known HTTP codes
             return new DefaultBuilder(this, s -> s.statusCode = statusCode);
         }
         
         @Override
         public Response.Builder reasonPhrase(String reasonPhrase) {
-            // TODO: If this == cached and phrase internalized, then retrieve returned builder from cache
             requireNonNull(reasonPhrase, "reasonPhrase");
             return new DefaultBuilder(this, s -> s.reasonPhrase = reasonPhrase);
         }

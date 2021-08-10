@@ -44,8 +44,8 @@ class ServerLifeCycleTest extends AbstractRealTest
         try (ch) {
             String rsp1 = client().writeReadTextUntilNewlines(
                 "POST / HTTP/1.1"                        + CRLF +
-                "Content-Type: text/plain;charset=utf-8" + CRLF +
                 "Content-Length: 3"                      + CRLF +
+                "Content-Type: text/plain;charset=utf-8" + CRLF +
                 "Expect: 100-continue"                   + CRLF + CRLF);
             
             assertThat(rsp1).isEqualTo(
@@ -60,8 +60,8 @@ class ServerLifeCycleTest extends AbstractRealTest
                 "Hi!"                                     + CRLF + CRLF, "Hi!");
             assertThat(rsp2).isEqualTo(
                 "HTTP/1.1 200 OK"                         + CRLF +
-                "Content-Type: text/plain; charset=utf-8" + CRLF +
-                "Content-Length: 3"                       + CRLF +CRLF +
+                "Content-Length: 3"                       + CRLF +
+                "Content-Type: text/plain; charset=utf-8" + CRLF + CRLF +
                 
                 "Hi!");
             

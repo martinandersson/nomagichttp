@@ -59,8 +59,8 @@ class DetailTest extends AbstractRealTest
         
         final String resHead =
             "HTTP/1.1 200 OK"                         + CRLF +
-            "Content-Type: text/plain; charset=utf-8" + CRLF +
-            "Content-Length: 3"                       + CRLF + CRLF;
+            "Content-Length: 3"                       + CRLF +
+            "Content-Type: text/plain; charset=utf-8" + CRLF + CRLF;
         
         Channel ch = client().openConnection();
         try (ch) {
@@ -82,8 +82,8 @@ class DetailTest extends AbstractRealTest
             
             assertThat(res).isEqualTo(
                 "HTTP/1.1 200 OK"                         + CRLF +
-                "Content-Type: text/plain; charset=utf-8" + CRLF +
-                "Content-Length: 5"                       + CRLF + CRLF +
+                "Content-Length: 5"                       + CRLF +
+                "Content-Type: text/plain; charset=utf-8" + CRLF + CRLF +
                 
                 "false");
         };
@@ -142,8 +142,8 @@ class DetailTest extends AbstractRealTest
             "HTTP/1.1 100 Continue"                   + CRLF + CRLF +
             
             "HTTP/1.1 200 OK"                         + CRLF +
-            "Content-Type: text/plain; charset=utf-8" + CRLF +
-            "Content-Length: 3"                       + CRLF + CRLF +
+            "Content-Length: 3"                       + CRLF +
+            "Content-Type: text/plain; charset=utf-8" + CRLF + CRLF +
             
             "end");
     }
@@ -235,8 +235,8 @@ class DetailTest extends AbstractRealTest
             "ID: 2"                                   + CRLF + CRLF +
             
             "HTTP/1.1 200 OK"                         + CRLF +
-            "Content-Type: text/plain; charset=utf-8" + CRLF +
-            "Content-Length: 4"                       + CRLF + CRLF +
+            "Content-Length: 4"                       + CRLF +
+            "Content-Type: text/plain; charset=utf-8" + CRLF + CRLF +
             
             "done");
     }
@@ -259,8 +259,8 @@ class DetailTest extends AbstractRealTest
         
         byte[] expHead =
                 ("HTTP/1.1 200 OK"                       + CRLF +
-                "Content-Type: application/octet-stream" + CRLF +
-                "Content-Length: 16385"                  + CRLF + CRLF)
+                "Content-Length: 16385"                  + CRLF +
+                "Content-Type: application/octet-stream" + CRLF + CRLF)
                 .getBytes(US_ASCII);
         
         ByteBuffer merged = ByteBuffer.allocate(expHead.length + rspBody.length);
@@ -286,8 +286,8 @@ class DetailTest extends AbstractRealTest
             "GET / HTTP/1.1"                          + CRLF + CRLF, "hello");
         assertThat(rsp1).isEqualTo(
             "HTTP/1.1 200 OK"                         + CRLF +
-            "Content-Type: text/plain; charset=utf-8" + CRLF +
-            "Content-Length: 5"                       + CRLF + CRLF +
+            "Content-Length: 5"                       + CRLF +
+            "Content-Type: text/plain; charset=utf-8" + CRLF + CRLF +
             
             "hello");
         
@@ -298,8 +298,8 @@ class DetailTest extends AbstractRealTest
                     "text/plain; charset=iso-8859-1"  + CRLF + CRLF, "hello");
         assertThat(rsp2).isEqualTo(
             "HTTP/1.1 200 OK"                         + CRLF +
-            "Content-Type: text/plain; charset=iso-8859-1" + CRLF +
-            "Content-Length: 5"                       + CRLF + CRLF +
+            "Content-Length: 5"                       + CRLF +
+            "Content-Type: text/plain; charset=iso-8859-1" + CRLF + CRLF +
             
             "hello");
     }

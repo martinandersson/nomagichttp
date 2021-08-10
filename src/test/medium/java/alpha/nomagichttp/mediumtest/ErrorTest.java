@@ -141,6 +141,7 @@ class ErrorTest extends AbstractRealTest
             "AB");
         assertThat(rsp).isEqualTo(
             "HTTP/1.1 413 Entity Too Large" + CRLF +
+            "Content-Length: 0"             + CRLF +
             "Connection: close"             + CRLF + CRLF);
         assertThatServerErrorObservedAndLogged()
             .isExactlyInstanceOf(MaxRequestHeadSizeExceededException.class)
@@ -172,9 +173,9 @@ class ErrorTest extends AbstractRealTest
             "GET / HTTP/" + version         + CRLF + CRLF);
         assertThat(rsp).isEqualTo(
             "HTTP/1.1 426 Upgrade Required" + CRLF +
+            "Content-Length: 0"             + CRLF +
             "Upgrade: HTTP/1.1"             + CRLF +
-            "Connection: Upgrade"           + CRLF +
-            "Content-Length: 0"             + CRLF + CRLF);
+            "Connection: Upgrade"           + CRLF + CRLF);
         assertThat(pollServerError())
             .isExactlyInstanceOf(HttpVersionTooOldException.class)
             .hasNoCause()
@@ -192,9 +193,9 @@ class ErrorTest extends AbstractRealTest
             "GET /not-found HTTP/1.0"       + CRLF + CRLF);
         assertThat(rsp).isEqualTo(
             "HTTP/1.0 426 Upgrade Required" + CRLF +
+            "Content-Length: 0"             + CRLF +
             "Upgrade: HTTP/1.1"             + CRLF +
-            "Connection: close"             + CRLF +
-            "Content-Length: 0"             + CRLF + CRLF);
+            "Connection: close"             + CRLF + CRLF);
         assertThat(pollServerError())
             .isExactlyInstanceOf(HttpVersionTooOldException.class)
             .hasNoCause()
@@ -287,8 +288,8 @@ class ErrorTest extends AbstractRealTest
             "GET / HTTP/1.0"                          + CRLF + CRLF, "Done!");
         assertThat(rsp).isEqualTo(
             "HTTP/1.0 200 OK"                         + CRLF +
-            "Content-Type: text/plain; charset=utf-8" + CRLF +
             "Content-Length: 5"                       + CRLF +
+            "Content-Type: text/plain; charset=utf-8" + CRLF +
             "Connection: close"                       + CRLF + CRLF +
             
             "Done!");

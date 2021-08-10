@@ -41,8 +41,8 @@ class BeforeActionTest extends AbstractRealTest
             "Connection: close"                       + CRLF + CRLF);
         assertThat(rsp).isEqualTo(
             "HTTP/1.1 200 OK"                         + CRLF +
-            "Content-Type: text/plain; charset=utf-8" + CRLF +
             "Content-Length: 10"                      + CRLF +
+            "Content-Type: text/plain; charset=utf-8" + CRLF +
             "Connection: close"                       + CRLF + CRLF +
             
             "helloworld");
@@ -62,8 +62,8 @@ class BeforeActionTest extends AbstractRealTest
             "Connection: close"                       + CRLF + CRLF);
         assertThat(rsp).isEqualTo(
             "HTTP/1.1 200 OK"                         + CRLF +
-            "Content-Type: text/plain; charset=utf-8" + CRLF +
             "Content-Length: 5"                       + CRLF +
+            "Content-Type: text/plain; charset=utf-8" + CRLF +
             "Connection: close"                       + CRLF + CRLF +
             
             "hello");

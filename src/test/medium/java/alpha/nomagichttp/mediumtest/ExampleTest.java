@@ -72,8 +72,8 @@ class ExampleTest extends AbstractRealTest
         
         assertThat(res).isEqualTo(
             "HTTP/1.1 200 OK"                         + CRLF +
-            "Content-Type: text/plain; charset=utf-8" + CRLF +
-            "Content-Length: 12"                      + CRLF + CRLF +
+            "Content-Length: 12"                      + CRLF +
+            "Content-Type: text/plain; charset=utf-8" + CRLF + CRLF +
             
             "Hello World!");
     }
@@ -126,8 +126,8 @@ class ExampleTest extends AbstractRealTest
         String res1 = client().writeReadTextUntil(req1, "John!");
         assertThat(res1).isEqualTo(
             "HTTP/1.1 200 OK"                         + CRLF +
-            "Content-Type: text/plain; charset=utf-8" + CRLF +
-            "Content-Length: 11"                      + CRLF + CRLF +
+            "Content-Length: 11"                      + CRLF +
+            "Content-Type: text/plain; charset=utf-8" + CRLF + CRLF +
             
             "Hello John!");
         
@@ -192,8 +192,8 @@ class ExampleTest extends AbstractRealTest
         String req =
             "POST /hello HTTP/1.1"                    + CRLF +
             "Accept: text/plain; charset=utf-8"       + CRLF +
-            "Content-Type: text/plain; charset=utf-8" + CRLF +
-            "Content-Length: 4"                       + CRLF + CRLF +
+            "Content-Length: 4"                       + CRLF +
+            "Content-Type: text/plain; charset=utf-8" + CRLF + CRLF +
             
             "John";
         
@@ -201,8 +201,8 @@ class ExampleTest extends AbstractRealTest
         
         assertThat(res).isEqualTo(
             "HTTP/1.1 200 OK"                         + CRLF +
-            "Content-Type: text/plain; charset=utf-8" + CRLF +
-            "Content-Length: 11"                      + CRLF + CRLF +
+            "Content-Length: 11"                      + CRLF +
+            "Content-Type: text/plain; charset=utf-8" + CRLF + CRLF +
             
             "Hello John!");
     }
@@ -226,9 +226,9 @@ class ExampleTest extends AbstractRealTest
             assertThat(rsp.reasonPhrase()).isEqualTo("OK");
         }
         assertThat(rsp.headers()).isEqualTo(of(
+            "Content-Length", "11",
             "Content-Type",   "text/plain; charset=" +
                 (impl == JETTY ? "UTF-8" : "utf-8"),
-            "Content-Length", "11",
             "Connection",     "close"));
         assertThat(rsp.body()).isEqualTo(
             "Hello John!");
@@ -316,8 +316,8 @@ class ExampleTest extends AbstractRealTest
             "HTTP/1.1 102 Processing"                 + CRLF + CRLF +
             
             "HTTP/1.1 200 OK"                         + CRLF +
-            "Content-Type: text/plain; charset=utf-8" + CRLF +
-            "Content-Length: 5"                       + CRLF + CRLF +
+            "Content-Length: 5"                       + CRLF +
+            "Content-Type: text/plain; charset=utf-8" + CRLF + CRLF +
             
             "Done!");
     }
@@ -376,8 +376,8 @@ class ExampleTest extends AbstractRealTest
         
         assertThat(res1).isEqualTo(
             "HTTP/1.1 200 OK"                          + CRLF +
-            "Content-Type: text/plain; charset=utf-8"  + CRLF +
-            "Content-Length: 1"                        + CRLF + CRLF +
+            "Content-Length: 1"                        + CRLF +
+            "Content-Type: text/plain; charset=utf-8"  + CRLF + CRLF +
             
             "3");
         assertThat(Files.readString(file)).isEqualTo("Foo");

@@ -1,6 +1,6 @@
 package alpha.nomagichttp;
 
-import alpha.nomagichttp.internal.CodeAndPhraseCache;
+import alpha.nomagichttp.util.CodeAndPhraseCache;
 import alpha.nomagichttp.testutil.TestConstants;
 import org.junit.jupiter.api.Test;
 

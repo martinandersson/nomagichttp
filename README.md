@@ -128,8 +128,8 @@ Make a request to the port in a new terminal window:
 ```console
 foo@bar:~$ curl -i localhost:52063/hello
 HTTP/1.1 200 OK
-Content-Type: text/plain; charset=utf-8
 Content-Length: 12
+Content-Type: text/plain; charset=utf-8
 
 Hello World!
 ```
@@ -155,8 +155,8 @@ In a new terminal, run:
 ```console
 foo@bar:~$ curl -i localhost:8080/hello/John
 HTTP/1.1 200 OK
-Content-Type: text/plain; charset=utf-8
 Content-Length: 11
+Content-Type: text/plain; charset=utf-8
 
 Hello John!
 ```
@@ -187,8 +187,8 @@ In a new terminal, run:
 ```console
 foo@bar:~$ curl -i localhost:8080/hello -d John
 HTTP/1.1 200 OK
-Content-Type: text/plain; charset=utf-8
 Content-Length: 11
+Content-Type: text/plain; charset=utf-8
 
 Hello John!
 ```

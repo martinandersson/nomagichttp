@@ -35,8 +35,8 @@ class MessageTest extends AbstractRealTest
         String res = client().writeReadTextUntil(post(""), "true");
         assertThat(res).isEqualTo(
             "HTTP/1.1 200 OK"                         + CRLF +
-            "Content-Type: text/plain; charset=utf-8" + CRLF +
-            "Content-Length: 4"                       + CRLF + CRLF +
+            "Content-Length: 4"                       + CRLF +
+            "Content-Type: text/plain; charset=utf-8" + CRLF + CRLF +
             
             "true");
     }
@@ -57,8 +57,8 @@ class MessageTest extends AbstractRealTest
         
         assertThat(resp).isEqualTo(
             "HTTP/1.0 200 OK"                         + CRLF +
-            "Content-Type: text/plain; charset=utf-8" + CRLF +
             "Content-Length: 17"                      + CRLF +
+            "Content-Type: text/plain; charset=utf-8" + CRLF +
             "Connection: close"                       + CRLF + CRLF +
             
             "Received HTTP/1.0");
@@ -85,8 +85,8 @@ class MessageTest extends AbstractRealTest
             "HTTP/1.1 100 Continue"                   + CRLF + CRLF +
             
             "HTTP/1.1 200 OK"                         + CRLF +
-            "Content-Type: text/plain; charset=utf-8" + CRLF +
-            "Content-Length: 2"                       + CRLF + CRLF +
+            "Content-Length: 2"                       + CRLF +
+            "Content-Type: text/plain; charset=utf-8" + CRLF + CRLF +
             
             "Hi");
     }

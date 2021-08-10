@@ -1,4 +1,4 @@
-package alpha.nomagichttp.internal;
+package alpha.nomagichttp.util;
 
 import alpha.nomagichttp.HttpConstants.ReasonPhrase;
 import alpha.nomagichttp.HttpConstants.StatusCode;
@@ -7,7 +7,7 @@ import org.junit.jupiter.api.Test;
 
 import java.util.ArrayList;
 
-import static alpha.nomagichttp.internal.CodeAndPhraseCache.build;
+import static alpha.nomagichttp.util.CodeAndPhraseCache.build;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 /**

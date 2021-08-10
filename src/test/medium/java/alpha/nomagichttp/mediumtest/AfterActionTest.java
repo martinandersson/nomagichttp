@@ -49,8 +49,8 @@ class AfterActionTest extends AbstractRealTest
                 "GET /hello HTTP/1.1"                     + CRLF + CRLF, "hello");
             assertThat(rsp1).isEqualTo(
                 "HTTP/1.1 200 OK"                         + CRLF +
-                "Content-Type: text/plain; charset=utf-8" + CRLF +
                 "Content-Length: 5"                       + CRLF +
+                "Content-Type: text/plain; charset=utf-8" + CRLF +
                 "X-Correlation-ID: 123"                   + CRLF + CRLF +
                 
                 "hello");
@@ -61,8 +61,8 @@ class AfterActionTest extends AbstractRealTest
                 "Connection: close"                       + CRLF + CRLF);
             assertThat(rsp2).isEqualTo(
                 "HTTP/1.1 200 OK" + CRLF +
-                "Content-Type: text/plain; charset=utf-8" + CRLF +
                 "Content-Length: 3"                       + CRLF +
+                "Content-Type: text/plain; charset=utf-8" + CRLF +
                 "X-Correlation-ID: 456"                   + CRLF +
                 "Connection: close"                       + CRLF + CRLF +
                 
