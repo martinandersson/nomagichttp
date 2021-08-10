@@ -1,5 +1,6 @@
 package alpha.nomagichttp;
 
+import alpha.nomagichttp.internal.CodeAndPhraseCache;
 import alpha.nomagichttp.testutil.TestConstants;
 import org.junit.jupiter.api.Test;
 
@@ -48,7 +49,10 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
  * discover the constants, i.e. some form of enumeration, so a couple of util
  * methods wouldn't have been enough. Both discovery and the mapping between the
  * two is now fully covered by the arrays, which from a programmatic point of
- * view, is actually a pretty easy API to work with - and fast!
+ * view, is actually a pretty easy API to work with - and fast!<p>
+ * 
+ * These arrays were originally put in place due to internal needs (see
+ * {@link CodeAndPhraseCache}).
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  */
