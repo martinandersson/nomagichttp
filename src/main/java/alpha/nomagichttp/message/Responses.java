@@ -646,16 +646,16 @@ public final class Responses
                 return null;
             }
         };
-        Predicate<Charset> supportsEnc = Charset::canEncode,
-                           discardNull = Objects::nonNull;
+        Predicate<Charset> discardNull = Objects::nonNull,
+                           supportsEnc = Charset::canEncode;
         
         // Find it
         return mediaTypes.flatMap(all -> all
                          .filter(correctType)
                          .sorted(byQDesc)
                          .map(getCharset)
-                         .filter(supportsEnc)
                          .filter(discardNull)
+                         .filter(supportsEnc)
                          .findFirst())
                          .orElse(UTF_8);
     }
