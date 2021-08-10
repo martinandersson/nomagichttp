@@ -969,11 +969,9 @@ public final class HttpConstants {
          * {@value} {@value ReasonPhrase#PAYLOAD_TOO_LARGE}.<p>
          * 
          * May also alternatively be used with phrase {@value
-         * ReasonPhrase#ENTITY_TOO_LARGE}, which many servers chose to do as to
-         * not specifically single out the message body as being the offending
-         * part.<p>
-         * 
-         * TODO: write more
+         * ReasonPhrase#ENTITY_TOO_LARGE}, which the NoMagicHTTP server and many
+         * others chose to do as to not lock-in the message body specifically as
+         * being the part that broke the acceptable limit.<p>
          * 
          * @see <a href="https://tools.ietf.org/html/rfc7231#section-6.5.11">RFC 7231 §6.5.11</a>
          */
