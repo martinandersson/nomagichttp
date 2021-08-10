@@ -16,7 +16,6 @@ import java.util.concurrent.Flow;
 
 import static alpha.nomagichttp.HttpConstants.ReasonPhrase;
 import static alpha.nomagichttp.HttpConstants.StatusCode;
-import static alpha.nomagichttp.message.Response.builder;
 import static java.net.http.HttpRequest.BodyPublisher;
 
 /**
@@ -104,7 +103,7 @@ public interface Response extends HeaderHolder
      * @see #statusCode()
      */
     static Builder builder(int statusCode) {
-        return DefaultResponse.DefaultBuilder.ROOT.statusCode(statusCode);
+        return Responses.status(statusCode).toBuilder();
     }
     
     /**
@@ -118,7 +117,7 @@ public interface Response extends HeaderHolder
      * @throws NullPointerException if {@code reasonPhrase} is {@code null}
      */
     static Builder builder(int statusCode, String reasonPhrase) {
-        return builder(statusCode).reasonPhrase(reasonPhrase);
+        return Responses.status(statusCode, reasonPhrase).toBuilder();
     }
     
     /**
