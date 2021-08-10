@@ -23,6 +23,9 @@ import static java.util.OptionalInt.of;
  * @author Martin Andersson (webmaster at martinandersson.com)
  */
 public final class HttpConstants {
+    // TODO: No need to repeat modifiers in this class. Currently done only
+    //       because otherwise the JavaDoc isn't generated. Some kind of bug.
+    
     private HttpConstants() {
         // Empty
     }
