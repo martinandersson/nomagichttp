@@ -102,6 +102,8 @@ import static java.util.Locale.ROOT;
  */
 public final class Responses
 {
+    // Declaration of methods after status() follows ascending status-code order
+    
     private Responses() {
         // Empty
     }
