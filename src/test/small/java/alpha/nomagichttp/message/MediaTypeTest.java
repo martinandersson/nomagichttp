@@ -9,10 +9,15 @@ import java.util.logging.Handler;
 
 import static alpha.nomagichttp.message.MediaType.TEXT_PLAIN;
 import static alpha.nomagichttp.message.MediaType.__ALL;
+import static alpha.nomagichttp.message.MediaType.__NOTHING;
+import static alpha.nomagichttp.message.MediaType.__NOTHING_AND_ALL;
 import static alpha.nomagichttp.message.MediaType.parse;
+import static java.util.List.of;
 import static java.util.logging.Level.WARNING;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.argThat;
 
@@ -85,7 +90,6 @@ class MediaTypeTest
         // Different quality, doesn't matter
         assertThat(actual).isEqualTo(new MediaRange(s, "text", "plain", Map.of("a", "4 5 6", "b", "123"), 0.5));
         assertThat(actual.getClass()).isSameAs(MediaRange.class);
-        assertThat(actual.toString()).isEqualTo(s);
         
         assertThat(actual.toString()).isEqualTo(s);
         // Difference is no trailing ';'
@@ -115,6 +119,20 @@ class MediaTypeTest
         assertThat(r.quality()).isEqualTo(1.5);
         assertThat(r.toString()).isEqualTo("bla/bla;Q=1.5");
         assertThat(r.toStringNormalized()).isEqualTo("bla/bla; q=1.5");
+    }
+    
+    @Test
+    void sentinel_equality() {
+        var sentinels = of(__ALL, __NOTHING, __NOTHING_AND_ALL);
+        for (MediaType a : sentinels) {
+            for (MediaType b : sentinels) {
+                if (a == b) {
+                    assertEquals(a, b);
+                } else {
+                    assertNotEquals(a, b);
+                }
+            }
+        }
     }
     
     // TODO: more error cases

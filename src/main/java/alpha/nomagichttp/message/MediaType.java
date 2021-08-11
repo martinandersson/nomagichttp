@@ -616,7 +616,9 @@ public class MediaType
         }
         
         // These sentinel objects use identity based equality.
-        if (this == __NOTHING || obj == __NOTHING || this == __NOTHING_AND_ALL || obj == __NOTHING_AND_ALL) {
+        // (i.e. for the same instance, the method has already returned true)
+        if (this == __NOTHING         || obj == __NOTHING ||
+            this == __NOTHING_AND_ALL || obj == __NOTHING_AND_ALL) {
             return false;
         }
         
