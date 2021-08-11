@@ -110,9 +110,9 @@ final class HttpExchange
         this.chApi    = chApi;
         this.chain    = new InvocationChain(actions, routes, chApi);
         this.pipe     = new ResponsePipeline(this, chApi, actions);
-        this.cntDown  = new AtomicInteger(2); // <-- request chain + final response, then new exchange
+        this.cntDown  = new AtomicInteger(2); // <-- invocation chain + final response, then prepareForNewExchange()
         this.result   = new CompletableFuture<>();
-        this.version = HTTP_1_1; // <-- default until updated
+        this.version  = HTTP_1_1; // <-- default until updated
     }
     
     /**
@@ -289,7 +289,7 @@ final class HttpExchange
             if (v == 0) {
                 LOG.log(DEBUG, "Invocation chain finished after final response. " +
                                "Preparing for a new HTTP exchange.");
-                tryPrepareForNewExchange();
+                prepareForNewExchange();
             } // normal finish = do nothing, final response will try to prepare next
         } else {
             if (v == 0) {
@@ -297,7 +297,7 @@ final class HttpExchange
                         "Processing returned exceptionally but final response already sent. " +
                         "This error is ignored. " +
                         "Preparing for a new HTTP exchange.", thr);
-                tryPrepareForNewExchange();
+                prepareForNewExchange();
             } else {
                 handleError(thr);
             }
@@ -310,7 +310,7 @@ final class HttpExchange
             sent100c = true;
             if (cntDown.decrementAndGet() == 0) {
                 LOG.log(DEBUG, "Response sent is final. May prepare for a new HTTP exchange.");
-                tryPrepareForNewExchange();
+                prepareForNewExchange();
             } else {
                 LOG.log(DEBUG,
                     "Response sent is final but request's processing chain is still executing. " +
@@ -324,7 +324,19 @@ final class HttpExchange
         }
     }
     
-    private void tryPrepareForNewExchange() {
+    private void prepareForNewExchange() {
+        // To have a new HTTP exchange, we must first make sure the body is
+        // consumed either normally or through us discarding it. But if the
+        // read stream is not open, well no point in continuing at all. Let the
+        // server close the channel.
+        //    Note: We don't care about the state of the write stream. It may
+        // very well be shut down and so there will be no new exchange, but we
+        // still must not kill an ongoing inbound request. The body will be
+        // discarded only if no subscriber is active. Then after body
+        // completion, will we also complete the active exchange. At that point
+        // the server will close the channel because not everything remained
+        // open.
+        
         if (!chApi.isOpenForReading()) {
             LOG.log(DEBUG, "Input stream was shut down. HTTP exchange is over.");
             result.complete(null);
@@ -346,11 +358,9 @@ final class HttpExchange
             return;
         }
         
-        // To have a new HTTP exchange, we must first make sure the body is consumed
-        
         final var b = request != null ? request.body() :
-                // e.g. HttpVersionTooOldException -> 426 (Upgrade Required)
-                // (use a local dummy)
+                // E.g. HttpVersionTooOldException -> 426 (Upgrade Required).
+                // So we fall back to a local dummy, just for the API.
                 RequestBody.of(head.headers(), chIn, chApi, null, null, null);
         
         b.discardIfNoSubscriber();
