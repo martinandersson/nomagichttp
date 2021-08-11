@@ -507,7 +507,7 @@ public final class Responses
      * @return  a cached 406 (Not Acceptable) response
      * @see     StatusCode#FOUR_HUNDRED_SIX
      */
-    public static Response mediaTypeNotAccepted() {
+    public static Response notAcceptable() {
         return CACHE.get(FOUR_HUNDRED_SIX, NOT_ACCEPTABLE);
     }
     

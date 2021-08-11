@@ -39,7 +39,7 @@ import static alpha.nomagichttp.message.Responses.badRequest;
 import static alpha.nomagichttp.message.Responses.entityTooLarge;
 import static alpha.nomagichttp.message.Responses.httpVersionNotSupported;
 import static alpha.nomagichttp.message.Responses.internalServerError;
-import static alpha.nomagichttp.message.Responses.mediaTypeNotAccepted;
+import static alpha.nomagichttp.message.Responses.notAcceptable;
 import static alpha.nomagichttp.message.Responses.mediaTypeUnsupported;
 import static alpha.nomagichttp.message.Responses.methodNotAllowed;
 import static alpha.nomagichttp.message.Responses.noContent;
@@ -269,7 +269,7 @@ public interface ErrorHandler
      *     <th scope="row"> {@link MediaTypeNotAcceptedException} </th>
      *     <td> None </td>
      *     <td> Yes </td>
-     *     <td> {@link Responses#mediaTypeNotAccepted()} </td>
+     *     <td> {@link Responses#notAcceptable()} </td>
      *   </tr>
      *   <tr>
      *     <th scope="row"> {@link MediaTypeUnsupportedException} </th>
@@ -392,7 +392,7 @@ public interface ErrorHandler
             res = status.toBuilder().addHeader(ALLOW, allow.collect(joining(", "))).build();
         } catch (MediaTypeNotAcceptedException e) {
             log(thr);
-            res = mediaTypeNotAccepted();
+            res = notAcceptable();
         } catch (MediaTypeUnsupportedException e) {
             log(thr);
             res = mediaTypeUnsupported();
