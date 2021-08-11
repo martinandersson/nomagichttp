@@ -2,6 +2,7 @@ package alpha.nomagichttp.handler;
 
 import alpha.nomagichttp.Config;
 import alpha.nomagichttp.HttpConstants;
+import alpha.nomagichttp.action.ActionRegistry;
 import alpha.nomagichttp.action.AfterAction;
 import alpha.nomagichttp.action.BeforeAction;
 import alpha.nomagichttp.message.BadHeaderException;
@@ -39,13 +40,13 @@ import static alpha.nomagichttp.message.Responses.badRequest;
 import static alpha.nomagichttp.message.Responses.entityTooLarge;
 import static alpha.nomagichttp.message.Responses.httpVersionNotSupported;
 import static alpha.nomagichttp.message.Responses.internalServerError;
-import static alpha.nomagichttp.message.Responses.notAcceptable;
-import static alpha.nomagichttp.message.Responses.unsupportedMediaType;
 import static alpha.nomagichttp.message.Responses.methodNotAllowed;
 import static alpha.nomagichttp.message.Responses.noContent;
+import static alpha.nomagichttp.message.Responses.notAcceptable;
 import static alpha.nomagichttp.message.Responses.notFound;
 import static alpha.nomagichttp.message.Responses.requestTimeout;
 import static alpha.nomagichttp.message.Responses.serviceUnavailable;
+import static alpha.nomagichttp.message.Responses.unsupportedMediaType;
 import static alpha.nomagichttp.message.Responses.upgradeRequired;
 import static java.lang.System.Logger.Level.ERROR;
 import static java.util.stream.Collectors.joining;
@@ -155,18 +156,20 @@ public interface ErrorHandler
      * absolutely also be null because the server never got so far as to resolve
      * and/or invoke the request handler.<p>
      * 
-     * If the request argument is not null, then the request handler argument
-     * may or may not be null. If the request handler is not null, then the
-     * "fault" of the error may very well be the request handlers' since the
-     * next thing the server do after having resolved the request handler is to
-     * call the guy.<p>
+     * For each request-consuming entity that the server invokes (before-action,
+     * route/request handler and after-action) a new request object is created.
+     * This is because each entity may declare unique path parameters (see
+     * {@link ActionRegistry}). The last such object created within the HTTP
+     * exchange is the one passed to this error handler. I.e. the request
+     * parameters' keys and values will be dependent on whichever entity was
+     * invoked prior to the crash.<p>
      * 
-     * However, the true nature of the error can often only be determined by
-     * looking into the error object itself, which also might reveal what to
-     * expect from the succeeding arguments. For example, if {@code thr} is an
-     * instance of {@link NoHandlerResolvedException}, then the request object
-     * was built and will not be null, but since the request handler wasn't
-     * resolved then the request handler argument is going to be null.<p>
+     * The true nature of the error can often only be determined by looking into
+     * the error object, which also might reveal what to expect from the
+     * succeeding arguments. For example, if {@code thr} is an instance of
+     * {@link NoHandlerResolvedException}, then the request object was built and
+     * will not be null, but since the request handler wasn't resolved then the
+     * request handler argument is going to be null.<p>
      * 
      * It is a design goal of the NoMagicHTTP library to have each exception
      * type provide whatever API necessary to investigate and possibly resolve
