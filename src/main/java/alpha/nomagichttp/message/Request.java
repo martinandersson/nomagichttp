@@ -141,8 +141,8 @@ public interface Request extends HeaderHolder, AttributeHolder
      * Route}).<p>
      * 
      * Path parameters come in two forms; single- and catch-all. The former is
-     * required in order for the route to have been matched, the latter is
-     * optional but the server will make sure the value is always present and
+     * required in order for the action/handler to have been matched, the latter
+     * is optional but the server will make sure the value is always present and
      * begins with a '/'. Query parameters are always optional. Read more in
      * {@link Route}.<p>
      * 
@@ -165,7 +165,7 @@ public interface Request extends HeaderHolder, AttributeHolder
      * special meaning; it will simply become part of the query key itself.<p>
      * 
      * If embedding multiple query values into one key entry is desired, then
-     * splitting and parsing the value with whatever delimiting character you
+     * splitting and parsing the value with whatever delimiting character one
      * choose is pretty straight forward:
      * 
      * <pre>{@code
