@@ -190,8 +190,14 @@ final class HttpExchange
     private CompletionStage<RequestHead> parseRequestHead() {
         RequestHeadSubscriber rhs = new RequestHeadSubscriber(server);
         
-        var to = new TimeoutOp.Flow<>(false, true, chIn,
-                config.timeoutIdleConnection(), RequestHeadTimeoutException::new);
+        var to = new TimeoutOp.Flow<>(false, true, chIn, config.timeoutIdleConnection(), () -> {
+            if (LOG.isLoggable(DEBUG) && chApi.isOpenForReading()) {
+                LOG.log(DEBUG, "Request head timed out, shutting down child channel's read stream.");
+            }
+            // No new HTTP exchange
+            chApi.shutdownInputSafe();
+            return new RequestHeadTimeoutException();
+        });
         to.subscribe(rhs);
         to.start();
         
@@ -385,13 +391,6 @@ final class HttpExchange
         if (isTerminatingException(unpacked, chApi)) {
             result.completeExceptionally(exc);
             return;
-        }
-        
-        if (unpacked instanceof RequestHeadTimeoutException) {
-            LOG.log(DEBUG, "Request head timed out, shutting down input stream.");
-            // HTTP exchange will not continue after response
-            // RequestBodyTimeoutException already shut down the input stream (see RequestBody)
-            chApi.shutdownInputSafe();
         }
         
         if (chApi.isOpenForWriting())  {

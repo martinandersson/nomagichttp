@@ -105,6 +105,7 @@ final class RequestBody implements Request.Body
                         if (LOG.isLoggable(DEBUG) && chApi.isOpenForReading()) {
                             LOG.log(DEBUG, "Request body timed out, shutting down child channel's read stream.");
                         }
+                        // No new HTTP exchange
                         chApi.shutdownInputSafe();
                         return new RequestBodyTimeoutException();
                     });
