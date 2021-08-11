@@ -40,7 +40,7 @@ import static alpha.nomagichttp.message.Responses.entityTooLarge;
 import static alpha.nomagichttp.message.Responses.httpVersionNotSupported;
 import static alpha.nomagichttp.message.Responses.internalServerError;
 import static alpha.nomagichttp.message.Responses.notAcceptable;
-import static alpha.nomagichttp.message.Responses.mediaTypeUnsupported;
+import static alpha.nomagichttp.message.Responses.unsupportedMediaType;
 import static alpha.nomagichttp.message.Responses.methodNotAllowed;
 import static alpha.nomagichttp.message.Responses.noContent;
 import static alpha.nomagichttp.message.Responses.notFound;
@@ -275,7 +275,7 @@ public interface ErrorHandler
      *     <th scope="row"> {@link MediaTypeUnsupportedException} </th>
      *     <td> None </td>
      *     <td> Yes </td>
-     *     <td> {@link Responses#mediaTypeUnsupported()} </td>
+     *     <td> {@link Responses#unsupportedMediaType()} </td>
      *   </tr>
      *   <tr>
      *     <th scope="row"> {@link AmbiguousHandlerException} </th>
@@ -395,7 +395,7 @@ public interface ErrorHandler
             res = notAcceptable();
         } catch (MediaTypeUnsupportedException e) {
             log(thr);
-            res = mediaTypeUnsupported();
+            res = unsupportedMediaType();
         } catch (MediaTypeParseException e) {
             if (rh == null) {
                 res = badRequest();

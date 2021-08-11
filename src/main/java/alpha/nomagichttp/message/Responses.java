@@ -546,7 +546,7 @@ public final class Responses
      * @return  a cached 415 (Unsupported Media Type) response
      * @see     StatusCode#FOUR_HUNDRED_FIFTEEN
      */
-    public static Response mediaTypeUnsupported() {
+    public static Response unsupportedMediaType() {
         return CACHE.get(FOUR_HUNDRED_FIFTEEN, UNSUPPORTED_MEDIA_TYPE);
     }
     
