@@ -125,15 +125,28 @@ final class ResponsePipeline extends AbstractLocalEventEmitter
          * log.
          */
         static final CompletionStage<Response> TRY_SCHEDULE_100CONTINUE = completedStage(null);
+        
+        /**
+         * Initialize the timer that will result in a {@link
+         * ResponseTimeoutException} on delay from the application to deliver
+         * responses to the channel.<p>
+         * 
+         * This timer is initialized by the HTTP exchange once the request body
+         * has been consumed (or immediately if body is empty). Up until that
+         * point and for as long as progress is being made on the request-side,
+         * the application is free to take forever yielding responses.<p>
+         * 
+         * There is no need to addFirst/preempt other responses; the timer is
+         * only active whilst waiting on a response. So if we have responses in
+         * the queue already, great.
+         */
+        static final CompletionStage<Response> INIT_RESPONSE_TIMER = completedStage(null);
     }
     
     private static final System.Logger LOG
             = System.getLogger(ResponsePipeline.class.getPackageName());
     
     // Internal sentinel values used as commands to or within the serial queue-item processor
-    private static final CompletionStage<Response>
-            // Start timer
-            TIMER_INIT = completedStage(null);
     private static final RuntimeException
             // Response processing aborted (response ignored)
             ABORT = new RuntimeException();
@@ -171,21 +184,6 @@ final class ResponsePipeline extends AbstractLocalEventEmitter
     void addFirst(CompletionStage<Response> resp) {
         queue.addFirst(resp);
         op.run();
-    }
-    
-    /**
-     * Start the timer that will result in a {@link ResponseTimeoutException} on
-     * delay from the application to deliver response objects to the channel.<p>
-     * 
-     * This timer is started by the HTTP exchange once the request body has been
-     * consumed (or immediately if body is empty). Up until that point and for
-     * as long as progress is being made on the request-side, the application is
-     * free to take forever yielding responses.
-     */
-    // Note: The response body timer is set by method subscribeToResponse().
-    void startTimeout() {
-        // No need to addFirst/preempt; timer only active whilst waiting on response
-        add(TIMER_INIT);
     }
     
     // Except for <timedOut>, all other [non-final] fields in this class are
@@ -226,19 +224,20 @@ final class ResponsePipeline extends AbstractLocalEventEmitter
             return;
         }
         
-        if (stage == TIMER_INIT) {
-            if (timer == null && !wroteFinal) {
-                timer = new Timeout(cfg.timeoutIdleConnection());
-                timer.schedule(this::timeoutAction);
+        if (stage == Command.TRY_SCHEDULE_100CONTINUE) {
+            if (!sentOrPending100Continue()) {
+                add(continue_().completedStage());
             }
             op.complete();
             op.run();
             return;
         }
         
-        if (stage == Command.TRY_SCHEDULE_100CONTINUE) {
-            if (!sentOrPending100Continue()) {
-                add(continue_().completedStage());
+        if (stage == Command.INIT_RESPONSE_TIMER) {
+            if (timer == null && !wroteFinal) {
+                // Note: The response body timer is set by method subscribeToResponse().
+                timer = new Timeout(cfg.timeoutIdleConnection());
+                timer.schedule(this::timeoutAction);
             }
             op.complete();
             op.run();

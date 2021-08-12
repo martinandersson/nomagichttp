@@ -261,7 +261,7 @@ final class HttpExchange
     private RequestBody monitorBody(RequestBody b) {
         b.asCompletionStage().whenComplete((nil, thr) -> {
             // Note, an empty body is immediately completed
-            pipe.startTimeout();
+            pipe.add(Command.INIT_RESPONSE_TIMER);
             if (thr instanceof RequestBodyTimeoutException && !subscriberArrived) {
                 // Then we need to deal with it
                 handleError(thr);
