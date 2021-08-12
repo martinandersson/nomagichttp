@@ -6,6 +6,7 @@ import alpha.nomagichttp.HttpConstants.Version;
 import alpha.nomagichttp.HttpServer;
 import alpha.nomagichttp.handler.ClientChannel;
 import alpha.nomagichttp.handler.ErrorHandler;
+import alpha.nomagichttp.internal.ResponsePipeline.Command;
 import alpha.nomagichttp.message.HttpVersionTooNewException;
 import alpha.nomagichttp.message.HttpVersionTooOldException;
 import alpha.nomagichttp.message.IllegalRequestBodyException;
@@ -27,14 +28,12 @@ import java.util.concurrent.atomic.AtomicInteger;
 import static alpha.nomagichttp.HttpConstants.HeaderKey.CONNECTION;
 import static alpha.nomagichttp.HttpConstants.HeaderKey.EXPECT;
 import static alpha.nomagichttp.HttpConstants.Method.TRACE;
-import static alpha.nomagichttp.HttpConstants.StatusCode.ONE_HUNDRED;
 import static alpha.nomagichttp.HttpConstants.Version.HTTP_1_0;
 import static alpha.nomagichttp.HttpConstants.Version.HTTP_1_1;
 import static alpha.nomagichttp.handler.ErrorHandler.DEFAULT;
 import static alpha.nomagichttp.internal.InvocationChain.ABORTED;
 import static alpha.nomagichttp.internal.ResponsePipeline.Error;
 import static alpha.nomagichttp.internal.ResponsePipeline.Success;
-import static alpha.nomagichttp.message.Responses.continue_;
 import static alpha.nomagichttp.util.IOExceptions.isCausedByBrokenInputStream;
 import static alpha.nomagichttp.util.IOExceptions.isCausedByBrokenOutputStream;
 import static java.lang.Integer.parseInt;
@@ -58,7 +57,7 @@ import static java.util.Objects.requireNonNull;
  * In addition:
  * <ul>
  *   <li>Has package-private accessors for the HTTP version and request head</li>
- *   <li>May pre-emptively send a 100 (Continue) depending on configuration</li>
+ *   <li>May pre-emptively schedule a 100 (Continue) depending on configuration</li>
  *   <li>Shuts down read stream if request has header "Connection: close"</li>
  *   <li>Shuts down read stream on request timeout</li>
  * </ul>
@@ -91,7 +90,6 @@ final class HttpExchange
     private RequestHead head;
     private Version version;
     private SkeletonRequest request;
-    private volatile boolean sent100c;
     private volatile boolean subscriberArrived;
     private ErrorResolver errRes;
     
@@ -281,11 +279,9 @@ final class HttpExchange
     }
     
     private void tryRespond100Continue() {
-        if (!sent100c &&
-                !getHttpVersion().isLessThan(HTTP_1_1) &&
-                head.headerContains(EXPECT, "100-continue"))
-        {
-            chApi.write(continue_());
+        if (!getHttpVersion().isLessThan(HTTP_1_1) &&
+            head.headerContains(EXPECT, "100-continue")) {
+            pipe.add(Command.TRY_SCHEDULE_100CONTINUE);
         }
     }
     
@@ -312,8 +308,6 @@ final class HttpExchange
     
     private void handleWriteSuccess(Response rsp) {
         if (rsp.isFinal()) {
-            // No need to tryRespond100Continue() after this point
-            sent100c = true;
             if (cntDown.decrementAndGet() == 0) {
                 LOG.log(DEBUG, "Response sent is final. May prepare for a new HTTP exchange.");
                 prepareForNewExchange();
@@ -323,9 +317,6 @@ final class HttpExchange
                     "HTTP exchange remains active.");
             }
         } else {
-            if (rsp.statusCode() == ONE_HUNDRED) {
-                sent100c = true;
-            }
             LOG.log(DEBUG, "Response sent is not final. HTTP exchange remains active.");
         }
     }

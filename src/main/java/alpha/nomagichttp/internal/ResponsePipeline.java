@@ -2,6 +2,7 @@ package alpha.nomagichttp.internal;
 
 import alpha.nomagichttp.Config;
 import alpha.nomagichttp.action.AfterAction;
+import alpha.nomagichttp.handler.ClientChannel;
 import alpha.nomagichttp.handler.ResponseRejectedException;
 import alpha.nomagichttp.message.HeaderHolder;
 import alpha.nomagichttp.message.Response;
@@ -21,6 +22,7 @@ import static alpha.nomagichttp.HttpConstants.StatusCode.isClientError;
 import static alpha.nomagichttp.HttpConstants.StatusCode.isServerError;
 import static alpha.nomagichttp.HttpConstants.Version.HTTP_1_1;
 import static alpha.nomagichttp.handler.ResponseRejectedException.Reason.PROTOCOL_NOT_SUPPORTED;
+import static alpha.nomagichttp.message.Responses.continue_;
 import static java.lang.System.Logger.Level.DEBUG;
 import static java.lang.System.Logger.Level.ERROR;
 import static java.lang.System.Logger.Level.WARNING;
@@ -96,6 +98,35 @@ final class ResponsePipeline extends AbstractLocalEventEmitter
      */
     enum Error { INSTANCE }
     
+    /**
+     * Sentinel response objects which in effect are a command for the pipeline
+     * to execute.
+     */
+    static final class Command {
+        private Command() {
+            // Empty
+        }
+        
+        /**
+         * Self-schedule a 100 (Continue) response, but only if:
+         * <ol>
+         *   <li>The final response has not been sent, and</li>
+         *   <li>a 100 (Continue) response has not been sent, and</li>
+         *   <li>there is no pending ready-built 100 (Continue) response in the
+         *       queue.</li>
+         * </ol>
+         * 
+         * There is no guarantee that the application will not attempt to send
+         * such a response in the future or has already provided a {@code
+         * CompletionStage} of such a response albeit not yet completed. For
+         * this reason alone, {@link ClientChannel#write(Response)} documents
+         * that an extra 100 (Continue) is silently ignored, only three or more
+         * attempts to write the continue-response will yield a warning in the
+         * log.
+         */
+        static final CompletionStage<Response> TRY_SCHEDULE_100CONTINUE = completedStage(null);
+    }
+    
     private static final System.Logger LOG
             = System.getLogger(ResponsePipeline.class.getPackageName());
     
@@ -132,6 +163,16 @@ final class ResponsePipeline extends AbstractLocalEventEmitter
         this.op = new SeriallyRunnable(this::pollAndProcessAsync, true);
     }
     
+    void add(CompletionStage<Response> resp) {
+        queue.add(resp);
+        op.run();
+    }
+    
+    void addFirst(CompletionStage<Response> resp) {
+        queue.addFirst(resp);
+        op.run();
+    }
+    
     /**
      * Start the timer that will result in a {@link ResponseTimeoutException} on
      * delay from the application to deliver response objects to the channel.<p>
@@ -145,16 +186,6 @@ final class ResponsePipeline extends AbstractLocalEventEmitter
     void startTimeout() {
         // No need to addFirst/preempt; timer only active whilst waiting on response
         add(TIMER_INIT);
-    }
-    
-    void add(CompletionStage<Response> resp) {
-        queue.add(resp);
-        op.run();
-    }
-    
-    void addFirst(CompletionStage<Response> resp) {
-        queue.addFirst(resp);
-        op.run();
     }
     
     // Except for <timedOut>, all other [non-final] fields in this class are
@@ -205,6 +236,15 @@ final class ResponsePipeline extends AbstractLocalEventEmitter
             return;
         }
         
+        if (stage == Command.TRY_SCHEDULE_100CONTINUE) {
+            if (!sentOrPending100Continue()) {
+                add(continue_().completedStage());
+            }
+            op.complete();
+            op.run();
+            return;
+        }
+        
         if (timer != null) {
             // Going to process response; timer active only while waiting
             timer.abort();
@@ -241,6 +281,25 @@ final class ResponsePipeline extends AbstractLocalEventEmitter
     
     private boolean wroteFinal; // <-- set on subscription to final
     private int n100continue;
+    
+    private boolean sentOrPending100Continue() {
+        if (wroteFinal || n100continue > 0) {
+            return true;
+        }
+        for (var stage : queue) {
+            Response rsp;
+            try {
+                rsp = stage.toCompletableFuture().getNow(null);
+            } catch (Exception e) {
+                // Not supported or completion error
+                continue;
+            }
+            if (rsp != null && rsp.statusCode() == ONE_HUNDRED) {
+                return true;
+            }
+        }
+        return false;
+    }
     
     private Response acceptRejectOrAbort(Response rsp) {
         if (wroteFinal) {
