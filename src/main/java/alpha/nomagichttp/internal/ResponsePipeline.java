@@ -124,7 +124,8 @@ final class ResponsePipeline extends AbstractLocalEventEmitter
          * attempts to write the continue-response will yield a warning in the
          * log.
          */
-        static final CompletionStage<Response> TRY_SCHEDULE_100CONTINUE = completedStage(null);
+        static final CompletionStage<Response>
+                TRY_SCHEDULE_100CONTINUE = completedStage(null);
         
         /**
          * Initialize the timer that will result in a {@link
@@ -140,16 +141,12 @@ final class ResponsePipeline extends AbstractLocalEventEmitter
          * only active whilst waiting on a response. So if we have responses in
          * the queue already, great.
          */
-        static final CompletionStage<Response> INIT_RESPONSE_TIMER = completedStage(null);
+        static final CompletionStage<Response>
+                INIT_RESPONSE_TIMER = completedStage(null);
     }
     
     private static final System.Logger LOG
             = System.getLogger(ResponsePipeline.class.getPackageName());
-    
-    // Internal sentinel values used as commands to or within the serial queue-item processor
-    private static final RuntimeException
-            // Response processing aborted (response ignored)
-            ABORT = new RuntimeException();
     
     private final Config cfg;
     private final int maxUnssuccessful;
@@ -303,6 +300,10 @@ final class ResponsePipeline extends AbstractLocalEventEmitter
         }
         return false;
     }
+    
+    private static final RuntimeException
+            // Response processing aborted (response ignored)
+            ABORT = new RuntimeException();
     
     private Response acceptRejectOrAbort(Response rsp) {
         if (wroteFinal) {
