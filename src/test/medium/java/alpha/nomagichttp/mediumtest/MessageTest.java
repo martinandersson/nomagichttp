@@ -72,7 +72,7 @@ class MessageTest extends AbstractRealTest
         server().add("/", POST().apply(req ->
             req.body().toText().thenApply(Responses::text)));
         
-        String req = "POST / HTTP/1.1"          + CRLF +
+        String req = "POST / HTTP/1.1" + CRLF +
             "Expect: 100-continue"     + CRLF +
             "Content-Length: 2"        + CRLF +
             "Content-Type: text/plain" + CRLF + CRLF +

@@ -216,39 +216,40 @@ public interface Response extends HeaderHolder
     boolean isBodyEmpty();
     
     /**
-     * Command the server to shutdown the client channel's output/write stream
-     * after <i>first attempt</i> to send the response.<p>
-     * 
-     * The command will also cause the server to close the channel at the end of
-     * the HTTP exchange (after an in-flight request and the processing of it
-     * completes).<p>
+     * Command the server to shut down the client channel's output/write stream
+     * after attempting to send the response.<p>
      * 
      * The write stream will close whether or not the response was successfully
-     * transmitted. So, on failure, an alternative subsequent response will not
-     * succeed. If it is desired to close the connection only after a successful
+     * transmitted. Only if it was transmitted successfully will an in-flight
+     * request also be allowed to complete. An error will not propagate to the
+     * error handler and the channel will be immediately closed.<p>
+     * 
+     * If it is desired to close the connection only after a successful
      * request and response pair (a so called "graceful close"), then set the
      * "Connection: close" header.<p>
      * 
-     * If the application desires to also stop the read stream no matter if a
-     * client-request is in-flight, use {@link #mustCloseAfterWrite()}.<p>
+     * If the application wishes to ensure the imminent shut down of the read
+     * stream as well, use {@link #mustCloseAfterWrite()}.<p>
      * 
      * The server manages the client channel's life-cycle and so, a {@code
      * false} returned value has no effect.
      * 
-     * @return {@code true} if the server must shutdown the output/write stream,
-     *         otherwise {@code false}
+     * @return {@code true} if the server must shut down the output/write
+     *         stream, otherwise {@code false}
      * 
      * @see ClientChannel#shutdownOutput()
      */
     boolean mustShutdownOutputAfterWrite();
     
     /**
-     * Command the server to close the client channel after first attempt to
-     * send the response.<p>
+     * Command the server to close the client channel after attempting to send
+     * the response.<p>
      * 
-     * Returning {@code true} will forcefully close the channel. A client
-     * request in-flight will fail. In order to end the channel more gracefully,
-     * signal {@link #mustShutdownOutputAfterWrite()} instead.<p>
+     * The channel will close whether or not the response was successfully
+     * transmitted. And so, an error will not propagate to the error handler.<p>
+     * 
+     * A client request in-flight will fail. In order to end the channel more
+     * gracefully, signal {@link #mustShutdownOutputAfterWrite()} instead.<p>
      * 
      * The application can always kill the channel immediately and abruptly by
      * calling {@link ClientChannel#close()} instead of passing a lazy command
@@ -259,8 +260,6 @@ public interface Response extends HeaderHolder
      * 
      * @return {@code true} if the server must close the client channel,
      *         otherwise {@code false}
-     * 
-     * @see ClientChannel#close()
      */
     boolean mustCloseAfterWrite();
     
@@ -477,10 +476,10 @@ public interface Response extends HeaderHolder
          * Enable the {@code must-shutdown-output-after-write} command. If
          * never set, will default to {@code false}.<p>
          * 
-         * If {@code enabled} is {@code true}, the builder will also set (or
-         * silently replace) a {@code Connection: close} header. If {@code
-         * enabled} is {@code false}, the header is removed but only if it has
-         * value "close".
+         * If {@code enabled} is {@code true}, the builder will also set a
+         * {@code Connection: close} header (replacing the old value if it
+         * exists). If {@code enabled} is {@code false}, the header is removed
+         * but only if it has value "close".
          * 
          * @param   enabled true or false
          * @return  a new builder representing the new state
@@ -492,10 +491,10 @@ public interface Response extends HeaderHolder
          * Enable the {@code must-close-after-write} command. If never set, will
          * default to {@code false}.<p>
          * 
-         * If {@code enabled} is {@code true}, the builder will also set (or
-         * silently replace) a {@code Connection: close} header. If {@code
-         * enabled} is {@code false}, the header is removed but only if it has
-         * value "close".
+         * If {@code enabled} is {@code true}, the builder will also set a
+         * {@code Connection: close} header (replacing the old value if it
+         * exists). If {@code enabled} is {@code false}, the header is removed
+         * but only if it has value "close".
          * 
          * @param   enabled true or false
          * @return  a new builder representing the new state

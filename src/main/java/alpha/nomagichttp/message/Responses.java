@@ -531,8 +531,8 @@ public final class Responses
     /**
      * Creates a new 413 (Entity Too Large) response with no body.<p>
      * 
-     * The response will also {@linkplain Response#mustCloseAfterWrite()
-     * close the client channel}.
+     * The responses' {@linkplain Response#mustCloseAfterWrite()} will return
+     * {@code true}.
      * 
      * @return  a new 413 (Entity Too Large)
      * @see    StatusCode#FOUR_HUNDRED_THIRTEEN

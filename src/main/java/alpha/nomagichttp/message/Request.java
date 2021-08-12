@@ -473,14 +473,14 @@ public interface Request extends HeaderHolder, AttributeHolder
      * thread wherever warranted.<p>
      * 
      * In general, high-level exception types - in particular, when documented -
-     * occurs without a real subscription and will leave the channel read stream
-     * open. The application can generally attempt a new operation to recover
-     * the body (e.g. {@code toText() >} {@code IllegalCharsetNameException}).
-     * Unexpected errors - in particular, errors that originate from the
-     * channel's read operation - have used up a real subscription and also
-     * closed the read stream (e.g. {@code RequestBodyTimeoutException}). Before
-     * attempting to recover the body, always check first if the {@link
-     * ClientChannel#isOpenForReading()}.
+     * occurs before a real subscription is made and will leave the channel's
+     * read stream open. The application can generally attempt a new operation
+     * to recover the body (e.g. {@code toText() >} {@code
+     * IllegalCharsetNameException}). Unexpected errors - in particular, errors
+     * that originate from the channel's read operation - have used up a real
+     * subscription and also closed the read stream (e.g. {@code
+     * RequestBodyTimeoutException}). Before attempting to recover the body,
+     * always check first if the {@link ClientChannel#isOpenForReading()}.
      * 
      * 
      * <h2>Subscribing to bytes with a {@code Flow.Subscriber}</h2>

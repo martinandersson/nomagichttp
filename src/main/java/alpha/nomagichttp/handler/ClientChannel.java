@@ -31,10 +31,12 @@ import java.util.concurrent.CompletionStage;
  * one-to-one protocol.<p>
  * 
  * The life-cycle of the channel is managed by the server. The application
- * should have no need to directly use shutdown/close methods in this class.
- * For a graceful close of the client connection, set the "Connection: close"
- * header. More abruptly terminating methods may be scheduled using {@link
- * Response.Builder#mustShutdownOutputAfterWrite(boolean)}
+ * should have no need to use shutdown/close methods in this class, all of which
+ * could mean an abrupt end to a request/response in-flight. For a graceful
+ * close of the client connection, set the "Connection: close" header.<p>
+ * 
+ * Terminating methods can also be scheduled to occur after a response
+ * by using {@link Response.Builder#mustShutdownOutputAfterWrite(boolean)}
  * and {@link Response.Builder#mustCloseAfterWrite(boolean)}. Invoking {@link
  * #close()} on this class is equivalent to an instant "kill".<p>
  * 
