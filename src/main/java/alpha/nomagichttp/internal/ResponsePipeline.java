@@ -224,21 +224,7 @@ final class ResponsePipeline extends AbstractLocalEventEmitter
             return;
         }
         
-        if (stage == Command.TRY_SCHEDULE_100CONTINUE) {
-            if (!sentOrPending100Continue()) {
-                add(continue_().completedStage());
-            }
-            op.complete();
-            op.run();
-            return;
-        }
-        
-        if (stage == Command.INIT_RESPONSE_TIMER) {
-            if (timer == null && !wroteFinal) {
-                // Note: The response body timer is set by method subscribeToResponse().
-                timer = new Timeout(cfg.timeoutIdleConnection());
-                timer.schedule(this::timeoutAction);
-            }
+        if (actOnCommand(stage)) {
             op.complete();
             op.run();
             return;
@@ -276,6 +262,24 @@ final class ResponsePipeline extends AbstractLocalEventEmitter
                 "Will not emit response timeout; channel closed for writing " +
                 "- so, we were in effect not waiting for a response.");
         }
+    }
+    
+    private boolean actOnCommand(CompletionStage<Response> stage) {
+        if (stage == Command.TRY_SCHEDULE_100CONTINUE) {
+            if (!sentOrPending100Continue()) {
+                add(continue_().completedStage());
+            }
+            return true;
+        }
+        if (stage == Command.INIT_RESPONSE_TIMER) {
+            if (timer == null && !wroteFinal) {
+                // Note: The response body timer is set by method subscribeToResponse().
+                timer = new Timeout(cfg.timeoutIdleConnection());
+                timer.schedule(this::timeoutAction);
+            }
+            return true;
+        }
+        return false;
     }
     
     private boolean wroteFinal; // <-- set on subscription to final
