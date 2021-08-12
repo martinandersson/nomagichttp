@@ -312,10 +312,10 @@ public interface Config
      * data, a third response timer will cause the underlying channel write
      * operation to abort for response body bytebuffers not fully sent before
      * the duration elapses. This exception will also not be delivered to the
-     * error handler(s). The application can chose to publish very large
-     * response body bytebuffers without worrying about a possible timeout due
-     * to the increased time it may take to send a large buffer. The server will
-     * internally slice the buffer if need be.<p>
+     * error handler(s) and close the channel immediately. The application can
+     * chose to publish very large response body bytebuffers without worrying
+     * about a possible timeout due to the increased time it may take to send a
+     * large buffer. The server will internally slice the buffer if need be.<p>
      * 
      * Any timeout exception not delivered to the exception handler(s) is
      * logged.<p>
