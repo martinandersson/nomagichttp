@@ -157,23 +157,41 @@ public class MediaType
     /** Text. Value: "text/plain". File extension: ".txt". */
     public static final MediaType TEXT_PLAIN = parse("text/plain").putInCache();
     
+    /** Text. Value: "text/plain; charset=utf-8". File extension: ".txt". */
+    public static final MediaType TEXT_PLAIN_UTF8 = parse("text/plain; charset=utf-8").putInCache();
+    
     /** HyperText Markup Language. Value: "text/html". File extension: ".html". */
     public static final MediaType TEXT_HTML = parse("text/html").putInCache();
+    
+    /** HyperText Markup Language. Value: "text/html; charset=utf-8". File extension: ".html". */
+    public static final MediaType TEXT_HTML_UTF8 = parse("text/html; charset=utf-8").putInCache();
     
     /** Cascading Style Sheets. Value: "text/css". File extension: ".css". */
     public static final MediaType TEXT_CSS = parse("text/css").putInCache();
     
+    /** Cascading Style Sheets. Value: "text/css; charset=utf-8". File extension: ".css". */
+    public static final MediaType TEXT_CSS_UTF8 = parse("text/css; charset=utf-8").putInCache();
+    
     /** Comma-Separated Values. Value: "text/csv". File extension: ".csv". */
     public static final MediaType TEXT_CSV = parse("text/csv").putInCache();
     
+    /** Comma-Separated Values. Value: "text/csv; charset=utf-8". File extension: ".csv". */
+    public static final MediaType TEXT_CSV_UTF8 = parse("text/csv; charset=utf-8").putInCache();
+    
     /** JavaScript. Value: "text/javascript". File extension: ".js". */
     public static final MediaType TEXT_JAVASCRIPT = parse("text/javascript").putInCache();
+    
+    /** JavaScript. Value: "text/javascript; charset=utf-8". File extension: ".js". */
+    public static final MediaType TEXT_JAVASCRIPT_UTF8 = parse("text/javascript; charset=utf-8").putInCache();
     
     /** Any kind of binary data. Value: "application/octet-stream". */
     public static final MediaType APPLICATION_OCTET_STREAM = parse("application/octet-stream").putInCache();
     
     /** JSON format. Value: "application/json". File extension: ".json". */
     public static final MediaType APPLICATION_JSON = parse("application/json").putInCache();
+    
+    /** JSON format. Value: "application/json; charset=utf-8". File extension: ".json". */
+    public static final MediaType APPLICATION_JSON_UTF8 = parse("application/json; charset=utf-8").putInCache();
     
     /** ZIP archive. Value: "application/zip". File extension: ".zip". */
     public static final MediaType APPLICATION_ZIP = parse("application/zip").putInCache();
@@ -274,7 +292,10 @@ public class MediaType
      * </pre>
      * 
      * Media range {@link MediaRange extension parameters} are logged and
-     * subsequently ignored.
+     * subsequently ignored.<p>
+     * 
+     * The returned instance may be new, or it may have been retrieved from a
+     * cache.
      * 
      * @param text to parse
      * 

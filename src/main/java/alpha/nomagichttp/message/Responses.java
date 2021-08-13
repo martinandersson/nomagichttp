@@ -57,7 +57,10 @@ import static alpha.nomagichttp.HttpConstants.StatusCode.ONE_HUNDRED_TWO;
 import static alpha.nomagichttp.HttpConstants.StatusCode.TWO_HUNDRED;
 import static alpha.nomagichttp.HttpConstants.StatusCode.TWO_HUNDRED_FOUR;
 import static alpha.nomagichttp.HttpConstants.StatusCode.TWO_HUNDRED_TWO;
+import static alpha.nomagichttp.message.MediaType.APPLICATION_JSON_UTF8;
 import static alpha.nomagichttp.message.MediaType.APPLICATION_OCTET_STREAM;
+import static alpha.nomagichttp.message.MediaType.TEXT_HTML_UTF8;
+import static alpha.nomagichttp.message.MediaType.TEXT_PLAIN_UTF8;
 import static alpha.nomagichttp.util.BetterBodyPublishers.ofString;
 import static alpha.nomagichttp.util.CodeAndPhraseCache.build;
 import static java.net.http.HttpRequest.BodyPublisher;
@@ -188,7 +191,7 @@ public final class Responses
      * @see     StatusCode#TWO_HUNDRED
      */
     public static Response text(String textPlain) {
-        return ok(ofString(textPlain), "text/plain; charset=utf-8");
+        return ok(ofString(textPlain), TEXT_PLAIN_UTF8);
     }
     
     /**
@@ -247,7 +250,7 @@ public final class Responses
      * @see     StatusCode#TWO_HUNDRED
      */
     public static Response html(String textHtml) {
-        return ok(ofString(textHtml), "text/html; charset=utf-8");
+        return ok(ofString(textHtml), TEXT_HTML_UTF8);
     }
     
     /**
@@ -292,7 +295,7 @@ public final class Responses
      * @see     StatusCode#TWO_HUNDRED
      */
     public static Response json(String json) {
-        return ok(ofString(json), "application/json; charset=utf-8");
+        return ok(ofString(json), APPLICATION_JSON_UTF8);
     }
     
     /**
