@@ -531,15 +531,14 @@ public final class Responses
     /**
      * Creates a new 413 (Entity Too Large) response with no body.<p>
      * 
-     * The responses' {@linkplain Response#mustCloseAfterWrite()} will return
-     * {@code true}.
+     * A header "Connection: close" will have been set.
      * 
      * @return  a new 413 (Entity Too Large)
      * @see    StatusCode#FOUR_HUNDRED_THIRTEEN
      */
     public static Response entityTooLarge() {
         return CACHE.get(FOUR_HUNDRED_THIRTEEN, ENTITY_TOO_LARGE).toBuilder()
-                .mustCloseAfterWrite(true).build();
+                .header(CONNECTION, "close").build();
     }
     
     /**

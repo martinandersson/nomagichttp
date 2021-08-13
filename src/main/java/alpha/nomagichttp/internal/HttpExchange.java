@@ -186,7 +186,7 @@ final class HttpExchange
     }
     
     private CompletionStage<RequestHead> parseRequestHead() {
-        RequestHeadSubscriber rhs = new RequestHeadSubscriber(server);
+        RequestHeadSubscriber rhs = new RequestHeadSubscriber(server, chApi);
         
         var to = new TimeoutOp.Flow<>(false, true, chIn, config.timeoutIdleConnection(), () -> {
             if (LOG.isLoggable(DEBUG) && chApi.isOpenForReading()) {

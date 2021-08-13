@@ -53,7 +53,7 @@ class RequestHeadSubscriberTest
                     .maxRequestHeadSize(MAX_VALUE).build());
             DefaultClientChannel chApi = new DefaultClientChannel(SERVER.accept(), fake);
             Flow.Publisher<DefaultPooledByteBufferHolder> chIn = new ChannelByteBufferPublisher(chApi);
-            RequestHeadSubscriber rhp = new RequestHeadSubscriber(fake);
+            RequestHeadSubscriber rhp = new RequestHeadSubscriber(fake, chApi);
             chIn.subscribe(rhp);
             testee = rhp.asCompletionStage();
         }

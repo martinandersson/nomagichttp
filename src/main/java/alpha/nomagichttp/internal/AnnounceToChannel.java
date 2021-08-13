@@ -56,10 +56,9 @@ import static java.util.concurrent.TimeUnit.NANOSECONDS;
  * 
  * Please note that the responsibility of this class is to manage a particular
  * type of channel <i>operations</i> (read or write) for as long as the service
- * remains running, not the channel's life cycle itself. In particular note; the
- * only two occasions when this class shuts down the channel's stream in use is
- * if a channel operation completes exceptionally or end-of-stream is
- * reached.<p>
+ * remains running, not the channel's life cycle itself. The only two occasions
+ * when this class shuts down the channel's stream in use is if a channel
+ * operation completes exceptionally or end-of-stream is reached.<p>
  * 
  * This class is thread-safe and mostly non-blocking (closing stream may block).
  * 

@@ -3,6 +3,7 @@ package alpha.nomagichttp.internal;
 import alpha.nomagichttp.HttpServer;
 import alpha.nomagichttp.events.EventHub;
 import alpha.nomagichttp.events.RequestHeadParsed;
+import alpha.nomagichttp.handler.ClientChannel;
 import alpha.nomagichttp.message.Char;
 import alpha.nomagichttp.message.EndOfStreamException;
 import alpha.nomagichttp.message.MaxRequestHeadSizeExceededException;
@@ -29,13 +30,15 @@ final class RequestHeadSubscriber implements SubscriberAsStage<PooledByteBufferH
     
     private final int maxHeadSize;
     private final EventHub events;
+    private final ClientChannel chApi;
     private final RequestHeadProcessor processor;
     private final CompletableFuture<RequestHead> result;
     
     
-    RequestHeadSubscriber(HttpServer server) {
+    RequestHeadSubscriber(HttpServer server, ClientChannel chApi) {
         this.maxHeadSize = server.getConfig().maxRequestHeadSize();
         this.events      = server.events();
+        this.chApi       = chApi;
         this.processor   = new RequestHeadProcessor();
         this.result      = new CompletableFuture<>();
     }
@@ -46,7 +49,12 @@ final class RequestHeadSubscriber implements SubscriberAsStage<PooledByteBufferH
      * If the sourced publisher (ChannelByteBufferPublisher) terminates the
      * subscription with an {@link EndOfStreamException} <i>and</i> no bytes
      * have been processed by this subscriber, then the stage will complete
-     * exceptionally with a {@link ClientAbortedException}.
+     * exceptionally with a {@link ClientAbortedException}.<p>
+     * 
+     * Exceptions that originates from the channel will already have closed the
+     * read stream. Other exceptions that originates from this class or its
+     * underlying byte processor will close the read stream; message framing
+     * lost.
      * 
      * @return a stage that completes with the result
      */
@@ -73,6 +81,8 @@ final class RequestHeadSubscriber implements SubscriberAsStage<PooledByteBufferH
         try {
             head = process(item.get());
         } catch (Throwable t) {
+            LOG.log(DEBUG, "Request processing failed, shutting down the channel's read stream.");
+            chApi.shutdownInputSafe();
             subscription.cancel();
             result.completeExceptionally(t);
             return;
