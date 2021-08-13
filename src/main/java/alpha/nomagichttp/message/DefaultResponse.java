@@ -20,6 +20,8 @@ import java.util.function.Consumer;
 import static alpha.nomagichttp.HttpConstants.HeaderKey.CONNECTION;
 import static alpha.nomagichttp.HttpConstants.HeaderKey.CONTENT_LENGTH;
 import static alpha.nomagichttp.HttpConstants.StatusCode;
+import static alpha.nomagichttp.HttpConstants.StatusCode.THREE_HUNDRED_FOUR;
+import static alpha.nomagichttp.HttpConstants.StatusCode.TWO_HUNDRED_FOUR;
 import static alpha.nomagichttp.util.Publishers.empty;
 import static java.net.http.HttpRequest.BodyPublisher;
 import static java.util.Collections.emptyList;
@@ -364,7 +366,8 @@ final class DefaultResponse implements Response
                 if (!r.isBodyEmpty()) {
                     throw IllegalResponseBodyException(r);
                 }
-            } else if ((r.statusCode() == 204 || r.statusCode() == 304) && !r.isBodyEmpty()) {
+            } else if ((r.statusCode() == TWO_HUNDRED_FOUR    ||
+                        r.statusCode() == THREE_HUNDRED_FOUR) && !r.isBodyEmpty()) {
                 throw IllegalResponseBodyException(r);
             }
             
