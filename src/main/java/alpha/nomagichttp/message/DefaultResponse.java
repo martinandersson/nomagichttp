@@ -33,6 +33,9 @@ import static java.util.stream.Collectors.toUnmodifiableList;
  */
 final class DefaultResponse implements Response
 {
+    /** Initial capacity of the list of a header map value. */
+    private static final int INITIAL_CAPACITY = 1;
+    
     private final int statusCode;
     private final String reasonPhrase;
     private final HttpHeaders headers;
@@ -184,7 +187,7 @@ final class DefaultResponse implements Response
                 assert name != null;
                 assert value != null;
                 List<String> v = getOrCreateHeaders()
-                        .computeIfAbsent(name, k -> new ArrayList<>(1));
+                        .computeIfAbsent(name, k -> new ArrayList<>(INITIAL_CAPACITY));
                 if (clearFirst) {
                     v.clear();
                 }

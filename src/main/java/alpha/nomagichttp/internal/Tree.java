@@ -61,6 +61,12 @@ final class Tree<V>
 {
     // Implementation design; see javadoc of Tree.NodeImpl
     
+    /**
+     * Initial capacity of the deque of reserved nodes (one deque per observed
+     * writer thread).
+     */
+    private static final int INITIAL_CAPACITY = 5;
+    
     interface ReadNode<V> {
         /**
          * Returns this node's value, or {@code null} if not present.
@@ -288,7 +294,7 @@ final class Tree<V>
         root     = new NodeImpl(null);
         clean    = ThreadLocal.withInitial(() -> false);
         cleaning = new AtomicBoolean(false);
-        release  = ThreadLocal.withInitial(ArrayDeque::new);
+        release  = ThreadLocal.withInitial(() -> new ArrayDeque<>(INITIAL_CAPACITY));
     }
     
     /**
