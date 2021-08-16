@@ -100,7 +100,7 @@ import java.util.function.Consumer;
  * returned from {@link HttpServer#events()}. A custom implementation is free
  * to behave differently.<p>
  * 
- * Events are not cached. A new listener does not receive past events.<p>
+ * Events are not saved. A new listener does not receive past events.<p>
  * 
  * The thread emitting the event is also the thread that invokes listeners of
  * the event. This may be the server's request thread, and so, a listener must
