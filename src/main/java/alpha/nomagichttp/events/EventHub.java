@@ -107,7 +107,7 @@ public interface EventHub extends ScatteringEventEmitter, EventEmitter
      * listeners.<p>
      * 
      * The attachment is lazily produced only once if there are listeners who
-     * will receive it.
+     * will receive it.<p>
      * 
      * This method does <i>not</i> throw {@code NullPointerException} if the
      * attachment produced is {@code null}.
@@ -123,6 +123,29 @@ public interface EventHub extends ScatteringEventEmitter, EventEmitter
      * @see EventEmitter
      */
     int dispatchLazy(Object event, Supplier<?> attachment);
+    
+    /**
+     * Synchronously dispatch an event with lazy attachments to subscribed
+     * listeners.<p>
+     * 
+     * The attachments are lazily produced only once if there are listeners who
+     * will receive it.<p>
+     * 
+     * This method does <i>not</i> throw {@code NullPointerException} if any one
+     * of the attachments produced are {@code null}.
+     * 
+     * @param  event to emit/dispatch
+     * @param  attachment1 of event
+     * @param  attachment2 of event
+     * @return a count of listeners invoked (capped at {@code Integer.MAX_VALUE})
+     * @throws NullPointerException
+     *             if {@code event} is {@code null}, or
+     *             if any attachment supplier is {@code null} and there are
+     *             listeners for the event (lazy, implicit validation)
+     * 
+     * @see EventEmitter
+     */
+    int dispatchLazy(Object event, Supplier<?> attachment1, Supplier<?> attachment2);
     
     /**
      * Assign this hub to redistribute all events from the given emitter.<p>

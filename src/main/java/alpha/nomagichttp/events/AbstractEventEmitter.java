@@ -82,16 +82,17 @@ public abstract class AbstractEventEmitter implements EventEmitter
      * Synchronously emit an event to subscribed listeners.
      * 
      * @param ev to emit
-     * @param attr optional attachment (may produce {@code null})
+     * @param att1 optional attachment (may produce {@code null})
+     * @param att2 optional attachment (may produce {@code null})
      * @return a count of listeners invoked (capped at {@code Integer.MAX_VALUE})
      * @throws NullPointerException
      *             if {@code ev} is {@code null}, or
-     *             if {@code attr} (the Supplier) is {@code null} and there are
-     *             listeners for the event (no eager validation)
+     *             if any attachment supplier is {@code null} and there are
+     *             listeners for the event (lazy, implicit validation)
      */
-    protected int emitLazy(Object ev, Supplier<?> attr) {
+    protected int emitLazy(Object ev, Supplier<?> att1, Supplier<?> att2) {
         var s = listeners.getOrDefault(ev.getClass(), Set.of());
-        return emitLazy(s, ev, attr);
+        return emitLazy(s, ev, att1, att2);
     }
     
     /**
@@ -118,18 +119,19 @@ public abstract class AbstractEventEmitter implements EventEmitter
      * 
      * @param listeners to invoke
      * @param ev to emit
-     * @param attr optional attachment (may produce {@code null})
+     * @param att1 optional attachment (may produce {@code null})
+     * @param att2 optional attachment (may produce {@code null})
      * @return a count of listeners invoked (capped at {@code Integer.MAX_VALUE})
      * @throws NullPointerException
      *             if {@code ev} is {@code null}, or
-     *             if {@code attr} (the Supplier) is {@code null} and there are
-     *             listeners for the event (no eager validation)
+     *             if any attachment supplier is {@code null} and there are
+     *             listeners for the event (lazy, implicit validation)
      */
-    protected static int emitLazy(Collection<?> listeners, Object ev, Supplier<?> attr) {
+    protected static int emitLazy(Collection<?> listeners, Object ev, Supplier<?> att1, Supplier<?> att2) {
         if (listeners.isEmpty()) {
             return 0;
         }
-        return emit0(listeners, ev, attr.get(), null);
+        return emit0(listeners, ev, att1.get(), att2.get());
     }
     
     private static int emit0(Collection<?> listeners, Object ev, Object att1, Object att2) {
