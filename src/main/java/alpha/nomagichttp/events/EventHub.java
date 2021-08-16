@@ -1,5 +1,7 @@
 package alpha.nomagichttp.events;
 
+import java.util.function.Supplier;
+
 import static alpha.nomagichttp.util.Arrays.stream;
 
 /**
@@ -99,6 +101,28 @@ public interface EventHub extends ScatteringEventEmitter, EventEmitter
      * @see EventEmitter
      */
     int dispatch(Object event, Object attachment1, Object attachment2);
+    
+    /**
+     * Synchronously dispatch an event with a lazy attachment to subscribed
+     * listeners.<p>
+     * 
+     * The attachment is lazily produced only once if there are listeners who
+     * will receive it.
+     * 
+     * This method does <i>not</i> throw {@code NullPointerException} if the
+     * attachment produced is {@code null}.
+     * 
+     * @param  event to emit/dispatch
+     * @param  attachment of event
+     * @return a count of listeners invoked (capped at {@code Integer.MAX_VALUE})
+     * @throws NullPointerException
+     *             if {@code event} is {@code null}, or
+     *             if {@code attachment} (the Supplier) is {@code null} and
+     *             there are listeners for the event (lazy, implicit validation)
+     * 
+     * @see EventEmitter
+     */
+    int dispatchLazy(Object event, Supplier<?> attachment);
     
     /**
      * Assign this hub to redistribute all events from the given emitter.<p>

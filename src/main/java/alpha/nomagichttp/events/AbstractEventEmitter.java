@@ -1,5 +1,6 @@
 package alpha.nomagichttp.events;
 
+import java.util.Collection;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -78,6 +79,22 @@ public abstract class AbstractEventEmitter implements EventEmitter
     }
     
     /**
+     * Synchronously emit an event to subscribed listeners.
+     * 
+     * @param ev to emit
+     * @param attr optional attachment (may produce {@code null})
+     * @return a count of listeners invoked (capped at {@code Integer.MAX_VALUE})
+     * @throws NullPointerException
+     *             if {@code ev} is {@code null}, or
+     *             if {@code attr} (the Supplier) is {@code null} and there are
+     *             listeners for the event (no eager validation)
+     */
+    protected int emitLazy(Object ev, Supplier<?> attr) {
+        var s = listeners.getOrDefault(ev.getClass(), Set.of());
+        return emitLazy(s, ev, attr);
+    }
+    
+    /**
      * Synchronously invoke all listeners with the given event and attachments.
      * 
      * @param listeners to invoke
@@ -87,7 +104,35 @@ public abstract class AbstractEventEmitter implements EventEmitter
      * @return a count of listeners invoked (capped at {@code Integer.MAX_VALUE})
      * @throws NullPointerException if {@code ev} is {@code null}
      */
-    protected static int emit(Iterable<?> listeners, Object ev, Object att1, Object att2) {
+    protected static int emit(Collection<?> listeners, Object ev, Object att1, Object att2) {
+        // I have JIT trust issues (avoid creating new Iterator() in emit0())
+        if (listeners.isEmpty()) {
+            return 0;
+        }
+        return emit0(listeners, ev, att1, att2);
+    }
+    
+    /**
+     * Synchronously invoke all listeners with the given event and lazy
+     * attachment.
+     * 
+     * @param listeners to invoke
+     * @param ev to emit
+     * @param attr optional attachment (may produce {@code null})
+     * @return a count of listeners invoked (capped at {@code Integer.MAX_VALUE})
+     * @throws NullPointerException
+     *             if {@code ev} is {@code null}, or
+     *             if {@code attr} (the Supplier) is {@code null} and there are
+     *             listeners for the event (no eager validation)
+     */
+    protected static int emitLazy(Collection<?> listeners, Object ev, Supplier<?> attr) {
+        if (listeners.isEmpty()) {
+            return 0;
+        }
+        return emit0(listeners, ev, attr.get(), null);
+    }
+    
+    private static int emit0(Collection<?> listeners, Object ev, Object att1, Object att2) {
         int n = 0;
         for (Object l : listeners) {
             // An early implementation used a "ListenerProxy" so that the type

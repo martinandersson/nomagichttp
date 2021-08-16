@@ -1,5 +1,7 @@
 package alpha.nomagichttp.events;
 
+import java.util.function.Supplier;
+
 /**
  * Non-blocking implementation of {@link EventHub}.<p>
  * 
@@ -17,6 +19,11 @@ public class DefaultEventHub extends AbstractScatteringEventEmitter implements E
     @Override
     public int dispatch(Object event, Object attachment) {
         return emit(event, attachment, null);
+    }
+    
+    @Override
+    public int dispatchLazy(Object event, Supplier<?> attachment) {
+        return emitLazy(event, attachment);
     }
     
     @Override
