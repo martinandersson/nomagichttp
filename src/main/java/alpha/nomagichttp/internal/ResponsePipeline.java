@@ -148,11 +148,11 @@ final class ResponsePipeline extends AbstractLocalEventEmitter
     private static final System.Logger LOG
             = System.getLogger(ResponsePipeline.class.getPackageName());
     
-    private final Config cfg;
-    private final int maxUnssuccessful;
     private final HttpExchange exch;
     private final DefaultClientChannel chApi;
     private final DefaultActionRegistry actions;
+    private final Config cfg;
+    private final int maxUnssuccessful;
     private final Deque<CompletionStage<Response>> queue;
     private final SeriallyRunnable op;
     
@@ -163,12 +163,16 @@ final class ResponsePipeline extends AbstractLocalEventEmitter
      * @param chApi channel's delegate used for writing
      * @param actions registry used to lookup after-actions
      */
-    ResponsePipeline(HttpExchange exch, DefaultClientChannel chApi, DefaultActionRegistry actions) {
-        this.cfg = chApi.getServer().getConfig();
-        this.maxUnssuccessful = cfg.maxUnsuccessfulResponses();
+    ResponsePipeline(
+            HttpExchange exch,
+            DefaultClientChannel chApi,
+            DefaultActionRegistry actions)
+    {
+        this.exch = exch;
         this.chApi = chApi;
         this.actions = actions;
-        this.exch = exch;
+        this.cfg = chApi.getServer().getConfig();
+        this.maxUnssuccessful = cfg.maxUnsuccessfulResponses();
         this.queue = new ConcurrentLinkedDeque<>();
         this.op = new SeriallyRunnable(this::pollAndProcessAsync, true);
     }
