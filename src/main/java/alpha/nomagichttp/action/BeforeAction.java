@@ -74,16 +74,19 @@ import alpha.nomagichttp.message.Request;
  *   server.before("/admin/*", expectAdmin);
  * </pre>
  * 
- * The action is called after a request head has been received and validated,
- * but before the request handler resolution even begins. This means that the
- * action is called even if a particular route turns out to not exist or the
- * route exists but has no applicable request handler.<p>
+ * The action is called only after a request head has been received and
+ * validated. For example, the action is not called if a request head fails to
+ * be parsed or the HTTP version was rejected/unsupported.<p>
  * 
  * An action that will be invoked for all <i>valid</i> requests hitting the
  * server can be registered using the path "/*". If the purpose for such an
- * action is to gather metrics, consider tapping into all requests instead
+ * action is to gather metrics, consider instead tapping into all requests
  * regardless if they are valid, by subscribing to the {@link RequestHeadParsed}
  * event (see {@link HttpServer#events()}).<p>
+ * 
+ * The action is called before the request handler resolution begins. This means
+ * that the action is called even if a particular route turns out to not exist
+ * or the route exists but has no applicable request handler.<p>
  * 
  * The action may be called concurrently and must be thread-safe. It is likely
  * called by the server's request thread and so must not block.<p>

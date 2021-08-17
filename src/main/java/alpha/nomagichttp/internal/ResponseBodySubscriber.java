@@ -29,8 +29,8 @@ import static java.util.Objects.requireNonNull;
  * the body bytes will give the application a chance to recover with an
  * alternative response.<p>
  * 
- * It is absolutely not anticipated that the application pushes error to the
- * <i>body</i> subscriber for something it wish to resolve through an error
+ * It is absolutely not anticipated that the application pushes an error to the
+ * <i>body</i> subscriber for something it wishes to resolve through an error
  * handler. In fact, the only assumption a failed body publisher should make is
  * that "the head is probably already sent so there's no other response we can
  * produce".<p>
