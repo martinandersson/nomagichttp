@@ -1,6 +1,7 @@
 package alpha.nomagichttp.internal;
 
 import alpha.nomagichttp.Config;
+import alpha.nomagichttp.events.ResponseSent;
 import alpha.nomagichttp.message.IllegalResponseBodyException;
 import alpha.nomagichttp.message.Response;
 import alpha.nomagichttp.message.ResponseTimeoutException;
@@ -22,7 +23,8 @@ import static java.nio.charset.StandardCharsets.US_ASCII;
 import static java.util.Objects.requireNonNull;
 
 /**
- * Writes a {@link Response} to the child channel.<p>
+ * Writes a {@link Response} to the child channel and emits {@link
+ * ResponseSent}.<p>
  * 
  * The response head will be written lazily, on first item published from
  * upstream or on complete. This means that an error pushed from upstream before
@@ -73,15 +75,16 @@ final class ResponseBodySubscriber implements SubscriberAsStage<ByteBuffer, Long
     private final CompletableFuture<Long> resu;
     
     private Flow.Subscription subscription;
-    private boolean pushedHead;
     private int requested;
+    private boolean pushedHead;
+    private long started;
     
     ResponseBodySubscriber(Response resp, HttpExchange exch, DefaultClientChannel chApi) {
-        this.resp  = requireNonNull(resp);
-        this.exch  = requireNonNull(exch);
-        this.chApi = requireNonNull(chApi);
-        this.resu  = new CompletableFuture<>();
-        this.sink  = AnnounceToChannel.write(chApi,
+        this.resp   = requireNonNull(resp);
+        this.exch   = requireNonNull(exch);
+        this.chApi  = chApi;
+        this.resu   = new CompletableFuture<>();
+        this.sink   = AnnounceToChannel.write(chApi,
                 this::afterChannelFinished,
                 chApi.getServer().getConfig().timeoutIdleConnection());
     }
@@ -197,12 +200,15 @@ final class ResponseBodySubscriber implements SubscriberAsStage<ByteBuffer, Long
         //       ByteBuffers and feed the channel slices.
         ByteBuffer b = ByteBuffer.wrap(head.getBytes(US_ASCII));
         pushedHead = true;
+        started = System.nanoTime();
         feedChannel(b);
     }
     
     private void afterChannelFinished(DefaultClientChannel chApi, long byteCount, Throwable exc) {
         if (exc == null) {
             assert byteCount > 0;
+            chApi.getServer().events().dispatchLazy(ResponseSent.INSTANCE, () -> resp, () ->
+                    new ResponseSent.Stats(started, System.nanoTime(), byteCount));
             resu.complete(byteCount);
         } else {
             if (byteCount > 0 && chApi.isOpenForWriting()) {
