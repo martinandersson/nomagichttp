@@ -1,5 +1,7 @@
 package alpha.nomagichttp.mediumtest;
 
+import alpha.nomagichttp.events.AbstractByteCountedStats;
+import alpha.nomagichttp.events.RequestHeadParsed;
 import alpha.nomagichttp.events.ResponseSent;
 import alpha.nomagichttp.handler.RequestHandler;
 import alpha.nomagichttp.message.PooledByteBufferHolder;
@@ -21,6 +23,7 @@ import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Flow;
 import java.util.function.Consumer;
+import java.util.function.ToLongBiFunction;
 
 import static alpha.nomagichttp.HttpConstants.HeaderKey.CONTENT_LENGTH;
 import static alpha.nomagichttp.handler.RequestHandler.GET;
@@ -281,32 +284,6 @@ class DetailTest extends AbstractRealTest
         assertThat(rsp).isEqualTo(merged);
     }
     
-    @Test
-    void responseSentEvent() throws IOException, InterruptedException {
-        // Save event locally
-        BlockingQueue<ResponseSent.Stats> stats = new ArrayBlockingQueue<>(1);
-        server().events().on(ResponseSent.class, (ev, rsp, st) ->
-                stats.add((ResponseSent.Stats) st));
-        
-        final Instant then = now();
-        var actRsp = client().writeReadTextUntilNewlines("GET / HTTP/1.1" + CRLF + CRLF);
-        final Duration expDur = between(then, Instant.now());
-        
-        var expRsp = "HTTP/1.1 404 Not Found" + CRLF +
-                     "Content-Length: 0"      + CRLF + CRLF;
-        
-        assertThat(actRsp).isEqualTo(expRsp);
-        assertThatServerErrorObservedAndLogged()
-                .isExactlyInstanceOf(NoRouteFoundException.class);
-        
-        var s = stats.poll(1, SECONDS);
-        assertThat(s.bytes()).isEqualTo(actRsp.getBytes(US_ASCII).length);
-        
-        // On local machine 3 ms (dry run)
-        assertThat(s.elapsedDuration()).isGreaterThanOrEqualTo(ZERO);
-        assertThat(s.elapsedDuration()).isLessThanOrEqualTo(expDur);
-    }
-    
     // "Accept: text/plain; charset=utf-8; q=0.9, text/plain; charset=iso-8859-1"
     // ISO 8859 wins, coz implicit q = 1
     @Test
@@ -337,6 +314,44 @@ class DetailTest extends AbstractRealTest
             "Content-Type: text/plain; charset=iso-8859-1" + CRLF + CRLF +
             
             "hello");
+    }
+    
+    @Test
+    void event_RequestHeadParsed() throws IOException, InterruptedException {
+        event_engine(RequestHeadParsed.class, (req, rsp) -> req.getBytes(US_ASCII).length);
+    }
+    
+    @Test
+    void event_ResponseSent() throws IOException, InterruptedException {
+        event_engine(ResponseSent.class, (req, rsp) -> rsp.getBytes(US_ASCII).length);
+    }
+    
+    private void event_engine(Class<?> eventType, ToLongBiFunction<String, String> exchToExpByteCnt)
+            throws IOException, InterruptedException
+    {
+        // Save event locally
+        BlockingQueue<AbstractByteCountedStats> stats = new ArrayBlockingQueue<>(1);
+        server().events().on(eventType, (ev, thing, s) ->
+                stats.add((AbstractByteCountedStats) s));
+        
+        final Instant then = now();
+        var actReq = "GET / HTTP/1.1" + CRLF + CRLF;
+        var actRsp = client().writeReadTextUntilNewlines(actReq);
+        final Duration expDur = between(then, Instant.now());
+        
+        var expRsp = "HTTP/1.1 404 Not Found" + CRLF +
+                     "Content-Length: 0"      + CRLF + CRLF;
+        
+        assertThat(actRsp).isEqualTo(expRsp);
+        assertThatServerErrorObservedAndLogged()
+                .isExactlyInstanceOf(NoRouteFoundException.class);
+        
+        var s = stats.poll(1, SECONDS);
+        assertThat(s.bytes()).isEqualTo(exchToExpByteCnt.applyAsLong(actReq, actRsp));
+        
+        // On local machine 3 ms (dry run)
+        assertThat(s.elapsedDuration()).isGreaterThanOrEqualTo(ZERO);
+        assertThat(s.elapsedDuration()).isLessThanOrEqualTo(expDur);
     }
     
     private static class AfterByteTargetStop implements Flow.Subscriber<PooledByteBufferHolder>

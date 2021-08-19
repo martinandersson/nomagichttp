@@ -21,16 +21,16 @@ public enum ResponseSent {
     /**
      * A container of statistics concerning a response sent.<p>
      * 
-     * {@link System#nanoTime()} is first pulled just before the first channel
-     * operation is initialized and last pulled after the last channel operation
-     * completes, just before the emission of the event. Time elapsed includes
-     * not only time that the response spent on the wire, but also time spent
-     * waiting for new body bytebuffers to be published.
+     * {@link System#nanoTime()} returned by {@link #nanoTimeOnStart()} is
+     * pulled just before the first channel operation is initialized and
+     * {@link #nanoTimeOnStop()} returns the nano time after the last channel
+     * operation completes, just before the emission of the event. Time elapsed
+     * between the two includes not only time that the response spent on the
+     * wire, but also time spent waiting for new body bytebuffers to be
+     * published.
      */
-    public static final class Stats extends AbstractStats
+    public static final class Stats extends AbstractByteCountedStats
     {
-        private final long bytes;
-        
         /**
          * Constructs this object.
          * 
@@ -39,50 +39,7 @@ public enum ResponseSent {
          * @param bytes transferred
          */
         public Stats(long start, long stop, long bytes) {
-            super(start, stop);
-            this.bytes = bytes;
-        }
-        
-        /**
-         * Returns the number of bytes sent.
-         * 
-         * @return the number of bytes sent
-         */
-        public long bytes() {
-            return bytes;
-        }
-        
-        private int hash;
-        private boolean hashIsZero;
-        
-        @Override
-        public int hashCode() {
-            // Copy-paste from String.hashCode()
-            int h = hash;
-            if (h == 0 && !hashIsZero) {
-                h = Long.hashCode(bytes) + super.hashCode();
-                if (h == 0) {
-                    hashIsZero = true;
-                } else {
-                    hash = h;
-                }
-            }
-            return h;
-        }
-        
-        @Override
-        public boolean equals(Object obj) {
-            if (this == obj) {
-                return true;
-            }
-            if (obj == null ||
-                this.getClass() != obj.getClass()) {
-                return false;
-            }
-            var other = (Stats) obj;
-            return this.bytes == other.bytes &&
-                   this.nanoTimeOnStart() == other.nanoTimeOnStart() &&
-                   this.nanoTimeOnStop()  == other.nanoTimeOnStop();
+            super(start, stop, bytes);
         }
         
         @Override
@@ -90,7 +47,7 @@ public enum ResponseSent {
             return ResponseSent.class.getSimpleName() + '.' + Stats.class.getSimpleName() + "{" +
                     "start=" + nanoTimeOnStart() +
                     ", stop=" + nanoTimeOnStop() +
-                    ", bytes=" + bytes + '}';
+                    ", bytes=" + bytes() + '}';
         }
     }
 }

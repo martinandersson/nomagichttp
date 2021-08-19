@@ -73,6 +73,7 @@ final class RequestHeadSubscriber implements SubscriberAsStage<PooledByteBufferH
     // ---
     
     private Flow.Subscription subscription;
+    private long started;
     private int read;
     
     @Override
@@ -92,7 +93,8 @@ final class RequestHeadSubscriber implements SubscriberAsStage<PooledByteBufferH
         
         if (head != null) {
             subscription.cancel();
-            events.dispatch(RequestHeadParsed.INSTANCE, head);
+            events.dispatchLazy(RequestHeadParsed.INSTANCE, () -> head, () ->
+                    new RequestHeadParsed.Stats(started, System.nanoTime(), read));
             result.complete(head);
         }
     }
@@ -104,8 +106,11 @@ final class RequestHeadSubscriber implements SubscriberAsStage<PooledByteBufferH
             char curr = (char) buf.get();
             LOG.log(DEBUG, () -> "pos=" + read + ", curr=\"" + Char.toDebugString(curr) + "\"");
             
-            if (++read > maxHeadSize) {
+            if (read >= maxHeadSize) {
                 throw new MaxRequestHeadSizeExceededException();
+            }
+            if (read++ == 0) {
+                started = System.nanoTime();
             }
             
             head = processor.accept(curr);

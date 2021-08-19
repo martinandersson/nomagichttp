@@ -133,8 +133,7 @@ class DefaultRequestTest
                 "test-method",
                 "test-requestTarget",
                 "test-httpVersion",
-                headers,
-                -1);
+                headers);
         
         var rb = RequestBody.of(
                 rh.headers(),

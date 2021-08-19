@@ -108,7 +108,6 @@ final class RequestHeadProcessor
     
     private final StringBuilder token;
     
-    private long started;
     private int read;
     private char prev, curr;
     
@@ -124,9 +123,6 @@ final class RequestHeadProcessor
     }
     
     RequestHead accept(char curr) {
-        if (read == 0) {
-            started = System.nanoTime();
-        }
         ++read;
         this.curr = curr;
         step.run();
@@ -342,6 +338,6 @@ final class RequestHeadProcessor
                 headerValues != null ? headerValues : Map.of());
         
         completed = new DefaultRequestHead(
-                method, requestTarget, httpVersion, headers, started);
+                method, requestTarget, httpVersion, headers);
     }
 }
