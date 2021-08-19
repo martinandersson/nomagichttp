@@ -1,5 +1,7 @@
 package alpha.nomagichttp.events;
 
+import alpha.nomagichttp.util.TriConsumer;
+
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;

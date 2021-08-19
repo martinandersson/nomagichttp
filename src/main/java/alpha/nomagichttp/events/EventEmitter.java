@@ -2,6 +2,7 @@ package alpha.nomagichttp.events;
 
 import alpha.nomagichttp.HttpServer;
 import alpha.nomagichttp.message.RequestHead;
+import alpha.nomagichttp.util.TriConsumer;
 
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;

@@ -5,6 +5,7 @@ import alpha.nomagichttp.events.RequestHeadReceived;
 import alpha.nomagichttp.handler.ClientChannel;
 import alpha.nomagichttp.handler.ErrorHandler;
 import alpha.nomagichttp.message.Request;
+import alpha.nomagichttp.util.TriConsumer;
 
 /**
  * An action executed after a valid request has been received and before the
@@ -53,7 +54,7 @@ import alpha.nomagichttp.message.Request;
  * 
  * An exception thrown from the before-action is an alternative to explicitly
  * aborting through the {@link Chain} object. The exception is handed off to the
- * {@link ErrorHandler}. This is a variation of the previous example:
+ * {@link ErrorHandler}. This is a variant of the previous example:
  * <pre>
  *   ErrorHandler weRatherHide = (throwable, channel, ign,ored) -{@literal >} {
  *       try {
@@ -101,15 +102,6 @@ import alpha.nomagichttp.message.Request;
  * @see ActionRegistry
  */
 @FunctionalInterface
-public interface BeforeAction {
-    /**
-     * Apply the action.
-     * 
-     * @param request received (never {@code null})
-     * @param channel to client (never {@code null})
-     * @param chain completion mechanism (never {@code null})
-     * 
-     * @see BeforeAction
-     */
-    void apply(Request request, ClientChannel channel, Chain chain);
+public interface BeforeAction extends TriConsumer<Request, ClientChannel, Chain> {
+    // Empty
 }

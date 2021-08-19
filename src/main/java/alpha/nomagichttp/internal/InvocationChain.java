@@ -185,7 +185,7 @@ final class InvocationChain
             try {
                 var a = actions.next();
                 request = new DefaultRequest(ver, shared, a);
-                a.get().apply(request, chApi, this);
+                a.get().accept(request, chApi, this);
             } catch (Throwable t) {
                 status.set(AWAITING_NONE);
                 if (!allOf.completeExceptionally(t)) {

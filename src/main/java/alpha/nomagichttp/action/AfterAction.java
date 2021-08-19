@@ -45,10 +45,10 @@ import java.util.function.BiFunction;
  * Returning {@code null} is the same as throwing a {@code
  * NullPointerException}.<p>
  * 
- * Similar to {@link BeforeAction}, the after-action is only called with
+ * Similar to {@link BeforeAction}, the after-action is only called for
  * responses responding to a valid request. For example, if a request head fails
  * to parse and the error handler writes an alternative response, for that
- * response no after action will be called.<p>
+ * response instance no after action will be called.<p>
  * 
  * An action that will be invoked for responses to all <i>valid</i> requests
  * hitting the server can be registered using the path "/*". If the purpose for

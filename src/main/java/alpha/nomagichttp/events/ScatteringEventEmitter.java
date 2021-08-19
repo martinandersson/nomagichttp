@@ -1,5 +1,7 @@
 package alpha.nomagichttp.events;
 
+import alpha.nomagichttp.util.TriConsumer;
+
 /**
  * Semantically equivalent to {@link EventEmitter}, except this interface
  * defines methods to subscribe a listener that will receive all events emitted

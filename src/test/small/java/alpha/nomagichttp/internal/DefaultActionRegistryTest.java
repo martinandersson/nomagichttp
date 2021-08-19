@@ -232,7 +232,7 @@ public class DefaultActionRegistryTest
     private static BeforeAction beforeDummy(String name) {
         return new BeforeAction() {
             @Override
-            public void apply(Request request, ClientChannel channel, Chain chain) {
+            public void accept(Request request, ClientChannel channel, Chain chain) {
                 // Empty
             }
             
