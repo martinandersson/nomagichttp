@@ -45,9 +45,8 @@ import static java.util.concurrent.TimeUnit.NANOSECONDS;
  * bytebuffer to reach the callback may not be the last bytebuffer(s) announced
  * but may have been replaced with the sentinel value {@link #EOS}.<p>
  * 
- * The {@link WhenDone#accept(DefaultClientChannel, long, Throwable) whenDone}
- * callback executes exactly-once whenever the last pending operation
- * completes.<p>
+ * The {@link WhenDone#accept(long, Throwable) whenDone} callback executes
+ * exactly-once whenever the last pending operation completes.<p>
  * 
  * In write mode, the service will self-{@link #stop(Throwable)} with an {@link
  * InterruptedByTimeoutException} if the operation takes longer than the
@@ -71,13 +70,12 @@ final class AnnounceToChannel
         /**
          * Called when the last operation completes.
          * 
-         * @param chApi
-         *     the underlying channel (so that client code doesn't have to save the reference)
          * @param byteCount
-         *     total number of bytes that was either read or written (capped at {@code Long.MAX_VALUE})
+         *     total number of bytes that was either read or written (capped at
+         *     {@code Long.MAX_VALUE})
          * @param exc only non-null if there was a problem
          */
-        void accept(DefaultClientChannel chApi, long byteCount, Throwable exc);
+        void accept(long byteCount, Throwable exc);
     }
     
     static AnnounceToChannel read(
@@ -321,7 +319,7 @@ final class AnnounceToChannel
             // Propagate null instead of sentinel
             final Throwable real = prev == RUNNING || prev == STOPPED ? null : prev;
             try {
-                whenDone.accept(chApi, byteCount, real);
+                whenDone.accept(byteCount, real);
             } finally {
                 // Ensure we don't execute callback again
                 whenDone = null;

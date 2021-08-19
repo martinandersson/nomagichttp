@@ -204,7 +204,7 @@ final class ResponseBodySubscriber implements SubscriberAsStage<ByteBuffer, Long
         feedChannel(b);
     }
     
-    private void afterChannelFinished(DefaultClientChannel chApi, long byteCount, Throwable exc) {
+    private void afterChannelFinished(long byteCount, Throwable exc) {
         if (exc == null) {
             assert byteCount > 0;
             chApi.getServer().events().dispatchLazy(ResponseSent.INSTANCE, () -> resp, () ->
