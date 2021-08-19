@@ -1,6 +1,6 @@
 package alpha.nomagichttp.mediumtest;
 
-import alpha.nomagichttp.events.RequestHeadParsed;
+import alpha.nomagichttp.events.RequestHeadReceived;
 import alpha.nomagichttp.examples.RetryRequestOnError;
 import alpha.nomagichttp.handler.RequestHandler;
 import alpha.nomagichttp.message.Request;
@@ -399,11 +399,11 @@ class ExampleTest extends AbstractRealTest
     void CountRequestsByMethod() throws IOException, InterruptedException {
         final Map<String, LongAdder> freqs = new ConcurrentHashMap<>();
         
-        BiConsumer<RequestHeadParsed, RequestHead> incrementer = (event, head) ->
+        BiConsumer<RequestHeadReceived, RequestHead> incrementer = (event, head) ->
                 freqs.computeIfAbsent(head.method(), m -> new LongAdder()).increment();
         
         // We don't need to add routes here, sort of the whole point lol
-        server().events().on(RequestHeadParsed.class, incrementer);
+        server().events().on(RequestHeadReceived.class, incrementer);
         // Must await the server before we assert the counter
         var responseIgnored = client()
                 .writeReadTextUntilNewlines("GET / HTTP/1.1" + CRLF + CRLF);

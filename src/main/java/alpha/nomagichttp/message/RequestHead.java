@@ -1,6 +1,6 @@
 package alpha.nomagichttp.message;
 
-import alpha.nomagichttp.events.RequestHeadParsed;
+import alpha.nomagichttp.events.RequestHeadReceived;
 
 /**
  * A "raw" request head where each component can be retrieved as observed on the
@@ -8,7 +8,7 @@ import alpha.nomagichttp.events.RequestHeadParsed;
  * 
  * A complex version of a parsed and <i>accepted</i> request head is embedded in
  * the API of {@link Request}. This head-type is emitted together with the
- * {@link RequestHeadParsed} event.<p>
+ * {@link RequestHeadReceived} event.<p>
  * 
  * String tokens returned by this interface is never {@code null} or empty.
  * 

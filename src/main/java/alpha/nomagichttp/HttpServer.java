@@ -4,7 +4,7 @@ import alpha.nomagichttp.action.ActionRegistry;
 import alpha.nomagichttp.events.EventHub;
 import alpha.nomagichttp.events.HttpServerStarted;
 import alpha.nomagichttp.events.HttpServerStopped;
-import alpha.nomagichttp.events.RequestHeadParsed;
+import alpha.nomagichttp.events.RequestHeadReceived;
 import alpha.nomagichttp.events.ResponseSent;
 import alpha.nomagichttp.events.ScatteringEventEmitter;
 import alpha.nomagichttp.handler.ClientChannel;
@@ -440,7 +440,7 @@ public interface HttpServer extends RouteRegistry, ActionRegistry
      *     <td> {@link Instant} </td>
      *   </tr>
      *   <tr>
-     *     <th scope="row"> {@link RequestHeadParsed} </th>
+     *     <th scope="row"> {@link RequestHeadReceived} </th>
      *     <td> {@link RequestHead} </td>
      *     <td> {@code null} </td>
      *   </tr>

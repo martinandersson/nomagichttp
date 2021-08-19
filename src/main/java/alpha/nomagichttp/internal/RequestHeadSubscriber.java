@@ -2,7 +2,7 @@ package alpha.nomagichttp.internal;
 
 import alpha.nomagichttp.HttpServer;
 import alpha.nomagichttp.events.EventHub;
-import alpha.nomagichttp.events.RequestHeadParsed;
+import alpha.nomagichttp.events.RequestHeadReceived;
 import alpha.nomagichttp.handler.ClientChannel;
 import alpha.nomagichttp.message.Char;
 import alpha.nomagichttp.message.EndOfStreamException;
@@ -93,8 +93,8 @@ final class RequestHeadSubscriber implements SubscriberAsStage<PooledByteBufferH
         
         if (head != null) {
             subscription.cancel();
-            events.dispatchLazy(RequestHeadParsed.INSTANCE, () -> head, () ->
-                    new RequestHeadParsed.Stats(started, System.nanoTime(), read));
+            events.dispatchLazy(RequestHeadReceived.INSTANCE, () -> head, () ->
+                    new RequestHeadReceived.Stats(started, System.nanoTime(), read));
             result.complete(head);
         }
     }

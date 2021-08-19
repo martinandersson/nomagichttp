@@ -1,7 +1,7 @@
 package alpha.nomagichttp.mediumtest;
 
 import alpha.nomagichttp.events.AbstractByteCountedStats;
-import alpha.nomagichttp.events.RequestHeadParsed;
+import alpha.nomagichttp.events.RequestHeadReceived;
 import alpha.nomagichttp.events.ResponseSent;
 import alpha.nomagichttp.handler.RequestHandler;
 import alpha.nomagichttp.message.PooledByteBufferHolder;
@@ -317,8 +317,8 @@ class DetailTest extends AbstractRealTest
     }
     
     @Test
-    void event_RequestHeadParsed() throws IOException, InterruptedException {
-        event_engine(RequestHeadParsed.class, (req, rsp) -> req.getBytes(US_ASCII).length);
+    void event_RequestHeadReceived() throws IOException, InterruptedException {
+        event_engine(RequestHeadReceived.class, (req, rsp) -> req.getBytes(US_ASCII).length);
     }
     
     @Test

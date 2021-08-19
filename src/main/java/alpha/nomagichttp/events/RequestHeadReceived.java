@@ -16,6 +16,7 @@ import alpha.nomagichttp.message.RequestHead;
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  */
+public enum RequestHeadReceived {
     /**
      * A singleton instance representing the event.
      */
@@ -48,7 +49,7 @@ import alpha.nomagichttp.message.RequestHead;
         
         @Override
         public String toString() {
-            return RequestHeadParsed.class.getSimpleName() + '.' + Stats.class.getSimpleName() + "{" +
+            return RequestHeadReceived.class.getSimpleName() + '.' + Stats.class.getSimpleName() + "{" +
                     "start=" + nanoTimeOnStart() +
                     ", stop=" + nanoTimeOnStop() +
                     ", bytes=" + bytes() + '}';

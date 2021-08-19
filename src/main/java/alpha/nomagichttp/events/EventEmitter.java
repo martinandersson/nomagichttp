@@ -66,7 +66,7 @@ import java.util.function.Consumer;
  * 
  * Semantics concerning attachments are normally documented and defined by the
  * event type, and, normally always present or never present. For example, a
- * {@link RequestHeadParsed} event raised by the {@link HttpServer#events()
+ * {@link RequestHeadReceived} event raised by the {@link HttpServer#events()
  * HttpServer} will always carry with it the {@link RequestHead} object as the
  * first and only attachment.<p>
  * 

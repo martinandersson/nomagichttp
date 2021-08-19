@@ -1,7 +1,7 @@
 package alpha.nomagichttp.action;
 
 import alpha.nomagichttp.HttpServer;
-import alpha.nomagichttp.events.RequestHeadParsed;
+import alpha.nomagichttp.events.RequestHeadReceived;
 import alpha.nomagichttp.handler.ClientChannel;
 import alpha.nomagichttp.handler.ErrorHandler;
 import alpha.nomagichttp.message.Request;
@@ -80,9 +80,9 @@ import alpha.nomagichttp.message.Request;
  * 
  * An action that will be invoked for all <i>valid</i> requests hitting the
  * server can be registered using the path "/*". If the purpose for such an
- * action is to gather metrics, consider instead tapping into all requests
- * regardless if they are valid, by subscribing to the {@link RequestHeadParsed}
- * event (see {@link HttpServer#events()}).<p>
+ * action is to gather metrics, consider instead tapping into all request heads
+ * received regardless if the request is valid, by subscribing to the {@link
+ * RequestHeadReceived} event (see {@link HttpServer#events()}).<p>
  * 
  * The action is called before the request handler resolution begins. This means
  * that the action is called even if a particular route turns out to not exist
