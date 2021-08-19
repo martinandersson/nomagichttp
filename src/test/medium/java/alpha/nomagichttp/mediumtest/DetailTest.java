@@ -19,7 +19,6 @@ import java.nio.channels.Channel;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.concurrent.ArrayBlockingQueue;
-import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Flow;
 import java.util.function.Consumer;
@@ -330,7 +329,7 @@ class DetailTest extends AbstractRealTest
             throws IOException, InterruptedException
     {
         // Save event locally
-        BlockingQueue<AbstractByteCountedStats> stats = new ArrayBlockingQueue<>(1);
+        var stats = new ArrayBlockingQueue<AbstractByteCountedStats>(1);
         server().events().on(eventType, (ev, thing, s) ->
                 stats.add((AbstractByteCountedStats) s));
         

@@ -121,7 +121,7 @@ final class RequestHeadSubscriber implements SubscriberAsStage<PooledByteBufferH
     
     @Override
     public void onError(final Throwable t) {
-        if (t instanceof EndOfStreamException && !processor.hasStarted()) {
+        if (t instanceof EndOfStreamException && read == 0) {
             result.completeExceptionally(new ClientAbortedException(t));
         } else {
             result.completeExceptionally(t);

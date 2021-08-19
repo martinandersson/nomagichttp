@@ -130,17 +130,6 @@ final class RequestHeadProcessor
         return completed;
     }
     
-    /**
-     * Returns {@code true} if at least one byte has been processed, otherwise
-     * {@code false}.
-     * 
-     * @return {@code true} if at least one byte has been processed, otherwise
-     * {@code false}
-     */
-    boolean hasStarted() {
-        return read > 0;
-    }
-    
     private String method;
     
     private void parseMethod() {
