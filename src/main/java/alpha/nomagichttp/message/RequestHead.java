@@ -1,6 +1,6 @@
 package alpha.nomagichttp.message;
 
-import alpha.nomagichttp.events.RequestHeadReceived;
+import alpha.nomagichttp.event.RequestHeadReceived;
 
 /**
  * A "raw" request head where each component can be retrieved as observed on the

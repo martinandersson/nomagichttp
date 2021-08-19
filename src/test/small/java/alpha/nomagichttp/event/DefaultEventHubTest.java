@@ -1,4 +1,4 @@
-package alpha.nomagichttp.events;
+package alpha.nomagichttp.event;
 
 import org.junit.jupiter.api.Test;
 

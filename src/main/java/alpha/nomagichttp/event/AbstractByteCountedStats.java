@@ -1,4 +1,4 @@
-package alpha.nomagichttp.events;
+package alpha.nomagichttp.event;
 
 /**
  * A container of elapsed time and a byte count of a byte-processing task.

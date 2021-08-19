@@ -1,4 +1,4 @@
-package alpha.nomagichttp.events;
+package alpha.nomagichttp.event;
 
 import alpha.nomagichttp.HttpServer;
 import alpha.nomagichttp.message.RequestHead;

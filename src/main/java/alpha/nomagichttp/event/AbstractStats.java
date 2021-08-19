@@ -1,4 +1,4 @@
-package alpha.nomagichttp.events;
+package alpha.nomagichttp.event;
 
 import java.time.Duration;
 import java.util.Arrays;

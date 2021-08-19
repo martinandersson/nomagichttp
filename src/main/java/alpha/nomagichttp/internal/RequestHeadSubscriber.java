@@ -1,8 +1,8 @@
 package alpha.nomagichttp.internal;
 
 import alpha.nomagichttp.HttpServer;
-import alpha.nomagichttp.events.EventHub;
-import alpha.nomagichttp.events.RequestHeadReceived;
+import alpha.nomagichttp.event.EventHub;
+import alpha.nomagichttp.event.RequestHeadReceived;
 import alpha.nomagichttp.handler.ClientChannel;
 import alpha.nomagichttp.message.Char;
 import alpha.nomagichttp.message.EndOfStreamException;

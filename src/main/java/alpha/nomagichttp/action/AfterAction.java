@@ -2,7 +2,7 @@ package alpha.nomagichttp.action;
 
 import alpha.nomagichttp.Config;
 import alpha.nomagichttp.HttpServer;
-import alpha.nomagichttp.events.ResponseSent;
+import alpha.nomagichttp.event.ResponseSent;
 import alpha.nomagichttp.handler.ClientChannel;
 import alpha.nomagichttp.message.Request;
 import alpha.nomagichttp.message.Response;

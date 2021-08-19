@@ -1,6 +1,6 @@
 package alpha.nomagichttp.internal;
 
-import alpha.nomagichttp.events.AbstractEventEmitter;
+import alpha.nomagichttp.event.AbstractEventEmitter;
 
 import java.util.HashMap;
 import java.util.HashSet;

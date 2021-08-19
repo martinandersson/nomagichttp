@@ -1,6 +1,6 @@
 package alpha.nomagichttp.mediumtest;
 
-import alpha.nomagichttp.events.RequestHeadReceived;
+import alpha.nomagichttp.event.RequestHeadReceived;
 import alpha.nomagichttp.examples.RetryRequestOnError;
 import alpha.nomagichttp.handler.RequestHandler;
 import alpha.nomagichttp.message.Request;

@@ -1,8 +1,8 @@
 package alpha.nomagichttp.mediumtest;
 
-import alpha.nomagichttp.events.AbstractByteCountedStats;
-import alpha.nomagichttp.events.RequestHeadReceived;
-import alpha.nomagichttp.events.ResponseSent;
+import alpha.nomagichttp.event.AbstractByteCountedStats;
+import alpha.nomagichttp.event.RequestHeadReceived;
+import alpha.nomagichttp.event.ResponseSent;
 import alpha.nomagichttp.handler.RequestHandler;
 import alpha.nomagichttp.message.PooledByteBufferHolder;
 import alpha.nomagichttp.message.Response;

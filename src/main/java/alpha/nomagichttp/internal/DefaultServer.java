@@ -4,10 +4,10 @@ import alpha.nomagichttp.Config;
 import alpha.nomagichttp.HttpServer;
 import alpha.nomagichttp.action.AfterAction;
 import alpha.nomagichttp.action.BeforeAction;
-import alpha.nomagichttp.events.DefaultEventHub;
-import alpha.nomagichttp.events.EventHub;
-import alpha.nomagichttp.events.HttpServerStarted;
-import alpha.nomagichttp.events.HttpServerStopped;
+import alpha.nomagichttp.event.DefaultEventHub;
+import alpha.nomagichttp.event.EventHub;
+import alpha.nomagichttp.event.HttpServerStarted;
+import alpha.nomagichttp.event.HttpServerStopped;
 import alpha.nomagichttp.handler.ErrorHandler;
 import alpha.nomagichttp.route.Route;
 

@@ -1,12 +1,12 @@
 package alpha.nomagichttp;
 
 import alpha.nomagichttp.action.ActionRegistry;
-import alpha.nomagichttp.events.EventHub;
-import alpha.nomagichttp.events.HttpServerStarted;
-import alpha.nomagichttp.events.HttpServerStopped;
-import alpha.nomagichttp.events.RequestHeadReceived;
-import alpha.nomagichttp.events.ResponseSent;
-import alpha.nomagichttp.events.ScatteringEventEmitter;
+import alpha.nomagichttp.event.EventHub;
+import alpha.nomagichttp.event.HttpServerStarted;
+import alpha.nomagichttp.event.HttpServerStopped;
+import alpha.nomagichttp.event.RequestHeadReceived;
+import alpha.nomagichttp.event.ResponseSent;
+import alpha.nomagichttp.event.ScatteringEventEmitter;
 import alpha.nomagichttp.handler.ClientChannel;
 import alpha.nomagichttp.handler.ErrorHandler;
 import alpha.nomagichttp.handler.RequestHandler;
