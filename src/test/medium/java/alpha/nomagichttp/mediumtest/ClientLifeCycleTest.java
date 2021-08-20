@@ -9,6 +9,7 @@ import alpha.nomagichttp.message.Response;
 import alpha.nomagichttp.testutil.AbstractRealTest;
 import alpha.nomagichttp.testutil.Environment;
 import alpha.nomagichttp.testutil.TestClient;
+import alpha.nomagichttp.testutil.TestRequests;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
@@ -29,8 +30,6 @@ import static alpha.nomagichttp.handler.RequestHandler.GET;
 import static alpha.nomagichttp.handler.RequestHandler.POST;
 import static alpha.nomagichttp.message.Responses.noContent;
 import static alpha.nomagichttp.testutil.TestClient.CRLF;
-import static alpha.nomagichttp.testutil.TestRequests.get;
-import static alpha.nomagichttp.testutil.TestRequests.post;
 import static alpha.nomagichttp.testutil.TestSubscribers.onNextAndError;
 import static java.lang.System.Logger.Level.DEBUG;
 import static java.lang.System.Logger.Level.WARNING;
@@ -291,8 +290,8 @@ class ClientLifeCycleTest extends AbstractRealTest
                     new String[]{"Connection: close"} :
                     new String[0];
             String req = useRequestBody ?
-                    post("body", conn) :
-                    get(conn);
+                    TestRequests.post("body", conn) :
+                    TestRequests.get(conn);
             client().write(req);
             client().shutdownOutput();
             resp.complete(noContent());
@@ -415,7 +414,7 @@ class ClientLifeCycleTest extends AbstractRealTest
             ch.write(noContent());
         }));
         assertThat(client().writeReadTextUntilEOS(
-                get()))
+                TestRequests.get()))
             .isEqualTo(
                 "HTTP/1.1 204 No Content" + CRLF +
                 "Connection: close"       + CRLF + CRLF);
