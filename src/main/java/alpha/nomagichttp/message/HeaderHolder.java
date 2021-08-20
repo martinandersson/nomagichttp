@@ -71,7 +71,7 @@ public interface HeaderHolder {
     }
     
     /**
-     * Returns {@code true} if the searched header is missing or all header
+     * Returns {@code true} if the given header is missing or all of its mapped
      * values are empty, otherwise {@code false}.
      * 
      * @implSpec
@@ -79,7 +79,7 @@ public interface HeaderHolder {
      * 
      * @param key of header
      * 
-     * @return {@code true} if the searched header is missing or all header
+     * @return {@code true} if the given header is missing or all of its mapped
      *         values are empty, otherwise {@code false}
      * 
      * @throws NullPointerException if {@code key} is {@code null}
