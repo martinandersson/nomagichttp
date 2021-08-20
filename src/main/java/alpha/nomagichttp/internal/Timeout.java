@@ -2,7 +2,6 @@ package alpha.nomagichttp.internal;
 
 import java.time.Duration;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.ScheduledThreadPoolExecutor;
 import java.util.concurrent.ThreadFactory;
@@ -86,15 +85,6 @@ final class Timeout
                     // Not our box, abort
                     return;
                 }
-                ScheduledFuture<?> scheduled;
-                try {
-                    scheduled = f.get();
-                } catch (InterruptedException | ExecutionException e) {
-                    throw new AssertionError(e);
-                }
-                if (scheduled.isCancelled()) {
-                    return;
-                }
                 action.run();
             };
             f.complete(schedule(nanos, conditionally));
@@ -104,19 +94,19 @@ final class Timeout
     /**
      * Abort the current task.<p>
      * 
-     * No guarantee is provided that the task is aborted.<p>
+     * The task is aborted only if it has not already started.<p>
      * 
      * This method is NOP if no task has been scheduled.
-     * 
-     * @see ScheduledFuture#cancel(boolean) 
      */
     void abort() {
+        // .cancel() only to clean up the backing scheduler's work queue
+        // (setting the task to null ensures it won't run, see schedule() impl)
         take(task).ifPresent(cf -> cf.thenAccept(sf -> sf.cancel(false)));
     }
     
     /**
      * Semantically the same as calling {@link #abort()} followed by
-     * {@link #schedule(Runnable)}, difference being this method does not
+     * {@link #schedule(Runnable)}, difference being that this method does not
      * throw {@code IllegalStateException}.
      * 
      * @param action to run
