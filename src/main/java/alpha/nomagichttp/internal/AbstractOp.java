@@ -17,16 +17,16 @@ import static java.util.Objects.requireNonNull;
  * The operator subscribes to the upstream lazily after the downstream
  * subscriber has subscribed and been installed. The concrete operator may
  * override {@link #newSubscription(Flow.Subscriber)} to be notified of the
- * downstream subscriber arrival but must call through to super which triggers
+ * downstream subscriber's arrival but must call through to super which triggers
  * the upstream subscription. The upstream can also be subscribed to eagerly by
- * calling {@code trySubscribeToUpstream()}.<p>
+ * calling {@link #trySubscribeToUpstream()}.<p>
  * 
  * The default behavior of each method is to pass the signal through as-is. An
  * operator should obviously override at least one of these methods in order to
  * attach its operator-specific feature. To propagate the signal forward, call
  * super.<p>
  * 
- * A few key notes from {@code AbstractUnicastPublisher}:
+ * A few keynotes from {@code AbstractUnicastPublisher}:
  * <ul>
  *   <li>{@code fromDownstreamRequest()} is never called while the superclass is
  *       still executing {@code newSubscription()}</li>
@@ -34,7 +34,7 @@ import static java.util.Objects.requireNonNull;
  *   <li>Downstream request for demand is routed through even after subscription
  *       termination.</li>
  *   <li>If the operator signals an untrusted (i.e. non-library) upstream- or
- *       any downstream asynchronously, then signals must be arranged to execute
+ *       downstream asynchronously, then signals must be arranged to execute
  *       serially. Consider extending {@link Async}.</li>
  * </ul>
  * 

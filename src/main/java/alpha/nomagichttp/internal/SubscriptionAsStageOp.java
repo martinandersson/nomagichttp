@@ -1,6 +1,7 @@
 package alpha.nomagichttp.internal;
 
 import alpha.nomagichttp.message.PooledByteBufferHolder;
+import alpha.nomagichttp.message.Request;
 import alpha.nomagichttp.message.RequestBodyTimeoutException;
 
 import java.util.Optional;
@@ -97,7 +98,7 @@ final class SubscriptionAsStageOp extends AbstractOp<PooledByteBufferHolder>
      * 
      * The stage may never complete if C) the application's subscriber never
      * arrives. The cure for C is for the server to have a point in time when he
-     * gives up waiting (documented in {@code Request.Body} to be the point
+     * gives up waiting (documented in {@link Request.Body} to be the point
      * when the final response-body subscription completes. Additionally, an
      * upstream operator will end the subscription on {@link
      * RequestBodyTimeoutException}.<p>
@@ -107,7 +108,7 @@ final class SubscriptionAsStageOp extends AbstractOp<PooledByteBufferHolder>
      * onError}/{@code onComplete} or {@code cancel} returns exceptionally, the
      * returned stage will still complete (the event is never lost).
      * 
-     * @return a stage bound to the life-cycle of the singleton subscription
+     * @return a stage mimicking the life-cycle of the singleton subscription
      */
     CompletionStage<Void> asCompletionStage() {
         return result;
