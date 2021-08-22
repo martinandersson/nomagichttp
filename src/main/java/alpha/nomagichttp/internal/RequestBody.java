@@ -41,7 +41,7 @@ import static java.util.concurrent.CompletableFuture.failedStage;
 final class RequestBody implements Request.Body
 {
     private static final System.Logger LOG = System.getLogger(RequestBody.class.getPackageName());
-    private static final CompletionStage<String> COMPLETED_STR_EMPTY = completedStage("");
+    private static final CompletionStage<String> COMPLETED_EMPTY_STR = completedStage("");
     
     // Copy-pasted from AsynchronousFileChannel.NO_ATTRIBUTES
     @SuppressWarnings({"rawtypes"}) // generic array construction
@@ -150,7 +150,7 @@ final class RequestBody implements Request.Body
     @Override
     public CompletionStage<String> toText() {
         if (isEmpty()) {
-            return COMPLETED_STR_EMPTY;
+            return COMPLETED_EMPTY_STR;
         }
         return lazyInit(cachedText, CompletableFuture::new, v -> copyResult(mkText(), v));
     }
