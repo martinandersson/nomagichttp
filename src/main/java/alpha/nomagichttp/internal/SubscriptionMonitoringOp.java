@@ -33,7 +33,7 @@ import static java.util.concurrent.CompletableFuture.completedFuture;
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  */
-final class SubscriptionAsStageOp extends AbstractOp<PooledByteBufferHolder>
+final class SubscriptionMonitoringOp extends AbstractOp<PooledByteBufferHolder>
 {
     /**
      * Construct a quote unquote "real" operator.
@@ -41,23 +41,23 @@ final class SubscriptionAsStageOp extends AbstractOp<PooledByteBufferHolder>
      * @param upstream the upstream publisher
      * @return a new operator
      */
-    static SubscriptionAsStageOp subscribeTo(
+    static SubscriptionMonitoringOp subscribeTo(
             Flow.Publisher<? extends PooledByteBufferHolder> upstream)
     {
-        return new SubscriptionAsStageOp(upstream);
+        return new SubscriptionMonitoringOp(upstream);
     }
     
-    private static final SubscriptionAsStageOp COMPLETED = new SubscriptionAsStageOp();
+    private static final SubscriptionMonitoringOp COMPLETED = new SubscriptionMonitoringOp();
     
     /**
      * Returns an operator whose {@linkplain
-     * SubscriptionAsStageOp#asCompletionStage() stage} is already completed
+     * SubscriptionMonitoringOp#asCompletionStage() stage} is already completed
      * normally and all other methods must not be used. Undefined application
      * behavior if they are.
      * 
      * @return see JavaDoc
      */
-    static SubscriptionAsStageOp alreadyCompleted() {
+    static SubscriptionMonitoringOp alreadyCompleted() {
         return COMPLETED;
     }
     
@@ -87,7 +87,7 @@ final class SubscriptionAsStageOp extends AbstractOp<PooledByteBufferHolder>
         });
     }
     
-    private SubscriptionAsStageOp(
+    private SubscriptionMonitoringOp(
             Flow.Publisher<? extends PooledByteBufferHolder> upstream)
     {
         super(upstream);
@@ -97,7 +97,7 @@ final class SubscriptionAsStageOp extends AbstractOp<PooledByteBufferHolder>
         trySubscribeToUpstream();
     }
     
-    private SubscriptionAsStageOp() {
+    private SubscriptionMonitoringOp() {
         super(empty());
         processing = null;
         terminated = null;
@@ -194,6 +194,7 @@ final class SubscriptionAsStageOp extends AbstractOp<PooledByteBufferHolder>
                     assert !deliveredError : "Expected only one terminating signal.";
                     // In fact, the only reason we're using an atomic ref is
                     // because of a possibly asynchronous bytebuffer release.
+                    // TODO: Replace CAS with volatile + more assert.
                     deliveredError = signalError(t);
                 },
                 TerminationCause.ofError(t));
@@ -213,7 +214,7 @@ final class SubscriptionAsStageOp extends AbstractOp<PooledByteBufferHolder>
                 TerminationCause.ofCancellation());
     }
     
-    private void alwaysTryComplete(Runnable signal, TerminationCause cause) {
+    private void alwaysTryComplete(Runnable signal, TerminationCause cause) { // TODO: Rename to finallyTryComplete
         boolean success = terminated.compareAndSet(null, cause);
         try {
             signal.run();

@@ -21,8 +21,8 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.BiFunction;
 
 import static alpha.nomagichttp.internal.AtomicReferences.lazyInit;
-import static alpha.nomagichttp.internal.SubscriptionAsStageOp.alreadyCompleted;
-import static alpha.nomagichttp.internal.SubscriptionAsStageOp.subscribeTo;
+import static alpha.nomagichttp.internal.SubscriptionMonitoringOp.alreadyCompleted;
+import static alpha.nomagichttp.internal.SubscriptionMonitoringOp.subscribeTo;
 import static alpha.nomagichttp.util.Headers.contentLength;
 import static alpha.nomagichttp.util.Headers.contentType;
 import static java.lang.System.Logger.Level.DEBUG;
@@ -127,7 +127,7 @@ final class RequestBody implements Request.Body
     
     private final HttpHeaders headers;
     private final OnCancelDiscardOp chIn;
-    private final SubscriptionAsStageOp monitor;
+    private final SubscriptionMonitoringOp monitor;
     private final Runnable beforeSubsc;
 
     private final AtomicReference<CompletionStage<String>> cachedText;
@@ -137,7 +137,7 @@ final class RequestBody implements Request.Body
             HttpHeaders headers,
             // All optional (relevant only for body contents)
             OnCancelDiscardOp chIn,
-            SubscriptionAsStageOp monitor,
+            SubscriptionMonitoringOp monitor,
             Runnable beforeSubsc)
     {
         this.headers     = headers;
@@ -227,11 +227,11 @@ final class RequestBody implements Request.Body
      * Returns the subscription monitor.<p>
      * 
      * If the body is empty, then {@link
-     * SubscriptionAsStageOp#alreadyCompleted()}} is returned.
+     * SubscriptionMonitoringOp#alreadyCompleted()}} is returned.
      * 
      * @return the subscription monitor
      */
-    SubscriptionAsStageOp subscriptionMonitor() {
+    SubscriptionMonitoringOp subscriptionMonitor() {
         return isEmpty() ? alreadyCompleted() : monitor;
     }
     

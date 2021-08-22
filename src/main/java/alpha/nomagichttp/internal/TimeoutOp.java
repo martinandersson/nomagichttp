@@ -68,7 +68,7 @@ abstract class TimeoutOp<T> extends AbstractOp.Async<T> {
          * 
          * The start should be scheduled only after the call site has made sure
          * the timeout - which may in theory (as is the case in our tests) be
-         * extremely short. Meaning, after {@link SubscriptionAsStageOp} has
+         * extremely short. Meaning, after {@link SubscriptionMonitoringOp} has
          * subscribed to the timeout operator.<p>
          * 
          * Is NOP if already started.
