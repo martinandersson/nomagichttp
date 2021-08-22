@@ -17,14 +17,16 @@ import static java.util.Objects.requireNonNull;
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  */
-final class OnErrorCloseReadStream<T> extends AbstractOp<T>
+final class OnDownstreamErrorCloseReadStream<T> extends AbstractOp<T>
 {
     private final DefaultClientChannel chApi;
     
     private static final System.Logger LOG
-            = System.getLogger(OnErrorCloseReadStream.class.getPackageName());
+            = System.getLogger(OnDownstreamErrorCloseReadStream.class.getPackageName());
     
-    OnErrorCloseReadStream(Flow.Publisher<? extends T> upstream, DefaultClientChannel chApi) {
+    OnDownstreamErrorCloseReadStream(
+            Flow.Publisher<? extends T> upstream, DefaultClientChannel chApi)
+    {
         super(upstream);
         this.chApi  = requireNonNull(chApi);
     }
