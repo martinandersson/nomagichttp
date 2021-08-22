@@ -24,7 +24,7 @@ final class OnErrorCloseReadStream<T> extends AbstractOp<T>
     private static final System.Logger LOG
             = System.getLogger(OnErrorCloseReadStream.class.getPackageName());
     
-    protected OnErrorCloseReadStream(Flow.Publisher<? extends T> upstream, DefaultClientChannel chApi) {
+    OnErrorCloseReadStream(Flow.Publisher<? extends T> upstream, DefaultClientChannel chApi) {
         super(upstream);
         this.chApi  = requireNonNull(chApi);
     }
