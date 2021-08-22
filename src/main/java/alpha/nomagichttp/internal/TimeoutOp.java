@@ -45,7 +45,7 @@ abstract class TimeoutOp<T> extends AbstractOp.Async<T> {
      * 
      * Currently, used by {@link HttpExchange} to abort {@link
      * RequestHeadSubscriber} with a {@link RequestHeadTimeoutException} and
-     * used by {@link DefaultRequest} to abort the body subscriber with a {@link
+     * used by {@link RequestBody} to abort the body subscriber with a {@link
      * RequestBodyTimeoutException}.
      * 
      * @param <T> published item type
@@ -182,7 +182,7 @@ abstract class TimeoutOp<T> extends AbstractOp.Async<T> {
     protected final void timeoutAction() {
         super.fromDownstreamCancel();
         Throwable err = ex.get();
-        // If we fail to deliver the error, great, timeout doesn't apply without an active subscriber
+        // If we fail to deliver the error, great, timeout doesn't apply without a subscriber
         super.fromUpstreamError(err);
     }
     

@@ -10,7 +10,6 @@ import alpha.nomagichttp.internal.ResponsePipeline.Command;
 import alpha.nomagichttp.message.HttpVersionTooNewException;
 import alpha.nomagichttp.message.HttpVersionTooOldException;
 import alpha.nomagichttp.message.IllegalRequestBodyException;
-import alpha.nomagichttp.message.RequestBodyTimeoutException;
 import alpha.nomagichttp.message.RequestHead;
 import alpha.nomagichttp.message.RequestHeadTimeoutException;
 import alpha.nomagichttp.message.Response;
@@ -56,7 +55,7 @@ import static java.util.Objects.requireNonNull;
  * 
  * In addition:
  * <ul>
- *   <li>Has package-private accessors for the HTTP version and request head</li>
+ *   <li>Has package-private accessors for the request head, HTTP version and request skeleton</li>
  *   <li>May pre-emptively schedule a 100 (Continue) depending on configuration</li>
  *   <li>Shuts down read stream if request has header "Connection: close"</li>
  *   <li>Shuts down read stream on request timeout</li>
@@ -90,7 +89,6 @@ final class HttpExchange
     private RequestHead head;
     private Version version;
     private SkeletonRequest request;
-    private volatile boolean subscriberArrived;
     private ErrorResolver errRes;
     
     HttpExchange(
@@ -254,15 +252,15 @@ final class HttpExchange
     private RequestBody createBody(RequestHead h) {
         return RequestBody.of(h.headers(), chIn, chApi,
                 config.timeoutIdleConnection(),
-                this::tryRespond100Continue,
-                () -> subscriberArrived = true);
+                this::tryRespond100Continue);
     }
     
     private RequestBody monitorBody(RequestBody b) {
-        b.asCompletionStage().whenComplete((nil, thr) -> {
-            // Note, an empty body is immediately completed
+        var mon = b.subscriptionMonitor();
+        mon.asCompletionStage().whenComplete((nil, thr) -> {
+            // Note, an empty body is immediately completed normally
             pipe.add(Command.INIT_RESPONSE_TIMER);
-            if (thr instanceof RequestBodyTimeoutException && !subscriberArrived) {
+            if (thr != null && !mon.wasErrorDeliveredToDownstream()) {
                 // Then we need to deal with it
                 handleError(thr);
             }
@@ -358,10 +356,10 @@ final class HttpExchange
         final var b = request != null ? request.body() :
                 // E.g. HttpVersionTooOldException -> 426 (Upgrade Required).
                 // So we fall back to a local dummy, just for the API.
-                RequestBody.of(head.headers(), chIn, chApi, null, null, null);
+                RequestBody.of(head.headers(), chIn, chApi, null, null);
         
         b.discardIfNoSubscriber();
-        b.asCompletionStage().whenComplete((nil, thr) -> {
+        b.subscriptionMonitor().asCompletionStage().whenComplete((nil, thr) -> {
             // Prepping new exchange = thr is ignored (already dealt with, hopefully lol)
             if (head.headerContains(CONNECTION, "close") && chApi.isOpenForReading()) {
                 LOG.log(DEBUG, "Request set \"Connection: close\", shutting down input.");

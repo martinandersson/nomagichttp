@@ -434,7 +434,8 @@ public interface Request extends HeaderHolder, AttributeHolder
      * subscription immediately. {@code toText()} completes immediately with an
      * empty string. {@code toFile()} completes immediately with 0 bytes. {@code
      * convert()} immediately invokes its given function with an empty byte
-     * array.<p>
+     * array. {@code subscribe(Flow.Publisher)} will delegate to {@link
+     * Publishers#empty()}<p>
      * 
      * The body bytes can not be directly consumed more than once; they are not
      * saved by the server. An attempt to {@code convert()} or {@code

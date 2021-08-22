@@ -139,7 +139,7 @@ class DefaultRequestTest
                 rh.headers(),
                 Publishers.just(wrap(body, US_ASCII)),
                 Mockito.mock(DefaultClientChannel.class),
-                null, null, null);
+                null, null);
         
         SkeletonRequest req = new SkeletonRequest(
                 rh, RequestTarget.parse("/?"), rb, new DefaultAttributes());

@@ -12,19 +12,20 @@ import java.util.concurrent.Flow;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
+import static alpha.nomagichttp.util.Publishers.empty;
 import static java.util.Optional.ofNullable;
+import static java.util.concurrent.CompletableFuture.completedFuture;
 
 /**
- * Allows the flow to be observed {@link #asCompletionStage()}.<p>
+ * Exposes an API for monitoring the subscription.<p>
  * 
- * Is used by the server's request thread as a notification mechanism for
- * upstream errors (specifically, {@link RequestBodyTimeoutException}) and to be
- * notified when the application's body processing completes at which point the
- * next HTTP exchange pair may commence.<p>
+ * Is used by the {@link HttpExchange} to be notified of upstream errors and the
+ * completion of the downstream's body processing at which point the next HTTP
+ * exchange pair may commence.<p>
  * 
  * Unlike the default operator behavior, this operator subscribes eagerly to the
- * upstream for the purpose of catching all errors. The upstream error is caught
- * even if at that time no downstream subscriber has arrived.<p>
+ * upstream for the purpose of catching all errors and so an upstream error is
+ * caught even if at that time no downstream subscriber has arrived.<p>
  * 
  * This operator doesn't change any semantics regarding the flow between the
  * upstream and downstream. All signals are passed through as-is, even
@@ -34,10 +35,36 @@ import static java.util.Optional.ofNullable;
  */
 final class SubscriptionAsStageOp extends AbstractOp<PooledByteBufferHolder>
 {
+    /**
+     * Construct a quote unquote "real" operator.
+     * 
+     * @param upstream the upstream publisher
+     * @return a new operator
+     */
+    static SubscriptionAsStageOp subscribeTo(
+            Flow.Publisher<? extends PooledByteBufferHolder> upstream)
+    {
+        return new SubscriptionAsStageOp(upstream);
+    }
+    
+    private static final SubscriptionAsStageOp COMPLETED = new SubscriptionAsStageOp();
+    
+    /**
+     * Returns an operator whose {@linkplain
+     * SubscriptionAsStageOp#asCompletionStage() stage} is already completed
+     * normally and all other methods must not be used. Undefined application
+     * behavior if they are.
+     * 
+     * @return see JavaDoc
+     */
+    static SubscriptionAsStageOp alreadyCompleted() {
+        return COMPLETED;
+    }
+    
     /** A count of bytebuffers in-flight. */
     private final AtomicInteger processing;
     
-    /** The upstream- or downstream's terminal event. */
+    /** The subscription's terminal event. */
     private final AtomicReference<TerminationCause> terminated;
     
     /** Stage completes when no items are in-flight and the subscription has terminated. */
@@ -49,7 +76,6 @@ final class SubscriptionAsStageOp extends AbstractOp<PooledByteBufferHolder>
         if ((cause = terminated.get()) == null || processing.get() > 0) {
             return;
         }
-        
         cause.error().ifPresentOrElse(result::completeExceptionally, () -> {
             if (cause.wasCancelled()) {
                 boolean parameterHasNoEffect = true;
@@ -61,12 +87,21 @@ final class SubscriptionAsStageOp extends AbstractOp<PooledByteBufferHolder>
         });
     }
     
-    SubscriptionAsStageOp(Flow.Publisher<? extends PooledByteBufferHolder> upstream) {
+    private SubscriptionAsStageOp(
+            Flow.Publisher<? extends PooledByteBufferHolder> upstream)
+    {
         super(upstream);
         processing = new AtomicInteger();
         terminated = new AtomicReference<>(null);
-        result     = new CompletableFuture<>();
+        result = new CompletableFuture<>();
         trySubscribeToUpstream();
+    }
+    
+    private SubscriptionAsStageOp() {
+        super(empty());
+        processing = null;
+        terminated = null;
+        result = completedFuture(null);
     }
     
     /**
@@ -114,6 +149,33 @@ final class SubscriptionAsStageOp extends AbstractOp<PooledByteBufferHolder>
         return result;
     }
     
+    private boolean deliveredError;
+    
+    /**
+     * Returns {@code true} if {@link #asCompletionStage()} has completed
+     * exceptionally with an error which was also delivered to the downstream
+     * subscriber, otherwise {@code false}.<p>
+     * 
+     * To be uber clear, a false return indicates that a subscriber was not
+     * subscribed when the error occurred, or the subscriber cancelled ({@link
+     * CancellationException}), or the stage completed normally.<p>
+     * 
+     * An upstream error (e.g. {@link RequestBodyTimeoutException}) not
+     * delivered to the downstream (i.e. application) must be resolved by the
+     * {@link HttpExchange} - otherwise the error (and the alternative response)
+     * would have been lost.<p>
+     * 
+     * This operation performs a non-volatile read of a state variable. It is
+     * assumed that the method is pulled only after the stage completes and that
+     * the asynchronous execution facility of the stage establishes a
+     * happens-before relationship (see comment in {@link HttpExchange}).
+     * 
+     * @return see JavaDoc
+     */
+    boolean wasErrorDeliveredToDownstream() {
+        return deliveredError;
+    }
+    
     @Override
     protected void fromUpstreamNext(PooledByteBufferHolder item) {
         item.onRelease(readCountIgnored -> {
@@ -128,7 +190,12 @@ final class SubscriptionAsStageOp extends AbstractOp<PooledByteBufferHolder>
     @Override
     protected void fromUpstreamError(Throwable t) {
         alwaysTryComplete(
-                () -> super.fromUpstreamError(t),
+                () -> {
+                    assert !deliveredError : "Expected only one terminating signal.";
+                    // In fact, the only reason we're using an atomic ref is
+                    // because of a possibly asynchronous bytebuffer release.
+                    deliveredError = signalError(t);
+                },
                 TerminationCause.ofError(t));
     }
     
