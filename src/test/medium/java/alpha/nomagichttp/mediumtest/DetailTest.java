@@ -333,24 +333,31 @@ class DetailTest extends AbstractRealTest
         server().events().on(eventType, (ev, thing, s) ->
                 stats.add((AbstractByteCountedStats) s));
         
-        final Instant then = now();
-        var actReq = "GET / HTTP/1.1" + CRLF + CRLF;
-        var actRsp = client().writeReadTextUntilNewlines(actReq);
-        final Duration expDur = between(then, Instant.now());
+        final Instant then;
+        final String req = "GET / HTTP/1.1" + CRLF;
+        final String rsp;
+        Channel ch = client().openConnection();
+        try (ch) {
+            client().write(req);
+            then = now();
+            rsp = client().writeReadTextUntilNewlines(CRLF);
+        }
         
-        var expRsp = "HTTP/1.1 404 Not Found" + CRLF +
-                     "Content-Length: 0"      + CRLF + CRLF;
+        assertThat(rsp).isEqualTo(
+            "HTTP/1.1 404 Not Found" + CRLF +
+            "Content-Length: 0"      + CRLF + CRLF);
         
-        assertThat(actRsp).isEqualTo(expRsp);
         assertThatServerErrorObservedAndLogged()
                 .isExactlyInstanceOf(NoRouteFoundException.class);
         
         var s = stats.poll(1, SECONDS);
-        assertThat(s.bytes()).isEqualTo(exchToExpByteCnt.applyAsLong(actReq, actRsp));
+        // Can not compute this any earlier, directly after response.
+        // No guarantee the event has happened at that point.
+        final Duration expDur = between(then, now());
         
-        // On local machine 3 ms (dry run)
         assertThat(s.elapsedDuration()).isGreaterThanOrEqualTo(ZERO);
         assertThat(s.elapsedDuration()).isLessThanOrEqualTo(expDur);
+        assertThat(s.bytes()).isEqualTo(exchToExpByteCnt.applyAsLong(req + CRLF, rsp));
     }
     
     private static class AfterByteTargetStop implements Flow.Subscriber<PooledByteBufferHolder>
