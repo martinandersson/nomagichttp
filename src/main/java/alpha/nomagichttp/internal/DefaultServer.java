@@ -8,10 +8,12 @@ import alpha.nomagichttp.event.DefaultEventHub;
 import alpha.nomagichttp.event.EventHub;
 import alpha.nomagichttp.event.HttpServerStarted;
 import alpha.nomagichttp.event.HttpServerStopped;
+import alpha.nomagichttp.handler.ClientChannel;
 import alpha.nomagichttp.handler.ErrorHandler;
 import alpha.nomagichttp.route.Route;
 
 import java.io.IOException;
+import java.lang.ref.WeakReference;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
 import java.nio.channels.AsynchronousChannelGroup;
@@ -28,6 +30,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -36,6 +39,7 @@ import static java.lang.System.Logger.Level.DEBUG;
 import static java.lang.System.Logger.Level.ERROR;
 import static java.lang.System.Logger.Level.INFO;
 import static java.lang.System.Logger.Level.WARNING;
+import static java.time.Duration.ofMinutes;
 import static java.util.Objects.requireNonNull;
 import static java.util.concurrent.CompletableFuture.completedStage;
 import static java.util.concurrent.CompletableFuture.failedStage;
@@ -55,7 +59,12 @@ public final class DefaultServer implements HttpServer
     private static final System.Logger LOG
             = System.getLogger(DefaultServer.class.getPackageName());
     
+    /** Initial capacity of storage for children connections. */
     private static final int INITIAL_CAPACITY = 10_000;
+    
+    /** To prevent leaks (by this class), children are stored using weak references. */
+    private static long CLEAN_INTERVAL_MIN = ofMinutes(1).toNanos(),
+                        CLEAN_INTERVAL_MAX = ofMinutes(1).plusSeconds(30).toNanos();
     
     private final Config config;
     private final DefaultActionRegistry actions;
@@ -301,7 +310,7 @@ public final class DefaultServer implements HttpServer
     private class OnAccept implements CompletionHandler<AsynchronousSocketChannel, Void>
     {
         private final AsynchronousServerSocketChannel parent;
-        private final Set<DefaultClientChannel> children;
+        private final Set<WeakReference<DefaultClientChannel>> children;
         private final CompletableFuture<Void> lastChild;
         
         OnAccept(AsynchronousServerSocketChannel parent) {
@@ -310,19 +319,50 @@ public final class DefaultServer implements HttpServer
             this.lastChild = new CompletableFuture<>();
         }
         
+        CompletionStage<Void> lastChildStage() {
+            return lastChild.copy();
+        }
+        
+        void scheduleBackgroundCleaning() {
+            var delay = ThreadLocalRandom.current().nextLong(
+                    CLEAN_INTERVAL_MIN, CLEAN_INTERVAL_MAX + 1);
+            Timeout.schedule(delay, this::clean);
+        }
+        
+        private void clean() {
+            boolean mayAcceptMore = parent.isOpen();
+            children.forEach(ref -> {
+                DefaultClientChannel chApi = ref.get();
+                if (chApi == null) {
+                    if (children.remove(ref)) {
+                        LOG.log(WARNING, "Unexpectedly, empty weak child reference found (and removed).");
+                    }
+                } else if (!chApi.isAnythingOpen()) {
+                    if (children.remove(ref)) {
+                        // Not a WARNING; race between this task and setup() -> chApi.onClose()
+                        LOG.log(DEBUG, "Unexpectedly, closed child found (and removed).");
+                    }
+                }
+            });
+            if (mayAcceptMore) {
+                scheduleBackgroundCleaning();
+            } else {
+                tryCompleteLastChildStage();
+            }
+        }
+        
         void closeAllChildren() {
+            assert !parent.isOpen();
+            // Weakly consistent, so go again if not empty
             while (!children.isEmpty()) {
-                children.forEach(c -> {
-                    if (children.remove(c)) {
-                        c.closeSafe();
+                children.forEach(ref -> {
+                    ClientChannel chApi;
+                    if (children.remove(ref) && ((chApi = ref.get()) != null)) {
+                        chApi.closeSafe();
                     }
                 });
             }
             tryCompleteLastChildStage();
-        }
-        
-        CompletionStage<Void> lastChildStage() {
-            return lastChild.copy();
         }
         
         // Notify anyone waiting on the last child
@@ -357,9 +397,10 @@ public final class DefaultServer implements HttpServer
             
             DefaultClientChannel chApi = new DefaultClientChannel(child, DefaultServer.this);
             ChannelByteBufferPublisher chIn = new ChannelByteBufferPublisher(chApi);
-            children.add(chApi);
+            var ref = new WeakReference<>(chApi);
+            children.add(ref);
             chApi.onClose(() -> {
-                children.remove(chApi);
+                children.remove(ref);
                 if (!parent.isOpen()) {
                     tryCompleteLastChildStage();
                 }
