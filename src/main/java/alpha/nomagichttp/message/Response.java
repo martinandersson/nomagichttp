@@ -510,12 +510,13 @@ public interface Response extends HeaderHolder
          * @return a response
          * 
          * @throws IllegalResponseBodyException
-         *             if status code is any one of 1XX (Informational), 204 (No
-         *             Content) or 304 (Not Modified) - and, a body is presumably
-         *             not empty (see {@link Response#isBodyEmpty()})
+         *             if a body is presumably not empty (see {@link
+         *             Response#isBodyEmpty()}) and the status code is any one
+         *             1XX (Informational), 204 (No Content) or 304 (Not
+         *             Modified) 
          * 
          * @throws IllegalStateException
-         *             if any stream of the channel or the channel itself has
+         *             if the write stream of the channel or the channel has
          *             been marked to shutdown/close and status-code is 1XX
          *             (Informational)
          * 
