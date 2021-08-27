@@ -176,9 +176,11 @@ final class DefaultActionRegistry implements ActionRegistry
         }
     }
     
-    // We're reusing buffers only to minimize garbage, and, assuming that a
-    // single thread will never run through the lookup operation recursively.
-    // They are only performed once during HTTP exchange initialization.
+    // We're reusing buffers only to minimize garbage. This also assumes that a
+    // thread will never run through the lookup operation recursively. Lookups
+    // are only performed once during HTTP exchange initialization.
+    // TODO: This is premature optimization. Need proof it is better.
+    //       Also see https://stackoverflow.com/a/18371813
     private static final ThreadLocal<List<?>>  BUF1 = withInitial(() -> new ArrayList<>(INITIAL_CAPACITY));
     private static final ThreadLocal<Deque<?>> BUF2 = withInitial(() -> new ArrayDeque<>(INITIAL_CAPACITY));
     private static final ThreadLocal<List<?>>  BUF3 = withInitial(() -> new ArrayList<>(INITIAL_CAPACITY));
