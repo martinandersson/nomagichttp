@@ -174,12 +174,12 @@ class ExampleTest extends AbstractRealTest
         };
         
         server().add("/hello/:name", GET().apply(req -> {
-            String n = req.parameters().path("name");
+            String n = req.target().pathParam("name");
             return factory.apply(n);
         }));
         
         server().add("/hello", GET().apply(req -> {
-            String n = req.parameters().queryFirst("name").get();
+            String n = req.target().queryFirst("name").get();
             return factory.apply(n);
         }));
     }

@@ -67,13 +67,13 @@ final class DefaultActionRegistry implements ActionRegistry
             BiFunction<? super A, Iterable<String>, W> wrapperFactory,
             A action, A... more)
     {
-        var segments = segments(pattern);
+        var seg = toSegments(pattern);
         @SuppressWarnings("varargs")
-        var s = stream(action, more).map(a -> wrapperFactory.apply(a, segments));
+        var s = stream(action, more).map(a -> wrapperFactory.apply(a, seg));
         s.forEach(wrapper -> add(tree, wrapper));
     }
     
-    private static Iterable<String> segments(String pattern) {
+    private static Iterable<String> toSegments(String pattern) {
         var b = new SegmentsBuilder();
         if (!pattern.equals("/")) {
             try {
@@ -85,8 +85,8 @@ final class DefaultActionRegistry implements ActionRegistry
         return b.asIterable();
     }
     
-    private static <W extends AbstractWrapper<?>> void add(Tree<Set<W>> tree, W action) {
-        final Iterator<String> it = action.segments().iterator();
+    private static <W extends AbstractWrapper<?>> void add(Tree<Set<W>> tree, W wrapped) {
+        final Iterator<String> it = wrapped.segments().iterator();
         tree.write(n -> {
             if (it.hasNext()) {
                 // dig deeper
@@ -105,13 +105,34 @@ final class DefaultActionRegistry implements ActionRegistry
             } else {
                 // We're at target node, store
                 var set = n.setIfAbsent(CopyOnWriteArraySet::new);
-                if (!set.add(action)) {
-                    throw new ActionNonUniqueException("Already added: " + action.get());
+                if (!set.add(wrapped)) {
+                    throw new ActionNonUniqueException("Already added: " + wrapped.action());
                 }
                 // job done
                 return null;
             }
         });
+    }
+    
+    /**
+     * A match of an action from the registry.
+     * 
+     * @param <A> the action
+     */
+    interface Match<A> {
+        /**
+         * Returns the matched action.
+         * 
+         * @return the matched action
+         */
+        A action();
+        
+        /**
+         * Returns the segments (pattern) used to register the action with.
+         * 
+         * @return the segments (pattern) used to register the action with.
+         */
+        Iterable<String> segments();
     }
     
     /**
@@ -123,7 +144,7 @@ final class DefaultActionRegistry implements ActionRegistry
      * @param rt request target
      * @return matches (never {@code null})
      */
-    List<ResourceMatch<BeforeAction>> lookupBefore(RequestTarget rt) {
+    List<Match<BeforeAction>> lookupBefore(SkeletonRequestTarget rt) {
         return lookup(before, rt);
     }
     
@@ -136,12 +157,12 @@ final class DefaultActionRegistry implements ActionRegistry
      * @param rt request target
      * @return matches (never {@code null})
      */
-    List<ResourceMatch<AfterAction>> lookupAfter(RequestTarget rt) {
+    List<Match<AfterAction>> lookupAfter(SkeletonRequestTarget rt) {
         return lookup(after, rt);
     }
     
-    private static <W extends AbstractWrapper<A>, A> List<ResourceMatch<A>> lookup(
-            Tree<Set<W>> tree, RequestTarget rt)
+    private static <W extends AbstractWrapper<A>, A> List<Match<A>> lookup(
+            Tree<Set<W>> tree, SkeletonRequestTarget rt)
     {
         List<W>                      buf1 = get(BUF1);
         Deque<Tree.ReadNode<Set<W>>> buf2 = get(BUF2);
@@ -168,8 +189,8 @@ final class DefaultActionRegistry implements ActionRegistry
         return t;
     }
     
-    private static <W extends AbstractWrapper<A>, A> List<ResourceMatch<A>> lookup(
-            Tree<Set<W>> tree, RequestTarget rt,
+    private static <W extends AbstractWrapper<A>, A> List<Match<A>> lookup(
+            Tree<Set<W>> tree, SkeletonRequestTarget rt,
             List<W> matches,
             Deque<Tree.ReadNode<Set<W>>> trails,
             List<Tree.ReadNode<Set<W>>> batch)
@@ -188,7 +209,7 @@ final class DefaultActionRegistry implements ActionRegistry
         trails.add(tree.read());
         
         // TODO: Would like to use RandomAccess
-        for (String seg : rt.segmentsPercentDecoded()) {
+        for (String seg : rt.segments()) {
             if (trails.isEmpty()) {
                 // All segments must match
                 break;
@@ -221,7 +242,6 @@ final class DefaultActionRegistry implements ActionRegistry
         return matches.isEmpty() ? List.of() :
                matches.stream()
                       .sorted()
-                      .map(w -> ResourceMatch.of(rt, w.get(), w.segments()))
                       .collect(toCollection(() ->
                               new ArrayList<>(matches.size())));
     }
@@ -236,7 +256,7 @@ final class DefaultActionRegistry implements ActionRegistry
         
         @Override
         public int compareTo(WrappedBeforeAction other) {
-            int x = this.path().compareTo(other.path());
+            int x = this.compressedPath().compareTo(other.compressedPath());
             return x != 0 ? x : compare(insertionOrder(), other.insertionOrder());
         }
     }
@@ -251,7 +271,7 @@ final class DefaultActionRegistry implements ActionRegistry
         
         @Override
         public int compareTo(WrappedAfterAction other) {
-            int x = this.path().compareTo(other.path());
+            int x = this.compressedPath().compareTo(other.compressedPath());
             // NEG X
             return x != 0 ? -x : compare(insertionOrder(), other.insertionOrder());
         }
@@ -260,15 +280,15 @@ final class DefaultActionRegistry implements ActionRegistry
     /**
      * A wrapper of an action.<p>
      * 
-     * This class computes a compressed {@link #path()} of the action's
-     * segments. The root (empty segments) will be normalized to "-". Other
-     * segments will be stripped of their parameter names (not necessarily for
-     * correctness, only for performance). This leaves a harmonized path
-     * suitable for stupidly fast sorting. "*" (catch-all) comes before "-"
-     * (root), which comes before ":" (single), which comes before "segment".
-     * For any inbound request path and segment, no different static segments
-     * will ever be compared. If the path is equal, the concrete wrapper class
-     * ought to compare the insertion order next, retrievable using
+     * This class computes a {@link #compressedPath()} of the action's segments.
+     * The root (empty segments) will be normalized to "-". Other segments will
+     * be stripped of their parameter names (not necessarily for correctness,
+     * only for performance). This leaves a harmonized path suitable for
+     * stupidly fast sorting. "*" (catch-all) comes before "-" (root), which
+     * comes before ":" (single), which comes before "segment". For any inbound
+     * request path and segment, no different static segments will ever be
+     * compared. If the path is equal, the concrete wrapper class ought to
+     * compare the insertion order next, retrievable using
      * {@link #insertionOrder()}.<p>
      * 
      * The hashcode and equals implementation delegates directly to the action
@@ -276,52 +296,54 @@ final class DefaultActionRegistry implements ActionRegistry
      * 
      * @param <A> type of action
      */
-    private static abstract class AbstractWrapper<A> {
+    private static abstract class AbstractWrapper<A> implements Match<A> {
         private static final AtomicInteger SEQ = new AtomicInteger();
         private final A action;
         private final Iterable<String> segments;
-        private final String path;
+        private final String cp;
         private final int order;
         
         AbstractWrapper(A action, Iterable<String> segments) {
             this.action   = requireNonNull(action);
             this.segments = segments;
             this.order    = SEQ.getAndIncrement();
-            var p = String.join("/", noParamNames(segments));
-            path = p.isEmpty() ? "-" : p;
+            var cp = String.join("/", noParamNames(segments));
+            this.cp = cp.isEmpty() ? "-" : cp;
         }
         
-        A get() {
+        @Override
+        public final A action() {
             return action;
         }
         
-        Iterable<String> segments() {
+        @Override
+        public final Iterable<String> segments() {
             return segments;
         }
         
-        String path() {
-            return path;
+        protected final String compressedPath() {
+            return cp;
         }
         
-        int insertionOrder() {
+        protected final int insertionOrder() {
             return order;
         }
         
         @Override
-        public String toString() {
+        public final String toString() {
             return AbstractWrapper.class.getSimpleName() +
-                    "{action=" + get() + ", segments=" + segments() + "}";
+                    "{action=" + action() + ", segments=" + segments() + "}";
         }
         
         @Override
-        public int hashCode() {
+        public final int hashCode() {
             return action.hashCode();
         }
         
         @Override
-        public boolean equals(Object obj) {
+        public final boolean equals(Object obj) {
             var other = (AbstractWrapper<?>) obj;
-            return action.equals(other.get());
+            return action.equals(other.action());
         }
     }
 }

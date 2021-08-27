@@ -44,7 +44,7 @@ import java.util.stream.Stream;
  * 
  * The route may declare named path parameters which act like a wildcard segment
  * whose dynamic value is given by the client through the request path. Path-
- * and query parameters may be retrieved using {@link Request#parameters()}<p>
+ * and query parameters may be retrieved using {@link Request#target()}<p>
  * 
  * Path parameters come in two forms; <i>single-segment</i> and
  * <i>catch-all</i>.<p>
@@ -160,7 +160,7 @@ import java.util.stream.Stream;
  * 
  * @see RouteRegistry
  * @see Route.Builder
- * @see Request.Parameters
+ * @see Request.Target
  */
 public interface Route
 {
@@ -299,10 +299,10 @@ public interface Route
      * it is a ':' or '*' - as an indicator of the parameter type. The {@code
      * paramXXX()} builder methods accept the given string at face value.
      * <pre>{@code
-     *   Route.builder("/:user")                    Access using request.parameters().path("user")
+     *   Route.builder("/:user")                    Access using request.target().pathParam("user")
      *   Route.builder("/").paramSingle('user')     Same as above
-     *   Route.builder("/").paramSingle(':user')    WARNING! request.parameters().path(":user")
-     *   Route.builder("/").paramSingle('/user')    WARNING! request.parameters().path("/user")
+     *   Route.builder("/").paramSingle(':user')    WARNING! request.target().pathParam(":user")
+     *   Route.builder("/").paramSingle('/user')    WARNING! request.target().pathParam("/user")
      * }</pre>
      * 
      * Please be mindful that pushing through weird parameter names by using an

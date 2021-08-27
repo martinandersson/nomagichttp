@@ -22,6 +22,7 @@ import static alpha.nomagichttp.HttpConstants.StatusCode.isClientError;
 import static alpha.nomagichttp.HttpConstants.StatusCode.isServerError;
 import static alpha.nomagichttp.HttpConstants.Version.HTTP_1_1;
 import static alpha.nomagichttp.handler.ResponseRejectedException.Reason.PROTOCOL_NOT_SUPPORTED;
+import static alpha.nomagichttp.internal.DefaultActionRegistry.Match;
 import static alpha.nomagichttp.message.Responses.continue_;
 import static java.lang.System.Logger.Level.DEBUG;
 import static java.lang.System.Logger.Level.ERROR;
@@ -327,7 +328,7 @@ final class ResponsePipeline extends AbstractLocalEventEmitter
         return rsp;
     }
     
-    private List<ResourceMatch<AfterAction>> matched;
+    private List<Match<AfterAction>> matched;
     
     private CompletionStage<Response> invokeAfterActions(Response rsp) {
         var res = rsp.completedStage();
@@ -339,9 +340,9 @@ final class ResponsePipeline extends AbstractLocalEventEmitter
             if (matched == null) {
                 matched = actions.lookupAfter(req.target());
             }
-            for (ResourceMatch<AfterAction> m : matched) {
-                res = res.thenCompose(r ->
-                        m.get().apply(new DefaultRequest(exch.getHttpVersion(), req, m), r));
+            for (Match<AfterAction> m : matched) {
+                res = res.thenCompose(r -> m.action().apply(
+                        new DefaultRequest(exch.getHttpVersion(), req, m.segments()), r));
             }
         }
         return res;

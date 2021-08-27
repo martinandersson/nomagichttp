@@ -22,13 +22,13 @@ class BeforeActionTest extends AbstractRealTest
         server().before("/:A/*", (r, ch, chain) -> {
                     // Set first segment as "msg" attribute
                     r.attributes().set("msg",
-                            r.parameters().path("A"));
+                            r.target().pathParam("A"));
                     chain.proceed();
                 })
                 .before("/:B/:C", (r, ch, chain) -> {
                     // Concatenate with the second segment
                     r.attributes().<String>asMapAny().merge("msg",
-                            r.parameters().path("C"), String::concat);
+                            r.target().pathParam("C"), String::concat);
                     chain.proceed();
                 })
                 .before("/hello/world", (r, ch, chain) -> {

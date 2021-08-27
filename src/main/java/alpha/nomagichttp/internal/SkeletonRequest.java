@@ -4,15 +4,18 @@ import alpha.nomagichttp.message.RequestHead;
 import alpha.nomagichttp.util.Attributes;
 
 /**
- * A container of most of the complex components that a "real" request needs.
- * The missing pieces are HTTP version and resource-specific path parameters.
+ * A thin version of a request.<p>
+ * 
+ * This version is constructed at an early stage of the HTTP exchange. It is
+ * immutable and remains the same throughout the exchange.
  * 
  * @author Martin Andersson (webmaster@martinandersson.com)
+ * @see DefaultRequest
  */
 final class SkeletonRequest
 {
     private final RequestHead h;
-    private final RequestTarget t;
+    private final SkeletonRequestTarget t;
     private final RequestBody b;
     private final Attributes a;
     
@@ -24,7 +27,9 @@ final class SkeletonRequest
      * @param b request body
      * @param a request attributes
      */
-    SkeletonRequest(RequestHead h, RequestTarget t, RequestBody b, Attributes a) {
+    SkeletonRequest(RequestHead h, SkeletonRequestTarget t,
+                    RequestBody b, Attributes a)
+    {
         assert h != null;
         assert t != null;
         assert b != null;
@@ -49,7 +54,7 @@ final class SkeletonRequest
      * 
      * @return the request target (never {@code null}
      */
-    RequestTarget target() {
+    SkeletonRequestTarget target() {
         return t;
     }
     

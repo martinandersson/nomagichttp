@@ -13,7 +13,7 @@ import java.nio.charset.IllegalCharsetNameException;
 import java.nio.charset.UnsupportedCharsetException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.Map;
+import java.util.List;
 import java.util.Optional;
 
 import static alpha.nomagichttp.HttpConstants.Version.HTTP_1_1;
@@ -142,10 +142,9 @@ class DefaultRequestTest
                 null, null);
         
         SkeletonRequest req = new SkeletonRequest(
-                rh, RequestTarget.parse("/?"), rb, new DefaultAttributes());
+                rh, SkeletonRequestTarget.parse("/?"), rb, new DefaultAttributes());
         
-        return new DefaultRequest(HTTP_1_1,
-                req, new ResourceMatch<>(null, Map.of(), Map.of()));
+        return new DefaultRequest(HTTP_1_1, req, List.of());
     }
     
     private static DefaultRequest createEmptyRequest() {

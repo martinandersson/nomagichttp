@@ -35,7 +35,7 @@ class AfterActionTest extends AbstractRealTest
                 }
                 chain.proceed(); })
             .add("/:msg", GET().apply(req ->
-                text(req.parameters().path("msg")).completedStage()))
+                text(req.target().pathParam("msg")).completedStage()))
             .after("/*", (req, rsp) ->
                 req.attributes().<String>getOptAny(X_CORRELATION_ID)
                    .or(() -> req.headers().firstValue(X_CORRELATION_ID))

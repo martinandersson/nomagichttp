@@ -8,7 +8,12 @@ import java.util.Map;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * Small tests of {@link RequestTarget}.
+ * Small tests of {@link RequestTarget}.<p>
+ * 
+ * This class does testing on the segments (actually provided by {@link
+ * SkeletonRequestTarget}) and query string parsing. Path params which are
+ * dependent on the resource is tested by {@link DefaultRouteRegistryTest} and
+ * {@link DefaultActionRegistryTest} respectively.
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  */
@@ -158,12 +163,13 @@ class RequestTargetTest
     }
     
     private void init(String parse) {
-        testee = RequestTarget.parse(parse);
-        assertThat(testee.pathRaw()).isSameAs(parse);
+        var skeleton = SkeletonRequestTarget.parse(parse);
+        testee = new RequestTarget(skeleton, skeleton.segments());
+        assertThat(testee.raw()).isSameAs(parse);
     }
     
     private void expSegRaw(String... values) {
-        assertThat(testee.segmentsNotPercentDecoded())
+        assertThat(testee.segmentsRaw())
                 .containsExactly(values);
     }
     
@@ -171,14 +177,14 @@ class RequestTargetTest
     private void expQryRaw(Map.Entry<String, List<String>>... entries) {
         @SuppressWarnings("varargs")
         Map.Entry<String, List<String>>[] m  = entries;
-        assertThat(testee.queryMapNotPercentDecoded()).containsExactly(m);
+        assertThat(testee.queryMapRaw()).containsExactly(m);
     }
     
     @SafeVarargs
     private void expQryDec(Map.Entry<String, List<String>>... entries) {
         @SuppressWarnings("varargs")
         Map.Entry<String, List<String>>[] m  = entries;
-        assertThat(testee.queryMapPercentDecoded()).containsExactly(m);
+        assertThat(testee.queryMap()).containsExactly(m);
     }
     
     private static Map.Entry<String, List<String>> e(String key, String... values) {
