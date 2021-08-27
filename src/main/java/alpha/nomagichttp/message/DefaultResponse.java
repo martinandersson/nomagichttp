@@ -19,7 +19,6 @@ import java.util.function.Consumer;
 
 import static alpha.nomagichttp.HttpConstants.HeaderKey.CONNECTION;
 import static alpha.nomagichttp.HttpConstants.HeaderKey.CONTENT_LENGTH;
-import static alpha.nomagichttp.HttpConstants.StatusCode;
 import static alpha.nomagichttp.HttpConstants.StatusCode.THREE_HUNDRED_FOUR;
 import static alpha.nomagichttp.HttpConstants.StatusCode.TWO_HUNDRED_FOUR;
 import static alpha.nomagichttp.util.Publishers.empty;
@@ -43,8 +42,6 @@ final class DefaultResponse implements Response
     private final HttpHeaders headers;
     private final Iterable<String> forWriting;
     private final Flow.Publisher<ByteBuffer> body;
-    private final boolean mustShutdownOutputAfterWrite;
-    private final boolean mustCloseAfterWrite;
     private final DefaultBuilder origin;
     
     private DefaultResponse(
@@ -54,8 +51,6 @@ final class DefaultResponse implements Response
             // Is unmodifiable
             Iterable<String> forWriting,
             Flow.Publisher<ByteBuffer> body,
-            boolean mustShutdownOutputAfterWrite,
-            boolean mustCloseAfterWrite,
             DefaultBuilder origin)
     {
         this.statusCode = statusCode;
@@ -63,8 +58,6 @@ final class DefaultResponse implements Response
         this.headers = headers;
         this.forWriting = forWriting;
         this.body = body;
-        this.mustShutdownOutputAfterWrite = mustShutdownOutputAfterWrite;
-        this.mustCloseAfterWrite = mustCloseAfterWrite;
         this.origin = origin;
     }
     
@@ -106,16 +99,6 @@ final class DefaultResponse implements Response
         return headerContains(CONTENT_LENGTH, "0");
     }
     
-    @Override
-    public boolean mustShutdownOutputAfterWrite() {
-        return mustShutdownOutputAfterWrite;
-    }
-    
-    @Override
-    public boolean mustCloseAfterWrite() {
-        return mustCloseAfterWrite;
-    }
-    
     private CompletionStage<Response> stage;
     
     @Override
@@ -139,8 +122,6 @@ final class DefaultResponse implements Response
                 ", reasonPhrase='" + reasonPhrase + '\'' +
                 ", headers=?" +
                 ", body=?" +
-                ", mustShutdownOutputAfterWrite=" + mustShutdownOutputAfterWrite +
-                ", mustCloseAfterWrite=" + mustCloseAfterWrite +
                 '}';
     }
     
@@ -158,8 +139,6 @@ final class DefaultResponse implements Response
             String reasonPhrase;
             Map<String, List<String>> headers;
             Flow.Publisher<ByteBuffer> body;
-            Boolean mustShutdownOutputAfterWrite;
-            Boolean mustCloseAfterWrite;
             
             void removeHeader(String name) {
                 assert name != null;
@@ -305,36 +284,9 @@ final class DefaultResponse implements Response
         }
         
         @Override
-        public Response.Builder mustShutdownOutputAfterWrite(boolean enabled) {
-            DefaultBuilder b = new DefaultBuilder(this, s -> s.mustShutdownOutputAfterWrite = enabled);
-            return enabled ?
-                    b.header(CONNECTION, "close") :
-                    b.removeHeaderIf(CONNECTION, "close");
-        }
-        
-        @Override
-        public Response.Builder mustCloseAfterWrite(boolean enabled) {
-            DefaultBuilder b = new DefaultBuilder(this, s -> s.mustCloseAfterWrite = enabled);
-            return enabled ?
-                    b.header(CONNECTION, "close") :
-                    b.removeHeaderIf(CONNECTION, "close");
-        }
-        
-        @Override
         public Response build() {
             MutableState s = constructState(MutableState::new);
             setDefaults(s);
-            
-            if (StatusCode.isInformational(s.statusCode)) {
-                if (s.mustShutdownOutputAfterWrite) {
-                    throw new IllegalStateException(
-                            "Output stream marked to shutdown after an interim response.");
-                }
-                if (s.mustCloseAfterWrite) {
-                    throw new IllegalStateException(
-                            "Channel marked to close after an interim response.");
-                }
-            }
             
             HttpHeaders headers = s.headers == null ? Headers.of() :
                     HttpHeaders.of(s.headers, (k, v) -> true);
@@ -354,8 +306,6 @@ final class DefaultResponse implements Response
                     headers,
                     forWriting,
                     s.body,
-                    s.mustShutdownOutputAfterWrite,
-                    s.mustCloseAfterWrite,
                     this);
             
             if (r.isInformational()) {
@@ -380,13 +330,6 @@ final class DefaultResponse implements Response
             
             if (s.body == null) {
                 s.body = empty(); }
-            
-            if (s.mustShutdownOutputAfterWrite == null) {
-                s.mustShutdownOutputAfterWrite = false;
-            }
-            
-            if (s.mustCloseAfterWrite == null) {
-                s.mustCloseAfterWrite = false; }
         }
         
         private static IllegalResponseBodyException IllegalResponseBodyException(Response r) {

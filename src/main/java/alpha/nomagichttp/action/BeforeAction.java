@@ -60,7 +60,8 @@ import alpha.nomagichttp.util.TriConsumer;
  *       try {
  *           throw throwable;
  *       } catch (MySuspiciousRequestException e) {
- *           var rsp = Responses.notFound().toBuilder().mustCloseAfterWrite(true).build();
+ *           channel.shutdownInputSafe();
+ *           var rsp = Responses.notFound().toBuilder().header("Connection", "close").build();
  *           channel.write(rsp);
  *       }
  *   };

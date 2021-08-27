@@ -2,7 +2,6 @@ package alpha.nomagichttp.message;
 
 import alpha.nomagichttp.HttpConstants;
 import alpha.nomagichttp.HttpServer;
-import alpha.nomagichttp.handler.ClientChannel;
 import alpha.nomagichttp.handler.RequestHandler;
 import alpha.nomagichttp.util.BetterBodyPublishers;
 import alpha.nomagichttp.util.Publishers;
@@ -216,54 +215,6 @@ public interface Response extends HeaderHolder
     boolean isBodyEmpty();
     
     /**
-     * Command the server to shut down the client channel's output/write stream
-     * after attempting to send the response.<p>
-     * 
-     * The write stream will close whether or not the response was successfully
-     * transmitted. Only if it was transmitted successfully will an in-flight
-     * request also be allowed to complete. An error will not propagate to the
-     * error handler and the channel will be immediately closed.<p>
-     * 
-     * If it is desired to close the connection only after a successful
-     * request and response pair (a so called "graceful close"), then set the
-     * "Connection: close" header.<p>
-     * 
-     * If the application wishes to ensure the imminent shut down of the read
-     * stream as well, use {@link #mustCloseAfterWrite()}.<p>
-     * 
-     * The server manages the client channel's life-cycle and so, a {@code
-     * false} returned value has no effect.
-     * 
-     * @return {@code true} if the server must shut down the output/write
-     *         stream, otherwise {@code false}
-     * 
-     * @see ClientChannel#shutdownOutput()
-     */
-    boolean mustShutdownOutputAfterWrite();
-    
-    /**
-     * Command the server to close the client channel after attempting to send
-     * the response.<p>
-     * 
-     * The channel will close whether or not the response was successfully
-     * transmitted. And so, an error will not propagate to the error handler.<p>
-     * 
-     * A client request in-flight will fail. In order to end the channel more
-     * gracefully, signal {@link #mustShutdownOutputAfterWrite()} instead.<p>
-     * 
-     * The application can always kill the channel immediately and abruptly by
-     * calling {@link ClientChannel#close()} instead of passing a lazy command
-     * to the server through the response object.<p>
-     * 
-     * The server manages the client channel's life-cycle and so, a {@code
-     * false} returned value has no effect.
-     * 
-     * @return {@code true} if the server must close the client channel,
-     *         otherwise {@code false}
-     */
-    boolean mustCloseAfterWrite();
-    
-    /**
      * Returns this response object boxed in an already completed stage.
      * 
      * @return this response object boxed in an already completed stage
@@ -471,36 +422,6 @@ public interface Response extends HeaderHolder
          * @throws  NullPointerException if {@code body} is {@code null}
          */
         Builder body(Flow.Publisher<ByteBuffer> body);
-        
-        /**
-         * Enable the {@code must-shutdown-output-after-write} command. If
-         * never set, will default to {@code false}.<p>
-         * 
-         * If {@code enabled} is {@code true}, the builder will also set a
-         * {@code Connection: close} header (replacing the old value if it
-         * exists). If {@code enabled} is {@code false}, the header is removed
-         * but only if it has value "close".
-         * 
-         * @param   enabled true or false
-         * @return  a new builder representing the new state
-         * @see     Response#mustShutdownOutputAfterWrite()
-         */
-        Builder mustShutdownOutputAfterWrite(boolean enabled);
-        
-        /**
-         * Enable the {@code must-close-after-write} command. If never set, will
-         * default to {@code false}.<p>
-         * 
-         * If {@code enabled} is {@code true}, the builder will also set a
-         * {@code Connection: close} header (replacing the old value if it
-         * exists). If {@code enabled} is {@code false}, the header is removed
-         * but only if it has value "close".
-         * 
-         * @param   enabled true or false
-         * @return  a new builder representing the new state
-         * @see     Response#mustCloseAfterWrite()
-         */
-        Builder mustCloseAfterWrite(boolean enabled);
         
         /**
          * Builds the response.<p>

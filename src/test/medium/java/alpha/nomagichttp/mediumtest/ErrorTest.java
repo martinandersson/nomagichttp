@@ -212,8 +212,7 @@ class ErrorTest extends AbstractRealTest
             "GET / HTTP/" + version                   + CRLF + CRLF);
         assertThat(rsp).isEqualTo(
             "HTTP/1.1 505 HTTP Version Not Supported" + CRLF +
-            "Content-Length: 0"                       + CRLF +
-            "Connection: close"                       + CRLF + CRLF);
+            "Content-Length: 0"                       + CRLF + CRLF);
         assertThat(pollServerError())
             .isExactlyInstanceOf(HttpVersionTooNewException.class)
             .hasNoCause()

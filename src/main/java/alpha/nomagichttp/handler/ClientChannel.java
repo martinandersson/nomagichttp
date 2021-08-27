@@ -2,6 +2,8 @@ package alpha.nomagichttp.handler;
 
 import alpha.nomagichttp.Config;
 import alpha.nomagichttp.HttpServer;
+import alpha.nomagichttp.action.AfterAction;
+import alpha.nomagichttp.action.BeforeAction;
 import alpha.nomagichttp.message.Response;
 import alpha.nomagichttp.util.AttributeHolder;
 
@@ -24,7 +26,7 @@ import java.util.concurrent.CompletionStage;
  * (Informational) (since HTTP 1.1).<p>
  * 
  * A response may also be sent back even before the entire request has been
- * received by the server. This is the expected case for a lot of responses from
+ * received by the server. This is the expected case for many responses from
  * error categories (4XX, 5XX).<p>
  * 
  * So yes, 90% of the internet is wrong when they label HTTP as a synchronous
@@ -33,13 +35,21 @@ import java.util.concurrent.CompletionStage;
  * The life-cycle of the channel is managed by the server. The application
  * should have no need to shut down the write stream (aka. half-close) or close
  * the channel explicitly, which could translate to an abrupt end of the request
- * and/or request in-flight. For a graceful close of the client connection, set
- * the "Connection: close" header.<p>
+ * and/or response in-flight. Invoking {@link #close()} on this class is
+ * equivalent to an instant "kill".<p>
  * 
- * Terminating methods can be scheduled to occur after a response by using
- * {@link Response.Builder#mustShutdownOutputAfterWrite(boolean)} and {@link
- * Response.Builder#mustCloseAfterWrite(boolean)}. Invoking {@link #close()} on
- * this class is equivalent to an instant "kill".<p>
+ * For a graceful close of the client connection - which allows an in-flight
+ * exchange to complete - simply set the "Connection: close" header in a final
+ * response. This header is tracked/memorized and so once observed by the
+ * channel implementation, the effect can not be rolled back. {@link
+ * AfterAction}s are called before the observation, and so technically they
+ * possess the ability to remove the header.<p>
+ * 
+ * Setting the "Connection: close" header alone, however, likely has no use-case
+ * as again, the server manages the channel's life-cycle. It is more conceivable
+ * that the application desires first to {@link #shutdownInput()} (abort a
+ * request in-flight) and then send a response with the header set. For an
+ * example of this, see the JavaDoc of {@link BeforeAction}.<p>
  * 
  * When using low-level methods to operate the channel, or when storing
  * attributes on the channel, then have in mind that the "client" in {@code

@@ -413,6 +413,6 @@ class ExampleTest extends AbstractRealTest
     }
     
     private static Response tryScheduleClose(Response rsp, boolean ifTrue) {
-        return ifTrue ? setMustCloseAfterWrite(rsp) : rsp;
+        return ifTrue ? setHeaderConnectionClose(rsp) : rsp;
     }
 }

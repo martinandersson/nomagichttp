@@ -386,7 +386,7 @@ class ClientLifeCycleTest extends AbstractRealTest
             req.body().toText().thenAccept(received::add);
             ch.write(noContent()
                     .toBuilder()
-                    .mustShutdownOutputAfterWrite(true)
+                    .header("Connection", "close")
                     .build());
         }));
         Channel ch = client().openConnection();

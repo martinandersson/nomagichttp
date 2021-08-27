@@ -2,6 +2,7 @@ package alpha.nomagichttp.message;
 
 import alpha.nomagichttp.HttpConstants;
 import alpha.nomagichttp.HttpConstants.StatusCode;
+import alpha.nomagichttp.handler.ClientChannel;
 import alpha.nomagichttp.util.BetterBodyPublishers;
 import alpha.nomagichttp.util.CodeAndPhraseCache;
 import alpha.nomagichttp.util.Headers;
@@ -592,7 +593,8 @@ public final class Responses
     /**
      * Creates a new 503 (Service Unavailable) response with no body.<p>
      * 
-     * The header "Connection: close" will be set.
+     * The header "Connection: close" will be set which will cause the
+     * connection to gracefully close (see {@link ClientChannel}).
      * 
      * @return  a new 503 (Service Unavailable) response
      * @see     StatusCode#FIVE_HUNDRED_THREE
@@ -605,18 +607,14 @@ public final class Responses
     }
     
     /**
-     * Creates a new 505 (HTTP Version Not Supported) response with no body.<p>
+     * Creates a new 505 (HTTP Version Not Supported) response with no body.
      * 
-     * The response will {@linkplain Response#mustCloseAfterWrite() close the
-     * client channel}.
-     * 
-     * @return  a new 505 (HTTP Version Not Supported) response
-     * @see     StatusCode#FIVE_HUNDRED_FIVE
+     * @return a new 505 (HTTP Version Not Supported) response
+     * @see    StatusCode#FIVE_HUNDRED_FIVE
      */
     public static Response httpVersionNotSupported() {
         return CACHE.get(FIVE_HUNDRED_FIVE, HTTP_VERSION_NOT_SUPPORTED).toBuilder()
                  .header(CONTENT_LENGTH, "0")
-                 .mustCloseAfterWrite(true)
                  .build();
     }
     
