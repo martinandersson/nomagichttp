@@ -94,7 +94,6 @@ final class SkeletonRequestTarget
             }
         }
         
-        // Extract query string
         final String query;
         if (q == -1) {
             query = "";
@@ -104,20 +103,30 @@ final class SkeletonRequestTarget
             query = parse.substring(q + 1);
         }
         
-        return new SkeletonRequestTarget(rt, keep, query);
+        final String fragment;
+        if (f == -1) {
+            fragment = "";
+        } else {
+            fragment = parse.substring(f + 1);
+        }
+        
+        return new SkeletonRequestTarget(rt, keep, query, fragment);
     }
     
     private final String rt;
     private final List<String> segmentsNotPercentDecoded;
     private final String query;
+    private final String fragment;
     
     private <L extends List<String> & RandomAccess> SkeletonRequestTarget(
-            String rt, L segmentsNotPercentDecoded, String query)
+            String rt, L segmentsNotPercentDecoded, String query, String fragment)
     {
         this.rt = rt;
         this.segmentsNotPercentDecoded = unmodifiableList(segmentsNotPercentDecoded);
         this.query = query;
         assert !query.startsWith("?");
+        this.fragment = fragment;
+        assert !fragment.startsWith("#");
     }
     
     /**
@@ -166,5 +175,14 @@ final class SkeletonRequestTarget
      */
     String query() {
         return query;
+    }
+    
+    /**
+     * Equivalent to {@link RequestTarget#fragment()}.
+     * 
+     * @return see JavaDoc
+     */
+    String fragment() {
+        return fragment;
     }
 }

@@ -225,6 +225,6 @@ final class RequestTarget implements Request.Target
     
     @Override
     public String fragment() {
-        throw new AbstractMethodError("Implement me");
+        return rt.fragment();
     }
 }

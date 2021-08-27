@@ -11,7 +11,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  * Small tests of {@link RequestTarget}.<p>
  * 
  * This class does testing on the segments (actually provided by {@link
- * SkeletonRequestTarget}) and query string parsing. Path params which are
+ * SkeletonRequestTarget}), query- and fragment parsing. Path params which are
  * dependent on the resource is tested by {@link DefaultRouteRegistryTest} and
  * {@link DefaultActionRegistryTest} respectively.
  * 
@@ -23,10 +23,11 @@ class RequestTargetTest
     
     @Test
     void raw() {
-        init("/seg/ment?q=1&q=2#ignored");
+        init("/seg/ment?q=1&q=2#frag");
         expSegRaw("seg", "ment");
         expQryRaw(e("q", "1", "2"));
         expQryDec(e("q", "1", "2"));
+        expFragment("frag");
     }
     
     @Test
@@ -35,6 +36,7 @@ class RequestTargetTest
         expSegRaw("s%20t");
         expQryRaw(e("k%20y", "v%20l"));
         expQryDec(e("k y", "v l"));
+        expFragment();
     }
     
     // Remaining of all these test cases are basically just to bump code coverage
@@ -46,6 +48,7 @@ class RequestTargetTest
         expSegRaw();
         expQryRaw();
         expQryDec();
+        expFragment();
     }
     
     @Test
@@ -54,6 +57,7 @@ class RequestTargetTest
         expSegRaw();
         expQryRaw();
         expQryDec();
+        expFragment();
     }
     
     @Test
@@ -62,6 +66,7 @@ class RequestTargetTest
         expSegRaw();
         expQryRaw();
         expQryDec();
+        expFragment();
     }
     
     @Test
@@ -70,6 +75,7 @@ class RequestTargetTest
         expSegRaw();
         expQryRaw();
         expQryDec();
+        expFragment();
     }
     
     @Test
@@ -78,6 +84,7 @@ class RequestTargetTest
         expSegRaw();
         expQryRaw();
         expQryDec();
+        expFragment();
     }
     
     @Test
@@ -86,6 +93,7 @@ class RequestTargetTest
         expSegRaw("X");
         expQryRaw();
         expQryDec();
+        expFragment();
     }
     
     @Test
@@ -94,6 +102,7 @@ class RequestTargetTest
         expSegRaw();
         expQryRaw();
         expQryDec();
+        expFragment();
     }
     
     @Test
@@ -102,6 +111,7 @@ class RequestTargetTest
         expSegRaw();
         expQryRaw();
         expQryDec();
+        expFragment();
     }
     
     // If ".." has no effect, then it's left as a segment
@@ -112,6 +122,7 @@ class RequestTargetTest
         expSegRaw("..");
         expQryRaw();
         expQryDec();
+        expFragment();
     }
     
     @Test
@@ -120,6 +131,7 @@ class RequestTargetTest
         expSegRaw("..", "..");
         expQryRaw();
         expQryDec();
+        expFragment();
     }
     
     @Test
@@ -128,6 +140,7 @@ class RequestTargetTest
         expSegRaw();
         expQryRaw(e("a", ""));
         expQryDec(e("a", ""));
+        expFragment();
     }
     
     @Test
@@ -136,6 +149,7 @@ class RequestTargetTest
         expSegRaw();
         expQryRaw(e("a", ""), e("b", ""));
         expQryDec(e("a", ""), e("b", ""));
+        expFragment();
     }
     
     @Test
@@ -144,6 +158,7 @@ class RequestTargetTest
         expSegRaw();
         expQryRaw(e("a", "", ""));
         expQryDec(e("a", "", ""));
+        expFragment();
     }
     
     @Test
@@ -152,6 +167,7 @@ class RequestTargetTest
         expSegRaw();
         expQryRaw(e("+", "+"));
         expQryDec(e("+", "+"));
+        expFragment();
     }
     
     @Test
@@ -160,6 +176,7 @@ class RequestTargetTest
         expSegRaw();
         expQryRaw(e("q", "+%20+"));
         expQryDec(e("q", "+ +"));
+        expFragment();
     }
     
     private void init(String parse) {
@@ -185,6 +202,14 @@ class RequestTargetTest
         @SuppressWarnings("varargs")
         Map.Entry<String, List<String>>[] m  = entries;
         assertThat(testee.queryMap()).containsExactly(m);
+    }
+    
+    private void expFragment() {
+        expFragment("");
+    }
+    
+    private void expFragment(String fragment) {
+        assertThat(testee.fragment()).isEqualTo(fragment);
     }
     
     private static Map.Entry<String, List<String>> e(String key, String... values) {
