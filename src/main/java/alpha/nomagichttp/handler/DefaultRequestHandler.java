@@ -25,14 +25,14 @@ final class DefaultRequestHandler implements RequestHandler
 {
     private final String m;
     private final MediaType c, p;
-    private final BiConsumer<Request, ClientChannel> l;
+    private final Logic l;
     private final int h;
     
     DefaultRequestHandler(
             String method,
             MediaType consumes,
             MediaType produces,
-            BiConsumer<Request, ClientChannel> logic)
+            Logic logic)
     {
         m = requireNonNull(method);
         c = consumes;
@@ -64,7 +64,7 @@ final class DefaultRequestHandler implements RequestHandler
     }
     
     @Override
-    public BiConsumer<Request, ClientChannel> logic() {
+    public Logic logic() {
         return l;
     }
     
@@ -166,7 +166,7 @@ final class DefaultRequestHandler implements RequestHandler
         }
         
         @Override
-        public RequestHandler accept(BiConsumer<Request, ClientChannel> l) {
+        public RequestHandler accept(Logic l) {
             return new DefaultRequestHandler(m, c, p, l);
         }
     }

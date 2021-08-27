@@ -1,6 +1,7 @@
 package alpha.nomagichttp.handler;
 
 import alpha.nomagichttp.HttpConstants;
+import alpha.nomagichttp.ReceiverOfUniqueRequestObject;
 import alpha.nomagichttp.message.MediaType;
 import alpha.nomagichttp.message.MediaTypeParseException;
 import alpha.nomagichttp.message.Request;
@@ -370,7 +371,8 @@ public interface RequestHandler
      * Returns the function that will process a request into a response.<p>
      * 
      * No argument passed to the function is null. The channel argument must be
-     * used at some point to either shutdown the channel or write a response.<p>
+     * used at some point to either shutdown/close the channel or write a
+     * response.<p>
      * 
      * This method is called anew each time a route and handler has been matched
      * against a request.
@@ -379,7 +381,17 @@ public interface RequestHandler
      * 
      * @see RequestHandler
      */
-    BiConsumer<Request, ClientChannel> logic();
+    Logic logic();
+    
+    /**
+     * A consumer of a request- and client channel object.
+     * 
+     * @see #logic()
+     */
+    @FunctionalInterface
+    interface Logic extends BiConsumer<Request, ClientChannel>, ReceiverOfUniqueRequestObject {
+        // Empty
+    }
     
     /**
      * Builder of {@link RequestHandler}.<p>
@@ -665,6 +677,6 @@ public interface RequestHandler
          * @return a new request handler
          * @throws NullPointerException if {@code logic} is {@code null}
          */
-        RequestHandler accept(BiConsumer<Request, ClientChannel> logic);
+        RequestHandler accept(Logic logic);
     }
 }

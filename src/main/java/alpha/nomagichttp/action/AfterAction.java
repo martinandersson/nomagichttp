@@ -2,6 +2,7 @@ package alpha.nomagichttp.action;
 
 import alpha.nomagichttp.Config;
 import alpha.nomagichttp.HttpServer;
+import alpha.nomagichttp.ReceiverOfUniqueRequestObject;
 import alpha.nomagichttp.event.ResponseSent;
 import alpha.nomagichttp.handler.ClientChannel;
 import alpha.nomagichttp.message.Request;
@@ -63,6 +64,9 @@ import java.util.function.BiFunction;
  * @author Martin Andersson (webmaster at martinandersson.com)
  */
 @FunctionalInterface
-public interface AfterAction extends BiFunction<Request, Response, CompletionStage<Response>> {
+public interface AfterAction extends
+        BiFunction<Request, Response, CompletionStage<Response>>,
+        ReceiverOfUniqueRequestObject
+{
     // Empty
 }

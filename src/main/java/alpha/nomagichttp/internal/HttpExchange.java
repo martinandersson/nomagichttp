@@ -10,6 +10,7 @@ import alpha.nomagichttp.internal.ResponsePipeline.Command;
 import alpha.nomagichttp.message.HttpVersionTooNewException;
 import alpha.nomagichttp.message.HttpVersionTooOldException;
 import alpha.nomagichttp.message.IllegalRequestBodyException;
+import alpha.nomagichttp.message.Request;
 import alpha.nomagichttp.message.RequestHead;
 import alpha.nomagichttp.message.RequestHeadTimeoutException;
 import alpha.nomagichttp.message.Response;
@@ -23,6 +24,8 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.BiConsumer;
+import java.util.function.Consumer;
 
 import static alpha.nomagichttp.HttpConstants.HeaderKey.CONNECTION;
 import static alpha.nomagichttp.HttpConstants.HeaderKey.EXPECT;
@@ -58,7 +61,7 @@ import static java.util.Objects.requireNonNull;
  *   <li>Has package-private accessors for the request head, HTTP version and request skeleton</li>
  *   <li>May pre-emptively schedule a 100 (Continue) depending on configuration</li>
  *   <li>Shuts down read stream if request has header "Connection: close"</li>
- *   <li>Shuts down read stream on request timeout</li>
+ *   <li>Shuts down read stream on {@link RequestHeadTimeoutException}</li>
  * </ul>
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
@@ -66,6 +69,15 @@ import static java.util.Objects.requireNonNull;
 final class HttpExchange
 {
     private static final System.Logger LOG = System.getLogger(HttpExchange.class.getPackageName());
+    
+    /**
+     * Event emitted by the collaborators {@link InvocationChain} and
+     * {@link ResponsePipeline} whenever a request object has been created. The
+     * first (and only) attachment is the request object created. The result
+     * performed by this class is an update of the HTTP exchange state, so that
+     * the {@link ErrorHandler} can receive the last instance.
+     */
+    enum RequestCreated { INSTANCE }
     
     private final HttpServer server;
     private final Config config;
@@ -88,7 +100,8 @@ final class HttpExchange
     
     private RequestHead head;
     private Version version;
-    private SkeletonRequest request;
+    private SkeletonRequest reqThin;
+    private Request reqFat;
     private ErrorResolver errRes;
     
     HttpExchange(
@@ -139,7 +152,7 @@ final class HttpExchange
      * @return the request, if available, otherwise {@code null}
      */
     SkeletonRequest getSkeletonRequest() {
-        return request;
+        return reqThin;
     }
     
     /**
@@ -169,11 +182,12 @@ final class HttpExchange
     
     private void begin0() {
         setupPipeline();
+        subscribeToRequestObjects();
         parseRequestHead()
            .thenAccept(this::initialize)
            .thenRun(() -> { if (config.immediatelyContinueExpect100())
                tryRespond100Continue(); })
-           .thenCompose(nil -> chain.execute(request, version))
+           .thenCompose(nil -> chain.execute(reqThin, version))
            .whenComplete((nil, thr) -> handleChainCompletion(thr));
     }
     
@@ -181,6 +195,12 @@ final class HttpExchange
         pipe.on(Success.class, (ev, rsp) -> handleWriteSuccess((Response) rsp));
         pipe.on(Error.class, (ev, thr) -> handleError((Throwable) thr));
         chApi.usePipeline(pipe);
+    }
+    
+    private void subscribeToRequestObjects() {
+        BiConsumer<RequestCreated, Request> save = (ev, req) -> reqFat = req;
+        chain.on(RequestCreated.class, save);
+        pipe.on(RequestCreated.class, save);
     }
     
     private CompletionStage<RequestHead> parseRequestHead() {
@@ -208,7 +228,7 @@ final class HttpExchange
             throw new HttpVersionTooOldException(h.httpVersion(), "HTTP/1.1");
         }
         
-        request = new SkeletonRequest(h,
+        reqThin = new SkeletonRequest(h,
                 SkeletonRequestTarget.parse(h.requestTarget()),
                 monitorBody(createBody(h)),
                 new DefaultAttributes());
@@ -270,8 +290,8 @@ final class HttpExchange
     
     private void validateRequest() {
         // Is NOT suitable as a before-action; they are invoked only for valid requests
-        if (head.method().equals(TRACE) && !request.body().isEmpty()) {
-            throw new IllegalRequestBodyException(head, request.body(),
+        if (head.method().equals(TRACE) && !reqThin.body().isEmpty()) {
+            throw new IllegalRequestBodyException(head, reqThin.body(),
                     "Body in a TRACE request.");
         }
     }
@@ -353,7 +373,7 @@ final class HttpExchange
             return;
         }
         
-        final var b = request != null ? request.body() :
+        final var b = reqThin != null ? reqThin.body() :
                 // E.g. HttpVersionTooOldException -> 426 (Upgrade Required).
                 // So we fall back to a local dummy, just for the API.
                 RequestBody.of(head.headers(), chIn, chApi, null, null);
@@ -527,7 +547,7 @@ final class HttpExchange
         }
         
         private void invokeHandler(ErrorHandler eh, Throwable t) throws Throwable {
-            eh.apply(t, chApi, chain.getRequest(), chain.getRequestHandler());
+            eh.apply(t, chApi, reqFat, chain.getRequestHandler());
         }
     }
     

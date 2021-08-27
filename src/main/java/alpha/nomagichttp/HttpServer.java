@@ -27,7 +27,6 @@ import java.net.SocketAddress;
 import java.nio.channels.AsynchronousServerSocketChannel;
 import java.time.Instant;
 import java.util.concurrent.CompletionStage;
-import java.util.function.BiConsumer;
 
 import static java.net.InetAddress.getLoopbackAddress;
 
@@ -144,7 +143,7 @@ import static java.net.InetAddress.getLoopbackAddress;
  * 
  * This is bad:
  * <pre>
- *   RequestHandler h = GET().{@link RequestHandler.Builder#accept(BiConsumer)
+ *   RequestHandler h = GET().{@link RequestHandler.Builder#accept(RequestHandler.Logic)} 
  *         accept}((request, channel) -{@literal >} {
  *       String data = database.fetch("SELECT * FROM Something"); // {@literal <}-- blocks!
  *       Response resp = {@link Responses}.text(data);

@@ -5,6 +5,7 @@ import alpha.nomagichttp.action.AfterAction;
 import alpha.nomagichttp.handler.ClientChannel;
 import alpha.nomagichttp.handler.ResponseRejectedException;
 import alpha.nomagichttp.message.HeaderHolder;
+import alpha.nomagichttp.message.Request;
 import alpha.nomagichttp.message.Response;
 import alpha.nomagichttp.message.ResponseTimeoutException;
 import alpha.nomagichttp.util.SeriallyRunnable;
@@ -23,6 +24,7 @@ import static alpha.nomagichttp.HttpConstants.StatusCode.isServerError;
 import static alpha.nomagichttp.HttpConstants.Version.HTTP_1_1;
 import static alpha.nomagichttp.handler.ResponseRejectedException.Reason.PROTOCOL_NOT_SUPPORTED;
 import static alpha.nomagichttp.internal.DefaultActionRegistry.Match;
+import static alpha.nomagichttp.internal.HttpExchange.RequestCreated;
 import static alpha.nomagichttp.message.Responses.continue_;
 import static java.lang.System.Logger.Level.DEBUG;
 import static java.lang.System.Logger.Level.ERROR;
@@ -31,7 +33,7 @@ import static java.util.concurrent.CompletableFuture.completedStage;
 import static java.util.concurrent.TimeUnit.SECONDS;
 
 /**
- * Enqueues responses and schedules them to be written out on a client
+ * Enqueues responses and schedules them to be written out on a network
  * channel.<p>
  * 
  * The {@code write} methods of {@link DefaultClientChannel} is a direct facade
@@ -256,7 +258,7 @@ final class ResponsePipeline extends AbstractLocalEventEmitter
         if (chApi.isOpenForWriting()) {
             scheduleClose(chApi);
             var thr = new ResponseTimeoutException("Gave up waiting on a response.");
-            emit(Error.INSTANCE, thr, null);
+            emitResult(Error.INSTANCE, thr, null);
         } else {
             LOG.log(DEBUG,
                 "Will not emit response timeout; channel closed for writing " +
@@ -339,8 +341,11 @@ final class ResponsePipeline extends AbstractLocalEventEmitter
                 matched = actions.lookupAfter(req.target());
             }
             for (Match<AfterAction> m : matched) {
-                res = res.thenCompose(r -> m.action().apply(
-                        new DefaultRequest(exch.getHttpVersion(), req, m.segments()), r));
+                res = res.thenCompose(r -> {
+                    Request real = new DefaultRequest(exch.getHttpVersion(), req, m.segments());
+                    super.emit(RequestCreated.INSTANCE, real, null);
+                    return m.action().apply(real, r);
+                });
             }
         }
         return res;
@@ -482,7 +487,7 @@ final class ResponsePipeline extends AbstractLocalEventEmitter
             LOG.log(DEBUG, "Saw \"Connection: close\", shutting down output.");
             chApi.shutdownOutputSafe();
         }
-        emit(Success.INSTANCE, rsp, null);
+        emitResult(Success.INSTANCE, rsp, null);
     }
     
     private void actOnWriteFailure(Throwable thr, Response rsp) {
@@ -494,7 +499,7 @@ final class ResponsePipeline extends AbstractLocalEventEmitter
                     "but HTTP exchange is not active. This error does not propagate anywhere.", thr);
                 // no emission
             } else {
-                emit(Error.INSTANCE, thr, null);
+                emitResult(Error.INSTANCE, thr, null);
             }
         } else {
             // thr originates from response writer
@@ -503,11 +508,11 @@ final class ResponsePipeline extends AbstractLocalEventEmitter
                 wroteFinal = false;
                 tryRescheduleTimer();
             }
-            emit(Error.INSTANCE, thr, rsp);
+            emitResult(Error.INSTANCE, thr, rsp);
         }
     }
     
-    private void emit(Enum<?> event, Object att1, Object att2) {
+    private void emitResult(Enum<?> event, Object att1, Object att2) {
         int n = super.emit(event, att1, att2);
         if (n > 0) {
             return;

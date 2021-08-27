@@ -154,10 +154,22 @@ public final class SegmentsBuilder
      * 
      * This is the "build" method.
      * 
-     * @return all segments (non-null, unmodifiable)
+     * @return all segments (a non-null and unmodifiable copy)
      * @see SegmentsBuilder
      */
     public Iterable<String> asIterable() {
+        return unmodifiableCollection(new ArrayList<>(segments));
+    }
+    
+    /**
+     * Equivalent to {@link #asIterable()}, except the underlying iterable of
+     * segments is not a copy. I.e., this version is safe to use only locally if
+     * it is absolutely known that the builder instance will be discarded.
+     * 
+     * @return all segments (non-null)
+     * @see SegmentsBuilder
+     */
+    public Iterable<String> asIterableNoCopy() {
         return unmodifiableCollection(segments);
     }
     

@@ -181,7 +181,7 @@ final class DefaultRouteRegistry implements RouteRegistry
     
     @Override
     public Route remove(String pattern) {
-        Iterable<String>  seg = new SegmentsBuilder(true).append(pattern).asIterable(),
+        Iterable<String>  seg = new SegmentsBuilder(true).append(pattern).asIterableNoCopy(),
                           pos = noParamNames(seg);
         return tree.clear(pos);
     }

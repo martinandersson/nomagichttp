@@ -26,7 +26,7 @@ final class DefaultRequest implements Request
      * 
      * @param version of HTTP (as established by HTTP exchange)
      * @param shared request components
-     * @param resourceSegments resource segments
+     * @param resourceSegments resource segments (must be effectively immutable)
      */
     DefaultRequest(
             Version version,

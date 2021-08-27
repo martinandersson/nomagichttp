@@ -14,10 +14,10 @@ import static java.util.stream.Collectors.toCollection;
  * A thin version of a request target.<p>
  * 
  * This version is constructed at an early stage of the HTTP exchange and is
- * primarily useful for iterating segments of the request path, in turn used to
- * lookup resources from registries. The real {@link RequestTarget} is built
- * after the lookup and will need access to the resource-declared segments for
- * processing resource-specific path parameters.
+ * primarily used to iterate segments of the request path, such as when looking
+ * up resources from registries. The real {@link RequestTarget} is built after
+ * the lookup and will need access to the matched resource's declared segments
+ * for processing resource-specific path parameters.
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  */

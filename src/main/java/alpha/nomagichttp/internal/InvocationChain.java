@@ -5,7 +5,6 @@ import alpha.nomagichttp.action.Chain;
 import alpha.nomagichttp.handler.ClientChannel;
 import alpha.nomagichttp.handler.RequestHandler;
 import alpha.nomagichttp.message.MediaType;
-import alpha.nomagichttp.message.Request;
 import alpha.nomagichttp.message.RequestHead;
 import alpha.nomagichttp.route.NoRouteFoundException;
 import alpha.nomagichttp.route.Route;
@@ -18,6 +17,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import static alpha.nomagichttp.HttpConstants.Version;
 import static alpha.nomagichttp.internal.DefaultActionRegistry.Match;
+import static alpha.nomagichttp.internal.HttpExchange.RequestCreated;
 import static alpha.nomagichttp.util.Headers.accept;
 import static alpha.nomagichttp.util.Headers.contentType;
 import static java.lang.System.Logger.Level.DEBUG;
@@ -25,8 +25,8 @@ import static java.lang.System.Logger.Level.WARNING;
 import static java.util.concurrent.CompletableFuture.completedStage;
 
 /**
- * Represents a work flow of finding and executing before-actions and request
- * handlers. These entities will co-operate to write responses to a channel.
+ * Represents a work flow of finding and executing before-actions and a request
+ * handler. These entities will co-operate to write responses to a channel.
  * There is no other resulting outcome from this work flow, except of course
  * possible errors.<p>
  * 
@@ -36,7 +36,7 @@ import static java.util.concurrent.CompletableFuture.completedStage;
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  */
-final class InvocationChain
+final class InvocationChain extends AbstractLocalEventEmitter
 {
     /** Sentinel reference meaning the chain was aborted by a before-action. */
     static final Throwable ABORTED = new Throwable();
@@ -50,7 +50,6 @@ final class InvocationChain
     private final DefaultRouteRegistry routes;
     private final ClientChannel chApi;
     // Not volatile for same reasons that fields in HttpExchange are not volatile
-    private DefaultRequest request;
     private RequestHandler handler;
     
     InvocationChain(DefaultActionRegistry actions, DefaultRouteRegistry routes, ClientChannel chApi) {
@@ -63,25 +62,6 @@ final class InvocationChain
     }
     
     /**
-     * Returns the last request object created.<p>
-     * 
-     * The request object is unique per request-consuming entity, because each
-     * entity may declare different path parameters. The underlying request
-     * object is created anew just before the execution of the entity. The value
-     * returned from this method therefore progresses from {@code null} to
-     * different instances for different before-actions and finally ends up with
-     * the instance passed to the request handler.<p>
-     * 
-     * The error resolver attached to the HTTP exchange should pull this method
-     * and pass forward the request to the error handler.
-     * 
-     * @return the last request object created
-     */
-    Request getRequest() {
-        return request;
-    }
-    
-    /**
      * Returns the matched request handler, or {@code null} if none has [yet]
      * been matched.<p>
      * 
@@ -90,7 +70,7 @@ final class InvocationChain
      * 
      * @return the matched request handler
      */
-    RequestHandler getRequestHandler() {
+    RequestHandler getRequestHandler() { // TODO: Also this replace with event
         return handler;
     }
     
@@ -139,9 +119,10 @@ final class InvocationChain
             SkeletonRequest req, Version ver)
     {
         Route r = routes.lookup(req.target());
-        request = new DefaultRequest(ver, req, r.segments());
+        var real = new DefaultRequest(ver, req, r.segments());
+        InvocationChain.super.emit(RequestCreated.INSTANCE, real, null);
         handler = findRequestHandler(req.head(), r);
-        handler.logic().accept(request, chApi);
+        handler.logic().accept(real, chApi);
     }
     
     private static RequestHandler findRequestHandler(RequestHead rh, Route r) {
@@ -185,8 +166,9 @@ final class InvocationChain
         void callAction() {
             try {
                 var m = matches.next();
-                request = new DefaultRequest(ver, shared, m.segments());
-                m.action().accept(request, chApi, this);
+                var real = new DefaultRequest(ver, shared, m.segments());
+                InvocationChain.super.emit(RequestCreated.INSTANCE, real, null);
+                m.action().accept(real, chApi, this);
             } catch (Throwable t) {
                 status.set(AWAITING_NONE);
                 if (!allOf.completeExceptionally(t)) {

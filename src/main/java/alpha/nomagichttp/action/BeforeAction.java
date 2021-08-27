@@ -1,6 +1,7 @@
 package alpha.nomagichttp.action;
 
 import alpha.nomagichttp.HttpServer;
+import alpha.nomagichttp.ReceiverOfUniqueRequestObject;
 import alpha.nomagichttp.event.RequestHeadReceived;
 import alpha.nomagichttp.handler.ClientChannel;
 import alpha.nomagichttp.handler.ErrorHandler;
@@ -103,6 +104,9 @@ import alpha.nomagichttp.util.TriConsumer;
  * @see ActionRegistry
  */
 @FunctionalInterface
-public interface BeforeAction extends TriConsumer<Request, ClientChannel, Chain> {
+public interface BeforeAction extends
+        TriConsumer<Request, ClientChannel, Chain>,
+        ReceiverOfUniqueRequestObject
+{
     // Empty
 }

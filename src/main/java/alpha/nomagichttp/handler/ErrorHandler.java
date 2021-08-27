@@ -2,7 +2,7 @@ package alpha.nomagichttp.handler;
 
 import alpha.nomagichttp.Config;
 import alpha.nomagichttp.HttpConstants;
-import alpha.nomagichttp.action.ActionRegistry;
+import alpha.nomagichttp.ReceiverOfUniqueRequestObject;
 import alpha.nomagichttp.action.AfterAction;
 import alpha.nomagichttp.action.BeforeAction;
 import alpha.nomagichttp.message.BadHeaderException;
@@ -157,14 +157,6 @@ public interface ErrorHandler
      * absolutely also be null because the server never got so far as to resolve
      * and/or invoke the request handler.<p>
      * 
-     * For each request-consuming entity that the server invokes (before-action,
-     * route/request handler and after-action) a new request object is created.
-     * This is because each entity may declare unique path parameters (see
-     * {@link ActionRegistry}). The last such object created within the HTTP
-     * exchange is the one passed to this error handler. I.e. the request
-     * parameters' keys and values will be dependent on whichever entity was
-     * invoked prior to the crash.<p>
-     * 
      * The true nature of the error can often only be determined by looking into
      * the error object, which also might reveal what to expect from the
      * succeeding arguments. For example, if {@code thr} is an instance of
@@ -180,7 +172,14 @@ public interface ErrorHandler
      * 
      * If the error which the server caught is a {@link CompletionException},
      * then the server will attempt to recursively unpack a non-null cause and
-     * pass the cause to the error handler instead.
+     * pass the cause to the error handler instead.<p>
+     * 
+     * The {@link ErrorHandler} interface does not extend {@link
+     * ReceiverOfUniqueRequestObject}. The error handler will receive the last
+     * request object created within the HTTP exchange. I.e. the request's path
+     * parameters' keys and values will be dependent on whichever entity was
+     * invoked last prior to the crash; generally speaking, they are
+     * nondeterministic and unsafe to access.<p>
      * 
      * @param thr the error (never null)
      * @param ch client channel (never null)
