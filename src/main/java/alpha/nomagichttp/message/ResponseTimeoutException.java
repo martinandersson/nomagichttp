@@ -1,19 +1,16 @@
 package alpha.nomagichttp.message;
 
 import alpha.nomagichttp.Config;
-import alpha.nomagichttp.handler.ErrorHandler;
 
 /**
  * Thrown by the server on response timeout.<p>
  * 
- * The alternative response produced by an error handler as a result of this
- * exception should be produced and written synchronously (i.e., without any
- * further delay) and schedule with the response a command to close the channel
- * after the response ({@link Response#mustCloseAfterWrite()}). This is what
- * {@link ErrorHandler#DEFAULT the default error handler} do. The underlying
- * response pipeline who throws this exception will give up waiting on channel
- * closure after another 5 seconds have passed and proceed to close it without
- * any further ado.
+ * The default error handler will upon receiving this error shut down the client
+ * channel's read stream and respond {@link Responses#serviceUnavailable()}. The
+ * underlying response pipeline (a collaborator/component of the client channel
+ * implementation) who throws this exception will give up waiting on channel
+ * closure after another 5 seconds have passed and proceed to close the channel
+ * without any further ado.
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  * @see Config#timeoutIdleConnection()

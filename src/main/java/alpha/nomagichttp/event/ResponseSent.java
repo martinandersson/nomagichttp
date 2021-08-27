@@ -1,11 +1,16 @@
 package alpha.nomagichttp.event;
 
+import alpha.nomagichttp.message.HttpVersionTooNewException;
 import alpha.nomagichttp.message.Response;
 
 /**
  * A response has been successfully sent.<p>
  * 
- * The intended purpose of this event is to gather metrics.<p>
+ * The intended purpose of this event is to gather metrics. One metric in
+ * particular that ought to be of interest should be how many 505 (HTTP Version
+ * Not Supported) responses are sent (see {@link HttpVersionTooNewException}).
+ * Too many of these and the application developer ought to file a NoMagicHTTP
+ * GitHub issue.<p>
  * 
  * The first attachment given to the listener is the {@link Response} sent. The
  * second attachment is an instance of {@link Stats}.

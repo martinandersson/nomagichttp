@@ -48,6 +48,7 @@ import static alpha.nomagichttp.message.Responses.requestTimeout;
 import static alpha.nomagichttp.message.Responses.serviceUnavailable;
 import static alpha.nomagichttp.message.Responses.unsupportedMediaType;
 import static alpha.nomagichttp.message.Responses.upgradeRequired;
+import static java.lang.System.Logger.Level.DEBUG;
 import static java.lang.System.Logger.Level.ERROR;
 import static java.util.stream.Collectors.joining;
 import static java.util.stream.Stream.concat;
@@ -190,7 +191,7 @@ public interface ErrorHandler
      * 
      * @see ErrorHandler
      */
-    // TODO: Reduce args down to thr + Extra, with Optional<Response>
+    // TODO: Reduce args down to thr + Extra, with Optional<Response> (this branch)
     void apply(Throwable thr, ClientChannel ch, Request req, RequestHandler rh) throws Throwable;
     
     /**
@@ -351,8 +352,8 @@ public interface ErrorHandler
      *     <th scope="row"> {@link ResponseTimeoutException} </th>
      *     <td> None </td>
      *     <td> Yes </td>
-     *     <td> {@link Responses#serviceUnavailable()} with
-     *          {@link Response#mustCloseAfterWrite()} enabled.</td>
+     *     <td> First shutdown input stream, then
+     *          {@link Responses#serviceUnavailable()}.</td>
      *   </tr>
      *   <tr>
      *     <th scope="row"> <i>{@code Everything else}</i> </th>
@@ -427,8 +428,11 @@ public interface ErrorHandler
             res = requestTimeout();
         } catch (ResponseTimeoutException e) {
             log(thr);
-            res = serviceUnavailable()
-                    .toBuilder().mustCloseAfterWrite(true).build();
+            if (ch.isOpenForReading()) {
+                logger().log(DEBUG, "Service unavailable, shutting down channel's input stream.");
+            }
+            ch.shutdownInputSafe();
+            res = serviceUnavailable();
         } catch (Throwable unknown) { // + AmbiguousHandlerException
             log(thr);
             res = internalServerError();
@@ -440,7 +444,10 @@ public interface ErrorHandler
     };
     
     private static void log(Throwable thr) {
-        System.getLogger(ErrorHandler.class.getPackageName())
-                .log(ERROR, "Default error handler received:", thr);
+        logger().log(ERROR, "Default error handler received:", thr);
+    }
+    
+    private static System.Logger logger() {
+        return System.getLogger(ErrorHandler.class.getPackageName());
     }
 }

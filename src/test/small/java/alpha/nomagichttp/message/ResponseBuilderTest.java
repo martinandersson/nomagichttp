@@ -19,7 +19,6 @@ class ResponseBuilderTest
         Response r = builder(200, "OK").build();
         assertThat(r.statusCode()).isEqualTo(200);
         assertThat(r.reasonPhrase()).isEqualTo("OK");
-        assertThat(r.mustCloseAfterWrite()).isFalse();
         assertSame(r.body(), empty());
     }
     

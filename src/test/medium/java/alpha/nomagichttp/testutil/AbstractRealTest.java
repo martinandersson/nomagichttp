@@ -672,18 +672,18 @@ public abstract class AbstractRealTest
     }
     
     /**
-     * Shortcut for opening up the response and set the must-close-after-write
-     * command.<p>
+     * Shortcut for opening up the response and set the "Connection: close"
+     * header.<p>
      * 
-     * Useful for tests where the HTTP client would keep the connection alive
-     * which would hinder a graceful server stop from completing in a timely
-     * manner.
+     * This method is useful for tests where the HTTP client would have kept the
+     * connection alive which in turn would hinder a graceful server stop from
+     * completing in a timely manner.
      * 
      * @param rsp response
      * @return with command set
      */
-    protected static Response setMustCloseAfterWrite(Response rsp) {
-        return rsp.toBuilder().mustCloseAfterWrite(true).build();
+    protected static Response setHeaderConnectionClose(Response rsp) {
+        return rsp.toBuilder().header("Connection", "close").build();
     }
     
     private static String toString(TestInfo test) {

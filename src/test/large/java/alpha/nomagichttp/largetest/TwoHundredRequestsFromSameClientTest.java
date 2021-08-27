@@ -60,7 +60,7 @@ class TwoHundredRequestsFromSameClientTest extends AbstractLargeRealTest
                     //       and add a client compatibility test for the reuse.
                     //       After-all in this test class will shutdown, no server-side hacks.
                     if (!req.headerContains("User-Agent", "TestClient")) {
-                        rsp = setMustCloseAfterWrite(rsp);
+                        rsp = setHeaderConnectionClose(rsp);
                     }
                     return rsp;
                 })));

@@ -153,7 +153,6 @@ final class ResponsePipeline extends AbstractLocalEventEmitter
     private final DefaultClientChannel chApi;
     private final DefaultActionRegistry actions;
     private final Config cfg;
-    private final int maxUnssuccessful;
     private final Deque<CompletionStage<Response>> queue;
     private final SeriallyRunnable op;
     
@@ -173,7 +172,6 @@ final class ResponsePipeline extends AbstractLocalEventEmitter
         this.chApi = chApi;
         this.actions = actions;
         this.cfg = chApi.getServer().getConfig();
-        this.maxUnssuccessful = cfg.maxUnsuccessfulResponses();
         this.queue = new ConcurrentLinkedDeque<>();
         this.op = new SeriallyRunnable(this::pollAndProcessAsync, true);
     }
@@ -360,12 +358,8 @@ final class ResponsePipeline extends AbstractLocalEventEmitter
     }
     
     private Response fixUnknownLength(Response rsp) {
-        // Two quick reads; assume "Connection: close" will be present
-        if (!rsp.mustShutdownOutputAfterWrite()         &&
-            !rsp.mustCloseAfterWrite()                  &&
-            // If not, we need to dig a little bit
-             rsp.headerIsMissingOrEmpty(CONTENT_LENGTH) &&
-            !hasConnectionClose(rsp)                    &&
+        if (rsp.headerIsMissingOrEmpty(CONTENT_LENGTH) &&
+            !hasConnectionClose(rsp)                   &&
             !rsp.isBodyEmpty())
         {
             // TODO: In the future when implemented, chunked encoding may also be an option
@@ -382,7 +376,7 @@ final class ResponsePipeline extends AbstractLocalEventEmitter
         
         if (sawConnectionClose) {
             if (in.isFinal() && !hasConnectionClose(in)) {
-                // Flag propagates to response
+                LOG.log(DEBUG, "Connection-close flag propagates to final response.");
                 out = setConnectionClose(in);
             } else {
                 // Message not final or already has the header = NOP
@@ -396,7 +390,7 @@ final class ResponsePipeline extends AbstractLocalEventEmitter
                   (exch.getRequestHead() != null && hasConnectionClose(exch.getRequestHead()) ||
                   !chApi.isOpenForReading()))
         {
-            // Flag also propagates from request or current half-closed state of channel
+            LOG.log(DEBUG, "Connection-close flag propagates from request or current half-closed state of channel.");
             sawConnectionClose = true;
             out = setConnectionClose(in);
         } else {
@@ -407,25 +401,23 @@ final class ResponsePipeline extends AbstractLocalEventEmitter
         return out;
     }
     
+    private boolean mustCloseAfterWrite;
+    
     private Response trackUnsuccessful(final Response in) {
-        final Response out;
         if (isClientError(in.statusCode()) || isServerError(in.statusCode())) {
             // Bump error counter
             int n = chApi.attributes().<Integer>asMapAny()
                     .merge("alpha.nomagichttp.responsepipeline.nUnssuccessful", 1, Integer::sum);
-            
-            if (n >= maxUnssuccessful && !in.mustCloseAfterWrite()) {
-                LOG.log(DEBUG, "Max number of unsuccessful responses reached. Marking response to close client channel.");
-                out = in.toBuilder().mustCloseAfterWrite(true).build();
-            } else {
-                out = in;
+            if (n >= cfg.maxUnsuccessfulResponses() && !mustCloseAfterWrite) {
+                LOG.log(DEBUG, "Max number of unsuccessful responses reached. " +
+                               "Channel will close after this response-write attempt.");
+                mustCloseAfterWrite = true;
             }
         } else {
             // Reset
             chApi.attributes().set("alpha.nomagichttp.responsepipeline.nUnssuccessful", 0);
-            out = in;
         }
-        return out;
+        return in;
     }
     
     private Response inFlight;
@@ -459,7 +451,10 @@ final class ResponsePipeline extends AbstractLocalEventEmitter
             return;
         }
         
-        tryActOnChannelCommands(rsp);
+        if (mustCloseAfterWrite) {
+            chApi.closeSafe();
+        }
+        
         if (bytesWritten != null) {
             actOnWriteSuccess(bytesWritten, rsp);
         } else {
@@ -478,21 +473,6 @@ final class ResponsePipeline extends AbstractLocalEventEmitter
         //   already timed out (will always end with channel closure)
         if (!wroteFinal && timer != null && !timedOut) {
             timer.reschedule(this::timeoutAction);
-        }
-    }
-    
-    private void tryActOnChannelCommands(Response rsp) {
-        if (rsp == null) {
-            // Application's provided stage completed exceptionally, nothing to do
-            return;
-        }
-        if (rsp.mustCloseAfterWrite()) {
-            LOG.log(DEBUG, "Response wants us to close the child, will close.");
-            chApi.closeSafe();
-        } else if (rsp.mustShutdownOutputAfterWrite()) {
-            LOG.log(DEBUG, "Response wants us to shutdown output, will shutdown.");
-            chApi.shutdownOutputSafe();
-            // DefaultServer will not start a new exchange
         }
     }
     
