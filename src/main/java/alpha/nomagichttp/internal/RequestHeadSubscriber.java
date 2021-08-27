@@ -1,8 +1,9 @@
 package alpha.nomagichttp.internal;
 
 import alpha.nomagichttp.HttpServer;
-import alpha.nomagichttp.events.EventHub;
-import alpha.nomagichttp.events.RequestHeadParsed;
+import alpha.nomagichttp.event.EventHub;
+import alpha.nomagichttp.event.RequestHeadReceived;
+import alpha.nomagichttp.handler.ClientChannel;
 import alpha.nomagichttp.message.Char;
 import alpha.nomagichttp.message.EndOfStreamException;
 import alpha.nomagichttp.message.MaxRequestHeadSizeExceededException;
@@ -29,13 +30,15 @@ final class RequestHeadSubscriber implements SubscriberAsStage<PooledByteBufferH
     
     private final int maxHeadSize;
     private final EventHub events;
+    private final ClientChannel chApi;
     private final RequestHeadProcessor processor;
     private final CompletableFuture<RequestHead> result;
     
     
-    RequestHeadSubscriber(HttpServer server) {
+    RequestHeadSubscriber(HttpServer server, ClientChannel chApi) {
         this.maxHeadSize = server.getConfig().maxRequestHeadSize();
         this.events      = server.events();
+        this.chApi       = chApi;
         this.processor   = new RequestHeadProcessor();
         this.result      = new CompletableFuture<>();
     }
@@ -46,7 +49,12 @@ final class RequestHeadSubscriber implements SubscriberAsStage<PooledByteBufferH
      * If the sourced publisher (ChannelByteBufferPublisher) terminates the
      * subscription with an {@link EndOfStreamException} <i>and</i> no bytes
      * have been processed by this subscriber, then the stage will complete
-     * exceptionally with a {@link ClientAbortedException}.
+     * exceptionally with a {@link ClientAbortedException}.<p>
+     * 
+     * Exceptions that originates from the channel will already have closed the
+     * read stream. Other exceptions that originates from this class or its
+     * underlying byte processor will close the read stream; message framing
+     * lost.
      * 
      * @return a stage that completes with the result
      */
@@ -65,6 +73,7 @@ final class RequestHeadSubscriber implements SubscriberAsStage<PooledByteBufferH
     // ---
     
     private Flow.Subscription subscription;
+    private long started;
     private int read;
     
     @Override
@@ -73,6 +82,8 @@ final class RequestHeadSubscriber implements SubscriberAsStage<PooledByteBufferH
         try {
             head = process(item.get());
         } catch (Throwable t) {
+            LOG.log(DEBUG, "Request processing failed, shutting down the channel's read stream.");
+            chApi.shutdownInputSafe();
             subscription.cancel();
             result.completeExceptionally(t);
             return;
@@ -82,7 +93,8 @@ final class RequestHeadSubscriber implements SubscriberAsStage<PooledByteBufferH
         
         if (head != null) {
             subscription.cancel();
-            events.dispatch(RequestHeadParsed.INSTANCE, head);
+            events.dispatchLazy(RequestHeadReceived.INSTANCE, () -> head, () ->
+                    new RequestHeadReceived.Stats(started, System.nanoTime(), read));
             result.complete(head);
         }
     }
@@ -94,8 +106,11 @@ final class RequestHeadSubscriber implements SubscriberAsStage<PooledByteBufferH
             char curr = (char) buf.get();
             LOG.log(DEBUG, () -> "pos=" + read + ", curr=\"" + Char.toDebugString(curr) + "\"");
             
-            if (++read > maxHeadSize) {
+            if (read >= maxHeadSize) {
                 throw new MaxRequestHeadSizeExceededException();
+            }
+            if (read++ == 0) {
+                started = System.nanoTime();
             }
             
             head = processor.accept(curr);
@@ -106,7 +121,7 @@ final class RequestHeadSubscriber implements SubscriberAsStage<PooledByteBufferH
     
     @Override
     public void onError(final Throwable t) {
-        if (t instanceof EndOfStreamException && !processor.hasStarted()) {
+        if (t instanceof EndOfStreamException && read == 0) {
             result.completeExceptionally(new ClientAbortedException(t));
         } else {
             result.completeExceptionally(t);

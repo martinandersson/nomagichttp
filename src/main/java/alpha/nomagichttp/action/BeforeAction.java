@@ -1,10 +1,11 @@
 package alpha.nomagichttp.action;
 
 import alpha.nomagichttp.HttpServer;
-import alpha.nomagichttp.events.RequestHeadParsed;
+import alpha.nomagichttp.event.RequestHeadReceived;
 import alpha.nomagichttp.handler.ClientChannel;
 import alpha.nomagichttp.handler.ErrorHandler;
 import alpha.nomagichttp.message.Request;
+import alpha.nomagichttp.util.TriConsumer;
 
 /**
  * An action executed after a valid request has been received and before the
@@ -53,7 +54,7 @@ import alpha.nomagichttp.message.Request;
  * 
  * An exception thrown from the before-action is an alternative to explicitly
  * aborting through the {@link Chain} object. The exception is handed off to the
- * {@link ErrorHandler}. This is a variation of the previous example:
+ * {@link ErrorHandler}. This is a variant of the previous example:
  * <pre>
  *   ErrorHandler weRatherHide = (throwable, channel, ign,ored) -{@literal >} {
  *       try {
@@ -74,16 +75,19 @@ import alpha.nomagichttp.message.Request;
  *   server.before("/admin/*", expectAdmin);
  * </pre>
  * 
- * The action is called after a request head has been received and validated,
- * but before the request handler resolution even begins. This means that the
- * action is called even if a particular route turns out to not exist or the
- * route exists but has no applicable request handler.<p>
+ * The action is called only after a request head has been received and
+ * validated. For example, the action is not called if a request head fails to
+ * be parsed or the HTTP version was rejected/unsupported.<p>
  * 
  * An action that will be invoked for all <i>valid</i> requests hitting the
  * server can be registered using the path "/*". If the purpose for such an
- * action is to gather metrics, consider tapping into all requests instead
- * regardless if they are valid, by subscribing to the {@link RequestHeadParsed}
- * event (see {@link HttpServer#events()}).<p>
+ * action is to gather metrics, consider instead tapping into all request heads
+ * received regardless if the request is valid, by subscribing to the {@link
+ * RequestHeadReceived} event (see {@link HttpServer#events()}).<p>
+ * 
+ * The action is called before the request handler resolution begins. This means
+ * that the action is called even if a particular route turns out to not exist
+ * or the route exists but has no applicable request handler.<p>
  * 
  * The action may be called concurrently and must be thread-safe. It is likely
  * called by the server's request thread and so must not block.<p>
@@ -98,15 +102,6 @@ import alpha.nomagichttp.message.Request;
  * @see ActionRegistry
  */
 @FunctionalInterface
-public interface BeforeAction {
-    /**
-     * Apply the action.
-     * 
-     * @param request received (never {@code null})
-     * @param channel to client (never {@code null})
-     * @param chain completion mechanism (never {@code null})
-     * 
-     * @see BeforeAction
-     */
-    void apply(Request request, ClientChannel channel, Chain chain);
+public interface BeforeAction extends TriConsumer<Request, ClientChannel, Chain> {
+    // Empty
 }

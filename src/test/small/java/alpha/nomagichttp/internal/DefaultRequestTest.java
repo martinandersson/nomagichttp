@@ -13,8 +13,7 @@ import java.nio.charset.IllegalCharsetNameException;
 import java.nio.charset.UnsupportedCharsetException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.Map;
-import java.util.Optional;
+import java.util.List;
 
 import static alpha.nomagichttp.HttpConstants.Version.HTTP_1_1;
 import static alpha.nomagichttp.testutil.Assertions.assertFailed;
@@ -22,7 +21,6 @@ import static alpha.nomagichttp.util.Headers.of;
 import static java.nio.charset.StandardCharsets.US_ASCII;
 import static java.nio.file.Files.notExists;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
  * Small tests of {@link DefaultRequest}.
@@ -31,9 +29,6 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
  */
 class DefaultRequestTest
 {
-    // Body
-    // ----
-    
     @Test
     void body_toText_happyPath() {
         Request req = createRequest(of(
@@ -95,58 +90,23 @@ class DefaultRequestTest
         assertThat(notExists(letsHopeItDoesNotExist)).isTrue();
     }
     
-    // Attributes
-    // ----
-    
-    @Test
-    void attributes_set_get() {
-        Request r = createEmptyRequest();
-        Object o = r.attributes().set("msg", "hello");
-        assertThat(o).isNull();
-        String n = r.attributes().getAny("msg");
-        assertThat(n).isEqualTo("hello");
-    }
-    
-    @Test
-    void class_cast_exception_immediate() {
-        Request r = createEmptyRequest();
-        r.attributes().set("int", 123);
-        
-        assertThatThrownBy(() -> {
-            String crash = r.attributes().getAny("int");
-        }).isExactlyInstanceOf(ClassCastException.class);
-    }
-    
-    @Test
-    void class_cast_exception_delayed() {
-        Request r = createEmptyRequest();
-        r.attributes().set("int", 123);
-        Optional<String> opt = r.attributes().getOptAny("int");
-        
-        assertThatThrownBy(() -> {
-            String crash = opt.get();
-        }).isExactlyInstanceOf(ClassCastException.class);
-    }
-    
     private static DefaultRequest createRequest(HttpHeaders headers, String body) {
         var rh = new DefaultRequestHead(
                 "test-method",
                 "test-requestTarget",
                 "test-httpVersion",
-                headers,
-                -1);
+                headers);
         
         var rb = RequestBody.of(
                 rh.headers(),
                 Publishers.just(wrap(body, US_ASCII)),
                 Mockito.mock(DefaultClientChannel.class),
-                null, null, null);
+                null, null);
         
         SkeletonRequest req = new SkeletonRequest(
-                rh, RequestTarget.parse("/?"), rb, new DefaultAttributes());
+                rh, SkeletonRequestTarget.parse("/?"), rb, new DefaultAttributes());
         
-        return new DefaultRequest(HTTP_1_1,
-                req, new ResourceMatch<>(null, Map.of(), Map.of()));
+        return new DefaultRequest(HTTP_1_1, req, List.of());
     }
     
     private static DefaultRequest createEmptyRequest() {

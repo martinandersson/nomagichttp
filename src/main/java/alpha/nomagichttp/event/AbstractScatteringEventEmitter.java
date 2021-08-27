@@ -1,4 +1,6 @@
-package alpha.nomagichttp.events;
+package alpha.nomagichttp.event;
+
+import alpha.nomagichttp.util.TriConsumer;
 
 import java.util.Map;
 import java.util.Set;

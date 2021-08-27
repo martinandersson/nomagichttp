@@ -2,6 +2,7 @@ package alpha.nomagichttp.handler;
 
 import alpha.nomagichttp.Config;
 import alpha.nomagichttp.HttpConstants;
+import alpha.nomagichttp.action.ActionRegistry;
 import alpha.nomagichttp.action.AfterAction;
 import alpha.nomagichttp.action.BeforeAction;
 import alpha.nomagichttp.message.BadHeaderException;
@@ -39,13 +40,13 @@ import static alpha.nomagichttp.message.Responses.badRequest;
 import static alpha.nomagichttp.message.Responses.entityTooLarge;
 import static alpha.nomagichttp.message.Responses.httpVersionNotSupported;
 import static alpha.nomagichttp.message.Responses.internalServerError;
-import static alpha.nomagichttp.message.Responses.mediaTypeNotAccepted;
-import static alpha.nomagichttp.message.Responses.mediaTypeUnsupported;
 import static alpha.nomagichttp.message.Responses.methodNotAllowed;
 import static alpha.nomagichttp.message.Responses.noContent;
+import static alpha.nomagichttp.message.Responses.notAcceptable;
 import static alpha.nomagichttp.message.Responses.notFound;
 import static alpha.nomagichttp.message.Responses.requestTimeout;
 import static alpha.nomagichttp.message.Responses.serviceUnavailable;
+import static alpha.nomagichttp.message.Responses.unsupportedMediaType;
 import static alpha.nomagichttp.message.Responses.upgradeRequired;
 import static java.lang.System.Logger.Level.ERROR;
 import static java.util.stream.Collectors.joining;
@@ -53,15 +54,11 @@ import static java.util.stream.Stream.concat;
 import static java.util.stream.Stream.of;
 
 /**
- * Handles a {@code Throwable}, presumably by translating it into a response as
- * an alternative to the one that failed.<p>
+ * Handles a {@code Throwable}, presumably by translating it into a response.<p>
  * 
  * Error handler(s) should only be used for generic and server-global errors.
  * Another use case could be to customize the server's default error
  * responses.<p>
- * 
- * Many error handlers may be installed on the server. First to handle the error
- * breaks the call chain. Details follow later.<p>
  * 
  * The server will call error handlers only during an active HTTP exchange and
  * only if the channel remains open for writing at the time of the error. The
@@ -72,12 +69,12 @@ import static java.util.stream.Stream.of;
  * 
  * 1) Exceptions occurring on the request thread from after the point when the
  * server has begun receiving and parsing a request message until when the
- * request handler invocation has returned.<p>
+ * {@link RequestHandler} invocation has returned.<p>
  * 
  * 2) Exceptions that completes exceptionally the {@code
  * CompletionStage<Response>} written to the {@link
- * ClientChannel#write(Response) ClientChannel} but only if a final response has
- * not yet been sent.<p>
+ * ClientChannel#write(Response) ClientChannel} and those returned from an
+ * {@link AfterAction}, but only if a final response has not yet been sent.<p>
  * 
  * 3) Exceptions signalled to the server's {@code Flow.Subscriber} of the {@code
  * Response.body()} but only if the body publisher has not yet published any
@@ -85,8 +82,7 @@ import static java.util.stream.Stream.of;
  * to recover the situation after the point where a response has already begun
  * transmitting back to the client.<p>
  * 
- * 4) Exceptions thrown from {@link BeforeAction}s and {@link
- * AfterAction}s.<p>
+ * 4) Exceptions thrown from {@link BeforeAction}s and {@link AfterAction}s.<p>
  * 
  * The server will <strong>not</strong> call error handlers for errors that are
  * not directly involved in the HTTP exchange or for errors that occur
@@ -103,16 +99,16 @@ import static java.util.stream.Stream.of;
  * 
  * Any number of error handlers can be configured. If many are configured, they
  * will be called in the same order they were added. First handler to return
- * normally - i.e., first handler to not throw an exception - breaks the call
- * chain. The {@link #DEFAULT default handler} will be used if no other handler
- * is configured.<p>
+ * normally - i.e., first handler to <i>not</i> throw an exception - breaks the
+ * call chain. The {@link #DEFAULT default handler} will be used if no other
+ * handler is configured.<p>
  * 
  * An error handler that is unwilling to handle the exception must re-throw the
  * same throwable instance which will then propagate to the next handler,
  * eventually reaching the default handler.<p>
  * 
- * If a handler throws a different throwable, then this is considered to be a
- * new error and the whole cycle is restarted.<p>
+ * If a handler throws a different instance, then this is considered to be a new
+ * error and the whole cycle is restarted.<p>
  * 
  * This design was deliberately crafted to enable writing error handlers using
  * Java's standard try-catch block:
@@ -156,26 +152,24 @@ public interface ErrorHandler
      * {@code RequestHandler}) may be null or non-null depending on how much
      * progress was made in the HTTP exchange before the error occurred.<p>
      * 
-     * A little bit simplified; the server's procedure is to always first build
-     * a request object, which is then used to invoke the request handler
-     * with.<p>
+     * If the request argument is null, then the request handler argument will
+     * absolutely also be null because the server never got so far as to resolve
+     * and/or invoke the request handler.<p>
      * 
-     * So, if the request argument is null, then the request handler argument
-     * will absolutely also be null (the server never got so far as to resolve
-     * and/or invoke the request handler).<p>
+     * For each request-consuming entity that the server invokes (before-action,
+     * route/request handler and after-action) a new request object is created.
+     * This is because each entity may declare unique path parameters (see
+     * {@link ActionRegistry}). The last such object created within the HTTP
+     * exchange is the one passed to this error handler. I.e. the request
+     * parameters' keys and values will be dependent on whichever entity was
+     * invoked prior to the crash.<p>
      * 
-     * If the request argument is not null, then the request handler argument
-     * may or may not be null. If the request handler is not null, then the
-     * "fault" of the error is most likely the request handlers' since the very
-     * next thing the server do after having resolved the request handler is to
-     * call the guy.<p>
-     * 
-     * However, the true nature of the error can often only be determined by
-     * looking into the error object itself, which also might reveal what to
-     * expect from the succeeding arguments. For example, if {@code thr} is an
-     * instance of {@link NoHandlerResolvedException}, then the request object
-     * was built and will not be null, but since the request handler wasn't
-     * resolved then the request handler argument is going to be null.<p>
+     * The true nature of the error can often only be determined by looking into
+     * the error object, which also might reveal what to expect from the
+     * succeeding arguments. For example, if {@code thr} is an instance of
+     * {@link NoHandlerResolvedException}, then the request object was built and
+     * will not be null, but since the request handler wasn't resolved then the
+     * request handler argument is going to be null.<p>
      * 
      * It is a design goal of the NoMagicHTTP library to have each exception
      * type provide whatever API necessary to investigate and possibly resolve
@@ -223,13 +217,13 @@ public interface ErrorHandler
      *     <td> {@link Responses#badRequest()} </td>
      *   </tr>
      *   <tr>
-     *     <th scope="row"> {@link HttpVersionParseException} </th>
+     *     <th scope="row"> {@link MaxRequestHeadSizeExceededException} </th>
      *     <td> None </td>
-     *     <td> No </td>
-     *     <td> {@link Responses#badRequest()} </td>
+     *     <td> Yes </td>
+     *     <td> {@link Responses#entityTooLarge()} </td>
      *   </tr>
      *   <tr>
-     *     <th scope="row"> {@link BadHeaderException} </th>
+     *     <th scope="row"> {@link HttpVersionParseException} </th>
      *     <td> None </td>
      *     <td> No </td>
      *     <td> {@link Responses#badRequest()} </td>
@@ -245,6 +239,12 @@ public interface ErrorHandler
      *     <td> None </td>
      *     <td> No </td>
      *     <td> {@link Responses#httpVersionNotSupported()} </td>
+     *   </tr>
+     *   <tr>
+     *     <th scope="row"> {@link BadHeaderException} </th>
+     *     <td> None </td>
+     *     <td> No </td>
+     *     <td> {@link Responses#badRequest()} </td>
      *   </tr>
      *   <tr>
      *     <th scope="row"> {@link NoRouteFoundException} </th>
@@ -272,25 +272,19 @@ public interface ErrorHandler
      *     <th scope="row"> {@link MediaTypeNotAcceptedException} </th>
      *     <td> None </td>
      *     <td> Yes </td>
-     *     <td> {@link Responses#mediaTypeNotAccepted()} </td>
+     *     <td> {@link Responses#notAcceptable()} </td>
      *   </tr>
      *   <tr>
      *     <th scope="row"> {@link MediaTypeUnsupportedException} </th>
      *     <td> None </td>
      *     <td> Yes </td>
-     *     <td> {@link Responses#mediaTypeUnsupported()} </td>
+     *     <td> {@link Responses#unsupportedMediaType()} </td>
      *   </tr>
      *   <tr>
      *     <th scope="row"> {@link AmbiguousHandlerException} </th>
      *     <td> None </td>
      *     <td> Yes </td>
      *     <td> {@link Responses#internalServerError()} </td>
-     *   </tr>
-     *   <tr>
-     *     <th scope="row"> {@link MaxRequestHeadSizeExceededException} </th>
-     *     <td> None </td>
-     *     <td> Yes </td>
-     *     <td> {@link Responses#entityTooLarge()} </td>
      *   </tr>
      *   <tr>
      *     <th scope="row"> {@link MediaTypeParseException} </th>
@@ -378,6 +372,9 @@ public interface ErrorHandler
                  BadHeaderException        |
                  IllegalRequestBodyException e) {
             res = badRequest();
+        } catch (MaxRequestHeadSizeExceededException e) {
+            log(thr);
+            res = entityTooLarge();
         } catch (HttpVersionTooOldException e) {
             res = upgradeRequired(e.getUpgrade());
         } catch (HttpVersionTooNewException e) {
@@ -385,9 +382,6 @@ public interface ErrorHandler
         } catch (NoRouteFoundException e) {
             log(thr);
             res = notFound();
-        } catch (MaxRequestHeadSizeExceededException e) {
-            log(thr);
-            res = entityTooLarge();
         } catch (MethodNotAllowedException e) {
             Response status = methodNotAllowed();
             Stream<String> allow = e.getRoute().supportedMethods();
@@ -401,10 +395,10 @@ public interface ErrorHandler
             res = status.toBuilder().addHeader(ALLOW, allow.collect(joining(", "))).build();
         } catch (MediaTypeNotAcceptedException e) {
             log(thr);
-            res = mediaTypeNotAccepted();
+            res = notAcceptable();
         } catch (MediaTypeUnsupportedException e) {
             log(thr);
-            res = mediaTypeUnsupported();
+            res = unsupportedMediaType();
         } catch (MediaTypeParseException e) {
             if (rh == null) {
                 res = badRequest();

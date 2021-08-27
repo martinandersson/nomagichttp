@@ -591,7 +591,7 @@ public abstract class HttpClientFacade
                 IOFunction<? super ResponseBody, ? extends B> rspBodyConverter)
                 throws IOException
         {
-            var cli= new OkHttpClient.Builder()
+            var cli = new OkHttpClient.Builder()
                     .protocols(List.of(toSquareVersion(ver)))
                     .build();
             

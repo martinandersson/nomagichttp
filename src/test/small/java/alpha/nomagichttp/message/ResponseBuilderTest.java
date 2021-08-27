@@ -16,7 +16,7 @@ class ResponseBuilderTest
 {
     @Test
     void happy_path() {
-        Response r = Response.builder(200, "OK").build();
+        Response r = builder(200, "OK").build();
         assertThat(r.statusCode()).isEqualTo(200);
         assertThat(r.reasonPhrase()).isEqualTo("OK");
         assertThat(r.mustCloseAfterWrite()).isFalse();
@@ -25,7 +25,7 @@ class ResponseBuilderTest
     
     @Test
     void future_changes_does_not_affect_old_builders() {
-        Response.Builder b0 = Response.builder(1).reasonPhrase(""),
+        Response.Builder b0 = builder(1).reasonPhrase(""),
                          b1 = b0.statusCode(2),
                          b2 = b1.statusCode(3);
         
@@ -35,13 +35,13 @@ class ResponseBuilderTest
     
     @Test
     void header_addHeader_single() {
-        Response r = Response.builder(-1).addHeaders("k", "v").build();
+        Response r = builder(-1).addHeaders("k", "v").build();
         assertThat(r.headersForWriting()).containsExactly("k: v");
     }
     
     @Test
     void header_addHeaders_multi() {
-        Response r = Response.builder(-1)
+        Response r = builder(-1)
                 .header(    "k", "v1")
                 .addHeader( "k", "v2")
                 .addHeaders("k", "v3",
@@ -57,24 +57,24 @@ class ResponseBuilderTest
     
     @Test
     void header_removeHeader() {
-        Response r = Response.builder(-1).header("k", "v").removeHeader("k").build();
+        Response r = builder(-1).header("k", "v").removeHeader("k").build();
         assertThat(r.headersForWriting()).isEmpty();
     }
     
     @Test
     void header_replace() {
-        Response r = Response.builder(-1).header("k", "v1").header("k", "v2").build();
+        Response r = builder(-1).header("k", "v1").header("k", "v2").build();
         assertThat(r.headersForWriting()).containsExactly("k: v2");
     }
     
     @Test
     void informational_response_can_build() {
-        Response.builder(102).build();
+        builder(102).build();
     }
     
     @Test
     void multipleContentLength_withValues() {
-        Response.Builder b = Response.builder(123).addHeaders(
+        Response.Builder b = builder(123).addHeaders(
                 "Content-Length", "1",
                 "Content-Length", "2");
         
@@ -85,7 +85,7 @@ class ResponseBuilderTest
     
     @Test
     void multipleContentLength_noValues() {
-        Response.Builder b = Response.builder(123).addHeaders(
+        Response.Builder b = builder(123).addHeaders(
                 "Content-Length", "",
                 "Content-Length", "    ");
         
@@ -96,10 +96,22 @@ class ResponseBuilderTest
     
     @Test
     void connectionCloseOn1XX() {
-        Response.Builder b = Response.builder(123).header("coNnEcTiOn", "cLoSe");
+        Response.Builder b = builder(123).header("coNnEcTiOn", "cLoSe");
         
         assertThatThrownBy(b::build)
                 .isExactlyInstanceOf(IllegalStateException.class)
                 .hasMessage("\"Connection: close\" set on 1XX (Informational) response.");
+    }
+    
+    // Response.builder() uses a cache, as this is a test we prefer to bypass it
+    private static Response.Builder builder(int code) {
+        return DefaultResponse.DefaultBuilder.ROOT
+                .statusCode(code);
+    }
+    
+    private static Response.Builder builder(int code, String phrase) {
+        return DefaultResponse.DefaultBuilder.ROOT.
+                statusCode(code)
+                .reasonPhrase(phrase);
     }
 }

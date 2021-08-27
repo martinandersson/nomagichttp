@@ -1,234 +1,230 @@
 package alpha.nomagichttp.internal;
 
-import alpha.nomagichttp.route.Route;
-import alpha.nomagichttp.util.PercentDecoder;
+import alpha.nomagichttp.message.Request;
 
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.RandomAccess;
+import java.util.Optional;
+import java.util.stream.Stream;
 
+import static alpha.nomagichttp.internal.Segments.ASTERISK_CH;
+import static alpha.nomagichttp.internal.Segments.COLON_CH;
 import static alpha.nomagichttp.util.PercentDecoder.decode;
 import static java.util.Collections.unmodifiableList;
 import static java.util.Collections.unmodifiableMap;
-import static java.util.stream.Collectors.toCollection;
 import static java.util.stream.Collectors.toMap;
 
 /**
- * Consists of path segments and query key/value pairs; as split and parsed
- * from a raw request-target string.<p>
- * 
- * The query maps returned by this class are unmodifiable and retain the same
- * iteration order as the query keys were declared in the query string.<p>
- * 
- * All lists returned by this class are unmodifiable and implements {@link
- * RandomAccess}.<p>
- * 
- * The root ("/") is not represented in the returned lists of segments. If the
- * parsed request path was empty or effectively a single "/", then the returned
- * lists will also be empty. This has been officially specified by {@link
- * Route#segments()} and is an expected de-facto norm throughout the library
- * code.<p>
- * 
- * The implementation is thread-safe and non-blocking.<p>
- * 
- * See sections "3.3 Path",
- * "3.4 Query" and "3.5 Fragment" respectively in
- * <a href="https://tools.ietf.org/html/rfc3986#section-3.3">RFC 3986</a>.
+ * Default implementation of {@link Request.Target}.
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  */
-final class RequestTarget
+final class RequestTarget implements Request.Target
 {
-    /**
-     * Create a {@code RequestTarget} from the given input.<p>
-     * 
-     * The request path will be worked on according to what has been specified
-     * in {@link Route}. Specifically:
-     * 
-     * <ul>
-     *   <li>Clustered forward slashes are reduced to just one.</li>
-     *   <li>All trailing forward slashes are truncated.</li>
-     *   <li>The empty path will be replaced with "/".</li>
-     *   <li>Dot-segments (".", "..") are normalized.</li>
-     * </ul>
-     * 
-     * Parsing- and percent-decoding the query string takes place lazily upon
-     * first access, and so, is a cost not paid by clients uninterested of it.
-     * 
-     * @param rt raw request target as read from the request-line
-     * @return a complex type representing the input
-     * @throws NullPointerException if {@code rt} is {@code null}
-     */
-    static RequestTarget parse(final String rt) {
-        // At the very least, we're parsing a "/"
-        String parse = rt.isEmpty() ? "/" : rt;
-        assert !parse.isBlank() : "RequestHeadProcessor should not give us a blank string.";
-        
-        final int skip = parse.startsWith("/") ? 1 : 0;
-        
-        // Find query- and fragment indices
-        int q = parse.indexOf('?', skip),
-            f = parse.indexOf('#', q == -1 ? skip : q + 1);
-        
-        // Extract path component..
-        final String path;
-        if (q == -1 && f == -1) {
-            path = parse.substring(skip);
-        } else if (q != -1) {
-            path = parse.substring(skip, q);
-        } else {
-            assert f != -1;
-            path = parse.substring(skip, f);
-        }
-        
-        // ..into tokens that we normalize, using .split(). E.g.
-        //     "a/b"  => ["a", "b"]
-        //     "a/"   => ["a"]         (here '/' is removed)
-        //     "/a"   => ["", "a"]     (not symmetric lol, here a magical empty token appears)
-        //     "a"    => ["a"]
-        //     ""     => [""]          (yikes! empty input produces array.length == 1)
-        //     "/"    => []            (...by themselves no magic tokens lol)
-        //     "//"   => []
-        //     "///"  => []
-        String[] segments = path.split("/");
-        ArrayList<String> keep = new ArrayList<>();
-        
-        for (String t : segments) {
-            // Drop "" and "."
-            if (t.isEmpty() || t.equals(".")) {
-                continue;
+    private final SkeletonRequestTarget rt;
+    private final Iterable<String> resourceSegments;
+    
+    RequestTarget(SkeletonRequestTarget rt, Iterable<String> resourceSegments) {
+        assert rt != null;
+        assert resourceSegments != null;
+        this.rt = rt;
+        this.resourceSegments = resourceSegments;
+    }
+    
+    @Override
+    public String raw() {
+        return rt.raw();
+    }
+    
+    @Override
+    public List<String> segments() {
+        return rt.segments();
+    }
+    
+    @Override
+    public List<String> segmentsRaw() {
+        return rt.segmentsRaw();
+    }
+    
+    @Override
+    public String pathParam(String name) {
+        return pathParamMap().get(name);
+    }
+    
+    @Override
+    public Map<String, String> pathParamMap() {
+        return params().decoded;
+    }
+    
+    @Override
+    public String pathParamRaw(String name) {
+        return pathParamRawMap().get(name);
+    }
+    
+    @Override
+    public Map<String, String> pathParamRawMap() {
+        return params().raw;
+    }
+    
+    private PathParams params;
+    
+    private PathParams params() {
+        var p = params;
+        return p != null ? p : (params = new PathParams());
+    }
+    
+    private final class PathParams {
+        final Map<String, String> raw, decoded;
+        PathParams() {
+            // We need to map "request/path/segments" to "resource/:path/*parameters"
+            Iterator<String>    decIt  = segments().iterator(),
+                                segIt  = resourceSegments.iterator();
+            Map<String, String> rawMap = Map.of(),
+                                decMap = Map.of();
+            
+            String catchAllKey = null;
+            
+            for (String r : segmentsRaw()) {
+                String d = decIt.next();
+                
+                if (catchAllKey == null) {
+                    // Catch-all not activated, consume next resource segment
+                    String s = segIt.next();
+                    
+                    switch (s.charAt(0)) {
+                        case COLON_CH:
+                            // Single path param goes to map
+                            String k = s.substring(1),
+                                   o = (rawMap = mk(rawMap)).put(k, r);
+                            assert o == null;
+                                   o = (decMap = mk(decMap)).put(k, d);
+                            assert o == null;
+                            break;
+                        case ASTERISK_CH:
+                            // Toggle catch-all phase with this segment as seed
+                            catchAllKey = s.substring(1);
+                            (rawMap = mk(rawMap)).put(catchAllKey, '/' + r);
+                            (decMap = mk(decMap)).put(catchAllKey, '/' + d);
+                            break;
+                        default:
+                            // Static segments we're not interested in
+                            break;
+                    }
+                } else {
+                    // Consume all remaining request segments as catch-all
+                    rawMap.merge(catchAllKey, '/' + r, String::concat);
+                    decMap.merge(catchAllKey, '/' + d, String::concat);
+                }
             }
-            // ".." removes the previous one if and only if previous is not ".."
-            if (t.equals("..")  &&
-                !keep.isEmpty() &&
-                !keep.get(keep.size() - 1).equals(".."))
-            {
-                keep.remove(keep.size() - 1);
-            // Keep legit values and ineffective ".."
-            } else {
-                keep.add(t);
+            
+            // We're done with the request path, but resource may still have a catch-all segment in there
+            if (segIt.hasNext()) {
+                String s = segIt.next();
+                assert s.startsWith("*");
+                assert !segIt.hasNext();
+                assert catchAllKey == null;
+                catchAllKey = s.substring(1);
             }
+            
+            // We could have toggled to catch-all, but no path segment was consumed for it, and
+            if (catchAllKey != null && !rawMap.containsKey(catchAllKey)) {
+                // route JavaDoc promises to default with a '/'
+                (rawMap = mk(rawMap)).put(catchAllKey, "/");
+                (decMap = mk(decMap)).put(catchAllKey, "/");
+            }
+            
+            assert !decIt.hasNext();
+            this.raw = unmodifiableMap(rawMap);
+            this.decoded = unmodifiableMap(decMap);
         }
-        
-        // Extract query string
-        final String query;
-        if (q == -1) {
-            query = "";
-        } else if (f != -1) {
-            query = parse.substring(q + 1, f);
-        } else {
-            query = parse.substring(q + 1);
-        }
-        
-        return new RequestTarget(rt, keep, query);
     }
     
-    private final String rtRaw;
-    private final String query;
-    private final List<String> segmentsNotPercentDecoded,
-                               segmentsPercentDecoded;
-    private Map<String, List<String>>
-            queryMapNotPercentDecoded, queryMapPercentDecoded;
-    
-    <L extends List<String> & RandomAccess> RequestTarget(
-            String rtRaw, L segmentsNotPercentDecoded, String query)
-    {
-        this.rtRaw = rtRaw;
-        this.query = query;
-        assert !query.startsWith("?");
-        this.segmentsNotPercentDecoded = unmodifiableList(segmentsNotPercentDecoded);
-        this.segmentsPercentDecoded    = unmodifiableList(segmentsNotPercentDecoded.stream()
-                .map(PercentDecoder::decode).collect(toCollection(() ->
-                        new ArrayList<>(segmentsNotPercentDecoded.size()))));
-        
-        this.queryMapNotPercentDecoded = null;
-        this.queryMapPercentDecoded    = null;
+    private static <K, V> Map<K, V> mk(Map<K, V> map) {
+        return map.isEmpty() ? new HashMap<>() : map;
     }
     
-    /**
-     * Returns the raw non-normalized and not percent-decoded request-target.<p>
-     * 
-     * The returned value is in fact the same string passed to the parse method.
-     * I.e, what was received on the wire in the request head.
-     * 
-     * @return the raw non-normalized and not percent-decoded request-target
-     */
-    String pathRaw() {
-        return rtRaw;
+    @Override
+    public Optional<String> queryFirst(String key) {
+        return queryStream(key).findFirst();
     }
     
-    /**
-     * Returns normalized but possibly escaped segments.
-     * 
-     * @return normalized but possibly escaped segments
-     */
-    List<String> segmentsNotPercentDecoded() { // TODO: rename to segmentsRaw
-        return segmentsNotPercentDecoded;
+    @Override
+    public Optional<String> queryFirstRaw(String key) {
+        return queryStreamRaw(key).findFirst();
     }
     
-    /**
-     * Returns normalized and escaped segments.
-     * 
-     * @return normalized and escaped segments
-     */
-    List<String> segmentsPercentDecoded() {
-        return segmentsPercentDecoded;
+    @Override
+    public Stream<String> queryStream(String key) {
+        return queryList(key).stream();
     }
     
-    /**
-     * Returns possibly escaped query entries.
-     * 
-     * @return normalized but possibly escaped query entries
-     */
-    Map<String, List<String>> queryMapNotPercentDecoded() {
+    @Override
+    public Stream<String> queryStreamRaw(String key) {
+        return queryListRaw(key).stream();
+    }
+    
+    @Override
+    public List<String> queryList(String key) {
+        return queryMap().getOrDefault(key, List.of());
+    }
+    
+    @Override
+    public List<String> queryListRaw(String key) {
+        return queryMapRaw().getOrDefault(key, List.of());
+    }
+    
+    private Map<String, List<String>> queryMapPercentDecoded;
+    
+    @Override
+    public Map<String, List<String>> queryMap() {
+        Map<String, List<String>> m = queryMapPercentDecoded;
+        return m != null ? m : (queryMapPercentDecoded = decodeMap());
+    }
+    
+    private Map<String, List<String>> decodeMap() {
+        var decoded = queryMapRaw().entrySet().stream().collect(toMap(
+                e -> decode(e.getKey()),
+                e -> decode(e.getValue()),
+                (ign,ored) -> { throw new AssertionError("Insufficient JDK API"); },
+                LinkedHashMap::new));
+        return unmodifiableMap(decoded);
+    }
+    
+    private Map<String, List<String>> queryMapNotPercentDecoded;
+    
+    @Override
+    public Map<String, List<String>> queryMapRaw() {
         Map<String, List<String>> m = queryMapNotPercentDecoded;
         return m != null ? m : (queryMapNotPercentDecoded = parseQuery());
     }
     
     private Map<String, List<String>> parseQuery() {
-        if (query.isEmpty()) {
+        final var q = rt.query();
+        if (q.isEmpty()) {
             return Map.of();
         }
         
-        Map<String, List<String>> m = new LinkedHashMap<>();
-        
-        String[] pairs = query.split("&");
-        
+        final var m = new LinkedHashMap<String, List<String>>();
+        String[] pairs = q.split("&");
         for (String p : pairs) {
             int i = p.indexOf('=');
             // note: value may be the empty string!
             String k = p.substring(0, i == -1 ? p.length(): i),
                    v = i == -1 ? "" : p.substring(i + 1);
-            
-            List<String> l = m.computeIfAbsent(k, ignored -> new ArrayList<>(1));
-            l.add(v);
+            m.computeIfAbsent(k, key -> new ArrayList<>(1)).add(v);
         }
-        
         m.entrySet().forEach(e ->
             e.setValue(unmodifiableList(e.getValue())));
         
         return unmodifiableMap(m);
     }
     
-    /**
-     * Returns normalized and percent-decoded query entries.
-     * 
-     * @return normalized and percent-decoded query entries
-     */
-    Map<String, List<String>> queryMapPercentDecoded() {
-        Map<String, List<String>> m = queryMapPercentDecoded;
-        return m != null ? m : (queryMapPercentDecoded = decodeMap());
-    }
-    
-    private Map<String, List<String>> decodeMap() {
-        Map<String, List<String>> m = queryMapNotPercentDecoded().entrySet().stream().collect(toMap(
-                e -> decode(e.getKey()),
-                e -> decode(e.getValue()),
-                (ign,ored) -> { throw new AssertionError("Insufficient JDK API"); },
-                LinkedHashMap::new));
-        
-        return unmodifiableMap(m);
+    @Override
+    public String fragment() {
+        throw new AbstractMethodError("Implement me");
     }
 }

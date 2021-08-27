@@ -22,13 +22,13 @@ class BeforeActionTest extends AbstractRealTest
         server().before("/:A/*", (r, ch, chain) -> {
                     // Set first segment as "msg" attribute
                     r.attributes().set("msg",
-                            r.parameters().path("A"));
+                            r.target().pathParam("A"));
                     chain.proceed();
                 })
                 .before("/:B/:C", (r, ch, chain) -> {
                     // Concatenate with the second segment
                     r.attributes().<String>asMapAny().merge("msg",
-                            r.parameters().path("C"), String::concat);
+                            r.target().pathParam("C"), String::concat);
                     chain.proceed();
                 })
                 .before("/hello/world", (r, ch, chain) -> {
@@ -41,8 +41,8 @@ class BeforeActionTest extends AbstractRealTest
             "Connection: close"                       + CRLF + CRLF);
         assertThat(rsp).isEqualTo(
             "HTTP/1.1 200 OK"                         + CRLF +
-            "Content-Type: text/plain; charset=utf-8" + CRLF +
             "Content-Length: 10"                      + CRLF +
+            "Content-Type: text/plain; charset=utf-8" + CRLF +
             "Connection: close"                       + CRLF + CRLF +
             
             "helloworld");
@@ -62,8 +62,8 @@ class BeforeActionTest extends AbstractRealTest
             "Connection: close"                       + CRLF + CRLF);
         assertThat(rsp).isEqualTo(
             "HTTP/1.1 200 OK"                         + CRLF +
-            "Content-Type: text/plain; charset=utf-8" + CRLF +
             "Content-Length: 5"                       + CRLF +
+            "Content-Type: text/plain; charset=utf-8" + CRLF +
             "Connection: close"                       + CRLF + CRLF +
             
             "hello");

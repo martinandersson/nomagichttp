@@ -197,7 +197,7 @@ public abstract class AbstractRealTest
     
     @BeforeEach
     final void beforeEach(TestInfo test) {
-        LOG.log(INFO, () -> "Executing " + toString(test));
+        LOG.log(FINE, () -> "Executing " + toString(test));
         if (useLogRecording) {
             key = Logging.startRecording();
         }
@@ -217,7 +217,7 @@ public abstract class AbstractRealTest
                 stopLogRecording();
             }
         }
-        LOG.log(INFO, () -> "Finished " + toString(test));
+        LOG.log(FINE, () -> "Finished " + toString(test));
     }
     
     /**

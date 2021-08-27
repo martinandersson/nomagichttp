@@ -21,6 +21,8 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.BiFunction;
 
 import static alpha.nomagichttp.internal.AtomicReferences.lazyInit;
+import static alpha.nomagichttp.internal.SubscriptionMonitoringOp.alreadyCompleted;
+import static alpha.nomagichttp.internal.SubscriptionMonitoringOp.subscribeTo;
 import static alpha.nomagichttp.util.Headers.contentLength;
 import static alpha.nomagichttp.util.Headers.contentType;
 import static java.lang.System.Logger.Level.DEBUG;
@@ -39,8 +41,7 @@ import static java.util.concurrent.CompletableFuture.failedStage;
 final class RequestBody implements Request.Body
 {
     private static final System.Logger LOG = System.getLogger(RequestBody.class.getPackageName());
-    private static final CompletionStage<Void> COMPLETED_NULL = completedStage(null);
-    private static final CompletionStage<String> COMPLETED_STR_EMPTY = completedStage("");
+    private static final CompletionStage<String> COMPLETED_EMPTY_STR = completedStage("");
     
     // Copy-pasted from AsynchronousFileChannel.NO_ATTRIBUTES
     @SuppressWarnings({"rawtypes"}) // generic array construction
@@ -57,18 +58,17 @@ final class RequestBody implements Request.Body
      * call-site intends to immediately discard the body with no further
      * delay.<p>
      * 
-     * The last two callbacks are also optional, and will be called decoratively
-     * before and after this class subscribes the downstream subscriber
-     * (application) to the upstream publisher (channel), but only if the body
-     * has contents (subscription to an empty body will delegate to an empty
-     * dummy). 
+     * The callback is also optional, and will be called just before this class
+     * subscribes the downstream subscriber (application) to the upstream
+     * publisher (channel), but only if the body has contents. Subscription to
+     * an empty body will delegate to an empty dummy and never invoke the
+     * callback.
      * 
      * @param headers of request
      * @param chIn reading channel
      * @param chApi extended channel API (exceptional closure)
      * @param timeout duration (may be {@code null})
      * @param beforeNonEmptyBodySubscription before callback (may be {@code null})
-     * @param afterNonEmptyBodySubscription after callback (may be {@code null})
      * 
      * @return a request body
      * @throws NullPointerException if any required argument is {@code null}
@@ -78,8 +78,7 @@ final class RequestBody implements Request.Body
             Flow.Publisher<DefaultPooledByteBufferHolder> chIn,
             DefaultClientChannel chApi,
             Duration timeout,
-            Runnable beforeNonEmptyBodySubscription,
-            Runnable afterNonEmptyBodySubscription)
+            Runnable beforeNonEmptyBodySubscription)
     {
         // TODO: If length is not present, then body is possibly chunked.
         // https://tools.ietf.org/html/rfc7230#section-3.3.3
@@ -95,7 +94,7 @@ final class RequestBody implements Request.Body
         if (len <= 0) {
             requireNonNull(chIn);
             requireNonNull(chApi);
-            return new RequestBody(headers, COMPLETED_NULL, null, null, null);
+            return new RequestBody(headers, null, null, null);
         } else {
             var bounded = new LengthLimitedOp(len, chIn);
             
@@ -105,12 +104,13 @@ final class RequestBody implements Request.Body
                         if (LOG.isLoggable(DEBUG) && chApi.isOpenForReading()) {
                             LOG.log(DEBUG, "Request body timed out, shutting down child channel's read stream.");
                         }
+                        // No new HTTP exchange
                         chApi.shutdownInputSafe();
                         return new RequestBodyTimeoutException();
                     });
             
-            var observe = new SubscriptionAsStageOp(timedOp != null ? timedOp : bounded);
-            var onError = new OnErrorCloseReadStream<>(observe, chApi);
+            var monitor = subscribeTo(timedOp != null ? timedOp : bounded);
+            var onError = new OnDownstreamErrorCloseReadStream<>(monitor, chApi);
             var discard = new OnCancelDiscardOp(onError);
             
             if (timedOp != null) {
@@ -119,49 +119,44 @@ final class RequestBody implements Request.Body
             
             return new RequestBody(
                     headers,
-                    observe.asCompletionStage(),
                     discard,
-                    beforeNonEmptyBodySubscription,
-                    afterNonEmptyBodySubscription);
+                    monitor,
+                    beforeNonEmptyBodySubscription);
         }
     }
     
     private final HttpHeaders headers;
-    private final CompletionStage<Void> subscription;
     private final OnCancelDiscardOp chIn;
+    private final SubscriptionMonitoringOp monitor;
     private final Runnable beforeSubsc;
-    private final Runnable afterSubscr;
 
     private final AtomicReference<CompletionStage<String>> cachedText;
     
     private RequestBody(
             // Required
             HttpHeaders headers,
-            CompletionStage<Void> subscription,
             // All optional (relevant only for body contents)
             OnCancelDiscardOp chIn,
-            Runnable beforeSubsc,
-            Runnable afterSubscr)
+            SubscriptionMonitoringOp monitor,
+            Runnable beforeSubsc)
     {
-        this.headers      = headers;
-        this.subscription = subscription;
-        this.chIn         = chIn;
-        this.beforeSubsc  = beforeSubsc;
-        this.afterSubscr  = afterSubscr;
-        this.cachedText   = chIn == null ? null : new AtomicReference<>(null);
+        this.headers     = headers;
+        this.chIn        = chIn;
+        this.monitor     = monitor;
+        this.beforeSubsc = beforeSubsc;
+        this.cachedText  = chIn == null ? null : new AtomicReference<>(null);
     }
     
     @Override
     public CompletionStage<String> toText() {
         if (isEmpty()) {
-            return COMPLETED_STR_EMPTY;
+            return COMPLETED_EMPTY_STR;
         }
         return lazyInit(cachedText, CompletableFuture::new, v -> copyResult(mkText(), v));
     }
     
     private CompletionStage<String> mkText() {
         final Charset charset;
-        
         try {
             charset = contentType(headers)
                     .filter(m -> m.type().equals("text"))
@@ -220,9 +215,6 @@ final class RequestBody implements Request.Body
                 beforeSubsc.run();
             }
             chIn.subscribe(subscriber);
-            if (afterSubscr != null) {
-                afterSubscr.run();
-            }
         }
     }
     
@@ -232,16 +224,15 @@ final class RequestBody implements Request.Body
     }
     
     /**
-     * Returns a stage that completes when the body subscription completes.<p>
+     * Returns the subscription monitor.<p>
      * 
-     * The returned stage is already completed if the request contains no body.
+     * If the body is empty, then {@link
+     * SubscriptionMonitoringOp#alreadyCompleted()}} is returned.
      * 
-     * @return a stage that completes when the body subscription completes
-     *
-     * @see SubscriptionAsStageOp
+     * @return the subscription monitor
      */
-    CompletionStage<Void> asCompletionStage() {
-        return subscription;
+    SubscriptionMonitoringOp subscriptionMonitor() {
+        return isEmpty() ? alreadyCompleted() : monitor;
     }
     
     /**

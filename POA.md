@@ -672,7 +672,7 @@ in the first response.
 
 Support decoding `application/x-www-form-urlencoded`. This is the default HTML
 form `enctype` which essentially takes a giant query string and puts it in the
-message body instead. Also see JavaDoc of `Request.Parameters`.
+message body instead. Also see JavaDoc of `Request.Target`.
 
 Since there's no library support for `application/json`, I don't really like
 having to implement this encoding. But, it is the default type for HTML forms,
@@ -683,7 +683,7 @@ Implementation-wise, add yet another decoding method to `DecodedPayload`:
     Map<String, String> data = req.body().formdata(); // URL decoded
 
 Of course, JavaDoc must explain througouhly what the difference is between the
-former and `req.body().multipart().formdata()`. Also update Request.Parameters
+former and `req.body().multipart().formdata()`. Also update Request.Target
 JavaDoc.
 
 Note: adding a method for "raw" form data is probably just noise. Recent work
@@ -709,7 +709,7 @@ automate these responses, which is the purpose of the work outlined here.
   accepting some form of a `FileServeConfig` object.  
   The function will provide the file path to serve, for example by reading
   dynamic path segments from the request:  
-          Function<Request, Path> f = req -> Paths.of("/server-root", req.parameters().path("user"), "files", req.parameters("filepath"));
+          Function<Request, Path> f = req -> Paths.of("/server-root", req.target().pathParam("user"), "files", req.target().pathParam("filepath"));
           server.add("/:user/files/*filepath", file(f));  
   Given how the path is provided by a function, it is completely up to
   application code how to navigate to the file and which files it wishes to

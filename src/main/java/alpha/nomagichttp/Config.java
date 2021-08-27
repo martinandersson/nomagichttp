@@ -287,9 +287,11 @@ public interface Config
      * a response to the {@link ClientChannel}. This timer starts when the
      * request timer(s) end or times out, and so the ClientChannel will never
      * timeout while a request is still actively being processed. The timer is
-     * reset for each response given (after possible stage completion). A
-     * response producer that needs more time can reset the timer by sending a
-     * 1XX (Informational) interim response.<p>
+     * similarly active only while a response is <i>not</i> actively being
+     * transmitted on the wire. The timer is reset for each response given
+     * (after possible stage completion). A response producer that needs more
+     * time can reset the timer by sending a 1XX (Informational) interim
+     * response.<p>
      * 
      * Assuming that the write stream is still open when the exception occurs,
      * the ClientChannel's {@code ResponseTimeoutException} is delivered to the
@@ -310,10 +312,10 @@ public interface Config
      * data, a third response timer will cause the underlying channel write
      * operation to abort for response body bytebuffers not fully sent before
      * the duration elapses. This exception will also not be delivered to the
-     * error handler(s). The application can chose to publish very large
-     * response body bytebuffers without worrying about a possible timeout due
-     * to the increased time it may take to send a large buffer. The server will
-     * internally slice the buffer if need be.<p>
+     * error handler(s) and close the channel immediately. The application can
+     * chose to publish very large response body bytebuffers without worrying
+     * about a possible timeout due to the increased time it may take to send a
+     * large buffer. The server will internally slice the buffer if need be.<p>
      * 
      * Any timeout exception not delivered to the exception handler(s) is
      * logged.<p>

@@ -10,15 +10,19 @@ import alpha.nomagichttp.message.Response;
 import org.junit.jupiter.api.Test;
 
 import java.util.ArrayDeque;
+import java.util.Collection;
 import java.util.Deque;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.CompletionStage;
 import java.util.function.Function;
 
-import static alpha.nomagichttp.internal.RequestTarget.parse;
+import static alpha.nomagichttp.internal.DefaultActionRegistry.Match;
+import static alpha.nomagichttp.internal.SkeletonRequestTarget.parse;
 import static java.util.Collections.reverseOrder;
+import static java.util.stream.Collectors.toList;
 import static java.util.stream.Stream.of;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -232,7 +236,7 @@ public class DefaultActionRegistryTest
     private static BeforeAction beforeDummy(String name) {
         return new BeforeAction() {
             @Override
-            public void apply(Request request, ClientChannel channel, Chain chain) {
+            public void accept(Request request, ClientChannel channel, Chain chain) {
                 // Empty
             }
             
@@ -266,20 +270,28 @@ public class DefaultActionRegistryTest
     }
     
     private static class RunSpec<A> {
-        private Function<RequestTarget, List<ResourceMatch<A>>> method;
+        // Contained by root only; how to execute the testee
+        private Function<SkeletonRequestTarget, List<Match<A>>> method;
         private String pattern;
+        // Each node chained after root will contain ordered expectations
+        private RunSpec<A> prev;
         private A expected;
         private Map<String, String> paramsRaw, paramsDec;
-        private RunSpec<A> prev;
         
-        RunSpec(Function<RequestTarget, List<ResourceMatch<A>>> method, String pattern) {
+        // Root
+        RunSpec(Function<SkeletonRequestTarget, List<Match<A>>> method, String pattern) {
             this.method = method;
             this.pattern = pattern;
         }
         
+        // Tail
         private RunSpec(RunSpec<A> prev, A expected) {
             this.prev = prev;
             this.expected = expected;
+        }
+        
+        RunSpec<A> expect(A matched) {
+            return new RunSpec<>(this, matched);
         }
         
         RunSpec<A> hasParam(String key, String vRaw) {
@@ -292,21 +304,6 @@ public class DefaultActionRegistryTest
             return this;
         }
         
-        RunSpec<A> expect(A matched) {
-            return new RunSpec<>(this, matched);
-        }
-        
-        void run() {
-            Deque<ResourceMatch<A>> steps = new ArrayDeque<>();
-            RunSpec<A> s;
-            for (s = this; s.pattern == null; s = s.prev) {
-                steps.addFirst(s.toMatch());
-            }
-            var match = s.method.apply(parse(s.pattern));
-            assertThat(match)
-                    .containsExactlyElementsOf(steps);
-        }
-        
         private Map<String, String> put(String k, String v, Map<String, String> map) {
             if (map == null) {
                 map = new HashMap<>();
@@ -315,11 +312,75 @@ public class DefaultActionRegistryTest
             return map;
         }
         
-        private ResourceMatch<A> toMatch() {
-            return new ResourceMatch<>(
-                    expected,
-                    paramsRaw == null ? Map.of() : paramsRaw,
-                    paramsDec == null ? Map.of() : paramsDec);
+        void run() {
+            Deque<RunSpec<A>>  expOrder = buildExpectationChain();
+            List<TestMatch<A>> actual   = executeLookup(expOrder.peek().prev),
+                               expected = convertSpecs(expOrder);
+            assertThat(actual).containsExactlyElementsOf(expected);
+        }
+        
+        private Deque<RunSpec<A>> buildExpectationChain() {
+            var expOrder = new ArrayDeque<RunSpec<A>>();
+            RunSpec<A> curr;
+            for (curr = this; curr.pattern == null; curr = curr.prev) {
+                System.out.println("Adding "+ curr);
+                expOrder.addFirst(curr);
+            }
+            return expOrder;
+        }
+        
+        private static <A> List<TestMatch<A>> executeLookup(RunSpec<A> root) {
+            var pathSegments = parse(root.pattern);
+            return root.method.apply(pathSegments).stream().map(act -> {
+                        var actParams = new RequestTarget(pathSegments, act.segments());
+                        return new TestMatch<>(
+                                act.action(),
+                                actParams.pathParamRawMap(),
+                                actParams.pathParamMap());})
+                    .collect(toList());
+        }
+        
+        private static <A> List<TestMatch<A>> convertSpecs(Collection<RunSpec<A>> specs) {
+            return specs.stream()
+                        .map(exp -> new TestMatch<>(exp.expected, exp.paramsRaw, exp.paramsDec))
+                        .collect(toList());
+        }
+        
+        // With and equals() comparing path parameters
+        private static class TestMatch<A> implements Match<A> {
+            private final A action;
+            private final Map<String, String> paramsRaw, paramsDec;
+            
+            TestMatch(A action, Map<String, String> paramsRaw, Map<String, String> paramsDec) {
+                this.action = action;
+                this.paramsRaw = paramsRaw == null ? Map.of() : paramsRaw;
+                this.paramsDec = paramsDec == null ? Map.of() : paramsDec;
+            }
+            
+            @Override
+            public A action() {
+                throw new UnsupportedOperationException();
+            }
+            
+            @Override
+            public Iterable<String> segments() {
+                throw new UnsupportedOperationException();
+            }
+            
+            @Override
+            public int hashCode() {
+                throw new UnsupportedOperationException();
+            }
+            
+            @Override
+            public boolean equals(Object obj) {
+                assert obj instanceof TestMatch;
+                @SuppressWarnings("rawtypes")
+                var that = (TestMatch) obj;
+                return Objects.equals(this.action, that.action)   &&
+                        Objects.equals(this.paramsRaw, that.paramsRaw) &&
+                        Objects.equals(this.paramsDec, that.paramsDec);
+            }
         }
     }
 }

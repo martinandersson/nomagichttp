@@ -1,13 +1,17 @@
 package alpha.nomagichttp.internal;
 
 import alpha.nomagichttp.HttpConstants.Version;
+import alpha.nomagichttp.action.ActionRegistry;
 import alpha.nomagichttp.message.Request;
 import alpha.nomagichttp.util.Attributes;
 
 import java.net.http.HttpHeaders;
 
 /**
- * The default implementation of {@code Request}.
+ * The default implementation of {@code Request}.<p>
+ * 
+ * This class is constructed anew for each invocation target with invocation
+ * target specific path parameters (see {@link ActionRegistry}).
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  */
@@ -15,27 +19,26 @@ final class DefaultRequest implements Request
 {
     private final Version version;
     private final SkeletonRequest shared;
-    private final Parameters params;
+    private final RequestTarget rt;
     
     /**
      * Constructs this object.
      * 
      * @param version of HTTP (as established by HTTP exchange)
      * @param shared request components
-     * @param pathParams provider of path parameters
-     * 
-     * @throws NullPointerException if any argument is {@code null}
+     * @param resourceSegments resource segments
      */
     DefaultRequest(
             Version version,
             SkeletonRequest shared,
-            ResourceMatch<?> pathParams)
+            Iterable<String> resourceSegments)
     {
         assert version != null;
         assert shared != null;
+        assert resourceSegments != null;
         this.version = version;
         this.shared = shared;
-        this.params = new DefaultParameters(pathParams, shared.target());
+        this.rt = new RequestTarget(shared.target(), resourceSegments);
     }
     
     @Override
@@ -44,18 +47,13 @@ final class DefaultRequest implements Request
     }
     
     @Override
-    public String target() {
-        return shared.head().requestTarget();
+    public RequestTarget target() {
+        return rt;
     }
     
     @Override
     public Version httpVersion() {
         return version;
-    }
-    
-    @Override
-    public Parameters parameters() {
-        return params;
     }
     
     @Override

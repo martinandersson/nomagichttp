@@ -1,11 +1,12 @@
 package alpha.nomagichttp;
 
 import alpha.nomagichttp.action.ActionRegistry;
-import alpha.nomagichttp.events.EventHub;
-import alpha.nomagichttp.events.HttpServerStarted;
-import alpha.nomagichttp.events.HttpServerStopped;
-import alpha.nomagichttp.events.RequestHeadParsed;
-import alpha.nomagichttp.events.ScatteringEventEmitter;
+import alpha.nomagichttp.event.EventHub;
+import alpha.nomagichttp.event.HttpServerStarted;
+import alpha.nomagichttp.event.HttpServerStopped;
+import alpha.nomagichttp.event.RequestHeadReceived;
+import alpha.nomagichttp.event.ResponseSent;
+import alpha.nomagichttp.event.ScatteringEventEmitter;
 import alpha.nomagichttp.handler.ClientChannel;
 import alpha.nomagichttp.handler.ErrorHandler;
 import alpha.nomagichttp.handler.RequestHandler;
@@ -408,13 +409,8 @@ public interface HttpServer extends RouteRegistry, ActionRegistry
      * }</pre>
      * 
      * The hub is not bound to the running state of the server. The hub can be
-     * used before the server has started as well as it can be used after the
-     * server has stopped.<p>
-     * 
-     * The server and its related components use the hub to dispatch <i>only</i>
-     * the events listed below. Any other event type can freely be dispatched by
-     * the application without concerns for interfering with the correctness of
-     * the server implementation or its performance.<p>
+     * used by the application to dispatch its own events before the server has
+     * started, while the server is running and after the server has stopped.<p>
      * 
      * If the application runs multiple servers, a JVM-global hub can be created
      * like so:
@@ -444,9 +440,14 @@ public interface HttpServer extends RouteRegistry, ActionRegistry
      *     <td> {@link Instant} </td>
      *   </tr>
      *   <tr>
-     *     <th scope="row"> {@link RequestHeadParsed} </th>
+     *     <th scope="row"> {@link RequestHeadReceived} </th>
      *     <td> {@link RequestHead} </td>
      *     <td> {@code null} </td>
+     *   </tr>
+     *   <tr>
+     *     <th scope="row"> {@link ResponseSent} </th>
+     *     <td> {@link Response} </td>
+     *     <td> {@link ResponseSent.Stats} </td>
      *   </tr>
      *   </tbody>
      * </table>

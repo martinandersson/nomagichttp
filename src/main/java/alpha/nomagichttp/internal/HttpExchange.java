@@ -6,10 +6,10 @@ import alpha.nomagichttp.HttpConstants.Version;
 import alpha.nomagichttp.HttpServer;
 import alpha.nomagichttp.handler.ClientChannel;
 import alpha.nomagichttp.handler.ErrorHandler;
+import alpha.nomagichttp.internal.ResponsePipeline.Command;
 import alpha.nomagichttp.message.HttpVersionTooNewException;
 import alpha.nomagichttp.message.HttpVersionTooOldException;
 import alpha.nomagichttp.message.IllegalRequestBodyException;
-import alpha.nomagichttp.message.RequestBodyTimeoutException;
 import alpha.nomagichttp.message.RequestHead;
 import alpha.nomagichttp.message.RequestHeadTimeoutException;
 import alpha.nomagichttp.message.Response;
@@ -27,14 +27,12 @@ import java.util.concurrent.atomic.AtomicInteger;
 import static alpha.nomagichttp.HttpConstants.HeaderKey.CONNECTION;
 import static alpha.nomagichttp.HttpConstants.HeaderKey.EXPECT;
 import static alpha.nomagichttp.HttpConstants.Method.TRACE;
-import static alpha.nomagichttp.HttpConstants.StatusCode.ONE_HUNDRED;
 import static alpha.nomagichttp.HttpConstants.Version.HTTP_1_0;
 import static alpha.nomagichttp.HttpConstants.Version.HTTP_1_1;
 import static alpha.nomagichttp.handler.ErrorHandler.DEFAULT;
 import static alpha.nomagichttp.internal.InvocationChain.ABORTED;
 import static alpha.nomagichttp.internal.ResponsePipeline.Error;
 import static alpha.nomagichttp.internal.ResponsePipeline.Success;
-import static alpha.nomagichttp.message.Responses.continue_;
 import static alpha.nomagichttp.util.IOExceptions.isCausedByBrokenInputStream;
 import static alpha.nomagichttp.util.IOExceptions.isCausedByBrokenOutputStream;
 import static java.lang.Integer.parseInt;
@@ -57,8 +55,8 @@ import static java.util.Objects.requireNonNull;
  * 
  * In addition:
  * <ul>
- *   <li>Has package-private accessors for the HTTP version and request head</li>
- *   <li>May pre-emptively send a 100 (Continue) depending on configuration</li>
+ *   <li>Has package-private accessors for the request head, HTTP version and request skeleton</li>
+ *   <li>May pre-emptively schedule a 100 (Continue) depending on configuration</li>
  *   <li>Shuts down read stream if request has header "Connection: close"</li>
  *   <li>Shuts down read stream on request timeout</li>
  * </ul>
@@ -91,8 +89,6 @@ final class HttpExchange
     private RequestHead head;
     private Version version;
     private SkeletonRequest request;
-    private volatile boolean sent100c;
-    private volatile boolean subscriberArrived;
     private ErrorResolver errRes;
     
     HttpExchange(
@@ -110,9 +106,9 @@ final class HttpExchange
         this.chApi    = chApi;
         this.chain    = new InvocationChain(actions, routes, chApi);
         this.pipe     = new ResponsePipeline(this, chApi, actions);
-        this.cntDown  = new AtomicInteger(2); // <-- request chain + final response, then new exchange
+        this.cntDown  = new AtomicInteger(2); // <-- invocation chain + final response, then prepareForNewExchange()
         this.result   = new CompletableFuture<>();
-        this.version = HTTP_1_1; // <-- default until updated
+        this.version  = HTTP_1_1; // <-- default until updated
     }
     
     /**
@@ -188,10 +184,16 @@ final class HttpExchange
     }
     
     private CompletionStage<RequestHead> parseRequestHead() {
-        RequestHeadSubscriber rhs = new RequestHeadSubscriber(server);
+        RequestHeadSubscriber rhs = new RequestHeadSubscriber(server, chApi);
         
-        var to = new TimeoutOp.Flow<>(false, true, chIn,
-                config.timeoutIdleConnection(), RequestHeadTimeoutException::new);
+        var to = new TimeoutOp.Flow<>(false, true, chIn, config.timeoutIdleConnection(), () -> {
+            if (LOG.isLoggable(DEBUG) && chApi.isOpenForReading()) {
+                LOG.log(DEBUG, "Request head timed out, shutting down child channel's read stream.");
+            }
+            // No new HTTP exchange
+            chApi.shutdownInputSafe();
+            return new RequestHeadTimeoutException();
+        });
         to.subscribe(rhs);
         to.start();
         
@@ -207,7 +209,7 @@ final class HttpExchange
         }
         
         request = new SkeletonRequest(h,
-                RequestTarget.parse(h.requestTarget()),
+                SkeletonRequestTarget.parse(h.requestTarget()),
                 monitorBody(createBody(h)),
                 new DefaultAttributes());
         
@@ -250,15 +252,15 @@ final class HttpExchange
     private RequestBody createBody(RequestHead h) {
         return RequestBody.of(h.headers(), chIn, chApi,
                 config.timeoutIdleConnection(),
-                this::tryRespond100Continue,
-                () -> subscriberArrived = true);
+                this::tryRespond100Continue);
     }
     
     private RequestBody monitorBody(RequestBody b) {
-        b.asCompletionStage().whenComplete((nil, thr) -> {
-            // Note, an empty body is immediately completed
-            pipe.startTimeout();
-            if (thr instanceof RequestBodyTimeoutException && !subscriberArrived) {
+        var mon = b.subscriptionMonitor();
+        mon.asCompletionStage().whenComplete((nil, thr) -> {
+            // Note, an empty body is immediately completed normally
+            pipe.add(Command.INIT_RESPONSE_TIMER);
+            if (thr != null && !mon.wasErrorDeliveredToDownstream()) {
                 // Then we need to deal with it
                 handleError(thr);
             }
@@ -275,11 +277,9 @@ final class HttpExchange
     }
     
     private void tryRespond100Continue() {
-        if (!sent100c &&
-                !getHttpVersion().isLessThan(HTTP_1_1) &&
-                head.headerContains(EXPECT, "100-continue"))
-        {
-            chApi.write(continue_());
+        if (!getHttpVersion().isLessThan(HTTP_1_1) &&
+            head.headerContains(EXPECT, "100-continue")) {
+            pipe.add(Command.TRY_SCHEDULE_100CONTINUE);
         }
     }
     
@@ -289,7 +289,7 @@ final class HttpExchange
             if (v == 0) {
                 LOG.log(DEBUG, "Invocation chain finished after final response. " +
                                "Preparing for a new HTTP exchange.");
-                tryPrepareForNewExchange();
+                prepareForNewExchange();
             } // normal finish = do nothing, final response will try to prepare next
         } else {
             if (v == 0) {
@@ -297,9 +297,8 @@ final class HttpExchange
                         "Processing returned exceptionally but final response already sent. " +
                         "This error is ignored. " +
                         "Preparing for a new HTTP exchange.", thr);
-                tryPrepareForNewExchange();
+                prepareForNewExchange();
             } else {
-                pipe.startTimeout();
                 handleError(thr);
             }
         }
@@ -307,25 +306,32 @@ final class HttpExchange
     
     private void handleWriteSuccess(Response rsp) {
         if (rsp.isFinal()) {
-            // No need to tryRespond100Continue() after this point
-            sent100c = true;
             if (cntDown.decrementAndGet() == 0) {
                 LOG.log(DEBUG, "Response sent is final. May prepare for a new HTTP exchange.");
-                tryPrepareForNewExchange();
+                prepareForNewExchange();
             } else {
                 LOG.log(DEBUG,
                     "Response sent is final but request's processing chain is still executing. " +
                     "HTTP exchange remains active.");
             }
         } else {
-            if (rsp.statusCode() == ONE_HUNDRED) {
-                sent100c = true;
-            }
             LOG.log(DEBUG, "Response sent is not final. HTTP exchange remains active.");
         }
     }
     
-    private void tryPrepareForNewExchange() {
+    private void prepareForNewExchange() {
+        // To have a new HTTP exchange, we must first make sure the body is
+        // consumed either normally or through us discarding it. But if the
+        // read stream is not open, well no point in continuing at all. Let the
+        // server close the channel.
+        //    Note: We don't care about the state of the write stream. It may
+        // very well be shut down and so there will be no new exchange, but we
+        // still must not kill an ongoing inbound request. The body will be
+        // discarded only if no subscriber is active. Then after body
+        // completion, will we also complete the active exchange. At that point
+        // the server will close the channel because not everything remained
+        // open.
+        
         if (!chApi.isOpenForReading()) {
             LOG.log(DEBUG, "Input stream was shut down. HTTP exchange is over.");
             result.complete(null);
@@ -347,15 +353,13 @@ final class HttpExchange
             return;
         }
         
-        // To have a new HTTP exchange, we must first make sure the body is consumed
-        
         final var b = request != null ? request.body() :
-                // e.g. HttpVersionTooOldException -> 426 (Upgrade Required)
-                // (use a local dummy)
-                RequestBody.of(head.headers(), chIn, chApi, null, null, null);
+                // E.g. HttpVersionTooOldException -> 426 (Upgrade Required).
+                // So we fall back to a local dummy, just for the API.
+                RequestBody.of(head.headers(), chIn, chApi, null, null);
         
         b.discardIfNoSubscriber();
-        b.asCompletionStage().whenComplete((nil, thr) -> {
+        b.subscriptionMonitor().asCompletionStage().whenComplete((nil, thr) -> {
             // Prepping new exchange = thr is ignored (already dealt with, hopefully lol)
             if (head.headerContains(CONNECTION, "close") && chApi.isOpenForReading()) {
                 LOG.log(DEBUG, "Request set \"Connection: close\", shutting down input.");
@@ -376,13 +380,6 @@ final class HttpExchange
         if (isTerminatingException(unpacked, chApi)) {
             result.completeExceptionally(exc);
             return;
-        }
-        
-        if (unpacked instanceof RequestHeadTimeoutException) {
-            LOG.log(DEBUG, "Request head timed out, shutting down input stream.");
-            // HTTP exchange will not continue after response
-            // RequestBodyTimeoutException already shut down the input stream (see RequestBody)
-            chApi.shutdownInputSafe();
         }
         
         if (chApi.isOpenForWriting())  {
@@ -460,12 +457,14 @@ final class HttpExchange
             return true;
         }
         
-        // From our child, yes, but it can not be deduced as abruptly terminating
-        // and so we'd rather pass it to the error handler or log it.
-        // E.g., if app write a response on a closed channel (ClosedChannelException),
-        // then we still want to log the problem - actually required by
-        // ClientChannel.write().
-        // See test "ClientLifeCycleTest.serverClosesChannel_beforeResponse()".
+        // IOExc from our child, yes, but it can not be deduced as abruptly
+        // terminating and so we'd rather pass it to the error handler (maybe)
+        // or log it.
+        //    For ex., if app write a response on a closed channel
+        // (ClosedChannelException), it will not pass to an error handler but it
+        // will be logged and thereafter end the HTTP exchange (also see JavaDoc
+        // of ClientChannel.write() and test case
+        // ClientLifeCycleTest.serverClosesChannel_beforeResponse().
         return false;
     }
     

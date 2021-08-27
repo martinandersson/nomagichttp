@@ -1,6 +1,8 @@
 package alpha.nomagichttp.action;
 
 import alpha.nomagichttp.Config;
+import alpha.nomagichttp.HttpServer;
+import alpha.nomagichttp.event.ResponseSent;
 import alpha.nomagichttp.handler.ClientChannel;
 import alpha.nomagichttp.message.Request;
 import alpha.nomagichttp.message.Response;
@@ -43,9 +45,17 @@ import java.util.function.BiFunction;
  * Returning {@code null} is the same as throwing a {@code
  * NullPointerException}.<p>
  * 
- * As with {@link BeforeAction}, the after-action too is not called if the
- * server did not accept the request as valid. For instance if a request head
- * fails to be parsed or the HTTP version was rejected/unsupported.<p>
+ * Similar to {@link BeforeAction}, the after-action is only called for
+ * responses responding to a valid request. For example, if a request head fails
+ * to parse and the error handler writes an alternative response, for that
+ * response instance no after action will be called.<p>
+ * 
+ * An action that will be invoked for responses to all <i>valid</i> requests
+ * hitting the server can be registered using the path "/*". If the purpose for
+ * such an action is to gather metrics, consider instead tapping into all
+ * responses sent out by the server regardless if the request was valid, by
+ * subscribing to the {@link ResponseSent} event (see {@link
+ * HttpServer#events()}).<p>
  * 
  * The action may be called concurrently and must be thread-safe. It may be
  * called by the server's request thread and so must not block.

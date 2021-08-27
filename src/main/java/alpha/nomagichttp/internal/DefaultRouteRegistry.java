@@ -158,7 +158,7 @@ final class DefaultRouteRegistry implements RouteRegistry
     {
         Tree.WriteNode<Route> c = parent.nextOrCreateIf(key, () ->
                 // Static segment values only blend with each other and doesn't like weirdos
-                !parent.hasChild(COLON_STR) && !parent.hasChild(ASTERISK_STR));
+                parent.hasNoChild(COLON_STR) && parent.hasNoChild(ASTERISK_STR));
         
         return requireChildWasCreated(c, key);
     }
@@ -204,11 +204,9 @@ final class DefaultRouteRegistry implements RouteRegistry
      * @throws NoRouteFoundException
      *             if a route can not be found
      */
-    ResourceMatch<Route> lookup(RequestTarget rt) {
-        Iterable<String> dec = rt.segmentsPercentDecoded();
-        
+    Route lookup(SkeletonRequestTarget rt) {
+        Iterable<String> dec = rt.segments();
         Tree.ReadNode<Route> n = findNodeFromSegments(dec);
-        
         if (n == null) {
             throw new NoRouteFoundException(dec);
         }
@@ -216,18 +214,17 @@ final class DefaultRouteRegistry implements RouteRegistry
         // check node's value for a route
         Route r;
         if ((r = n.get()) != null) {
-            return ResourceMatch.of(rt, r, r.segments());
+            return r;
         }
         
         // nothing was there? check for a catch-all child
         n = n.next(ASTERISK_STR);
-        
         if (n == null) {
             throw new NoRouteFoundException(dec);
         }
         
         if ((r = n.get()) != null) {
-            return ResourceMatch.of(rt, r, r.segments());
+            return r;
         }
         
         throw new NoRouteFoundException(dec);

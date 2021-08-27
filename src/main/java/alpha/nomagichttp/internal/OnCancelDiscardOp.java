@@ -31,6 +31,11 @@ import static java.lang.Long.MAX_VALUE;
  */
 final class OnCancelDiscardOp extends AbstractOp<PooledByteBufferHolder>
 {
+    // TODO: See JavaDoc. There's room for even more improvement.
+    //       If HttpExchange.prepareForNewExchange() can figure out there will
+    //       be no subsequent exchange from the same channel, then instead
+    //       of discarding - whatever the size - he can just close the channel.
+    
     private volatile boolean discarding;
     
     OnCancelDiscardOp(Flow.Publisher<? extends PooledByteBufferHolder> upstream) {

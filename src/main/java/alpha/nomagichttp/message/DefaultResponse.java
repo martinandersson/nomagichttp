@@ -12,12 +12,16 @@ import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionStage;
 import java.util.concurrent.Flow;
 import java.util.function.Consumer;
 
 import static alpha.nomagichttp.HttpConstants.HeaderKey.CONNECTION;
 import static alpha.nomagichttp.HttpConstants.HeaderKey.CONTENT_LENGTH;
 import static alpha.nomagichttp.HttpConstants.StatusCode;
+import static alpha.nomagichttp.HttpConstants.StatusCode.THREE_HUNDRED_FOUR;
+import static alpha.nomagichttp.HttpConstants.StatusCode.TWO_HUNDRED_FOUR;
 import static alpha.nomagichttp.util.Publishers.empty;
 import static java.net.http.HttpRequest.BodyPublisher;
 import static java.util.Collections.emptyList;
@@ -31,6 +35,9 @@ import static java.util.stream.Collectors.toUnmodifiableList;
  */
 final class DefaultResponse implements Response
 {
+    /** Initial capacity of the list of a header map value. */
+    private static final int INITIAL_CAPACITY = 1;
+    
     private final int statusCode;
     private final String reasonPhrase;
     private final HttpHeaders headers;
@@ -109,6 +116,17 @@ final class DefaultResponse implements Response
         return mustCloseAfterWrite;
     }
     
+    private CompletionStage<Response> stage;
+    
+    @Override
+    public CompletionStage<Response> completedStage() {
+        var s = stage;
+        if (s == null) {
+            s = stage = CompletableFuture.completedStage(this);
+        }
+        return s;
+    }
+    
     @Override
     public Response.Builder toBuilder() {
         return origin;
@@ -171,7 +189,7 @@ final class DefaultResponse implements Response
                 assert name != null;
                 assert value != null;
                 List<String> v = getOrCreateHeaders()
-                        .computeIfAbsent(name, k -> new ArrayList<>(1));
+                        .computeIfAbsent(name, k -> new ArrayList<>(INITIAL_CAPACITY));
                 if (clearFirst) {
                     v.clear();
                 }
@@ -198,13 +216,11 @@ final class DefaultResponse implements Response
         
         @Override
         public Response.Builder statusCode(int statusCode) {
-            // TODO: If this == ROOT, then retrieve returned builder from cache of known HTTP codes
             return new DefaultBuilder(this, s -> s.statusCode = statusCode);
         }
         
         @Override
         public Response.Builder reasonPhrase(String reasonPhrase) {
-            // TODO: If this == cached and phrase internalized, then retrieve returned builder from cache
             requireNonNull(reasonPhrase, "reasonPhrase");
             return new DefaultBuilder(this, s -> s.reasonPhrase = reasonPhrase);
         }
@@ -350,7 +366,8 @@ final class DefaultResponse implements Response
                 if (!r.isBodyEmpty()) {
                     throw IllegalResponseBodyException(r);
                 }
-            } else if ((r.statusCode() == 204 || r.statusCode() == 304) && !r.isBodyEmpty()) {
+            } else if ((r.statusCode() == TWO_HUNDRED_FOUR    ||
+                        r.statusCode() == THREE_HUNDRED_FOUR) && !r.isBodyEmpty()) {
                 throw IllegalResponseBodyException(r);
             }
             

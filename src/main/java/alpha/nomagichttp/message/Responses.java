@@ -1,9 +1,9 @@
 package alpha.nomagichttp.message;
 
 import alpha.nomagichttp.HttpConstants;
-import alpha.nomagichttp.HttpConstants.ReasonPhrase;
 import alpha.nomagichttp.HttpConstants.StatusCode;
 import alpha.nomagichttp.util.BetterBodyPublishers;
+import alpha.nomagichttp.util.CodeAndPhraseCache;
 import alpha.nomagichttp.util.Headers;
 
 import java.nio.ByteBuffer;
@@ -21,10 +21,23 @@ import static alpha.nomagichttp.HttpConstants.HeaderKey.CONNECTION;
 import static alpha.nomagichttp.HttpConstants.HeaderKey.CONTENT_LENGTH;
 import static alpha.nomagichttp.HttpConstants.HeaderKey.CONTENT_TYPE;
 import static alpha.nomagichttp.HttpConstants.HeaderKey.UPGRADE;
+import static alpha.nomagichttp.HttpConstants.ReasonPhrase.ACCEPTED;
+import static alpha.nomagichttp.HttpConstants.ReasonPhrase.BAD_REQUEST;
+import static alpha.nomagichttp.HttpConstants.ReasonPhrase.CONTINUE;
 import static alpha.nomagichttp.HttpConstants.ReasonPhrase.ENTITY_TOO_LARGE;
+import static alpha.nomagichttp.HttpConstants.ReasonPhrase.FORBIDDEN;
 import static alpha.nomagichttp.HttpConstants.ReasonPhrase.HTTP_VERSION_NOT_SUPPORTED;
+import static alpha.nomagichttp.HttpConstants.ReasonPhrase.INTERNAL_SERVER_ERROR;
+import static alpha.nomagichttp.HttpConstants.ReasonPhrase.METHOD_NOT_ALLOWED;
+import static alpha.nomagichttp.HttpConstants.ReasonPhrase.NOT_ACCEPTABLE;
+import static alpha.nomagichttp.HttpConstants.ReasonPhrase.NOT_FOUND;
+import static alpha.nomagichttp.HttpConstants.ReasonPhrase.NOT_IMPLEMENTED;
+import static alpha.nomagichttp.HttpConstants.ReasonPhrase.NO_CONTENT;
+import static alpha.nomagichttp.HttpConstants.ReasonPhrase.OK;
+import static alpha.nomagichttp.HttpConstants.ReasonPhrase.PROCESSING;
 import static alpha.nomagichttp.HttpConstants.ReasonPhrase.REQUEST_TIMEOUT;
 import static alpha.nomagichttp.HttpConstants.ReasonPhrase.SERVICE_UNAVAILABLE;
+import static alpha.nomagichttp.HttpConstants.ReasonPhrase.UNSUPPORTED_MEDIA_TYPE;
 import static alpha.nomagichttp.HttpConstants.ReasonPhrase.UPGRADE_REQUIRED;
 import static alpha.nomagichttp.HttpConstants.StatusCode.FIVE_HUNDRED;
 import static alpha.nomagichttp.HttpConstants.StatusCode.FIVE_HUNDRED_FIVE;
@@ -44,9 +57,12 @@ import static alpha.nomagichttp.HttpConstants.StatusCode.ONE_HUNDRED_TWO;
 import static alpha.nomagichttp.HttpConstants.StatusCode.TWO_HUNDRED;
 import static alpha.nomagichttp.HttpConstants.StatusCode.TWO_HUNDRED_FOUR;
 import static alpha.nomagichttp.HttpConstants.StatusCode.TWO_HUNDRED_TWO;
+import static alpha.nomagichttp.message.MediaType.APPLICATION_JSON_UTF8;
 import static alpha.nomagichttp.message.MediaType.APPLICATION_OCTET_STREAM;
-import static alpha.nomagichttp.message.Response.builder;
+import static alpha.nomagichttp.message.MediaType.TEXT_HTML_UTF8;
+import static alpha.nomagichttp.message.MediaType.TEXT_PLAIN_UTF8;
 import static alpha.nomagichttp.util.BetterBodyPublishers.ofString;
+import static alpha.nomagichttp.util.CodeAndPhraseCache.build;
 import static java.net.http.HttpRequest.BodyPublisher;
 import static java.net.http.HttpRequest.BodyPublishers;
 import static java.nio.charset.StandardCharsets.UTF_8;
@@ -59,18 +75,27 @@ import static java.util.Locale.ROOT;
  * of the response is easy to accomplish using {@code toBuilder()}.
  * 
  * <pre>
- *   Response status = Responses.processing() // 102 (Processing)
+ *   Response update = Responses.processing() // 102 (Processing)
  *                              .toBuilder()
  *                              .header("Progress", "45%")
  *                              .build();
  * </pre>
  * 
+ * Response objects may be created anew, or retrieved from an uber-fast cache.
+ * This is documented on a per-method level. Creating a new response object is
+ * very fast and normally nothing that should raise concern for a mature
+ * object-oriented language, but using the cache will still be a better option
+ * as it will reduce the memory footprint and GC pressure.<p>
+ * 
+ * In essence, responses (and therefore their builders as well) of all
+ * well-known status codes and reason phrases are prebuilt and cached during
+ * classloading. For instance, in the previous example, all steps before the
+ * statement which sets the header traverses through cached entities. This is
+ * true even if one replaces {@code processing()} with the more explicit {@code
+ * status(102, "Processing")}. Pretty slick!<p>
+ * 
  * All methods herein as well as the responses they return are thread-safe and
  * non-blocking.<p>
- * 
- * Response objects may be created anew, or retrieved from a cache. This is
- * documented on a per-method level. Creating a response object is very fast,
- * but obviously the cache will be faster.<p>
  * 
  * <strong>WARNING:</strong> Using an instance from {@link BodyPublishers} as a
  * response body may not be thread-safe where thread-safety matters or may block
@@ -80,33 +105,58 @@ import static java.util.Locale.ROOT;
  */
 public final class Responses
 {
+    // Declaration of methods after status() follows ascending status-code order
+    
     private Responses() {
         // Empty
     }
     
     /**
-     * Creates a new response with the specified status code.
+     * Returns a response with the specified status code.<p>
+     * 
+     * If the status code is a constant declared in {@link
+     * HttpConstants.StatusCode}, then the returned reference is a cached
+     * response. For any other status code, the response will be created anew
+     * each time.
      * 
      * @param code HTTP status code
-     * @return a new response with the specified status code
+     * @return a response with the specified status code
      * @see HttpConstants.StatusCode
      */
     public static Response status(int code) {
-        return builder(code).build();
+        var rsp = CACHE.get(code);
+        return rsp != null ? rsp :
+                DefaultResponse.DefaultBuilder.ROOT.statusCode(code).build();
     }
     
     /**
-     * Creates a new response with the specified status code and reason phrase.
+     * Returns a response with the specified status code and reason phrase.<p>
+     * 
+     * If the code and phrase are a related pair as declared in {@link
+     * HttpConstants.StatusCode} and {@link HttpConstants.ReasonPhrase} (object
+     * equality for the phrase, i.e., case-sensitive), then the returned
+     * reference is a cached response. For any other combination, the response
+     * will be created anew each time.
+     * <pre>
+     *   // Components exists as constants and fit together
+     *   Response cached = status(200, "OK");
+     *   // Weird combo, was never pre-built!
+     *   Response newGuy = status(200, "Not Found");
+     * </pre>
      * 
      * @param code HTTP status code
      * @param phrase reason phrase
-     * @return a new response with the specified status code and reason phrase
+     * @return a response with the specified status code and reason phrase
      * @throws NullPointerException if {@code phrase} is {@code null}
      * @see HttpConstants.StatusCode
      * @see HttpConstants.ReasonPhrase
      */
     public static Response status(int code, String phrase) {
-        return builder(code, phrase).build();
+        var rsp = CACHE.get(code, phrase);
+        return rsp != null ? rsp : DefaultResponse.DefaultBuilder.ROOT
+                .statusCode(code)
+                .reasonPhrase(phrase)
+                .build();
     }
     
     /**
@@ -117,7 +167,7 @@ public final class Responses
      * @see StatusCode#ONE_HUNDRED
      */
     public static Response continue_() {
-        return ResponseCache.CONTINUE;
+        return CACHE.get(ONE_HUNDRED, CONTINUE);
     }
     
     /**
@@ -128,18 +178,7 @@ public final class Responses
      * @see StatusCode#ONE_HUNDRED_TWO
      */
     public static Response processing() {
-        return ResponseCache.PROCESSING;
-    }
-    
-    /**
-     * Retrieves a cached 204 (No Content) response with no body.
-     * 
-     * @return a cached 204 (No Content) response
-     * 
-     * @see StatusCode#TWO_HUNDRED_FOUR
-     */
-    public static Response noContent() {
-        return ResponseCache.NO_CONTENT;
+        return CACHE.get(ONE_HUNDRED_TWO, PROCESSING);
     }
     
     /**
@@ -152,7 +191,7 @@ public final class Responses
      * @see     StatusCode#TWO_HUNDRED
      */
     public static Response text(String textPlain) {
-        return ok(ofString(textPlain), "text/plain; charset=utf-8");
+        return ok(ofString(textPlain), TEXT_PLAIN_UTF8);
     }
     
     /**
@@ -211,7 +250,7 @@ public final class Responses
      * @see     StatusCode#TWO_HUNDRED
      */
     public static Response html(String textHtml) {
-        return ok(ofString(textHtml), "text/html; charset=utf-8");
+        return ok(ofString(textHtml), TEXT_HTML_UTF8);
     }
     
     /**
@@ -256,7 +295,7 @@ public final class Responses
      * @see     StatusCode#TWO_HUNDRED
      */
     public static Response json(String json) {
-        return ok(ofString(json), "application/json; charset=utf-8");
+        return ok(ofString(json), APPLICATION_JSON_UTF8);
     }
     
     /**
@@ -324,7 +363,7 @@ public final class Responses
      * @see HttpConstants.HeaderKey#CONTENT_TYPE
      */
     public static Response ok(BodyPublisher body, String contentType) {
-        return BuilderCache.OK
+        return CACHE.get(TWO_HUNDRED, OK).toBuilder()
                 .header(CONTENT_TYPE, contentType)
                 .body(body)
                 .build();
@@ -351,7 +390,7 @@ public final class Responses
      * For an unknown body length, the length argument must be negative. For an
      * empty publisher, the length argument must be zero. Otherwise, the length
      * argument must be equal to the number of bytes emitted by the publisher.
-     * Discrepancies has unknown application behavior.
+     * A discrepancy has unknown application behavior.
      * 
      * The given content-type will not be validated. For validation, do
      * <pre>
@@ -361,7 +400,7 @@ public final class Responses
      * 
      * @param body data
      * @param contentType header value
-     * @param contentLength header value
+     * @param contentLength content length
      * 
      * @return a new 200 (OK) response
      * 
@@ -371,12 +410,14 @@ public final class Responses
      * @see HttpConstants.HeaderKey#CONTENT_LENGTH
      */
     public static Response ok(Flow.Publisher<ByteBuffer> body, String contentType, long contentLength) {
-        Response.Builder b = BuilderCache.OK
+        Response.Builder b = CACHE.get(TWO_HUNDRED, OK).toBuilder()
                 .header(CONTENT_TYPE, contentType);
         
         if (contentLength >= 0) {
             b = b.header(CONTENT_LENGTH, Long.toString(contentLength));
-        } // else unknown length, ResponsePipeline will deal with it
+        } else {
+            b = b.removeHeader(CONTENT_LENGTH);
+        }
         
         return b.body(body).build();
     }
@@ -411,7 +452,18 @@ public final class Responses
      * @see    StatusCode#TWO_HUNDRED_TWO
      */
     public static Response accepted() {
-        return ResponseCache.ACCEPTED;
+        return CACHE.get(TWO_HUNDRED_TWO, ACCEPTED);
+    }
+    
+    /**
+     * Retrieves a cached 204 (No Content) response with no body.
+     * 
+     * @return a cached 204 (No Content) response
+     * 
+     * @see StatusCode#TWO_HUNDRED_FOUR
+     */
+    public static Response noContent() {
+        return CACHE.get(TWO_HUNDRED_FOUR, NO_CONTENT);
     }
     
     /**
@@ -421,7 +473,17 @@ public final class Responses
      * @see     StatusCode#FOUR_HUNDRED
      */
     public static Response badRequest() {
-        return ResponseCache.BAD_REQUEST;
+        return CACHE.get(FOUR_HUNDRED, BAD_REQUEST);
+    }
+    
+    /**
+     * Retrieves a cached 403 (Forbidden) response with no body.
+     * 
+     * @return  a cached 403 (Forbidden) response
+     * @see     StatusCode#FOUR_HUNDRED_THREE
+     */
+    public static Response forbidden() {
+        return CACHE.get(FOUR_HUNDRED_THREE, FORBIDDEN);
     }
     
     /**
@@ -431,41 +493,7 @@ public final class Responses
      * @see     StatusCode#FOUR_HUNDRED_FOUR
      */
     public static Response notFound() {
-        return ResponseCache.NOT_FOUND;
-    }
-    
-    /**
-     * Creates a new 413 (Entity Too Large) response with no body.<p>
-     * 
-     * The response will also {@linkplain Response#mustCloseAfterWrite()
-     * close the client channel}.
-     * 
-     * @return  a new 413 (Entity Too Large)
-     * @see    StatusCode#FOUR_HUNDRED_THIRTEEN
-     */
-    public static Response entityTooLarge() {
-        return Response.builder(FOUR_HUNDRED_THIRTEEN, ENTITY_TOO_LARGE)
-                .mustCloseAfterWrite(true).build();
-    }
-    
-    /**
-     * Retrieve a cached 500 (Internal Server Error) response with no body.
-     * 
-     * @return  a cached 500 (Internal Server Error) response
-     * @see     StatusCode#FIVE_HUNDRED
-     */
-    public static Response internalServerError() {
-        return ResponseCache.INTERNAL_SERVER_ERROR;
-    }
-    
-    /**
-     * Retrieves a cached 501 (Not Implemented) response with no body.
-     * 
-     * @return  a cached 501 (Not Implemented) response
-     * @see     StatusCode#FIVE_HUNDRED_ONE
-     */
-    public static Response notImplemented() {
-        return ResponseCache.NOT_IMPLEMENTED;
+        return CACHE.get(FOUR_HUNDRED_FOUR, NOT_FOUND);
     }
     
     /**
@@ -475,7 +503,7 @@ public final class Responses
      * @see     StatusCode#FOUR_HUNDRED_FIVE
      */
     public static Response methodNotAllowed() {
-        return ResponseCache.METHOD_NOT_ALLOWED;
+        return CACHE.get(FOUR_HUNDRED_FIVE, METHOD_NOT_ALLOWED);
     }
     
     /**
@@ -484,8 +512,36 @@ public final class Responses
      * @return  a cached 406 (Not Acceptable) response
      * @see     StatusCode#FOUR_HUNDRED_SIX
      */
-    public static Response mediaTypeNotAccepted() {
-        return ResponseCache.MEDIATYPE_NOT_ACCEPTED;
+    public static Response notAcceptable() {
+        return CACHE.get(FOUR_HUNDRED_SIX, NOT_ACCEPTABLE);
+    }
+    
+    /**
+     * Creates a new 408 (Request Timeout) response with no body.<p>
+     * 
+     * The header "Connection: close" will be set.
+     * 
+     * @return  a new 408 (Request Timeout) response
+     * @see     StatusCode#FOUR_HUNDRED_EIGHT
+     */
+    public static Response requestTimeout() {
+        return CACHE.get(FOUR_HUNDRED_EIGHT, REQUEST_TIMEOUT).toBuilder()
+                .header(CONTENT_LENGTH, "0")
+                .header(CONNECTION, "close")
+                .build();
+    }
+    
+    /**
+     * Creates a new 413 (Entity Too Large) response with no body.<p>
+     * 
+     * A header "Connection: close" will have been set.
+     * 
+     * @return  a new 413 (Entity Too Large)
+     * @see    StatusCode#FOUR_HUNDRED_THIRTEEN
+     */
+    public static Response entityTooLarge() {
+        return CACHE.get(FOUR_HUNDRED_THIRTEEN, ENTITY_TOO_LARGE).toBuilder()
+                .header(CONNECTION, "close").build();
     }
     
     /**
@@ -494,8 +550,8 @@ public final class Responses
      * @return  a cached 415 (Unsupported Media Type) response
      * @see     StatusCode#FOUR_HUNDRED_FIFTEEN
      */
-    public static Response mediaTypeUnsupported() {
-        return ResponseCache.MEDIATYPE_UNSUPPORTED;
+    public static Response unsupportedMediaType() {
+        return CACHE.get(FOUR_HUNDRED_FIFTEEN, UNSUPPORTED_MEDIA_TYPE);
     }
     
     /**
@@ -506,12 +562,46 @@ public final class Responses
      * @see     StatusCode#FOUR_HUNDRED_TWENTY_SIX
      */
     public static Response upgradeRequired(String upgrade) {
-        return builder(FOUR_HUNDRED_TWENTY_SIX, UPGRADE_REQUIRED)
-                 .addHeaders(
-                     UPGRADE, upgrade,
-                     CONNECTION, UPGRADE,
-                     CONTENT_LENGTH, "0")
-                 .build();
+        return CACHE.get(FOUR_HUNDRED_TWENTY_SIX, UPGRADE_REQUIRED).toBuilder()
+                .addHeaders(
+                        UPGRADE, upgrade,
+                        CONNECTION, UPGRADE)
+                .build();
+    }
+    
+    /**
+     * Retrieve a cached 500 (Internal Server Error) response with no body.
+     * 
+     * @return  a cached 500 (Internal Server Error) response
+     * @see     StatusCode#FIVE_HUNDRED
+     */
+    public static Response internalServerError() {
+        return CACHE.get(FIVE_HUNDRED, INTERNAL_SERVER_ERROR);
+    }
+    
+    /**
+     * Retrieves a cached 501 (Not Implemented) response with no body.
+     * 
+     * @return  a cached 501 (Not Implemented) response
+     * @see     StatusCode#FIVE_HUNDRED_ONE
+     */
+    public static Response notImplemented() {
+        return CACHE.get(FIVE_HUNDRED_ONE, NOT_IMPLEMENTED);
+    }
+    
+    /**
+     * Creates a new 503 (Service Unavailable) response with no body.<p>
+     * 
+     * The header "Connection: close" will be set.
+     * 
+     * @return  a new 503 (Service Unavailable) response
+     * @see     StatusCode#FIVE_HUNDRED_THREE
+     */
+    public static Response serviceUnavailable() {
+        return CACHE.get(FIVE_HUNDRED_THREE, SERVICE_UNAVAILABLE).toBuilder()
+                .header(CONTENT_LENGTH, "0")
+                .header(CONNECTION, "close")
+                .build();
     }
     
     /**
@@ -524,50 +614,10 @@ public final class Responses
      * @see     StatusCode#FIVE_HUNDRED_FIVE
      */
     public static Response httpVersionNotSupported() {
-        return builder(FIVE_HUNDRED_FIVE, HTTP_VERSION_NOT_SUPPORTED)
+        return CACHE.get(FIVE_HUNDRED_FIVE, HTTP_VERSION_NOT_SUPPORTED).toBuilder()
                  .header(CONTENT_LENGTH, "0")
                  .mustCloseAfterWrite(true)
                  .build();
-    }
-    
-    /**
-     * Creates a new 408 (Request Timeout) response with no body.<p>
-     * 
-     * The header "Connection: close" will be set.
-     * 
-     * @return  a new 408 (Request Timeout) response
-     * @see     StatusCode#FOUR_HUNDRED_EIGHT
-     */
-    public static Response requestTimeout() {
-        return builder(FOUR_HUNDRED_EIGHT, REQUEST_TIMEOUT)
-                .header(CONTENT_LENGTH, "0")
-                .header(CONNECTION, "close")
-                .build();
-    }
-    
-    /**
-     * Creates a new 503 (Service Unavailable) response with no body.<p>
-     * 
-     * The header "Connection: close" will be set.
-     * 
-     * @return  a new 503 (Service Unavailable) response
-     * @see     StatusCode#FIVE_HUNDRED_THREE
-     */
-    public static Response serviceUnavailable() {
-        return builder(FIVE_HUNDRED_THREE, SERVICE_UNAVAILABLE)
-                .header(CONTENT_LENGTH, "0")
-                .header(CONNECTION, "close")
-                .build();
-    }
-    
-    /**
-     * Retrieves a cached 403 (Forbidden) response with no body.
-     * 
-     * @return  a cached 403 (Forbidden) response
-     * @see     StatusCode#FOUR_HUNDRED_THREE
-     */
-    public static Response forbidden() {
-        return ResponseCache.FORBIDDEN;
     }
     
     private static Response create(String mime, String body, Charset charset) {
@@ -590,61 +640,67 @@ public final class Responses
         // Stream modifiers
         Predicate<MediaType> correctType = mt ->
                 type.equals(mt.type()) && subtype.equals(mt.subtype());
-        ToDoubleFunction<MediaType> toQ = mt ->
+        ToDoubleFunction<MediaType> getQ = mt ->
                 mt instanceof MediaRange ? ((MediaRange) mt).quality() : 1.;
-        Comparator<MediaType> byQDesc = Comparator.comparingDouble(toQ).reversed();
-        Function<MediaType, Charset> toCharset = mt -> {
+        Comparator<MediaType> byQDesc = Comparator.comparingDouble(getQ).reversed();
+        Function<MediaType, Charset> getCharset = mt -> {
             try {
                 return Charset.forName(mt.parameters().get("charset"));
             } catch (IllegalArgumentException alsoForNPE) {
                 return null;
             }
         };
-        Predicate<Charset> supportsEnc = Charset::canEncode,
-                           discardNull = Objects::nonNull;
+        Predicate<Charset> discardNull = Objects::nonNull,
+                           supportsEnc = Charset::canEncode;
         
         // Find it
         return mediaTypes.flatMap(all -> all
-                             .filter(correctType)
-                             .sorted(byQDesc)
-                             .map(toCharset)
-                             .filter(supportsEnc)
-                             .filter(discardNull)
-                             .findFirst())
+                         .filter(correctType)
+                         .sorted(byQDesc)
+                         .map(getCharset)
+                         .filter(discardNull)
+                         .filter(supportsEnc)
+                         .findFirst())
                          .orElse(UTF_8);
     }
     
-    /**
-     * Pre-built builder objects.
-     */
-    private static final class BuilderCache {
-        static final Response.Builder OK = builder(TWO_HUNDRED, ReasonPhrase.OK);
+    private static final CodeAndPhraseCache<Response> CACHE = build(Responses::mk, Responses::mk);
+    
+    private static Response mk(int code) {
+        return mk(code, null);
+    }
+    
+    private static Response mk(int code, String phrase) {
+        var b = DefaultResponse.DefaultBuilder.ROOT
+                .statusCode(code);
+        if (phrase != null) {
+            b = b.reasonPhrase(phrase);
+        }
+        if (!isBodyForbidden(code)) {
+            b = b.header(CONTENT_LENGTH, "0");
+        }
+        return b.build();
     }
     
     /**
-     * Pre-built response objects with no payloads.
+     * Returns true if a response body is forbidden and therefore, a
+     * Content-Length header must be excluded from the response. This is the
+     * case for 1xx (Informational) and 204 (No Content) (RFC 7230 §3.3.2, top
+     * of page 31).<p>
+     * 
+     * Same is also true for a 2xx (Successful) response to a CONNECT request -
+     * although this is currently not implemented in any fashion by the library
+     * (if any app ever implement CONNECT then they hopefully know what they're
+     * doing lol).<p>
+     * 
+     * Otherwise (this method returns false), a "Content-Length: 0" header ought
+     * to be set; indicating no payload body until a future modification decides
+     * to add one.
+     * 
+     * @param code of status
+     * @return see JavaDoc
      */
-    private static final class ResponseCache {
-        static final Response
-            CONTINUE               = respond(ONE_HUNDRED, ReasonPhrase.CONTINUE, false),
-            PROCESSING             = respond(ONE_HUNDRED_TWO, ReasonPhrase.PROCESSING, false),
-            ACCEPTED               = respond(TWO_HUNDRED_TWO, ReasonPhrase.ACCEPTED, true),
-            NO_CONTENT             = respond(TWO_HUNDRED_FOUR, ReasonPhrase.NO_CONTENT, false),
-            BAD_REQUEST            = respond(FOUR_HUNDRED, ReasonPhrase.BAD_REQUEST, true),
-            NOT_FOUND              = respond(FOUR_HUNDRED_FOUR, ReasonPhrase.NOT_FOUND, true),
-            INTERNAL_SERVER_ERROR  = respond(FIVE_HUNDRED, ReasonPhrase.INTERNAL_SERVER_ERROR, true),
-            NOT_IMPLEMENTED        = respond(FIVE_HUNDRED_ONE, ReasonPhrase.NOT_IMPLEMENTED, true),
-            METHOD_NOT_ALLOWED     = respond(FOUR_HUNDRED_FIVE, ReasonPhrase.METHOD_NOT_ALLOWED, true),
-            MEDIATYPE_NOT_ACCEPTED = respond(FOUR_HUNDRED_SIX, ReasonPhrase.NOT_ACCEPTABLE, true),
-            MEDIATYPE_UNSUPPORTED  = respond(FOUR_HUNDRED_FIFTEEN, ReasonPhrase.UNSUPPORTED_MEDIA_TYPE, true),
-            FORBIDDEN              = respond(FOUR_HUNDRED_THREE, ReasonPhrase.FORBIDDEN, true);
-        
-        private static Response respond(int code, String phrase, boolean addContentLengthZero) {
-            var b = builder(code, phrase);
-            if (addContentLengthZero) {
-                b = b.header(CONTENT_LENGTH, "0");
-            }
-            return b.build();
-        }
+    private static boolean isBodyForbidden(int code) {
+        return code >= 100 && code <= 199 || code == 204;
     }
 }

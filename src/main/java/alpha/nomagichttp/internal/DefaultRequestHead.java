@@ -10,20 +10,17 @@ final class DefaultRequestHead implements RequestHead
 {
     private final String method, requestTarget, httpVersion;
     private final HttpHeaders headers;
-    private final long nanoOnStart;
     
     DefaultRequestHead(
             String method,
             String requestTarget,
             String httpVersion,
-            HttpHeaders headers,
-            long nanoOnStart)
+            HttpHeaders headers)
     {
         this.method        = method;
         this.requestTarget = requestTarget;
         this.httpVersion   = httpVersion;
         this.headers       = headers;
-        this.nanoOnStart   = nanoOnStart;
     }
     
     @Override
@@ -44,11 +41,6 @@ final class DefaultRequestHead implements RequestHead
     @Override
     public HttpHeaders headers() {
         return headers;
-    }
-    
-    @Override
-    public long nanoTimeOnStart() {
-        return nanoOnStart;
     }
     
     @Override

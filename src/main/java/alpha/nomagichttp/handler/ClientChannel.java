@@ -31,12 +31,15 @@ import java.util.concurrent.CompletionStage;
  * one-to-one protocol.<p>
  * 
  * The life-cycle of the channel is managed by the server. The application
- * should have no need to directly use shutdown/close methods in this class.
- * For a graceful close of the client connection, set the "Connection: close"
- * header. More abruptly terminating methods may be scheduled using {@link
- * Response.Builder#mustShutdownOutputAfterWrite(boolean)}
- * and {@link Response.Builder#mustCloseAfterWrite(boolean)}. Invoking {@link
- * #close()} on this class is equivalent to an instant "kill".<p>
+ * should have no need to shut down the write stream (aka. half-close) or close
+ * the channel explicitly, which could translate to an abrupt end of the request
+ * and/or request in-flight. For a graceful close of the client connection, set
+ * the "Connection: close" header.<p>
+ * 
+ * Terminating methods can be scheduled to occur after a response by using
+ * {@link Response.Builder#mustShutdownOutputAfterWrite(boolean)} and {@link
+ * Response.Builder#mustCloseAfterWrite(boolean)}. Invoking {@link #close()} on
+ * this class is equivalent to an instant "kill".<p>
  * 
  * When using low-level methods to operate the channel, or when storing
  * attributes on the channel, then have in mind that the "client" in {@code
@@ -81,11 +84,11 @@ public interface ClientChannel extends Closeable, AttributeHolder
      * 
      * At the time of transmission, a response may be rejected. Normally, this
      * will cause a {@link ResponseRejectedException} to pass through the
-     * server's error handler. But the error handler will not receive the
-     * exception if the response is rejected because a final response has
-     * already been transmitted (in parts or in whole), then, the response is
-     * logged but otherwise ignored. Same is true if the response can not be
-     * sent because the channel's write stream has shut down, then, a {@link
+     * server's error handler. But the error handler will not be called if the
+     * response is rejected because a final response has already been
+     * transmitted (in parts or in whole), then, the response is logged but
+     * otherwise ignored. Same is true if the response can not be sent because
+     * the channel's write stream has shut down, then, a {@link
      * ClosedChannelException} is logged but otherwise ignored. In both cases,
      * it's futile to attempt writing an alternative response.<p>
      * 

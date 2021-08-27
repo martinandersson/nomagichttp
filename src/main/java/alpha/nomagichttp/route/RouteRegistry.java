@@ -56,7 +56,7 @@ public interface RouteRegistry
      * @throws NullPointerException
      *             if any argument is {@code null}
      * 
-     * @throws RouteParseException
+     * @throws RoutePatternInvalidException
      *             if a static segment value is empty, or
      *             if parameter names are repeated in the pattern, or
      *             if a catch-all parameter is not the last segment

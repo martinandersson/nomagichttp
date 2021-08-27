@@ -17,6 +17,7 @@ import java.util.concurrent.CompletionStage;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static alpha.nomagichttp.HttpConstants.Version;
+import static alpha.nomagichttp.internal.DefaultActionRegistry.Match;
 import static alpha.nomagichttp.util.Headers.accept;
 import static alpha.nomagichttp.util.Headers.contentType;
 import static java.lang.System.Logger.Level.DEBUG;
@@ -31,7 +32,7 @@ import static java.util.concurrent.CompletableFuture.completedStage;
  * 
  * There's one instance of this class per HTTP exchange.<p>
  * 
- * The main entry point is {@link #execute(SkeletonRequest, Version)}.
+ * The entry point is {@link #execute(SkeletonRequest, Version)}.
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  */
@@ -100,12 +101,14 @@ final class InvocationChain
      * The returned stage completes normally only when the entire chain
      * completes normally.<p>
      * 
-     * Otherwise, the stage completes exceptionally with an exception thrown by
-     * one of the executed entities, or a {@link NoRouteFoundException},<p>
-     * 
-     * or, if a before-action aborts the chain, the stage will complete with a
-     * {@code CompletionException} with its cause set to the instance {@link
-     * #ABORTED}.<p>
+     * Otherwise, the stage completes exceptionally with any one of:
+     * <ul>
+     *   <li>{@link NoRouteFoundException}</li>
+     *   <li>An exception thrown by one of the executed entities</li>
+     *   <li>If a before-action aborts the chain, the stage will complete with a
+     *      {@code CompletionException} with its cause set to the instance
+     *      {@link #ABORTED}</li>
+     * </ul>
      * 
      * A normal completion as well as a throwable where {@code getCause() ==
      * ABORTED} ought to semantically have the same outcome; i.e. none if the
@@ -123,7 +126,7 @@ final class InvocationChain
     }
     
     private CompletionStage<Void> invokeBeforeActions(SkeletonRequest req, Version ver) {
-        List<ResourceMatch<BeforeAction>> matches = actions.lookupBefore(req.target());
+        List<Match<BeforeAction>> matches = actions.lookupBefore(req.target());
         if (matches.isEmpty()) {
             return COMPLETED;
         }
@@ -135,22 +138,18 @@ final class InvocationChain
     private void invokeRequestHandler(
             SkeletonRequest req, Version ver)
     {
-        ResourceMatch<Route> r = routes.lookup(req.target());
-        
-        request = new DefaultRequest(ver, req, r);
+        Route r = routes.lookup(req.target());
+        request = new DefaultRequest(ver, req, r.segments());
         handler = findRequestHandler(req.head(), r);
-        
         handler.logic().accept(request, chApi);
     }
     
-    private static RequestHandler findRequestHandler(RequestHead rh, ResourceMatch<Route> m) {
+    private static RequestHandler findRequestHandler(RequestHead rh, Route r) {
         MediaType type = contentType(rh.headers()).orElse(null);
-        // TODO: Find a way to cache this and re-use in Responses factories that
-        //       parse a charset from request (in a branch)
         MediaType[] accepts = accept(rh.headers())
                 .map(s -> s.toArray(MediaType[]::new))
                 .orElse(null);
-        RequestHandler h = m.get().lookup(rh.method(), type, accepts);
+        RequestHandler h = r.lookup(rh.method(), type, accepts);
         LOG.log(DEBUG, () -> "Matched handler: " + h);
         return h;
     }
@@ -164,19 +163,19 @@ final class InvocationChain
             AWAITING_NONE = 3;
     
     private class BeforeChain implements Chain {
-        private final Iterator<ResourceMatch<BeforeAction>> actions;
+        private final Iterator<Match<BeforeAction>> matches;
         private final CompletableFuture<Void> allOf;
         private final AtomicInteger status;
         private final SkeletonRequest shared;
         private final Version ver;
         
         BeforeChain(
-                Iterator<ResourceMatch<BeforeAction>> actions,
+                Iterator<Match<BeforeAction>> matches,
                 CompletableFuture<Void> allOf,
                 SkeletonRequest shared,
                 Version ver)
         {
-            this.actions = actions;
+            this.matches = matches;
             this.allOf   = allOf;
             this.status  = new AtomicInteger(AWAITING_BOTH);
             this.shared  = shared;
@@ -185,9 +184,9 @@ final class InvocationChain
         
         void callAction() {
             try {
-                var a = actions.next();
-                request = new DefaultRequest(ver, shared, a);
-                a.get().apply(request, chApi, this);
+                var m = matches.next();
+                request = new DefaultRequest(ver, shared, m.segments());
+                m.action().accept(request, chApi, this);
             } catch (Throwable t) {
                 status.set(AWAITING_NONE);
                 if (!allOf.completeExceptionally(t)) {
@@ -203,10 +202,10 @@ final class InvocationChain
         }
         
         private void tryCallNextAction() {
-            if (!actions.hasNext()) {
+            if (!matches.hasNext()) {
                 allOf.complete(null);
             } else {
-                new BeforeChain(actions, allOf, shared, ver).callAction();
+                new BeforeChain(matches, allOf, shared, ver).callAction();
             }
         }
         

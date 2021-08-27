@@ -155,9 +155,11 @@ import alpha.nomagichttp.route.RouteRegistry;
  * consuming the body bytes (which should only be done once!) and setting
  * attributes.<p>
  * 
- * Actions added to the registry is not immediately visible to currently active
- * HTTP exchanges. Matched actions are retrieved only once at the beginning of
- * each new HTTP exchange.<p>
+ * An action added to the registry is not necessarily immediately visible to
+ * currently active HTTP exchanges. Matched before-actions are retrieved only
+ * once after a valid request head was received; at the beginning of each new
+ * HTTP exchange. Matched after-actions are retrieved only once after the first
+ * response was received and accepted by the channel.<p>
  * 
  * Unlike {@link RouteRegistry}, this interface does not declare remove
  * operations. The chief reasons behind this decision was to reduce the API

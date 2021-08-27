@@ -108,7 +108,6 @@ final class RequestHeadProcessor
     
     private final StringBuilder token;
     
-    private long started;
     private int read;
     private char prev, curr;
     
@@ -124,25 +123,11 @@ final class RequestHeadProcessor
     }
     
     RequestHead accept(char curr) {
-        if (read == 0) {
-            started = System.nanoTime();
-        }
         ++read;
         this.curr = curr;
         step.run();
         prev = curr;
         return completed;
-    }
-    
-    /**
-     * Returns {@code true} if at least one byte has been processed, otherwise
-     * {@code false}.
-     * 
-     * @return {@code true} if at least one byte has been processed, otherwise
-     * {@code false}
-     */
-    boolean hasStarted() {
-        return read > 0;
     }
     
     private String method;
@@ -342,6 +327,6 @@ final class RequestHeadProcessor
                 headerValues != null ? headerValues : Map.of());
         
         completed = new DefaultRequestHead(
-                method, requestTarget, httpVersion, headers, started);
+                method, requestTarget, httpVersion, headers);
     }
 }

@@ -107,10 +107,15 @@ final class ChannelByteBufferPublisher implements Flow.Publisher<DefaultPooledBy
         }
     }
     
-    private void afterChannelFinished(DefaultClientChannel ignored1, long ignored2, Throwable t) {
+    private void afterChannelFinished(long byteCntIgnored, Throwable t) {
         if (t != null) {
             if (!subscriber.stop(t) && shouldRaiseConcern(t)) {
                 LOG.log(WARNING, "Failed to deliver this error to a subscriber.", t);
+                if (LOG.isLoggable(WARNING) && chApi.isAnythingOpen()) {
+                    LOG.log(WARNING, "Closing channel.");
+                    
+                }
+                chApi.closeSafe();
             }
             readable.clear();
         } // else normal completion; subscriber will be stopped when EOS is observed

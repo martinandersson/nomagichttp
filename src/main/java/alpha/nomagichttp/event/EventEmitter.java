@@ -1,7 +1,8 @@
-package alpha.nomagichttp.events;
+package alpha.nomagichttp.event;
 
 import alpha.nomagichttp.HttpServer;
 import alpha.nomagichttp.message.RequestHead;
+import alpha.nomagichttp.util.TriConsumer;
 
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
@@ -66,7 +67,7 @@ import java.util.function.Consumer;
  * 
  * Semantics concerning attachments are normally documented and defined by the
  * event type, and, normally always present or never present. For example, a
- * {@link RequestHeadParsed} event raised by the {@link HttpServer#events()
+ * {@link RequestHeadReceived} event raised by the {@link HttpServer#events()
  * HttpServer} will always carry with it the {@link RequestHead} object as the
  * first and only attachment.<p>
  * 
@@ -100,7 +101,7 @@ import java.util.function.Consumer;
  * returned from {@link HttpServer#events()}. A custom implementation is free
  * to behave differently.<p>
  * 
- * Events are not cached. A new listener does not receive past events.<p>
+ * Events are not saved. A new listener does not receive past events.<p>
  * 
  * The thread emitting the event is also the thread that invokes listeners of
  * the event. This may be the server's request thread, and so, a listener must
@@ -122,7 +123,8 @@ import java.util.function.Consumer;
  * data structure. Duplicates not allowed (based on event type key and
  * listener's object equality).<p>
  * 
- * Lambdas create a new instance. This will subscribe but fail to unsubscribe:
+ * Lambdas create different instances. This will subscribe but fail to
+ * unsubscribe:
  * <pre>
  *   EventEmitter emitter = ...
  *   // True
@@ -134,7 +136,7 @@ import java.util.function.Consumer;
  * Solution:
  * <pre>
  * 
- *   Consumer{@literal <}Something{@literal >} listener = event -{@literal >} {};
+ *   Consumer{@literal <}Something{@literal >} listener = System.out::println;
  *   emitter.on(Something.class, listener);
  *   emitter.off(Something.class, listener);
  * </pre>

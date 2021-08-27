@@ -1,4 +1,4 @@
-package alpha.nomagichttp.events;
+package alpha.nomagichttp.util;
 
 import java.util.Objects;
 import java.util.function.Consumer;
@@ -8,7 +8,7 @@ import java.util.function.Consumer;
  * 
  * @param <T> the type of the first argument to the operation
  * @param <U> the type of the second argument to the operation
- * @param <V> the type of the second argument to the operation
+ * @param <V> the type of the third argument to the operation
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  */

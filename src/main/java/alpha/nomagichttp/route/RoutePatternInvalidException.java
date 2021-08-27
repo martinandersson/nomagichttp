@@ -1,11 +1,11 @@
 package alpha.nomagichttp.route;
 
 /**
- * Thrown by {@link Route.Builder#builder(String)} if parsing a route fails.
+ * Thrown by {@link Route.Builder#builder(String)} if a route pattern is invalid.
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  */
-public class RouteParseException extends RuntimeException
+public class RoutePatternInvalidException extends RuntimeException
 {
     private static final long serialVersionUID = 1L;
     
@@ -14,7 +14,7 @@ public class RouteParseException extends RuntimeException
      * 
      * @param cause passed as-is to {@link Throwable#Throwable(Throwable)}
      */
-    public RouteParseException(Throwable cause) {
+    public RoutePatternInvalidException(Throwable cause) {
         super(cause);
     }
 }

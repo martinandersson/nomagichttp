@@ -14,7 +14,7 @@ import java.util.Map;
 import java.util.stream.Stream;
 
 import static alpha.nomagichttp.handler.RequestHandler.GET;
-import static alpha.nomagichttp.internal.RequestTarget.parse;
+import static alpha.nomagichttp.internal.SkeletonRequestTarget.parse;
 import static alpha.nomagichttp.message.Responses.accepted;
 import static alpha.nomagichttp.util.PercentDecoder.decode;
 import static java.util.Arrays.stream;
@@ -281,14 +281,16 @@ class DefaultRouteRegistryTest
             Map<String, String> expectedParamValuesRaw,
             Object... repeatedCases)
     {
-        ResourceMatch<Route> m = testee.lookup(parse(path));
-        assertThat(m.get()).isSameAs(expectSame);
+        SkeletonRequestTarget segments = parse(path);
+        Route r = testee.lookup(segments);
+        assertThat(r).isSameAs(expectSame);
         
-        assertThat(m.mapRaw()).isEqualTo(expectedParamValuesRaw);
+        var rt = new RequestTarget(segments, r.segments());
+        assertThat(rt.pathParamRawMap()).isEqualTo(expectedParamValuesRaw);
         
         Map<String, String> decoded = new HashMap<>(expectedParamValuesRaw);
         decoded.replaceAll((k, v) -> decode(v));
-        assertThat(m.mapDec()).isEqualTo(decoded);
+        assertThat(rt.pathParamMap()).isEqualTo(decoded);
         
         for (int arg1 = 0, arg2 = 1, arg3 = 2; arg3 < repeatedCases.length; arg1 += 3, arg2 += 3, arg3 += 3) {
             @SuppressWarnings({"unchecked"})

@@ -32,10 +32,10 @@ public class GreetParameter
          * We note:
          * 
          * 1) Single path parameters are required for matching the route,
-         *    parameters().path(key) will always return a non-empty string.
+         *    target().pathParam(key) will always return a non-empty string.
          * 
          * 2) Query parameters are always optional,
-         *    parameters().queryFirst(key) returns an Optional of the first occurred value.
+         *    target().queryFirst(key) returns an Optional of the first occurred value.
          * 
          * Example requests:
          * "/hello/John"         Hello John!
@@ -44,13 +44,13 @@ public class GreetParameter
          */
         
         app.add("/hello/:name", GET().accept((request, channel) -> {
-            String name = request.parameters().path("name");
+            String name = request.target().pathParam("name");
             String msg  = "Hello " + name + "!";
             channel.write(text(msg));
         }));
         
         app.add("/hello", GET().accept((request, channel) -> {
-            Response r = request.parameters()
+            Response r = request.target()
                                 .queryFirst("name")
                                 .map(str -> text("Hello " + str + "!"))
                                 .orElse(badRequest());

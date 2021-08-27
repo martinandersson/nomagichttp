@@ -22,6 +22,7 @@ import java.nio.file.attribute.FileAttribute;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.RandomAccess;
 import java.util.Set;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ExecutorService;
@@ -79,19 +80,13 @@ public interface Request extends HeaderHolder, AttributeHolder
      *   Accept: text/plain;charset=utf-8
      * }</pre>
      * 
-     * The returned value is "/where?q=now#fragment".<p>
-     * 
-     * The returned value is raw; not normalized and not URL decoded (aka.
-     * percent-decoded). Decoded parameter values can be retrieved using {@link
-     * Request#parameters()}. There is no API-support to retrieve the fragment
-     * separately as it is "dereferenced solely by the user agent" (
-     * <a href="https://tools.ietf.org/html/rfc3986#section-3.5">RFC 3986 §3.5</a>
-     * ) and so shouldn't have been sent to the HTTP server in the first place.
+     * The returned value is a complex type of "/where?q=now#fragment". The raw
+     * string value can be retrieved using {@code target().}{@link Target#raw()
+     * raw()}.<p>
      * 
      * @return the request-line's resource-target
-     *         (never {@code null}, empty or blank)
      */
-    String target();
+    Target target();
     
     /**
      * Returns the request-line's HTTP version.<p>
@@ -111,18 +106,6 @@ public interface Request extends HeaderHolder, AttributeHolder
     HttpConstants.Version httpVersion();
     
     /**
-     * Returns a parameters API object bound to this request.<p>
-     * 
-     * Path- and query parameters are provided by the client through the request
-     * path and can not be modified by the application.
-     * 
-     * @return a parameters API object bound to this request
-     *
-     * @see Parameters
-     */
-    Parameters parameters();
-    
-    /**
      * Returns a body API object bound to this request.
      * 
      * @return a body API object bound to this request
@@ -132,24 +115,19 @@ public interface Request extends HeaderHolder, AttributeHolder
     Body body();
     
     /**
-     * Is a thread-safe and non-blocking API for accessing immutable request
-     * path- and query parameter values.<p>
-     * 
-     * Any client-given request path (a component of {@link Request#target()}
-     * may contain segments interpreted by the HTTP server as a path parameter
-     * value and/or an URL search part, aka. query string (see {@link
-     * Route}).<p>
+     * An API to access segments, path parameters (interpreted segments), query
+     * key/value pairs and a fragment from the resource-target of a request.<p>
      * 
      * Path parameters come in two forms; single- and catch-all. The former is
-     * required in order for the route to have been matched, the latter is
-     * optional but the server will make sure the value is always present and
+     * required in order for the action/handler to have been matched, the latter
+     * is optional but the server will make sure the value is always present and
      * begins with a '/'. Query parameters are always optional. Read more in
      * {@link Route}.<p>
      * 
-     * A query parameter value will be assumed to end with a space- or ampersand
-     * ('&amp;') character. In particular, please note that the semicolon
-     * ('&#59;') has no special meaning; it will <i>not</i> be processed as a
-     * separator (contrary to
+     * A query value will be assumed to end with a space- or ampersand ('&amp;')
+     * character. In particular, please note that the semicolon ('&#59;') has no
+     * special meaning; it will <i>not</i> be processed as a separator (contrary
+     * to
      * <a href="https://www.w3.org/TR/1999/REC-html401-19991224/appendix/notes.html#h-B.2.2">W3</a>,
      * we argue that magic is the trouble).<p>
      * 
@@ -165,13 +143,13 @@ public interface Request extends HeaderHolder, AttributeHolder
      * special meaning; it will simply become part of the query key itself.<p>
      * 
      * If embedding multiple query values into one key entry is desired, then
-     * splitting and parsing the value with whatever delimiting character you
+     * splitting and parsing the value with whatever delimiting character one
      * choose is pretty straight forward:
      * 
      * <pre>{@code
      *     // "?numbers=1,2,3"
      *     // WARNING: This ignores the presence of repeated entries
-     *     String[] vals = request.parameters()
+     *     String[] vals = request.target()
      *                            .queryFirst("numbers")
      *                            .get()
      *                            .split(",");
@@ -186,37 +164,75 @@ public interface Request extends HeaderHolder, AttributeHolder
      * 
      * <pre>{@code
      *     // "?number=1&number=2&number=3"
-     *     int[] ints = request.parameters()
+     *     int[] ints = request.target()
      *                         .queryStream("number")
      *                         .mapToInt(Integer::parseInt)
      *                         .toArray();
      * }</pre>
      * 
-     * Methods in the Parameters API that does not carry the "raw" suffix will
-     * URL decode (aka. percent-decode) the tokens (query keys, path- and query
-     * parameter values) as if using {@link URLDecoder#decode(String, Charset)
-     * URLDecoder.decode(segment, StandardCharsets.UTF_8)} <i>except</i> the
-     * plus sign ('+') is <i>not</i> converted to a space character and remains
-     * the same. If this is not desired, use methods that carries the suffix
-     * "raw". The raw version is useful when need be to unescape values using a
-     * different strategy, for example when receiving a query string from a
-     * browser submitting an HTML form using the "GET" method. The default
-     * encoding the browser uses will be
+     * Methods that does not carry the "raw" suffix will URL decode (aka.
+     * percent-decode, aka. escape) the tokens (segment values, query keys,
+     * path- and query parameter values) as if using
+     * {@link URLDecoder#decode(String, Charset) URLDecoder.decode(segment,
+     * StandardCharsets.UTF_8)} <i>except</i> the plus sign ('+') is <i>not</i>
+     * converted to a space character and remains the same. If this is not
+     * desired, use methods that carries the suffix "raw". The raw version is
+     * useful when need be to unescape values using a different strategy, for
+     * example when receiving a query string from a browser submitting an HTML
+     * form using the "GET" method. The default encoding the browser uses will
+     * be
      * <a href="https://www.w3.org/TR/html401/interact/forms.html#h-17.13.4.1">
      * application/x-www-form-urlencoded</a> which escapes space characters
      * using the plus character ('+').
      * 
      * <pre>{@code
      *     // Note: key needs to be in its raw form
-     *     String nondecoded = request.parameters().queryFirstRaw("q");
+     *     String nondecoded = request.target().queryFirstRaw("q");
      *     // '+' is replaced with ' '
      *     String formdata = java.net.URLDecoder.decode(nondecoded, StandardCharsets.UTF_8);
      * }</pre>
      * 
+     * The implementation is thread-safe, immutable and non-blocking.
+     * 
      * @author Martin Andersson (webmaster at martinandersson.com)
      */
-    interface Parameters
+    interface Target
     {
+        /**
+         * Returns the raw resource-target, e.g. "/where?q=now#fragment".
+         * 
+         * @return the raw resource-target (never {@code null}, empty or blank)
+         */
+        String raw();
+        
+        /**
+         * Returns normalized and escaped path segment values.
+         * 
+         * The root ("/") is not represented in the returned list. If the parsed
+         * request path was empty or effectively a single "/", then the returned
+         * list will also be empty.<p>
+         * 
+         * The returned list is unmodifiable and implements {@link RandomAccess}.
+         * 
+         * @return normalized and escaped segment values
+         * @see Route
+         */
+        List<String> segments();
+        
+        /**
+         * Returns normalized but unescaped segment values.<p>
+         * 
+         * The root ("/") is not represented in the returned list. If the parsed
+         * request path was empty or effectively a single "/", then the returned
+         * list will also be empty.<p>
+         * 
+         * The returned list is unmodifiable and implements {@link RandomAccess}.
+         * 
+         * @return normalized but unescaped segment values
+         * @see Route
+         */
+        List<String> segmentsRaw();
+        
         /**
          * Returns a path parameter value (percent-decoded).<p>
          * 
@@ -232,38 +248,49 @@ public interface Request extends HeaderHolder, AttributeHolder
          *   ...
          * </pre>
          * 
-         * {@code request.parameters().path("who")} will return "John Doe".<p>
+         * {@code request.target().pathParam("who")} returns "John Doe".<p>
          * 
-         * This method never returns the empty string. {@code null} would only
-         * be returned if the given name is different from what the route
-         * declared.
+         * Path parameters are not optional and so this method never returns the
+         * empty string. {@code null} is only returned if the given name is
+         * different from what the route declared.
          * 
-         * @param name of path parameter (case sensitive)
-         * 
+         * @param name of path parameter (case-sensitive)
          * @return the path parameter value (percent-decoded)
-         * 
-         * @throws NullPointerException
-         *             if {@code name} is {@code null}
+         * @throws NullPointerException if {@code name} is {@code null}
          */
-        String path(String name);
+        String pathParam(String name);
         
         /**
-         * Returns a raw path parameter value (not decoded/unescaped).<p>
+         * Returns a map of all path parameters (percent-decoded).
          * 
-         * This method never returns the empty string. {@code null} would only
-         * be returned if the given name is different from what the route
-         * declared.
+         * The returned map has no defined iteration order and is unmodifiable.
          * 
-         * @param name of path parameter (case sensitive)
-         * 
-         * @return the raw path parameter value (not decoded/unescaped)
-         * 
-         * @throws NullPointerException
-         *             if {@code name} is {@code null}
-         * 
-         * @see #path(String) 
+         * @return a map of all path parameters (percent-decoded)
          */
-        String pathRaw(String name);
+        Map<String, String> pathParamMap();
+        
+        /**
+         * Returns a raw path parameter value (not percent-decoded).<p>
+         * 
+         * Path parameters are not optional and so this method never returns the
+         * empty string. {@code null} is only returned if the given name is
+         * different from what the route declared.
+         * 
+         * @param name of path parameter (case-sensitive)
+         * @return the raw path parameter value (not percent-decoded)
+         * @throws NullPointerException if {@code name} is {@code null}
+         * @see #pathParam(String) 
+         */
+        String pathParamRaw(String name);
+        
+        /**
+         * Returns a map of all path parameters (not percent-decoded).
+         * 
+         * The returned map has no defined iteration order and is unmodifiable.
+         * 
+         * @return a map of all path parameters (not percent-decoded)
+         */
+        Map<String, String> pathParamRawMap();
         
         /**
          * Returns a query parameter value (first occurrence,
@@ -275,11 +302,9 @@ public interface Request extends HeaderHolder, AttributeHolder
          *   ...
          * }</pre>
          * 
-         * {@code request.parameters().queryFirst("who")} will return "John
-         * Doe".
+         * {@code request.target().queryFirst("who")} will return "John Doe".
          * 
          * @param key of query parameter (case sensitive, not encoded/escaped)
-         * 
          * @return the query parameter value (first occurrence, percent-decoded)
          * 
          * @throws NullPointerException
@@ -295,9 +320,7 @@ public interface Request extends HeaderHolder, AttributeHolder
          * decoded/unescaped).<p>
          * 
          * @param keyRaw of query parameter (case sensitive, encoded/escaped)
-         * 
          * @return the raw query parameter value (not decoded/unescaped)
-         * 
          * @throws NullPointerException if {@code keyRaw} is {@code null}
          * 
          * @see #queryFirst(String)
@@ -307,7 +330,7 @@ public interface Request extends HeaderHolder, AttributeHolder
         /**
          * Returns a new stream of query parameter values (percent-decoded).<p>
          * 
-         * The returned stream's encounter order follows the order in which the
+         * The returned stream's encounter order follows the order in which
          * repeated query keys appeared in the client-provided query string.
          * 
          * @param key of query parameter (case sensitive, not encoded/escaped)
@@ -320,7 +343,7 @@ public interface Request extends HeaderHolder, AttributeHolder
          * @throws IllegalArgumentException
          *             if the decoder encounters illegal characters
          * 
-         * @see Parameters
+         * @see Target
          */
         Stream<String> queryStream(String key);
         
@@ -328,7 +351,7 @@ public interface Request extends HeaderHolder, AttributeHolder
          * Returns a new stream of raw query parameter values (not
          * decoded/unescaped).<p>
          * 
-         * The returned stream's encounter order follows the order in which the
+         * The returned stream's encounter order follows the order in which
          * repeated query keys appeared in the client-provided query string.
          * 
          * @param keyRaw of query parameter (case sensitive, encoded/escaped)
@@ -338,16 +361,17 @@ public interface Request extends HeaderHolder, AttributeHolder
          * 
          * @throws NullPointerException if {@code keyRaw} is {@code null}
          * 
-         * @see Parameters
+         * @see Target
          */
         Stream<String> queryStreamRaw(String keyRaw);
         
         /**
-         * Returns an unmodifiable list of query parameter values
-         * (percent-decoded).<p>
+         * Returns query parameter values (percent-decoded).<p>
          * 
          * The returned list's iteration order follows the order in which the
-         * repeated query keys appeared in the client-provided query string.
+         * repeated query keys appeared in the client-provided query string.<p>
+         * 
+         * The returned list is unmodifiable and implements {@link RandomAccess}.
          * 
          * @param key of query parameter (case sensitive, not encoded/escaped)
          * 
@@ -360,16 +384,17 @@ public interface Request extends HeaderHolder, AttributeHolder
          * @throws IllegalArgumentException
          *             if the decoder encounters illegal characters
          * 
-         * @see Parameters
+         * @see Target
          */
         List<String> queryList(String key);
         
         /**
-         * Returns an unmodifiable list of raw query parameter values (not
-         * decoded/unescaped).<p>
+         * Returns raw query parameter values (not decoded/unescaped).<p>
          * 
          * The returned list's iteration order follows the order in which the
-         * repeated query keys appeared in the client-provided query string.
+         * repeated query keys appeared in the client-provided query string.<p>
+         * 
+         * The returned list is unmodifiable and implements {@link RandomAccess}.
          * 
          * @param keyRaw of query parameter (case sensitive, encoded/escaped)
          * 
@@ -378,7 +403,7 @@ public interface Request extends HeaderHolder, AttributeHolder
          * 
          * @throws NullPointerException if {@code keyRaw} is {@code null}
          * 
-         * @see Parameters
+         * @see Target
          */
         List<String> queryListRaw(String keyRaw);
         
@@ -388,15 +413,15 @@ public interface Request extends HeaderHolder, AttributeHolder
          * 
          * The returned map's iteration order follows the order in which the
          * query keys appeared in the client-provided query string. Same is true
-         * for the associated list of the values.<p>
+         * for the associated list of the values.
          * 
          * @return an unmodifiable map of query key to parameter values
          *         (percent-decoded)
-         *
+         * 
          * @throws IllegalArgumentException
          *             if the decoder encounters illegal characters
          * 
-         * @see Parameters
+         * @see Target
          */
         Map<String, List<String>> queryMap();
         
@@ -411,9 +436,26 @@ public interface Request extends HeaderHolder, AttributeHolder
          * @return an unmodifiable map of raw query key to raw parameter values
          *         (not decoded/escaped)
          * 
-         * @see Parameters
+         * @see Target
          */
         Map<String, List<String>> queryMapRaw();
+        
+        /**
+         * Returns the fragment of the resource-target.<p>
+         * 
+         * Given the resource-target "/where?q=now#fragment", this method
+         * returns "fragment".<p>
+         * 
+         * The fragment is "dereferenced solely by the user agent" (
+         * <a href="https://tools.ietf.org/html/rfc3986#section-3.5">RFC 3986 §3.5</a>)
+         * and so shouldn't have been sent to the HTTP server in the first
+         * place.<p>
+         * 
+         * If the fragment isn't present, this method returns the empty string.
+         * 
+         * @return the fragment of the resource-target (never {@code null})
+         */
+        String fragment();
     }
     
     /**
@@ -434,7 +476,8 @@ public interface Request extends HeaderHolder, AttributeHolder
      * subscription immediately. {@code toText()} completes immediately with an
      * empty string. {@code toFile()} completes immediately with 0 bytes. {@code
      * convert()} immediately invokes its given function with an empty byte
-     * array.<p>
+     * array. {@code subscribe(Flow.Publisher)} will delegate to {@link
+     * Publishers#empty()}<p>
      * 
      * The body bytes can not be directly consumed more than once; they are not
      * saved by the server. An attempt to {@code convert()} or {@code
@@ -473,14 +516,14 @@ public interface Request extends HeaderHolder, AttributeHolder
      * thread wherever warranted.<p>
      * 
      * In general, high-level exception types - in particular, when documented -
-     * occurs without a real subscription and will leave the channel read stream
-     * open. The application can generally attempt a new operation to recover
-     * the body (e.g. {@code toText() >} {@code IllegalCharsetNameException}).
-     * Unexpected errors - in particular, errors that originate from the
-     * channel's read operation - have used up a real subscription and also
-     * closed the read stream (e.g. {@code RequestBodyTimeoutException}). Before
-     * attempting to recover the body, always check first if the {@link
-     * ClientChannel#isOpenForReading()}.
+     * occurs before a real subscription is made and will leave the channel's
+     * read stream open. The application can generally attempt a new operation
+     * to recover the body (e.g. {@code toText() >} {@code
+     * IllegalCharsetNameException}). Unexpected errors - in particular, errors
+     * that originate from the channel's read operation - have used up a real
+     * subscription and also closed the read stream (e.g. {@code
+     * RequestBodyTimeoutException}). Before attempting to recover the body,
+     * always check first if the {@link ClientChannel#isOpenForReading()}.
      * 
      * 
      * <h2>Subscribing to bytes with a {@code Flow.Subscriber}</h2>

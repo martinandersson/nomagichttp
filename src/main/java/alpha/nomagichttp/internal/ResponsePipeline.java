@@ -2,18 +2,18 @@ package alpha.nomagichttp.internal;
 
 import alpha.nomagichttp.Config;
 import alpha.nomagichttp.action.AfterAction;
+import alpha.nomagichttp.handler.ClientChannel;
 import alpha.nomagichttp.handler.ResponseRejectedException;
 import alpha.nomagichttp.message.HeaderHolder;
 import alpha.nomagichttp.message.Response;
 import alpha.nomagichttp.message.ResponseTimeoutException;
 import alpha.nomagichttp.util.SeriallyRunnable;
 
+import java.nio.channels.InterruptedByTimeoutException;
 import java.util.Deque;
 import java.util.List;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ConcurrentLinkedDeque;
-import java.util.concurrent.atomic.AtomicReference;
-import java.util.function.Consumer;
 
 import static alpha.nomagichttp.HttpConstants.HeaderKey.CONNECTION;
 import static alpha.nomagichttp.HttpConstants.HeaderKey.CONTENT_LENGTH;
@@ -22,14 +22,12 @@ import static alpha.nomagichttp.HttpConstants.StatusCode.isClientError;
 import static alpha.nomagichttp.HttpConstants.StatusCode.isServerError;
 import static alpha.nomagichttp.HttpConstants.Version.HTTP_1_1;
 import static alpha.nomagichttp.handler.ResponseRejectedException.Reason.PROTOCOL_NOT_SUPPORTED;
-import static alpha.nomagichttp.internal.AtomicReferences.ifPresent;
-import static alpha.nomagichttp.internal.AtomicReferences.setIfAbsent;
-import static alpha.nomagichttp.internal.AtomicReferences.take;
+import static alpha.nomagichttp.internal.DefaultActionRegistry.Match;
+import static alpha.nomagichttp.message.Responses.continue_;
 import static java.lang.System.Logger.Level.DEBUG;
 import static java.lang.System.Logger.Level.ERROR;
 import static java.lang.System.Logger.Level.WARNING;
-import static java.util.Objects.requireNonNull;
-import static java.util.concurrent.CompletableFuture.failedStage;
+import static java.util.concurrent.CompletableFuture.completedStage;
 import static java.util.concurrent.TimeUnit.SECONDS;
 
 /**
@@ -39,10 +37,10 @@ import static java.util.concurrent.TimeUnit.SECONDS;
  * The {@code write} methods of {@link DefaultClientChannel} is a direct facade
  * for the {@code add} methods declared in this class.<p>
  * 
- * The lifetime of a pipeline is scoped to the HTTP exchange and not to the
- * channel. The final response is the last response accepted by the pipeline.
- * The channel will be updated with a new delegate pipeline instance at the
- * start of each new HTTP exchange.<p>
+ * The life of a pipeline is scoped to the HTTP exchange and not to the channel.
+ * The final response is the last response accepted by the pipeline. The channel
+ * will be updated with a new delegate pipeline instance at the start of each
+ * new HTTP exchange.<p>
  * 
  * Core responsibilities:
  * <ul>
@@ -56,6 +54,10 @@ import static java.util.concurrent.TimeUnit.SECONDS;
  * 
  * In addition:
  * <ol>
+ *   <li>Emits the high-level {@link ResponseTimeoutException} on response
+ *       enqueuing - and response body emission delay</li>
+ *   <li>Also emits low-level exceptions from the underlying channel
+ *       implementation (such as {@link InterruptedByTimeoutException}.</li>
  *   <li>Implements {@link Config#maxUnsuccessfulResponses()}</li>
  * </ol>
  * 
@@ -70,45 +72,90 @@ final class ResponsePipeline extends AbstractLocalEventEmitter
      * 
      * Only one attachment is provided, the {@code Response} object.<p>
      * 
-     * The <i>final</i> response is the last successful emission.
+     * No more emissions will occur after the final response.
      */
     enum Success { INSTANCE }
     
     /**
-     * Sent on response failure.<p>
+     * Sent on timeout or response failure.<p>
      * 
      * The first attachment will always be the error, a {@code Throwable}.<p>
      * 
-     * The second attachment is the Response object, but only if available. If
-     * the error was propagated to the pipeline from the response stage provided
-     * by the client, then the second attachment is {@code null}. Errors
-     * occurring after this point in time, however, will have the response
-     * attachment present.<p>
+     * The second attachment is the Response object, but only if available. The
+     * response will always be available after the response stage has completed
+     * normally. And so, if the response is available, the origin of the error
+     * is most likely the underlying channel, for instance trying to write a
+     * response to a closed channel.<p>
+     * 
+     * If the response is not available, then the error comes straight from the
+     * application-provided stage itself, or it is a {@link
+     * ResponseTimeoutException}.<p>
      * 
      * No errors are emitted after the <i>final</i> response. Errors from
-     * the client are logged but otherwise ignored. And, there's obviously no
-     * pending writes from the channel that could go wrong.
+     * the application are logged but otherwise ignored. And, there's obviously
+     * no pending writes from the channel that could go wrong. And, the timer
+     * that drives the timeout exception is only active whilst the pipeline is
+     * waiting for a response.
      */
     enum Error { INSTANCE }
+    
+    /**
+     * Sentinel response objects which in effect are a command for the pipeline
+     * to execute.
+     */
+    static final class Command {
+        private Command() {
+            // Empty
+        }
+        
+        /**
+         * Self-schedule a 100 (Continue) response, but only if:
+         * <ol>
+         *   <li>The final response has not been sent, and</li>
+         *   <li>a 100 (Continue) response has not been sent, and</li>
+         *   <li>there is no pending ready-built 100 (Continue) response in the
+         *       queue.</li>
+         * </ol>
+         * 
+         * There is no guarantee that the application will not attempt to send
+         * such a response in the future or has already provided a {@code
+         * CompletionStage} of such a response albeit not yet completed. For
+         * this reason alone, {@link ClientChannel#write(Response)} documents
+         * that an extra 100 (Continue) is silently ignored, only three or more
+         * attempts to write the continue-response will yield a warning in the
+         * log.
+         */
+        static final CompletionStage<Response>
+                TRY_SCHEDULE_100CONTINUE = completedStage(null);
+        
+        /**
+         * Initialize the timer that will result in a {@link
+         * ResponseTimeoutException} on delay from the application to deliver
+         * responses to the channel.<p>
+         * 
+         * This timer is initialized by the HTTP exchange once the request body
+         * has been consumed (or immediately if body is empty). Up until that
+         * point and for as long as progress is being made on the request-side,
+         * the application is free to take forever yielding responses.<p>
+         * 
+         * There is no need to addFirst/preempt other responses; the timer is
+         * only active whilst waiting on a response. So if we have responses in
+         * the queue already, great.
+         */
+        static final CompletionStage<Response>
+                INIT_RESPONSE_TIMER = completedStage(null);
+    }
     
     private static final System.Logger LOG
             = System.getLogger(ResponsePipeline.class.getPackageName());
     
-    private static final Throwable ABORT = new Throwable();
-    
-    private final Config cfg;
-    private final int maxUnssuccessful;
     private final HttpExchange exch;
     private final DefaultClientChannel chApi;
     private final DefaultActionRegistry actions;
+    private final Config cfg;
+    private final int maxUnssuccessful;
     private final Deque<CompletionStage<Response>> queue;
     private final SeriallyRunnable op;
-    // This timer times out delays from app to give us a response.
-    // Response body timer is set by method subscribeToResponse().
-    private final AtomicReference<Timeout> timer;
-    private boolean timedOut;
-    private boolean timeoutEmitted;
-    private List<ResourceMatch<AfterAction>> matched;
     
     /**
      * Constructs a {@code ResponsePipeline}.<p>
@@ -117,53 +164,42 @@ final class ResponsePipeline extends AbstractLocalEventEmitter
      * @param chApi channel's delegate used for writing
      * @param actions registry used to lookup after-actions
      */
-    ResponsePipeline(HttpExchange exch, DefaultClientChannel chApi, DefaultActionRegistry actions) {
-        this.cfg = chApi.getServer().getConfig();
-        this.maxUnssuccessful = cfg.maxUnsuccessfulResponses();
+    ResponsePipeline(
+            HttpExchange exch,
+            DefaultClientChannel chApi,
+            DefaultActionRegistry actions)
+    {
+        this.exch = exch;
         this.chApi = chApi;
         this.actions = actions;
-        this.exch = exch;
+        this.cfg = chApi.getServer().getConfig();
+        this.maxUnssuccessful = cfg.maxUnsuccessfulResponses();
         this.queue = new ConcurrentLinkedDeque<>();
         this.op = new SeriallyRunnable(this::pollAndProcessAsync, true);
-        this.timer = new AtomicReference<>();
-        this.timedOut = false;
-        this.timeoutEmitted = false;
-        this.matched = null;
-    }
-    
-    // HttpExchange starts the timer after the request
-    void startTimeout() {
-        Timeout t = setIfAbsent(timer, () ->
-                new Timeout(cfg.timeoutIdleConnection()));
-        t.reschedule(this::timeoutAction);
-    }
-    
-    private void stopTimeout() {
-        take(timer).ifPresent(Timeout::abort);
     }
     
     void add(CompletionStage<Response> resp) {
-        enqueue(resp, queue::add);
+        queue.add(resp);
+        op.run();
     }
     
     void addFirst(CompletionStage<Response> resp) {
-        enqueue(resp, queue::addFirst);
-    }
-    
-    private void enqueue(CompletionStage<Response> resp, Consumer<CompletionStage<Response>> sink) {
-        requireNonNull(resp);
-        resp.whenComplete((ign,ored) -> timeoutReset());
-        sink.accept(resp);
+        queue.addFirst(resp);
         op.run();
     }
+    
+    // Except for <timedOut>, all other [non-final] fields in this class are
+    // accessed solely from within the serialized operation; no need for
+    // volatile. "timedOut = true" (see timeoutAction()) follows by a re-run,
+    // i.e. is safe to do by the timer's scheduling thread even without volatile
+    // (see JavaDoc of SeriallyRunnable).
+    
+    private Timeout timer;
+    private boolean timedOut;
     
     private void timeoutAction() {
         timedOut = true;
         op.run();
-    }
-    
-    private void timeoutReset() {
-        ifPresent(timer, t -> t.reschedule(this::timeoutAction));
     }
     
     private static void scheduleClose(DefaultClientChannel chApi) {
@@ -176,44 +212,141 @@ final class ResponsePipeline extends AbstractLocalEventEmitter
     }
     
     private void pollAndProcessAsync() {
-        if (timedOut && !timeoutEmitted) {
-            scheduleClose(chApi);
-            var thr = new ResponseTimeoutException("Gave up waiting on a response.");
-            emit(Error.INSTANCE, thr, null);
-            timeoutEmitted = true;
-        }
+        actOnTimerTimeout();
         
-        CompletionStage<Response> stage = queue.poll();
+        // Wait waaat! Why do we continue even after a possible timeout?
+        // Coz ResponseTimeoutException doesn't immediately close the channel or
+        // render the channel/pipeline useless. In fact, application (or our
+        // very own error handler) is supposed to be able to produce (and send!)
+        // an alternative response. For that we need an operating pipeline lol 
+        
+        var stage = queue.poll();
         if (stage == null) {
             op.complete();
             return;
         }
         
+        if (actOnCommand(stage)) {
+            op.complete();
+            op.run();
+            return;
+        }
+        
+        if (timer != null) {
+            // Going to process response; timer active only while waiting
+            timer.abort();
+        }
+        
+        stage.thenApply   (this::acceptRejectOrAbort)
+             .thenCompose (this::invokeAfterActions)
+             .thenApply   (this::closeHttp1_0)
+             .thenApply   (this::fixUnknownLength)
+             .thenApply   (this::trackConnectionClose)
+             .thenApply   (this::trackUnsuccessful)
+             .thenCompose (this::subscribeToResponse)
+             .whenComplete(this::handleResult); // <-- this re-schedules the timer
+    }
+    
+    private boolean timeoutEmitted;
+    
+    private void actOnTimerTimeout() {
+        if (!timedOut || timeoutEmitted) {
+            return;
+        }
+        assert !wroteFinal : "No timer was supposed to be active after final response.";
+        timeoutEmitted = true;
+        if (chApi.isOpenForWriting()) {
+            scheduleClose(chApi);
+            var thr = new ResponseTimeoutException("Gave up waiting on a response.");
+            emit(Error.INSTANCE, thr, null);
+        } else {
+            LOG.log(DEBUG,
+                "Will not emit response timeout; channel closed for writing " +
+                "- so, we were in effect not waiting for a response.");
+        }
+    }
+    
+    private boolean actOnCommand(CompletionStage<Response> stage) {
+        if (stage == Command.TRY_SCHEDULE_100CONTINUE) {
+            if (!sentOrPending100Continue()) {
+                add(continue_().completedStage());
+            }
+            return true;
+        }
+        if (stage == Command.INIT_RESPONSE_TIMER) {
+            if (timer == null && !wroteFinal) {
+                // Note: The response body timer is set by method subscribeToResponse().
+                timer = new Timeout(cfg.timeoutIdleConnection());
+                timer.schedule(this::timeoutAction);
+            }
+            return true;
+        }
+        return false;
+    }
+    
+    private boolean wroteFinal; // <-- set on subscription to final
+    private int n100continue;
+    
+    private boolean sentOrPending100Continue() {
+        if (wroteFinal || n100continue > 0) {
+            return true;
+        }
+        for (var stage : queue) {
+            Response rsp;
+            try {
+                rsp = stage.toCompletableFuture().getNow(null);
+            } catch (Exception e) {
+                // Not supported or completion error
+                continue;
+            }
+            if (rsp != null && rsp.statusCode() == ONE_HUNDRED) {
+                return true;
+            }
+        }
+        return false;
+    }
+    
+    private static final RuntimeException
+            // Response processing aborted (response ignored)
+            ABORT = new RuntimeException();
+    
+    private Response acceptRejectOrAbort(Response rsp) {
+        if (wroteFinal) {
+            LOG.log(WARNING, () -> "HTTP exchange not active. This response is ignored: " + rsp);
+            throw ABORT;
+        }
+        if (rsp.isInformational()) {
+            if (exch.getHttpVersion().isLessThan(HTTP_1_1)) {
+                throw new ResponseRejectedException(rsp, PROTOCOL_NOT_SUPPORTED,
+                        exch.getHttpVersion() + " does not support 1XX (Informational) responses.");
+            }
+            if (rsp.statusCode() == ONE_HUNDRED && ++n100continue > 1) {
+                LOG.log(n100continue == 2 ? DEBUG : WARNING, "Ignoring repeated 100 (Continue).");
+                throw ABORT;
+            }
+        }
+        return rsp;
+    }
+    
+    private List<Match<AfterAction>> matched;
+    
+    private CompletionStage<Response> invokeAfterActions(Response rsp) {
+        var res = rsp.completedStage();
         var req = exch.getSkeletonRequest();
         if (req == null) {
-            LOG.log(DEBUG, "No request available; will not run after-actions.");
+            LOG.log(DEBUG, "No valid request available; will not run after-actions.");
+            // return <res>
         } else {
             if (matched == null) {
                 matched = actions.lookupAfter(req.target());
             }
-            for (ResourceMatch<AfterAction> m : matched) {
-                stage = stage.thenCompose(rsp ->
-                        m.get().apply(new DefaultRequest(exch.getHttpVersion(), req, m), rsp));
+            for (Match<AfterAction> m : matched) {
+                res = res.thenCompose(r -> m.action().apply(
+                        new DefaultRequest(exch.getHttpVersion(), req, m.segments()), r));
             }
         }
-        
-        stage.thenApply(this::closeHttp1_0)
-             .thenApply(this::handleUnknownLength)
-             .thenApply(this::trackConnectionClose)
-             .thenApply(this::trackUnsuccessful)
-             .thenCompose(this::subscribeToResponse)
-             .whenComplete(this::handleResult);
+        return res;
     }
-    
-    private Response inFlight = null;
-    private boolean wroteFinal = false;
-    private boolean sawConnectionClose = false;
-    private int n100continue = 0;
     
     private Response closeHttp1_0(Response rsp) {
         // No support for HTTP 1.0 Keep-Alive
@@ -226,7 +359,7 @@ final class ResponsePipeline extends AbstractLocalEventEmitter
         return rsp;
     }
     
-    private Response handleUnknownLength(Response rsp) {
+    private Response fixUnknownLength(Response rsp) {
         // Two quick reads; assume "Connection: close" will be present
         if (!rsp.mustShutdownOutputAfterWrite()         &&
             !rsp.mustCloseAfterWrite()                  &&
@@ -241,6 +374,8 @@ final class ResponsePipeline extends AbstractLocalEventEmitter
         }
         return rsp;
     }
+    
+    private boolean sawConnectionClose;
     
     private Response trackConnectionClose(Response in) {
         final Response out;
@@ -293,28 +428,12 @@ final class ResponsePipeline extends AbstractLocalEventEmitter
         return out;
     }
     
+    private Response inFlight;
+    
     private CompletionStage<Long> subscribeToResponse(Response rsp) {
-        if (wroteFinal) {
-            LOG.log(WARNING, () -> "HTTP exchange not active. This response is ignored: " + rsp);
-            return failedStage(ABORT);
-        }
-        if (rsp.isInformational()) {
-            if (exch.getHttpVersion().isLessThan(HTTP_1_1)) {
-                throw new ResponseRejectedException(rsp, PROTOCOL_NOT_SUPPORTED,
-                        exch.getHttpVersion() + " does not support 1XX (Informational) responses.");
-            }
-            if (rsp.statusCode() == ONE_HUNDRED && ++n100continue > 1) {
-                LOG.log(n100continue == 2 ? DEBUG : WARNING, "Ignoring repeated 100 (Continue).");
-                return failedStage(ABORT);
-            }
-        }
-        
         LOG.log(DEBUG, () -> "Subscribing to response: " + rsp);
         inFlight = rsp;
-        if (rsp.isFinal()) {
-            wroteFinal = true;
-            stopTimeout();
-        }
+        wroteFinal = rsp.isFinal();
         
         // Response.body() (app) -> operator -> ResponseBodySubscriber (server)
         // On timeout, operator will cancel upstream and error out downstream.
@@ -332,6 +451,8 @@ final class ResponsePipeline extends AbstractLocalEventEmitter
         Response rsp = inFlight;
         inFlight = null;
         
+        tryRescheduleTimer();
+        
         if (thr != null && thr.getCause() == ABORT) {
             op.complete();
             op.run();
@@ -348,6 +469,16 @@ final class ResponsePipeline extends AbstractLocalEventEmitter
         
         op.complete();
         op.run();
+    }
+    
+    private void tryRescheduleTimer() {
+        // No need to re-schedule if
+        //   we're not going to wait for more responses (wrote final), or
+        //   timer haven't been started yet (timer is null), or
+        //   already timed out (will always end with channel closure)
+        if (!wroteFinal && timer != null && !timedOut) {
+            timer.reschedule(this::timeoutAction);
+        }
     }
     
     private void tryActOnChannelCommands(Response rsp) {
@@ -390,6 +521,7 @@ final class ResponsePipeline extends AbstractLocalEventEmitter
             if (chApi.isOpenForWriting()) {
                 // and no bytes were written on the wire, rollback
                 wroteFinal = false;
+                tryRescheduleTimer();
             }
             emit(Error.INSTANCE, thr, rsp);
         }

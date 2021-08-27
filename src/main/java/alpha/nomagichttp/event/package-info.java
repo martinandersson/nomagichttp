@@ -1,7 +1,7 @@
 /**
  * Events are any type of objects emitted by an {@link
- * alpha.nomagichttp.events.EventEmitter EventEmitter} and observed by a
- * consumer (functional interface). An {@link alpha.nomagichttp.events.EventHub}
+ * alpha.nomagichttp.event.EventEmitter EventEmitter} and observed by a
+ * consumer (functional interface). An {@link alpha.nomagichttp.event.EventHub}
  * can be used to redistribute events from other event emitters and to
  * programmatically emit (aka. "dispatch") events from application code.<p>
  * 
@@ -25,4 +25,4 @@
  * A developer implementing an event emitter or using one to subscribe listeners
  * should never have to worry about performance.
  */
-package alpha.nomagichttp.events;
+package alpha.nomagichttp.event;

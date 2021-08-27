@@ -1,6 +1,7 @@
 package alpha.nomagichttp.internal;
 
 import alpha.nomagichttp.Config;
+import alpha.nomagichttp.event.ResponseSent;
 import alpha.nomagichttp.message.IllegalResponseBodyException;
 import alpha.nomagichttp.message.Response;
 import alpha.nomagichttp.message.ResponseTimeoutException;
@@ -22,15 +23,16 @@ import static java.nio.charset.StandardCharsets.US_ASCII;
 import static java.util.Objects.requireNonNull;
 
 /**
- * Writes a {@link Response} to the child channel.<p>
+ * Writes a {@link Response} to the child channel and emits {@link
+ * ResponseSent}.<p>
  * 
  * The response head will be written lazily, on first item published from
  * upstream or on complete. This means that an error pushed from upstream before
  * the body bytes will give the application a chance to recover with an
  * alternative response.<p>
  * 
- * It is absolutely not anticipated that the application pushes error to the
- * <i>body</i> subscriber for something it wish to resolve through an error
+ * It is absolutely not anticipated that the application pushes an error to the
+ * <i>body</i> subscriber for something it wishes to resolve through an error
  * handler. In fact, the only assumption a failed body publisher should make is
  * that "the head is probably already sent so there's no other response we can
  * produce".<p>
@@ -41,11 +43,11 @@ import static java.util.Objects.requireNonNull;
  * this subscriber signals through the {@link #asCompletionStage() result
  * stage}.<p>
  * 
- * This class do expect to get a {@code ResponseTimeoutException} from the
- * upstream (well, hopefully not), and in fact, asynchronously (by {@link
- * TimeoutOp}). Therefore, the implementation of {@code onError()} can handle
- * calls concurrent to other signals from upstream. In addition, the timeout
- * exception will cause this class to shutdown the write stream (see {@link
+ * This class do expect to get a {@link ResponseTimeoutException} from the
+ * upstream (well, hopefully not); asynchronously by {@link TimeoutOp}.
+ * Therefore, the implementation of {@code onError()} can handle calls
+ * concurrent to other signals from upstream. In addition, the timeout exception
+ * will cause this class to shutdown the write stream (see {@link
  * Config#timeoutIdleConnection()}). All other signals from upstream, however,
  * must be delivered serially.
  * 
@@ -73,15 +75,16 @@ final class ResponseBodySubscriber implements SubscriberAsStage<ByteBuffer, Long
     private final CompletableFuture<Long> resu;
     
     private Flow.Subscription subscription;
-    private boolean pushedHead;
     private int requested;
+    private boolean pushedHead;
+    private long started;
     
     ResponseBodySubscriber(Response resp, HttpExchange exch, DefaultClientChannel chApi) {
-        this.resp  = requireNonNull(resp);
-        this.exch  = requireNonNull(exch);
-        this.chApi = requireNonNull(chApi);
-        this.resu  = new CompletableFuture<>();
-        this.sink  = AnnounceToChannel.write(chApi,
+        this.resp   = requireNonNull(resp);
+        this.exch   = requireNonNull(exch);
+        this.chApi  = chApi;
+        this.resu   = new CompletableFuture<>();
+        this.sink   = AnnounceToChannel.write(chApi,
                 this::afterChannelFinished,
                 chApi.getServer().getConfig().timeoutIdleConnection());
     }
@@ -197,12 +200,15 @@ final class ResponseBodySubscriber implements SubscriberAsStage<ByteBuffer, Long
         //       ByteBuffers and feed the channel slices.
         ByteBuffer b = ByteBuffer.wrap(head.getBytes(US_ASCII));
         pushedHead = true;
+        started = System.nanoTime();
         feedChannel(b);
     }
     
-    private void afterChannelFinished(DefaultClientChannel chApi, long byteCount, Throwable exc) {
+    private void afterChannelFinished(long byteCount, Throwable exc) {
         if (exc == null) {
             assert byteCount > 0;
+            chApi.getServer().events().dispatchLazy(ResponseSent.INSTANCE, () -> resp, () ->
+                    new ResponseSent.Stats(started, System.nanoTime(), byteCount));
             resu.complete(byteCount);
         } else {
             if (byteCount > 0 && chApi.isOpenForWriting()) {

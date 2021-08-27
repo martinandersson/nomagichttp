@@ -11,13 +11,11 @@ import java.net.http.HttpHeaders;
 import java.net.http.HttpRequest;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
-import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.Flow;
 
 import static alpha.nomagichttp.HttpConstants.ReasonPhrase;
 import static alpha.nomagichttp.HttpConstants.StatusCode;
-import static alpha.nomagichttp.message.Response.builder;
 import static java.net.http.HttpRequest.BodyPublisher;
 
 /**
@@ -27,7 +25,8 @@ import static java.net.http.HttpRequest.BodyPublisher;
  * Can be built using a builder:
  * 
  * <pre>{@code
- *   Response r = Response.builder(204, "No Content") // Or use HttpConstants
+ *   // May use HttpConstants.StatusCode/ReasonPhrase instead of int and "string"
+ *   Response r = Response.builder(204, "No Content")
  *                        .header("My-Header", "value")
  *                        .build();
  * }</pre>
@@ -77,8 +76,10 @@ import static java.net.http.HttpRequest.BodyPublisher;
  * the same client. The response can also be shared concurrently to different
  * clients, assuming the {@linkplain Builder#body(Flow.Publisher) body
  * publisher} is thread-safe. If the publisher instance was retrieved using any
- * method provided by the NoMagicHTTP library (e.g. {@link Responses}), then it
- * is fully thread-safe and non-blocking (can be cached and freely reused).<p>
+ * method provided by the NoMagicHTTP library (e.g. {@link
+ * BetterBodyPublishers}), then it is fully thread-safe and non-blocking. All
+ * responses created by {@link Responses} that does not accept the body
+ * publisher as an argument uses a thread-safe body publisher under the hood.<p>
  * 
  * The {@code Response} implementation does not necessarily implement {@code
  * hashCode()} and {@code equals()}.
@@ -102,7 +103,7 @@ public interface Response extends HeaderHolder
      * @see #statusCode()
      */
     static Builder builder(int statusCode) {
-        return DefaultResponse.DefaultBuilder.ROOT.statusCode(statusCode);
+        return Responses.status(statusCode).toBuilder();
     }
     
     /**
@@ -116,7 +117,7 @@ public interface Response extends HeaderHolder
      * @throws NullPointerException if {@code reasonPhrase} is {@code null}
      */
     static Builder builder(int statusCode, String reasonPhrase) {
-        return builder(statusCode).reasonPhrase(reasonPhrase);
+        return Responses.status(statusCode, reasonPhrase).toBuilder();
     }
     
     /**
@@ -215,39 +216,40 @@ public interface Response extends HeaderHolder
     boolean isBodyEmpty();
     
     /**
-     * Command the server to shutdown the client channel's output/write stream
-     * after <i>first attempt</i> to send the response.<p>
-     * 
-     * The command will also cause the server to close the channel at the end of
-     * the HTTP exchange (after an in-flight request and the processing of it
-     * completes).<p>
+     * Command the server to shut down the client channel's output/write stream
+     * after attempting to send the response.<p>
      * 
      * The write stream will close whether or not the response was successfully
-     * transmitted. So, on failure, an alternative subsequent response will not
-     * succeed. If it is desired to close the connection only after a successful
+     * transmitted. Only if it was transmitted successfully will an in-flight
+     * request also be allowed to complete. An error will not propagate to the
+     * error handler and the channel will be immediately closed.<p>
+     * 
+     * If it is desired to close the connection only after a successful
      * request and response pair (a so called "graceful close"), then set the
      * "Connection: close" header.<p>
      * 
-     * If the application desires to also stop the read stream no matter if a
-     * client-request is in-flight, use {@link #mustCloseAfterWrite()}.<p>
+     * If the application wishes to ensure the imminent shut down of the read
+     * stream as well, use {@link #mustCloseAfterWrite()}.<p>
      * 
      * The server manages the client channel's life-cycle and so, a {@code
      * false} returned value has no effect.
      * 
-     * @return {@code true} if the server must shutdown the output/write stream,
-     *         otherwise {@code false}
+     * @return {@code true} if the server must shut down the output/write
+     *         stream, otherwise {@code false}
      * 
      * @see ClientChannel#shutdownOutput()
      */
     boolean mustShutdownOutputAfterWrite();
     
     /**
-     * Command the server to close the client channel after first attempt to
-     * send the response.<p>
+     * Command the server to close the client channel after attempting to send
+     * the response.<p>
      * 
-     * Returning {@code true} will forcefully close the channel. A client
-     * request in-flight will fail. In order to end the channel more gracefully,
-     * signal {@link #mustShutdownOutputAfterWrite()} instead.<p>
+     * The channel will close whether or not the response was successfully
+     * transmitted. And so, an error will not propagate to the error handler.<p>
+     * 
+     * A client request in-flight will fail. In order to end the channel more
+     * gracefully, signal {@link #mustShutdownOutputAfterWrite()} instead.<p>
      * 
      * The application can always kill the channel immediately and abruptly by
      * calling {@link ClientChannel#close()} instead of passing a lazy command
@@ -258,30 +260,17 @@ public interface Response extends HeaderHolder
      * 
      * @return {@code true} if the server must close the client channel,
      *         otherwise {@code false}
-     * 
-     * @see ClientChannel#close()
      */
     boolean mustCloseAfterWrite();
     
     /**
-     * Returns this response object boxed in a completed stage.<p>
+     * Returns this response object boxed in an already completed stage.
      * 
-     * Useful for synchronous request handler implementations that are able to
-     * build the response immediately without blocking.
-     * 
-     * @implSpec
-     * The default implementation is equivalent to:
-     * <pre>{@code
-     *     return CompletableFuture.completedStage(this);
-     * }</pre>
-     * 
-     * @return this response object boxed in a completed stage
+     * @return this response object boxed in an already completed stage
      * 
      * @see HttpServer
      */
-    default CompletionStage<Response> completedStage() {
-        return CompletableFuture.completedStage(this);
-    }
+    CompletionStage<Response> completedStage();
     
     /**
      * Returns the builder instance that built this response.<p>
@@ -487,10 +476,10 @@ public interface Response extends HeaderHolder
          * Enable the {@code must-shutdown-output-after-write} command. If
          * never set, will default to {@code false}.<p>
          * 
-         * If {@code enabled} is {@code true}, the builder will also set (or
-         * silently replace) a {@code Connection: close} header. If {@code
-         * enabled} is {@code false}, the header is removed but only if it has
-         * value "close".
+         * If {@code enabled} is {@code true}, the builder will also set a
+         * {@code Connection: close} header (replacing the old value if it
+         * exists). If {@code enabled} is {@code false}, the header is removed
+         * but only if it has value "close".
          * 
          * @param   enabled true or false
          * @return  a new builder representing the new state
@@ -502,10 +491,10 @@ public interface Response extends HeaderHolder
          * Enable the {@code must-close-after-write} command. If never set, will
          * default to {@code false}.<p>
          * 
-         * If {@code enabled} is {@code true}, the builder will also set (or
-         * silently replace) a {@code Connection: close} header. If {@code
-         * enabled} is {@code false}, the header is removed but only if it has
-         * value "close".
+         * If {@code enabled} is {@code true}, the builder will also set a
+         * {@code Connection: close} header (replacing the old value if it
+         * exists). If {@code enabled} is {@code false}, the header is removed
+         * but only if it has value "close".
          * 
          * @param   enabled true or false
          * @return  a new builder representing the new state
@@ -521,12 +510,13 @@ public interface Response extends HeaderHolder
          * @return a response
          * 
          * @throws IllegalResponseBodyException
-         *             if status code is any one of 1XX (Informational), 204 (No
-         *             Content) or 304 (Not Modified) - and, a body is presumably
-         *             not empty (see {@link Response#isBodyEmpty()})
+         *             if a body is presumably not empty (see {@link
+         *             Response#isBodyEmpty()}) and the status code is any one
+         *             1XX (Informational), 204 (No Content) or 304 (Not
+         *             Modified) 
          * 
          * @throws IllegalStateException
-         *             if any stream of the channel or the channel itself has
+         *             if the write stream of the channel or the channel has
          *             been marked to shutdown/close and status-code is 1XX
          *             (Informational)
          * 

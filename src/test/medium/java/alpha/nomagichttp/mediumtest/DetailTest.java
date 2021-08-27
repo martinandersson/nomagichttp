@@ -1,9 +1,13 @@
 package alpha.nomagichttp.mediumtest;
 
+import alpha.nomagichttp.event.AbstractByteCountedStats;
+import alpha.nomagichttp.event.RequestHeadReceived;
+import alpha.nomagichttp.event.ResponseSent;
 import alpha.nomagichttp.handler.RequestHandler;
 import alpha.nomagichttp.message.PooledByteBufferHolder;
 import alpha.nomagichttp.message.Response;
 import alpha.nomagichttp.message.Responses;
+import alpha.nomagichttp.route.NoRouteFoundException;
 import alpha.nomagichttp.testutil.AbstractRealTest;
 import alpha.nomagichttp.testutil.IORunnable;
 import alpha.nomagichttp.util.Publishers;
@@ -12,10 +16,13 @@ import org.junit.jupiter.api.Test;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.Channel;
-import java.nio.charset.StandardCharsets;
+import java.time.Duration;
+import java.time.Instant;
+import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Flow;
 import java.util.function.Consumer;
+import java.util.function.ToLongBiFunction;
 
 import static alpha.nomagichttp.HttpConstants.HeaderKey.CONTENT_LENGTH;
 import static alpha.nomagichttp.handler.RequestHandler.GET;
@@ -34,6 +41,10 @@ import static alpha.nomagichttp.util.BetterBodyPublishers.ofByteArray;
 import static java.lang.System.Logger.Level.DEBUG;
 import static java.lang.System.Logger.Level.WARNING;
 import static java.nio.charset.StandardCharsets.US_ASCII;
+import static java.time.Duration.ZERO;
+import static java.time.Duration.between;
+import static java.time.Instant.now;
+import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
@@ -59,8 +70,8 @@ class DetailTest extends AbstractRealTest
         
         final String resHead =
             "HTTP/1.1 200 OK"                         + CRLF +
-            "Content-Type: text/plain; charset=utf-8" + CRLF +
-            "Content-Length: 3"                       + CRLF + CRLF;
+            "Content-Length: 3"                       + CRLF +
+            "Content-Type: text/plain; charset=utf-8" + CRLF + CRLF;
         
         Channel ch = client().openConnection();
         try (ch) {
@@ -82,8 +93,8 @@ class DetailTest extends AbstractRealTest
             
             assertThat(res).isEqualTo(
                 "HTTP/1.1 200 OK"                         + CRLF +
-                "Content-Type: text/plain; charset=utf-8" + CRLF +
-                "Content-Length: 5"                       + CRLF + CRLF +
+                "Content-Length: 5"                       + CRLF +
+                "Content-Type: text/plain; charset=utf-8" + CRLF + CRLF +
                 
                 "false");
         };
@@ -142,8 +153,8 @@ class DetailTest extends AbstractRealTest
             "HTTP/1.1 100 Continue"                   + CRLF + CRLF +
             
             "HTTP/1.1 200 OK"                         + CRLF +
-            "Content-Type: text/plain; charset=utf-8" + CRLF +
-            "Content-Length: 3"                       + CRLF + CRLF +
+            "Content-Length: 3"                       + CRLF +
+            "Content-Type: text/plain; charset=utf-8" + CRLF + CRLF +
             
             "end");
     }
@@ -235,8 +246,8 @@ class DetailTest extends AbstractRealTest
             "ID: 2"                                   + CRLF + CRLF +
             
             "HTTP/1.1 200 OK"                         + CRLF +
-            "Content-Type: text/plain; charset=utf-8" + CRLF +
-            "Content-Length: 4"                       + CRLF + CRLF +
+            "Content-Length: 4"                       + CRLF +
+            "Content-Type: text/plain; charset=utf-8" + CRLF + CRLF +
             
             "done");
     }
@@ -259,8 +270,8 @@ class DetailTest extends AbstractRealTest
         
         byte[] expHead =
                 ("HTTP/1.1 200 OK"                       + CRLF +
-                "Content-Type: application/octet-stream" + CRLF +
-                "Content-Length: 16385"                  + CRLF + CRLF)
+                "Content-Length: 16385"                  + CRLF +
+                "Content-Type: application/octet-stream" + CRLF + CRLF)
                 .getBytes(US_ASCII);
         
         ByteBuffer merged = ByteBuffer.allocate(expHead.length + rspBody.length);
@@ -286,8 +297,8 @@ class DetailTest extends AbstractRealTest
             "GET / HTTP/1.1"                          + CRLF + CRLF, "hello");
         assertThat(rsp1).isEqualTo(
             "HTTP/1.1 200 OK"                         + CRLF +
-            "Content-Type: text/plain; charset=utf-8" + CRLF +
-            "Content-Length: 5"                       + CRLF + CRLF +
+            "Content-Length: 5"                       + CRLF +
+            "Content-Type: text/plain; charset=utf-8" + CRLF + CRLF +
             
             "hello");
         
@@ -298,10 +309,55 @@ class DetailTest extends AbstractRealTest
                     "text/plain; charset=iso-8859-1"  + CRLF + CRLF, "hello");
         assertThat(rsp2).isEqualTo(
             "HTTP/1.1 200 OK"                         + CRLF +
-            "Content-Type: text/plain; charset=iso-8859-1" + CRLF +
-            "Content-Length: 5"                       + CRLF + CRLF +
+            "Content-Length: 5"                       + CRLF +
+            "Content-Type: text/plain; charset=iso-8859-1" + CRLF + CRLF +
             
             "hello");
+    }
+    
+    @Test
+    void event_RequestHeadReceived() throws IOException, InterruptedException {
+        event_engine(RequestHeadReceived.class, (req, rsp) -> req.getBytes(US_ASCII).length);
+    }
+    
+    @Test
+    void event_ResponseSent() throws IOException, InterruptedException {
+        event_engine(ResponseSent.class, (req, rsp) -> rsp.getBytes(US_ASCII).length);
+    }
+    
+    private void event_engine(Class<?> eventType, ToLongBiFunction<String, String> exchToExpByteCnt)
+            throws IOException, InterruptedException
+    {
+        // Save event locally
+        var stats = new ArrayBlockingQueue<AbstractByteCountedStats>(1);
+        server().events().on(eventType, (ev, thing, s) ->
+                stats.add((AbstractByteCountedStats) s));
+        
+        final Instant then;
+        final String req = "GET / HTTP/1.1" + CRLF;
+        final String rsp;
+        Channel ch = client().openConnection();
+        try (ch) {
+            client().write(req);
+            then = now();
+            rsp = client().writeReadTextUntilNewlines(CRLF);
+        }
+        
+        assertThat(rsp).isEqualTo(
+            "HTTP/1.1 404 Not Found" + CRLF +
+            "Content-Length: 0"      + CRLF + CRLF);
+        
+        assertThatServerErrorObservedAndLogged()
+                .isExactlyInstanceOf(NoRouteFoundException.class);
+        
+        var s = stats.poll(1, SECONDS);
+        // Can not compute this any earlier, directly after response.
+        // No guarantee the event has happened at that point.
+        final Duration expDur = between(then, now());
+        
+        assertThat(s.elapsedDuration()).isGreaterThanOrEqualTo(ZERO);
+        assertThat(s.elapsedDuration()).isLessThanOrEqualTo(expDur);
+        assertThat(s.bytes()).isEqualTo(exchToExpByteCnt.applyAsLong(req + CRLF, rsp));
     }
     
     private static class AfterByteTargetStop implements Flow.Subscriber<PooledByteBufferHolder>
