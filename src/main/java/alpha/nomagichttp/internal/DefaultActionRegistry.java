@@ -210,8 +210,10 @@ final class DefaultActionRegistry implements ActionRegistry
         
         trails.add(tree.read());
         
-        // TODO: Would like to use RandomAccess
-        for (String seg : rt.segments()) {
+        List<String> segments = rt.segments();
+        assert segments instanceof RandomAccess;
+        for (int i = 0; i < segments.size(); ++i) {
+            var seg = segments.get(i);
             if (trails.isEmpty()) {
                 // All segments must match
                 break;
