@@ -124,10 +124,10 @@ public interface Request extends HeaderHolder, AttributeHolder
      * begins with a '/'. Query parameters are always optional. Read more in
      * {@link Route}.<p>
      * 
-     * A query value will be assumed to end with a space- or ampersand ('&amp;')
-     * character. In particular, please note that the semicolon ('&#59;') has no
-     * special meaning; it will <i>not</i> be processed as a separator (contrary
-     * to
+     * A query value will be assumed to end with a space, ampersand ('&amp;') or
+     * number sign ('&#35;') character. In particular, please note that the
+     * semicolon ('&#59;') has no special meaning; it will <i>not</i> be
+     * processed as a separator (contrary to
      * <a href="https://www.w3.org/TR/1999/REC-html401-19991224/appendix/notes.html#h-B.2.2">W3</a>,
      * we argue that magic is the trouble).<p>
      * 
