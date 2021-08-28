@@ -25,7 +25,6 @@ import java.util.concurrent.CompletionException;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.BiConsumer;
-import java.util.function.Consumer;
 
 import static alpha.nomagichttp.HttpConstants.HeaderKey.CONNECTION;
 import static alpha.nomagichttp.HttpConstants.HeaderKey.EXPECT;
@@ -522,7 +521,7 @@ final class HttpExchange
         
         private void usingDefault(Throwable t) {
             try {
-                invokeHandler(DEFAULT, t);
+                DEFAULT.apply(t, chApi, reqFat);
             } catch (Throwable next) {
                 next.addSuppressed(t);
                 unexpected(next);
@@ -532,7 +531,7 @@ final class HttpExchange
         private void usingHandlers(Throwable t) {
             for (ErrorHandler h : handlers) {
                 try {
-                    invokeHandler(h, t);
+                    h.apply(t, chApi, reqFat);
                     return;
                 } catch (Throwable next) {
                     if (t != next) {
@@ -544,10 +543,6 @@ final class HttpExchange
             }
             // All handlers opted out
             usingDefault(t);
-        }
-        
-        private void invokeHandler(ErrorHandler eh, Throwable t) throws Throwable {
-            eh.apply(t, chApi, reqFat, chain.getRequestHandler());
         }
     }
     

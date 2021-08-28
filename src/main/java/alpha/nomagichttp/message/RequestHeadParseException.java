@@ -1,6 +1,5 @@
 package alpha.nomagichttp.message;
 
-// TODO: Should be treated as 400 Bad Request by default error handler.
 // TODO: We will likely need a BadRequestException for when parsing completes in an acceptable fashion but is semantically not correct.
 
 /**

@@ -257,32 +257,3 @@ HTTP/1.1 204 No Content
 ```
 
 [7-1]: src/main/java/alpha/nomagichttp/examples/KeepClientInformed.java
-
-### Retry request on error
-
-This example demonstrates error handling and will re-execute the request handler
-on a particular exception.
-
-See code: [src/main/java/.../RetryRequestOnError.java][8-1]
-
-Run:
-
-```console
-foo@bar:~$ java --class-path=$JAR $PKG.RetryRequestOnError
-Listening on port 8080.
-```
-
-In a new terminal, run:
-
-```console
-foo@bar:~$ curl -i localhost:8080
-HTTP/1.1 204 No Content
-```
-
-In the server terminal, you should see text similar to this:
-```console
-Handler invoked 18:32:08.130 and will crash!
-Handler invoked 18:32:08.197 and will return 204 No Content
-```
-
-[8-1]: src/main/java/alpha/nomagichttp/examples/RetryRequestOnError.java

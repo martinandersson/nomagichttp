@@ -353,14 +353,14 @@ public abstract class AbstractRealTest
     protected final HttpServer server() throws IOException {
         if (server == null) {
             errors = new LinkedBlockingDeque<>();
-            ErrorHandler collectAndExecute = (t, channel, r, h) -> {
-                errors.add(t);
+            ErrorHandler collectAndExecute = (thr, ch, req) -> {
+                errors.add(thr);
                 onError.forEach((k, v) -> {
-                    if (k.isInstance(t)) {
-                        v.forEach(action -> action.accept(channel));
+                    if (k.isInstance(thr)) {
+                        v.forEach(action -> action.accept(ch));
                     }
                 });
-                throw t;
+                throw thr;
             };
             Config arg1 = config != null ? config : DEFAULT;
             ErrorHandler[] arg2 = custom != null ?

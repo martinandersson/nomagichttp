@@ -6,12 +6,12 @@ import alpha.nomagichttp.message.Request;
 import alpha.nomagichttp.route.Route;
 
 /**
- * A marker interface documenting the receiver of a unique {@link Request}
- * object instance.<p>
+ * A marker interface documenting the functional receiver of a unique {@link
+ * Request} object instance.<p>
  * 
- * The receiver receives a unique request object instance for the sole reason
- * that the receiver may have been associated with a unique path pattern, which
- * affects path parameters available in the {@link Request#target()}.<p>
+ * The function receives a receiver-unique request object instance for the sole
+ * reason that the receiver may have been associated with a unique path pattern,
+ * which affects path parameters available in the {@link Request#target()}.<p>
  * 
  * For example, although request "/hello" matches {@link BeforeAction} "/:foo"
  * and {@link Route} "/:bar", the former will have to use the key "foo" when
@@ -23,11 +23,11 @@ import alpha.nomagichttp.route.Route;
  * route's request handler will observe the value "world" using the same key.<p>
  * 
  * A unique request instance per executed server resource eliminates bugs that
- * could otherwise have manifested themselves if the request object is operated
- * upon asynchronously. E.g., a before-action which asynchronously logs a path
- * parameter from a reference of the request instance passed to the action, will
- * always observe the expected path parameter value even if the invocation chain
- * has already proceeded to the request handler.<p>
+ * could otherwise have manifested themselves if the request object is accessed
+ * asynchronously. E.g., a before-action which asynchronously logs a path
+ * parameter from a saved reference of the request instance passed to the
+ * action, will always observe the expected path parameter value even if the
+ * invocation chain has already proceeded to the request handler.<p>
  * 
  * Rest assured that all other components of the request object is shared by all
  * request instances created throughout the HTTP exchange, most importantly the

@@ -103,7 +103,8 @@ public final class Headers
      * @param  headers source to parse from
      * @return parsed values (may be empty, or stream has at least one value)
      * 
-     * @throws MediaTypeParseException see {@link MediaType#parse(CharSequence)}}
+     * @throws BadHeaderException
+     *             if parsing failed (cause set to {@link MediaTypeParseException})
      * 
      * @see HttpConstants.HeaderKey#ACCEPT
      */
@@ -112,9 +113,13 @@ public final class Headers
         if (l.isEmpty()) {
             return empty();
         }
-        return Optional.of(l.stream()
-                .flatMap(v -> stream(split(v, ',', '"')))
-                .map(MediaType::parse));
+        try {
+            return Optional.of(l.stream()
+                    .flatMap(v -> stream(split(v, ',', '"')))
+                    .map(MediaType::parse));
+        } catch (MediaTypeParseException e) {
+            throw new BadHeaderException("Failed to parse " + ACCEPT + " header.", e);
+        }
     }
     
     /**
@@ -128,11 +133,9 @@ public final class Headers
      * @param  headers source to parse from
      * @return parsed value (never {@code null})
      * 
-     * @throws MediaTypeParseException
-     *           see {@link MediaType#parse(CharSequence)}}
-     * 
      * @throws BadHeaderException
-     *           if headers has multiple Content-Type keys
+     *           if headers has multiple Content-Type keys, or
+     *           if parsing failed (cause set to {@link MediaTypeParseException})
      * 
      * @see HttpConstants.HeaderKey#CONTENT_TYPE
      */
@@ -143,7 +146,11 @@ public final class Headers
             return empty();
         }
         else if (values.size() == 1) {
-            return Optional.of(MediaType.parse(values.get(0)));
+            try {
+                return Optional.of(MediaType.parse(values.get(0)));
+            } catch (MediaTypeParseException e) {
+                throw new BadHeaderException("Failed to parse " + CONTENT_TYPE + " header.", e);
+            }
         }
         
         throw new BadHeaderException("Multiple " + CONTENT_TYPE + " values in request.");

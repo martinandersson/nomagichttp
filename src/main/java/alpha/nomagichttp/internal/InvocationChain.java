@@ -49,8 +49,6 @@ final class InvocationChain extends AbstractLocalEventEmitter
     private final DefaultActionRegistry actions;
     private final DefaultRouteRegistry routes;
     private final ClientChannel chApi;
-    // Not volatile for same reasons that fields in HttpExchange are not volatile
-    private RequestHandler handler;
     
     InvocationChain(DefaultActionRegistry actions, DefaultRouteRegistry routes, ClientChannel chApi) {
         assert actions != null;
@@ -59,19 +57,6 @@ final class InvocationChain extends AbstractLocalEventEmitter
         this.actions = actions;
         this.routes  = routes;
         this.chApi   = chApi;
-    }
-    
-    /**
-     * Returns the matched request handler, or {@code null} if none has [yet]
-     * been matched.<p>
-     * 
-     * If the chain was aborted by a before-method, or resolving a request
-     * handler failed, then this method returns {@code null}.
-     * 
-     * @return the matched request handler
-     */
-    RequestHandler getRequestHandler() { // TODO: Also this replace with event
-        return handler;
     }
     
     /**
@@ -121,8 +106,8 @@ final class InvocationChain extends AbstractLocalEventEmitter
         Route r = routes.lookup(req.target());
         var real = new DefaultRequest(ver, req, r.segments());
         InvocationChain.super.emit(RequestCreated.INSTANCE, real, null);
-        handler = findRequestHandler(req.head(), r);
-        handler.logic().accept(real, chApi);
+        findRequestHandler(req.head(), r)
+            .logic().accept(real, chApi);
     }
     
     private static RequestHandler findRequestHandler(RequestHead rh, Route r) {
