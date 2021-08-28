@@ -1,23 +1,25 @@
 package alpha.nomagichttp.internal;
 
+import alpha.nomagichttp.ReceiverOfUniqueRequestObject;
 import alpha.nomagichttp.route.Route;
 import alpha.nomagichttp.util.PercentDecoder;
 
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.RandomAccess;
 
+import static alpha.nomagichttp.util.PercentDecoder.decode;
 import static java.util.Collections.unmodifiableList;
+import static java.util.Collections.unmodifiableMap;
 import static java.util.stream.Collectors.toCollection;
+import static java.util.stream.Collectors.toMap;
 
 /**
- * A thin version of a request target.<p>
- * 
- * This version is constructed at an early stage of the HTTP exchange and is
- * primarily used to iterate segments of the request path, such as when looking
- * up resources from registries. The real {@link RequestTarget} is built after
- * the lookup and will need access to the matched resource's declared segments
- * for processing resource-specific path parameters.
+ * An almost complete version of {@link RequestTarget}. The one thing missing is
+ * support for path parameters as these are unique per {@link
+ * ReceiverOfUniqueRequestObject}.
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  */
@@ -113,15 +115,15 @@ final class SkeletonRequestTarget
         return new SkeletonRequestTarget(rt, keep, query, fragment);
     }
     
-    private final String rt;
+    private final String raw;
     private final List<String> segmentsNotPercentDecoded;
     private final String query;
     private final String fragment;
     
     private <L extends List<String> & RandomAccess> SkeletonRequestTarget(
-            String rt, L segmentsNotPercentDecoded, String query, String fragment)
+            String raw, L segmentsNotPercentDecoded, String query, String fragment)
     {
-        this.rt = rt;
+        this.raw = raw;
         this.segmentsNotPercentDecoded = unmodifiableList(segmentsNotPercentDecoded);
         this.query = query;
         assert !query.startsWith("?");
@@ -135,7 +137,7 @@ final class SkeletonRequestTarget
      * @return see JavaDoc
      */
     String raw() {
-        return rt;
+        return raw;
     }
     
     private List<String> segmentsPercentDecoded;
@@ -166,15 +168,57 @@ final class SkeletonRequestTarget
         return segmentsNotPercentDecoded;
     }
     
+    private Map<String, List<String>> queryMapPercentDecoded;
+    
     /**
-     * Returns the raw query string.<p>
+     * Equivalent to {@link RequestTarget#queryMap()}.
      * 
-     * The returned string does not start with "?".
-     * 
-     * @return the raw query string
+     * @return see JavaDoc
      */
-    String query() {
-        return query;
+    Map<String, List<String>> queryMap() {
+        Map<String, List<String>> m = queryMapPercentDecoded;
+        return m != null ? m : (queryMapPercentDecoded = decodeMap());
+    }
+    
+    private Map<String, List<String>> decodeMap() {
+        var decoded = queryMapRaw().entrySet().stream().collect(toMap(
+                e -> decode(e.getKey()),
+                e -> decode(e.getValue()),
+                (ign,ored) -> { throw new AssertionError("Insufficient JDK API"); },
+                LinkedHashMap::new));
+        return unmodifiableMap(decoded);
+    }
+    
+    private Map<String, List<String>> queryMapNotPercentDecoded;
+    
+    /**
+     * Equivalent to {@link RequestTarget#queryMapRaw()}.
+     * 
+     * @return see JavaDoc
+     */
+    Map<String, List<String>> queryMapRaw() {
+        Map<String, List<String>> m = queryMapNotPercentDecoded;
+        return m != null ? m : (queryMapNotPercentDecoded = parseQuery());
+    }
+    
+    private Map<String, List<String>> parseQuery() {
+        if (query.isEmpty()) {
+            return Map.of();
+        }
+        
+        final var m = new LinkedHashMap<String, List<String>>();
+        String[] pairs = query.split("&");
+        for (String p : pairs) {
+            int i = p.indexOf('=');
+            // note: value may be the empty string!
+            String k = p.substring(0, i == -1 ? p.length(): i),
+                   v = i == -1 ? "" : p.substring(i + 1);
+            m.computeIfAbsent(k, key -> new ArrayList<>(1)).add(v);
+        }
+        m.entrySet().forEach(e ->
+                e.setValue(unmodifiableList(e.getValue())));
+        
+        return unmodifiableMap(m);
     }
     
     /**
