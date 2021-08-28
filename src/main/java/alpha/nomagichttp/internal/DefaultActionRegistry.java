@@ -82,7 +82,7 @@ final class DefaultActionRegistry implements ActionRegistry
                 throw new ActionPatternInvalidException(e);
             }
         }
-        return b.asIterable();
+        return b.asIterableNoCopy();
     }
     
     private static <W extends AbstractWrapper<?>> void add(Tree<Set<W>> tree, W wrapped) {
@@ -128,7 +128,9 @@ final class DefaultActionRegistry implements ActionRegistry
         A action();
         
         /**
-         * Returns the segments (pattern) used to register the action with.
+         * Returns the segments (pattern) used to register the action with.<p>
+         * 
+         * The returned iterable is unmodifiable and effectively immutable.
          * 
          * @return the segments (pattern) used to register the action with.
          */

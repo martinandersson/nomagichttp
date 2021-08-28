@@ -2,7 +2,7 @@ package alpha.nomagichttp.handler;
 
 import alpha.nomagichttp.Config;
 import alpha.nomagichttp.HttpConstants;
-import alpha.nomagichttp.action.ActionRegistry;
+import alpha.nomagichttp.ReceiverOfUniqueRequestObject;
 import alpha.nomagichttp.action.AfterAction;
 import alpha.nomagichttp.action.BeforeAction;
 import alpha.nomagichttp.message.BadHeaderException;
@@ -25,7 +25,6 @@ import alpha.nomagichttp.route.AmbiguousHandlerException;
 import alpha.nomagichttp.route.MediaTypeNotAcceptedException;
 import alpha.nomagichttp.route.MediaTypeUnsupportedException;
 import alpha.nomagichttp.route.MethodNotAllowedException;
-import alpha.nomagichttp.route.NoHandlerResolvedException;
 import alpha.nomagichttp.route.NoRouteFoundException;
 
 import java.util.concurrent.CompletionException;
@@ -68,22 +67,21 @@ import static java.util.stream.Stream.of;
  * 
  * Specifically, the error handler may be called for:<p>
  * 
- * 1) Exceptions occurring on the request thread from after the point when the
- * server has begun receiving and parsing a request message until when the
- * {@link RequestHandler} invocation has returned.<p>
+ * 1) Exceptions occurring while receiving and parsing a request message.<p>
  * 
- * 2) Exceptions that completes exceptionally the {@code
- * CompletionStage<Response>} written to the {@link
+ * 2) Exceptions from the execution of {@link BeforeAction}s, {@link
+ * RequestHandler}s and {@link AfterAction}s.<p>
+ * 
+ * 3) Exceptions that complete exceptionally the {@code
+ * CompletionStage<Response>} given to the {@link
  * ClientChannel#write(Response) ClientChannel} and those returned from an
  * {@link AfterAction}, but only if a final response has not yet been sent.<p>
  * 
- * 3) Exceptions signalled to the server's {@code Flow.Subscriber} of the {@code
- * Response.body()} but only if the body publisher has not yet published any
+ * 4) Exceptions signalled to the server's {@code Flow.Subscriber} of the {@link
+ * Response#body()} but only if the body publisher has not yet published any
  * bytebuffers before the error was signalled. It doesn't make much sense trying
  * to recover the situation after the point where a response has already begun
  * transmitting back to the client.<p>
- * 
- * 4) Exceptions thrown from {@link BeforeAction}s and {@link AfterAction}s.<p>
  * 
  * The server will <strong>not</strong> call error handlers for errors that are
  * not directly involved in the HTTP exchange or for errors that occur
@@ -114,7 +112,7 @@ import static java.util.stream.Stream.of;
  * This design was deliberately crafted to enable writing error handlers using
  * Java's standard try-catch block:
  * <pre>
- *     ErrorHandler eh = (throwable, channel, request, requestHandler) -{@literal >} {
+ *     ErrorHandler eh = (throwable, channel, request) -{@literal >} {
  *         try {
  *             throw throwable;
  *         } catch (ExpectedException e) {
@@ -139,8 +137,7 @@ import static java.util.stream.Stream.of;
  * @author Martin Andersson (webmaster at martinandersson.com)
  * 
  * @see Config#maxErrorRecoveryAttempts() 
- * @see ErrorHandler#apply(Throwable, ClientChannel, Request, RequestHandler)
- * @see ErrorHandlers
+ * @see ErrorHandler#apply(Throwable, ClientChannel, Request)
  */
 @FunctionalInterface
 public interface ErrorHandler
@@ -148,51 +145,32 @@ public interface ErrorHandler
     /**
      * Optionally handles an exception.<p>
      * 
-     * The first two arguments ({@code Throwable} and {@code ClientChannel})
-     * will always be non-null. The last two arguments ({@code Request} and
-     * {@code RequestHandler}) may be null or non-null depending on how much
-     * progress was made in the HTTP exchange before the error occurred.<p>
-     * 
-     * If the request argument is null, then the request handler argument will
-     * absolutely also be null because the server never got so far as to resolve
-     * and/or invoke the request handler.<p>
-     * 
-     * For each request-consuming entity that the server invokes (before-action,
-     * route/request handler and after-action) a new request object is created.
-     * This is because each entity may declare unique path parameters (see
-     * {@link ActionRegistry}). The last such object created within the HTTP
-     * exchange is the one passed to this error handler. I.e. the request
-     * parameters' keys and values will be dependent on whichever entity was
-     * invoked prior to the crash.<p>
-     * 
-     * The true nature of the error can often only be determined by looking into
-     * the error object, which also might reveal what to expect from the
-     * succeeding arguments. For example, if {@code thr} is an instance of
-     * {@link NoHandlerResolvedException}, then the request object was built and
-     * will not be null, but since the request handler wasn't resolved then the
-     * request handler argument is going to be null.<p>
-     * 
-     * It is a design goal of the NoMagicHTTP library to have each exception
-     * type provide whatever API necessary to investigate and possibly resolve
-     * the error. For example, {@link NoRouteFoundException} provides the path
-     * for which no route was found, which could potentially be used by the
-     * application as a basis for a redirect.<p>
+     * The {@code Throwable} and {@code ClientChannel} arguments will always be
+     * non-null. The {@code Request} object may be null depending on how much
+     * progress was made in the HTTP exchange before the error occurred. For
+     * example, if the error is a {@link RequestHeadParseException}, then the
+     * request object will obviously not be present.<p>
      * 
      * If the error which the server caught is a {@link CompletionException},
      * then the server will attempt to recursively unpack a non-null cause and
-     * pass the cause to the error handler instead.
+     * pass the cause to the error handler instead.<p>
+     * 
+     * The {@link ErrorHandler} interface does not extend {@link
+     * ReceiverOfUniqueRequestObject}. The error handler will receive the last
+     * request object created within the HTTP exchange, if available. I.e. the
+     * request's path parameters' keys and values is dependent on whichever
+     * entity was invoked last prior to the crash; generally speaking, they are
+     * nondeterministic and unsafe to access.
      * 
      * @param thr the error (never null)
      * @param ch client channel (never null)
      * @param req request object (may be null)
-     * @param rh  request handler object (may be null)
      * 
      * @throws Throwable may be {@code thr} or a new one
      * 
      * @see ErrorHandler
      */
-    // TODO: Reduce args down to thr + Extra, with Optional<Response> (this branch)
-    void apply(Throwable thr, ClientChannel ch, Request req, RequestHandler rh) throws Throwable;
+    void apply(Throwable thr, ClientChannel ch, Request req) throws Throwable;
     
     /**
      * Is the default error handler used by the server if no other
@@ -289,14 +267,7 @@ public interface ErrorHandler
      *   </tr>
      *   <tr>
      *     <th scope="row"> {@link MediaTypeParseException} </th>
-     *     <td> Request handler argument is null </td>
-     *     <td> No </td>
-     *     <td> {@link Responses#badRequest()} <br>
-     *          Fault assumed to be the clients'.</td>
-     *   </tr>
-     *   <tr>
-     *     <th scope="row"> {@link MediaTypeParseException} </th>
-     *     <td> Request handler argument is not null </td>
+     *     <td> None </td>
      *     <td> Yes </td>
      *     <td> {@link Responses#internalServerError()} <br>
      *          Fault assumed to be the applications'.</td>
@@ -364,7 +335,7 @@ public interface ErrorHandler
      *   </tbody>
      * </table>
      */
-    ErrorHandler DEFAULT = (thr, ch, req, rh) -> {
+    ErrorHandler DEFAULT = (thr, ch, req) -> {
         final Response res;
         try {
             throw thr;
@@ -400,14 +371,7 @@ public interface ErrorHandler
         } catch (MediaTypeUnsupportedException e) {
             log(thr);
             res = unsupportedMediaType();
-        } catch (MediaTypeParseException e) {
-            if (rh == null) {
-                res = badRequest();
-            } else {
-                log(thr);
-                res = internalServerError();
-            }
-        } catch (IllegalResponseBodyException e) {
+        } catch (MediaTypeParseException | IllegalResponseBodyException e) {
             log(thr);
             res = internalServerError();
         } catch (EndOfStreamException e) {

@@ -102,7 +102,7 @@ class AfterActionTest extends AbstractRealTest
         // 3. after-action crashes with IllegalStateException
         // 4. custom error handler writes 503
         
-        usingErrorHandler((thr, ch, req, han) -> {
+        usingErrorHandler((thr, ch, req) -> {
             try {
                 throw thr;
             } catch (IllegalStateException e) {

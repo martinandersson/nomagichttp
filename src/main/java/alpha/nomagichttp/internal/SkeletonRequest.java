@@ -6,8 +6,9 @@ import alpha.nomagichttp.util.Attributes;
 /**
  * A thin version of a request.<p>
  * 
- * This version is constructed at an early stage of the HTTP exchange. It is
- * immutable and remains the same throughout the exchange.
+ * This version is constructed at an early stage of the HTTP exchange. Apart
+ * from entries in the contained attributes, the instance itself is immutable
+ * and remains the same throughout the exchange.
  * 
  * @author Martin Andersson (webmaster@martinandersson.com)
  * @see DefaultRequest

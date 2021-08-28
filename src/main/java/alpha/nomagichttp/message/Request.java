@@ -3,6 +3,7 @@ package alpha.nomagichttp.message;
 import alpha.nomagichttp.Config;
 import alpha.nomagichttp.HttpConstants;
 import alpha.nomagichttp.HttpServer;
+import alpha.nomagichttp.ReceiverOfUniqueRequestObject;
 import alpha.nomagichttp.handler.ClientChannel;
 import alpha.nomagichttp.handler.ErrorHandler;
 import alpha.nomagichttp.route.Route;
@@ -38,8 +39,13 @@ import java.util.stream.Stream;
  * discarded as late in the HTTP exchange process as possible, which is when the
  * server's {@link Response#body() response body} subscription completes.<p>
  * 
- * The implementation is thread-safe and non-blocking. It does not necessarily
- * implement {@code hashCode()} and {@code equals()}.
+ * The implementation is thread-safe, non-blocking and immutable. Components may
+ * change their state in a thread-safe manner, e.g. attribute entries and
+ * lazy processing of parameters.<p>
+ * 
+ * The request object does not implement {@code hashCode()} and {@code equals()}.
+ * Its identity is unique per receiver (see {@link
+ * ReceiverOfUniqueRequestObject}).
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  * 

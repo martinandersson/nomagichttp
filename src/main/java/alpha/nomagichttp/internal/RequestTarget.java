@@ -2,10 +2,8 @@ package alpha.nomagichttp.internal;
 
 import alpha.nomagichttp.message.Request;
 
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -13,13 +11,14 @@ import java.util.stream.Stream;
 
 import static alpha.nomagichttp.internal.Segments.ASTERISK_CH;
 import static alpha.nomagichttp.internal.Segments.COLON_CH;
-import static alpha.nomagichttp.util.PercentDecoder.decode;
-import static java.util.Collections.unmodifiableList;
 import static java.util.Collections.unmodifiableMap;
-import static java.util.stream.Collectors.toMap;
 
 /**
- * Default implementation of {@link Request.Target}.
+ * Default implementation of {@link Request.Target}.<p>
+ * 
+ * This class is mostly a facade for {@link SkeletonRequestTarget}. This class
+ * adds missing path parameters and are therefore dependent on the declared
+ * segments/pattern of the target server resource.
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  */
@@ -177,50 +176,14 @@ final class RequestTarget implements Request.Target
         return queryMapRaw().getOrDefault(key, List.of());
     }
     
-    private Map<String, List<String>> queryMapPercentDecoded;
-    
     @Override
     public Map<String, List<String>> queryMap() {
-        Map<String, List<String>> m = queryMapPercentDecoded;
-        return m != null ? m : (queryMapPercentDecoded = decodeMap());
+        return rt.queryMap();
     }
-    
-    private Map<String, List<String>> decodeMap() {
-        var decoded = queryMapRaw().entrySet().stream().collect(toMap(
-                e -> decode(e.getKey()),
-                e -> decode(e.getValue()),
-                (ign,ored) -> { throw new AssertionError("Insufficient JDK API"); },
-                LinkedHashMap::new));
-        return unmodifiableMap(decoded);
-    }
-    
-    private Map<String, List<String>> queryMapNotPercentDecoded;
     
     @Override
     public Map<String, List<String>> queryMapRaw() {
-        Map<String, List<String>> m = queryMapNotPercentDecoded;
-        return m != null ? m : (queryMapNotPercentDecoded = parseQuery());
-    }
-    
-    private Map<String, List<String>> parseQuery() {
-        final var q = rt.query();
-        if (q.isEmpty()) {
-            return Map.of();
-        }
-        
-        final var m = new LinkedHashMap<String, List<String>>();
-        String[] pairs = q.split("&");
-        for (String p : pairs) {
-            int i = p.indexOf('=');
-            // note: value may be the empty string!
-            String k = p.substring(0, i == -1 ? p.length(): i),
-                   v = i == -1 ? "" : p.substring(i + 1);
-            m.computeIfAbsent(k, key -> new ArrayList<>(1)).add(v);
-        }
-        m.entrySet().forEach(e ->
-            e.setValue(unmodifiableList(e.getValue())));
-        
-        return unmodifiableMap(m);
+        return rt.queryMapRaw();
     }
     
     @Override

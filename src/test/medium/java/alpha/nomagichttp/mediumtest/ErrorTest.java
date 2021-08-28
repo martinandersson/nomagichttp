@@ -28,11 +28,9 @@ import java.nio.channels.ClosedChannelException;
 import java.util.List;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.CompletionStage;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
-import java.util.function.Supplier;
 import java.util.logging.LogRecord;
 import java.util.logging.Logger;
 
@@ -69,7 +67,6 @@ import static java.lang.System.Logger.Level.ERROR;
 import static java.lang.System.Logger.Level.WARNING;
 import static java.time.Duration.ofMillis;
 import static java.util.List.of;
-import static java.util.concurrent.CompletableFuture.failedFuture;
 import static java.util.concurrent.CompletableFuture.failedStage;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static java.util.logging.Level.INFO;
@@ -119,7 +116,7 @@ class ErrorTest extends AbstractRealTest
     
     @Test
     void NoRouteFoundException_custom() throws IOException {
-        usingErrorHandler((exc, ch, req, han) -> {
+        usingErrorHandler((exc, ch, req) -> {
             if (exc instanceof NoRouteFoundException) {
                 ch.write(status(499, "Custom Not Found!"));
                 return;
@@ -461,7 +458,7 @@ class ErrorTest extends AbstractRealTest
         };
         usingConfiguration().maxErrorRecoveryAttempts(2);
         AtomicInteger n = new AtomicInteger();
-        usingErrorHandler((thr, ch, req, rh) -> {
+        usingErrorHandler((thr, ch, req) -> {
             if (n.incrementAndGet() == 1) {
                 assertOopsException(thr);
                 assertThat(ch.isEverythingOpen()).isTrue();
@@ -483,35 +480,6 @@ class ErrorTest extends AbstractRealTest
             "Content-Length: 0"                  + CRLF + CRLF);
         
         assertSecond.accept(pollServerError());
-    }
-    
-    @ParameterizedTest
-    @ValueSource(booleans = {false, true})
-    void retryFailedRequest(boolean async) throws IOException {
-        Supplier<CompletionStage<Response>> impl = !async ?
-                () -> { throw new RuntimeException(); } :
-                () -> failedFuture(new RuntimeException());
-        
-        // Always retry
-        usingErrorHandler((t, ch, r, h) ->h.logic().accept(r, ch));
-        
-        AtomicInteger n = new AtomicInteger();
-        server().add("/", GET().respond(() -> {
-            if (n.incrementAndGet() < 3) {
-                return impl.get();
-            }
-            return noContent().toBuilder()
-                    .header("N", Integer.toString(n.get()))
-                    .build()
-                    .completedStage();
-        }));
-        
-        String rsp = client().writeReadTextUntilNewlines(
-            "GET / HTTP/1.1"          + CRLF + CRLF);
-        assertThat(rsp).isEqualTo(
-            "HTTP/1.1 204 No Content" + CRLF +
-            "N: 3"                    + CRLF + CRLF);
-        assertThatNoErrorWasLogged();
     }
     
     @ParameterizedTest

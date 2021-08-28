@@ -28,7 +28,7 @@ import alpha.nomagichttp.route.RouteRegistry;
  * (all requests) and {@code "/admin"} (a subset of all) at the same time, but
  * this kind of overlapping usage is more or less the expected case for actions.
  * The normal convention will probably be to drop optional parameter names, e.g.
- * just {@code "/*"}.<p>
+ * do just {@code "/*"}.<p>
  * 
  * Matching actions against the request path works in exactly the same manner as
  * it does for the route registry. A few examples:
@@ -68,13 +68,13 @@ import alpha.nomagichttp.route.RouteRegistry;
  * </pre>
  * 
  * It is common for action implementations to have a dependency on other actions
- * executing first (or later), and so, the invocation order of multiple matched
- * actions is well-defined.<p>
+ * executing first (or later), and so, the invocation order of more than one
+ * matched action is well-defined.<p>
  * 
- * If many before-actions are matched, then they will be invoked primarily in
- * the order that segments are discovered (discovery starts at the root and
- * walks a branch of the tree one segment at a time), secondarily by their
- * implicit unspecificity (catch-all first, then single-segment path, then
+ * If multiple <i>before-actions</i> are matched, then they will be invoked
+ * primarily in the order that segments are discovered (discovery starts at the
+ * root and walks a branch of the tree one segment at a time), secondarily by
+ * their implicit unspecificity (catch-all first, then single-segment path, then
  * static segment) and thirdly by their registration order. The rule is to match
  * from the most broad action first to the most niche action last, but still
  * maintain the registration order provided by the application. For instance:
@@ -99,10 +99,10 @@ import alpha.nomagichttp.route.RouteRegistry;
  *   /foo/bar (added last)
  * </pre>
  * 
- * The invocation order of after-actions works sort of the same way, but in
- * reverse. The rule is to match the most niche action first, followed by more
- * generic ones, and as before, honor the application's insertion order whenever
- * possible.
+ * The invocation order of <i>after-actions</i> works sort of the same way, but
+ * in reverse. The rule is to match the most niche action first, followed by
+ * more generic ones, and as before, also honor the application's insertion
+ * order.
  * 
  * <pre>
  *   Request path: /
@@ -134,26 +134,6 @@ import alpha.nomagichttp.route.RouteRegistry;
  *   /admin/*path       3) if response is 403 (Forbidden), log warning with path
  *   /*             4) copy correlation id to response header
  * </pre>
- * 
- * Each request-consuming entity (request handler and actions) may declare
- * different path parameters. For this reason, the request object instance will
- * be unique per entity invoked carrying with it entity-specific path
- * parameters.<p>
- * 
- * For example, although request "/hello" matches before-action "/:foo" and
- * request handler "/:bar", the former will have to use the key "foo" when
- * retrieving the segment value and the latter will have to use the key "bar".
- * As another example, a before-action may register using the pattern "/*path"
- * and a request handler may use the pattern "/hello/:path". For an inbound
- * request "/hello/world", the former's "path" parameter will map to the value
- * "/hello/world" and the latter will get the value "world" using the same
- * key.<p>
- * 
- * All other components of the request will be shared throughout the HTTP
- * exchange, most importantly the request attributes and body. Therefore,
- * changes to these structures propagates across execution boundaries, such as
- * consuming the body bytes (which should only be done once!) and setting
- * attributes.<p>
  * 
  * An action added to the registry is not necessarily immediately visible to
  * currently active HTTP exchanges. Matched before-actions are retrieved only

@@ -14,6 +14,7 @@ public final class MediaTypeParseException extends RuntimeException
 {
     private static final long serialVersionUID = 1L;
     private static final String TEMPLATE = "Can not parse \"{0}\". {1}";
+    private final CharSequence text;
     
     MediaTypeParseException(CharSequence parseText, String appendingMessage) {
         this(parseText, appendingMessage, null);
@@ -21,5 +22,15 @@ public final class MediaTypeParseException extends RuntimeException
     
     MediaTypeParseException(CharSequence parseText, String appendingMessage, Throwable cause) {
         super(format(TEMPLATE, parseText.toString(), appendingMessage), cause);
+        text = parseText;
+    }
+    
+    /**
+     * Returns the text input that attempted to parse.
+     * 
+     * @return the text input that attempted to parse
+     */
+    public CharSequence getText() {
+        return text;
     }
 }

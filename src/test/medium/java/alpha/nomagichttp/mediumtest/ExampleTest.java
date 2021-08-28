@@ -1,7 +1,6 @@
 package alpha.nomagichttp.mediumtest;
 
 import alpha.nomagichttp.event.RequestHeadReceived;
-import alpha.nomagichttp.examples.RetryRequestOnError;
 import alpha.nomagichttp.handler.RequestHandler;
 import alpha.nomagichttp.message.Request;
 import alpha.nomagichttp.message.RequestHead;
@@ -45,10 +44,7 @@ import static alpha.nomagichttp.util.Headers.of;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * Mimics almost all of the examples provided in {@link
- * alpha.nomagichttp.examples}. The only exception is {@link
- * RetryRequestOnError} whose equivalent test is {@link
- * ErrorTest#retryFailedRequest(boolean)}.<p>
+ * Mimics all the examples provided in {@link alpha.nomagichttp.examples}.<p>
  * 
  * The main purpose is to have a guarantee that new code changes won't break
  * code examples.

@@ -46,7 +46,7 @@ public final class DefaultRoute implements Route
      * 
      * The segments are assumed to have been validated already (by the builder).
      * 
-     * @param segments  of the route (must be unmodifiable)
+     * @param segments  of the route (must be effectively immutable)
      * @param handlers  of the route
      * 
      * @throws NullPointerException   if any argument is {@code null}
