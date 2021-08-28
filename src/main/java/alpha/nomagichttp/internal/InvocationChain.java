@@ -96,7 +96,7 @@ final class InvocationChain extends AbstractLocalEventEmitter
             return COMPLETED;
         }
         CompletableFuture<Void> allOf = new CompletableFuture<>();
-        new BeforeChain(matches.iterator(), allOf, req, ver).callAction();
+        new ChainImpl(matches.iterator(), allOf, req, ver).callAction();
         return allOf;
     }
     
@@ -128,14 +128,14 @@ final class InvocationChain extends AbstractLocalEventEmitter
             AWAITING_IMPL = 2,
             AWAITING_NONE = 3;
     
-    private class BeforeChain implements Chain {
+    private class ChainImpl implements Chain {
         private final Iterator<Match<BeforeAction>> matches;
         private final CompletableFuture<Void> allOf;
         private final AtomicInteger status;
         private final SkeletonRequest shared;
         private final Version ver;
         
-        BeforeChain(
+        ChainImpl(
                 Iterator<Match<BeforeAction>> matches,
                 CompletableFuture<Void> allOf,
                 SkeletonRequest shared,
@@ -172,7 +172,7 @@ final class InvocationChain extends AbstractLocalEventEmitter
             if (!matches.hasNext()) {
                 allOf.complete(null);
             } else {
-                new BeforeChain(matches, allOf, shared, ver).callAction();
+                new ChainImpl(matches, allOf, shared, ver).callAction();
             }
         }
         
