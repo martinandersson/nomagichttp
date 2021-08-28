@@ -1,17 +1,13 @@
 package alpha.nomagichttp.internal;
 
 import alpha.nomagichttp.HttpConstants.Version;
-import alpha.nomagichttp.action.ActionRegistry;
 import alpha.nomagichttp.message.Request;
 import alpha.nomagichttp.util.Attributes;
 
 import java.net.http.HttpHeaders;
 
 /**
- * The default implementation of {@code Request}.<p>
- * 
- * This class is constructed anew for each invocation target with invocation
- * target specific path parameters (see {@link ActionRegistry}).
+ * The default implementation of {@code Request}.
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  */
