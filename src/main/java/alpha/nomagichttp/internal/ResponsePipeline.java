@@ -364,8 +364,8 @@ final class ResponsePipeline extends AbstractLocalEventEmitter
     
     private Response fixUnknownLength(Response rsp) {
         if (rsp.headerIsMissingOrEmpty(CONTENT_LENGTH) &&
-            !hasConnectionClose(rsp)                   &&
-            !rsp.isBodyEmpty())
+            !rsp.isBodyEmpty() &&
+            !hasConnectionClose(rsp))
         {
             // TODO: In the future when implemented, chunked encoding may also be an option
             LOG.log(DEBUG, "Response body of unknown length and not marked to close connection, setting \"Connection: close\".");
