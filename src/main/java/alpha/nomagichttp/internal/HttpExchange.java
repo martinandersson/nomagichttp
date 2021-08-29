@@ -392,7 +392,7 @@ final class HttpExchange
         });
     }
     
-    private final SerialExecutor serially = new SerialExecutor();
+    private final SerialExecutor serially = new SerialExecutor(true);
     
     private void handleError(Throwable exc) {
         final Throwable unpacked = unpackCompletionException(exc);
@@ -496,12 +496,26 @@ final class HttpExchange
         }
         
         void resolve(Throwable t) {
+            // Unlike Java's try-with-resources which propagates the block error
+            // and suppresses the subsequent close error - for synchronous
+            // errors/recursive calls, our "propagation" is an attempt of
+            // resolving the new, more recent error, having suppressed the old.
             if (prev != null) {
                 assert prev != t;
                 t.addSuppressed(prev);
             }
             prev = t;
-            
+            try {
+                resolve0(t);
+            } finally {
+                // New synchronous errors are recursively resolved. A return
+                // from a resolution attempt means that the error is now
+                // considered handled.
+                prev = null;
+            }
+        }
+        
+        private void resolve0(Throwable t) {
             if (handlers.isEmpty()) {
                 usingDefault(t);
                 return;
