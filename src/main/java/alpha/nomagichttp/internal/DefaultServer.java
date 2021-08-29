@@ -133,28 +133,38 @@ public final class DefaultServer implements HttpServer
     }
     
     private void initialize(SocketAddress addr, CompletableFuture<ParentWithHandler> v) {
-        final AsynchronousChannelGroup grp;
+        final ParentWithHandler pw;
         try {
-            grp = AsyncGroup.register(getConfig().threadPoolSize());
-        } catch (IOException e) {
-            v.completeExceptionally(e);
-            return;
-        }
-        
-        final AsynchronousServerSocketChannel ch;
-        final Instant when;
-        try {
-            ch = AsynchronousServerSocketChannel.open(grp).bind(addr);
-            when = Instant.now();
+            pw = initReg(addr);
         } catch (Throwable t) {
-            AsyncGroup.unregister();
             v.completeExceptionally(t);
             return;
         }
-        
-        LOG.log(INFO, () -> "Opened server channel: " + ch);
-        v.complete(new ParentWithHandler(ch, when));
-        events().dispatch(HttpServerStarted.INSTANCE, when);
+        LOG.log(INFO, () -> "Opened server channel: " + pw.channel());
+        v.complete(pw);
+        events().dispatch(HttpServerStarted.INSTANCE, pw.started());
+    }
+    
+    private ParentWithHandler initReg(SocketAddress addr) throws Throwable {
+        var grp = AsyncGroup.register(getConfig().threadPoolSize());
+        try {
+            return initOpen(grp, addr);
+        } catch (Throwable t) {
+            AsyncGroup.unregister();
+            throw t;
+        }
+    }
+    
+    private ParentWithHandler initOpen(AsynchronousChannelGroup grp, SocketAddress addr) throws Throwable {
+        var ch = AsynchronousServerSocketChannel.open(grp);
+        try {
+            ch.bind(addr);
+            final Instant when = Instant.now();
+            return new ParentWithHandler(ch, when);
+        } catch (Throwable t) {
+            ch.close();
+            throw t;
+        }
     }
     
     @Override
