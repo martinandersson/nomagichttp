@@ -63,8 +63,8 @@ public final class DefaultServer implements HttpServer
     private static final int INITIAL_CAPACITY = 10_000;
     
     /** To prevent leaks (by this class), children are stored using weak references. */
-    private static long CLEAN_INTERVAL_MIN = ofMinutes(1).toNanos(),
-                        CLEAN_INTERVAL_MAX = ofMinutes(1).plusSeconds(30).toNanos();
+    private static final long CLEAN_INTERVAL_MIN = ofMinutes(1).toNanos(),
+                              CLEAN_INTERVAL_MAX = ofMinutes(1).plusSeconds(30).toNanos();
     
     private final Config config;
     private final DefaultActionRegistry actions;
