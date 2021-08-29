@@ -309,11 +309,11 @@ final class HttpExchange
                 LOG.log(DEBUG, "Invocation chain finished after final response. " +
                                "Preparing for a new HTTP exchange.");
                 prepareForNewExchange();
-            } // normal finish = do nothing, final response will try to prepare next
+            } // else normal finish = do nothing, final response will try to prepare next
         } else {
             if (v == 0) {
                 LOG.log(WARNING,
-                        "Processing returned exceptionally but final response already sent. " +
+                        "Invocation chain returned exceptionally but final response already sent. " +
                         "This error is ignored. " +
                         "Preparing for a new HTTP exchange.", thr);
                 prepareForNewExchange();

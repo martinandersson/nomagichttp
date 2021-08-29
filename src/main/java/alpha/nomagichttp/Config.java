@@ -313,19 +313,12 @@ public interface Config
      * operation to abort for response body bytebuffers not fully sent before
      * the duration elapses. This exception will also not be delivered to the
      * error handler(s) and close the channel immediately. The application can
-     * chose to publish very large response body bytebuffers without worrying
+     * choose to publish very large response body bytebuffers without worrying
      * about a possible timeout due to the increased time it may take to send a
      * large buffer. The server will internally slice the buffer if need be.<p>
      * 
      * Any timeout exception not delivered to the exception handler(s) is
      * logged.<p>
-     * 
-     * Word of caution: There is currently no mechanism put in place to unblock
-     * a stuck thread. For example, if the server's thread who subscribes to the
-     * response body is immediately and indefinitely blocked, then no error
-     * handler will ever be called and the timeout exception will never be
-     * logged. The connection will close, but that's it. Never block a thread
-     * from the server.<p>
      * 
      * The default implementation returns {@code Duration.ofSeconds(90)}.
      * 

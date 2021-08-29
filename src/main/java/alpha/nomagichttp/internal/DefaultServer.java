@@ -428,7 +428,7 @@ public final class DefaultServer implements HttpServer
             var exch = new HttpExchange(
                     DefaultServer.this, actions, routes, eh, chIn, chApi);
             
-            exch.begin().whenComplete((Null, exc) -> {
+            exch.begin().whenComplete((nil, exc) -> {
                 // Both open-calls are volatile reads, no locks
                 if (exc == null && parent.isOpen() && chApi.isEverythingOpen()) {
                     startExchange(chApi, chIn);

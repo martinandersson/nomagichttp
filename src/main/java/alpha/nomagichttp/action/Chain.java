@@ -15,10 +15,10 @@ import alpha.nomagichttp.Config;
  * Only the first call to a method declared in this interface has an effect.
  * Subsequent invocations are NOP.<p>
  * 
- * It is imperative that the before-action either returns exceptionally from the
+ * It is important that the before-action either returns exceptionally from the
  * {@code apply} method or interacts with the given chain object. Failure to do
- * so may at best produce a {@linkplain Config#timeoutIdleConnection() timeout}
- * at some point.
+ * so will eventually trigger a {@linkplain Config#timeoutIdleConnection()
+ * timeout error}.
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  */
