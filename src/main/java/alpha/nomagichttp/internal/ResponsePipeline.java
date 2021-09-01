@@ -50,8 +50,7 @@ import static java.util.concurrent.TimeUnit.SECONDS;
  *   <li>Invoke all after-actions</li>
  *   <li>Apply low-level response transformations such as setting "Connection:
  *       close" if no "Content-Length"</li>
- *   <li>Act on response-scheduled channel commands (must-close-after-write,
- *       "Connection: close", et cetera)</li>
+ *   <li>Track- and act on "Connection: close"</li>
  * </ul>
  * 
  * In addition:

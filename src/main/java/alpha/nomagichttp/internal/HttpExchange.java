@@ -508,9 +508,9 @@ final class HttpExchange
             try {
                 resolve0(t);
             } finally {
-                // New synchronous errors are recursively resolved. A return
-                // from a resolution attempt means that the error is now
-                // considered handled.
+                // New synchronous errors are immediately and recursively
+                // resolved. A return from resolve0() means that the error is
+                // now considered handled.
                 prev = null;
             }
         }

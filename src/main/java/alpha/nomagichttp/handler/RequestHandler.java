@@ -371,8 +371,8 @@ public interface RequestHandler
      * Returns the function that will process a request into a response.<p>
      * 
      * No argument passed to the function is null. The channel argument must be
-     * used at some point to either shutdown/close the channel or write a
-     * response.<p>
+     * used at some point to either write a final response or shutdown/close the
+     * channel.<p>
      * 
      * This method is called anew each time a route and handler has been matched
      * against a request.

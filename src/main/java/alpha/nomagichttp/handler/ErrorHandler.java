@@ -67,7 +67,7 @@ import static java.util.stream.Stream.of;
  * 
  * Specifically, the error handler may be called for:<p>
  * 
- * 1) Exceptions occurring while receiving and parsing a request message.<p>
+ * 1) Exceptions occurring while receiving and parsing a request head.<p>
  * 
  * 2) Exceptions from the execution of {@link BeforeAction}s, {@link
  * RequestHandler}s and {@link AfterAction}s.<p>
@@ -86,11 +86,10 @@ import static java.util.stream.Stream.of;
  * The server will <strong>not</strong> call error handlers for errors that are
  * not directly involved in the HTTP exchange or for errors that occur
  * asynchronously in another thread than the request thread or for any other
- * errors when there's already an avenue in place for the exception management.
- * For example, low-level exceptions related to channel management and error
- * signals raised through the {@link Request.Body} API (all methods of which
- * either return a {@code CompletionStage} or accepts a {@code
- * Flow.Subscriber}.<p>
+ * errors when there's already an avenue in place for exception handling. For
+ * example, low-level exceptions related to channel management and error signals
+ * raised through the {@link Request.Body} API (all methods of which either
+ * return a {@code CompletionStage} or accepts a {@code Flow.Subscriber}.<p>
  * 
  * For errors caught but not propagated to an error handler, the server's
  * strategy is usually to log the error and immediately close the client's

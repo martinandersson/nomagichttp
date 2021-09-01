@@ -14,30 +14,31 @@ import static java.lang.ThreadLocal.withInitial;
  * Queue} of actions to execute, and a {@link SeriallyRunnable} is used to run
  * them (so, same memory visibility rules apply).<p>
  * 
- * If the executor is busy and a new action arrives, whether or not the action
- * executes directly or is scheduled depends on thread identity and a boolean
- * {@code mayRecurse} constructor argument.<p>
+ * If the executor is busy and a new action arrives, whether the action executes
+ * directly or is scheduled for the future depends on thread identity and a
+ * boolean {@code mayRecurse} constructor argument.<p>
+ * 
+ * With {@code mayRecurse} {@code true}, a thread already executing an action
+ * submitting a new one will recursively execute the new action without regards
+ * to how many other actions is sitting in the queue. This comes with a
+ * performance improvement since recursive actions impose virtually no overhead
+ * at all and co-dependent actions will not appear to be out of order (discussed
+ * monetarily). It may however produce a {@code StackOverflowError}.<p>
  * 
  * If {@code mayRecurse} is {@code false} then all actions will be scheduled for
  * the future no matter which thread is calling in; this stops recursion from
- * happening. It's a safe strategy as it will 1) never produce a {@code
- * StackOverflowError}, 2) be more fair in execution order (no action will take
- * precedence over another) and 3) at times of contention; has a higher
- * probability of distributing work amongst threads.<p>
+ * happening. It's a safe strategy as it will never produce a {@code
+ * StackOverflowError}, it will be more fair in execution order (no action will
+ * take precedence over another) and at times of contention it will have a
+ * higher probability of distributing work amongst threads.<p>
  * 
  * Alas, there's one noticeable drawback with using {@code mayRecurse} {@code
  * false}. Without recursion, execution may appear to be re-ordered. For
  * example, suppose the logic of function A calls function B and both run
  * through the same SerialExecutor, then A will complete first before B
  * executes. With recursion, B would have executed before A completes. Whether
- * or not this has an impact on program correctness is very much dependent on
- * the context of the use site.<p>
- * 
- * With {@code mayRecurse} {@code true}, a thread already executing an action
- * will recursively execute new actions posted from the same thread without
- * regards to how many other actions is sitting in the queue. This may be vital
- * for program correctness and also comes with a performance improvement since
- * recursive actions impose virtually no overhead at all.
+ * this has an impact on program correctness is very much dependent on the
+ * context of the use site.
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  */
