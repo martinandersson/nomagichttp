@@ -24,11 +24,11 @@ import static alpha.nomagichttp.internal.Segments.ASTERISK_STR;
 import static alpha.nomagichttp.internal.Segments.COLON_CH;
 import static alpha.nomagichttp.internal.Segments.COLON_STR;
 import static alpha.nomagichttp.internal.Segments.noParamNames;
+import static alpha.nomagichttp.util.Arrays.randomAndUnmodifiable;
 import static alpha.nomagichttp.util.Arrays.stream;
 import static java.lang.Integer.compare;
 import static java.lang.ThreadLocal.withInitial;
 import static java.util.Objects.requireNonNull;
-import static java.util.stream.Collectors.toCollection;
 
 /**
  * Default implementation of {@link ActionRegistry}.
@@ -246,10 +246,7 @@ final class DefaultActionRegistry implements ActionRegistry
         });
         
         return matches.isEmpty() ? List.of() :
-               matches.stream()
-                      .sorted()
-                      .collect(toCollection(() ->
-                              new ArrayList<>(matches.size())));
+               randomAndUnmodifiable(matches.size(), matches.stream().sorted());
     }
     
     private static final class WrappedBeforeAction
