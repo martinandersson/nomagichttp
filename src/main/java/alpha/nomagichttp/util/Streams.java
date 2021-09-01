@@ -1,7 +1,6 @@
 package alpha.nomagichttp.util;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 import java.util.RandomAccess;
 import java.util.stream.Collectors;
@@ -12,12 +11,12 @@ import static java.util.stream.Collectors.toCollection;
 import static java.util.stream.Stream.of;
 
 /**
- * Utils for working with arrays.
+ * Utils for producing- or working with streams.
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  */
-public final class Arrays {
-    private Arrays() {
+public final class Streams {
+    private Streams() {
         // Empty
     }
     

@@ -10,7 +10,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.RandomAccess;
 
-import static alpha.nomagichttp.util.Arrays.randomAndUnmodifiable;
+import static alpha.nomagichttp.util.Streams.randomAndUnmodifiable;
 import static alpha.nomagichttp.util.PercentDecoder.decode;
 import static java.util.Collections.unmodifiableList;
 import static java.util.Collections.unmodifiableMap;
