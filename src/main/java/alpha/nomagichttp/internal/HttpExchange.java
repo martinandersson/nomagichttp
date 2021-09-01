@@ -491,10 +491,6 @@ final class HttpExchange
         private Throwable prev;
         private int attemptCount;
         
-        ErrorResolver() {
-            this.attemptCount = 0;
-        }
-        
         void resolve(Throwable t) {
             // Unlike Java's try-with-resources which propagates the block error
             // and suppresses the subsequent close error - for synchronous
