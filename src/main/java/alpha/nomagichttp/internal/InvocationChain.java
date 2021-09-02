@@ -4,7 +4,6 @@ import alpha.nomagichttp.action.BeforeAction;
 import alpha.nomagichttp.action.Chain;
 import alpha.nomagichttp.handler.ClientChannel;
 import alpha.nomagichttp.handler.RequestHandler;
-import alpha.nomagichttp.message.MediaType;
 import alpha.nomagichttp.message.RequestHead;
 import alpha.nomagichttp.route.NoRouteFoundException;
 import alpha.nomagichttp.route.Route;
@@ -111,11 +110,10 @@ final class InvocationChain extends AbstractLocalEventEmitter
     }
     
     private static RequestHandler findRequestHandler(RequestHead rh, Route r) {
-        MediaType type = contentType(rh.headers()).orElse(null);
-        MediaType[] accepts = accept(rh.headers())
-                .map(s -> s.toArray(MediaType[]::new))
-                .orElse(null);
-        RequestHandler h = r.lookup(rh.method(), type, accepts);
+        RequestHandler h = r.lookup(
+                rh.method(),
+                contentType(rh.headers()).orElse(null),
+                accept(rh.headers()));
         LOG.log(DEBUG, () -> "Matched handler: " + h);
         return h;
     }

@@ -12,12 +12,13 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.OptionalLong;
+import java.util.RandomAccess;
 import java.util.function.BiPredicate;
-import java.util.stream.Stream;
 
 import static alpha.nomagichttp.HttpConstants.HeaderKey.ACCEPT;
 import static alpha.nomagichttp.HttpConstants.HeaderKey.CONTENT_LENGTH;
 import static alpha.nomagichttp.HttpConstants.HeaderKey.CONTENT_TYPE;
+import static alpha.nomagichttp.util.Streams.randomAndUnmodifiable;
 import static alpha.nomagichttp.util.Strings.split;
 import static java.lang.Long.parseLong;
 import static java.util.Arrays.stream;
@@ -101,20 +102,20 @@ public final class Headers
      * MediaType#parse(CharSequence)}.
      * 
      * @param  headers source to parse from
-     * @return parsed values (may be empty, or stream has at least one value)
+     * @return parsed values (unmodifiable, implements {@link RandomAccess})
      * 
      * @throws BadHeaderException
      *             if parsing failed (cause set to {@link MediaTypeParseException})
      * 
      * @see HttpConstants.HeaderKey#ACCEPT
      */
-    public static Optional<Stream<MediaType>> accept(HttpHeaders headers) {
+    public static List<MediaType> accept(HttpHeaders headers) {
         var l = headers.allValues(ACCEPT);
         if (l.isEmpty()) {
-            return empty();
+            return List.of();
         }
         try {
-            return Optional.of(l.stream()
+            return randomAndUnmodifiable(l.size(), l.stream()
                     .flatMap(v -> stream(split(v, ',', '"')))
                     .map(MediaType::parse));
         } catch (MediaTypeParseException e) {

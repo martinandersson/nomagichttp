@@ -4,6 +4,7 @@ import alpha.nomagichttp.handler.ErrorHandler;
 import alpha.nomagichttp.handler.RequestHandler;
 import alpha.nomagichttp.message.MediaType;
 
+import java.util.Collection;
 import java.util.Set;
 
 import static java.util.Collections.unmodifiableSet;
@@ -21,42 +22,41 @@ public final class AmbiguousHandlerException extends NoHandlerResolvedException
     private final Set<RequestHandler> ambiguous;
     
     static AmbiguousHandlerException createAmbiguousEx(
-            Set<RequestHandler> ambiguous,
-            String method,
             Route route,
+            String method,
             MediaType contentType,
-            MediaType[] accepts)
+            Collection<MediaType> accepts,
+            Set<RequestHandler> ambiguous)
     {
         return new AmbiguousHandlerException(
                 "Ambiguous: " + ambiguous,
-                ambiguous,
-                method,
                 route,
+                method,
                 contentType,
-                accepts);
+                accepts,
+                ambiguous);
     }
     
     private AmbiguousHandlerException(
             String message,
-            Set<RequestHandler> ambiguous,
-            String method,
             Route route,
+            String method,
             MediaType contentType,
-            MediaType[] accepts)
+            Collection<MediaType> accepts,
+            Set<RequestHandler> ambiguous)
     {
-        super(message, method, route, contentType, accepts);
-        
+        super(message, route, method, contentType, accepts);
         if (ambiguous.isEmpty()) {
             throw new IllegalArgumentException("No ambiguous candidates.");
         }
-        
         this.ambiguous = unmodifiableSet(ambiguous);
     }
     
     /**
      * Returns all ambiguous candidates that qualified.
      * 
-     * @return all ambiguous candidates that qualified (never {@code null} or empty)
+     * @return all ambiguous candidates that qualified
+     *         (never {@code null} or empty)
      */
     public Set<RequestHandler> getCandidates() {
         return ambiguous;

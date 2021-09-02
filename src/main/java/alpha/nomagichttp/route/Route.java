@@ -9,6 +9,8 @@ import alpha.nomagichttp.message.Request;
 import java.net.URI;
 import java.net.URLDecoder;
 import java.nio.charset.Charset;
+import java.util.Collection;
+import java.util.List;
 import java.util.stream.Stream;
 
 /**
@@ -228,9 +230,9 @@ public interface Route
     /**
      * Lookup a handler given a specified {@code method} and media types.
      * 
-     * @param method       method ("GET", "POST", ...)
-     * @param contentType  "Content-Type: " header value (may be {@code null})
-     * @param accepts      "Accept: " header values (may be {@code null} or empty)
+     * @param method      method ("GET", "POST", ...)
+     * @param contentType "Content-Type: " header value (may be {@code null})
+     * @param accepts     "Accept: " header values (may be {@code null} or empty)
      * 
      * @return the handler
      * 
@@ -246,7 +248,7 @@ public interface Route
      * @see HttpConstants.Method
      * @see RequestHandler.Builder#builder(String) 
      */
-    RequestHandler lookup(String method, MediaType contentType, MediaType[] accepts);
+    RequestHandler lookup(String method, MediaType contentType, Collection<MediaType> accepts);
     
     /**
      * Returns all segments of this route.<p>
