@@ -1,10 +1,13 @@
 package alpha.nomagichttp.internal;
 
 import alpha.nomagichttp.HttpConstants.Version;
+import alpha.nomagichttp.message.MediaType;
 import alpha.nomagichttp.message.Request;
 import alpha.nomagichttp.util.Attributes;
+import alpha.nomagichttp.util.Headers;
 
 import java.net.http.HttpHeaders;
+import java.util.Optional;
 
 /**
  * The default implementation of {@code Request}.
@@ -55,6 +58,17 @@ final class DefaultRequest implements Request
     @Override
     public HttpHeaders headers() {
         return shared.head().headers();
+    }
+    
+    private Optional<MediaType> cc;
+    
+    @Override
+    public Optional<MediaType> headerValContentType() {
+        var cc = this.cc;
+        if (cc == null) {
+            this.cc = cc = Headers.contentType(headers());
+        }
+        return cc;
     }
     
     @Override

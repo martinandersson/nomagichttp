@@ -1,9 +1,11 @@
 package alpha.nomagichttp.message;
 
 import alpha.nomagichttp.HttpConstants;
+import alpha.nomagichttp.util.Headers;
 
 import java.net.http.HttpHeaders;
 import java.util.List;
+import java.util.Optional;
 
 import static alpha.nomagichttp.util.Strings.containsIgnoreCase;
 import static java.util.Objects.requireNonNull;
@@ -15,21 +17,24 @@ import static java.util.Objects.requireNonNull;
  * removed. They will also maintain letter capitalization when stored and
  * consequently when retrieved, but are case insensitive when querying.<p>
  * 
- * Please note that the order of header entries (header keys) are not specified
- * (see {@link HttpHeaders}).
+ * The order of header entries (header keys) is not specified
+ * (see {@link HttpHeaders}) nor is the order significant (<a
+ * href="https://tools.ietf.org/html/rfc7230#section-3.2.2">RFC 7230 §3.2.2</a>).<p>
+ * 
+ * The underlying {@link HttpHeaders} object is immutable and remains the same
+ * throughout the life of the header holder. This enables "headerValXXX()"
+ * methods implemented by the header holder to use a safe and fast internal
+ * cache instead of parsing header values anew. These methods should generally
+ * be preferred over using the class {@link Headers} directly.
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  */
 public interface HeaderHolder {
     
     /**
-     * Returns the HTTP headers.<p>
+     * Returns the HTTP headers.
      * 
-     * The order is not significant (
-     * <a href="https://tools.ietf.org/html/rfc7230#section-3.2.2">RFC 7230 §3.2.2</a>
-     * ).
-     * 
-     * @return the HTTP headers
+     * @return the HTTP headers (never {@code null})
      * 
      * @see HttpConstants.HeaderKey
      */
@@ -92,4 +97,14 @@ public interface HeaderHolder {
         }
         return vals.stream().allMatch(String::isEmpty);
     }
+    
+    /**
+     * A caching shortcut for {@link Headers#contentType(HttpHeaders)}.
+     * 
+     * @return parsed value (never {@code null})
+     * @throws BadHeaderException
+     *           if headers has multiple Content-Type keys, or
+     *           if parsing failed (cause set to {@link MediaTypeParseException})
+     */
+    Optional<MediaType> headerValContentType();
 }

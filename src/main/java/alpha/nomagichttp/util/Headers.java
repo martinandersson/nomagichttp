@@ -2,6 +2,7 @@ package alpha.nomagichttp.util;
 
 import alpha.nomagichttp.HttpConstants;
 import alpha.nomagichttp.message.BadHeaderException;
+import alpha.nomagichttp.message.HeaderHolder;
 import alpha.nomagichttp.message.MediaType;
 import alpha.nomagichttp.message.MediaTypeParseException;
 
@@ -29,6 +30,7 @@ import static java.util.Optional.empty;
  * Utility methods for {@link HttpHeaders}.
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
+ * @see HeaderHolder
  */
 public final class Headers
 {
@@ -105,7 +107,8 @@ public final class Headers
      * @return parsed values (unmodifiable, implements {@link RandomAccess})
      * 
      * @throws BadHeaderException
-     *             if parsing failed (cause set to {@link MediaTypeParseException})
+     *             if parsing failed (the cause is set to a
+     *             {@link MediaTypeParseException})
      * 
      * @see HttpConstants.HeaderKey#ACCEPT
      */

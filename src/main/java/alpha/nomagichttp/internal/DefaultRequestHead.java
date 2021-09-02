@@ -1,8 +1,11 @@
 package alpha.nomagichttp.internal;
 
+import alpha.nomagichttp.message.MediaType;
 import alpha.nomagichttp.message.RequestHead;
+import alpha.nomagichttp.util.Headers;
 
 import java.net.http.HttpHeaders;
+import java.util.Optional;
 
 import static java.lang.String.join;
 
@@ -41,6 +44,17 @@ final class DefaultRequestHead implements RequestHead
     @Override
     public HttpHeaders headers() {
         return headers;
+    }
+    
+    private Optional<MediaType> cc;
+    
+    @Override
+    public Optional<MediaType> headerValContentType() {
+        var cc = this.cc;
+        if (cc == null) {
+            this.cc = cc = Headers.contentType(headers());
+        }
+        return cc;
     }
     
     @Override

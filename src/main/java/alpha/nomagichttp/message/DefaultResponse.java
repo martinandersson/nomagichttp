@@ -12,6 +12,7 @@ import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.Flow;
@@ -74,6 +75,17 @@ final class DefaultResponse implements Response
     @Override
     public HttpHeaders headers() {
         return headers;
+    }
+    
+    private Optional<MediaType> cc;
+    
+    @Override
+    public Optional<MediaType> headerValContentType() {
+        var cc = this.cc;
+        if (cc == null) {
+            this.cc = cc = Headers.contentType(headers());
+        }
+        return cc;
     }
     
     @Override
