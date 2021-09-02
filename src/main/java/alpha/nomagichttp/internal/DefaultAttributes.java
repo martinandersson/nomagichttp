@@ -1,6 +1,6 @@
 package alpha.nomagichttp.internal;
 
-import alpha.nomagichttp.util.Attributes;
+import alpha.nomagichttp.message.Attributes;
 
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;

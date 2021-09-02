@@ -1,6 +1,6 @@
-package alpha.nomagichttp.internal;
+package alpha.nomagichttp.message;
 
-import alpha.nomagichttp.util.Attributes;
+import alpha.nomagichttp.internal.DefaultAttributes;
 import org.junit.jupiter.api.Test;
 
 import java.util.Optional;

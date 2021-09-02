@@ -1,4 +1,4 @@
-package alpha.nomagichttp.util;
+package alpha.nomagichttp.message;
 
 import java.util.Optional;
 import java.util.concurrent.ConcurrentMap;

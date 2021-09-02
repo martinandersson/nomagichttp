@@ -7,7 +7,6 @@ import alpha.nomagichttp.ReceiverOfUniqueRequestObject;
 import alpha.nomagichttp.handler.ClientChannel;
 import alpha.nomagichttp.handler.ErrorHandler;
 import alpha.nomagichttp.route.Route;
-import alpha.nomagichttp.util.AttributeHolder;
 import alpha.nomagichttp.util.Publishers;
 
 import java.net.URLDecoder;

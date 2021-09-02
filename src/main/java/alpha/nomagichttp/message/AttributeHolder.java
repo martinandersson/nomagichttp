@@ -1,4 +1,4 @@
-package alpha.nomagichttp.util;
+package alpha.nomagichttp.message;
 
 /**
  * The object that implements this interface may be used to associate arbitrary

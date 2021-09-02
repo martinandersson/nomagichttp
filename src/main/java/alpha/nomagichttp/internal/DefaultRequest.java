@@ -3,7 +3,7 @@ package alpha.nomagichttp.internal;
 import alpha.nomagichttp.HttpConstants.Version;
 import alpha.nomagichttp.message.MediaType;
 import alpha.nomagichttp.message.Request;
-import alpha.nomagichttp.util.Attributes;
+import alpha.nomagichttp.message.Attributes;
 import alpha.nomagichttp.util.Headers;
 
 import java.net.http.HttpHeaders;
