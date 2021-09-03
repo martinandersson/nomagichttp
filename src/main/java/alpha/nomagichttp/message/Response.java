@@ -32,16 +32,15 @@ import static java.net.http.HttpRequest.BodyPublisher;
  *                        .build();
  * }</pre>
  * 
- * {@code Response} is immutable but may be converted back into a builder for
- * templating. This effectively makes ready-built {@link Responses} also serve
- * as a repository of commonly used status lines. This example is equivalent to
- * the previous:
+ * The {@code Response} object is immutable, but the builder who built it can be
+ * retrieved, effectively transforming any response object to a template. This
+ * also renders the {@link Responses} class as a repository of commonly used
+ * status lines. This example is equivalent to the previous:
  * 
  * <pre>{@code
- *   Response r = Responses.noContent()
- *                         .toBuilder()
- *                             .header("My-Header", "value")
- *                             .build();
+ *   Response r = Responses.noContent().toBuilder()
+ *                         .header("My-Header", "value")
+ *                         .build();
  * }</pre>
  * 
  * {@code Responses} in combination with body factories in {@link
