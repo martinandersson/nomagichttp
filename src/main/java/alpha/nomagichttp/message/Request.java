@@ -10,7 +10,6 @@ import alpha.nomagichttp.route.Route;
 import alpha.nomagichttp.util.Publishers;
 
 import java.net.URLDecoder;
-import java.net.http.HttpHeaders;
 import java.nio.channels.AsynchronousByteChannel;
 import java.nio.channels.AsynchronousFileChannel;
 import java.nio.channels.GatheringByteChannel;
@@ -473,14 +472,23 @@ public interface Request extends HeaderHolder, AttributeHolder
      */
     interface Headers extends CommonHeaders {
         /**
-         * A shortcut for {@link
-         * alpha.nomagichttp.util.Headers#accept(HttpHeaders)}.
+         * Parses all "Accept" values.<p>
+         * 
+         * The accept-header may be specified by clients that wish to retrieve a
+         * particular resource representation.<p>
+         * 
+         * <i>All</i> accept-header keys are taken into account in order,
+         * splitting the values by the comma character (",") - except for quoted
+         * values (;param="quo,ted"), then feeding each token to {@link
+         * MediaType#parse(CharSequence)}.
          * 
          * @return parsed values (unmodifiable, implements {@link RandomAccess})
          * 
          * @throws BadHeaderException
          *             if parsing failed (the cause is set to a
          *             {@link MediaTypeParseException})
+         * 
+         * @see HttpConstants.HeaderKey#ACCEPT
          */
         List<MediaType> accept();
     }

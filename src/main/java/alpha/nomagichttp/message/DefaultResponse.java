@@ -2,7 +2,6 @@ package alpha.nomagichttp.message;
 
 import alpha.nomagichttp.HttpConstants;
 import alpha.nomagichttp.util.AbstractImmutableBuilder;
-import alpha.nomagichttp.util.Headers;
 import alpha.nomagichttp.util.Publishers;
 
 import java.net.http.HttpHeaders;
@@ -21,6 +20,7 @@ import static alpha.nomagichttp.HttpConstants.HeaderKey.CONNECTION;
 import static alpha.nomagichttp.HttpConstants.HeaderKey.CONTENT_LENGTH;
 import static alpha.nomagichttp.HttpConstants.StatusCode.THREE_HUNDRED_FOUR;
 import static alpha.nomagichttp.HttpConstants.StatusCode.TWO_HUNDRED_FOUR;
+import static alpha.nomagichttp.util.Headers.of;
 import static alpha.nomagichttp.util.Publishers.empty;
 import static java.net.http.HttpRequest.BodyPublisher;
 import static java.util.Collections.emptyList;
@@ -285,8 +285,7 @@ final class DefaultResponse implements Response
             MutableState s = constructState(MutableState::new);
             setDefaults(s);
             
-            HttpHeaders headers = s.headers == null ? Headers.of() :
-                    HttpHeaders.of(s.headers, (k, v) -> true);
+            final HttpHeaders headers = s.headers == null ? of() : of(s.headers);
             
             if (headers.allValues(CONTENT_LENGTH).size() > 1) {
                 throw new IllegalStateException("Multiple " + CONTENT_LENGTH + " headers.");

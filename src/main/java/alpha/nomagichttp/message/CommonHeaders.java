@@ -1,7 +1,6 @@
 package alpha.nomagichttp.message;
 
 import alpha.nomagichttp.HttpConstants;
-import alpha.nomagichttp.util.Headers;
 
 import java.net.http.HttpHeaders;
 import java.util.List;
@@ -27,10 +26,9 @@ import static java.util.Objects.requireNonNull;
  * href="https://tools.ietf.org/html/rfc7230#section-3.2.2">RFC 7230 §3.2.2</a>)
  * .<p>
  * 
- * Methods that parse a specific/named header value (e.g.
- * {@link #contentType()}) from a string into another Java type generally caches
- * the result and so should be preferred over using the {@link Headers} util
- * class directly.<p>
+ * Methods that parse a specific/named header value (e.g. {@link
+ * #contentType()}) generally caches the result and so consecutive calls have no
+ * significant performance impact.<p>
  * 
  * The implementation is thread-safe and non-blocking.
  * 
@@ -105,22 +103,43 @@ public interface CommonHeaders
     }
     
     /**
-     * A shortcut for {@link Headers#contentType(HttpHeaders)}.
+     * Parses one "Content-Type" value into a media type.<p>
+     * 
+     * This header indicates the media type of the message body and should be
+     * set by the sender if the message carries a body payload.<p>
+     * 
+     * TODO: Example.<p>
      * 
      * @return parsed value (never {@code null})
+     * 
      * @throws BadHeaderException
-     *           if headers has multiple Content-Type keys, or
+     *           if the headers has multiple Content-Type keys, or
      *           if parsing failed (cause set to {@link MediaTypeParseException})
+     * 
+     * @see HttpConstants.HeaderKey#CONTENT_TYPE
      */
     Optional<MediaType> contentType();
     
     /**
-     * A shortcut for {@link Headers#contentLength(HttpHeaders)}.
+     * Parses one "Content-Length" value into a long.<p>
+     * 
+     * This header is the message body length in bytes and should be set by the
+     * sender if the message carries a body payload.<p>
+     * 
+     * TODO: Example.<p>
+     * 
+     * An empty optional is returned if the header is not present.<p>
+     * 
+     * The server may assume that there is no message body if the header is not
+     * present or set to "0".<p>
      * 
      * @return parsed value (never {@code null})
+     * 
      * @throws BadHeaderException
-     *             if header value can not be parsed, or
-     *             the header has multiple Content-Length keys
+     *             if the headers has multiple Content-Length keys, or
+     *             if header value can not be parsed
+     * 
+     * @see HttpConstants.HeaderKey#CONTENT_LENGTH
      */
     OptionalLong contentLength();
     
