@@ -47,13 +47,15 @@ public final class Headers
      * All strings indexed with an even number is the header key. All strings
      * indexed with an odd number is the header value.<p>
      * 
-     * Header values may be repeated, see {@link HttpHeaders}.<p>
+     * Header values may be repeated, see {@link HttpHeaders}.
      * 
      * @param keyValuePairs header entries
-     * 
      * @return HttpHeaders
      * 
-     * @throws IllegalArgumentException if {@code keyValuePairs.length} is not even
+     * @throws NullPointerException
+     *             if {@code keyValuePairs} is {@code null}
+     * @throws IllegalArgumentException
+     *             if {@code keyValuePairs.length} is not even
      */
     public static HttpHeaders of(String... keyValuePairs) {
         if (keyValuePairs.length == 0) {
@@ -81,14 +83,17 @@ public final class Headers
      * Equivalent to {@link HttpHeaders#of(Map, BiPredicate)} where the
      * filter used accepts all entries.<p>
      * 
-     * Seriously, why does the filter even exist lol? Is a code smell miles
+     * Seriously, why does the filter even exist lol? It's a code smell miles
      * away.
      * 
      * @param map all header mappings
-     * 
      * @return HttpHeaders
+     * @throws NullPointerException if {@code keyValuePairs} is {@code null}
      */
     public static HttpHeaders of(Map<String,List<String>> map) {
+        if (map.isEmpty()) {
+            return EMPTY;
+        }
         return HttpHeaders.of(map, (k, v) -> true);
     }
     
