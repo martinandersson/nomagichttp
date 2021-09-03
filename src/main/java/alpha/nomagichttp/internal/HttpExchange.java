@@ -228,7 +228,7 @@ final class HttpExchange
         }
         
         reqThin = new SkeletonRequest(h,
-                SkeletonRequestTarget.parse(h.requestTarget()),
+                SkeletonRequestTarget.parse(h.target()),
                 monitorBody(createBody(h)),
                 new DefaultAttributes());
         

@@ -27,7 +27,7 @@ public interface RequestHead extends HeaderHolder {
      * 
      * @return the request-target token
      */
-    String requestTarget();
+    String target();
     
     /**
      * Returns the HTTP version token.

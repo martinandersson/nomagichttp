@@ -347,7 +347,7 @@ class RequestHeadSubscriberTest
         var head = testee().toCompletableFuture().get(3, SECONDS);
         return assertThat(head).extracting(
                 RequestHead::method,
-                RequestHead::requestTarget,
+                RequestHead::target,
                 RequestHead::httpVersion,
                 h -> h.headers().delegate());
     }

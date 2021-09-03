@@ -39,7 +39,7 @@ final class DefaultRequestHead implements RequestHead
     }
     
     @Override
-    public String requestTarget() {
+    public String target() {
         return requestTarget;
     }
     
