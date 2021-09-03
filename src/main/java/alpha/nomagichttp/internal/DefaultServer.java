@@ -254,10 +254,11 @@ public final class DefaultServer implements HttpServer
     @Override
     public InetSocketAddress getLocalAddress() throws IllegalStateException, IOException {
         try {
-            return (InetSocketAddress) parent.get().join().channel().getLocalAddress();
+            var addr = parent.get().getNow(null).channel().getLocalAddress();
+            return (InetSocketAddress) requireNonNull(addr);
         } catch (IOException e) {
             throw e;
-        } catch (Exception e) { // including NPE from get().join()
+        } catch (Exception e) { // including NPE
             assert !(e instanceof ClassCastException);
             throw new IllegalStateException("Server is not running.", e);
         }
