@@ -310,6 +310,7 @@ public final class DefaultServer implements HttpServer
         
         void startAccepting() {
             parent.accept(null, onAccept);
+            onAccept.scheduleBackgroundCleaning();
         }
         
         boolean markTerminated() {
