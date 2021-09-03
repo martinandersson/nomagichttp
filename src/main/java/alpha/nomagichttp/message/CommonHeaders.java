@@ -18,7 +18,7 @@ import static java.util.Objects.requireNonNull;
  * Is an extension API on top of an underlying {@link HttpHeaders} instance,
  * retrievable using {@link #delegate()}.<p>
  * 
- * Header key and values when stored will have leading and trailing whitespace
+ * Header key- and values when stored will have leading and trailing whitespace
  * removed. They will also maintain letter capitalization when stored and
  * consequently when retrieved, but are case insensitive when querying.<p>
  * 
