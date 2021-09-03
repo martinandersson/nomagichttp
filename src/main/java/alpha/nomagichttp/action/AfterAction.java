@@ -59,7 +59,8 @@ import java.util.function.BiFunction;
  * HttpServer#events()}).<p>
  * 
  * The action may be called concurrently and must be thread-safe. It may be
- * called by the server's request thread and so must not block.
+ * called by the server's request thread and so must not block. No argument
+ * passed to the action will be {@code null}.
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  */

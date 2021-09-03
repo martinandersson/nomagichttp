@@ -5,7 +5,7 @@ import alpha.nomagichttp.HttpServer;
 import alpha.nomagichttp.action.AfterAction;
 import alpha.nomagichttp.action.BeforeAction;
 import alpha.nomagichttp.message.Response;
-import alpha.nomagichttp.util.AttributeHolder;
+import alpha.nomagichttp.message.AttributeHolder;
 
 import java.io.Closeable;
 import java.io.IOException;

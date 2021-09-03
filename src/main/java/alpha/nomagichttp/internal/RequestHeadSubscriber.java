@@ -5,7 +5,7 @@ import alpha.nomagichttp.event.EventHub;
 import alpha.nomagichttp.event.RequestHeadReceived;
 import alpha.nomagichttp.handler.ClientChannel;
 import alpha.nomagichttp.message.Char;
-import alpha.nomagichttp.message.EndOfStreamException;
+import alpha.nomagichttp.handler.EndOfStreamException;
 import alpha.nomagichttp.message.MaxRequestHeadSizeExceededException;
 import alpha.nomagichttp.message.PooledByteBufferHolder;
 import alpha.nomagichttp.message.RequestHead;

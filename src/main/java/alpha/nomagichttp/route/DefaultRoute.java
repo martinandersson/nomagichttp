@@ -4,6 +4,7 @@ import alpha.nomagichttp.handler.RequestHandler;
 import alpha.nomagichttp.message.MediaRange;
 import alpha.nomagichttp.message.MediaType;
 
+import java.util.Collection;
 import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
@@ -64,7 +65,7 @@ public final class DefaultRoute implements Route
     public RequestHandler lookup(
             String method,
             MediaType contentType,
-            MediaType[] accepts)
+            Collection<MediaType> accepts)
     {
         List<RequestHandler> forMethod = filterByMethod(method, contentType, accepts);
         
@@ -96,12 +97,12 @@ public final class DefaultRoute implements Route
         }
         
         if (candidates == null) {
-            if (consumedContentType) {
-                throw MediaTypeNotAcceptedException.unmatchedAccept(
-                        method, this, contentType, accepts);
-            } else {
+            if (!consumedContentType) {
                 throw MediaTypeUnsupportedException.unmatchedContentType(
-                        method, this, contentType, accepts);
+                        this, method, contentType, accepts);
+            } else {
+                throw MediaTypeNotAcceptedException.unmatchedAccept(
+                        this, method, contentType, accepts);
             }
         }
         
@@ -110,8 +111,9 @@ public final class DefaultRoute implements Route
             candidates.removeAll(ambiguous);
             
             if (candidates.isEmpty()) {
-                Set<RequestHandler> unwrapped = ambiguous.stream().map(RankedHandler::handler).collect(toSet());
-                throw createAmbiguousEx(unwrapped, method, this, contentType, accepts);
+                Set<RequestHandler> unwrapped = ambiguous.stream()
+                        .map(RankedHandler::handler).collect(toSet());
+                throw createAmbiguousEx(this, method, contentType, accepts, unwrapped);
             }
         }
         
@@ -125,11 +127,11 @@ public final class DefaultRoute implements Route
     private List<RequestHandler> filterByMethod(
             String method,
             MediaType contentType,
-            MediaType[] accepts)
+            Collection<MediaType> accepts)
     {
         final List<RequestHandler> rh = handlers.get(method);
         if (rh == null) {
-            throw new MethodNotAllowedException(method, this, contentType, accepts);
+            throw new MethodNotAllowedException(this, method, contentType, accepts);
         }
         assert !rh.isEmpty();
         return rh;
@@ -171,16 +173,16 @@ public final class DefaultRoute implements Route
      */
     // TODO: Should probably instead of using Q of the most specific type use
     //       the greatest Q of any compatible type discovered?
-    private static RankedHandler filterByAccept(RequestHandler handler, MediaType[] accepts) {
+    private static RankedHandler filterByAccept(RequestHandler handler, Collection<MediaType> accepts) {
         final MediaType produces = handler.produces();
         
-        if (accepts == null || accepts.length == 0) {
+        if (accepts == null || accepts.isEmpty()) {
             // If accept is not provided, the default is "*/*; q=1".
             return produces.parameters().isEmpty() ?
                     new RankedHandler(1., handler) : null;
         }
         
-        Optional<MediaType> opt = stream(accepts)
+        Optional<MediaType> opt = accepts.stream()
                     .filter(a -> produces.compatibility(a) != NOPE)
                     .min(comparingInt(MediaType::specificity));
         

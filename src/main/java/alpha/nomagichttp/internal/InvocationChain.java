@@ -4,7 +4,6 @@ import alpha.nomagichttp.action.BeforeAction;
 import alpha.nomagichttp.action.Chain;
 import alpha.nomagichttp.handler.ClientChannel;
 import alpha.nomagichttp.handler.RequestHandler;
-import alpha.nomagichttp.message.MediaType;
 import alpha.nomagichttp.message.RequestHead;
 import alpha.nomagichttp.route.NoRouteFoundException;
 import alpha.nomagichttp.route.Route;
@@ -18,8 +17,6 @@ import java.util.concurrent.atomic.AtomicInteger;
 import static alpha.nomagichttp.HttpConstants.Version;
 import static alpha.nomagichttp.internal.DefaultActionRegistry.Match;
 import static alpha.nomagichttp.internal.HttpExchange.RequestCreated;
-import static alpha.nomagichttp.util.Headers.accept;
-import static alpha.nomagichttp.util.Headers.contentType;
 import static java.lang.System.Logger.Level.DEBUG;
 import static java.lang.System.Logger.Level.WARNING;
 import static java.util.concurrent.CompletableFuture.completedStage;
@@ -111,11 +108,10 @@ final class InvocationChain extends AbstractLocalEventEmitter
     }
     
     private static RequestHandler findRequestHandler(RequestHead rh, Route r) {
-        MediaType type = contentType(rh.headers()).orElse(null);
-        MediaType[] accepts = accept(rh.headers())
-                .map(s -> s.toArray(MediaType[]::new))
-                .orElse(null);
-        RequestHandler h = r.lookup(rh.method(), type, accepts);
+        RequestHandler h = r.lookup(
+                rh.method(),
+                rh.headers().contentType().orElse(null),
+                rh.headers().accept());
         LOG.log(DEBUG, () -> "Matched handler: " + h);
         return h;
     }

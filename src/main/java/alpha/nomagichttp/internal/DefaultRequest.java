@@ -1,10 +1,8 @@
 package alpha.nomagichttp.internal;
 
 import alpha.nomagichttp.HttpConstants.Version;
+import alpha.nomagichttp.message.Attributes;
 import alpha.nomagichttp.message.Request;
-import alpha.nomagichttp.util.Attributes;
-
-import java.net.http.HttpHeaders;
 
 /**
  * The default implementation of {@code Request}.
@@ -53,7 +51,7 @@ final class DefaultRequest implements Request
     }
     
     @Override
-    public HttpHeaders headers() {
+    public Request.Headers headers() {
         return shared.head().headers();
     }
     

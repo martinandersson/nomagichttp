@@ -21,7 +21,7 @@ import alpha.nomagichttp.util.TriConsumer;
  * An action is known on other corners of the internet as a "filter", although
  * the NoMagicHTTP library has avoided this naming convention due to the fact
  * that an action has no obligation to approve, reject or modify requests. It is
- * free to do anything, including ordering pizzas online.
+ * free to do anything, including ordering pizza online.
  * 
  * <pre>
  *   BeforeAction giveRole = (request, channel, chain) -{@literal >} {
@@ -57,7 +57,7 @@ import alpha.nomagichttp.util.TriConsumer;
  * aborting through the {@link Chain} object. The exception is handed off to the
  * {@link ErrorHandler}. This is a variant of the previous example:
  * <pre>
- *   ErrorHandler weRatherHide = (throwable, channel, ign,ored) -{@literal >} {
+ *   ErrorHandler weRatherHide = (throwable, channel, request) -{@literal >} {
  *       try {
  *           throw throwable;
  *       } catch (MySuspiciousRequestException e) {
@@ -92,7 +92,8 @@ import alpha.nomagichttp.util.TriConsumer;
  * or the route exists but has no applicable request handler.<p>
  * 
  * The action may be called concurrently and must be thread-safe. It is likely
- * called by the server's request thread and so must not block.<p>
+ * called by the server's request thread and so must not block. No argument
+ * passed to the action will be {@code null}.<p>
  * 
  * As a word of advice; magic obfuscates and will render the architecture harder
  * to understand. Some features, although cross-cutting in nature, ought to be

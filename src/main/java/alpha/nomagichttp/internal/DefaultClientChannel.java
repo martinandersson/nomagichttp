@@ -3,7 +3,7 @@ package alpha.nomagichttp.internal;
 import alpha.nomagichttp.HttpServer;
 import alpha.nomagichttp.handler.ClientChannel;
 import alpha.nomagichttp.message.Response;
-import alpha.nomagichttp.util.Attributes;
+import alpha.nomagichttp.message.Attributes;
 
 import java.io.IOException;
 import java.net.SocketAddress;

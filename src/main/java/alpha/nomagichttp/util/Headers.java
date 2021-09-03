@@ -1,31 +1,16 @@
 package alpha.nomagichttp.util;
 
-import alpha.nomagichttp.HttpConstants;
-import alpha.nomagichttp.message.BadHeaderException;
-import alpha.nomagichttp.message.MediaType;
-import alpha.nomagichttp.message.MediaTypeParseException;
-
 import java.net.http.HttpHeaders;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
-import java.util.OptionalLong;
 import java.util.function.BiPredicate;
-import java.util.stream.Stream;
 
-import static alpha.nomagichttp.HttpConstants.HeaderKey.ACCEPT;
-import static alpha.nomagichttp.HttpConstants.HeaderKey.CONTENT_LENGTH;
-import static alpha.nomagichttp.HttpConstants.HeaderKey.CONTENT_TYPE;
-import static alpha.nomagichttp.util.Strings.split;
-import static java.lang.Long.parseLong;
-import static java.util.Arrays.stream;
 import static java.util.Collections.emptyMap;
-import static java.util.Optional.empty;
 
 /**
- * Utility methods for {@link HttpHeaders}.
+ * Utility methods for constructing {@link HttpHeaders}.
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  */
@@ -44,13 +29,15 @@ public final class Headers
      * All strings indexed with an even number is the header key. All strings
      * indexed with an odd number is the header value.<p>
      * 
-     * Header values may be repeated, see {@link HttpHeaders}.<p>
+     * Header values may be repeated, see {@link HttpHeaders}.
      * 
      * @param keyValuePairs header entries
-     * 
      * @return HttpHeaders
      * 
-     * @throws IllegalArgumentException if {@code keyValuePairs.length} is not even
+     * @throws NullPointerException
+     *             if {@code keyValuePairs} is {@code null}
+     * @throws IllegalArgumentException
+     *             if {@code keyValuePairs.length} is not even
      */
     public static HttpHeaders of(String... keyValuePairs) {
         if (keyValuePairs.length == 0) {
@@ -78,124 +65,17 @@ public final class Headers
      * Equivalent to {@link HttpHeaders#of(Map, BiPredicate)} where the
      * filter used accepts all entries.<p>
      * 
-     * Seriously, why does the filter even exist lol? Is a code smell miles
+     * Seriously, why does the filter even exist lol? It's a code smell miles
      * away.
      * 
      * @param map all header mappings
-     * 
      * @return HttpHeaders
+     * @throws NullPointerException if {@code keyValuePairs} is {@code null}
      */
     public static HttpHeaders of(Map<String,List<String>> map) {
+        if (map.isEmpty()) {
+            return EMPTY;
+        }
         return HttpHeaders.of(map, (k, v) -> true);
-    }
-    
-    /**
-     * Parses all "Accept" values from the specified headers.<p>
-     * 
-     * The accept-header may be specified by clients that wish to retrieve a
-     * particular resource representation.<p>
-     * 
-     * <i>All</i> accept-header keys are taken into account in order, splitting
-     * the values by the comma character (",") - except for quoted values
-     * (;param="quo,ted"), then feeding each token to {@link
-     * MediaType#parse(CharSequence)}.
-     * 
-     * @param  headers source to parse from
-     * @return parsed values (may be empty, or stream has at least one value)
-     * 
-     * @throws BadHeaderException
-     *             if parsing failed (cause set to {@link MediaTypeParseException})
-     * 
-     * @see HttpConstants.HeaderKey#ACCEPT
-     */
-    public static Optional<Stream<MediaType>> accept(HttpHeaders headers) {
-        var l = headers.allValues(ACCEPT);
-        if (l.isEmpty()) {
-            return empty();
-        }
-        try {
-            return Optional.of(l.stream()
-                    .flatMap(v -> stream(split(v, ',', '"')))
-                    .map(MediaType::parse));
-        } catch (MediaTypeParseException e) {
-            throw new BadHeaderException("Failed to parse " + ACCEPT + " header.", e);
-        }
-    }
-    
-    /**
-     * Parses one "Content-Type" value into a media type.<p>
-     * 
-     * This header indicates the media type of the message body and should be
-     * set by the sender if the message carries a body payload.<p>
-     * 
-     * TODO: Example.<p>
-     * 
-     * @param  headers source to parse from
-     * @return parsed value (never {@code null})
-     * 
-     * @throws BadHeaderException
-     *           if headers has multiple Content-Type keys, or
-     *           if parsing failed (cause set to {@link MediaTypeParseException})
-     * 
-     * @see HttpConstants.HeaderKey#CONTENT_TYPE
-     */
-    public static Optional<MediaType> contentType(HttpHeaders headers) {
-        final List<String> values = headers.allValues(CONTENT_TYPE);
-        
-        if (values.isEmpty()) {
-            return empty();
-        }
-        else if (values.size() == 1) {
-            try {
-                return Optional.of(MediaType.parse(values.get(0)));
-            } catch (MediaTypeParseException e) {
-                throw new BadHeaderException("Failed to parse " + CONTENT_TYPE + " header.", e);
-            }
-        }
-        
-        throw new BadHeaderException("Multiple " + CONTENT_TYPE + " values in request.");
-    }
-    
-    /**
-     * Parses one "Content-Length" value into a long.<p>
-     * 
-     * This header is the message body length in bytes and should be set by the
-     * sender if the message carries a body payload.<p>
-     * 
-     * TODO: Example.<p>
-     * 
-     * An empty optional is returned if the header is not present.<p>
-     * 
-     * The server may assume that there is no message body if the header is not
-     * present or set to "0".<p>
-     * 
-     * @param  headers source to parse from
-     * @return parsed value (never {@code null})
-     * 
-     * @throws BadHeaderException
-     *             if header value can not be parsed, or
-     *             the header has multiple Content-Length keys
-     * 
-     * @see HttpConstants.HeaderKey#CONTENT_LENGTH
-     */
-    public static OptionalLong contentLength(HttpHeaders headers) {
-        final List<String> values = headers.allValues(CONTENT_LENGTH);
-        
-        if (values.isEmpty()) {
-            return OptionalLong.empty();
-        }
-        
-        if (values.size() == 1) {
-            final String v = values.get(0);
-            try {
-                return OptionalLong.of(parseLong(v));
-            } catch (NumberFormatException e) {
-                throw new BadHeaderException(
-                        "Can not parse " + CONTENT_LENGTH + " (\"" + v + "\") into a long.", e);
-            }
-        }
-        
-        throw new BadHeaderException(
-                "Multiple " + CONTENT_LENGTH + " values in request.");
     }
 }

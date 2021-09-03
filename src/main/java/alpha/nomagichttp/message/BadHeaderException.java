@@ -1,10 +1,8 @@
 package alpha.nomagichttp.message;
 
-import alpha.nomagichttp.util.Headers;
-
 /**
- * Thrown by {@link Headers} when attempting to convert a String header value
- * into another Java type.
+ * Thrown by an implementation of {@link CommonHeaders} when converting a String
+ * header value into another Java type, fails.
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  */

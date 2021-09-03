@@ -5,18 +5,16 @@ import alpha.nomagichttp.HttpConstants.StatusCode;
 import alpha.nomagichttp.handler.ClientChannel;
 import alpha.nomagichttp.util.BetterBodyPublishers;
 import alpha.nomagichttp.util.CodeAndPhraseCache;
-import alpha.nomagichttp.util.Headers;
 
 import java.nio.ByteBuffer;
 import java.nio.charset.Charset;
 import java.util.Comparator;
+import java.util.List;
 import java.util.Objects;
-import java.util.Optional;
 import java.util.concurrent.Flow;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.function.ToDoubleFunction;
-import java.util.stream.Stream;
 
 import static alpha.nomagichttp.HttpConstants.HeaderKey.CONNECTION;
 import static alpha.nomagichttp.HttpConstants.HeaderKey.CONTENT_LENGTH;
@@ -633,7 +631,10 @@ public final class Responses
     
     private static Charset getOrUTF8(Request req, String type, String subtype) {
         // Source
-        final Optional<Stream<MediaType>> mediaTypes = Headers.accept(req.headers());
+        final List<MediaType> mediaTypes = req.headers().accept();
+        if (mediaTypes.isEmpty()) {
+            return UTF_8;
+        }
         
         // Stream modifiers
         Predicate<MediaType> correctType = mt ->
@@ -652,13 +653,13 @@ public final class Responses
                            supportsEnc = Charset::canEncode;
         
         // Find it
-        return mediaTypes.flatMap(all -> all
+        return mediaTypes.stream()
                          .filter(correctType)
                          .sorted(byQDesc)
                          .map(getCharset)
                          .filter(discardNull)
                          .filter(supportsEnc)
-                         .findFirst())
+                         .findFirst()
                          .orElse(UTF_8);
     }
     

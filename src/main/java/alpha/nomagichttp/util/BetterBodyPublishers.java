@@ -21,7 +21,7 @@ import java.util.concurrent.Flow;
 import java.util.function.LongSupplier;
 import java.util.function.Supplier;
 
-import static alpha.nomagichttp.util.Arrays.stream;
+import static alpha.nomagichttp.util.Streams.stream;
 import static java.lang.Long.MAX_VALUE;
 import static java.lang.System.Logger.Level.DEBUG;
 import static java.net.http.HttpRequest.BodyPublisher;

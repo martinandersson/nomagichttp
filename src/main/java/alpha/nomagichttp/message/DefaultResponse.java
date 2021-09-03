@@ -2,7 +2,6 @@ package alpha.nomagichttp.message;
 
 import alpha.nomagichttp.HttpConstants;
 import alpha.nomagichttp.util.AbstractImmutableBuilder;
-import alpha.nomagichttp.util.Headers;
 import alpha.nomagichttp.util.Publishers;
 
 import java.net.http.HttpHeaders;
@@ -21,6 +20,7 @@ import static alpha.nomagichttp.HttpConstants.HeaderKey.CONNECTION;
 import static alpha.nomagichttp.HttpConstants.HeaderKey.CONTENT_LENGTH;
 import static alpha.nomagichttp.HttpConstants.StatusCode.THREE_HUNDRED_FOUR;
 import static alpha.nomagichttp.HttpConstants.StatusCode.TWO_HUNDRED_FOUR;
+import static alpha.nomagichttp.util.Headers.of;
 import static alpha.nomagichttp.util.Publishers.empty;
 import static java.net.http.HttpRequest.BodyPublisher;
 import static java.util.Collections.emptyList;
@@ -39,7 +39,7 @@ final class DefaultResponse implements Response
     
     private final int statusCode;
     private final String reasonPhrase;
-    private final HttpHeaders headers;
+    private final CommonHeaders headers;
     private final Iterable<String> forWriting;
     private final Flow.Publisher<ByteBuffer> body;
     private final DefaultBuilder origin;
@@ -55,7 +55,7 @@ final class DefaultResponse implements Response
     {
         this.statusCode = statusCode;
         this.reasonPhrase = reasonPhrase;
-        this.headers = headers;
+        this.headers = new DefaultCommonHeaders(headers);
         this.forWriting = forWriting;
         this.body = body;
         this.origin = origin;
@@ -72,7 +72,7 @@ final class DefaultResponse implements Response
     }
     
     @Override
-    public HttpHeaders headers() {
+    public CommonHeaders headers() {
         return headers;
     }
     
@@ -96,7 +96,7 @@ final class DefaultResponse implements Response
             var typed = (BodyPublisher) b;
             return typed.contentLength() == 0;
         }
-        return headerContains(CONTENT_LENGTH, "0");
+        return headers().contain(CONTENT_LENGTH, "0");
     }
     
     private CompletionStage<Response> stage;
@@ -104,10 +104,7 @@ final class DefaultResponse implements Response
     @Override
     public CompletionStage<Response> completedStage() {
         var s = stage;
-        if (s == null) {
-            s = stage = CompletableFuture.completedStage(this);
-        }
-        return s;
+        return s != null ? s : (stage = CompletableFuture.completedStage(this));
     }
     
     @Override
@@ -257,10 +254,10 @@ final class DefaultResponse implements Response
         }
         
         @Override
-        public Response.Builder addHeaders(HttpHeaders headers) {
+        public Response.Builder addHeaders(Map<String, List<String>> headers) {
             requireNonNull(headers, "headers");
             return new DefaultBuilder(this, s ->
-                    headers.map().forEach((name, values) ->
+                    headers.forEach((name, values) ->
                             values.forEach(v -> s.addHeader(false, name, v))));
         }
         
@@ -288,8 +285,7 @@ final class DefaultResponse implements Response
             MutableState s = constructState(MutableState::new);
             setDefaults(s);
             
-            HttpHeaders headers = s.headers == null ? Headers.of() :
-                    HttpHeaders.of(s.headers, (k, v) -> true);
+            final HttpHeaders headers = s.headers == null ? of() : of(s.headers);
             
             if (headers.allValues(CONTENT_LENGTH).size() > 1) {
                 throw new IllegalStateException("Multiple " + CONTENT_LENGTH + " headers.");
@@ -309,7 +305,7 @@ final class DefaultResponse implements Response
                     this);
             
             if (r.isInformational()) {
-                if (r.headerContains(CONNECTION, "close")) {
+                if (r.headers().contain(CONNECTION, "close")) {
                     throw new IllegalStateException(
                             "\"Connection: close\" set on 1XX (Informational) response.");
                 }

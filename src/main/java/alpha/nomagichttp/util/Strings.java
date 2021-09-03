@@ -32,7 +32,7 @@ public final class Strings
     // TODO: Make sure we can handle an escaped quote within a quoted string! "my \"quote\" ..."
     // See https://tools.ietf.org/html/rfc7230#section-3.2.6
     // Ex. https://tools.ietf.org/html/rfc7235#section-4.1
-    static String[] split(String string, char delimiter, char excludeBoundary) {
+    public static String[] split(String string, char delimiter, char excludeBoundary) {
         if (delimiter == excludeBoundary) {
             throw new IllegalArgumentException(
                     "Delimiter char can not be same as exclude char.");

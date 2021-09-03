@@ -8,6 +8,7 @@ import java.util.Map;
 import java.util.logging.Handler;
 
 import static alpha.nomagichttp.message.MediaType.TEXT_PLAIN;
+import static alpha.nomagichttp.message.MediaType.TEXT_PLAIN_UTF8;
 import static alpha.nomagichttp.message.MediaType.__ALL;
 import static alpha.nomagichttp.message.MediaType.__NOTHING;
 import static alpha.nomagichttp.message.MediaType.__NOTHING_AND_ALL;
@@ -25,9 +26,10 @@ class MediaTypeTest
 {
     @Test
     void cache() {
-        assertTrue(__ALL == parse("*/*"));
-        assertTrue(TEXT_PLAIN == parse("text/plain"));
-        assertFalse(parse("text/*") == parse("text/*"));
+        assertTrue(__ALL == parse(new String("*/*")));
+        assertTrue(TEXT_PLAIN == parse(new String("text/plain")));
+        assertTrue(TEXT_PLAIN_UTF8 == parse(new String("text/plain; charset=utf-8")));
+        assertFalse(parse("text/*") == parse(("text/*")));
         // ...
     }
     

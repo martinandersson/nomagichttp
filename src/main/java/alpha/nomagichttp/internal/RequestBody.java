@@ -1,12 +1,12 @@
 package alpha.nomagichttp.internal;
 
+import alpha.nomagichttp.message.CommonHeaders;
 import alpha.nomagichttp.message.MediaType;
 import alpha.nomagichttp.message.PooledByteBufferHolder;
 import alpha.nomagichttp.message.Request;
 import alpha.nomagichttp.message.RequestBodyTimeoutException;
 import alpha.nomagichttp.util.Publishers;
 
-import java.net.http.HttpHeaders;
 import java.nio.channels.AsynchronousFileChannel;
 import java.nio.charset.Charset;
 import java.nio.file.OpenOption;
@@ -23,8 +23,6 @@ import java.util.function.BiFunction;
 import static alpha.nomagichttp.internal.AtomicReferences.lazyInit;
 import static alpha.nomagichttp.internal.SubscriptionMonitoringOp.alreadyCompleted;
 import static alpha.nomagichttp.internal.SubscriptionMonitoringOp.subscribeTo;
-import static alpha.nomagichttp.util.Headers.contentLength;
-import static alpha.nomagichttp.util.Headers.contentType;
 import static java.lang.System.Logger.Level.DEBUG;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.nio.file.StandardOpenOption.CREATE_NEW;
@@ -74,7 +72,7 @@ final class RequestBody implements Request.Body
      * @throws NullPointerException if any required argument is {@code null}
      */
     static RequestBody of(
-            HttpHeaders headers,
+            CommonHeaders headers,
             Flow.Publisher<DefaultPooledByteBufferHolder> chIn,
             DefaultClientChannel chApi,
             Duration timeout,
@@ -89,7 +87,7 @@ final class RequestBody implements Request.Body
         // "If this is a request message and none of the above are true, then"
         //  the message body length is zero (no message body is present)."
         //  - RFC 7230 §3.3.3 Message Body Length
-        final long len = contentLength(headers).orElse(0);
+        final long len = headers.contentLength().orElse(0);
         
         if (len <= 0) {
             requireNonNull(chIn);
@@ -125,7 +123,7 @@ final class RequestBody implements Request.Body
         }
     }
     
-    private final HttpHeaders headers;
+    private final CommonHeaders headers;
     private final OnCancelDiscardOp chIn;
     private final SubscriptionMonitoringOp monitor;
     private final Runnable beforeSubsc;
@@ -134,7 +132,7 @@ final class RequestBody implements Request.Body
     
     private RequestBody(
             // Required
-            HttpHeaders headers,
+            CommonHeaders headers,
             // All optional (relevant only for body contents)
             OnCancelDiscardOp chIn,
             SubscriptionMonitoringOp monitor,
@@ -158,12 +156,12 @@ final class RequestBody implements Request.Body
     private CompletionStage<String> mkText() {
         final Charset charset;
         try {
-            charset = contentType(headers)
-                    .filter(m -> m.type().equals("text"))
-                    .map(MediaType::parameters)
-                    .map(p -> p.get("charset"))
-                    .map(Charset::forName)
-                    .orElse(UTF_8);
+            charset = headers.contentType()
+                             .filter(m -> m.type().equals("text"))
+                             .map(MediaType::parameters)
+                             .map(p -> p.get("charset"))
+                             .map(Charset::forName)
+                             .orElse(UTF_8);
         } catch (Throwable t) {
             return failedStage(t);
         }

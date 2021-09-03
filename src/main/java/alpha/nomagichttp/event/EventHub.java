@@ -2,7 +2,7 @@ package alpha.nomagichttp.event;
 
 import java.util.function.Supplier;
 
-import static alpha.nomagichttp.util.Arrays.stream;
+import static alpha.nomagichttp.util.Streams.stream;
 
 /**
  * An event emitter that can be used to redistribute events from other emitters

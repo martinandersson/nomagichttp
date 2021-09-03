@@ -7,7 +7,6 @@ import alpha.nomagichttp.ReceiverOfUniqueRequestObject;
 import alpha.nomagichttp.handler.ClientChannel;
 import alpha.nomagichttp.handler.ErrorHandler;
 import alpha.nomagichttp.route.Route;
-import alpha.nomagichttp.util.AttributeHolder;
 import alpha.nomagichttp.util.Publishers;
 
 import java.net.URLDecoder;
@@ -39,9 +38,10 @@ import java.util.stream.Stream;
  * discarded as late in the HTTP exchange process as possible, which is when the
  * server's {@link Response#body() response body} subscription completes.<p>
  * 
- * The implementation is thread-safe, non-blocking and immutable. Components may
- * change their state in a thread-safe manner, e.g. attribute entries and
- * lazy processing of parameters.<p>
+ * The implementation is thread-safe, non-blocking and immutable. Collaborating
+ * components too are thread-safe, but not necessarily immutable. E.g. attribute
+ * entries and caching layers such as the lazy processing of path parameters,
+ * the query string and header parsing.<p>
  * 
  * The request object does not implement {@code hashCode()} and {@code equals()}.
  * Its identity is unique per receiver (see {@link
@@ -110,6 +110,9 @@ public interface Request extends HeaderHolder, AttributeHolder
      * @return the request-line's HTTP version
      */
     HttpConstants.Version httpVersion();
+    
+    @Override
+    Request.Headers headers();
     
     /**
      * Returns a body API object bound to this request.
@@ -198,7 +201,7 @@ public interface Request extends HeaderHolder, AttributeHolder
      *     String formdata = java.net.URLDecoder.decode(nondecoded, StandardCharsets.UTF_8);
      * }</pre>
      * 
-     * The implementation is thread-safe, immutable and non-blocking.
+     * The implementation is thread-safe and non-blocking.
      * 
      * @author Martin Andersson (webmaster at martinandersson.com)
      */
@@ -462,6 +465,32 @@ public interface Request extends HeaderHolder, AttributeHolder
          * @return the fragment of the resource-target (never {@code null})
          */
         String fragment();
+    }
+    
+    /**
+     * Request-specific headers.
+     */
+    interface Headers extends CommonHeaders {
+        /**
+         * Parses all "Accept" values.<p>
+         * 
+         * The accept-header may be specified by clients that wish to retrieve a
+         * particular resource representation.<p>
+         * 
+         * <i>All</i> accept-header keys are taken into account in order,
+         * splitting the values by the comma character (",") - except for quoted
+         * values (;param="quo,ted"), then feeding each token to {@link
+         * MediaType#parse(CharSequence)}.
+         * 
+         * @return parsed values (unmodifiable, implements {@link RandomAccess})
+         * 
+         * @throws BadHeaderException
+         *             if parsing failed (the cause is set to a
+         *             {@link MediaTypeParseException})
+         * 
+         * @see HttpConstants.HeaderKey#ACCEPT
+         */
+        List<MediaType> accept();
     }
     
     /**

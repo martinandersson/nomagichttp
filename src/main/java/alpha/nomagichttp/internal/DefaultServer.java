@@ -63,8 +63,8 @@ public final class DefaultServer implements HttpServer
     private static final int INITIAL_CAPACITY = 10_000;
     
     /** To prevent leaks (by this class), children are stored using weak references. */
-    private static long CLEAN_INTERVAL_MIN = ofMinutes(1).toNanos(),
-                        CLEAN_INTERVAL_MAX = ofMinutes(1).plusSeconds(30).toNanos();
+    private static final long CLEAN_INTERVAL_MIN = ofMinutes(1).toNanos(),
+                              CLEAN_INTERVAL_MAX = ofMinutes(1).plusSeconds(30).toNanos();
     
     private final Config config;
     private final DefaultActionRegistry actions;
@@ -133,28 +133,38 @@ public final class DefaultServer implements HttpServer
     }
     
     private void initialize(SocketAddress addr, CompletableFuture<ParentWithHandler> v) {
-        final AsynchronousChannelGroup grp;
+        final ParentWithHandler pw;
         try {
-            grp = AsyncGroup.register(getConfig().threadPoolSize());
-        } catch (IOException e) {
-            v.completeExceptionally(e);
-            return;
-        }
-        
-        final AsynchronousServerSocketChannel ch;
-        final Instant when;
-        try {
-            ch = AsynchronousServerSocketChannel.open(grp).bind(addr);
-            when = Instant.now();
+            pw = initReg(addr);
         } catch (Throwable t) {
-            AsyncGroup.unregister();
             v.completeExceptionally(t);
             return;
         }
-        
-        LOG.log(INFO, () -> "Opened server channel: " + ch);
-        v.complete(new ParentWithHandler(ch, when));
-        events().dispatch(HttpServerStarted.INSTANCE, when);
+        LOG.log(INFO, () -> "Opened server channel: " + pw.channel());
+        v.complete(pw);
+        events().dispatch(HttpServerStarted.INSTANCE, pw.started());
+    }
+    
+    private ParentWithHandler initReg(SocketAddress addr) throws Throwable {
+        var grp = AsyncGroup.register(getConfig().threadPoolSize());
+        try {
+            return initOpen(grp, addr);
+        } catch (Throwable t) {
+            AsyncGroup.unregister();
+            throw t;
+        }
+    }
+    
+    private ParentWithHandler initOpen(AsynchronousChannelGroup grp, SocketAddress addr) throws Throwable {
+        var ch = AsynchronousServerSocketChannel.open(grp);
+        try {
+            ch.bind(addr);
+            final Instant when = Instant.now();
+            return new ParentWithHandler(ch, when);
+        } catch (Throwable t) {
+            ch.close();
+            throw t;
+        }
     }
     
     @Override
@@ -244,10 +254,11 @@ public final class DefaultServer implements HttpServer
     @Override
     public InetSocketAddress getLocalAddress() throws IllegalStateException, IOException {
         try {
-            return (InetSocketAddress) parent.get().join().channel().getLocalAddress();
+            var addr = parent.get().getNow(null).channel().getLocalAddress();
+            return (InetSocketAddress) requireNonNull(addr);
         } catch (IOException e) {
             throw e;
-        } catch (Exception e) { // including NPE from get().join()
+        } catch (Exception e) { // including NPE
             assert !(e instanceof ClassCastException);
             throw new IllegalStateException("Server is not running.", e);
         }
@@ -300,6 +311,7 @@ public final class DefaultServer implements HttpServer
         
         void startAccepting() {
             parent.accept(null, onAccept);
+            onAccept.scheduleBackgroundCleaning();
         }
         
         boolean markTerminated() {
@@ -418,7 +430,7 @@ public final class DefaultServer implements HttpServer
             var exch = new HttpExchange(
                     DefaultServer.this, actions, routes, eh, chIn, chApi);
             
-            exch.begin().whenComplete((Null, exc) -> {
+            exch.begin().whenComplete((nil, exc) -> {
                 // Both open-calls are volatile reads, no locks
                 if (exc == null && parent.isOpen() && chApi.isEverythingOpen()) {
                     startExchange(chApi, chIn);

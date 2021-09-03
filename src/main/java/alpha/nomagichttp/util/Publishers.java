@@ -12,7 +12,7 @@ import java.util.concurrent.Flow;
 import java.util.function.BiConsumer;
 import java.util.function.Function;
 
-import static alpha.nomagichttp.util.Arrays.stream;
+import static alpha.nomagichttp.util.Streams.stream;
 import static alpha.nomagichttp.util.Subscriptions.CanOnlyBeCancelled;
 import static alpha.nomagichttp.util.Subscriptions.TurnOnProxy;
 import static java.lang.Long.MAX_VALUE;

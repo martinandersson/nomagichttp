@@ -463,15 +463,11 @@ public interface HttpServer extends RouteRegistry, ActionRegistry
     Config getConfig();
     
     /**
-     * Returns the socket address that the server is listening on.<p>
-     * 
-     * If the server was just started and is still in the midst of opening the
-     * server's listening port, then this method will block until the startup
-     * routine is completed before returning.
+     * Returns the socket address that the server is listening on.
      * 
      * @return the port used by the server
      * 
-     * @throws IllegalStateException if server is not running
+     * @throws IllegalStateException if the server is not running
      * @throws IOException if an I/O error occurs
      * 
      * @see AsynchronousServerSocketChannel#getLocalAddress() 

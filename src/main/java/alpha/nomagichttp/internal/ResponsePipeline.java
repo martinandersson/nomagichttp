@@ -50,14 +50,13 @@ import static java.util.concurrent.TimeUnit.SECONDS;
  *   <li>Invoke all after-actions</li>
  *   <li>Apply low-level response transformations such as setting "Connection:
  *       close" if no "Content-Length"</li>
- *   <li>Act on response-scheduled channel commands (must-close-after-write,
- *       "Connection: close", et cetera)</li>
+ *   <li>Track- and act on "Connection: close"</li>
  * </ul>
  * 
  * In addition:
  * <ol>
  *   <li>Emits the high-level {@link ResponseTimeoutException} on response
- *       enqueuing - and response body emission delay</li>
+ *       enqueuing- and response body emission delay</li>
  *   <li>Also emits low-level exceptions from the underlying channel
  *       implementation (such as {@link InterruptedByTimeoutException}.</li>
  *   <li>Implements {@link Config#maxUnsuccessfulResponses()}</li>
@@ -363,9 +362,9 @@ final class ResponsePipeline extends AbstractLocalEventEmitter
     }
     
     private Response fixUnknownLength(Response rsp) {
-        if (rsp.headerIsMissingOrEmpty(CONTENT_LENGTH) &&
-            !hasConnectionClose(rsp)                   &&
-            !rsp.isBodyEmpty())
+        if (rsp.headers().isMissingOrEmpty(CONTENT_LENGTH) &&
+            !rsp.isBodyEmpty() &&
+            !hasConnectionClose(rsp))
         {
             // TODO: In the future when implemented, chunked encoding may also be an option
             LOG.log(DEBUG, "Response body of unknown length and not marked to close connection, setting \"Connection: close\".");
@@ -528,7 +527,7 @@ final class ResponsePipeline extends AbstractLocalEventEmitter
     }
     
     private static boolean hasConnectionClose(HeaderHolder msg) {
-        return msg.headerContains(CONNECTION, "close");
+        return msg.headers().contain(CONNECTION, "close");
     }
     
     private static Response setConnectionClose(Response rsp) {

@@ -1,7 +1,6 @@
 package alpha.nomagichttp.examples;
 
 import alpha.nomagichttp.HttpServer;
-import alpha.nomagichttp.message.Response;
 import alpha.nomagichttp.message.Responses;
 
 import java.io.IOException;
@@ -28,14 +27,14 @@ public class EchoHeaders
         HttpServer app = HttpServer.create();
         
         app.add("/echo", GET().apply(req -> {
-            // A Response.Builder can be constructed anew, or extracted from an
-            // an already built Response.
-            Response.Builder b = Responses.noContent().toBuilder(); // 204 No Content
-            
-            // TODO: Use a prefix
-            return b.addHeaders(req.headers())
-                    .build()
-                    .completedStage();
+            // A Response.Builder can be constructed anew (Response.builder()),
+            // or extracted from an already built Response. Just like a Java
+            // Stream, each modifying operation returns a new instance.
+            return Responses.noContent()       // Response "204 No Content"
+                            .toBuilder()       // Response.Builder
+                                .addHeaders(req.headers())
+                                .build()       // Response
+                            .completedStage(); // CompletionStage<Response>
         }));
         
         app.start(PORT);

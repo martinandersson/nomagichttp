@@ -11,6 +11,7 @@ import alpha.nomagichttp.message.RequestHeadTimeoutException;
 import alpha.nomagichttp.message.ResponseTimeoutException;
 import alpha.nomagichttp.message.Responses;
 import alpha.nomagichttp.route.MethodNotAllowedException;
+import alpha.nomagichttp.route.Route;
 
 import java.time.Duration;
 import java.util.concurrent.Flow;
@@ -313,19 +314,12 @@ public interface Config
      * operation to abort for response body bytebuffers not fully sent before
      * the duration elapses. This exception will also not be delivered to the
      * error handler(s) and close the channel immediately. The application can
-     * chose to publish very large response body bytebuffers without worrying
+     * choose to publish very large response body bytebuffers without worrying
      * about a possible timeout due to the increased time it may take to send a
      * large buffer. The server will internally slice the buffer if need be.<p>
      * 
      * Any timeout exception not delivered to the exception handler(s) is
      * logged.<p>
-     * 
-     * Word of caution: There is currently no mechanism put in place to unblock
-     * a stuck thread. For example, if the server's thread who subscribes to the
-     * response body is immediately and indefinitely blocked, then no error
-     * handler will ever be called and the timeout exception will never be
-     * logged. The connection will close, but that's it. Never block a thread
-     * from the server.<p>
      * 
      * The default implementation returns {@code Duration.ofSeconds(90)}.
      * 
@@ -334,22 +328,24 @@ public interface Config
     Duration timeoutIdleConnection();
     
     /**
-     * If {@code true} (which is the default), the {@link ErrorHandler#DEFAULT
-     * default error handler} will respond a <i>successful</i> 204 (No Content)
-     * with the {@value HttpConstants.HeaderKey#ALLOW} header populated to a
-     * request handler resolution that ends with a {@link
-     * MethodNotAllowedException} if and only if the requested HTTP method is
-     * {@value HttpConstants.Method#OPTIONS}. In human speech; all routes will
-     * get a valid auto-implementation of the {@code OPTIONS} method.<p>
+     * If {@code true} (which is the default), any {@link Route} not
+     * implementing the {@value HttpConstants.Method#OPTIONS} method will get
+     * one.<p>
      * 
-     * Even if the default value for this configuration is {@code true}, the
-     * application's route can still freely implement the {@code OPTIONS} method
-     * or the application can configure an error handler that handles the {@code
-     * MethodNotAllowedException} however it sees fit.<p>
+     * This works in the following way: As with any HTTP method, if the
+     * implementation is missing, a {@link MethodNotAllowedException} is thrown
+     * which may eventually reach the {@linkplain  ErrorHandler#DEFAULT default
+     * error handler}. This handler in turn will - if this configuration is
+     * enabled - respond a <i>successful</i> 204 (No Content). Had this
+     * configuration not been enabled, the response would have been a <i>client
+     * error</i> 405 (Method Not Allowed). In both cases, the {@value
+     * HttpConstants.HeaderKey#ALLOW} header will be set and populated with all
+     * the HTTP methods that are indeed implemented. So there's really no other
+     * difference between the two outcomes, other than the status code.<p>
      * 
-     * If this methods returns {@code false}, then the default error handler
-     * will respond a <i>client error</i> 405 (Method Not Allowed) response as
-     * it normally do for all {@code MethodNotAllowedException}s.
+     * With or without this configuration enabled, the application can easily
+     * add its own {@code OPTIONS} implementation to the route or override the
+     * default error handler.
      * 
      * @return see JavaDoc
      */

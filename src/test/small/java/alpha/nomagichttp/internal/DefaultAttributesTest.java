@@ -1,6 +1,6 @@
 package alpha.nomagichttp.internal;
 
-import alpha.nomagichttp.util.Attributes;
+import alpha.nomagichttp.message.Attributes;
 import org.junit.jupiter.api.Test;
 
 import java.util.Optional;
@@ -9,7 +9,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
- * Small tests for {@link DefaultAttributesTest}
+ * Small tests for {@link DefaultAttributes}
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  */

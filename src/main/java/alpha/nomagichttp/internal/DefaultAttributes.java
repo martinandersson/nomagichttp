@@ -1,6 +1,6 @@
 package alpha.nomagichttp.internal;
 
-import alpha.nomagichttp.util.Attributes;
+import alpha.nomagichttp.message.Attributes;
 
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
@@ -13,7 +13,7 @@ import static java.util.Optional.ofNullable;
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  */
-public final class DefaultAttributes implements Attributes {
+final class DefaultAttributes implements Attributes {
     // does not allow null as key or value
     private final ConcurrentMap<String, Object> map = new ConcurrentHashMap<>();
     

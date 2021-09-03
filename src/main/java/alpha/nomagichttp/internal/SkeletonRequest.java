@@ -1,7 +1,7 @@
 package alpha.nomagichttp.internal;
 
 import alpha.nomagichttp.message.RequestHead;
-import alpha.nomagichttp.util.Attributes;
+import alpha.nomagichttp.message.Attributes;
 
 /**
  * A thin version of a request.<p>
