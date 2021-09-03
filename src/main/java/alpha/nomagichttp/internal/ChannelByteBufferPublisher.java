@@ -1,6 +1,6 @@
 package alpha.nomagichttp.internal;
 
-import alpha.nomagichttp.message.EndOfStreamException;
+import alpha.nomagichttp.handler.EndOfStreamException;
 import alpha.nomagichttp.message.PooledByteBufferHolder;
 import alpha.nomagichttp.message.Request;
 import alpha.nomagichttp.util.PushPullPublisher;

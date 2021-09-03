@@ -1,4 +1,4 @@
-package alpha.nomagichttp.message;
+package alpha.nomagichttp.handler;
 
 /**
  * Channel has reached end-of-stream.

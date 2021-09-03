@@ -3,7 +3,7 @@ package alpha.nomagichttp.mediumtest;
 import alpha.nomagichttp.handler.ErrorHandler;
 import alpha.nomagichttp.handler.RequestHandler;
 import alpha.nomagichttp.message.Char;
-import alpha.nomagichttp.message.EndOfStreamException;
+import alpha.nomagichttp.handler.EndOfStreamException;
 import alpha.nomagichttp.message.PooledByteBufferHolder;
 import alpha.nomagichttp.message.Response;
 import alpha.nomagichttp.testutil.AbstractRealTest;

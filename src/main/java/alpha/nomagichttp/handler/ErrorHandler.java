@@ -6,7 +6,6 @@ import alpha.nomagichttp.ReceiverOfUniqueRequestObject;
 import alpha.nomagichttp.action.AfterAction;
 import alpha.nomagichttp.action.BeforeAction;
 import alpha.nomagichttp.message.BadHeaderException;
-import alpha.nomagichttp.message.EndOfStreamException;
 import alpha.nomagichttp.message.HttpVersionParseException;
 import alpha.nomagichttp.message.HttpVersionTooNewException;
 import alpha.nomagichttp.message.HttpVersionTooOldException;
