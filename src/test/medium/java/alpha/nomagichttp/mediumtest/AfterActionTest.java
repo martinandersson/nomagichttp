@@ -30,7 +30,7 @@ class AfterActionTest extends AbstractRealTest
     void javadoc_ex() throws IOException {
         server()
             .before("/*", (req, ch, chain) -> {
-                if (req.headerIsMissingOrEmpty(X_CORRELATION_ID)) {
+                if (req.headers().isMissingOrEmpty(X_CORRELATION_ID)) {
                     req.attributes().set(X_CORRELATION_ID, "123");
                 }
                 chain.proceed(); })

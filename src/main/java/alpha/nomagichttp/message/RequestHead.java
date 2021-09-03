@@ -6,9 +6,9 @@ import alpha.nomagichttp.event.RequestHeadReceived;
  * A "raw" request head where each component can be retrieved as observed on the
  * wire.<p>
  * 
- * A complex version of a parsed and <i>accepted</i> request head is embedded in
- * the API of {@link Request}. This head-type is emitted together with the
- * {@link RequestHeadReceived} event.<p>
+ * This type is emitted as an attachment to the {@link RequestHeadReceived}
+ * event. An API for accessing a parsed and <i>accepted</i> request head is
+ * embedded in the API of {@link Request}.<p>
  * 
  * String tokens returned by this interface is never {@code null} or empty.
  * 
@@ -35,4 +35,7 @@ public interface RequestHead extends HeaderHolder {
      * @return the HTTP version token
      */
     String httpVersion();
+    
+    @Override
+    Request.Headers headers();
 }

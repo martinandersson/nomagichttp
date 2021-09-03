@@ -65,11 +65,13 @@ import static java.net.http.HttpRequest.BodyPublisher;
  * <strong>not</strong> join the values on the same row. If this is desired,
  * first join multiple values and then pass it to the builder as one.<p>
  * 
- * Header order is not significant (
- * <a href="https://tools.ietf.org/html/rfc7230#section-3.2.2">RFC 7230 §3.2.2</a>
- * ), but will be preserved on the wire (FIFO) except for duplicated names which
- * will be grouped together and inserted at the occurrence of the first
- * value.<p>
+ * Header order is not significant (see {@link CommonHeaders}), but - unless
+ * documented differently - the response builder will preserve the addition
+ * order on the wire (FIFO) except for duplicated names which will be grouped
+ * together and inserted at the occurrence of the first value.<p>
+ * 
+ * The exact appearance of the headers on the wire can be customized by a custom
+ * implementation of {@link #headersForWriting()}<p>
  * 
  * The {@code Response} object can safely be reused sequentially over time to
  * the same client. The response can also be shared concurrently to different
@@ -146,11 +148,10 @@ public interface Response extends HeaderHolder
     String reasonPhrase();
     
     /**
-     * Returns the headers as they are written on the wire out to client.<p>
+     * Returns header lines as they are written on the wire out to client.<p>
      * 
      * The default implementation adheres to the contract as defined in JavaDoc
-     * of {@link Response}. A custom implementation can change this however it
-     * sees fit.
+     * of {@link Response}. A custom implementation is free to change this.
      * 
      * @return the headers as they are written on the wire (unmodifiable)
      */
@@ -207,7 +208,7 @@ public interface Response extends HeaderHolder
      * object instance as {@link Publishers#empty()}, or it returns a
      * {@link HttpRequest.BodyPublisher} implementation with {@code
      * contentLength()} set to 0, or the response has a {@code Content-Length}
-     * header set to 0 [in future: and no chunked encoding].
+     * header set to 0 [in the future: and no chunked encoding].
      * 
      * @return {@code true} if the body is assumed to be empty,
      *         otherwise {@code false}
@@ -325,7 +326,7 @@ public interface Response extends HeaderHolder
         
         /**
          * Add header(s) to this response.<p>
-         *
+         * 
          * Iterating the {@code String[]} must alternate between header- names
          * and values. To add several values to the same name then the same
          * name must be supplied with each additional value.<p>
@@ -349,11 +350,30 @@ public interface Response extends HeaderHolder
         Builder addHeaders(String name, String value, String... morePairs);
         
         /**
-         * Add all headers from the given HttpHeaders object.<p>
+         * Add all headers from the given headers object.<p>
          * 
-         * The implementation may use {@link HttpHeaders#map()} to access the
-         * header values which does not provide any guarantee with regards to
-         * the ordering of its entries.
+         * @implSpec
+         * The default implementation is
+         * <pre>
+         *     return this.{@link #addHeaders(HttpHeaders)
+         *       addHeaders}(headers.{@link CommonHeaders#delegate() delegate}());
+         * </pre>
+         * 
+         * @param   headers to add
+         * @return  a new builder representing the new state
+         * @throws  NullPointerException if {@code headers} is {@code null}
+         * @see     HttpConstants.HeaderKey
+         */
+        default Builder addHeaders(CommonHeaders headers) {
+            return addHeaders(headers.delegate());
+        }
+        
+        /**
+         * Add all headers from the given headers object.<p>
+         * 
+         * Warning: The implementation may use {@link HttpHeaders#map()} to
+         * access the header values which does not provide any guarantee
+         * regarding the ordering of its entries.
          * 
          * @param   headers to add
          * @return  a new builder representing the new state

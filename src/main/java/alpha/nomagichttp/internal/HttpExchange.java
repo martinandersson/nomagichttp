@@ -74,7 +74,7 @@ final class HttpExchange
      * {@link ResponsePipeline} whenever a request object has been created. The
      * first (and only) attachment is the request object created. The result
      * performed by this class is an update of the HTTP exchange state, so that
-     * the {@link ErrorHandler} can receive the last instance.
+     * the {@link ErrorHandler} can receive the most recent instance.
      */
     enum RequestCreated { INSTANCE }
     
@@ -297,7 +297,7 @@ final class HttpExchange
     
     private void tryRespond100Continue() {
         if (!getHttpVersion().isLessThan(HTTP_1_1) &&
-            head.headerContains(EXPECT, "100-continue")) {
+            head.headers().contain(EXPECT, "100-continue")) {
             pipe.add(Command.TRY_SCHEDULE_100CONTINUE);
         }
     }
@@ -380,7 +380,7 @@ final class HttpExchange
         b.discardIfNoSubscriber();
         b.subscriptionMonitor().asCompletionStage().whenComplete((nil, thr) -> {
             // Prepping new exchange = thr is ignored (already dealt with, hopefully lol)
-            if (head.headerContains(CONNECTION, "close") && chApi.isOpenForReading()) {
+            if (head.headers().contain(CONNECTION, "close") && chApi.isOpenForReading()) {
                 LOG.log(DEBUG, "Request set \"Connection: close\", shutting down input.");
                 chApi.shutdownInputSafe();
             }

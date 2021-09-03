@@ -349,7 +349,7 @@ class RequestHeadSubscriberTest
                 RequestHead::method,
                 RequestHead::requestTarget,
                 RequestHead::httpVersion,
-                RequestHead::headers);
+                h -> h.headers().delegate());
     }
     
     private static HttpHeaders headers(String... keyValuePairs) {

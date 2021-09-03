@@ -1,23 +1,27 @@
 package alpha.nomagichttp.message;
 
+import alpha.nomagichttp.action.BeforeAction;
+import alpha.nomagichttp.handler.RequestHandler;
+
 import java.util.Optional;
 import java.util.concurrent.ConcurrentMap;
 
 /**
- * Is an API for accessing objects associated with a holder.<p>
+ * Is an API for storing and accessing arbitrary objects associated with the
+ * holder.<p>
  * 
- * Useful when passing data across boundaries where the holder is the data
- * carrier, such as passing data from a request handler to an error handler or
- * the other way around.
+ * Is useful when passing data across executional boundaries where the holder is
+ * the data carrier, such as passing data from a {@link BeforeAction} to a
+ * {@link RequestHandler}.
  * 
  * <pre>{@code
- *   // In a request handler
  *   request.attributes().set("my.stuff", new MyClass());
  *   // Somewhere else
  *   MyClass obj = request.attributes().getAny("my.stuff");
  * }</pre>
  * 
- * The implementation is thread-safe.<p>
+ * The implementation is thread-safe and never replaced throughout the life of
+ * the header holder.<p>
  * 
  * For as long as the holder object is reachable, the attributes are reachable.
  * The other way around is not true as the attributes does not keep a

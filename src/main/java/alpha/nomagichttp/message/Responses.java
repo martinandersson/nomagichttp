@@ -5,7 +5,6 @@ import alpha.nomagichttp.HttpConstants.StatusCode;
 import alpha.nomagichttp.handler.ClientChannel;
 import alpha.nomagichttp.util.BetterBodyPublishers;
 import alpha.nomagichttp.util.CodeAndPhraseCache;
-import alpha.nomagichttp.util.Headers;
 
 import java.nio.ByteBuffer;
 import java.nio.charset.Charset;
@@ -632,7 +631,7 @@ public final class Responses
     
     private static Charset getOrUTF8(Request req, String type, String subtype) {
         // Source
-        final List<MediaType> mediaTypes = Headers.accept(req.headers());
+        final List<MediaType> mediaTypes = req.headers().accept();
         if (mediaTypes.isEmpty()) {
             return UTF_8;
         }

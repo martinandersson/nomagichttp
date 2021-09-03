@@ -289,8 +289,7 @@ class ExampleTest extends AbstractRealTest
     }
     
     private void addEchoHeadersRoute(boolean closeChild) throws IOException {
-        Function<Request, Response> rsp = req -> Responses.noContent()
-                .toBuilder()
+        Function<Request, Response> rsp = req -> Responses.noContent().toBuilder()
                 .addHeaders(req.headers())
                 .build();
         

@@ -1,14 +1,13 @@
 package alpha.nomagichttp.message;
 
 /**
- * The object that implements this interface may be used to associate arbitrary
- * data with.
+ * Adds {@link #attributes()}.
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  */
 public interface AttributeHolder {
     /**
-     * Returns an attributes API bound to this object.<p>
+     * Returns an attributes API bound to this object.
      * 
      * @return an attributes API object bound to this object
      */

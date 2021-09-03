@@ -12,7 +12,6 @@ import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.Flow;
@@ -40,7 +39,7 @@ final class DefaultResponse implements Response
     
     private final int statusCode;
     private final String reasonPhrase;
-    private final HttpHeaders headers;
+    private final CommonHeaders headers;
     private final Iterable<String> forWriting;
     private final Flow.Publisher<ByteBuffer> body;
     private final DefaultBuilder origin;
@@ -56,7 +55,7 @@ final class DefaultResponse implements Response
     {
         this.statusCode = statusCode;
         this.reasonPhrase = reasonPhrase;
-        this.headers = headers;
+        this.headers = new DefaultCommonHeaders(headers);
         this.forWriting = forWriting;
         this.body = body;
         this.origin = origin;
@@ -73,19 +72,8 @@ final class DefaultResponse implements Response
     }
     
     @Override
-    public HttpHeaders headers() {
+    public CommonHeaders headers() {
         return headers;
-    }
-    
-    private Optional<MediaType> cc;
-    
-    @Override
-    public Optional<MediaType> headerValContentType() {
-        var cc = this.cc;
-        if (cc == null) {
-            this.cc = cc = Headers.contentType(headers());
-        }
-        return cc;
     }
     
     @Override
@@ -108,7 +96,7 @@ final class DefaultResponse implements Response
             var typed = (BodyPublisher) b;
             return typed.contentLength() == 0;
         }
-        return headerContains(CONTENT_LENGTH, "0");
+        return headers().contain(CONTENT_LENGTH, "0");
     }
     
     private CompletionStage<Response> stage;
@@ -116,10 +104,7 @@ final class DefaultResponse implements Response
     @Override
     public CompletionStage<Response> completedStage() {
         var s = stage;
-        if (s == null) {
-            s = stage = CompletableFuture.completedStage(this);
-        }
-        return s;
+        return s != null ? s : (stage = CompletableFuture.completedStage(this));
     }
     
     @Override
@@ -321,7 +306,7 @@ final class DefaultResponse implements Response
                     this);
             
             if (r.isInformational()) {
-                if (r.headerContains(CONNECTION, "close")) {
+                if (r.headers().contain(CONNECTION, "close")) {
                     throw new IllegalStateException(
                             "\"Connection: close\" set on 1XX (Informational) response.");
                 }

@@ -362,7 +362,7 @@ final class ResponsePipeline extends AbstractLocalEventEmitter
     }
     
     private Response fixUnknownLength(Response rsp) {
-        if (rsp.headerIsMissingOrEmpty(CONTENT_LENGTH) &&
+        if (rsp.headers().isMissingOrEmpty(CONTENT_LENGTH) &&
             !rsp.isBodyEmpty() &&
             !hasConnectionClose(rsp))
         {
@@ -527,7 +527,7 @@ final class ResponsePipeline extends AbstractLocalEventEmitter
     }
     
     private static boolean hasConnectionClose(HeaderHolder msg) {
-        return msg.headerContains(CONNECTION, "close");
+        return msg.headers().contain(CONNECTION, "close");
     }
     
     private static Response setConnectionClose(Response rsp) {

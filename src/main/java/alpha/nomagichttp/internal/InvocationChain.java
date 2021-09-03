@@ -17,8 +17,6 @@ import java.util.concurrent.atomic.AtomicInteger;
 import static alpha.nomagichttp.HttpConstants.Version;
 import static alpha.nomagichttp.internal.DefaultActionRegistry.Match;
 import static alpha.nomagichttp.internal.HttpExchange.RequestCreated;
-import static alpha.nomagichttp.util.Headers.accept;
-import static alpha.nomagichttp.util.Headers.contentType;
 import static java.lang.System.Logger.Level.DEBUG;
 import static java.lang.System.Logger.Level.WARNING;
 import static java.util.concurrent.CompletableFuture.completedStage;
@@ -112,8 +110,8 @@ final class InvocationChain extends AbstractLocalEventEmitter
     private static RequestHandler findRequestHandler(RequestHead rh, Route r) {
         RequestHandler h = r.lookup(
                 rh.method(),
-                contentType(rh.headers()).orElse(null),
-                accept(rh.headers()));
+                rh.headers().contentType().orElse(null),
+                rh.headers().accept());
         LOG.log(DEBUG, () -> "Matched handler: " + h);
         return h;
     }
