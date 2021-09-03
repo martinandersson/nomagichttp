@@ -254,10 +254,10 @@ final class DefaultResponse implements Response
         }
         
         @Override
-        public Response.Builder addHeaders(HttpHeaders headers) {
+        public Response.Builder addHeaders(Map<String, List<String>> headers) {
             requireNonNull(headers, "headers");
             return new DefaultBuilder(this, s ->
-                    headers.map().forEach((name, values) ->
+                    headers.forEach((name, values) ->
                             values.forEach(v -> s.addHeader(false, name, v))));
         }
         

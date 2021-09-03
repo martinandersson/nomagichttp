@@ -10,6 +10,8 @@ import java.net.http.HttpHeaders;
 import java.net.http.HttpRequest;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
+import java.util.List;
+import java.util.Map;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.Flow;
 
@@ -38,8 +40,8 @@ import static java.net.http.HttpRequest.BodyPublisher;
  * <pre>{@code
  *   Response r = Responses.noContent()
  *                         .toBuilder()
- *                         .header("My-Header", "value")
- *                         .build();
+ *                             .header("My-Header", "value")
+ *                             .build();
  * }</pre>
  * 
  * {@code Responses} in combination with body factories in {@link
@@ -339,7 +341,7 @@ public interface Response extends HeaderHolder
          * @param morePairs of headers
          * 
          * @return a new builder representing the new state
-         *
+         * 
          * @throws NullPointerException
          *             if any argument or array element is {@code null}
          * @throws IllegalArgumentException
@@ -355,9 +357,13 @@ public interface Response extends HeaderHolder
          * @implSpec
          * The default implementation is
          * <pre>
-         *     return this.{@link #addHeaders(HttpHeaders)
-         *       addHeaders}(headers.{@link CommonHeaders#delegate() delegate}());
+         *     return this.{@link #addHeaders(Map)
+         *       addHeaders}(headers.{@link CommonHeaders#delegate()
+         *         delegate}().{@link HttpHeaders#map() map}());
          * </pre>
+         * 
+         * ...and does therefore not provide a guarantee regarding the ordering
+         * of how the headers will appear in the response object.
          * 
          * @param   headers to add
          * @return  a new builder representing the new state
@@ -365,22 +371,21 @@ public interface Response extends HeaderHolder
          * @see     HttpConstants.HeaderKey
          */
         default Builder addHeaders(CommonHeaders headers) {
-            return addHeaders(headers.delegate());
+            return addHeaders(headers.delegate().map());
         }
         
         /**
-         * Add all headers from the given headers object.<p>
+         * Add all headers from the given map.<p>
          * 
-         * Warning: The implementation may use {@link HttpHeaders#map()} to
-         * access the header values which does not provide any guarantee
-         * regarding the ordering of its entries.
+         * The order of the response headers will follow the iteration order of
+         * the provided map.
          * 
          * @param   headers to add
          * @return  a new builder representing the new state
          * @throws  NullPointerException if {@code headers} is {@code null}
          * @see     HttpConstants.HeaderKey
          */
-        Builder addHeaders(HttpHeaders headers);
+        Builder addHeaders(Map<String, List<String>> headers);
         
         /**
          * Set a message body.<p>
