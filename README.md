@@ -13,8 +13,8 @@ crafted by artsmen seeking perfection through simplicity, developer happiness,
 and a minimal waste of time.
 
 The NoMagicHTTP server is natively asynchronous. The server doesn't even use
-event polling or selector threads. The library codebase is written in 100% Java
-and is 100% non-blocking. What you get is a server as fast and scalable as any
+event polling or selector threads. The library codebase is written in 100%
+non-blocking Java code. What you get is a server as fast and scalable as any
 cross-platform JDK-based HTTP server implementation could possibly be.
 
 [All-you-need JavaDoc is here.][0-1]
