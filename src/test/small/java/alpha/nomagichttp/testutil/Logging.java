@@ -498,21 +498,6 @@ public final class Logging
         }
         
         /**
-         * Assert that no observed log record contains a throwable.
-         */
-        public void assertThatNoErrorWasLogged() {
-            assertThat(records()).extracting(r -> {
-                var t = r.getThrown();
-                if (t != null) {
-                    LOG.log(WARNING, () ->
-                            "Log record that has a throwable also has this message: " +
-                            r.getMessage());
-                }
-                return t;
-            }).containsOnlyNulls();
-        }
-        
-        /**
          * Assertively await the first logged error.
          * 
          * @return the error
@@ -553,6 +538,21 @@ public final class Logging
                 return false;
             });
             return thr.get();
+        }
+        
+        /**
+         * Assert that no observed log record contains a throwable.
+         */
+        public void assertThatNoErrorWasLogged() {
+            assertThat(records()).extracting(r -> {
+                var t = r.getThrown();
+                if (t != null) {
+                    LOG.log(WARNING, () ->
+                            "Log record that has a throwable also has this message: " +
+                            r.getMessage());
+                }
+                return t;
+            }).containsOnlyNulls();
         }
         
         /**
