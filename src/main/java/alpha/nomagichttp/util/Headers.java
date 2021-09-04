@@ -2,6 +2,7 @@ package alpha.nomagichttp.util;
 
 import java.net.http.HttpHeaders;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -43,18 +44,14 @@ public final class Headers
         if (keyValuePairs.length == 0) {
             return EMPTY;
         }
-        
         if (keyValuePairs.length % 2 != 0) {
             throw new IllegalArgumentException("Please provide an even number of pairs.");
         }
         
-        // Order from HttpHeaders.map() isn't specified, using LinkedHashMap as a "sweet bonus"
-        Map<String, List<String>> map = new LinkedHashMap<>();
-        
+        var map = new HashMap<String, List<String>>();
         for (int i = 0; i < keyValuePairs.length - 1; i += 2) {
             String k = keyValuePairs[i],
                    v = keyValuePairs[i + 1];
-            
             map.computeIfAbsent(k, k0 -> new ArrayList<>(1)).add(v);
         }
         

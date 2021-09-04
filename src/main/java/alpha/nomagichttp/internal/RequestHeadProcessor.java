@@ -6,7 +6,7 @@ import alpha.nomagichttp.util.Headers;
 
 import java.net.http.HttpHeaders;
 import java.util.ArrayList;
-import java.util.LinkedHashMap;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -221,9 +221,7 @@ final class RequestHeadProcessor
         }
     }
     
-    // TODO: Consider not using LinkedHashMap.
-    //       JDK's HttpHeaders will do alphabetic order. Coz of faster lookup?
-    private LinkedHashMap<String, List<String>> headerValues;
+    private Map<String, List<String>> headerValues;
     
     // TODO: Document this accepts trailing whitespace
     private void parseHeaderValueNew() {
@@ -239,7 +237,7 @@ final class RequestHeadProcessor
         }
         else {
             if (headerValues == null) {
-                headerValues = new LinkedHashMap<>();
+                headerValues = new HashMap<>();
             }
             headerValues.computeIfAbsent(headerKey, k -> new ArrayList<>(1)).add(hv);
         }
