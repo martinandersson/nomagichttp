@@ -24,6 +24,7 @@ import java.util.logging.LogRecord;
 import java.util.logging.Logger;
 import java.util.stream.Stream;
 
+import static java.lang.System.Logger.Level.WARNING;
 import static java.lang.reflect.Modifier.isFinal;
 import static java.lang.reflect.Modifier.isStatic;
 import static java.time.temporal.ChronoUnit.MILLIS;
@@ -33,6 +34,7 @@ import static java.util.Objects.requireNonNull;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static java.util.logging.Level.ALL;
 import static java.util.stream.Stream.of;
+import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * Logging utilities.
@@ -41,6 +43,9 @@ import static java.util.stream.Stream.of;
  */
 public final class Logging
 {
+    private static final System.Logger LOG
+            = System.getLogger(Logging.class.getPackageName());
+    
     private static final AtomicBoolean
             WEIRD_GUY_REMOVED = new AtomicBoolean(),
             GOOD_GUY_ADDED    = new AtomicBoolean();
@@ -171,20 +176,20 @@ public final class Logging
      * Start recording log records from the loggers of the packages that the
      * given components belong to.<p>
      * 
-     * The result is retrieved from {@link #stopRecording(Recorder)}.<p>
+     * Recording should eventually be stopped using {@link
+     * #stopRecording(Recorder)}.<p>
      * 
-     * Recording is useful when running assertions on the server's generated
-     * log.<p>
+     * Recording is especially useful for running assertions on the server's
+     * generated log.<p>
      * 
      * The returned recorder supports {@linkplain
      * Recorder#await(Level, String) awaiting} a particular log record. This is
      * crucial for tests asserting records produced by other threads than the
      * test worker, which applies to most server components as the server is
-     * fully asynchronous. Otherwise there would be timing issues.<p>
+     * fully asynchronous. Otherwise, there could be timing issues.<p>
      * 
      * The awaiting feature can also be used solely as a mechanism to await a
-     * particular server-event (as revealed through the log) before moving
-     * on.<p>
+     * particular quote unquote "event" before moving on.<p>
      * 
      * WARNING: Recording is implemented through adding a handler to each
      * targeted logger. The handler's {@code publish(LogRecord)} method is
@@ -379,7 +384,8 @@ public final class Logging
     }
     
     /**
-     * Is essentially a subscription key and API for waiting on a record.<p>
+     * Is a subscription key and API for waiting on a log record and running
+     * asserts.<p>
      * 
      * {@code await()} methods will by default wait at most 3 seconds. This can
      * be configured differently using {@link #timeoutAfter(long, TimeUnit)}.
@@ -395,6 +401,10 @@ public final class Logging
             l = listeners;
             timeout = 3;
             unit = SECONDS;
+        }
+        
+        Stream<RecordListener> listeners() {
+            return Stream.of(l);
         }
         
         /**
@@ -518,8 +528,19 @@ public final class Logging
                     .sorted(comparing(LogRecord::getInstant));
         }
         
-        Stream<RecordListener> listeners() {
-            return Stream.of(l);
+        /**
+         * Assert that no observed log record contains a throwable.
+         */
+        public void assertThatNoErrorWasLogged() {
+            assertThat(records()).extracting(r -> {
+                var t = r.getThrown();
+                if (t != null) {
+                    LOG.log(WARNING, () ->
+                            "Log record that has a throwable also has this message: " +
+                            r.getMessage());
+                }
+                return t;
+            }).containsOnlyNulls();
         }
     }
     

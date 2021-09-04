@@ -181,7 +181,7 @@ class ClientLifeCycleTest extends AbstractRealTest
                     .hasNoCause()
                     .hasNoSuppressedExceptions();
         }
-        assertThatNoErrorWasLogged();
+        logRecorder().assertThatNoErrorWasLogged();
     }
     
     // Broken pipe always end the exchange, no error handling no logging

@@ -127,7 +127,7 @@ class ErrorTest extends AbstractRealTest
             "GET /404 HTTP/1.1"              + CRLF + CRLF);
         assertThat(rsp).isEqualTo(
             "HTTP/1.1 499 Custom Not Found!" + CRLF + CRLF);
-        assertThatNoErrorWasLogged();
+        logRecorder().assertThatNoErrorWasLogged();
     }
     
     @Test
@@ -159,7 +159,8 @@ class ErrorTest extends AbstractRealTest
             .hasNoCause()
             .hasNoSuppressedExceptions()
             .hasMessage("No forward slash.");
-        assertThatNoErrorWasLogged();
+        logRecorder()
+            .assertThatNoErrorWasLogged();
     }
     
     // By default, server rejects clients older than HTTP/1.0
@@ -178,7 +179,8 @@ class ErrorTest extends AbstractRealTest
             .hasNoCause()
             .hasNoSuppressedExceptions()
             .hasMessage(null);
-        assertThatNoErrorWasLogged();
+        logRecorder()
+            .assertThatNoErrorWasLogged();
     }
     
     // Server may be configured to reject also HTTP/1.0 clients
@@ -198,7 +200,8 @@ class ErrorTest extends AbstractRealTest
             .hasNoCause()
             .hasNoSuppressedExceptions()
             .hasMessage(null);
-        assertThatNoErrorWasLogged();
+        logRecorder()
+            .assertThatNoErrorWasLogged();
     }
     
     // Some newer versions are currently not supported
@@ -215,7 +218,8 @@ class ErrorTest extends AbstractRealTest
             .hasNoCause()
             .hasNoSuppressedExceptions()
             .hasMessage(null);
-        assertThatNoErrorWasLogged();
+        logRecorder()
+            .assertThatNoErrorWasLogged();
     }
     
     @Test
@@ -235,7 +239,8 @@ class ErrorTest extends AbstractRealTest
             .hasNoCause()
             .hasNoSuppressedExceptions()
             .hasMessage("Body in a TRACE request.");
-        assertThatNoErrorWasLogged();
+        logRecorder()
+            .assertThatNoErrorWasLogged();
     }
     
     @Test
@@ -298,7 +303,7 @@ class ErrorTest extends AbstractRealTest
                 .hasMessage("HTTP/1.0 does not support 1XX (Informational) responses.");
         
         // but exception NOT logged. That's the "ignored" part.
-        assertThatNoErrorWasLogged();
+        logRecorder().assertThatNoErrorWasLogged();
     }
     
     @Test
@@ -319,7 +324,8 @@ class ErrorTest extends AbstractRealTest
             .hasNoCause()
             .hasNoSuppressedExceptions()
             .hasMessage(null);
-        assertThatNoErrorWasLogged();
+        logRecorder()
+            .assertThatNoErrorWasLogged();
     }
     
     @Test
@@ -362,8 +368,9 @@ class ErrorTest extends AbstractRealTest
                 .hasNoCause()
                 .hasNoSuppressedExceptions()
                 .hasMessage(null);
-        
-        assertThatNoErrorWasLogged();
+    
+        logRecorder()
+                .assertThatNoErrorWasLogged();
     }
     
     // RequestBodyTimeoutException_afterSubscriber() ??

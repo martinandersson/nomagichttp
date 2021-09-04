@@ -578,23 +578,6 @@ public abstract class AbstractRealTest
     }
     
     /**
-     * Stop log recording and assert no log record contains a throwable.
-     */
-    protected final void assertThatNoErrorWasLogged() {
-        requireServerStartedOnce();
-        var logs = stopLogRecording();
-        assertThat(logs).extracting(r -> {
-            var t = r.getThrown();
-            if (t != null) {
-                LOG.log(WARNING, () ->
-                    "Log record that has a throwable also has this message: " +
-                    r.getMessage());
-            }
-            return t;
-        }).containsOnlyNulls();
-    }
-    
-    /**
      * Short-cut for {@link #pollServerError()} and
      * {@link #awaitFirstLogError()} with an extra assert that the error
      * instance observed is the error instance logged.<p>
