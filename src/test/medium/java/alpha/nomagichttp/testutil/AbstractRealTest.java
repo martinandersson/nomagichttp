@@ -23,7 +23,6 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.BlockingDeque;
 import java.util.concurrent.LinkedBlockingDeque;
-import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
 import java.util.logging.LogRecord;
@@ -464,51 +463,6 @@ public abstract class AbstractRealTest
         }
     }
     
-    // TODO: Move all "await" util methods to the [Log-]Recorder class.
-    //       Concrete test class do assertXxx() or consider extending Recorder
-    //       API to offer an assert-service, or have his API throw an exception
-    //       instead of returning true/false.
-    
-    /**
-     * Await first logged error.
-     * 
-     * @return the error
-     * 
-     * @throws NullPointerException   if {@code filter} is {@code null}
-     * @throws IllegalStateException  if server hasn't started once
-     * @throws InterruptedException   if the current thread is interrupted while waiting
-     */
-    protected final Throwable awaitFirstLogError() throws InterruptedException {
-        return awaitFirstLogError(Throwable.class);
-    }
-    
-    /**
-     * Await first logged error that is an instance of the given type.
-     * 
-     * @param filter type expected
-     * @return the error
-     * 
-     * @throws NullPointerException   if {@code filter} is {@code null}
-     * @throws IllegalStateException  if server hasn't started once
-     * @throws InterruptedException   if the current thread is interrupted while waiting
-     */
-    protected final Throwable awaitFirstLogError(Class<? extends Throwable> filter)
-            throws InterruptedException
-    {
-        requireServerStartedOnce();
-        requireNonNull(filter);
-        AtomicReference<Throwable> thr = new AtomicReference<>();
-        assertTrue(logRecorder().await(rec -> {
-            var t = rec.getThrown();
-            if (filter.isInstance(t)) {
-                thr.set(t);
-                return true;
-            }
-            return false;
-        }));
-        return thr.get();
-    }
-    
     /**
      * Stop log recording and assert the records.
      * 
@@ -522,9 +476,9 @@ public abstract class AbstractRealTest
     }
     
     /**
-     * Short-cut for {@link #pollServerError()} and
-     * {@link #awaitFirstLogError()} with an extra assert that the error
-     * instance observed is the error instance logged.<p>
+     * Asserts that {@link #pollServerError()} and
+     * {@link Logging.Recorder#assertAwaitFirstLogError()} is the same
+     * instance.<p>
      * 
      * May be used when test case needs to assert the default error handler was
      * delivered a particular error <i>and</i> logged it (or, someone did).
@@ -538,7 +492,7 @@ public abstract class AbstractRealTest
     {
         requireServerStartedOnce();
         Throwable t = pollServerError();
-        assertSame(t, awaitFirstLogError());
+        assertSame(t, logRecorder().assertAwaitFirstLogError());
         return assertThat(t);
     }
     

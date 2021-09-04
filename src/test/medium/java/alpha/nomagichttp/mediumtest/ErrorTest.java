@@ -421,7 +421,7 @@ class ErrorTest extends AbstractRealTest
                 "GET / HTTP/1.1" + CRLF + CRLF);
         
         unblock.release(); // <-- must unblock request thread to guarantee log
-        var fromLog = awaitFirstLogError();
+        var fromLog = logRecorder().assertAwaitFirstLogError();
         assertThat(fromLog)
             .isExactlyInstanceOf(ResponseTimeoutException.class)
             .hasNoCause()

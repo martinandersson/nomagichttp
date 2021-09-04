@@ -10,6 +10,7 @@ import java.util.concurrent.ConcurrentLinkedDeque;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
 import java.util.logging.ConsoleHandler;
@@ -274,7 +275,7 @@ public final class Logging
      * 
      * @see #startRecording(Class, Class[])
      */
-    public static class Recorder {
+    public final static class Recorder {
         private final RecordListener[] l;
         private long timeout;
         private TimeUnit unit;
@@ -287,6 +288,17 @@ public final class Logging
         
         Stream<RecordListener> listeners() {
             return Stream.of(l);
+        }
+        
+        /**
+         * Stream a snapshot of all records observed.
+         * 
+         * @return a snapshot of all records observed
+         */
+        public Stream<LogRecord> records() { // MOVE UP
+            return listeners()
+                    .flatMap(RecordListener::records)
+                    .sorted(comparing(LogRecord::getInstant));
         }
         
         /**
@@ -460,17 +472,6 @@ public final class Logging
         }
         
         /**
-         * Stream all records observed until now.
-         * 
-         * @return all records observed until now
-         */
-        public Stream<LogRecord> records() {
-            return listeners()
-                    .flatMap(RecordListener::records)
-                    .sorted(comparing(LogRecord::getInstant));
-        }
-        
-        /**
          * Assert that no observed log record contains a throwable.
          */
         public void assertThatNoErrorWasLogged() {
@@ -483,6 +484,49 @@ public final class Logging
                 }
                 return t;
             }).containsOnlyNulls();
+        }
+        
+        /**
+         * Assertively await the first logged error.
+         * 
+         * @return the error
+         * 
+         * @throws InterruptedException
+         *             if the current thread is interrupted while waiting
+         * @throws AssertionError
+         *             on timeout (record not observed)
+         */
+        public Throwable assertAwaitFirstLogError() throws InterruptedException {
+            return assertAwaitFirstLogErrorOf(Throwable.class);
+        }
+        
+        /**
+         * Assertively await the first logged error that is an instance of the
+         * given type.
+         * 
+         * @param filter type expected
+         * @return the error
+         * 
+         * @throws NullPointerException
+         *             if {@code filter} is {@code null}
+         * @throws InterruptedException
+         *             if the current thread is interrupted while waiting
+         */
+        public Throwable assertAwaitFirstLogErrorOf(
+                Class<? extends Throwable> filter)
+                throws InterruptedException
+        {
+            requireNonNull(filter);
+            AtomicReference<Throwable> thr = new AtomicReference<>();
+            assertAwait(rec -> {
+                var t = rec.getThrown();
+                if (filter.isInstance(t)) {
+                    thr.set(t);
+                    return true;
+                }
+                return false;
+            });
+            return thr.get();
         }
     }
     
