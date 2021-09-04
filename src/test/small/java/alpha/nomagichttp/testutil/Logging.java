@@ -255,7 +255,7 @@ public final class Logging
     
     private static final class SystemOutInsteadOfSystemErr extends ConsoleHandler {
         private boolean initialized;
-    
+        
         @Override
         protected synchronized void setOutputStream(OutputStream out) throws SecurityException {
             if (initialized) {
@@ -327,7 +327,7 @@ public final class Logging
          * should not be done by time-critical code.
          * 
          * @param test of record
-         *
+         * 
          * @return {@code true} when target record is observed, or
          *         {@code false} on timeout (record not observed)
          * 

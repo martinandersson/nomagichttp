@@ -29,14 +29,15 @@ public class HelloWorld
         
         // This handler serves requests of the HTTP verb/method GET. The factory
         // method respond() accepts a Response and has no access to the inbound
-        // request or client channel objects. This is sufficient for simple
-        // handlers. For more advanced use cases, use apply(Request) or
-        // accept(Request, ClientChannel). In the end, they all do the same
-        // thing which is to write a response to the client channel.
+        // request or client channel objects. This is sufficient for static
+        // responses. For a dynamic processing of the request, use methods
+        // apply(Request) or accept(Request, ClientChannel) instead. In the end,
+        // they all do the same thing which is to write a response to the client
+        // channel.
         RequestHandler handler = RequestHandler.GET().respond(answer);
         
-        // The real content of the server are resources, addressed by a request path.
-        // Most types such as Response, RequestHandler and Route are both
+        // The real content of the server are resources, addressed by a request
+        // path. Most types such as Response, RequestHandler and Route are
         // thread-safe and immutable. They may be freely cached/shared.
         app.add("/hello", handler);
         

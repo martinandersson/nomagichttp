@@ -52,7 +52,7 @@ public class KeepClientInformed
     private static Response mkProgressReport(int secondsLeft) {
         return Responses.processing()
                         .toBuilder()
-                        .addHeader("Time-Left", secondsLeft + " second(s)")
-                        .build();
+                            .addHeader("Time-Left", secondsLeft + " second(s)")
+                            .build();
     }
 }
