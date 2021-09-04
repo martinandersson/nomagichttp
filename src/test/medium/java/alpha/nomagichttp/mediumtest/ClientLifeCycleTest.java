@@ -69,7 +69,7 @@ class ClientLifeCycleTest extends AbstractRealTest
                 "HTTP/1.0 204 No Content" + CRLF +
                 "Connection: close"       + CRLF + CRLF);
             
-            assertAwaitChildClose();
+            logRecorder().assertAwaitChildClose();
         }
     }
     
@@ -127,7 +127,7 @@ class ClientLifeCycleTest extends AbstractRealTest
            {tstamp} | dead-25     | FINE | {pkg}.DefaultChannelOperations orderlyClose | Closed child: {...}
          */
         
-        assertAwaitChildAccept();
+        logRecorder().assertAwaitChildAccept();
         assertThatNoWarningOrErrorIsLogged();
         // that no error was thrown is asserted by super class
     }
@@ -312,7 +312,7 @@ class ClientLifeCycleTest extends AbstractRealTest
             }
             
             // Sooner or later the half-close will be observed
-            assertAwaitChildClose();
+            logRecorder().assertAwaitChildClose();
         }
         
         // We can't say exactly how the HTTP exchange ends,
@@ -367,7 +367,7 @@ class ClientLifeCycleTest extends AbstractRealTest
             // Half-closed is NOT observed by server
             // (coz there's no outstanding channel operation after having sent the response)
             if (setConnectionCloseHeader) {
-                assertAwaitChildClose();
+                logRecorder().assertAwaitChildClose();
             }
         }
         
@@ -403,7 +403,7 @@ class ClientLifeCycleTest extends AbstractRealTest
             
             // Send the rest of the request
             client().write("Hi");
-            assertAwaitChildClose();
+            logRecorder().assertAwaitChildClose();
         }
         
         assertThat(received.poll(1, SECONDS)).isEqualTo("Hi");

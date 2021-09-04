@@ -22,6 +22,7 @@ import java.util.stream.Stream;
 
 import static alpha.nomagichttp.testutil.LogRecords.toJUL;
 import static java.lang.System.Logger.Level;
+import static java.lang.System.Logger.Level.DEBUG;
 import static java.lang.System.Logger.Level.WARNING;
 import static java.util.Comparator.comparing;
 import static java.util.Objects.requireNonNull;
@@ -470,6 +471,30 @@ public final class Logging
                 Level level, String messageStartsWith, Class<? extends Throwable> error)
                 throws InterruptedException {
             assertTrue(await(level, messageStartsWith, error));
+        }
+        
+        /**
+         * Assertively await on the server log to indicate a child was accepted.
+         * 
+         * @throws InterruptedException
+         *             if the current thread is interrupted while waiting
+         * @throws AssertionError
+         *             on timeout (record not observed)
+         */
+        public void assertAwaitChildAccept() throws InterruptedException {
+            assertAwait(DEBUG, "Accepted child:");
+        }
+        
+        /**
+         * Assertively await on the server log to indicate a child was closed.
+         * 
+         * @throws InterruptedException
+         *             if the current thread is interrupted while waiting
+         * @throws AssertionError
+         *             on timeout (record not observed)
+         */
+        public void assertAwaitChildClose() throws InterruptedException {
+            assertAwait(DEBUG, "Closed child:");
         }
         
         /**

@@ -461,32 +461,6 @@ public abstract class AbstractRealTest
     }
     
     /**
-     * Assertively await on the server log to indicate a child was accepted.
-     * 
-     * @throws InterruptedException
-     *             if the current thread is interrupted while waiting
-     * @throws AssertionError
-     *             on timeout (record not observed)
-     */
-    protected final void assertAwaitChildAccept() throws InterruptedException {
-        requireServerStartedOnce();
-        logRecorder().assertAwait(DEBUG, "Accepted child:");
-    }
-    
-    /**
-     * Assertively await on the server log to indicate a child was closed.
-     * 
-     * @throws InterruptedException
-     *             if the current thread is interrupted while waiting
-     * @throws AssertionError
-     *             on timeout (record not observed)
-     */
-    protected final void assertAwaitChildClose() throws InterruptedException {
-        requireServerStartedOnce();
-        logRecorder().assertAwait(DEBUG, "Closed child:");
-    }
-    
-    /**
      * Asserts that {@link #pollServerError()} and
      * {@link Logging.Recorder#assertAwaitFirstLogError()} is the same
      * instance.<p>

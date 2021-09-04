@@ -661,7 +661,7 @@ class ErrorTest extends AbstractRealTest
             LOG.log(INFO, "Running last.");
             sendBadRequest.run();
             
-            assertAwaitChildClose();
+            logRecorder().assertAwaitChildClose();
             assertTrue(client().serverClosedOutput());
             assertTrue(client().serverClosedInput());
         }
