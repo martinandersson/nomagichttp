@@ -440,7 +440,7 @@ class ErrorTest extends AbstractRealTest
         // (as to not fail a subsequent test assertion on the log)
         logRecorder().timeoutAfter(1, SECONDS);
         try {
-            awaitLog(
+            logRecorder().assertAwait(
                 WARNING,
                     "Child channel is closed for writing. " +
                     "Can not resolve this error. " +
@@ -679,8 +679,8 @@ class ErrorTest extends AbstractRealTest
         assertThat(rsp).isEqualTo(
             "HTTP/1.1 204 No Content" + CRLF + CRLF);
         
-        awaitLog(WARNING,
-            "HTTP exchange not active. This response is ignored: DefaultResponse{statusCode=123");
+        logRecorder().assertAwait(
+            WARNING, "HTTP exchange not active. This response is ignored: DefaultResponse{statusCode=123");
         
         // Superclass asserts no error sent to error handler
     }
@@ -697,7 +697,7 @@ class ErrorTest extends AbstractRealTest
         assertThat(rsp).isEqualTo(
             "HTTP/1.1 204 No Content" + CRLF + CRLF);
         
-        awaitLog(ERROR,
+        logRecorder().assertAwait(ERROR,
             "Application's response stage completed exceptionally, " +
             "but HTTP exchange is not active. This error does not propagate anywhere.");
         

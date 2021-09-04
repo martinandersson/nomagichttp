@@ -464,44 +464,6 @@ public abstract class AbstractRealTest
         }
     }
     
-    /**
-     * Shortcut for {@link Logging.Recorder#await(Level, String)}.
-     * 
-     * @param level record level predicate
-     * @param messageStartsWith record message predicate
-     * 
-     * @throws NullPointerException   if any arg is {@code null}
-     * @throws IllegalStateException  if server hasn't started once
-     * @throws InterruptedException   if the current thread is interrupted while waiting
-     */
-    protected final void awaitLog(Level level, String messageStartsWith)
-            throws InterruptedException
-    {
-        requireServerStartedOnce();
-        assertTrue(logRecorder().await(level, messageStartsWith));
-    }
-    
-    /**
-     * Shortcut for {@link Logging.Recorder#await(Level, String, Class)}.
-     * 
-     * @param level record level predicate
-     * @param messageStartsWith record message predicate
-     * @param error record error predicate (record's error must be instance of)
-     * 
-     * @throws NullPointerException   if any arg is {@code null}
-     * @throws IllegalStateException  if server hasn't started once
-     * @throws InterruptedException   if the current thread is interrupted while waiting
-     */
-    protected final void awaitLog(
-            Level level,
-            String messageStartsWith,
-            Class<? extends Throwable> error)
-                throws InterruptedException
-    {
-        requireServerStartedOnce();
-        assertTrue(logRecorder().await(level, messageStartsWith, error));
-    }
-    
     // TODO: Move all "await" util methods to the [Log-]Recorder class.
     //       Concrete test class do assertXxx() or consider extending Recorder
     //       API to offer an assert-service, or have his API throw an exception
