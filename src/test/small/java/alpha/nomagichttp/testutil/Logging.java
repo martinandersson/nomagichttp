@@ -1,6 +1,7 @@
 package alpha.nomagichttp.testutil;
 
 import alpha.nomagichttp.HttpServer;
+import org.assertj.core.groups.Tuple;
 
 import java.io.OutputStream;
 import java.util.ArrayList;
@@ -527,6 +528,17 @@ public final class Logging
                 return false;
             });
             return thr.get();
+        }
+        
+        /**
+         * Assert that observed log records contains the given values only once.
+         * 
+         * @param values use {@link LogRecords#rec(Level, String)}
+         */
+        public void assertThatLogContainsOnlyOnce(Tuple... values) {
+            assertThat(records())
+                    .extracting(LogRecord::getLevel, LogRecord::getMessage)
+                    .containsOnlyOnce(values);
         }
     }
     

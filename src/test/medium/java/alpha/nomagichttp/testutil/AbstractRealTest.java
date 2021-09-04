@@ -6,7 +6,6 @@ import alpha.nomagichttp.handler.ClientChannel;
 import alpha.nomagichttp.handler.ErrorHandler;
 import alpha.nomagichttp.message.Response;
 import org.assertj.core.api.AbstractThrowableAssert;
-import org.assertj.core.groups.Tuple;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
@@ -29,7 +28,6 @@ import java.util.logging.LogRecord;
 import java.util.stream.Stream;
 
 import static alpha.nomagichttp.Config.DEFAULT;
-import static java.lang.System.Logger.Level;
 import static java.lang.System.Logger.Level.ALL;
 import static java.lang.System.Logger.Level.DEBUG;
 import static java.util.Objects.requireNonNull;
@@ -461,18 +459,6 @@ public abstract class AbstractRealTest
         } finally {
             server = null;
         }
-    }
-    
-    /**
-     * Stop log recording and assert the records.
-     * 
-     * @param values produced by {@link LogRecords#rec(Level, String)}
-     */
-    protected final void assertThatLogContainsOnlyOnce(Tuple... values) {
-        requireServerStartedOnce();
-        assertThat(stopLogRecording())
-                .extracting(LogRecord::getLevel, LogRecord::getMessage)
-                .containsOnlyOnce(values);
     }
     
     /**

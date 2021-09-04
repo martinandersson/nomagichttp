@@ -181,7 +181,7 @@ class DetailTest extends AbstractRealTest
             "Content-Length: 0"      + CRLF + CRLF);
         
         // Logging specified in JavaDoc of ClientChannel.write()
-        assertThatLogContainsOnlyOnce(
+        logRecorder().assertThatLogContainsOnlyOnce(
                 // First ignored 100 Continue silently logged
                 rec(DEBUG, "Ignoring repeated 100 (Continue)."),
                 // But any more than that and level escalates
