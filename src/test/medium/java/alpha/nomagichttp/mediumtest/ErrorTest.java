@@ -718,11 +718,9 @@ class ErrorTest extends AbstractRealTest
             "Content-Length: 0"               + CRLF +
             // Actually, order is not defined, let's see for how long this test pass
             "Allow: POST, GET"                + CRLF + CRLF);
-        
-        Throwable t = awaitFirstLogError();
-        assertThat(t).isExactlyInstanceOf(MethodNotAllowedException.class)
-                     .hasMessage("No handler found for method token \"BLABLA\".");
-        assertSame(t, pollServerErrorNow());
+        assertThatServerErrorObservedAndLogged()
+            .isExactlyInstanceOf(MethodNotAllowedException.class)
+            .hasMessage("No handler found for method token \"BLABLA\".");
     }
     
     // ...but if the method is OPTIONS, the default configuration implements it
