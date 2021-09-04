@@ -30,7 +30,6 @@ import java.util.logging.LogRecord;
 import java.util.stream.Stream;
 
 import static alpha.nomagichttp.Config.DEFAULT;
-import static alpha.nomagichttp.testutil.Logging.toJUL;
 import static java.lang.System.Logger.Level;
 import static java.lang.System.Logger.Level.ALL;
 import static java.lang.System.Logger.Level.DEBUG;
@@ -38,7 +37,6 @@ import static java.util.Objects.requireNonNull;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static java.util.stream.Collectors.toSet;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.tuple;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -552,43 +550,13 @@ public abstract class AbstractRealTest
     /**
      * Stop log recording and assert the records.
      * 
-     * @param values produced by {@link #rec(Level, String)}
+     * @param values produced by {@link LogRecords#rec(Level, String)}
      */
     protected final void assertThatLogContainsOnlyOnce(Tuple... values) {
         requireServerStartedOnce();
         assertThat(stopLogRecording())
                 .extracting(LogRecord::getLevel, LogRecord::getMessage)
                 .containsOnlyOnce(values);
-    }
-    
-    /**
-     * Create an AssertJ Tuple consisting of a log- level and message.
-     * 
-     * @param level of log record
-     * @param msg of log record
-     * @return a tuple
-     * 
-     * @throws NullPointerException
-     *             if {@code level} is {@code null}, perhaps also for {@code msg}
-     */
-    protected static Tuple rec(Level level, String msg) {
-        return tuple(toJUL(level), msg);
-    }
-    
-    /**
-     * Create an AssertJ Tuple consisting of a log- level, message and error.
-     * 
-     * @param level of log record
-     * @param msg of log record
-     * @param error of log record
-     * @return a tuple
-     *
-     * @throws NullPointerException
-     *             if {@code level} is {@code null},
-     *             perhaps also for the other arguments
-     */
-    protected static Tuple rec(Level level, String msg, Throwable error) {
-        return tuple(toJUL(level), msg, error);
     }
     
     /**
