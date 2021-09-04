@@ -32,7 +32,6 @@ import java.util.concurrent.Semaphore;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
 import java.util.logging.LogRecord;
-import java.util.logging.Logger;
 
 import static alpha.nomagichttp.handler.RequestHandler.GET;
 import static alpha.nomagichttp.handler.RequestHandler.HEAD;
@@ -46,7 +45,7 @@ import static alpha.nomagichttp.message.Responses.ok;
 import static alpha.nomagichttp.message.Responses.processing;
 import static alpha.nomagichttp.message.Responses.status;
 import static alpha.nomagichttp.message.Responses.text;
-import static alpha.nomagichttp.testutil.Logging.toJUL;
+import static alpha.nomagichttp.testutil.LogRecords.rec;
 import static alpha.nomagichttp.testutil.MemorizingSubscriber.Signal.MethodName.ON_COMPLETE;
 import static alpha.nomagichttp.testutil.MemorizingSubscriber.Signal.MethodName.ON_ERROR;
 import static alpha.nomagichttp.testutil.MemorizingSubscriber.Signal.MethodName.ON_NEXT;
@@ -64,15 +63,14 @@ import static alpha.nomagichttp.util.BetterBodyPublishers.concat;
 import static alpha.nomagichttp.util.BetterBodyPublishers.ofString;
 import static alpha.nomagichttp.util.Subscribers.onNext;
 import static java.lang.System.Logger.Level.ERROR;
+import static java.lang.System.Logger.Level.INFO;
 import static java.lang.System.Logger.Level.WARNING;
 import static java.time.Duration.ofMillis;
 import static java.util.List.of;
 import static java.util.concurrent.CompletableFuture.failedStage;
 import static java.util.concurrent.TimeUnit.SECONDS;
-import static java.util.logging.Level.INFO;
 import static java.util.stream.Collectors.toList;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.tuple;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -86,7 +84,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  */
 class ErrorTest extends AbstractRealTest
 {
-    private static final Logger LOG =  Logger.getLogger(ErrorTest.class.getPackageName());
+    private static final System.Logger LOG
+            = System.getLogger(ErrorTest.class.getPackageName());
     
     private static final class OopsException extends RuntimeException {
         private static final long serialVersionUID = 1L;
@@ -127,7 +126,7 @@ class ErrorTest extends AbstractRealTest
             "GET /404 HTTP/1.1"              + CRLF + CRLF);
         assertThat(rsp).isEqualTo(
             "HTTP/1.1 499 Custom Not Found!" + CRLF + CRLF);
-        assertThatNoErrorWasLogged();
+        logRecorder().assertThatNoErrorWasLogged();
     }
     
     @Test
@@ -159,7 +158,8 @@ class ErrorTest extends AbstractRealTest
             .hasNoCause()
             .hasNoSuppressedExceptions()
             .hasMessage("No forward slash.");
-        assertThatNoErrorWasLogged();
+        logRecorder()
+            .assertThatNoErrorWasLogged();
     }
     
     // By default, server rejects clients older than HTTP/1.0
@@ -178,7 +178,8 @@ class ErrorTest extends AbstractRealTest
             .hasNoCause()
             .hasNoSuppressedExceptions()
             .hasMessage(null);
-        assertThatNoErrorWasLogged();
+        logRecorder()
+            .assertThatNoErrorWasLogged();
     }
     
     // Server may be configured to reject also HTTP/1.0 clients
@@ -198,7 +199,8 @@ class ErrorTest extends AbstractRealTest
             .hasNoCause()
             .hasNoSuppressedExceptions()
             .hasMessage(null);
-        assertThatNoErrorWasLogged();
+        logRecorder()
+            .assertThatNoErrorWasLogged();
     }
     
     // Some newer versions are currently not supported
@@ -215,7 +217,8 @@ class ErrorTest extends AbstractRealTest
             .hasNoCause()
             .hasNoSuppressedExceptions()
             .hasMessage(null);
-        assertThatNoErrorWasLogged();
+        logRecorder()
+            .assertThatNoErrorWasLogged();
     }
     
     @Test
@@ -235,7 +238,8 @@ class ErrorTest extends AbstractRealTest
             .hasNoCause()
             .hasNoSuppressedExceptions()
             .hasMessage("Body in a TRACE request.");
-        assertThatNoErrorWasLogged();
+        logRecorder()
+            .assertThatNoErrorWasLogged();
     }
     
     @Test
@@ -298,7 +302,7 @@ class ErrorTest extends AbstractRealTest
                 .hasMessage("HTTP/1.0 does not support 1XX (Informational) responses.");
         
         // but exception NOT logged. That's the "ignored" part.
-        assertThatNoErrorWasLogged();
+        logRecorder().assertThatNoErrorWasLogged();
     }
     
     @Test
@@ -319,7 +323,8 @@ class ErrorTest extends AbstractRealTest
             .hasNoCause()
             .hasNoSuppressedExceptions()
             .hasMessage(null);
-        assertThatNoErrorWasLogged();
+        logRecorder()
+            .assertThatNoErrorWasLogged();
     }
     
     @Test
@@ -362,8 +367,9 @@ class ErrorTest extends AbstractRealTest
                 .hasNoCause()
                 .hasNoSuppressedExceptions()
                 .hasMessage(null);
-        
-        assertThatNoErrorWasLogged();
+    
+        logRecorder()
+                .assertThatNoErrorWasLogged();
     }
     
     // RequestBodyTimeoutException_afterSubscriber() ??
@@ -415,7 +421,7 @@ class ErrorTest extends AbstractRealTest
                 "GET / HTTP/1.1" + CRLF + CRLF);
         
         unblock.release(); // <-- must unblock request thread to guarantee log
-        var fromLog = awaitFirstLogError();
+        var fromLog = logRecorder().assertAwaitFirstLogError();
         assertThat(fromLog)
             .isExactlyInstanceOf(ResponseTimeoutException.class)
             .hasNoCause()
@@ -434,7 +440,7 @@ class ErrorTest extends AbstractRealTest
         // (as to not fail a subsequent test assertion on the log)
         logRecorder().timeoutAfter(1, SECONDS);
         try {
-            awaitLog(
+            logRecorder().assertAwait(
                 WARNING,
                     "Child channel is closed for writing. " +
                     "Can not resolve this error. " +
@@ -538,7 +544,7 @@ class ErrorTest extends AbstractRealTest
             "Connection: close"                  + CRLF + CRLF);
         
         assertThat(stopLogRecording()).extracting(LogRecord::getLevel, LogRecord::getMessage)
-                .contains(tuple(toJUL(ERROR),
+                .contains(rec(ERROR,
                         "Signalling Flow.Subscriber.onNext() failed. Will close the channel's read stream."));
         
         var s = sub.signals();
@@ -554,10 +560,11 @@ class ErrorTest extends AbstractRealTest
     
     @Test
     void requestBodySubscriberFails_onError() throws IOException, InterruptedException {
+        var withMsg = new OopsException("is logged but not re-thrown");
         MemorizingSubscriber<PooledByteBufferHolder> sub = new MemorizingSubscriber<>(
                 onNextAndError(
                         item -> { throw new OopsException(); },
-                        thr  -> { throw new OopsException("is logged but not re-thrown"); }));
+                        thr  -> { throw withMsg; }));
         
         onErrorAssert(OopsException.class, channel ->
             assertThat(channel.isOpenForReading()).isFalse());
@@ -573,19 +580,15 @@ class ErrorTest extends AbstractRealTest
             "Connection: close"                  + CRLF + CRLF);
         
         var log = stopLogRecording().collect(toList());
-        assertThat(log).extracting(LogRecord::getLevel, LogRecord::getMessage)
-                .contains(tuple(toJUL(ERROR),
-                        "Signalling Flow.Subscriber.onNext() failed. Will close the channel's read stream."));
-        
-        LogRecord fromOnError = log.stream().filter(
-                r -> r.getLevel().equals(toJUL(ERROR)) &&
-                     r.getMessage().equals("Subscriber.onError() returned exceptionally. This new error is only logged but otherwise ignored."))
-                .findAny()
-                .get();
-        
-        assertThat(fromOnError.getThrown())
-                .isExactlyInstanceOf(OopsException.class)
-                .hasMessage("is logged but not re-thrown");
+        assertThat(log)
+            .extracting(LogRecord::getLevel, LogRecord::getMessage)
+            .contains(rec(ERROR,
+                "Signalling Flow.Subscriber.onNext() failed. Will close the channel's read stream."));
+        assertThat(log)
+            .extracting(LogRecord::getLevel, LogRecord::getMessage, LogRecord::getThrown)
+            .contains(rec(ERROR,
+                "Subscriber.onError() returned exceptionally. This new error is only logged but otherwise ignored.",
+                withMsg));
         
         var s = sub.signals();
         assertThat(s).hasSize(3);
@@ -658,7 +661,7 @@ class ErrorTest extends AbstractRealTest
             LOG.log(INFO, "Running last.");
             sendBadRequest.run();
             
-            awaitChildClose();
+            logRecorder().assertAwaitChildClose();
             assertTrue(client().serverClosedOutput());
             assertTrue(client().serverClosedInput());
         }
@@ -676,8 +679,8 @@ class ErrorTest extends AbstractRealTest
         assertThat(rsp).isEqualTo(
             "HTTP/1.1 204 No Content" + CRLF + CRLF);
         
-        awaitLog(WARNING,
-            "HTTP exchange not active. This response is ignored: DefaultResponse{statusCode=123");
+        logRecorder().assertAwait(
+            WARNING, "HTTP exchange not active. This response is ignored: DefaultResponse{statusCode=123");
         
         // Superclass asserts no error sent to error handler
     }
@@ -694,7 +697,7 @@ class ErrorTest extends AbstractRealTest
         assertThat(rsp).isEqualTo(
             "HTTP/1.1 204 No Content" + CRLF + CRLF);
         
-        awaitLog(ERROR,
+        logRecorder().assertAwait(ERROR,
             "Application's response stage completed exceptionally, " +
             "but HTTP exchange is not active. This error does not propagate anywhere.");
         
@@ -715,11 +718,9 @@ class ErrorTest extends AbstractRealTest
             "Content-Length: 0"               + CRLF +
             // Actually, order is not defined, let's see for how long this test pass
             "Allow: POST, GET"                + CRLF + CRLF);
-        
-        Throwable t = awaitFirstLogError();
-        assertThat(t).isExactlyInstanceOf(MethodNotAllowedException.class)
-                     .hasMessage("No handler found for method token \"BLABLA\".");
-        assertSame(t, pollServerErrorNow());
+        assertThatServerErrorObservedAndLogged()
+            .isExactlyInstanceOf(MethodNotAllowedException.class)
+            .hasMessage("No handler found for method token \"BLABLA\".");
     }
     
     // ...but if the method is OPTIONS, the default configuration implements it

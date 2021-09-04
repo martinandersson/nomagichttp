@@ -32,6 +32,7 @@ import static alpha.nomagichttp.message.Responses.continue_;
 import static alpha.nomagichttp.message.Responses.ok;
 import static alpha.nomagichttp.message.Responses.processing;
 import static alpha.nomagichttp.message.Responses.text;
+import static alpha.nomagichttp.testutil.LogRecords.rec;
 import static alpha.nomagichttp.testutil.TestClient.CRLF;
 import static alpha.nomagichttp.testutil.TestRequests.get;
 import static alpha.nomagichttp.testutil.TestRequests.post;
@@ -180,7 +181,7 @@ class DetailTest extends AbstractRealTest
             "Content-Length: 0"      + CRLF + CRLF);
         
         // Logging specified in JavaDoc of ClientChannel.write()
-        assertThatLogContainsOnlyOnce(
+        logRecorder().assertThatLogContainsOnlyOnce(
                 // First ignored 100 Continue silently logged
                 rec(DEBUG, "Ignoring repeated 100 (Continue)."),
                 // But any more than that and level escalates
@@ -202,7 +203,7 @@ class DetailTest extends AbstractRealTest
             
             "Hi");
         
-        awaitChildClose();
+        logRecorder().assertAwaitChildClose();
     }
     
     @Test
@@ -215,8 +216,8 @@ class DetailTest extends AbstractRealTest
             "HTTP/1.1 200 OK"                         + CRLF +
             "Content-Type: application/octet-stream"  + CRLF +
             "Connection: close"                       + CRLF + CRLF);
-        
-        awaitChildClose();
+    
+        logRecorder().assertAwaitChildClose();
     }
     
     // And what about @Test request_unknownLength() ?

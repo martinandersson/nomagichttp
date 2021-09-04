@@ -1,9 +1,9 @@
 package alpha.nomagichttp.mediumtest;
 
+import alpha.nomagichttp.handler.EndOfStreamException;
 import alpha.nomagichttp.handler.ErrorHandler;
 import alpha.nomagichttp.handler.RequestHandler;
 import alpha.nomagichttp.message.Char;
-import alpha.nomagichttp.handler.EndOfStreamException;
 import alpha.nomagichttp.message.PooledByteBufferHolder;
 import alpha.nomagichttp.message.Response;
 import alpha.nomagichttp.testutil.AbstractRealTest;
@@ -69,7 +69,7 @@ class ClientLifeCycleTest extends AbstractRealTest
                 "HTTP/1.0 204 No Content" + CRLF +
                 "Connection: close"       + CRLF + CRLF);
             
-            awaitChildClose();
+            logRecorder().assertAwaitChildClose();
         }
     }
     
@@ -92,7 +92,7 @@ class ClientLifeCycleTest extends AbstractRealTest
             
             assertThat(rsp).isEmpty();
             
-            awaitLog(
+            logRecorder().assertAwait(
                 WARNING,
                     "Child channel is closed for writing. " +
                     "Can not resolve this error. " +
@@ -100,7 +100,7 @@ class ClientLifeCycleTest extends AbstractRealTest
                 ClosedChannelException.class);
             
             // Clean close from server caused our end (test worker) to receive EOS
-            awaitLog(DEBUG, "EOS; server closed channel's read stream.");
+            logRecorder().assertAwait(DEBUG, "EOS; server closed channel's read stream.");
         }
         
         // <implicit assert that no error was delivered to the error handler>
@@ -127,7 +127,7 @@ class ClientLifeCycleTest extends AbstractRealTest
            {tstamp} | dead-25     | FINE | {pkg}.DefaultChannelOperations orderlyClose | Closed child: {...}
          */
         
-        awaitChildAccept();
+        logRecorder().assertAwaitChildAccept();
         assertThatNoWarningOrErrorIsLogged();
         // that no error was thrown is asserted by super class
     }
@@ -181,7 +181,7 @@ class ClientLifeCycleTest extends AbstractRealTest
                     .hasNoCause()
                     .hasNoSuppressedExceptions();
         }
-        assertThatNoErrorWasLogged();
+        logRecorder().assertThatNoErrorWasLogged();
     }
     
     // Broken pipe always end the exchange, no error handling no logging
@@ -200,7 +200,8 @@ class ClientLifeCycleTest extends AbstractRealTest
             
             Thread.interrupted(); // Clear flag
             try {
-                awaitLog(DEBUG, "Read operation failed (broken pipe), will shutdown stream.");
+                logRecorder().assertAwait(
+                    DEBUG, "Read operation failed (broken pipe), will shutdown stream.");
             } catch (AssertionError rethrow) {
                 // GitHub's slow Windows Server is observing an IOException not
                 // considered broken pipe. This is for debugging.
@@ -233,7 +234,8 @@ class ClientLifeCycleTest extends AbstractRealTest
             
             // <here>, log may be different, see next comment
             
-            awaitLog(DEBUG, "Broken pipe, closing channel. (end of HTTP exchange)");
+            logRecorder().assertAwait(
+                DEBUG, "Broken pipe, closing channel. (end of HTTP exchange)");
         }
         
         // What can be said about the log before the end of the exchange is
@@ -265,7 +267,8 @@ class ClientLifeCycleTest extends AbstractRealTest
                 .hasMessage("Publisher has shutdown.");
             
             // And if it does, we also expect the write failure
-            awaitLog(DEBUG, "Write operation failed (broken pipe), will shutdown stream.");
+            logRecorder().assertAwait(
+                DEBUG, "Write operation failed (broken pipe), will shutdown stream.");
         }
         
         // Test client will have logged a WARNING, "about to crash".
@@ -309,7 +312,7 @@ class ClientLifeCycleTest extends AbstractRealTest
             }
             
             // Sooner or later the half-close will be observed
-            awaitChildClose();
+            logRecorder().assertAwaitChildClose();
         }
         
         // We can't say exactly how the HTTP exchange ends,
@@ -364,12 +367,12 @@ class ClientLifeCycleTest extends AbstractRealTest
             // Half-closed is NOT observed by server
             // (coz there's no outstanding channel operation after having sent the response)
             if (setConnectionCloseHeader) {
-                awaitChildClose();
+                logRecorder().assertAwaitChildClose();
             }
         }
         
         if (setConnectionCloseHeader) {
-            awaitLog(DEBUG, "Normal end of HTTP exchange.");
+            logRecorder().assertAwait(DEBUG, "Normal end of HTTP exchange.");
         } else {
             // As with the previous test, no guarantee how (when) exactly the exchange ends
             assertTrue(logRecorder().await(rec ->
@@ -400,7 +403,7 @@ class ClientLifeCycleTest extends AbstractRealTest
             
             // Send the rest of the request
             client().write("Hi");
-            awaitChildClose();
+            logRecorder().assertAwaitChildClose();
         }
         
         assertThat(received.poll(1, SECONDS)).isEqualTo("Hi");

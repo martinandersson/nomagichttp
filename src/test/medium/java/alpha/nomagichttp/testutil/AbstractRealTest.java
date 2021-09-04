@@ -6,7 +6,6 @@ import alpha.nomagichttp.handler.ClientChannel;
 import alpha.nomagichttp.handler.ErrorHandler;
 import alpha.nomagichttp.message.Response;
 import org.assertj.core.api.AbstractThrowableAssert;
-import org.assertj.core.groups.Tuple;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
@@ -23,27 +22,19 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.BlockingDeque;
 import java.util.concurrent.LinkedBlockingDeque;
-import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
-import java.util.logging.Level;
 import java.util.logging.LogRecord;
-import java.util.logging.Logger;
 import java.util.stream.Stream;
 
 import static alpha.nomagichttp.Config.DEFAULT;
-import static alpha.nomagichttp.testutil.Logging.toJUL;
 import static java.lang.System.Logger.Level.ALL;
+import static java.lang.System.Logger.Level.DEBUG;
 import static java.util.Objects.requireNonNull;
 import static java.util.concurrent.TimeUnit.SECONDS;
-import static java.util.logging.Level.FINE;
-import static java.util.logging.Level.INFO;
-import static java.util.logging.Level.WARNING;
 import static java.util.stream.Collectors.toSet;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.tuple;
 import static org.junit.jupiter.api.Assertions.assertSame;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * Will setup a {@link #server()} (on first access) and a {@link #client()} (on
@@ -146,7 +137,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  */
 public abstract class AbstractRealTest
 {
-    private final static Logger LOG =  Logger.getLogger(AbstractRealTest.class.getPackageName());
+    private final static System.Logger LOG
+            = System.getLogger(AbstractRealTest.class.getPackageName());
     
     private final boolean stopServerAfterEach,
                           nullifyClientAfterEach,
@@ -197,7 +189,7 @@ public abstract class AbstractRealTest
     
     @BeforeEach
     final void beforeEach(TestInfo test) {
-        LOG.log(FINE, () -> "Executing " + toString(test));
+        LOG.log(DEBUG, () -> "Executing " + toString(test));
         if (useLogRecording) {
             key = Logging.startRecording();
         }
@@ -217,7 +209,7 @@ public abstract class AbstractRealTest
                 stopLogRecording();
             }
         }
-        LOG.log(FINE, () -> "Finished " + toString(test));
+        LOG.log(DEBUG, () -> "Finished " + toString(test));
     }
     
     /**
@@ -469,135 +461,9 @@ public abstract class AbstractRealTest
     }
     
     /**
-     * Shortcut for {@link Logging.Recorder#await(Level, String)}.
-     * 
-     * @param level record level predicate
-     * @param messageStartsWith record message predicate
-     * 
-     * @throws NullPointerException   if any arg is {@code null}
-     * @throws IllegalStateException  if server hasn't started once
-     * @throws InterruptedException   if the current thread is interrupted while waiting
-     */
-    protected final void awaitLog(System.Logger.Level level, String messageStartsWith)
-            throws InterruptedException
-    {
-        requireServerStartedOnce();
-        assertTrue(logRecorder().await(toJUL(level), messageStartsWith));
-    }
-    
-    /**
-     * Shortcut for {@link Logging.Recorder#await(Level, String, Class)}.
-     * 
-     * @param level record level predicate
-     * @param messageStartsWith record message predicate
-     * @param error record error predicate (record's error must be instance of)
-     * 
-     * @throws NullPointerException   if any arg is {@code null}
-     * @throws IllegalStateException  if server hasn't started once
-     * @throws InterruptedException   if the current thread is interrupted while waiting
-     */
-    protected final void awaitLog(
-            System.Logger.Level level,
-            String messageStartsWith,
-            Class<? extends Throwable> error)
-                throws InterruptedException
-    {
-        requireServerStartedOnce();
-        assertTrue(logRecorder().await(toJUL(level), messageStartsWith, error));
-    }
-    
-    // TODO: Move all "await" util methods to the [Log-]Recorder class.
-    //       Concrete test class do assertXxx() or consider extending Recorder
-    //       API to offer an assert-service, or have his API throw an exception
-    //       instead of returning true/false.
-    
-    /**
-     * Await first logged error.
-     * 
-     * @return the error
-     * 
-     * @throws NullPointerException   if {@code filter} is {@code null}
-     * @throws IllegalStateException  if server hasn't started once
-     * @throws InterruptedException   if the current thread is interrupted while waiting
-     */
-    protected final Throwable awaitFirstLogError() throws InterruptedException {
-        return awaitFirstLogError(Throwable.class);
-    }
-    
-    /**
-     * Await first logged error that is an instance of the given type.
-     * 
-     * @param filter type expected
-     * @return the error
-     * 
-     * @throws NullPointerException   if {@code filter} is {@code null}
-     * @throws IllegalStateException  if server hasn't started once
-     * @throws InterruptedException   if the current thread is interrupted while waiting
-     */
-    protected final Throwable awaitFirstLogError(Class<? extends Throwable> filter)
-            throws InterruptedException
-    {
-        requireServerStartedOnce();
-        requireNonNull(filter);
-        AtomicReference<Throwable> thr = new AtomicReference<>();
-        assertTrue(logRecorder().await(rec -> {
-            var t = rec.getThrown();
-            if (filter.isInstance(t)) {
-                thr.set(t);
-                return true;
-            }
-            return false;
-        }));
-        return thr.get();
-    }
-    
-    /**
-     * Stop log recording and assert the records.
-     * 
-     * @param values produced by {@link #rec(System.Logger.Level, String)}
-     */
-    protected final void assertThatLogContainsOnlyOnce(Tuple... values) {
-        requireServerStartedOnce();
-        assertThat(stopLogRecording())
-                .extracting(LogRecord::getLevel, LogRecord::getMessage)
-                .containsOnlyOnce(values);
-    }
-    
-    /**
-     * Create an AssertJ Tuple consisting of a log- level and message.
-     * 
-     * @param level of log record
-     * @param msg of log record
-     * @return a tuple
-     * 
-     * @throws NullPointerException
-     *             if {@code level} is {@code null}, perhaps also for {@code msg}
-     */
-    protected static Tuple rec(System.Logger.Level level, String msg) {
-        return tuple(toJUL(level), msg);
-    }
-    
-    /**
-     * Stop log recording and assert no log record contains a throwable.
-     */
-    protected final void assertThatNoErrorWasLogged() {
-        requireServerStartedOnce();
-        var logs = stopLogRecording();
-        assertThat(logs).extracting(r -> {
-            var t = r.getThrown();
-            if (t != null) {
-                LOG.log(WARNING, () ->
-                    "Log record that has a throwable also has this message: " +
-                    r.getMessage());
-            }
-            return t;
-        }).containsOnlyNulls();
-    }
-    
-    /**
-     * Short-cut for {@link #pollServerError()} and
-     * {@link #awaitFirstLogError()} with an extra assert that the error
-     * instance observed is the error instance logged.<p>
+     * Asserts that {@link #pollServerError()} and
+     * {@link Logging.Recorder#assertAwaitFirstLogError()} is the same
+     * instance.<p>
      * 
      * May be used when test case needs to assert the default error handler was
      * delivered a particular error <i>and</i> logged it (or, someone did).
@@ -611,7 +477,7 @@ public abstract class AbstractRealTest
     {
         requireServerStartedOnce();
         Throwable t = pollServerError();
-        assertSame(t, awaitFirstLogError());
+        assertSame(t, logRecorder().assertAwaitFirstLogError());
         return assertThat(t);
     }
     
@@ -644,31 +510,7 @@ public abstract class AbstractRealTest
         assertThat(stopLogRecording()
                 .filter(r -> !match.test(r.getSourceClassName()))
                 .mapToInt(r -> r.getLevel().intValue()))
-                .noneMatch(v -> v > INFO.intValue());
-    }
-    
-    /**
-     * Waits for at most 3 seconds on the server log to indicate a child was
-     * accepted.
-     * 
-     * @throws InterruptedException
-     *             if the current thread is interrupted while waiting
-     */
-    protected final void awaitChildAccept() throws InterruptedException {
-        requireServerStartedOnce();
-        assertTrue(logRecorder().await(FINE, "Accepted child:"));
-    }
-    
-    /**
-     * Waits for at most 3 seconds on the server log to indicate a child was
-     * closed.
-     * 
-     * @throws InterruptedException
-     *             if the current thread is interrupted while waiting
-     */
-    protected final void awaitChildClose() throws InterruptedException {
-        requireServerStartedOnce();
-        assertTrue(logRecorder().await(FINE, "Closed child:"));
+                .noneMatch(v -> v > java.util.logging.Level.INFO.intValue());
     }
     
     /**
