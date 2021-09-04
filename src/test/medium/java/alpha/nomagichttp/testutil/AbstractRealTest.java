@@ -576,6 +576,22 @@ public abstract class AbstractRealTest
     }
     
     /**
+     * Create an AssertJ Tuple consisting of a log- level, message and error.
+     * 
+     * @param level of log record
+     * @param msg of log record
+     * @param error of log record
+     * @return a tuple
+     *
+     * @throws NullPointerException
+     *             if {@code level} is {@code null},
+     *             perhaps also for the other arguments
+     */
+    protected static Tuple rec(Level level, String msg, Throwable error) {
+        return tuple(toJUL(level), msg, error);
+    }
+    
+    /**
      * Short-cut for {@link #pollServerError()} and
      * {@link #awaitFirstLogError()} with an extra assert that the error
      * instance observed is the error instance logged.<p>

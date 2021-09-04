@@ -45,7 +45,6 @@ import static alpha.nomagichttp.message.Responses.ok;
 import static alpha.nomagichttp.message.Responses.processing;
 import static alpha.nomagichttp.message.Responses.status;
 import static alpha.nomagichttp.message.Responses.text;
-import static alpha.nomagichttp.testutil.Logging.toJUL;
 import static alpha.nomagichttp.testutil.MemorizingSubscriber.Signal.MethodName.ON_COMPLETE;
 import static alpha.nomagichttp.testutil.MemorizingSubscriber.Signal.MethodName.ON_ERROR;
 import static alpha.nomagichttp.testutil.MemorizingSubscriber.Signal.MethodName.ON_NEXT;
@@ -71,7 +70,6 @@ import static java.util.concurrent.CompletableFuture.failedStage;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static java.util.stream.Collectors.toList;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.tuple;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -561,10 +559,11 @@ class ErrorTest extends AbstractRealTest
     
     @Test
     void requestBodySubscriberFails_onError() throws IOException, InterruptedException {
+        var withMsg = new OopsException("is logged but not re-thrown");
         MemorizingSubscriber<PooledByteBufferHolder> sub = new MemorizingSubscriber<>(
                 onNextAndError(
                         item -> { throw new OopsException(); },
-                        thr  -> { throw new OopsException("is logged but not re-thrown"); }));
+                        thr  -> { throw withMsg; }));
         
         onErrorAssert(OopsException.class, channel ->
             assertThat(channel.isOpenForReading()).isFalse());
@@ -580,19 +579,15 @@ class ErrorTest extends AbstractRealTest
             "Connection: close"                  + CRLF + CRLF);
         
         var log = stopLogRecording().collect(toList());
-        assertThat(log).extracting(LogRecord::getLevel, LogRecord::getMessage)
-                .contains(tuple(toJUL(ERROR),
-                        "Signalling Flow.Subscriber.onNext() failed. Will close the channel's read stream."));
-        
-        LogRecord fromOnError = log.stream().filter(
-                r -> r.getLevel().equals(toJUL(ERROR)) &&
-                     r.getMessage().equals("Subscriber.onError() returned exceptionally. This new error is only logged but otherwise ignored."))
-                .findAny()
-                .get();
-        
-        assertThat(fromOnError.getThrown())
-                .isExactlyInstanceOf(OopsException.class)
-                .hasMessage("is logged but not re-thrown");
+        assertThat(log)
+            .extracting(LogRecord::getLevel, LogRecord::getMessage)
+            .contains(rec(ERROR,
+                "Signalling Flow.Subscriber.onNext() failed. Will close the channel's read stream."));
+        assertThat(log)
+            .extracting(LogRecord::getLevel, LogRecord::getMessage, LogRecord::getThrown)
+            .contains(rec(ERROR,
+                "Subscriber.onError() returned exceptionally. This new error is only logged but otherwise ignored.",
+                withMsg));
         
         var s = sub.signals();
         assertThat(s).hasSize(3);
