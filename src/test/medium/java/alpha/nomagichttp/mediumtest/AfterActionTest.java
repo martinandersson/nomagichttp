@@ -11,7 +11,6 @@ import static alpha.nomagichttp.handler.RequestHandler.GET;
 import static alpha.nomagichttp.message.Responses.noContent;
 import static alpha.nomagichttp.message.Responses.serviceUnavailable;
 import static alpha.nomagichttp.message.Responses.text;
-import static alpha.nomagichttp.testutil.Logging.toJUL;
 import static alpha.nomagichttp.testutil.TestClient.CRLF;
 import static alpha.nomagichttp.util.BetterBodyPublishers.ofString;
 import static java.lang.String.valueOf;
@@ -150,7 +149,7 @@ class AfterActionTest extends AbstractRealTest
         var rsp = client().writeReadTextUntilEOS("GET / HTTP/1.1" + CRLF + CRLF);
         
         assertThat(rsp).isEmpty();
-        assertTrue(logRecorder().await(toJUL(ERROR),
+        assertTrue(logRecorder().await(ERROR,
                 "Error recovery attempts depleted, will close the channel. " +
                 "This error is ignored.",
                 NullPointerException.class));

@@ -32,7 +32,6 @@ import java.util.concurrent.Semaphore;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
 import java.util.logging.LogRecord;
-import java.util.logging.Logger;
 
 import static alpha.nomagichttp.handler.RequestHandler.GET;
 import static alpha.nomagichttp.handler.RequestHandler.HEAD;
@@ -64,12 +63,12 @@ import static alpha.nomagichttp.util.BetterBodyPublishers.concat;
 import static alpha.nomagichttp.util.BetterBodyPublishers.ofString;
 import static alpha.nomagichttp.util.Subscribers.onNext;
 import static java.lang.System.Logger.Level.ERROR;
+import static java.lang.System.Logger.Level.INFO;
 import static java.lang.System.Logger.Level.WARNING;
 import static java.time.Duration.ofMillis;
 import static java.util.List.of;
 import static java.util.concurrent.CompletableFuture.failedStage;
 import static java.util.concurrent.TimeUnit.SECONDS;
-import static java.util.logging.Level.INFO;
 import static java.util.stream.Collectors.toList;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.tuple;
@@ -86,7 +85,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  */
 class ErrorTest extends AbstractRealTest
 {
-    private static final Logger LOG =  Logger.getLogger(ErrorTest.class.getPackageName());
+    private static final System.Logger LOG
+            = System.getLogger(ErrorTest.class.getPackageName());
     
     private static final class OopsException extends RuntimeException {
         private static final long serialVersionUID = 1L;
@@ -545,7 +545,7 @@ class ErrorTest extends AbstractRealTest
             "Connection: close"                  + CRLF + CRLF);
         
         assertThat(stopLogRecording()).extracting(LogRecord::getLevel, LogRecord::getMessage)
-                .contains(tuple(toJUL(ERROR),
+                .contains(rec(ERROR,
                         "Signalling Flow.Subscriber.onNext() failed. Will close the channel's read stream."));
         
         var s = sub.signals();

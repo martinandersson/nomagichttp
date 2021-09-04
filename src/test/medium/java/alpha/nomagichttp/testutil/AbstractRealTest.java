@@ -26,19 +26,16 @@ import java.util.concurrent.LinkedBlockingDeque;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
-import java.util.logging.Level;
 import java.util.logging.LogRecord;
-import java.util.logging.Logger;
 import java.util.stream.Stream;
 
 import static alpha.nomagichttp.Config.DEFAULT;
 import static alpha.nomagichttp.testutil.Logging.toJUL;
+import static java.lang.System.Logger.Level;
 import static java.lang.System.Logger.Level.ALL;
+import static java.lang.System.Logger.Level.DEBUG;
 import static java.util.Objects.requireNonNull;
 import static java.util.concurrent.TimeUnit.SECONDS;
-import static java.util.logging.Level.FINE;
-import static java.util.logging.Level.INFO;
-import static java.util.logging.Level.WARNING;
 import static java.util.stream.Collectors.toSet;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.tuple;
@@ -146,7 +143,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  */
 public abstract class AbstractRealTest
 {
-    private final static Logger LOG =  Logger.getLogger(AbstractRealTest.class.getPackageName());
+    private final static System.Logger LOG
+            = System.getLogger(AbstractRealTest.class.getPackageName());
     
     private final boolean stopServerAfterEach,
                           nullifyClientAfterEach,
@@ -197,7 +195,7 @@ public abstract class AbstractRealTest
     
     @BeforeEach
     final void beforeEach(TestInfo test) {
-        LOG.log(FINE, () -> "Executing " + toString(test));
+        LOG.log(DEBUG, () -> "Executing " + toString(test));
         if (useLogRecording) {
             key = Logging.startRecording();
         }
@@ -217,7 +215,7 @@ public abstract class AbstractRealTest
                 stopLogRecording();
             }
         }
-        LOG.log(FINE, () -> "Finished " + toString(test));
+        LOG.log(DEBUG, () -> "Finished " + toString(test));
     }
     
     /**
@@ -478,11 +476,11 @@ public abstract class AbstractRealTest
      * @throws IllegalStateException  if server hasn't started once
      * @throws InterruptedException   if the current thread is interrupted while waiting
      */
-    protected final void awaitLog(System.Logger.Level level, String messageStartsWith)
+    protected final void awaitLog(Level level, String messageStartsWith)
             throws InterruptedException
     {
         requireServerStartedOnce();
-        assertTrue(logRecorder().await(toJUL(level), messageStartsWith));
+        assertTrue(logRecorder().await(level, messageStartsWith));
     }
     
     /**
@@ -497,13 +495,13 @@ public abstract class AbstractRealTest
      * @throws InterruptedException   if the current thread is interrupted while waiting
      */
     protected final void awaitLog(
-            System.Logger.Level level,
+            Level level,
             String messageStartsWith,
             Class<? extends Throwable> error)
                 throws InterruptedException
     {
         requireServerStartedOnce();
-        assertTrue(logRecorder().await(toJUL(level), messageStartsWith, error));
+        assertTrue(logRecorder().await(level, messageStartsWith, error));
     }
     
     // TODO: Move all "await" util methods to the [Log-]Recorder class.
@@ -554,7 +552,7 @@ public abstract class AbstractRealTest
     /**
      * Stop log recording and assert the records.
      * 
-     * @param values produced by {@link #rec(System.Logger.Level, String)}
+     * @param values produced by {@link #rec(Level, String)}
      */
     protected final void assertThatLogContainsOnlyOnce(Tuple... values) {
         requireServerStartedOnce();
@@ -573,7 +571,7 @@ public abstract class AbstractRealTest
      * @throws NullPointerException
      *             if {@code level} is {@code null}, perhaps also for {@code msg}
      */
-    protected static Tuple rec(System.Logger.Level level, String msg) {
+    protected static Tuple rec(Level level, String msg) {
         return tuple(toJUL(level), msg);
     }
     
@@ -627,7 +625,7 @@ public abstract class AbstractRealTest
         assertThat(stopLogRecording()
                 .filter(r -> !match.test(r.getSourceClassName()))
                 .mapToInt(r -> r.getLevel().intValue()))
-                .noneMatch(v -> v > INFO.intValue());
+                .noneMatch(v -> v > java.util.logging.Level.INFO.intValue());
     }
     
     /**
@@ -639,7 +637,7 @@ public abstract class AbstractRealTest
      */
     protected final void awaitChildAccept() throws InterruptedException {
         requireServerStartedOnce();
-        assertTrue(logRecorder().await(FINE, "Accepted child:"));
+        assertTrue(logRecorder().await(DEBUG, "Accepted child:"));
     }
     
     /**
@@ -651,7 +649,7 @@ public abstract class AbstractRealTest
      */
     protected final void awaitChildClose() throws InterruptedException {
         requireServerStartedOnce();
-        assertTrue(logRecorder().await(FINE, "Closed child:"));
+        assertTrue(logRecorder().await(DEBUG, "Closed child:"));
     }
     
     /**

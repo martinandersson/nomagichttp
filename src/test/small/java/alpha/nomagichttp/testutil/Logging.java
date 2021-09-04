@@ -19,11 +19,11 @@ import java.util.function.Predicate;
 import java.util.logging.ConsoleHandler;
 import java.util.logging.Formatter;
 import java.util.logging.Handler;
-import java.util.logging.Level;
 import java.util.logging.LogRecord;
 import java.util.logging.Logger;
 import java.util.stream.Stream;
 
+import static java.lang.System.Logger.Level;
 import static java.lang.System.Logger.Level.WARNING;
 import static java.lang.reflect.Modifier.isFinal;
 import static java.lang.reflect.Modifier.isStatic;
@@ -32,7 +32,6 @@ import static java.util.Arrays.stream;
 import static java.util.Comparator.comparing;
 import static java.util.Objects.requireNonNull;
 import static java.util.concurrent.TimeUnit.SECONDS;
-import static java.util.logging.Level.ALL;
 import static java.util.stream.Stream.of;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -61,13 +60,13 @@ public final class Logging
      * An invocation of this method behaves in exactly the same way as the
      * invocation
      * <pre>
-     *     Logging.{@link #setLevel(Class, System.Logger.Level)
+     *     Logging.{@link #setLevel(Class, Level)
      *       setLevel}(HttpServer.class, level);
      * </pre>
      * 
      * @param level to set
      */
-    public static void setLevel(System.Logger.Level level) {
+    public static void setLevel(Level level) {
         setLevel(HttpServer.class, level);
     }
     
@@ -98,7 +97,7 @@ public final class Logging
      * 
      * @throws NullPointerException if any argument is {@code null}
      */
-    public static void setLevel(Class<?> component, System.Logger.Level level) {
+    public static void setLevel(Class<?> component, Level level) {
         final java.util.logging.Level impl = toJUL(level);
         
         Logger l = Logger.getLogger(component.getPackageName());
@@ -241,8 +240,8 @@ public final class Logging
      * peeking log records from a {@link Recorder}.<p>
      * 
      * The same formatting is automagically applied to the Gradle report if test
-     * calls {@link #setLevel(Class, System.Logger.Level)}, except the formatter
-     * instance will be re-used of course and not created anew for each record.
+     * calls {@link #setLevel(Class, Level)}, except the formatter instance will
+     * be re-used of course and not created anew for each record.
      * 
      * @param rec log record to format
      * @return a well formatted string
@@ -484,7 +483,7 @@ public final class Logging
                 throws InterruptedException {
             requireNonNull(level);
             requireNonNull(messageStartsWith);
-            return await(r -> r.getLevel().equals(level) &&
+            return await(r -> r.getLevel().equals(toJUL(level)) &&
                               r.getMessage().startsWith(messageStartsWith));
         }
         
@@ -513,7 +512,7 @@ public final class Logging
             requireNonNull(level);
             requireNonNull(messageStartsWith);
             requireNonNull(error);
-            return await(r -> r.getLevel().equals(level) &&
+            return await(r -> r.getLevel().equals(toJUL(level)) &&
                               r.getMessage().startsWith(messageStartsWith) &&
                               error.isInstance(r.getThrown()));
         }
@@ -615,7 +614,7 @@ public final class Logging
             cmp = component;
             deq = new ConcurrentLinkedDeque<>();
             mon = new ArrayList<>();
-            setLevel(ALL);
+            setLevel(java.util.logging.Level.ALL);
         }
         
         /**
