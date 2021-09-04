@@ -65,7 +65,7 @@ class ServerLifeCycleTest extends AbstractRealTest
                 
                 "Hi!");
             
-            awaitChildClose(); // Not dependent on the closure of this connection
+            assertAwaitChildClose(); // Not dependent on the closure of this connection
         }
         
         assertThat(fut).succeedsWithin(1, SECONDS).isNull();

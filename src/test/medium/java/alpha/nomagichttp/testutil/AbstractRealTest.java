@@ -35,7 +35,6 @@ import static java.util.concurrent.TimeUnit.SECONDS;
 import static java.util.stream.Collectors.toSet;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertSame;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * Will setup a {@link #server()} (on first access) and a {@link #client()} (on
@@ -462,6 +461,32 @@ public abstract class AbstractRealTest
     }
     
     /**
+     * Assertively await on the server log to indicate a child was accepted.
+     * 
+     * @throws InterruptedException
+     *             if the current thread is interrupted while waiting
+     * @throws AssertionError
+     *             on timeout (record not observed)
+     */
+    protected final void assertAwaitChildAccept() throws InterruptedException {
+        requireServerStartedOnce();
+        logRecorder().assertAwait(DEBUG, "Accepted child:");
+    }
+    
+    /**
+     * Assertively await on the server log to indicate a child was closed.
+     * 
+     * @throws InterruptedException
+     *             if the current thread is interrupted while waiting
+     * @throws AssertionError
+     *             on timeout (record not observed)
+     */
+    protected final void assertAwaitChildClose() throws InterruptedException {
+        requireServerStartedOnce();
+        logRecorder().assertAwait(DEBUG, "Closed child:");
+    }
+    
+    /**
      * Asserts that {@link #pollServerError()} and
      * {@link Logging.Recorder#assertAwaitFirstLogError()} is the same
      * instance.<p>
@@ -512,30 +537,6 @@ public abstract class AbstractRealTest
                 .filter(r -> !match.test(r.getSourceClassName()))
                 .mapToInt(r -> r.getLevel().intValue()))
                 .noneMatch(v -> v > java.util.logging.Level.INFO.intValue());
-    }
-    
-    /**
-     * Waits for at most 3 seconds on the server log to indicate a child was
-     * accepted.
-     * 
-     * @throws InterruptedException
-     *             if the current thread is interrupted while waiting
-     */
-    protected final void awaitChildAccept() throws InterruptedException {
-        requireServerStartedOnce();
-        assertTrue(logRecorder().await(DEBUG, "Accepted child:"));
-    }
-    
-    /**
-     * Waits for at most 3 seconds on the server log to indicate a child was
-     * closed.
-     * 
-     * @throws InterruptedException
-     *             if the current thread is interrupted while waiting
-     */
-    protected final void awaitChildClose() throws InterruptedException {
-        requireServerStartedOnce();
-        assertTrue(logRecorder().await(DEBUG, "Closed child:"));
     }
     
     /**

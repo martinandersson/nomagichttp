@@ -203,7 +203,7 @@ class DetailTest extends AbstractRealTest
             
             "Hi");
         
-        awaitChildClose();
+        assertAwaitChildClose();
     }
     
     @Test
@@ -217,7 +217,7 @@ class DetailTest extends AbstractRealTest
             "Content-Type: application/octet-stream"  + CRLF +
             "Connection: close"                       + CRLF + CRLF);
         
-        awaitChildClose();
+        assertAwaitChildClose();
     }
     
     // And what about @Test request_unknownLength() ?
