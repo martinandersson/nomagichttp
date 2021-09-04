@@ -35,6 +35,7 @@ import static java.util.concurrent.TimeUnit.SECONDS;
 import static java.util.logging.Level.ALL;
 import static java.util.stream.Stream.of;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * Logging utilities.
@@ -384,11 +385,12 @@ public final class Logging
     }
     
     /**
-     * Is a subscription key and API for waiting on a log record and running
-     * asserts.<p>
+     * Is a subscription key and API for waiting on- and asserting log
+     * records.<p>
      * 
-     * {@code await()} methods will by default wait at most 3 seconds. This can
-     * be configured differently using {@link #timeoutAfter(long, TimeUnit)}.
+     * {@code await()} methods (and derivatives such as {@code assertAwait()})
+     * will by default wait at most 3 seconds. This can be configured
+     * differently using {@link #timeoutAfter(long, TimeUnit)}.
      * 
      * @see #startRecording(Class, Class[])
      */
@@ -437,7 +439,6 @@ public final class Logging
          * 
          * @throws NullPointerException
          *             if {@code test} is {@code null}
-         *
          * @throws InterruptedException
          *             if the current thread is interrupted while waiting
          */
@@ -476,11 +477,11 @@ public final class Logging
          * 
          * @throws NullPointerException
          *             if any arg is {@code null}
-         * 
          * @throws InterruptedException
          *             if the current thread is interrupted while waiting
          */
-        public boolean await(Level level, String messageStartsWith) throws InterruptedException {
+        public boolean await(Level level, String messageStartsWith)
+                throws InterruptedException {
             requireNonNull(level);
             requireNonNull(messageStartsWith);
             return await(r -> r.getLevel().equals(level) &&
@@ -502,11 +503,11 @@ public final class Logging
          * 
          * @throws NullPointerException
          *             if any arg is {@code null}
-         * 
          * @throws InterruptedException
          *             if the current thread is interrupted while waiting
          */
-        public boolean await(Level level, String messageStartsWith, Class<? extends Throwable> error)
+        public boolean await(
+                Level level, String messageStartsWith, Class<? extends Throwable> error)
                 throws InterruptedException
         {
             requireNonNull(level);
@@ -515,6 +516,67 @@ public final class Logging
             return await(r -> r.getLevel().equals(level) &&
                               r.getMessage().startsWith(messageStartsWith) &&
                               error.isInstance(r.getThrown()));
+        }
+        
+        /**
+         * This method behaves the same as {@link #await(Predicate)}, except it
+         * returns normally instead of {@code true}, and it returns
+         * exceptionally instead of {@code false}.
+         * 
+         * @param test of record
+         * 
+         * @throws NullPointerException
+         *             if {@code test} is {@code null}
+         * @throws InterruptedException
+         *             if the current thread is interrupted while waiting
+         * @throws AssertionError
+         *             on timeout (record not observed)
+         */
+        public void assertAwait(Predicate<LogRecord> test) throws InterruptedException {
+            assertTrue(await(test));
+        }
+        
+        /**
+         * This method behaves the same as {@link #await(Level, String)}, except
+         * it returns normally instead of {@code true}, and it returns
+         * exceptionally instead of {@code false}.
+         * 
+         * @param level record level predicate
+         * @param messageStartsWith record message predicate
+         * 
+         * @throws NullPointerException
+         *             if any arg is {@code null}
+         * @throws InterruptedException
+         *             if the current thread is interrupted while waiting
+         * @throws AssertionError
+         *             on timeout (record not observed)
+         */
+        public void assertAwait(
+                Level level, String messageStartsWith)
+                throws InterruptedException {
+            assertTrue(await(level, messageStartsWith));
+        }
+        
+        /**
+         * This method behaves the same as {@link #await(Level, String, Class)},
+         * except it returns normally instead of {@code true}, and it returns
+         * exceptionally instead of {@code false}.
+         * 
+         * @param level record level predicate
+         * @param messageStartsWith record message predicate
+         * @param error record error predicate (record's error must be instance of)
+         * 
+         * @throws NullPointerException
+         *             if any arg is {@code null}
+         * @throws InterruptedException
+         *             if the current thread is interrupted while waiting
+         * @throws AssertionError
+         *             on timeout (record not observed)
+         */
+        public void assertAwait(
+                Level level, String messageStartsWith, Class<? extends Throwable> error)
+                throws InterruptedException {
+            assertTrue(await(level, messageStartsWith, error));
         }
         
         /**
