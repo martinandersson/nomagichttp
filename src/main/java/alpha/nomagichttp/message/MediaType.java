@@ -148,6 +148,9 @@ public class MediaType
      */
     public static final MediaType __ALL = parse0("*/*");
     
+    // TODO: Usually there's no point in repeating modifiers.
+    //       Alas Java < 17 will not pick up the JavaDoc if they aren't.
+    
     /** Text. Value: "text/plain". File extension: ".txt". */
     public static final MediaType TEXT_PLAIN = parse0("text/plain");
     
