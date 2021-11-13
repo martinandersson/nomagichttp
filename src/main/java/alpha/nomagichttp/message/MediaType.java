@@ -269,7 +269,8 @@ public class MediaType
      * 
      * No meaning is attached to the order in which parameters appear - except
      * for the "q"/"Q" parameter which - if present - marks the end of media
-     * type parameters.<p>
+     * type parameters and the beginning of media range {@link MediaRange
+     * extension parameters}, which are logged but otherwise ignored.<p>
      * 
      * There is no defined syntax for parameter values. Almost all parameter
      * values will be extracted at face value, except for quoted strings which
@@ -292,9 +293,6 @@ public class MediaType
      *   text/html; charset="utf-8"
      * </pre>
      * 
-     * Media range {@link MediaRange extension parameters} are logged and
-     * subsequently ignored.<p>
-     * 
      * The returned instance may be new, or it may have been retrieved from a
      * cache.
      * 
@@ -304,10 +302,12 @@ public class MediaType
      *             if {@code text} is {@code null}
      * 
      * @throws MediaTypeParseException
-     *             if {@code text} can not be parsed, for example
+     *             if there's not exactly one forward slash in "type/subtype", or
+     *             type or subtype is empty, or
+     *             there's a wildcard type but not a wildcard subtype, or
+     *             a parameter name- or value is empty, or
      *             a parameter has been specified more than once, or
-     *             a parameter was named "q"/"Q" and it was not the last parameter declared,
-     *             and so forth
+     *             the q-parameter can not be parsed to a double
      * 
      * @return a parsed media type (never {@code null})
      */
@@ -393,6 +393,8 @@ public class MediaType
             }
             
             if (params.put(nameAndValue[0], nameAndValue[1]) != null) {
+                // "It is an error for a specific parameter to be specified more than once."
+                // https://datatracker.ietf.org/doc/html/rfc6838#section-4.3
                 throw new MediaTypeParseException(text, "Duplicated parameters.");
             }
             
