@@ -65,12 +65,12 @@ repositories {
 }
 
 dependencies {
-    testImplementation 'org.junit.jupiter:junit-jupiter-api:5.7.2'
-    testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine:5.7.2'
+    testImplementation 'org.junit.jupiter:junit-jupiter-api:5.8.1'
+    testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine:5.8.1'
     
-    testImplementation 'org.assertj:assertj-core:3.20.2'
-    testImplementation 'org.mockito:mockito-core:3.11.1'
-    testImplementation 'org.junit.jupiter:junit-jupiter-params:5.7.2'
+    testImplementation 'org.assertj:assertj-core:3.21.0'
+    testImplementation 'org.mockito:mockito-core:4.0.0'
+    testImplementation 'org.junit.jupiter:junit-jupiter-params:5.8.1'
     
     // HTTP client implementations used by HttpClientFacade
     mediumTestImplementation 'com.squareup.okhttp3:okhttp:4.9.1'
