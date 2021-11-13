@@ -17,9 +17,9 @@ import static java.util.List.of;
 import static java.util.logging.Level.WARNING;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertNotSame;
+import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.mockito.ArgumentMatchers.argThat;
 
 class MediaTypeTest
@@ -27,9 +27,9 @@ class MediaTypeTest
     @Test
     void cache() {
         assertSame(__ALL, parse("*/*"));
-        assertTrue(TEXT_PLAIN == parse("text/plain"));
-        assertTrue(TEXT_PLAIN_UTF8 == parse("text/plain; charset=utf-8"));
-        assertFalse(parse("text/*") == parse(("text/*")));
+        assertSame(TEXT_PLAIN, parse("text/plain"));
+        assertSame(TEXT_PLAIN_UTF8, parse("text/plain; charset=utf-8"));
+        assertNotSame(parse("text/*"), parse("text/*"));
         // ...
     }
     
