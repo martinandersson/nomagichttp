@@ -108,7 +108,7 @@ final class ResponseBodySubscriber implements SubscriberAsStage<ByteBuffer, Long
      * but only if bytes have already been written to the channel (message on
      * wire is corrupt). Or in other words, an alternative response may be used
      * if the channel's output stream remains open after an exceptional
-     * completion.<p>
+     * completion.
      * 
      * @return the response-body-to-channel write process as a stage
      */

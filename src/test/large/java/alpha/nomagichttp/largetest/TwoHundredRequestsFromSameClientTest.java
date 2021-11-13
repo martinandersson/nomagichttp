@@ -217,7 +217,7 @@ class TwoHundredRequestsFromSameClientTest extends AbstractLargeRealTest
     }
     
     /**
-     * Builds a stream that generates request bodies of various lengths.<p>
+     * Builds a stream that generates request bodies of various lengths.
      * 
      * @param n stream length
      * @param minLen minimum body length (inclusive)
