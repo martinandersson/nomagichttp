@@ -108,7 +108,7 @@ import static java.util.Objects.requireNonNull;
  * will still be monitored and if {@code cancel()} is called on the dummy, then
  * the subscription will not receive the completion signal (§1.8, §3.12).
  * Requesting demand from the dummy is NOP (see {@link
- * Subscriptions#canOnlyBeCancelled()}).<p>
+ * Subscriptions#canOnlyBeCancelled()}).
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  * 
@@ -152,7 +152,7 @@ public final class Publishers
      * The given {@code items} may be empty which would return an empty
      * publisher that immediately completes each new subscription. The
      * difference between an empty publisher from this method and {@link
-     * #empty()} is that this method returns a new publisher instance.<p>
+     * #empty()} is that this method returns a new publisher instance.
      * 
      * @param items to publish
      * @param <T> type of item

@@ -304,7 +304,7 @@ public interface RequestHandler
      * Creates a new {@code RequestHandler} builder.<p>
      * 
      * The method is any non-empty, case-sensitive string containing no white
-     * space.<p>
+     * space.
      * 
      * @param method token qualifier
      * 

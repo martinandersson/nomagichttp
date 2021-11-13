@@ -546,7 +546,7 @@ public class MediaType
     /**
      * Returns all media parameters.<p>
      * 
-     * The returned map is unmodifiable.<p>
+     * The returned map is unmodifiable.
      * 
      * @return all media parameters (not {@code null})
      * 
@@ -735,7 +735,7 @@ public class MediaType
     
     /**
      * Returns a normalized string of the format "type" + "/" + subtype,
-     * possibly followed by "; q=" + value.<p>
+     * possibly followed by "; q=" + value.
      * 
      * @return a normalized string
      */

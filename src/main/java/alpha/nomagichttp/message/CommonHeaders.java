@@ -108,7 +108,7 @@ public interface CommonHeaders
      * This header indicates the media type of the message body and should be
      * set by the sender if the message carries a body payload.<p>
      * 
-     * TODO: Example.<p>
+     * TODO: Example.
      * 
      * @return parsed value (never {@code null})
      * 
@@ -131,7 +131,7 @@ public interface CommonHeaders
      * An empty optional is returned if the header is not present.<p>
      * 
      * The server may assume that there is no message body if the header is not
-     * present or set to "0".<p>
+     * present or set to "0".
      * 
      * @return parsed value (never {@code null})
      * 

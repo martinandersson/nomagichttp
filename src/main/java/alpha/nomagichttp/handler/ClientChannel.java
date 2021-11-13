@@ -113,7 +113,7 @@ public interface ClientChannel extends Closeable, AttributeHolder
      * 
      * Only at most one 100 (Continue) response will be sent. Repeated 100
      * (Continue) responses will be ignored. Attempts to send more than two will
-     * log a warning on each offense.<p>
+     * log a warning on each offense.
      * 
      * @param response the response
      * 
@@ -174,7 +174,7 @@ public interface ClientChannel extends Closeable, AttributeHolder
      * begin transmission until the previous one has been successfully written
      * or the server's error handler execution chain of a failed response has
      * scheduled a new response. Nor does a new HTTP exchange begin
-     * before the active exchange has successfully written a final response.<p>
+     * before the active exchange has successfully written a final response.
      * 
      * @param response the response
      * 

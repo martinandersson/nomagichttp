@@ -217,7 +217,7 @@ public final class SerialTransferService<T>
      * The effect is immediate if called synchronously from inside the service
      * itself (item supplier or consumer) but potentially delayed if called
      * asynchronously (at most one delivery "extra" may occur after this method
-     * has returned).<p>
+     * has returned).
      * 
      * @return a successful flag (see JavaDoc)
      */
@@ -238,7 +238,7 @@ public final class SerialTransferService<T>
      * finished.<p>
      * 
      * The callback can only be executed immediately if no transfer is active,
-     * otherwise it will be scheduled to run after the active transfer.<p>
+     * otherwise it will be scheduled to run after the active transfer.
      * 
      * @param andThen callback
      * 

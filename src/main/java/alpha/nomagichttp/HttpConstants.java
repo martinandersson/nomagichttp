@@ -974,7 +974,7 @@ public final class HttpConstants {
          * May also alternatively be used with phrase {@value
          * ReasonPhrase#ENTITY_TOO_LARGE}, which the NoMagicHTTP server and many
          * others chose to do as to not lock-in the message body specifically as
-         * being the part that broke the acceptable limit.<p>
+         * being the part that broke the acceptable limit.
          * 
          * @see <a href="https://tools.ietf.org/html/rfc7231#section-6.5.11">RFC 7231 §6.5.11</a>
          */
@@ -1643,7 +1643,7 @@ public final class HttpConstants {
          * 
          * Applies to the response, not request.<p>
          * 
-         * Example: {@code Accept-Ranges: bytes}<p>
+         * Example: {@code Accept-Ranges: bytes}
          * 
          * @see #RANGE
          * @see <a href="https://tools.ietf.org/html/rfc7233#section-2.3">RFC 7233 §2.3</a>
@@ -1719,17 +1719,17 @@ public final class HttpConstants {
         
         /**
          * Used by client in a CORS-preflight request.<p>
-         *
-         * Example: {@code Access-Control-Request-Method: GET}<p>
-         *
+         * 
+         * Example: {@code Access-Control-Request-Method: GET}
+         * 
          * @see #ORIGIN
          * @see <a href="https://fetch.spec.whatwg.org/#http-requests">WHATWG</a>
          */
         public static final String ACCESS_CONTROL_REQUEST_METHOD = "Access-Control-Request-Method";
         
         /**
-         * Used by client in a CORS-preflight request.<p>
-         *
+         * Used by client in a CORS-preflight request.
+         * 
          * @see #ORIGIN
          * @see <a href="https://fetch.spec.whatwg.org/#http-requests">WHATWG</a>
          */
@@ -1741,11 +1741,11 @@ public final class HttpConstants {
          * {@code null}) or [@code *} in a response." (
          * <a href="https://fetch.spec.whatwg.org/#http-responses">WHATWG</a>
          * )<p>
-         *
+         * 
          * Used in a response to a CORS request.
-         *
+         * 
          * Example: {@code Access-Control-Allow-Origin: *}
-         *
+         * 
          * @see #ORIGIN
          */
         public static final String ACCESS_CONTROL_ALLOW_ORIGIN = "Access-Control-Allow-Origin";
@@ -1755,7 +1755,7 @@ public final class HttpConstants {
          * credentials mode is 'include'." (
          * <a href="https://fetch.spec.whatwg.org/#http-responses">WHATWG</a>
          * )<p>
-         * 
+         *  
          * Used in a response to a CORS request.
          * 
          * @see #ORIGIN
@@ -2033,7 +2033,7 @@ public final class HttpConstants {
          * 
          * Intended to be used in responses, not requests.<p>
          * 
-         * Example: {@code Content-Range: bytes 21010-47021/47022}<p>
+         * Example: {@code Content-Range: bytes 21010-47021/47022}
          * 
          * @see #RANGE
          * @see <a href="https://tools.ietf.org/html/rfc7233#section-4.2">RFC 7233 §4.2</a>
@@ -2139,7 +2139,7 @@ public final class HttpConstants {
          * </pre>
          * 
          * The NoMagicHTTP server does not currently use these headers. Support
-         * may be added in the future.<p>
+         * may be added in the future.
          * 
          * @see #WANT_DIGEST
          * @see #CONTENT_MD5
@@ -2310,7 +2310,7 @@ public final class HttpConstants {
          * 
          * Example: {@code If-Match: "737060cd8c284d8af7ad3082f209582d"}<p>
          * 
-         * Applies to the request, not response.<p>
+         * Applies to the request, not response.
          * 
          * @see #IF_MATCH
          * @see <a href="https://tools.ietf.org/html/rfc7232#section-3.3">RFC 7232 §3.3</a>
@@ -2323,7 +2323,7 @@ public final class HttpConstants {
          * 
          * Example: {@code If-None-Match: "737060cd8c284d8af7ad3082f209582d"}<p>
          * 
-         * Applies to the request, not response.<p>
+         * Applies to the request, not response.
          * 
          * @see #IF_MATCH
          * @see <a href="https://tools.ietf.org/html/rfc7232#section-3.2">RFC 7232 §3.2</a>
@@ -2357,7 +2357,7 @@ public final class HttpConstants {
          * 
          * Example: {@code If-Unmodified-Since: Sat, 29 Oct 1994 19:43:31 GMT}<p>
          * 
-         * Applies to the request, not response.<p>
+         * Applies to the request, not response.
          * 
          * @see #IF_MATCH
          * @see #LAST_MODIFIED
@@ -2513,7 +2513,7 @@ public final class HttpConstants {
          * 
          * Applies to the request, not response.<p>
          * 
-         * Example: {@code Proxy-Authenticate: Basic}<p>
+         * Example: {@code Proxy-Authenticate: Basic}
          * 
          * @see #AUTHORIZATION
          * @see <a href="https://tools.ietf.org/html/rfc7235#section-4.3">RFC 7235 §4.3</a>
@@ -2527,7 +2527,7 @@ public final class HttpConstants {
          * 
          * Applies to the request, not response.<p>
          * 
-         * Example: {@code Proxy-Authorization: Basic QWxhZGRpbjpvcGVuIHNlc2FtZQ==}<p>
+         * Example: {@code Proxy-Authorization: Basic QWxhZGRpbjpvcGVuIHNlc2FtZQ==}
          * 
          * @see #AUTHORIZATION
          * @see <a href="https://tools.ietf.org/html/rfc7235#section-4.4">RFC 7235 §4.4</a>
@@ -2622,7 +2622,7 @@ public final class HttpConstants {
          * 
          * Applies to the response, not request.<p>
          * 
-         * Example: {@code Set-Cookie: UserID=JohnDoe; Max-Age=3600; Version=1}<p>
+         * Example: {@code Set-Cookie: UserID=JohnDoe; Max-Age=3600; Version=1}
          * 
          * @see #COOKIE
          * @see <a href="https://tools.ietf.org/html/rfc6265#section-4.1">RFC 6265 §4.1</a>
@@ -2641,7 +2641,7 @@ public final class HttpConstants {
          * 
          * Currently, the NoMagicHTTP server has no native support for HTTPS and
          * does not use this header key. Future work is planned to add this
-         * support.<p>
+         * support.
          * 
          * @see <a href="https://tools.ietf.org/html/rfc6797#section-6.1">RFC 6797 §6.1</a>
          */
@@ -2788,7 +2788,7 @@ public final class HttpConstants {
         public static final String VIA = "Via";
         
         /**
-         * Indicates the sender's desire to receive a representation digest.<p>
+         * Indicates the sender's desire to receive a representation digest.
          * 
          * @see #DIGEST
          * @see <a href="https://datatracker.ietf.org/doc/html/draft-ietf-httpbis-digest-headers-04#section-4">IEFT Digest Draft §4</a>

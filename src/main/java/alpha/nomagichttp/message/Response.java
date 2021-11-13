@@ -109,7 +109,7 @@ public interface Response extends HeaderHolder
     }
     
     /**
-     * Returns a {@code Response} builder.<p>
+     * Returns a {@code Response} builder.
      * 
      * @param statusCode response status code
      * @param reasonPhrase response reason phrase
@@ -351,7 +351,7 @@ public interface Response extends HeaderHolder
         Builder addHeaders(String name, String value, String... morePairs);
         
         /**
-         * Add all headers from the given headers object.<p>
+         * Add all headers from the given headers object.
          * 
          * @implSpec
          * The default implementation is

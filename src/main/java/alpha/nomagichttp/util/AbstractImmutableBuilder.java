@@ -30,7 +30,7 @@ public abstract class AbstractImmutableBuilder<S> {
     }
     
     /**
-     * Construct an {@code AbstractImmutableBuilder} leaf.<p>
+     * Construct an {@code AbstractImmutableBuilder} leaf.
      * 
      * @param prev previous builder
      * @param modifier action to apply on mutable state

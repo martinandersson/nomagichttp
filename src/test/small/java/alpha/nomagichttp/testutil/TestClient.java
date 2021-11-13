@@ -161,7 +161,7 @@ public final class TestClient
     }
     
     /**
-     * Interrupt the write operation after a given timeout.<p>
+     * Interrupt the write operation after a given timeout.
      * 
      * @param amount of duration
      * @param unit unit of amount

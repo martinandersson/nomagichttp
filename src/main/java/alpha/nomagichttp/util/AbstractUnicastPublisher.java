@@ -258,7 +258,7 @@ public abstract class AbstractUnicastPublisher<T> implements Flow.Publisher<T>
      * 
      * If {@code signalNext()} can not deliver the item to a subscriber and the
      * runtime type of the item is a {@link PooledByteBufferHolder}, then the
-     * buffer will be immediately released.<p>
+     * buffer will be immediately released.
      * 
      * @param  item to deliver
      * @return {@code true} if successful, otherwise no subscriber was active
@@ -274,7 +274,7 @@ public abstract class AbstractUnicastPublisher<T> implements Flow.Publisher<T>
      *
      * If {@code signalNext()} can not deliver the item to a subscriber and the
      * runtime type of the item is a {@link PooledByteBufferHolder}, then the
-     * buffer will be immediately released.<p>
+     * buffer will be immediately released.
      * 
      * @param  item to deliver
      * @param  expected subscriber reference
@@ -338,7 +338,7 @@ public abstract class AbstractUnicastPublisher<T> implements Flow.Publisher<T>
      * 
      * The underlying subscriber reference will be removed and never again
      * signalled by this class, but only if the current subscriber {@code ==}
-     * the {@code expected} reference.<p>
+     * the {@code expected} reference.
      * 
      * @param expected subscriber
      * 
@@ -390,7 +390,7 @@ public abstract class AbstractUnicastPublisher<T> implements Flow.Publisher<T>
      * 
      * The underlying subscriber reference will be removed and never again
      * signalled by this class, but only if the current subscriber {@code ==}
-     * the {@code expected} reference.<p>
+     * the {@code expected} reference.
      * 
      * @param t error to signal
      * @param expected subscriber
