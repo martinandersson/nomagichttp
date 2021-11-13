@@ -104,7 +104,7 @@ import static java.util.stream.Collectors.joining;
 public class MediaType
 {
     private static final Logger LOG = System.getLogger(MediaType.class.getPackageName());
-    private static final String WILDCARD = "*", q = "q";
+    private static final String WILDCARD = "*", q = "q", Q = "Q";
     private static final Pattern SEMICOLON = Pattern.compile(";");
     
     /**
@@ -328,7 +328,7 @@ public class MediaType
         
         String qStr = params.remove(q); // Most likely lower case..
         if (qStr == null) {
-            qStr = params.remove("Q"); // ..but can be upper case.
+            qStr = params.remove(Q); // ..but can be upper case.
         }
         OptionalDouble qVal = empty();
         if (qStr != null) {
