@@ -141,8 +141,8 @@ public final class LogRecords {
         }
         
         private static String getThreadName(LogRecord r) {
-            ThreadInfo info = ManagementFactory.getThreadMXBean().getThreadInfo(r.getThreadID());
-            String thread = info == null ? "dead-" + r.getThreadID() : info.getThreadName();
+            ThreadInfo info = ManagementFactory.getThreadMXBean().getThreadInfo(r.getLongThreadID());
+            String thread = info == null ? "dead-" + r.getLongThreadID() : info.getThreadName();
             return rightPad(thread, "pool-1-thread-23".length());
         }
         
