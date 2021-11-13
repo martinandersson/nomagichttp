@@ -26,11 +26,25 @@ class MediaTypeTest
 {
     @Test
     void cache() {
+        // Each constant is put in the cache
         assertSame(__ALL, parse("*/*"));
         assertSame(TEXT_PLAIN, parse("text/plain"));
         assertSame(TEXT_PLAIN_UTF8, parse("text/plain; charset=utf-8"));
-        assertNotSame(parse("text/*"), parse("text/*"));
-        // ...
+        
+        // Plus two specials
+        assertSame(parse("text/*"), parse("text/*"));
+        assertSame(parse("text/*; charset=utf-8"), parse("text/*; charset=utf-8"));
+        
+        // For each, we also put a variant without the space
+        var noSpace = parse("text/plain;charset=utf-8");
+        assertSame(noSpace, parse("text/plain;charset=utf-8"));
+        
+        // And a charset-quoted variant
+        assertSame(parse("text/plain;charset=\"utf-8\""), parse("text/plain;charset=\"utf-8\""));
+        assertSame(parse("text/plain; charset=\"utf-8\""), parse("text/plain; charset=\"utf-8\""));
+        
+        // ..but "UTF-8" any capital letter, no cache
+        assertNotSame(parse("text/plain; charset=UTF-8"), parse("text/plain; charset=UTF-8"));
     }
     
     @Test

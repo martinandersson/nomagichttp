@@ -13,6 +13,7 @@ import java.util.Objects;
 import java.util.OptionalDouble;
 import java.util.function.BiFunction;
 import java.util.regex.Pattern;
+import java.util.stream.Stream;
 
 import static alpha.nomagichttp.message.MediaType.Score.NOPE;
 import static alpha.nomagichttp.message.MediaType.Score.PERFECT;
@@ -134,14 +135,6 @@ public class MediaType
     public static final MediaType __NOTHING_AND_ALL
             = new MediaType("<nothing and all>", null, null, Map.of()) {};
     
-    private static final Map<String, MediaType> CACHE = new HashMap<>();
-    
-    private MediaType putInCache() {
-        var v = CACHE.put(toString(), this);
-        assert v == null;
-        return this;
-    }
-    
     /**
      * A sentinel media type that can be used as a handler's consuming and/or
      * producing media type to indicate that the handler is willing to consume
@@ -153,109 +146,182 @@ public class MediaType
      * 
      * @see RequestHandler
      */
-    public static final MediaType __ALL = parse("*/*").putInCache();
+    public static final MediaType __ALL = parse0("*/*");
     
     /** Text. Value: "text/plain". File extension: ".txt". */
-    public static final MediaType TEXT_PLAIN = parse("text/plain").putInCache();
+    public static final MediaType TEXT_PLAIN = parse0("text/plain");
     
     /** Text. Value: "text/plain; charset=utf-8". File extension: ".txt". */
-    public static final MediaType TEXT_PLAIN_UTF8 = parse("text/plain; charset=utf-8").putInCache();
+    public static final MediaType TEXT_PLAIN_UTF8 = parse0("text/plain; charset=utf-8");
     
     /** HyperText Markup Language. Value: "text/html". File extension: ".html". */
-    public static final MediaType TEXT_HTML = parse("text/html").putInCache();
+    public static final MediaType TEXT_HTML = parse0("text/html");
     
     /** HyperText Markup Language. Value: "text/html; charset=utf-8". File extension: ".html". */
-    public static final MediaType TEXT_HTML_UTF8 = parse("text/html; charset=utf-8").putInCache();
+    public static final MediaType TEXT_HTML_UTF8 = parse0("text/html; charset=utf-8");
     
     /** Cascading Style Sheets. Value: "text/css". File extension: ".css". */
-    public static final MediaType TEXT_CSS = parse("text/css").putInCache();
+    public static final MediaType TEXT_CSS = parse0("text/css");
     
     /** Cascading Style Sheets. Value: "text/css; charset=utf-8". File extension: ".css". */
-    public static final MediaType TEXT_CSS_UTF8 = parse("text/css; charset=utf-8").putInCache();
+    public static final MediaType TEXT_CSS_UTF8 = parse0("text/css; charset=utf-8");
     
     /** Comma-Separated Values. Value: "text/csv". File extension: ".csv". */
-    public static final MediaType TEXT_CSV = parse("text/csv").putInCache();
+    public static final MediaType TEXT_CSV = parse0("text/csv");
     
     /** Comma-Separated Values. Value: "text/csv; charset=utf-8". File extension: ".csv". */
-    public static final MediaType TEXT_CSV_UTF8 = parse("text/csv; charset=utf-8").putInCache();
+    public static final MediaType TEXT_CSV_UTF8 = parse0("text/csv; charset=utf-8");
     
     /** JavaScript. Value: "text/javascript". File extension: ".js". */
-    public static final MediaType TEXT_JAVASCRIPT = parse("text/javascript").putInCache();
+    public static final MediaType TEXT_JAVASCRIPT = parse0("text/javascript");
     
     /** JavaScript. Value: "text/javascript; charset=utf-8". File extension: ".js". */
-    public static final MediaType TEXT_JAVASCRIPT_UTF8 = parse("text/javascript; charset=utf-8").putInCache();
+    public static final MediaType TEXT_JAVASCRIPT_UTF8 = parse0("text/javascript; charset=utf-8");
     
     /** Any kind of binary data. Value: "application/octet-stream". */
-    public static final MediaType APPLICATION_OCTET_STREAM = parse("application/octet-stream").putInCache();
+    public static final MediaType APPLICATION_OCTET_STREAM = parse0("application/octet-stream");
     
     /** JSON format. Value: "application/json". File extension: ".json". */
-    public static final MediaType APPLICATION_JSON = parse("application/json").putInCache();
+    public static final MediaType APPLICATION_JSON = parse0("application/json");
     
     /** JSON format. Value: "application/json; charset=utf-8". File extension: ".json". */
-    public static final MediaType APPLICATION_JSON_UTF8 = parse("application/json; charset=utf-8").putInCache();
+    public static final MediaType APPLICATION_JSON_UTF8 = parse0("application/json; charset=utf-8");
     
     /** ZIP archive. Value: "application/zip". File extension: ".zip". */
-    public static final MediaType APPLICATION_ZIP = parse("application/zip").putInCache();
+    public static final MediaType APPLICATION_ZIP = parse0("application/zip");
     
     /** GZip compressed archive. Value: "application/gzip". File extension: ".gz". */
-    public static final MediaType APPLICATION_GZIP = parse("application/gzip").putInCache();
+    public static final MediaType APPLICATION_GZIP = parse0("application/gzip");
     
     /** RAR archive. Value: "application/vnd.rar". File extension: ".rar". */
-    public static final MediaType APPLICATION_VND_RAR = parse("application/vnd.rar").putInCache();
+    public static final MediaType APPLICATION_VND_RAR = parse0("application/vnd.rar");
     
     /** TAR archive. Value: "application/x-tar". File extension: ".tar". */
-    public static final MediaType APPLICATION_X_TAR = parse("application/x-tar").putInCache();
+    public static final MediaType APPLICATION_X_TAR = parse0("application/x-tar");
     
     /** 7-zip archive. Value: "application/x-7z-compressed". File extension: ".7z". */
-    public static final MediaType APPLICATION_X_7Z_COMPRESSED = parse("application/x-7z-compressed").putInCache();
+    public static final MediaType APPLICATION_X_7Z_COMPRESSED = parse0("application/x-7z-compressed");
     
     /** Adobe Portable Document Format. Value: "application/pdf". File extension: ".pdf". */
-    public static final MediaType APPLICATION_PDF = parse("application/pdf").putInCache();
+    public static final MediaType APPLICATION_PDF = parse0("application/pdf");
     
     /** Java archive. Value: "application/java-archive". File extension: ".jar". */
-    public static final MediaType APPLICATION_JAVA_ARCHIVE = parse("application/java-archive").putInCache();
+    public static final MediaType APPLICATION_JAVA_ARCHIVE = parse0("application/java-archive");
     
     /** Portable Network Graphics. Value: "image/png". File extension: ".png". */
-    public static final MediaType IMAGE_PNG = parse("image/png").putInCache();
+    public static final MediaType IMAGE_PNG = parse0("image/png");
     
     /** Graphics Interchange Format. Value: "image/gif". File extension: ".gif". */
-    public static final MediaType IMAGE_GIF = parse("image/gif").putInCache();
+    public static final MediaType IMAGE_GIF = parse0("image/gif");
     
     /** JPEG image. Value: "image/jpeg". File extension: ".jpg". */
-    public static final MediaType IMAGE_JPEG = parse("image/jpeg").putInCache();
+    public static final MediaType IMAGE_JPEG = parse0("image/jpeg");
     
     /** Windows OS/2 bitmap graphics. Value: "image/bmp". File extension: ".bmp". */
-    public static final MediaType IMAGE_BMP = parse("image/bmp").putInCache();
+    public static final MediaType IMAGE_BMP = parse0("image/bmp");
     
     /** Scalable vector graphics. Value: "image/svg+xml". File extension: ".svg". */
-    public static final MediaType IMAGE_SVG_XML = parse("image/svg+xml").putInCache();
+    public static final MediaType IMAGE_SVG_XML = parse0("image/svg+xml");
     
     /** Tagged Image File Format. Value: "image/tiff". File extension: ".tif/.tiff". */
-    public static final MediaType IMAGE_TIFF = parse("image/tiff").putInCache();
+    public static final MediaType IMAGE_TIFF = parse0("image/tiff");
     
     /** Waveform Audio Format. Value: "audio/wav". File extension: ".wav". */
-    public static final MediaType AUDIO_WAV = parse("audio/wav").putInCache();
+    public static final MediaType AUDIO_WAV = parse0("audio/wav");
     
     /** AAC audio. Value: "audio/aac". File extension: ".aac". */
-    public static final MediaType AUDIO_AAC = parse("audio/aac").putInCache();
+    public static final MediaType AUDIO_AAC = parse0("audio/aac");
     
     /** Musical Instrument Digital Interface. Value: "audio/midi". File extension: ".mid/.midi". */
-    public static final MediaType AUDIO_MIDI = parse("audio/midi").putInCache();
+    public static final MediaType AUDIO_MIDI = parse0("audio/midi");
     
     /** MP3 audio. Value: "audio/mpeg". File extension: ".mp3". */
-    public static final MediaType AUDIO_MPEG = parse("audio/mpeg").putInCache();
+    public static final MediaType AUDIO_MPEG = parse0("audio/mpeg");
     
     /** OGG audio. Value: "audio/ogg". File extension: ".oga". */
-    public static final MediaType AUDIO_OGG = parse("audio/ogg").putInCache();
+    public static final MediaType AUDIO_OGG = parse0("audio/ogg");
     
     /** OGG video. Value: "video/ogg". File extension: ".ogv". */
-    public static final MediaType VIDEO_OGG = parse("video/ogg").putInCache();
+    public static final MediaType VIDEO_OGG = parse0("video/ogg");
     
     /** MP4 video. Value: "video/mp4". File extension: ".mp4". */
-    public static final MediaType VIDEO_MP4 = parse("video/mp4").putInCache();
+    public static final MediaType VIDEO_MP4 = parse0("video/mp4");
     
     /** MPEG video. Value: "video/mpeg". File extension: ".mpeg". */
-    public static final MediaType VIDEO_MPEG = parse("video/mpeg").putInCache();
+    public static final MediaType VIDEO_MPEG = parse0("video/mpeg");
+    
+    private static final Map<String, MediaType> CACHE = buildCache();
+    
+    private static Map<String, MediaType> buildCache() {
+        // All constants + "text/*" we put in cache
+        Map<String, MediaType> m = new HashMap<>();
+        Stream.of(
+            parse0("text/*"), parse0("text/*; charset=utf-8"),
+            __ALL,
+            TEXT_PLAIN,       TEXT_PLAIN_UTF8,
+            TEXT_HTML,        TEXT_HTML_UTF8,
+            TEXT_CSS,         TEXT_CSS_UTF8,
+            TEXT_CSV,         TEXT_CSV_UTF8,
+            TEXT_JAVASCRIPT,  TEXT_JAVASCRIPT_UTF8,
+            APPLICATION_OCTET_STREAM,
+            APPLICATION_JSON, APPLICATION_JSON_UTF8,
+            APPLICATION_ZIP,
+            APPLICATION_GZIP,
+            APPLICATION_VND_RAR,
+            APPLICATION_X_TAR,
+            APPLICATION_X_7Z_COMPRESSED,
+            APPLICATION_PDF,
+            APPLICATION_JAVA_ARCHIVE,
+            IMAGE_PNG, IMAGE_GIF, IMAGE_JPEG, IMAGE_BMP, IMAGE_SVG_XML, IMAGE_TIFF,
+            AUDIO_WAV, AUDIO_AAC, AUDIO_MIDI, AUDIO_MPEG, AUDIO_OGG,
+            VIDEO_OGG, VIDEO_MP4, VIDEO_MPEG).forEach(mt -> {
+            
+            final String org = mt.toString();
+            putInCache(mt, m);
+            
+            // + one copy without the space after ";"
+            // e.g. "blabla; charset=utf-8"? Also add ";charset=utf-8"
+            int sp = org.indexOf(' ');
+            MediaType noSpace = null;
+            if (sp != -1) {
+                var str2 = org.substring(0, sp) + org.substring(sp + 1);
+                noSpace = putInCache(str2, m);
+            }
+            
+            // + copy with a quoted "utf-8"
+            // e.g. "blabla; charset=utf-8"? Also add "; charset=\"utf-8\""
+            assert !org.contains("\"");
+            if (org.endsWith("utf-8")) {
+                putInCacheWithQuotedUtf8(mt, m);
+            }
+            if (noSpace != null && noSpace.toString().endsWith("utf-8")) {
+                putInCacheWithQuotedUtf8(noSpace, m);
+            }
+        });
+        return m;
+    }
+    
+    private static MediaType putInCache(String mt, Map<String, MediaType> map) {
+        var p = parse0(mt);
+        putInCache(p, map);
+        return p;
+    }
+    
+    private static void putInCache(MediaType mt, Map<String, MediaType> map) {
+        var old = map.put(mt.toString(), mt);
+        assert old == null;
+    }
+    
+    private static void putInCacheWithQuotedUtf8(
+            MediaType mt, Map<String, MediaType> map)
+    {
+        var quoted = mt.toString().substring(0,
+                // Cut after "charset="
+                mt.toString().length() - "utf-8".length()) +
+                // Add this:
+                "\"utf-8\"";
+        putInCache(quoted, map);
+    }
     
     /**
      * Parse a text into a {@link MediaType} or a {@link MediaRange}.<p>
