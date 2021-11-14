@@ -65,7 +65,7 @@ public final class Strings
      * 
      * @see #unquote(String) 
      */
-    public static String[] split(String str, char delimiter, char excludeBoundary) {
+    public static String[] split(CharSequence str, char delimiter, char excludeBoundary) {
         if (delimiter == excludeBoundary) {
             throw new IllegalArgumentException(
                     "Delimiter char can not be same as exclude char.");

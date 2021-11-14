@@ -105,7 +105,8 @@ import static java.util.stream.Collectors.joining;
 public class MediaType
 {
     private static final Logger LOG = System.getLogger(MediaType.class.getPackageName());
-    private static final String WILDCARD = "*", q = "q", Q = "Q";
+    private static final String
+            WILDCARD = "*", q = "q", Q = "Q", utf_8 = "utf-8";
     
     /**
      * A sentinel media type that can be used as a handler's consuming media
@@ -293,10 +294,10 @@ public class MediaType
             // + copy with a quoted "utf-8"
             // e.g. "blabla; charset=utf-8"? Also add "; charset=\"utf-8\""
             assert !org.contains("\"");
-            if (org.endsWith("utf-8")) {
+            if (org.endsWith(utf_8)) {
                 putInCacheWithQuotedUtf8(mt, m);
             }
-            if (noSpace != null && noSpace.toString().endsWith("utf-8")) {
+            if (noSpace != null && noSpace.toString().endsWith(utf_8)) {
                 putInCacheWithQuotedUtf8(noSpace, m);
             }
         });
@@ -319,9 +320,9 @@ public class MediaType
     {
         var quoted = mt.toString().substring(0,
                 // Cut after "charset="
-                mt.toString().length() - "utf-8".length()) +
-                // Add this:
-                "\"utf-8\"";
+                mt.toString().length() - utf_8.length()) +
+                // Add quoted:
+                "\"" + utf_8 + "\"";
         putInCache(quoted, map);
     }
     
@@ -379,14 +380,14 @@ public class MediaType
      * 
      * @return a parsed media type (never {@code null})
      */
-    public static MediaType parse(final CharSequence text) {
+    public static MediaType parse(final String text) {
         var cached = CACHE.get(text);
         return cached != null ? cached : parse0(text);
     }
     
-    static MediaType parse0(final CharSequence txt) {
+    static MediaType parse0(final String txt) {
         // First part is "type/subtype", possibly followed by ";params"
-        final String[] tokens = Strings.split(txt.toString(), ';', '"');
+        final String[] tokens = Strings.split(txt, ';', '"');
         final String[] types = parseTypes(tokens[0], txt);
         final String type = types[0],
                   subtype = types[1];
@@ -415,8 +416,8 @@ public class MediaType
         }
         
         return type.equals(WILDCARD) || subtype.equals(WILDCARD) || qVal.isPresent() ?
-                new MediaRange(txt.toString(), type, subtype, params, qVal.orElse(1)) :
-                new MediaType(txt.toString(), type, subtype, params);
+                new MediaRange(txt, type, subtype, params, qVal.orElse(1)) :
+                new MediaType(txt, type, subtype, params);
     }
     
     private static String[] parseTypes(String tkn, CharSequence txt) {
@@ -547,7 +548,7 @@ public class MediaType
      * 
      * @return all media parameters (not {@code null})
      * 
-     * @see #parse(CharSequence) 
+     * @see #parse(String) 
      */
     public final Map<String, String> parameters() {
         return params;
