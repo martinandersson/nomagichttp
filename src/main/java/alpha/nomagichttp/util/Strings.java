@@ -4,6 +4,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.PrimitiveIterator;
 
+import static java.lang.Character.MIN_VALUE;
+
 /**
  * String utilities.
  * 
@@ -16,22 +18,48 @@ public final class Strings
     }
     
     /**
-     * Works just as {@code String.split}, except this method accepts an exclude
-     * boundary within which, the delimiter will have no effect and the substring
-     * will be taken at face value.<p>
+     * Split a string into an array of tokens.<p>
      * 
-     * For example, good to use when dealing with strings that have quoted parts
-     * in them and the split shouldn't occur within those quoted parts.
+     * Works just as {@code String.split}, except this method respects exclusion
+     * zones within which, the delimiter will have no effect. Also, this method
+     * never returns empty tokens.<p>
+     * 
+     * For example, good to use when substrings may be quoted and no split
+     * should occur within the quoted parts.<p>
+     * 
+     * For example
+     * <pre>
+     *   split("one.two", '.', '"') -> ["one", "two]
+     *   split("one.\"keep.this\"", '.', '"') -> ["one", ""keep.this""]
+     *   split("...", '.', '"') -> []
+     * </pre>
+     * 
+     * Note how the quoted part is kept intact. The call site would likely want
+     * to de-quote the quoted part.<p>
+     * 
+     * A preceding backslash character is interpreted as escaping the delimiter,
+     * but only within exclusion zones. Just as with the delimiter character,
+     * also the escaping backslash is kept intact.
+     * <pre>
+     *   split("one.\"t\\\"w.o\"", '.', '"') -> ["one", ""t\"w.o""]
+     * </pre>
+     * 
+     * Outside an exclusion zone, the backslash character is just like any other
+     * character.
+     * <pre>
+     *   split("one\\.two", '.', '"') -> ["one\", "two"]
+     * </pre>
      * 
      * @param string input string to split
      * @param delimiter char to split by...
      * @param excludeBoundary ...except if found within this boundary
      * 
      * @return the substrings
+     * 
+     * @throws IllegalArgumentException
+     *             if {@code delimiter} and {@code excludeBoundary}
+     *             are the same char
      */
-    // TODO: Make sure we can handle an escaped quote within a quoted string! "my \"quote\" ..."
-    // See https://tools.ietf.org/html/rfc7230#section-3.2.6
-    // Ex. https://tools.ietf.org/html/rfc7235#section-4.1
     public static String[] split(String string, char delimiter, char excludeBoundary) {
         if (delimiter == excludeBoundary) {
             throw new IllegalArgumentException(
@@ -40,48 +68,62 @@ public final class Strings
         
         PrimitiveIterator.OfInt chars = string.chars().iterator();
         
-        StringBuilder curr = null;
-        boolean ignoring = false;
-        List<String> bucket = null;
+        StringBuilder tkn = null;
+        List<String> sink = null;
+        boolean excluding = false;
         
+        char prev = MIN_VALUE;
         while (chars.hasNext()) {
+            boolean split;
             final char c = (char) chars.nextInt();
             
-            if (c == delimiter) {
-                if (ignoring) {
-                    curr.append(c);
-                    continue; }
-                
-                if (curr == null) {
-                    continue; }
-                
-                if (bucket == null) {
-                    bucket = new ArrayList<>(); }
-                
-                bucket.add(curr.toString());
-                curr = null;
+            if (prev == '\\' && excluding) {
+                // Whatever c is, keep building current token
+                split = false;
+            } else if (c == delimiter) {
+                // We split only if we're not excluding
+                split = !excluding;
+            } else if (c == excludeBoundary) {
+                // Certainly not cause for split
+                split = false;
+                // But does toggle the current mode
+                excluding = !excluding;
             } else {
-                if (curr == null) {
-                    curr = new StringBuilder(); }
-                
-                curr.append(c);
-                
-                if (c == excludeBoundary) {
-                    ignoring = !ignoring; }
+                // Anything else has no meaning; face value
+                split = false;
+            }
+            
+            prev = c;
+            
+            if (split) {
+                // Push what we had and begin new token
+                if (tkn != null) {
+                    if (sink == null) {
+                        sink = new ArrayList<>();
+                    }
+                    sink.add(tkn.toString());
+                    tkn = null;
+                }
+            } else {
+                // Add c to current token
+                if (tkn == null) {
+                    tkn = new StringBuilder();
+                }
+                tkn.append(c);
             }
         }
         
-        if (curr != null && !ignoring) {
-            if (bucket == null) {
-                bucket = new ArrayList<>(); }
-            
-            bucket.add(curr.toString());
+        if (tkn != null) {
+            if (sink == null) {
+                sink = new ArrayList<>();
+            }
+            sink.add(tkn.toString());
         }
         
-        return bucket == null ?
-                new String[]{} :
-                bucket.toArray(String[]::new);
+        return sink == null ? EMPTY : sink.toArray(String[]::new);
     }
+    
+    private static final String[] EMPTY = {};
     
     /**
      * Similar to {@link String#contains(CharSequence)}, except without regards
