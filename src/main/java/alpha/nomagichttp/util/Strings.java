@@ -37,9 +37,9 @@ public final class Strings
      * Note how the quoted part is kept intact. The call site would likely want
      * to de-quote the quoted part.<p>
      * 
-     * A preceding backslash character is interpreted as escaping the delimiter,
-     * but only within exclusion zones. Just as with the delimiter character,
-     * also the escaping backslash is kept intact.
+     * An immediately preceding backslash character is interpreted as escaping
+     * the delimiter, but only within exclusion zones. Just as with the
+     * delimiter character, the escaping backslash too is kept.
      * <pre>
      *   split("one.\"t\\\"w.o\"", '.', '"') -> ["one", ""t\"w.o""]
      * </pre>
@@ -50,23 +50,28 @@ public final class Strings
      *   split("one\\.two", '.', '"') -> ["one\", "two"]
      * </pre>
      * 
-     * @param string input string to split
+     * @param str input to split
      * @param delimiter char to split by...
      * @param excludeBoundary ...except if found within this boundary
      * 
      * @return the substrings
      * 
+     * @throws NullPointerException
+     *            if {@code str} is {@code null}
+     * 
      * @throws IllegalArgumentException
      *             if {@code delimiter} and {@code excludeBoundary}
      *             are the same char
+     * 
+     * @see #unquote(String) 
      */
-    public static String[] split(String string, char delimiter, char excludeBoundary) {
+    public static String[] split(String str, char delimiter, char excludeBoundary) {
         if (delimiter == excludeBoundary) {
             throw new IllegalArgumentException(
                     "Delimiter char can not be same as exclude char.");
         }
         
-        PrimitiveIterator.OfInt chars = string.chars().iterator();
+        PrimitiveIterator.OfInt chars = str.chars().iterator();
         
         StringBuilder tkn = null;
         List<String> sink = null;
@@ -124,6 +129,45 @@ public final class Strings
     }
     
     private static final String[] EMPTY = {};
+    
+    /**
+     * Unquote a quoted string.<p>
+     * 
+     * Actions performed, in order:
+     * <ul>
+     *   <li>Remove at most one leading and trailing '"' character</li>
+     *   <li>If no effect, return original string</li>
+     *   <li>Remove any '\' character immediately preceding a '"' character</li>
+     *   <li>Remove any '\' character immediately preceding a '\' character</li>
+     *   <li>Remove leading and trailing whitespace from the result</li>
+     * </ul>
+     * 
+     * For example, literal string value becomes
+     * <pre>
+     *   no\"effect       no\"effect   (no surrounding quotes returns the input)
+     *   "one"            one          (unquoted)
+     *   "one\"two\""     one"two"     (quote character escaped)
+     *   "one\\"two"      one\"two     (technically an unescaped backslash is
+     *                                  not removed, has same result as if it
+     *                                  was escaped)
+     *   "one\\\"two"     one\"two     (like this)
+     *   "one\\\\"two"    one\\"two    (escaped quote and escaped backslash)
+     * </pre>
+     * 
+     * @param str to unquote
+     * @return an unquoted string
+     * 
+     * @see <a href="https://tools.ietf.org/html/rfc7230#section-3.2.6">RFC 7230 §3.2.6</a>
+     */
+    public static String unquote(String str) {
+        if (str.length() <= 2 || !(str.startsWith("\"") && str.endsWith("\""))) {
+            return str;
+        }
+        return str.substring(1, str.length() -1)
+                  .replace("\\\"", "\"")
+                  .replace("\\\\", "\\")
+                  .strip();
+    }
     
     /**
      * Similar to {@link String#contains(CharSequence)}, except without regards

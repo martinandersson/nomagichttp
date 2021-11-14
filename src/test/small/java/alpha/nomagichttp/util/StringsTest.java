@@ -61,6 +61,31 @@ class StringsTest
         expect("x");
     }
     
+    @Test
+    void unquote() {
+        // All examples from Strings.unquote JavaDoc, in order
+        String[][] cases = {
+            {"no\\\"effect", "no\\\"effect"},
+            {"\"one\"", "one"},
+            {"\"one\\\"two\\\"\"", "one\"two\""},
+            {"\"one\\\\\"two\"", "one\\\"two"},
+            {"\"one\\\\\\\"two\"", "one\\\"two"},
+            {"\"one\\\\\\\\\"two\"", "one\\\\\"two"} };
+        
+        for (String[] c : cases) {
+            assertThat(Strings.unquote(c[0])).isEqualTo(c[1]);
+        }
+    }
+    
+    @Test
+    void containsIgnoreCase() {
+        assertTrue(Strings.containsIgnoreCase("", ""));
+        assertTrue(Strings.containsIgnoreCase("abc", ""));
+        assertTrue(Strings.containsIgnoreCase("abc", "b"));
+        assertFalse(Strings.containsIgnoreCase("abc", "z"));
+        assertTrue(Strings.containsIgnoreCase("cAsE", "CaSe"));
+    }
+    
     String testee;
     char delimiter;
     char excludeBoundary;
@@ -74,14 +99,5 @@ class StringsTest
     private void expect(String... expected) {
         assertThat(Strings.split(testee, delimiter, excludeBoundary))
                 .isEqualTo(expected);
-    }
-    
-    @Test
-    void containsIgnoreCase() {
-        assertTrue(Strings.containsIgnoreCase("", ""));
-        assertTrue(Strings.containsIgnoreCase("abc", ""));
-        assertTrue(Strings.containsIgnoreCase("abc", "b"));
-        assertFalse(Strings.containsIgnoreCase("abc", "z"));
-        assertTrue(Strings.containsIgnoreCase("cAsE", "CaSe"));
     }
 }
