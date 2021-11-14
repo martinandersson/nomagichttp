@@ -41,7 +41,7 @@ public class ExposedByteArrayOutputStream extends ByteArrayOutputStream {
     }
     
     /**
-     * Returns the buffer reference.<p>
+     * Returns the buffer reference.
      * 
      * @return the buffer reference
      */

@@ -65,18 +65,18 @@ repositories {
 }
 
 dependencies {
-    testImplementation 'org.junit.jupiter:junit-jupiter-api:5.7.2'
-    testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine:5.7.2'
+    testImplementation 'org.junit.jupiter:junit-jupiter-api:5.8.1'
+    testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine:5.8.1'
     
-    testImplementation 'org.assertj:assertj-core:3.20.2'
-    testImplementation 'org.mockito:mockito-core:3.11.1'
-    testImplementation 'org.junit.jupiter:junit-jupiter-params:5.7.2'
+    testImplementation 'org.assertj:assertj-core:3.21.0'
+    testImplementation 'org.mockito:mockito-core:4.0.0'
+    testImplementation 'org.junit.jupiter:junit-jupiter-params:5.8.1'
     
     // HTTP client implementations used by HttpClientFacade
-    mediumTestImplementation 'com.squareup.okhttp3:okhttp:4.9.1'
-    mediumTestImplementation 'org.apache.httpcomponents.client5:httpclient5:5.1'
-    mediumTestImplementation 'org.eclipse.jetty:jetty-client:11.0.5'
-    mediumTestImplementation 'io.projectreactor.netty:reactor-netty-http:1.0.8'
+    mediumTestImplementation 'com.squareup.okhttp3:okhttp:4.9.2'
+    mediumTestImplementation 'org.apache.httpcomponents.client5:httpclient5:5.1.1'
+    mediumTestImplementation 'org.eclipse.jetty:jetty-client:11.0.6'
+    mediumTestImplementation 'io.projectreactor.netty:reactor-netty-http:1.0.13'
 }
 
 // To be bumped by task in future or perhaps not even set in this file
@@ -87,7 +87,7 @@ version = '0.5-SNAPSHOT'
 var Werror = !(System.env.HACKING ?: false).toBoolean()
 
 wrapper {
-    gradleVersion = '7.1.1'
+    gradleVersion = '7.3'
     distributionType = Wrapper.DistributionType.ALL
 }
 

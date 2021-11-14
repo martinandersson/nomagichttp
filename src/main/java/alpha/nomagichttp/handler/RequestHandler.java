@@ -304,7 +304,7 @@ public interface RequestHandler
      * Creates a new {@code RequestHandler} builder.<p>
      * 
      * The method is any non-empty, case-sensitive string containing no white
-     * space.<p>
+     * space.
      * 
      * @param method token qualifier
      * 
@@ -529,7 +529,7 @@ public interface RequestHandler
          *             if {@code mediaType} is {@code null}
          * 
          * @throws MediaTypeParseException
-         *             if media type failed to {@linkplain MediaType#parse(CharSequence) parse}
+         *             if media type failed to {@linkplain MediaType#parse(String) parse}
          */
         default Builder consumes(String mediaType) {
             return consumes(parse(mediaType));
@@ -561,7 +561,7 @@ public interface RequestHandler
          *             if {@code mediaType} is {@code null}
          * 
          * @throws MediaTypeParseException
-         *             if media type failed to {@linkplain MediaType#parse(CharSequence) parse}
+         *             if media type failed to {@linkplain MediaType#parse(String) parse}
          */
         default Builder produces(String mediaType) {
             return produces(parse(mediaType));

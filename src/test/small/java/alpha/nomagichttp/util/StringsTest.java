@@ -16,34 +16,74 @@ class StringsTest
 {
     @Test
     void split() {
-        given("a,b,c", ',', '_');
-        expect("a", "b", "c");
+        // JavaDoc example
+        given("one.two", '.', '"');
+        expect("one", "two");
         
-        given("this/that;param=value", ';', '_');
+        // JavaDoc example
+        given("one.\"keep.this\"", '.', '"');
+        expect("one", "\"keep.this\"");
+        
+        // JavaDoc example
+        given("...", '.', '"');
+        expect();
+        
+        // JavaDoc example
+        given("one.\"t\\\"w.o\"", '.', '"');
+        expect("one", "\"t\\\"w.o\"");
+        
+        // JavaDoc example
+        given("one\\.two", '.', '"');
+        expect("one\\", "two");
+        
+        // Splitting a media type
+        given("this/that;param=value", ';', '"');
         expect("this/that", "param=value");
         
-        given("this/that;param=\"v;a;l;u;e\"", ';', '"');
-        expect("this/that", "param=\"v;a;l;u;e\"");
-        
-        given("a;q=0, b;p=\"my,val\",p=y,z", ',', '"');
-        expect("a;q=0", " b;p=\"my,val\"", "p=y", "z");
-        
-        
+        // Delimiter and exclude char are the same 
         given("", ' ', ' ');
-        assertThatThrownBy(() -> expect(""))
+        assertThatThrownBy(() -> expect("dead assertion"))
                 .isExactlyInstanceOf(IllegalArgumentException.class);
         
-        given(" ", ' ', '_');
-        expect();
+        // No split and no exclusion
+        given("abc", '.', '"');
+        expect("abc");
         
-        given(",x,", ',', '_');
+        // Exclusion boundary is not closed
+        given("one\".two", '.', '"');
+        expect("one\".two");
+        
+        // No empty tokens
+        given(",x,", ',', '"');
         expect("x");
         
-        given(",x,,", ',', '_');
+        given(",x,,", ',', '"');
         expect("x");
+    }
+    
+    @Test
+    void unquote() {
+        // All examples from Strings.unquote JavaDoc, in order
+        String[][] cases = {
+            {"no\\\"effect", "no\\\"effect"},
+            {"\"one\"", "one"},
+            {"\"one\\\"two\\\"\"", "one\"two\""},
+            {"\"one\\\\\"two\"", "one\\\"two"},
+            {"\"one\\\\\\\"two\"", "one\\\"two"},
+            {"\"one\\\\\\\\\"two\"", "one\\\\\"two"} };
         
-        given("...", '_', '.');
-        expect();
+        for (String[] c : cases) {
+            assertThat(Strings.unquote(c[0])).isEqualTo(c[1]);
+        }
+    }
+    
+    @Test
+    void containsIgnoreCase() {
+        assertTrue(Strings.containsIgnoreCase("", ""));
+        assertTrue(Strings.containsIgnoreCase("abc", ""));
+        assertTrue(Strings.containsIgnoreCase("abc", "b"));
+        assertFalse(Strings.containsIgnoreCase("abc", "z"));
+        assertTrue(Strings.containsIgnoreCase("cAsE", "CaSe"));
     }
     
     String testee;
@@ -59,14 +99,5 @@ class StringsTest
     private void expect(String... expected) {
         assertThat(Strings.split(testee, delimiter, excludeBoundary))
                 .isEqualTo(expected);
-    }
-    
-    @Test
-    void containsIgnoreCase() {
-        assertTrue(Strings.containsIgnoreCase("", ""));
-        assertTrue(Strings.containsIgnoreCase("abc", ""));
-        assertTrue(Strings.containsIgnoreCase("abc", "b"));
-        assertFalse(Strings.containsIgnoreCase("abc", "z"));
-        assertTrue(Strings.containsIgnoreCase("cAsE", "CaSe"));
     }
 }

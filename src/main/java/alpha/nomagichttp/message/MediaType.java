@@ -3,6 +3,7 @@ package alpha.nomagichttp.message;
 import alpha.nomagichttp.HttpConstants;
 import alpha.nomagichttp.handler.RequestHandler;
 import alpha.nomagichttp.route.Route;
+import alpha.nomagichttp.util.Strings;
 
 import java.util.Collections;
 import java.util.HashMap;
@@ -12,7 +13,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.OptionalDouble;
 import java.util.function.BiFunction;
-import java.util.regex.Pattern;
+import java.util.stream.Stream;
 
 import static alpha.nomagichttp.message.MediaType.Score.NOPE;
 import static alpha.nomagichttp.message.MediaType.Score.PERFECT;
@@ -98,13 +99,14 @@ import static java.util.stream.Collectors.joining;
  * 
  * 
  * @see HttpConstants.HeaderKey#CONTENT_TYPE
+ * @see <a href="https://tools.ietf.org/html/rfc7231#section-3.1.1">RFC 7231 §3.1.1</a>
  * @author Martin Andersson (webmaster at martinandersson.com)
  */
 public class MediaType
 {
     private static final Logger LOG = System.getLogger(MediaType.class.getPackageName());
-    private static final String WILDCARD = "*", q = "q";
-    private static final Pattern SEMICOLON = Pattern.compile(";");
+    private static final String
+            WILDCARD = "*", q = "q", Q = "Q", utf_8 = "utf-8";
     
     /**
      * A sentinel media type that can be used as a handler's consuming media
@@ -133,14 +135,6 @@ public class MediaType
     public static final MediaType __NOTHING_AND_ALL
             = new MediaType("<nothing and all>", null, null, Map.of()) {};
     
-    private static final Map<String, MediaType> CACHE = new HashMap<>();
-    
-    private MediaType putInCache() {
-        var v = CACHE.put(toString(), this);
-        assert v == null;
-        return this;
-    }
-    
     /**
      * A sentinel media type that can be used as a handler's consuming and/or
      * producing media type to indicate that the handler is willing to consume
@@ -152,109 +146,185 @@ public class MediaType
      * 
      * @see RequestHandler
      */
-    public static final MediaType __ALL = parse("*/*").putInCache();
+    public static final MediaType __ALL = parse0("*/*");
+    
+    // TODO: Usually there's no point in repeating modifiers.
+    //       Alas Java < 17 will not pick up the JavaDoc if they aren't.
     
     /** Text. Value: "text/plain". File extension: ".txt". */
-    public static final MediaType TEXT_PLAIN = parse("text/plain").putInCache();
+    public static final MediaType TEXT_PLAIN = parse0("text/plain");
     
     /** Text. Value: "text/plain; charset=utf-8". File extension: ".txt". */
-    public static final MediaType TEXT_PLAIN_UTF8 = parse("text/plain; charset=utf-8").putInCache();
+    public static final MediaType TEXT_PLAIN_UTF8 = parse0("text/plain; charset=utf-8");
     
     /** HyperText Markup Language. Value: "text/html". File extension: ".html". */
-    public static final MediaType TEXT_HTML = parse("text/html").putInCache();
+    public static final MediaType TEXT_HTML = parse0("text/html");
     
     /** HyperText Markup Language. Value: "text/html; charset=utf-8". File extension: ".html". */
-    public static final MediaType TEXT_HTML_UTF8 = parse("text/html; charset=utf-8").putInCache();
+    public static final MediaType TEXT_HTML_UTF8 = parse0("text/html; charset=utf-8");
     
     /** Cascading Style Sheets. Value: "text/css". File extension: ".css". */
-    public static final MediaType TEXT_CSS = parse("text/css").putInCache();
+    public static final MediaType TEXT_CSS = parse0("text/css");
     
     /** Cascading Style Sheets. Value: "text/css; charset=utf-8". File extension: ".css". */
-    public static final MediaType TEXT_CSS_UTF8 = parse("text/css; charset=utf-8").putInCache();
+    public static final MediaType TEXT_CSS_UTF8 = parse0("text/css; charset=utf-8");
     
     /** Comma-Separated Values. Value: "text/csv". File extension: ".csv". */
-    public static final MediaType TEXT_CSV = parse("text/csv").putInCache();
+    public static final MediaType TEXT_CSV = parse0("text/csv");
     
     /** Comma-Separated Values. Value: "text/csv; charset=utf-8". File extension: ".csv". */
-    public static final MediaType TEXT_CSV_UTF8 = parse("text/csv; charset=utf-8").putInCache();
+    public static final MediaType TEXT_CSV_UTF8 = parse0("text/csv; charset=utf-8");
     
     /** JavaScript. Value: "text/javascript". File extension: ".js". */
-    public static final MediaType TEXT_JAVASCRIPT = parse("text/javascript").putInCache();
+    public static final MediaType TEXT_JAVASCRIPT = parse0("text/javascript");
     
     /** JavaScript. Value: "text/javascript; charset=utf-8". File extension: ".js". */
-    public static final MediaType TEXT_JAVASCRIPT_UTF8 = parse("text/javascript; charset=utf-8").putInCache();
+    public static final MediaType TEXT_JAVASCRIPT_UTF8 = parse0("text/javascript; charset=utf-8");
     
     /** Any kind of binary data. Value: "application/octet-stream". */
-    public static final MediaType APPLICATION_OCTET_STREAM = parse("application/octet-stream").putInCache();
+    public static final MediaType APPLICATION_OCTET_STREAM = parse0("application/octet-stream");
     
     /** JSON format. Value: "application/json". File extension: ".json". */
-    public static final MediaType APPLICATION_JSON = parse("application/json").putInCache();
+    public static final MediaType APPLICATION_JSON = parse0("application/json");
     
     /** JSON format. Value: "application/json; charset=utf-8". File extension: ".json". */
-    public static final MediaType APPLICATION_JSON_UTF8 = parse("application/json; charset=utf-8").putInCache();
+    public static final MediaType APPLICATION_JSON_UTF8 = parse0("application/json; charset=utf-8");
     
     /** ZIP archive. Value: "application/zip". File extension: ".zip". */
-    public static final MediaType APPLICATION_ZIP = parse("application/zip").putInCache();
+    public static final MediaType APPLICATION_ZIP = parse0("application/zip");
     
     /** GZip compressed archive. Value: "application/gzip". File extension: ".gz". */
-    public static final MediaType APPLICATION_GZIP = parse("application/gzip").putInCache();
+    public static final MediaType APPLICATION_GZIP = parse0("application/gzip");
     
     /** RAR archive. Value: "application/vnd.rar". File extension: ".rar". */
-    public static final MediaType APPLICATION_VND_RAR = parse("application/vnd.rar").putInCache();
+    public static final MediaType APPLICATION_VND_RAR = parse0("application/vnd.rar");
     
     /** TAR archive. Value: "application/x-tar". File extension: ".tar". */
-    public static final MediaType APPLICATION_X_TAR = parse("application/x-tar").putInCache();
+    public static final MediaType APPLICATION_X_TAR = parse0("application/x-tar");
     
     /** 7-zip archive. Value: "application/x-7z-compressed". File extension: ".7z". */
-    public static final MediaType APPLICATION_X_7Z_COMPRESSED = parse("application/x-7z-compressed").putInCache();
+    public static final MediaType APPLICATION_X_7Z_COMPRESSED = parse0("application/x-7z-compressed");
     
     /** Adobe Portable Document Format. Value: "application/pdf". File extension: ".pdf". */
-    public static final MediaType APPLICATION_PDF = parse("application/pdf").putInCache();
+    public static final MediaType APPLICATION_PDF = parse0("application/pdf");
     
     /** Java archive. Value: "application/java-archive". File extension: ".jar". */
-    public static final MediaType APPLICATION_JAVA_ARCHIVE = parse("application/java-archive").putInCache();
+    public static final MediaType APPLICATION_JAVA_ARCHIVE = parse0("application/java-archive");
     
     /** Portable Network Graphics. Value: "image/png". File extension: ".png". */
-    public static final MediaType IMAGE_PNG = parse("image/png").putInCache();
+    public static final MediaType IMAGE_PNG = parse0("image/png");
     
     /** Graphics Interchange Format. Value: "image/gif". File extension: ".gif". */
-    public static final MediaType IMAGE_GIF = parse("image/gif").putInCache();
+    public static final MediaType IMAGE_GIF = parse0("image/gif");
     
     /** JPEG image. Value: "image/jpeg". File extension: ".jpg". */
-    public static final MediaType IMAGE_JPEG = parse("image/jpeg").putInCache();
+    public static final MediaType IMAGE_JPEG = parse0("image/jpeg");
     
     /** Windows OS/2 bitmap graphics. Value: "image/bmp". File extension: ".bmp". */
-    public static final MediaType IMAGE_BMP = parse("image/bmp").putInCache();
+    public static final MediaType IMAGE_BMP = parse0("image/bmp");
     
     /** Scalable vector graphics. Value: "image/svg+xml". File extension: ".svg". */
-    public static final MediaType IMAGE_SVG_XML = parse("image/svg+xml").putInCache();
+    public static final MediaType IMAGE_SVG_XML = parse0("image/svg+xml");
     
     /** Tagged Image File Format. Value: "image/tiff". File extension: ".tif/.tiff". */
-    public static final MediaType IMAGE_TIFF = parse("image/tiff").putInCache();
+    public static final MediaType IMAGE_TIFF = parse0("image/tiff");
     
     /** Waveform Audio Format. Value: "audio/wav". File extension: ".wav". */
-    public static final MediaType AUDIO_WAV = parse("audio/wav").putInCache();
+    public static final MediaType AUDIO_WAV = parse0("audio/wav");
     
     /** AAC audio. Value: "audio/aac". File extension: ".aac". */
-    public static final MediaType AUDIO_AAC = parse("audio/aac").putInCache();
+    public static final MediaType AUDIO_AAC = parse0("audio/aac");
     
     /** Musical Instrument Digital Interface. Value: "audio/midi". File extension: ".mid/.midi". */
-    public static final MediaType AUDIO_MIDI = parse("audio/midi").putInCache();
+    public static final MediaType AUDIO_MIDI = parse0("audio/midi");
     
     /** MP3 audio. Value: "audio/mpeg". File extension: ".mp3". */
-    public static final MediaType AUDIO_MPEG = parse("audio/mpeg").putInCache();
+    public static final MediaType AUDIO_MPEG = parse0("audio/mpeg");
     
     /** OGG audio. Value: "audio/ogg". File extension: ".oga". */
-    public static final MediaType AUDIO_OGG = parse("audio/ogg").putInCache();
+    public static final MediaType AUDIO_OGG = parse0("audio/ogg");
     
     /** OGG video. Value: "video/ogg". File extension: ".ogv". */
-    public static final MediaType VIDEO_OGG = parse("video/ogg").putInCache();
+    public static final MediaType VIDEO_OGG = parse0("video/ogg");
     
     /** MP4 video. Value: "video/mp4". File extension: ".mp4". */
-    public static final MediaType VIDEO_MP4 = parse("video/mp4").putInCache();
+    public static final MediaType VIDEO_MP4 = parse0("video/mp4");
     
     /** MPEG video. Value: "video/mpeg". File extension: ".mpeg". */
-    public static final MediaType VIDEO_MPEG = parse("video/mpeg").putInCache();
+    public static final MediaType VIDEO_MPEG = parse0("video/mpeg");
+    
+    private static final Map<String, MediaType> CACHE = buildCache();
+    
+    private static Map<String, MediaType> buildCache() {
+        // All constants + "text/*" we put in cache
+        Map<String, MediaType> m = new HashMap<>();
+        Stream.of(
+            parse0("text/*"), parse0("text/*; charset=utf-8"),
+            __ALL,
+            TEXT_PLAIN,       TEXT_PLAIN_UTF8,
+            TEXT_HTML,        TEXT_HTML_UTF8,
+            TEXT_CSS,         TEXT_CSS_UTF8,
+            TEXT_CSV,         TEXT_CSV_UTF8,
+            TEXT_JAVASCRIPT,  TEXT_JAVASCRIPT_UTF8,
+            APPLICATION_OCTET_STREAM,
+            APPLICATION_JSON, APPLICATION_JSON_UTF8,
+            APPLICATION_ZIP,
+            APPLICATION_GZIP,
+            APPLICATION_VND_RAR,
+            APPLICATION_X_TAR,
+            APPLICATION_X_7Z_COMPRESSED,
+            APPLICATION_PDF,
+            APPLICATION_JAVA_ARCHIVE,
+            IMAGE_PNG, IMAGE_GIF, IMAGE_JPEG, IMAGE_BMP, IMAGE_SVG_XML, IMAGE_TIFF,
+            AUDIO_WAV, AUDIO_AAC, AUDIO_MIDI, AUDIO_MPEG, AUDIO_OGG,
+            VIDEO_OGG, VIDEO_MP4, VIDEO_MPEG).forEach(mt -> {
+            
+            final String org = mt.toString();
+            putInCache(mt, m);
+            
+            // + one copy without the space after ";"
+            // e.g. "blabla; charset=utf-8"? Also add ";charset=utf-8"
+            int sp = org.indexOf(' ');
+            MediaType noSpace = null;
+            if (sp != -1) {
+                var str2 = org.substring(0, sp) + org.substring(sp + 1);
+                noSpace = putInCache(str2, m);
+            }
+            
+            // + copy with a quoted "utf-8"
+            // e.g. "blabla; charset=utf-8"? Also add "; charset=\"utf-8\""
+            assert !org.contains("\"");
+            if (org.endsWith(utf_8)) {
+                putInCacheWithQuotedUtf8(mt, m);
+            }
+            if (noSpace != null && noSpace.toString().endsWith(utf_8)) {
+                putInCacheWithQuotedUtf8(noSpace, m);
+            }
+        });
+        return m;
+    }
+    
+    private static MediaType putInCache(String mt, Map<String, MediaType> map) {
+        var p = parse0(mt);
+        putInCache(p, map);
+        return p;
+    }
+    
+    private static void putInCache(MediaType mt, Map<String, MediaType> map) {
+        var old = map.put(mt.toString(), mt);
+        assert old == null;
+    }
+    
+    private static void putInCacheWithQuotedUtf8(
+            MediaType mt, Map<String, MediaType> map)
+    {
+        var quoted = mt.toString().substring(0,
+                // Cut after "charset="
+                mt.toString().length() - utf_8.length()) +
+                // Add quoted:
+                "\"" + utf_8 + "\"";
+        putInCache(quoted, map);
+    }
     
     /**
      * Parse a text into a {@link MediaType} or a {@link MediaRange}.<p>
@@ -268,7 +338,8 @@ public class MediaType
      * 
      * No meaning is attached to the order in which parameters appear - except
      * for the "q"/"Q" parameter which - if present - marks the end of media
-     * type parameters.<p>
+     * type parameters and the beginning of media range {@link MediaRange
+     * extension parameters}, which are logged but otherwise ignored.<p>
      * 
      * There is no defined syntax for parameter values. Almost all parameter
      * values will be extracted at face value, except for quoted strings which
@@ -291,9 +362,6 @@ public class MediaType
      *   text/html; charset="utf-8"
      * </pre>
      * 
-     * Media range {@link MediaRange extension parameters} are logged and
-     * subsequently ignored.<p>
-     * 
      * The returned instance may be new, or it may have been retrieved from a
      * cache.
      * 
@@ -303,31 +371,33 @@ public class MediaType
      *             if {@code text} is {@code null}
      * 
      * @throws MediaTypeParseException
-     *             if {@code text} can not be parsed, for example
+     *             if there's not exactly one forward slash in "type/subtype", or
+     *             type or subtype is empty, or
+     *             there's a wildcard type but not a wildcard subtype, or
+     *             a parameter name- or value is empty, or
      *             a parameter has been specified more than once, or
-     *             a parameter was named "q"/"Q" and it was not the last parameter declared,
-     *             and so forth
+     *             the q-parameter can not be parsed to a double
      * 
      * @return a parsed media type (never {@code null})
      */
-    public static MediaType parse(final CharSequence text) {
+    public static MediaType parse(final String text) {
         var cached = CACHE.get(text);
         return cached != null ? cached : parse0(text);
     }
     
-    static MediaType parse0(final CharSequence text) {
+    static MediaType parse0(final String txt) {
         // First part is "type/subtype", possibly followed by ";params"
-        final String[] tokens = SEMICOLON.split(text);
-        final String[] types = parseTypes(tokens[0], text);
+        final String[] tokens = Strings.split(txt, ';', '"');
+        final String[] types = parseTypes(tokens[0], txt);
         final String type = types[0],
                   subtype = types[1];
         
-        Map<String, String> params = parseParams(type, tokens, 1, true, text);
+        Map<String, String> params = parseParams(type, tokens, 1, true, txt);
         final int size = params.size();
         
         String qStr = params.remove(q); // Most likely lower case..
         if (qStr == null) {
-            qStr = params.remove("Q"); // ..but can be upper case.
+            qStr = params.remove(Q); // ..but can be upper case.
         }
         OptionalDouble qVal = empty();
         if (qStr != null) {
@@ -335,43 +405,43 @@ public class MediaType
                 qVal = of(parseDouble(qStr));
             }
             catch (NumberFormatException e) {
-                throw new MediaTypeParseException(text,
+                throw new MediaTypeParseException(txt,
                         "Non-parsable value for " + q + "-parameter.", e);
             }
         }
         
-        Map<String, String> extension = parseParams(type, tokens, 1 + size, false, text);
+        Map<String, String> extension = parseParams(type, tokens, 1 + size, false, txt);
         if (!extension.isEmpty()) {
             LOG.log(WARNING, () -> "Media type extension parameters ignored: " + extension);
         }
         
         return type.equals(WILDCARD) || subtype.equals(WILDCARD) || qVal.isPresent() ?
-                new MediaRange(text.toString(), type, subtype, params, qVal.orElse(1)) :
-                new MediaType(text.toString(), type, subtype, params);
+                new MediaRange(txt, type, subtype, params, qVal.orElse(1)) :
+                new MediaType(txt, type, subtype, params);
     }
     
-    private static String[] parseTypes(String token, CharSequence text) {
-        final String[] raw = token.split("/");
+    private static String[] parseTypes(String tkn, String txt) {
+        final String[] raw = tkn.split("/");
         
         if (raw.length != 2) {
-            throw new MediaTypeParseException(text,
+            throw new MediaTypeParseException(txt,
                     "Expected exactly one forward slash in <type/subtype>.");
         }
         
         final String type = stripAndLowerCase(raw[0]);
         
         if (type.isEmpty()) {
-            throw new MediaTypeParseException(text, "Type is empty.");
+            throw new MediaTypeParseException(txt, "Type is empty.");
         }
         
         final String subtype = stripAndLowerCase(raw[1]);
         
         if (subtype.isEmpty()) {
-            throw new MediaTypeParseException(text, "Subtype is empty.");
+            throw new MediaTypeParseException(txt, "Subtype is empty.");
         }
         
         if (type.equals(WILDCARD) && !subtype.equals(WILDCARD)) {
-            throw new MediaTypeParseException(text,
+            throw new MediaTypeParseException(txt,
                     "Wildcard type but not a wildcard subtype.");
         }
         
@@ -380,19 +450,21 @@ public class MediaType
     }
     
     private static Map<String, String> parseParams(
-            String type, String[] tokens, int offset, boolean stopAfterQ, CharSequence text)
+            String type, String[] tokens, int offset, boolean stopAfterQ, String txt)
     {
         Map<String, String> params = Collections.emptyMap();
         
         for (int i = offset; i < tokens.length; ++i) {
-            String[] nameAndValue = parseParam(type, tokens[i], text);
+            String[] nameAndValue = parseParam(type, tokens[i], txt);
             
             if (params.isEmpty()) {
                 params = new LinkedHashMap<>();
             }
             
             if (params.put(nameAndValue[0], nameAndValue[1]) != null) {
-                throw new MediaTypeParseException(text, "Duplicated parameters.");
+                // "It is an error for a specific parameter to be specified more than once."
+                // https://datatracker.ietf.org/doc/html/rfc6838#section-4.3
+                throw new MediaTypeParseException(txt, "Duplicated parameters.");
             }
             
             if (stopAfterQ && nameAndValue[0].equalsIgnoreCase(q)) {
@@ -403,28 +475,23 @@ public class MediaType
         return params;
     }
     
-    private static String[] parseParam(String type, String token, CharSequence text) {
-        int eq = token.indexOf("=");
+    private static String[] parseParam(String type, String tkn, String txt) {
+        int eq = tkn.indexOf("=");
         
         if (eq == -1) {
-            throw new MediaTypeParseException(text, "A parameter has no assigned value.");
+            throw new MediaTypeParseException(txt, "A parameter has no assigned value.");
         }
         
-        String name = stripAndLowerCase(token.substring(0, eq));
+        String name = stripAndLowerCase(tkn.substring(0, eq));
         
         if (name.isEmpty()) {
-            throw new MediaTypeParseException(text, "Empty parameter name.");
+            throw new MediaTypeParseException(txt, "Empty parameter name.");
         }
         
-        String value = token.substring(eq + 1).strip();
-        
-        // Unquote
-        if (value.length() >= 2 && value.startsWith("\"") && value.endsWith("\"")) {
-            value = value.substring(1, value.length() - 1).strip();
-        }
+        String value = Strings.unquote(tkn.substring(eq + 1).strip());
         
         if (value.isEmpty()) {
-            throw new MediaTypeParseException(text, "Empty parameter value.");
+            throw new MediaTypeParseException(txt, "Empty parameter value.");
         }
         
         if (type.equals("text") && name.equals("charset")) {
@@ -477,11 +544,11 @@ public class MediaType
     /**
      * Returns all media parameters.<p>
      * 
-     * The returned map is unmodifiable.<p>
+     * The returned map is unmodifiable.
      * 
      * @return all media parameters (not {@code null})
      * 
-     * @see #parse(CharSequence) 
+     * @see #parse(String) 
      */
     public final Map<String, String> parameters() {
         return params;
@@ -666,7 +733,7 @@ public class MediaType
     
     /**
      * Returns a normalized string of the format "type" + "/" + subtype,
-     * possibly followed by "; q=" + value.<p>
+     * possibly followed by "; q=" + value.
      * 
      * @return a normalized string
      */

@@ -71,7 +71,7 @@ public final class Subscriptions
      * (not thrown), which is a "terminal" event (§1.7) and so, the publisher
      * would in this case no longer have the right to signal the originally
      * intended event. The current design favors simplicity and leaves the
-     * {@code request()} method NOP.<p>
+     * {@code request()} method NOP.
      * 
      * @return a subscription that can only be cancelled
      */

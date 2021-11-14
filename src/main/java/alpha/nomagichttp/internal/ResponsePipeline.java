@@ -158,7 +158,7 @@ final class ResponsePipeline extends AbstractLocalEventEmitter
     private final SeriallyRunnable op;
     
     /**
-     * Constructs a {@code ResponsePipeline}.<p>
+     * Constructs a {@code ResponsePipeline}.
      * 
      * @param exch the HTTP exchange
      * @param chApi channel's delegate used for writing

@@ -59,7 +59,7 @@ public interface PooledByteBufferHolder
      * The returned instance does not have to be the original bytebuffer used by
      * the origin but could be a <i>view</i> and even change <i>over time</i>.
      * It is not advisable to make comparisons with the references returned from
-     * this method even if they originate from the same holder instance.<p>
+     * this method even if they originate from the same holder instance.
      * 
      * @return the bytebuffer
      */

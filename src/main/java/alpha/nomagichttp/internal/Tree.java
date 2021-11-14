@@ -168,7 +168,7 @@ final class Tree<V>
         V set(V v);
         
         /**
-         * Set the node's value, if absent (i.e. {@code null}).<p>
+         * Set the node's value, if absent (i.e. {@code null}).
          * 
          * @param v new value
          */
@@ -177,7 +177,7 @@ final class Tree<V>
         }
         
         /**
-         * Set the node's value, if absent (i.e. {@code null}).<p>
+         * Set the node's value, if absent (i.e. {@code null}).
          * 
          * @param v new value supplier
          * @return the value after operation (may be unchanged, or new value)
@@ -186,7 +186,7 @@ final class Tree<V>
         
         /**
          * Set the node's value, if given predicate returns {@code true} for the
-         * current value.<p>
+         * current value.
          * 
          * @param v new value
          * @param test current value predicate
@@ -232,7 +232,7 @@ final class Tree<V>
          * will not reserve the returned node, i.e. block concurrent prune
          * operations from causing the node to become unreachable. Again, the
          * intent is to potentially fail the write operation if this method
-         * returns a non-null value, not to traverse the tree any further.<p>
+         * returns a non-null value, not to traverse the tree any further.
          * 
          * @param segment of child
          * 

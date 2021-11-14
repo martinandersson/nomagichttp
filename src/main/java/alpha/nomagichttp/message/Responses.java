@@ -350,7 +350,7 @@ public final class Responses
      * The given content-type will not be validated. For validation, do
      * <pre>
      *   {@link #ok(BodyPublisher, MediaType)
-     *       ok}(body, MediaType.{@link MediaType#parse(CharSequence) parse}(contentType))
+     *       ok}(body, MediaType.{@link MediaType#parse(String) parse}(contentType))
      * </pre>
      * 
      * @param body data
@@ -394,7 +394,7 @@ public final class Responses
      * The given content-type will not be validated. For validation, do
      * <pre>
      *   {@link #ok(Flow.Publisher, MediaType, long)
-     *       ok}(body, MediaType.{@link MediaType#parse(CharSequence) parse}(contentType), long)
+     *       ok}(body, MediaType.{@link MediaType#parse(String) parse}(contentType), long)
      * </pre>
      * 
      * @param body data

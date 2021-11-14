@@ -3,25 +3,25 @@ package alpha.nomagichttp.message;
 import static java.text.MessageFormat.format;
 
 /**
- * Thrown by {@link MediaType#parse(CharSequence)} if a {@code String} can not
- * be parsed into a {@code MediaType}.
+ * Thrown by {@link MediaType#parse(String)} if a {@code String} can not be
+ * parsed into a {@code MediaType}.
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  * 
- * @see MediaType#parse(CharSequence) 
+ * @see MediaType#parse(String) 
  */
 public final class MediaTypeParseException extends RuntimeException
 {
     private static final long serialVersionUID = 1L;
     private static final String TEMPLATE = "Can not parse \"{0}\". {1}";
-    private final CharSequence text;
+    private final String text;
     
-    MediaTypeParseException(CharSequence parseText, String appendingMessage) {
+    MediaTypeParseException(String parseText, String appendingMessage) {
         this(parseText, appendingMessage, null);
     }
     
-    MediaTypeParseException(CharSequence parseText, String appendingMessage, Throwable cause) {
-        super(format(TEMPLATE, parseText.toString(), appendingMessage), cause);
+    MediaTypeParseException(String parseText, String appendingMessage, Throwable cause) {
+        super(format(TEMPLATE, parseText, appendingMessage), cause);
         text = parseText;
     }
     
@@ -30,7 +30,7 @@ public final class MediaTypeParseException extends RuntimeException
      * 
      * @return the text input that attempted to parse
      */
-    public CharSequence getText() {
+    public String getText() {
         return text;
     }
 }

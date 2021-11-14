@@ -17,20 +17,34 @@ import static java.util.List.of;
 import static java.util.logging.Level.WARNING;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertNotSame;
+import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.mockito.ArgumentMatchers.argThat;
 
 class MediaTypeTest
 {
     @Test
     void cache() {
-        assertTrue(__ALL == parse(new String("*/*")));
-        assertTrue(TEXT_PLAIN == parse(new String("text/plain")));
-        assertTrue(TEXT_PLAIN_UTF8 == parse(new String("text/plain; charset=utf-8")));
-        assertFalse(parse("text/*") == parse(("text/*")));
-        // ...
+        // Each constant is put in the cache
+        assertSame(__ALL, parse("*/*"));
+        assertSame(TEXT_PLAIN, parse("text/plain"));
+        assertSame(TEXT_PLAIN_UTF8, parse("text/plain; charset=utf-8"));
+        
+        // Plus two specials
+        assertSame(parse("text/*"), parse("text/*"));
+        assertSame(parse("text/*; charset=utf-8"), parse("text/*; charset=utf-8"));
+        
+        // For each, we also put a variant without the space
+        var noSpace = parse("text/plain;charset=utf-8");
+        assertSame(noSpace, parse("text/plain;charset=utf-8"));
+        
+        // And a charset-quoted variant
+        assertSame(parse("text/plain;charset=\"utf-8\""), parse("text/plain;charset=\"utf-8\""));
+        assertSame(parse("text/plain; charset=\"utf-8\""), parse("text/plain; charset=\"utf-8\""));
+        
+        // ..but "UTF-8" any capital letter, no cache
+        assertNotSame(parse("text/plain; charset=UTF-8"), parse("text/plain; charset=UTF-8"));
     }
     
     @Test
@@ -135,6 +149,24 @@ class MediaTypeTest
                 }
             }
         }
+    }
+    
+    @Test
+    void quoted_once() {
+        var mt = parse("text/plain; param=\"val\"");
+        assertThat(mt.parameters()).isEqualTo(Map.of("param", "val"));
+    }
+    
+    @Test
+    void quoted_escapedQuote() {
+        var mt = parse("text/plain; param=\"one \\\"two\\\" three\"");
+        assertThat(mt.parameters()).isEqualTo(Map.of("param", "one \"two\" three"));
+    }
+
+    @Test
+    void quoted_delim() {
+        var mt = parse("text/plain; param=\"one;two\"");
+        assertThat(mt.parameters()).isEqualTo(Map.of("param", "one;two"));
     }
     
     // TODO: more error cases

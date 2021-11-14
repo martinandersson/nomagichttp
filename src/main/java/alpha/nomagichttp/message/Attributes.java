@@ -46,7 +46,7 @@ public interface Attributes {
     Object get(String name);
     
     /**
-     * Set the value of the named attribute.<p>
+     * Set the value of the named attribute.
      * 
      * @param name  of attribute (any non-null string)
      * @param value of attribute (may be {@code null})
@@ -93,7 +93,7 @@ public interface Attributes {
     
     /**
      * Returns the value of the named attribute described as an Optional of
-     * an object.<p>
+     * an object.
      * 
      * @param name of attribute
      * 

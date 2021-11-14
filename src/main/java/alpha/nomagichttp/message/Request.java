@@ -88,7 +88,7 @@ public interface Request extends HeaderHolder, AttributeHolder
      * 
      * The returned value is a complex type of "/where?q=now#fragment". The raw
      * string value can be retrieved using {@code target().}{@link Target#raw()
-     * raw()}.<p>
+     * raw()}.
      * 
      * @return the request-line's resource-target
      */
@@ -326,7 +326,7 @@ public interface Request extends HeaderHolder, AttributeHolder
         
         /**
          * Returns a raw query parameter value (first occurrence, not
-         * decoded/unescaped).<p>
+         * decoded/unescaped).
          * 
          * @param keyRaw of query parameter (case sensitive, encoded/escaped)
          * @return the raw query parameter value (not decoded/unescaped)
@@ -440,7 +440,7 @@ public interface Request extends HeaderHolder, AttributeHolder
          * 
          * The returned map's iteration order follows the order in which the
          * query keys appeared in the client-provided query string. Same is true
-         * for the associated list of the values.<p>
+         * for the associated list of the values.
          * 
          * @return an unmodifiable map of raw query key to raw parameter values
          *         (not decoded/escaped)
@@ -480,7 +480,7 @@ public interface Request extends HeaderHolder, AttributeHolder
          * <i>All</i> accept-header keys are taken into account in order,
          * splitting the values by the comma character (",") - except for quoted
          * values (;param="quo,ted"), then feeding each token to {@link
-         * MediaType#parse(CharSequence)}.
+         * MediaType#parse(String)}.
          * 
          * @return parsed values (unmodifiable, implements {@link RandomAccess})
          * 
@@ -754,7 +754,7 @@ public interface Request extends HeaderHolder, AttributeHolder
          * exceptionally, then the file is removed.<p>
          * 
          * All exceptions thrown by {@code AsynchronousFileChannel.open()} is
-         * delivered through the returned stage.<p>
+         * delivered through the returned stage.
          * 
          * @param file    to dump body into
          * @param options specifying how the file is opened
