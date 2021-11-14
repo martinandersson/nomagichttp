@@ -22,10 +22,10 @@ public interface EventHub extends ScatteringEventEmitter, EventEmitter
     /**
      * Combine the given emitters into one hub.<p>
      * 
-     * Event from the sourced emitters will be observed by the source's own
-     * listeners as well as listeners subscribed to the hub. Events dispatched
-     * through the hub will only be observed by the hub's listeners and not
-     * propagate upstream.<p>
+     * Events from the sourced emitters will be observed by the source's own
+     * listeners as well as listeners subscribed to the hub instance returned.
+     * Events dispatched through the returned hub will only be observed by the
+     * hub's own listeners and not propagate upstream.<p>
      * 
      * Arguments are not checked for duplication. The emitters should be unique.
      * 
