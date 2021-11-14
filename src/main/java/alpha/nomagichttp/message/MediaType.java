@@ -420,7 +420,7 @@ public class MediaType
                 new MediaType(txt, type, subtype, params);
     }
     
-    private static String[] parseTypes(String tkn, CharSequence txt) {
+    private static String[] parseTypes(String tkn, String txt) {
         final String[] raw = tkn.split("/");
         
         if (raw.length != 2) {
@@ -450,7 +450,7 @@ public class MediaType
     }
     
     private static Map<String, String> parseParams(
-            String type, String[] tokens, int offset, boolean stopAfterQ, CharSequence txt)
+            String type, String[] tokens, int offset, boolean stopAfterQ, String txt)
     {
         Map<String, String> params = Collections.emptyMap();
         
@@ -475,7 +475,7 @@ public class MediaType
         return params;
     }
     
-    private static String[] parseParam(String type, String tkn, CharSequence txt) {
+    private static String[] parseParam(String type, String tkn, String txt) {
         int eq = tkn.indexOf("=");
         
         if (eq == -1) {

@@ -480,7 +480,7 @@ public interface Request extends HeaderHolder, AttributeHolder
          * <i>All</i> accept-header keys are taken into account in order,
          * splitting the values by the comma character (",") - except for quoted
          * values (;param="quo,ted"), then feeding each token to {@link
-         * MediaType#parse(CharSequence)}.
+         * MediaType#parse(String)}.
          * 
          * @return parsed values (unmodifiable, implements {@link RandomAccess})
          * 
