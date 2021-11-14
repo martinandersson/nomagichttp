@@ -384,14 +384,14 @@ public class MediaType
         return cached != null ? cached : parse0(text);
     }
     
-    static MediaType parse0(final CharSequence text) {
+    static MediaType parse0(final CharSequence txt) {
         // First part is "type/subtype", possibly followed by ";params"
-        final String[] tokens = Strings.split(text.toString(), ';', '"');
-        final String[] types = parseTypes(tokens[0], text);
+        final String[] tokens = Strings.split(txt.toString(), ';', '"');
+        final String[] types = parseTypes(tokens[0], txt);
         final String type = types[0],
                   subtype = types[1];
         
-        Map<String, String> params = parseParams(type, tokens, 1, true, text);
+        Map<String, String> params = parseParams(type, tokens, 1, true, txt);
         final int size = params.size();
         
         String qStr = params.remove(q); // Most likely lower case..
@@ -404,43 +404,43 @@ public class MediaType
                 qVal = of(parseDouble(qStr));
             }
             catch (NumberFormatException e) {
-                throw new MediaTypeParseException(text,
+                throw new MediaTypeParseException(txt,
                         "Non-parsable value for " + q + "-parameter.", e);
             }
         }
         
-        Map<String, String> extension = parseParams(type, tokens, 1 + size, false, text);
+        Map<String, String> extension = parseParams(type, tokens, 1 + size, false, txt);
         if (!extension.isEmpty()) {
             LOG.log(WARNING, () -> "Media type extension parameters ignored: " + extension);
         }
         
         return type.equals(WILDCARD) || subtype.equals(WILDCARD) || qVal.isPresent() ?
-                new MediaRange(text.toString(), type, subtype, params, qVal.orElse(1)) :
-                new MediaType(text.toString(), type, subtype, params);
+                new MediaRange(txt.toString(), type, subtype, params, qVal.orElse(1)) :
+                new MediaType(txt.toString(), type, subtype, params);
     }
     
-    private static String[] parseTypes(String token, CharSequence text) {
-        final String[] raw = token.split("/");
+    private static String[] parseTypes(String tkn, CharSequence txt) {
+        final String[] raw = tkn.split("/");
         
         if (raw.length != 2) {
-            throw new MediaTypeParseException(text,
+            throw new MediaTypeParseException(txt,
                     "Expected exactly one forward slash in <type/subtype>.");
         }
         
         final String type = stripAndLowerCase(raw[0]);
         
         if (type.isEmpty()) {
-            throw new MediaTypeParseException(text, "Type is empty.");
+            throw new MediaTypeParseException(txt, "Type is empty.");
         }
         
         final String subtype = stripAndLowerCase(raw[1]);
         
         if (subtype.isEmpty()) {
-            throw new MediaTypeParseException(text, "Subtype is empty.");
+            throw new MediaTypeParseException(txt, "Subtype is empty.");
         }
         
         if (type.equals(WILDCARD) && !subtype.equals(WILDCARD)) {
-            throw new MediaTypeParseException(text,
+            throw new MediaTypeParseException(txt,
                     "Wildcard type but not a wildcard subtype.");
         }
         
@@ -449,12 +449,12 @@ public class MediaType
     }
     
     private static Map<String, String> parseParams(
-            String type, String[] tokens, int offset, boolean stopAfterQ, CharSequence text)
+            String type, String[] tokens, int offset, boolean stopAfterQ, CharSequence txt)
     {
         Map<String, String> params = Collections.emptyMap();
         
         for (int i = offset; i < tokens.length; ++i) {
-            String[] nameAndValue = parseParam(type, tokens[i], text);
+            String[] nameAndValue = parseParam(type, tokens[i], txt);
             
             if (params.isEmpty()) {
                 params = new LinkedHashMap<>();
@@ -463,7 +463,7 @@ public class MediaType
             if (params.put(nameAndValue[0], nameAndValue[1]) != null) {
                 // "It is an error for a specific parameter to be specified more than once."
                 // https://datatracker.ietf.org/doc/html/rfc6838#section-4.3
-                throw new MediaTypeParseException(text, "Duplicated parameters.");
+                throw new MediaTypeParseException(txt, "Duplicated parameters.");
             }
             
             if (stopAfterQ && nameAndValue[0].equalsIgnoreCase(q)) {
