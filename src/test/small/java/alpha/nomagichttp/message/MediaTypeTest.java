@@ -151,5 +151,23 @@ class MediaTypeTest
         }
     }
     
+    @Test
+    void quoted_once() {
+        var mt = parse("text/plain; param=\"val\"");
+        assertThat(mt.parameters()).isEqualTo(Map.of("param", "val"));
+    }
+    
+    @Test
+    void quoted_escapedQuote() {
+        var mt = parse("text/plain; param=\"one \\\"two\\\" three\"");
+        assertThat(mt.parameters()).isEqualTo(Map.of("param", "one \"two\" three"));
+    }
+
+    @Test
+    void quoted_delim() {
+        var mt = parse("text/plain; param=\"one;two\"");
+        assertThat(mt.parameters()).isEqualTo(Map.of("param", "one;two"));
+    }
+    
     // TODO: more error cases
 }

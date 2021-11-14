@@ -3,6 +3,7 @@ package alpha.nomagichttp.message;
 import alpha.nomagichttp.HttpConstants;
 import alpha.nomagichttp.handler.RequestHandler;
 import alpha.nomagichttp.route.Route;
+import alpha.nomagichttp.util.Strings;
 
 import java.util.Collections;
 import java.util.HashMap;
@@ -12,7 +13,6 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.OptionalDouble;
 import java.util.function.BiFunction;
-import java.util.regex.Pattern;
 import java.util.stream.Stream;
 
 import static alpha.nomagichttp.message.MediaType.Score.NOPE;
@@ -106,7 +106,6 @@ public class MediaType
 {
     private static final Logger LOG = System.getLogger(MediaType.class.getPackageName());
     private static final String WILDCARD = "*", q = "q", Q = "Q";
-    private static final Pattern SEMICOLON = Pattern.compile(";");
     
     /**
      * A sentinel media type that can be used as a handler's consuming media
@@ -387,7 +386,7 @@ public class MediaType
     
     static MediaType parse0(final CharSequence text) {
         // First part is "type/subtype", possibly followed by ";params"
-        final String[] tokens = SEMICOLON.split(text);
+        final String[] tokens = Strings.split(text.toString(), ';', '"');
         final String[] types = parseTypes(tokens[0], text);
         final String type = types[0],
                   subtype = types[1];
@@ -475,28 +474,23 @@ public class MediaType
         return params;
     }
     
-    private static String[] parseParam(String type, String token, CharSequence text) {
-        int eq = token.indexOf("=");
+    private static String[] parseParam(String type, String tkn, CharSequence txt) {
+        int eq = tkn.indexOf("=");
         
         if (eq == -1) {
-            throw new MediaTypeParseException(text, "A parameter has no assigned value.");
+            throw new MediaTypeParseException(txt, "A parameter has no assigned value.");
         }
         
-        String name = stripAndLowerCase(token.substring(0, eq));
+        String name = stripAndLowerCase(tkn.substring(0, eq));
         
         if (name.isEmpty()) {
-            throw new MediaTypeParseException(text, "Empty parameter name.");
+            throw new MediaTypeParseException(txt, "Empty parameter name.");
         }
         
-        String value = token.substring(eq + 1).strip();
-        
-        // Unquote
-        if (value.length() >= 2 && value.startsWith("\"") && value.endsWith("\"")) {
-            value = value.substring(1, value.length() - 1).strip();
-        }
+        String value = Strings.unquote(tkn.substring(eq + 1).strip());
         
         if (value.isEmpty()) {
-            throw new MediaTypeParseException(text, "Empty parameter value.");
+            throw new MediaTypeParseException(txt, "Empty parameter value.");
         }
         
         if (type.equals("text") && name.equals("charset")) {
