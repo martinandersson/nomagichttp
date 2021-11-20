@@ -38,10 +38,10 @@ import java.util.stream.Stream;
  * discarded as late in the HTTP exchange process as possible, which is when the
  * server's {@link Response#body() response body} subscription completes.<p>
  * 
- * The implementation is thread-safe, non-blocking and immutable. Collaborating
- * components too are thread-safe, but not necessarily immutable. E.g. attribute
- * entries and caching layers such as the lazy processing of path parameters,
- * the query string and header parsing.<p>
+ * The implementation is thread-safe, non-blocking and shallowly immutable.
+ * Collaborating components too are thread-safe, but not necessarily immutable.
+ * E.g. attribute entries and caching layers such as the lazy processing of path
+ * parameters, the query string and header parsing.<p>
  * 
  * The request object does not implement {@code hashCode()} and {@code equals()}.
  * Its identity is unique per receiver (see {@link
