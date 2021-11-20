@@ -5,9 +5,11 @@ plugins {
     id 'maven-publish'
 }
 
-final var RELEASE_FOR = JavaVersion.VERSION_11
+final var RELEASE_FOR = JavaVersion.VERSION_17
 if (!JavaVersion.current().isCompatibleWith(RELEASE_FOR)) {
-    throw new Exception("Java ${JavaVersion.current()} is not supported. Please use at least version ${RELEASE_FOR}.");
+    throw new Exception(
+         "Java ${JavaVersion.current()} is not supported. " +
+         "Please use at least version ${RELEASE_FOR}.");
 }
 
 sourceSets {
