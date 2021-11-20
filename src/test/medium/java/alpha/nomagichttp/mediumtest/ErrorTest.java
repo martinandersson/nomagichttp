@@ -498,9 +498,8 @@ class ErrorTest extends AbstractRealTest
     
         onErrorAssert(OopsException.class, channel ->
             assertThat(channel.isEverythingOpen()).isTrue());
-        server().add("/", builder(method).accept((req, ch) -> {
-            req.body().subscribe(sub);
-        }));
+        server().add("/", builder(method).accept((req, ch) ->
+            req.body().subscribe(sub)));
         
         String req = switch (method) {
             case "GET"  -> get();
@@ -531,9 +530,8 @@ class ErrorTest extends AbstractRealTest
         
         onErrorAssert(OopsException.class, channel ->
             assertThat(channel.isOpenForReading()).isFalse());
-        server().add("/", POST().accept((req, ch) -> {
-            req.body().subscribe(sub);
-        }));
+        server().add("/", POST().accept((req, ch) ->
+            req.body().subscribe(sub)));
         
         String rsp = client().writeReadTextUntilNewlines(post("not empty"));
         
@@ -567,9 +565,8 @@ class ErrorTest extends AbstractRealTest
         
         onErrorAssert(OopsException.class, channel ->
             assertThat(channel.isOpenForReading()).isFalse());
-        server().add("/", POST().accept((req, ch) -> {
-            req.body().subscribe(sub);
-        }));
+        server().add("/", POST().accept((req, ch) ->
+            req.body().subscribe(sub)));
         
         String rsp = client().writeReadTextUntilNewlines(post("not empty"));
         
@@ -608,9 +605,8 @@ class ErrorTest extends AbstractRealTest
                         PooledByteBufferHolder::discard,
                         ()   -> { throw new OopsException(); }));
         
-        server().add("/", builder(method).accept((req, ch) -> {
-            req.body().subscribe(sub);
-        }));
+        server().add("/", builder(method).accept((req, ch) ->
+            req.body().subscribe(sub)));
         
         String req = switch (method) {
             case "GET"  -> get();

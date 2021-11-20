@@ -403,15 +403,14 @@ class SeriallyRunnableTest
         AtomicReference<Thread> occupiedBy = new AtomicReference<>();
         ThreadLocal<Boolean> doComplete = ThreadLocal.withInitial(() -> false);
         
-        sr = new SeriallyRunnable(() -> {
+        sr = new SeriallyRunnable(() ->
             occupiedBy.updateAndGet(t -> {
                 if (t != null && t != currentThread()) {
                     fail("Overlap");
                 }
                 doComplete.set(true);
                 return currentThread();
-            });
-        }, true);
+            }), true);
         
         runInParallel(nThreads, nRepetitions, () -> {
             sr.run();

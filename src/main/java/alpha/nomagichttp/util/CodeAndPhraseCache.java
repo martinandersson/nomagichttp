@@ -56,7 +56,7 @@ public final class CodeAndPhraseCache<T>
             cache[c - MIN] = v;
         }
         
-        @SuppressWarnings("unchecked")
+        @SuppressWarnings({"rawtypes", "unchecked"})
         CodeAndPhraseCache<T> built = new CodeAndPhraseCache<>(cache);
         return built;
     }

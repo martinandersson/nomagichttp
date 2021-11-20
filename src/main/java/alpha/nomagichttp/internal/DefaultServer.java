@@ -41,6 +41,7 @@ import static java.lang.System.Logger.Level.INFO;
 import static java.lang.System.Logger.Level.WARNING;
 import static java.time.Duration.ofMinutes;
 import static java.util.Objects.requireNonNull;
+import static java.util.Objects.requireNonNullElse;
 import static java.util.concurrent.CompletableFuture.completedStage;
 import static java.util.concurrent.CompletableFuture.failedStage;
 
@@ -114,11 +115,7 @@ public final class DefaultServer implements HttpServer
             try {
                 stopNow();
             } catch (Throwable next) {
-                if (io != null) {
-                    io.addSuppressed(next);
-                } else {
-                    t.addSuppressed(next);
-                }
+                requireNonNullElse(io, t).addSuppressed(next);
             }
             
             if (io != null) {
