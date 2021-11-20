@@ -134,16 +134,12 @@ public final class SegmentsBuilder
                 throw new IllegalArgumentException("Static segment value is empty.");
             }
             switch (t.charAt(0)) {
-                case SINGLE:
-                    paramSingle(t.substring(1));
-                    break;
-                case CATCH_ALL:
-                    paramCatchAll(t.substring(1));
-                    break;
-                default:
+                case SINGLE -> paramSingle(t.substring(1));
+                case CATCH_ALL -> paramCatchAll(t.substring(1));
+                default -> {
                     requireCatchAllNotSet();
                     segments.add(t);
-                    break;
+                }
             }
         }
         return this;
@@ -183,7 +179,7 @@ public final class SegmentsBuilder
             
             if (!params.add(name)) {
                 throw new IllegalStateException(
-                        "Duplicated parameter name: \"" + name + "\"");
+                    "Duplicated parameter name: \"" + name + "\"");
             }
         }
         segments.add(prefix + name);
@@ -192,7 +188,7 @@ public final class SegmentsBuilder
     private void requireCatchAllNotSet() {
         if (catchAllSet) {
             throw new IllegalStateException(
-                    "Catch-all path parameter must be the last segment.");
+                "Catch-all path parameter must be the last segment.");
         }
     }
 }

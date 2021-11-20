@@ -509,22 +509,12 @@ public abstract class HttpClientFacade
         }
         
         private static Version toJDKVersion(HttpConstants.Version ver) {
-            final Version jdk;
-            switch (ver) {
-                case HTTP_0_9:
-                case HTTP_1_0:
-                case HTTP_3:
+            return switch (ver) {
+                case HTTP_0_9, HTTP_1_0, HTTP_3 ->
                     throw new IllegalArgumentException("Not supported.");
-                case HTTP_1_1:
-                    jdk = Version.HTTP_1_1;
-                    break;
-                case HTTP_2:
-                    jdk = Version.HTTP_2;
-                    break;
-                default:
-                    throw new IllegalArgumentException("No mapping.");
-            }
-            return jdk;
+                case HTTP_1_1 -> Version.HTTP_1_1;
+                case HTTP_2   -> Version.HTTP_2;
+            };
         }
     }
     
@@ -605,24 +595,12 @@ public abstract class HttpClientFacade
         }
         
         private static Protocol toSquareVersion(HttpConstants.Version ver) {
-            final Protocol square;
-            switch (ver) {
-                case HTTP_0_9:
-                case HTTP_3:
-                    throw new IllegalArgumentException("Not supported.");
-                case HTTP_1_0:
-                    square = Protocol.HTTP_1_0;
-                    break;
-                case HTTP_1_1:
-                    square = Protocol.HTTP_1_1;
-                    break;
-                case HTTP_2:
-                    square = Protocol.HTTP_2;
-                    break;
-                default:
-                    throw new IllegalArgumentException("No mapping.");
-            }
-            return square;
+            return switch (ver) {
+                case HTTP_0_9, HTTP_3 -> throw new IllegalArgumentException("Not supported.");
+                case HTTP_1_0 -> Protocol.HTTP_1_0;
+                case HTTP_1_1 -> Protocol.HTTP_1_1;
+                case HTTP_2 -> Protocol.HTTP_2;
+            };
         }
     }
     
@@ -901,14 +879,11 @@ public abstract class HttpClientFacade
         }
         
         private static HttpProtocol toReactorVersion(HttpConstants.Version ver) {
-            switch (ver) {
-                case HTTP_1_1:
-                    return HttpProtocol.HTTP11;
-                case HTTP_2:
-                    return HttpProtocol.H2;
-                default:
-                    throw new IllegalArgumentException("No mapping.");
-            }
+            return switch (ver) {
+                case HTTP_1_1 -> HttpProtocol.HTTP11;
+                case HTTP_2 -> HttpProtocol.H2;
+                default -> throw new IllegalArgumentException("No mapping.");
+            };
         }
     }
     

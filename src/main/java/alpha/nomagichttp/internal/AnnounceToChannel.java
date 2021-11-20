@@ -298,14 +298,9 @@ final class AnnounceToChannel
         var ch = chApi.getDelegateNoProxy();
         try {
             switch (mode) {
-                case READ:
-                    ch.read(b, b, handler);
-                    break;
-                case WRITE:
-                    ch.write(b, timeoutNs, NANOSECONDS, b, handler);
-                    break;
-                default:
-                    throw new UnsupportedOperationException("What is this?: " + mode);
+                case READ  -> ch.read(b, b, handler);
+                case WRITE -> ch.write(b, timeoutNs, NANOSECONDS, b, handler);
+                default    -> throw new UnsupportedOperationException("What is this?: " + mode);
             }
         } catch (Throwable t) {
             handler.failed(t, null);
@@ -431,10 +426,9 @@ final class AnnounceToChannel
             return false;
         }
         IOException io = (IOException) t;
-        switch (mode) {
-            case READ:  return IOExceptions.isCausedByBrokenInputStream(io);
-            case WRITE: return IOExceptions.isCausedByBrokenOutputStream(io);
-            default:    throw new AssertionError("What is this?: " + mode);
-        }
+        return switch (mode) {
+            case READ  -> IOExceptions.isCausedByBrokenInputStream(io);
+            case WRITE -> IOExceptions.isCausedByBrokenOutputStream(io);
+        };
     }
 }

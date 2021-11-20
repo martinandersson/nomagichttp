@@ -71,11 +71,11 @@ final class DefaultRouteRegistry implements RouteRegistry
             } else {
                 // possibly dig deeper
                 final String s = it.next();
-                switch (s.charAt(0)) {
-                    case COLON_CH:
+                return switch (s.charAt(0)) {
+                    case COLON_CH ->
                         // single path param segment; get- or create exclusive child using key ':'
-                        return createExclusiveChild(n, COLON_STR, s);
-                    case ASTERISK_CH:
+                        createExclusiveChild(n, COLON_STR, s);
+                    case ASTERISK_CH -> {
                         assert !it.hasNext();
                         // same, except we use key '*' and set the route immediately
                         synchronized (n) {
@@ -83,11 +83,12 @@ final class DefaultRouteRegistry implements RouteRegistry
                             setRouteIfAbsentGiven(thatNodeHasNoRoute(n), c, r);
                         }
                         // job done
-                        return null;
-                    default:
+                        yield null;
+                    }
+                    default ->
                         // static segment value; get- or create a normal child using user segment as key
-                        return createNormalChild(n, s);
-                }
+                        createNormalChild(n, s);
+                };
             }
         });
         return server;

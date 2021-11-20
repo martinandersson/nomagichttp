@@ -274,15 +274,9 @@ public final class ThreadScheduler
                               new Stage(t + 1, s, code))).toArray(Stage[]::new);
         
         switch (arr.length) {
-            case 1:
-                runAsync(arr[0].code());
-                break;
-            case 2:
-                runInParallel(arr[0], arr[1]);
-                break;
-            default:
-                runInParallel(arr[0], arr[1], copyOfRange(arr, 2, arr.length));
-                break;
+            case 1  -> runAsync(arr[0].code());
+            case 2  -> runInParallel(arr[0], arr[1]);
+            default -> runInParallel(arr[0], arr[1], copyOfRange(arr, 2, arr.length));
         }
     }
     

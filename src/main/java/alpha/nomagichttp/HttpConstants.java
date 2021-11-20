@@ -2982,35 +2982,40 @@ public final class HttpConstants {
         
         private static Version valueOf(String str, String majorStr, String minorStr) {
             final int major;
-            switch (major = parseInt(majorStr)) {
-                case 0:
+            return switch (major = parseInt(majorStr)) {
+                case 0 -> {
                     int m1 = reqMinor(str, minorStr);
                     if (m1 != 9) {
                         throw newIllegalArgForUnsupportedMinor(0, m1);
                     }
-                    return HTTP_0_9;
-                case 1:
+                    yield HTTP_0_9;
+                }
+                case 1 -> {
                     int m2 = reqMinor(str, minorStr);
                     if (m2 == 0) {
-                        return HTTP_1_0;
+                        yield HTTP_1_0;
                     }
                     if (m2 == 1) {
-                        return HTTP_1_1;
+                        yield HTTP_1_1;
                     }
                     throw newIllegalArgForUnsupportedMinor(1, m2);
-                case 2:
+                }
+                case 2 -> {
                     reqNoMinor(str, minorStr);
-                    return HTTP_2;
-                case 3:
+                    yield HTTP_2;
+                }
+                case 3 -> {
                     reqNoMinor(str, minorStr);
-                    return HTTP_3;
-                default:
+                    yield HTTP_3;
+                }
+                default -> {
                     if (major < 0) {
                         throw new IllegalArgumentException(major + ":" + reqMinor(str, minorStr));
                     }
                     reqNoMinor(str, minorStr);
                     throw new IllegalArgumentException(major + ":");
-            }
+                }
+            };
         }
         
         private static int reqMinor(String str, String minor) {
