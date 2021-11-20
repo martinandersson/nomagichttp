@@ -422,20 +422,17 @@ public class MediaType
     
     private static String[] parseTypes(String tkn, String txt) {
         final String[] raw = tkn.split("/");
-        
         if (raw.length != 2) {
             throw new MediaTypeParseException(txt,
                     "Expected exactly one forward slash in <type/subtype>.");
         }
         
         final String type = stripAndLowerCase(raw[0]);
-        
         if (type.isEmpty()) {
             throw new MediaTypeParseException(txt, "Type is empty.");
         }
         
         final String subtype = stripAndLowerCase(raw[1]);
-        
         if (subtype.isEmpty()) {
             throw new MediaTypeParseException(txt, "Subtype is empty.");
         }
@@ -477,19 +474,16 @@ public class MediaType
     
     private static String[] parseParam(String type, String tkn, String txt) {
         int eq = tkn.indexOf("=");
-        
         if (eq == -1) {
             throw new MediaTypeParseException(txt, "A parameter has no assigned value.");
         }
         
         String name = stripAndLowerCase(tkn.substring(0, eq));
-        
         if (name.isEmpty()) {
             throw new MediaTypeParseException(txt, "Empty parameter name.");
         }
         
         String value = Strings.unquote(tkn.substring(eq + 1).strip());
-        
         if (value.isEmpty()) {
             throw new MediaTypeParseException(txt, "Empty parameter value.");
         }
@@ -497,7 +491,6 @@ public class MediaType
         if (type.equals("text") && name.equals("charset")) {
             value = value.toLowerCase(Locale.ROOT);
         }
-        
         return new String[]{ name, value };
     }
     
