@@ -92,8 +92,7 @@ final class DefaultResponse implements Response
         if (b == Publishers.<ByteBuffer>empty()) {
             return true;
         }
-        if (b instanceof BodyPublisher) {
-            var typed = (BodyPublisher) b;
+        if (b instanceof BodyPublisher typed) {
             return typed.contentLength() == 0;
         }
         return headers().contain(CONTENT_LENGTH, "0");

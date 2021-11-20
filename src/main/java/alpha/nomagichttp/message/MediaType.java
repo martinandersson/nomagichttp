@@ -692,7 +692,7 @@ public class MediaType
             return true;
         }
         
-        if (!(obj instanceof MediaType)) {
+        if (!(obj instanceof MediaType other)) {
             return false;
         }
         
@@ -703,11 +703,9 @@ public class MediaType
             return false;
         }
         
-        MediaType that = (MediaType) obj;
-        
-        return this.type.equals(that.type) &&
-               this.subtype.equals(that.subtype) &&
-               this.params.equals(that.params);
+        return this.type.equals(other.type) &&
+               this.subtype.equals(other.subtype) &&
+               this.params.equals(other.params);
     }
     
     /**

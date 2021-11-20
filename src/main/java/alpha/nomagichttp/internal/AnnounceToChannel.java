@@ -422,10 +422,9 @@ final class AnnounceToChannel
     }
     
     private boolean isCausedByBrokenStream(Throwable t) {
-        if (!(t instanceof IOException)) {
+        if (!(t instanceof IOException io)) {
             return false;
         }
-        IOException io = (IOException) t;
         return switch (mode) {
             case READ  -> IOExceptions.isCausedByBrokenInputStream(io);
             case WRITE -> IOExceptions.isCausedByBrokenOutputStream(io);

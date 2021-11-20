@@ -443,7 +443,7 @@ final class HttpExchange
             return true;
         }
         
-        if (!(thr instanceof IOException)) {
+        if (!(thr instanceof IOException io)) {
             // EndOfStreamException goes to error handler
             return false;
         }
@@ -469,7 +469,6 @@ final class HttpExchange
             return true;
         }
         
-        var io = (IOException) thr;
         if (isCausedByBrokenInputStream(io) || isCausedByBrokenOutputStream(io)) {
             LOG.log(DEBUG, "Broken pipe, closing channel. (end of HTTP exchange)");
             chan.closeSafe();

@@ -104,8 +104,7 @@ public final class DefaultServer implements HttpServer
             pwh.startAccepting();
         } catch (Throwable t) {
             IOException io = null;
-            if (t instanceof CompletionException) {
-                CompletionException ce = (CompletionException) t;
+            if (t instanceof CompletionException ce) {
                 if (ce.getCause() instanceof IOException) {
                     // Unwrap
                     io = (IOException) ce.getCause();
