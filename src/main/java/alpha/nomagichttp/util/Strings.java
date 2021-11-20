@@ -137,9 +137,8 @@ public final class Strings
      * <ul>
      *   <li>Remove at most one leading and trailing '"' character</li>
      *   <li>If no effect, return original string</li>
-     *   <li>Remove any '\' character immediately preceding a '"' character</li>
-     *   <li>Remove any '\' character immediately preceding a '\' character</li>
-     *   <li>Remove leading and trailing whitespace from the result</li>
+     *   <li>Otherwise return {@link String#translateEscapes()
+     *           translateEscapes}().{@link String#strip() strip}()</li>
      * </ul>
      * 
      * For example, literal string value becomes
@@ -164,9 +163,12 @@ public final class Strings
             return str;
         }
         return str.substring(1, str.length() -1)
-                  .replace("\\\"", "\"")
-                  .replace("\\\\", "\\")
-                  .strip();
+                // If there's ever a problem with this method (added in Java 15),
+                // try the old implementation instead:
+                //     .replace("\\\"", "\"")
+                //     .replace("\\\\", "\\")
+                .translateEscapes()
+                .strip();
     }
     
     /**
