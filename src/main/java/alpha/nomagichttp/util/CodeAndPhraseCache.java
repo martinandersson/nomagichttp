@@ -56,7 +56,7 @@ public final class CodeAndPhraseCache<T>
             cache[c - MIN] = v;
         }
         
-        @SuppressWarnings("unchecked")
+        @SuppressWarnings({"rawtypes", "unchecked"})
         CodeAndPhraseCache<T> built = new CodeAndPhraseCache<>(cache);
         return built;
     }
@@ -82,7 +82,7 @@ public final class CodeAndPhraseCache<T>
      */
     public T get(int code) {
         var v = get0(code);
-        return v == null ? null : v.ofCode;
+        return v == null ? null : v.ofCode();
     }
     
     /**
@@ -102,8 +102,8 @@ public final class CodeAndPhraseCache<T>
      */
     public T get(int code, String phrase) {
         var v = get0(code);
-        return v == null || !phrase.equals(v.phraseUsed) ?
-                null : v.ofCodeAndPhrase;
+        return v == null || !phrase.equals(v.phraseUsed()) ?
+                null : v.ofCodeAndPhrase();
     }
     
     private Variants<T> get0(int code) {
@@ -114,16 +114,7 @@ public final class CodeAndPhraseCache<T>
         }
     }
     
-    // TODO: Replace with Java Records
-    private static class Variants<T> {
-        final T ofCode;
-        final T ofCodeAndPhrase;
-        final String phraseUsed;
-        
-        Variants(T ofCode, T ofCodeAndPhrase, String phraseUsed) {
-            this.ofCode = ofCode;
-            this.ofCodeAndPhrase = ofCodeAndPhrase;
-            this.phraseUsed = phraseUsed;
-        }
+    private record Variants<T>(T ofCode, T ofCodeAndPhrase, String phraseUsed) {
+        // Empty
     }
 }

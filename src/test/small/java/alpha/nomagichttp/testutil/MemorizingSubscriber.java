@@ -176,7 +176,7 @@ public class MemorizingSubscriber<T> implements Flow.Subscriber<T>
          * 
          * @return the subscriber method invoked
          */
-        public final MethodName getMethodName() {
+        public MethodName getMethodName() {
             return name;
         }
     
@@ -188,7 +188,7 @@ public class MemorizingSubscriber<T> implements Flow.Subscriber<T>
          * @param <T> argument type, inferred on call-site
          * @return the signal argument
          */
-        public final <T> T getArgument() {
+        public <T> T getArgument() {
             @SuppressWarnings("unchecked")
             T typed = (T) arg;
             return typed;

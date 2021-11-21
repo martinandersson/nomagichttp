@@ -1,6 +1,7 @@
 package alpha.nomagichttp;
 
 import alpha.nomagichttp.action.ActionRegistry;
+import alpha.nomagichttp.event.EventEmitter;
 import alpha.nomagichttp.event.EventHub;
 import alpha.nomagichttp.event.HttpServerStarted;
 import alpha.nomagichttp.event.HttpServerStopped;
@@ -245,8 +246,10 @@ public interface HttpServer extends RouteRegistry, ActionRegistry
      * 
      * @return this (for chaining/fluency)
      * 
-     * @throws IllegalStateException if the server is already running
-     * @throws IOException if an I/O error occurs
+     * @throws IllegalStateException
+     *             if the server is already running (see {@link #start(SocketAddress)})
+     * @throws IOException
+     *             if an I/O error occurs
      * 
      * @see InetAddress
      */
@@ -271,10 +274,13 @@ public interface HttpServer extends RouteRegistry, ActionRegistry
      * 
      * @return this (for chaining/fluency)
      * 
-     * @throws IllegalStateException if server is already running
-     * @throws IOException if an I/O error occurs
+     * @throws IllegalStateException
+     *             if the server is already running (see {@link #start(SocketAddress)})
+     * @throws IOException
+     *             if an I/O error occurs
      * 
      * @see InetAddress
+     * @see #start(SocketAddress)
      */
     default HttpServer start(int port) throws IOException  {
         return start(new InetSocketAddress(port));
@@ -294,17 +300,24 @@ public interface HttpServer extends RouteRegistry, ActionRegistry
      * 
      * @return this (for chaining/fluency)
      * 
-     * @throws IllegalStateException if server is already running
-     * @throws IOException if an I/O error occurs
+     * @throws IllegalStateException
+     *             if the server is already running (see {@link #start(SocketAddress)})
+     * @throws IOException
+     *             if an I/O error occurs
      * 
      * @see InetAddress
+     * @see #start(SocketAddress) 
      */
     default HttpServer start(String hostname, int port) throws IOException {
         return start(new InetSocketAddress(hostname, port));
     }
     
     /**
-     * Listen for client connections on a given address.
+     * Listen for client connections on a given address.<p>
+     * 
+     * This method blocks if the invoking thread is the one to initiate the
+     * startup routine. Another thread invoking this method concurrently will
+     * receive an {@link IllegalStateException}.
      * 
      * @param address to use
      * 
@@ -395,7 +408,7 @@ public interface HttpServer extends RouteRegistry, ActionRegistry
      * example:
      * <pre>{@code
      *   HttpServer server = ...
-     *   server.events().on(ServerStarted.class, (event, when) ->
+     *   server.events().on(HttpServerStarted.class, (event, when) ->
      *           System.out.println("Server started at " + when));
      * }</pre>
      * 
@@ -414,9 +427,16 @@ public interface HttpServer extends RouteRegistry, ActionRegistry
      * If the application runs multiple servers, a JVM-global hub can be created
      * like so:
      * <pre>
-     *   EventHub global = EventHub.{@link
-     *   EventHub#combine(ScatteringEventEmitter, ScatteringEventEmitter, ScatteringEventEmitter...) combine}(server1, server2, ...);
+     *   EventHub one = server1.events(),
+     *            two = server2.events(),
+     *            all = EventHub.{@link
+     *   EventHub#combine(ScatteringEventEmitter, ScatteringEventEmitter, ScatteringEventEmitter...) combine}(one, two);
      * </pre>
+     * 
+     * All event objects emitted by the HttpServer is an enum instance and does
+     * not contain any event-specific information. The event metadata is passed
+     * as attachments. The following table lists the events emitted by the
+     * HttpServer.
      * 
      * <table class="striped">
      *   <caption style="display:none">Events emitted</caption>
@@ -452,6 +472,7 @@ public interface HttpServer extends RouteRegistry, ActionRegistry
      * </table>
      * 
      * @return the event hub associated with this server (never {@code null})
+     * @see EventEmitter
      */
     EventHub events();
     

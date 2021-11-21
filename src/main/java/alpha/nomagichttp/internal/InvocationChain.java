@@ -188,31 +188,19 @@ final class InvocationChain extends AbstractLocalEventEmitter
         }
         
         private boolean implicitComplete() {
-            int old = status.getAndUpdate(v -> {
-                switch (v) {
-                    case AWAITING_BOTH:
-                        return AWAITING_EXPL;
-                    case AWAITING_IMPL:
-                    case AWAITING_NONE:
-                        return AWAITING_NONE;
-                    default:
-                        throw new AssertionError("Unexpected: " + v);
-                }
+            int old = status.getAndUpdate(v -> switch (v) {
+                case AWAITING_BOTH -> AWAITING_EXPL;
+                case AWAITING_IMPL, AWAITING_NONE -> AWAITING_NONE;
+                default -> throw new AssertionError("Unexpected: " + v);
             });
             return old == AWAITING_IMPL;
         }
         
         private boolean explicitComplete() {
-            int old = status.getAndUpdate(v -> {
-                switch (v) {
-                    case AWAITING_BOTH:
-                        return AWAITING_IMPL;
-                    case AWAITING_EXPL:
-                    case AWAITING_NONE:
-                        return AWAITING_NONE;
-                    default:
-                        throw new AssertionError("Unexpected: " + v);
-                }
+            int old = status.getAndUpdate(v -> switch (v) {
+                case AWAITING_BOTH -> AWAITING_IMPL;
+                case AWAITING_EXPL, AWAITING_NONE -> AWAITING_NONE;
+                default -> throw new AssertionError("Unexpected: " + v);
             });
             return old == AWAITING_EXPL;
         }

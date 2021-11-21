@@ -53,9 +53,9 @@ public final class TestConfig implements Config {
     }
     
     private final Method method;
-    private AtomicInteger  call;
-    private final int    target;
-    private final Object    val;
+    private final AtomicInteger call;
+    private final int target;
+    private final Object val;
     
     private TestConfig(Method interceptedMethod, int n, Object interceptedVal) {
         this.method = interceptedMethod;

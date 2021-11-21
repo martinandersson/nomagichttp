@@ -498,16 +498,14 @@ class ErrorTest extends AbstractRealTest
     
         onErrorAssert(OopsException.class, channel ->
             assertThat(channel.isEverythingOpen()).isTrue());
-        server().add("/", builder(method).accept((req, ch) -> {
-            req.body().subscribe(sub);
-        }));
+        server().add("/", builder(method).accept((req, ch) ->
+            req.body().subscribe(sub)));
         
-        String req;
-        switch (method) {
-            case "GET":  req = get(); break;
-            case "POST": req = post("not empty"); break;
-            default: throw new AssertionError();
-        }
+        String req = switch (method) {
+            case "GET"  -> get();
+            case "POST" -> post("not empty");
+            default -> throw new AssertionError();
+        };
         
         String rsp = client().writeReadTextUntilNewlines(req);
         
@@ -532,9 +530,8 @@ class ErrorTest extends AbstractRealTest
         
         onErrorAssert(OopsException.class, channel ->
             assertThat(channel.isOpenForReading()).isFalse());
-        server().add("/", POST().accept((req, ch) -> {
-            req.body().subscribe(sub);
-        }));
+        server().add("/", POST().accept((req, ch) ->
+            req.body().subscribe(sub)));
         
         String rsp = client().writeReadTextUntilNewlines(post("not empty"));
         
@@ -568,9 +565,8 @@ class ErrorTest extends AbstractRealTest
         
         onErrorAssert(OopsException.class, channel ->
             assertThat(channel.isOpenForReading()).isFalse());
-        server().add("/", POST().accept((req, ch) -> {
-            req.body().subscribe(sub);
-        }));
+        server().add("/", POST().accept((req, ch) ->
+            req.body().subscribe(sub)));
         
         String rsp = client().writeReadTextUntilNewlines(post("not empty"));
         
@@ -609,16 +605,14 @@ class ErrorTest extends AbstractRealTest
                         PooledByteBufferHolder::discard,
                         ()   -> { throw new OopsException(); }));
         
-        server().add("/", builder(method).accept((req, ch) -> {
-            req.body().subscribe(sub);
-        }));
+        server().add("/", builder(method).accept((req, ch) ->
+            req.body().subscribe(sub)));
         
-        String req;
-        switch (method) {
-            case "GET":  req = get(); break;
-            case "POST": req = post("1"); break; // Small body to make sure we stay within one ByteBuffer
-            default: throw new AssertionError();
-        }
+        String req = switch (method) {
+            case "GET"  -> get();
+            case "POST" -> post("1"); // Small body to make sure we stay within one ByteBuffer
+            default -> throw new AssertionError();
+        };
         
         String rsp = client().writeReadTextUntilNewlines(req);
         
@@ -626,13 +620,11 @@ class ErrorTest extends AbstractRealTest
             "HTTP/1.1 500 Internal Server Error" + CRLF +
             "Content-Length: 0"                  + CRLF + CRLF);
         
-        List<MemorizingSubscriber.Signal.MethodName> expected;
-        switch (method) {
-            case "GET":  expected = of(ON_SUBSCRIBE, ON_COMPLETE); break;
-            case "POST": expected = of(ON_SUBSCRIBE, ON_NEXT, ON_COMPLETE); break;
-            default:
-                throw new AssertionError();
-        }
+        List<MemorizingSubscriber.Signal.MethodName> expected = switch (method) {
+            case "GET"  -> of(ON_SUBSCRIBE, ON_COMPLETE);
+            case "POST" -> of(ON_SUBSCRIBE, ON_NEXT, ON_COMPLETE);
+            default -> throw new AssertionError();
+        };
         
         assertThat(sub.methodNames()).isEqualTo(expected);
         assertOopsException(pollServerError());

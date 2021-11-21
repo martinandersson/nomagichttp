@@ -91,17 +91,16 @@ final class DefaultActionRegistry implements ActionRegistry
             if (it.hasNext()) {
                 // dig deeper
                 final String s = it.next();
-                switch (s.charAt(0)) {
+                return switch (s.charAt(0)) {
                     // TODO: Technically, single path param and catch-all are not
                     //  mutually exclusive, and so they could go into the same set?
-                    case COLON_CH:
-                        return n.nextOrCreate(COLON_STR);
-                    case ASTERISK_CH:
+                    case COLON_CH -> n.nextOrCreate(COLON_STR);
+                    case ASTERISK_CH -> {
                         assert !it.hasNext();
-                        return n.nextOrCreate(ASTERISK_STR);
-                    default:
-                        return n.nextOrCreate(s);
-                }
+                        yield n.nextOrCreate(ASTERISK_STR);
+                    }
+                    default -> n.nextOrCreate(s);
+                };
             } else {
                 // We're at target node, store
                 var set = n.setIfAbsent(CopyOnWriteArraySet::new);

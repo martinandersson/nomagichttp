@@ -422,28 +422,17 @@ public class MediaType
     
     private static String[] parseTypes(String tkn, String txt) {
         final String[] raw = tkn.split("/");
-        
-        if (raw.length != 2) {
-            throw new MediaTypeParseException(txt,
-                    "Expected exactly one forward slash in <type/subtype>.");
-        }
+        unacceptable(raw.length != 2, txt,
+            "Expected exactly one forward slash in <type/subtype>.");
         
         final String type = stripAndLowerCase(raw[0]);
-        
-        if (type.isEmpty()) {
-            throw new MediaTypeParseException(txt, "Type is empty.");
-        }
+        unacceptable(type.isEmpty(), txt, "Type is empty.");
         
         final String subtype = stripAndLowerCase(raw[1]);
+        unacceptable(subtype.isEmpty(), txt, "Subtype is empty.");
         
-        if (subtype.isEmpty()) {
-            throw new MediaTypeParseException(txt, "Subtype is empty.");
-        }
-        
-        if (type.equals(WILDCARD) && !subtype.equals(WILDCARD)) {
-            throw new MediaTypeParseException(txt,
-                    "Wildcard type but not a wildcard subtype.");
-        }
+        unacceptable(type.equals(WILDCARD) && !subtype.equals(WILDCARD), txt,
+            "Wildcard type but not a wildcard subtype.");
         
         return type == raw[0] && subtype == raw[1] ? raw :
                 new String[]{ type, subtype };
@@ -460,12 +449,10 @@ public class MediaType
             if (params.isEmpty()) {
                 params = new LinkedHashMap<>();
             }
-            
-            if (params.put(nameAndValue[0], nameAndValue[1]) != null) {
-                // "It is an error for a specific parameter to be specified more than once."
-                // https://datatracker.ietf.org/doc/html/rfc6838#section-4.3
-                throw new MediaTypeParseException(txt, "Duplicated parameters.");
-            }
+            var old = params.put(nameAndValue[0], nameAndValue[1]);
+            // "It is an error for a specific parameter to be specified more than once."
+            // https://datatracker.ietf.org/doc/html/rfc6838#section-4.3
+            unacceptable(old != null, txt, "Duplicated parameters.");
             
             if (stopAfterQ && nameAndValue[0].equalsIgnoreCase(q)) {
                 break;
@@ -477,28 +464,22 @@ public class MediaType
     
     private static String[] parseParam(String type, String tkn, String txt) {
         int eq = tkn.indexOf("=");
-        
-        if (eq == -1) {
-            throw new MediaTypeParseException(txt, "A parameter has no assigned value.");
-        }
+        unacceptable(eq == -1, txt, "A parameter has no assigned value.");
         
         String name = stripAndLowerCase(tkn.substring(0, eq));
-        
-        if (name.isEmpty()) {
-            throw new MediaTypeParseException(txt, "Empty parameter name.");
-        }
+        unacceptable(name.isEmpty(), txt, "Empty parameter name.");
         
         String value = Strings.unquote(tkn.substring(eq + 1).strip());
-        
-        if (value.isEmpty()) {
-            throw new MediaTypeParseException(txt, "Empty parameter value.");
-        }
+        unacceptable(value.isEmpty(), txt, "Empty parameter value.");
         
         if (type.equals("text") && name.equals("charset")) {
             value = value.toLowerCase(Locale.ROOT);
         }
-        
         return new String[]{ name, value };
+    }
+    
+    private static void unacceptable(boolean whatIs, String parseText, String appendMsg) {
+        if (whatIs) throw new MediaTypeParseException(parseText, appendMsg);
     }
     
     private static String stripAndLowerCase(String str) {
@@ -699,7 +680,7 @@ public class MediaType
             return true;
         }
         
-        if (!(obj instanceof MediaType)) {
+        if (!(obj instanceof MediaType other)) {
             return false;
         }
         
@@ -710,11 +691,9 @@ public class MediaType
             return false;
         }
         
-        MediaType that = (MediaType) obj;
-        
-        return this.type.equals(that.type) &&
-               this.subtype.equals(that.subtype) &&
-               this.params.equals(that.params);
+        return this.type.equals(other.type) &&
+               this.subtype.equals(other.subtype) &&
+               this.params.equals(other.params);
     }
     
     /**

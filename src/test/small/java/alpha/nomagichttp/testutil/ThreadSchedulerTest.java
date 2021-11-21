@@ -82,9 +82,8 @@ class ThreadSchedulerTest
             s.add(threadName() + "S1 exiting");
         });
         
-        Stage t1s2 = new Stage("T1", "S2", () -> {
-            s.add(threadName() + "S2 exiting");
-        });
+        Stage t1s2 = new Stage("T1", "S2", () ->
+            s.add(threadName() + "S2 exiting"));
         
         ThreadScheduler.runSequentially(y, t1s1, t2s1, t1s2);
         assertThat(s).containsExactly(
@@ -114,9 +113,8 @@ class ThreadSchedulerTest
                 y.continueStage("T3Pang");
         });
         
-        Stage pang = new Stage("T3", "Pang", () -> {
-            s.add(threadName() + " Pang!");
-        });
+        Stage pang = new Stage("T3", "Pang", () ->
+            s.add(threadName() + " Pang!"));
         
         ThreadScheduler.runSequentially(y, ping, pong, pang);
         assertThat(s).containsExactly(
@@ -131,9 +129,8 @@ class ThreadSchedulerTest
     void allStagesMustExecuteFully() throws Throwable {
         Yielder y = new Yielder();
         
-        Stage first = new Stage("T1", "First", () -> {
-            y.continueStage("T2Then");
-        });
+        Stage first = new Stage("T1", "First", () ->
+            y.continueStage("T2Then"));
         
         Stage then = new Stage("T2", "Then", () -> {
             y.continueStage("T3JumpBack");

@@ -225,9 +225,8 @@ class ClientLifeCycleTest extends AbstractRealTest
                     LOG.log(DEBUG, "Message of error: \"" + msg + "\".");
                     LOG.log(DEBUG, "Will dump details on the last five chars.");
                     int cap = Math.min(msg.length(), 5);
-                    msg.substring(msg.length() - cap).chars().forEach(c -> {
-                        LOG.log(DEBUG, Char.toDebugString((char) c));
-                    });
+                    msg.substring(msg.length() - cap).chars().forEach(c ->
+                        LOG.log(DEBUG, Char.toDebugString((char) c)));
                 }
                 throw rethrow;
             }

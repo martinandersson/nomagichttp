@@ -269,7 +269,7 @@ public class DefaultActionRegistryTest
         return new RunSpec<>(testee::lookupAfter, pattern);
     }
     
-    private static class RunSpec<A> {
+    private static final class RunSpec<A> {
         // Contained by root only; how to execute the testee
         private Function<SkeletonRequestTarget, List<Match<A>>> method;
         private String pattern;

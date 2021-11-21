@@ -369,9 +369,6 @@ public interface ErrorHandler
         } catch (MediaTypeUnsupportedException e) {
             log(thr);
             res = unsupportedMediaType();
-        } catch (MediaTypeParseException | IllegalResponseBodyException e) {
-            log(thr);
-            res = internalServerError();
         } catch (EndOfStreamException e) {
             ch.closeSafe();
             res = null;
@@ -395,7 +392,10 @@ public interface ErrorHandler
             }
             ch.shutdownInputSafe();
             res = serviceUnavailable();
-        } catch (Throwable unknown) { // + AmbiguousHandlerException
+        } catch (MediaTypeParseException | IllegalResponseBodyException | AmbiguousHandlerException e) {
+            log(thr);
+            res = internalServerError();
+        } catch (Throwable unknown) {
             log(thr);
             res = internalServerError();
         }

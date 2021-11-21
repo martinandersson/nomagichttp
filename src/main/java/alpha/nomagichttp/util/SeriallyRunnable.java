@@ -303,27 +303,16 @@ public final class SeriallyRunnable implements Runnable
     }
     
     private boolean mayStart() {
-        int old = state.getAndUpdate(v -> {
-            switch (v) {
-                case END:
-                    // job not running; start
-                    v = async ? BEGIN_2 : BEGIN_1;
-                    break;
-                case BEGIN_1:
-                    // job running; schedule re-run and exit
-                    v = AGAIN_1;
-                    break;
-                case BEGIN_2:
-                    v = AGAIN_2;
-                    break;
-                case AGAIN_1:
-                case AGAIN_2:
-                    // job running and already notified to restart, nothing to do
-                    break;
-                default:
-                    throw new AssertionError();
-            }
-            return v;
+        int old = state.getAndUpdate(v -> switch (v) {
+            // job not running; start
+            case END -> async ? BEGIN_2 : BEGIN_1;
+            // job running; schedule re-run
+            case BEGIN_1 -> AGAIN_1;
+            case BEGIN_2 -> AGAIN_2;
+            // job running and already notified to restart, nothing to do
+            case AGAIN_1, AGAIN_2 -> v;
+            default ->
+                throw new AssertionError();
         });
         return old == END;
     }
@@ -348,24 +337,12 @@ public final class SeriallyRunnable implements Runnable
     }
     
     private int getAndCountDown() {
-        return state.getAndUpdate(v -> {
-            switch (v) {
-                case END:
-                    throw new IllegalStateException("No run active.");
-                case BEGIN_1:
-                case AGAIN_1:
-                    v = END;
-                    break;
-                case BEGIN_2:
-                    v = BEGIN_1;
-                    break;
-                case AGAIN_2:
-                    v = AGAIN_1;
-                    break;
-                default:
-                    throw new AssertionError();
-            }
-            return v;
+        return state.getAndUpdate(v -> switch (v) {
+            case END -> throw new IllegalStateException("No run active.");
+            case BEGIN_1, AGAIN_1 -> END;
+            case BEGIN_2 -> BEGIN_1;
+            case AGAIN_2 -> AGAIN_1;
+            default -> throw new AssertionError();
         });
     }
 }
