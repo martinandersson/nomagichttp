@@ -246,8 +246,10 @@ public interface HttpServer extends RouteRegistry, ActionRegistry
      * 
      * @return this (for chaining/fluency)
      * 
-     * @throws IllegalStateException if the server is already running
-     * @throws IOException if an I/O error occurs
+     * @throws IllegalStateException
+     *             if the server is already running (see {@link #start(SocketAddress)})
+     * @throws IOException
+     *             if an I/O error occurs
      * 
      * @see InetAddress
      */
@@ -272,10 +274,13 @@ public interface HttpServer extends RouteRegistry, ActionRegistry
      * 
      * @return this (for chaining/fluency)
      * 
-     * @throws IllegalStateException if server is already running
-     * @throws IOException if an I/O error occurs
+     * @throws IllegalStateException
+     *             if the server is already running (see {@link #start(SocketAddress)})
+     * @throws IOException
+     *             if an I/O error occurs
      * 
      * @see InetAddress
+     * @see #start(SocketAddress)
      */
     default HttpServer start(int port) throws IOException  {
         return start(new InetSocketAddress(port));
@@ -295,17 +300,24 @@ public interface HttpServer extends RouteRegistry, ActionRegistry
      * 
      * @return this (for chaining/fluency)
      * 
-     * @throws IllegalStateException if server is already running
-     * @throws IOException if an I/O error occurs
+     * @throws IllegalStateException
+     *             if the server is already running (see {@link #start(SocketAddress)})
+     * @throws IOException
+     *             if an I/O error occurs
      * 
      * @see InetAddress
+     * @see #start(SocketAddress) 
      */
     default HttpServer start(String hostname, int port) throws IOException {
         return start(new InetSocketAddress(hostname, port));
     }
     
     /**
-     * Listen for client connections on a given address.
+     * Listen for client connections on a given address.<p>
+     * 
+     * This method blocks if the invoking thread is the one to initiate the
+     * startup routine. Another thread invoking this method concurrently will
+     * receive an {@link IllegalStateException}.
      * 
      * @param address to use
      * 

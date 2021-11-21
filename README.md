@@ -14,8 +14,11 @@ and a minimal waste of time.
 
 The NoMagicHTTP server is natively asynchronous. The server doesn't even use
 event polling or selector threads. The library codebase is written in 100%
-non-blocking Java code. What you get is a server as fast and scalable as any
-cross-platform JDK-based HTTP server implementation could possibly be.
+non-native Java code, and is almost fully non-blocking*. What you get is a
+server as fast and scalable as any cross-platform JDK-based HTTP server
+implementation could possibly be.
+
+*the only methods that _may_ block are HttpServer start/stop (by design).
 
 [All-you-need JavaDoc is here.][0-1]
 
