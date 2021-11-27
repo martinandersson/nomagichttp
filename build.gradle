@@ -50,14 +50,14 @@ sourceSets {
 
 configurations {
     // All small test dependencies are also medium+large test dependencies
-    // (e.g. @org.junit.jupiter.params.ParameterizedTest)
+    // (e.g. @org.junit.jupiter.api.Test)
     mediumTestImplementation.extendsFrom testImplementation
     mediumTestRuntimeOnly.extendsFrom testRuntimeOnly
     largeTestImplementation.extendsFrom testImplementation
     largeTestRuntimeOnly.extendsFrom testRuntimeOnly
     
     // All medium test dependencies are also large test dependencies
-    // (e.g. HTTP client implementations)
+    // (e.g. alpha.nomagichttp.testutil.HttpClientFacade)
     largeTestImplementation.extendsFrom mediumTestImplementation
     largeTestRuntimeOnly.extendsFrom mediumTestRuntimeOnly
 }
@@ -133,7 +133,7 @@ task largeTest(type: Test) {
     shouldRunAfter mediumTest
 }
 
-// Tell Gradle the obvious: build task runs all tests
+// By default, "gradle build" includes only small tests, add medium and large
 check.dependsOn tasks.withType(Test)
 
 jacocoTestReport {
