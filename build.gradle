@@ -67,12 +67,11 @@ repositories {
 }
 
 dependencies {
-    testImplementation 'org.junit.jupiter:junit-jupiter-api:5.8.1'
-    testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine:5.8.1'
+    testImplementation platform('org.junit:junit-bom:5.8.1')
+    testImplementation 'org.junit.jupiter:junit-jupiter'
     
     testImplementation 'org.assertj:assertj-core:3.21.0'
     testImplementation 'org.mockito:mockito-core:4.0.0'
-    testImplementation 'org.junit.jupiter:junit-jupiter-params:5.8.1'
     
     // HTTP client implementations used by HttpClientFacade
     mediumTestImplementation 'com.squareup.okhttp3:okhttp:4.9.2'
@@ -110,15 +109,15 @@ tasks.withType(JavaCompile) {
     if (Werror) options.compilerArgs.add '-Werror'
 }
 
-test {
+// All tests will use JUnit and generate coverage report
+tasks.withType(Test).configureEach {
     useJUnitPlatform()
+    finalizedBy jacocoTestReport
 }
 
 task mediumTest(type: Test) {
     description = 'Runs the medium tests.'
     group = 'verification'
-    
-    useJUnitPlatform()
     
     testClassesDirs = sourceSets.mediumTest.output.classesDirs
     classpath = sourceSets.mediumTest.runtimeClasspath
@@ -129,8 +128,6 @@ task largeTest(type: Test) {
     description = 'Runs the large tests.'
     group = 'verification'
     
-    useJUnitPlatform()
-    
     testClassesDirs = sourceSets.largeTest.output.classesDirs
     classpath = sourceSets.largeTest.runtimeClasspath
     shouldRunAfter mediumTest
@@ -138,11 +135,6 @@ task largeTest(type: Test) {
 
 // Tell Gradle the obvious: build task runs all tests
 check.dependsOn tasks.withType(Test)
-
-// Generate report after tests
-tasks.withType(Test).configureEach {
-    finalizedBy jacocoTestReport
-}
 
 jacocoTestReport {
     // Use data file not just from test but also from medium+large
