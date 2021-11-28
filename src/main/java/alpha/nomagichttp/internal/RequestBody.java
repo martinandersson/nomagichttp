@@ -64,7 +64,7 @@ final class RequestBody implements Request.Body
      * 
      * @param headers of request
      * @param chIn reading channel
-     * @param chApi extended channel API (exceptional closure)
+     * @param chApi extended channel API (used for exceptional closure)
      * @param timeout duration (may be {@code null})
      * @param beforeNonEmptyBodySubscription before callback (may be {@code null})
      * 
@@ -81,7 +81,7 @@ final class RequestBody implements Request.Body
         // TODO: If length is not present, then body is possibly chunked.
         // https://tools.ietf.org/html/rfc7230#section-3.3.3
         
-        // TODO: Server should throw BadRequestException if Content-Length is present AND Content-Encoding
+        // TODO: Server should throw BadRequestException if Content-Length is present AND Transfer-Encoding
         // https://tools.ietf.org/html/rfc7230#section-3.3.2
         
         // "If this is a request message and none of the above are true, then"

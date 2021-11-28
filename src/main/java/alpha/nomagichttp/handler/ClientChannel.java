@@ -17,7 +17,7 @@ import java.util.concurrent.CompletionStage;
  * A nexus of operations for querying the state of a client channel and
  * writing HTTP responses.<p>
  * 
- * Any number of responses can be written at any time within the HTTP exchange
+ * Any number of responses can be written at any time within an HTTP exchange
  * as long as the channel's write stream remains open.<p>
  * 
  * In most cases, there's only one response to a request of category 2XX
