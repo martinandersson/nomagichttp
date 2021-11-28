@@ -236,14 +236,14 @@ final class ResponsePipeline extends AbstractLocalEventEmitter
             timer.abort();
         }
         
-        stage.thenApply   (this::acceptRejectOrAbort)
-             .thenCompose (this::invokeAfterActions)
-             .thenApply   (this::closeHttp1_0)
-             .thenApply   (this::fixUnknownLength)
-             .thenApply   (this::trackConnectionClose)
-             .thenApply   (this::trackUnsuccessful)
-             .thenCompose (this::subscribeToResponse)
-             .whenComplete(this::handleResult); // <-- this re-schedules the timer
+        stage.thenApply    (this::acceptRejectOrAbort)
+             .thenCompose  (this::invokeAfterActions)
+             .thenApply    (this::closeHttp1_0)
+             .thenApply    (this::fixUnknownLength)
+             .thenApply    (this::trackConnectionClose)
+             .thenApply    (this::trackUnsuccessful)
+             .thenCompose  (this::subscribeToResponse)
+             .whenComplete (this::handleResult); // <-- this re-schedules the timer
     }
     
     private boolean timeoutEmitted;

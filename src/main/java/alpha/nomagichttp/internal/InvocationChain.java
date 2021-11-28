@@ -84,16 +84,17 @@ final class InvocationChain extends AbstractLocalEventEmitter
      */
     CompletionStage<Void> execute(SkeletonRequest req, Version ver) {
         return invokeBeforeActions(req, ver)
-                .thenRun(() -> invokeRequestHandler(req, ver));
+                   .thenRun(() ->
+                       invokeRequestHandler(req, ver));
     }
     
     private CompletionStage<Void> invokeBeforeActions(SkeletonRequest req, Version ver) {
-        List<Match<BeforeAction>> matches = actions.lookupBefore(req.target());
-        if (matches.isEmpty()) {
+        List<Match<BeforeAction>> before = actions.lookupBefore(req.target());
+        if (before.isEmpty()) {
             return COMPLETED;
         }
-        CompletableFuture<Void> allOf = new CompletableFuture<>();
-        new ChainImpl(matches.iterator(), allOf, req, ver).callAction();
+        var allOf = new CompletableFuture<Void>();
+        new ChainImpl(before.iterator(), allOf, req, ver).callAction();
         return allOf;
     }
     
