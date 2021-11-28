@@ -23,7 +23,7 @@ import static java.net.http.HttpRequest.BodyPublisher;
  * A {@code Response} contains a status line, followed by optional headers and
  * body.<p>
  * 
- * Can be built using a builder:
+ * Can be built using a {@link Response.Builder}:
  * 
  * <pre>{@code
  *   // May use HttpConstants.StatusCode/ReasonPhrase instead of int and "string"
