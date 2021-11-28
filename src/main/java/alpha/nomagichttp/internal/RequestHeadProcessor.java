@@ -4,7 +4,6 @@ import alpha.nomagichttp.message.RequestHead;
 import alpha.nomagichttp.message.RequestHeadParseException;
 import alpha.nomagichttp.util.Headers;
 
-import java.net.http.HttpHeaders;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -321,7 +320,7 @@ final class RequestHeadProcessor
     }
     
     private void complete() {
-        HttpHeaders headers = Headers.of(
+        var headers = Headers.of(
                 headerValues != null ? headerValues : Map.of());
         
         completed = new DefaultRequestHead(
