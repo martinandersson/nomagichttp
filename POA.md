@@ -34,7 +34,7 @@ An item ~~crossed out~~ is complete, an item in __bold__ is work in progress.
 [~~Stage: Multiple Responses~~](#stage-multiple-responses)  
 [~~Stage: Connection Life-Cycle/Management~~](#stage-connection-life-cyclemanagement)  
 [~~Stage: Actions~~](#stage-actions)  
-[Stage: Codings, Part 1/3 (Chunked Transfer)](#stage-codings-part-13-chunked-transfer)  
+[**Stage: Codings, Part 1/3 (Chunked Transfer)**](#stage-codings-part-13-chunked-transfer)  
 [Stage: Codings, Part 2/3 (Response Body Compression)](#stage-codings-part-23-response-body-compression)  
 [Stage: Codings, Part 3/3 (Request Body Decompression)](#stage-codings-part-33-request-body-decompression)  
 [Stage: Multipart Part 1/3 (Consuming "multipart/*")](#stage-multipart-part-13-consuming-"multipart/_")  
@@ -395,6 +395,8 @@ example, a pre action doing authentication can be scoped to "/admin".~~
   - ~~status code is 200 or 304~~
 
 ## Stage: Codings, Part 1/3 (Chunked Transfer)
+
+_Status: **In Progress**_
 
 Chunking is a HTTP/1.1-specific protocol technique for streaming a message body
 when the `Content-Length` is unknown. It also enables trailing headers _after_
