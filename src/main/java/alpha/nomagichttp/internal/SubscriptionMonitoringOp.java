@@ -20,7 +20,7 @@ import static java.util.concurrent.CompletableFuture.completedFuture;
  * Exposes an API for monitoring the subscription.<p>
  * 
  * Is used by the {@link HttpExchange} to be notified of upstream errors and the
- * completion of the downstream's body processing at which point the next HTTP
+ * completion of the downstream body processing at which point the next HTTP
  * exchange pair may commence.<p>
  * 
  * Unlike the default operator behavior, this operator subscribes eagerly to the

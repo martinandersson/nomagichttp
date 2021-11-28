@@ -53,7 +53,7 @@ import static java.util.Objects.requireNonNull;
  * {@link BodyPublishers#ofInputStream(Supplier)} is by definition blocking and
  * should be avoided altogether).<p>
  * 
- * Please do not be mislead by the Java namespace for
+ * Please do not be misled by the Java namespace for
  * <i>{@code HttpRequest}</i>{@code .BodyPublisher}. The {@code BodyPublisher}
  * is simply a publisher with a known content length used in turn by the HTTP
  * protocol for message framing. Obviously this is useful not just for requests

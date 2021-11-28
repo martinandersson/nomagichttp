@@ -56,11 +56,13 @@ import static java.util.Objects.requireNonNull;
  * library's low-level child channel ({@code ChannelByteBufferPublisher}) which
  * publishes bytebuffers first to a request head subscriber possibly followed
  * by a request body subscriber, and so the cycle continues for as long as the
- * channel is alive. It's worth noting that the channel doesn't actually extend
- * this class, rather it is used as a final instance field to which the channel
- * delegates {@code Flow.Publisher.subscribe()} calls. Another example would be
- * {@link BetterBodyPublishers#ofFile(Path)} which use a new non-reusable {@code
- * PushPullPublisher} for each subscription of the file.
+ * channel stays open. It's worth noting that the channel doesn't actually
+ * extend this class, rather it is used as a final instance field to which the
+ * channel delegates {@code Flow.Publisher.subscribe()} calls.<p>
+ * 
+ * An example of a non-reusable {@code PushPullPublisher} example would be
+ * {@link BetterBodyPublishers#ofFile(Path)} which internally use a new delegate
+ * for each subscription of the file.
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  * 
