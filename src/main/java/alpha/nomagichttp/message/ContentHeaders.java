@@ -38,10 +38,7 @@ public interface ContentHeaders extends BetterHeaders
      * 
      * TODO: Example.<p>
      * 
-     * An empty optional is returned if the header is not present.<p>
-     * 
-     * The server may assume that there is no message body if the header is not
-     * present or set to "0".
+     * An empty optional is returned if the header is not present.
      * 
      * @return parsed value (never {@code null})
      * 

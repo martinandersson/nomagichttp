@@ -84,7 +84,8 @@ final class RequestBody implements Request.Body
         
         // "If this is a request message and none of the above are true, then"
         //  the message body length is zero (no message body is present)."
-        //  - RFC 7230 §3.3.3 Message Body Length
+        // (only outbound responses may be close-delimited)
+        // https://tools.ietf.org/html/rfc7230#section-3.3.3
         final long len = headers.contentLength().orElse(0);
         
         if (len <= 0) {

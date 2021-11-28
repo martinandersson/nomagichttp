@@ -15,7 +15,7 @@ import static java.util.Objects.requireNonNull;
  * fromDownstreamRequest()} and so forth.<p>
  * 
  * The operator subscribes to the upstream lazily after the downstream
- * subscriber has subscribed and been installed. The concrete operator may
+ * subscriber has subscribed and is installed. The concrete operator may
  * override {@link #newSubscription(Flow.Subscriber)} to be notified of the
  * downstream subscriber's arrival but must call through to super which triggers
  * the upstream subscription. The upstream can also be subscribed to eagerly by
@@ -24,7 +24,7 @@ import static java.util.Objects.requireNonNull;
  * The default behavior of each method is to pass the signal through as-is. An
  * operator should obviously override at least one of these methods in order to
  * attach its operator-specific feature. To propagate the signal forward, call
- * super.<p>
+ * super, or to suppress the signal, don't.<p>
  * 
  * A few keynotes from {@code AbstractUnicastPublisher}:
  * <ul>
@@ -40,9 +40,9 @@ import static java.util.Objects.requireNonNull;
  * 
  * Although this class adds no logic or behavior and could be put into question
  * why it exists, the alternative would be for each operator to copy-paste a
- * whole bunch of repeated "infrastructure" code following the exact same
- * pattern with no other effect than to obfuscate and make it hard to follow the
- * operator's business logic.
+ * bunch of repeated "infrastructure" code following the exact same pattern with
+ * no other effect than to obfuscate and make it hard to follow the operator's
+ * feature logic.
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  * @param <T> type of item to publish
