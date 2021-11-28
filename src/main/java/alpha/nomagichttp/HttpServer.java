@@ -156,7 +156,6 @@ import static java.net.InetAddress.getLoopbackAddress;
  * 
  * Instead, do this:
  * <pre>
- * 
  *   RequestHandler h = GET().accept((request, channel) -{@literal >} {
  *       CompletionStage{@literal <}String{@literal >} data = database.fetchAsync("SELECT * FROM Something");
  *       CompletionStage{@literal <}Response{@literal >} resp = data.thenApply(Responses::text);
@@ -166,9 +165,7 @@ import static java.net.InetAddress.getLoopbackAddress;
  * 
  * The problem is <i>not</i> synchronously producing a response <i>if</i> one
  * can be produced without blocking.
- * 
  * <pre>
- * 
  *   RequestHandler h = GET().accept((request, channel) -{@literal >} {
  *       Response resp = text(String.join(" ", "Short-lived", "CPU-bound work", "is fine!"));
  *       channel.write(resp);

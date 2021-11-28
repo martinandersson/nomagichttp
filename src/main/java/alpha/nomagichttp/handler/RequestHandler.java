@@ -6,6 +6,7 @@ import alpha.nomagichttp.message.MediaType;
 import alpha.nomagichttp.message.MediaTypeParseException;
 import alpha.nomagichttp.message.Request;
 import alpha.nomagichttp.message.Response;
+import alpha.nomagichttp.message.Responses;
 import alpha.nomagichttp.route.AmbiguousHandlerException;
 import alpha.nomagichttp.route.HandlerCollisionException;
 import alpha.nomagichttp.route.NoHandlerResolvedException;
@@ -397,8 +398,7 @@ public interface RequestHandler
      * Builder of a {@link RequestHandler}.<p>
      * 
      * A builder instance can be retrieved using static factories from the
-     * enclosing class:<p>
-     * 
+     * enclosing class:
      * <pre>
      *   RequestHandler.Builder forGetRequests = RequestHandler.{@link #GET() GET}();
      * </pre>
@@ -425,15 +425,15 @@ public interface RequestHandler
      * {@code respond()} is a good choice when the function does not need to
      * access the request object:
      * <pre>
-     *   RequestHandler static = GET().respond(text("Hello!"));
+     *   RequestHandler static = GET().respond({@link Responses#text(String)
+     *       text}("Hello!"));
      * </pre>
      * 
-     * {@code apply()} is a good choice when the function needs to the request
+     * {@code apply()} is a good choice when the function needs the request
      * object and produces an asynchronous response (the request body is the
      * asynchronous part in this example which returns a {@code
      * CompletionStage}):
      * <pre>
-     * 
      *   RequestHandler greeter = POST()
      *           .apply(request -{@literal >} request.body().toText()
      *                   .thenApply(name -{@literal >} text("Hello " + name + "!")));
@@ -443,7 +443,6 @@ public interface RequestHandler
      * explicitness, {@code accept()} is given the undressed handler logic
      * function which must use the client channel to write a response:
      * <pre>
-     * 
      *   RequestHandler greeter = POST().accept((request, channel) -{@literal >} {
      *       if (request.body().isEmpty()) {
      *           Response bad = Responses.badRequest();
@@ -461,7 +460,6 @@ public interface RequestHandler
      * be necessary for more advanced use-cases that needs hot-swapping,
      * request-scoped dependencies, and so forth.
      * <pre>
-     * 
      *   class MyLogic implements BiConsumer{@literal <}Request, ClientChannel{@literal >} {
      *       MyLogic(My dependencies) {
      *           ...
@@ -475,7 +473,6 @@ public interface RequestHandler
      * 
      * Or, if you wish to skip the builder completely:
      * <pre>
-     * 
      *   class MyEndpoint implements RequestHandler {
      *       MyEndpoint(My dependencies) {
      *           ...
