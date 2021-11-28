@@ -4,8 +4,8 @@ import alpha.nomagichttp.HttpServer;
 import alpha.nomagichttp.event.EventHub;
 import alpha.nomagichttp.event.RequestHeadReceived;
 import alpha.nomagichttp.handler.ClientChannel;
-import alpha.nomagichttp.message.Char;
 import alpha.nomagichttp.handler.EndOfStreamException;
+import alpha.nomagichttp.message.Char;
 import alpha.nomagichttp.message.MaxRequestHeadSizeExceededException;
 import alpha.nomagichttp.message.PooledByteBufferHolder;
 import alpha.nomagichttp.message.RequestHead;
@@ -15,6 +15,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.Flow;
 
+import static java.lang.Long.MAX_VALUE;
 import static java.lang.System.Logger.Level.DEBUG;
 
 /**
@@ -64,15 +65,15 @@ final class RequestHeadSubscriber implements SubscriberAsStage<PooledByteBufferH
     }
     
     @Override
-    public void onSubscribe(Flow.Subscription subscription) {
-        this.subscription = SubscriberAsStage.validate(this.subscription, subscription);
-        subscription.request(Long.MAX_VALUE);
+    public void onSubscribe(Flow.Subscription s) {
+        this.subsc = SubscriberAsStage.validate(this.subsc, s);
+        s.request(MAX_VALUE);
     }
     
     // Flow.Subscriber implementation
     // ---
     
-    private Flow.Subscription subscription;
+    private Flow.Subscription subsc;
     private long started;
     private int read;
     
@@ -84,7 +85,7 @@ final class RequestHeadSubscriber implements SubscriberAsStage<PooledByteBufferH
         } catch (Throwable t) {
             LOG.log(DEBUG, "Request processing failed, shutting down the channel's read stream.");
             chApi.shutdownInputSafe();
-            subscription.cancel();
+            subsc.cancel();
             result.completeExceptionally(t);
             return;
         } finally {
@@ -92,7 +93,7 @@ final class RequestHeadSubscriber implements SubscriberAsStage<PooledByteBufferH
         }
         
         if (head != null) {
-            subscription.cancel();
+            subsc.cancel();
             events.dispatchLazy(RequestHeadReceived.INSTANCE, () -> head, () ->
                     new RequestHeadReceived.Stats(started, System.nanoTime(), read));
             result.complete(head);

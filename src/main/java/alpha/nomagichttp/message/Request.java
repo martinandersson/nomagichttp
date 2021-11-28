@@ -43,8 +43,8 @@ import java.util.stream.Stream;
  * E.g. attribute entries and caching layers such as the lazy processing of path
  * parameters, the query string and header parsing.<p>
  * 
- * The request object does not implement {@code hashCode()} and {@code equals()}.
- * Its identity is unique per receiver (see {@link
+ * The request object does not implement {@code hashCode()} and {@code
+ * equals()}. Its identity is unique per receiver (see {@link
  * ReceiverOfUniqueRequestObject}).
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
