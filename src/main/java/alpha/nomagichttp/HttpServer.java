@@ -50,12 +50,13 @@ import static java.net.InetAddress.getLoopbackAddress;
  * has been constructed, it needs to <i>{@code start()}</i> which will open the
  * server's listening port.<p>
  * 
- * Routes can be dynamically added and removed using {@link #add(Route)} and
- * {@link #remove(Route)}. A legal server variant is to not even have any routes
- * registered. The idea is that resources (what's "behind the route") can be
- * short-lived and serve very specific purposes, so their presence can
- * change. Example:
+ * Routes can be dynamically added and removed using {@link #add(Route)
+ * add(Route)} and {@link #remove(Route) remove(Route)}. A legal server variant
+ * is to not even have any routes registered. The idea is that resources (what's
+ * "behind the route") can be short-lived and serve very specific purposes, so
+ * their presence can change.<p>
  * 
+ * Example:
  * <pre>
  *   HttpServer.{@link #create(ErrorHandler...)
  *     create}().{@link #add(String, RequestHandler, RequestHandler...)
@@ -84,7 +85,7 @@ import static java.net.InetAddress.getLoopbackAddress;
  * complete support for HTTP/1.0 and 1.1 is the first milestone, yet to be done
  * (see POA.md in repository). HTTP/2 will be implemented thereafter. HTTP
  * clients older than HTTP/1.0 is rejected (the exchange will crash with a
- * {@link HttpVersionTooOldException}.
+ * {@link HttpVersionTooOldException}).
  * 
  * <h2>HTTP message semantics</h2>
  * 
@@ -144,7 +145,7 @@ import static java.net.InetAddress.getLoopbackAddress;
  * 
  * This is bad:
  * <pre>
- *   RequestHandler h = GET().{@link RequestHandler.Builder#accept(RequestHandler.Logic)} 
+ *   RequestHandler h = GET().{@link RequestHandler.Builder#accept(RequestHandler.Logic)
  *         accept}((request, channel) -{@literal >} {
  *       String data = database.fetch("SELECT * FROM Something"); // {@literal <}-- blocks!
  *       Response resp = {@link Responses}.text(data);

@@ -394,11 +394,19 @@ public interface RequestHandler
     }
     
     /**
-     * Builder of {@link RequestHandler}.<p>
+     * Builder of a {@link RequestHandler}.<p>
+     * 
+     * A builder instance can be retrieved using static factories from the
+     * enclosing class:<p>
+     * 
+     * <pre>
+     *   RequestHandler.Builder forGetRequests = RequestHandler.{@link #GET() GET}();
+     * </pre>
      * 
      * When the builder has been constructed, the request handler method will
-     * have already been set. What remains is to optionally set consuming and
-     * producing media types and finally build the handler.<p>
+     * have already been set. What remains is to set consuming and producing
+     * media types (optionally) and lastly set the request-processing
+     * function.<p>
      * 
      * Consuming and producing media types will by default be set to {@link
      * MediaType#__NOTHING_AND_ALL} and "*&#47;*" respectively, meaning that
