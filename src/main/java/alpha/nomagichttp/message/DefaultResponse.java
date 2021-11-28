@@ -39,7 +39,7 @@ final class DefaultResponse implements Response
     
     private final int statusCode;
     private final String reasonPhrase;
-    private final CommonHeaders headers;
+    private final ContentHeaders headers;
     private final Iterable<String> forWriting;
     private final Flow.Publisher<ByteBuffer> body;
     private final DefaultBuilder origin;
@@ -55,7 +55,7 @@ final class DefaultResponse implements Response
     {
         this.statusCode = statusCode;
         this.reasonPhrase = reasonPhrase;
-        this.headers = new DefaultCommonHeaders(headers);
+        this.headers = new DefaultContentHeaders(headers);
         this.forWriting = forWriting;
         this.body = body;
         this.origin = origin;
@@ -72,7 +72,7 @@ final class DefaultResponse implements Response
     }
     
     @Override
-    public CommonHeaders headers() {
+    public ContentHeaders headers() {
         return headers;
     }
     

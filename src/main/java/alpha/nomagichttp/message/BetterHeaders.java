@@ -14,28 +14,40 @@ import static alpha.nomagichttp.util.Strings.containsIgnoreCase;
 import static java.util.Objects.requireNonNull;
 
 /**
- * Is an extension API on top of an underlying {@link HttpHeaders} instance,
- * retrievable using {@link #delegate()}.<p>
+ * Is an extension API on top of a JDK-provided {@code HttpHeaders} {@link
+ * #delegate()}.<p>
+ * 
+ * This API re-declares the methods {@code firstValue} and {@code
+ * firstValueAsLong} with a stronger contract (specifies {@code
+ * NullPointerException}). This API also adds useful query methods such as
+ * {@code contain} and {@code forEach}. The delegate is still useful, however,
+ * to extract {@link HttpHeaders#allValues(String) allValues()} as a list or to
+ * get all entries as a {@link HttpHeaders#map() map()}.<p>
+ * 
+ * Subtypes may also add methods for expected header values related to that
+ * message type, e.g. {@link ContentHeaders#contentType()} (request and
+ * response) and {@link Request.Headers#accept()}. Usually, these message
+ * specific methods decode the underlying string header value into a more
+ * complex Java type, and, they usually also caches the result and so
+ * consecutive calls have no significant performance impact.<p>
  * 
  * Header key- and values when stored will have leading and trailing whitespace
  * removed. They will also maintain letter capitalization when stored and
- * consequently when retrieved, but are case insensitive when querying.<p>
+ * consequently when retrieved, but are case-insensitive when querying.<p>
  * 
- * The order of header entries (header keys) is not specified
- * (see {@link HttpHeaders}) nor is the order significant (<a
- * href="https://tools.ietf.org/html/rfc7230#section-3.2.2">RFC 7230 §3.2.2</a>)
+ * The order of header keys is not specified (see {@link HttpHeaders}) nor is
+ * the order significant (<a href="https://tools.ietf.org/html/rfc7230#section-3.2.2">RFC 7230 §3.2.2</a>)
  * .<p>
  * 
- * Methods that parse a specific/named header value (e.g. {@link
- * #contentType()}) generally caches the result and so consecutive calls have no
- * significant performance impact.<p>
- * 
- * The implementation is thread-safe and non-blocking.
+ * The implementation is thread-safe and non-blocking. It's {@code hashCode} and
+ * {@code toString} methods delegate to the JDK delegate, which in turn,
+ * delegates to the underlying map. {@code equals} computes equality based on
+ * the runtime type of this instance and the delegate's map.
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  * @see HttpConstants.HeaderKey
  */
-public interface CommonHeaders
+public interface BetterHeaders
 {
     /**
      * Returns the HTTP headers.
@@ -172,7 +184,7 @@ public interface CommonHeaders
      * of the named header field. If the header is not present, then the
      * Optional is empty. If the header is present but contains a value that
      * does not parse as a {@code Long} value, then an exception is thrown.
-     *
+     * 
      * @implSpec
      * The default implementation is
      * <pre>

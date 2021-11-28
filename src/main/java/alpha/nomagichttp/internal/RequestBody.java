@@ -1,6 +1,6 @@
 package alpha.nomagichttp.internal;
 
-import alpha.nomagichttp.message.CommonHeaders;
+import alpha.nomagichttp.message.ContentHeaders;
 import alpha.nomagichttp.message.MediaType;
 import alpha.nomagichttp.message.PooledByteBufferHolder;
 import alpha.nomagichttp.message.Request;
@@ -72,7 +72,7 @@ final class RequestBody implements Request.Body
      * @throws NullPointerException if any required argument is {@code null}
      */
     static RequestBody of(
-            CommonHeaders headers,
+            ContentHeaders headers,
             Flow.Publisher<DefaultPooledByteBufferHolder> chIn,
             DefaultClientChannel chApi,
             Duration timeout,
@@ -123,7 +123,7 @@ final class RequestBody implements Request.Body
         }
     }
     
-    private final CommonHeaders headers;
+    private final ContentHeaders headers;
     private final OnCancelDiscardOp chIn;
     private final SubscriptionMonitoringOp monitor;
     private final Runnable beforeSubsc;
@@ -132,7 +132,7 @@ final class RequestBody implements Request.Body
     
     private RequestBody(
             // Required
-            CommonHeaders headers,
+            ContentHeaders headers,
             // All optional (relevant only for body contents)
             OnCancelDiscardOp chIn,
             SubscriptionMonitoringOp monitor,

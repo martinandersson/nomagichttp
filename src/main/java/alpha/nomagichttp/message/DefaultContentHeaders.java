@@ -13,12 +13,12 @@ import static java.util.Objects.requireNonNull;
 import static java.util.Optional.empty;
 
 /**
- * Default implementation of {@link CommonHeaders}.
+ * Default implementation of {@link ContentHeaders}.
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  */
-public class DefaultCommonHeaders implements CommonHeaders {
-    private final HttpHeaders delegate;
+public class DefaultContentHeaders implements ContentHeaders {
+    private final HttpHeaders jdk;
     
     /**
      * Constructs this object.
@@ -26,13 +26,13 @@ public class DefaultCommonHeaders implements CommonHeaders {
      * @param delegate backing values
      * @throws NullPointerException if {@code delegate} is {@code null}
      */
-    public DefaultCommonHeaders(HttpHeaders delegate) {
-        this.delegate = requireNonNull(delegate);
+    public DefaultContentHeaders(HttpHeaders delegate) {
+        this.jdk = requireNonNull(delegate);
     }
     
     @Override
     public final HttpHeaders delegate() {
-        return delegate;
+        return jdk;
     }
     
     private Optional<MediaType> cc;
@@ -40,7 +40,7 @@ public class DefaultCommonHeaders implements CommonHeaders {
     @Override
     public final Optional<MediaType> contentType() {
         var cc = this.cc;
-        return cc != null ? cc : (this.cc = mkContentType(delegate));
+        return cc != null ? cc : (this.cc = mkContentType(jdk));
     }
     
     private static Optional<MediaType> mkContentType(HttpHeaders headers) {
@@ -63,7 +63,7 @@ public class DefaultCommonHeaders implements CommonHeaders {
     @Override
     public final OptionalLong contentLength() {
         var cl = this.cl;
-        return cl != null ? cl : (this.cl = mkContentLength(delegate));
+        return cl != null ? cl : (this.cl = mkContentLength(jdk));
     }
     
     private static OptionalLong mkContentLength(HttpHeaders headers) {
@@ -85,5 +85,23 @@ public class DefaultCommonHeaders implements CommonHeaders {
         
         throw new BadHeaderException(
                 "Multiple " + CONTENT_LENGTH + " values in request.");
+    }
+    
+    @Override
+    public final boolean equals(Object obj) {
+        if (obj == null || this.getClass() != obj.getClass()) {
+            return false;
+        }
+        return this.delegate().equals(((ContentHeaders) obj).delegate());
+    }
+    
+    @Override
+    public final int hashCode() {
+        return this.delegate().hashCode();
+    }
+    
+    @Override
+    public final String toString() {
+        return this.delegate().toString();
     }
 }

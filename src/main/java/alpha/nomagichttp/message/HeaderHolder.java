@@ -11,5 +11,5 @@ public interface HeaderHolder {
      * 
      * @return the HTTP headers (never {@code null})
      */
-    CommonHeaders headers();
+    ContentHeaders headers();
 }

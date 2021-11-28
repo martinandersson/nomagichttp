@@ -470,7 +470,7 @@ public interface Request extends HeaderHolder, AttributeHolder
     /**
      * Request-specific headers.
      */
-    interface Headers extends CommonHeaders {
+    interface Headers extends ContentHeaders {
         /**
          * Parses all "Accept" values.<p>
          * 

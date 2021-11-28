@@ -1,7 +1,7 @@
 package alpha.nomagichttp.internal;
 
 import alpha.nomagichttp.message.BadHeaderException;
-import alpha.nomagichttp.message.DefaultCommonHeaders;
+import alpha.nomagichttp.message.DefaultContentHeaders;
 import alpha.nomagichttp.message.MediaType;
 import alpha.nomagichttp.message.MediaTypeParseException;
 import alpha.nomagichttp.message.Request;
@@ -55,11 +55,10 @@ final class DefaultRequestHead implements RequestHead
     
     @Override
     public String toString() {
-        return "\"" + join(" ", method, requestTarget, httpVersion) + "\" " +
-               headers.delegate().map().toString();
+        return "\"" + join(" ", method, requestTarget, httpVersion) + "\" " + headers;
     }
     
-    private static class RequestHeaders extends DefaultCommonHeaders implements Request.Headers {
+    private static class RequestHeaders extends DefaultContentHeaders implements Request.Headers {
         RequestHeaders(HttpHeaders headers) {
             super(headers);
         }

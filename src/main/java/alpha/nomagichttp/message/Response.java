@@ -66,7 +66,7 @@ import static java.net.http.HttpRequest.BodyPublisher;
  * <strong>not</strong> join the values on the same row. If this is desired,
  * first join multiple values and then pass it to the builder as one.<p>
  * 
- * Header order is not significant (see {@link CommonHeaders}), but - unless
+ * Header order is not significant (see {@link ContentHeaders}), but - unless
  * documented differently - the response builder will preserve the addition
  * order on the wire (FIFO) except for duplicated names which will be grouped
  * together and inserted at the occurrence of the first value.<p>
@@ -357,7 +357,7 @@ public interface Response extends HeaderHolder
          * The default implementation is
          * <pre>
          *     return this.{@link #addHeaders(Map)
-         *       addHeaders}(headers.{@link CommonHeaders#delegate()
+         *       addHeaders}(headers.{@link ContentHeaders#delegate()
          *         delegate}().{@link HttpHeaders#map() map}());
          * </pre>
          * 
@@ -369,7 +369,7 @@ public interface Response extends HeaderHolder
          * @throws  NullPointerException if {@code headers} is {@code null}
          * @see     HttpConstants.HeaderKey
          */
-        default Builder addHeaders(CommonHeaders headers) {
+        default Builder addHeaders(ContentHeaders headers) {
             return addHeaders(headers.delegate().map());
         }
         
