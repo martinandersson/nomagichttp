@@ -78,11 +78,9 @@ final class RequestBody implements Request.Body
             Duration timeout,
             Runnable beforeNonEmptyBodySubscription)
     {
-        // TODO: If length is not present, then body is possibly chunked.
+        // TODO: 1) If length is not present, then body is possibly chunked.
+        //       2) Server should throw BadRequestException (?) if Content-Length is present AND Transfer-Encoding
         // https://tools.ietf.org/html/rfc7230#section-3.3.3
-        
-        // TODO: Server should throw BadRequestException if Content-Length is present AND Transfer-Encoding
-        // https://tools.ietf.org/html/rfc7230#section-3.3.2
         
         // "If this is a request message and none of the above are true, then"
         //  the message body length is zero (no message body is present)."

@@ -1,6 +1,7 @@
 package alpha.nomagichttp.message;
 
 import alpha.nomagichttp.HttpConstants;
+import alpha.nomagichttp.HttpServer;
 import alpha.nomagichttp.handler.ErrorHandler;
 
 import static java.util.Objects.requireNonNull;
@@ -22,6 +23,7 @@ import static java.util.Objects.requireNonNull;
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  * 
+ * @see HttpServer
  * @see ErrorHandler
  */
 public class IllegalResponseBodyException extends RuntimeException

@@ -1,8 +1,8 @@
 package alpha.nomagichttp.message;
 
 /**
- * Thrown by an implementation of {@link ContentHeaders} when converting a
- * String header value into another Java type, fails.
+ * Thrown by a subtype of {@link BetterHeaders} when converting a string header
+ * value into another Java type, fails.
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  */
