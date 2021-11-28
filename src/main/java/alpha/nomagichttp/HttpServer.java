@@ -87,33 +87,6 @@ import static java.net.InetAddress.getLoopbackAddress;
  * clients older than HTTP/1.0 is rejected (the exchange will crash with a
  * {@link HttpVersionTooOldException}).
  * 
- * <h2>HTTP message semantics</h2>
- * 
- * Only a very few message variants are specified to <i>not</i> have a body and
- * will be rejected by the server if they do ({@link
- * IllegalRequestBodyException}, {@link IllegalResponseBodyException}). These
- * variants <i>must</i> be rejected since including a body would have likely
- * killed the protocol.<p>
- * 
- * For all other variants of requests and responses, the body is optional and
- * the server does not reject the message based on the presence of a body. This
- * is mostly true for all other message variants as well; the server does not
- * have an opinionated view unless an opinionated view is warranted. The request
- * handler is mostly in control over how it interprets the request message and
- * what response it returns with no interference.<p>
- * 
- * For example, it might not be common but it <i>is</i>
- * allowed for {@link HttpConstants.Method#GET GET} requests (
- * <a href="https://tools.ietf.org/html/rfc7231#section-4.3.1">RFC 7231 §4.3.1</a>
- * ) to have a body and for {@link HttpConstants.Method#POST POST} requests to
- * not have a body (
- * <a href="https://tools.ietf.org/html/rfc7230#section-3.3.2">RFC 7230 §3.3.2</a>
- * ). Similarly, the {@link HttpConstants.StatusCode#TWO_HUNDRED_ONE 201
- * (Created)} response often do have a body which "typically describes and links
- * to the resource(s) created" (
- * <a href="https://tools.ietf.org/html/rfc7231#section-6.3.2">RFC 7231 §6.3.2</a>
- * ), but it's not required to. And so the list goes on.
- * 
  * <h2>Thread Safety and Threading Model</h2>
  * 
  * The server is fully thread-safe, and mostly, asynchronous and
@@ -171,6 +144,33 @@ import static java.net.InetAddress.getLoopbackAddress;
  *       channel.write(resp);
  *   });
  * </pre>
+ * 
+ * <h2>HTTP message semantics</h2>
+ * 
+ * Only a very few message variants are specified to <i>not</i> have a body and
+ * will be rejected by the server if they do ({@link
+ * IllegalRequestBodyException}, {@link IllegalResponseBodyException}). These
+ * variants <i>must</i> be rejected since including a body would have likely
+ * killed the protocol.<p>
+ * 
+ * For all other variants of requests and responses, the body is optional and
+ * the server does not reject the message based on the presence (or absence) of
+ * a body. This is mostly true for all other message variants as well; the
+ * server does not have an opinionated view unless an opinionated view is
+ * warranted. The request handler is mostly in control over how it interprets
+ * the request message and what response it returns with no interference.<p>
+ * 
+ * For example, it might not be common but it <i>is</i>
+ * allowed for {@link HttpConstants.Method#GET GET} requests (
+ * <a href="https://tools.ietf.org/html/rfc7231#section-4.3.1">RFC 7231 §4.3.1</a>
+ * ) to have a body and for {@link HttpConstants.Method#POST POST} requests to
+ * not have a body (
+ * <a href="https://tools.ietf.org/html/rfc7230#section-3.3.2">RFC 7230 §3.3.2</a>
+ * ). Similarly, the {@link HttpConstants.StatusCode#TWO_HUNDRED_ONE 201
+ * (Created)} response often do have a body which "typically describes and links
+ * to the resource(s) created" (
+ * <a href="https://tools.ietf.org/html/rfc7231#section-6.3.2">RFC 7231 §6.3.2</a>
+ * ), but it's not required to. And so the list goes on.
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  * 
