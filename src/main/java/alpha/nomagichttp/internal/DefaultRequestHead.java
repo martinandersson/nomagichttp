@@ -13,49 +13,19 @@ import java.util.List;
 import static alpha.nomagichttp.HttpConstants.HeaderKey.ACCEPT;
 import static alpha.nomagichttp.util.Streams.randomAndUnmodifiable;
 import static alpha.nomagichttp.util.Strings.split;
-import static java.lang.String.join;
 import static java.util.Arrays.stream;
 
-final class DefaultRequestHead implements RequestHead
+record DefaultRequestHead(
+        String method, String target, String httpVersion, Request.Headers headers)
+        implements RequestHead
 {
-    private final String method, requestTarget, httpVersion;
-    private final Request.Headers headers;
-    
     DefaultRequestHead(
             String method,
-            String requestTarget,
+            String target,
             String httpVersion,
             HttpHeaders headers)
     {
-        this.method        = method;
-        this.requestTarget = requestTarget;
-        this.httpVersion   = httpVersion;
-        this.headers       = new RequestHeaders(headers);
-    }
-    
-    @Override
-    public String method() {
-        return method;
-    }
-    
-    @Override
-    public String target() {
-        return requestTarget;
-    }
-    
-    @Override
-    public String httpVersion() {
-        return httpVersion;
-    }
-    
-    @Override
-    public Request.Headers headers() {
-        return headers;
-    }
-    
-    @Override
-    public String toString() {
-        return "\"" + join(" ", method, requestTarget, httpVersion) + "\" " + headers;
+        this(method, target, httpVersion, new RequestHeaders(headers));
     }
     
     private static class RequestHeaders extends DefaultContentHeaders implements Request.Headers {
