@@ -85,6 +85,7 @@ public final class HttpConstants {
          * 
          * @see Method
          * @see <a href="https://tools.ietf.org/html/rfc7231#section-4.3.1">RFC 7231 §4.3.1</a>
+         * @see #QUERY
          */
         public static final String GET = "GET";
         
@@ -381,6 +382,19 @@ public final class HttpConstants {
          * @see <a href="https://tools.ietf.org/html/rfc7231#section-4.3.8">RFC 7231 §4.3.8</a>
          */
         public static final String TRACE = "TRACE";
+        
+        /**
+         * Perform a query where the parameters are the message body.<p>
+         * 
+         * An alternative to using {@link #GET} with a query string.<p>
+         * 
+         * Safe? Yes. Idempotent? Yes. Response cacheable? Yes.
+         * 
+         * @see Method
+         * @see <a href="https://www.ietf.org/id/draft-ietf-httpbis-safe-method-w-body-02.html">IEFT Internet-Draft</a>
+         * @see <a href="https://stackoverflow.com/a/70157919">StackOverflow</a>
+         */
+        public static final String QUERY = "QUERY";
     }
     
     /**
