@@ -18,7 +18,8 @@ non-native Java code, and is almost fully non-blocking*. What you get is a
 server as fast and scalable as any cross-platform JDK-based HTTP server
 implementation could possibly be.
 
-*the only methods that _may_ block are HttpServer start/stop (by design).
+*the only methods that _may_ block are those related to a channel's life-cycle
+(by design).
 
 [All-you-need JavaDoc is here.][0-1]
 
