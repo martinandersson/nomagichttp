@@ -518,7 +518,8 @@ public final class Responses
     /**
      * Creates a new 408 (Request Timeout) response with no body.<p>
      * 
-     * The header "Connection: close" will be set.
+     * The returned response contains the header "Connection: close" which will
+     * cause the connection to gracefully close (see {@link ClientChannel}).
      * 
      * @return  a new 408 (Request Timeout) response
      * @see     StatusCode#FOUR_HUNDRED_EIGHT
@@ -533,7 +534,8 @@ public final class Responses
     /**
      * Creates a new 413 (Entity Too Large) response with no body.<p>
      * 
-     * A header "Connection: close" will have been set.
+     * The returned response contains the header "Connection: close" which will
+     * cause the connection to gracefully close (see {@link ClientChannel}).
      * 
      * @return  a new 413 (Entity Too Large)
      * @see    StatusCode#FOUR_HUNDRED_THIRTEEN
@@ -591,8 +593,8 @@ public final class Responses
     /**
      * Creates a new 503 (Service Unavailable) response with no body.<p>
      * 
-     * The header "Connection: close" will be set which will cause the
-     * connection to gracefully close (see {@link ClientChannel}).
+     * The returned response contains the header "Connection: close" which will
+     * cause the connection to gracefully close (see {@link ClientChannel}).
      * 
      * @return  a new 503 (Service Unavailable) response
      * @see     StatusCode#FIVE_HUNDRED_THREE
