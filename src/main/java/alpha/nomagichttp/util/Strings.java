@@ -145,6 +145,7 @@ public final class Strings
             }
         }
         
+        // TODO: DRY
         if (tkn != null) {
             if (sink == null) {
                 sink = Stream.builder();
