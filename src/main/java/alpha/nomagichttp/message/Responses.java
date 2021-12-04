@@ -475,8 +475,7 @@ public final class Responses
      * @see     StatusCode#FOUR_HUNDRED
      */
     public static Response badRequest() {
-        return CACHE.get(FOUR_HUNDRED, BAD_REQUEST).toBuilder()
-                .header(CONNECTION, "close").build();
+        return CACHE.get(FOUR_HUNDRED, BAD_REQUEST);
     }
     
     /**
@@ -531,7 +530,6 @@ public final class Responses
     public static Response requestTimeout() {
         return CACHE.get(FOUR_HUNDRED_EIGHT, REQUEST_TIMEOUT).toBuilder()
                 .header(CONTENT_LENGTH, "0")
-                .header(CONNECTION, "close")
                 .build();
     }
     
@@ -545,8 +543,7 @@ public final class Responses
      * @see    StatusCode#FOUR_HUNDRED_THIRTEEN
      */
     public static Response entityTooLarge() {
-        return CACHE.get(FOUR_HUNDRED_THIRTEEN, ENTITY_TOO_LARGE).toBuilder()
-                .header(CONNECTION, "close").build();
+        return CACHE.get(FOUR_HUNDRED_THIRTEEN, ENTITY_TOO_LARGE);
     }
     
     /**
@@ -606,7 +603,6 @@ public final class Responses
     public static Response serviceUnavailable() {
         return CACHE.get(FIVE_HUNDRED_THREE, SERVICE_UNAVAILABLE).toBuilder()
                 .header(CONTENT_LENGTH, "0")
-                .header(CONNECTION, "close")
                 .build();
     }
     
@@ -684,6 +680,9 @@ public final class Responses
         if (!isBodyForbidden(code)) {
             b = b.header(CONTENT_LENGTH, "0");
         }
+        if (isClosingConnection(code)) {
+            b = b.header(CONNECTION, "close");
+        }
         return b.build();
     }
     
@@ -707,5 +706,12 @@ public final class Responses
      */
     private static boolean isBodyForbidden(int code) {
         return code >= 100 && code <= 199 || code == 204;
+    }
+    
+    private static boolean isClosingConnection(int code) {
+        return code == FOUR_HUNDRED          || // Bad Request
+               code == FOUR_HUNDRED_EIGHT    || // Request Timeout
+               code == FOUR_HUNDRED_THIRTEEN || // Payload Too Large
+               code == FIVE_HUNDRED_THREE;      // Service Unavailable
     }
 }
