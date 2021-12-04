@@ -24,12 +24,11 @@ import static java.util.Objects.requireNonNull;
  * to extract {@link HttpHeaders#allValues(String) allValues()} as a list or to
  * get all entries as a {@link HttpHeaders#map() map()}.<p>
  * 
- * Subtypes may also add methods for expected header values related to that
- * message type, e.g. {@link ContentHeaders#contentType()} (request and
- * response) and {@link Request.Headers#accept()}. Usually, these message
- * specific methods decode the underlying string header value into a more
- * complex Java type, and, they usually also caches the result and so
- * consecutive calls have no significant performance impact.<p>
+ * Subtypes may also add methods that extract or parse message-specific headers,
+ * e.g. {@link ContentHeaders#contentType()} and {@link
+ * Request.Headers#accept()}. Any such method parsing the header into a complex
+ * Java type also caches the result and so consecutive calls have no significant
+ * performance impact.<p>
  * 
  * Header key- and values when stored will have leading and trailing whitespace
  * removed. They will also maintain letter capitalization when stored and

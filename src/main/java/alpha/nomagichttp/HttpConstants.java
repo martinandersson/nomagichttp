@@ -2673,10 +2673,9 @@ public final class HttpConstants {
          * 
          * Example: {@code TE: trailers, deflate}<p>
          * 
-         * Currently, the NoMagicHTTP server does not apply chunked encoding and
-         * consequently ignores this key. Work is planned to add this support.
-         * HTTP/2 has it's own streaming mechanism and supports only {@code
-         * trailers}.
+         * Currently, the NoMagicHTTP server does not apply any transfer codings
+         * on outgoing responses and consequently ignores this key. Work is
+         * planned to add codecs.
          * 
          * @see #TRAILER
          * @see <a href="https://tools.ietf.org/html/rfc7230#section-4.3">RFC 7230 §4.3</a>

@@ -158,7 +158,8 @@ import static java.net.InetAddress.getLoopbackAddress;
  * a body. This is mostly true for all other message variants as well; the
  * server does not have an opinionated view unless an opinionated view is
  * warranted. The request handler is mostly in control over how it interprets
- * the request message and what response it returns with no interference.<p>
+ * the request message and what response it returns with no interference from
+ * the server.<p>
  * 
  * For example, it might not be common but it <i>is</i>
  * allowed for {@link HttpConstants.Method#GET GET} requests (
