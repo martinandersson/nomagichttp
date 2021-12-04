@@ -1,6 +1,5 @@
 package alpha.nomagichttp.util;
 
-import java.util.PrimitiveIterator;
 import java.util.function.IntPredicate;
 import java.util.stream.Stream;
 
@@ -97,16 +96,16 @@ public final class Strings
             CharSequence str, char delimiter,
             IntPredicate escapeChar, IntPredicate excludeChar)
     {
-        PrimitiveIterator.OfInt chars = str.chars().iterator();
-        
         StringBuilder tkn = null;
         Stream.Builder<String> sink = null;
+        
+        final int len = str.length();
+        char prev = MIN_VALUE;
         boolean excluding = false;
         
-        char prev = MIN_VALUE;
-        while (chars.hasNext()) {
+        for (int i = 0; i < len; ++i) {
+            final char c = str.charAt(i);
             boolean split;
-            final char c = (char) chars.nextInt();
             
             if (escapeChar.test(prev) && excluding) {
                 // Whatever c is, keep building current token
