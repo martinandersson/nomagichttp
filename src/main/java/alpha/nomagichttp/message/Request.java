@@ -472,23 +472,16 @@ public interface Request extends HeaderHolder, AttributeHolder
      */
     interface Headers extends ContentHeaders {
         /**
-         * Parses all "Accept" values.<p>
+         * Parses all "Accept" values.
          * 
-         * The accept-header may be specified by clients that wish to retrieve a
-         * particular resource representation.<p>
-         * 
-         * <i>All</i> accept-header keys are taken into account in order,
-         * splitting the values by the comma character (",") - except for quoted
-         * values (;param="quo,ted"), then feeding each token to {@link
-         * MediaType#parse(String)}.
-         * 
-         * @return parsed values (unmodifiable, implements {@link RandomAccess})
+         * @return parsed values (unmodifiable, {@link RandomAccess}, not {@code null})
          * 
          * @throws BadHeaderException
          *             if parsing failed (the cause is set to a
          *             {@link MediaTypeParseException})
          * 
          * @see HttpConstants.HeaderKey#ACCEPT
+         * @see MediaType#parse(String) 
          */
         List<MediaType> accept();
     }

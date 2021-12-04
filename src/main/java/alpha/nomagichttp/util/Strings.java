@@ -3,6 +3,7 @@ package alpha.nomagichttp.util;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.PrimitiveIterator;
+import java.util.function.IntPredicate;
 
 import static java.lang.Character.MIN_VALUE;
 
@@ -15,6 +16,22 @@ public final class Strings
 {
     private Strings() {
         // Empty
+    }
+    
+    /**
+     * Split a string into an array of tokens.<p>
+     * 
+     * Works just as {@code String.split}, except this method never returns
+     * empty tokens.
+     * 
+     * @param str input to split
+     * @param delimiter char to split by
+     * 
+     * @return the substrings
+     * @throws NullPointerException if {@code str} is {@code null}
+     */
+    public static String[] split(CharSequence str, char delimiter) {
+        return split(str, delimiter, c -> false, c -> false);
     }
     
     /**
@@ -60,17 +77,27 @@ public final class Strings
      *            if {@code str} is {@code null}
      * 
      * @throws IllegalArgumentException
-     *             if {@code delimiter} and {@code excludeBoundary}
-     *             are the same char
+     *             if {@code delimiter} is the backslash character, or
+     *             if {@code delimiter} and {@code excludeBoundary} are the same
      * 
      * @see #unquote(String) 
      */
     public static String[] split(CharSequence str, char delimiter, char excludeBoundary) {
+        if (delimiter == '\\') {
+            throw new IllegalArgumentException(
+                    "Delimiter char can not be the escape char.");
+        }
         if (delimiter == excludeBoundary) {
             throw new IllegalArgumentException(
-                    "Delimiter char can not be same as exclude char.");
+                    "Delimiter char can not be the same as exclude char.");
         }
-        
+        return split(str, delimiter, c -> c == '\\', c -> c == excludeBoundary);
+    }
+    
+    private static String[] split(
+            CharSequence str, char delimiter,
+            IntPredicate escapeChar, IntPredicate excludeChar)
+    {
         PrimitiveIterator.OfInt chars = str.chars().iterator();
         
         StringBuilder tkn = null;
@@ -82,13 +109,13 @@ public final class Strings
             boolean split;
             final char c = (char) chars.nextInt();
             
-            if (prev == '\\' && excluding) {
+            if (escapeChar.test(prev) && excluding) {
                 // Whatever c is, keep building current token
                 split = false;
             } else if (c == delimiter) {
                 // We split only if we're not excluding
                 split = !excluding;
-            } else if (c == excludeBoundary) {
+            } else if (excludeChar.test(c)) {
                 // Certainly not cause for split
                 split = false;
                 // But does toggle the current mode
@@ -104,9 +131,11 @@ public final class Strings
                 // Push what we had and begin new token
                 if (tkn != null) {
                     if (sink == null) {
-                        sink = new ArrayList<>();
+                        sink = new ArrayList<>(1);
                     }
-                    sink.add(tkn.toString());
+                    var t = tkn.toString();
+                    assert !t.isEmpty();
+                    sink.add(t);
                     tkn = null;
                 }
             } else {
@@ -120,9 +149,11 @@ public final class Strings
         
         if (tkn != null) {
             if (sink == null) {
-                sink = new ArrayList<>();
+                sink = new ArrayList<>(1);
             }
-            sink.add(tkn.toString());
+            var t = tkn.toString();
+            assert !t.isEmpty();
+            sink.add(t);
         }
         
         return sink == null ? EMPTY : sink.toArray(String[]::new);

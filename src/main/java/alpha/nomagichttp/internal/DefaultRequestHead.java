@@ -12,8 +12,6 @@ import java.util.List;
 
 import static alpha.nomagichttp.HttpConstants.HeaderKey.ACCEPT;
 import static alpha.nomagichttp.util.Streams.randomAndUnmodifiable;
-import static alpha.nomagichttp.util.Strings.split;
-import static java.util.Arrays.stream;
 
 record DefaultRequestHead(
         String method, String target, String httpVersion, Request.Headers headers)
@@ -38,17 +36,16 @@ record DefaultRequestHead(
         @Override
         public final List<MediaType> accept() {
             var ac = this.ac;
-            return ac != null ? ac : (this.ac = mkAccept(delegate()));
+            return ac != null ? ac : (this.ac = mkAccept());
         }
         
-        private static List<MediaType> mkAccept(HttpHeaders headers) {
-            var l = headers.allValues(ACCEPT);
-            if (l.isEmpty()) {
+        private List<MediaType> mkAccept() {
+            var tkns = allTokensKeepQuotes(ACCEPT);
+            if (tkns.isEmpty()) {
                 return List.of();
             }
             try {
-                return randomAndUnmodifiable(l.size(), l.stream()
-                        .flatMap(v -> stream(split(v, ',', '"')))
+                return randomAndUnmodifiable(tkns.size(), tkns.stream()
                         .map(MediaType::parse));
             } catch (MediaTypeParseException e) {
                 throw new BadHeaderException("Failed to parse " + ACCEPT + " header.", e);

@@ -1,5 +1,7 @@
 package alpha.nomagichttp.message;
 
+import alpha.nomagichttp.util.Strings;
+
 import java.net.http.HttpHeaders;
 import java.util.List;
 import java.util.Optional;
@@ -13,7 +15,11 @@ import static java.util.Objects.requireNonNull;
 import static java.util.Optional.empty;
 
 /**
- * Default implementation of {@link ContentHeaders}.
+ * Default implementation of {@link ContentHeaders}.<p>
+ * 
+ * Is a convenient base class with final implementations for
+ * equals/hashCode/toString/allTokens/allTokensKeepQuotes. Also provides
+ * accessors for non-public hop-by-hop headers.
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  */
@@ -48,7 +54,7 @@ public class DefaultContentHeaders implements ContentHeaders {
         if (vals.isEmpty()) {
             return empty();
         }
-        else if (vals.size() == 1) {
+        if (vals.size() == 1) {
             try {
                 return Optional.of(parse(vals.get(0)));
             } catch (MediaTypeParseException e) {
@@ -85,6 +91,28 @@ public class DefaultContentHeaders implements ContentHeaders {
         
         throw new BadHeaderException(
                 "Multiple " + CONTENT_LENGTH + " values in request.");
+    }
+    
+    @Override
+    public List<String> allTokens(String name) {
+        return List.of(stripped(Strings.split(combine(name), ',')));
+    }
+    
+    @Override
+    public List<String> allTokensKeepQuotes(String name) {
+        return List.of(stripped(Strings.split(combine(name), ',', '"')));
+    }
+    
+    private String combine(String name) {
+        // NPE not documented in JDK
+        return String.join(", ", jdk.allValues(requireNonNull(name)));
+    }
+    
+    private static String[] stripped(String[] arr) {
+        for (int i = 0; i < arr.length; ++i) {
+            arr[i] = arr[i].strip();
+        }
+        return arr;
     }
     
     @Override

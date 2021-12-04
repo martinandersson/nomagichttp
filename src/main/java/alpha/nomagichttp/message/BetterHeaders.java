@@ -1,34 +1,23 @@
 package alpha.nomagichttp.message;
 
 import alpha.nomagichttp.HttpConstants;
+import alpha.nomagichttp.util.Strings;
 
 import java.net.http.HttpHeaders;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
-import java.util.Optional;
-import java.util.OptionalLong;
+import java.util.RandomAccess;
 import java.util.function.BiConsumer;
 
 import static alpha.nomagichttp.util.Strings.containsIgnoreCase;
 import static java.util.Objects.requireNonNull;
 
 /**
- * Is an extension API on top of a JDK-provided {@code HttpHeaders} {@link
- * #delegate()}.<p>
+ * An extension API on top of a JDK-provided {@code HttpHeaders} delegate.<p>
  * 
- * This API re-declares the methods {@code firstValue} and {@code
- * firstValueAsLong} with a stronger contract (specifies {@code
- * NullPointerException}). This API also adds useful query methods such as
- * {@code contain} and {@code forEach}. The delegate is still useful, however,
- * to extract {@link HttpHeaders#allValues(String) allValues()} as a list or to
- * get all entries as a {@link HttpHeaders#map() map()}.<p>
- * 
- * Subtypes may also add methods that extract or parse message-specific headers,
- * e.g. {@link ContentHeaders#contentType()} and {@link
- * Request.Headers#accept()}. Any such method parsing the header into a complex
- * Java type also caches the result and so consecutive calls have no significant
- * performance impact.<p>
+ * Subtypes add methods that lookup and/or parse named and message-specific
+ * headers, e.g. {@link ContentHeaders#contentType()} and {@link
+ * Request.Headers#accept()}.<p>
  * 
  * Header key- and values when stored will have leading and trailing whitespace
  * removed. They will also maintain letter capitalization when stored and
@@ -37,6 +26,11 @@ import static java.util.Objects.requireNonNull;
  * The order of header keys is not specified (see {@link HttpHeaders}) nor is
  * the order significant (<a href="https://tools.ietf.org/html/rfc7230#section-3.2.2">RFC 7230 §3.2.2</a>)
  * .<p>
+ * 
+ * The BetterHeaders implementation will utilize a cache when deemed necessary.
+ * This is certainly true for all methods named after a header which it parses
+ * (so, application may assume there is no performance impact for repetitive
+ * calls).<p>
  * 
  * The implementation is thread-safe and non-blocking. It's {@code hashCode} and
  * {@code toString} methods delegate to the JDK delegate, which in turn,
@@ -49,7 +43,10 @@ import static java.util.Objects.requireNonNull;
 public interface BetterHeaders
 {
     /**
-     * Returns the HTTP headers.
+     * Returns the HTTP headers.<p>
+     * 
+     * Almost all methods in the JDK class have an equivalent [and better]
+     * method in this interface. The one exception is {@link HttpHeaders#map()}.
      * 
      * @return the HTTP headers (never {@code null})
      */
@@ -114,56 +111,57 @@ public interface BetterHeaders
     }
     
     /**
-     * Returns an {@link Optional} containing the first header string value of
-     * the given named (and possibly multi-valued) header. If the header is not
-     * present, then the returned {@code Optional} is empty.
+     * Combine and tokenize all values for the given header name.<p>
      * 
-     * @implSpec
-     * The default implementation is
+     * All values of the header will be combined, then split using a comma, then
+     * stripped. Empty tokens ignored.<p>
+     * 
+     * This method is useful when extracting potentially repeated fields defined
+     * as a comma-separated list of tokens.<p>
+     * 
+     * Given these headers:
      * <pre>
-     *     return this.{@link #delegate()
-     *       delegate}().{@link HttpHeaders#firstValue(String)
-     *         firstValue}({@link Objects#requireNonNull(Object)
-     *           requireNonNull}(name));
+     *     Trailer: first
+     *     Trailer: second, ,  third
+     * </pre>
+     * The result is:
+     * <pre>
+     *     ["first", "second", "third]
      * </pre>
      * 
-     * @param name the header name
-     * @return an {@code Optional<String>} containing the first named header
-     *         string value, if present
-     * @throws NullPointerException if {@code name} is {@code null}
+     * @param name of header
+     * @return tokens (list is unmodifiable, {@link RandomAccess}, never {@code null})
+     * @throws NullPointerException if {@code header} is {@code null}
+     * @see #allTokensKeepQuotes(String)
+     * @see <a href="https://datatracker.ietf.org/doc/html/rfc7230#section-3.2.2">RFC 7230 §3.2.2</a>
+     * @see <a href="https://datatracker.ietf.org/doc/html/rfc7230#section-3.2.6">RFC 7230 §3.2.6</a>
      */
-    default Optional<String> firstValue(String name) {
-        // NPE unfortunately not documented in JDK
-        return delegate().firstValue(requireNonNull(name));
-    }
+    List<String> allTokens(String name);
     
     /**
-     * Returns an {@link OptionalLong} containing the first header string value
-     * of the named header field. If the header is not present, then the
-     * Optional is empty. If the header is present but contains a value that
-     * does not parse as a {@code Long} value, then an exception is thrown.
+     * Does what {@link #allTokens(String)} do, except it does not split on a
+     * comma found within a quoted string.
      * 
-     * @implSpec
-     * The default implementation is
+     * Given these headers:
      * <pre>
-     *     return this.{@link #delegate()
-     *       delegate}().{@link HttpHeaders#firstValueAsLong(String)
-     *         firstValueAsLong}({@link Objects#requireNonNull(Object)
-     *           requireNonNull}(name));
+     *     Accept: text/plain
+     *     Accept: text/something;param="foo,bar"
+     * </pre>
+     * The result is:
+     * <pre>
+     *     ["text/plain", "text/something;param="foo,bar""]
      * </pre>
      * 
-     * @param name the header name
-     * @return  an {@code OptionalLong}
+     * Field comments are kept as-is.
      * 
-     * @throws NullPointerException
-     *             if {@code name} is {@code null}
-     * @throws NumberFormatException
-     *             if a value is found, but does not parse as a Long
+     * @param name header name
+     * @return tokens (list is unmodifiable, {@link RandomAccess}, never {@code null})
+     * @throws NullPointerException if {@code header} is {@code null}
+     * @see <a href="https://datatracker.ietf.org/doc/html/rfc7230#section-3.2.2">RFC 7230 §3.2.2</a>
+     * @see <a href="https://datatracker.ietf.org/doc/html/rfc7230#section-3.2.6">RFC 7230 §3.2.6</a>
+     * @see Strings#split(CharSequence, char, char) 
      */
-    default OptionalLong firstValueAsLong(String name) {
-        // NPE unfortunately not documented in JDK
-        return delegate().firstValueAsLong(requireNonNull(name));
-    }
+    List<String> allTokensKeepQuotes(String name);
     
     /**
      * Perform the given action for each HTTP header entry.
