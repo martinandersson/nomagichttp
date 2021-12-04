@@ -40,17 +40,17 @@ public class DefaultContentHeaders implements ContentHeaders {
     @Override
     public final Optional<MediaType> contentType() {
         var cc = this.cc;
-        return cc != null ? cc : (this.cc = mkContentType(jdk));
+        return cc != null ? cc : (this.cc = mkContentType());
     }
     
-    private static Optional<MediaType> mkContentType(HttpHeaders headers) {
-        final List<String> values = headers.allValues(CONTENT_TYPE);
-        if (values.isEmpty()) {
+    private Optional<MediaType> mkContentType() {
+        final var vals = jdk.allValues(CONTENT_TYPE);
+        if (vals.isEmpty()) {
             return empty();
         }
-        else if (values.size() == 1) {
+        else if (vals.size() == 1) {
             try {
-                return Optional.of(parse(values.get(0)));
+                return Optional.of(parse(vals.get(0)));
             } catch (MediaTypeParseException e) {
                 throw new BadHeaderException("Failed to parse " + CONTENT_TYPE + " header.", e);
             }
@@ -63,18 +63,18 @@ public class DefaultContentHeaders implements ContentHeaders {
     @Override
     public final OptionalLong contentLength() {
         var cl = this.cl;
-        return cl != null ? cl : (this.cl = mkContentLength(jdk));
+        return cl != null ? cl : (this.cl = mkContentLength());
     }
     
-    private static OptionalLong mkContentLength(HttpHeaders headers) {
-        final List<String> values = headers.allValues(CONTENT_LENGTH);
+    private OptionalLong mkContentLength() {
+        final var vals = jdk.allValues(CONTENT_LENGTH);
         
-        if (values.isEmpty()) {
+        if (vals.isEmpty()) {
             return OptionalLong.empty();
         }
         
-        if (values.size() == 1) {
-            final String v = values.get(0);
+        if (vals.size() == 1) {
+            final String v = vals.get(0);
             try {
                 return OptionalLong.of(parseLong(v));
             } catch (NumberFormatException e) {
