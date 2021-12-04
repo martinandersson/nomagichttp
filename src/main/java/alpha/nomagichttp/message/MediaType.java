@@ -387,7 +387,7 @@ public class MediaType
     
     static MediaType parse0(final String txt) {
         // First part is "type/subtype", possibly followed by ";params"
-        final String[] tokens = Strings.split(txt, ';', '"');
+        final String[] tokens = Strings.split(txt, ';', '"').toArray(String[]::new);
         final String[] types = parseTypes(tokens[0], txt);
         final String type = types[0],
                   subtype = types[1];

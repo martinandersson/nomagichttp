@@ -10,7 +10,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.RandomAccess;
 
-import static alpha.nomagichttp.util.Streams.randomAndUnmodifiable;
 import static alpha.nomagichttp.util.PercentDecoder.decode;
 import static java.util.Collections.unmodifiableList;
 import static java.util.Collections.unmodifiableMap;
@@ -153,9 +152,7 @@ final class SkeletonRequestTarget
     }
     
     private List<String> mkSegments() {
-        var sr = segmentsRaw();
-        return randomAndUnmodifiable(
-                sr.size(), sr.stream().map(PercentDecoder::decode));
+        return segmentsRaw().stream().map(PercentDecoder::decode).toList();
     }
     
     /**

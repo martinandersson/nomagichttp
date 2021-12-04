@@ -6,8 +6,8 @@ import alpha.nomagichttp.util.Strings;
 import java.net.http.HttpHeaders;
 import java.util.List;
 import java.util.Map;
-import java.util.RandomAccess;
 import java.util.function.BiConsumer;
+import java.util.stream.Stream;
 
 import static alpha.nomagichttp.util.Strings.containsIgnoreCase;
 import static java.util.Objects.requireNonNull;
@@ -111,7 +111,7 @@ public interface BetterHeaders
     }
     
     /**
-     * Combine and tokenize all values for the given header name.<p>
+     * Combine- and tokenize all values for the given header name.<p>
      * 
      * All values of the header will be combined, then split using a comma, then
      * stripped. Empty tokens ignored.<p>
@@ -130,13 +130,13 @@ public interface BetterHeaders
      * </pre>
      * 
      * @param name of header
-     * @return tokens (list is unmodifiable, {@link RandomAccess}, never {@code null})
+     * @return tokens
      * @throws NullPointerException if {@code header} is {@code null}
      * @see #allTokensKeepQuotes(String)
      * @see <a href="https://datatracker.ietf.org/doc/html/rfc7230#section-3.2.2">RFC 7230 §3.2.2</a>
      * @see <a href="https://datatracker.ietf.org/doc/html/rfc7230#section-3.2.6">RFC 7230 §3.2.6</a>
      */
-    List<String> allTokens(String name);
+    Stream<String> allTokens(String name);
     
     /**
      * Does what {@link #allTokens(String)} do, except it does not split on a
@@ -155,13 +155,13 @@ public interface BetterHeaders
      * Field comments are kept as-is.
      * 
      * @param name header name
-     * @return tokens (list is unmodifiable, {@link RandomAccess}, never {@code null})
+     * @return tokens
      * @throws NullPointerException if {@code header} is {@code null}
      * @see <a href="https://datatracker.ietf.org/doc/html/rfc7230#section-3.2.2">RFC 7230 §3.2.2</a>
      * @see <a href="https://datatracker.ietf.org/doc/html/rfc7230#section-3.2.6">RFC 7230 §3.2.6</a>
      * @see Strings#split(CharSequence, char, char) 
      */
-    List<String> allTokensKeepQuotes(String name);
+    Stream<String> allTokensKeepQuotes(String name);
     
     /**
      * Perform the given action for each HTTP header entry.

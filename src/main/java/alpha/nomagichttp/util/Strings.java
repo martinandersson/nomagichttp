@@ -1,9 +1,8 @@
 package alpha.nomagichttp.util;
 
-import java.util.ArrayList;
-import java.util.List;
 import java.util.PrimitiveIterator;
 import java.util.function.IntPredicate;
+import java.util.stream.Stream;
 
 import static java.lang.Character.MIN_VALUE;
 
@@ -19,7 +18,7 @@ public final class Strings
     }
     
     /**
-     * Split a string into an array of tokens.<p>
+     * Split a string into a stream of tokens.<p>
      * 
      * Works just as {@code String.split}, except this method never returns
      * empty tokens.
@@ -30,12 +29,12 @@ public final class Strings
      * @return the substrings
      * @throws NullPointerException if {@code str} is {@code null}
      */
-    public static String[] split(CharSequence str, char delimiter) {
+    public static Stream<String> split(CharSequence str, char delimiter) {
         return split(str, delimiter, c -> false, c -> false);
     }
     
     /**
-     * Split a string into an array of tokens.<p>
+     * Split a string into a stream of tokens.<p>
      * 
      * Works just as {@code String.split}, except this method respects exclusion
      * zones within which, the delimiter will have no effect. Also, this method
@@ -82,7 +81,7 @@ public final class Strings
      * 
      * @see #unquote(String) 
      */
-    public static String[] split(CharSequence str, char delimiter, char excludeBoundary) {
+    public static Stream<String> split(CharSequence str, char delimiter, char excludeBoundary) {
         if (delimiter == '\\') {
             throw new IllegalArgumentException(
                     "Delimiter char can not be the escape char.");
@@ -94,14 +93,14 @@ public final class Strings
         return split(str, delimiter, c -> c == '\\', c -> c == excludeBoundary);
     }
     
-    private static String[] split(
+    private static Stream<String> split(
             CharSequence str, char delimiter,
             IntPredicate escapeChar, IntPredicate excludeChar)
     {
         PrimitiveIterator.OfInt chars = str.chars().iterator();
         
         StringBuilder tkn = null;
-        List<String> sink = null;
+        Stream.Builder<String> sink = null;
         boolean excluding = false;
         
         char prev = MIN_VALUE;
@@ -131,7 +130,7 @@ public final class Strings
                 // Push what we had and begin new token
                 if (tkn != null) {
                     if (sink == null) {
-                        sink = new ArrayList<>(1);
+                        sink = Stream.builder();
                     }
                     var t = tkn.toString();
                     assert !t.isEmpty();
@@ -149,17 +148,15 @@ public final class Strings
         
         if (tkn != null) {
             if (sink == null) {
-                sink = new ArrayList<>(1);
+                sink = Stream.builder();
             }
             var t = tkn.toString();
             assert !t.isEmpty();
             sink.add(t);
         }
         
-        return sink == null ? EMPTY : sink.toArray(String[]::new);
+        return sink == null ? Stream.empty() : sink.build();
     }
-    
-    private static final String[] EMPTY = {};
     
     /**
      * Unquote a quoted string.<p>

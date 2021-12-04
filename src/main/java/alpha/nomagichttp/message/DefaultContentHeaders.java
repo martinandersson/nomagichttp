@@ -3,9 +3,9 @@ package alpha.nomagichttp.message;
 import alpha.nomagichttp.util.Strings;
 
 import java.net.http.HttpHeaders;
-import java.util.List;
 import java.util.Optional;
 import java.util.OptionalLong;
+import java.util.stream.Stream;
 
 import static alpha.nomagichttp.HttpConstants.HeaderKey.CONTENT_LENGTH;
 import static alpha.nomagichttp.HttpConstants.HeaderKey.CONTENT_TYPE;
@@ -94,13 +94,13 @@ public class DefaultContentHeaders implements ContentHeaders {
     }
     
     @Override
-    public List<String> allTokens(String name) {
-        return List.of(stripped(Strings.split(combine(name), ',')));
+    public Stream<String> allTokens(String name) {
+        return stripped(Strings.split(combine(name), ','));
     }
     
     @Override
-    public List<String> allTokensKeepQuotes(String name) {
-        return List.of(stripped(Strings.split(combine(name), ',', '"')));
+    public Stream<String> allTokensKeepQuotes(String name) {
+        return stripped(Strings.split(combine(name), ',', '"'));
     }
     
     private String combine(String name) {
@@ -108,11 +108,8 @@ public class DefaultContentHeaders implements ContentHeaders {
         return String.join(", ", jdk.allValues(requireNonNull(name)));
     }
     
-    private static String[] stripped(String[] arr) {
-        for (int i = 0; i < arr.length; ++i) {
-            arr[i] = arr[i].strip();
-        }
-        return arr;
+    private static Stream<String> stripped(Stream<String> str) {
+        return str.map(String::strip);
     }
     
     @Override

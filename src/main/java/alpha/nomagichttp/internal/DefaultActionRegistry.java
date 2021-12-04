@@ -18,13 +18,13 @@ import java.util.Set;
 import java.util.concurrent.CopyOnWriteArraySet;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.BiFunction;
+import java.util.stream.Stream;
 
 import static alpha.nomagichttp.internal.Segments.ASTERISK_CH;
 import static alpha.nomagichttp.internal.Segments.ASTERISK_STR;
 import static alpha.nomagichttp.internal.Segments.COLON_CH;
 import static alpha.nomagichttp.internal.Segments.COLON_STR;
 import static alpha.nomagichttp.internal.Segments.noParamNames;
-import static alpha.nomagichttp.util.Streams.randomAndUnmodifiable;
 import static alpha.nomagichttp.util.Streams.stream;
 import static java.lang.Integer.compare;
 import static java.lang.ThreadLocal.withInitial;
@@ -244,8 +244,12 @@ final class DefaultActionRegistry implements ActionRegistry
             n.ifPresent(matches::addAll);
         });
         
-        return matches.isEmpty() ? List.of() :
-               randomAndUnmodifiable(matches.size(), matches.stream().sorted());
+        return matches.isEmpty() ? List.of() : toList(matches.stream().sorted());
+    }
+    
+    @SuppressWarnings("unchecked")
+    private static <T> List<T> toList(Stream<? extends T> stream) {
+        return (List<T>) stream.toList();
     }
     
     private static final class WrappedBeforeAction

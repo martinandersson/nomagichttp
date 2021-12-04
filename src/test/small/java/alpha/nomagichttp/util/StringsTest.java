@@ -98,6 +98,6 @@ class StringsTest
     
     private void expect(String... expected) {
         assertThat(Strings.split(testee, delimiter, excludeBoundary))
-                .isEqualTo(expected);
+                .containsExactly(expected);
     }
 }
