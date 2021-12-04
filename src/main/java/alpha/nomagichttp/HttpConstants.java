@@ -2697,21 +2697,17 @@ public final class HttpConstants {
         public static final String TK = "Tk";
         
         /**
-         * The trailer header "allows the sender to include additional fields at
-         * the end of chunked messages in order to supply metadata that might be
+         * This header "allows the sender to include additional fields at the
+         * end of chunked messages in order to supply metadata that might be
          * dynamically generated while the message body is sent, such as a
          * message integrity check, digital signature, or post-processing
          * status." (
          * <a href="https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Trailer">MDN Web Docs</a>
          * )<p>
          * 
-         * Most often set on chunked response, but may also be set on a chunked
-         * request.<p>
+         * May be used in both request and response.<p>
          * 
-         * Example: {@code Trailer: header-name}<p>
-         * 
-         * Currently, the NoMagicHTTP server does not support chunked encoding.
-         * Work is planned to add this support.
+         * Example: {@code Trailer: My-Hash}
          * 
          * @see #TE
          * @see <a href="https://tools.ietf.org/html/rfc7230#section-4.4">RFC 7230 §4.4</a>
