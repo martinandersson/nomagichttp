@@ -466,13 +466,17 @@ public final class Responses
     }
     
     /**
-     * Retrieves a cached 400 (Bad Request) response with no body.
+     * Retrieves a cached 400 (Bad Request) response with no body.<p>
+     * 
+     * The returned response contains the header "Connection: close" which will
+     * cause the connection to gracefully close (see {@link ClientChannel}).
      * 
      * @return  a cached 400 (Bad Request) response
      * @see     StatusCode#FOUR_HUNDRED
      */
     public static Response badRequest() {
-        return CACHE.get(FOUR_HUNDRED, BAD_REQUEST);
+        return CACHE.get(FOUR_HUNDRED, BAD_REQUEST).toBuilder()
+                .header(CONNECTION, "close").build();
     }
     
     /**

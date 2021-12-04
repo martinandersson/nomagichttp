@@ -152,7 +152,8 @@ class ErrorTest extends AbstractRealTest
             "GET / Oops"               + CRLF + CRLF);
         assertThat(rsp).isEqualTo(
             "HTTP/1.1 400 Bad Request" + CRLF +
-            "Content-Length: 0"        + CRLF + CRLF);
+            "Content-Length: 0"        + CRLF + 
+            "Connection: close"        + CRLF + CRLF);
         assertThat(pollServerError())
             .isExactlyInstanceOf(HttpVersionParseException.class)
             .hasNoCause()
@@ -232,7 +233,8 @@ class ErrorTest extends AbstractRealTest
             "X");
         assertThat(rsp).isEqualTo(
             "HTTP/1.1 400 Bad Request" + CRLF +
-            "Content-Length: 0"        + CRLF + CRLF);
+            "Content-Length: 0"        + CRLF +
+            "Connection: close"        + CRLF + CRLF);
         assertThat(pollServerError())
             .isExactlyInstanceOf(IllegalRequestBodyException.class)
             .hasNoCause()
@@ -632,7 +634,10 @@ class ErrorTest extends AbstractRealTest
     
     @Test
     void maxUnsuccessfulResponses() throws IOException, InterruptedException {
-        server().add("/", GET().respond(badRequest()));
+        server().add("/", GET().respond(badRequest().toBuilder()
+                // This header would have caused the server to close the connection,
+                // but we want to run many "failed" responses
+                .removeHeaderIf("Connection", "close").build()));
         
         IORunnable sendBadRequest = () -> {
             String rsp = client().writeReadTextUntilNewlines(get());
