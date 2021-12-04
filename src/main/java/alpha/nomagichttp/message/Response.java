@@ -357,19 +357,19 @@ public interface Response extends HeaderHolder
          * The default implementation is
          * <pre>
          *     return this.{@link #addHeaders(Map)
-         *       addHeaders}(headers.{@link ContentHeaders#delegate()
+         *       addHeaders}(headers.{@link BetterHeaders#delegate()
          *         delegate}().{@link HttpHeaders#map() map}());
          * </pre>
          * 
-         * ...and does therefore not provide a guarantee regarding the ordering
-         * of how the headers will appear in the response object.
+         * The delegate's map does not provide a guarantee regarding the
+         * ordering.
          * 
          * @param   headers to add
          * @return  a new builder representing the new state
          * @throws  NullPointerException if {@code headers} is {@code null}
          * @see     HttpConstants.HeaderKey
          */
-        default Builder addHeaders(ContentHeaders headers) {
+        default Builder addHeaders(BetterHeaders headers) {
             return addHeaders(headers.delegate().map());
         }
         
