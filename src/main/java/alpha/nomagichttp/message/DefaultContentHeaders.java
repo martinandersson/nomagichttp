@@ -14,6 +14,7 @@ import static alpha.nomagichttp.HttpConstants.HeaderKey.CONTENT_TYPE;
 import static alpha.nomagichttp.HttpConstants.HeaderKey.TRANSFER_ENCODING;
 import static alpha.nomagichttp.message.MediaType.parse;
 import static java.lang.Long.parseLong;
+import static java.text.MessageFormat.format;
 import static java.util.Objects.requireNonNull;
 import static java.util.Optional.empty;
 import static java.util.function.Predicate.not;
@@ -79,19 +80,21 @@ public class DefaultContentHeaders implements ContentHeaders {
     }
     
     private OptionalLong mkContentLength() {
-        final var vals = allTokens(CONTENT_LENGTH).toArray(String[]::new);
-        if (vals.length == 0) {
+        final var tkns = allTokens(CONTENT_LENGTH).toArray(String[]::new);
+        if (tkns.length == 0) {
             return OptionalLong.empty();
         }
-        if (vals.length > 1) {
+        if (tkns.length > 1) {
             throw new BadHeaderException(
                 "Multiple " + CONTENT_LENGTH + " values in request.");
         }
         try {
-            return OptionalLong.of(parseLong(vals[0]));
+            return OptionalLong.of(parseLong(tkns[0]));
         } catch (NumberFormatException e) {
-            throw new BadHeaderException(
-                "Can not parse " + CONTENT_LENGTH + " (\"" + vals[0] + "\") into a long.", e);
+            var msg = format(
+                "Can not parse {0} (\"{1}\") into a long.",
+                CONTENT_LENGTH, tkns[0]);
+            throw new BadHeaderException(msg, e);
         }
     }
     
