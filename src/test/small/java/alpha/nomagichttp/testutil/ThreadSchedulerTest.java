@@ -68,25 +68,25 @@ class ThreadSchedulerTest
     @Test
     void indirectRecursion() throws Throwable {
         Yielder y = new Yielder();
-        Queue<String> s = new ConcurrentLinkedQueue<>();
+        Queue<String> log = new ConcurrentLinkedQueue<>();
         
         Stage t1s1 = new Stage("T1", "S1", () -> {
-            s.add(threadName() + "S1 yielding");
+            log.add(threadName() + "S1 yielding");
                 y.continueStage("T2S1");
-            s.add(threadName() + "S1 exiting");
+            log.add(threadName() + "S1 exiting");
         });
         
         Stage t2s1 = new Stage("T2", "S1", () -> {
-            s.add(threadName() + "S1 yielding");
+            log.add(threadName() + "S1 yielding");
                 y.continueStage("T1S2");
-            s.add(threadName() + "S1 exiting");
+            log.add(threadName() + "S1 exiting");
         });
         
         Stage t1s2 = new Stage("T1", "S2", () ->
-            s.add(threadName() + "S2 exiting"));
+            log.add(threadName() + "S2 exiting"));
         
         ThreadScheduler.runSequentially(y, t1s1, t2s1, t1s2);
-        assertThat(s).containsExactly(
+        assertThat(log).containsExactly(
                 "T1S1 yielding", // <-- Thread 1
                     "T2S1 yielding",
                         "T1S2 exiting", // <-- Also Thread 1
