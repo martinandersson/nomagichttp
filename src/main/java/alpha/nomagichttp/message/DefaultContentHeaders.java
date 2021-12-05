@@ -54,18 +54,20 @@ public class DefaultContentHeaders implements ContentHeaders {
     }
     
     private Optional<MediaType> mkContentType() {
-        final var vals = jdk.allValues(CONTENT_TYPE);
-        if (vals.isEmpty()) {
+        final var tkns = allTokens(CONTENT_TYPE).toArray(String[]::new);
+        if (tkns.length == 0) {
             return empty();
         }
-        if (vals.size() == 1) {
-            try {
-                return Optional.of(parse(vals.get(0)));
-            } catch (MediaTypeParseException e) {
-                throw new BadHeaderException("Failed to parse " + CONTENT_TYPE + " header.", e);
-            }
+        if (tkns.length > 1) {
+            throw new BadHeaderException(
+                "Multiple " + CONTENT_TYPE + " values in request.");
         }
-        throw new BadHeaderException("Multiple " + CONTENT_TYPE + " values in request.");
+        try {
+            return Optional.of(parse(tkns[0]));
+        } catch (MediaTypeParseException e) {
+            throw new BadHeaderException(
+                "Failed to parse " + CONTENT_TYPE + " header.", e);
+        }
     }
     
     private OptionalLong cl;
