@@ -3,12 +3,15 @@ package alpha.nomagichttp.message;
 import alpha.nomagichttp.util.Strings;
 
 import java.net.http.HttpHeaders;
+import java.util.List;
 import java.util.Optional;
 import java.util.OptionalLong;
+import java.util.RandomAccess;
 import java.util.stream.Stream;
 
 import static alpha.nomagichttp.HttpConstants.HeaderKey.CONTENT_LENGTH;
 import static alpha.nomagichttp.HttpConstants.HeaderKey.CONTENT_TYPE;
+import static alpha.nomagichttp.HttpConstants.HeaderKey.TRANSFER_ENCODING;
 import static alpha.nomagichttp.message.MediaType.parse;
 import static java.lang.Long.parseLong;
 import static java.util.Objects.requireNonNull;
@@ -111,6 +114,20 @@ public class DefaultContentHeaders implements ContentHeaders {
                       if (keepQuotes) Strings.splitToSink(line, ',', '"', sink);
                       else Strings.splitToSink(line, ',', sink);})
                   .map(String::strip);
+    }
+    
+    private List<String> te;
+    
+    /**
+     * Returns all Transfer-Encoding tokens.
+     * 
+     * @return all Transfer-Encoding tokens
+     *         (list is unmodifiable, {@link RandomAccess}, never {@code null})
+     */
+    final List<String> transferEncoding() {
+        var te = this.te;
+        return te != null ? te :
+                (this.te = allTokens(TRANSFER_ENCODING).toList());
     }
     
     @Override
