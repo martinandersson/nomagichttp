@@ -5,10 +5,12 @@ import alpha.nomagichttp.util.Strings;
 import java.net.http.HttpHeaders;
 import java.util.Optional;
 import java.util.OptionalLong;
+import java.util.function.Function;
 import java.util.stream.Stream;
 
 import static alpha.nomagichttp.HttpConstants.HeaderKey.CONTENT_LENGTH;
 import static alpha.nomagichttp.HttpConstants.HeaderKey.CONTENT_TYPE;
+import static alpha.nomagichttp.HttpConstants.HeaderKey.TRANSFER_ENCODING;
 import static alpha.nomagichttp.message.MediaType.parse;
 import static java.lang.Long.parseLong;
 import static java.util.Objects.requireNonNull;
@@ -95,17 +97,22 @@ public class DefaultContentHeaders implements ContentHeaders {
     
     @Override
     public Stream<String> allTokens(String name) {
-        return stripped(Strings.split(combine(name), ','));
+        return allTokens0(name, false);
     }
     
     @Override
     public Stream<String> allTokensKeepQuotes(String name) {
-        return stripped(Strings.split(combine(name), ',', '"'));
+        return allTokens0(name, true);
     }
     
-    private String combine(String name) {
+    private Stream<String> allTokens0(String name, boolean keepQuotes) {
+        Function<String, Stream<String>> tokenizer = v ->
+                keepQuotes ? Strings.split(v, ',', '"') :
+                             Strings.split(v, ',');
         // NPE not documented in JDK
-        return String.join(", ", jdk.allValues(requireNonNull(name)));
+        return jdk.allValues(requireNonNull(name)).stream()
+                .flatMap(tokenizer)
+                .map(String::strip);
     }
     
     private static Stream<String> stripped(Stream<String> str) {
