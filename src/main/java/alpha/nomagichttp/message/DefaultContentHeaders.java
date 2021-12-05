@@ -16,6 +16,7 @@ import static alpha.nomagichttp.message.MediaType.parse;
 import static java.lang.Long.parseLong;
 import static java.util.Objects.requireNonNull;
 import static java.util.Optional.empty;
+import static java.util.function.Predicate.not;
 
 /**
  * Default implementation of {@link ContentHeaders}.<p>
@@ -76,24 +77,20 @@ public class DefaultContentHeaders implements ContentHeaders {
     }
     
     private OptionalLong mkContentLength() {
-        final var vals = jdk.allValues(CONTENT_LENGTH);
-        
-        if (vals.isEmpty()) {
+        final var vals = allTokens(CONTENT_LENGTH).toArray(String[]::new);
+        if (vals.length == 0) {
             return OptionalLong.empty();
         }
-        
-        if (vals.size() == 1) {
-            final String v = vals.get(0);
-            try {
-                return OptionalLong.of(parseLong(v));
-            } catch (NumberFormatException e) {
-                throw new BadHeaderException(
-                        "Can not parse " + CONTENT_LENGTH + " (\"" + v + "\") into a long.", e);
-            }
-        }
-        
-        throw new BadHeaderException(
+        if (vals.length > 1) {
+            throw new BadHeaderException(
                 "Multiple " + CONTENT_LENGTH + " values in request.");
+        }
+        try {
+            return OptionalLong.of(parseLong(vals[0]));
+        } catch (NumberFormatException e) {
+            throw new BadHeaderException(
+                "Can not parse " + CONTENT_LENGTH + " (\"" + vals[0] + "\") into a long.", e);
+        }
     }
     
     @Override
@@ -113,7 +110,8 @@ public class DefaultContentHeaders implements ContentHeaders {
                   .<String>mapMulti((line, sink) -> {
                       if (keepQuotes) Strings.splitToSink(line, ',', '"', sink);
                       else Strings.splitToSink(line, ',', sink);})
-                  .map(String::strip);
+                  .map(String::strip)
+                  .filter(not(String::isEmpty));
     }
     
     private List<String> te;
