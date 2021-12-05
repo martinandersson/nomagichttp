@@ -97,27 +97,27 @@ class ThreadSchedulerTest
     @Test
     void threadsPlayingPingPong() throws Throwable {
         Yielder y = new Yielder();
-        Queue<String> s = new ConcurrentLinkedQueue<>();
+        Queue<String> log = new ConcurrentLinkedQueue<>();
         
         Stage ping = new Stage("T1", "Ping", () -> {
-            s.add(threadName() + " Ping");
+            log.add(threadName() + " Ping");
                 y.continueStage("T2Pong");
-            s.add(threadName() + " Ping");
+            log.add(threadName() + " Ping");
                 y.continueStage("T2Pong");
         });
         
         Stage pong = new Stage("T2", "Pong", () -> {
-            s.add(threadName() + " Pong");
+            log.add(threadName() + " Pong");
                 y.continueStage("T1Ping");
-            s.add(threadName() + " Pong");
+            log.add(threadName() + " Pong");
                 y.continueStage("T3Pang");
         });
         
         Stage pang = new Stage("T3", "Pang", () ->
-            s.add(threadName() + " Pang!"));
+            log.add(threadName() + " Pang!"));
         
         ThreadScheduler.runSequentially(y, ping, pong, pang);
-        assertThat(s).containsExactly(
+        assertThat(log).containsExactly(
                 "T1 Ping",
                 "T2 Pong",
                 "T1 Ping",
