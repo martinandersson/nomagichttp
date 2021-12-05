@@ -5,12 +5,10 @@ import alpha.nomagichttp.util.Strings;
 import java.net.http.HttpHeaders;
 import java.util.Optional;
 import java.util.OptionalLong;
-import java.util.function.Function;
 import java.util.stream.Stream;
 
 import static alpha.nomagichttp.HttpConstants.HeaderKey.CONTENT_LENGTH;
 import static alpha.nomagichttp.HttpConstants.HeaderKey.CONTENT_TYPE;
-import static alpha.nomagichttp.HttpConstants.HeaderKey.TRANSFER_ENCODING;
 import static alpha.nomagichttp.message.MediaType.parse;
 import static java.lang.Long.parseLong;
 import static java.util.Objects.requireNonNull;
@@ -106,17 +104,13 @@ public class DefaultContentHeaders implements ContentHeaders {
     }
     
     private Stream<String> allTokens0(String name, boolean keepQuotes) {
-        Function<String, Stream<String>> tokenizer = v ->
-                keepQuotes ? Strings.split(v, ',', '"') :
-                             Strings.split(v, ',');
         // NPE not documented in JDK
-        return jdk.allValues(requireNonNull(name)).stream()
-                .flatMap(tokenizer)
-                .map(String::strip);
-    }
-    
-    private static Stream<String> stripped(Stream<String> str) {
-        return str.map(String::strip);
+        return jdk.allValues(requireNonNull(name))
+                  .stream()
+                  .<String>mapMulti((line, sink) -> {
+                      if (keepQuotes) Strings.splitToSink(line, ',', '"', sink);
+                      else Strings.splitToSink(line, ',', sink);})
+                  .map(String::strip);
     }
     
     @Override
