@@ -608,13 +608,13 @@ public final class ThreadScheduler
         /*
          * This guy is our message passing mechanism. A thread that wish to
          * yield control appends the next stage's thread- and stage names to the
-         * stack. Busy-waiting threads poll this value constantly, but only the
+         * stack. Busy-waiting threads peek the tail constantly, but only the
          * thread which observes a stage that belongs to him proceeds to execute
-         * it. Once a stage completes, the worker removes it from the stack,
-         * revealing the previous stage, picked up by that worker, and so the
+         * it. Once the stage completes, the worker removes it from the stack,
+         * which reveals the next stage, picked up by that worker, and so the
          * cycle continues.
          * 
-         * Initial stage is set by the driver.
+         * Initial state of the stack  is set by the driver.
          * 
          * ":null:t1s1"      // T1 picks up his stage and executes it
          * ":null:t1s1:t2s1" // T1 yielded control to T2, goes back into busy-waiting
