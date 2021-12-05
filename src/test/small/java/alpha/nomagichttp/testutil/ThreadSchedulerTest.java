@@ -67,6 +67,13 @@ class ThreadSchedulerTest
     
     @Test
     void indirectRecursion() throws Throwable {
+        final String[] expectedFlow = {
+            "T1S1 yielding", // <-- Thread 1, goes into T2
+                "T2S1 yielding",
+                    "T1S2 exiting", // <-- Also Thread 1
+                "T2S1 exiting",
+            "T1S1 exiting" };
+        
         Yielder y = new Yielder();
         Queue<String> log = new ConcurrentLinkedQueue<>();
         
@@ -86,16 +93,18 @@ class ThreadSchedulerTest
             log.add(threadName() + "S2 exiting"));
         
         ThreadScheduler.runSequentially(y, t1s1, t2s1, t1s2);
-        assertThat(log).containsExactly(
-                "T1S1 yielding", // <-- Thread 1
-                    "T2S1 yielding",
-                        "T1S2 exiting", // <-- Also Thread 1
-                    "T2S1 exiting",
-                "T1S1 exiting");
+        assertThat(log).containsExactly(expectedFlow);
     }
     
     @Test
     void threadsPlayingPingPong() throws Throwable {
+        final String[] expectedFlow = {
+                "T1 Ping",
+                "T2 Pong",
+                "T1 Ping",
+                "T2 Pong",
+                "T3 Pang!" };
+        
         Yielder y = new Yielder();
         Queue<String> log = new ConcurrentLinkedQueue<>();
         
@@ -117,12 +126,7 @@ class ThreadSchedulerTest
             log.add(threadName() + " Pang!"));
         
         ThreadScheduler.runSequentially(y, ping, pong, pang);
-        assertThat(log).containsExactly(
-                "T1 Ping",
-                "T2 Pong",
-                "T1 Ping",
-                "T2 Pong",
-                "T3 Pang!");
+        assertThat(log).containsExactly(expectedFlow);
     }
     
     @Test
