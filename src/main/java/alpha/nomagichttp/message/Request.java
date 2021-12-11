@@ -491,10 +491,9 @@ public interface Request extends HeaderHolder, AttributeHolder
      * various forms.<p>
      * 
      * High-level methods (for example, {@link #toText()}), returns a {@link
-     * CompletionStage} because the request handler will be invoked and
-     * therefore have access to the Body API immediately after the server is
-     * done parsing the request head. At this point in time, not all bytes will
-     * necessarily have made it through on the network.<p>
+     * CompletionStage} because the request handler will be called immediately
+     * after the server is done parsing the request head. At this point in time,
+     * not all bytes will necessarily have made it through on the network.<p>
      * 
      * The body bytes may be converted into any arbitrary Java type using the
      * {@link #convert(BiFunction)} method or consumed directly "on arrival"
