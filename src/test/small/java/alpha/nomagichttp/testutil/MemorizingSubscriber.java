@@ -14,7 +14,6 @@ import static alpha.nomagichttp.testutil.MemorizingSubscriber.Signal.MethodName.
 import static alpha.nomagichttp.testutil.MemorizingSubscriber.Signal.MethodName.ON_SUBSCRIBE;
 import static java.lang.Long.MAX_VALUE;
 import static java.util.Objects.requireNonNull;
-import static java.util.stream.Collectors.toUnmodifiableList;
 
 /**
  * A subscriber that records all signals received.
@@ -259,7 +258,7 @@ public class MemorizingSubscriber<T> implements Flow.Subscriber<T>
         return signals.stream()
                       .filter(s -> s.getMethodName() == ON_NEXT)
                       .map(Signal::<T>getArgument)
-                      .collect(toUnmodifiableList());
+                      .toList();
     }
     
     /**
@@ -270,7 +269,7 @@ public class MemorizingSubscriber<T> implements Flow.Subscriber<T>
     public List<Signal.MethodName> methodNames() {
         return signals.stream()
                       .map(Signal::getMethodName)
-                      .collect(toUnmodifiableList());
+                      .toList();
     }
     
     @Override
