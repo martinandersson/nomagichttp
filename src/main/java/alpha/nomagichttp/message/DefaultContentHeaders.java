@@ -1,12 +1,13 @@
 package alpha.nomagichttp.message;
 
+import alpha.nomagichttp.HttpConstants;
 import alpha.nomagichttp.util.Strings;
 
 import java.net.http.HttpHeaders;
-import java.util.List;
+import java.util.ArrayDeque;
+import java.util.Deque;
 import java.util.Optional;
 import java.util.OptionalLong;
-import java.util.RandomAccess;
 import java.util.stream.Stream;
 
 import static alpha.nomagichttp.HttpConstants.HeaderKey.CONTENT_LENGTH;
@@ -18,6 +19,7 @@ import static java.text.MessageFormat.format;
 import static java.util.Objects.requireNonNull;
 import static java.util.Optional.empty;
 import static java.util.function.Predicate.not;
+import static java.util.stream.Collectors.toCollection;
 
 /**
  * Default implementation of {@link ContentHeaders}.<p>
@@ -125,18 +127,28 @@ public class DefaultContentHeaders implements ContentHeaders {
                   .filter(not(String::isEmpty));
     }
     
-    private List<String> te;
-    
     /**
      * Returns all Transfer-Encoding tokens.
      * 
-     * @return all Transfer-Encoding tokens
-     *         (list is unmodifiable, {@link RandomAccess}, never {@code null})
+     * The returned deque is modifiable, and consequently, not cached.
+     * 
+     * @return all Transfer-Encoding tokens (never {@code null})
+     * 
+     * @throws BadHeaderException
+     *       if the last token in the Transfer-Encoding header is not "chunked"
+     * 
+     * @see HttpConstants.HeaderKey#TRANSFER_ENCODING
+     * @see <a href="https://bugs.openjdk.java.net/browse/JDK-6407460">JDK-6407460</a>
      */
-    final List<String> transferEncoding() {
-        var te = this.te;
-        return te != null ? te :
-                (this.te = allTokens(TRANSFER_ENCODING).toList());
+    public final Deque<String> transferEncoding() {
+        var te = allTokens(TRANSFER_ENCODING)
+                .collect(toCollection(ArrayDeque::new));
+        if (!te.isEmpty() && !"chunked".equalsIgnoreCase(te.getLast())) {
+            throw new BadHeaderException(format(
+                "Last {0} token (\"{1}\") is not \"chunked\".",
+                TRANSFER_ENCODING, te.getLast()));
+        }
+        return te;
     }
     
     @Override

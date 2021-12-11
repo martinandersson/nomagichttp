@@ -2722,6 +2722,8 @@ public final class HttpConstants {
          * 
          * Example: {@code Transfer-Encoding: gzip, chunked}<p>
          * 
+         * Transfer coding names are case-insensitive.<p>
+         * 
          * Currently, the NoMagicHTTP server has no first-class support for
          * compression. Work is planned to add support.
          * 

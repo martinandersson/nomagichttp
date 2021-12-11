@@ -51,12 +51,22 @@ class DefaultContentHeadersTest
     }
     
     @Test
-    void transferEncoding() {
+    void transferEncoding_happyPath() {
         var testee = of(
             "Transfer-Encoding", "bla,,  ,",
-            "Transfer-Encoding", "bla, bla");
+            "Transfer-Encoding", "bla, chuNKED");
         assertThat(testee.transferEncoding())
-            .containsExactly("bla", "bla", "bla");
+            .containsExactly("bla", "bla", "chuNKED");
+    }
+    
+    @Test
+    void transferEncoding_chunkedNotLast() {
+        var testee = of("Transfer-Encoding", "chunked, blabla");
+        assertThatThrownBy(testee::transferEncoding)
+            .isExactlyInstanceOf(BadHeaderException.class)
+            .hasMessage("Last Transfer-Encoding token (\"blabla\") is not \"chunked\".")
+            .hasNoSuppressedExceptions()
+            .hasNoCause();
     }
     
     private static DefaultContentHeaders of(String... headers) {
