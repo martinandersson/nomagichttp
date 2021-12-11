@@ -601,9 +601,7 @@ public final class Responses
      * @see     StatusCode#FIVE_HUNDRED_THREE
      */
     public static Response serviceUnavailable() {
-        return CACHE.get(FIVE_HUNDRED_THREE, SERVICE_UNAVAILABLE).toBuilder()
-                .header(CONTENT_LENGTH, "0")
-                .build();
+        return CACHE.get(FIVE_HUNDRED_THREE, SERVICE_UNAVAILABLE);
     }
     
     /**
@@ -613,9 +611,7 @@ public final class Responses
      * @see    StatusCode#FIVE_HUNDRED_FIVE
      */
     public static Response httpVersionNotSupported() {
-        return CACHE.get(FIVE_HUNDRED_FIVE, HTTP_VERSION_NOT_SUPPORTED).toBuilder()
-                 .header(CONTENT_LENGTH, "0")
-                 .build();
+        return CACHE.get(FIVE_HUNDRED_FIVE, HTTP_VERSION_NOT_SUPPORTED);
     }
     
     private static Response create(String mime, String body, Charset charset) {
