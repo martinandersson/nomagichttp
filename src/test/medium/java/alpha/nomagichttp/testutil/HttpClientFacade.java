@@ -916,28 +916,22 @@ public abstract class HttpClientFacade
         }
         
         static <B> ResponseFacade<B> fromOkHttp(okhttp3.Response okhttp, B body) {
-            Supplier<HttpHeaders> headers = () -> Headers.of(okhttp.headers().toMultimap());
             return new ResponseFacade<>(
                     () -> okhttp.protocol().toString().toUpperCase(ROOT),
                     okhttp::code,
                     okhttp::message,
-                    headers, () -> body);
+                    () -> Headers.of(okhttp.headers().toMultimap()),
+                    () -> body);
         }
         
         static <B> ResponseFacade<B> fromApache(SimpleHttpResponse apache, B body) {
-            Supplier<HttpHeaders> headers = () -> {
-                var exploded = stream(apache.getHeaders())
-                        .mapMulti((h, sink) -> {
-                            sink.accept(h.getName());
-                            sink.accept(h.getValue()); })
-                        .toArray(String[]::new);
-                return Headers.of(exploded);
-            };
             return new ResponseFacade<>(
                     () -> apache.getVersion().toString(),
                     apache::getCode,
                     apache::getReasonPhrase,
-                    headers,
+                    supplyOurHeadersType(() -> stream(apache.getHeaders()),
+                            org.apache.hc.core5.http.NameValuePair::getName,
+                            org.apache.hc.core5.http.NameValuePair::getValue),
                     () -> body);
         }
         
@@ -945,39 +939,38 @@ public abstract class HttpClientFacade
                 org.eclipse.jetty.client.api.ContentResponse jetty,
                 Function<? super ContentResponse, ? extends B> bodyConverter)
         {
-            Supplier<HttpHeaders> headers = () -> {
-                var exploded = jetty.getHeaders().stream()
-                        .<String>mapMulti((h, sink) -> {
-                            sink.accept(h.getName());
-                            sink.accept(h.getValue()); })
-                        .toArray(String[]::new);
-                
-                return Headers.of(exploded);
-            };
             return new ResponseFacade<>(
                     () -> jetty.getVersion().toString(),
                     jetty::getStatus,
                     jetty::getReason,
-                    headers,
+                    supplyOurHeadersType(() -> jetty.getHeaders().stream(),
+                            org.eclipse.jetty.http.HttpField::getName,
+                            org.eclipse.jetty.http.HttpField::getValue),
                     () -> bodyConverter.apply(jetty));
         }
         
         static <B> ResponseFacade<B> fromReactor(HttpClientResponse reactor, B body) {
-            Supplier<HttpHeaders> headers = () -> {
-                var exploded = reactor.responseHeaders().entries().stream()
-                        .<String>mapMulti((h, sink) -> {
-                            sink.accept(h.getKey());
-                            sink.accept(h.getValue()); })
-                        .toArray(String[]::new);
-                
-                return Headers.of(exploded);
-            };
             return new ResponseFacade<>(
                     () -> reactor.version().toString(),
                     () -> reactor.status().code(),
                     () -> reactor.status().reasonPhrase(),
-                    headers,
+                    supplyOurHeadersType(() -> reactor.responseHeaders().entries().stream(),
+                            Map.Entry::getKey,
+                            Map.Entry::getValue),
                     () -> body);
+        }
+        
+        private static <T> Supplier<HttpHeaders> supplyOurHeadersType(
+                Supplier<Stream<T>> fromNativeHeaders,
+                Function<? super T, String> name, Function<? super T, String> value) {
+            return () -> {
+                var pairs = fromNativeHeaders.get()
+                        .<String>mapMulti((h, sink) -> {
+                            sink.accept(name.apply(h));
+                            sink.accept(value.apply(h)); })
+                        .toArray(String[]::new);
+                return Headers.of(pairs);
+            };
         }
         
         private final Supplier<String> version;
