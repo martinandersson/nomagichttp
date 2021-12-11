@@ -105,7 +105,7 @@ class DetailTest extends AbstractRealTest
             exchange.run();
             
             // The endpoint didn't read the body contents, i.e. auto-discarded.
-            // If done correctly, we should be be able to send a new request using the same connection:
+            // If done correctly, we should be able to send a new request using the same connection:
             exchange.run();
         }
     }

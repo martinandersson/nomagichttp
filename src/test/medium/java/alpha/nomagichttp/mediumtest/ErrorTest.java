@@ -100,7 +100,9 @@ class ErrorTest extends AbstractRealTest
     }
     
     @Test
-    void NoRouteFoundException_default() throws IOException, InterruptedException {
+    void NoRouteFoundException_default()
+            throws IOException, InterruptedException
+    {
         String rsp = client().writeReadTextUntilNewlines(
             "GET /404 HTTP/1.1"      + CRLF + CRLF);
         assertThat(rsp).isEqualTo(
@@ -130,7 +132,9 @@ class ErrorTest extends AbstractRealTest
     }
     
     @Test
-    void MaxRequestHeadSizeExceededException() throws IOException, InterruptedException {
+    void MaxRequestHeadSizeExceededException()
+            throws IOException, InterruptedException
+    {
         usingConfiguration()
             .maxRequestHeadSize(1);
         String rsp = client().writeReadTextUntilNewlines(
@@ -166,7 +170,9 @@ class ErrorTest extends AbstractRealTest
     // By default, server rejects clients older than HTTP/1.0
     @ParameterizedTest
     @ValueSource(strings = {"-1.23", "0.5", "0.8", "0.9"})
-    void HttpVersionTooOldException_lessThan1_0(String version) throws IOException, InterruptedException {
+    void HttpVersionTooOldException_lessThan1_0(String version)
+            throws IOException, InterruptedException
+    {
         String rsp = client().writeReadTextUntilNewlines(
             "GET / HTTP/" + version         + CRLF + CRLF);
         assertThat(rsp).isEqualTo(
@@ -185,7 +191,9 @@ class ErrorTest extends AbstractRealTest
     
     // Server may be configured to reject also HTTP/1.0 clients
     @Test
-    void HttpVersionTooOldException_eq1_0() throws IOException, InterruptedException {
+    void HttpVersionTooOldException_eq1_0()
+            throws IOException, InterruptedException
+    {
         usingConfiguration()
             .rejectClientsUsingHTTP1_0(true);
         String rsp = client().writeReadTextUntilNewlines(
@@ -207,7 +215,9 @@ class ErrorTest extends AbstractRealTest
     // Some newer versions are currently not supported
     @ParameterizedTest
     @ValueSource(strings = {"2", "3", "999"})
-    void HttpVersionTooNewException(String version) throws IOException, InterruptedException {
+    void HttpVersionTooNewException(String version)
+            throws IOException, InterruptedException
+    {
         String rsp = client().writeReadTextUntilNewlines(
             "GET / HTTP/" + version                   + CRLF + CRLF);
         assertThat(rsp).isEqualTo(
@@ -223,7 +233,9 @@ class ErrorTest extends AbstractRealTest
     }
     
     @Test
-    void IllegalRequestBodyException() throws IOException, InterruptedException {
+    void IllegalRequestBodyException()
+            throws IOException, InterruptedException
+    {
         server().add("/",
             TRACE().accept((req, ch) -> { throw new AssertionError("Not invoked."); }));
         String rsp = client().writeReadTextUntilNewlines(
@@ -245,7 +257,9 @@ class ErrorTest extends AbstractRealTest
     }
     
     @Test
-    void IllegalResponseBodyException_in1xxResponse() throws IOException, InterruptedException {
+    void IllegalResponseBodyException_in1xxResponse()
+            throws IOException, InterruptedException
+    {
         server().add("/",
             GET().respond(() -> Response.builder(123)
                     .body(ofString("Body!"))
@@ -263,7 +277,9 @@ class ErrorTest extends AbstractRealTest
     }
     
     @Test
-    void IllegalResponseBodyException_inResponseToHEAD() throws IOException, InterruptedException {
+    void IllegalResponseBodyException_inResponseToHEAD()
+            throws IOException, InterruptedException
+    {
         server().add("/",
             HEAD().respond(text("Body!")));
         String rsp = client().writeReadTextUntilNewlines(
@@ -279,7 +295,9 @@ class ErrorTest extends AbstractRealTest
     }
     
     @Test
-    void ResponseRejectedException_interimIgnoredForOldClient() throws IOException, InterruptedException {
+    void ResponseRejectedException_interimIgnoredForOldClient()
+            throws IOException, InterruptedException
+    {
         server().add("/", GET().accept((req, ch) -> {
             ch.write(processing()); // <-- rejected
             ch.write(text("Done!"));
@@ -308,7 +326,9 @@ class ErrorTest extends AbstractRealTest
     }
     
     @Test
-    void RequestHeadTimeoutException() throws IOException, InterruptedException {
+    void RequestHeadTimeoutException()
+            throws IOException, InterruptedException
+    {
         // Return uber low timeout on the first poll, i.e. for the request head,
         // but use default timeout for request body and response.
         usingConfig(
@@ -330,7 +350,9 @@ class ErrorTest extends AbstractRealTest
     }
     
     @Test
-    void RequestBodyTimeoutException_beforeSubscriber() throws IOException, InterruptedException {
+    void RequestBodyTimeoutException_beforeSubscriber()
+            throws IOException, InterruptedException
+    {
         usingConfig(timeoutIdleConnection(2, ofMillis(0)));
         Semaphore subscribe = new Semaphore(0);
         onErrorRun(RequestBodyTimeoutException.class, subscribe::release);
@@ -375,13 +397,16 @@ class ErrorTest extends AbstractRealTest
     }
     
     // RequestBodyTimeoutException_afterSubscriber() ??
-    // Super tricky to do deterministically without also blocking the test. Skipping for now.
+    // Super tricky to do deterministically without also blocking the test.
+    // Skipping for now.
     
     // Low-level write timeout by InterruptedByTimeoutException?
     // Same. Can't do deterministically. Need to mock the channel.
     
     @Test
-    void ResponseTimeoutException_fromPipeline() throws IOException, InterruptedException {
+    void ResponseTimeoutException_fromPipeline()
+            throws IOException, InterruptedException
+    {
         usingConfig(
             timeoutIdleConnection(3, ofMillis(0)));
         server().add("/",
@@ -401,7 +426,9 @@ class ErrorTest extends AbstractRealTest
     
     @ParameterizedTest
     @ValueSource(booleans = {true, false})
-    void ResponseTimeoutException_fromResponseBody(boolean blockImmediately) throws IOException, InterruptedException {
+    void ResponseTimeoutException_fromResponseBody(boolean blockImmediately)
+            throws IOException, InterruptedException
+    {
         Semaphore unblock = new Semaphore(0);
         Response rsp = blockImmediately ?
                 ok(blockSubscriberUntil(unblock)) :
@@ -601,7 +628,9 @@ class ErrorTest extends AbstractRealTest
     
     @ParameterizedTest
     @ValueSource(strings = {"GET", "POST"})
-    void requestBodySubscriberFails_onComplete(String method) throws IOException, InterruptedException {
+    void requestBodySubscriberFails_onComplete(String method)
+            throws IOException, InterruptedException
+    {
         MemorizingSubscriber<PooledByteBufferHolder> sub = new MemorizingSubscriber<>(
                 onNextAndComplete(
                         PooledByteBufferHolder::discard,
@@ -665,7 +694,9 @@ class ErrorTest extends AbstractRealTest
     }
     
     @Test
-    void afterHttpExchange_responseIsLoggedButIgnored() throws IOException, InterruptedException {
+    void afterHttpExchange_responseIsLoggedButIgnored()
+            throws IOException, InterruptedException
+    {
         server().add("/", GET().accept((req, ch) -> {
             ch.write(noContent());
             ch.write(Response.builder(123).build());
@@ -683,7 +714,9 @@ class ErrorTest extends AbstractRealTest
     }
     
     @Test
-    void afterHttpExchange_responseExceptionIsLoggedButIgnored() throws IOException, InterruptedException {
+    void afterHttpExchange_responseExceptionIsLoggedButIgnored()
+            throws IOException, InterruptedException
+    {
         server().add("/", GET().accept((req, ch) -> {
             ch.write(noContent());
             ch.write(failedStage(new RuntimeException("Oops!")));
@@ -703,7 +736,9 @@ class ErrorTest extends AbstractRealTest
     
     // Expect 405 (Method Not Allowed)
     @Test
-    void MethodNotAllowedException_BLABLA() throws IOException, InterruptedException {
+    void MethodNotAllowedException_BLABLA()
+            throws IOException, InterruptedException
+    {
         server().add("/",
             GET().respond(internalServerError()),
             POST().respond(internalServerError()));
@@ -722,7 +757,9 @@ class ErrorTest extends AbstractRealTest
     
     // ...but if the method is OPTIONS, the default configuration implements it
     @Test
-    void MethodNotAllowedException_OPTIONS() throws IOException, InterruptedException {
+    void MethodNotAllowedException_OPTIONS()
+            throws IOException, InterruptedException
+    {
         server().add("/",
                 GET().respond(internalServerError()),
                 POST().respond(internalServerError()));
@@ -740,7 +777,9 @@ class ErrorTest extends AbstractRealTest
         assertThatNoWarningOrErrorIsLogged();
     }
     
-    private static void assertOnErrorReceived(MemorizingSubscriber.Signal onError, String msg) {
+    private static void assertOnErrorReceived(
+            MemorizingSubscriber.Signal onError, String msg)
+    {
         assertThat(onError.<Throwable>getArgument())
                 .isExactlyInstanceOf(SubscriberFailedException.class)
                 .hasMessage(msg)
