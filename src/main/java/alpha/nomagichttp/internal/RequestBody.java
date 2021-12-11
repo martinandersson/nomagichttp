@@ -1,6 +1,8 @@
 package alpha.nomagichttp.internal;
 
+import alpha.nomagichttp.message.BadRequestException;
 import alpha.nomagichttp.message.ContentHeaders;
+import alpha.nomagichttp.message.DefaultContentHeaders;
 import alpha.nomagichttp.message.MediaType;
 import alpha.nomagichttp.message.PooledByteBufferHolder;
 import alpha.nomagichttp.message.Request;
@@ -20,6 +22,8 @@ import java.util.concurrent.Flow;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.BiFunction;
 
+import static alpha.nomagichttp.HttpConstants.HeaderKey.CONTENT_LENGTH;
+import static alpha.nomagichttp.HttpConstants.HeaderKey.TRANSFER_ENCODING;
 import static alpha.nomagichttp.internal.AtomicReferences.lazyInit;
 import static alpha.nomagichttp.internal.SubscriptionMonitoringOp.alreadyCompleted;
 import static alpha.nomagichttp.internal.SubscriptionMonitoringOp.subscribeTo;
@@ -70,56 +74,84 @@ final class RequestBody implements Request.Body
      * 
      * @return a request body
      * @throws NullPointerException if any required argument is {@code null}
+     * @throws BadRequestException on invalid message framing
      */
     static RequestBody of(
-            ContentHeaders headers,
+            DefaultContentHeaders headers,
             Flow.Publisher<DefaultPooledByteBufferHolder> chIn,
             DefaultClientChannel chApi,
             Duration timeout,
             Runnable beforeNonEmptyBodySubscription)
     {
-        // TODO: 1) If length is not present, then body is possibly chunked.
-        //       2) Server should throw BadRequestException (?) if Content-Length is present AND Transfer-Encoding
-        // https://tools.ietf.org/html/rfc7230#section-3.3.3
+        final Flow.Publisher<DefaultPooledByteBufferHolder> content;
         
-        // "If this is a request message and none of the above are true, then"
-        //  the message body length is zero (no message body is present)."
-        // (only outbound responses may be close-delimited)
-        // https://tools.ietf.org/html/rfc7230#section-3.3.3
-        final long len = headers.contentLength().orElse(0);
+        var cl = headers.contentLength();
+        var te = headers.transferEncoding();
         
-        if (len <= 0) {
-            requireNonNull(chIn);
-            requireNonNull(chApi);
-            return new RequestBody(headers, null, null, null);
-        } else {
-            var bounded = new LengthLimitedOp(len, chIn);
-            
-            // Upstream is ChannelByteBufferPublisher, he can handle async cancel
-            var timedOp = timeout == null ? null :
-                    new TimeoutOp.Flow<>(false, true, bounded, timeout, () -> {
-                        if (LOG.isLoggable(DEBUG) && chApi.isOpenForReading()) {
-                            LOG.log(DEBUG, "Request body timed out, shutting down child channel's read stream.");
-                        }
-                        // No new HTTP exchange
-                        chApi.shutdownInputSafe();
-                        return new RequestBodyTimeoutException();
-                    });
-            
-            var monitor = subscribeTo(timedOp != null ? timedOp : bounded);
-            var onError = new OnDownstreamErrorCloseReadStream<>(monitor, chApi);
-            var discard = new OnCancelDiscardOp(onError);
-            
-            if (timedOp != null) {
-                timedOp.start();
+        if (cl.isPresent()) {
+            if (!te.isEmpty()) {
+                throw new BadRequestException(
+                    CONTENT_LENGTH + " and " + TRANSFER_ENCODING + " present.");
             }
-            
-            return new RequestBody(
-                    headers,
-                    discard,
-                    monitor,
-                    beforeNonEmptyBodySubscription);
+            long len = cl.getAsLong();
+            if (len == 0) {
+                return empty(chIn, chApi, headers);
+            }
+            assert len > 0;
+            content = new LengthLimitedOp(len, chIn);
+        } else if (te.isEmpty()) {
+            // "If this is a request message [...] then"
+            //  the message body length is zero (no message body is present)."
+            // (only outbound responses may be close-delimited)
+            // https://tools.ietf.org/html/rfc7230#section-3.3.3
+            return empty(chIn, chApi, headers);
+        } else {
+            throw new UnsupportedOperationException("Implement");
+            // Apply 1 chunked encoding, throw ex if more than that
         }
+        
+        return ofContent(content, timeout, chApi, headers, beforeNonEmptyBodySubscription);
+    }
+    
+    private static RequestBody empty(
+            Flow.Publisher<DefaultPooledByteBufferHolder> chIn,
+            DefaultClientChannel chApi,
+            DefaultContentHeaders headers)
+    {
+        requireNonNull(chIn);
+        requireNonNull(chApi);
+        return new RequestBody(headers, null, null, null);
+    }
+    
+    private static RequestBody ofContent(
+            Flow.Publisher<DefaultPooledByteBufferHolder> content,
+            Duration timeout,
+            DefaultClientChannel chApi,
+            DefaultContentHeaders headers,
+            Runnable beforeNonEmptyBodySubscription)
+    {
+        // Upstream is ChannelByteBufferPublisher, he can handle async cancel
+        var timedOp = timeout == null ? null :
+                new TimeoutOp.Flow<>(false, true, content, timeout, () -> {
+                    if (LOG.isLoggable(DEBUG) && chApi.isOpenForReading()) {
+                        LOG.log(DEBUG, "Request body timed out, shutting down child channel's read stream.");
+                    }
+                    // No new HTTP exchange
+                    chApi.shutdownInputSafe();
+                    return new RequestBodyTimeoutException();
+                });
+        
+        var monitor = subscribeTo(timedOp != null ? timedOp : content);
+        var onError = new OnDownstreamErrorCloseReadStream<>(monitor, chApi);
+        var discard = new OnCancelDiscardOp(onError);
+        if (timedOp != null) {
+            timedOp.start();
+        }
+        return new RequestBody(
+                headers,
+                discard,
+                monitor,
+                beforeNonEmptyBodySubscription);
     }
     
     private final ContentHeaders headers;

@@ -1,6 +1,7 @@
 package alpha.nomagichttp.internal;
 
 import alpha.nomagichttp.message.BadHeaderException;
+import alpha.nomagichttp.message.DefaultContentHeaders;
 import alpha.nomagichttp.message.Request;
 import alpha.nomagichttp.util.Publishers;
 import org.junit.jupiter.api.Test;
@@ -98,7 +99,7 @@ class DefaultRequestTest
                 headers);
         
         var rb = RequestBody.of(
-                rh.headers(),
+                (DefaultContentHeaders) rh.headers(),
                 Publishers.just(wrap(body, US_ASCII)),
                 Mockito.mock(DefaultClientChannel.class),
                 null, null);

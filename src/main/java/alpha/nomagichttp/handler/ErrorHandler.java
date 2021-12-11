@@ -6,6 +6,7 @@ import alpha.nomagichttp.ReceiverOfUniqueRequestObject;
 import alpha.nomagichttp.action.AfterAction;
 import alpha.nomagichttp.action.BeforeAction;
 import alpha.nomagichttp.message.BadHeaderException;
+import alpha.nomagichttp.message.BadRequestException;
 import alpha.nomagichttp.message.HttpVersionParseException;
 import alpha.nomagichttp.message.HttpVersionTooNewException;
 import alpha.nomagichttp.message.HttpVersionTooOldException;
@@ -218,6 +219,12 @@ public interface ErrorHandler
      *     <td> {@link Responses#httpVersionNotSupported()} </td>
      *   </tr>
      *   <tr>
+     *     <th scope="row"> {@link BadRequestException} </th>
+     *     <td> None </td>
+     *     <td> No </td>
+     *     <td> {@link Responses#badRequest()} </td>
+     *   </tr>
+     *   <tr>
      *     <th scope="row"> {@link BadHeaderException} </th>
      *     <td> None </td>
      *     <td> No </td>
@@ -340,6 +347,7 @@ public interface ErrorHandler
         } catch (RequestHeadParseException |
                  HttpVersionParseException |
                  BadHeaderException        |
+                 BadRequestException       |
                  IllegalRequestBodyException e) {
             res = badRequest();
         } catch (MaxRequestHeadSizeExceededException e) {

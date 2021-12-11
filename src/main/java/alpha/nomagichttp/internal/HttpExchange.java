@@ -7,6 +7,7 @@ import alpha.nomagichttp.HttpServer;
 import alpha.nomagichttp.handler.ClientChannel;
 import alpha.nomagichttp.handler.ErrorHandler;
 import alpha.nomagichttp.internal.ResponsePipeline.Command;
+import alpha.nomagichttp.message.DefaultContentHeaders;
 import alpha.nomagichttp.message.HttpVersionTooNewException;
 import alpha.nomagichttp.message.HttpVersionTooOldException;
 import alpha.nomagichttp.message.IllegalRequestBodyException;
@@ -269,7 +270,7 @@ final class HttpExchange
     }
     
     private RequestBody createBody(RequestHead h) {
-        return RequestBody.of(h.headers(), chIn, chApi,
+        return RequestBody.of((DefaultContentHeaders) h.headers(), chIn, chApi,
                 config.timeoutIdleConnection(),
                 this::tryRespond100Continue);
     }
@@ -375,7 +376,7 @@ final class HttpExchange
         final var b = reqThin != null ? reqThin.body() :
                 // E.g. HttpVersionTooOldException -> 426 (Upgrade Required).
                 // So we fall back to a local dummy, just for the API.
-                RequestBody.of(head.headers(), chIn, chApi, null, null);
+                RequestBody.of((DefaultContentHeaders) head.headers(), chIn, chApi, null, null);
         
         b.discardIfNoSubscriber();
         b.subscriptionMonitor().asCompletionStage().whenComplete((nil, thr) -> {
