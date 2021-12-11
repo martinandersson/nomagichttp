@@ -927,7 +927,9 @@ public abstract class HttpClientFacade
         static <B> ResponseFacade<B> fromApache(SimpleHttpResponse apache, B body) {
             Supplier<HttpHeaders> headers = () -> {
                 var exploded = stream(apache.getHeaders())
-                        .flatMap(h -> Stream.of(h.getName(), h.getValue()))
+                        .mapMulti((h, sink) -> {
+                            sink.accept(h.getName());
+                            sink.accept(h.getValue()); })
                         .toArray(String[]::new);
                 return Headers.of(exploded);
             };
@@ -945,7 +947,9 @@ public abstract class HttpClientFacade
         {
             Supplier<HttpHeaders> headers = () -> {
                 var exploded = jetty.getHeaders().stream()
-                        .flatMap(h -> Stream.of(h.getName(), h.getValue()))
+                        .<String>mapMulti((h, sink) -> {
+                            sink.accept(h.getName());
+                            sink.accept(h.getValue()); })
                         .toArray(String[]::new);
                 
                 return Headers.of(exploded);
@@ -961,7 +965,9 @@ public abstract class HttpClientFacade
         static <B> ResponseFacade<B> fromReactor(HttpClientResponse reactor, B body) {
             Supplier<HttpHeaders> headers = () -> {
                 var exploded = reactor.responseHeaders().entries().stream()
-                        .flatMap(e -> Stream.of(e.getKey(), e.getValue()))
+                        .<String>mapMulti((h, sink) -> {
+                            sink.accept(h.getKey());
+                            sink.accept(h.getValue()); })
                         .toArray(String[]::new);
                 
                 return Headers.of(exploded);
