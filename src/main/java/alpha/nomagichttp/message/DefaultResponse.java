@@ -25,7 +25,6 @@ import static alpha.nomagichttp.util.Publishers.empty;
 import static java.net.http.HttpRequest.BodyPublisher;
 import static java.util.Collections.emptyList;
 import static java.util.Objects.requireNonNull;
-import static java.util.stream.Collectors.toUnmodifiableList;
 
 /**
  * Default implementation of {@link Response}.
@@ -293,7 +292,7 @@ final class DefaultResponse implements Response
             Iterable<String> forWriting = s.headers == null ? emptyList() :
                     s.headers.entrySet().stream().flatMap(e ->
                             e.getValue().stream().map(v -> e.getKey() + ": " + v))
-                    .collect(toUnmodifiableList());
+                    .toList();
             
             Response r = new DefaultResponse(
                     s.statusCode,
