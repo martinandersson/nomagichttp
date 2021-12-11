@@ -31,7 +31,7 @@ public interface ContentHeaders extends BetterHeaders
     Optional<MediaType> contentType();
     
     /**
-     * Parses one "Content-Length" value into a long.<p>
+     * Parses one "Content-Length" value into a positive long.<p>
      * 
      * This header is the message body length in bytes and should be set by the
      * sender if the message carries a body payload.<p>
@@ -44,7 +44,8 @@ public interface ContentHeaders extends BetterHeaders
      * 
      * @throws BadHeaderException
      *             if the headers has multiple Content-Length keys, or
-     *             if header value can not be parsed
+     *             if parsing failed (cause set to {@link NumberFormatException}), or
+     *             if the parsed value is negative
      * 
      * @see HttpConstants.HeaderKey#CONTENT_LENGTH
      */

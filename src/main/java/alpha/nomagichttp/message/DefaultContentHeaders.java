@@ -88,14 +88,20 @@ public class DefaultContentHeaders implements ContentHeaders {
             throw new BadHeaderException(
                 "Multiple " + CONTENT_LENGTH + " values in request.");
         }
+        final long v;
         try {
-            return OptionalLong.of(parseLong(tkns[0]));
+            v = parseLong(tkns[0]);
         } catch (NumberFormatException e) {
             var msg = format(
                 "Can not parse {0} (\"{1}\") into a long.",
                 CONTENT_LENGTH, tkns[0]);
             throw new BadHeaderException(msg, e);
         }
+        if (v < 0) {
+            throw new BadHeaderException(format(
+                "{0} is negative ({1})", CONTENT_LENGTH, v));
+        }
+        return OptionalLong.of(v);
     }
     
     @Override

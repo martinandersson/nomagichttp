@@ -41,6 +41,16 @@ class DefaultContentHeadersTest
     }
     
     @Test
+    void contentLength_BadHeaderException_negative() {
+        var testee = of("Content-Length", "-123");
+        assertThatThrownBy(testee::contentLength)
+            .isExactlyInstanceOf(BadHeaderException.class)
+            .hasMessage("Content-Length is negative (-123)")
+            .hasNoSuppressedExceptions()
+            .hasNoCause();
+    }
+    
+    @Test
     void transferEncoding() {
         var testee = of(
             "Transfer-Encoding", "bla,,  ,",
