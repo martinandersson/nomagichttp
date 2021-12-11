@@ -566,8 +566,8 @@ public final class Responses
     public static Response upgradeRequired(String upgrade) {
         return CACHE.get(FOUR_HUNDRED_TWENTY_SIX, UPGRADE_REQUIRED).toBuilder()
                 .addHeaders(
-                        UPGRADE, upgrade,
-                        CONNECTION, UPGRADE)
+                    UPGRADE, upgrade,
+                    CONNECTION, UPGRADE)
                 .build();
     }
     
@@ -701,6 +701,7 @@ public final class Responses
      * @return see JavaDoc
      */
     private static boolean isBodyForbidden(int code) {
+        // is-informational || 204
         return code >= 100 && code <= 199 || code == 204;
     }
     
