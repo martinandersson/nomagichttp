@@ -559,7 +559,8 @@ public interface Request extends HeaderHolder, AttributeHolder
      * JavaDoc of {@link Publishers} applies to the {@code Body} as a publisher
      * as well. The only exception is that the body does not support subscriber
      * reuse, again because the server does not keep the bytes after
-     * consumption.<p>
+     * consumption. Subscribing more than once will cause an {@link
+     * IllegalStateException} to be signalled.<p>
      * 
      * The subscriber will receive bytebuffers in the same order they are read
      * from the underlying channel. The subscriber can not read beyond the

@@ -76,7 +76,7 @@ import static java.util.Objects.requireNonNull;
  * Exceptions thrown by {@code Subscriber.onSubscribe()} and {@code onNext()}
  * propagates to the calling thread - after having been forwarded to {@code
  * Subscriber.onError()} as the <i>cause</i> of a {@link
- * SubscriberFailedException}. Having said that, the subscription is voided and
+ * SubscriberFailedException}. After this point, the subscription is voided and
  * the publisher will no longer interact with the subscriber that failed.<p>
  * 
  * Exceptions from {@code Subscriber.onComplete()} will also propagate to the
@@ -97,8 +97,8 @@ import static java.util.Objects.requireNonNull;
  * 
  * According to §1.9, the publisher is required to always call {@code
  * Subscriber.onSubscribe()} even if the publisher's intent is to immediately
- * terminate the subscription. It's perhaps misfortune to force a subscriber to
- * initialize even when the publisher has no intention to give the subscriber
+ * terminate the subscription. It's perhaps misfortunate to force a subscriber
+ * to initialize even when the publisher has no intention to give the subscriber
  * any items. It can be argued that the rule is counterintuitive which might
  * help explain why the {@code OneShotPublisher} example given in the javadoc of
  * {@link Flow} just happened to forget about it. However that might be, this
@@ -108,7 +108,11 @@ import static java.util.Objects.requireNonNull;
  * will still be monitored and if {@code cancel()} is called on the dummy, then
  * the subscription will not receive the completion signal (§1.8, §3.12).
  * Requesting demand from the dummy is NOP (see {@link
- * Subscriptions#canOnlyBeCancelled()}).
+ * Subscriptions#canOnlyBeCancelled()}). A subscriber performing expensive
+ * initialization in the {@code onSubscribe} method ought to first check that
+ * the subscription object is not of type {@code
+ * Subscriptions.CanOnlyBeCancelled}, or delay initialization until the first
+ * item arrives.
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  * 
