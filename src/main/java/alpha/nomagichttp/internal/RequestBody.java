@@ -1,6 +1,7 @@
 package alpha.nomagichttp.internal;
 
 import alpha.nomagichttp.message.BadRequestException;
+import alpha.nomagichttp.message.BetterHeaders;
 import alpha.nomagichttp.message.ContentHeaders;
 import alpha.nomagichttp.message.DefaultContentHeaders;
 import alpha.nomagichttp.message.MediaType;
@@ -27,6 +28,7 @@ import static alpha.nomagichttp.HttpConstants.HeaderKey.TRANSFER_ENCODING;
 import static alpha.nomagichttp.internal.AtomicReferences.lazyInit;
 import static alpha.nomagichttp.internal.SubscriptionMonitoringOp.alreadyCompleted;
 import static alpha.nomagichttp.internal.SubscriptionMonitoringOp.subscribeTo;
+import static alpha.nomagichttp.message.DefaultContentHeaders.empty;
 import static java.lang.System.Logger.Level.DEBUG;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.nio.file.StandardOpenOption.CREATE_NEW;
@@ -43,6 +45,7 @@ import static java.util.concurrent.CompletableFuture.failedStage;
 final class RequestBody implements Request.Body
 {
     private static final System.Logger LOG = System.getLogger(RequestBody.class.getPackageName());
+    private static final CompletionStage<BetterHeaders> COMPLETED_TRAILERS = completedStage(empty());
     private static final CompletionStage<String> COMPLETED_EMPTY_STR = completedStage("");
     
     // Copy-pasted from AsynchronousFileChannel.NO_ATTRIBUTES
@@ -84,6 +87,7 @@ final class RequestBody implements Request.Body
             Runnable beforeNonEmptyBodySubscription)
     {
         final Flow.Publisher<? extends PooledByteBufferHolder> content;
+        final CompletionStage<BetterHeaders> trailers;
         
         var cl = headers.contentLength();
         var te = headers.transferEncoding();
@@ -95,39 +99,46 @@ final class RequestBody implements Request.Body
             }
             long len = cl.getAsLong();
             if (len == 0) {
-                return empty(chIn, chApi, headers);
+                return emptyBody(chIn, chApi, headers);
             }
             assert len > 0;
             content = new LengthLimitedOp(len, chIn);
+            trailers = null;
         } else if (te.isEmpty()) {
             // "If this is a request message [...] then"
             //  the message body length is zero (no message body is present)."
             // (only outbound responses may be close-delimited)
             // https://tools.ietf.org/html/rfc7230#section-3.3.3
-            return empty(chIn, chApi, headers);
+            return emptyBody(chIn, chApi, headers);
         } else {
-            throw new UnsupportedOperationException("Implement");
-            // Apply 1 chunked encoding, throw ex if more than that
+            if (te.size() != 1 && !te.getLast().equalsIgnoreCase("chunked")) {
+                throw new UnsupportedOperationException(
+                        "Only chunked decoding supported, at the moment.");
+            }
+            content = null; //new ChunkedDecoderOp(chIn);
+            trailers = null; //content.trailers();
+            if (true) throw new AssertionError("WIP!!");
         }
         
-        return ofContent(
-                content, headers, timeout,
+        return contentBody(
+                headers, content, trailers, timeout,
                 chApi, beforeNonEmptyBodySubscription);
     }
     
-    private static RequestBody empty(
+    private static RequestBody emptyBody(
             Flow.Publisher<? extends PooledByteBufferHolder> chIn,
             DefaultClientChannel chApi,
             DefaultContentHeaders headers)
     {
         requireNonNull(chIn);
         requireNonNull(chApi);
-        return new RequestBody(headers, null, null, null);
+        return new RequestBody(headers, null, null, null, null);
     }
     
-    private static RequestBody ofContent(
-            Flow.Publisher<? extends PooledByteBufferHolder> content,
+    private static RequestBody contentBody(
             DefaultContentHeaders headers,
+            Flow.Publisher<? extends PooledByteBufferHolder> content,
+            CompletionStage<BetterHeaders> trailers,
             Duration timeout,
             DefaultClientChannel chApi,
             Runnable beforeNonEmptyBodySubscription)
@@ -150,40 +161,40 @@ final class RequestBody implements Request.Body
             timedOp.start();
         }
         return new RequestBody(
-                headers,
-                monitor,
-                discard,
-                beforeNonEmptyBodySubscription);
+                headers, monitor, discard,
+                trailers, beforeNonEmptyBodySubscription);
     }
     
     private final ContentHeaders headers;
     private final SubscriptionMonitoringOp monitor;
     private final OnCancelDiscardOp discard;
-    private final Runnable beforeSubsc;
-
-    private final AtomicReference<CompletionStage<String>> cachedText;
+    private final CompletionStage<BetterHeaders> trailers;
+    private final Runnable beforeSub;
+    
+    private final AtomicReference<CompletionStage<String>> cachedTxt;
     
     private RequestBody(
             // Required
             ContentHeaders headers,
-            // All optional (relevant only for body contents)
+            // All null if body is empty
             SubscriptionMonitoringOp monitor,
             OnCancelDiscardOp discard,
-            Runnable beforeSubsc)
+            CompletionStage<BetterHeaders> trailers,
+            Runnable beforeSub)
     {
-        this.headers     = headers;
-        this.monitor     = monitor;
-        this.discard     = discard;
-        this.beforeSubsc = beforeSubsc;
-        this.cachedText  = discard == null ? null : new AtomicReference<>(null);
+        this.headers   = headers;
+        this.monitor   = monitor;
+        this.discard   = discard;
+        this.trailers  = trailers;
+        this.beforeSub = beforeSub;
+        this.cachedTxt = isEmpty() ? null : new AtomicReference<>(null);
     }
     
     @Override
     public CompletionStage<String> toText() {
-        if (isEmpty()) {
-            return COMPLETED_EMPTY_STR;
-        }
-        return lazyInit(cachedText, CompletableFuture::new, v -> copyResult(mkText(), v));
+        return isEmpty() ? COMPLETED_EMPTY_STR :
+               lazyInit(cachedTxt, CompletableFuture::new,
+                       v -> copyResult(mkText(), v));
     }
     
     private CompletionStage<String> mkText() {
@@ -215,26 +226,26 @@ final class RequestBody implements Request.Body
         final Set<? extends OpenOption> opt = !options.isEmpty() ? options :
                 Set.of(WRITE, CREATE_NEW);
         
-        final AsynchronousFileChannel fs;
+        final AsynchronousFileChannel fc;
         
         try {
             // TODO: Potentially re-use server's async group
             //       (currently not possible to specify group?)
-            fs = AsynchronousFileChannel.open(file, opt, null, attrs);
+            fc = AsynchronousFileChannel.open(file, opt, null, attrs);
         } catch (Throwable t) {
             return failedStage(t);
         }
         
-        FileSubscriber s = new FileSubscriber(file, fs);
-        subscribe(s);
-        return s.asCompletionStage();
+        var fs = new FileSubscriber(file, fc);
+        subscribe(fs);
+        return fs.asCompletionStage();
     }
     
     @Override
     public <R> CompletionStage<R> convert(BiFunction<byte[], Integer, R> f) {
-        HeapSubscriber<R> s = new HeapSubscriber<>(f);
-        subscribe(s);
-        return s.asCompletionStage();
+        var hs = new HeapSubscriber<>(f);
+        subscribe(hs);
+        return hs.asCompletionStage();
     }
     
     @Override
@@ -242,8 +253,8 @@ final class RequestBody implements Request.Body
         if (isEmpty()) {
             Publishers.<PooledByteBufferHolder>empty().subscribe(subscriber);
         } else {
-            if (beforeSubsc != null) {
-                beforeSubsc.run();
+            if (beforeSub != null) {
+                beforeSub.run();
             }
             discard.subscribe(subscriber);
         }
@@ -251,7 +262,18 @@ final class RequestBody implements Request.Body
     
     @Override
     public boolean isEmpty() {
-        return discard == null;
+        // or discard == null, or anything else == null really, except headers
+        return monitor == null;
+    }
+    
+    /**
+     * Returns trailing headers.
+     * 
+     * @return trailing headers (never {@code null})
+     * @see Request#trailers() 
+     */
+    CompletionStage<BetterHeaders> trailers() {
+        return isEmpty() ? COMPLETED_TRAILERS : trailers;
     }
     
     /**

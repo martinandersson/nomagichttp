@@ -2711,6 +2711,7 @@ public final class HttpConstants {
          * 
          * @see #TE
          * @see <a href="https://tools.ietf.org/html/rfc7230#section-4.4">RFC 7230 §4.4</a>
+         * @see Request#trailers() 
          */
         public static final String TRAILER = "Trailer";
         

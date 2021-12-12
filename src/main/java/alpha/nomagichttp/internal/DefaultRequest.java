@@ -2,7 +2,10 @@ package alpha.nomagichttp.internal;
 
 import alpha.nomagichttp.HttpConstants.Version;
 import alpha.nomagichttp.message.Attributes;
+import alpha.nomagichttp.message.BetterHeaders;
 import alpha.nomagichttp.message.Request;
+
+import java.util.concurrent.CompletionStage;
 
 /**
  * The default implementation of {@code Request}.
@@ -58,6 +61,11 @@ final class DefaultRequest implements Request
     @Override
     public Body body() {
         return shared.body();
+    }
+    
+    @Override
+    public CompletionStage<BetterHeaders> trailers() {
+        return shared.body().trailers();
     }
     
     @Override

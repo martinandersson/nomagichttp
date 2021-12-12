@@ -7,8 +7,12 @@ package alpha.nomagichttp.message;
  */
 public interface HeaderHolder {
     /**
-     * Returns the HTTP headers.
+     * Returns the HTTP headers.<p>
      * 
+     * The headers returned are derived from lines between the start-line and
+     * the body of the HTTP message. They do not include trailing headers.<p>
+     * 
+     * @see Request#trailers()
      * @return the HTTP headers (never {@code null})
      */
     ContentHeaders headers();

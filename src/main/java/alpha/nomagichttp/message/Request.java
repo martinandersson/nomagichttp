@@ -125,6 +125,54 @@ public interface Request extends HeaderHolder, AttributeHolder
     Body body();
     
     /**
+     * Returns trailing headers.<p>
+     * 
+     * The client can append a header section after the message body. Apart from
+     * the placement, these so-called trailing headers are identical to the more
+     * commonly known header fields that occur before the message body.<p>
+     * 
+     * Trailing headers are good for sending metadata that was not available
+     * before the body started transmitting. For example, appending a hash that
+     * the receiver can use to verify message integrity.<p>
+     * 
+     * For the returned stage to complete, a non-empty request body must first
+     * be consumed. If the body is empty, the returned stage will already be
+     * completed with an empty headers object.<p>
+     * 
+     * RFC 7230 §4.4 defines an HTTP header "Trailer" which it says ought to
+     * list what trailers will be sent after the body. The RFC also suggest that
+     * the server move trailers to the "existing header fields" and then remove
+     * the "Trailer" header, i.e. make it look like trailing headers are normal
+     * headers (asynchronous APIs were not so common at the time!). And to
+     * preempt the damage that may result from hoisting trailers, the RFC also
+     * lists field names that it says must not be used as a trailing header, e.g.
+     * "Host" and "Content-Length".<p>
+     * 
+     * The NoMagicHTTP does none of this stuff. The "Trailer" header and all
+     * trailers will remain untouched. However, the RFC hack may be applied by
+     * HTTP intermediaries who buffer up and de-chunk an HTTP/1.1 message before
+     * forwarding it. The application can therefore not generally be sure that
+     * the "Trailer" header and trailers are received in the same manner they
+     * were sent. Unless the application has knowledge or make assumptions
+     * about the request chain, it ought to fall back and look for missing
+     * trailers amongst the ordinary HTTP headers.<p>
+     * 
+     * Trailing headers were first introduced in HTTP/1.1 chunked encoding (
+     * <a href="https://tools.ietf.org/html/rfc7230#section-4.1.2">RFC 7230 §4.1.2</a>)
+     * and although HTTP/2 discontinues chunked encoding in favor of its own
+     * data frames, trailing headers remain supported (
+     * <a href="https://tools.ietf.org/html/rfc7540#section-8.1">RFC 7540 §8.1</a>).
+     * For requests of an older HTTP version ({@literal <} 1.1), this method
+     * returns an already completed stage with an empty headers object.<p>
+     * 
+     * For more information on HTTP/1.1 chunked encoding, see {@link
+     * HttpServer}.
+     * 
+     * @return trailing headers (never {@code null})
+     */
+    CompletionStage<BetterHeaders> trailers();
+    
+    /**
      * An API to access segments, path parameters (interpreted segments), query
      * key/value pairs and a fragment from the resource-target of a request.<p>
      * 

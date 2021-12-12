@@ -14,10 +14,10 @@ import static alpha.nomagichttp.HttpConstants.HeaderKey.CONTENT_LENGTH;
 import static alpha.nomagichttp.HttpConstants.HeaderKey.CONTENT_TYPE;
 import static alpha.nomagichttp.HttpConstants.HeaderKey.TRANSFER_ENCODING;
 import static alpha.nomagichttp.message.MediaType.parse;
+import static alpha.nomagichttp.util.Headers.of;
 import static java.lang.Long.parseLong;
 import static java.text.MessageFormat.format;
 import static java.util.Objects.requireNonNull;
-import static java.util.Optional.empty;
 import static java.util.function.Predicate.not;
 import static java.util.stream.Collectors.toCollection;
 
@@ -30,7 +30,20 @@ import static java.util.stream.Collectors.toCollection;
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  */
-public class DefaultContentHeaders implements ContentHeaders {
+public class DefaultContentHeaders implements ContentHeaders
+{
+    private static final DefaultContentHeaders EMPTY
+            = new DefaultContentHeaders(of());
+    
+    /**
+     * Returns an empty headers' object.
+     * 
+     * @return an empty headers' object (singleton)
+     */
+    public static DefaultContentHeaders empty() {
+        return EMPTY;
+    }
+    
     private final HttpHeaders jdk;
     
     /**
@@ -59,7 +72,7 @@ public class DefaultContentHeaders implements ContentHeaders {
     private Optional<MediaType> mkContentType() {
         final var tkns = allTokens(CONTENT_TYPE).toArray(String[]::new);
         if (tkns.length == 0) {
-            return empty();
+            return Optional.empty();
         }
         if (tkns.length > 1) {
             throw new BadHeaderException(
@@ -142,7 +155,7 @@ public class DefaultContentHeaders implements ContentHeaders {
      */
     public final Deque<String> transferEncoding() {
         var te = allTokens(TRANSFER_ENCODING)
-                .collect(toCollection(ArrayDeque::new));
+                     .collect(toCollection(ArrayDeque::new));
         if (!te.isEmpty() && !"chunked".equalsIgnoreCase(te.getLast())) {
             throw new BadHeaderException(format(
                 "Last {0} token (\"{1}\") is not \"chunked\".",
