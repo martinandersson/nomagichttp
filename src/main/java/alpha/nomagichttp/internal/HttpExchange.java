@@ -75,7 +75,7 @@ final class HttpExchange
      * {@link ResponsePipeline} whenever a request object has been created. The
      * first (and only) attachment is the request object created. The result
      * performed by this class is an update of the HTTP exchange state, so that
-     * the {@link ErrorHandler} can receive the most recent instance.
+     * the {@link ErrorHandler} can observe the most recent instance.
      */
     enum RequestCreated { INSTANCE }
     

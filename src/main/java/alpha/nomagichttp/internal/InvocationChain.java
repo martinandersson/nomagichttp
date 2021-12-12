@@ -23,11 +23,7 @@ import static java.util.concurrent.CompletableFuture.completedStage;
 
 /**
  * Represents a work flow of finding and executing before-actions and a request
- * handler. These entities will co-operate to write responses to a channel.
- * There is no other resulting outcome from this work flow, except of course
- * possible errors.<p>
- * 
- * There's one instance of this class per HTTP exchange.<p>
+ * handler. These entities will co-operate to write responses to a channel.<p>
  * 
  * The entry point is {@link #execute(SkeletonRequest, Version)}.
  * 
@@ -72,10 +68,10 @@ final class InvocationChain extends AbstractLocalEventEmitter
      *      {@link #ABORTED}</li>
      * </ul>
      * 
-     * A normal completion as well as a throwable where {@code getCause() ==
-     * ABORTED} ought to semantically have the same outcome; i.e. none if the
-     * {@linkplain ResponsePipeline pipeline} is still waiting for the final
-     * response, otherwise a new HTTP exchange.
+     * A normal completion and a throwable where {@code getCause() == ABORTED}
+     * ought to semantically have the same outcome; i.e. if the {@linkplain
+     * ResponsePipeline pipeline} is still waiting for the final response then
+     * none, otherwise a new HTTP exchange.
      * 
      * @param req request
      * @param ver HTTP version

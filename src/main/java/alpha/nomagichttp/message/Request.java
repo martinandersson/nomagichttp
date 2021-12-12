@@ -8,6 +8,7 @@ import alpha.nomagichttp.handler.ClientChannel;
 import alpha.nomagichttp.handler.ErrorHandler;
 import alpha.nomagichttp.route.Route;
 import alpha.nomagichttp.util.Publishers;
+import alpha.nomagichttp.util.SubscriberFailedException;
 
 import java.net.URLDecoder;
 import java.nio.channels.AsynchronousByteChannel;
@@ -671,10 +672,12 @@ public interface Request extends HeaderHolder, AttributeHolder
      * untouched so that a response in-flight can complete or a new one
      * commence).<p>
      * 
-     * Exceptions signalled to {@code Subscriber.onError()} that are <i>not
-     * caused by</i> the subscriber itself can safely be assumed to indicate
-     * low-level problems with the underlying channel. They will also have been
-     * logged by the HTTP server followed suite by read-stream closure.
+     * Exceptions signalled to {@code Subscriber.onError()} that are not caused
+     * by the subscriber itself (i.e. the signalled error is of a different type
+     * than {@link SubscriberFailedException}) can safely be assumed to indicate
+     * low-level problems with the underlying channel or JVM. These exceptions
+     * will have been logged by the HTTP server followed suite by read-stream
+     * closure. They are generally safe to ignore.
      * 
      * @author Martin Andersson (webmaster at martinandersson.com)
      */

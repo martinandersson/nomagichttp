@@ -4,7 +4,10 @@ import static java.util.Objects.requireNonNull;
 
 /**
  * Signalled to a {@code Flow.Subscriber.onError()} if another method of the
- * subscriber failed.
+ * subscriber failed.<p>
+ * 
+ * The cause of this exception will always be set to the exception thrown by the
+ * subscriber.
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  * @see Publishers
