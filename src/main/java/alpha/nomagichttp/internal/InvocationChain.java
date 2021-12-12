@@ -9,7 +9,6 @@ import alpha.nomagichttp.route.NoRouteFoundException;
 import alpha.nomagichttp.route.Route;
 
 import java.util.Iterator;
-import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -85,12 +84,13 @@ final class InvocationChain extends AbstractLocalEventEmitter
     }
     
     private CompletionStage<Void> invokeBeforeActions(SkeletonRequest req, Version ver) {
-        List<Match<BeforeAction>> before = actions.lookupBefore(req.target());
-        if (before.isEmpty()) {
+        var matches = actions.lookupBefore(req.target());
+        if (matches.isEmpty()) {
             return COMPLETED;
         }
         var allOf = new CompletableFuture<Void>();
-        new ChainImpl(before.iterator(), allOf, req, ver).callAction();
+        new ChainImpl(matches.iterator(), allOf, req, ver)
+                .callAction();
         return allOf;
     }
     
@@ -165,7 +165,8 @@ final class InvocationChain extends AbstractLocalEventEmitter
             if (!matches.hasNext()) {
                 allOf.complete(null);
             } else {
-                new ChainImpl(matches, allOf, shared, ver).callAction();
+                new ChainImpl(matches, allOf, shared, ver)
+                        .callAction();
             }
         }
         

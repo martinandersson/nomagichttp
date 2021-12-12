@@ -83,7 +83,7 @@ final class RequestBody implements Request.Body
             Duration timeout,
             Runnable beforeNonEmptyBodySubscription)
     {
-        final Flow.Publisher<DefaultPooledByteBufferHolder> content;
+        final Flow.Publisher<? extends PooledByteBufferHolder> content;
         
         var cl = headers.contentLength();
         var te = headers.transferEncoding();
@@ -110,11 +110,13 @@ final class RequestBody implements Request.Body
             // Apply 1 chunked encoding, throw ex if more than that
         }
         
-        return ofContent(content, timeout, chApi, headers, beforeNonEmptyBodySubscription);
+        return ofContent(
+                content, headers, timeout,
+                chApi, beforeNonEmptyBodySubscription);
     }
     
     private static RequestBody empty(
-            Flow.Publisher<DefaultPooledByteBufferHolder> chIn,
+            Flow.Publisher<? extends PooledByteBufferHolder> chIn,
             DefaultClientChannel chApi,
             DefaultContentHeaders headers)
     {
@@ -124,10 +126,10 @@ final class RequestBody implements Request.Body
     }
     
     private static RequestBody ofContent(
-            Flow.Publisher<DefaultPooledByteBufferHolder> content,
+            Flow.Publisher<? extends PooledByteBufferHolder> content,
+            DefaultContentHeaders headers,
             Duration timeout,
             DefaultClientChannel chApi,
-            DefaultContentHeaders headers,
             Runnable beforeNonEmptyBodySubscription)
     {
         // Upstream is ChannelByteBufferPublisher, he can handle async cancel
