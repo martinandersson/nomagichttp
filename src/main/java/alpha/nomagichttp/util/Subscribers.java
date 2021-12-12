@@ -75,6 +75,30 @@ public final class Subscribers
     }
     
     /**
+     * Returns a subscriber interested only in the subscription object.<p>
+     * 
+     * {@code onNext}, {@code onError} and {@code onComplete} are NOP.
+     * 
+     * @param impl subscription consumer
+     * @param <T> item type
+     * 
+     * @return a subscriber
+     * 
+     * @throws NullPointerException if {@code impl} is {@code null}
+     */
+    public static <T> Flow.Subscriber<T> onSubscribe(Consumer<Flow.Subscription> impl) {
+        requireNonNull(impl);
+        return new Flow.Subscriber<>() {
+            public void onSubscribe(Flow.Subscription s) {
+                impl.accept(s); }
+            
+            public void onNext(T item) { }
+            public void onError(Throwable throwable) { }
+            public void onComplete() { }
+        };
+    }
+    
+    /**
      * Invoke the given {@code target}'s {@code onSubscribe()} method.<p>
      * 
      * If the call returns exceptionally, 1) set the exception as the cause of a
