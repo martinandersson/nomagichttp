@@ -149,14 +149,14 @@ final class RequestBody implements Request.Body
         }
         return new RequestBody(
                 headers,
-                discard,
                 monitor,
+                discard,
                 beforeNonEmptyBodySubscription);
     }
     
     private final ContentHeaders headers;
-    private final OnCancelDiscardOp chIn;
     private final SubscriptionMonitoringOp monitor;
+    private final OnCancelDiscardOp discard;
     private final Runnable beforeSubsc;
 
     private final AtomicReference<CompletionStage<String>> cachedText;
@@ -165,15 +165,15 @@ final class RequestBody implements Request.Body
             // Required
             ContentHeaders headers,
             // All optional (relevant only for body contents)
-            OnCancelDiscardOp chIn,
             SubscriptionMonitoringOp monitor,
+            OnCancelDiscardOp discard,
             Runnable beforeSubsc)
     {
         this.headers     = headers;
-        this.chIn        = chIn;
         this.monitor     = monitor;
+        this.discard     = discard;
         this.beforeSubsc = beforeSubsc;
-        this.cachedText  = chIn == null ? null : new AtomicReference<>(null);
+        this.cachedText  = discard == null ? null : new AtomicReference<>(null);
     }
     
     @Override
@@ -243,13 +243,13 @@ final class RequestBody implements Request.Body
             if (beforeSubsc != null) {
                 beforeSubsc.run();
             }
-            chIn.subscribe(subscriber);
+            discard.subscribe(subscriber);
         }
     }
     
     @Override
     public boolean isEmpty() {
-        return chIn == null;
+        return discard == null;
     }
     
     /**
@@ -274,10 +274,12 @@ final class RequestBody implements Request.Body
         if (isEmpty()) {
             return;
         }
-        chIn.discardIfNoSubscriber();
+        discard.discardIfNoSubscriber();
     }
     
-    private static <T> void copyResult(CompletionStage<? extends T> from, CompletableFuture<? super T> to) {
+    private static <T> void copyResult(
+            CompletionStage<? extends T> from, CompletableFuture<? super T> to)
+    {
         from.whenComplete((val, exc) -> {
             if (exc == null) {
                 to.complete(val);
