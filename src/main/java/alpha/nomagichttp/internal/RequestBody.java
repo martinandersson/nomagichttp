@@ -267,7 +267,7 @@ final class RequestBody implements Request.Body
     /**
      * If no downstream body subscriber is active, complete downstream and
      * discard upstream.<p>
-     *
+     * 
      * Is NOP if body is empty or already discarding.
      */
     void discardIfNoSubscriber() {

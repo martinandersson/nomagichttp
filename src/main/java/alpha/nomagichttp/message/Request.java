@@ -508,17 +508,20 @@ public interface Request extends HeaderHolder, AttributeHolder
      * 
      * The body bytes can not be directly consumed more than once; they are not
      * saved by the server. An attempt to {@code convert()} or {@code
-     * subscribe()} more than once will result in an {@code
-     * IllegalStateException}.<p>
+     * subscribe()} more than once will signal an {@code IllegalStateException}
+     * to the subscriber.<p>
      * 
-     * Same is is also true for utility methods that trickle down. If for
-     * example {@code convert()} is used followed by {@code toText()}, then the
-     * latter will complete exceptionally with an {@code
-     * IllegalStateException}.<p>
+     * Same is true for utility methods that trickle down. If for example
+     * {@code convert()} is used followed by {@code toText()}, then the latter
+     * will complete exceptionally with an {@code IllegalStateException}.<p>
      * 
-     * And, it does not matter if a {@code Flow.Subscription} is immediately
-     * cancelled with or without actually consuming any bytes. Subscription
-     * cancellation will cause the body to be discarded.<p>
+     * And, it does not matter if {@code Flow.Subscription.cancel()} is called
+     * after the subscription has effectively started but before actually
+     * consuming bytes. A subsequent subscriber will still be signalled the
+     * {@code IllegalStateException}. The only exception is if a subscriber
+     * cancels the subscription synchronously from {@code onSubscribe} which
+     * will cause the subscription to roll back. This has the same effect as if
+     * the subscription request was never made.<p>
      * 
      * Some utility methods such as {@code toText()} cache the result and will
      * return the same stage on future invocations.<p>
@@ -580,9 +583,9 @@ public interface Request extends HeaderHolder, AttributeHolder
      * bytebuffer to immediately become available for re-publication (ahead of
      * other bytebuffers already available).<p>
      * 
-     * Cancelling the subscription does not cause the bytebuffer to be released.
-     * Releasing has to be done explicitly, or implicitly through an exceptional
-     * return of {@code Subscriber.onNext()}.
+     * Cancelling the subscription does not cause an outstanding bytebuffer to
+     * be released. Releasing has to be done explicitly, or implicitly through
+     * an exceptional return of {@code Subscriber.onNext()}.
      * 
      * <h3>Processing bytebuffers</h3>
      * 
@@ -642,7 +645,7 @@ public interface Request extends HeaderHolder, AttributeHolder
      * the server's final response body subscription completes and earliest at
      * that point no request body subscriber has arrived, then the server will
      * assume that the body was intentionally ignored and proceed to discard it
-     * - after which it can not be subscribed to by the application any more.<p>
+     * - after which it can not be subscribed to by the application anymore.<p>
      * 
      * If a final response must be sent back immediately but reading the request
      * body bytes must be delayed, then there's at least two ways of solving

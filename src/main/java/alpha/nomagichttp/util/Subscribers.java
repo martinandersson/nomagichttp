@@ -4,6 +4,7 @@ import java.util.concurrent.Flow;
 import java.util.function.Consumer;
 
 import static java.lang.System.Logger.Level.ERROR;
+import static java.util.Objects.requireNonNull;
 
 /**
  * Utility class for constructing- and working with instances of {@link
@@ -47,7 +48,7 @@ public final class Subscribers
     }
     
     /**
-     * Returns a subscriber interested only in published items.
+     * Returns a subscriber interested only in published items.<p>
      * 
      * The implementation's {@code onSubscribe} method will request {@code
      * Long.MAX_VALUE}. {@code onError} and {@code onComplete} are NOP.
@@ -57,9 +58,10 @@ public final class Subscribers
      * 
      * @return a subscriber
      * 
-     * @throws NullPointerException if {@code onNext} is {@code null}
+     * @throws NullPointerException if {@code impl} is {@code null}
      */
     public static <T> Flow.Subscriber<T> onNext(Consumer<? super T> impl) {
+        requireNonNull(impl);
         return new Flow.Subscriber<>() {
             public void onSubscribe(Flow.Subscription s) {
                 s.request(Long.MAX_VALUE); }
