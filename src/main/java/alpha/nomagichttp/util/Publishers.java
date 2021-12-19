@@ -185,7 +185,7 @@ public final class Publishers
      * only used by one subscriber at a time or the iterable source must be
      * thread-safe.<p>
      * 
-     * The iterator is invoked serially with full memory visibility between item
+     * The iterator is invoked serially with memory visibility between item
      * emissions.<p>
      * 
      * The iterator should never return a null item (

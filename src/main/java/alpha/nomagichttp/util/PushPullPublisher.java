@@ -37,7 +37,7 @@ import static java.util.Objects.requireNonNull;
  * The transfer of items from the generator to the subscriber is implemented
  * using a subscriber-unique {@link SerialTransferService}. This means that for
  * a non-reusable publisher (constructor arg), the generator function will never
- * be called concurrently (by this class, superclass, or subscriber).<p>
+ * be called concurrently (by this class, superclass, or subscriber.<p>
  * 
  * For a reusable publisher, however, the generator function may in theory be
  * called concurrently. For example, at the same time a delivery just started,
@@ -103,7 +103,10 @@ public class PushPullPublisher<T> extends AugmentedAbstractUnicastPublisher<T, S
      * In addition, the subscriber-unique
      * {@linkplain SerialTransferService#finish(Runnable) transfer service}
      * guarantees that the callback will only execute when a transfer is not
-     * ongoing.
+     * ongoing.<p>
+     * 
+     * The callback will have memory visibility of writes from the last transfer
+     * as well as writes done by the subscriber's thread calling cancel.
      * 
      * @param generator item supplier
      * @param onCancel callback

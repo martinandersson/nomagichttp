@@ -105,13 +105,13 @@ public final class SerialTransferService<T>
     private final Function<SerialTransferService<T>, ? extends T> from;
     private final BiConsumer<SerialTransferService<T>, ? super T> to;
     private final AtomicLong demand;
-    // #before is safely published through volatile init and subsequent read of
+    // #before is safely published through volatile init- and subsequent read of
     // #demand thereafter only updated (to null) in the first serial run with
-    // full memory visibility in subsequent runs (so doesn't need volatile)
+    // memory visibility in subsequent runs (so doesn't need volatile)
     private Runnable before;
-    // #after is set outside a run and needs to be volatile
-    // (otherwise the reference value could in theory never be observed and executed)
-    private volatile Runnable after;
+    // #after is set only by the finisher and executed in a re-run with memory
+    // visibility (so doesn't need volatile, see SeriallyRunnable)
+    private Runnable after;
     
     /**
      * Constructs a {@code SerialTransferService}.
@@ -237,8 +237,8 @@ public final class SerialTransferService<T>
      * only if this method invocation was successful in marking the service
      * finished.<p>
      * 
-     * The callback can only be executed immediately if no transfer is active,
-     * otherwise it will be scheduled to run after the active transfer.
+     * The callable will have memory visibility of writes made from the last
+     * transfer as well as writes done by the active thread calling this method.
      * 
      * @param andThen callback
      * 
