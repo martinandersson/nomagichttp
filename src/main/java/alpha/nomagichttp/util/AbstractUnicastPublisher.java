@@ -157,10 +157,10 @@ public abstract class AbstractUnicastPublisher<T> implements Flow.Publisher<T>
      * return immediately without reentrancy or recursion.<p>
      * 
      * The proxy will guarantee that the delegate's {@code cancel()} method is
-     * only called at most once and never after the subscription has already
-     * completed. If the subscriber calls the {@code cancel()} method during
-     * initialization then initialization will roll back and {@code
-     * newSubscription()} will never execute.<p>
+     * only called exactly once if the subscriber's signal was the one to
+     * terminate the subscription. If the subscriber calls the {@code cancel()}
+     * method during initialization then initialization will roll back and
+     * {@code newSubscription()} will never execute.<p>
      * 
      * However, the {@code request()} signal - apart from a potential delay
      * during initialization - is always routed through as-is. Yes, even after

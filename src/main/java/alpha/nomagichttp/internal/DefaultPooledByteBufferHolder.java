@@ -40,10 +40,10 @@ final class DefaultPooledByteBufferHolder implements PooledByteBufferHolder
     /**
      * Constructs a {@code DefaultPooledByteBufferHolder}.<p>
      * 
-     * The {@code afterRelease} callback is executed after other callbacks
-     * possibly registered using the method {@link #onRelease(IntConsumer)}.
-     * {@code afterRelease} is guaranteed to be called even if an on-release
-     * callback throws an exception.
+     * The {@code afterRelease} callback is executed after callbacks registered
+     * using the method {@link #onRelease(IntConsumer)}. {@code afterRelease} is
+     * guaranteed to be called even if an on-release callback throws an
+     * exception.
      * 
      * @param buf bytebuffer source
      * @param afterRelease a sort of try-release-finally callback (may be {@code null})

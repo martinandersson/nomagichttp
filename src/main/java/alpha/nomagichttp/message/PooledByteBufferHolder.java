@@ -83,7 +83,7 @@ public interface PooledByteBufferHolder
      * The callback will receive the count of bytes read from the buffer prior
      * to releasing.<p>
      * 
-     * Callbacks are executed in the order they were added; FIFO.<p>
+     * Callbacks are executed in the order they were added.<p>
      * 
      * Exceptions from the callback will be visible by the thread releasing the
      * buffer and brake the callback chain. Further, the exception will not

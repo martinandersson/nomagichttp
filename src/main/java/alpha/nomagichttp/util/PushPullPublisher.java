@@ -37,14 +37,15 @@ import static java.util.Objects.requireNonNull;
  * The transfer of items from the generator to the subscriber is implemented
  * using a subscriber-unique {@link SerialTransferService}. This means that for
  * a non-reusable publisher (constructor arg), the generator function will never
- * be called concurrently.<p>
+ * be called concurrently (by this class, superclass, or subscriber).<p>
  * 
  * For a reusable publisher, however, the generator function may in theory be
  * called concurrently. For example, at the same time a delivery just started,
- * the active subscriber cancel his subscription followed by a new subscriber
+ * the active subscriber cancels his subscription followed by a new subscriber
  * immediately polling the generator. In this particular case, the first item
- * would not be delivered because that subscriber wouldn't no longer be the
- * active subscriber.<p>
+ * would not be delivered because the intended subscriber is no longer the
+ * active subscriber (TODO: Fix this and next paragraph, serialize subscriber
+ * installations?).<p>
  * 
  * Subscribers of a reusable bytebuffer source (or of any other items that can
  * not be missed and must be processed orderly) should coordinate their use of
@@ -87,11 +88,22 @@ public class PushPullPublisher<T> extends AugmentedAbstractUnicastPublisher<T, S
     }
     
     /**
-     * Constructs a non-reusable {@code PushPullPublisher}.
+     * Constructs a non-reusable {@code PushPullPublisher}.<p>
      * 
-     * The {@code onCancel} callback executes only once and only if the
-     * subscriber's cancel-signal was the signal that terminated the
-     * subscription.
+     * As guaranteed by the {@linkplain
+     * AbstractUnicastPublisher#newSubscription(Flow.Subscriber) superclass},
+     * the {@code onCancel} callback:
+     * <ol>
+     *   <li>Is never called whilst a subscriber is initializing. In fact, this
+     *       will cause the installation to roll back.</li>
+     *   <li>Only executes exactly once if the subscriber's cancel-signal was
+     *       the one that terminated the subscription.</li>
+     * </ol>
+     * 
+     * In addition, the subscriber-unique
+     * {@linkplain SerialTransferService#finish(Runnable) transfer service}
+     * guarantees that the callback will only execute when a transfer is not
+     * ongoing.
      * 
      * @param generator item supplier
      * @param onCancel callback

@@ -10,8 +10,8 @@ import java.io.ByteArrayOutputStream;
  * collected bytes, which is what {@link ByteArrayOutputStream#toByteArray()}
  * do. The {@code toByteArray()} method in this class throws {@link
  * UnsupportedOperationException}. Instead, retrieve a direct reference to the
- * array using {@link #buffer()} and read the valid {@link #count()} of bytes
- * from it.<p>
+ * array using {@link #buffer()}. {@link #count()} provides the number of valid
+ * bytes in the array.<p>
  * 
  * The buffer can only be retrieved once. To help with garbage collection, the
  * reference is set to null after first access.

@@ -22,7 +22,7 @@ import static java.lang.System.Logger.Level.WARNING;
  * A unicast publisher of bytebuffers read from an asynchronous socket
  * channel.<p>
  * 
- * Many aspects of how to consume published bytebuffers has been documented in
+ * Many aspects of how to consume published bytebuffers have been documented in
  * {@link Request.Body} and {@link PooledByteBufferHolder}.<p>
  * 
  * When the channel's end-of-stream is reached, the active subscriber will be

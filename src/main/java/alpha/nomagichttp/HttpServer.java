@@ -346,7 +346,8 @@ public interface HttpServer extends RouteRegistry, ActionRegistry
      * Upon failure to close the server's listening port, the stage will
      * complete exceptionally with an {@code IOException}.<p>
      * 
-     * The returned stage can not be used to abort the shutdown.<p>
+     * The returned stage may be a copy. It can not be cast to a {@code
+     * CompletableFuture} and then used to abort the shutdown.<p>
      * 
      * The returned stage represents uniquely the invocation of this method.
      * This has a few noteworthy consequences.<p>
