@@ -41,9 +41,8 @@ import static java.util.concurrent.TimeUnit.NANOSECONDS;
  * 
  * Read mode specifies an {@code onComplete} callback which is invoked with the
  * container bytebuffer after each operation completes. The buffer will have
- * already been flipped and is therefore ready to be consumed as-is. The last
- * bytebuffer to reach the callback may not be the last bytebuffer(s) announced
- * but may have been replaced with the sentinel value {@link #EOS}.<p>
+ * already been flipped and is therefore ready to be consumed as-is. The final
+ * bytebuffer to reach the callback may be the sentinel {@link #EOS}.<p>
  * 
  * The {@link WhenDone#accept(long, Throwable) whenDone} callback executes
  * exactly-once whenever the last pending operation completes.<p>
@@ -55,9 +54,10 @@ import static java.util.concurrent.TimeUnit.NANOSECONDS;
  * 
  * Please note that the responsibility of this class is to manage a particular
  * type of channel <i>operations</i> (read or write) for as long as the service
- * remains running, not the channel's life-cycle itself. The only two occasions
- * when this class shuts down the channel's stream in use is if a channel
- * operation completes exceptionally or end-of-stream is reached.<p>
+ * remains running, not the channel's life-cycle itself or any one of its
+ * streams. The only two occasions when this class shuts down the channel's
+ * stream in use is if a channel operation completes exceptionally or
+ * end-of-stream is reached.<p>
  * 
  * This class is thread-safe and mostly non-blocking (closing stream may block).
  * 
