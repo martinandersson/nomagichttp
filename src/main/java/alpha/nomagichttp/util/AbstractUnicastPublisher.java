@@ -1,7 +1,5 @@
 package alpha.nomagichttp.util;
 
-import alpha.nomagichttp.message.PooledByteBufferHolder;
-
 import java.util.concurrent.Flow;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Predicate;
@@ -38,7 +36,7 @@ import static java.util.Objects.requireNonNull;
  * Almost all exceptions from delivering a signal to the end receiver propagates
  * to the calling thread as-is. The only exception is {@code signalError()}
  * which catches all exceptions from the subscriber, then log- and ignores them
- * (documented in {@link Publishers}).<p>
+ * (as documented in {@link Publishers}).<p>
  * 
  * Exceptions propagate only after a possibly terminating effect (underlying
  * subscription reference removed). E.g., even if {@code signalComplete()}
@@ -51,7 +49,7 @@ import static java.util.Objects.requireNonNull;
  * or the subclass must implement proper orchestration. Failure to comply could
  * mean that the subscriber is called concurrently or out of order (for example
  * {@code onComplete()} signalled followed by {@code onNext()}). For a reusable
- * publisher, overlapping calls could also mean that a delivery-failure from
+ * publisher, overlapping calls could also mean that a delivery failure from
  * {@code signalNext()} unsubscribes/removes the wrong subscriber. Again, the
  * responsibility of this class is merely to provide the {@code subscribe()}
  * implementation and to manage the subscriber reference. The concrete class
@@ -261,9 +259,8 @@ public abstract class AbstractUnicastPublisher<T> implements Flow.Publisher<T>
     /**
      * Signal an item to the current subscriber.<p>
      * 
-     * A subscriber that returns exceptionally will be removed and the item if
-     * it is a {@link PooledByteBufferHolder} will be released. The exception
-     * is then re-thrown.<p>
+     * A subscriber that returns exceptionally will be removed and then the
+     * exception is re-thrown.<p>
      * 
      * This method does not throw {@code NullPointerException} if the item is
      * {@code null}. Nonetheless, the concrete publisher must never publish
@@ -298,9 +295,6 @@ public abstract class AbstractUnicastPublisher<T> implements Flow.Publisher<T>
                 s.onNext(item);
             } catch (Throwable t) {
                 removeSubscriberIfSameAs(s);
-                if (item instanceof PooledByteBufferHolder buf) {
-                    buf.release();
-                }
                 throw t;
             }
             return true;

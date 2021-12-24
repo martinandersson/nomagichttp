@@ -88,10 +88,8 @@ final class RequestHeadSubscriber implements SubscriberAsStage<PooledByteBufferH
             subsc.cancel();
             result.completeExceptionally(t);
             return;
-        } finally {
-            item.release();
         }
-        
+        item.release();
         if (head != null) {
             subsc.cancel();
             events.dispatchLazy(RequestHeadReceived.INSTANCE, () -> head, () ->

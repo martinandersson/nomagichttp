@@ -13,6 +13,8 @@ import static java.util.Objects.requireNonNull;
  * Is a thread-safe, non-blocking, and unicast publisher driven by a generator
  * function (constructor arg).<p>
  * 
+ * This class honors the contract specified in {@link Publishers}.<p>
+ * 
  * The function is implicitly polled by the producer {@link #announce()
  * announcing} the availability of items (the push) and also polled by the
  * subscriber through the increase of his demand (the pull).<p>
@@ -25,39 +27,33 @@ import static java.util.Objects.requireNonNull;
  * no items available for the current subscriber at that moment in time (a
  * future announcement is expected).<p>
  * 
- * Due to the asynchronous nature of subscriptions; not all items that are
- * polled out from the generator is also guaranteed to be delivered. For
- * example, at the same time a delivery just started (generator was called) a
- * subscriber's subscription may asynchronously terminate.<p>
+ * Not all items that are polled out from the generator are also guaranteed to
+ * be successfully delivered. Quite obviously, the subscriber's {@code onNext()}
+ * method may return exceptionally. It could also be the case, that at the same
+ * time a delivery just started (generator was called) a subscriber's
+ * subscription asynchronously terminates. Each constructor in this class
+ * accepts a "non-successful delivery" callback which will be called if the item
+ * was not successfully delivered. May be used, for example to release a {@link
+ * PooledByteBufferHolder}.<p>
  * 
- * If an item is polled but fails to be delivered and the item is a {@link
- * PooledByteBufferHolder}, then the item will be released (done by {@link
- * AbstractUnicastPublisher}).<p>
+ * If a subscriber's {@code onNext} method returns exceptionally, this class
+ * will {@link #shutdown()}.<p>
  * 
- * The transfer of items from the generator to the subscriber is implemented
- * using a subscriber-unique {@link SerialTransferService}. This means that for
- * a non-reusable publisher (constructor arg), the generator function will never
- * be called concurrently (by this class, superclass, or subscriber.<p>
+ * For a non-reusable publisher, the generator function will never be called
+ * concurrently (by this class, superclass, or subscriber.<p>
  * 
  * For a reusable publisher, however, the generator function may in theory be
  * called concurrently. For example, at the same time a delivery just started,
  * the active subscriber cancels his subscription followed by a new subscriber
  * immediately polling the generator. In this particular case, the first item
  * would not be delivered because the intended subscriber is no longer the
- * active subscriber (TODO: Fix this and next paragraph, serialize subscriber
- * installations?).<p>
+ * active subscriber (each subscription is a unique relationship maintained by
+ * {@link SerialTransferService}).<p>
  * 
- * Subscribers of a reusable bytebuffer source (or of any other items that can
- * not be missed and must be processed orderly) should coordinate their use of
- * the source and never cancel asynchronously while there is still outstanding
- * demand. If this can not be guaranteed, the reusable publisher's generator
- * function must be thread-safe.<p>
- * 
- * An example of a reusable {@code PushPullPublisher} is the NoMagicHTTP
- * library's low-level child channel ({@code ChannelByteBufferPublisher}) which
- * publishes bytebuffers first to a request head subscriber possibly followed
- * by a request body subscriber, and so the cycle continues for as long as the
- * channel stays open. It's worth noting that the channel doesn't actually
+ * An example of a reusable {@code PushPullPublisher} is the HTTP server's
+ * low-level child channel ({@code ChannelByteBufferPublisher}) which publishes
+ * bytebuffers first to a request head subscriber possibly followed by a request
+ * body subscriber. It's worth noting that the channel doesn't actually
  * extend this class, rather it is used as a final instance field to which the
  * channel delegates {@code Flow.Publisher.subscribe()} calls.<p>
  * 
@@ -70,26 +66,41 @@ import static java.util.Objects.requireNonNull;
  * 
  * @param <T> type of item to publish
  */
-public class PushPullPublisher<T> extends AugmentedAbstractUnicastPublisher<T, SerialTransferService<T>>
+public class PushPullPublisher<T>
+        extends AugmentedAbstractUnicastPublisher<T, SerialTransferService<T>>
 {
     private final Supplier<? extends T> generator;
+    private final Consumer<? super T> onNonSuccessfulDelivery;
     private final Runnable onCancel;
     
     /**
-     * Constructs a {@code PushPullPublisher}.
+     * Initializes a reusable publisher.
      * 
-     * @param reusable yes or no
-     * @param generator item supplier
-     * @throws NullPointerException if any arg is {@code null}
+     * @apiNote
+     * This constructor does not accept an "on cancel" callback. Because for a
+     * reusable publisher (rather, generator), a subscriber cancelling is not
+     * the end of life for that publisher, more subscribers in the future are
+     * expected.
+     * 
+     * @param generator
+     *           item producer
+     * @param onNonSuccessfulDelivery
+     *           an opportunity to recycle items (see {@link PushPullPublisher})
+     * @throws NullPointerException
+     *           if any arg is {@code null}
      */
-    public PushPullPublisher(boolean reusable, Supplier<? extends T> generator) {
-        super(reusable);
+    public PushPullPublisher(
+            Supplier<? extends T> generator,
+            Consumer<? super T> onNonSuccessfulDelivery)
+    {
+        super(true);
         this.generator = requireNonNull(generator);
-        this.onCancel  = null;
+        this.onNonSuccessfulDelivery = requireNonNull(onNonSuccessfulDelivery);
+        this.onCancel  = () -> {};
     }
     
     /**
-     * Constructs a non-reusable {@code PushPullPublisher}.<p>
+     * Initializes a non-reusable publisher.<p>
      * 
      * As guaranteed by the {@linkplain
      * AbstractUnicastPublisher#newSubscription(Flow.Subscriber) superclass},
@@ -107,16 +118,29 @@ public class PushPullPublisher<T> extends AugmentedAbstractUnicastPublisher<T, S
      * ongoing.<p>
      * 
      * The callback will have memory visibility of writes from the last transfer
-     * as well as writes done by the subscriber's thread calling cancel.
+     * as well as writes done by the subscriber's thread calling cancel.<p>
      * 
-     * @param generator item supplier
-     * @param onCancel callback
-     * @throws NullPointerException if any arg is {@code null}
+     * Both callbacks in combination is how the non-reusable publisher/generator
+     * may perform resource cleanup.
+     * 
+     * @param generator
+     *           item supplier
+     * @param onNonSuccessfulDelivery
+     *           an opportunity to recycle items (see {@link PushPullPublisher})
+     * @param onCancel
+     *           see JavaDoc
+     * @throws NullPointerException
+     *           if any arg is {@code null}
      */
-    public PushPullPublisher(Supplier<? extends T> generator, Runnable onCancel) {
+    public PushPullPublisher(
+            Supplier<? extends T> generator,
+            Consumer<? super T> onNonSuccessfulDelivery,
+            Runnable onCancel)
+    {
         super(false);
         this.generator = requireNonNull(generator);
         this.onCancel  = requireNonNull(onCancel);
+        this.onNonSuccessfulDelivery = requireNonNull(onNonSuccessfulDelivery);
     }
     
     /**
@@ -128,22 +152,11 @@ public class PushPullPublisher<T> extends AugmentedAbstractUnicastPublisher<T, S
      * calling this method will be used to execute the generator function and
      * deliver the item to the publisher.<p>
      * 
-     * If this method synchronously invokes a subscriber and the subscriber
-     * returns exceptionally, then this class shuts down and then the exception
-     * is re-thrown.<p>
-     * 
      * Is NOP if no subscriber is active or an active subscriber's demand is
      * zero.
      */
     public void announce() {
-        ifPresent(s -> {
-            try {
-                s.attachment().tryTransfer();
-            } catch (Throwable t) {
-                shutdown();
-                throw t;
-            }
-        });
+        ifPresent(s -> s.attachment().tryTransfer());
     }
     
     /**
@@ -217,7 +230,9 @@ public class PushPullPublisher<T> extends AugmentedAbstractUnicastPublisher<T, S
                 Subscribers.signalErrorSafe(s, t));
     }
     
-    private void ifPresent(Consumer<SubscriberWithAttachment<T, SerialTransferService<T>>> action) {
+    private void ifPresent(
+            Consumer<SubscriberWithAttachment<T, SerialTransferService<T>>> action)
+    {
         var s = get();
         if (s == null) {
             return;
@@ -225,64 +240,67 @@ public class PushPullPublisher<T> extends AugmentedAbstractUnicastPublisher<T, S
         action.accept(s);
     }
     
-    private boolean errorThroughService(Throwable t, SubscriberWithAttachment<T, SerialTransferService<T>> s) {
-        return s.attachment().finish(() -> {
+    private boolean errorThroughService(
+            Throwable t, SubscriberWithAttachment<T, SerialTransferService<T>> swa)
+    {
+        return swa.attachment().finish(() -> {
             // Attempt to terminate subscription
-            if (!signalError(t, s)) {
+            if (!signalError(t, swa)) {
                 // stale subscription, still need to communicate error to our guy
-                Subscribers.signalErrorSafe(s, t);
+                Subscribers.signalErrorSafe(swa, t);
             }
         });
     }
     
     @Override
-    protected SubscriberWithAttachment<T, SerialTransferService<T>> giveAttachment(Flow.Subscriber<? super T> subscriber) {
-        SubscriberWithAttachment<T, SerialTransferService<T>> s
-                = new SubscriberWithAttachment<>(subscriber);
+    protected SubscriberWithAttachment<T, SerialTransferService<T>>
+            giveAttachment(Flow.Subscriber<? super T> sub)
+    {
+        SubscriberWithAttachment<T, SerialTransferService<T>> swa
+                = new SubscriberWithAttachment<>(sub);
         
-        s.attachment(new SerialTransferService<>(
-                self -> generator.get(),
-                (self, item) -> {
-                    try {
-                        signalNext(item, s);
-                    } catch (Throwable t) {
-                        self.finish();
-                        throw t;
+        swa.attachment(new SerialTransferService<>(
+                generator,
+                item -> {
+                    if (!signalNext(item, swa)) {
+                        onNonSuccessfulDelivery.accept(item);
                     }
+                },
+                failedItem -> {
+                    shutdown();
+                    onNonSuccessfulDelivery.accept(failedItem);
                 }));
         
-        return s;
+        return swa;
     }
     
     @Override
-    protected Flow.Subscription newSubscription(SubscriberWithAttachment<T, SerialTransferService<T>> s) {
-        return new DelegateToService(s);
+    protected Flow.Subscription newSubscription(
+            SubscriberWithAttachment<T, SerialTransferService<T>> swa)
+    {
+        return new DelegateToService(swa);
     }
     
     private final class DelegateToService implements Flow.Subscription
     {
-        private final SubscriberWithAttachment<T, SerialTransferService<T>> s;
+        private final SubscriberWithAttachment<T, SerialTransferService<T>> swa;
         
-        DelegateToService(SubscriberWithAttachment<T, SerialTransferService<T>> s) {
-            this.s = s;
+        DelegateToService(SubscriberWithAttachment<T, SerialTransferService<T>> swa) {
+            this.swa = swa;
         }
         
         @Override
         public void request(long n) {
             try {
-                s.attachment().increaseDemand(n);
+                swa.attachment().increaseDemand(n);
             } catch (IllegalArgumentException e) {
-                errorThroughService(e, s);
+                errorThroughService(e, swa);
             }
         }
         
         @Override
         public void cancel() {
-            s.attachment().finish(() -> {
-                if (onCancel != null) {
-                    onCancel.run();
-                }
-            });
+            swa.attachment().finish(onCancel);
         }
     }
 }

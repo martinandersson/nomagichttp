@@ -26,7 +26,7 @@ import static java.lang.System.Logger.Level.WARNING;
  * {@link Request.Body} and {@link PooledByteBufferHolder}.<p>
  * 
  * When the channel's end-of-stream is reached, the active subscriber will be
- * signalled a {@link EndOfStreamException}.
+ * signalled an {@link EndOfStreamException}.
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  */
@@ -63,7 +63,8 @@ final class ChannelByteBufferPublisher implements Flow.Publisher<DefaultPooledBy
     ChannelByteBufferPublisher(DefaultClientChannel chApi) {
         this.chApi      = chApi;
         this.readable   = new ConcurrentLinkedDeque<>();
-        this.subscriber = new PushPullPublisher<>(true, this::pollReadable);
+        this.subscriber = new PushPullPublisher<>(
+                this::pollReadable, PooledByteBufferHolder::release);
         this.channel    = AnnounceToChannel.read(
                 chApi, this::putReadableLast, this::afterChannelFinished);
         

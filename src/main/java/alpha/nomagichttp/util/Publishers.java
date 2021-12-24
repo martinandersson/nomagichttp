@@ -329,12 +329,7 @@ public final class Publishers
             };
             
             BiConsumer<SerialTransferService<T>, ? super T> receiver = (self, item) -> {
-                try {
-                    s.onNext(item);
-                } catch (Throwable t) {
-                    self.finish();
-                    throw t;
-                }
+                s.onNext(item);
                 if (!it.hasNext()) {
                     self.finish(s::onComplete);
                 }

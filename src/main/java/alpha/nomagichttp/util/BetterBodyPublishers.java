@@ -359,7 +359,8 @@ public final class BetterBodyPublishers
             
             Reader(Path path) {
                 this.path      = path;
-                this.announcer = new PushPullPublisher<>(this::getNext, this::closeSafe);
+                this.announcer = new PushPullPublisher<>(
+                        this::getNext, onConsumerError -> closeSafe(), this::closeSafe);
                 this.contents  = new ConcurrentLinkedDeque<>();
                 this.handler   = new Handler();
                 this.fc        = null;
@@ -400,6 +401,7 @@ public final class BetterBodyPublishers
                 } catch (IOException e) {
                     LOG.log(DEBUG, "Failed to close file channel.", e);
                 }
+                contents.clear();
             }
             
             private class Handler implements CompletionHandler<Integer, ByteBuffer> {
@@ -436,7 +438,7 @@ public final class BetterBodyPublishers
                         pos += b.remaining();
                         contents.add(b);
                     }
-                    announce();
+                    announcer.announce();
                     op.complete();
                     if (!eos) {
                         tryScheduleRead();
@@ -447,15 +449,6 @@ public final class BetterBodyPublishers
                 public void failed(Throwable exc, ByteBuffer ignored) {
                     announcer.error(exc);
                     closeSafe();
-                }
-                
-                private void announce() {
-                    try {
-                        announcer.announce();
-                    } catch (Throwable t) {
-                        closeSafe();
-                        throw t;
-                    }
                 }
             }
         }

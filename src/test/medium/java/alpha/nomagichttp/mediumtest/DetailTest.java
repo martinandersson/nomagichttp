@@ -389,7 +389,6 @@ class DetailTest extends AbstractRealTest
                     break;
                 }
             }
-            
             item.release();
         }
         
