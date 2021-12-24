@@ -18,9 +18,9 @@ public final class Subscriptions
     }
     
     /**
-     * Returns a subscription where the {@code request()} method implementation
-     * is NOP. The cancelled state can be queried using method {@code
-     * isCancelled()}.<p>
+     * Returns a new subscription object where the {@code request()} method
+     * implementation is NOP. The cancelled state can be queried using method
+     * {@code isCancelled()}.<p>
      * 
      * This class is useful to
      * <a href="https://github.com/reactive-streams/reactive-streams-jvm/blob/v1.0.3/README.md">
@@ -50,13 +50,13 @@ public final class Subscriptions
      *   public void subscribe(Flow.Subscriber{@literal <}? super T{@literal >} s) {
      *       if (mustReject) {
      *           CanOnlyBeCancelled temp = Subscriptions.canOnlyBeCancelled();
-     *           Subscribers.signalOnSubscribeOrTerminate(s, temp);
+     *           s.onSubscribe(temp);
      *           if (!temp.isCancelled()) {
      *               Subscribers.signalErrorSafe(s, new IllegalStateException("rejected"));
      *           }
      *       } else {
      *           TurnOnProxy proxy = Subscriptions.turnOnProxy();
-     *           Subscribers.signalOnSubscribeOrTerminate(s, proxy);
+     *           s.onSubscribe(proxy);
      *           if (!proxy.isCancelled()) {
      *               proxy.activate(new MyRealSubscription());
      *           }
@@ -73,7 +73,7 @@ public final class Subscriptions
      * intended event. The current design favors simplicity and leaves the
      * {@code request()} method NOP.
      * 
-     * @return a subscription that can only be cancelled
+     * @return a new subscription object that can only be cancelled
      */
     // TODO: Suppress IllegalArgumentException but do deliver IllegalStateException
     public static CanOnlyBeCancelled canOnlyBeCancelled() {
@@ -103,10 +103,9 @@ public final class Subscriptions
     }
     
     /**
-     * Returns a dormant subscription object that delegates to a delegate only
-     * after {@link TurnOnProxy#activate(Flow.Subscription)} is called. The
-     * cancelled state can be queried using {@link
-     * TurnOnProxy#isCancelled()}.<p>
+     * Returns a new dormant subscription object that delegates to a delegate
+     * given to {@link TurnOnProxy#activate(Flow.Subscription)}. The cancelled
+     * state can be queried using {@link TurnOnProxy#isCancelled()}.<p>
      * 
      * Useful for publisher implementations that wish to supply a dormant
      * subscription to {@code Subscriber.onSubscribe()}. This eliminates the
@@ -117,7 +116,7 @@ public final class Subscriptions
      * 
      * See {@link #canOnlyBeCancelled()} for an example.
      * 
-     * @return a dormant subscription that can be activated
+     * @return a new dormant subscription object that can be activated
      */
     public static TurnOnProxy turnOnProxy() {
         class NotSpecialized extends TurnOnProxy {}
@@ -144,15 +143,19 @@ public final class Subscriptions
          * this operation.<p>
          * 
          * Please note that it is advisable to first check the {@link
-         * #isCancelled() cancelled} state before activating the proxy. 
+         * #isCancelled() cancelled} state before activating the proxy.<p>
          * 
-         * @param delegate delegate
+         * The saved delegate reference is volatile, meaning that the activation
+         * happens-before all future interactions with this proxy and the given
+         * delegate.
+         * 
+         * @param s delegate
          * 
          * @throws NullPointerException if {@code delegate} is {@code null}
          */
-        public final void activate(final Flow.Subscription delegate) {
-            this.delegate = requireNonNull(delegate);
-            drainRequestSignalsTo(delegate);
+        public final void activate(final Flow.Subscription s) {
+            delegate = requireNonNull(s);
+            drainRequestSignalsTo(s);
         }
         
         /**

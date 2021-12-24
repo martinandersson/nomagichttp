@@ -38,8 +38,8 @@ import static java.util.Objects.requireNonNull;
  * When this class offers an alternative, then it is safe to assume that the
  * alternative is a better choice, for at least one or both of the following
  * reasons: the alternative is 1) likely more efficient with CPU and memory
- * (e.g. wrap data array on-demand instead of eager copying), 2) is thread-safe
- * and non-blocking.<p>
+ * (e.g. wrap data array on-demand instead of eager copying), 2) is thread-safe,
+ * 3) is non-blocking.<p>
  * 
  * The alternative is also more compliant with the
  * <a href="https://github.com/reactive-streams/reactive-streams-jvm/blob/v1.0.3/README.md">
@@ -48,8 +48,8 @@ import static java.util.Objects.requireNonNull;
  * there will be no surprises for the application developer.<p>
  * 
  * When this class does not offer an alternative, then either the {@code
- * BodyPublishers} factory is too recent to have been ported, or it is adequate
- * enough, or an alternative is just not meaningful to implement (for example,
+ * BodyPublishers} factory is too recent to have been ported, or it is adequate,
+ * or an alternative is just not meaningful to implement (for example,
  * {@link BodyPublishers#ofInputStream(Supplier)} is by definition blocking and
  * should be avoided altogether).<p>
  * 
@@ -200,8 +200,9 @@ public final class BetterBodyPublishers
      * 
      * Is an alternative to {@link BodyPublishers#ofFile(Path)} except the
      * implementation does not block and exceptions like {@link
-     * FileNotFoundException} are delivered to the [server's] subscriber, i.e.,
-     * can be dealt with globally using an {@link ErrorHandler}.
+     * FileNotFoundException} are delivered to the subscriber, i.e., the HTTP
+     * server itself, and therefore be dealt with globally using an
+     * {@link ErrorHandler}.
      * 
      * @param path the path to the file containing the body
      * 

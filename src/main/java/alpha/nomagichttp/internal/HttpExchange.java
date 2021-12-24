@@ -449,7 +449,7 @@ final class HttpExchange
             return false;
         }
         
-        // Okay we've got an I/O error, but is it from our child?
+        // Okay we've got an I/O error (!), but is it from our child?
         if (chan.isEverythingOpen()) {
             // Nope. AnnounceToChannel closes the stream. Has to be from application code.
             // (we should probably examine stacktrace or mark our exceptions somehow)

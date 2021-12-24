@@ -8,7 +8,6 @@ import alpha.nomagichttp.handler.ClientChannel;
 import alpha.nomagichttp.handler.ErrorHandler;
 import alpha.nomagichttp.route.Route;
 import alpha.nomagichttp.util.Publishers;
-import alpha.nomagichttp.util.SubscriberFailedException;
 
 import java.net.URLDecoder;
 import java.nio.channels.AsynchronousByteChannel;
@@ -710,25 +709,40 @@ public interface Request extends HeaderHolder, AttributeHolder
      * <h3>Exception Handling</h3>
      * 
      * The {@code Body} as a publisher follows the same exception semantics
-     * specified in the JavaDoc of {@link Publishers}, decorated with some added
-     * behavior on top.<p>
+     * specified in the JavaDoc of {@link Publishers}.<p>
      * 
-     * An exception thrown by {@code
-     * Flow.Subscriber.onSubscribe()/onNext()/onComplete()} propagates to the
-     * calling thread. If this thread is the HTTP server's request thread, then
-     * standard {@link ErrorHandler error handling} is kicked off.<p>
+     * If an exception propagating from {@code
+     * Flow.Subscriber.onSubscribe()/onNext()/onComplete()} is observed by the
+     * HTTP server's request thread, then standard {@link ErrorHandler error
+     * handling} is kicked off.<p>
      * 
      * An exception thrown by the subscriber's {@code onNext()} will cause the
-     * server to close the channel's read stream (the write stream remains
+     * server to close the channel's read stream. The write stream remains
      * untouched so that a response in-flight can complete or a new one
-     * commence).<p>
+     * commence.<p>
      * 
-     * Exceptions signalled to {@code Subscriber.onError()} that are not caused
-     * by the subscriber itself (i.e. the signalled error is of a different type
-     * than {@link SubscriberFailedException}) can safely be assumed to indicate
-     * low-level problems with the underlying channel or JVM. These exceptions
-     * will have been logged by the HTTP server followed suite by read-stream
-     * closure. They are generally safe to ignore.
+     * An exception signalled to {@code Subscriber.onError()} can safely be
+     * assumed to indicate a low-level problem with the underlying channel or
+     * JVM. The exception will have been logged by the HTTP server followed by
+     * read-stream closure. These exceptions should generally be handled by
+     * responding a 500 (Internal Server Error). As documented by {@link
+     * Publishers}; exceptions from {@code onError()} itself, does not
+     * propagate anywhere, and so the error handler is not immediately called.
+     * Eventually though, a {@link RequestBodyTimeoutException} will be thrown
+     * which the default error handler translates to 503 (Service
+     * Unavailable).<p>
+     * 
+     * Although errors propagating upstream from the subscriber can be resolved
+     * through the error handler, it's generally not a good design to
+     * deliberately rely on this mechanism. The subscriber should never throw an
+     * exception.<p>
+     * 
+     * Handling exceptions explicitly is not really necessary when transforming
+     * the request body stage into a response stage passed to the client
+     * channel. In this case, the application code is not really the end
+     * consumer, it's merely declaring transformations, and an upstream error
+     * will trickle down to the response stage, which is observed by the server
+     * and then passed to the error handler.
      * 
      * @author Martin Andersson (webmaster at martinandersson.com)
      */

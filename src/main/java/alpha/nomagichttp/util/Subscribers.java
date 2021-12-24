@@ -3,6 +3,7 @@ package alpha.nomagichttp.util;
 import java.util.concurrent.Flow;
 import java.util.function.Consumer;
 
+import static java.lang.Long.MAX_VALUE;
 import static java.lang.System.Logger.Level.ERROR;
 import static java.util.Objects.requireNonNull;
 
@@ -48,33 +49,6 @@ public final class Subscribers
     }
     
     /**
-     * Returns a subscriber interested only in published items.<p>
-     * 
-     * The implementation's {@code onSubscribe} method will request {@code
-     * Long.MAX_VALUE}. {@code onError} and {@code onComplete} are NOP.
-     * 
-     * @param impl item consumer
-     * @param <T> item type
-     * 
-     * @return a subscriber
-     * 
-     * @throws NullPointerException if {@code impl} is {@code null}
-     */
-    public static <T> Flow.Subscriber<T> onNext(Consumer<? super T> impl) {
-        requireNonNull(impl);
-        return new Flow.Subscriber<>() {
-            public void onSubscribe(Flow.Subscription s) {
-                s.request(Long.MAX_VALUE); }
-            
-            public void onNext(T item) {
-                impl.accept(item); }
-            
-            public void onError(Throwable throwable) { }
-            public void onComplete() { }
-        };
-    }
-    
-    /**
      * Returns a subscriber interested only in the subscription object.<p>
      * 
      * {@code onNext}, {@code onError} and {@code onComplete} are NOP.
@@ -99,56 +73,14 @@ public final class Subscribers
     }
     
     /**
-     * Invoke the given {@code target}'s {@code onSubscribe()} method.<p>
-     * 
-     * If the call returns exceptionally, 1) set the exception as the cause of a
-     * {@link SubscriberFailedException} and pass the latter to {@link
-     * #signalErrorSafe(Flow.Subscriber, Throwable)}. Then 2) rethrow the first
-     * exception. 
-     * 
-     * @param target to signal
-     * @param subscription to pass along
-     */
-    public static void signalOnSubscribeOrTerminate(
-            Flow.Subscriber<?> target, Flow.Subscription subscription)
-    {
-        try {
-            target.onSubscribe(subscription);
-        } catch (Throwable t) {
-            var e = SubscriberFailedException.onSubscribe(t);
-            signalErrorSafe(target, e);
-            throw t;
-        }
-    }
-    
-    /**
-     * Invoke the given {@code target}'s {@code onNext()} method.<p>
-     * 
-     * If the call returns exceptionally, 1) set the exception as the cause of a
-     * {@link SubscriberFailedException} and pass the latter to {@link
-     * #signalErrorSafe(Flow.Subscriber, Throwable)}. Then 2) rethrow the first
-     * exception. 
-     * 
-     * @param target to signal
-     * @param item to pass along
-     * @param <T> type of item
-     */
-    public static <T> void signalNextOrTerminate(Flow.Subscriber<? super T> target, T item) {
-        try {
-            target.onNext(item);
-        } catch (Throwable t) {
-            var e = SubscriberFailedException.onNext(t);
-            signalErrorSafe(target, e);
-            throw t;
-        }
-    }
-    
-    /**
      * Invoke the given {@code target}'s {@code onError()} method.<p>
      * 
      * If the call returns exceptionally, log the error but otherwise ignore
-     * it.
-     *
+     * it.<p>
+     * 
+     * This method is useful for publishers honoring the semantics specified in
+     * {@link Publishers}.
+     * 
      * @param target to signal
      * @param throwable to pass along
      */
@@ -159,6 +91,97 @@ public final class Subscribers
             LOG.log(ERROR,
                 "Subscriber.onError() returned exceptionally. " +
                 "This new error is only logged but otherwise ignored.", t);
+        }
+    }
+    
+    /**
+     * Create a new builder of a {@code Flow.Subscriber}.<p>
+     * 
+     * The subscriber's {@code onNext} function is given to this method. The
+     * next step is {@code onError}, finally {@code onComplete} which will build
+     * a new subscriber.
+     * 
+     * <pre>
+     *   // A subscriber that print strings
+     *   var subscriber = Subscribers.{@literal <}String>onNext(System.out::println)
+     *           .onError(System.out::println)
+     *           .onComplete(() -> System.out.println("Done!"));
+     * </pre>
+     * 
+     * Upon subscription, the subscriber will immediately request from upstream
+     * {@code Long.MAX_VALUE}.<p>
+     * 
+     * Each intermittent builder step is thread-safe and can be re-used as a
+     * template. This is less useful, however, as the template can only be used
+     * to customize {@code onError} and/or {@code onComplete}.
+     * 
+     * @param <T> the subscribed item type
+     * @param impl for {@code onNext}
+     * @return the next step
+     */
+    public static <T> OnError<T> onNext(Consumer<? super T> impl) {
+        return new OnError<>(impl);
+    }
+    
+    /**
+     * Represents the second step of building a {@code Flow.Subscriber},
+     * 
+     * @param <T> the subscribed item type
+     * @see #onNext(Consumer) 
+     */
+    public static class OnError<T> {
+        private final Consumer<? super T> onNext;
+        
+        private OnError(Consumer<? super T> onNext) {
+            this.onNext = requireNonNull(onNext);
+        }
+        
+        /**
+         * Set the {@code onError} implementation.
+         * 
+         * @param impl for {@code onError}
+         * @return the next step
+         */
+        public OnComplete<T> onError(Consumer<? super Throwable> impl) {
+            return new OnComplete<>(onNext, impl);
+        }
+    }
+    
+    /**
+     * Represents the final step of building a {@code Flow.Subscriber},
+     * 
+     * @param <T> the subscribed item type
+     * @see #onNext(Consumer)
+     */
+    public static class OnComplete<T> {
+        private final Consumer<? super T> onNext;
+        private final Consumer<? super Throwable> onError;
+        
+        private OnComplete(
+                Consumer<? super T> onNext, Consumer<? super Throwable> onError)
+        {
+            this.onNext = onNext;
+            this.onError = requireNonNull(onError);
+        }
+        
+        /**
+         * Build the subscriber.
+         * 
+         * @param impl for {@code onComplete}
+         * @return a new subscriber
+         */
+        public Flow.Subscriber<T> onComplete(Runnable impl) {
+            requireNonNull(impl);
+            return new Flow.Subscriber<>(){
+                public void onSubscribe(Flow.Subscription s) {
+                    s.request(MAX_VALUE); }
+                public void onNext(T t) {
+                    onNext.accept(t); }
+                public void onError(Throwable t) {
+                    onError.accept(t); }
+                public void onComplete() {
+                    impl.run(); }
+            };
         }
     }
     

@@ -73,18 +73,14 @@ import static java.util.Objects.requireNonNull;
  * 
  * <h2>Exception Semantics</h2>
  * 
- * Exceptions thrown by {@code Subscriber.onSubscribe()} and {@code onNext()}
- * propagates to the calling thread - after having been forwarded to {@code
- * Subscriber.onError()} as the <i>cause</i> of a {@link
- * SubscriberFailedException}. After this point, the subscription is voided and
- * the publisher will no longer interact with the subscriber that failed.<p>
+ * Exceptions thrown by {@code Subscriber.onSubscribe()}/{@code onNext()}/{@code
+ * onComplete()} propagates to the calling thread. After this point, the
+ * subscription is voided and the publisher will no longer interact with the
+ * subscriber. The subscriber should never throw an exception.<p>
  * 
- * Exceptions from {@code Subscriber.onComplete()} will also propagate to the
- * calling thread but is <i>not</i> first sent to {@code onError()} (there's no
- * need; subscription already terminated).<p>
- * 
- * Exceptions from {@code Subscriber.onError()} will be logged but otherwise
- * ignored.
+ * Exceptions sent to {@code Subscriber.onError()} represents an upstream error
+ * from the publisher. An exception thrown by {@code onError()} will be logged
+ * but otherwise ignored.
  * 
  * <h2>Other details</h2>
  * 
@@ -106,13 +102,20 @@ import static java.util.Objects.requireNonNull;
  * {@code onSubscribe()} first and if the intent is to immediately terminate the
  * subscription, the subscription object will be a temporary dummy. The dummy
  * will still be monitored and if {@code cancel()} is called on the dummy, then
- * the subscription will not receive the completion signal (§1.8, §3.12).
+ * the subscriber will not receive the completion signal (§1.8, §3.12).
  * Requesting demand from the dummy is NOP (see {@link
  * Subscriptions#canOnlyBeCancelled()}). A subscriber performing expensive
  * initialization in the {@code onSubscribe} method ought to first check that
  * the subscription object is not of type {@code
  * Subscriptions.CanOnlyBeCancelled}, or delay initialization until the first
- * item arrives.
+ * item arrives.<p>
+ * 
+ * A publisher produced by this class will make the decision to accept or reject
+ * the subscriber immediately and thus invoke the subscriber synchronously by
+ * the same thread calling {@code Publisher.subscribe} (although the
+ * subscription object may be a dummy, as described in the previous section).<p>
+ * 
+ * {@code null} is never published as an item to the subscriber.
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  * 
@@ -272,7 +275,7 @@ public final class Publishers
             
             if (!it.hasNext()) {
                 CanOnlyBeCancelled tmp = Subscriptions.canOnlyBeCancelled();
-                Subscribers.signalOnSubscribeOrTerminate(s, tmp);
+                s.onSubscribe(tmp);
                 if (!tmp.isCancelled()) {
                     s.onComplete();
                 }
@@ -280,7 +283,7 @@ public final class Publishers
             }
             
             TurnOnProxy proxy = Subscriptions.turnOnProxy();
-            Subscribers.signalOnSubscribeOrTerminate(s, proxy);
+            s.onSubscribe(proxy);
             if (!proxy.isCancelled()) {
                 proxy.activate(newSubscription(it, s));
             }
@@ -326,7 +329,12 @@ public final class Publishers
             };
             
             BiConsumer<SerialTransferService<T>, ? super T> receiver = (self, item) -> {
-                Subscribers.signalNextOrTerminate(s, item);
+                try {
+                    s.onNext(item);
+                } catch (Throwable t) {
+                    self.finish();
+                    throw t;
+                }
                 if (!it.hasNext()) {
                     self.finish(s::onComplete);
                 }
@@ -347,7 +355,7 @@ public final class Publishers
         public void subscribe(Flow.Subscriber<? super T> s) {
             requireNonNull(s);
             CanOnlyBeCancelled tmp = Subscriptions.canOnlyBeCancelled();
-            Subscribers.signalOnSubscribeOrTerminate(s, tmp);
+            s.onSubscribe(tmp);
             if (!tmp.isCancelled()) {
                 Subscribers.signalErrorSafe(s, err);
             }

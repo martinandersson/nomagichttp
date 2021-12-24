@@ -81,7 +81,7 @@ final class ChannelByteBufferPublisher implements Flow.Publisher<DefaultPooledBy
         } else if (b == EOS) {
             // Channel dried up
             subscriber.stop(new EndOfStreamException());
-            readable.clear();
+            assert readable.isEmpty();
             return null;
         } else if (!b.hasRemaining()) {
             LOG.log(WARNING, () ->
@@ -135,14 +135,13 @@ final class ChannelByteBufferPublisher implements Flow.Publisher<DefaultPooledBy
     
     private void subscriberAnnounce() {
         try {
-            subscriber.announce(exc -> {
-                if (chApi.isOpenForReading()) {
-                    LOG.log(ERROR, () -> "Signalling subscriber failed. " + CLOSE_MSG, exc);
-                    chApi.shutdownInputSafe();
-                } // else assume whoever closed the stream also logged the exception
-            });
+            subscriber.announce();
         } catch (Throwable t) {
             readable.clear();
+            if (chApi.isOpenForReading()) {
+                LOG.log(ERROR, () -> "Signalling subscriber failed. " + CLOSE_MSG, t);
+                chApi.shutdownInputSafe();
+            } // else assume whoever closed the stream also logged the exception
             throw t;
         }
     }

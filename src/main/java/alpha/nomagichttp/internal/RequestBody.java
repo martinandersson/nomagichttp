@@ -126,7 +126,7 @@ final class RequestBody implements Request.Body
     }
     
     private static RequestBody emptyBody(
-            Flow.Publisher<? extends PooledByteBufferHolder> chIn,
+            Flow.Publisher<?> chIn,
             DefaultClientChannel chApi,
             DefaultContentHeaders headers)
     {

@@ -34,6 +34,20 @@ public final class TestSubscribers {
     
     /**
      * Returns a subscriber that requests {@code Long.MAX_VALUE} and delegates
+     * {@code onNext()} to the given consumer. Other methods declared in
+     * {@code Flow.Subscriber} are NOP.
+     * 
+     * @param impl of onNext
+     * @param <T> item type, inferred on call-site
+     * 
+     * @return a skeleton subscriber
+     */
+    public static <T> Flow.Subscriber<T> onNext(Consumer<? super T> impl) {
+        return new SkeletonSubscriber<>(null, impl, null, null);
+    }
+    
+    /**
+     * Returns a subscriber that requests {@code Long.MAX_VALUE} and delegates
      * {@code onError()} to the given consumer. Other methods declared in
      * {@code Flow.Subscriber} are NOP.
      *

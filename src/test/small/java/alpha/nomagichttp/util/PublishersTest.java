@@ -21,7 +21,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 final class PublishersTest
 {
     @Test
-    void just_reuse() {
+    void just_isReusable() {
         Flow.Publisher<String> p = Publishers.just("one");
         MemorizingSubscriber<String> s = new MemorizingSubscriber<>(Request.IMMEDIATELY_MAX());
         p.subscribe(s);
@@ -31,7 +31,7 @@ final class PublishersTest
     }
     
     @Test
-    void just_two_items() {
+    void just_withTwoItems() {
         Collection<String> items = drainItems(Publishers.just("one", "two"));
         assertThat(items).containsExactly("one", "two");
     }
@@ -44,18 +44,18 @@ final class PublishersTest
     }
     
     @Test
-    void just_empty_with_cancellation() {
-        MemorizingSubscriber<Object> s = new MemorizingSubscriber<>(Request.NOTHING()){
+    void just_empty_cancelImmediately() {
+        MemorizingSubscriber<Object> ms = new MemorizingSubscriber<>(Request.NOTHING()){
             @Override
-            public void onSubscribe(Flow.Subscription subscription) {
-                subscription.cancel();
-                super.onSubscribe(subscription);
+            public void onSubscribe(Flow.Subscription s) {
+                s.cancel();
+                super.onSubscribe(s);
             }
         };
         
-        Publishers.just().subscribe(s);
-    
+        Publishers.just().subscribe(ms);
+        
         // but not ON_COMPLETE, because we cancelled!
-        assertThat(s.methodNames()).containsExactly(ON_SUBSCRIBE);
+        assertThat(ms.methodNames()).containsExactly(ON_SUBSCRIBE);
     }
 }

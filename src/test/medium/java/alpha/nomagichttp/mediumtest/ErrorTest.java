@@ -1,5 +1,7 @@
 package alpha.nomagichttp.mediumtest;
 
+import alpha.nomagichttp.handler.ClientChannel;
+import alpha.nomagichttp.handler.EndOfStreamException;
 import alpha.nomagichttp.handler.ResponseRejectedException;
 import alpha.nomagichttp.message.HttpVersionParseException;
 import alpha.nomagichttp.message.HttpVersionTooNewException;
@@ -17,7 +19,6 @@ import alpha.nomagichttp.route.NoRouteFoundException;
 import alpha.nomagichttp.testutil.AbstractRealTest;
 import alpha.nomagichttp.testutil.IORunnable;
 import alpha.nomagichttp.testutil.MemorizingSubscriber;
-import alpha.nomagichttp.util.SubscriberFailedException;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
@@ -56,12 +57,11 @@ import static alpha.nomagichttp.testutil.TestPublishers.blockSubscriberUntil;
 import static alpha.nomagichttp.testutil.TestRequests.get;
 import static alpha.nomagichttp.testutil.TestRequests.post;
 import static alpha.nomagichttp.testutil.TestSubscribers.onError;
+import static alpha.nomagichttp.testutil.TestSubscribers.onNext;
 import static alpha.nomagichttp.testutil.TestSubscribers.onNextAndComplete;
-import static alpha.nomagichttp.testutil.TestSubscribers.onNextAndError;
 import static alpha.nomagichttp.testutil.TestSubscribers.onSubscribe;
 import static alpha.nomagichttp.util.BetterBodyPublishers.concat;
 import static alpha.nomagichttp.util.BetterBodyPublishers.ofString;
-import static alpha.nomagichttp.util.Subscribers.onNext;
 import static java.lang.System.Logger.Level.ERROR;
 import static java.lang.System.Logger.Level.INFO;
 import static java.lang.System.Logger.Level.WARNING;
@@ -69,7 +69,6 @@ import static java.time.Duration.ofMillis;
 import static java.util.List.of;
 import static java.util.concurrent.CompletableFuture.failedStage;
 import static java.util.concurrent.TimeUnit.SECONDS;
-import static java.util.stream.Collectors.toList;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -517,16 +516,18 @@ class ErrorTest extends AbstractRealTest
         assertSecond.accept(pollServerError());
     }
     
+    // onSubscribe() fails, error goes to ErrorHandler, channel remains fully open
     @ParameterizedTest
     @ValueSource(strings = {"GET", "POST"})
     void requestBodySubscriberFails_onSubscribe(String method) throws IOException, InterruptedException {
         MemorizingSubscriber<PooledByteBufferHolder> sub = new MemorizingSubscriber<>(
-                // GET:  Caught by Publishers.empty()
-                // POST: Caught by ChannelByteBufferPublisher > PushPullPublisher > AbstractUnicastPublisher
+                // TODO: Split can be removed once we have integrated OnDownstreamErrorCloseReadStream with the channel??
+                // GET:  Runs through Publishers.empty() < PullPublisher
+                // POST: Runs through ChannelByteBufferPublisher < PushPullPublisher < AbstractUnicastPublisher
                 onSubscribe(i -> { throw new OopsException(); }));
-    
-        onErrorAssert(OopsException.class, channel ->
-            assertThat(channel.isEverythingOpen()).isTrue());
+        
+        onErrorAssert(OopsException.class, ch ->
+            assertThat(ch.isEverythingOpen()).isTrue());
         server().add("/", builder(method).accept((req, ch) ->
             req.body().subscribe(sub)));
         
@@ -543,24 +544,23 @@ class ErrorTest extends AbstractRealTest
             "Content-Length: 0"                  + CRLF + CRLF);
         
         var s = sub.signals();
-        assertThat(s).hasSize(2);
+        assertThat(s).hasSize(1);
         assertSame(s.get(0).getMethodName(), ON_SUBSCRIBE);
-        assertSame(s.get(1).getMethodName(), ON_ERROR);
         
-        assertOnErrorReceived(s.get(1), "Signalling Flow.Subscriber.onSubscribe() failed.");
         assertOopsException(pollServerError());
     }
     
+    // onNext() fails, error goes to ErrorHandler, channel's read stream is closed
     @Test
     void requestBodySubscriberFails_onNext() throws IOException, InterruptedException {
         MemorizingSubscriber<PooledByteBufferHolder> sub = new MemorizingSubscriber<>(
-                // Intercepted by RequestBody > OnDownstreamErrorCloseReadStream
+                // Intercepted by OnDownstreamErrorCloseReadStream
                 onNext(i -> { throw new OopsException(); }));
         
-        onErrorAssert(OopsException.class, channel ->
-            assertThat(channel.isOpenForReading()).isFalse());
+        onErrorAssert(OopsException.class, ch ->
+            assertThat(ch.isOpenForReading()).isFalse()); // FALSE!
         server().add("/", POST().accept((req, ch) ->
-            req.body().subscribe(sub)));
+                req.body().subscribe(sub)));
         
         String rsp = client().writeReadTextUntilNewlines(post("not empty"));
         
@@ -574,56 +574,59 @@ class ErrorTest extends AbstractRealTest
                         "Signalling Flow.Subscriber.onNext() failed. Will close the channel's read stream."));
         
         var s = sub.signals();
-        assertThat(s).hasSize(3);
+        assertThat(s).hasSize(2);
         
         assertSame(s.get(0).getMethodName(), ON_SUBSCRIBE);
         assertSame(s.get(1).getMethodName(), ON_NEXT);
-        assertSame(s.get(2).getMethodName(), ON_ERROR);
         
-        assertOnErrorReceived(s.get(2), "Signalling Flow.Subscriber.onNext() failed.");
         assertOopsException(pollServerError());
     }
     
+    /**
+     * onError() fails, error is logged but otherwise ignored.
+     * 
+     * @see ClientLifeCycleTest#clientClosesChannel_serverReceivedPartialHead
+     */
     @Test
     void requestBodySubscriberFails_onError() throws IOException, InterruptedException {
-        var withMsg = new OopsException("is logged but not re-thrown");
-        MemorizingSubscriber<PooledByteBufferHolder> sub = new MemorizingSubscriber<>(
-                onNextAndError(
-                        item -> { throw new OopsException(); },
-                        thr  -> { throw withMsg; }));
+        var oops = new OopsException("is logged but not re-thrown");
+        var sub = new MemorizingSubscriber<>(onError(eos  -> { throw oops; }));
+        var ch1 = new ArrayBlockingQueue<ClientChannel>(1);
         
-        onErrorAssert(OopsException.class, channel ->
-            assertThat(channel.isOpenForReading()).isFalse());
-        server().add("/", POST().accept((req, ch) ->
-            req.body().subscribe(sub)));
+        server().add("/", POST().accept((req, ch2) -> {
+            req.body().subscribe(sub);
+            ch1.add(ch2);
+        }));
         
-        String rsp = client().writeReadTextUntilNewlines(post("not empty"));
+        var fakeBodyReq =
+            "POST / HTTP/1.1"                         + CRLF +
+            "Accept: text/plain; charset=utf-8"       + CRLF +
+            "Content-Type: text/plain; charset=utf-8" + CRLF +
+            "Content-Length: 999999"                  + CRLF + CRLF;
         
-        assertThat(rsp).isEqualTo(
-            "HTTP/1.1 500 Internal Server Error" + CRLF +
-            "Content-Length: 0"                  + CRLF + 
-            "Connection: close"                  + CRLF + CRLF);
+        // Close after headers
+        client().write(fakeBodyReq);
         
-        var log = stopLogRecording().collect(toList());
-        assertThat(log)
-            .extracting(LogRecord::getLevel, LogRecord::getMessage)
-            .contains(rec(ERROR,
-                "Signalling Flow.Subscriber.onNext() failed. Will close the channel's read stream."));
-        assertThat(log)
-            .extracting(LogRecord::getLevel, LogRecord::getMessage, LogRecord::getThrown)
-            .contains(rec(ERROR,
-                "Subscriber.onError() returned exceptionally. This new error is only logged but otherwise ignored.",
-                withMsg));
+        logRecorder().assertAwait(ERROR,
+                "Subscriber.onError() returned exceptionally. " +
+                "This new error is only logged but otherwise ignored.",
+                OopsException.class);
         
         var s = sub.signals();
-        assertThat(s).hasSize(3);
+        assertThat(s).hasSize(2);
         
         assertSame(s.get(0).getMethodName(), ON_SUBSCRIBE);
-        assertSame(s.get(1).getMethodName(), ON_NEXT);
-        assertSame(s.get(2).getMethodName(), ON_ERROR);
+        assertSame(s.get(1).getMethodName(), ON_ERROR);
         
-        assertOnErrorReceived(s.get(2), "Signalling Flow.Subscriber.onNext() failed.");
-        assertOopsException(pollServerError());
+        assertThat(s.get(1).<Throwable>getArgument())
+            .isExactlyInstanceOf(EndOfStreamException.class)
+            .hasMessage(null)
+            .hasNoCause()
+            .hasNoSuppressedExceptions();
+        
+        // Superclass awaits clean HTTP exchange closure
+        // (ideally of course the subscriber would've sent a response lol)
+        ch1.poll(1, SECONDS).closeSafe();
     }
     
     @ParameterizedTest
@@ -775,17 +778,6 @@ class ErrorTest extends AbstractRealTest
                 .hasMessage("No handler found for method token \"OPTIONS\".");
         
         assertThatNoWarningOrErrorIsLogged();
-    }
-    
-    private static void assertOnErrorReceived(
-            MemorizingSubscriber.Signal onError, String msg)
-    {
-        assertThat(onError.<Throwable>getArgument())
-                .isExactlyInstanceOf(SubscriberFailedException.class)
-                .hasMessage(msg)
-                .hasNoSuppressedExceptions()
-                .getCause()
-                .isExactlyInstanceOf(OopsException.class);
     }
     
     private void assertOopsException(Throwable oops) {

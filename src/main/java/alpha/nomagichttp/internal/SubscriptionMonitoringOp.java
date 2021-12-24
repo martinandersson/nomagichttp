@@ -116,7 +116,7 @@ final class SubscriptionMonitoringOp extends AbstractOp<PooledByteBufferHolder>
      * If the downstream cancels the subscription, the returned stage completes
      * exceptionally with a {@link CancellationException}.<p>
      * 
-     * There is obviously a race between signals coming in from the upstream and
+     * There is a race between signals coming in from the upstream and
      * asynchronous signals coming in from the downstream. This means there are
      * no guarantees that A) the upstream publisher immediately stops publishing
      * items after downstream cancellation - so buffers may be processed even
@@ -125,8 +125,9 @@ final class SubscriptionMonitoringOp extends AbstractOp<PooledByteBufferHolder>
      * 
      * In the context of the server's request thread, the cure for both A and B
      * is for the server to sandwich the stage-operator between an upstream
-     * {@link LengthLimitedOp} and a downstream {@link OnCancelDiscardOp}. This
-     * will ensure no trailing bytebuffers beyond the message boundary will be
+     * operator that only publishes bytebuffers one at a time (e.g. {@link
+     * LengthLimitedOp}) and a downstream {@link OnCancelDiscardOp}. This will
+     * ensure no trailing bytebuffers beyond the message boundary will be
      * published and it also completely takes out the cancellation signal from
      * the equation; the returned stage will only complete normally or
      * exceptionally as determined by the upstream.<p>
@@ -153,17 +154,17 @@ final class SubscriptionMonitoringOp extends AbstractOp<PooledByteBufferHolder>
     
     /**
      * Returns {@code true} if {@link #asCompletionStage()} has completed
-     * exceptionally with an error which was also delivered to the downstream
-     * subscriber, otherwise {@code false}.<p>
+     * exceptionally with an upstream error which was also delivered to the
+     * downstream subscriber, otherwise {@code false}.<p>
      * 
      * To be uber clear, a false return indicates that a subscriber was not
      * subscribed when the error occurred, or the subscriber cancelled ({@link
      * CancellationException}), or the stage completed normally.<p>
      * 
-     * An upstream error (e.g. {@link RequestBodyTimeoutException}) not
-     * delivered to the downstream (i.e. application) must be resolved by the
-     * {@link HttpExchange} - otherwise the error (and the alternative response)
-     * would have been lost.<p>
+     * An error (e.g. {@link RequestBodyTimeoutException}) not delivered to the
+     * downstream (i.e. application) must be resolved by the {@link
+     * HttpExchange} - otherwise the error (and the alternative response) would
+     * have been lost.<p>
      * 
      * This operation performs a non-volatile read of a state variable. It is
      * assumed that the method is pulled only after the stage completes and that

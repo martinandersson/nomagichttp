@@ -25,7 +25,7 @@ import static java.util.Objects.requireNonNull;
  * #newSubscription(Flow.Subscriber)}. The subscription object is how the
  * subclass learn about the subscriber's demand and the {@code
  * newSubscription()} method also serves as the only opportunity for the
- * subclass to learn that a new subscription has been activated.<p>
+ * subclass to learn that a new subscription has been accepted.<p>
  * 
  * {@code signalError()}, {@code signalComplete()} and {@code
  * Flow.Subscription.cancel()} are all terminating signals; they will remove the
@@ -50,9 +50,15 @@ import static java.util.Objects.requireNonNull;
  * has reason to assume that another origin's signals are already sent serially
  * or the subclass must implement proper orchestration. Failure to comply could
  * mean that the subscriber is called concurrently or out of order (for example
- * {@code onComplete()} signalled followed by {@code onNext()}). Similarly, the
- * subscription object returned by {@code newSubscription()} must also be able
- * to handle concurrent calls without regards to thread identity.
+ * {@code onComplete()} signalled followed by {@code onNext()}). For a reusable
+ * publisher, overlapping calls could also mean that a delivery-failure from
+ * {@code signalNext()} unsubscribes/removes the wrong subscriber. Again, the
+ * responsibility of this class is merely to provide the {@code subscribe()}
+ * implementation and to manage the subscriber reference. The concrete class
+ * must ensure serial signals.<p>
+ * 
+ * The subscription object returned by {@code newSubscription()} must be able to
+ * handle concurrent calls without regards to thread identity.
  * 
  * @apiNote
  * The restriction to allow only one subscriber at a time was made in order to
@@ -75,10 +81,9 @@ public abstract class AbstractUnicastPublisher<T> implements Flow.Publisher<T>
     private static final Flow.Subscriber<?>
             ACCEPTING    = noopNew(),
             NOT_REUSABLE = noopNew(),
-            CLOSED       = noopNew();
-    
+            CLOSED       = noopNew(),
     // This sentinel value is only used to indicate the intended target of a subscriber
-    private static final Flow.Subscriber<?> ANYONE = noopNew();
+            ANYONE       = noopNew();
     
     @SuppressWarnings("unchecked")
     private static <T> Flow.Subscriber<T> T(Flow.Subscriber<?> sentinel) {
@@ -196,7 +201,7 @@ public abstract class AbstractUnicastPublisher<T> implements Flow.Publisher<T>
         
         try {
             // Initialize subscriber
-            Subscribers.signalOnSubscribeOrTerminate(newS, proxy);
+            newS.onSubscribe(proxy);
         } catch (Throwable t) {
             // Attempt rollback (publisher could have closed or subscriber cancelled)
             boolean ignored = ref.compareAndSet(wrapper, T(ACCEPTING));
@@ -234,8 +239,8 @@ public abstract class AbstractUnicastPublisher<T> implements Flow.Publisher<T>
         
         LOG.log(DEBUG, () -> "Rejected " + newS + ". " + reason);
         
-        Subscriptions.CanOnlyBeCancelled tmp = Subscriptions.canOnlyBeCancelled();
-        Subscribers.signalOnSubscribeOrTerminate(newS, tmp);
+        var tmp = Subscriptions.canOnlyBeCancelled();
+        newS.onSubscribe(tmp);
         if (!tmp.isCancelled()) {
             Subscribers.signalErrorSafe(newS, new IllegalStateException(reason));
         }
@@ -254,15 +259,18 @@ public abstract class AbstractUnicastPublisher<T> implements Flow.Publisher<T>
     }
     
     /**
-     * Signal an item to the current subscriber.
+     * Signal an item to the current subscriber.<p>
      * 
-     * If {@code signalNext()} can not deliver the item to a subscriber and the
-     * runtime type of the item is a {@link PooledByteBufferHolder}, then the
-     * buffer will be immediately released.
+     * A subscriber that returns exceptionally will be removed and the item if
+     * it is a {@link PooledByteBufferHolder} will be released. The exception
+     * is then re-thrown.<p>
      * 
-     * @param  item to deliver
+     * This method does not throw {@code NullPointerException} if the item is
+     * {@code null}. Nonetheless, the concrete publisher must never publish
+     * null.
+     * 
+     * @param item to deliver
      * @return {@code true} if successful, otherwise no subscriber was active
-     * @throws NullPointerException if {@code item} is {@code null}
      */
     protected final boolean signalNext(T item) {
         return signalNext(item, T(ANYONE));
@@ -271,44 +279,32 @@ public abstract class AbstractUnicastPublisher<T> implements Flow.Publisher<T>
     /**
      * Signal an item to the current subscriber, but only if the current
      * subscriber {@code ==} the {@code expected} reference.
-     *
-     * If {@code signalNext()} can not deliver the item to a subscriber and the
-     * runtime type of the item is a {@link PooledByteBufferHolder}, then the
-     * buffer will be immediately released.
      * 
-     * @param  item to deliver
-     * @param  expected subscriber reference
-     * @return {@code true} if successful, otherwise {@code false}
-     * @throws NullPointerException if any arg is {@code null}
+     * Same semantics as defined by {@link #signalNext(Object)} apply. The
+     * former can safely be used by a non-reusable publisher. A reusable
+     * publisher on the other hand, may wish to mark a specific item as the
+     * fulfilment of a specific subscriber's demand.
+     * 
+     * @param item to deliver
+     * @param expected subscriber reference
+     * @return {@code true} if successful, otherwise no- or wrong subscriber
+     * @throws NullPointerException if {@code expected} is {@code null}
      */
     protected final boolean signalNext(T item, Flow.Subscriber<? super T> expected) {
-        final boolean signalled;
-        
-        try {
-            signalled = signalNext0(item, expected);
-        } catch (Throwable t) {
-            if (item instanceof PooledByteBufferHolder) {
-                ((PooledByteBufferHolder) item).release();
-            }
-            throw t;
-        }
-        
-        if (!signalled && item instanceof PooledByteBufferHolder) {
-            ((PooledByteBufferHolder) item).release();
-        }
-        
-        return signalled;
-    }
-    
-    private boolean signalNext0(T item, Flow.Subscriber<? super T> expected) {
         requireNonNull(expected);
-        final Flow.Subscriber<? super T> s = get();
-        
+        final var s = get();
         if (s != null && (s == expected || expected == ANYONE)) {
-            s.onNext(item);
+            try {
+                s.onNext(item);
+            } catch (Throwable t) {
+                removeSubscriberIfSameAs(s);
+                if (item instanceof PooledByteBufferHolder buf) {
+                    buf.release();
+                }
+                throw t;
+            }
             return true;
-        }
-        
+        } // Else
         return false;
     }
     
@@ -366,8 +362,10 @@ public abstract class AbstractUnicastPublisher<T> implements Flow.Publisher<T>
      * The underlying subscriber reference will be removed and never again
      * signalled by this class.
      * 
-     * @param  t error to signal
-     * @return {@code true} if successful, otherwise no subscriber was active
+     * @param t error to signal
+     * 
+     * @return {@code true}
+     *     if {@code onError()} was signalled, otherwise no subscriber was active
      */
     protected final boolean signalError(Throwable t) {
         final Flow.Subscriber<? super T> s

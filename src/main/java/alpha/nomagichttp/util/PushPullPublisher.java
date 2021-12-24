@@ -22,13 +22,13 @@ import static java.util.Objects.requireNonNull;
  * reference or deal with concurrency issues.<p>
  * 
  * The generator function may return {@code null} which would indicate there's
- * no items available for the current subscriber at the moment (a future
- * announcement is expected).<p>
+ * no items available for the current subscriber at that moment in time (a
+ * future announcement is expected).<p>
  * 
- * Due to the asynchronous nature of this class; not all items that are polled
- * out from the generator is also guaranteed to be delivered. For example, at
- * the same time a delivery just started (generator was called) a subscriber's
- * subscription may asynchronously terminate.<p>
+ * Due to the asynchronous nature of subscriptions; not all items that are
+ * polled out from the generator is also guaranteed to be delivered. For
+ * example, at the same time a delivery just started (generator was called) a
+ * subscriber's subscription may asynchronously terminate.<p>
  * 
  * If an item is polled but fails to be delivered and the item is a {@link
  * PooledByteBufferHolder}, then the item will be released (done by {@link
@@ -61,9 +61,10 @@ import static java.util.Objects.requireNonNull;
  * extend this class, rather it is used as a final instance field to which the
  * channel delegates {@code Flow.Publisher.subscribe()} calls.<p>
  * 
- * An example of a non-reusable {@code PushPullPublisher} example would be
- * {@link BetterBodyPublishers#ofFile(Path)} which internally use a new delegate
- * for each subscription of the file.
+ * An example of a non-reusable {@code PushPullPublisher} would be {@link
+ * BetterBodyPublishers#ofFile(Path)} which internally use a new delegate for
+ * each subscription of the file. So technically, the publisher itself is
+ * actually re-usable.
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  * 
@@ -119,13 +120,6 @@ public class PushPullPublisher<T> extends AugmentedAbstractUnicastPublisher<T, S
     }
     
     /**
-     * Equivalent to {@link #announce(Consumer) announce(null)}.
-     */
-    public void announce() {
-        announce(null);
-    }
-    
-    /**
      * Announce the presumed availability of an item from the generator
      * function.<p>
      * 
@@ -135,29 +129,18 @@ public class PushPullPublisher<T> extends AugmentedAbstractUnicastPublisher<T, S
      * deliver the item to the publisher.<p>
      * 
      * If this method synchronously invokes a subscriber and the subscriber
-     * returns exceptionally, then 1) the provided {@code onError} is called,
-     * 2) subscriber is signalled a {@link SubscriberFailedException}, 3) this
-     * class {@link #stop() self-stop} and 4) the exception is re-thrown.<p>
-     * 
-     * The callback is an opportunity for the call-site to execute code before
-     * the subscriber. For example, to close a read stream.<p>
+     * returns exceptionally, then this class shuts down and then the exception
+     * is re-thrown.<p>
      * 
      * Is NOP if no subscriber is active or an active subscriber's demand is
      * zero.
-     * 
-     * @param onError a chance to run error logic before the subscriber do
-     *                (may be {@code null})
      */
-    public void announce(Consumer<Throwable> onError) {
+    public void announce() {
         ifPresent(s -> {
             try {
                 s.attachment().tryTransfer();
             } catch (Throwable t) {
-                if (onError != null) {
-                    onError.accept(t);
-                }
-                errorThroughService(SubscriberFailedException.onNext(t), s);
-                stop();
+                shutdown();
                 throw t;
             }
         });
@@ -175,7 +158,7 @@ public class PushPullPublisher<T> extends AugmentedAbstractUnicastPublisher<T, S
      * Is NOP if there is no subscriber active.
      * 
      * @param t the throwable
-     * @return {@code true} only if an active subscriber will be delivered the error
+     * @return {@code true} only if a subscriber received the error
      */
     public boolean error(Throwable t) {
         var s = get();
@@ -208,7 +191,7 @@ public class PushPullPublisher<T> extends AugmentedAbstractUnicastPublisher<T, S
      * 
      * Is NOP if already stopped.
      * 
-     * @return {@code true} only if an active subscriber will be delivered the error
+     * @return {@code true} only if a subscriber received the error
      */
     public boolean stop() {
         return stop(new IllegalStateException());
@@ -223,7 +206,7 @@ public class PushPullPublisher<T> extends AugmentedAbstractUnicastPublisher<T, S
      * Is NOP if already stopped.
      * 
      * @param t the throwable
-     * @return {@code true} only if an active subscriber will be delivered the error
+     * @return {@code true} only if a subscriber received the error
      */
     public boolean stop(Throwable t) {
         var s = shutdown();
@@ -258,8 +241,15 @@ public class PushPullPublisher<T> extends AugmentedAbstractUnicastPublisher<T, S
                 = new SubscriberWithAttachment<>(subscriber);
         
         s.attachment(new SerialTransferService<>(
-                generator,
-                item -> signalNext(item, s)));
+                self -> generator.get(),
+                (self, item) -> {
+                    try {
+                        signalNext(item, s);
+                    } catch (Throwable t) {
+                        self.finish();
+                        throw t;
+                    }
+                }));
         
         return s;
     }
