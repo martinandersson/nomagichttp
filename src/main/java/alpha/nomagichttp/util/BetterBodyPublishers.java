@@ -360,7 +360,7 @@ public final class BetterBodyPublishers
             Reader(Path path) {
                 this.path      = path;
                 this.announcer = new PushPullPublisher<>(
-                        this::getNext, onConsumerError -> closeSafe(), this::closeSafe);
+                        this::getNext, ignored -> {}, this::closeSafe);
                 this.contents  = new ConcurrentLinkedDeque<>();
                 this.handler   = new Handler();
                 this.fc        = null;

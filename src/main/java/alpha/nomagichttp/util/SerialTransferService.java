@@ -10,8 +10,8 @@ import static java.lang.Long.MAX_VALUE;
 import static java.util.Objects.requireNonNull;
 
 /**
- * This class can be used as a thread-safe and lock-free concurrency primitive
- * to transfer an item from a producer to a consumer.<p>
+ * A thread-safe and lock-free concurrency primitive to transfer an item from a
+ * producer to a consumer.<p>
  * 
  * The consumer signals his receiving capability through raising a demand and
  * only if there is a demand will the producer (provided to constructor) be

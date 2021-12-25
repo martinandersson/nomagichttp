@@ -74,8 +74,8 @@ import static java.util.Objects.requireNonNull;
  * <h2>Exception Semantics</h2>
  * 
  * Exceptions thrown by {@code Subscriber.onSubscribe()}/{@code onNext()}/{@code
- * onComplete()} propagates to the calling thread. After this point, the
- * subscription is voided and the publisher will no longer interact with the
+ * onComplete()} propagates to the calling thread. After the exceptional return,
+ * the subscription is voided and the publisher will no longer interact with the
  * subscriber. The subscriber should never throw an exception.<p>
  * 
  * Exceptions sent to {@code Subscriber.onError()} represents an upstream error
