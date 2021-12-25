@@ -15,29 +15,32 @@ import static java.util.Objects.requireNonNull;
  * 
  * This class honors the contract specified in {@link Publishers}.<p>
  * 
- * The function is implicitly polled by the producer {@link #announce()
- * announcing} the availability of items (the push) and also polled by the
- * subscriber through the increase of his demand (the pull).<p>
+ * The generator function could be something as simple as polling a queue of
+ * items, or it could be something far more advanced. A common pattern for using
+ * this class is through composition and not inheritance, where a public-facing
+ * publisher's subscribe method (or equivalent) delegates to this class.
+ * Nevertheless, this class is agnostic and unaware of how items are produced.
+ * The subclass, client and/or generator function are sometimes lumped together
+ * and loosely referred to as "the upstream" by the JavaDoc in this class.<p>
  * 
- * This class is used as a simplified API for a source interested in publishing
- * items to only one active subscriber without having to manage the subscriber
- * reference or deal with concurrency issues.<p>
+ * The generator function is implicitly polled by the upstream {@link
+ * #announce() announcing} the availability of items (the push) and also polled
+ * by the subscriber through the increase of his demand (the pull).<p>
  * 
  * The generator function may return {@code null} which would indicate there's
  * no items available for the current subscriber at that moment in time (a
  * future announcement is expected).<p>
  * 
- * Not all items that are polled out from the generator are also guaranteed to
- * be successfully delivered. Quite obviously, the subscriber's {@code onNext()}
- * method may return exceptionally. It could also be the case, that at the same
- * time a delivery just started (generator was called) a subscriber's
- * subscription asynchronously terminates. Each constructor in this class
- * accepts a "non-successful delivery" callback which will be called if the item
- * was not successfully delivered. May be used, for example to release a {@link
- * PooledByteBufferHolder}.<p>
- * 
- * If a subscriber's {@code onNext} method returns exceptionally, this class
- * will {@link #shutdown()}.<p>
+ * An exception from the generator will cause this publisher to {@linkplain
+ * #stop(Throwable) self-stop} with an {@code AssertionError} (caused by the
+ * generator error). But if the assertion error was not successfully signalled
+ * downstream, the original generator error is re-thrown. Basically this
+ * behavior semantically represents an unexpected and uncontrolled stop of the
+ * publisher. As such, the downstream - if such exists - is assumed to be a
+ * better handler than whatever catch-block may be present in the call stack.
+ * The generator function should never throw an exception. The upstream ought to
+ * {@code complete}, {@code stop}, or at worst {@code shutdown} the publisher
+ * explicitly.<p>
  * 
  * For a non-reusable publisher, the generator function will never be called
  * concurrently (by this class, superclass, or subscriber.<p>
@@ -47,20 +50,23 @@ import static java.util.Objects.requireNonNull;
  * the active subscriber cancels his subscription followed by a new subscriber
  * immediately polling the generator. In this particular case, the first item
  * would not be delivered because the intended subscriber is no longer the
- * active subscriber (each subscription is a unique relationship maintained by
- * {@link SerialTransferService}).<p>
+ * active subscriber (each subscription is a unique relationship governed by the
+ * subscriber's demand).<p>
  * 
  * An example of a reusable {@code PushPullPublisher} is the HTTP server's
- * low-level child channel ({@code ChannelByteBufferPublisher}) which publishes
- * bytebuffers first to a request head subscriber possibly followed by a request
- * body subscriber. It's worth noting that the channel doesn't actually
- * extend this class, rather it is used as a final instance field to which the
- * channel delegates {@code Flow.Publisher.subscribe()} calls.<p>
+ * low-level child channel ({@code ChannelByteBufferPublisher}). The channel
+ * publishes to a series of subscribers, e.g. first to a request head parser
+ * then to a request body consumer. The channel (or rather, the channel in
+ * combination with a downstream operator) publishes only one bytebuffer at a
+ * time which upon release, if there are bytes remaining, will be recycled and
+ * published to the next subscriber.<p>
  * 
- * An example of a non-reusable {@code PushPullPublisher} would be {@link
- * BetterBodyPublishers#ofFile(Path)} which internally use a new delegate for
- * each subscription of the file. So technically, the publisher itself is
- * actually re-usable.
+ * An example of a non-reusable {@code PushPullPublisher} is the new instance
+ * created for each new subscription by which {@link
+ * BetterBodyPublishers#ofFile(Path)} delegates to (so technically, the file
+ * publisher itself is reusable). The file publisher's delegate make use of the
+ * {@code premortem} callback offered for non-reusable publishers to do resource
+ * cleanup.
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  * 
@@ -70,77 +76,92 @@ public class PushPullPublisher<T>
         extends AugmentedAbstractUnicastPublisher<T, SerialTransferService<T>>
 {
     private final Supplier<? extends T> generator;
-    private final Consumer<? super T> onNonSuccessfulDelivery;
-    private final Runnable onCancel;
+    private final Consumer<? super T> recycler;
+    private final Runnable premortem;
     
     /**
      * Initializes a reusable publisher.
      * 
      * @apiNote
-     * This constructor does not accept an "on cancel" callback. Because for a
-     * reusable publisher (rather, generator), a subscriber cancelling is not
-     * the end of life for that publisher, more subscribers in the future are
-     * expected.
+     * This constructor does not accept "onNext-error" or "onCancel" callbacks.
+     * Because for a reusable publisher, a subscriber failing or cancelling is
+     * not the end of life for that publisher, more subscribers in the future
+     * are expected.
      * 
-     * @param generator
-     *           item producer
-     * @param onNonSuccessfulDelivery
-     *           an opportunity to recycle items (see {@link PushPullPublisher})
-     * @throws NullPointerException
-     *           if any arg is {@code null}
+     * @param generator of items
+     * @throws NullPointerException if {@code generator} is {@code null}
+     */
+    public PushPullPublisher(Supplier<? extends T> generator) {
+        this(generator, ignored -> {});
+    }
+    
+    /**
+     * Initializes a reusable publisher.<p>
+     * 
+     * Not all items that are polled out from the generator are also guaranteed
+     * to be successfully delivered. For example, the subscriber's {@code
+     * onNext()} method may return exceptionally. It could also be the case,
+     * that at the same time a delivery just started (generator was called) a
+     * subscriber's subscription asynchronously terminates, possibly even
+     * followed by the arrival of a new subscriber. For the purpose of recycling
+     * items, such as releasing a {@link PooledByteBufferHolder}, a {@code
+     * recycler} argument may be specified which will receive the item that
+     * failed to be delivered.<p>
+     * 
+     * Theoretically - for a reusable publisher only - the recycler may be
+     * called concurrently.
+     * 
+     * @apiNote
+     * This constructor does not accept "onNext-error" or "onCancel" callbacks.
+     * Because for a reusable publisher, a subscriber failing or cancelling is
+     * not the end of life for that publisher, more subscribers in the future
+     * are expected.
+     * 
+     * @param generator of items
+     * @param recycler an opportunity to recycle items
+     * @throws NullPointerException if any arg is {@code null}
      */
     public PushPullPublisher(
-            Supplier<? extends T> generator,
-            Consumer<? super T> onNonSuccessfulDelivery)
+            Supplier<? extends T> generator, Consumer<? super T> recycler)
     {
         super(true);
         this.generator = requireNonNull(generator);
-        this.onNonSuccessfulDelivery = requireNonNull(onNonSuccessfulDelivery);
-        this.onCancel  = () -> {};
+        this.recycler  = requireNonNull(recycler);
+        this.premortem = () -> {};
     }
     
     /**
      * Initializes a non-reusable publisher.<p>
      * 
-     * As guaranteed by the {@linkplain
-     * AbstractUnicastPublisher#newSubscription(Flow.Subscriber) superclass},
-     * the {@code onCancel} callback:
-     * <ol>
-     *   <li>Is never called whilst a subscriber is initializing. In fact, this
-     *       will cause the installation to roll back.</li>
-     *   <li>Only executes exactly once if the subscriber's cancel-signal was
-     *       the one that terminated the subscription.</li>
-     * </ol>
+     * The {@code recycler} is called - as specified by {@link
+     * #PushPullPublisher(Supplier, Consumer)} - each time a delivery failed.
+     * Whether that be because the intended subscriber was asynchronously
+     * terminated, or because the subscriber's {@code onNext} method returned
+     * exceptionally.<p>
      * 
-     * In addition, the subscriber-unique
-     * {@linkplain SerialTransferService#finish(Runnable) transfer service}
-     * guarantees that the callback will only execute when a transfer is not
-     * ongoing.<p>
+     * The {@code premortem} callback is called exactly-once and only if the
+     * subscription is terminated unexpectedly (exceptional return from
+     * generator) or terminated from the downstream (exceptional return from
+     * subscriber's {@code onNext} method or subscription cancellation). The
+     * upstream must perform resource clean-up explicitly when doing the
+     * termination.<p>
      * 
-     * The callback will have memory visibility of writes from the last transfer
-     * as well as writes done by the subscriber's thread calling cancel.<p>
+     * None of the callbacks will be called concurrently.
      * 
-     * Both callbacks in combination is how the non-reusable publisher/generator
-     * may perform resource cleanup.
-     * 
-     * @param generator
-     *           item supplier
-     * @param onNonSuccessfulDelivery
-     *           an opportunity to recycle items (see {@link PushPullPublisher})
-     * @param onCancel
-     *           see JavaDoc
-     * @throws NullPointerException
-     *           if any arg is {@code null}
+     * @param generator item supplier
+     * @param recycler an opportunity to recycle items
+     * @param premortem clean-up on non-planned termination
+     * @throws NullPointerException if any arg is {@code null}
      */
     public PushPullPublisher(
             Supplier<? extends T> generator,
-            Consumer<? super T> onNonSuccessfulDelivery,
-            Runnable onCancel)
+            Consumer<? super T> recycler,
+            Runnable premortem)
     {
         super(false);
         this.generator = requireNonNull(generator);
-        this.onCancel  = requireNonNull(onCancel);
-        this.onNonSuccessfulDelivery = requireNonNull(onNonSuccessfulDelivery);
+        this.recycler  = requireNonNull(recycler);
+        this.premortem = requireNonNull(premortem);
     }
     
     /**
@@ -259,16 +280,30 @@ public class PushPullPublisher<T>
         SubscriberWithAttachment<T, SerialTransferService<T>> swa
                 = new SubscriberWithAttachment<>(sub);
         
-        swa.attachment(new SerialTransferService<>(
-                generator,
+        swa.attachment(new SerialTransferService<T>(
+                () -> {
+                    try {
+                        return generator.get();
+                    } catch (Throwable t) {
+                        var delivered = stop(new AssertionError(
+                                "Unexpected generator failure.", t));
+                        premortem.run();
+                        if (!delivered) {
+                            throw t;
+                        }
+                        return null;
+                    }
+                },
                 item -> {
                     if (!signalNext(item, swa)) {
-                        onNonSuccessfulDelivery.accept(item);
+                        // Semantic error, not the same subscriber - anymore
+                        recycler.accept(item);
                     }
                 },
                 failedItem -> {
-                    shutdown();
-                    onNonSuccessfulDelivery.accept(failedItem);
+                    // Exceptional return from onNext()
+                    recycler.accept(failedItem);
+                    premortem.run();
                 }));
         
         return swa;
@@ -300,7 +335,8 @@ public class PushPullPublisher<T>
         
         @Override
         public void cancel() {
-            swa.attachment().finish(onCancel);
+            // Assuming <premortem> is NOP for re-usable publisher
+            swa.attachment().finish(premortem);
         }
     }
 }
