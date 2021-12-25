@@ -524,7 +524,7 @@ class ErrorTest extends AbstractRealTest
                 // TODO: Split can be removed once we have integrated OnDownstreamErrorCloseReadStream with the channel??
                 // GET:  Runs through Publishers.empty() < PullPublisher
                 // POST: Runs through ChannelByteBufferPublisher < PushPullPublisher < AbstractUnicastPublisher
-                onSubscribe(i -> { throw new OopsException(); }));
+                onSubscribe(s -> { throw new OopsException(); }));
         
         onErrorAssert(OopsException.class, ch ->
             assertThat(ch.isEverythingOpen()).isTrue());

@@ -37,39 +37,15 @@ public final class Subscribers
     
     /**
      * Returns a new NOOP subscriber.
-     *
+     * 
      * @param <T> type of ignored item (inferred on call site)
-     *
+     * 
      * @return a new NOOP subscriber
      */
     public static <T> Flow.Subscriber<T> noopNew() {
         @SuppressWarnings("unchecked")
         Flow.Subscriber<T> typed = (Flow.Subscriber<T>) new Noop();
         return typed;
-    }
-    
-    /**
-     * Returns a subscriber interested only in the subscription object.<p>
-     * 
-     * {@code onNext}, {@code onError} and {@code onComplete} are NOP.
-     * 
-     * @param impl subscription consumer
-     * @param <T> item type
-     * 
-     * @return a subscriber
-     * 
-     * @throws NullPointerException if {@code impl} is {@code null}
-     */
-    public static <T> Flow.Subscriber<T> onSubscribe(Consumer<Flow.Subscription> impl) {
-        requireNonNull(impl);
-        return new Flow.Subscriber<>() {
-            public void onSubscribe(Flow.Subscription s) {
-                impl.accept(s); }
-            
-            public void onNext(T item) { }
-            public void onError(Throwable throwable) { }
-            public void onComplete() { }
-        };
     }
     
     /**

@@ -19,9 +19,10 @@ public final class TestSubscribers {
     }
     
     /**
-     * Returns a subscriber that requests {@code Long.MAX_VALUE} and delegates
-     * {@code onSubscribe()} to the given consumer. Other methods declared in
-     * {@code Flow.Subscriber} are NOP.
+     * Returns a subscriber that delegates {@code onSubscribe()} to the given
+     * consumer.<p>
+     * 
+     * Other methods declared in {@code Flow.Subscriber} are NOP.
      * 
      * @param impl of onSubscribe
      * @param <T> item type, inferred on call-site
@@ -34,8 +35,9 @@ public final class TestSubscribers {
     
     /**
      * Returns a subscriber that requests {@code Long.MAX_VALUE} and delegates
-     * {@code onNext()} to the given consumer. Other methods declared in
-     * {@code Flow.Subscriber} are NOP.
+     * {@code onNext()} to the given consumer.<p>
+     * 
+     * Other methods declared in {@code Flow.Subscriber} are NOP.
      * 
      * @param impl of onNext
      * @param <T> item type, inferred on call-site
@@ -48,36 +50,9 @@ public final class TestSubscribers {
     
     /**
      * Returns a subscriber that requests {@code Long.MAX_VALUE} and delegates
-     * {@code onError()} to the given consumer. Other methods declared in
-     * {@code Flow.Subscriber} are NOP.
-     *
-     * @param impl of onError
-     * @param <T> item type, inferred on call-site
-     *
-     * @return a skeleton subscriber
-     */
-    public static <T> Flow.Subscriber<T> onError(Consumer<? super Throwable> impl) {
-        return new SkeletonSubscriber<>(null, null, impl, null);
-    }
-    
-    /**
-     * Returns a subscriber that requests {@code Long.MAX_VALUE} and delegates
-     * {@code onComplete()} to the given argument. Other methods declared in
-     * {@code Flow.Subscriber} are NOP.
-     *
-     * @param impl of onComplete
-     * @param <T> item type, inferred on call-site
-     *
-     * @return a skeleton subscriber
-     */
-    public static <T> Flow.Subscriber<T> onComplete(Runnable impl) {
-        return new SkeletonSubscriber<>(null, null, null, impl);
-    }
-    
-    /**
-     * Returns a subscriber that requests {@code Long.MAX_VALUE} and delegates
-     * {@code onNext()/onComplete()} to the given arguments. Other methods
-     * declared in {@code Flow.Subscriber} are NOP.
+     * {@code onNext()/onComplete()} to the given arguments.<p>
+     * 
+     * Other methods declared in {@code Flow.Subscriber} are NOP.
      * 
      * @param onNext implementation
      * @param onComplete implementation
@@ -92,8 +67,9 @@ public final class TestSubscribers {
     
     /**
      * Returns a subscriber that requests {@code Long.MAX_VALUE} and delegates
-     * {@code onNext()/onError()} to the given arguments. Other methods declared
-     * in {@code Flow.Subscriber} are NOP.
+     * {@code onNext()/onError()} to the given arguments.<p>
+     * 
+     * Other methods declared in {@code Flow.Subscriber} are NOP.
      * 
      * @param onNext implementation
      * @param onError implementation
@@ -104,6 +80,36 @@ public final class TestSubscribers {
     public static <T> Flow.Subscriber<T> onNextAndError(
             Consumer<? super T> onNext, Consumer<? super Throwable> onError) {
         return new SkeletonSubscriber<>(null, onNext, onError, null);
+    }
+    
+    /**
+     * Returns a subscriber that requests {@code Long.MAX_VALUE} and delegates
+     * {@code onError()} to the given consumer.<p>
+     * 
+     * Other methods declared in {@code Flow.Subscriber} are NOP.
+     * 
+     * @param impl of onError
+     * @param <T> item type, inferred on call-site
+     * 
+     * @return a skeleton subscriber
+     */
+    public static <T> Flow.Subscriber<T> onError(Consumer<? super Throwable> impl) {
+        return new SkeletonSubscriber<>(null, null, impl, null);
+    }
+    
+    /**
+     * Returns a subscriber that requests {@code Long.MAX_VALUE} and delegates
+     * {@code onComplete()} to the given argument.<p>
+     * 
+     * Other methods declared in {@code Flow.Subscriber} are NOP.
+     * 
+     * @param impl of onComplete
+     * @param <T> item type, inferred on call-site
+     *
+     * @return a skeleton subscriber
+     */
+    public static <T> Flow.Subscriber<T> onComplete(Runnable impl) {
+        return new SkeletonSubscriber<>(null, null, null, impl);
     }
     
     private static final class SkeletonSubscriber<T> implements Flow.Subscriber<T> {
@@ -131,11 +137,11 @@ public final class TestSubscribers {
         }
         
         @Override
-        public void onSubscribe(Flow.Subscription subscription) {
+        public void onSubscribe(Flow.Subscription s) {
             if (onSubscribe != null) {
-                onSubscribe.accept(subscription);
+                onSubscribe.accept(s);
             } else {
-                subscription.request(Long.MAX_VALUE);
+                s.request(Long.MAX_VALUE);
             }
         }
         
@@ -147,9 +153,9 @@ public final class TestSubscribers {
         }
         
         @Override
-        public void onError(Throwable throwable) {
+        public void onError(Throwable t) {
             if (onError != null) {
-                onError.accept(throwable);
+                onError.accept(t);
             }
         }
         

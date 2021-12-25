@@ -10,7 +10,7 @@ import static alpha.nomagichttp.testutil.MemorizingSubscriber.Signal.MethodName.
 import static alpha.nomagichttp.testutil.MemorizingSubscriber.Signal.MethodName.ON_SUBSCRIBE;
 import static alpha.nomagichttp.testutil.MemorizingSubscriber.drainMethods;
 import static alpha.nomagichttp.testutil.MemorizingSubscriber.drainSignals;
-import static alpha.nomagichttp.util.Subscribers.onSubscribe;
+import static alpha.nomagichttp.testutil.TestSubscribers.onSubscribe;
 import static alpha.nomagichttp.util.Subscriptions.noop;
 import static org.assertj.core.api.Assertions.assertThat;
 
