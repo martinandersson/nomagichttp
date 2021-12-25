@@ -189,12 +189,12 @@ public final class Subscribers
         static final Noop GLOBAL = new Noop();
         
         @Override
-        public void onSubscribe(Flow.Subscription subscription) {
+        public void onSubscribe(Flow.Subscription s) {
             // Empty
         }
         
         @Override
-        public void onError(Throwable throwable) {
+        public void onError(Throwable t) {
             // Empty
         }
         
@@ -204,7 +204,7 @@ public final class Subscribers
         }
         
         @Override
-        public void onNext(Object item) {
+        public void onNext(Object o) {
             // Empty
         }
     }
