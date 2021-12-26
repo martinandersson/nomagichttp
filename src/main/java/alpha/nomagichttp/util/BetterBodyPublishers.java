@@ -5,9 +5,11 @@ import alpha.nomagichttp.message.Response;
 
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.net.http.HttpRequest.BodyPublishers;
 import java.nio.ByteBuffer;
 import java.nio.channels.AsynchronousFileChannel;
+import java.nio.channels.ClosedChannelException;
 import java.nio.channels.CompletionHandler;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
@@ -24,6 +26,7 @@ import java.util.function.Supplier;
 import static alpha.nomagichttp.util.Streams.stream;
 import static java.lang.Long.MAX_VALUE;
 import static java.lang.System.Logger.Level.DEBUG;
+import static java.lang.System.Logger.Level.WARNING;
 import static java.net.http.HttpRequest.BodyPublisher;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.util.Objects.requireNonNull;
@@ -396,10 +399,14 @@ public final class BetterBodyPublishers
             }
             
             private void closeSafe() {
-                try {
-                    fc.close();
-                } catch (IOException e) {
-                    LOG.log(DEBUG, "Failed to close file channel.", e);
+                if (fc != null) {
+                    try {
+                        fc.close();
+                    } catch (ClosedChannelException e) {
+                        LOG.log(DEBUG, "File channel already closed.");
+                    } catch (IOException e) {
+                        throw new UncheckedIOException(e);
+                    }
                 }
                 contents.clear();
             }
