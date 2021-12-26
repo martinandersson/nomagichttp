@@ -199,13 +199,13 @@ final class AtomicReferences
      * only if the current value pass the given test.
      * 
      * @param ref value container
-     * @param newValue to set
      * @param test predicate
+     * @param newValue to set
      * @param <V> value type
      * 
      * @return the value after operation (may be unchanged, or new value)
      */
-    static <V> V setIf(AtomicReference<V> ref, Supplier<? extends V> newValue, Predicate<? super V> test) {
+    static <V> V setIf(AtomicReference<V> ref, Predicate<? super V> test, Supplier<? extends V> newValue) {
         return ref.updateAndGet(v -> test.test(v) ? newValue.get() : v);
     }
     
@@ -224,7 +224,7 @@ final class AtomicReferences
      * @return the value after operation (may be old, or new value)
      */
     static <V> V setIfAbsent(AtomicReference<V> ref, Supplier<? extends V> newValue) {
-        return setIf(ref, newValue, Objects::isNull);
+        return setIf(ref, Objects::isNull, newValue);
     }
     
     /**
