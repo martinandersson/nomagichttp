@@ -143,7 +143,7 @@ public class PushPullPublisher<T>
      * subscriber cancellation, the premortem runs serially after- and with
      * memory visibility from the final delivery.<p>
      * 
-     * Note that if a producer initializes lazily on first demand/generator
+     * Note that if the upstream initializes lazily on first demand/generator
      * pull, then the premortem callback ought to check for null before closing
      * resources. Subscriber cancellation can not happen during subscriber
      * initialization (if it does, the subscription rolls back), but it can
@@ -163,29 +163,8 @@ public class PushPullPublisher<T>
     /**
      * Initializes a non-reusable publisher.<p>
      * 
-     * The {@code recycler} is called - as specified by  - each time a delivery failed.
-     * Whether that be because the intended subscriber was asynchronously
-     * terminated, or because the subscriber's {@code onNext} method returned
-     * exceptionally.<p>
-     * 
-     * The {@code premortem} callback is called exactly-once and only if the
-     * subscription is terminated unexpectedly - i.e. exceptional return from
-     * generator - or terminated from the downstream - i.e. exceptional return
-     * from subscriber's {@code onNext} method or subscription cancellation.
-     * The subscription will terminate deterministically, and if the cause was
-     * subscriber cancellation, the premortem runs serially after- and with
-     * memory visibility from the final delivery.<p>
-     * 
-     * Note that if a producer initializes lazily on first demand/generator
-     * pull, then the premortem callback ought to check for null before closing
-     * resources. Subscriber cancellation can not happen during subscriber
-     * initialization (if it does, the subscription rolls back), but it can
-     * happen before first increase of demand!<p>
-     * 
-     * The upstream must perform resource clean-up explicitly when being the one
-     * initiating termination.<p>
-     * 
-     * None of the callbacks will be called concurrently.<p>
+     * On an exceptional return from the subscriber's {@code onNext} method, the
+     * recycler is called before premortem.
      * 
      * @param generator of items
      * @param premortem clean-up on non-planned termination
