@@ -140,13 +140,23 @@ public class PushPullPublisher<T>
      * exceptionally.<p>
      * 
      * The {@code premortem} callback is called exactly-once and only if the
-     * subscription is terminated unexpectedly (exceptional return from
-     * generator) or terminated from the downstream (exceptional return from
-     * subscriber's {@code onNext} method or subscription cancellation). The
-     * upstream must perform resource clean-up explicitly when doing the
-     * termination.<p>
+     * subscription is terminated unexpectedly - i.e. exceptional return from
+     * generator - or terminated from the downstream - i.e. exceptional return
+     * from subscriber's {@code onNext} method or subscription cancellation.
+     * The subscription will terminate deterministically, and if the cause was
+     * subscriber cancellation, the premortem runs serially after- and with
+     * memory visibility from the final delivery.<p>
      * 
-     * None of the callbacks will be called concurrently.
+     * Note that if a producer initializes lazily on first demand/generator
+     * pull, then the premortem callback ought to check for null before closing
+     * resources. Subscriber cancellation can not happen during subscriber
+     * initialization (if it does, the subscription rolls back), but it can
+     * happen before first increase of demand.<p>
+     * 
+     * The upstream must perform resource clean-up explicitly when being the one
+     * initiating termination.<p>
+     * 
+     * None of the callbacks will be called concurrently.<p>
      * 
      * @param generator item supplier
      * @param recycler an opportunity to recycle items
