@@ -23,10 +23,10 @@ import java.util.concurrent.Flow;
 import java.util.function.LongSupplier;
 import java.util.function.Supplier;
 
+import static alpha.nomagichttp.util.PushPullPublisher.nonReusable;
 import static alpha.nomagichttp.util.Streams.stream;
 import static java.lang.Long.MAX_VALUE;
 import static java.lang.System.Logger.Level.DEBUG;
-import static java.lang.System.Logger.Level.WARNING;
 import static java.net.http.HttpRequest.BodyPublisher;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.util.Objects.requireNonNull;
@@ -362,8 +362,7 @@ public final class BetterBodyPublishers
             
             Reader(Path path) {
                 this.path      = path;
-                this.announcer = new PushPullPublisher<>(
-                        this::getNext, this::closeSafe);
+                this.announcer = nonReusable(this::getNext, this::closeSafe);
                 this.contents  = new ConcurrentLinkedDeque<>();
                 this.handler   = new Handler();
                 this.fc        = null;

@@ -62,6 +62,7 @@ import static alpha.nomagichttp.testutil.TestSubscribers.onNextAndComplete;
 import static alpha.nomagichttp.testutil.TestSubscribers.onSubscribe;
 import static alpha.nomagichttp.util.BetterBodyPublishers.concat;
 import static alpha.nomagichttp.util.BetterBodyPublishers.ofString;
+import static java.lang.System.Logger.Level.DEBUG;
 import static java.lang.System.Logger.Level.ERROR;
 import static java.lang.System.Logger.Level.INFO;
 import static java.lang.System.Logger.Level.WARNING;
@@ -520,10 +521,7 @@ class ErrorTest extends AbstractRealTest
     @ParameterizedTest
     @ValueSource(strings = {"GET", "POST"})
     void requestBodySubscriberFails_onSubscribe(String method) throws IOException, InterruptedException {
-        MemorizingSubscriber<PooledByteBufferHolder> sub = new MemorizingSubscriber<>(
-                // TODO: Split can be removed once we have integrated OnDownstreamErrorCloseReadStream with the channel??
-                // GET:  Runs through Publishers.empty() < PullPublisher
-                // POST: Runs through ChannelByteBufferPublisher < PushPullPublisher < AbstractUnicastPublisher
+        var sub = new MemorizingSubscriber<>(
                 onSubscribe(s -> { throw new OopsException(); }));
         
         onErrorAssert(OopsException.class, ch ->
@@ -553,8 +551,8 @@ class ErrorTest extends AbstractRealTest
     // onNext() fails, error goes to ErrorHandler, channel's read stream is closed
     @Test
     void requestBodySubscriberFails_onNext() throws IOException, InterruptedException {
-        MemorizingSubscriber<PooledByteBufferHolder> sub = new MemorizingSubscriber<>(
-                // Intercepted by OnDownstreamErrorCloseReadStream
+        var sub = new MemorizingSubscriber<>(
+                // Read stream closed in ChannelByteBufferPublisher.afterSubscriberFinished()
                 onNext(i -> { throw new OopsException(); }));
         
         onErrorAssert(OopsException.class, ch ->
@@ -570,8 +568,8 @@ class ErrorTest extends AbstractRealTest
             "Connection: close"                  + CRLF + CRLF);
         
         assertThat(stopLogRecording()).extracting(LogRecord::getLevel, LogRecord::getMessage)
-                .contains(rec(ERROR,
-                        "Signalling Flow.Subscriber.onNext() failed. Will close the channel's read stream."));
+                .contains(rec(DEBUG,
+                        "Subscription terminated. Will close the channel's read stream."));
         
         var s = sub.signals();
         assertThat(s).hasSize(2);
@@ -634,10 +632,26 @@ class ErrorTest extends AbstractRealTest
     void requestBodySubscriberFails_onComplete(String method)
             throws IOException, InterruptedException
     {
-        MemorizingSubscriber<PooledByteBufferHolder> sub = new MemorizingSubscriber<>(
-                onNextAndComplete(
-                        PooledByteBufferHolder::discard,
-                        ()   -> { throw new OopsException(); }));
+        // For both HTTP methods, the error will exceptionally complete the invocation chain.
+        // And thus, be sent off to the error handler, which responds code 500.
+        
+        switch (method) {
+            case "GET" ->
+                // For GET, the subscriber subscribes to Publishers.empty().
+                // As far as the channel is concerned, everything stays the same.
+                onErrorAssert(OopsException.class, ch ->
+                    assertThat(ch.isEverythingOpen()).isTrue());
+            case "POST" ->
+                // POST subscribes directly to ChannelByteBufferPublisher, which shuts down.
+                onErrorAssert(OopsException.class, ch ->
+                    assertThat(ch.isOpenForReading()).isFalse());
+            default ->
+                throw new AssertionError();
+        }
+        
+        var sub = new MemorizingSubscriber<>(onNextAndComplete(
+                PooledByteBufferHolder::discard,
+                ()   -> { throw new OopsException(); }));
         
         server().add("/", builder(method).accept((req, ch) ->
             req.body().subscribe(sub)));
@@ -648,11 +662,20 @@ class ErrorTest extends AbstractRealTest
             default -> throw new AssertionError();
         };
         
-        String rsp = client().writeReadTextUntilNewlines(req);
+        var actualRsp = client().writeReadTextUntilNewlines(req);
         
-        assertThat(rsp).isEqualTo(
+        var expectedRsp =
             "HTTP/1.1 500 Internal Server Error" + CRLF +
-            "Content-Length: 0"                  + CRLF + CRLF);
+            "Content-Length: 0"                  + CRLF;
+        
+        switch (method) {
+            case "GET"  -> expectedRsp += CRLF;
+            // Response pipeline observes the half-closed state induced by ChannelByteBufferPublisher
+            case "POST" -> expectedRsp += "Connection: close" + CRLF + CRLF;
+            default     -> throw new AssertionError();
+        }
+        
+        assertThat(actualRsp).isEqualTo(expectedRsp);
         
         List<MemorizingSubscriber.Signal.MethodName> expected = switch (method) {
             case "GET"  -> of(ON_SUBSCRIBE, ON_COMPLETE);

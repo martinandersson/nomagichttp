@@ -136,7 +136,7 @@ final class SubscriptionMonitoringOp extends AbstractOp<PooledByteBufferHolder>
      * arrives. The cure for C is for the server to have a point in time when he
      * gives up waiting (documented in {@link Request.Body} to be the point
      * when the final response-body subscription completes. Additionally, an
-     * upstream operator will end the subscription on {@link
+     * upstream operator may end the subscription with a {@link
      * RequestBodyTimeoutException}.<p>
      * 
      * The terminating signal is passed through first, then the stage completes.

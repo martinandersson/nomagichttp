@@ -155,8 +155,7 @@ final class RequestBody implements Request.Body
                 });
         
         var monitor = subscribeTo(timedOp != null ? timedOp : content);
-        var onError = new OnDownstreamErrorCloseReadStream<>(monitor, chApi);
-        var discard = new OnCancelDiscardOp(onError);
+        var discard = new OnCancelDiscardOp(monitor);
         if (timedOp != null) {
             timedOp.start();
         }

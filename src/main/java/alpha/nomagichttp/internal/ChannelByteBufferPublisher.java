@@ -13,9 +13,11 @@ import java.util.concurrent.Flow;
 import java.util.stream.IntStream;
 
 import static alpha.nomagichttp.internal.AnnounceToChannel.EOS;
+import static alpha.nomagichttp.internal.AnnounceToChannel.read;
 import static alpha.nomagichttp.internal.DefaultServer.becauseChannelOrGroupClosed;
 import static alpha.nomagichttp.util.IOExceptions.isCausedByBrokenInputStream;
-import static java.lang.System.Logger.Level.ERROR;
+import static alpha.nomagichttp.util.PushPullPublisher.hybrid;
+import static java.lang.System.Logger.Level.DEBUG;
 import static java.lang.System.Logger.Level.WARNING;
 
 /**
@@ -61,12 +63,12 @@ final class ChannelByteBufferPublisher implements Flow.Publisher<DefaultPooledBy
     private final AnnounceToChannel channel;
     
     ChannelByteBufferPublisher(DefaultClientChannel chApi) {
-        this.chApi      = chApi;
-        this.readable   = new ConcurrentLinkedDeque<>();
-        this.subscriber = new PushPullPublisher<>(
-                this::pollReadable, PooledByteBufferHolder::release);
-        this.channel    = AnnounceToChannel.read(
-                chApi, this::putReadableLast, this::afterChannelFinished);
+        this.chApi = chApi;
+        this.readable = new ConcurrentLinkedDeque<>();
+        this.subscriber = hybrid(this::pollReadable,
+                this::afterSubscriberFinished, PooledByteBufferHolder::release);
+        this.channel = read(chApi,
+                this::putReadableLast, this::afterChannelFinished);
         
         IntStream.generate(() -> BUF_SIZE)
                 .limit(BUF_COUNT)
@@ -97,15 +99,23 @@ final class ChannelByteBufferPublisher implements Flow.Publisher<DefaultPooledBy
         }
         
         return new DefaultPooledByteBufferHolder(
-                b, readCountIgnored -> afterSubscriberPipeline(b));
+                b, readCountIgnored -> afterSubscriberReleased(b));
     }
     
-    private void afterSubscriberPipeline(ByteBuffer b) {
+    private void afterSubscriberReleased(ByteBuffer b) {
         if (b.hasRemaining()) {
             putReadableFirst(b);
         } else {
             channel.announce(b);
         }
+    }
+    
+    private void afterSubscriberFinished() {
+        readable.clear();
+        if (chApi.isOpenForReading()) {
+            LOG.log(DEBUG, "Subscription terminated." + CLOSE_MSG);
+            chApi.shutdownInputSafe();
+        } // else assume whoever closed the stream also logged the exception
     }
     
     private void afterChannelFinished(long byteCntIgnored, Throwable t) {
@@ -125,26 +135,13 @@ final class ChannelByteBufferPublisher implements Flow.Publisher<DefaultPooledBy
     private void putReadableFirst(ByteBuffer b) {
         assert b.hasRemaining();
         readable.addFirst(b);
-        subscriberAnnounce();
+        subscriber.announce();
     }
     
     private void putReadableLast(ByteBuffer b) {
         assert b == EOS || b.hasRemaining();
         readable.addLast(b);
-        subscriberAnnounce();
-    }
-    
-    private void subscriberAnnounce() {
-        try {
-            subscriber.announce();
-        } catch (Throwable t) {
-            readable.clear();
-            if (chApi.isOpenForReading()) {
-                LOG.log(ERROR, () -> "Signalling subscriber failed. " + CLOSE_MSG, t);
-                chApi.shutdownInputSafe();
-            } // else assume whoever closed the stream also logged the exception
-            throw t;
-        }
+        subscriber.announce();
     }
     
     @Override
