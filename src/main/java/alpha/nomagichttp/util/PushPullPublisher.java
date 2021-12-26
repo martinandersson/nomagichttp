@@ -53,6 +53,9 @@ import static java.util.Objects.requireNonNull;
  * active subscriber (each subscription is a unique relationship governed by the
  * subscriber's demand).<p>
  * 
+ * Unless documented otherwise, a callbacks provided to a constructor in this
+ * class will never be invoked concurrently.<p>
+ * 
  * An example of a reusable {@code PushPullPublisher} is the HTTP server's
  * low-level child channel ({@code ChannelByteBufferPublisher}). The channel
  * publishes to a series of subscribers, e.g. first to a request head parser
@@ -104,12 +107,11 @@ public class PushPullPublisher<T>
      * that at the same time a delivery just started (generator was called) a
      * subscriber's subscription asynchronously terminates, possibly even
      * followed by the arrival of a new subscriber. For the purpose of recycling
-     * items, such as releasing a {@link PooledByteBufferHolder}, a {@code
-     * recycler} argument may be specified which will receive the item that
-     * failed to be delivered.<p>
+     * items, such as releasing a {@link PooledByteBufferHolder}, the {@code
+     * recycler} callback will receive the item that failed to be delivered.<p>
      * 
-     * Theoretically - for a reusable publisher only - the recycler may be
-     * called concurrently.
+     * In theory and applicable for reusable publishers only, a generator can be
+     * called concurrently. This is the same for the recycler.
      * 
      * @apiNote
      * This constructor does not accept "onNext-error" or "onCancel" callbacks.
@@ -133,8 +135,35 @@ public class PushPullPublisher<T>
     /**
      * Initializes a non-reusable publisher.<p>
      * 
-     * The {@code recycler} is called - as specified by {@link
-     * #PushPullPublisher(Supplier, Consumer)} - each time a delivery failed.
+     * The {@code premortem} callback is called exactly-once and only if the
+     * subscription is terminated unexpectedly - i.e. exceptional return from
+     * generator - or terminated from the downstream - i.e. exceptional return
+     * from subscriber's {@code onNext} method or subscription cancellation.
+     * The subscription will terminate deterministically, and if the cause was
+     * subscriber cancellation, the premortem runs serially after- and with
+     * memory visibility from the final delivery.<p>
+     * 
+     * Note that if a producer initializes lazily on first demand/generator
+     * pull, then the premortem callback ought to check for null before closing
+     * resources. Subscriber cancellation can not happen during subscriber
+     * initialization (if it does, the subscription rolls back), but it can
+     * happen before first increase of demand.<p>
+     * 
+     * The upstream must perform resource clean-up explicitly when being the one
+     * initiating termination.
+     * 
+     * @param generator of items
+     * @param premortem clean-up on non-planned termination
+     * @throws NullPointerException if any arg is {@code null}
+     */
+    public PushPullPublisher(Supplier<? extends T> generator, Runnable premortem) {
+        this(generator, premortem, ignored -> {});
+    }
+    
+    /**
+     * Initializes a non-reusable publisher.<p>
+     * 
+     * The {@code recycler} is called - as specified by  - each time a delivery failed.
      * Whether that be because the intended subscriber was asynchronously
      * terminated, or because the subscriber's {@code onNext} method returned
      * exceptionally.<p>
@@ -151,22 +180,25 @@ public class PushPullPublisher<T>
      * pull, then the premortem callback ought to check for null before closing
      * resources. Subscriber cancellation can not happen during subscriber
      * initialization (if it does, the subscription rolls back), but it can
-     * happen before first increase of demand.<p>
+     * happen before first increase of demand!<p>
      * 
      * The upstream must perform resource clean-up explicitly when being the one
      * initiating termination.<p>
      * 
      * None of the callbacks will be called concurrently.<p>
      * 
-     * @param generator item supplier
-     * @param recycler an opportunity to recycle items
+     * @param generator of items
      * @param premortem clean-up on non-planned termination
+     *                  (see {@link #PushPullPublisher(Supplier, Runnable)})
+     * @param recycler  an opportunity to recycle items
+     *                  (see {@link #PushPullPublisher(Supplier, Consumer)})
+     * 
      * @throws NullPointerException if any arg is {@code null}
      */
     public PushPullPublisher(
             Supplier<? extends T> generator,
-            Consumer<? super T> recycler,
-            Runnable premortem)
+            Runnable premortem,
+            Consumer<? super T> recycler)
     {
         super(false);
         this.generator = requireNonNull(generator);
