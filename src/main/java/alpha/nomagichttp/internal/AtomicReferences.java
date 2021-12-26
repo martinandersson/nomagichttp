@@ -196,21 +196,6 @@ final class AtomicReferences
     
     /**
      * Atomically set the value of the reference to the factory-produced value
-     * only if the current value pass the given test.
-     * 
-     * @param ref value container
-     * @param test predicate
-     * @param newValue to set
-     * @param <V> value type
-     * 
-     * @return the value after operation (may be unchanged, or new value)
-     */
-    static <V> V setIf(AtomicReference<V> ref, Predicate<? super V> test, Supplier<? extends V> newValue) {
-        return ref.updateAndGet(v -> test.test(v) ? newValue.get() : v);
-    }
-    
-    /**
-     * Atomically set the value of the reference to the factory-produced value
      * only if the actual value is {@code null}.<p>
      * 
      * This method never returns {@code null} unless for some bizarre reason the
@@ -225,6 +210,21 @@ final class AtomicReferences
      */
     static <V> V setIfAbsent(AtomicReference<V> ref, Supplier<? extends V> newValue) {
         return setIf(ref, Objects::isNull, newValue);
+    }
+    
+    /**
+     * Atomically set the value of the reference to the factory-produced value
+     * only if the current value pass the given test.
+     * 
+     * @param ref value container
+     * @param test predicate
+     * @param newValue to set
+     * @param <V> value type
+     * 
+     * @return the value after operation (may be unchanged, or new value)
+     */
+    static <V> V setIf(AtomicReference<V> ref, Predicate<? super V> test, Supplier<? extends V> newValue) {
+        return ref.updateAndGet(v -> test.test(v) ? newValue.get() : v);
     }
     
     /**
@@ -260,6 +260,29 @@ final class AtomicReferences
     }
     
     /**
+     * Overload of {@link #takeIf(AtomicReference, Predicate)} where the
+     * predicate is a reference equality check ({@code ==}).
+     * 
+     * For example,
+     * <pre>
+     *   // Wife obviously does not implement equals(), only what reference we have counts
+     *   Wife mine = new Wife();
+     *   AtomicReference{@literal <}Wife{@literal >} crashingCarDriver = ...
+     *   takeIfSame(crashingCarDriver, mine).ifPresent(me::abandon);
+     * </pre>
+     * 
+     * @param ref reference target
+     * @param val tested reference value
+     * @param <V> value type
+     * @return an optional with {@code val} if {@code val} was the current value
+     * @throws NullPointerException if any arg is {@code null}
+     */
+    static <V> Optional<V> takeIfSame(AtomicReference<V> ref, V val) {
+        requireNonNull(val);
+        return takeIf(ref, v -> v == val);
+    }
+    
+    /**
      * Take the value from the atomic reference and set it to {@code null}, but
      * only if the current value is not {@code null} and passes the test.<p>
      * 
@@ -287,28 +310,5 @@ final class AtomicReferences
                 v != null && (memory[0] = test.test(v)) ?
                         /* reset */ null : /* keep */ v);
         return memory[0] ? of(old) : empty();
-    }
-    
-    /**
-     * Overload of {@link #takeIf(AtomicReference, Predicate)} where the
-     * predicate is a reference equality check ({@code ==}).
-     * 
-     * For example,
-     * <pre>
-     *   // Wife obviously does not implement equals(), only what reference we have counts
-     *   Wife mine = new Wife();
-     *   AtomicReference{@literal <}Wife{@literal >} crashingCarDriver = ...
-     *   takeIfSame(crashingCarDriver, mine).ifPresent(me::abandon);
-     * </pre>
-     * 
-     * @param ref reference target
-     * @param val tested reference value
-     * @param <V> value type
-     * @return an optional with {@code val} if {@code val} was the current value
-     * @throws NullPointerException if any arg is {@code null}
-     */
-    static <V> Optional<V> takeIfSame(AtomicReference<V> ref, V val) {
-        requireNonNull(val);
-        return takeIf(ref, v -> v == val);
     }
 }
