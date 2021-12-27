@@ -362,7 +362,7 @@ public class PushPullUnicastPublisher<T>
      * Signal complete to- and unregister the active subscriber.
      * 
      * A reusable publisher may get a new subscriber even after this method
-     * returns. If this is not desired, call {@link #stop()}.<p>
+     * returns. If this is not desired, also call {@link #stop()}.<p>
      * 
      * Is NOP if there is no subscriber active.
      */
