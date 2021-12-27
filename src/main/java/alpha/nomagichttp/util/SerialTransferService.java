@@ -6,6 +6,7 @@ import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Supplier;
 
+import static alpha.nomagichttp.util.ExecutorUtils.acceptSafe;
 import static java.lang.Long.MAX_VALUE;
 import static java.util.Objects.requireNonNull;
 
@@ -19,66 +20,63 @@ import static java.util.Objects.requireNonNull;
  * the consumer at which point both can be said to agree; producer is able to
  * produce and consumer is able to consume.<p>
  * 
- * Item deliveries - or "transfers" if you will - are performed <i>serially</i>
- * as part of one transaction, one at a time. Or put in other words, the
- * producer and consumer functions are serially invoked by the same thread and
- * this operation never runs concurrently.
+ * Item transfers are performed <i>serially</i> as part of one transaction, one
+ * at a time. The producer and consumer functions are invoked by the same thread
+ * calling into this class and the operation never runs concurrently.
  * 
  * 
- * <h2>Threading Model</h2>
- * 
- * Work performed by this class is only executed by threads calling into
- * package-private methods of this class (thread identify does not matter). The
- * core functionality is provided by {@link SeriallyRunnable} which also has
- * more to say on specific thread semantics. Perhaps most importantly; the
- * functions given to this class will never recurse.<p>
+ * <h2>Usage</h2>
  * 
  * The producer-side must call {@link #tryTransfer()} anytime a condition
  * changes to the effect a producer previously producing null could maybe start
  * yielding non-null items again. This class does <i>not</i> manage background
  * tasks to ensure progress. Failure to call {@code tryTransfer()} could mean
- * progress is forever not made until the next time the consumer increases his
- * demand.<p>
+ * progress is forever not made until the next time the demand increases
+ * (allegedly done by the consumer-side).<p>
  * 
- * Transfers will repeat for as long as they are successful. This means that a
- * thread initiating a transfer may be used to not just deliver one item but
- * many. Time-sensitive applications that can not afford a thread being occupied
- * for long must cap/throttle either one or both of the producer and consumer
- * (through his demand).
- * 
- * 
- * <h2>Demand</h2>
- * 
- * The consumer's demand starts out being zero. Therefore, the {@link
- * #increaseDemand(long)} method must be called at least once. The signalled
- * demand is additive and can as the greatest only become {@code Long.MAX_VALUE}
- * at which point this class cease to bother about demand completely. At this
- * point, the service is regarded as effectively unbounded and the demand will
- * never decrease again moving forward.<p>
+ * The demand starts out being zero. So, the {@link #increaseDemand(long)}
+ * method must be called at least once. The signalled demand is additive and can
+ * as the greatest only become {@code Long.MAX_VALUE} at which point this class
+ * cease to bother about demand completely (effectively unbounded).<p>
  * 
  * If a producer produces a {@code null} item, then this aborts the transfer
- * attempt but does not count against the demand.
+ * attempt but does not count against the demand.<p>
+ * 
+ * Transfers will repeat for as long as they are successful. This means that a
+ * thread calling {@code tryTransfer()} and {@code increaseDemand()} may be used
+ * to not just deliver one item but many. Time-sensitive applications that can
+ * not afford a thread being occupied for long must cap/throttle either one or
+ * both of the producer and consumer (through his demand).
  * 
  * 
  * <h2>Error Handling</h2>
  * 
- * Exceptions from executing the producer or the consumer will propagate to
- * whichever thread is running the transfer at that time.<p>
+ * Generally speaking, neither producer nor consumer should throw an exception.
+ * The exception will propagate to whichever thread is executing the transfer.
+ * So an exception from the producer could be observed by the consumer, and the
+ * other way around.<p>
  * 
  * The demand will decrease by 1 as soon as a non-null item has been passed to
  * the consumer, even if the consumer returns exceptionally.<p>
  * 
- * An exception from the producer or consumer causes this service to
- * self-finish.
+ * An exception from the producer or consumer causes this service to self-invoke
+ * {@link #finish()}.
+ * 
+ * 
+ * <h2>Threading Model</h2>
+ * 
+ * The transfer operation is executed using a {@link SeriallyRunnable} which
+ * has more to say on thread semantics. Perhaps most importantly, the producer
+ * and consumer functions given to this class will never recurse.
  * 
  * 
  * <h2>Memory Synchronization</h2>
  * 
- * A request for more items ({@code increaseDemand}) happens-before a subsequent
- * transfer and transfer {@code n} happens-before transfer {@code n+1} (memory
- * visibility in between).<p>
+ * A request for more items ({@code increaseDemand()}) happens-before a
+ * subsequent transfer and transfer {@code n} happens-before transfer {@code
+ * n+1} (memory visibility in between).<p>
  * 
- * No guarantees are made about memory visibility between {@code tryTransfer}
+ * No guarantees are made about memory visibility between {@code tryTransfer()}
  * and a subsequent transfer execution made by another thread. Nor is this
  * really needed. To be real frank, what happens on the producer-side ought to
  * be completely irrelevant on the consumer-side except for the item passed down
@@ -145,8 +143,9 @@ public final class SerialTransferService<T>
      * Initializes this object.
      * 
      * {@code onConsumerError} is called if the consumer returns exceptionally.
-     * The argument passed is the item that semantically failed to be delivered.
-     * The callback will execute just before re-throwing the consumer error.
+     * The argument given to the callback is the item that semantically failed
+     * to be delivered. The callback will execute just before re-throwing the
+     * consumer error. An exception from the callback itself will be suppressed.
      * 
      * @param producer of item
      * @param consumer of item
@@ -173,9 +172,10 @@ public final class SerialTransferService<T>
      * argument. Useful when operating the service from within.<p>
      * 
      * {@code onConsumerError} is called if the consumer returns exceptionally.
-     * The argument passed is the item that semantically failed to be delivered.
-     * The callback will execute just before re-throwing the consumer error.
-     *
+     * The argument given to the callback is the item that semantically failed
+     * to be delivered. The callback will execute just before re-throwing the
+     * consumer error. An exception from the callback itself will be suppressed.
+     * 
      * @param producer of item
      * @param consumer of item
      * @param onConsumerError see JavaDoc
@@ -197,7 +197,9 @@ public final class SerialTransferService<T>
      * Increase the demand by {@code n} items.<p>
      * 
      * If the service has <i>{@link #finish() finished}</i>, then this method is
-     * NOP.
+     * NOP.<p>
+     * 
+     * The thread calling this method may be used to execute transfers.
      * 
      * @param n the number of items more the consumer is willing to accept
      * 
@@ -289,21 +291,18 @@ public final class SerialTransferService<T>
     /**
      * Attempt to transfer an item from producer to consumer.<p>
      * 
-     * Must be called after condition changes to the effect a previously
-     * null-producing producer might start yielding non-null items again.<p>
-     * 
      * If the service has <i>{@link #finish() finished}</i>, then this method is
-     * NOP.
+     * NOP.<p>
      * 
-     * @see SerialTransferService
+     * The thread calling this method may be used to execute transfers.
      */
     public void tryTransfer() {
-        transferSerially.run();
+        op.run();
     }
     
-    private final Runnable transferSerially = new SeriallyRunnable(this::transferLogic);
+    private final Runnable op = new SeriallyRunnable(this::doTransfer);
     
-    private void transferLogic() {
+    private void doTransfer() {
         // Volatile read before doing anything else (synchronizes-with c-tor + write at the bottom)
         final long then = demand.get();
         if (then == FINISHED) {
@@ -331,7 +330,7 @@ public final class SerialTransferService<T>
             consumer.accept(this, item);
         } catch (Throwable t) {
             finish();
-            onConsumerError.accept(item);
+            acceptSafe(onConsumerError, item, t);
             throw t;
         } finally {
             now = demand.updateAndGet(curr ->
