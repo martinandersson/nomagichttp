@@ -98,7 +98,7 @@ public final class SerialTransferService<T>
     
     private final Function<SerialTransferService<T>, ? extends T> producer;
     private final BiConsumer<SerialTransferService<T>, ? super T> consumer;
-    private final Consumer<? super T> onConsumerError;
+    private final BiConsumer<? super T, ? super Throwable> onConsumerError;
     private final AtomicLong demand;
     // #after is set only by the finisher and executed in a re-run with memory
     // visibility (so doesn't need volatile, see SeriallyRunnable)
@@ -136,15 +136,16 @@ public final class SerialTransferService<T>
             Function<SerialTransferService<T>, ? extends T> producer,
             BiConsumer<SerialTransferService<T>, ? super T> consumer)
     {
-        this(producer, consumer, ignored -> {});
+        this(producer, consumer, (ign,ored) -> {});
     }
     
     /**
      * Initializes this object.
      * 
      * {@code onConsumerError} is called if the consumer returns exceptionally.
-     * The argument given to the callback is the item that semantically failed
-     * to be delivered. The callback will execute just before re-throwing the
+     * The first argument given to the callback is the item that semantically
+     * failed to be delivered, the second argument is the exception by which the
+     * consumer failed. The callback will execute just before re-throwing the
      * consumer error. An exception from the callback itself will be suppressed.
      * 
      * @param producer of item
@@ -156,7 +157,7 @@ public final class SerialTransferService<T>
     public SerialTransferService(
             Supplier<? extends T> producer,
             Consumer<? super T> consumer,
-            Consumer<? super T> onConsumerError)
+            BiConsumer<? super T, ? super Throwable> onConsumerError)
     {
         this(selfIgnored -> producer.get(),
              (selfIgnored, item) -> consumer.accept(item),
@@ -172,20 +173,21 @@ public final class SerialTransferService<T>
      * argument. Useful when operating the service from within.<p>
      * 
      * {@code onConsumerError} is called if the consumer returns exceptionally.
-     * The argument given to the callback is the item that semantically failed
-     * to be delivered. The callback will execute just before re-throwing the
+     * The first argument given to the callback is the item that semantically
+     * failed to be delivered, the second argument is the exception by which the
+     * consumer failed. The callback will execute just before re-throwing the
      * consumer error. An exception from the callback itself will be suppressed.
      * 
      * @param producer of item
      * @param consumer of item
      * @param onConsumerError see JavaDoc
-     *
+     * 
      * @throws NullPointerException if any argument is {@code null}
      */
     public SerialTransferService(
             Function<SerialTransferService<T>, ? extends T> producer,
             BiConsumer<SerialTransferService<T>, ? super T> consumer,
-            Consumer<? super T> onConsumerError)
+            BiConsumer<? super T, ? super Throwable> onConsumerError)
     {
         this.producer = requireNonNull(producer);
         this.consumer = requireNonNull(consumer);
@@ -330,7 +332,7 @@ public final class SerialTransferService<T>
             consumer.accept(this, item);
         } catch (Throwable t) {
             finish();
-            acceptSafe(onConsumerError, item, t);
+            acceptSafe(onConsumerError, item, t, t);
             throw t;
         } finally {
             now = demand.updateAndGet(curr ->

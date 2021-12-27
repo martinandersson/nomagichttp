@@ -107,7 +107,7 @@ public abstract class AbstractUnicastPublisher<T> implements Flow.Publisher<T>
     private final AtomicReference<Flow.Subscriber<? super T>> ref;
     
     /**
-     * Constructs a {@code AbstractUnicastPublisher}.
+     * Initializes this object.
      * 
      * @param reusable yes or no
      */

@@ -2,11 +2,15 @@ package alpha.nomagichttp.util;
 
 import alpha.nomagichttp.message.PooledByteBufferHolder;
 
+import java.io.UncheckedIOException;
 import java.nio.file.Path;
 import java.util.concurrent.Flow;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
 
+import static alpha.nomagichttp.util.ExecutorUtils.acceptSafe;
+import static alpha.nomagichttp.util.ExecutorUtils.runSafe;
+import static alpha.nomagichttp.util.Subscribers.signalErrorSafe;
 import static java.util.Objects.requireNonNull;
 
 /**
@@ -21,29 +25,22 @@ import static java.util.Objects.requireNonNull;
  * publisher's subscribe method (or equivalent) delegates to this class.
  * Nevertheless, this class is agnostic and unaware of how items are produced.
  * The subclass, client and/or generator function are sometimes lumped together
- * and loosely referred to as "the upstream" by the JavaDoc in this class.
+ * and loosely referred to as "the upstream" by the JavaDoc in this class.<p>
+ * 
+ * Although unicast, it is very easy to make the publisher multicast by
+ * subscribing an intermittent fan-out processor or by creating a new delegate
+ * instance of this class for each new subscriber.
  * 
  * 
  * <h2>Generating items</h2>
  * 
- * The generator function is implicitly polled by the upstream {@link
- * #announce() announcing} the availability of items (the push) and also polled
- * by the subscriber through the increase of his demand (the pull).<p>
+ * The generator function is implicitly polled by the upstream calling {@link
+ * #announce()} (the push) and implicitly polled by the subscriber calling
+ * {@code Flow.Subscription.request()} (the pull).<p>
  * 
  * The generator function may return {@code null} which would indicate there's
- * no items available for the current subscriber at that moment in time (a
- * future announcement is expected).<p>
- * 
- * An exception from the generator will cause this publisher to {@linkplain
- * #stop(Throwable) self-stop} with an {@code AssertionError} (caused by the
- * generator error). But if the assertion error was not successfully signalled
- * downstream, the original generator error is re-thrown. Basically this
- * behavior semantically represents an unexpected and uncontrolled stop of the
- * publisher. As such, the downstream - if such exists - is assumed to be a
- * better handler than whatever catch-block may be present in the call stack.
- * The generator function should never throw an exception. The upstream ought to
- * {@code complete}, {@code stop}, or at worst {@code shutdown} the publisher
- * explicitly.<p>
+ * no items available for the active subscriber at that moment in time (a future
+ * announcement is expected).<p>
  * 
  * For a non-reusable publisher, the generator function will never be called
  * concurrently (by this class, superclass, or subscriber.<p>
@@ -57,24 +54,25 @@ import static java.util.Objects.requireNonNull;
  * subscriber's demand).
  * 
  * 
- * <h2>Using callbacks</h2>
+ * <h2>Helpful callbacks</h2>
  * 
  * Not all items that are polled out from the generator are also guaranteed to
- * be successfully delivered. For the purpose of recycling items, such as
- * releasing a {@link PooledByteBufferHolder}, the {@code recycler} callback
- * will receive the item that failed to be delivered. For example, the
- * subscriber's {@code onNext()} method may return exceptionally. It could also
- * be the case, that at the same time a delivery just started (generator was
- * called) a subscriber's subscription asynchronously terminates, possibly even
- * followed by the arrival of a new subscriber.<p>
+ * be successfully delivered. For example, the subscriber's {@code onNext()}
+ * method may return exceptionally. It could also be the case, that at the same
+ * time a delivery just started (generator was called) a subscriber's
+ * subscription asynchronously terminates.<p>
+ * 
+ * For the purpose of recycling items - such as releasing a {@link
+ * PooledByteBufferHolder} - the {@code recycler} callback will receive the item
+ * that failed to be delivered.<p>
  * 
  * Some static factories in this class accepts a {@code postmortem} callback.
  * This guy is called exactly-once and only implicitly when the publisher
  * reaches its end of life. For example the generator returns exceptionally, or
- * when the final subscription is terminated from the downstream, e.g.
- * exceptional return from subscriber's {@code onNext} method or subscription
- * cancellation. If triggered through cancellation, the callback will run
- * serially after- and with memory visibility from the final delivery.<p>
+ * the final subscription is terminated from the downstream, e.g. exceptional
+ * return from subscriber's {@code onNext} method or subscription cancellation.
+ * If triggered through cancellation, the callback will run serially after- and
+ * with memory visibility from the final delivery.<p>
  * 
  * The postmortem is designed to be a mechanism for the upstream to guarantee
  * resource clean-up, even when the publisher's life ended outside the
@@ -93,6 +91,27 @@ import static java.util.Objects.requireNonNull;
  * never invoked concurrently.
  * 
  * 
+ * <h2>Exception handling</h2>
+ * 
+ * An exception from the generator will cause this publisher to self-invoke
+ * {@link #stop(Throwable)} with an {@code AssertionError} (caused by the
+ * generator error). But if the assertion error was not successfully signalled
+ * downstream, the original generator error is re-thrown. Basically this
+ * behavior semantically represents an unexpected and uncontrolled stop of the
+ * publisher. As such, the downstream - if one is active - is assumed to be a
+ * better handler than whatever catch-block may be present in the call stack.
+ * The generator function should never throw an exception. The upstream ought to
+ * {@code complete}, {@code stop}, or at worst {@code shutdown} the publisher
+ * explicitly.<p>
+ * 
+ * Callbacks should generally not throw exceptions. The postmortem callback may
+ * close resources and should then wrap an I/O error in {@link
+ * UncheckedIOException} before throwing the error. Any callback executing as a
+ * result of another exception having been caught already, will add a new
+ * exception from the callback as suppressed by the former. The new exception
+ * will not stop the first one from propagating.
+ * 
+ * 
  * <h2>Examples</h2>
  * 
  * An example of a reusable {@code PushPullPublisher} is the HTTP server's
@@ -107,8 +126,7 @@ import static java.util.Objects.requireNonNull;
  * created for each new subscription by which {@link
  * BetterBodyPublishers#ofFile(Path)} delegates to (so technically, the file
  * publisher itself is reusable). The file publisher's delegate make use of the
- * {@code postmortem} callback offered for non-reusable publishers to do
- * resource cleanup.
+ * {@code postmortem} callback to close the file handle.
  * 
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
@@ -121,9 +139,9 @@ public class PushPullPublisher<T>
     /**
      * Creates a reusable publisher.<p>
      * 
-     * The returned publisher never self-stops. A subscriber failing or
-     * cancelling is not the end of life for the publisher, more subscribers in
-     * the future are expected.
+     * Unless the generator throws an exception, the returned publisher never
+     * self-stops. A subscriber failing or cancelling is not the end of life for
+     * the publisher, more subscribers in the future are expected.
      * 
      * @param <T> type of item to publish
      * @param generator of items
@@ -138,9 +156,9 @@ public class PushPullPublisher<T>
     /**
      * Creates a reusable publisher.<p>
      * 
-     * The returned publisher never self-stops. A subscriber failing or
-     * cancelling is not the end of life for the publisher, more subscribers in
-     * the future are expected.
+     * Unless the generator throws an exception, the returned publisher never
+     * self-stops. A subscriber failing or cancelling is not the end of life for
+     * the publisher, more subscribers in the future are expected.
      * 
      * @param <T> type of item to publish
      * @param generator of items
@@ -161,9 +179,8 @@ public class PushPullPublisher<T>
      * Creates a hybrid publisher that is re-usable until a subscriber's {@code
      * onNext} method returns exceptionally.<p>
      * 
-     * The returned publisher behaves exactly the same as if created by {@link
-     * #hybrid(Supplier, Runnable, Consumer)}, except for no recycling taking
-     * place.
+     * This method delegates to {@link #hybrid(Supplier, Runnable, Consumer)}
+     * with a NOP recycler.
      * 
      * @param <T> type of item to publish
      * @param generator of items
@@ -233,7 +250,7 @@ public class PushPullPublisher<T>
     /**
      * Creates a non-reusable publisher.<p>
      * 
-     * {@code recycler} executes before {@code postmortem}.
+     * {@code postmortem} executes before {@code recycler}.
      * 
      * @param <T> type of item to publish
      * @param generator of items
@@ -387,7 +404,7 @@ public class PushPullPublisher<T>
             return false;
         }
         return swa.attachment().finish(() ->
-                Subscribers.signalErrorSafe(swa, t));
+                signalErrorSafe(swa, t));
     }
     
     private void ifPresent(
@@ -407,7 +424,7 @@ public class PushPullPublisher<T>
             // Attempt to terminate subscription
             if (!signalError(t, swa)) {
                 // stale subscription, still need to communicate error to our guy
-                Subscribers.signalErrorSafe(swa, t);
+                signalErrorSafe(swa, t);
             }
         });
     }
@@ -426,7 +443,7 @@ public class PushPullPublisher<T>
                     } catch (Throwable t) {
                         var delivered = stop(new AssertionError(
                                 "Unexpected generator failure.", t));
-                        onGenError.run();
+                        runSafe(onGenError, t);
                         if (!delivered) {
                             throw t;
                         }
@@ -439,10 +456,10 @@ public class PushPullPublisher<T>
                         recycler.accept(item);
                     }
                 },
-                failedItem -> {
+                (failedItem, err) -> {
                     // Exceptional return from onNext()
-                    onNextError.accept(this);
-                    recycler.accept(failedItem);
+                    acceptSafe(onNextError, this, err);
+                    acceptSafe(recycler, failedItem, err);
                 }));
         
         return swa;
