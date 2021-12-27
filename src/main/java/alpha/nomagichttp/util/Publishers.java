@@ -13,6 +13,7 @@ import java.util.function.BiConsumer;
 import java.util.function.Function;
 
 import static alpha.nomagichttp.util.Streams.stream;
+import static alpha.nomagichttp.util.Subscribers.signalErrorSafe;
 import static alpha.nomagichttp.util.Subscriptions.CanOnlyBeCancelled;
 import static alpha.nomagichttp.util.Subscriptions.TurnOnProxy;
 import static java.lang.Long.MAX_VALUE;
@@ -290,48 +291,48 @@ public final class Publishers
         }
         
         private Flow.Subscription newSubscription(
-                Iterator<? extends T> it, Flow.Subscriber<? super T> subsc)
+                Iterator<? extends T> it, Flow.Subscriber<? super T> sub)
         {
             return new Flow.Subscription() {
-                private final SerialTransferService<T> delegate = newService(it, subsc);
+                private final SerialTransferService<T> sts = newService(it, sub);
                 
                 @Override
                 public void request(long n) {
                     try {
-                        delegate.increaseDemand(n);
+                        sts.increaseDemand(n);
                     } catch (IllegalArgumentException e) {
-                        delegate.finish(() -> Subscribers.signalErrorSafe(subsc, e));
+                        sts.finish(() -> signalErrorSafe(sub, e));
                     }
                 }
                 
                 @Override
                 public void cancel() {
-                    delegate.finish();
+                    sts.finish();
                 }
             };
         }
         
         private SerialTransferService<T> newService(
-                Iterator<? extends T> it, Flow.Subscriber<? super T> s)
+                Iterator<? extends T> it, Flow.Subscriber<? super T> sub)
         {
             Function<SerialTransferService<T>, ? extends T> generator = self -> {
                 if (it.hasNext()) {
                     T t = it.next();
                     if (t == null) {
                         var exc = new NullPointerException("Item is null.");
-                        self.finish(() -> Subscribers.signalErrorSafe(s, exc));
+                        self.finish(() -> signalErrorSafe(sub, exc));
                     }
                     return t;
                 } else {
-                    self.finish(s::onComplete);
+                    self.finish(sub::onComplete);
                     return null;
                 }
             };
             
             BiConsumer<SerialTransferService<T>, ? super T> receiver = (self, item) -> {
-                s.onNext(item);
+                sub.onNext(item);
                 if (!it.hasNext()) {
-                    self.finish(s::onComplete);
+                    self.finish(sub::onComplete);
                 }
             };
             
@@ -352,7 +353,7 @@ public final class Publishers
             CanOnlyBeCancelled tmp = Subscriptions.canOnlyBeCancelled();
             s.onSubscribe(tmp);
             if (!tmp.isCancelled()) {
-                Subscribers.signalErrorSafe(s, err);
+                signalErrorSafe(s, err);
             }
         }
     }
