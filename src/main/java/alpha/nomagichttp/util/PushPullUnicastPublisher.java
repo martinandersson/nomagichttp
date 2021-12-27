@@ -114,16 +114,16 @@ import static java.util.Objects.requireNonNull;
  * 
  * <h2>Examples</h2>
  * 
- * An example of a reusable {@code PushPullPublisher} is the HTTP server's
- * low-level child channel ({@code ChannelByteBufferPublisher}). The channel
- * publishes to a series of subscribers, e.g. first to a request head parser
- * then to a request body consumer. The channel (or rather, the channel in
- * combination with a downstream operator) publishes only one bytebuffer at a
+ * An example of a reusable {@code PushPullUnicastPublisher} is the HTTP
+ * server's low-level child channel ({@code ChannelByteBufferPublisher}). The
+ * channel publishes to a series of subscribers, e.g. first to a request head
+ * parser then to a request body consumer. The channel (or rather, the channel
+ * in combination with a downstream operator) publishes only one bytebuffer at a
  * time which upon release, if there are bytes remaining, will be recycled and
  * published to the next subscriber.<p>
  * 
- * An example of a non-reusable {@code PushPullPublisher} is the new instance
- * created for each new subscription by which {@link
+ * An example of a non-reusable {@code PushPullUnicastPublisher} is the new
+ * instance created for each new subscription by which {@link
  * BetterBodyPublishers#ofFile(Path)} delegates to (so technically, the file
  * publisher itself is reusable). The file publisher's delegate make use of the
  * {@code postmortem} callback to close the file handle.
@@ -133,7 +133,7 @@ import static java.util.Objects.requireNonNull;
  * 
  * @param <T> type of item to publish
  */
-public class PushPullPublisher<T>
+public class PushPullUnicastPublisher<T>
         extends AugmentedAbstractUnicastPublisher<T, SerialTransferService<T>>
 {
     /**
@@ -148,7 +148,7 @@ public class PushPullPublisher<T>
      * @throws NullPointerException if {@code generator} is {@code null}
      * @return a reusable publisher
      */
-    public static <T> PushPullPublisher<T>
+    public static <T> PushPullUnicastPublisher<T>
             reusable(Supplier<? extends T> generator) {
         return reusable(generator, /* recycling is nop */ nopC());
     }
@@ -166,9 +166,9 @@ public class PushPullPublisher<T>
      * @throws NullPointerException if any arg is {@code null}
      * @return a reusable publisher
      */
-    public static <T> PushPullPublisher<T> reusable(
+    public static <T> PushPullUnicastPublisher<T> reusable(
             Supplier<? extends T> generator, Consumer<? super T> recycler) {
-        return new PushPullPublisher<>(true, generator,
+        return new PushPullUnicastPublisher<>(true, generator,
                 /* onGenError is nop */ nopR(),
                 recycler,
                 // onNextError and onEachCancel are nop
@@ -188,7 +188,7 @@ public class PushPullPublisher<T>
      * @throws NullPointerException if any argument is {@code null}
      * @return a hybrid publisher
      */
-    public static <T> PushPullPublisher<T> hybrid(
+    public static <T> PushPullUnicastPublisher<T> hybrid(
             Supplier<? extends T> generator, Runnable postmortem) {
         return hybrid(generator, postmortem, /* recycling is nop */ nopC());
     }
@@ -216,16 +216,16 @@ public class PushPullPublisher<T>
      * @throws NullPointerException if any argument is {@code null}
      * @return a hybrid publisher
      */
-    public static <T> PushPullPublisher<T> hybrid(
+    public static <T> PushPullUnicastPublisher<T> hybrid(
             Supplier<? extends T> generator, Runnable postmortem,
             Consumer<? super T> recycler)
     {
         requireNonNull(postmortem);
-        Consumer<PushPullPublisher<T>> onNextError = self -> {
+        Consumer<PushPullUnicastPublisher<T>> onNextError = self -> {
             self.stop();
             postmortem.run();
         };
-        return new PushPullPublisher<>(
+        return new PushPullUnicastPublisher<>(
                 true, generator,
                 /* onGenError */ postmortem,
                 recycler,
@@ -242,7 +242,7 @@ public class PushPullPublisher<T>
      * @throws NullPointerException if any arg is {@code null}
      * @return a non-reusable publisher
      */
-    public static <T> PushPullPublisher<T> nonReusable(
+    public static <T> PushPullUnicastPublisher<T> nonReusable(
             Supplier<? extends T> generator, Runnable postmortem) {
         return nonReusable(generator, postmortem, /* no recycling */ nopC());
     }
@@ -259,12 +259,12 @@ public class PushPullPublisher<T>
      * @throws NullPointerException if any argument is {@code null}
      * @return a non-reusable publisher
      */
-    public static <T> PushPullPublisher<T> nonReusable(
+    public static <T> PushPullUnicastPublisher<T> nonReusable(
             Supplier<? extends T> generator, Runnable postmortem,
             Consumer<? super T> recycler)
     {
         // All errors and cancel is the definitive end
-        return new PushPullPublisher<>(
+        return new PushPullUnicastPublisher<>(
                 false,
                 generator,
                 postmortem,
@@ -284,7 +284,7 @@ public class PushPullPublisher<T>
     private final Supplier<? extends T> generator;
     private final Runnable onGenError;
     private final Consumer<? super T> recycler;
-    private final Consumer<PushPullPublisher<T>> onNextError;
+    private final Consumer<PushPullUnicastPublisher<T>> onNextError;
     private final Runnable onEachCancel;
     
     /**
@@ -303,12 +303,12 @@ public class PushPullPublisher<T>
      * 
      * @throws NullPointerException if any argument is {@code null}
      */
-    protected PushPullPublisher(
+    protected PushPullUnicastPublisher(
             boolean reusable,
             Supplier<? extends T> generator,
             Runnable onGenError,
             Consumer<? super T> recycler,
-            Consumer<PushPullPublisher<T>> onNextError,
+            Consumer<PushPullUnicastPublisher<T>> onNextError,
             Runnable onEachCancel)
     {
         super(reusable);

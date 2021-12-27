@@ -3,7 +3,7 @@ package alpha.nomagichttp.internal;
 import alpha.nomagichttp.handler.EndOfStreamException;
 import alpha.nomagichttp.message.PooledByteBufferHolder;
 import alpha.nomagichttp.message.Request;
-import alpha.nomagichttp.util.PushPullPublisher;
+import alpha.nomagichttp.util.PushPullUnicastPublisher;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -16,7 +16,7 @@ import static alpha.nomagichttp.internal.AnnounceToChannel.EOS;
 import static alpha.nomagichttp.internal.AnnounceToChannel.read;
 import static alpha.nomagichttp.internal.DefaultServer.becauseChannelOrGroupClosed;
 import static alpha.nomagichttp.util.IOExceptions.isCausedByBrokenInputStream;
-import static alpha.nomagichttp.util.PushPullPublisher.hybrid;
+import static alpha.nomagichttp.util.PushPullUnicastPublisher.hybrid;
 import static java.lang.System.Logger.Level.DEBUG;
 import static java.lang.System.Logger.Level.WARNING;
 
@@ -59,7 +59,7 @@ final class ChannelByteBufferPublisher implements Flow.Publisher<DefaultPooledBy
     
     private final DefaultClientChannel chApi;
     private final Deque<ByteBuffer> readable;
-    private final PushPullPublisher<DefaultPooledByteBufferHolder> subscriber;
+    private final PushPullUnicastPublisher<DefaultPooledByteBufferHolder> subscriber;
     private final AnnounceToChannel channel;
     
     ChannelByteBufferPublisher(DefaultClientChannel chApi) {

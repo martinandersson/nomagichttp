@@ -23,7 +23,7 @@ import java.util.concurrent.Flow;
 import java.util.function.LongSupplier;
 import java.util.function.Supplier;
 
-import static alpha.nomagichttp.util.PushPullPublisher.nonReusable;
+import static alpha.nomagichttp.util.PushPullUnicastPublisher.nonReusable;
 import static alpha.nomagichttp.util.Streams.stream;
 import static java.lang.Long.MAX_VALUE;
 import static java.lang.System.Logger.Level.DEBUG;
@@ -355,7 +355,7 @@ public final class BetterBodyPublishers
         
         private static final class Reader implements Flow.Publisher<ByteBuffer> {
             private final Path path;
-            private final PushPullPublisher<ByteBuffer> announcer;
+            private final PushPullUnicastPublisher<ByteBuffer> announcer;
             private final Deque<ByteBuffer> contents;
             private final Handler handler;
             private AsynchronousFileChannel fc;
