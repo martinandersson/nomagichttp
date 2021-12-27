@@ -436,7 +436,8 @@ public class PushPullUnicastPublisher<T>
         SubscriberWithAttachment<T, SerialTransferService<T>> swa
                 = new SubscriberWithAttachment<>(sub);
         
-        swa.attachment(new SerialTransferService<T>(
+        swa.attachment(new SerialTransferService<>(
+                // Producer
                 () -> {
                     try {
                         return generator.get();
@@ -450,14 +451,15 @@ public class PushPullUnicastPublisher<T>
                         return null;
                     }
                 },
+                // Consumer
                 item -> {
                     if (!signalNext(item, swa)) {
                         // Semantic error, not the same subscriber - anymore
                         recycler.accept(item);
                     }
                 },
+                // Subscriber.onNext() failed
                 (failedItem, err) -> {
-                    // Exceptional return from onNext()
                     acceptSafe(onNextError, this, err);
                     acceptSafe(recycler, failedItem, err);
                 }));
