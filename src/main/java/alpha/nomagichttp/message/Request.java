@@ -10,6 +10,7 @@ import alpha.nomagichttp.route.Route;
 import alpha.nomagichttp.util.Publishers;
 
 import java.net.URLDecoder;
+import java.nio.ByteBuffer;
 import java.nio.channels.AsynchronousByteChannel;
 import java.nio.channels.AsynchronousFileChannel;
 import java.nio.channels.GatheringByteChannel;
@@ -626,13 +627,15 @@ public interface Request extends HeaderHolder, AttributeHolder
      * The published bytebuffers are pooled and may be processed synchronously
      * or asynchronously. Whenever the application has finished processing
      * a bytebuffer, it must be {@link PooledByteBufferHolder#release()
-     * released} which is a signal to the server that the bytebuffer may be
-     * reused for new channel operations. The thread doing the release may be
+     * released} which is a signal to the upstream publisher that the bytebuffer
+     * may be reused for new operations. The thread doing the release may be
      * used to immediately publish new bytebuffers to the subscriber.<p>
      * 
      * Releasing the bytebuffer with bytes remaining to be read will cause the
      * bytebuffer to immediately become available for re-publication (ahead of
-     * other bytebuffers already available).<p>
+     * other bytebuffers already available). To reduce the chattiness, the
+     * subscriber is encouraged to consume all remaining bytes before
+     * releasing.<p>
      * 
      * Cancelling the subscription does not cause an outstanding bytebuffer to
      * be released. Releasing has to be done explicitly, or implicitly through
@@ -649,7 +652,7 @@ public interface Request extends HeaderHolder, AttributeHolder
      * bytebuffers without the risk of adding unnecessary delays or blockages,
      * the API would have to declare methods that the application can use to
      * learn how many bytebuffers are immediately available and possibly also
-     * learn the size of the server's bytebuffer pool.<p>
+     * learn the size of the upstream bytebuffer pool.<p>
      * 
      * This is not very likely to ever happen for a number of reasons. The API
      * complexity would increase dramatically for a doubtful benefit. In fact,
@@ -660,26 +663,41 @@ public interface Request extends HeaderHolder, AttributeHolder
      * bytebuffers, then this is a sign that the application's processing code
      * would have blocked the request thread (see "Threading Model" in {@link
      * HttpServer}). For example, {@link GatheringByteChannel} expects a {@code
-     * ByteBuffer[]} but is a blocking API. Instead, submit the bytebuffers one
-     * at a time to {@link AsynchronousByteChannel}, releasing each in the
-     * completion handler.<p>
+     * ByteBuffer[]} but is a blocking API. In this particular case, the
+     * solution is instead to submit the bytebuffers one at a time to {@link
+     * AsynchronousByteChannel}, releasing each in the completion handler.<p>
      * 
      * Given how only one bytebuffer at a time is published then there's no
      * difference between requesting {@code Long.MAX_VALUE} versus requesting
      * one at a time. Unfortunately, the
      * <a href="https://github.com/reactive-streams/reactive-streams-jvm/blob/v1.0.3/README.md">
      * Reactive Streams</a> calls the latter approach an "inherently inefficient
-     * 'stop-and-wait' protocol". In our context, this is wrong. The bytebuffers
-     * are pooled and cached upstream already. Requesting a bytebuffer is
-     * essentially the same as polling a stupidly fast queue of buffers. The
-     * advantage of requesting {@code Long.MAX_VALUE} is implementation
-     * simplicity.<p>
+     * 'stop-and-wait' protocol". In our context, this is wrong. For starters,
+     * there's no stop. Furthermore, the bytebuffers are pooled and cached
+     * upstream already. Requesting a bytebuffer is essentially the same as
+     * polling a stupidly fast queue of buffers. The advantage of requesting
+     * {@code Long.MAX_VALUE} is implementation simplicity.<p>
      * 
-     * The default implementation uses <i>direct</i> bytebuffers in order to
-     * support "zero-copy" transfers. I.e., no data is moved into Java heap
-     * space unless the subscriber itself causes this to happen. Whenever
-     * possible, always pass forward the bytebuffers to the destination without
-     * reading the bytes in application code!
+     * The channel uses <i>direct</i> bytebuffers in order to support
+     * "zero-copy" transfers. I.e., the channel itself does not move data into
+     * Java heap space. Whenever possible, pass forward the bytebuffers to the
+     * next destination without reading the bytes in application code.<p>
+     * 
+     * There may be one or many processors installed between the channel and the
+     * body publisher, which does not use direct bytebuffers. For example, an
+     * HTTP/1.1 chunked decoder is publishing [decoded] bytebuffers allocated on
+     * the heap. If the application uses {@link ByteBuffer#array()} to access
+     * the bytes directly, do not forget to also set the new {@link
+     * ByteBuffer#position(int)} before releasing it. Reading remaining bytes
+     * directly but not updating the bytebuffer's position will cause an endless
+     * loop where the upstream re-releases the same bytebuffer over and over
+     * again.<p>
+     * 
+     * TODO: 1) Implement exception if released without consumption 100x in
+     * a row, then the last sentence in this paragraph can be removed).
+     * 
+     * TODO: 2) Make discard() non-static and reference above. Good way to
+     * update position and release.
      * 
      * <h3>The HTTP exchange and body discarding</h3>
      * 
@@ -825,16 +843,16 @@ public interface Request extends HeaderHolder, AttributeHolder
         /**
          * Convert the request body into an arbitrary Java type.<p>
          * 
-         * All body bytes will be collected into a byte[]. Once all of the body
+         * All body bytes will be collected into a byte[]. Once the whole body
          * has been read, the byte[] will be passed to the specified function
          * together with a count of valid bytes that can be safely read from the
          * array.<p>
          * 
-         * For example;
+         * For example, this is a naive implementation of {@link #toText()} that
+         * use a hardcoded charset:
          * <pre>{@code
          *   BiFunction<byte[], Integer, String> f = (buf, count) ->
          *       new String(buf, 0, count, StandardCharsets.US_ASCII);
-         *   
          *   CompletionStage<String> text = myRequest.body().convert(f);
          * }</pre>
          * 

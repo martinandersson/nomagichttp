@@ -11,16 +11,17 @@ import java.util.function.IntConsumer;
  * and increasing performance.<p>
  * 
  * The receiver may process the buffer synchronously or asynchronously, but the
- * buffer must always be {@link #release() released} after processing. Never
- * releasing buffers will possibly have the effect that the origin runs out of
- * bytebuffers to use.<p>
+ * buffer must always be {@link #release() released} after processing. Failure
+ * to release may have dire consequences such as the origin running out of
+ * bytebuffers to use. Some origins cap how many bytebuffers are allowed to be
+ * in-flight at any given moment and may not emit more of them until the
+ * previous buffer(s) has been released.<p>
  * 
  * The bytebuffer-receiving method does not have to process the buffer in a
  * try-finally block. If the receiver returns exceptionally then the buffer will
- * automatically be released. Thus, asynchronous processing should only be
- * initiated if it is guaranteed that the receiver returns normally - for
- * example, by letting the submission of a task to an executor be the last
- * statement.<p>
+ * be released. Thus, asynchronous processing should only be initiated if it is
+ * guaranteed that the receiver returns normally - for example, by letting the
+ * submission of a task to an executor be the last statement.<p>
  * 
  * Operating on a bytebuffer after release has undefined application
  * behavior.<p>
@@ -52,9 +53,6 @@ public interface PooledByteBufferHolder
     
     /**
      * Get the bytebuffer.<p>
-     * 
-     * The returned instance should only be used for read operations. Any other
-     * modifying operation has undefined application behavior.
      * 
      * The returned instance does not have to be the original bytebuffer used by
      * the origin but could be a <i>view</i> and even change <i>over time</i>.

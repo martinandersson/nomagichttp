@@ -112,9 +112,10 @@ import static java.util.Objects.requireNonNull;
  * item arrives.<p>
  * 
  * A publisher produced by this class will make the decision to accept or reject
- * the subscriber immediately and thus invoke the subscriber synchronously by
- * the same thread calling {@code Publisher.subscribe} (although the
- * subscription object may be a dummy, as described in the previous section).<p>
+ * the subscriber immediately and thus invoke {@code Subscriber.onSubscribe}
+ * synchronously by the same thread calling {@code Publisher.subscribe}
+ * (although the subscription object may be a dummy, as described in the
+ * previous section).<p>
  * 
  * {@code null} is never published as an item to the subscriber.
  * 

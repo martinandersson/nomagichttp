@@ -18,27 +18,27 @@ public final class TestPublishers {
     }
     
     /**
-     * Equivalent to {@link #blockSubscriberUntil(Semaphore)
-     * blockSubscriberUntil(new Semaphore(0))}, i.e. the publisher will block
-     * the subscriber thread demanding more items until the subscription is
-     * asynchronously cancelled.
+     * Returns a publisher that will block the subscriber thread on first
+     * downstream request for demand until the subscription is cancelled.
      * 
      * @return a new publisher
+     * @see #blockSubscriberUntil(Semaphore) 
      */
     public static BodyPublisher blockSubscriber() {
         return blockSubscriberUntil(new Semaphore(0));
     }
     
     /**
-     * Will block the subscriber thread on first downstream request for
-     * demand until a permit is released. The publisher will self-release a
-     * permit on downstream cancel. The publisher does not interact with any
-     * methods of the subscriber except for the initial {@code
-     * onSubscribe()}.<p>
+     * Returns a publisher that will block the subscriber thread on first
+     * downstream request for demand until the given permit is released.<p>
+     * 
+     * The publisher will self-release a permit on downstream cancel. The
+     * publisher does not interact with any methods of the subscriber except for
+     * the initial {@code onSubscribe()}.<p>
      * 
      * Useful to test timeouts targeting the returned publisher. A timeout ought
      * to cancel the subscription and thus unblock the publisher. The test can
-     * of course release a permit asynchronously however it sees fit.
+     * release a permit asynchronously however it sees fit.
      * 
      * @param permit release when blocking thread unblocks
      * 

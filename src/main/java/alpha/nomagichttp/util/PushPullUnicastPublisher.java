@@ -74,7 +74,7 @@ import static java.util.Objects.requireNonNull;
  * If triggered through cancellation, the callback will run serially after- and
  * with memory visibility from the final delivery.<p>
  * 
- * The postmortem is designed to be a mechanism for the upstream to guarantee
+ * The postmortem is designed to be a mechanism for the upstream to perform
  * resource clean-up, even when the publisher's life ended outside the
  * upstreams' control. The callback does not execute when the publisher is
  * explicitly terminated through {@code complete}, {@code stop}, or {@code
@@ -109,7 +109,7 @@ import static java.util.Objects.requireNonNull;
  * UncheckedIOException} before throwing the error. Any callback executing as a
  * result of another exception having been caught already, will add a new
  * exception from the callback as suppressed by the former. The new exception
- * will not stop the first one from propagating.
+ * will not stop the first from propagating.
  * 
  * 
  * <h2>Examples</h2>
