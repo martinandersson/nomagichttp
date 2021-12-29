@@ -273,13 +273,13 @@ public class MemorizingSubscriber<T> implements Flow.Subscriber<T>
     }
     
     @Override
-    public void onSubscribe(Flow.Subscription subscription) {
-        signals.add(new Signal(ON_SUBSCRIBE, subscription));
+    public void onSubscribe(Flow.Subscription sub) {
+        signals.add(new Signal(ON_SUBSCRIBE, sub));
         if (delegate != null) {
-            delegate.onSubscribe(subscription);
+            delegate.onSubscribe(sub);
         } else if (strategy != Request.NOTHING) {
             assert strategy != null;
-            subscription.request(strategy.value());
+            sub.request(strategy.value());
         }
     }
     

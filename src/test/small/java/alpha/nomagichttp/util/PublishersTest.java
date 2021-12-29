@@ -47,9 +47,9 @@ final class PublishersTest
     void just_empty_cancelImmediately() {
         MemorizingSubscriber<Object> ms = new MemorizingSubscriber<>(Request.NOTHING()){
             @Override
-            public void onSubscribe(Flow.Subscription s) {
-                s.cancel();
-                super.onSubscribe(s);
+            public void onSubscribe(Flow.Subscription sub) {
+                sub.cancel();
+                super.onSubscribe(sub);
             }
         };
         

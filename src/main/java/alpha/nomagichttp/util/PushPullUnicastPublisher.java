@@ -471,14 +471,14 @@ public class PushPullUnicastPublisher<T>
     protected Flow.Subscription newSubscription(
             SubscriberWithAttachment<T, SerialTransferService<T>> swa)
     {
-        return new DelegateToService(swa);
+        return new ServiceAdapter(swa);
     }
     
-    private final class DelegateToService implements Flow.Subscription
+    private final class ServiceAdapter implements Flow.Subscription
     {
         private final SubscriberWithAttachment<T, SerialTransferService<T>> swa;
         
-        DelegateToService(SubscriberWithAttachment<T, SerialTransferService<T>> swa) {
+        ServiceAdapter(SubscriberWithAttachment<T, SerialTransferService<T>> swa) {
             this.swa = swa;
         }
         
