@@ -75,6 +75,20 @@ public interface PooledByteBufferHolder
     void release();
     
     /**
+     * Copy all remaining bytes.<p>
+     * 
+     * Consuming bytes from the bytebuffer is more performant than using this
+     * method. Use this method judiciously only if the next destination requires
+     * a {@code byte[]}.<p>
+     * 
+     * After having made the copy, the underlying buffer's position will advance
+     * with the number of bytes copied and then the buffer will be released.
+     * 
+     * @return a copy of all remaining bytes
+     */
+    byte[] copy();
+    
+    /**
      * Schedule a callback to be executed upon release by the thread
      * releasing.<p>
      * 

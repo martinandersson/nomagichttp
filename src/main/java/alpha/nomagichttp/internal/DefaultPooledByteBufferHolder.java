@@ -7,6 +7,7 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.IntConsumer;
 import java.util.function.UnaryOperator;
 
+import static java.lang.System.arraycopy;
 import static java.util.Objects.requireNonNull;
 
 /**
@@ -80,6 +81,26 @@ final class DefaultPooledByteBufferHolder implements PooledByteBufferHolder
             view = null;
             afterRelease.accept(read);
         }
+    }
+    
+    @Override
+    public byte[] copy() {
+        final var buf = get();
+        final var dst = new byte[buf.remaining()];
+        if (buf.hasArray()) {
+            var src = buf.array();
+            arraycopy(src, 0, dst, 0, dst.length);
+            // Copy paste from PooledByteBufferHolder.discard
+            // TODO: instance method discard(), that delegates to static discard()
+            //       with the volatile ref. Why is volatile even needed? Review.
+            buf.position(buf.limit());
+        } else {
+            for (int i = 0; i < dst.length; ++i) {
+                dst[i] = buf.get();
+            }
+        }
+        release();
+        return dst;
     }
     
     @Override
