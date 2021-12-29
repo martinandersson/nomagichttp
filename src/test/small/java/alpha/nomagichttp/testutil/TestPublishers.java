@@ -63,20 +63,4 @@ public final class TestPublishers {
             }
         }));
     }
-    
-    /**
-     * Calls each new subscriber with a subscription whose {@code
-     * onRequest(long)} method does nothing but {@code onCancel()} delegates to
-     * the given action.
-     * 
-     * @param action onCancel implementation
-     * 
-     * @return a new publisher
-     * @throws NullPointerException if {@code action} is {@code null}
-     */
-    public static BodyPublisher onCancel(Runnable action) {
-        requireNonNull(action);
-        return asBodyPublisher(s ->
-                s.onSubscribe(TestSubscriptions.onCancel(action)));
-    }
 }
