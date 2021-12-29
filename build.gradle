@@ -92,7 +92,7 @@ wrapper {
     distributionType = Wrapper.DistributionType.ALL
 }
 
-// Ensure backwards compatibility for Java 11
+// Ensure backwards compatibility
 // https://stackoverflow.com/a/43103038/1268003
 // https://docs.gradle.org/6.6/release-notes.html#javacompile-release
 compileJava {
