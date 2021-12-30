@@ -4,7 +4,6 @@ import alpha.nomagichttp.message.PooledByteBufferHolder;
 
 import java.util.concurrent.Flow;
 
-import static alpha.nomagichttp.message.PooledByteBufferHolder.discard;
 import static java.lang.Long.MAX_VALUE;
 
 /**
@@ -24,7 +23,7 @@ import static java.lang.Long.MAX_VALUE;
  * parser starts at a valid position.
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
- * @see PooledByteBufferHolder#discard(PooledByteBufferHolder) 
+ * @see PooledByteBufferHolder#discard() 
  */
 final class OnCancelDiscardOp extends AbstractOp<PooledByteBufferHolder>
 {
@@ -49,7 +48,7 @@ final class OnCancelDiscardOp extends AbstractOp<PooledByteBufferHolder>
     @Override
     protected void fromUpstreamNext(PooledByteBufferHolder item) {
         if (discarding) {
-            discard(item);
+            item.discard();
         } else {
             super.fromUpstreamNext(item);
         }
