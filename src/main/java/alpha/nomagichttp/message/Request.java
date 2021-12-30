@@ -846,7 +846,7 @@ public interface Request extends HeaderHolder, AttributeHolder
          * All body bytes will be collected into a byte[]. Once the whole body
          * has been read, the byte[] will be passed to the specified function
          * together with a count of valid bytes that can be safely read from the
-         * array.<p>
+         * array (starting at index 0).<p>
          * 
          * For example, this is a naive implementation of {@link #toText()} that
          * use a hardcoded charset:
