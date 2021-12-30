@@ -66,9 +66,8 @@ final class HeapSubscriber<R> implements SubscriberAsStage<PooledByteBufferHolde
             return;
         }
         if (buf.hasArray()) {
-            final var len = buf.remaining();
-            sink.write(buf.array(), buf.arrayOffset(), len);
-            buf.position(buf.position() + len);
+            sink.write(buf.array(), buf.arrayOffset(), buf.remaining());
+            buf.position(buf.limit());
         } else {
             while (buf.hasRemaining()) {
                 sink.write(buf.get());
