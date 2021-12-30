@@ -7,7 +7,7 @@ import java.util.function.IntConsumer;
  * Holder of a pooled byte buffer.<p>
  * 
  * Pooling byte buffers makes a data generator (the origin) able to re-use
- * buffers for data emissions instead of creating new buffers; reducing garbage
+ * buffers for data emissions rather than creating new buffers; reducing garbage
  * and increasing performance.<p>
  * 
  * The receiver may process the buffer synchronously or asynchronously, but the
@@ -35,23 +35,6 @@ import java.util.function.IntConsumer;
 public interface PooledByteBufferHolder
 {
     /**
-     * Discard bytebuffer.<p>
-     * 
-     * The bytebuffer's position will be set to its limit (i.e. no more
-     * remaining bytes) and then released.
-     * 
-     * @param holder of bytebuffer
-     * @throws NullPointerException if {@code holder} is {@code null}
-     */
-    // static coz application code should never have a need to use this method?
-    // (less visibility, so to speak)
-    static void discard(PooledByteBufferHolder holder) {
-        ByteBuffer b = holder.get();
-        b.position(b.limit());
-        holder.release();
-    }
-    
-    /**
      * Get the bytebuffer.<p>
      * 
      * The returned instance does not have to be the original bytebuffer used by
@@ -67,22 +50,46 @@ public interface PooledByteBufferHolder
      * Release the bytebuffer back to the origin.<p>
      * 
      * If the released bytebuffer has bytes remaining to be read, the origin
-     * will immediately re-publish the bytebuffer. Otherwise, the origin is free
-     * to re-use the buffer for new data storage.<p>
+     * will immediately re-publish the same bytebuffer. Otherwise, the origin is
+     * free to re-use the buffer for new data storage.<p>
      * 
      * Is NOP if already released.
      */
     void release();
     
     /**
-     * Copy all remaining bytes.<p>
+     * Discard the bytebuffer.<p>
      * 
-     * Consuming bytes from the bytebuffer is more performant than using this
-     * method. Use this method judiciously only if the next destination requires
-     * a {@code byte[]}.<p>
+     * The bytebuffer's position will be set to its limit (i.e. no more
+     * remaining bytes) and then released.
+     */
+    void discard();
+    
+    /**
+     * Copy all remaining bytes from the bytebuffer.<p>
      * 
-     * After having made the copy, the underlying buffer's position will advance
-     * with the number of bytes copied and then the buffer will be released.
+     * Consuming bytes from the bytebuffer directly without creating an
+     * unnecessary byte array is more performant than using this method. Use
+     * this method judiciously only if there is no other alternative, such as
+     * when the next destination requires a {@code byte[]} without support for
+     * using an index offset.<p>
+     * 
+     * Dumb example, decode a String (one has no guarantee that all bytes needed
+     * for proper decoding is present in the bytebuffer):
+     * <pre>
+     *   final ByteBuffer buf = holder.get();
+     *   final String str;
+     *   if (buf.hasArray()) {
+     *       // Still no need for a copy!
+     *       str = new String(buf.array(), buf.arrayOffset(), buf.remaining(), UTF_8);
+     *       holder.discard();
+     *   } else {
+     *       // Okay, let's go
+     *       str = new String(holder.copy(), UTF_8);
+     *   }
+     * </pre>
+     * 
+     * This method also {@linkplain #discard() discards} the holder.
      * 
      * @return a copy of all remaining bytes
      */

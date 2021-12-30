@@ -56,6 +56,11 @@ final class DefaultPooledByteBufferHolder implements PooledByteBufferHolder
         this.afterRelease = afterRelease != null ? afterRelease : NOOP;
     }
     
+    void limit(int newLimit) {
+        // Possible NPE if method is used after release; which we assume will never happen.
+        view = buf.slice().limit(newLimit);
+    }
+    
     @Override
     public ByteBuffer get() {
         return view;
@@ -84,16 +89,19 @@ final class DefaultPooledByteBufferHolder implements PooledByteBufferHolder
     }
     
     @Override
+    public void discard() {
+        drain(get());
+        release();
+    }
+    
+    @Override
     public byte[] copy() {
         final var buf = get();
         final var dst = new byte[buf.remaining()];
         if (buf.hasArray()) {
             var src = buf.array();
             arraycopy(src, 0, dst, 0, dst.length);
-            // Copy paste from PooledByteBufferHolder.discard
-            // TODO: instance method discard(), that delegates to static discard()
-            //       with the volatile ref. Why is volatile even needed? Review.
-            buf.position(buf.limit());
+            drain(buf);
         } else {
             for (int i = 0; i < dst.length; ++i) {
                 dst[i] = buf.get();
@@ -111,8 +119,7 @@ final class DefaultPooledByteBufferHolder implements PooledByteBufferHolder
         return this.onRelease.getAndUpdate(keepReleasedOrAdd) != RELEASED;
     }
     
-    void limit(int newLimit) {
-        // Possible NPE if method is used after release; which we assume will never happen.
-        view = buf.slice().limit(newLimit);
+    private static void drain(ByteBuffer buf) {
+        buf.position(buf.limit());
     }
 }
