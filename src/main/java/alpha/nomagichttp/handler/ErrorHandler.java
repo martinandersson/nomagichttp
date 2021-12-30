@@ -7,6 +7,7 @@ import alpha.nomagichttp.action.AfterAction;
 import alpha.nomagichttp.action.BeforeAction;
 import alpha.nomagichttp.message.BadHeaderException;
 import alpha.nomagichttp.message.BadRequestException;
+import alpha.nomagichttp.message.DecoderException;
 import alpha.nomagichttp.message.HttpVersionParseException;
 import alpha.nomagichttp.message.HttpVersionTooNewException;
 import alpha.nomagichttp.message.HttpVersionTooOldException;
@@ -284,6 +285,12 @@ public interface ErrorHandler
      *     <td> {@link Responses#badRequest()} </td>
      *   </tr>
      *   <tr>
+     *     <th scope="row"> {@link DecoderException} </th>
+     *     <td> None </td>
+     *     <td> No </td>
+     *     <td> {@link Responses#badRequest()} </td>
+     *   </tr>
+     *   <tr>
      *     <th scope="row"> {@link IllegalResponseBodyException} </th>
      *     <td> None </td>
      *     <td> Yes </td>
@@ -344,11 +351,12 @@ public interface ErrorHandler
         final Response res;
         try {
             throw thr;
-        } catch (RequestHeadParseException |
-                 HttpVersionParseException |
-                 BadHeaderException        |
-                 BadRequestException       |
-                 IllegalRequestBodyException e) {
+        } catch (RequestHeadParseException   |
+                 HttpVersionParseException   |
+                 BadHeaderException          |
+                 BadRequestException         |
+                 IllegalRequestBodyException |
+                 DecoderException e) {
             res = badRequest();
         } catch (MaxRequestHeadSizeExceededException e) {
             log(thr);
