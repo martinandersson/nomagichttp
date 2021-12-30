@@ -34,8 +34,13 @@ final class PooledByteBufferOpTest
     }
     
     @Test
-    void empty() {
+    void empty_1() {
         assertThat(toString(testee(nonDecoded()))).isEmpty();
+    }
+    
+    @Test
+    void empty_2() {
+        assertThat(toString(testee(nonDecoded(), ""))).isEmpty();
     }
     
     // No explicit complete() from decoder
