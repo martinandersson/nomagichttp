@@ -8,6 +8,7 @@ import org.junit.jupiter.api.Test;
 import java.nio.ByteBuffer;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Flow;
+import java.util.concurrent.TimeoutException;
 import java.util.function.BiConsumer;
 
 import static alpha.nomagichttp.testutil.MemorizingSubscriber.Signal.MethodName.ON_COMPLETE;
@@ -17,6 +18,7 @@ import static alpha.nomagichttp.testutil.TestPublishers.map;
 import static alpha.nomagichttp.util.Publishers.just;
 import static java.nio.charset.StandardCharsets.US_ASCII;
 import static java.util.Arrays.stream;
+import static java.util.concurrent.TimeUnit.SECONDS;
 import static java.util.function.Predicate.isEqual;
 import static java.util.stream.IntStream.generate;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -41,6 +43,11 @@ final class PooledByteBufferOpTest
     @Test
     void empty_2() {
         assertThat(toString(testee(nonDecoded(), ""))).isEmpty();
+    }
+    
+    @Test
+    void emptyThenOne() {
+        assertThat(toString(testee(nonDecoded(), "", "x"))).isEqualTo("x");
     }
     
     // No explicit complete() from decoder
@@ -112,8 +119,8 @@ final class PooledByteBufferOpTest
                 new String(buf, 0, count, US_ASCII));
         bytes.subscribe(sub);
         try {
-            return sub.asCompletionStage().toCompletableFuture().get();
-        } catch (InterruptedException | ExecutionException e) {
+            return sub.asCompletionStage().toCompletableFuture().get(1, SECONDS);
+        } catch (InterruptedException | ExecutionException | TimeoutException e) {
             throw new RuntimeException(e);
         }
     }

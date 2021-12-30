@@ -154,15 +154,17 @@ final class PooledByteBufferOp implements Flow.Publisher<PooledByteBufferHolder>
         releaseOrCycle(readable::addFirst, buf);
     }
     
-    private void releaseOrCycle(Consumer<ByteBuffer> firstOrLast, ByteBuffer buf) {
+    private boolean releaseOrCycle(Consumer<ByteBuffer> firstOrLast, ByteBuffer buf) {
         if (buf.hasRemaining()) {
             // [Re-]Release
             firstOrLast.accept(buf);
             downstream.announce();
+            return true;
         } else {
             // Give to self
             buf.clear();
             writable.add(buf);
+            return false;
         }
     }
     
@@ -179,7 +181,6 @@ final class PooledByteBufferOp implements Flow.Publisher<PooledByteBufferHolder>
             hasDemand.set(false);
             try {
                 logic.accept(item.get(), sink);
-                sink.flush();
             } catch (Throwable t) {
                 subscription.cancel();
                 if (!downstream.stop(t)) {
@@ -187,6 +188,11 @@ final class PooledByteBufferOp implements Flow.Publisher<PooledByteBufferHolder>
                 }
             } finally {
                 item.release();
+            }
+            if (!sink.flush()) {
+                // May still need to request items from upstream
+                // (which is only done in pollReadable!)
+                downstream.announce();
             }
         }
         
@@ -231,13 +237,13 @@ final class PooledByteBufferOp implements Flow.Publisher<PooledByteBufferHolder>
             downstream.announce();
         }
         
-        void flush() {
+        boolean flush() {
             if (buf == null) {
-                return;
+                return false;
             }
-            buf.flip();
-            releaseOrCycle(readable::addLast, buf);
+            var b = buf.flip();
             buf = null;
+            return releaseOrCycle(readable::addLast, b);
         }
     }
 }
