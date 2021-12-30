@@ -453,7 +453,7 @@ public final class TestClient
     public String readTextUntil(String terminator) throws IOException {
         ByteBuffer bytes = readBytesUntil(
                 terminator == null ? null : terminator.getBytes(US_ASCII));
-        return new String(bytes.array(), 0, bytes.remaining(), US_ASCII);
+        return new String(bytes.array(), bytes.arrayOffset(), bytes.remaining(), US_ASCII);
     }
     
     /**
