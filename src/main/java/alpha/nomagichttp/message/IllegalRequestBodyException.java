@@ -27,13 +27,14 @@ public class IllegalRequestBodyException extends RuntimeException
     private final Request.Body body;
     
     /**
-     * Constructs this object.
+     * Initializes this object.
      * 
      * @param message passed through to {@link Throwable#Throwable(String)}
      * @param head of request
      * @param body of request
      * 
-     * @throws NullPointerException if any argument is {@code null}
+     * @throws NullPointerException
+     *             if {@code head} or {@code body} is {@code null}
      */
     public IllegalRequestBodyException(RequestHead head, Request.Body body, String message) {
         super(message);
