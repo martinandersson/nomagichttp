@@ -5,6 +5,7 @@ import alpha.nomagichttp.message.PooledByteBufferHolder;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 
+import static java.nio.ByteBuffer.allocateDirect;
 import static java.nio.ByteBuffer.wrap;
 import static java.nio.charset.StandardCharsets.US_ASCII;
 
@@ -41,9 +42,22 @@ public final class ByteBuffers
      * Encode the given string using {@link StandardCharsets#US_ASCII}.
      * 
      * @param str to encode
-     * @return the bytes
+     * @return the bytes (allocated on heap)
      */
     public static ByteBuffer toByteBuffer(String str) {
         return wrap(str.getBytes(US_ASCII));
+    }
+    
+    /**
+     * Encode the given string using {@link StandardCharsets#US_ASCII}.
+     * 
+     * @param str to encode
+     * @return the bytes (allocated on native memory)
+     */
+    public static ByteBuffer toByteBufferDirect(String str) {
+        var bytes = str.getBytes(US_ASCII);
+        var boxed = allocateDirect(bytes.length);
+        boxed.put(bytes);
+        return boxed.flip();
     }
 }
