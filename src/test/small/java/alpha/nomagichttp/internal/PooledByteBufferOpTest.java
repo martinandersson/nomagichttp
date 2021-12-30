@@ -1,6 +1,7 @@
 package alpha.nomagichttp.internal;
 
 import alpha.nomagichttp.message.PooledByteBufferHolder;
+import alpha.nomagichttp.testutil.ByteBuffers;
 import alpha.nomagichttp.testutil.MemorizingSubscriber.Signal;
 import org.junit.jupiter.api.Test;
 
@@ -9,13 +10,11 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Flow;
 import java.util.function.BiConsumer;
 
-import static alpha.nomagichttp.message.PooledByteBufferHolder.discard;
 import static alpha.nomagichttp.testutil.MemorizingSubscriber.Signal.MethodName.ON_COMPLETE;
 import static alpha.nomagichttp.testutil.MemorizingSubscriber.Signal.MethodName.ON_SUBSCRIBE;
 import static alpha.nomagichttp.testutil.MemorizingSubscriber.drainSignals;
 import static alpha.nomagichttp.testutil.TestPublishers.map;
 import static alpha.nomagichttp.util.Publishers.just;
-import static java.nio.ByteBuffer.wrap;
 import static java.nio.charset.StandardCharsets.US_ASCII;
 import static java.util.Arrays.stream;
 import static java.util.function.Predicate.isEqual;
@@ -51,7 +50,7 @@ final class PooledByteBufferOpTest
                 zipper = (ignored, s) -> s.accept((byte) 'x');
         
         var received = drainSignals(
-            map(testee(zipper, inputForDecoder), PooledByteBufferOpTest::toString));
+            map(testee(zipper, inputForDecoder), ByteBuffers::toString));
         
         // Sorry, first test needs to be exact. Future ones will reduce.
         assertThat(received).hasSize(N + 2);
@@ -89,7 +88,7 @@ final class PooledByteBufferOpTest
             BiConsumer<ByteBuffer, PooledByteBufferOp.Sink> decoder, String... items)
     {
         var boxed = stream(items)
-                .map(PooledByteBufferOpTest::toByteBuffer)
+                .map(ByteBuffers::toByteBuffer)
                 .map(buf -> new DefaultPooledByteBufferHolder(buf, ignored -> {}))
                 .toArray(DefaultPooledByteBufferHolder[]::new);
         return new PooledByteBufferOp(just(boxed), decoder);
@@ -112,21 +111,5 @@ final class PooledByteBufferOpTest
         } catch (InterruptedException | ExecutionException e) {
             throw new RuntimeException(e);
         }
-    }
-    
-    private static String toString(PooledByteBufferHolder from) {
-        var str = toString(from.get());
-        discard(from);
-        return str;
-    }
-    
-    private static String toString(ByteBuffer buf) {
-        var str = new String(buf.array(), 0, buf.remaining(), US_ASCII);
-        buf.position(buf.position() + buf.remaining());
-        return str;
-    }
-    
-    private static ByteBuffer toByteBuffer(String str) {
-        return wrap(str.getBytes(US_ASCII));
     }
 }
