@@ -21,9 +21,7 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Flow;
 import java.util.concurrent.TimeoutException;
 
-import static alpha.nomagichttp.Config.configuration;
 import static alpha.nomagichttp.testutil.Assertions.assertFails;
-import static java.lang.Integer.MAX_VALUE;
 import static java.lang.System.Logger.Level.ALL;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -49,8 +47,7 @@ class RequestHeadSubscriberTest
     
     CompletionStage<RequestHead> testee() throws InterruptedException {
         if (testee == null) {
-            HttpServer fake = HttpServer.create(configuration()
-                    .maxRequestHeadSize(MAX_VALUE).build());
+            HttpServer fake = HttpServer.create();
             DefaultClientChannel chApi = new DefaultClientChannel(SERVER.accept(), fake);
             Flow.Publisher<DefaultPooledByteBufferHolder> chIn = new ChannelByteBufferPublisher(chApi);
             RequestHeadSubscriber rhp = new RequestHeadSubscriber(fake, chApi);
