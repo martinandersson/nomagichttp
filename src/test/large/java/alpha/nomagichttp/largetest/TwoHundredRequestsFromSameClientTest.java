@@ -22,8 +22,9 @@ import java.util.stream.Stream;
 
 import static alpha.nomagichttp.HttpConstants.Version.HTTP_1_1;
 import static alpha.nomagichttp.handler.RequestHandler.POST;
-import static alpha.nomagichttp.testutil.HttpClientFacade.Implementation.APACHE;
 import static alpha.nomagichttp.testutil.HttpClientFacade.Implementation.REACTOR;
+import static alpha.nomagichttp.testutil.HttpClientFacade.Implementation.createAll;
+import static alpha.nomagichttp.testutil.HttpClientFacade.Implementation.createAllExceptFor;
 import static alpha.nomagichttp.testutil.TestClient.CRLF;
 import static java.util.concurrent.TimeUnit.NANOSECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -182,38 +183,25 @@ class TwoHundredRequestsFromSameClientTest extends AbstractLargeRealTest
     }
     
     private Stream<Arguments> smallBodiesAndClient() {
-        return augmentWithClientExceptFor(TwoHundredRequestsFromSameClientTest::smallBodies,
-                // smallBodies() may return a 0-length body, and Reactor (surprise!)
-                // will then return a null response causing NPE.
-                // TODO: Either remove this phenomenally shitty client altogether or hack
-                //       the implementation just as we had to hack HttpClientFacade.getEmpty().
-                REACTOR);
+        // smallBodies() may return a 0-length body, and Reactor (surprise!)
+        // will then return a null response causing NPE.
+        // TODO: Either remove this phenomenally shitty client altogether or hack
+        //       the implementation just as we had to hack HttpClientFacade.getEmpty().
+        var clients = createAllExceptFor(serverPort(), REACTOR);
+        return mapToBodyAndClientArgs(clients,
+                TwoHundredRequestsFromSameClientTest::smallBodies);
     }
     
     private Stream<Arguments> bigBodiesAndClient() {
-        return augmentWithClientExceptFor(TwoHundredRequestsFromSameClientTest::bigBodies,
-                // Apache will for some reason switch to chunked encoding. Not
-                // compressed, either. So not sure what the hell they are up to.
-                // Currently, the server does not decode chunked. The effect was
-                // a returned empty body failing the assert (the Apache request
-                // likely had no content length).
-                // 
-                // Reactor adds chunked for all requests, and so, was temporarily
-                // hacked - no other alternative. Apache works for at least small
-                // requests, and, there's apparently no way to disable chunked,
-                // which I wouldn't want to do anyways as such a hack would be
-                // specific to one test only.
-                // 
-                // TODO: Whenever we have chunked decoding, stop excluding Apache.
-                APACHE);
+        var clients = createAll(serverPort());
+        return mapToBodyAndClientArgs(clients,
+                TwoHundredRequestsFromSameClientTest::bigBodies);
     }
     
-    private Stream<Arguments> augmentWithClientExceptFor(
-            Supplier<Stream<String>> batch, HttpClientFacade.Implementation faulty)
-    {
-        return HttpClientFacade.Implementation.createAllExceptFor(serverPort(), faulty)
-                .flatMap(client -> batch.get()
-                        .map(body -> Arguments.of(body, client)));
+    private static Stream<Arguments> mapToBodyAndClientArgs(
+            Stream<HttpClientFacade> clients, Supplier<Stream<String>> batch) {
+        return clients.flatMap(c ->
+                batch.get().map(body -> Arguments.of(body, c)));
     }
     
     /**

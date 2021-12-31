@@ -797,7 +797,7 @@ public abstract class HttpClientFacade
             return executeReq(
                     io.netty.handler.codec.http.HttpMethod.POST, path, ver,
                     // Erm, yeah, it gets worse...
-                    body.length(), ByteBufFlux.fromString(Mono.just(body)),
+                    ByteBufFlux.fromString(Mono.just(body)),
                     ByteBufMono::asString);
         }
         
@@ -808,7 +808,7 @@ public abstract class HttpClientFacade
             return executeReq(
                     io.netty.handler.codec.http.HttpMethod.POST, path, ver,
                     // "from inbound" hahahahahaha
-                    body.length, ByteBufFlux.fromInbound(Mono.just(body)),
+                    ByteBufFlux.fromInbound(Mono.just(body)),
                     ByteBufMono::asByteArray)
                         .assertEmpty();
         }
@@ -819,14 +819,13 @@ public abstract class HttpClientFacade
         {
             return executeReq(
                     io.netty.handler.codec.http.HttpMethod.GET, path, ver,
-                    0, null,
+                    null,
                     rspBodyConverter);
         }
         
         private <B> ResponseFacade<B> executeReq(
                 io.netty.handler.codec.http.HttpMethod method,
                 String path, HttpConstants.Version ver,
-                long contentLength,
                 org.reactivestreams.Publisher<? extends ByteBuf> reqBody,
                 Function<? super ByteBufMono, ? extends Mono<B>> rspBodyConverter)
         {
@@ -841,12 +840,6 @@ public abstract class HttpClientFacade
                     client = client.headers(h -> h.add(name, value));
                 }
             }
-            
-            // Otherwise they do chunked encoding; there is no BodyPublisher,
-            // sensible default behavior, utility methods, shortcuts, et cetera
-            // TODO: Remove whenever we have chunked decoding implemented.
-            client = client.headers(h ->
-                    h.add("Content-Length", Long.toString(contentLength)));
             
             // "uri() should be invoked before request()" says the JavaDoc.
             // Except that doesn't compile lol
