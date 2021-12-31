@@ -45,7 +45,8 @@ final class ChunkedDecoderOp implements Flow.Publisher<PooledByteBufferHolder>
     ChunkedDecoderOp(Flow.Publisher<? extends PooledByteBufferHolder> upstream) {
         this.upstream = upstream;
         this.decoder  = new PooledByteBufferOp(upstream, new Decoder());
-        this.trailers = new CompletableFuture<>();
+        this.trailers = CompletableFuture.failedFuture(
+                new UnsupportedOperationException("Implement"));
     }
     
     @Override
