@@ -115,9 +115,9 @@ final class RequestBody implements Request.Body
                 throw new UnsupportedOperationException(
                         "Only chunked decoding supported, at the moment.");
             }
-            content = null; //new ChunkedDecoderOp(chIn);
-            trailers = null; //content.trailers();
-            if (true) throw new AssertionError("WIP!!");
+            var chunked = new ChunkedDecoderOp(chIn);
+            content = chunked;
+            trailers = chunked.trailers();
         }
         
         return contentBody(
