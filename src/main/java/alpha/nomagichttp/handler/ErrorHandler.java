@@ -8,6 +8,7 @@ import alpha.nomagichttp.action.BeforeAction;
 import alpha.nomagichttp.message.BadHeaderException;
 import alpha.nomagichttp.message.BadRequestException;
 import alpha.nomagichttp.message.DecoderException;
+import alpha.nomagichttp.message.HeaderParseException;
 import alpha.nomagichttp.message.HttpVersionParseException;
 import alpha.nomagichttp.message.HttpVersionTooNewException;
 import alpha.nomagichttp.message.HttpVersionTooOldException;
@@ -19,6 +20,7 @@ import alpha.nomagichttp.message.Request;
 import alpha.nomagichttp.message.RequestBodyTimeoutException;
 import alpha.nomagichttp.message.RequestHeadParseException;
 import alpha.nomagichttp.message.RequestHeadTimeoutException;
+import alpha.nomagichttp.message.RequestLineParseException;
 import alpha.nomagichttp.message.Response;
 import alpha.nomagichttp.message.ResponseTimeoutException;
 import alpha.nomagichttp.message.Responses;
@@ -196,7 +198,13 @@ public interface ErrorHandler
      *     <td> {@link Responses#entityTooLarge()} </td>
      *   </tr>
      *   <tr>
-     *     <th scope="row"> {@link RequestHeadParseException} </th>
+     *     <th scope="row"> {@link RequestLineParseException} </th>
+     *     <td> None </td>
+     *     <td> No </td>
+     *     <td> {@link Responses#badRequest()} </td>
+     *   </tr>
+     *   <tr>
+     *     <th scope="row"> {@link HeaderParseException} </th>
      *     <td> None </td>
      *     <td> No </td>
      *     <td> {@link Responses#badRequest()} </td>
@@ -354,7 +362,8 @@ public interface ErrorHandler
         } catch (MaxRequestHeadSizeExceededException e) {
             log(thr);
             res = entityTooLarge();
-        } catch (RequestHeadParseException   |
+        } catch (RequestLineParseException   |
+                 HeaderParseException        |
                  HttpVersionParseException   |
                  BadHeaderException          |
                  BadRequestException         |

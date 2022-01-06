@@ -1,12 +1,11 @@
 package alpha.nomagichttp.message;
 
-// TODO: We will likely need a BadRequestException for when parsing completes in an acceptable fashion but is semantically not correct.
-
 /**
  * Thrown by the request head parser upon failure to parse a request head.
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  */
+@Deprecated
 public final class RequestHeadParseException extends RuntimeException
 {
     private static final long serialVersionUID = 1L;
