@@ -5,9 +5,9 @@ import org.junit.jupiter.api.Test;
 
 import java.util.concurrent.Flow;
 
-import static alpha.nomagichttp.testutil.MemorizingSubscriber.Signal.MethodName.ON_COMPLETE;
-import static alpha.nomagichttp.testutil.MemorizingSubscriber.Signal.MethodName.ON_ERROR;
-import static alpha.nomagichttp.testutil.MemorizingSubscriber.Signal.MethodName.ON_SUBSCRIBE;
+import static alpha.nomagichttp.testutil.MemorizingSubscriber.MethodName.ON_COMPLETE;
+import static alpha.nomagichttp.testutil.MemorizingSubscriber.MethodName.ON_ERROR;
+import static alpha.nomagichttp.testutil.MemorizingSubscriber.MethodName.ON_SUBSCRIBE;
 import static alpha.nomagichttp.testutil.MemorizingSubscriber.drainMethods;
 import static alpha.nomagichttp.testutil.MemorizingSubscriber.drainSignals;
 import static alpha.nomagichttp.testutil.TestSubscribers.onSubscribe;

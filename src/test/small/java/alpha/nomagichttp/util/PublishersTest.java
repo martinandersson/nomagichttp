@@ -6,9 +6,9 @@ import org.junit.jupiter.api.Test;
 import java.util.Collection;
 import java.util.concurrent.Flow;
 
+import static alpha.nomagichttp.testutil.MemorizingSubscriber.MethodName.ON_COMPLETE;
+import static alpha.nomagichttp.testutil.MemorizingSubscriber.MethodName.ON_SUBSCRIBE;
 import static alpha.nomagichttp.testutil.MemorizingSubscriber.Request;
-import static alpha.nomagichttp.testutil.MemorizingSubscriber.Signal.MethodName.ON_COMPLETE;
-import static alpha.nomagichttp.testutil.MemorizingSubscriber.Signal.MethodName.ON_SUBSCRIBE;
 import static alpha.nomagichttp.testutil.MemorizingSubscriber.drainItems;
 import static alpha.nomagichttp.testutil.MemorizingSubscriber.drainMethods;
 import static org.assertj.core.api.Assertions.assertThat;

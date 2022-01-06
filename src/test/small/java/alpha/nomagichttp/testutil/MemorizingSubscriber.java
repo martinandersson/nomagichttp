@@ -8,10 +8,10 @@ import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.Flow;
 
-import static alpha.nomagichttp.testutil.MemorizingSubscriber.Signal.MethodName.ON_COMPLETE;
-import static alpha.nomagichttp.testutil.MemorizingSubscriber.Signal.MethodName.ON_ERROR;
-import static alpha.nomagichttp.testutil.MemorizingSubscriber.Signal.MethodName.ON_NEXT;
-import static alpha.nomagichttp.testutil.MemorizingSubscriber.Signal.MethodName.ON_SUBSCRIBE;
+import static alpha.nomagichttp.testutil.MemorizingSubscriber.MethodName.ON_COMPLETE;
+import static alpha.nomagichttp.testutil.MemorizingSubscriber.MethodName.ON_ERROR;
+import static alpha.nomagichttp.testutil.MemorizingSubscriber.MethodName.ON_NEXT;
+import static alpha.nomagichttp.testutil.MemorizingSubscriber.MethodName.ON_SUBSCRIBE;
 import static java.lang.Long.MAX_VALUE;
 import static java.util.Objects.requireNonNull;
 
@@ -55,7 +55,7 @@ public class MemorizingSubscriber<T> implements Flow.Subscriber<T>
      * @param from publisher to drain
      * @return all methods invoked
      */
-    public static List<Signal.MethodName> drainMethods(Flow.Publisher<?> from) {
+    public static List<MethodName> drainMethods(Flow.Publisher<?> from) {
         var s = new MemorizingSubscriber<>(Request.IMMEDIATELY_MAX());
         from.subscribe(s);
         return s.methodNames();
@@ -142,6 +142,20 @@ public class MemorizingSubscriber<T> implements Flow.Subscriber<T>
     }
     
     /**
+     * Enumeration of {@code Flow.Subscriber} methods.
+     */
+    public enum MethodName {
+        /** {@code onSubscribe(Subscriber)} */
+        ON_SUBSCRIBE,
+        /** {@code onNext(T)} */
+        ON_NEXT,
+        /** {@code onComplete()} */
+        ON_COMPLETE,
+        /** {@code onError(Throwable)} */
+        ON_ERROR;
+    }
+    
+    /**
      * A signal received by the memorizing subscriber.
      * 
      * Signals may carry an {@link #argument()} received; the subscription
@@ -149,20 +163,6 @@ public class MemorizingSubscriber<T> implements Flow.Subscriber<T>
      * receive an argument.
      */
     public record Signal(MethodName methodName, Object argument) {
-        /**
-         * Enumeration of {@code Flow.Subscriber} methods.
-         */
-        public enum MethodName {
-            /** {@code onSubscribe(Subscriber)} */
-            ON_SUBSCRIBE,
-            /** {@code onNext(T)} */
-            ON_NEXT,
-            /** {@code onComplete()} */
-            ON_COMPLETE,
-            /** {@code onError(Throwable)} */
-            ON_ERROR;
-        }
-        
         /**
          * Returns the signal argument.<p>
          * 
@@ -242,7 +242,7 @@ public class MemorizingSubscriber<T> implements Flow.Subscriber<T>
      * 
      * @return a snapshot collection of all method names invoked
      */
-    public List<Signal.MethodName> methodNames() {
+    public List<MethodName> methodNames() {
         return signals.stream()
                       .map(Signal::methodName)
                       .toList();

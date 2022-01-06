@@ -47,10 +47,11 @@ import static alpha.nomagichttp.message.Responses.processing;
 import static alpha.nomagichttp.message.Responses.status;
 import static alpha.nomagichttp.message.Responses.text;
 import static alpha.nomagichttp.testutil.LogRecords.rec;
-import static alpha.nomagichttp.testutil.MemorizingSubscriber.Signal.MethodName.ON_COMPLETE;
-import static alpha.nomagichttp.testutil.MemorizingSubscriber.Signal.MethodName.ON_ERROR;
-import static alpha.nomagichttp.testutil.MemorizingSubscriber.Signal.MethodName.ON_NEXT;
-import static alpha.nomagichttp.testutil.MemorizingSubscriber.Signal.MethodName.ON_SUBSCRIBE;
+import static alpha.nomagichttp.testutil.MemorizingSubscriber.MethodName;
+import static alpha.nomagichttp.testutil.MemorizingSubscriber.MethodName.ON_COMPLETE;
+import static alpha.nomagichttp.testutil.MemorizingSubscriber.MethodName.ON_ERROR;
+import static alpha.nomagichttp.testutil.MemorizingSubscriber.MethodName.ON_NEXT;
+import static alpha.nomagichttp.testutil.MemorizingSubscriber.MethodName.ON_SUBSCRIBE;
 import static alpha.nomagichttp.testutil.TestClient.CRLF;
 import static alpha.nomagichttp.testutil.TestConfig.timeoutIdleConnection;
 import static alpha.nomagichttp.testutil.TestPublishers.blockSubscriberUntil;
@@ -677,7 +678,7 @@ class ErrorTest extends AbstractRealTest
         
         assertThat(actualRsp).isEqualTo(expectedRsp);
         
-        List<MemorizingSubscriber.Signal.MethodName> expected = switch (method) {
+        List<MethodName> expected = switch (method) {
             case "GET"  -> of(ON_SUBSCRIBE, ON_COMPLETE);
             case "POST" -> of(ON_SUBSCRIBE, ON_NEXT, ON_COMPLETE);
             default -> throw new AssertionError();
