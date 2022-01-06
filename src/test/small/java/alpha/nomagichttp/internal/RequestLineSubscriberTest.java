@@ -130,6 +130,6 @@ final class RequestLineSubscriberTest
     private AbstractListAssert<?, List<?>, Object, ObjectAssert<Object>>
         assertResult(CompletionStage<RawRequest.Line> actual) {
             return assertSucceeded(actual).extracting(
-                "method", "target", "httpVersion", "parseLength");
+                "method", "target", "httpVersion", "length");
     }
 }

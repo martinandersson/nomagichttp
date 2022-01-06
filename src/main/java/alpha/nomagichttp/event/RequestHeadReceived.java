@@ -3,7 +3,8 @@ package alpha.nomagichttp.event;
 import alpha.nomagichttp.message.RawRequest;
 
 /**
- * A request head has been received by the HTTP server.<p>
+ * A request head has been received and intermittently processed by the HTTP
+ * server.<p>
  * 
  * The event is emitted immediately after the last HTTP header and before
  * validation and parsing of the request head has begun. For example, it is
@@ -42,10 +43,10 @@ public enum RequestHeadReceived {
          * 
          * @param start {@link System#nanoTime()} on start
          * @param stop  {@link System#nanoTime()} on stop
-         * @param bytes processed
+         * @param byteCount processed
          */
-        public Stats(long start, long stop, long bytes) {
-            super(start, stop, bytes);
+        public Stats(long start, long stop, long byteCount) {
+            super(start, stop, byteCount);
         }
         
         @Override

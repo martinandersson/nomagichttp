@@ -1,10 +1,8 @@
 package alpha.nomagichttp.message;
 
-import alpha.nomagichttp.event.RequestHeadReceived;
-
 /**
  * A namespace for raw request components.<p>
- *
+ * 
  * An API for accessing a fully parsed and <i>accepted</i> request head is
  * embedded in the API of {@link Request}.
  * 
@@ -17,11 +15,7 @@ public final class RawRequest
     }
     
     /**
-     * A raw request head.<p>
-     * 
-     * This type is emitted as an attachment to the {@link RequestHeadReceived}
-     * event. It is also retrievable from {@link
-     * IllegalRequestBodyException}.
+     * A raw request head.
      */
     public record Head(Line line, Request.Headers headers)
             implements HeaderHolder {
@@ -37,7 +31,7 @@ public final class RawRequest
      */
     public record Line(
             String method, String target, String httpVersion,
-            long nanoTimeOnStart, int parseLength)
+            long nanoTimeOnStart, int length)
     {
         /**
          * Returns the value from {@link System#nanoTime()} polled just before
@@ -51,14 +45,14 @@ public final class RawRequest
         }
         
         /**
-         * Returns the number of bytes processed in order to parse the
-         * request-line.
+         * Returns the number of bytes processed in order to split the
+         * request-line into tokens.
          * 
          * @return see JavaDoc
          */
         @Override
-        public int parseLength() {
-            return parseLength;
+        public int length() {
+            return length;
         }
     }
 }

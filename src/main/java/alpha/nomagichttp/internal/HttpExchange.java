@@ -226,7 +226,7 @@ final class HttpExchange
     
     private CompletionStage<RawRequest.Head> parseRequestHeaders(RawRequest.Line l) {
         HeadersSubscriber<Request.Headers> sub = forRequestHeaders(
-                l.parseLength(), config.maxRequestHeadSize(), chApi);
+                l.length(), config.maxRequestHeadSize(), chApi);
         // TODO: DRY from parseRequestLine(),
         //       but we just might rework the entire timeout plumbing.
         var to = new TimeoutOp.Flow<>(false, true, chIn, config.timeoutIdleConnection(), () -> {
@@ -245,7 +245,7 @@ final class HttpExchange
                     new RequestHeadReceived.Stats(
                             l.nanoTimeOnStart(),
                             nanoTime(),
-                            addExact(l.parseLength(), sub.read())));
+                            addExact(l.length(), sub.read())));
             return h;
         });
     }
