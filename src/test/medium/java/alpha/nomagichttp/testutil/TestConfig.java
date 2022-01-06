@@ -30,6 +30,7 @@ public final class TestConfig implements Config {
     
     private enum Method {
         maxRequestHeadSize           (Config::maxRequestHeadSize),
+        maxRequestTrailersSize       (Config::maxRequestTrailersSize),
         maxUnsuccessfulResponses     (Config::maxUnsuccessfulResponses),
         maxErrorRecoveryAttempts     (Config::maxErrorRecoveryAttempts),
         threadPoolSize               (Config::threadPoolSize),
@@ -67,6 +68,11 @@ public final class TestConfig implements Config {
     @Override
     public int maxRequestHeadSize() {
         return get(Method.maxRequestHeadSize);
+    }
+    
+    @Override
+    public int maxRequestTrailersSize() {
+        return get(Method.maxRequestTrailersSize);
     }
     
     @Override

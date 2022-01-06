@@ -5,6 +5,7 @@ import alpha.nomagichttp.handler.ErrorHandler;
 import alpha.nomagichttp.handler.ResponseRejectedException;
 import alpha.nomagichttp.message.HttpVersionTooOldException;
 import alpha.nomagichttp.message.MaxRequestHeadSizeExceededException;
+import alpha.nomagichttp.message.MaxRequestTrailersSizeExceededException;
 import alpha.nomagichttp.message.Request;
 import alpha.nomagichttp.message.RequestBodyTimeoutException;
 import alpha.nomagichttp.message.RequestHeadTimeoutException;
@@ -59,9 +60,22 @@ public interface Config
      * as well as
      * <a href="https://stackoverflow.com/a/8623061/1268003">common practice</a>.
      * 
-     * @return number of request head bytes processed before exception is thrown
+     * @return number of request head bytes processed before exception
      */
     int maxRequestHeadSize();
+    
+    /**
+     * Returns the max number of bytes processed while parsing request trailers
+     * before giving up.<p>
+     * 
+     * Once the limit has been exceeded, a {@link
+     * MaxRequestTrailersSizeExceededException} is thrown.<p>
+     * 
+     * The default implementation returns {@code 8_000}.
+     * 
+     * @return number of request trailer bytes processed before exception
+     */
+    int maxRequestTrailersSize();
     
     /**
      * Returns the max number of consecutive responses sent to a client of

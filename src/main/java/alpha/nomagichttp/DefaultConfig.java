@@ -18,6 +18,7 @@ import static java.util.Objects.requireNonNull;
 final class DefaultConfig implements Config {
     private final Builder  builder;
     private final int      maxRequestHeadSize,
+                           maxRequestTrailersSize,
                            maxUnsuccessfulResponses,
                            maxErrorRecoveryAttempts,
                            threadPoolSize;
@@ -30,6 +31,7 @@ final class DefaultConfig implements Config {
     DefaultConfig(Builder b, DefaultBuilder.MutableState s) {
         builder                      = b;
         maxRequestHeadSize           = s.maxRequestHeadSize;
+        maxRequestTrailersSize       = s.maxRequestTrailersSize;
         maxUnsuccessfulResponses     = s.maxUnsuccessfulResponses;
         maxErrorRecoveryAttempts     = s.maxErrorRecoveryAttempts;
         threadPoolSize               = s.threadPoolSize;
@@ -43,6 +45,11 @@ final class DefaultConfig implements Config {
     @Override
     public int maxRequestHeadSize() {
         return maxRequestHeadSize;
+    }
+    
+    @Override
+    public int maxRequestTrailersSize() {
+        return maxRequestTrailersSize;
     }
     
     @Override
@@ -98,6 +105,7 @@ final class DefaultConfig implements Config {
         
         static class MutableState {
             int      maxRequestHeadSize           = 8_000,
+                     maxRequestTrailersSize       = 8_000,
                      maxUnsuccessfulResponses     = 7,
                      maxErrorRecoveryAttempts     = 5,
                      threadPoolSize               = max(3, getRuntime().availableProcessors());
