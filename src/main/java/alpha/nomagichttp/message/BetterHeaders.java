@@ -19,9 +19,20 @@ import static java.util.Objects.requireNonNull;
  * and/or parse named- and message-specific headers, e.g. {@link
  * ContentHeaders#contentType()} and {@link Request.Headers#accept()}.<p>
  * 
+ * Header keys- and values will retain letter capitalization as received on the
+ * wire but are case-insensitive when querying using operations provided by an
+ * implementation of this interface.
+ * 
+ * <pre>
+ *   BetterHeaders headers = // from "FOO: bar"
+ *   headers.delegate().map() // key = FOO, value = bar
+ *   headers.allTokens("foo") // returns "bar"
+ *   headers.contain("foo", "BAR") // true
+ * </pre>
+ * 
  * Header key- and values will not contain leading and trailing whitespace. The
- * key can never be empty, the value can be empty. Both will maintain letter
- * capitalization when read but are case-insensitive when querying.<p>
+ * key will never contain whitespace at all. The key can not be empty, the value
+ * can be empty.<p>
  * 
  * The order of header keys is not specified (see {@link HttpHeaders}) nor is
  * the order significant (<a href="https://tools.ietf.org/html/rfc7230#section-3.2.2">RFC 7230 §3.2.2</a>)

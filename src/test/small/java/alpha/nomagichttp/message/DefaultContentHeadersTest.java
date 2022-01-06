@@ -3,11 +3,25 @@ package alpha.nomagichttp.message;
 import alpha.nomagichttp.util.Headers;
 import org.junit.jupiter.api.Test;
 
+import java.util.List;
+
+import static java.util.Map.entry;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class DefaultContentHeadersTest
 {
+    @Test
+    void caseIsRetained_butQueryingIsNotCaseSensitive() {
+        var testee = of("key", "VALUE");
+        assertThat(testee.delegate().map())
+                .containsExactly(entry("key", List.of("VALUE")));
+        assertThat(testee.allTokens("KEY"))
+                .containsOnly("VALUE");
+        assertThat(testee.contain("KEY", "value"))
+                .isTrue();
+    }
+    
     @Test
     void contentLength_happyPath() {
         var testee = of("Content-Length", "123");

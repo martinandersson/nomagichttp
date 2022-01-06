@@ -27,9 +27,6 @@ import static org.mockito.Mockito.mock;
  */
 class ChannelByteBufferPublisherTest
 {
-    // TODO: Most of this plumbing is copy-pasted from RequestHeadSubscriberTest.
-    //       DRY; refactor to common superclass or something.
-    
     private static SkeletonServer SERVER;
     private static TestClient CLIENT;
     private ChannelByteBufferPublisher testee;

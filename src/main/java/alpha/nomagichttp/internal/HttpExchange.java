@@ -391,7 +391,7 @@ final class HttpExchange
         
         // Super early failure means no new HTTP exchange
         if (head == null) {
-            // e.g. RequestHeadParseException -> 400 (Bad Request)
+            // e.g. RequestLineParseException -> 400 (Bad Request)
             if (LOG.isLoggable(DEBUG)) {
                 if (chApi.isEverythingOpen()) {
                     LOG.log(DEBUG, "No request head parsed. Closing child channel. (end of HTTP exchange)");

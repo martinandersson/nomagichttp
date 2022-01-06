@@ -87,6 +87,49 @@ final class RequestLineSubscriber extends AbstractByteSubscriber<RawRequestLine>
     private static final int
             METHOD = 0, TARGET = 1, VERSION = 2, DONE = 3;
     
+    /**
+     * Parses bytes into a request-line.<p>
+     * 
+     * When left with a choice, this parser follows rather a lenient model than
+     * a strict one.
+     * 
+     * 
+     * <h2>General rules</h2>
+     * 
+     * Citation from <a href="https://tools.ietf.org/html/rfc7230#section-3.5">RFC
+     * 7230 §3.5</a>
+     *
+     * <blockquote>
+     *     Although the line terminator for the start-line and header fields is
+     *     the sequence CRLF, a recipient MAY recognize a single LF as a line
+     *     terminator and ignore any preceding CR.
+     * </blockquote>
+     * 
+     * This parser ignores CR immediately preceding LF; it is never consumed as
+     * part of the request. If anything else follows the CR an exception is
+     * thrown, except for cases where it is either considered as a word boundary
+     * (start-line) or ignored as leading whitespace.
+     * 
+     * 
+     * <h2>Request-line rules</h2>
+     *
+     * Citation from <a href="https://tools.ietf.org/html/rfc7230#section-3.5">RFC
+     * 7230 §3.5</a>
+     *
+     * <blockquote>
+     *     Although the request-line and status-line grammar rules require that
+     *     each of the component elements be separated by a single SP octet,
+     *     recipients MAY instead parse on whitespace-delimited word boundaries
+     *     and, aside from the CRLF terminator, treat any form of whitespace as
+     *     the SP separator while ignoring preceding or trailing whitespace;
+     *     such whitespace includes one or more of the following octets: SP,
+     *     HTAB, VT (%x0B), FF (%x0C), or bare CR.
+     * </blockquote>
+     * 
+     * This parser follows the "MAY" part.
+     * 
+     * @author Martin Andersson (webmaster at martinandersson.com)
+     */
     private final class Parser extends AbstractTokenParser {
         private int parsing = METHOD;
         

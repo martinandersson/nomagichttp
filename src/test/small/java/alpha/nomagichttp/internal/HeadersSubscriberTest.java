@@ -119,6 +119,18 @@ public class HeadersSubscriberTest
     }
     
     @Test
+    void key_duplicate() {
+        assertFailed(execute("""
+                foo: bar
+                FOO: bar\n
+                """))
+            .isExactlyInstanceOf(HeaderParseException.class)
+            .hasToString("HeaderParseException{prev=N/A, curr=N/A, pos=N/A, msg=null}")
+            // "duplicate key: foo"
+            .hasCauseExactlyInstanceOf(IllegalArgumentException.class);
+    }
+    
+    @Test
     void value_isTrimmed_content() {
         assertResult(execute("Key:   bla bla   \n\n"))
                 .containsOnly(entry("Key", of("bla bla")));
@@ -131,7 +143,7 @@ public class HeadersSubscriberTest
     }
     
     @Test
-    void value_empty_and_repeated() {
+    void value_empty_and_key_repeated() {
         var str = """
             Foo:
             Bar: hello

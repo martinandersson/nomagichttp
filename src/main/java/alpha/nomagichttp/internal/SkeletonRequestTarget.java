@@ -47,7 +47,7 @@ final class SkeletonRequestTarget
     static SkeletonRequestTarget parse(String rt) {
         // At the very least, we're parsing a "/"
         String parse = rt.isEmpty() ? "/" : rt;
-        assert !parse.isBlank() : "RequestHeadProcessor should not give us a blank string.";
+        assert !parse.isBlank() : "The request-line parser should not give us a blank string.";
         
         final int skip = parse.startsWith("/") ? 1 : 0;
         

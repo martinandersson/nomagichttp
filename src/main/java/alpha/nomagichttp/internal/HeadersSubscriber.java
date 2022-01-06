@@ -120,6 +120,55 @@ final class HeadersSubscriber<T> extends AbstractByteSubscriber<T>
     private static final int
             KEY = 0, VAL = 1, FOLD = 2, DONE = 3;
     
+    /**
+     * Parses bytes into HTTP headers.<p>
+     * 
+     * This parser interprets the HTTP line terminator the same as is done and
+     * documented by the {@link RequestLineSubscriber}'s parser (see section
+     * "General rules"). The parser also follows the contract defined by {@link
+     * BetterHeaders}, e.g. header keys may not be empty but the values may.
+     * 
+     * 
+     * <h2>Header names</h2>
+     * 
+     * Citation from
+     * <a href="https://tools.ietf.org/html/rfc7230#section-3.2.4">RFC 7230 §3.2.4</a>
+     * 
+     * <blockquote>
+     *     No whitespace is allowed between the header field-name and colon.
+     * </blockquote>
+     * 
+     * One could argue semantically that whitespace is not allowed inside the
+     * header name (what would make or not make the whitespace before the colon
+     * be a part of a legal field name?). I haven't found anything conclusive
+     * for or against whitespace in header names. It does, however, seem to be
+     * extremely uncommon and will complicate the processor logic. It further
+     * appears to be banned in HTTP/2 and other projects (with zero
+     * documentation and exception handling) will crash [unexpectedly] when
+     * processing whitespace in header names. Netty 4.1.48 even hangs
+     * indefinitely.<p>
+     * 
+     * This parser will not allow whitespace in header names.<p>
+     * 
+     * References: <br>
+     * https://github.com/bbyars/mountebank/issues/282 <br>
+     * https://stackoverflow.com/a/56047701/1268003 <br>
+     * https://stackoverflow.com/questions/50179659/what-is-considered-as-whitespace-in-http-header
+     * 
+     * 
+     * <h2>Header values</h2>
+     * 
+     * Empty header values are allowed.<p>
+     * 
+     * Line folding is deprecated for all header values except media types. Why?
+     * I do not know. What I do know is that allowing line folding for some but
+     * not all is obviously complicating things. This processor will allow it
+     * for all headers.<p>
+     * 
+     * References: <br>
+     * https://github.com/eclipse/jetty.project/issues/1116 <br>
+     * https://stackoverflow.com/a/31324422/1268003
+     */
     private final class Parser extends AbstractTokenParser
     {
         private int parsing = KEY;
@@ -220,8 +269,15 @@ final class HeadersSubscriber<T> extends AbstractByteSubscriber<T>
         }
         
         private T build() {
-            return finisher.apply(Headers.of(
-                    values != null ? values : Map.of()));
+            HttpHeaders h;
+            try {
+                h = Headers.of(values != null ? values : Map.of());
+            } catch (IllegalArgumentException cause) {
+                var t = new HeaderParseException(null, (byte) -1, (byte) -1, -1);
+                t.initCause(cause);
+                throw t;
+            }
+            return finisher.apply(h);
         }
     }
 }

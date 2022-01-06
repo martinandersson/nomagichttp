@@ -47,7 +47,6 @@ public abstract class NoHandlerResolvedException extends RuntimeException
         super(message);
         // DefaultRoute passes <this> as c-tor arg
         this.route = requireNonNull(route);
-        // Validated by RequestHeadProcessor.parseMethod()
         this.method = method;
         this.contentType = contentType;
         this.accepts = accepts;

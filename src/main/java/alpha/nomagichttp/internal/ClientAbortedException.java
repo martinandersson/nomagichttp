@@ -1,10 +1,8 @@
 package alpha.nomagichttp.internal;
 
 /**
- * Is the result of a {@link RequestHeadSubscriber} if it can be determined
+ * Is the result of a {@link RequestLineSubscriber} if it can be determined
  * that the client closed his output stream cleanly.
- * 
- * @see RequestHeadSubscriber#asCompletionStage()
  */
 final class ClientAbortedException extends RuntimeException
 {

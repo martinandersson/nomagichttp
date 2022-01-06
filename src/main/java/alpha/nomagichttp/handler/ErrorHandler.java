@@ -18,7 +18,6 @@ import alpha.nomagichttp.message.MaxRequestHeadSizeExceededException;
 import alpha.nomagichttp.message.MediaTypeParseException;
 import alpha.nomagichttp.message.Request;
 import alpha.nomagichttp.message.RequestBodyTimeoutException;
-import alpha.nomagichttp.message.RequestHeadParseException;
 import alpha.nomagichttp.message.RequestHeadTimeoutException;
 import alpha.nomagichttp.message.RequestLineParseException;
 import alpha.nomagichttp.message.Response;
@@ -150,7 +149,7 @@ public interface ErrorHandler
      * The {@code Throwable} and {@code ClientChannel} arguments will always be
      * non-null. The {@code Request} object may be null depending on how much
      * progress was made in the HTTP exchange before the error occurred. For
-     * example, if the error is a {@link RequestHeadParseException}, then the
+     * example, if the error is a {@link RequestLineParseException}, then the
      * request object will obviously not be present.<p>
      * 
      * If the error which the server caught is a {@link CompletionException},

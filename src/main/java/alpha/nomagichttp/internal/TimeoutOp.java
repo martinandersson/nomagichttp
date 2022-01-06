@@ -43,9 +43,9 @@ abstract class TimeoutOp<T> extends AbstractOp.Async<T> {
      * downstream increase of demand and is active until the subscription
      * completes.<p>
      * 
-     * Currently, used by {@link HttpExchange} to abort {@link
-     * RequestHeadSubscriber} with a {@link RequestHeadTimeoutException} and
-     * used by {@link RequestBody} to abort the body subscriber with a {@link
+     * Currently, used by {@link HttpExchange} to abort request-head parsing
+     * with a {@link RequestHeadTimeoutException} and used by {@link
+     * RequestBody} to abort the body subscriber with a {@link
      * RequestBodyTimeoutException}.
      * 
      * @param <T> published item type

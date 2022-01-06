@@ -108,7 +108,7 @@ class ClientLifeCycleTest extends AbstractRealTest
     
     // Client immediately closes the channel,
     // is completely ignored (no error handler and no logging).
-    // See RequestHeadSubscriber.asCompletionStage() and ClientAbortedException
+    // See RequestLineSubscriber and ClientAbortedException
     @Test
     void clientClosesChannel_serverReceivedNoBytes() throws IOException, InterruptedException {
         client().openConnection().close();
@@ -241,7 +241,7 @@ class ClientLifeCycleTest extends AbstractRealTest
         // What can be said about the log before the end of the exchange is
         // dependent on the speed of the machine.
         // 
-        // On my Windows 10 machine (fast), a RequestHeadSubscriber subscribes
+        // On my Windows 10 machine (fast), a RequestLineSubscriber subscribes
         // to the channel and consequently the HttpExchange will observe the
         // broken pipe and ignore it, well, except for closing the child of
         // course. In this case, the log will only indicate a broken read. No
