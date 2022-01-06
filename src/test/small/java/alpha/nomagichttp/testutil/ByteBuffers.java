@@ -4,6 +4,7 @@ import alpha.nomagichttp.message.PooledByteBufferHolder;
 
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
+import java.util.function.IntConsumer;
 
 import static java.nio.ByteBuffer.allocateDirect;
 import static java.nio.ByteBuffer.wrap;
@@ -59,5 +60,30 @@ public final class ByteBuffers
         var boxed = allocateDirect(bytes.length);
         boxed.put(bytes);
         return boxed.flip();
+    }
+    
+    /**
+     * Encode the given string using {@link StandardCharsets#US_ASCII}.
+     * 
+     * The returned holder has no support for on-release callbacks or {@code
+     * copy()}. {@code release()} and {@code discard()} is NOP.
+     * 
+     * @param str to encode
+     * @return the bytes
+     */
+    public static PooledByteBufferHolder toByteBufferPooled(String str) {
+        final var buf = toByteBuffer(str);
+        return new PooledByteBufferHolder() {
+            public ByteBuffer get() {
+                return buf; }
+            public void release() {
+                }
+            public void discard() {
+                }
+            public byte[] copy() {
+                throw new UnsupportedOperationException(); }
+            public boolean onRelease(IntConsumer ignore) {
+                return false; }
+        };
     }
 }

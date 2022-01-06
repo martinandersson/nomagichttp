@@ -195,7 +195,7 @@ public interface Request extends HeaderHolder, AttributeHolder
      * The exact structure of the query string is not standardized (
      * <a href="https://en.wikipedia.org/wiki/Query_string">Wikipedia</a>). The
      * NoMagicHTTP library supports repeated query keys and query keys with no
-     * value (will be mapped to the empty string "").<p>
+     * value (will be mapped to the empty string).<p>
      * 
      * Tokens (path parameter values, query keys/values) are not interpreted or
      * parsed by the HTTP server. In particular, please note that there is no

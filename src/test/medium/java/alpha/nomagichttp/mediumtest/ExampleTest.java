@@ -384,8 +384,10 @@ class ExampleTest extends AbstractRealTest
         assertThat(res2).isEqualTo(
             "HTTP/1.1 500 Internal Server Error" + CRLF +
             "Content-Length: 0"                  + CRLF + CRLF);
-        assertThat(pollServerError()).isExactlyInstanceOf(FileAlreadyExistsException.class);
-        assertThat(Files.readString(file)).isEqualTo("Foo");
+        assertThat(pollServerError())
+                .isExactlyInstanceOf(FileAlreadyExistsException.class);
+        assertThat(Files.readString(file))
+                .isEqualTo("Foo");
     }
     
     // TODO: Currently not a public example. Update docs.
@@ -395,7 +397,7 @@ class ExampleTest extends AbstractRealTest
         final Map<String, LongAdder> freqs = new ConcurrentHashMap<>();
         
         BiConsumer<RequestHeadReceived, RequestHead> incrementer = (event, head) ->
-                freqs.computeIfAbsent(head.method(), m -> new LongAdder()).increment();
+                freqs.computeIfAbsent(head.line().method(), m -> new LongAdder()).increment();
         
         // We don't need to add routes here, sort of the whole point lol
         server().events().on(RequestHeadReceived.class, incrementer);
@@ -403,8 +405,10 @@ class ExampleTest extends AbstractRealTest
         var responseIgnored = client()
                 .writeReadTextUntilNewlines("GET / HTTP/1.1" + CRLF + CRLF);
         
-        assertThat(freqs.get("GET").sum()).isOne();
-        assertThat(pollServerError()).isExactlyInstanceOf(NoRouteFoundException.class);
+        assertThat(freqs.get("GET").sum())
+                .isOne();
+        assertThat(pollServerError())
+                .isExactlyInstanceOf(NoRouteFoundException.class);
     }
     
     private static Response tryScheduleClose(Response rsp, boolean ifTrue) {

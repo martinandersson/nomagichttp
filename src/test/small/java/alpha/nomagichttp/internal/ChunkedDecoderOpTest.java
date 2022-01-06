@@ -19,7 +19,6 @@ import static alpha.nomagichttp.testutil.TestPublishers.map;
 import static alpha.nomagichttp.util.Publishers.just;
 import static java.lang.String.join;
 import static java.nio.charset.StandardCharsets.US_ASCII;
-import static java.util.Arrays.stream;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -120,10 +119,8 @@ final class ChunkedDecoderOpTest
     }
     
     private Flow.Publisher<PooledByteBufferHolder> decode(String... buffers) {
-        return new ChunkedDecoderOp(just(stream(buffers)
-                .map(ByteBuffers::toByteBuffer)
-                .map(b -> new DefaultPooledByteBufferHolder(b, ignored -> {}))
-                .toArray(DefaultPooledByteBufferHolder[]::new)));
+        return new ChunkedDecoderOp(
+                map(just(buffers), ByteBuffers::toByteBufferPooled));
     }
     
     private static String toString(Flow.Publisher<PooledByteBufferHolder> bytes) {

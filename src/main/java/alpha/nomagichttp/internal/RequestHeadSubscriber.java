@@ -24,6 +24,7 @@ import static java.lang.System.Logger.Level.DEBUG;
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  */
+@Deprecated
 final class RequestHeadSubscriber implements SubscriberAsStage<PooledByteBufferHolder, RequestHead>
 {
     private static final System.Logger LOG

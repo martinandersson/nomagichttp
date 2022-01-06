@@ -353,7 +353,7 @@ class ErrorTest extends AbstractRealTest
     void RequestBodyTimeoutException_beforeSubscriber()
             throws IOException, InterruptedException
     {
-        usingConfig(timeoutIdleConnection(2, ofMillis(0)));
+        usingConfig(timeoutIdleConnection(3, ofMillis(0)));
         Semaphore subscribe = new Semaphore(0);
         onErrorRun(RequestBodyTimeoutException.class, subscribe::release);
         final BlockingQueue<Throwable> appErr = new ArrayBlockingQueue<>(1);
@@ -408,7 +408,7 @@ class ErrorTest extends AbstractRealTest
             throws IOException, InterruptedException
     {
         usingConfig(
-            timeoutIdleConnection(3, ofMillis(0)));
+            timeoutIdleConnection(4, ofMillis(0)));
         server().add("/",
              GET().accept((does,nothing) -> {}));
         String rsp = client().writeReadTextUntilNewlines(
@@ -436,7 +436,7 @@ class ErrorTest extends AbstractRealTest
                 ok(concat(ofString("X"), blockSubscriberUntil(unblock)));
         
         usingConfig(
-            timeoutIdleConnection(4, ofMillis(0)));
+            timeoutIdleConnection(5, ofMillis(0)));
         server().add("/",
             GET().respond(rsp));
         

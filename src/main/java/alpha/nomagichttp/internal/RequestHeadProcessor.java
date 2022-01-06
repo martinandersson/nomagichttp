@@ -1,5 +1,6 @@
 package alpha.nomagichttp.internal;
 
+import alpha.nomagichttp.message.RawRequestLine;
 import alpha.nomagichttp.message.RequestHead;
 import alpha.nomagichttp.message.RequestHeadParseException;
 import alpha.nomagichttp.util.Headers;
@@ -99,6 +100,7 @@ import static java.util.Objects.requireNonNull;
  */
 // TODO: Document, impl, and test various forms for request-target?
 //       https://datatracker.ietf.org/doc/html/rfc7230#section-5.3
+@Deprecated
 final class RequestHeadProcessor
 {
     private static final System.Logger LOG = System.getLogger(RequestHeadProcessor.class.getPackageName());
@@ -320,10 +322,9 @@ final class RequestHeadProcessor
     }
     
     private void complete() {
-        var headers = Headers.of(
-                headerValues != null ? headerValues : Map.of());
-        
-        completed = new DefaultRequestHead(
-                method, requestTarget, httpVersion, headers);
+        completed = new RequestHead(
+                new RawRequestLine(method, requestTarget, httpVersion, -1, -1),
+                new RequestHeaders(Headers.of(
+                        headerValues != null ? headerValues : Map.of())));
     }
 }

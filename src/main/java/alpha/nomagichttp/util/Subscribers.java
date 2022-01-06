@@ -58,11 +58,11 @@ public final class Subscribers
      * {@link Publishers}.
      * 
      * @param target to signal
-     * @param throwable to pass along
+     * @param thr to pass along
      */
-    public static void signalErrorSafe(Flow.Subscriber<?> target, Throwable throwable) {
+    public static void signalErrorSafe(Flow.Subscriber<?> target, Throwable thr) {
         try {
-            target.onError(throwable);
+            target.onError(thr);
         } catch (Throwable t) {
             LOG.log(ERROR,
                 "Subscriber.onError() returned exceptionally. " +

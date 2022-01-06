@@ -40,7 +40,7 @@ final class DefaultRequest implements Request
     
     @Override
     public String method() {
-        return shared.head().method();
+        return shared.head().line().method();
     }
     
     @Override

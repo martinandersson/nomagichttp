@@ -132,7 +132,7 @@ final class ResponseBodySubscriber implements SubscriberAsStage<ByteBuffer, Long
         
         if (!pushedHead) {
             var reqHead = exch.getRequestHead();
-            var reqMethod = reqHead == null ? null : reqHead.method();
+            var reqMethod = reqHead == null ? null : reqHead.line().method();
             if (reqMethod != null && (reqMethod.equals(HEAD) || reqMethod.equals(CONNECT))) {
                 var e = new IllegalResponseBodyException(
                         "Body in response to a " + reqMethod + " request.", resp);

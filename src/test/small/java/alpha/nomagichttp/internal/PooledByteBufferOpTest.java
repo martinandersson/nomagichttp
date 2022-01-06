@@ -17,7 +17,6 @@ import static alpha.nomagichttp.testutil.MemorizingSubscriber.drainSignals;
 import static alpha.nomagichttp.testutil.TestPublishers.map;
 import static alpha.nomagichttp.util.Publishers.just;
 import static java.nio.charset.StandardCharsets.US_ASCII;
-import static java.util.Arrays.stream;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static java.util.function.Predicate.isEqual;
 import static java.util.stream.IntStream.generate;
@@ -99,11 +98,8 @@ final class PooledByteBufferOpTest
     private static PooledByteBufferOp testee(
             BiConsumer<ByteBuffer, PooledByteBufferOp.Sink> decoder, String... items)
     {
-        var boxed = stream(items)
-                .map(ByteBuffers::toByteBuffer)
-                .map(buf -> new DefaultPooledByteBufferHolder(buf, ignored -> {}))
-                .toArray(DefaultPooledByteBufferHolder[]::new);
-        return new PooledByteBufferOp(just(boxed), decoder);
+        var buffers = map(just(items), ByteBuffers::toByteBufferPooled);
+        return new PooledByteBufferOp(buffers, decoder);
     }
     
     private static BiConsumer<ByteBuffer, PooledByteBufferOp.Sink> nonDecoded() {

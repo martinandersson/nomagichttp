@@ -1,6 +1,7 @@
 package alpha.nomagichttp.testutil;
 
 import org.assertj.core.api.AbstractThrowableAssert;
+import org.assertj.core.api.ObjectAssert;
 
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
@@ -8,6 +9,7 @@ import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeoutException;
 
+import static java.time.Duration.ZERO;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -19,6 +21,18 @@ import static org.assertj.core.api.Assertions.assertThat;
 public final class Assertions {
     private Assertions() {
         // Empty
+    }
+    
+    /**
+     * Extracts the succeeded result from the given stage.
+     * 
+     * @param <T> result type
+     * @param stage to extract result from
+     * @return the result
+     */
+    public static <T> ObjectAssert<T> assertSucceeded(
+            CompletionStage<T> stage) {
+        return assertThat(stage).succeedsWithin(ZERO);
     }
     
     /**

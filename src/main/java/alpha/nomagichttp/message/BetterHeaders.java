@@ -15,27 +15,31 @@ import static java.util.Objects.requireNonNull;
 /**
  * An extension API on top of a JDK-provided {@code HttpHeaders} delegate.<p>
  * 
- * Subtypes add methods that lookup and/or parse named and message-specific
- * headers, e.g. {@link ContentHeaders#contentType()} and {@link
- * Request.Headers#accept()}.<p>
+ * This is a generic interface. Specialized subtypes add methods that lookup
+ * and/or parse named- and message-specific headers, e.g. {@link
+ * ContentHeaders#contentType()} and {@link Request.Headers#accept()}.<p>
  * 
- * Header key- and values when stored will have leading and trailing whitespace
- * removed. They will also maintain letter capitalization when stored and
- * consequently when retrieved, but are case-insensitive when querying.<p>
+ * Header key- and values will not contain leading and trailing whitespace. The
+ * key can never be empty, the value can be empty. Both will maintain letter
+ * capitalization when read but are case-insensitive when querying.<p>
  * 
  * The order of header keys is not specified (see {@link HttpHeaders}) nor is
  * the order significant (<a href="https://tools.ietf.org/html/rfc7230#section-3.2.2">RFC 7230 §3.2.2</a>)
  * .<p>
  * 
- * The BetterHeaders implementation will utilize a cache when deemed necessary.
- * This is certainly true for all methods named after a header which it parses
- * (so, application may assume there is no performance impact for repetitive
+ * The implementation is thread-safe and non-blocking.<p>
+ * 
+ * The implementation will utilize a cache when deemed necessary. This is
+ * certainly true for all methods named after a header which it parses (so,
+ * application may assume there is no performance impact for repetitive
  * calls).<p>
  * 
- * The implementation is thread-safe and non-blocking. It's {@code hashCode} and
- * {@code toString} methods delegate to the JDK delegate, which in turn,
- * delegates to the underlying map. {@code equals} computes equality based on
- * the runtime type of this instance and the delegate's map.
+ * The implementation behaves as a
+ * <a href="https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/lang/doc-files/ValueBased.html">value-based class</a>.
+ * use of identity-sensitive operations (including reference equality ({@code
+ * ==}), identity hash code, or synchronization) on instances of {@code
+ * BetterHeaders} may have unpredictable results and should be avoided. The
+ * {@code equals} method should be used for comparisons.
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  * @see HttpConstants.HeaderKey

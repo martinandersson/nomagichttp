@@ -5,9 +5,10 @@ import alpha.nomagichttp.message.RequestHead;
 /**
  * A request head has been received by the HTTP server.<p>
  * 
- * The event is emitted before validation and parsing of the request head has
- * begun. For example, it is possible that the request head is later rejected
- * for invalid token data or any other fault after the emission of the event.<p>
+ * The event is emitted immediately after the last HTTP header and before
+ * validation and parsing of the request head has begun. For example, it is
+ * possible that the request head is later rejected for invalid token data or
+ * any other fault after the emission of the event.<p>
  * 
  * The intended purpose of this event is to gather metrics.<p>
  * 

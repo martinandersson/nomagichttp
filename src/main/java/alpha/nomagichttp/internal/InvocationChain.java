@@ -106,7 +106,7 @@ final class InvocationChain extends AbstractLocalEventEmitter
     
     private static RequestHandler findRequestHandler(RequestHead rh, Route r) {
         RequestHandler h = r.lookup(
-                rh.method(),
+                rh.line().method(),
                 rh.headers().contentType().orElse(null),
                 rh.headers().accept());
         LOG.log(DEBUG, () -> "Matched handler: " + h);

@@ -26,6 +26,7 @@ import static java.lang.System.Logger.Level.ALL;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
 
+@Deprecated
 class RequestHeadSubscriberTest
 {
     private static SkeletonServer SERVER;
@@ -343,9 +344,9 @@ class RequestHeadSubscriberTest
     {
         var head = testee().toCompletableFuture().get(3, SECONDS);
         return assertThat(head).extracting(
-                RequestHead::method,
-                RequestHead::target,
-                RequestHead::httpVersion,
+                h -> h.line().method(),
+                h -> h.line().target(),
+                h -> h.line().httpVersion(),
                 h -> h.headers().delegate());
     }
     

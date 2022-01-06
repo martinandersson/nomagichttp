@@ -4,6 +4,7 @@ import alpha.nomagichttp.Config;
 import alpha.nomagichttp.HttpConstants;
 import alpha.nomagichttp.HttpConstants.Version;
 import alpha.nomagichttp.HttpServer;
+import alpha.nomagichttp.event.RequestHeadReceived;
 import alpha.nomagichttp.handler.ClientChannel;
 import alpha.nomagichttp.handler.ErrorHandler;
 import alpha.nomagichttp.internal.ResponsePipeline.Command;
@@ -11,6 +12,7 @@ import alpha.nomagichttp.message.DefaultContentHeaders;
 import alpha.nomagichttp.message.HttpVersionTooNewException;
 import alpha.nomagichttp.message.HttpVersionTooOldException;
 import alpha.nomagichttp.message.IllegalRequestBodyException;
+import alpha.nomagichttp.message.RawRequestLine;
 import alpha.nomagichttp.message.Request;
 import alpha.nomagichttp.message.RequestHead;
 import alpha.nomagichttp.message.RequestHeadTimeoutException;
@@ -33,15 +35,18 @@ import static alpha.nomagichttp.HttpConstants.Method.TRACE;
 import static alpha.nomagichttp.HttpConstants.Version.HTTP_1_0;
 import static alpha.nomagichttp.HttpConstants.Version.HTTP_1_1;
 import static alpha.nomagichttp.handler.ErrorHandler.DEFAULT;
+import static alpha.nomagichttp.internal.HeadersSubscriber.forRequestHeaders;
 import static alpha.nomagichttp.internal.InvocationChain.ABORTED;
 import static alpha.nomagichttp.internal.ResponsePipeline.Error;
 import static alpha.nomagichttp.internal.ResponsePipeline.Success;
 import static alpha.nomagichttp.util.IOExceptions.isCausedByBrokenInputStream;
 import static alpha.nomagichttp.util.IOExceptions.isCausedByBrokenOutputStream;
 import static java.lang.Integer.parseInt;
+import static java.lang.Math.addExact;
 import static java.lang.System.Logger.Level.DEBUG;
 import static java.lang.System.Logger.Level.ERROR;
 import static java.lang.System.Logger.Level.WARNING;
+import static java.lang.System.nanoTime;
 import static java.util.Objects.requireNonNull;
 
 /**
@@ -183,12 +188,13 @@ final class HttpExchange
     private void begin0() {
         setupPipeline();
         subscribeToRequestObjects();
-        parseRequestHead()
-           .thenAccept(this::initialize)
-           .thenRun(() -> { if (config.immediatelyContinueExpect100())
-               tryRespond100Continue(); })
-           .thenCompose(nil -> chain.execute(reqThin, version))
-           .whenComplete((nil, thr) -> handleChainCompletion(thr));
+        parseRequestLine()
+            .thenCompose(this::parseRequestHeaders)
+            .thenAccept(this::initialize)
+            .thenRun(() -> { if (config.immediatelyContinueExpect100())
+                tryRespond100Continue(); })
+            .thenCompose(nil -> chain.execute(reqThin, version))
+            .whenComplete((nil, thr) -> handleChainCompletion(thr));
     }
     
     private void setupPipeline() {
@@ -203,60 +209,85 @@ final class HttpExchange
         pipe.on(RequestCreated.class, save);
     }
     
-    private CompletionStage<RequestHead> parseRequestHead() {
-        RequestHeadSubscriber rhs = new RequestHeadSubscriber(server, chApi);
-        
+    private CompletionStage<RawRequestLine> parseRequestLine() {
+        RequestLineSubscriber rls = new RequestLineSubscriber(
+                config.maxRequestHeadSize(), chApi);
         var to = new TimeoutOp.Flow<>(false, true, chIn, config.timeoutIdleConnection(), () -> {
-            if (LOG.isLoggable(DEBUG) && chApi.isOpenForReading()) {
-                LOG.log(DEBUG, "Request head timed out, shutting down child channel's read stream.");
-            }
             // No new HTTP exchange
-            chApi.shutdownInputSafe();
+            if (chApi.isOpenForReading()) {
+                LOG.log(DEBUG, "Request head timed out, shutting down child channel's read stream.");
+                chApi.shutdownInputSafe();
+            }
             return new RequestHeadTimeoutException();
         });
-        to.subscribe(rhs);
+        to.subscribe(rls);
         to.start();
-        
-        return rhs.asCompletionStage();
+        return rls.asCompletionStage();
+    }
+    
+    private CompletionStage<RequestHead> parseRequestHeaders(RawRequestLine l) {
+        HeadersSubscriber<Request.Headers> sub = forRequestHeaders(
+                l.parseLength(), config.maxRequestHeadSize(), chApi);
+        // TODO: DRY from parseRequestLine(),
+        //       but we just might rework the entire timeout plumbing.
+        var to = new TimeoutOp.Flow<>(false, true, chIn, config.timeoutIdleConnection(), () -> {
+            // No new HTTP exchange
+            if (chApi.isOpenForReading()) {
+                LOG.log(DEBUG, "Request head timed out, shutting down child channel's read stream.");
+                chApi.shutdownInputSafe();
+            }
+            return new RequestHeadTimeoutException();
+        });
+        to.subscribe(sub);
+        to.start();
+        return sub.asCompletionStage().thenApply(headers -> {
+            var h = new RequestHead(l, headers);
+            server.events().dispatchLazy(RequestHeadReceived.INSTANCE, () -> h, () ->
+                    new RequestHeadReceived.Stats(
+                            l.nanoTimeOnStart(),
+                            nanoTime(),
+                            addExact(l.parseLength(), sub.read())));
+            return h;
+        });
     }
     
     private void initialize(RequestHead h) {
         head = h;
         
-        version = parseHttpVersion(h);
+        version = parseHttpVersion(h.line().httpVersion());
         if (version == HTTP_1_0 && config.rejectClientsUsingHTTP1_0()) {
-            throw new HttpVersionTooOldException(h.httpVersion(), "HTTP/1.1");
+            throw new HttpVersionTooOldException(h.line().httpVersion(), "HTTP/1.1");
         }
         
         reqThin = new SkeletonRequest(h,
-                SkeletonRequestTarget.parse(h.target()),
+                SkeletonRequestTarget.parse(h.line().target()),
                 monitorBody(createBody(h)),
                 new DefaultAttributes());
         
         validateRequest();
     }
     
-    private static Version parseHttpVersion(RequestHead h) {
+    private static Version parseHttpVersion(String httpVersion) {
         final Version v;
         
         try {
-            v = Version.parse(h.httpVersion());
+            v = Version.parse(httpVersion);
         } catch (IllegalArgumentException e) {
             String[] comp = e.getMessage().split(":");
             if (comp.length == 1) {
                 // No literal for minor
-                requireHTTP1(parseInt(comp[0]), h.httpVersion(), "HTTP/1.1"); // for now
+                requireHTTP1(parseInt(comp[0]), httpVersion, "HTTP/1.1"); // for now
                 throw new AssertionError(
                         "String \"HTTP/<single digit>\" should have failed with parse exception (missing minor).");
             } else {
                 // No literal for major + minor (i.e., version older than HTTP/0.9)
                 assert comp.length == 2;
                 assert parseInt(comp[0]) <= 0;
-                throw new HttpVersionTooOldException(h.httpVersion(), "HTTP/1.1");
+                throw new HttpVersionTooOldException(httpVersion, "HTTP/1.1");
             }
         }
         
-        requireHTTP1(v.major(), h.httpVersion(), "HTTP/1.1");
+        requireHTTP1(v.major(), httpVersion, "HTTP/1.1");
         return v;
     }
     
@@ -290,7 +321,7 @@ final class HttpExchange
     
     private void validateRequest() {
         // Is NOT suitable as a before-action; they are invoked only for valid requests
-        if (head.method().equals(TRACE) && !reqThin.body().isEmpty()) {
+        if (head.line().method().equals(TRACE) && !reqThin.body().isEmpty()) {
             throw new IllegalRequestBodyException(head, reqThin.body(),
                     "Body in a TRACE request.");
         }
