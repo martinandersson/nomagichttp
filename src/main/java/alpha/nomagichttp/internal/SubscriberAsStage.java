@@ -46,8 +46,10 @@ interface SubscriberAsStage<T, R> extends Flow.Subscriber<T>
      * 
      * @return {@code argument}
      * 
-     * @throws NullPointerException   if {@code argument} is {@code null}
-     * @throws IllegalStateException  if {@code field} is <strong>not</strong> {@code null}
+     * @throws NullPointerException
+     *             if {@code argument} is {@code null}
+     * @throws IllegalStateException
+     *             if {@code field} is <strong>not</strong> {@code null}
      */
     static Flow.Subscription validate(Flow.Subscription field, Flow.Subscription argument) {
         requireNonNull(argument);
