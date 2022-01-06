@@ -97,7 +97,7 @@ public class MemorizingSubscriber<T> implements Flow.Subscriber<T>
     }
     
     /**
-     * Request strategy of a memorizing subscriber without a delegate.
+     * Request strategy of a memorizing subscriber that has no delegate.
      */
     public static class Request {
         private static final Request NOTHING = new Request(-1);
