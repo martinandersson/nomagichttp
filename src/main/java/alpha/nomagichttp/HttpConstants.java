@@ -1521,9 +1521,10 @@ public final class HttpConstants {
          * 
          * This array has the same length as its counterpart array
          * {@link StatusCode#VALUES}. The index of one can be used to retrieve
-         * the counterpart value from the other. The intended purpose of
-         * providing these arrays is to provide non-reflective programmatic
-         * access of all constants.
+         * the counterpart value from the other.<p>
+         * 
+         * The intended purpose of providing these arrays is to provide
+         * non-reflective programmatic access of all constants.
          */
         public static final String[] VALUES = {
                 CONTINUE,
