@@ -27,7 +27,7 @@ import static java.lang.System.Logger.Level.DEBUG;
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  */
-final class HeapSubscriber<R> implements SubscriberAsStage<PooledByteBufferHolder, R>
+final class HeapSubscriber<R> implements SubscriberStage<PooledByteBufferHolder, R>
 {
     private static final System.Logger LOG = System.getLogger(HeapSubscriber.class.getPackageName());
     
@@ -50,7 +50,7 @@ final class HeapSubscriber<R> implements SubscriberAsStage<PooledByteBufferHolde
     
     @Override
     public void onSubscribe(Flow.Subscription subscription) {
-        this.subscription = SubscriberAsStage.validate(this.subscription, subscription);
+        this.subscription = SubscriberStage.validate(this.subscription, subscription);
         subscription.request(MAX_VALUE);
     }
     

@@ -53,7 +53,7 @@ import static java.util.Objects.requireNonNull;
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  */
-final class ResponseBodySubscriber implements SubscriberAsStage<ByteBuffer, Long>
+final class ResponseBodySubscriber implements SubscriberStage<ByteBuffer, Long>
 {
     private static final System.Logger LOG
             = System.getLogger(ResponseBodySubscriber.class.getPackageName());
@@ -119,7 +119,7 @@ final class ResponseBodySubscriber implements SubscriberAsStage<ByteBuffer, Long
     
     @Override
     public void onSubscribe(Flow.Subscription s) {
-        this.subscription = SubscriberAsStage.validate(this.subscription, s);
+        this.subscription = SubscriberStage.validate(this.subscription, s);
         s.request(requested = DEMAND_MAX);
     }
     

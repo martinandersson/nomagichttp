@@ -21,7 +21,7 @@ import static java.util.Objects.requireNonNull;
  * @param <T> item type of subscriber
  * @param <R> result type of stage
  */
-interface SubscriberAsStage<T, R> extends Flow.Subscriber<T>
+interface SubscriberStage<T, R> extends Flow.Subscriber<T>
 {
     /**
      * The returned stage supports being cast to {@link
