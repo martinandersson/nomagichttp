@@ -543,7 +543,7 @@ class ErrorTest extends AbstractRealTest
         
         var s = sub.signals();
         assertThat(s).hasSize(1);
-        assertSame(s.get(0).getMethodName(), ON_SUBSCRIBE);
+        assertSame(s.get(0).methodName(), ON_SUBSCRIBE);
         
         assertOopsException(pollServerError());
     }
@@ -574,8 +574,8 @@ class ErrorTest extends AbstractRealTest
         var s = sub.signals();
         assertThat(s).hasSize(2);
         
-        assertSame(s.get(0).getMethodName(), ON_SUBSCRIBE);
-        assertSame(s.get(1).getMethodName(), ON_NEXT);
+        assertSame(s.get(0).methodName(), ON_SUBSCRIBE);
+        assertSame(s.get(1).methodName(), ON_NEXT);
         
         assertOopsException(pollServerError());
     }
@@ -613,10 +613,10 @@ class ErrorTest extends AbstractRealTest
         var s = sub.signals();
         assertThat(s).hasSize(2);
         
-        assertSame(s.get(0).getMethodName(), ON_SUBSCRIBE);
-        assertSame(s.get(1).getMethodName(), ON_ERROR);
+        assertSame(s.get(0).methodName(), ON_SUBSCRIBE);
+        assertSame(s.get(1).methodName(), ON_ERROR);
         
-        assertThat(s.get(1).<Throwable>getArgument())
+        assertThat(s.get(1).<Throwable>argumentAs())
             .isExactlyInstanceOf(EndOfStreamException.class)
             .hasMessage(null)
             .hasNoCause()

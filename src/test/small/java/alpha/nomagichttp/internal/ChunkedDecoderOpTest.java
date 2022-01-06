@@ -42,9 +42,9 @@ final class ChunkedDecoderOpTest
         var received = drainSignals(map(data, ByteBuffers::toString));
         
         assertThat(received).hasSize(3);
-        assertThat(received.get(0).getMethodName()).isEqualTo(ON_SUBSCRIBE);
-        assertThat(received.get(1).<String>getArgument()).isEqualTo("x");
-        assertThat(received.get(2).getMethodName()).isEqualTo(ON_COMPLETE);
+        assertThat(received.get(0).methodName()).isEqualTo(ON_SUBSCRIBE);
+        assertThat(received.get(1).argument()).isEqualTo("x");
+        assertThat(received.get(2).methodName()).isEqualTo(ON_COMPLETE);
     }
     
     @Test
@@ -139,8 +139,8 @@ final class ChunkedDecoderOpTest
     {
         var received = drainSignals(data);
         assertThat(received).hasSize(2);
-        assertThat(received.get(0).getMethodName()).isEqualTo(ON_SUBSCRIBE);
-        assertThat(received.get(1).getMethodName()).isEqualTo(ON_ERROR);
-        return assertThat(received.get(1).<Throwable>getArgument());
+        assertThat(received.get(0).methodName()).isEqualTo(ON_SUBSCRIBE);
+        assertThat(received.get(1).methodName()).isEqualTo(ON_ERROR);
+        return assertThat(received.get(1).<Throwable>argumentAs());
     }
 }

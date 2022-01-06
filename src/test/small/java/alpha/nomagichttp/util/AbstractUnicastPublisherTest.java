@@ -59,9 +59,9 @@ class AbstractUnicastPublisherTest
     private static void assertNoReuse(Flow.Publisher<?> pub) {
         var s = drainSignals(pub);
         assertThat(s.size()).isEqualTo(2);
-        assertThat(s.get(0).getMethodName()).isEqualTo(ON_SUBSCRIBE);
-        assertThat(s.get(1).getMethodName()).isEqualTo(ON_ERROR);
-        assertThat(s.get(1).<Exception>getArgument())
+        assertThat(s.get(0).methodName()).isEqualTo(ON_SUBSCRIBE);
+        assertThat(s.get(1).methodName()).isEqualTo(ON_ERROR);
+        assertThat(s.get(1).<Exception>argumentAs())
                 .isExactlyInstanceOf(IllegalStateException.class)
                 .hasMessage("Publisher was already subscribed to and is not reusable.")
                 .hasNoCause()

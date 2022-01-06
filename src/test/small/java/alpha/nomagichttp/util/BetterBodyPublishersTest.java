@@ -114,11 +114,11 @@ class BetterBodyPublishersTest
         
         assertThat(s).hasSize(3);
         
-        assertSame(s.get(0).getMethodName(), ON_SUBSCRIBE);
-        assertSame(s.get(1).getMethodName(), ON_NEXT);
-        assertSame(s.get(2).getMethodName(), ON_COMPLETE);
+        assertSame(s.get(0).methodName(), ON_SUBSCRIBE);
+        assertSame(s.get(1).methodName(), ON_NEXT);
+        assertSame(s.get(2).methodName(), ON_COMPLETE);
         
-        ByteBuffer item = s.get(1).getArgument();
+        ByteBuffer item = s.get(1).argumentAs();
         assertThat(item.remaining()).isOne();
         assertThat(item.get()).isEqualTo((byte) 1);
     }

@@ -45,15 +45,15 @@ class TimeoutOpTest
         List<Signal> s = MemorizingSubscriber.drainSignalsAsync(op)
                 .toCompletableFuture().get(1, SECONDS);
         assertThat(s).hasSize(2);
-        assertSame(s.get(0).getMethodName(), ON_SUBSCRIBE);
-        assertSame(s.get(1).getMethodName(), ON_ERROR);
-        assertSame(s.get(1).getArgument(),   err);
+        assertSame(s.get(0).methodName(), ON_SUBSCRIBE);
+        assertSame(s.get(1).methodName(), ON_ERROR);
+        assertSame(s.get(1).argument(),   err);
     }
     
     private void assertCompletesNormally(Flow.Publisher<?> op) {
         List<Signal> s = MemorizingSubscriber.drainSignals(op);
         assertThat(s).hasSize(2);
-        assertSame(s.get(0).getMethodName(), ON_SUBSCRIBE);
-        assertSame(s.get(1).getMethodName(), ON_COMPLETE);
+        assertSame(s.get(0).methodName(), ON_SUBSCRIBE);
+        assertSame(s.get(1).methodName(), ON_COMPLETE);
     }
 }

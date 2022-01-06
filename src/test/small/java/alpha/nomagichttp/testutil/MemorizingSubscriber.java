@@ -144,10 +144,11 @@ public class MemorizingSubscriber<T> implements Flow.Subscriber<T>
     /**
      * A signal received by the memorizing subscriber.
      * 
-     * Signals may carry an argument received; the subscription object or the
-     * item/error from upstream. {@code onComplete} does not receive an argument.
+     * Signals may carry an {@link #argument()} received; the subscription
+     * object or the item/error from upstream. {@code onComplete} does not
+     * receive an argument.
      */
-    public static final class Signal {
+    public record Signal(MethodName methodName, Object argument) {
         /**
          * Enumeration of {@code Flow.Subscriber} methods.
          */
@@ -162,23 +163,6 @@ public class MemorizingSubscriber<T> implements Flow.Subscriber<T>
             ON_ERROR;
         }
         
-        private final MethodName name;
-        private final Object arg;
-        
-        private Signal(MethodName name, Object arg) {
-            this.name = name;
-            this.arg  = arg;
-        }
-        
-        /**
-         * Returns the subscriber method invoked.
-         * 
-         * @return the subscriber method invoked
-         */
-        public MethodName getMethodName() {
-            return name;
-        }
-    
         /**
          * Returns the signal argument.<p>
          * 
@@ -187,18 +171,10 @@ public class MemorizingSubscriber<T> implements Flow.Subscriber<T>
          * @param <T> argument type, inferred on call-site
          * @return the signal argument
          */
-        public <T> T getArgument() {
+        public <T> T argumentAs() {
             @SuppressWarnings("unchecked")
-            T typed = (T) arg;
+            T typed = (T) argument();
             return typed;
-        }
-        
-        @Override
-        public String toString() {
-            return "Signal{" +
-                    "name="  + name +
-                    ", arg=" + arg +
-                    '}';
         }
     }
     
@@ -256,8 +232,8 @@ public class MemorizingSubscriber<T> implements Flow.Subscriber<T>
      */
     public List<T> items() {
         return signals.stream()
-                      .filter(s -> s.getMethodName() == ON_NEXT)
-                      .map(Signal::<T>getArgument)
+                      .filter(s -> s.methodName() == ON_NEXT)
+                      .map(Signal::<T>argumentAs)
                       .toList();
     }
     
@@ -268,7 +244,7 @@ public class MemorizingSubscriber<T> implements Flow.Subscriber<T>
      */
     public List<Signal.MethodName> methodNames() {
         return signals.stream()
-                      .map(Signal::getMethodName)
+                      .map(Signal::methodName)
                       .toList();
     }
     

@@ -65,13 +65,13 @@ final class PooledByteBufferOpTest
         
         // Sorry, first test needs to be exact. Future ones will reduce.
         assertThat(received).hasSize(N + 2);
-        assertThat(received.get(0).getMethodName())
+        assertThat(received.get(0).methodName())
                 .isEqualTo(ON_SUBSCRIBE);
         // Delivered N items of 'x' (each onNext will implicitly flush)
         assertThat(received.subList(1, N + 1))
-                .<String>extracting(Signal::getArgument)
+                .extracting(Signal::argument)
                 .allMatch(isEqual("x"));
-        assertThat(received.get(N + 1).getMethodName())
+        assertThat(received.get(N + 1).methodName())
                 .isEqualTo(ON_COMPLETE);
     }
     
