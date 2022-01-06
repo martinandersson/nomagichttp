@@ -62,7 +62,7 @@ class BigFileRequestTest extends AbstractLargeRealTest
         Logging.setLevel(ALL);
         
         file = Files.createTempDirectory("nomagic").resolve("big-file");
-        contents = DataUtil.bytes(FILE_SIZE);
+        contents = DataUtils.bytes(FILE_SIZE);
         server().add("/file",
             GET().respond(ok(ofFile(file))),
             POST().apply(req ->

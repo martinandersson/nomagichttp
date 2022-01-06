@@ -216,7 +216,7 @@ class TwoHundredRequestsFromSameClientTest extends AbstractLargeRealTest
     private static Stream<String> requestBodies(int n, int minLen, int maxLen) {
         Supplier<String> s = () -> {
             ThreadLocalRandom r = ThreadLocalRandom.current();
-            return DataUtil.text(r.nextInt(minLen, maxLen + 1));
+            return DataUtils.text(r.nextInt(minLen, maxLen + 1));
         };
         return Stream.generate(s).limit(n);
     }
