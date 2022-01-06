@@ -128,7 +128,7 @@ final class ChunkedDecoderOpTest
                 new String(buf, 0, count, US_ASCII));
         bytes.subscribe(sub);
         try {
-            return sub.toCompletionStage().toCompletableFuture().get(1, SECONDS);
+            return sub.result().toCompletableFuture().get(1, SECONDS);
         } catch (InterruptedException | ExecutionException | TimeoutException e) {
             throw new RuntimeException(e);
         }

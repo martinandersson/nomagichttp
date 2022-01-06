@@ -18,7 +18,7 @@ import static java.lang.System.Logger.Level.WARNING;
  * @author Martin Andersson (webmaster at martinandersson.com)
  */
 abstract class AbstractByteSubscriber<R>
-        implements SubscriberStage<PooledByteBufferHolder, R>
+        implements SubscriberWithResult<PooledByteBufferHolder, R>
 {
     private static final System.Logger LOG
             = System.getLogger(AbstractByteSubscriber.class.getPackageName());
@@ -28,13 +28,13 @@ abstract class AbstractByteSubscriber<R>
     private int read;
     
     @Override
-    public final CompletionStage<R> toCompletionStage() {
+    public final CompletionStage<R> result() {
         return res;
     }
     
     @Override
     public final void onSubscribe(Flow.Subscription s) {
-        this.subsc = SubscriberStage.validate(this.subsc, s);
+        this.subsc = SubscriberWithResult.validate(this.subsc, s);
         s.request(MAX_VALUE);
     }
     

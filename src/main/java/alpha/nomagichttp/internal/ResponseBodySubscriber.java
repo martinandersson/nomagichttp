@@ -40,8 +40,7 @@ import static java.util.Objects.requireNonNull;
  * One known use-case for the lazy-head behavior, however, is an illegal body to
  * a HEAD/CONNECT request - which, can only reliably be identifier by this
  * class. The resulting {@code IllegalResponseBodyException} is an exception
- * this subscriber signals through the {@link #toCompletionStage() result
- * stage}.<p>
+ * this subscriber signals through the {@link #result() result stage}.<p>
  * 
  * This class do expect to get a {@link ResponseTimeoutException} from the
  * upstream (well, hopefully not); asynchronously by {@link TimeoutOp}.
@@ -53,7 +52,8 @@ import static java.util.Objects.requireNonNull;
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  */
-final class ResponseBodySubscriber implements SubscriberStage<ByteBuffer, Long>
+final class ResponseBodySubscriber
+        implements SubscriberWithResult<ByteBuffer, Long>
 {
     private static final System.Logger LOG
             = System.getLogger(ResponseBodySubscriber.class.getPackageName());
@@ -113,13 +113,13 @@ final class ResponseBodySubscriber implements SubscriberStage<ByteBuffer, Long>
      * @return the response-body-to-channel write process as a stage
      */
     @Override
-    public CompletionStage<Long> toCompletionStage() {
+    public CompletionStage<Long> result() {
         return resu;
     }
     
     @Override
     public void onSubscribe(Flow.Subscription s) {
-        this.subscription = SubscriberStage.validate(this.subscription, s);
+        this.subscription = SubscriberWithResult.validate(this.subscription, s);
         s.request(requested = DEMAND_MAX);
     }
     

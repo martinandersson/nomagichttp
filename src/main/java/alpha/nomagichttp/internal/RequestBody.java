@@ -237,14 +237,14 @@ final class RequestBody implements Request.Body
         
         var fs = new FileSubscriber(file, fc);
         subscribe(fs);
-        return fs.toCompletionStage();
+        return fs.result();
     }
     
     @Override
     public <R> CompletionStage<R> convert(BiFunction<byte[], Integer, R> f) {
         var hs = new HeapSubscriber<>(f);
         subscribe(hs);
-        return hs.toCompletionStage();
+        return hs.result();
     }
     
     @Override

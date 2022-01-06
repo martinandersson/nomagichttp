@@ -221,7 +221,7 @@ final class HttpExchange
         });
         to.subscribe(rls);
         to.start();
-        return rls.toCompletionStage();
+        return rls.result();
     }
     
     private CompletionStage<RawRequest.Head> parseRequestHeaders(RawRequest.Line l) {
@@ -239,7 +239,7 @@ final class HttpExchange
         });
         to.subscribe(sub);
         to.start();
-        return sub.toCompletionStage().thenApply(headers -> {
+        return sub.result().thenApply(headers -> {
             var h = new RawRequest.Head(l, headers);
             server.events().dispatchLazy(RequestHeadReceived.INSTANCE, () -> h, () ->
                     new RequestHeadReceived.Stats(

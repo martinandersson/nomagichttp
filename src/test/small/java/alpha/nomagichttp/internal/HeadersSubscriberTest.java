@@ -190,7 +190,7 @@ public class HeadersSubscriberTest
         var hs = forRequestHeaders(0, 9_999, mock(ClientChannel.class));
         var up = map(just(items), ByteBuffers::toByteBufferPooled);
         up.subscribe(hs);
-        return hs.toCompletionStage();
+        return hs.result();
     }
     
     private MapAssert<String, List<String>> assertResult(
