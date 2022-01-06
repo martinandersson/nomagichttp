@@ -1,7 +1,7 @@
 package alpha.nomagichttp.internal;
 
 import alpha.nomagichttp.message.Attributes;
-import alpha.nomagichttp.message.RequestHead;
+import alpha.nomagichttp.message.RawRequest;
 
 /**
  * A thin version of a request.
@@ -10,7 +10,7 @@ import alpha.nomagichttp.message.RequestHead;
  * @see DefaultRequest
  */
 record SkeletonRequest(
-        RequestHead head,
+        RawRequest.Head head,
         SkeletonRequestTarget target,
         RequestBody body,
         Attributes attributes)

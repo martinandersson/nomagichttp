@@ -4,7 +4,7 @@ import alpha.nomagichttp.action.BeforeAction;
 import alpha.nomagichttp.action.Chain;
 import alpha.nomagichttp.handler.ClientChannel;
 import alpha.nomagichttp.handler.RequestHandler;
-import alpha.nomagichttp.message.RequestHead;
+import alpha.nomagichttp.message.RawRequest;
 import alpha.nomagichttp.route.NoRouteFoundException;
 import alpha.nomagichttp.route.Route;
 
@@ -104,7 +104,7 @@ final class InvocationChain extends AbstractLocalEventEmitter
             .logic().accept(real, chApi);
     }
     
-    private static RequestHandler findRequestHandler(RequestHead rh, Route r) {
+    private static RequestHandler findRequestHandler(RawRequest.Head rh, Route r) {
         RequestHandler h = r.lookup(
                 rh.line().method(),
                 rh.headers().contentType().orElse(null),

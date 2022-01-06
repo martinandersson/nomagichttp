@@ -2,9 +2,8 @@ package alpha.nomagichttp.internal;
 
 import alpha.nomagichttp.message.BadHeaderException;
 import alpha.nomagichttp.message.DefaultContentHeaders;
-import alpha.nomagichttp.message.RawRequestLine;
+import alpha.nomagichttp.message.RawRequest;
 import alpha.nomagichttp.message.Request;
-import alpha.nomagichttp.message.RequestHead;
 import alpha.nomagichttp.util.Publishers;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
@@ -91,9 +90,9 @@ class DefaultRequestTest
     }
     
     private static Request createRequest(HttpHeaders headers, String reqBody) {
-        var line = new RawRequestLine(
+        var line = new RawRequest.Line(
                        "test-method", "test-requestTarget", "test-httpVersion", -1, -1);
-        var head = new RequestHead(line, new RequestHeaders(headers));
+        var head = new RawRequest.Head(line, new RequestHeaders(headers));
         var body = RequestBody.of(
                   (DefaultContentHeaders) head.headers(),
                   Publishers.just(wrap(reqBody)),

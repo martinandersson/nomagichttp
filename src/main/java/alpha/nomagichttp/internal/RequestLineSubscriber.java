@@ -3,13 +3,13 @@ package alpha.nomagichttp.internal;
 import alpha.nomagichttp.handler.ClientChannel;
 import alpha.nomagichttp.handler.EndOfStreamException;
 import alpha.nomagichttp.message.MaxRequestHeadSizeExceededException;
-import alpha.nomagichttp.message.RawRequestLine;
+import alpha.nomagichttp.message.RawRequest;
 import alpha.nomagichttp.message.RequestLineParseException;
 
 import static java.lang.System.Logger.Level.DEBUG;
 
 /**
- * Parse bytes into a {@link RawRequestLine}.<p>
+ * Parse bytes into a {@link RawRequest.Line}.<p>
  * 
  * If the upstream (ChannelByteBufferPublisher) terminates the subscription with
  * an {@link EndOfStreamException} <i>and</i> no bytes have been received by
@@ -27,7 +27,7 @@ import static java.lang.System.Logger.Level.DEBUG;
  */
 // TODO: Document, impl, and test various forms for request-target?
 //       https://datatracker.ietf.org/doc/html/rfc7230#section-5.3
-final class RequestLineSubscriber extends AbstractByteSubscriber<RawRequestLine>
+final class RequestLineSubscriber extends AbstractByteSubscriber<RawRequest.Line>
 {
     private static final System.Logger LOG
             = System.getLogger(RequestLineSubscriber.class.getPackageName());
@@ -55,7 +55,7 @@ final class RequestLineSubscriber extends AbstractByteSubscriber<RawRequestLine>
     }
     
     @Override
-    protected RawRequestLine parse(byte b) {
+    protected RawRequest.Line parse(byte b) {
         int r = read();
         if (r == maxBytes) {
             throw new MaxRequestHeadSizeExceededException(); }
@@ -133,7 +133,7 @@ final class RequestLineSubscriber extends AbstractByteSubscriber<RawRequestLine>
     private final class Parser extends AbstractTokenParser {
         private int parsing = METHOD;
         
-        RawRequestLine parse(byte b) {
+        RawRequest.Line parse(byte b) {
             curr = b;
             parsing = switch (parsing) {
                 case METHOD  -> parseMethod();
@@ -144,7 +144,7 @@ final class RequestLineSubscriber extends AbstractByteSubscriber<RawRequestLine>
             };
             prev = curr;
             return parsing != DONE ? null :
-                    new RawRequestLine(method, rt, ver, started, read());
+                    new RawRequest.Line(method, rt, ver, started, read());
         }
         
         private String method;

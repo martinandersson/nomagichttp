@@ -1,7 +1,7 @@
 package alpha.nomagichttp.internal;
 
 import alpha.nomagichttp.handler.ClientChannel;
-import alpha.nomagichttp.message.RawRequestLine;
+import alpha.nomagichttp.message.RawRequest;
 import alpha.nomagichttp.message.RequestLineParseException;
 import alpha.nomagichttp.testutil.ByteBuffers;
 import org.assertj.core.api.AbstractListAssert;
@@ -120,7 +120,7 @@ final class RequestLineSubscriberTest
                 msg=Whitespace in HTTP-version not accepted.}""");
     }
     
-    private CompletionStage<RawRequestLine> execute(String... items) {
+    private CompletionStage<RawRequest.Line> execute(String... items) {
         var rls = new RequestLineSubscriber(9_999, mock(ClientChannel.class));
         var up = map(just(items), ByteBuffers::toByteBufferPooled);
         up.subscribe(rls);
@@ -128,7 +128,7 @@ final class RequestLineSubscriberTest
     }
     
     private AbstractListAssert<?, List<?>, Object, ObjectAssert<Object>>
-        assertResult(CompletionStage<RawRequestLine> actual) {
+        assertResult(CompletionStage<RawRequest.Line> actual) {
             return assertSucceeded(actual).extracting(
                 "method", "target", "httpVersion", "parseLength");
     }

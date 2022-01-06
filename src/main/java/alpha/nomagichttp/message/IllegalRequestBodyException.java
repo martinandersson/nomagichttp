@@ -23,7 +23,7 @@ import static java.util.Objects.requireNonNull;
 public class IllegalRequestBodyException extends RuntimeException
 {
     private static final long serialVersionUID = 1L;
-    private final RequestHead head;
+    private final RawRequest.Head head;
     private final Request.Body body;
     
     /**
@@ -36,7 +36,7 @@ public class IllegalRequestBodyException extends RuntimeException
      * @throws NullPointerException
      *             if {@code head} or {@code body} is {@code null}
      */
-    public IllegalRequestBodyException(RequestHead head, Request.Body body, String message) {
+    public IllegalRequestBodyException(RawRequest.Head head, Request.Body body, String message) {
         super(message);
         this.head = requireNonNull(head);
         this.body = requireNonNull(body);
@@ -47,7 +47,7 @@ public class IllegalRequestBodyException extends RuntimeException
      * 
      * @return the request head (never {@code null})
      */
-    public RequestHead head() {
+    public RawRequest.Head head() {
         return head;
     }
     

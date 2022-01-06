@@ -1,6 +1,6 @@
 package alpha.nomagichttp.event;
 
-import alpha.nomagichttp.message.RequestHead;
+import alpha.nomagichttp.message.RawRequest;
 
 /**
  * A request head has been received by the HTTP server.<p>
@@ -12,8 +12,8 @@ import alpha.nomagichttp.message.RequestHead;
  * 
  * The intended purpose of this event is to gather metrics.<p>
  * 
- * The first attachment given to the listener is the {@link RequestHead}. The
- * second attachment is an instance of {@link Stats}.
+ * The first attachment given to the listener is the {@link RawRequest.Head}.
+ * The second attachment is an instance of {@link Stats}.
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  */
@@ -38,7 +38,7 @@ public enum RequestHeadReceived {
     public static final class Stats extends AbstractByteCountedStats
     {
         /**
-         * Constructs this object.
+         * Initializes this object.
          * 
          * @param start {@link System#nanoTime()} on start
          * @param stop  {@link System#nanoTime()} on stop

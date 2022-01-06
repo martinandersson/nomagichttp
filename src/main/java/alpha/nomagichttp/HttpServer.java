@@ -15,7 +15,7 @@ import alpha.nomagichttp.internal.DefaultServer;
 import alpha.nomagichttp.message.HttpVersionTooOldException;
 import alpha.nomagichttp.message.IllegalRequestBodyException;
 import alpha.nomagichttp.message.IllegalResponseBodyException;
-import alpha.nomagichttp.message.RequestHead;
+import alpha.nomagichttp.message.RawRequest;
 import alpha.nomagichttp.message.Response;
 import alpha.nomagichttp.message.Responses;
 import alpha.nomagichttp.route.Route;
@@ -460,8 +460,8 @@ public interface HttpServer extends RouteRegistry, ActionRegistry
      *   </tr>
      *   <tr>
      *     <th scope="row"> {@link RequestHeadReceived} </th>
-     *     <td> {@link RequestHead} </td>
-     *     <td> {@code null} </td>
+     *     <td> {@link RawRequest.Head} </td>
+     *     <td> {@link RequestHeadReceived.Stats} </td>
      *   </tr>
      *   <tr>
      *     <th scope="row"> {@link ResponseSent} </th>

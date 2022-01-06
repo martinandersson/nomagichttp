@@ -12,9 +12,8 @@ import alpha.nomagichttp.message.DefaultContentHeaders;
 import alpha.nomagichttp.message.HttpVersionTooNewException;
 import alpha.nomagichttp.message.HttpVersionTooOldException;
 import alpha.nomagichttp.message.IllegalRequestBodyException;
-import alpha.nomagichttp.message.RawRequestLine;
+import alpha.nomagichttp.message.RawRequest;
 import alpha.nomagichttp.message.Request;
-import alpha.nomagichttp.message.RequestHead;
 import alpha.nomagichttp.message.RequestHeadTimeoutException;
 import alpha.nomagichttp.message.Response;
 import alpha.nomagichttp.util.SerialExecutor;
@@ -103,7 +102,7 @@ final class HttpExchange
      * new Thread.start() for each task.
      */
     
-    private RequestHead head;
+    private RawRequest.Head head;
     private Version version;
     private SkeletonRequest reqThin;
     private Request reqFat;
@@ -134,7 +133,7 @@ final class HttpExchange
      * 
      * @return the parsed request head, if available, otherwise {@code null}
      */
-    RequestHead getRequestHead() {
+    RawRequest.Head getRequestHead() {
         return head;
     }
     
@@ -209,7 +208,7 @@ final class HttpExchange
         pipe.on(RequestCreated.class, save);
     }
     
-    private CompletionStage<RawRequestLine> parseRequestLine() {
+    private CompletionStage<RawRequest.Line> parseRequestLine() {
         RequestLineSubscriber rls = new RequestLineSubscriber(
                 config.maxRequestHeadSize(), chApi);
         var to = new TimeoutOp.Flow<>(false, true, chIn, config.timeoutIdleConnection(), () -> {
@@ -225,7 +224,7 @@ final class HttpExchange
         return rls.asCompletionStage();
     }
     
-    private CompletionStage<RequestHead> parseRequestHeaders(RawRequestLine l) {
+    private CompletionStage<RawRequest.Head> parseRequestHeaders(RawRequest.Line l) {
         HeadersSubscriber<Request.Headers> sub = forRequestHeaders(
                 l.parseLength(), config.maxRequestHeadSize(), chApi);
         // TODO: DRY from parseRequestLine(),
@@ -241,7 +240,7 @@ final class HttpExchange
         to.subscribe(sub);
         to.start();
         return sub.asCompletionStage().thenApply(headers -> {
-            var h = new RequestHead(l, headers);
+            var h = new RawRequest.Head(l, headers);
             server.events().dispatchLazy(RequestHeadReceived.INSTANCE, () -> h, () ->
                     new RequestHeadReceived.Stats(
                             l.nanoTimeOnStart(),
@@ -251,7 +250,7 @@ final class HttpExchange
         });
     }
     
-    private void initialize(RequestHead h) {
+    private void initialize(RawRequest.Head h) {
         head = h;
         
         version = parseHttpVersion(h.line().httpVersion());
@@ -300,7 +299,7 @@ final class HttpExchange
         }
     }
     
-    private RequestBody createBody(RequestHead h) {
+    private RequestBody createBody(RawRequest.Head h) {
         return RequestBody.of((DefaultContentHeaders) h.headers(), chIn, chApi,
                 config.timeoutIdleConnection(),
                 this::tryRespond100Continue);

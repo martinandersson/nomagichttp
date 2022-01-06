@@ -2,8 +2,8 @@ package alpha.nomagichttp.mediumtest;
 
 import alpha.nomagichttp.event.RequestHeadReceived;
 import alpha.nomagichttp.handler.RequestHandler;
+import alpha.nomagichttp.message.RawRequest;
 import alpha.nomagichttp.message.Request;
-import alpha.nomagichttp.message.RequestHead;
 import alpha.nomagichttp.message.Response;
 import alpha.nomagichttp.message.Responses;
 import alpha.nomagichttp.route.NoRouteFoundException;
@@ -396,7 +396,7 @@ class ExampleTest extends AbstractRealTest
     void CountRequestsByMethod() throws IOException, InterruptedException {
         final Map<String, LongAdder> freqs = new ConcurrentHashMap<>();
         
-        BiConsumer<RequestHeadReceived, RequestHead> incrementer = (event, head) ->
+        BiConsumer<RequestHeadReceived, RawRequest.Head> incrementer = (event, head) ->
                 freqs.computeIfAbsent(head.line().method(), m -> new LongAdder()).increment();
         
         // We don't need to add routes here, sort of the whole point lol
