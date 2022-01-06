@@ -52,7 +52,7 @@ public enum ResponseSent {
             return ResponseSent.class.getSimpleName() + '.' + Stats.class.getSimpleName() + "{" +
                     "start=" + nanoTimeOnStart() +
                     ", stop=" + nanoTimeOnStop() +
-                    ", bytes=" + bytes() + '}';
+                    ", byteCount=" + byteCount() + '}';
         }
     }
 }

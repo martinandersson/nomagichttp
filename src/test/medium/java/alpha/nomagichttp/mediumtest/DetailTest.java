@@ -358,7 +358,7 @@ class DetailTest extends AbstractRealTest
         
         assertThat(s.elapsedDuration()).isGreaterThanOrEqualTo(ZERO);
         assertThat(s.elapsedDuration()).isLessThanOrEqualTo(expDur);
-        assertThat(s.bytes()).isEqualTo(exchToExpByteCnt.applyAsLong(req + CRLF, rsp));
+        assertThat(s.byteCount()).isEqualTo(exchToExpByteCnt.applyAsLong(req + CRLF, rsp));
     }
     
     private static class AfterByteTargetStop implements Flow.Subscriber<PooledByteBufferHolder>

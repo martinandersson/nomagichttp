@@ -53,7 +53,7 @@ public enum RequestHeadReceived {
             return RequestHeadReceived.class.getSimpleName() + '.' + Stats.class.getSimpleName() + "{" +
                     "start=" + nanoTimeOnStart() +
                     ", stop=" + nanoTimeOnStop() +
-                    ", bytes=" + bytes() + '}';
+                    ", byteCount=" + byteCount() + '}';
         }
     }
 }
