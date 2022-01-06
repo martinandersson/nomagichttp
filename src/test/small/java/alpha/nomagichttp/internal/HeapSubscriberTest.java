@@ -68,7 +68,7 @@ final class HeapSubscriberTest
     
     private String actual() {
         try {
-            return testee.asCompletionStage().toCompletableFuture().get(1, SECONDS);
+            return testee.toCompletionStage().toCompletableFuture().get(1, SECONDS);
         } catch (InterruptedException | ExecutionException | TimeoutException e) {
             throw new RuntimeException(e);
         }

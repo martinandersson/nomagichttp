@@ -40,7 +40,7 @@ import static java.util.Objects.requireNonNull;
  * One known use-case for the lazy-head behavior, however, is an illegal body to
  * a HEAD/CONNECT request - which, can only reliably be identifier by this
  * class. The resulting {@code IllegalResponseBodyException} is an exception
- * this subscriber signals through the {@link #asCompletionStage() result
+ * this subscriber signals through the {@link #toCompletionStage() result
  * stage}.<p>
  * 
  * This class do expect to get a {@link ResponseTimeoutException} from the
@@ -113,7 +113,7 @@ final class ResponseBodySubscriber implements SubscriberStage<ByteBuffer, Long>
      * @return the response-body-to-channel write process as a stage
      */
     @Override
-    public CompletionStage<Long> asCompletionStage() {
+    public CompletionStage<Long> toCompletionStage() {
         return resu;
     }
     

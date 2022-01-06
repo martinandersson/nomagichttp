@@ -13,9 +13,7 @@ import static java.lang.System.Logger.Level.ERROR;
 import static java.lang.System.Logger.Level.WARNING;
 
 /**
- * A subscriber of bytebuffers parsed into a complex result.<p>
- * 
- * The result is accessible using {@link #asCompletionStage()}.
+ * A subscriber of bytebuffers parsed into a complex result.
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  */
@@ -30,7 +28,7 @@ abstract class AbstractByteSubscriber<R>
     private int read;
     
     @Override
-    public final CompletionStage<R> asCompletionStage() {
+    public final CompletionStage<R> toCompletionStage() {
         return res;
     }
     

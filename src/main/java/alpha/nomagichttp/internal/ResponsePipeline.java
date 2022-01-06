@@ -440,7 +440,7 @@ final class ResponsePipeline extends AbstractLocalEventEmitter
         });
         var sub = new ResponseBodySubscriber(rsp, exch, chApi);
         body.subscribe(sub);
-        return sub.asCompletionStage();
+        return sub.toCompletionStage();
     }
     
     private void handleResult(/* This: */ Long bytesWritten, /* Or: */ Throwable thr) {

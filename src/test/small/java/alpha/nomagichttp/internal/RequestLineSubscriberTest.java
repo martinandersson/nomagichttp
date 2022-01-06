@@ -124,7 +124,7 @@ final class RequestLineSubscriberTest
         var rls = new RequestLineSubscriber(9_999, mock(ClientChannel.class));
         var up = map(just(items), ByteBuffers::toByteBufferPooled);
         up.subscribe(rls);
-        return rls.asCompletionStage();
+        return rls.toCompletionStage();
     }
     
     private AbstractListAssert<?, List<?>, Object, ObjectAssert<Object>>

@@ -7,8 +7,8 @@ import java.util.concurrent.Flow;
 import static java.util.Objects.requireNonNull;
 
 /**
- * A single-use subscriber that processes items into an end-result retrievable
- * using {@link #asCompletionStage()}.<p>
+ * A single-use subscriber that processes items into a result retrievable using
+ * {@link #toCompletionStage()}.<p>
  * 
  * If the subscriber is used more than once, it will throw an {@code
  * IllegalStateException} on the thread calling {@code onSubscribe()}. There's
@@ -18,12 +18,14 @@ import static java.util.Objects.requireNonNull;
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  * 
- * @param <T> item type of subscriber
- * @param <R> result type of stage
+ * @param <T> subscribed item type
+ * @param <R> result type
  */
 interface SubscriberStage<T, R> extends Flow.Subscriber<T>
 {
     /**
+     * Returns the subscription result.<p>
+     * 
      * The returned stage supports being cast to {@link
      * CompletableFuture}.<p>
      * 
@@ -33,7 +35,7 @@ interface SubscriberStage<T, R> extends Flow.Subscriber<T>
      * 
      * @return this as a completion stage
      */
-    CompletionStage<R> asCompletionStage();
+    CompletionStage<R> toCompletionStage();
     
     /**
      * Returns {@code argument} if {@code field} is {@code null}.<p>

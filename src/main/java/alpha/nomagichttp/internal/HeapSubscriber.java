@@ -44,7 +44,7 @@ final class HeapSubscriber<R> implements SubscriberStage<PooledByteBufferHolder,
     }
     
     @Override
-    public CompletionStage<R> asCompletionStage() {
+    public CompletionStage<R> toCompletionStage() {
         return result;
     }
     

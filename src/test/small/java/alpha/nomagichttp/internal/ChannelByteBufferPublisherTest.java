@@ -89,6 +89,6 @@ class ChannelByteBufferPublisherTest
     }
     
     private static <R> R get(HeapSubscriber<R> subscriber) throws InterruptedException, ExecutionException, TimeoutException {
-        return subscriber.asCompletionStage().toCompletableFuture().get(3, SECONDS);
+        return subscriber.toCompletionStage().toCompletableFuture().get(3, SECONDS);
     }
 }

@@ -63,7 +63,7 @@ final class FileSubscriber implements SubscriberStage<PooledByteBufferHolder, Lo
     }
     
     @Override
-    public CompletionStage<Long> asCompletionStage() {
+    public CompletionStage<Long> toCompletionStage() {
         return result;
     }
     
