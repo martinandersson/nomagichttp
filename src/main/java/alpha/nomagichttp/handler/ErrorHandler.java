@@ -190,16 +190,16 @@ public interface ErrorHandler
      *   </thead>
      *   <tbody>
      *   <tr>
-     *     <th scope="row"> {@link RequestHeadParseException} </th>
-     *     <td> None </td>
-     *     <td> No </td>
-     *     <td> {@link Responses#badRequest()} </td>
-     *   </tr>
-     *   <tr>
      *     <th scope="row"> {@link MaxRequestHeadSizeExceededException} </th>
      *     <td> None </td>
      *     <td> Yes </td>
      *     <td> {@link Responses#entityTooLarge()} </td>
+     *   </tr>
+     *   <tr>
+     *     <th scope="row"> {@link RequestHeadParseException} </th>
+     *     <td> None </td>
+     *     <td> No </td>
+     *     <td> {@link Responses#badRequest()} </td>
      *   </tr>
      *   <tr>
      *     <th scope="row"> {@link HttpVersionParseException} </th>
@@ -351,6 +351,9 @@ public interface ErrorHandler
         final Response res;
         try {
             throw thr;
+        } catch (MaxRequestHeadSizeExceededException e) {
+            log(thr);
+            res = entityTooLarge();
         } catch (RequestHeadParseException   |
                  HttpVersionParseException   |
                  BadHeaderException          |
@@ -358,10 +361,7 @@ public interface ErrorHandler
                  IllegalRequestBodyException |
                  DecoderException e) {
             res = badRequest();
-        } catch (MaxRequestHeadSizeExceededException e) {
-            log(thr);
-            res = entityTooLarge();
-        } catch (HttpVersionTooOldException e) {
+        }  catch (HttpVersionTooOldException e) {
             res = upgradeRequired(e.getUpgrade());
         } catch (HttpVersionTooNewException e) {
             res = httpVersionNotSupported();
