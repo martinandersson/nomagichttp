@@ -116,11 +116,12 @@ import static java.util.Objects.requireNonNull;
  * 
  * An example of a reusable {@code PushPullUnicastPublisher} is the HTTP
  * server's low-level child channel ({@code ChannelByteBufferPublisher}). The
- * channel publishes to a series of subscribers, e.g. first to a request head
- * parser then to a request body consumer. The channel (or rather, the channel
- * in combination with a downstream operator) publishes only one bytebuffer at a
- * time which upon release, if there are bytes remaining, will be recycled and
- * published to the next subscriber.<p>
+ * channel publishes to a series of subscribers, e.g. first to a request line
+ * parser, then to an HTTP headers parser, then to a request body consumer and
+ * so the cycle continues. The channel (or rather, the channel in combination
+ * with a downstream operator) publishes only one bytebuffer at a time which
+ * upon release, if there are bytes remaining, will be recycled and published to
+ * the next subscriber.<p>
  * 
  * An example of a non-reusable {@code PushPullUnicastPublisher} is the new
  * instance created for each new subscription by which {@link
