@@ -23,10 +23,10 @@ public interface ContentHeaders extends BetterHeaders
      * @return parsed value (never {@code null})
      * 
      * @throws BadHeaderException
-     *           if the headers has multiple Content-Type keys, or
+     *           if the headers has multiple Content-Type values, or
      *           if parsing failed (cause set to {@link MediaTypeParseException})
      * 
-     * @see HttpConstants.HeaderKey#CONTENT_TYPE
+     * @see HttpConstants.HeaderName#CONTENT_TYPE
      */
     Optional<MediaType> contentType();
     
@@ -43,11 +43,11 @@ public interface ContentHeaders extends BetterHeaders
      * @return parsed value (never {@code null})
      * 
      * @throws BadHeaderException
-     *             if the headers has multiple Content-Length keys, or
+     *             if the headers has multiple Content-Length values, or
      *             if parsing failed (cause set to {@link NumberFormatException}), or
      *             if the parsed value is negative
      * 
-     * @see HttpConstants.HeaderKey#CONTENT_LENGTH
+     * @see HttpConstants.HeaderName#CONTENT_LENGTH
      */
     OptionalLong contentLength();
 }

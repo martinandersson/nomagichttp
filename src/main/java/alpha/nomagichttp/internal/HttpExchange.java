@@ -28,8 +28,8 @@ import java.util.concurrent.CompletionStage;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.BiConsumer;
 
-import static alpha.nomagichttp.HttpConstants.HeaderKey.CONNECTION;
-import static alpha.nomagichttp.HttpConstants.HeaderKey.EXPECT;
+import static alpha.nomagichttp.HttpConstants.HeaderName.CONNECTION;
+import static alpha.nomagichttp.HttpConstants.HeaderName.EXPECT;
 import static alpha.nomagichttp.HttpConstants.Method.TRACE;
 import static alpha.nomagichttp.HttpConstants.Version.HTTP_1_0;
 import static alpha.nomagichttp.HttpConstants.Version.HTTP_1_1;

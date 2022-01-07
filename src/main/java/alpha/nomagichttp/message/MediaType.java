@@ -98,7 +98,7 @@ import static java.util.stream.Collectors.joining;
  * is relevant for all but the value of the "charset" parameter of "text/*".
  * 
  * 
- * @see HttpConstants.HeaderKey#CONTENT_TYPE
+ * @see HttpConstants.HeaderName#CONTENT_TYPE
  * @see <a href="https://tools.ietf.org/html/rfc7231#section-3.1.1">RFC 7231 §3.1.1</a>
  * @author Martin Andersson (webmaster at martinandersson.com)
  */

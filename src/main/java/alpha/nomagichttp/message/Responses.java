@@ -16,10 +16,10 @@ import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.function.ToDoubleFunction;
 
-import static alpha.nomagichttp.HttpConstants.HeaderKey.CONNECTION;
-import static alpha.nomagichttp.HttpConstants.HeaderKey.CONTENT_LENGTH;
-import static alpha.nomagichttp.HttpConstants.HeaderKey.CONTENT_TYPE;
-import static alpha.nomagichttp.HttpConstants.HeaderKey.UPGRADE;
+import static alpha.nomagichttp.HttpConstants.HeaderName.CONNECTION;
+import static alpha.nomagichttp.HttpConstants.HeaderName.CONTENT_LENGTH;
+import static alpha.nomagichttp.HttpConstants.HeaderName.CONTENT_TYPE;
+import static alpha.nomagichttp.HttpConstants.HeaderName.UPGRADE;
 import static alpha.nomagichttp.HttpConstants.ReasonPhrase.ACCEPTED;
 import static alpha.nomagichttp.HttpConstants.ReasonPhrase.BAD_REQUEST;
 import static alpha.nomagichttp.HttpConstants.ReasonPhrase.CONTINUE;
@@ -359,7 +359,7 @@ public final class Responses
      * @return a new 200 (OK) response
      * 
      * @see StatusCode#TWO_HUNDRED
-     * @see HttpConstants.HeaderKey#CONTENT_TYPE
+     * @see HttpConstants.HeaderName#CONTENT_TYPE
      */
     public static Response ok(BodyPublisher body, String contentType) {
         return CACHE.get(TWO_HUNDRED, OK).toBuilder()
@@ -377,7 +377,7 @@ public final class Responses
      * @return a new 200 (OK) response
      * 
      * @see StatusCode#TWO_HUNDRED
-     * @see HttpConstants.HeaderKey#CONTENT_TYPE
+     * @see HttpConstants.HeaderName#CONTENT_TYPE
      */
     public static Response ok(BodyPublisher body, MediaType contentType) {
         return ok(body, contentType.toString());
@@ -405,8 +405,8 @@ public final class Responses
      * 
      * @see StatusCode#TWO_HUNDRED
      * @see Response.Builder#body(Flow.Publisher)
-     * @see HttpConstants.HeaderKey#CONTENT_TYPE
-     * @see HttpConstants.HeaderKey#CONTENT_LENGTH
+     * @see HttpConstants.HeaderName#CONTENT_TYPE
+     * @see HttpConstants.HeaderName#CONTENT_LENGTH
      */
     public static Response ok(Flow.Publisher<ByteBuffer> body, String contentType, long contentLength) {
         Response.Builder b = CACHE.get(TWO_HUNDRED, OK).toBuilder()
@@ -437,8 +437,8 @@ public final class Responses
      * 
      * @see StatusCode#TWO_HUNDRED
      * @see Response.Builder#body(Flow.Publisher) 
-     * @see HttpConstants.HeaderKey#CONTENT_TYPE
-     * @see HttpConstants.HeaderKey#CONTENT_LENGTH
+     * @see HttpConstants.HeaderName#CONTENT_TYPE
+     * @see HttpConstants.HeaderName#CONTENT_LENGTH
      */
     public static Response ok(Flow.Publisher<ByteBuffer> body, MediaType contentType, long contentLength) {
         return ok(body, contentType.toString(), contentLength);

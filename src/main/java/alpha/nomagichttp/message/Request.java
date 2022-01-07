@@ -526,13 +526,14 @@ public interface Request extends HeaderHolder, AttributeHolder
         /**
          * Parses all "Accept" values.
          * 
-         * @return parsed values (unmodifiable, {@link RandomAccess}, not {@code null})
+         * @return parsed values
+         *         (unmodifiable, {@link RandomAccess}, not {@code null})
          * 
          * @throws BadHeaderException
          *             if parsing failed (the cause is set to a
          *             {@link MediaTypeParseException})
          * 
-         * @see HttpConstants.HeaderKey#ACCEPT
+         * @see HttpConstants.HeaderName#ACCEPT
          * @see MediaType#parse(String) 
          */
         List<MediaType> accept();
@@ -775,7 +776,7 @@ public interface Request extends HeaderHolder, AttributeHolder
          * complete exceptionally with (but not limited to):<p> 
          * 
          * {@link BadHeaderException}
-         *     if headers has multiple Content-Type keys.<p>
+         *     if headers has multiple Content-Type values.<p>
          * {@link IllegalCharsetNameException}
          *     if the charset name is illegal (for example, "123").<p>
          * {@link UnsupportedCharsetException}

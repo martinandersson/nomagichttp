@@ -74,7 +74,7 @@ public abstract class NoHandlerResolvedException extends RuntimeException
      * Returns the "Content-Type" request header value.
      * 
      * @return Content-Type (may be {@code null})
-     * @see HttpConstants.HeaderKey#CONTENT_TYPE
+     * @see HttpConstants.HeaderName#CONTENT_TYPE
      */
     public MediaType getContentType() {
         return contentType;
@@ -88,7 +88,7 @@ public abstract class NoHandlerResolvedException extends RuntimeException
      * behavior.
      * 
      * @return Accept (may be {@code null})
-     * @see HttpConstants.HeaderKey#ACCEPT
+     * @see HttpConstants.HeaderName#ACCEPT
      */
     public Collection<MediaType> getAccepts() {
         return accepts;

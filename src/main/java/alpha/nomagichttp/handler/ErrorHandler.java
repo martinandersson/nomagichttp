@@ -32,7 +32,7 @@ import alpha.nomagichttp.route.NoRouteFoundException;
 import java.util.concurrent.CompletionException;
 import java.util.stream.Stream;
 
-import static alpha.nomagichttp.HttpConstants.HeaderKey.ALLOW;
+import static alpha.nomagichttp.HttpConstants.HeaderName.ALLOW;
 import static alpha.nomagichttp.HttpConstants.Method.OPTIONS;
 import static alpha.nomagichttp.HttpConstants.Version.HTTP_1_1;
 import static alpha.nomagichttp.handler.ResponseRejectedException.Reason;
@@ -250,7 +250,7 @@ public interface ErrorHandler
      *          {@link Config#implementMissingOptions()} returns {@code true}</td>
      *     <td> No </td>
      *     <td> {@link Responses#noContent()} with the header
-     *          {@value HttpConstants.HeaderKey#ALLOW} populated.</td>
+     *          {@value HttpConstants.HeaderName#ALLOW} populated.</td>
      *   </tr>
      *   <tr>
      *     <th scope="row"> {@link MethodNotAllowedException} </th>
@@ -258,7 +258,7 @@ public interface ErrorHandler
      *          {@link Config#implementMissingOptions()} returns {@code false}</td>
      *     <td> Yes </td>
      *     <td> {@link Responses#methodNotAllowed()} with the header
-     *          {@value HttpConstants.HeaderKey#ALLOW} populated.</td>
+     *          {@value HttpConstants.HeaderName#ALLOW} populated.</td>
      *   </tr>
      *   <tr>
      *     <th scope="row"> {@link MediaTypeNotAcceptedException} </th>

@@ -19,22 +19,22 @@ import static java.util.Objects.requireNonNull;
  * and/or parse named- and message-specific headers, e.g. {@link
  * ContentHeaders#contentType()} and {@link Request.Headers#accept()}.<p>
  * 
- * Header keys- and values will retain letter capitalization as received on the
+ * Header names- and values will retain letter capitalization as received on the
  * wire but are case-insensitive when querying using operations provided by an
  * implementation of this interface.
  * 
  * <pre>
  *   BetterHeaders headers = // from "FOO: bar"
- *   headers.delegate().map() // key = FOO, value = bar
+ *   headers.delegate().map() // name = FOO, value = bar
  *   headers.allTokens("foo") // returns "bar"
  *   headers.contain("foo", "BAR") // true
  * </pre>
  * 
- * Header key- and values will not contain leading and trailing whitespace. The
- * key will never contain whitespace at all. The key can not be empty, the value
- * can be empty.<p>
+ * Header name- and values will not contain leading and trailing whitespace. The
+ * name will never contain whitespace at all. The name can not be empty, the
+ * value can be empty.<p>
  * 
- * The order of header keys is not specified (see {@link HttpHeaders}) nor is
+ * The order of header names is not specified (see {@link HttpHeaders}) nor is
  * the order significant (<a href="https://tools.ietf.org/html/rfc7230#section-3.2.2">RFC 7230 §3.2.2</a>)
  * .<p>
  * 
@@ -53,7 +53,7 @@ import static java.util.Objects.requireNonNull;
  * {@code equals} method should be used for comparisons.
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
- * @see HttpConstants.HeaderKey
+ * @see HttpConstants.HeaderName
  */
 public interface BetterHeaders
 {
@@ -89,16 +89,16 @@ public interface BetterHeaders
      * @implSpec
      * The default implementation uses {@link #delegate()}.
      * 
-     * @param headerKey header key filter
+     * @param headerName header name filter
      * @param valueSubstring value substring to look for
      * 
      * @return {@code true} if found, otherwise {@code false}
      * 
      * @throws NullPointerException if any argument is {@code null}
      */
-    default boolean contain(String headerKey, String valueSubstring) {
+    default boolean contain(String headerName, String valueSubstring) {
         // NPE is unfortunately not documented in JDK
-        return delegate().allValues(requireNonNull(headerKey)).stream()
+        return delegate().allValues(requireNonNull(headerName)).stream()
                 .anyMatch(v -> containsIgnoreCase(v, valueSubstring));
     }
     
@@ -109,16 +109,16 @@ public interface BetterHeaders
      * @implSpec
      * The default implementation uses {@link #delegate()}.
      * 
-     * @param key of header
+     * @param name of header
      * 
      * @return {@code true} if the given header is missing or all of its mapped
      *         values are empty, otherwise {@code false}
      * 
-     * @throws NullPointerException if {@code key} is {@code null}
+     * @throws NullPointerException if {@code name} is {@code null}
      */
-    default boolean isMissingOrEmpty(String key) {
-        requireNonNull(key);
-        List<String> vals = delegate().allValues(key);
+    default boolean isMissingOrEmpty(String name) {
+        requireNonNull(name);
+        List<String> vals = delegate().allValues(name);
         if (vals.isEmpty()) {
             return true;
         }

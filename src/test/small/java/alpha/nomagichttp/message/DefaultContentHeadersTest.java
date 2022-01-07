@@ -13,12 +13,12 @@ class DefaultContentHeadersTest
 {
     @Test
     void caseIsRetained_butQueryingIsNotCaseSensitive() {
-        var testee = of("key", "VALUE");
+        var testee = of("name", "VALUE");
         assertThat(testee.delegate().map())
-                .containsExactly(entry("key", List.of("VALUE")));
-        assertThat(testee.allTokens("KEY"))
+                .containsExactly(entry("name", List.of("VALUE")));
+        assertThat(testee.allTokens("NAME"))
                 .containsOnly("VALUE");
-        assertThat(testee.contain("KEY", "value"))
+        assertThat(testee.contain("NAME", "value"))
                 .isTrue();
     }
     

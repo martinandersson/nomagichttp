@@ -16,8 +16,8 @@ import java.util.List;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ConcurrentLinkedDeque;
 
-import static alpha.nomagichttp.HttpConstants.HeaderKey.CONNECTION;
-import static alpha.nomagichttp.HttpConstants.HeaderKey.CONTENT_LENGTH;
+import static alpha.nomagichttp.HttpConstants.HeaderName.CONNECTION;
+import static alpha.nomagichttp.HttpConstants.HeaderName.CONTENT_LENGTH;
 import static alpha.nomagichttp.HttpConstants.StatusCode.ONE_HUNDRED;
 import static alpha.nomagichttp.HttpConstants.StatusCode.isClientError;
 import static alpha.nomagichttp.HttpConstants.StatusCode.isServerError;

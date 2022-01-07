@@ -353,7 +353,7 @@ public interface Config
      * enabled - respond a <i>successful</i> 204 (No Content). Had this
      * configuration not been enabled, the response would have been a <i>client
      * error</i> 405 (Method Not Allowed). In both cases, the {@value
-     * HttpConstants.HeaderKey#ALLOW} header will be set and populated with all
+     * HttpConstants.HeaderName#ALLOW} header will be set and populated with all
      * the HTTP methods that are indeed implemented. So there's really no other
      * difference between the two outcomes, other than the status code.<p>
      * 

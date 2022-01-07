@@ -17,7 +17,7 @@ import static java.util.OptionalInt.of;
 /**
  * Namespace of constants related to the HTTP protocol.<p>
  * 
- * For values to use in a {@link HeaderKey#CONTENT_TYPE Content-Type} header,
+ * For values to use in a {@link HeaderName#CONTENT_TYPE Content-Type} header,
  * see {@link MediaType}.
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
@@ -112,7 +112,7 @@ public final class HttpConstants {
          * Generally, the POST request is the preferred method of transmitting
          * data to a target processor on the server. Often, the request payload
          * represents a new resource to create and the server responds with a
-         * {@link HeaderKey#LOCATION Location} header set which identifies the
+         * {@link HeaderName#LOCATION Location} header set which identifies the
          * new resource.<p>
          * 
          * For example, posting an element to a collection. In this case, if the
@@ -194,7 +194,7 @@ public final class HttpConstants {
          * contrast, contains the entire modified resource. Another difference
          * is that PATCH is not by definition idempotent, unless the request is
          * made conditional (for example by adding a {@link
-         * HeaderKey#IF_MATCH If-Match} header).<p>
+         * HeaderName#IF_MATCH If-Match} header).<p>
          * 
          * Depending on the server endpoint's semantics, a PATCH may just like
          * PUT create a new resource if it didn't already exist. This is
@@ -268,7 +268,7 @@ public final class HttpConstants {
          * Safe? No. Idempotent? No. Response cacheable? No.
          * 
          * @see Method
-         * @see HeaderKey#ACCEPT_PATCH
+         * @see HeaderName#ACCEPT_PATCH
          * @see <a href="https://tools.ietf.org/html/rfc5789">RFC 5789</a>
          */
         public static final String PATCH = "PATCH";
@@ -364,7 +364,7 @@ public final class HttpConstants {
          * 
          * Clients using TRACE are usually interested in tracing the request
          * chain, of particular interest to this effect is the echoed {@link
-         * HeaderKey#VIA Via} header as it will list all intermediaries.
+         * HeaderName#VIA Via} header as it will list all intermediaries.
          * 
          * Both client and server should exclude passing sensitive data, such as
          * cookies with user credentials. Due to the inherit security risk of
@@ -377,7 +377,7 @@ public final class HttpConstants {
          * Safe? Yes. Idempotent? Yes. Response cacheable? No.
          * 
          * @see Method
-         * @see HeaderKey#MAX_FORWARDS
+         * @see HeaderName#MAX_FORWARDS
          * @see StatusCode#FIVE_HUNDRED_ONE
          * @see <a href="https://tools.ietf.org/html/rfc7231#section-4.3.8">RFC 7231 §4.3.8</a>
          */
@@ -534,7 +534,7 @@ public final class HttpConstants {
          * The server has received the request headers and accepted them, the
          * client may proceed to transmit the request body.<p>
          * 
-         * A client may add an {@link HeaderKey#EXPECT Expect: 100-continue}
+         * A client may add an {@link HeaderName#EXPECT Expect: 100-continue}
          * header in the request and after having transmitted the request head,
          * wait momentarily for either a rejection of the message or a 100
          * (Continue) response which triggers the client to proceed transmitting
@@ -564,7 +564,7 @@ public final class HttpConstants {
          * {@value} {@value ReasonPhrase#SWITCHING_PROTOCOLS}.<p>
          * 
          * The server accepted a protocol upgrade request from the client and
-         * should also include in the {@link HeaderKey#UPGRADE Upgrade} header
+         * should also include in the {@link HeaderName#UPGRADE Upgrade} header
          * which protocol will be used immediately after the empty line that
          * terminates the 101 interim response.<p>
          * 
@@ -661,7 +661,7 @@ public final class HttpConstants {
          * There's no need to use early hints should the final response already
          * be immediately available.
          * 
-         * @see HeaderKey#LINK
+         * @see HeaderName#LINK
          * @see <a href="https://tools.ietf.org/html/rfc8297">RFC 8297</a>
          */
         public static final int ONE_HUNDRED_THREE = 103;
@@ -828,7 +828,7 @@ public final class HttpConstants {
          * 
          * TODO: write something
          * 
-         * @see HeaderKey#IF_MODIFIED_SINCE
+         * @see HeaderName#IF_MODIFIED_SINCE
          * @see <a href="https://tools.ietf.org/html/rfc7232#section-4.1">RFC 7232 §4.1</a>
          */
         public static final int THREE_HUNDRED_FOUR = 304;
@@ -874,7 +874,7 @@ public final class HttpConstants {
          * 
          * TODO: write something
          * 
-         * @see HeaderKey#WWW_AUTHENTICATE
+         * @see HeaderName#WWW_AUTHENTICATE
          * @see <a href="https://tools.ietf.org/html/rfc7235#section-3.1">RFC 7235 §3.1</a>
          */
         public static final int FOUR_HUNDRED_ONE = 401;
@@ -913,7 +913,7 @@ public final class HttpConstants {
          * route/resource exists, but no request handler is mapped to the
          * request-provided HTTP method.
          * 
-         * @see HeaderKey#ALLOW
+         * @see HeaderName#ALLOW
          * @see <a href="https://tools.ietf.org/html/rfc7231#section-6.5.5">RFC 7231 §6.5.5</a>
          */
         public static final int FOUR_HUNDRED_FIVE = 405;
@@ -1592,18 +1592,13 @@ public final class HttpConstants {
     }
     
     /**
-     * Constants for header keys (also known as header field names).<p>
-     * 
-     * May be useful when reading headers {@linkplain Request#headers() from a
-     * request} or {@linkplain Response.Builder building a response}.<p>
-     * 
-     * The constants provided in this class are mostly derived from
-     * <a href="https://en.wikipedia.org/wiki/List_of_HTTP_header_fields">Wikipedia</a>.
+     * Constants for header names.
      * 
      * @see <a href="https://tools.ietf.org/html/rfc7230#section-3.2">RFC 7230 §3.2</a>
+     * @see <a href="https://en.wikipedia.org/wiki/List_of_HTTP_header_fields">Wikipedia</a>
      */
-    public static final class HeaderKey {
-        private HeaderKey() {
+    public static final class HeaderName {
+        private HeaderName() {
             // Private
         }
         
@@ -1614,7 +1609,7 @@ public final class HttpConstants {
          * 
          * Example: {@code A-IM: feed}<p>
          * 
-         * This header key is never used by the NoMagicHTTP server.
+         * This header name is never used by the NoMagicHTTP server.
          * 
          * @see <a href="https://tools.ietf.org/html/rfc3229#section-10.5.3">RFC 3229 §10.5.3</a>
          */
@@ -1643,7 +1638,7 @@ public final class HttpConstants {
          * 
          * Example: {@code Accept-Patch: text/example;charset=utf-8}<p>
          * 
-         * This header key is never used by the NoMagicHTTP server.
+         * This header name is never used by the NoMagicHTTP server.
          * 
          * @see Method#PATCH
          * @see <a href="https://tools.ietf.org/html/rfc5789#section-3.1">RFC 5789 §3.1</a>
@@ -1688,7 +1683,7 @@ public final class HttpConstants {
          * 
          * Example: {@code Accept-Datetime: Thu, 31 May 2007 20:35:00 GMT}<p>
          * 
-         * This header key is never used by the NoMagicHTTP server.
+         * This header name is never used by the NoMagicHTTP server.
          * 
          * @see <a href="https://tools.ietf.org/html/rfc7089#section-2.1.1">RFC 7089 §2.1.1</a>
          */
@@ -1836,7 +1831,7 @@ public final class HttpConstants {
          * 
          * Example: {@code Age: 12}<p>
          * 
-         * This header key is never used by the NoMagicHTTP server.
+         * This header name is never used by the NoMagicHTTP server.
          * 
          * @see <a href="https://tools.ietf.org/html/rfc7234#section-5.1">RFC 7234 §5.1</a>
          */
@@ -1870,7 +1865,7 @@ public final class HttpConstants {
          * 
          * Example: {@code Alt-Svc: http/1.1="http2.example.com:8001"; ma=7200}<p>
          * 
-         * This header key is never used by the NoMagicHTTP server.
+         * This header name is never used by the NoMagicHTTP server.
          * 
          * @see <a href="https://tools.ietf.org/html/rfc7838#section-3">RFC 7838 §3</a>
          */
@@ -1941,7 +1936,7 @@ public final class HttpConstants {
          * 
          * Example: {@code Content-Disposition: attachment; filename="fname.ext"}<p>
          * 
-         * This header key is not currently used by the NoMagicHTTP server.
+         * This header name is not currently used by the NoMagicHTTP server.
          * Planned support for improving file serving, API extensions and body
          * decoding will make use of this header.
          * 
@@ -1978,7 +1973,7 @@ public final class HttpConstants {
          * 
          * Example: {@code Content-Language: da}<p>
          * 
-         * This header key is never used by the NoMagicHTTP server.
+         * This header name is never used by the NoMagicHTTP server.
          * 
          * @see <a href="https://tools.ietf.org/html/rfc7231#section-3.1.3.2">RFC 7231 §3.1.3.2</a>
          */
@@ -2018,7 +2013,7 @@ public final class HttpConstants {
          * <a href="https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Content-Location">MDN Web Docs</a>
          * )<p>
          * 
-         * This header key is never used by the NoMagicHTTP server.
+         * This header name is never used by the NoMagicHTTP server.
          * 
          * @see #LOCATION
          * @see <a href="https://tools.ietf.org/html/rfc7231#section-3.1.4.2">RFC 7231 §3.1.4.2</a>
@@ -2066,7 +2061,7 @@ public final class HttpConstants {
          * 
          * Applies to the response, not request.<p>
          * 
-         * Currently, the NoMagicHTTP server does not use this header key.
+         * Currently, the NoMagicHTTP server does not use this header name.
          * Future work might add this support.
          */
         public static final String CONTENT_SECURITY_POLICY = "Content-Security-Policy";
@@ -2130,7 +2125,7 @@ public final class HttpConstants {
          * 
          * Example: {@code Delta-Base: "abc"}<p>
          * 
-         * This header key is never used by the NoMagicHTTP server.
+         * This header name is never used by the NoMagicHTTP server.
          * 
          * @see <a href="https://tools.ietf.org/html/rfc3229#section-10.5.1">RFC 3229 §10.5.1</a>
          */
@@ -2172,7 +2167,7 @@ public final class HttpConstants {
          * 
          * Example: {@code DNT: 1}<p>
          * 
-         * This header key is never used by the NoMagicHTTP server.
+         * This header name is never used by the NoMagicHTTP server.
          * 
          * @see #TK
          */
@@ -2189,7 +2184,7 @@ public final class HttpConstants {
          * Example: {@code ETag: "737060cd8c284d8af7ad3082f209582d"}<p>
          * 
          * Currently, the NoMagicHTTP server does not generate or read this
-         * header key. It will be used in the future as part of added support
+         * header name. It will be used in the future as part of added support
          * for HTTP compression and an improved file serving API.
          * 
          * @see #IF_MATCH
@@ -2221,7 +2216,7 @@ public final class HttpConstants {
          * 
          * Example: {@code Expires: Thu, 01 Dec 1994 16:00:00 GMT}<p>
          * 
-         * This header key is never used by the NoMagicHTTP server.
+         * This header name is never used by the NoMagicHTTP server.
          * 
          * @see <a href="https://tools.ietf.org/html/rfc7234#section-5.3">RFC 7234 §5.3</a>
          */
@@ -2240,7 +2235,7 @@ public final class HttpConstants {
          * 
          * Example: {@code Forwarded: for=192.0.2.60;proto=http;by=203.0.113.43}<p>
          * 
-         * This header key is never used by the NoMagicHTTP server.
+         * This header name is never used by the NoMagicHTTP server.
          * 
          * @see <a href="https://tools.ietf.org/html/rfc7239#section-4">RFC 7239 §4</a>
          */
@@ -2253,7 +2248,7 @@ public final class HttpConstants {
          * 
          * Example: {@code From: user@example.com}<p>
          * 
-         * This header key is never used by the NoMagicHTTP server.
+         * This header name is never used by the NoMagicHTTP server.
          * 
          * @see <a href="https://tools.ietf.org/html/rfc7231#section-5.5.1">RFC 7231 §5.5.1</a>
          */
@@ -2268,7 +2263,7 @@ public final class HttpConstants {
          * This is the only required header (since HTTP/1.1) and applies only to
          * requests, not responses.<p>
          * 
-         * This header key is never used by the NoMagicHTTP server.
+         * This header name is never used by the NoMagicHTTP server.
          * 
          * @see <a href="https://tools.ietf.org/html/rfc7230#section-5.4">RFC 7230 §5.4</a>
          */
@@ -2387,7 +2382,7 @@ public final class HttpConstants {
          * 
          * Example: {@code IM: feed}<p>
          * 
-         * This header key is never used by the NoMagicHTTP server.
+         * This header name is never used by the NoMagicHTTP server.
          * 
          * @see <a href="https://tools.ietf.org/html/rfc3229#section-10.5.2">RFC 3229 §10.5.2</a>
          */
@@ -2402,7 +2397,7 @@ public final class HttpConstants {
          * 
          * Example: {@code Last-Modified: Tue, 15 Nov 1994 12:45:26 GMT}<p>
          * 
-         * Currently, the NoMagicHTTP server does not use this header key.
+         * Currently, the NoMagicHTTP server does not use this header name.
          * Planned work for improved file serving will make use of it.
          * 
          * @see #IF_MODIFIED_SINCE
@@ -2422,7 +2417,7 @@ public final class HttpConstants {
          * 
          * Example: {@code Link: </feed>; rel="alternate"}<p>
          * 
-         * This header key is never used by the NoMagicHTTP server.
+         * This header name is never used by the NoMagicHTTP server.
          * 
          * @see StatusCode#ONE_HUNDRED_THREE
          */
@@ -2437,7 +2432,7 @@ public final class HttpConstants {
          * 
          * Example: {@code Location: http://www.w3.org/pub/WWW/People.html}<p>
          * 
-         * This header key is never used by the NoMagicHTTP server.
+         * This header name is never used by the NoMagicHTTP server.
          * 
          * @see Method#POST
          * @see #CONTENT_LOCATION
@@ -2485,7 +2480,7 @@ public final class HttpConstants {
          * 
          * Applies to the request, not response.<p>
          * 
-         * This header key is never used by the NoMagicHTTP server.
+         * This header name is never used by the NoMagicHTTP server.
          * 
          * @see <a href="https://tools.ietf.org/html/rfc7234#section-5.4">RFC 7234 §5.4</a>
          */
@@ -2499,7 +2494,7 @@ public final class HttpConstants {
          * 
          * Example: {@code Prefer: return=representation}<p>
          * 
-         * This header key is never used by the NoMagicHTTP server.
+         * This header name is never used by the NoMagicHTTP server.
          * 
          * @see <a href="https://tools.ietf.org/html/rfc7240#section-2">RFC 7240 §2</a>
          */
@@ -2515,7 +2510,7 @@ public final class HttpConstants {
          * 
          * Example: {@code Preference-Applied: return=representation}<p>
          * 
-         * This header key is never used by the NoMagicHTTP server.
+         * This header name is never used by the NoMagicHTTP server.
          * 
          * @see <a href="https://tools.ietf.org/html/rfc7240#section-3">RFC 7240 §3</a>
          */
@@ -2579,7 +2574,7 @@ public final class HttpConstants {
          * 
          * Example: {@code Referer: http://en.wikipedia.org/wiki/Main_Page}<p>
          * 
-         * This header key is never used by the NoMagicHTTP server.
+         * This header name is never used by the NoMagicHTTP server.
          * 
          * @see <a href="https://tools.ietf.org/html/rfc7231#section-5.5.2">RFC 7231 §5.5.2</a>
          */
@@ -2596,7 +2591,7 @@ public final class HttpConstants {
          * 
          * Example: {@code Refresh: 5; url=http://www.w3.org/pub/WWW/People.html}<p>
          * 
-         * This header key is never used by the NoMagicHTTP server.
+         * This header name is never used by the NoMagicHTTP server.
          */
         public static final String REFRESH = "Refresh";
         
@@ -2611,7 +2606,7 @@ public final class HttpConstants {
          * 
          * Example: {@code Retry-After: 120}<p>
          * 
-         * This header key is never used by the NoMagicHTTP server.
+         * This header name is never used by the NoMagicHTTP server.
          * 
          * @see <a href="https://tools.ietf.org/html/rfc7231#section-7.1.3">RFC 7231 §7.1.3</a>
          */
@@ -2655,7 +2650,7 @@ public final class HttpConstants {
          * Example: {@code Strict-Transport-Security: max-age=16070400; includeSubDomains}<p>
          * 
          * Currently, the NoMagicHTTP server has no native support for HTTPS and
-         * does not use this header key. Future work is planned to add this
+         * does not use this header name. Future work is planned to add this
          * support.
          * 
          * @see <a href="https://tools.ietf.org/html/rfc6797#section-6.1">RFC 6797 §6.1</a>
@@ -2675,7 +2670,7 @@ public final class HttpConstants {
          * Example: {@code TE: trailers, deflate}<p>
          * 
          * Currently, the NoMagicHTTP server does not apply any transfer codings
-         * on outgoing responses and consequently ignores this key. Work is
+         * on outgoing responses and consequently ignores this name. Work is
          * planned to add codecs.
          * 
          * @see #TRAILER
@@ -2691,7 +2686,7 @@ public final class HttpConstants {
          * 
          * Applies to the response, not request.<p>
          * 
-         * This header key is never used by the NoMagicHTTP server.
+         * This header name is never used by the NoMagicHTTP server.
          * 
          * @see #DNT
          */
@@ -2743,7 +2738,7 @@ public final class HttpConstants {
          * 
          * Example: {@code User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:12.0) Gecko/20100101 Firefox/12.0}<p>
          * 
-         * This header key is never used by the NoMagicHTTP server.
+         * This header name is never used by the NoMagicHTTP server.
          * 
          * @see #SERVER
          * @see <a href="https://tools.ietf.org/html/rfc7231#section-5.5.3">RFC 7231 §5.5.3</a>
@@ -2793,7 +2788,7 @@ public final class HttpConstants {
          * 
          * Example: {@code Via: 1.0 fred, 1.1 example.com (Apache/1.1)}<p>
          * 
-         * This header key is never used by the NoMagicHTTP server.
+         * This header name is never used by the NoMagicHTTP server.
          * 
          * @see Method#TRACE
          * @see <a href="https://tools.ietf.org/html/rfc7230#section-5.7.1">RFC 7230 §5.7.1</a>
@@ -2817,7 +2812,7 @@ public final class HttpConstants {
          * 
          * Example: {@code Warning: 199 Miscellaneous warning}<p>
          * 
-         * This header key is never used by the NoMagicHTTP server.
+         * This header name is never used by the NoMagicHTTP server.
          * 
          * @see <a href="https://tools.ietf.org/html/rfc7234#section-5.5">RFC 7234 §5.5</a>
          */
@@ -2848,7 +2843,7 @@ public final class HttpConstants {
          * 
          * Example: {@code X-Requested-With: XMLHttpRequest}<p>
          * 
-         * This header key is never used by the NoMagicHTTP server.
+         * This header name is never used by the NoMagicHTTP server.
          * 
          * @see <a href="https://www.stoutner.com/the-x-requested-with-header/">STOUTNER</a>
          */
@@ -2867,7 +2862,7 @@ public final class HttpConstants {
          * 
          * Example: {@code X-HTTP-Method-Override: DELETE}<p>
          * 
-         * This header key is never used by the NoMagicHTTP server.
+         * This header name is never used by the NoMagicHTTP server.
          */
         public static final String X_HTTP_METHOD_OVERRIDE = "X-Http-Method-Override";
         
@@ -2876,7 +2871,7 @@ public final class HttpConstants {
          * 
          * Example: {@code X-Request-ID: f058ebd6-02f7-4d3f-942e-904344e8cde5}<p>
          * 
-         * This header key is never used by the NoMagicHTTP server.
+         * This header name is never used by the NoMagicHTTP server.
          * 
          * @see #X_CORRELATION_ID
          */
@@ -2887,7 +2882,7 @@ public final class HttpConstants {
          * 
          * Example: {@code X-Correlation-ID: f058ebd6-02f7-4d3f-942e-904344e8cde5}<p>
          * 
-         * This header key is never used by the NoMagicHTTP server.
+         * This header name is never used by the NoMagicHTTP server.
          * 
          * @see #X_REQUEST_ID
          */

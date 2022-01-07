@@ -13,7 +13,7 @@ import static java.util.Objects.requireNonNull;
  * Any HTTP version equal to or greater than HTTP/2 is too new.<p>
  * 
  * Most likely, the client request will start as an HTTP/1.1 request with an
- * {@value HttpConstants.HeaderKey#UPGRADE} set, which is currently ignored by
+ * {@value HttpConstants.HeaderName#UPGRADE} set, which is currently ignored by
  * the NoMagicHTTP server, and therefore the request will not upgrade but keep
  * running on HTTP/1.1 instead of crashing. This exception will only be observed
  * if the client <i>begin</i> a new exchange using HTTP/2. Future work will add

@@ -24,7 +24,7 @@ import java.util.concurrent.Flow;
 import java.util.function.Consumer;
 import java.util.function.ToLongBiFunction;
 
-import static alpha.nomagichttp.HttpConstants.HeaderKey.CONTENT_LENGTH;
+import static alpha.nomagichttp.HttpConstants.HeaderName.CONTENT_LENGTH;
 import static alpha.nomagichttp.handler.RequestHandler.GET;
 import static alpha.nomagichttp.handler.RequestHandler.POST;
 import static alpha.nomagichttp.message.Responses.accepted;

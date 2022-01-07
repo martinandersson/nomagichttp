@@ -9,7 +9,7 @@ import alpha.nomagichttp.message.Request;
 import java.net.http.HttpHeaders;
 import java.util.List;
 
-import static alpha.nomagichttp.HttpConstants.HeaderKey.ACCEPT;
+import static alpha.nomagichttp.HttpConstants.HeaderName.ACCEPT;
 
 final class RequestHeaders extends DefaultContentHeaders implements Request.Headers {
     RequestHeaders(HttpHeaders headers) {

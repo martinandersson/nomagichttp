@@ -16,8 +16,8 @@ import java.util.concurrent.CompletionStage;
 import java.util.concurrent.Flow;
 import java.util.function.Consumer;
 
-import static alpha.nomagichttp.HttpConstants.HeaderKey.CONNECTION;
-import static alpha.nomagichttp.HttpConstants.HeaderKey.CONTENT_LENGTH;
+import static alpha.nomagichttp.HttpConstants.HeaderName.CONNECTION;
+import static alpha.nomagichttp.HttpConstants.HeaderName.CONTENT_LENGTH;
 import static alpha.nomagichttp.HttpConstants.StatusCode.THREE_HUNDRED_FOUR;
 import static alpha.nomagichttp.HttpConstants.StatusCode.TWO_HUNDRED_FOUR;
 import static alpha.nomagichttp.util.Headers.of;

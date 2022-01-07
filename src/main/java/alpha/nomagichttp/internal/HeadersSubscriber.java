@@ -118,7 +118,7 @@ final class HeadersSubscriber<T> extends AbstractByteSubscriber<T>
     }
     
     private static final int
-            KEY = 0, VAL = 1, FOLD = 2, DONE = 3;
+            NAME = 0, VAL = 1, FOLD = 2, DONE = 3;
     
     /**
      * Parses bytes into HTTP headers.<p>
@@ -126,7 +126,7 @@ final class HeadersSubscriber<T> extends AbstractByteSubscriber<T>
      * This parser interprets the HTTP line terminator the same as is done and
      * documented by the {@link RequestLineSubscriber}'s parser (see section
      * "General rules"). The parser also follows the contract defined by {@link
-     * BetterHeaders}, e.g. header keys may not be empty but the values may.
+     * BetterHeaders}, e.g. header names may not be empty but the values may.
      * 
      * 
      * <h2>Header names</h2>
@@ -171,13 +171,13 @@ final class HeadersSubscriber<T> extends AbstractByteSubscriber<T>
      */
     private final class Parser extends AbstractTokenParser
     {
-        private int parsing = KEY;
+        private int parsing = NAME;
         private Map<String, List<String>> values;
         
         T parse(byte b) {
             curr = b;
             parsing = switch (parsing) {
-                case KEY  -> parseKey();
+                case NAME -> parseName();
                 case VAL  -> parseVal();
                 case FOLD -> parseValFolded();
                 default -> throw new AssertionError("Not parsing anything lol.");
@@ -186,37 +186,37 @@ final class HeadersSubscriber<T> extends AbstractByteSubscriber<T>
             return parsing == DONE ? build() : null;
         }
         
-        private String key;
-        int parseKey() {
+        private String name;
+        int parseName() {
             if (isLeadingWhitespace() && isNotCR() && isNotLF()) {
                 if (values == null) {
                     throw parseException(
-                        "Leading whitespace in header key is not accepted.");
+                        "Leading whitespace in header name is not accepted.");
                 }
                 LOG.log(DEBUG, "Resuming last [folded] header value.");
                 return FOLD;
             }
             if (isCR()) {
                 // Ignore. Will crash next iteration if CR isn't followed by LF.
-                return KEY;
+                return NAME;
             }
             else if (isLF()) {
                 if (hasConsumed()) {
                     throw parseException(
-                        "Whitespace in header key or before colon is not accepted.");
+                        "Whitespace in header name or before colon is not accepted.");
                 }
                 return DONE;
             }
             else if (isWhitespace()) {
                 throw parseException(
-                    "Whitespace in header key or before colon is not accepted.");
+                    "Whitespace in header name or before colon is not accepted.");
             }
             else if (isColon()) {
-                key = finishNonEmpty("header key");
+                name = finishNonEmpty("header name");
                 return VAL;
             }
             consume();
-            return KEY;
+            return NAME;
         }
         
         int parseVal() {
@@ -234,8 +234,8 @@ final class HeadersSubscriber<T> extends AbstractByteSubscriber<T>
                     values = new HashMap<>();
                 }
                 // Relying on HttpHeaders to trim the final value
-                values.computeIfAbsent(key, k -> new ArrayList<>(1)).add(v);
-                return KEY;
+                values.computeIfAbsent(name, k -> new ArrayList<>(1)).add(v);
+                return NAME;
             }
         }
         
@@ -247,7 +247,7 @@ final class HeadersSubscriber<T> extends AbstractByteSubscriber<T>
                 return DONE;
             } else if (!isWhitespace()) {
                 // Restore header value and manually call the "standard" method
-                List<String> v = values.get(key);
+                List<String> v = values.get(name);
                 String last = v.remove(v.size() - 1);
                 
                 if (!last.isEmpty()) {
@@ -255,7 +255,7 @@ final class HeadersSubscriber<T> extends AbstractByteSubscriber<T>
                             last.charAt(last.length() - 1));
                     consumeExplicit(endsWithWS ? last : last + ' ');
                 }
-                parsing = KEY;
+                parsing = NAME;
                 return parseVal();
             }
             // else ignore all leading whitespace

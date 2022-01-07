@@ -10,9 +10,9 @@ import java.util.Optional;
 import java.util.OptionalLong;
 import java.util.stream.Stream;
 
-import static alpha.nomagichttp.HttpConstants.HeaderKey.CONTENT_LENGTH;
-import static alpha.nomagichttp.HttpConstants.HeaderKey.CONTENT_TYPE;
-import static alpha.nomagichttp.HttpConstants.HeaderKey.TRANSFER_ENCODING;
+import static alpha.nomagichttp.HttpConstants.HeaderName.CONTENT_LENGTH;
+import static alpha.nomagichttp.HttpConstants.HeaderName.CONTENT_TYPE;
+import static alpha.nomagichttp.HttpConstants.HeaderName.TRANSFER_ENCODING;
 import static alpha.nomagichttp.message.MediaType.parse;
 import static alpha.nomagichttp.util.Headers.of;
 import static java.lang.Long.parseLong;
@@ -150,7 +150,7 @@ public class DefaultContentHeaders implements ContentHeaders
      * @throws BadHeaderException
      *       if the last token in the Transfer-Encoding header is not "chunked"
      * 
-     * @see HttpConstants.HeaderKey#TRANSFER_ENCODING
+     * @see HttpConstants.HeaderName#TRANSFER_ENCODING
      * @see <a href="https://bugs.openjdk.java.net/browse/JDK-6407460">JDK-6407460</a>
      */
     public final Deque<String> transferEncoding() {

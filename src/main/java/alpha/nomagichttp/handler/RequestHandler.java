@@ -111,7 +111,7 @@ import static java.util.Objects.requireNonNull;
  * <h3>Qualify handler by consuming media type</h3>
  * 
  * If a request has a {@link MediaType} set in the {@value
- * HttpConstants.HeaderKey#CONTENT_TYPE} header, then this hints that an
+ * HttpConstants.HeaderName#CONTENT_TYPE} header, then this hints that an
  * entity-body will be attached and the server will proceed to filter out all
  * handlers that does not consume a {@link MediaType#compatibility(MediaType)
  * compatible} media type.<p>
@@ -134,7 +134,7 @@ import static java.util.Objects.requireNonNull;
  * 
  * <h3>Qualify handler by producing media type (proactive content negotiation)</h3>
  * 
- * The {@value HttpConstants.HeaderKey#ACCEPT} header of a request indicates
+ * The {@value HttpConstants.HeaderName#ACCEPT} header of a request indicates
  * what media type(s) the client is willing to accept as response body. Each
  * such media type - or "media range" to be technically correct - can carry with
  * it a "quality" value indicating the client's preference. It makes no sense
@@ -174,8 +174,8 @@ import static java.util.Objects.requireNonNull;
  * a less specific one.<p>
  * 
  * The server ignores other headers such as {@value
- * HttpConstants.HeaderKey#ACCEPT_CHARSET} and {@value
- * HttpConstants.HeaderKey#ACCEPT_LANGUAGE}.<p>
+ * HttpConstants.HeaderName#ACCEPT_CHARSET} and {@value
+ * HttpConstants.HeaderName#ACCEPT_LANGUAGE}.<p>
  * 
  * There is no library-provided support for magical request parameters
  * ("?format=json") and so called "URL suffixes" ("/my-resource.json"). The
@@ -412,8 +412,8 @@ public interface RequestHandler
      * MediaType#__NOTHING_AND_ALL} and "*&#47;*" respectively, meaning that
      * unless more restrictive media types are set, the handler is willing to
      * serve all requests no matter the presence- or value of the request's
-     * {@value HttpConstants.HeaderKey#CONTENT_TYPE} and {@value
-     * HttpConstants.HeaderKey#ACCEPT} headers.<p>
+     * {@value HttpConstants.HeaderName#CONTENT_TYPE} and {@value
+     * HttpConstants.HeaderName#ACCEPT} headers.<p>
      * 
      * The handler is built and returned from the setter method that specifies
      * the request-processing logic. Three different styles of setter methods

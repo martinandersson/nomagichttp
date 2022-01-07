@@ -6,7 +6,7 @@ import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
 
-import static alpha.nomagichttp.HttpConstants.HeaderKey.X_CORRELATION_ID;
+import static alpha.nomagichttp.HttpConstants.HeaderName.X_CORRELATION_ID;
 import static alpha.nomagichttp.handler.RequestHandler.GET;
 import static alpha.nomagichttp.message.Responses.noContent;
 import static alpha.nomagichttp.message.Responses.serviceUnavailable;

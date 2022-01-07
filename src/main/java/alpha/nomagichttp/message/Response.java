@@ -283,7 +283,7 @@ public interface Response extends HeaderHolder
          * @param   value of header
          * @return  a new builder representing the new state
          * @throws  NullPointerException if any argument is {@code null}
-         * @see     HttpConstants.HeaderKey
+         * @see     HttpConstants.HeaderName
          */
         Builder header(String name, String value);
         
@@ -321,7 +321,7 @@ public interface Response extends HeaderHolder
          * @throws NullPointerException
          *             if any argument or array element is {@code null}
          * 
-         * @see HttpConstants.HeaderKey
+         * @see HttpConstants.HeaderName
          */
         Builder addHeader(String name, String value);
         
@@ -346,7 +346,7 @@ public interface Response extends HeaderHolder
          * @throws IllegalArgumentException
          *             if {@code morePairs.length} is odd
          * 
-         * @see HttpConstants.HeaderKey
+         * @see HttpConstants.HeaderName
          */
         Builder addHeaders(String name, String value, String... morePairs);
         
@@ -367,7 +367,7 @@ public interface Response extends HeaderHolder
          * @param   headers to add
          * @return  a new builder representing the new state
          * @throws  NullPointerException if {@code headers} is {@code null}
-         * @see     HttpConstants.HeaderKey
+         * @see     HttpConstants.HeaderName
          */
         default Builder addHeaders(BetterHeaders headers) {
             return addHeaders(headers.delegate().map());
@@ -382,7 +382,7 @@ public interface Response extends HeaderHolder
          * @param   headers to add
          * @return  a new builder representing the new state
          * @throws  NullPointerException if {@code headers} is {@code null}
-         * @see     HttpConstants.HeaderKey
+         * @see     HttpConstants.HeaderName
          */
         Builder addHeaders(Map<String, List<String>> headers);
         

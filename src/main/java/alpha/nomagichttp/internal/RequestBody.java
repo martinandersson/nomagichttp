@@ -23,8 +23,8 @@ import java.util.concurrent.Flow;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.BiFunction;
 
-import static alpha.nomagichttp.HttpConstants.HeaderKey.CONTENT_LENGTH;
-import static alpha.nomagichttp.HttpConstants.HeaderKey.TRANSFER_ENCODING;
+import static alpha.nomagichttp.HttpConstants.HeaderName.CONTENT_LENGTH;
+import static alpha.nomagichttp.HttpConstants.HeaderName.TRANSFER_ENCODING;
 import static alpha.nomagichttp.internal.AtomicReferences.lazyInit;
 import static alpha.nomagichttp.internal.SubscriptionMonitoringOp.alreadyCompleted;
 import static alpha.nomagichttp.internal.SubscriptionMonitoringOp.subscribeTo;

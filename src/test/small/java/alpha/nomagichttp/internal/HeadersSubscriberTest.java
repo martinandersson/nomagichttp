@@ -49,7 +49,7 @@ public class HeadersSubscriberTest
     }
     
     @Test
-    void key_empty() {
+    void name_empty() {
         assertFailed(execute(":world\n\n"))
             .isExactlyInstanceOf(HeaderParseException.class)
             .hasNoCause()
@@ -59,11 +59,11 @@ public class HeadersSubscriberTest
                 prev=N/A, \
                 curr=(hex:0x3A, decimal:58, char:":"), \
                 pos=0, \
-                msg=Empty header key.}""");
+                msg=Empty header name.}""");
     }
     
     @Test
-    void key_spaceInName_sp() {
+    void name_spaceInName_sp() {
         assertFailed(execute("Has Space: blabla..."))
             .isExactlyInstanceOf(HeaderParseException.class)
             .hasNoCause()
@@ -73,11 +73,11 @@ public class HeadersSubscriberTest
                 prev=(hex:0x73, decimal:115, char:"s"), \
                 curr=(hex:0x20, decimal:32, char:" "), \
                 pos=3, \
-                msg=Whitespace in header key or before colon is not accepted.}""");
+                msg=Whitespace in header name or before colon is not accepted.}""");
     }
     
     @Test
-    void key_spaceInName_LF() {
+    void name_spaceInName_LF() {
         assertFailed(execute("Has\nSpace: blabla..."))
             .isExactlyInstanceOf(HeaderParseException.class)
             .hasNoCause()
@@ -87,11 +87,11 @@ public class HeadersSubscriberTest
                 prev=(hex:0x73, decimal:115, char:"s"), \
                 curr=(hex:0xA, decimal:10, char:"\\n"), \
                 pos=3, \
-                msg=Whitespace in header key or before colon is not accepted.}""");
+                msg=Whitespace in header name or before colon is not accepted.}""");
     }
     
     @Test
-    void key_spaceAfterName() {
+    void name_spaceAfterName() {
         assertFailed(execute("Has-Space : blabla..."))
             .isExactlyInstanceOf(HeaderParseException.class)
             .hasNoCause()
@@ -101,11 +101,11 @@ public class HeadersSubscriberTest
                 prev=(hex:0x65, decimal:101, char:"e"), \
                 curr=(hex:0x20, decimal:32, char:" "), \
                 pos=9, \
-                msg=Whitespace in header key or before colon is not accepted.}""");
+                msg=Whitespace in header name or before colon is not accepted.}""");
     }
     
     @Test
-    void key_spaceBeforeName() {
+    void name_spaceBeforeName() {
         assertFailed(execute(" Has-Space..."))
             .isExactlyInstanceOf(HeaderParseException.class)
             .hasNoCause()
@@ -115,11 +115,11 @@ public class HeadersSubscriberTest
                 prev=N/A, \
                 curr=(hex:0x20, decimal:32, char:" "), \
                 pos=0, \
-                msg=Leading whitespace in header key is not accepted.}""");
+                msg=Leading whitespace in header name is not accepted.}""");
     }
     
     @Test
-    void key_duplicate() {
+    void name_duplicate() {
         assertFailed(execute("""
                 foo: bar
                 FOO: bar\n
@@ -132,18 +132,18 @@ public class HeadersSubscriberTest
     
     @Test
     void value_isTrimmed_content() {
-        assertResult(execute("Key:   bla bla   \n\n"))
-                .containsOnly(entry("Key", of("bla bla")));
+        assertResult(execute("Name:   bla bla   \n\n"))
+                .containsOnly(entry("Name", of("bla bla")));
     }
     
     @Test
     void value_isTrimmed_empty() {
-        assertResult(execute("Key:      \n\n"))
-                .containsOnly(entry("Key", of("")));
+        assertResult(execute("Name:      \n\n"))
+                .containsOnly(entry("Name", of("")));
     }
     
     @Test
-    void value_empty_and_key_repeated() {
+    void value_empty_and_name_repeated() {
         var str = """
             Foo:
             Bar: hello
@@ -158,12 +158,12 @@ public class HeadersSubscriberTest
     @Test
     void value_folded_afterContent() {
         var str = """
-            Key: Line 1
+            Name: Line 1
               Line 2
             Another: Value\n
             """;
         assertResult(execute(str)).containsOnly(
-            entry("Key",     of("Line 1 Line 2")),
+            entry("Name",    of("Line 1 Line 2")),
             entry("Another", of("Value")));
     }
     
@@ -171,19 +171,19 @@ public class HeadersSubscriberTest
     @Test
     void value_folded_immediately() {
         var str = """
-            Key:\s\s\s
+            Name:\s\s\s
              Line:1\s\s\s
                Line 2\s\s\s\n
             """;
         assertResult(execute(str)).containsOnly(
             // Trailing space on line 1 kept, leading+trailing on line 2 cut
-            entry("Key", of("Line:1   Line 2")));
+            entry("Name", of("Line:1   Line 2")));
     }
     
     @Test
     void value_folded_orSoParserThought_butHeadersEnded() {
-        assertResult(execute("Key:\n   \n\n"))
-                .containsOnly(entry("Key", of("")));
+        assertResult(execute("Name:\n   \n\n"))
+                .containsOnly(entry("Name", of("")));
     }
     
     private CompletionStage<Request.Headers> execute(String... items) {
