@@ -43,6 +43,20 @@ public class HeadersSubscriberTest
     }
     
     @Test
+    void empty_1() {
+        assertFailed(execute(""))
+            .isExactlyInstanceOf(AssertionError.class)
+            .hasNoCause()
+            .hasNoSuppressedExceptions()
+            .hasMessage("Unexpected: Channel closed gracefully before parser was done.");
+    }
+    
+    @Test
+    void empty_2() {
+        assertResult(execute("\r\n")).isEmpty();
+    }
+    
+    @Test
     void compact() {
         assertResult(execute("hello:world\n\n"))
                 .containsOnly(entry("hello", of("world")));
