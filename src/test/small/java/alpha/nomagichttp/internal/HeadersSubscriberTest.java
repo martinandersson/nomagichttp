@@ -28,7 +28,7 @@ import static org.mockito.Mockito.mock;
 public class HeadersSubscriberTest
 {
     @Test
-    void mixedEndings() {
+    void ending_mixed() {
         // Three line endings; \r\n, \n, \n\r\n
         // (\r ignored)
         var str = """
@@ -43,6 +43,23 @@ public class HeadersSubscriberTest
     }
     
     @Test
+    void ending_missing() {
+        // Each header-field is finished with CRLF, + one CRLF after the section
+        // RFC 7230, §3, §4.1.2 and 4.1
+        assertFailed(execute("Foo: Bar\n"))
+            .isExactlyInstanceOf(AssertionError.class)
+            .hasNoCause()
+            .hasNoSuppressedExceptions()
+            .hasMessage("Unexpected: Channel closed gracefully before parser was done.");
+    }
+    
+    @Test
+    void compact() {
+        assertResult(execute("hello:world\n\n"))
+                .containsOnly(entry("hello", of("world")));
+    }
+    
+    @Test
     void empty_1() {
         assertFailed(execute(""))
             .isExactlyInstanceOf(AssertionError.class)
@@ -54,12 +71,6 @@ public class HeadersSubscriberTest
     @Test
     void empty_2() {
         assertResult(execute("\r\n")).isEmpty();
-    }
-    
-    @Test
-    void compact() {
-        assertResult(execute("hello:world\n\n"))
-                .containsOnly(entry("hello", of("world")));
     }
     
     @Test

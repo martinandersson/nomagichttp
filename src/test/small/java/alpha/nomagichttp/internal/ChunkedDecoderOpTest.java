@@ -1,26 +1,41 @@
 package alpha.nomagichttp.internal;
 
+import alpha.nomagichttp.handler.ClientChannel;
 import alpha.nomagichttp.message.DecoderException;
+import alpha.nomagichttp.message.DefaultContentHeaders;
 import alpha.nomagichttp.message.PooledByteBufferHolder;
 import alpha.nomagichttp.testutil.ByteBuffers;
+import alpha.nomagichttp.util.Headers;
 import org.assertj.core.api.AbstractThrowableAssert;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
+import java.nio.BufferOverflowException;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Flow;
 import java.util.concurrent.TimeoutException;
+import java.util.function.Supplier;
+import java.util.stream.Stream;
 
+import static alpha.nomagichttp.message.DefaultContentHeaders.empty;
+import static alpha.nomagichttp.testutil.Assertions.assertCancelled;
 import static alpha.nomagichttp.testutil.MemorizingSubscriber.MethodName.ON_COMPLETE;
 import static alpha.nomagichttp.testutil.MemorizingSubscriber.MethodName.ON_ERROR;
 import static alpha.nomagichttp.testutil.MemorizingSubscriber.MethodName.ON_SUBSCRIBE;
 import static alpha.nomagichttp.testutil.MemorizingSubscriber.drainSignals;
-import static alpha.nomagichttp.testutil.TestClient.CRLF;
 import static alpha.nomagichttp.testutil.TestPublishers.map;
+import static alpha.nomagichttp.testutil.TestPublishers.reusable;
 import static alpha.nomagichttp.util.Publishers.just;
-import static java.lang.String.join;
+import static java.lang.Integer.MAX_VALUE;
 import static java.nio.charset.StandardCharsets.US_ASCII;
+import static java.util.HexFormat.fromHexDigitsToLong;
 import static java.util.concurrent.TimeUnit.SECONDS;
+import static java.util.stream.Stream.concat;
+import static java.util.stream.Stream.of;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.Mockito.mock;
 
 /**
  * Small tests for {@link ChunkedDecoderOp}.
@@ -30,97 +45,204 @@ import static org.assertj.core.api.Assertions.assertThat;
 final class ChunkedDecoderOpTest
 {
     @Test
-    void happyPath_one() {
-        var data = decode(
+    void happyPath_oneBuffer() {
+        var testee = decode(
                 // Size
-                "1" + CRLF +
+                "1\r\n" +
                 // Data
-                "x" + CRLF +
+                "X\r\n" +
                 // Empty last chunk
-                "0" + CRLF);
+                "0\r\n" +
+                // Empty trailers
+                "\r\n");
         
-        var received = drainSignals(map(data, ByteBuffers::toString));
-        
+        var received = drainSignals(map(testee, ByteBuffers::toString));
         assertThat(received).hasSize(3);
         assertThat(received.get(0).methodName()).isEqualTo(ON_SUBSCRIBE);
-        assertThat(received.get(1).argument()).isEqualTo("x");
+        assertThat(received.get(1).argument()).isEqualTo("X");
         assertThat(received.get(2).methodName()).isEqualTo(ON_COMPLETE);
+        assertEmptyTrailers(testee);
     }
     
     @Test
-    void happyPath_three() {
-        var data = decode(join(CRLF, "3", "abc", "0") + CRLF);
-        assertThat(toString(data)).isEqualTo("abc");
+    void happyPath_distinctBuffers() {
+        var testee = decode("5\r\n", "ABCDE\r\n", "0\r\n", "\r\n");
+        assertThat(toString(testee)).isEqualTo("ABCDE");
+        assertEmptyTrailers(testee);
     }
     
     @Test
-    void empty_1() {
-        var data = decode("0" + CRLF);
-        assertThat(toString(data)).isEmpty();
+    void empty_deliberately() {
+        var testee = decode("0\r\n\r\n ...subsequent-request-data in stream...");
+        assertThat(toString(testee)).isEmpty();
+        assertEmptyTrailers(testee);
+    }
+    
+    @ParameterizedTest
+    @ValueSource(booleans = {true, false})
+    void empty_prematurely(boolean emptyBuffer) {
+        var testee = emptyBuffer ? decode("") : decode();
+        assertSubscriberOnError(testee)
+            .isExactlyInstanceOf(AssertionError.class)
+            .hasMessage("Unexpected: Channel closed gracefully before processor was done.")
+            .hasNoCause()
+            .hasNoSuppressedExceptions();
+        assertCancelled(testee.trailers());
     }
     
     @Test
-    void empty_2() {
-        var data = decode();
-        assertThat(toString(data)).isEmpty();
+    void empty_thenSomething() {
+        var testee = decode("", "1\r\nX\r\n0\r\n\r\n");
+        assertThat(toString(testee)).isEqualTo("X");
+        assertEmptyTrailers(testee);
     }
     
     @Test
-    void empty_3() {
-        var data = decode("");
-        assertThat(toString(data)).isEmpty();
+    void parseSize_noLastChunk() {
+        var testee = decode("1\r\nX\r\n\r\n");
+        assertSubscriberOnError(testee)
+            .isExactlyInstanceOf(DecoderException.class)
+            .hasNoSuppressedExceptions()
+            .hasNoCause()
+            .hasMessage("No chunk-size specified.");
+        assertCancelled(testee.trailers());
     }
     
     @Test
-    void publishEmptyThenOne() {
-        var data = decode("", join(CRLF, "1", "y", "0") + CRLF);
-        assertThat(toString(data)).isEqualTo("y");
-    }
-    
-    @Test
-    void parseSize_DecodeException() {
-        assertOnError(decode("X;"))
+    void parseSize_notHex() {
+        // ';' triggers the size parsing
+        var testee = decode("BOOM!;");
+        assertSubscriberOnError(testee)
             .isExactlyInstanceOf(DecoderException.class)
             .hasNoSuppressedExceptions()
             .getCause()
-            .isExactlyInstanceOf(NumberFormatException.class)
-            .hasMessage("not a hexadecimal digit: \"X\" = 88");
+                .isExactlyInstanceOf(NumberFormatException.class)
+                .hasMessage("not a hexadecimal digit: \"O\" = 79");
+        assertCancelled(testee.trailers());
+    }
+    
+    private static final String FIFTEEN_F = "F".repeat(15);
+    
+    @Test
+    void forYourConvenience() {
+        // Java's HEX parser just don't like more than 16 chars lol
+        assertThatThrownBy(() -> fromHexDigitsToLong(FIFTEEN_F + "17"))
+                .isExactlyInstanceOf(IllegalArgumentException.class)
+                .hasMessage("string length greater than 16: 17");
+        
+        // Fifteen F is equal to...
+        long lotsOfChunkData = 1_152_921_504_606_846_975L;
+        assertThat(fromHexDigitsToLong(FIFTEEN_F))
+                .isEqualTo(lotsOfChunkData);
+        
+        // We can prepend a 16th char to get even more!
+        Supplier<Stream<String>> one23456
+                = () -> of("1", "2", "3", "4", "5", "6");
+        one23456.get().forEach(n ->
+                assertThat(fromHexDigitsToLong(n + FIFTEEN_F))
+                    .isGreaterThan(lotsOfChunkData)
+                    .isLessThan(Long.MAX_VALUE));
+        
+        // And .... this is the largest we can go
+        assertThat(fromHexDigitsToLong("7" + FIFTEEN_F))
+                .isEqualTo(Long.MAX_VALUE);
+        
+        // Prepended something bigger than 7, we start running into overflow issues
+        Supplier<Stream<String>> eight9abcdef
+                = () -> of("8", "9", "A", "B", "C", "D", "E", "F");
+        eight9abcdef.get().forEach(n ->
+                assertThat(fromHexDigitsToLong(n + FIFTEEN_F))
+                    .isNegative()); // <-- please forgive the Java Gods
+        
+        // But we can't APPEND anything coz then shit overflows again
+        concat(one23456.get(), concat(of("7"), eight9abcdef.get())).forEach(n ->
+                assertThat(fromHexDigitsToLong(FIFTEEN_F + n))
+                    .isNegative());
+        
+        // Hopefully THIS EXPLAINS the impl and the following two test cases lol
+    }
+    
+    @Test
+    void parseSize_overflow_moreThan16HexChars() {
+        var testee = decode("17" + FIFTEEN_F + ";");
+        assertSubscriberOnError(testee)
+            // It's not really a DECODER issue lol
+            .isExactlyInstanceOf(UnsupportedOperationException.class)
+            .hasNoSuppressedExceptions()
+            .hasMessage("Long overflow.")
+            .getCause()
+                .isExactlyInstanceOf(BufferOverflowException.class)
+                .hasMessage(null);
+        assertCancelled(testee.trailers());
+    }
+    
+    @Test
+    void parseSize_overflow_negativeResult() {
+        var testee = decode(FIFTEEN_F + "1;");
+        assertSubscriberOnError(testee)
+            .isExactlyInstanceOf(UnsupportedOperationException.class)
+            .hasMessage("Long overflow for hex-value \"FFFFFFFFFFFFFFF1\".")
+            .hasNoSuppressedExceptions()
+            .hasNoCause();
+        assertCancelled(testee.trailers());
     }
     
     @Test
     void chunkExtensions_discarded() {
-        var data = decode("1;bla=bla" + CRLF + "z" + CRLF);
-        assertThat(toString(data)).isEqualTo("z");
+        var testee = decode("1;bla=bla\r\nX\r\n0\r\n\r\n");
+        assertThat(toString(testee)).isEqualTo("X");
+        assertEmptyTrailers(testee);
     }
     
     @Test
     void chunkExtensions_quoted() {
-        assertOnError(decode("1;bla=\"bla\""))
+        var testee = decode("1;bla=\"bla\".......");
+        assertSubscriberOnError(testee)
             .isExactlyInstanceOf(UnsupportedOperationException.class)
             .hasMessage("Quoted chunk-extension value.")
             .hasNoSuppressedExceptions()
             .hasNoCause();
+        assertCancelled(testee.trailers());
     }
     
     @Test
-    void chunkDataWithCRLF() {
-        var data = decode(join(CRLF, "3", CRLF + "a", "0") + CRLF);
-        assertThat(toString(data)).isEqualTo(CRLF + "a");
+    void chunkData_withCRLF() {
+        var data = "\r\nX\r\n";
+        var testee = decode(data.length() + "\r\n" + data + "\r\n0\r\n\r\n");
+        assertThat(toString(testee)).isEqualTo(data);
+        assertEmptyTrailers(testee);
     }
     
     @Test
-    void chunkDataNotEndingWithCRLF() {
-        assertOnError(decode(join(CRLF, "1", "bX", "0")))
+    void chunkData_notEndingWithCRLF() {
+        var testee = decode("1\r\nX0\r\n\r\n");
+        assertSubscriberOnError(testee)
                 .isExactlyInstanceOf(DecoderException.class)
                 .hasMessage("Expected CR and/or LF after chunk. " +
-                            "Received (hex:0x58, decimal:88, char:\"X\").")
+                            "Received (hex:0x30, decimal:48, char:\"0\").")
                 .hasNoSuppressedExceptions()
                 .hasNoCause();
+        assertCancelled(testee.trailers());
     }
     
-    private Flow.Publisher<PooledByteBufferHolder> decode(String... buffers) {
+    // HeadersSubscriber already well tested, this is just for show
+    @Test
+    void trailers_two() {
+        var testee = decode("""
+                0
+                Foo: bar
+                Bar: foo\n
+                """);
+        assertThat(toString(testee)).isEmpty();
+        assertThat(testee.trailers()).isCompletedWithValue(
+                new DefaultContentHeaders(Headers.of(
+                        "Foo", "bar", "Bar", "foo")));
+    }
+    
+    private ChunkedDecoderOp decode(String... upstreamBuffers) {
         return new ChunkedDecoderOp(
-                map(just(buffers), ByteBuffers::toByteBufferPooled));
+                reusable(map(just(upstreamBuffers), ByteBuffers::toByteBuffer)),
+                MAX_VALUE, mock(ClientChannel.class));
     }
     
     private static String toString(Flow.Publisher<PooledByteBufferHolder> bytes) {
@@ -134,8 +256,12 @@ final class ChunkedDecoderOpTest
         }
     }
     
+    private static void assertEmptyTrailers(ChunkedDecoderOp testee) {
+        assertThat(testee.trailers()).isCompletedWithValue(empty());
+    }
+    
     private static AbstractThrowableAssert<?, ? extends Throwable>
-            assertOnError(Flow.Publisher<PooledByteBufferHolder> data)
+            assertSubscriberOnError(Flow.Publisher<PooledByteBufferHolder> data)
     {
         var received = drainSignals(data);
         assertThat(received).hasSize(2);

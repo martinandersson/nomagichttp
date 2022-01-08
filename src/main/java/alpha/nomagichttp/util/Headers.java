@@ -65,7 +65,7 @@ public final class Headers
      * @return HttpHeaders
      * @throws NullPointerException if {@code map} is {@code null}
      */
-    public static HttpHeaders of(Map<String,List<String>> map) {
+    public static HttpHeaders of(Map<String, List<String>> map) {
         if (map.isEmpty()) {
             return EMPTY;
         }

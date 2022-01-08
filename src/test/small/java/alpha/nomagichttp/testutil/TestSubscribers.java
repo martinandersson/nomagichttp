@@ -20,7 +20,7 @@ public final class TestSubscribers {
     
     /**
      * Returns a subscriber that delegates {@code onSubscribe()} to the given
-     * consumer.<p>
+     * implementation.<p>
      * 
      * Other methods declared in {@code Flow.Subscriber} are NOP.
      * 
@@ -35,7 +35,7 @@ public final class TestSubscribers {
     
     /**
      * Returns a subscriber that requests {@code Long.MAX_VALUE} and delegates
-     * {@code onNext()} to the given consumer.<p>
+     * {@code onNext()} to the given implementation.<p>
      * 
      * Other methods declared in {@code Flow.Subscriber} are NOP.
      * 
@@ -50,9 +50,9 @@ public final class TestSubscribers {
     
     /**
      * Returns a subscriber that requests {@code Long.MAX_VALUE} and delegates
-     * {@code onNext()/onComplete()} to the given arguments.<p>
+     * {@code onNext()/onComplete()} to the given implementations.<p>
      * 
-     * Other methods declared in {@code Flow.Subscriber} are NOP.
+     * {@code onError} is NOP.
      * 
      * @param onNext implementation
      * @param onComplete implementation
@@ -67,9 +67,9 @@ public final class TestSubscribers {
     
     /**
      * Returns a subscriber that requests {@code Long.MAX_VALUE} and delegates
-     * {@code onNext()/onError()} to the given arguments.<p>
+     * {@code onNext()/onError()} to the given implementations.<p>
      * 
-     * Other methods declared in {@code Flow.Subscriber} are NOP.
+     * {@code onComplete} is NOP.
      * 
      * @param onNext implementation
      * @param onError implementation
@@ -84,7 +84,7 @@ public final class TestSubscribers {
     
     /**
      * Returns a subscriber that requests {@code Long.MAX_VALUE} and delegates
-     * {@code onError()} to the given consumer.<p>
+     * {@code onError()} to the given implementation.<p>
      * 
      * Other methods declared in {@code Flow.Subscriber} are NOP.
      * 
@@ -99,7 +99,7 @@ public final class TestSubscribers {
     
     /**
      * Returns a subscriber that requests {@code Long.MAX_VALUE} and delegates
-     * {@code onComplete()} to the given argument.<p>
+     * {@code onComplete()} to the given implementation.<p>
      * 
      * Other methods declared in {@code Flow.Subscriber} are NOP.
      * 
@@ -110,6 +110,24 @@ public final class TestSubscribers {
      */
     public static <T> Flow.Subscriber<T> onComplete(Runnable impl) {
         return new SkeletonSubscriber<>(null, null, null, impl);
+    }
+    
+    /**
+     * Pass-through all signals to the given delegate, except for the {@code
+     * onNext} signal which goes to the given implementation.<p>
+     * 
+     * Is useful when need be to arbitrary replace, or even just execute logic
+     * before and/or after the subscriber.
+     * 
+     * @param <T> type of subscribed items
+     * @param delegate will receive all signals other than {@code onNext}
+     * @param impl the new {@code onNext} implementation
+     * @return the decorator
+     */
+    public static <T> Flow.Subscriber<T> replaceOnNext(
+            Flow.Subscriber<? super T> delegate, Consumer<? super T> impl) {
+        return new SkeletonSubscriber<>(
+                delegate::onSubscribe, impl, delegate::onError, delegate::onComplete);
     }
     
     private static final class SkeletonSubscriber<T> implements Flow.Subscriber<T> {

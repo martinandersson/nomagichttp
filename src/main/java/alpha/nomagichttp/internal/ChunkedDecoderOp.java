@@ -1,5 +1,6 @@
 package alpha.nomagichttp.internal;
 
+import alpha.nomagichttp.handler.ClientChannel;
 import alpha.nomagichttp.message.BetterHeaders;
 import alpha.nomagichttp.message.DecoderException;
 import alpha.nomagichttp.message.PooledByteBufferHolder;
@@ -13,7 +14,10 @@ import java.util.concurrent.CompletionStage;
 import java.util.concurrent.Flow;
 import java.util.function.BiConsumer;
 
+import static alpha.nomagichttp.internal.HeadersSubscriber.forRequestTrailers;
 import static alpha.nomagichttp.message.Char.toDebugString;
+import static java.lang.System.Logger.Level.ERROR;
+import static java.lang.System.Logger.Level.WARNING;
 import static java.nio.CharBuffer.allocate;
 import static java.util.HexFormat.fromHexDigitsToLong;
 
@@ -37,16 +41,28 @@ import static java.util.HexFormat.fromHexDigitsToLong;
  */
 final class ChunkedDecoderOp implements Flow.Publisher<PooledByteBufferHolder>
 {
+    private static final System.Logger LOG
+            = System.getLogger(ChunkedDecoderOp.class.getPackageName());
+    
     private static final byte CR = 13, LF = 10, SC = ';', DQ = 34;
     
     private final Flow.Publisher<? extends PooledByteBufferHolder> upstream, decoder;
+    private final int maxTrailersSize;
+    private final ClientChannel chApi;
     private final CompletableFuture<BetterHeaders> trailers;
     
-    ChunkedDecoderOp(Flow.Publisher<? extends PooledByteBufferHolder> upstream) {
+    ChunkedDecoderOp(
+            Flow.Publisher<? extends PooledByteBufferHolder> upstream,
+            int maxTrailersSize, ClientChannel chApi)
+    {
         this.upstream = upstream;
-        this.decoder  = new PooledByteBufferOp(upstream, new Decoder());
-        this.trailers = CompletableFuture.failedFuture(
-                new UnsupportedOperationException("Implement"));
+        this.maxTrailersSize = maxTrailersSize;
+        this.chApi = chApi;
+        this.trailers = new CompletableFuture<>();
+        this.decoder  = new PooledByteBufferOp(upstream, new Decoder(), () -> {
+            boolean parameterHasNoEffect = true;
+            trailers.cancel(parameterHasNoEffect);
+        });
     }
     
     @Override
@@ -58,7 +74,25 @@ final class ChunkedDecoderOp implements Flow.Publisher<PooledByteBufferHolder>
         return trailers.copy();
     }
     
-    private static final class Decoder
+    private void subscribeTrailers() {
+        var hs = forRequestTrailers(maxTrailersSize, chApi);
+        upstream.subscribe(hs);
+        hs.result().whenComplete((res, thr) -> {
+            if (res != null) {
+                if (!trailers.complete(res)) {
+                    LOG.log(WARNING,
+                        "Request-trailers finished but stage was already completed.");
+                }
+            } else {
+                if (!trailers.completeExceptionally(thr)) {
+                    LOG.log(ERROR,
+                        "Request-trailers finished exceptionally but stage was already completed.", thr);
+                }
+            }
+        });
+    }
+    
+    private final class Decoder
             implements BiConsumer<ByteBuffer, PooledByteBufferOp.Sink>
     {
         private static final int
@@ -71,7 +105,7 @@ final class ChunkedDecoderOp implements Flow.Publisher<PooledByteBufferHolder>
             for (;;) {
                 if (parsing == DONE) {
                     s.complete();
-                    // TODO: Switch to trailer processor
+                    subscribeTrailers();
                     return;
                 }
                 final byte b;
@@ -123,9 +157,15 @@ final class ChunkedDecoderOp implements Flow.Publisher<PooledByteBufferHolder>
         }
         
         private void parseSize() {
+            sizeBuf.flip();
+            if (sizeBuf.isEmpty()) {
+                var e = new DecoderException("No chunk-size specified.");
+                sizeBuf.clear();
+                throw e;
+            }
             long v;
             try {
-                v = fromHexDigitsToLong(sizeBuf.flip());
+                v = fromHexDigitsToLong(sizeBuf);
             } catch (NumberFormatException e) {
                 throw new DecoderException(e);
             } finally {
@@ -165,9 +205,7 @@ final class ChunkedDecoderOp implements Flow.Publisher<PooledByteBufferHolder>
                 case LF -> {
                     if (hasRemaining()) {
                         consumeData(b, s);
-                        if (hasRemaining()) {
-                            yield CHUNK_DATA;
-                        }
+                        yield CHUNK_DATA;
                     }
                     yield CHUNK_SIZE;
                 }
@@ -193,34 +231,6 @@ final class ChunkedDecoderOp implements Flow.Publisher<PooledByteBufferHolder>
         private void consumeData(byte b, PooledByteBufferOp.Sink s) {
             --remaining;
             s.accept(b);
-        }
-        
-        // When done, cancel upstream and subscribe TrailerProc
-    }
-    
-    // Split RequestHeadProcessor into RequestLineProcessor and HeaderProcessor
-    // Then re-use HeaderProcessor instead.
-    private final class TrailerProcessor
-            implements Flow.Subscriber<PooledByteBufferHolder>
-    {
-        @Override
-        public void onSubscribe(Flow.Subscription subscription) {
-        
-        }
-    
-        @Override
-        public void onNext(PooledByteBufferHolder item) {
-        
-        }
-    
-        @Override
-        public void onError(Throwable throwable) {
-        
-        }
-    
-        @Override
-        public void onComplete() {
-        
         }
     }
 }

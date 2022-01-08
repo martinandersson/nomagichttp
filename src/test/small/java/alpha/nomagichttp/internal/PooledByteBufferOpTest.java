@@ -31,39 +31,43 @@ final class PooledByteBufferOpTest
 {
     @Test
     void happyPath() {
-        assertThat(toString(testee(nonDecoded(), "hello"))).isEqualTo("hello");
+        // Note: Decoder must complete before upstream do.
+        // Has been tested in ChunkedDecoderOpTest.empty_prematurely()
+        assertThat(toString(testee(nonDecoded(1), "hello")))
+                .isEqualTo("hello");
     }
     
     @Test
-    void empty_1() {
-        assertThat(toString(testee(nonDecoded()))).isEmpty();
-    }
-    
-    @Test
-    void empty_2() {
-        assertThat(toString(testee(nonDecoded(), ""))).isEmpty();
+    void empty() {
+        assertThat(toString(testee(nonDecoded(1), "")))
+                .isEmpty();
     }
     
     @Test
     void emptyThenOne() {
-        assertThat(toString(testee(nonDecoded(), "", "x"))).isEqualTo("x");
+        assertThat(toString(testee(nonDecoded(2), "", "X")))
+                .isEqualTo("X");
     }
     
-    // No explicit complete() from decoder
     @Test
     void filtering() {
-        // ["x--", "x--", ...]
+        // ["x--", "x--", ... "!"]
         final var N = 10;
-        final var inputForDecoder = "x--,".repeat(N).split(",");
+        final var inputForDecoder = ("x--,".repeat(N) + '!').split(",");
         
-        // Pass-through 'x' only
-        BiConsumer<ByteBuffer, PooledByteBufferOp.Sink>
-                zipper = (ignored, s) -> s.accept((byte) 'x');
+        // Pass-through 'x' only, stop on '!'
+        BiConsumer<ByteBuffer, PooledByteBufferOp.Sink> zipper = (buf, sink) -> {
+            if (buf.get() == 'x') {
+                sink.accept((byte) 'x');
+            } else {
+                sink.complete();
+            }
+        };
         
         var received = drainSignals(
             map(testee(zipper, inputForDecoder), ByteBuffers::toString));
         
-        // Sorry, first test needs to be exact. Future ones will reduce.
+        // Sorry, first test needs to be exact lol. Future ones will reduce.
         assertThat(received).hasSize(N + 2);
         assertThat(received.get(0).methodName())
                 .isEqualTo(ON_SUBSCRIBE);
@@ -75,17 +79,15 @@ final class PooledByteBufferOpTest
                 .isEqualTo(ON_COMPLETE);
     }
     
-    // With explicit complete() from decoder
     @Test
     void inflateBeyondBufferCapacity() {
         final int bytesNeeded = PooledByteBufferOp.BUF_SIZE * 3 + 1;
         
-        BiConsumer<ByteBuffer, PooledByteBufferOp.Sink> inflator
-            = (ignored, s) -> {
+        BiConsumer<ByteBuffer, PooledByteBufferOp.Sink> inflator = (buf, sink) -> {
                 generate(() -> 'y')
                     .limit(bytesNeeded)
-                    .forEach(y -> s.accept((byte) y));
-                s.complete();
+                    .forEach(y -> sink.accept((byte) y));
+                sink.complete();
             };
         
         var all = toString(testee(inflator, "x"));
@@ -102,10 +104,18 @@ final class PooledByteBufferOpTest
         return new PooledByteBufferOp(buffers, decoder);
     }
     
-    private static BiConsumer<ByteBuffer, PooledByteBufferOp.Sink> nonDecoded() {
-        return (buf, sink) -> {
-            while (buf.hasRemaining()) {
-                sink.accept(buf.get());
+    private static BiConsumer<ByteBuffer, PooledByteBufferOp.Sink>
+            nonDecoded(int completeAfter)
+    {
+        return new BiConsumer<>() {
+            int n = completeAfter;
+            public void accept(ByteBuffer buf, PooledByteBufferOp.Sink s) {
+                while (buf.hasRemaining()) {
+                    s.accept(buf.get());
+                }
+                if (--n == 0) {
+                    s.complete();
+                }
             }
         };
     }

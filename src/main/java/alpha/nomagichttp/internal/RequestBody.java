@@ -72,6 +72,7 @@ final class RequestBody implements Request.Body
      * @param headers of request
      * @param chIn reading channel
      * @param chApi extended channel API (used for exceptional closure)
+     * @param maxTrailersSize passed to {@link ChunkedDecoderOp}
      * @param timeout duration (may be {@code null})
      * @param beforeNonEmptyBodySubscription before callback (may be {@code null})
      * 
@@ -83,6 +84,7 @@ final class RequestBody implements Request.Body
             DefaultContentHeaders headers,
             Flow.Publisher<DefaultPooledByteBufferHolder> chIn,
             DefaultClientChannel chApi,
+            int maxTrailersSize,
             Duration timeout,
             Runnable beforeNonEmptyBodySubscription)
     {
@@ -115,7 +117,7 @@ final class RequestBody implements Request.Body
                 throw new UnsupportedOperationException(
                         "Only chunked decoding supported, at the moment.");
             }
-            var chunked = new ChunkedDecoderOp(chIn);
+            var chunked = new ChunkedDecoderOp(chIn, maxTrailersSize, chApi);
             content = chunked;
             trailers = chunked.trailers();
         }

@@ -3,6 +3,7 @@ package alpha.nomagichttp.testutil;
 import org.assertj.core.api.AbstractThrowableAssert;
 import org.assertj.core.api.ObjectAssert;
 
+import java.util.concurrent.CancellationException;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
 import java.util.concurrent.CompletionStage;
@@ -44,7 +45,9 @@ public final class Assertions {
      * @return a throwable assert
      * @throws NullPointerException if {@code stage} is {@code null}
      */
-    public static AbstractThrowableAssert<?, ? extends Throwable> assertFailed(CompletionStage<?> stage) {
+    public static AbstractThrowableAssert<?, ? extends Throwable>
+            assertFailed(CompletionStage<?> stage)
+    {
         CompletableFuture<?> f = stage.toCompletableFuture();
         assertThat(f).isCompletedExceptionally();
         try {
@@ -66,7 +69,8 @@ public final class Assertions {
      * @throws InterruptedException if interrupted
      * @throws TimeoutException if 3 seconds pass
      */
-    public static AbstractThrowableAssert<?, ? extends Throwable> assertFails(CompletionStage<?> stage)
+    public static AbstractThrowableAssert<?, ? extends Throwable>
+            assertFails(CompletionStage<?> stage)
             throws InterruptedException, TimeoutException
     {
         try {
@@ -75,5 +79,20 @@ public final class Assertions {
             return assertThat(e).getCause();
         }
         throw new AssertionError("Did not complete exceptionally.");
+    }
+    
+    /**
+     * Assert that the given stage was cancelled.
+     * 
+     * @param stage to verify
+     */
+    public static void assertCancelled(CompletionStage<?> stage) {
+        // This is essentially what AssertJ do:
+        if (stage.toCompletableFuture().isCancelled()) {
+            // Okay, great
+            return;
+        }
+        // Except a copy or a minimal stage will not answer truthfully lol, need to probe the cause
+        assertFailed(stage).isExactlyInstanceOf(CancellationException.class);
     }
 }

@@ -9,7 +9,6 @@ import java.util.concurrent.Flow;
 
 import static java.lang.Long.MAX_VALUE;
 import static java.lang.System.Logger.Level.DEBUG;
-import static java.lang.System.Logger.Level.ERROR;
 import static java.lang.System.Logger.Level.WARNING;
 
 /**
@@ -89,7 +88,7 @@ abstract class AbstractByteSubscriber<R>
     @Override
     public void onError(Throwable t) {
         if (!res.completeExceptionally(t)) {
-            LOG.log(ERROR, "Failed to deliver this error downstream.", t);
+            LOG.log(WARNING, "Failed to deliver this error downstream.", t);
         }
     }
     

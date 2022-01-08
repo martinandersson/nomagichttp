@@ -97,7 +97,7 @@ class DefaultRequestTest
                   (DefaultContentHeaders) head.headers(),
                   Publishers.just(wrap(reqBody)),
                   Mockito.mock(DefaultClientChannel.class),
-                  null, null);
+                  -1, null, null);
         
         SkeletonRequest r = new SkeletonRequest(
                 head, SkeletonRequestTarget.parse("/?"), body, new DefaultAttributes());

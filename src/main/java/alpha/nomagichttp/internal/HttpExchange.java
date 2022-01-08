@@ -301,6 +301,7 @@ final class HttpExchange
     
     private RequestBody createBody(RawRequest.Head h) {
         return RequestBody.of((DefaultContentHeaders) h.headers(), chIn, chApi,
+                config.maxRequestTrailersSize(),
                 config.timeoutIdleConnection(),
                 this::tryRespond100Continue);
     }
@@ -406,7 +407,8 @@ final class HttpExchange
         final var b = reqThin != null ? reqThin.body() :
                 // E.g. HttpVersionTooOldException -> 426 (Upgrade Required).
                 // So we fall back to a local dummy, just for the API.
-                RequestBody.of((DefaultContentHeaders) head.headers(), chIn, chApi, null, null);
+                RequestBody.of((DefaultContentHeaders) head.headers(),
+                        chIn, chApi, -1, null, null);
         
         b.discardIfNoSubscriber();
         b.subscriptionMonitor().asCompletionStage().whenComplete((nil, thr) -> {

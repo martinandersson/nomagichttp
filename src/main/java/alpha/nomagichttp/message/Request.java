@@ -169,7 +169,7 @@ public interface Request extends HeaderHolder, AttributeHolder
      * HttpServer}.
      * 
      * The returned stage may be a copy. It can not be cast to a {@code
-     * CompletableFuture} and then used to abort processing trailers.
+     * CompletableFuture} and then used to cancel/abort processing trailers.
      * 
      * @return trailing headers (never {@code null})
      */
