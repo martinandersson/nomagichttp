@@ -225,7 +225,7 @@ final class ResponsePipeline extends AbstractLocalEventEmitter
             return;
         }
         
-        if (actOnCommand(stage)) {
+        if (tryActOnCommand(stage)) {
             op.complete();
             op.run();
             return;
@@ -265,7 +265,7 @@ final class ResponsePipeline extends AbstractLocalEventEmitter
         }
     }
     
-    private boolean actOnCommand(CompletionStage<Response> stage) {
+    private boolean tryActOnCommand(CompletionStage<Response> stage) {
         if (stage == Command.TRY_SCHEDULE_100CONTINUE) {
             if (!sentOrPending100Continue()) {
                 add(continue_().completedStage());
@@ -280,6 +280,7 @@ final class ResponsePipeline extends AbstractLocalEventEmitter
             }
             return true;
         }
+        // Stage is no command
         return false;
     }
     
