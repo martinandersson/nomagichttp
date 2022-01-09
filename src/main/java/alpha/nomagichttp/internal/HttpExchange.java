@@ -38,6 +38,7 @@ import static alpha.nomagichttp.internal.HeadersSubscriber.forRequestHeaders;
 import static alpha.nomagichttp.internal.InvocationChain.ABORTED;
 import static alpha.nomagichttp.internal.ResponsePipeline.Error;
 import static alpha.nomagichttp.internal.ResponsePipeline.Success;
+import static alpha.nomagichttp.internal.SubscriptionMonitoringOp.Reason.UPSTREAM_ERROR_NOT_DELIVERED;
 import static alpha.nomagichttp.util.IOExceptions.isCausedByBrokenInputStream;
 import static alpha.nomagichttp.util.IOExceptions.isCausedByBrokenOutputStream;
 import static java.lang.Integer.parseInt;
@@ -307,15 +308,25 @@ final class HttpExchange
     }
     
     private RequestBody monitorBody(RequestBody b) {
-        var mon = b.subscriptionMonitor();
-        mon.asCompletionStage().whenComplete((nil, thr) -> {
-            // Note, an empty body is immediately completed normally
-            pipe.add(Command.INIT_RESPONSE_TIMER);
-            if (thr != null && !mon.wasErrorDeliveredToDownstream()) {
-                // Then we need to deal with it
-                handleError(thr);
-            }
-        });
+        b.subscriptionMonitor()
+         .asCompletionStage()
+         .whenComplete((res, nil) -> {
+             // Note, an empty body is immediately completed normally
+             pipe.add(Command.INIT_RESPONSE_TIMER);
+             if (res.reason() == UPSTREAM_ERROR_NOT_DELIVERED) {
+                 // Then we need to deal with it
+                 handleError(res.error().get());
+                 // Note, we could also throw in a check for DOWNSTREAM_FAILED.
+                 // But if we do, that error could end up being handled twice as
+                 // the same exception may also be the result from the
+                 // InvocationChain. Not that handling the same error twice
+                 // would have a devastating effect, but it would clearly be
+                 // weird for anyone noticing it, and, it makes our test cases
+                 // less deterministic and hard to write. Further, it has
+                 // clearly been noted in the JavaDoc of Request.Body that the
+                 // subscriber should not throw an exception.
+             }
+         });
         return b;
     }
     
@@ -411,8 +422,7 @@ final class HttpExchange
                         chIn, chApi, -1, null, null);
         
         b.discardIfNoSubscriber();
-        b.subscriptionMonitor().asCompletionStage().whenComplete((nil, thr) -> {
-            // Prepping new exchange = thr is ignored (already dealt with, hopefully lol)
+        b.subscriptionMonitor().asCompletionStage().whenComplete((ign,ored) -> {
             if (head.headers().contain(CONNECTION, "close") && chApi.isOpenForReading()) {
                 LOG.log(DEBUG, "Request set \"Connection: close\", shutting down input.");
                 chApi.shutdownInputSafe();
