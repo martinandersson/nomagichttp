@@ -25,12 +25,13 @@ final class AtomicReferences
     }
     
     /**
-     * Lazily initialize a new value of an atomic reference.<p>
+     * Sets a new value only if the current value is {@code null}, returning the
+     * latest witness value.<p>
      * 
      * The {@code factory} may be called multiple times when attempted
-     * updates fail due to contention among threads. However, the {@code
-     * postInit} consumer is only called exactly once by the thread who
-     * successfully set the reference value (determined by object identity).<p>
+     * updates fail due to contention among threads. The {@code postInit}
+     * consumer is only called exactly once by the thread who successfully set
+     * the new reference value.<p>
      * 
      * I.e. this method is useful when constructing the value instance is not
      * expensive but post-initialization of the object is, e.g. create a {@code
@@ -66,11 +67,11 @@ final class AtomicReferences
      * @param <V> value type
      * @param <A> accumulation type
      * 
-     * @return the value
+     * @return the value (never {@code null})
      * 
      * @throws NullPointerException
-     *             if any arg is {@code null}, or
-     *             if factory returns {@code null} upon invocation
+     *             if any arg is {@code null},
+     *             or if factory returns {@code null}
      */
     static <V, A extends V> V lazyInit(
             AtomicReference<V> ref, Supplier<? extends A> factory, Consumer<? super A> postInit)
@@ -78,10 +79,7 @@ final class AtomicReferences
         requireNonNull(factory);
         requireNonNull(postInit);
         
-        class Bag {
-            A thing;
-        }
-        
+        class Bag { A thing; }
         Bag created = new Bag();
         
         V latest = ref.updateAndGet(v -> {
@@ -99,8 +97,10 @@ final class AtomicReferences
     }
     
     /**
-     * Lazily initialize a new value of an atomic reference, or else return an
-     * alternative value.<p>
+     * Sets a new value only if the current value is {@code null}.<p>
+     * 
+     * If the operation is successfully, the new value is returned, otherwise
+     * the alternative value is returned.<p>
      * 
      * This method behaves the same as {@link
      * #lazyInit(AtomicReference, Supplier, Consumer)}, except only the
@@ -112,8 +112,8 @@ final class AtomicReferences
      * Think of it as a sort of a concurrency primitive akin to a non-blocking
      * one permit {@link Semaphore Semaphore}{@code .tryAcquire()} where only
      * the initializer succeeds by receiving the permit (a typed value in this
-     * case) and the primitive can then be reset (permit released) by setting
-     * the reference back to null.
+     * case). The primitive can be reset (permit released) by setting the
+     * reference back to null.
      * 
      * @param ref value container/store
      * @param factory value creator
@@ -122,7 +122,7 @@ final class AtomicReferences
      * @param <V> value type
      * @param <A> accumulation type
      *
-     * @return the value if initialized, otherwise the alternative
+     * @return the value if also initialized, otherwise the alternative
      * 
      * @throws NullPointerException
      *             if any arg is {@code null}, or
@@ -137,10 +137,7 @@ final class AtomicReferences
         requireNonNull(factory);
         requireNonNull(postInit);
         
-        class Bag {
-            A thing;
-        }
-        
+        class Bag { A thing; }
         Bag created = new Bag();
         
         V latest = ref.updateAndGet(v -> {
