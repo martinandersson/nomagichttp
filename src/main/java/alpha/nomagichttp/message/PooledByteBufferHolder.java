@@ -82,9 +82,10 @@ public interface PooledByteBufferHolder
      *   if (buf.hasArray()) {
      *       // Still no need for a copy!
      *       str = new String(buf.array(), buf.arrayOffset(), buf.remaining(), UTF_8);
+     *       // Update position and release
      *       holder.discard();
      *   } else {
-     *       // Okay, let's go
+     *       // Okay, a new array is unavoidable
      *       str = new String(holder.copy(), UTF_8);
      *   }
      * </pre>
@@ -96,8 +97,7 @@ public interface PooledByteBufferHolder
     byte[] copy();
     
     /**
-     * Schedule a callback to be executed upon release by the thread
-     * releasing.<p>
+     * Schedule a callback to execute upon release by the thread releasing.<p>
      * 
      * The callback will receive the count of bytes read from the buffer prior
      * to releasing.<p>

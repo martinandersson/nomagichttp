@@ -133,11 +133,18 @@ public interface Request extends HeaderHolder, AttributeHolder
      * 
      * Trailing headers are good for sending metadata that was not available
      * before the body started transmitting. For example, appending a hash that
-     * the receiver can use to verify message integrity.<p>
+     * the receiver can use to verify message integrity. Another example is
+     * having the client provide metrics, such as a timestamp when the client
+     * finished sending the body.<p>
      * 
-     * For the returned stage to complete, a non-empty request body must first
-     * be consumed. If the body is empty, the returned stage will already be
-     * completed with an empty headers object.<p>
+     * Because trailers occur on the wire after the request body, waiting on
+     * trailers to complete before consuming the body may halt progress.
+     * <pre>
+     *   // Bad, trailers may not complete before time out!
+     *   request.trailers().thenCompose(tr -> request.body().toText()...)
+     *   // Okay, body is consumed, trailers will follow
+     *   request.body().toText().thenCompose(txt -> request.trailers()...)
+     * </pre>
      * 
      * RFC 7230 §4.4 defines an HTTP header "Trailer" which it says ought to
      * list what trailers will be sent after the body. The RFC also suggest that
@@ -145,8 +152,8 @@ public interface Request extends HeaderHolder, AttributeHolder
      * the "Trailer" header, i.e. make it look like trailing headers are normal
      * headers (asynchronous APIs were not so common at the time!). And to
      * preempt the damage that may result from hoisting trailers, the RFC also
-     * lists field names that it says must not be used as a trailing header, e.g.
-     * "Host" and "Content-Length".<p>
+     * lists field names that it says must not be used as a trailing header,
+     * e.g. "Host" and "Content-Length".<p>
      * 
      * The NoMagicHTTP does none of this stuff. The "Trailer" header and all
      * trailers will remain untouched. However, the RFC hack may be applied by
@@ -165,8 +172,8 @@ public interface Request extends HeaderHolder, AttributeHolder
      * For requests of an older HTTP version ({@literal <} 1.1), this method
      * returns an already completed stage with an empty headers object.<p>
      * 
-     * For more information on HTTP/1.1 chunked encoding, see {@link
-     * HttpServer}.
+     * If the body is empty, the returned stage will already be completed with
+     * an empty headers object.<p>
      * 
      * The returned stage may be a copy. It can not be cast to a {@code
      * CompletableFuture} and then used to cancel/abort processing trailers.

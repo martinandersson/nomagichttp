@@ -123,7 +123,7 @@ final class RequestBody implements Request.Body
         }
         
         return contentBody(
-                headers, content, trailers, timeout,
+                headers, trailers, content, timeout,
                 chApi, beforeNonEmptyBodySubscription);
     }
     
@@ -139,8 +139,8 @@ final class RequestBody implements Request.Body
     
     private static RequestBody contentBody(
             DefaultContentHeaders headers,
-            Flow.Publisher<? extends PooledByteBufferHolder> content,
             CompletionStage<BetterHeaders> trailers,
+            Flow.Publisher<? extends PooledByteBufferHolder> content,
             Duration timeout,
             DefaultClientChannel chApi,
             Runnable beforeNonEmptyBodySubscription)
@@ -162,8 +162,8 @@ final class RequestBody implements Request.Body
             timedOp.start();
         }
         return new RequestBody(
-                headers, monitor, discard,
-                trailers, beforeNonEmptyBodySubscription);
+                headers, trailers, monitor, discard,
+                beforeNonEmptyBodySubscription);
     }
     
     private final ContentHeaders headers;
@@ -177,10 +177,11 @@ final class RequestBody implements Request.Body
     private RequestBody(
             // Required
             ContentHeaders headers,
-            // All null if body is empty
+            // Only required if chunked body
+            CompletionStage<BetterHeaders> trailers,
+            // All these are null if body is empty
             SubscriptionMonitoringOp monitor,
             OnCancelDiscardOp discard,
-            CompletionStage<BetterHeaders> trailers,
             Runnable beforeSub)
     {
         this.headers   = headers;
@@ -263,7 +264,6 @@ final class RequestBody implements Request.Body
     
     @Override
     public boolean isEmpty() {
-        // or discard == null, or anything else == null really, except headers
         return monitor == null;
     }
     
@@ -274,7 +274,7 @@ final class RequestBody implements Request.Body
      * @see Request#trailers() 
      */
     CompletionStage<BetterHeaders> trailers() {
-        return isEmpty() ? COMPLETED_TRAILERS : trailers;
+        return trailers == null? COMPLETED_TRAILERS : trailers;
     }
     
     /**

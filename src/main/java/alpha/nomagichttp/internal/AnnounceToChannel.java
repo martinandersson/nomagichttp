@@ -345,8 +345,10 @@ final class AnnounceToChannel
             
             if (r == -1) {
                 assert mode == Mode.READ;
-                LOG.log(DEBUG, "End of stream. Will shut down channel's input stream.");
-                shutdownStream();
+                if (isStreamOpen()) {
+                    LOG.log(DEBUG, "End of stream. Will shut down channel's input stream.");
+                    shutdownStream();
+                }
                 buffers.addFirst(NO_MORE); // <-- will cause stop() to be called next run
                 buf = EOS;
             } else {

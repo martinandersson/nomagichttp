@@ -754,9 +754,10 @@ class ErrorTest extends AbstractRealTest
         assertThat(rsp).isEqualTo(
             "HTTP/1.1 204 No Content" + CRLF + CRLF);
         
-        logRecorder().assertAwait(ERROR,
-            "Application's response stage completed exceptionally, " +
-            "but HTTP exchange is not active. This error does not propagate anywhere.");
+        logRecorder().assertAwait(WARNING, """
+            Application's response stage completed exceptionally, but final \
+            response has already been sent. This error does not propagate \
+            anywhere.""");
         
         // Superclass asserts no error sent to error handler
     }

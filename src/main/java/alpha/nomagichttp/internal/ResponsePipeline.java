@@ -27,7 +27,6 @@ import static alpha.nomagichttp.internal.DefaultActionRegistry.Match;
 import static alpha.nomagichttp.internal.HttpExchange.RequestCreated;
 import static alpha.nomagichttp.message.Responses.continue_;
 import static java.lang.System.Logger.Level.DEBUG;
-import static java.lang.System.Logger.Level.ERROR;
 import static java.lang.System.Logger.Level.WARNING;
 import static java.util.concurrent.CompletableFuture.completedStage;
 import static java.util.concurrent.TimeUnit.SECONDS;
@@ -494,9 +493,11 @@ final class ResponsePipeline extends AbstractLocalEventEmitter
         if (rsp == null) {
             // thr originates from application
             if (wroteFinal) {
-                LOG.log(ERROR,
-                    "Application's response stage completed exceptionally, " +
-                    "but HTTP exchange is not active. This error does not propagate anywhere.", thr);
+                LOG.log(WARNING, """
+                    Application's response stage completed exceptionally, \
+                    but final response has already been sent. \
+                    This error does not propagate anywhere.
+                    """, thr);
                 // no emission
             } else {
                 emitResult(Error.INSTANCE, thr, null);

@@ -43,11 +43,13 @@ import static alpha.nomagichttp.util.IOExceptions.isCausedByBrokenInputStream;
 import static alpha.nomagichttp.util.IOExceptions.isCausedByBrokenOutputStream;
 import static java.lang.Integer.parseInt;
 import static java.lang.Math.addExact;
+import static java.lang.System.Logger.Level;
 import static java.lang.System.Logger.Level.DEBUG;
 import static java.lang.System.Logger.Level.ERROR;
 import static java.lang.System.Logger.Level.WARNING;
 import static java.lang.System.nanoTime;
 import static java.util.Objects.requireNonNull;
+import static java.util.concurrent.CompletableFuture.allOf;
 
 /**
  * Orchestrator of an HTTP exchange from request to response, erm, "ish".<p>
@@ -307,27 +309,58 @@ final class HttpExchange
                 this::tryRespond100Continue);
     }
     
-    private RequestBody monitorBody(RequestBody b) {
-        b.subscriptionMonitor()
-         .asCompletionStage()
-         .whenComplete((res, nil) -> {
-             // Note, an empty body is immediately completed normally
-             pipe.add(Command.INIT_RESPONSE_TIMER);
-             if (res.reason() == UPSTREAM_ERROR_NOT_DELIVERED) {
-                 // Then we need to deal with it
-                 handleError(res.error().get());
-                 // Note, we could also throw in a check for DOWNSTREAM_FAILED.
-                 // But if we do, that error could end up being handled twice as
-                 // the same exception may also be the result from the
-                 // InvocationChain. Not that handling the same error twice
-                 // would have a devastating effect, but it would clearly be
-                 // weird for anyone noticing it, and, it makes our test cases
-                 // less deterministic and hard to write. Further, it has
-                 // clearly been noted in the JavaDoc of Request.Body that the
-                 // subscriber should not throw an exception.
-             }
-         });
-        return b;
+    private RequestBody monitorBody(RequestBody rb) {
+        var bodySub = rb.subscriptionMonitor().asCompletionStage().toCompletableFuture();
+        var trailers = rb.trailers().toCompletableFuture();
+        allOf(bodySub, trailers).whenComplete((nil, thr) -> {
+            // Note, an empty body is immediately completed normally
+            pipe.add(Command.INIT_RESPONSE_TIMER);
+            assert bodySub.isDone();
+            var terminated = bodySub.getNow(null);
+            var reason = terminated.reason();
+            if (reason == UPSTREAM_ERROR_NOT_DELIVERED) {
+                // Then we need to deal with it
+                assert terminated.error().isPresent();
+                var error = terminated.error().get();
+                LOG.log(DEBUG, () ->
+                    "Body processing finished, but upstream error was not delivered: " + error);
+                handleError(terminated.error().get());
+                // Note, we could also throw in a check for DOWNSTREAM_FAILED.
+                // But if we do, that error could end up being handled twice coz
+                // the same exception may also complete exceptionally the
+                // invocation chain. Not that handling the same error twice
+                // would have a devastating effect, but it would clearly be
+                // weird for anyone noticing it, and, it makes our test cases
+                // less deterministic and hard to write. Further, it has
+                // clearly been noted in the JavaDoc of Request.Body that the
+                // subscriber should not throw an exception.
+            } else {
+                LOG.log(DEBUG, () -> "Body processing finished (" + reason + ")");
+                // If <thr> is not null, trailers completed exceptionally, and
+                // there is no guarantee that the application has even accessed
+                // the trailer stage. So, not dealing with <thr> here means the
+                // exception could theoretically not be handled.
+                //    There's no easy way to provide an error-handling
+                // guarantee. We can not know for sure what the application will
+                // do in the future. Any imposed "magic" here may instead end up
+                // preempting the application's planed final response causing it
+                // to be ignored.
+                //    An exception lost ought to be an extremely rare event. It
+                // can safely be assumed that any endpoint receiving trailers
+                // will also arrange for them to be consumed and consequently be
+                // in charge of translating the exceptional outcome.
+                //     Nor is this really a problem. The application must at
+                // some point produce a final response, or else face a timeout.
+                // And that is good enough. Logging it here means it'll never be
+                // completely lost.
+                if (thr != null) {
+                    LOG.log(WARNING, () ->
+                        "Request trailers finished exceptionally: " +
+                        unpackCompletionException(thr));
+                }
+            }
+        });
+        return rb;
     }
     
     private void validateRequest() {
@@ -405,9 +438,12 @@ final class HttpExchange
             // e.g. RequestLineParseException -> 400 (Bad Request)
             if (LOG.isLoggable(DEBUG)) {
                 if (chApi.isEverythingOpen()) {
-                    LOG.log(DEBUG, "No request head parsed. Closing child channel. (end of HTTP exchange)");
+                    LOG.log(DEBUG, """
+                        No request head parsed. Closing child channel. \
+                        (end of HTTP exchange)""");
                 } else {
-                    LOG.log(DEBUG, "No request head parsed. (end of HTTP exchange)");
+                    LOG.log(DEBUG,
+                        "No request head parsed. (end of HTTP exchange)");
                 }
             }
             chApi.closeSafe();
@@ -440,7 +476,7 @@ final class HttpExchange
     private void handleError(Throwable exc) {
         final Throwable unpacked = unpackCompletionException(exc);
         if (isTerminatingException(unpacked, chApi)) {
-            result.completeExceptionally(exc);
+            result.completeExceptionally(unpacked);
             return;
         }
         

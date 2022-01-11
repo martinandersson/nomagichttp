@@ -53,9 +53,11 @@ final class SubscriptionMonitoringOp extends AbstractOp<PooledByteBufferHolder>
         /**
          * Upstream completed normally.<p>
          * 
-         * In the context of reading from the server's child channel, this
-         * should never happen. {@code ChannelByteBufferPublisher} signals
-         * {@link EndOfStreamException}.
+         * Note: {@link ChannelByteBufferPublisher} never closes normally, it
+         * always ends with {@link EndOfStreamException}. But the upstream is
+         * going to be either {@link LengthLimitedOp} or {@link
+         * HeadersSubscriber} (request trailers). Hence, this is the expected
+         * termination reason.
          */
         UPSTREAM_COMPLETED,
         
@@ -67,7 +69,13 @@ final class SubscriptionMonitoringOp extends AbstractOp<PooledByteBufferHolder>
         
         /**
          * Upstream signalled {@code onError} but the error was not delivered to
-         * a subscriber (none was active).
+         * a subscriber (none was active).<p>
+         * 
+         * Note that in the context of the request body, the {@link
+         * OnCancelDiscardOp} is the downstream subscriber, but it subscribes to
+         * the monitor lazily when his downstream subscriber has arrived (the
+         * application that is). Hence, the error not delivered was in effect
+         * not delivered to the application.
          */
         UPSTREAM_ERROR_NOT_DELIVERED,
         
@@ -91,7 +99,7 @@ final class SubscriptionMonitoringOp extends AbstractOp<PooledByteBufferHolder>
      * 
      * Only {@code UPSTREAM_ERROR_DELIVERED}, {@code
      * UPSTREAM_ERROR_NOT_DELIVERED} and {@code DOWNSTREAM_FAILED} will also
-     * carry a throwable.
+     * contain a throwable.
      */
     public record TerminationResult(Reason reason, Optional<Throwable> error) {
         private TerminationResult(Reason reason) {

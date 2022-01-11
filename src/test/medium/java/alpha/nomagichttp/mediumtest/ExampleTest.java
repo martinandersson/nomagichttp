@@ -411,6 +411,37 @@ class ExampleTest extends AbstractRealTest
                 .isExactlyInstanceOf(NoRouteFoundException.class);
     }
     
+    // TODO: Currently not a public example. Update docs.
+    @Test
+    @DisplayName("CountRequestsByMethod/TestClient")
+    void RequestTrailers() throws IOException {
+        server().add("/", POST().apply(req -> req.body().toText()
+                .thenCompose(txt ->
+                    req.trailers().thenApply(tr ->
+                        txt + tr.delegate().firstValue("Append-This").get()))
+                .thenApply(Responses::text)));
+        
+        var rsp = client().writeReadTextUntilEOS("""
+                POST / HTTP/1.1
+                Transfer-Encoding: chunked
+                Connection: close
+                
+                6
+                Hello\s
+                0
+                Append-This: World!
+                
+                """);
+        
+        assertThat(rsp).isEqualTo("""
+                HTTP/1.1 200 OK\r
+                Content-Length: 12\r
+                Content-Type: text/plain; charset=utf-8\r
+                Connection: close\r
+                \r
+                Hello World!""");
+    }
+    
     private static Response tryScheduleClose(Response rsp, boolean ifTrue) {
         return ifTrue ? setHeaderConnectionClose(rsp) : rsp;
     }
