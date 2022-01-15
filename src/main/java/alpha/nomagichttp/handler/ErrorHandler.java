@@ -221,10 +221,10 @@ public interface ErrorHandler
      *     <td> {@link Responses#httpVersionNotSupported()} </td>
      *   </tr>
      *   <tr>
-     *     <th scope="row"> {@link MaxRequestHeadSizeExceededException} </th>
+     *     <th scope="row"> {@link BadHeaderException} </th>
      *     <td> None </td>
-     *     <td> Yes </td>
-     *     <td> {@link Responses#entityTooLarge()} </td>
+     *     <td> No </td>
+     *     <td> {@link Responses#badRequest()} </td>
      *   </tr>
      *   <tr>
      *     <th scope="row"> {@link BadRequestException} </th>
@@ -233,10 +233,10 @@ public interface ErrorHandler
      *     <td> {@link Responses#badRequest()} </td>
      *   </tr>
      *   <tr>
-     *     <th scope="row"> {@link BadHeaderException} </th>
+     *     <th scope="row"> {@link MaxRequestHeadSizeExceededException} </th>
      *     <td> None </td>
-     *     <td> No </td>
-     *     <td> {@link Responses#badRequest()} </td>
+     *     <td> Yes </td>
+     *     <td> {@link Responses#entityTooLarge()} </td>
      *   </tr>
      *   <tr>
      *     <th scope="row"> {@link NoRouteFoundException} </th>
@@ -261,6 +261,13 @@ public interface ErrorHandler
      *          {@value HttpConstants.HeaderName#ALLOW} populated.</td>
      *   </tr>
      *   <tr>
+     *     <th scope="row"> {@link MediaTypeParseException} </th>
+     *     <td> None </td>
+     *     <td> Yes </td>
+     *     <td> {@link Responses#internalServerError()} <br>
+     *          Fault assumed to be the applications'.</td>
+     *   </tr>
+     *   <tr>
      *     <th scope="row"> {@link MediaTypeNotAcceptedException} </th>
      *     <td> None </td>
      *     <td> Yes </td>
@@ -279,20 +286,13 @@ public interface ErrorHandler
      *     <td> {@link Responses#internalServerError()} </td>
      *   </tr>
      *   <tr>
-     *     <th scope="row"> {@link MediaTypeParseException} </th>
-     *     <td> None </td>
-     *     <td> Yes </td>
-     *     <td> {@link Responses#internalServerError()} <br>
-     *          Fault assumed to be the applications'.</td>
-     *   </tr>
-     *   <tr>
-     *     <th scope="row"> {@link IllegalRequestBodyException} </th>
+     *     <th scope="row"> {@link DecoderException} </th>
      *     <td> None </td>
      *     <td> No </td>
      *     <td> {@link Responses#badRequest()} </td>
      *   </tr>
      *   <tr>
-     *     <th scope="row"> {@link DecoderException} </th>
+     *     <th scope="row"> {@link IllegalRequestBodyException} </th>
      *     <td> None </td>
      *     <td> No </td>
      *     <td> {@link Responses#badRequest()} </td>
@@ -302,18 +302,6 @@ public interface ErrorHandler
      *     <td> None </td>
      *     <td> Yes </td>
      *     <td> {@link Responses#internalServerError()} </td>
-     *   </tr>
-     *   <tr>
-     *     <th scope="row">{@link EndOfStreamException} </th>
-     *     <td> None </td>
-     *     <td> No </td>
-     *     <td> No response, closes the channel. <br>
-     *          This error signals the failure of a read operation due to client
-     *          disconnect <i>and</i> at least one byte of data was received
-     *          prior to the disconnect (if no bytes were received the error
-     *          handler is never called; no data loss, no problem). Currently,
-     *          however, there's no API support to retrieve the incomplete
-     *          request.</td>
      *   </tr>
      *   <tr>
      *     <th scope="row">{@link ResponseRejectedException} </th>
@@ -344,6 +332,18 @@ public interface ErrorHandler
      *     <td> Yes </td>
      *     <td> First shutdown input stream, then
      *          {@link Responses#serviceUnavailable()}.</td>
+     *   </tr>
+     *   <tr>
+     *     <th scope="row">{@link EndOfStreamException} </th>
+     *     <td> None </td>
+     *     <td> No </td>
+     *     <td> No response, closes the channel. <br>
+     *          This error signals the failure of a read operation due to client
+     *          disconnect <i>and</i> at least one byte of data was received
+     *          prior to the disconnect (if no bytes were received the error
+     *          handler is never called; no data loss, no problem). Currently,
+     *          however, there's no API support to retrieve the incomplete
+     *          request.</td>
      *   </tr>
      *   <tr>
      *     <th scope="row"> <i>{@code Everything else}</i> </th>
@@ -407,7 +407,8 @@ public interface ErrorHandler
                 log(thr);
                 res = internalServerError();
             }
-        } catch (RequestHeadTimeoutException | RequestBodyTimeoutException e) {
+        } catch (RequestHeadTimeoutException |
+                 RequestBodyTimeoutException e) {
             res = requestTimeout();
         } catch (ResponseTimeoutException e) {
             log(thr);
@@ -416,10 +417,12 @@ public interface ErrorHandler
             }
             ch.shutdownInputSafe();
             res = serviceUnavailable();
-        } catch (MediaTypeParseException | IllegalResponseBodyException | AmbiguousHandlerException e) {
+        } catch (MediaTypeParseException      |
+                 IllegalResponseBodyException |
+                 AmbiguousHandlerException e) {
             log(thr);
             res = internalServerError();
-        } catch (Throwable unknown) {
+        } catch (Throwable everyThingElse) {
             log(thr);
             res = internalServerError();
         }

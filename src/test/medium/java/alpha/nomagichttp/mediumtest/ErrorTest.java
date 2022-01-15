@@ -100,55 +100,14 @@ class ErrorTest extends AbstractRealTest
         }
     }
     
-    @Test
-    void MaxRequestHeadSizeExceededException()
-            throws IOException, InterruptedException
-    {
-        usingConfiguration()
-            .maxRequestHeadSize(1);
-        String rsp = client().writeReadTextUntilNewlines(
-            "AB");
-        assertThat(rsp).isEqualTo("""
-            HTTP/1.1 413 Entity Too Large\r
-            Content-Length: 0\r
-            Connection: close\r\n\r\n""");
-        assertThatServerErrorObservedAndLogged()
-            .isExactlyInstanceOf(MaxRequestHeadSizeExceededException.class)
-            .hasNoCause()
-            .hasNoSuppressedExceptions()
-            .hasMessage(null);
+    // TODO
+    void RequestLineParseException() {
+        
     }
     
-    @Test
-    void NoRouteFoundException_default()
-            throws IOException, InterruptedException
-    {
-        String rsp = client().writeReadTextUntilNewlines(
-            "GET /404 HTTP/1.1"      + CRLF + CRLF);
-        assertThat(rsp).isEqualTo(
-            "HTTP/1.1 404 Not Found" + CRLF +
-            "Content-Length: 0"      + CRLF + CRLF);
-        assertThatServerErrorObservedAndLogged()
-            .isExactlyInstanceOf(NoRouteFoundException.class)
-            .hasNoCause()
-            .hasNoSuppressedExceptions()
-            .hasMessage("/404");
-    }
-    
-    @Test
-    void NoRouteFoundException_custom() throws IOException {
-        usingErrorHandler((exc, ch, req) -> {
-            if (exc instanceof NoRouteFoundException) {
-                ch.write(status(499, "Custom Not Found!"));
-                return;
-            }
-            throw exc;
-        });
-        String rsp = client().writeReadTextUntilNewlines(
-            "GET /404 HTTP/1.1"              + CRLF + CRLF);
-        assertThat(rsp).isEqualTo(
-            "HTTP/1.1 499 Custom Not Found!" + CRLF + CRLF);
-        logRecorder().assertThatNoErrorWasLogged();
+    // TODO
+    void HeaderParseException() {
+        
     }
     
     @Test
@@ -231,6 +190,135 @@ class ErrorTest extends AbstractRealTest
             .hasMessage(null);
         logRecorder()
             .assertThatNoErrorWasLogged();
+    }
+    
+    // TODO
+    void BadHeaderException() {
+        
+    }
+    
+    // TODO
+    void BadRequestException() {
+        
+    }
+    
+    @Test
+    void MaxRequestHeadSizeExceededException()
+            throws IOException, InterruptedException
+    {
+        usingConfiguration()
+            .maxRequestHeadSize(1);
+        String rsp = client().writeReadTextUntilNewlines(
+            "AB");
+        assertThat(rsp).isEqualTo("""
+            HTTP/1.1 413 Entity Too Large\r
+            Content-Length: 0\r
+            Connection: close\r\n\r\n""");
+        assertThatServerErrorObservedAndLogged()
+            .isExactlyInstanceOf(MaxRequestHeadSizeExceededException.class)
+            .hasNoCause()
+            .hasNoSuppressedExceptions()
+            .hasMessage(null);
+    }
+    
+    @Test
+    void NoRouteFoundException_default()
+            throws IOException, InterruptedException
+    {
+        String rsp = client().writeReadTextUntilNewlines(
+            "GET /404 HTTP/1.1"      + CRLF + CRLF);
+        assertThat(rsp).isEqualTo(
+            "HTTP/1.1 404 Not Found" + CRLF +
+            "Content-Length: 0"      + CRLF + CRLF);
+        assertThatServerErrorObservedAndLogged()
+            .isExactlyInstanceOf(NoRouteFoundException.class)
+            .hasNoCause()
+            .hasNoSuppressedExceptions()
+            .hasMessage("/404");
+    }
+    
+    @Test
+    void NoRouteFoundException_custom() throws IOException {
+        usingErrorHandler((exc, ch, req) -> {
+            if (exc instanceof NoRouteFoundException) {
+                ch.write(status(499, "Custom Not Found!"));
+                return;
+            }
+            throw exc;
+        });
+        String rsp = client().writeReadTextUntilNewlines(
+            "GET /404 HTTP/1.1"              + CRLF + CRLF);
+        assertThat(rsp).isEqualTo(
+            "HTTP/1.1 499 Custom Not Found!" + CRLF + CRLF);
+        logRecorder().assertThatNoErrorWasLogged();
+    }
+    
+    // Expect 405 (Method Not Allowed)
+    @Test
+    void MethodNotAllowedException_BLABLA()
+            throws IOException, InterruptedException
+    {
+        server().add("/",
+            GET().respond(internalServerError()),
+            POST().respond(internalServerError()));
+        
+        String rsp = client().writeReadTextUntilNewlines(
+            "BLABLA / HTTP/1.1"               + CRLF + CRLF);
+        assertThat(rsp).isEqualTo(
+            "HTTP/1.1 405 Method Not Allowed" + CRLF +
+            "Content-Length: 0"               + CRLF +
+            // Actually, order is not defined, let's see for how long this test pass
+            "Allow: POST, GET"                + CRLF + CRLF);
+        assertThatServerErrorObservedAndLogged()
+            .isExactlyInstanceOf(MethodNotAllowedException.class)
+            .hasMessage("No handler found for method token \"BLABLA\".");
+    }
+    
+    // ...but if the method is OPTIONS, the default configuration implements it
+    @Test
+    void MethodNotAllowedException_OPTIONS()
+            throws IOException, InterruptedException
+    {
+        server().add("/",
+                GET().respond(internalServerError()),
+                POST().respond(internalServerError()));
+        
+        String rsp = client().writeReadTextUntilNewlines(
+                "OPTIONS / HTTP/1.1"              + CRLF + CRLF);
+        assertThat(rsp).isEqualTo(
+                "HTTP/1.1 204 No Content"         + CRLF +
+                "Allow: OPTIONS, POST, GET"       + CRLF + CRLF);
+        
+        assertThat(pollServerError())
+                .isExactlyInstanceOf(MethodNotAllowedException.class)
+                .hasMessage("No handler found for method token \"OPTIONS\".");
+        
+        assertThatNoWarningOrErrorIsLogged();
+    }
+    
+    // TODO
+    void MediaTypeParseException() {
+        
+    }
+    
+    // TODO
+    void MediaTypeNotAcceptedException() {
+        
+    }
+    
+    // TODO
+    void MediaTypeUnsupportedException() {
+        
+    }
+    
+    // TODO
+    void AmbiguousHandlerException() {
+        
+    }
+    
+    // TODO
+    void DecoderException() {
+        
     }
     
     @Test
@@ -483,7 +571,7 @@ class ErrorTest extends AbstractRealTest
     
     // Is treated as a new error, having suppressed the previous one
     @Test
-    void errorHandlerFails() throws IOException, InterruptedException {
+    void Special_errorHandlerFails() throws IOException, InterruptedException {
         Consumer<Throwable> assertSecond = thr -> {
             assertThat(thr)
                     .isExactlyInstanceOf(OopsException.class)
@@ -521,7 +609,7 @@ class ErrorTest extends AbstractRealTest
     // onSubscribe() fails, error goes to ErrorHandler, channel remains fully open
     @ParameterizedTest
     @ValueSource(strings = {"GET", "POST"})
-    void requestBodySubscriberFails_onSubscribe(String method) throws IOException, InterruptedException {
+    void Special_requestBodySubscriberFails_onSubscribe(String method) throws IOException, InterruptedException {
         var sub = new MemorizingSubscriber<>(
                 onSubscribe(s -> { throw new OopsException(); }));
         
@@ -551,7 +639,7 @@ class ErrorTest extends AbstractRealTest
     
     // onNext() fails, error goes to ErrorHandler, channel's read stream is closed
     @Test
-    void requestBodySubscriberFails_onNext() throws IOException, InterruptedException {
+    void Special_requestBodySubscriberFails_onNext() throws IOException, InterruptedException {
         var sub = new MemorizingSubscriber<>(
                 // Read stream closed in ChannelByteBufferPublisher.afterSubscriberFinished()
                 onNext(i -> { throw new OopsException(); }));
@@ -587,7 +675,7 @@ class ErrorTest extends AbstractRealTest
      * @see ClientLifeCycleTest#clientClosesChannel_serverReceivedPartialHead
      */
     @Test
-    void requestBodySubscriberFails_onError() throws IOException, InterruptedException {
+    void Special_requestBodySubscriberFails_onError() throws IOException, InterruptedException {
         var oops = new OopsException("is logged but not re-thrown");
         var sub = new MemorizingSubscriber<>(onError(eos  -> { throw oops; }));
         var ch1 = new ArrayBlockingQueue<ClientChannel>(1);
@@ -630,7 +718,7 @@ class ErrorTest extends AbstractRealTest
     
     @ParameterizedTest
     @ValueSource(strings = {"GET", "POST"})
-    void requestBodySubscriberFails_onComplete(String method)
+    void Special_requestBodySubscriberFails_onComplete(String method)
             throws IOException, InterruptedException
     {
         // For both HTTP methods, the error will exceptionally complete the invocation chain.
@@ -689,7 +777,7 @@ class ErrorTest extends AbstractRealTest
     }
     
     @Test
-    void maxUnsuccessfulResponses() throws IOException, InterruptedException {
+    void Special_maxUnsuccessfulResponses() throws IOException, InterruptedException {
         server().add("/", GET().respond(badRequest().toBuilder()
                 // This header would have caused the server to close the connection,
                 // but we want to run many "failed" responses
@@ -721,7 +809,7 @@ class ErrorTest extends AbstractRealTest
     }
     
     @Test
-    void afterHttpExchange_responseIsLoggedButIgnored()
+    void Special_afterHttpExchange_responseIsLoggedButIgnored()
             throws IOException, InterruptedException
     {
         server().add("/", GET().accept((req, ch) -> {
@@ -741,7 +829,7 @@ class ErrorTest extends AbstractRealTest
     }
     
     @Test
-    void afterHttpExchange_responseExceptionIsLoggedButIgnored()
+    void Special_afterHttpExchange_responseExceptionIsLoggedButIgnored()
             throws IOException, InterruptedException
     {
         server().add("/", GET().accept((req, ch) -> {
@@ -762,48 +850,7 @@ class ErrorTest extends AbstractRealTest
         // Superclass asserts no error sent to error handler
     }
     
-    // Expect 405 (Method Not Allowed)
-    @Test
-    void MethodNotAllowedException_BLABLA()
-            throws IOException, InterruptedException
-    {
-        server().add("/",
-            GET().respond(internalServerError()),
-            POST().respond(internalServerError()));
-        
-        String rsp = client().writeReadTextUntilNewlines(
-            "BLABLA / HTTP/1.1"               + CRLF + CRLF);
-        assertThat(rsp).isEqualTo(
-            "HTTP/1.1 405 Method Not Allowed" + CRLF +
-            "Content-Length: 0"               + CRLF +
-            // Actually, order is not defined, let's see for how long this test pass
-            "Allow: POST, GET"                + CRLF + CRLF);
-        assertThatServerErrorObservedAndLogged()
-            .isExactlyInstanceOf(MethodNotAllowedException.class)
-            .hasMessage("No handler found for method token \"BLABLA\".");
-    }
     
-    // ...but if the method is OPTIONS, the default configuration implements it
-    @Test
-    void MethodNotAllowedException_OPTIONS()
-            throws IOException, InterruptedException
-    {
-        server().add("/",
-                GET().respond(internalServerError()),
-                POST().respond(internalServerError()));
-        
-        String rsp = client().writeReadTextUntilNewlines(
-                "OPTIONS / HTTP/1.1"              + CRLF + CRLF);
-        assertThat(rsp).isEqualTo(
-                "HTTP/1.1 204 No Content"         + CRLF +
-                "Allow: OPTIONS, POST, GET"       + CRLF + CRLF);
-        
-        assertThat(pollServerError())
-                .isExactlyInstanceOf(MethodNotAllowedException.class)
-                .hasMessage("No handler found for method token \"OPTIONS\".");
-        
-        assertThatNoWarningOrErrorIsLogged();
-    }
     
     private void assertOopsException(Throwable oops) {
         assertThat(oops)
