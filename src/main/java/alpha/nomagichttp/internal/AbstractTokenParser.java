@@ -180,12 +180,10 @@ abstract class AbstractTokenParser
      * 
      * The line terminator is LF, optionally preceded by CR.<p>
      * 
-     * If the previous character is CR followed by something else, or the
-     * current character is LF preceded by something else, an exception is
-     * thrown (we expect CRLF or LF only).<p>
+     * If the previous character is CR followed by something else, an exception
+     * is thrown (we expect CRLF or LF only).<p>
      * 
-     * If previous + current is something different from CRLF, {@code null} is
-     * returned.
+     * If the current char is not LF, {@code null} is returned.
      * 
      * @return see JavaDoc
      */
