@@ -20,6 +20,7 @@ import alpha.nomagichttp.message.RequestHeadTimeoutException;
 import alpha.nomagichttp.message.RequestLineParseException;
 import alpha.nomagichttp.message.Response;
 import alpha.nomagichttp.message.ResponseTimeoutException;
+import alpha.nomagichttp.route.AmbiguousHandlerException;
 import alpha.nomagichttp.route.MediaTypeNotAcceptedException;
 import alpha.nomagichttp.route.MediaTypeUnsupportedException;
 import alpha.nomagichttp.route.MethodNotAllowedException;
@@ -441,9 +442,30 @@ class ErrorTest extends AbstractRealTest
             .isSameAs(pollServerErrorNow());
     }
     
-    // TODO
-    void AmbiguousHandlerException() {
-        
+    @Test
+    void AmbiguousHandlerException() throws IOException, InterruptedException {
+        server().add("/",
+            GET().produces("text/plain").accept((ign,ored) -> {}),
+            GET().produces("text/html").accept((ign,ored) -> {}));
+        String rsp = client().writeReadTextUntilNewlines(
+            "GET / HTTP/1.1\n\n");
+        assertThat(rsp).isEqualTo("""
+            HTTP/1.1 500 Internal Server Error\r
+            Content-Length: 0\r\n\r\n""");
+        var thr = logRecorder()
+            .assertAwaitFirstLogErrorOf(AmbiguousHandlerException.class);
+        assertThat(thr)
+            .isExactlyInstanceOf(AmbiguousHandlerException.class)
+            .hasNoCause()
+            .hasNoSuppressedExceptions()
+            .hasMessage("""
+                Ambiguous: [\
+                DefaultRequestHandler{method="GET", \
+                consumes="<nothing and all>", produces="text/plain", logic=?}, \
+                DefaultRequestHandler{method="GET", \
+                consumes="<nothing and all>", produces="text/html", logic=?}]""");
+        assertThat(thr)
+            .isSameAs(pollServerErrorNow());
     }
     
     // TODO
