@@ -2,6 +2,7 @@ package alpha.nomagichttp.mediumtest;
 
 import alpha.nomagichttp.handler.ClientChannel;
 import alpha.nomagichttp.handler.EndOfStreamException;
+import alpha.nomagichttp.handler.RequestHandler;
 import alpha.nomagichttp.handler.ResponseRejectedException;
 import alpha.nomagichttp.message.BadHeaderException;
 import alpha.nomagichttp.message.BadRequestException;
@@ -96,6 +97,8 @@ class ErrorTest extends AbstractRealTest
 {
     private static final System.Logger LOG
             = System.getLogger(ErrorTest.class.getPackageName());
+    
+    private static final RequestHandler.Logic NOP = (ign,ored) -> {};
     
     private static final class OopsException extends RuntimeException {
         private static final long serialVersionUID = 1L;
@@ -233,7 +236,7 @@ class ErrorTest extends AbstractRealTest
     @Test
     void BadHeaderException() throws IOException, InterruptedException {
         server().add("/",
-            GET().accept((ign,ored) -> {}));
+            GET().accept(NOP));
         String rsp = client().writeReadTextUntilEOS("""
             GET / HTTP/1.1\r
             Content-Type: BOOM!\r\n\r\n
@@ -396,8 +399,7 @@ class ErrorTest extends AbstractRealTest
     @Test
     void MediaTypeNotAcceptedException() throws IOException, InterruptedException {
         server().add("/",
-            GET().produces("text/blabla")
-                 .accept((ign,ored) -> {}));
+            GET().produces("text/blabla").accept(NOP));
         String rsp = client().writeReadTextUntilNewlines("""
             GET / HTTP/1.1\r
             Accept: text/different\r\n\r\n
@@ -421,8 +423,7 @@ class ErrorTest extends AbstractRealTest
     @Test
     void MediaTypeUnsupportedException() throws IOException, InterruptedException {
         server().add("/",
-            GET().consumes("text/blabla")
-                 .accept((ign,ored) -> {}));
+            GET().consumes("text/blabla").accept(NOP));
         String rsp = client().writeReadTextUntilNewlines("""
             GET / HTTP/1.1
             Content-Type: text/different\n\n""");
@@ -445,8 +446,8 @@ class ErrorTest extends AbstractRealTest
     @Test
     void AmbiguousHandlerException() throws IOException, InterruptedException {
         server().add("/",
-            GET().produces("text/plain").accept((ign,ored) -> {}),
-            GET().produces("text/html").accept((ign,ored) -> {}));
+            GET().produces("text/plain").accept(NOP),
+            GET().produces("text/html").accept(NOP));
         String rsp = client().writeReadTextUntilNewlines(
             "GET / HTTP/1.1\n\n");
         assertThat(rsp).isEqualTo("""

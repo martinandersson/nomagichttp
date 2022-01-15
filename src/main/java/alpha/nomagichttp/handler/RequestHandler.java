@@ -390,7 +390,9 @@ public interface RequestHandler
      * @see #logic()
      */
     @FunctionalInterface
-    interface Logic extends BiConsumer<Request, ClientChannel>, ReceiverOfUniqueRequestObject {
+    interface Logic extends
+            BiConsumer<Request, ClientChannel>,
+            ReceiverOfUniqueRequestObject {
         // Empty
     }
     
