@@ -6,6 +6,7 @@ import alpha.nomagichttp.handler.RequestHandler;
 import alpha.nomagichttp.handler.ResponseRejectedException;
 import alpha.nomagichttp.message.BadHeaderException;
 import alpha.nomagichttp.message.BadRequestException;
+import alpha.nomagichttp.message.DecoderException;
 import alpha.nomagichttp.message.HeaderParseException;
 import alpha.nomagichttp.message.HttpVersionParseException;
 import alpha.nomagichttp.message.HttpVersionTooNewException;
@@ -21,6 +22,7 @@ import alpha.nomagichttp.message.RequestHeadTimeoutException;
 import alpha.nomagichttp.message.RequestLineParseException;
 import alpha.nomagichttp.message.Response;
 import alpha.nomagichttp.message.ResponseTimeoutException;
+import alpha.nomagichttp.message.Responses;
 import alpha.nomagichttp.route.AmbiguousHandlerException;
 import alpha.nomagichttp.route.MediaTypeNotAcceptedException;
 import alpha.nomagichttp.route.MediaTypeUnsupportedException;
@@ -468,9 +470,57 @@ class ErrorTest extends AbstractRealTest
             .isSameAs(pollServerErrorNow());
     }
     
-    // TODO
-    void DecoderException() {
-        
+    @Test
+    void DecoderException_deliveredToApp() throws IOException {
+        // Must kick off the subscription to provoke the error
+        server().add("/",
+            GET().apply(req -> req.body().toText()
+                    .exceptionally(Throwable::toString)
+                    .thenApply(Responses::text)));
+        String rsp = client().writeReadTextUntilEOS("""
+            GET / HTTP/1.1
+            Transfer-Encoding: chunked
+            Connection: close
+            
+            ABCDEX.....\n""");
+        assertThat(rsp).isEqualTo("""
+            HTTP/1.1 200 OK\r
+            Content-Length: 110\r
+            Content-Type: text/plain; charset=utf-8\r
+            Connection: close\r
+            \r
+            alpha.nomagichttp.message.DecoderException: \
+            java.lang.NumberFormatException: \
+            not a hexadecimal digit: "X" = 88""");
+        logRecorder()
+            .assertThatNoErrorWasLogged();
+    }
+    
+    @Test
+    void DecoderException_deliveredToErrorHandler()
+            throws IOException
+    {
+        server().add("/",
+            GET().apply(req -> req.body().toText()
+                    // no .exceptionally(), pass through to pipeline
+                    .thenApply(Responses::text)));
+        String rsp = client().writeReadTextUntilEOS("""
+            GET / HTTP/1.1
+            Transfer-Encoding: chunked
+            
+            ABCDEX.....\n""");
+        assertThat(rsp).isEqualTo("""
+            HTTP/1.1 400 Bad Request\r
+            Content-Length: 0\r
+            Connection: close\r\n\r\n""");
+        logRecorder()
+            .assertThatNoErrorWasLogged();
+        assertThat(pollServerErrorNow())
+            .isExactlyInstanceOf(DecoderException.class)
+            .hasNoSuppressedExceptions()
+            .hasMessage("""
+                java.lang.NumberFormatException: \
+                not a hexadecimal digit: "X" = 88""");
     }
     
     @Test
