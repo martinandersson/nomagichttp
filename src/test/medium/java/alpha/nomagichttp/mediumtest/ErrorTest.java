@@ -3,6 +3,7 @@ package alpha.nomagichttp.mediumtest;
 import alpha.nomagichttp.handler.ClientChannel;
 import alpha.nomagichttp.handler.EndOfStreamException;
 import alpha.nomagichttp.handler.ResponseRejectedException;
+import alpha.nomagichttp.message.HeaderParseException;
 import alpha.nomagichttp.message.HttpVersionParseException;
 import alpha.nomagichttp.message.HttpVersionTooNewException;
 import alpha.nomagichttp.message.HttpVersionTooOldException;
@@ -105,10 +106,10 @@ class ErrorTest extends AbstractRealTest
     void RequestLineParseException() throws IOException, InterruptedException {
         String rsp = client().writeReadTextUntilEOS(
             "GET / H T T P ....");
-        assertThat(rsp).isEqualTo(
-            "HTTP/1.1 400 Bad Request" + CRLF +
-            "Content-Length: 0"        + CRLF + 
-            "Connection: close"        + CRLF + CRLF);
+        assertThat(rsp).isEqualTo("""
+             HTTP/1.1 400 Bad Request\r
+             Content-Length: 0\r
+             Connection: close\r\n\r\n""");
         assertThat(pollServerError())
             .isExactlyInstanceOf(RequestLineParseException.class)
             .hasNoCause()
@@ -118,9 +119,26 @@ class ErrorTest extends AbstractRealTest
             .assertThatNoErrorWasLogged();
     }
     
-    // TODO
-    void HeaderParseException() {
-        
+    @Test
+    void HeaderParseException() throws IOException, InterruptedException {
+        String rsp = client().writeReadTextUntilEOS("""
+             GET / HTTP/1.1\r
+             H e a d e r: Oops!\r\n""");
+        assertThat(rsp).isEqualTo("""
+             HTTP/1.1 400 Bad Request\r
+             Content-Length: 0\r
+             Connection: close\r\n\r\n""");
+        assertThat(pollServerError())
+            .isExactlyInstanceOf(HeaderParseException.class)
+            .hasNoCause()
+            .hasNoSuppressedExceptions()
+            .hasToString("""
+                HeaderParseException{\
+                prev=(hex:0x48, decimal:72, char:"H"), \
+                curr=(hex:0x20, decimal:32, char:" "), pos=17, \
+                msg=Whitespace in header name or before colon is not accepted.}""");
+        logRecorder()
+            .assertThatNoErrorWasLogged();
     }
     
     @Test
