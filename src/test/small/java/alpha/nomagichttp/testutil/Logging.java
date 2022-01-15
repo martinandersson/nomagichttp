@@ -522,6 +522,8 @@ public final class Logging
          *             if {@code filter} is {@code null}
          * @throws InterruptedException
          *             if the current thread is interrupted while waiting
+         * @throws AssertionError
+         *             on timeout (throwable not observed)
          */
         public Throwable assertAwaitFirstLogErrorOf(
                 Class<? extends Throwable> filter)
@@ -537,7 +539,9 @@ public final class Logging
                 }
                 return false;
             });
-            return thr.get();
+            var t = thr.get();
+            assert t != null; // Just my paranoia lol
+            return t;
         }
         
         /**

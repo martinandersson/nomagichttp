@@ -19,6 +19,7 @@ import alpha.nomagichttp.message.RequestHeadTimeoutException;
 import alpha.nomagichttp.message.RequestLineParseException;
 import alpha.nomagichttp.message.Response;
 import alpha.nomagichttp.message.ResponseTimeoutException;
+import alpha.nomagichttp.route.MediaTypeNotAcceptedException;
 import alpha.nomagichttp.route.MethodNotAllowedException;
 import alpha.nomagichttp.route.NoRouteFoundException;
 import alpha.nomagichttp.testutil.AbstractRealTest;
@@ -367,9 +368,27 @@ class ErrorTest extends AbstractRealTest
         assertThatNoWarningOrErrorIsLogged();
     }
     
-    // TODO
-    void MediaTypeNotAcceptedException() {
-        
+    @Test
+    void MediaTypeNotAcceptedException() throws IOException, InterruptedException {
+        server().add("/",
+            GET().produces("text/blabla")
+                 .accept((ign,ored) -> {}));
+        String rsp = client().writeReadTextUntilNewlines("""
+            GET / HTTP/1.1\r
+            Accept: text/different\r\n\r\n
+            """);
+        assertThat(rsp).isEqualTo("""
+            HTTP/1.1 406 Not Acceptable\r
+            Content-Length: 0\r\n\r\n""");
+        var thr = logRecorder()
+            .assertAwaitFirstLogErrorOf(MediaTypeNotAcceptedException.class);
+        assertThat(thr)
+            .isExactlyInstanceOf(MediaTypeNotAcceptedException.class)
+            .hasNoCause()
+            .hasNoSuppressedExceptions()
+            .hasMessage("No handler found matching \"Accept: text/different\" header in request.");
+        assertThat(thr)
+            .isSameAs(pollServerErrorNow());
     }
     
     // TODO
