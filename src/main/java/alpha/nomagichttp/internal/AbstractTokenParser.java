@@ -145,11 +145,17 @@ abstract class AbstractTokenParser
     final String finish() {
         final var v = token.finish();
         assert v.isEmpty() || !Character.isWhitespace(v.charAt(0)) :
-                "Token has leading whitespace.";
+                "Token has leading whitespace";
         // There may be trailing whitespace, temporarily, for folded header values
-        assert v.isEmpty() || !v.isBlank() : "Non-empty blank token.";
-        LOG.log(DEBUG, () -> "Parsed token: \"" + v + "\".");
+        assert v.isEmpty() || !v.isBlank() : "Non-empty blank token";
+        LOG.log(DEBUG, () -> "Parsed token \"" + escapeCRLF(v) + "\"");
         return v;
+    }
+    
+     private static String escapeCRLF(String str) {
+        // e.g. "bla\r\n\bla" becomes "bla{\r}{\n}bla"
+        return str.replaceAll("\\r", "{\\\\r}")
+                  .replaceAll("\\n", "{\\\\n}");
     }
     
     /**
