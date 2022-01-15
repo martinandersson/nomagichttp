@@ -410,14 +410,35 @@ class ErrorTest extends AbstractRealTest
             .isExactlyInstanceOf(MediaTypeNotAcceptedException.class)
             .hasNoCause()
             .hasNoSuppressedExceptions()
-            .hasMessage("No handler found matching \"Accept: text/different\" header in request.");
+            .hasMessage("""
+                No handler found matching \
+                "Accept: text/different" header in request.""");
         assertThat(thr)
             .isSameAs(pollServerErrorNow());
     }
     
-    // TODO
-    void MediaTypeUnsupportedException() {
-        
+    @Test
+    void MediaTypeUnsupportedException() throws IOException, InterruptedException {
+        server().add("/",
+            GET().consumes("text/blabla")
+                 .accept((ign,ored) -> {}));
+        String rsp = client().writeReadTextUntilNewlines("""
+            GET / HTTP/1.1
+            Content-Type: text/different\n\n""");
+        assertThat(rsp).isEqualTo("""
+            HTTP/1.1 415 Unsupported Media Type\r
+            Content-Length: 0\r\n\r\n""");
+        var thr = logRecorder()
+            .assertAwaitFirstLogErrorOf(MediaTypeUnsupportedException.class);
+        assertThat(thr)
+            .isExactlyInstanceOf(MediaTypeUnsupportedException.class)
+            .hasNoCause()
+            .hasNoSuppressedExceptions()
+            .hasMessage("""
+                No handler found matching \
+                "Content-Type: text/different" header in request.""");
+        assertThat(thr)
+            .isSameAs(pollServerErrorNow());
     }
     
     // TODO
