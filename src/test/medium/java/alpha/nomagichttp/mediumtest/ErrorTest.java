@@ -3,6 +3,7 @@ package alpha.nomagichttp.mediumtest;
 import alpha.nomagichttp.handler.ClientChannel;
 import alpha.nomagichttp.handler.EndOfStreamException;
 import alpha.nomagichttp.handler.ResponseRejectedException;
+import alpha.nomagichttp.message.BadHeaderException;
 import alpha.nomagichttp.message.HeaderParseException;
 import alpha.nomagichttp.message.HttpVersionParseException;
 import alpha.nomagichttp.message.HttpVersionTooNewException;
@@ -223,9 +224,26 @@ class ErrorTest extends AbstractRealTest
             .assertThatNoErrorWasLogged();
     }
     
-    // TODO
-    void BadHeaderException() {
-        
+    @Test
+    void BadHeaderException() throws IOException, InterruptedException {
+        server().add("/",
+            GET().accept((ign,ored) -> {}));
+        String rsp = client().writeReadTextUntilEOS("""
+            GET / HTTP/1.1\r
+            Content-Type: one\r
+            Content-Type: two\r\n\r\n
+            """);
+        assertThat(rsp).isEqualTo("""
+            HTTP/1.1 400 Bad Request\r
+            Content-Length: 0\r
+            Connection: close\r\n\r\n""");
+        assertThat(pollServerError())
+            .isExactlyInstanceOf(BadHeaderException.class)
+            .hasNoCause()
+            .hasNoSuppressedExceptions()
+            .hasMessage("Multiple Content-Type values in request.");
+        logRecorder()
+            .assertThatNoErrorWasLogged();
     }
     
     // TODO
