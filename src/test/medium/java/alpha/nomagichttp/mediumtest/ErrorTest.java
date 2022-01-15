@@ -12,6 +12,7 @@ import alpha.nomagichttp.message.HttpVersionTooOldException;
 import alpha.nomagichttp.message.IllegalRequestBodyException;
 import alpha.nomagichttp.message.IllegalResponseBodyException;
 import alpha.nomagichttp.message.MaxRequestHeadSizeExceededException;
+import alpha.nomagichttp.message.MediaTypeParseException;
 import alpha.nomagichttp.message.PooledByteBufferHolder;
 import alpha.nomagichttp.message.RequestBodyTimeoutException;
 import alpha.nomagichttp.message.RequestHeadTimeoutException;
@@ -226,13 +227,12 @@ class ErrorTest extends AbstractRealTest
     }
     
     @Test
-    void BadHeaderException() throws IOException, InterruptedException {
+    void BadHeaderException_MediaTypeParseException() throws IOException, InterruptedException {
         server().add("/",
             GET().accept((ign,ored) -> {}));
         String rsp = client().writeReadTextUntilEOS("""
             GET / HTTP/1.1\r
-            Content-Type: one\r
-            Content-Type: two\r\n\r\n
+            Content-Type: BOOM!\r\n\r\n
             """);
         assertThat(rsp).isEqualTo("""
             HTTP/1.1 400 Bad Request\r
@@ -240,9 +240,15 @@ class ErrorTest extends AbstractRealTest
             Connection: close\r\n\r\n""");
         assertThat(pollServerError())
             .isExactlyInstanceOf(BadHeaderException.class)
-            .hasNoCause()
+            .hasMessage("Failed to parse Content-Type header.")
             .hasNoSuppressedExceptions()
-            .hasMessage("Multiple Content-Type values in request.");
+            .getCause()
+                .isExactlyInstanceOf(MediaTypeParseException.class)
+                .hasNoSuppressedExceptions()
+                .hasNoCause()
+                .hasMessage("""
+                    Can not parse "BOOM!". \
+                    Expected exactly one forward slash in <type/subtype>.""");
         logRecorder()
             .assertThatNoErrorWasLogged();
     }
@@ -359,11 +365,6 @@ class ErrorTest extends AbstractRealTest
                 .hasMessage("No handler found for method token \"OPTIONS\".");
         
         assertThatNoWarningOrErrorIsLogged();
-    }
-    
-    // TODO
-    void MediaTypeParseException() {
-        
     }
     
     // TODO
