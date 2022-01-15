@@ -402,8 +402,7 @@ class ErrorTest extends AbstractRealTest
             GET().produces("text/blabla").accept(NOP));
         String rsp = client().writeReadTextUntilNewlines("""
             GET / HTTP/1.1\r
-            Accept: text/different\r\n\r\n
-            """);
+            Accept: text/different\r\n\r\n""");
         assertThat(rsp).isEqualTo("""
             HTTP/1.1 406 Not Acceptable\r
             Content-Length: 0\r\n\r\n""");
