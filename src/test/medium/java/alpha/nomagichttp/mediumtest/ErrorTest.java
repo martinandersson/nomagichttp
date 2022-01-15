@@ -12,6 +12,7 @@ import alpha.nomagichttp.message.HttpVersionTooOldException;
 import alpha.nomagichttp.message.IllegalRequestBodyException;
 import alpha.nomagichttp.message.IllegalResponseBodyException;
 import alpha.nomagichttp.message.MaxRequestHeadSizeExceededException;
+import alpha.nomagichttp.message.MediaType;
 import alpha.nomagichttp.message.MediaTypeParseException;
 import alpha.nomagichttp.message.PooledByteBufferHolder;
 import alpha.nomagichttp.message.RequestBodyTimeoutException;
@@ -20,6 +21,7 @@ import alpha.nomagichttp.message.RequestLineParseException;
 import alpha.nomagichttp.message.Response;
 import alpha.nomagichttp.message.ResponseTimeoutException;
 import alpha.nomagichttp.route.MediaTypeNotAcceptedException;
+import alpha.nomagichttp.route.MediaTypeUnsupportedException;
 import alpha.nomagichttp.route.MethodNotAllowedException;
 import alpha.nomagichttp.route.NoRouteFoundException;
 import alpha.nomagichttp.testutil.AbstractRealTest;
@@ -228,7 +230,7 @@ class ErrorTest extends AbstractRealTest
     }
     
     @Test
-    void BadHeaderException_MediaTypeParseException() throws IOException, InterruptedException {
+    void BadHeaderException() throws IOException, InterruptedException {
         server().add("/",
             GET().accept((ign,ored) -> {}));
         String rsp = client().writeReadTextUntilEOS("""
@@ -366,6 +368,28 @@ class ErrorTest extends AbstractRealTest
                 .hasMessage("No handler found for method token \"OPTIONS\".");
         
         assertThatNoWarningOrErrorIsLogged();
+    }
+    
+    @Test
+    void MediaTypeParseException() throws IOException, InterruptedException {
+        server().add("/", GET().accept((ign,ored) ->
+            MediaType.parse("BOOM!")));
+        String rsp = client().writeReadTextUntilNewlines(
+            "GET / HTTP/1.1\n\n");
+        assertThat(rsp).isEqualTo("""
+            HTTP/1.1 500 Internal Server Error\r
+            Content-Length: 0\r\n\r\n""");
+        var thr = logRecorder()
+            .assertAwaitFirstLogErrorOf(MediaTypeParseException.class);
+        assertThat(thr)
+            .isExactlyInstanceOf(MediaTypeParseException.class)
+            .hasNoCause()
+            .hasNoSuppressedExceptions()
+            .hasMessage("""
+                Can not parse "BOOM!". \
+                Expected exactly one forward slash in <type/subtype>.""");
+        assertThat(thr)
+            .isSameAs(pollServerErrorNow());
     }
     
     @Test
