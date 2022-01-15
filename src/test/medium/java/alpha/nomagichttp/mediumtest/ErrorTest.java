@@ -12,6 +12,7 @@ import alpha.nomagichttp.message.MaxRequestHeadSizeExceededException;
 import alpha.nomagichttp.message.PooledByteBufferHolder;
 import alpha.nomagichttp.message.RequestBodyTimeoutException;
 import alpha.nomagichttp.message.RequestHeadTimeoutException;
+import alpha.nomagichttp.message.RequestLineParseException;
 import alpha.nomagichttp.message.Response;
 import alpha.nomagichttp.message.ResponseTimeoutException;
 import alpha.nomagichttp.route.MethodNotAllowedException;
@@ -100,9 +101,21 @@ class ErrorTest extends AbstractRealTest
         }
     }
     
-    // TODO
-    void RequestLineParseException() {
-        
+    @Test
+    void RequestLineParseException() throws IOException, InterruptedException {
+        String rsp = client().writeReadTextUntilEOS(
+            "GET / H T T P ....");
+        assertThat(rsp).isEqualTo(
+            "HTTP/1.1 400 Bad Request" + CRLF +
+            "Content-Length: 0"        + CRLF + 
+            "Connection: close"        + CRLF + CRLF);
+        assertThat(pollServerError())
+            .isExactlyInstanceOf(RequestLineParseException.class)
+            .hasNoCause()
+            .hasNoSuppressedExceptions()
+            .hasMessage("Whitespace in HTTP-version not accepted.");
+        logRecorder()
+            .assertThatNoErrorWasLogged();
     }
     
     // TODO
