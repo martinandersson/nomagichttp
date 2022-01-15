@@ -4,6 +4,7 @@ import alpha.nomagichttp.handler.ClientChannel;
 import alpha.nomagichttp.handler.EndOfStreamException;
 import alpha.nomagichttp.handler.ResponseRejectedException;
 import alpha.nomagichttp.message.BadHeaderException;
+import alpha.nomagichttp.message.BadRequestException;
 import alpha.nomagichttp.message.HeaderParseException;
 import alpha.nomagichttp.message.HttpVersionParseException;
 import alpha.nomagichttp.message.HttpVersionTooNewException;
@@ -246,9 +247,24 @@ class ErrorTest extends AbstractRealTest
             .assertThatNoErrorWasLogged();
     }
     
-    // TODO
-    void BadRequestException() {
-        
+    @Test
+    void BadRequestException() throws IOException, InterruptedException {
+        String rsp = client().writeReadTextUntilEOS("""
+            GET / HTTP/1.1\r
+            Transfer-Encoding: chunked\r
+            Content-Length: 123\r\n\r\n
+            """);
+        assertThat(rsp).isEqualTo("""
+            HTTP/1.1 400 Bad Request\r
+            Content-Length: 0\r
+            Connection: close\r\n\r\n""");
+        assertThat(pollServerError())
+            .isExactlyInstanceOf(BadRequestException.class)
+            .hasNoCause()
+            .hasNoSuppressedExceptions()
+            .hasMessage("Content-Length and Transfer-Encoding present.");
+        logRecorder()
+            .assertThatNoErrorWasLogged();
     }
     
     @Test
