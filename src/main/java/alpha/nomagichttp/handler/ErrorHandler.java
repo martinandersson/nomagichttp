@@ -191,12 +191,6 @@ public interface ErrorHandler
      *   </thead>
      *   <tbody>
      *   <tr>
-     *     <th scope="row"> {@link MaxRequestHeadSizeExceededException} </th>
-     *     <td> None </td>
-     *     <td> Yes </td>
-     *     <td> {@link Responses#entityTooLarge()} </td>
-     *   </tr>
-     *   <tr>
      *     <th scope="row"> {@link RequestLineParseException} </th>
      *     <td> None </td>
      *     <td> No </td>
@@ -225,6 +219,12 @@ public interface ErrorHandler
      *     <td> None </td>
      *     <td> No </td>
      *     <td> {@link Responses#httpVersionNotSupported()} </td>
+     *   </tr>
+     *   <tr>
+     *     <th scope="row"> {@link MaxRequestHeadSizeExceededException} </th>
+     *     <td> None </td>
+     *     <td> Yes </td>
+     *     <td> {@link Responses#entityTooLarge()} </td>
      *   </tr>
      *   <tr>
      *     <th scope="row"> {@link BadRequestException} </th>
@@ -358,9 +358,6 @@ public interface ErrorHandler
         final Response res;
         try {
             throw thr;
-        } catch (MaxRequestHeadSizeExceededException e) {
-            log(thr);
-            res = entityTooLarge();
         } catch (RequestLineParseException   |
                  HeaderParseException        |
                  HttpVersionParseException   |
@@ -373,6 +370,9 @@ public interface ErrorHandler
             res = upgradeRequired(e.getUpgrade());
         } catch (HttpVersionTooNewException e) {
             res = httpVersionNotSupported();
+        } catch (MaxRequestHeadSizeExceededException e) {
+            log(thr);
+            res = entityTooLarge();
         } catch (NoRouteFoundException e) {
             log(thr);
             res = notFound();

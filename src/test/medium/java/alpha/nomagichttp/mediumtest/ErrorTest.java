@@ -101,6 +101,25 @@ class ErrorTest extends AbstractRealTest
     }
     
     @Test
+    void MaxRequestHeadSizeExceededException()
+            throws IOException, InterruptedException
+    {
+        usingConfiguration()
+            .maxRequestHeadSize(1);
+        String rsp = client().writeReadTextUntilNewlines(
+            "AB");
+        assertThat(rsp).isEqualTo("""
+            HTTP/1.1 413 Entity Too Large\r
+            Content-Length: 0\r
+            Connection: close\r\n\r\n""");
+        assertThatServerErrorObservedAndLogged()
+            .isExactlyInstanceOf(MaxRequestHeadSizeExceededException.class)
+            .hasNoCause()
+            .hasNoSuppressedExceptions()
+            .hasMessage(null);
+    }
+    
+    @Test
     void NoRouteFoundException_default()
             throws IOException, InterruptedException
     {
@@ -130,25 +149,6 @@ class ErrorTest extends AbstractRealTest
         assertThat(rsp).isEqualTo(
             "HTTP/1.1 499 Custom Not Found!" + CRLF + CRLF);
         logRecorder().assertThatNoErrorWasLogged();
-    }
-    
-    @Test
-    void MaxRequestHeadSizeExceededException()
-            throws IOException, InterruptedException
-    {
-        usingConfiguration()
-            .maxRequestHeadSize(1);
-        String rsp = client().writeReadTextUntilNewlines(
-            "AB");
-        assertThat(rsp).isEqualTo(
-            "HTTP/1.1 413 Entity Too Large" + CRLF +
-            "Content-Length: 0"             + CRLF +
-            "Connection: close"             + CRLF + CRLF);
-        assertThatServerErrorObservedAndLogged()
-            .isExactlyInstanceOf(MaxRequestHeadSizeExceededException.class)
-            .hasNoCause()
-            .hasNoSuppressedExceptions()
-            .hasMessage(null);
     }
     
     @Test
