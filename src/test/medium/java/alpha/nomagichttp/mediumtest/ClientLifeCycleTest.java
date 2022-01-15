@@ -138,7 +138,7 @@ class ClientLifeCycleTest extends AbstractRealTest
      * disconnect and subsequently ignores it without logging.
      * 
      * @see ErrorHandler
-     * @see ErrorTest#requestBodySubscriberFails_onError() 
+     * @see ErrorTest#Special_requestBodySubscriberFails_onError() 
      */
     @Test
     void clientClosesChannel_serverReceivedPartialHead() throws IOException, InterruptedException {
