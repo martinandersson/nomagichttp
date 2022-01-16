@@ -101,8 +101,8 @@ final class HeadersSubscriber<T> extends AbstractByteSubscriber<T>
     
     @Override
     protected T parse(byte b) {
-        int r = read();
-        if (r == maxBytes) {
+        int n = read();
+        if (n == maxBytes) {
             throw exceeded.get(); }
         try {
             return parser.parse(b);

@@ -56,8 +56,7 @@ final class SubscriptionMonitoringOp extends AbstractOp<PooledByteBufferHolder>
          * Note: {@link ChannelByteBufferPublisher} never closes normally, it
          * always ends with {@link EndOfStreamException}. But the upstream is
          * going to be either {@link LengthLimitedOp} or {@link
-         * HeadersSubscriber} (request trailers). Hence, this is the expected
-         * termination reason.
+         * HeadersSubscriber} (request trailers) which does complete normally.
          */
         UPSTREAM_COMPLETED,
         

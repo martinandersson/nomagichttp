@@ -157,7 +157,7 @@ public interface Request extends HeaderHolder, AttributeHolder
      * 
      * The NoMagicHTTP does none of this stuff. The "Trailer" header and all
      * trailers will remain untouched. However, the RFC hack may be applied by
-     * HTTP intermediaries who buffer up and de-chunk an HTTP/1.1 message before
+     * HTTP intermediaries who buffer up and dechunk an HTTP/1.1 message before
      * forwarding it. The application can therefore not generally be sure that
      * the "Trailer" header and trailers are received in the same manner they
      * were sent. Unless the application has knowledge or make assumptions
