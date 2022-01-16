@@ -21,12 +21,14 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.Flow;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.BiConsumer;
 import java.util.function.BiFunction;
 
 import static alpha.nomagichttp.HttpConstants.HeaderName.CONTENT_LENGTH;
 import static alpha.nomagichttp.HttpConstants.HeaderName.TRANSFER_ENCODING;
 import static alpha.nomagichttp.internal.AtomicReferences.lazyInit;
-import static alpha.nomagichttp.internal.SubscriptionMonitoringOp.alreadyCompleted;
+import static alpha.nomagichttp.internal.SubscriptionMonitoringOp.NO_DOWNSTREAM;
+import static alpha.nomagichttp.internal.SubscriptionMonitoringOp.TerminationResult;
 import static alpha.nomagichttp.internal.SubscriptionMonitoringOp.subscribeTo;
 import static alpha.nomagichttp.message.DefaultContentHeaders.empty;
 import static java.lang.System.Logger.Level.DEBUG;
@@ -34,6 +36,7 @@ import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.nio.file.StandardOpenOption.CREATE_NEW;
 import static java.nio.file.StandardOpenOption.WRITE;
 import static java.util.Objects.requireNonNull;
+import static java.util.concurrent.CompletableFuture.allOf;
 import static java.util.concurrent.CompletableFuture.completedStage;
 import static java.util.concurrent.CompletableFuture.failedStage;
 
@@ -44,9 +47,14 @@ import static java.util.concurrent.CompletableFuture.failedStage;
  */
 final class RequestBody implements Request.Body
 {
-    private static final System.Logger LOG = System.getLogger(RequestBody.class.getPackageName());
-    private static final CompletionStage<BetterHeaders> COMPLETED_TRAILERS = completedStage(empty());
-    private static final CompletionStage<String> COMPLETED_EMPTY_STR = completedStage("");
+    private static final System.Logger
+            LOG = System.getLogger(RequestBody.class.getPackageName());
+    
+    private static final CompletionStage<String>
+            COMPLETED_EMPTY_STR = completedStage("");
+    
+    private static final CompletionStage<BetterHeaders>
+            COMPLETED_TRAILERS = completedStage(empty());
     
     // Copy-pasted from AsynchronousFileChannel.NO_ATTRIBUTES
     @SuppressWarnings({"rawtypes"}) // generic array construction
@@ -278,18 +286,6 @@ final class RequestBody implements Request.Body
     }
     
     /**
-     * Returns the subscription monitor.<p>
-     * 
-     * If the body is empty, then {@link
-     * SubscriptionMonitoringOp#alreadyCompleted()}} is returned.
-     * 
-     * @return the subscription monitor
-     */
-    SubscriptionMonitoringOp subscriptionMonitor() {
-        return isEmpty() ? alreadyCompleted() : monitor;
-    }
-    
-    /**
      * If no downstream body subscriber is active, complete downstream and
      * discard upstream.<p>
      * 
@@ -300,6 +296,49 @@ final class RequestBody implements Request.Body
             return;
         }
         discard.discardIfNoSubscriber();
+    }
+    
+    /**
+     * Execute the action when both the subscription and trailers have
+     * completed.<p>
+     * 
+     * The subscription stage always terminates normally, the result of which is
+     * passed forward to the given action.<p>
+     * 
+     * The normal result from trailers is ignored. Trailers may however end
+     * exceptionally and if so, the throwable is passed forward to the
+     * action.<p>
+     * 
+     * One does not exclude the other. The action is guaranteed to receive the
+     * subscription's termination result, but may also receive an exception from
+     * the trailers.
+     * 
+     * @param action see JavaDoc
+     */
+    void whenComplete(BiConsumer<? super TerminationResult, ? super Throwable> action) {
+        assert action != null;
+        // This entire method could be compressed to one simple "allOf()"
+        // statement. But lots of requests are going to be bodiless or not use
+        // trailers. As a library we have to care a little about performance.
+        if (isEmpty()) {
+            action.accept(NO_DOWNSTREAM, null);
+            return;
+        }
+        var bodyStage = monitor.asCompletionStage();
+        if (trailers == null) {
+            bodyStage.whenComplete((res, nil) -> {
+                assert nil == null;
+                action.accept(res, null);
+            });
+        } else {
+            var bodyFut = bodyStage.toCompletableFuture();
+            allOf(bodyFut, trailers.toCompletableFuture())
+                    .whenComplete((nil, thr) -> {
+                        var res = bodyFut.getNow(null);
+                        assert res != null;
+                        action.accept(res, thr);
+                    });
+        }
     }
     
     private static <T> void copyResult(

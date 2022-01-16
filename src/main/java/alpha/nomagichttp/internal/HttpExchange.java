@@ -48,7 +48,6 @@ import static java.lang.System.Logger.Level.ERROR;
 import static java.lang.System.Logger.Level.WARNING;
 import static java.lang.System.nanoTime;
 import static java.util.Objects.requireNonNull;
-import static java.util.concurrent.CompletableFuture.allOf;
 
 /**
  * Orchestrator of an HTTP exchange from request to response, erm, "ish".<p>
@@ -312,21 +311,16 @@ final class HttpExchange
     }
     
     private RequestBody monitorBody(RequestBody rb) {
-        var bodySub = rb.subscriptionMonitor().asCompletionStage().toCompletableFuture();
-        var trailers = rb.trailers().toCompletableFuture();
-        allOf(bodySub, trailers).whenComplete((nil, thr) -> {
+        rb.whenComplete((res, thr) -> {
             // Note, an empty body is immediately completed normally
             pipe.add(Command.INIT_RESPONSE_TIMER);
-            assert bodySub.isDone();
-            var terminated = bodySub.getNow(null);
-            var reason = terminated.reason();
-            if (reason == UPSTREAM_ERROR_NOT_DELIVERED) {
+            if (res.reason() == UPSTREAM_ERROR_NOT_DELIVERED) {
                 // Then we need to deal with it
                 LOG.log(DEBUG, """
                     Body processing finished, but upstream error was not \
                     delivered. Handling the error.""");
-                assert terminated.error().isPresent();
-                handleError(terminated.error().get());
+                assert res.error().isPresent();
+                handleError(res.error().get());
                 // Note, we could also throw in a check for DOWNSTREAM_FAILED.
                 // But if we do, that error could end up being handled twice coz
                 // the same exception may also complete exceptionally the
@@ -337,7 +331,7 @@ final class HttpExchange
                 // clearly been noted in the JavaDoc of Request.Body that the
                 // subscriber should not throw an exception.
             } else {
-                LOG.log(DEBUG, () -> "Body processing finished (" + reason + ")");
+                LOG.log(DEBUG, () -> "Body processing finished (" + res.reason() + ")");
                 // If <thr> is not null, trailers completed exceptionally, and
                 // there is no guarantee that the application has even accessed
                 // the trailer stage. So, not dealing with <thr> here means the
@@ -464,7 +458,7 @@ final class HttpExchange
                         chIn, chApi, -1, null, null);
         
         b.discardIfNoSubscriber();
-        b.subscriptionMonitor().asCompletionStage().whenComplete((ign,ored) -> {
+        b.whenComplete((ign,ored) -> {
             if (head.headers().contain(CONNECTION, "close") && chApi.isOpenForReading()) {
                 LOG.log(DEBUG, "Request set \"Connection: close\", shutting down input.");
                 chApi.shutdownInputSafe();

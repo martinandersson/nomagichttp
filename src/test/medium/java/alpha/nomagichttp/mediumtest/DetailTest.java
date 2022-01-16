@@ -29,6 +29,7 @@ import static alpha.nomagichttp.handler.RequestHandler.GET;
 import static alpha.nomagichttp.handler.RequestHandler.POST;
 import static alpha.nomagichttp.message.Responses.accepted;
 import static alpha.nomagichttp.message.Responses.continue_;
+import static alpha.nomagichttp.message.Responses.noContent;
 import static alpha.nomagichttp.message.Responses.ok;
 import static alpha.nomagichttp.message.Responses.processing;
 import static alpha.nomagichttp.message.Responses.text;
@@ -66,7 +67,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 class DetailTest extends AbstractRealTest
 {
     @Test
-    void connection_reuse() throws IOException {
+    void connection_reuse_standard() throws IOException {
         server().add(respondRequestBody());
         
         final String resHead =
@@ -81,6 +82,51 @@ class DetailTest extends AbstractRealTest
             
             String res2 = client().writeReadTextUntil(post("DEF"), "DEF");
             assertThat(res2).isEqualTo(resHead + "DEF");
+        }
+    }
+    
+    @Test
+    void connection_reuse_chunking() throws IOException {
+        server()
+            .add("/ignore-body-and-trailers", POST().respond(noContent()))
+            .add("/echo-trailers", POST().apply(req -> req.body().toText()
+                       .thenCompose(ignore -> req.trailers().thenApply(tr ->
+                               text(tr.delegate().firstValue("Trailer").get())))));
+        
+        var template = """
+            POST /$1 HTTP/1.1
+            Transfer-Encoding: chunked
+            $2
+            
+            3
+            abc
+            0
+            Trailer: $3
+            
+            """;
+        
+        Channel ch = client().openConnection();
+        try (ch) {
+            // Discard both the body and trailers
+            var req1 = template.replace("$1", "ignore-body-and-trailers")
+                               .replace("$2", "X-Extra: lots of fun tiz is")
+                               .replace("$3", "blabla we don't care");
+            var rsp1 = client().writeReadTextUntilNewlines(req1);
+            assertThat(rsp1).isEqualTo(
+                    "HTTP/1.1 204 No Content\r\n\r\n");
+            
+            // Can push a message over the same conn and echo the last trailer
+            var req2 = template.replace("$1", "echo-trailers")
+                               .replace("$2", "Connection: close")
+                               .replace("$3", "I care!");
+            var rsp2 = client().writeReadTextUntilEOS(req2);
+            assertThat(rsp2).isEqualTo("""
+                HTTP/1.1 200 OK\r
+                Content-Length: 7\r
+                Content-Type: text/plain; charset=utf-8\r
+                Connection: close\r
+                \r
+                I care!""");
         }
     }
     

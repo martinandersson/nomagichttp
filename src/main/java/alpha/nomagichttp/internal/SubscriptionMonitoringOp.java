@@ -4,7 +4,6 @@ import alpha.nomagichttp.handler.EndOfStreamException;
 import alpha.nomagichttp.message.PooledByteBufferHolder;
 import alpha.nomagichttp.message.Request;
 import alpha.nomagichttp.message.RequestBodyTimeoutException;
-import alpha.nomagichttp.util.Publishers;
 
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
@@ -20,13 +19,12 @@ import static alpha.nomagichttp.internal.SubscriptionMonitoringOp.Reason.UPSTREA
 import static alpha.nomagichttp.internal.SubscriptionMonitoringOp.Reason.UPSTREAM_ERROR_NOT_DELIVERED;
 import static alpha.nomagichttp.internal.SubscriptionMonitoringOp.Reason.VOID;
 import static java.util.Optional.ofNullable;
-import static java.util.concurrent.CompletableFuture.completedFuture;
 
 /**
  * Exposes an API for monitoring a downstream subscription.<p>
  * 
- * Is used by the {@link HttpExchange} to be notified of upstream errors and the
- * termination of the request body subscription at which point the next HTTP
+ * Is used by the {@link RequestBody} to in turn notify the HTTP exchange about
+ * the completion of the request body consumption at which point the next HTTP
  * exchange pair may commence.<p>
  * 
  * Unlike the default operator behavior, this operator subscribes eagerly to the
@@ -42,11 +40,35 @@ import static java.util.concurrent.CompletableFuture.completedFuture;
 final class SubscriptionMonitoringOp extends AbstractOp<PooledByteBufferHolder>
 {
     /**
-     * Why the subscription terminated.
+     * A result with {@link Reason#VOID}.
+     */
+    public static final TerminationResult
+            NO_DOWNSTREAM = new TerminationResult(VOID);
+    
+    /**
+     * Holds the reason why the downstream subscription terminated and possibly
+     * also a throwable if it was an error that caused the subscription to
+     * terminate.<p>
+     * 
+     * Only {@code UPSTREAM_ERROR_DELIVERED}, {@code
+     * UPSTREAM_ERROR_NOT_DELIVERED} and {@code DOWNSTREAM_FAILED} will also
+     * contain a throwable.
+     */
+    public record TerminationResult(Reason reason, Optional<Throwable> error) {
+        private TerminationResult(Reason reason) {
+            this(reason, (Throwable) null);
+        }
+        private TerminationResult(Reason reason, Throwable error) {
+            this(reason, ofNullable(error));
+        }
+    }
+    
+    /**
+     * Why the downstream subscription terminated.
      */
     public enum Reason {
         /**
-         * No downstream subscriber is accepted (empty request body).
+         * No downstream subscriber exists (empty request body).
          */
         VOID,
         
@@ -92,24 +114,6 @@ final class SubscriptionMonitoringOp extends AbstractOp<PooledByteBufferHolder>
     }
     
     /**
-     * Holds the reason why the subscription terminated and possibly also a
-     * throwable if it was an error that caused the subscription to
-     * terminate.<p>
-     * 
-     * Only {@code UPSTREAM_ERROR_DELIVERED}, {@code
-     * UPSTREAM_ERROR_NOT_DELIVERED} and {@code DOWNSTREAM_FAILED} will also
-     * contain a throwable.
-     */
-    public record TerminationResult(Reason reason, Optional<Throwable> error) {
-        private TerminationResult(Reason reason) {
-            this(reason, (Throwable) null);
-        }
-        private TerminationResult(Reason reason, Throwable error) {
-            this(reason, ofNullable(error));
-        }
-    }
-    
-    /**
      * Construct a monitoring operator.
      * 
      * @param upstream the upstream publisher
@@ -119,22 +123,6 @@ final class SubscriptionMonitoringOp extends AbstractOp<PooledByteBufferHolder>
             Flow.Publisher<? extends PooledByteBufferHolder> upstream)
     {
         return new SubscriptionMonitoringOp(upstream);
-    }
-    
-    private static final SubscriptionMonitoringOp
-            ALREADY_COMPLETED = new SubscriptionMonitoringOp();
-    
-    /**
-     * Returns an operator whose {@linkplain
-     * SubscriptionMonitoringOp#asCompletionStage() stage} is already completed
-     * with the reason {@code VOID}.<p>
-     * 
-     * The returned operator can not be subscribed to.
-     * 
-     * @return see JavaDoc
-     */
-    static SubscriptionMonitoringOp alreadyCompleted() {
-        return ALREADY_COMPLETED;
     }
     
     /** A count of bytebuffers in-flight. */
@@ -170,13 +158,6 @@ final class SubscriptionMonitoringOp extends AbstractOp<PooledByteBufferHolder>
         terminated = new AtomicReference<>(null);
         result = new CompletableFuture<>();
         trySubscribeToUpstream();
-    }
-    
-    private SubscriptionMonitoringOp() {
-        super(Publishers.empty());
-        processing = null;
-        terminated = null;
-        result = completedFuture(new TerminationResult(VOID));
     }
     
     /**

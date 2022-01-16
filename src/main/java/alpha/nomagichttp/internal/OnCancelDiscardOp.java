@@ -5,6 +5,7 @@ import alpha.nomagichttp.message.PooledByteBufferHolder;
 import java.util.concurrent.Flow;
 
 import static java.lang.Long.MAX_VALUE;
+import static java.lang.System.Logger.Level.DEBUG;
 
 /**
  * Upon receiving a cancel signal from downstream, instead of propagating the
@@ -27,6 +28,9 @@ import static java.lang.Long.MAX_VALUE;
  */
 final class OnCancelDiscardOp extends AbstractOp<PooledByteBufferHolder>
 {
+    private static final System.Logger LOG
+            = System.getLogger(OnCancelDiscardOp.class.getPackageName());
+    
     /*
      * TODO
      * A potential improvement is to compute the number of bytes that needs to
@@ -69,6 +73,7 @@ final class OnCancelDiscardOp extends AbstractOp<PooledByteBufferHolder>
     void discardIfNoSubscriber() {
         if (!discarding && tryShutdown()) {
             discarding = true;
+            LOG.log(DEBUG, "Switched to discarding mode");
             trySubscribeToUpstream();
             fromDownstreamRequest(MAX_VALUE);
         }

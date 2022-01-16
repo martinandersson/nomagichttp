@@ -696,33 +696,28 @@ public interface Request extends HeaderHolder, AttributeHolder
      * HTTP/1.1 chunked decoder is publishing [decoded] bytebuffers allocated on
      * the heap. If the application uses {@link ByteBuffer#array()} to access
      * the bytes directly, do not forget to also set the new {@link
-     * ByteBuffer#position(int)} before releasing it. Reading remaining bytes
-     * directly but not updating the bytebuffer's position will cause an endless
-     * loop where the upstream re-releases the same bytebuffer over and over
-     * again.<p>
+     * ByteBuffer#position(int)} before releasing it. Doing both at the same
+     * time is exactly what {@link PooledByteBufferHolder#discard()} do.<p>
      * 
-     * TODO: 1) Implement exception if released without consumption 100x in
-     * a row, then the last sentence in this paragraph can be removed).
+     * Reading remaining bytes directly but not updating the bytebuffer's
+     * position will cause an endless loop where the upstream re-releases the
+     * same bytebuffer over and over again.<p>
      * 
-     * TODO: 2) Make discard() non-static and reference above. Good way to
-     * update position and release.
+     * TODO: Implement exception if released without consumption 100x in a row,
+     * then the last paragraph can be removed).
      * 
-     * <h3>The HTTP exchange and body discarding</h3>
+     * <h3>Body discarding</h3>
      * 
-     * The HTTP exchange is considered done as soon as 1) the request handler
-     * invocation has returned, and 2) the request body subscription completes,
-     * and 3) the final response body subscription completes. Not until then
-     * will the next HTTP message-exchange commence on the same channel.<p>
+     * A request body subscriber should ensure his subscription runs all the way
+     * to the end or is cancelled. Failure to request items in a timely manner
+     * will result in a {@link RequestBodyTimeoutException}.<p>
      * 
-     * This means that a request body subscriber should ensure his subscription
-     * runs all the way to the end or is cancelled. Failure to request items in
-     * a timely manner will result in a {@link RequestBodyTimeoutException}.<p>
-     * 
-     * But the application does not have to consume the body explicitly. When
-     * the server's final response body subscription completes and earliest at
-     * that point no request body subscriber has arrived, then the server will
-     * assume that the body was intentionally ignored and proceed to discard it
-     * - after which it can not be subscribed to by the application anymore.<p>
+     * But the application does not have to consume the body explicitly.
+     * Earliest at the point when the request handler invocation has returned
+     * and the server's final response body subscription completes; if no
+     * request body subscriber has arrived, then the server will assume that the
+     * body was intentionally ignored and proceed to discard it - after which it
+     * can not be subscribed to by the application anymore.<p>
      * 
      * If a final response must be sent back immediately but reading the request
      * body bytes must be delayed, then there's at least two ways of solving

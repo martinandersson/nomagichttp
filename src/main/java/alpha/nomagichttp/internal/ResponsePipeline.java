@@ -491,7 +491,7 @@ final class ResponsePipeline extends AbstractLocalEventEmitter
     
     private void actOnWriteFailure(Throwable thr, Response rsp) {
         if (rsp == null) {
-            // thr originates from application
+            // thr originates from application or its upstream
             if (wroteFinal) {
                 LOG.log(WARNING, """
                     Application's response stage completed exceptionally, \
