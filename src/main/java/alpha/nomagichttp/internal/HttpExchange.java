@@ -43,7 +43,6 @@ import static alpha.nomagichttp.util.IOExceptions.isCausedByBrokenInputStream;
 import static alpha.nomagichttp.util.IOExceptions.isCausedByBrokenOutputStream;
 import static java.lang.Integer.parseInt;
 import static java.lang.Math.addExact;
-import static java.lang.System.Logger.Level;
 import static java.lang.System.Logger.Level.DEBUG;
 import static java.lang.System.Logger.Level.ERROR;
 import static java.lang.System.Logger.Level.WARNING;
@@ -201,7 +200,10 @@ final class HttpExchange
     
     private void setupPipeline() {
         pipe.on(Success.class, (ev, rsp) -> handleWriteSuccess((Response) rsp));
-        pipe.on(Error.class, (ev, thr) -> handleError((Throwable) thr));
+        pipe.on(Error.class, (ev, thr) -> {
+            LOG.log(DEBUG, "Response pipeline failed. Handling the error.");
+            handleError((Throwable) thr);
+        });
         chApi.usePipeline(pipe);
     }
     
@@ -320,10 +322,10 @@ final class HttpExchange
             var reason = terminated.reason();
             if (reason == UPSTREAM_ERROR_NOT_DELIVERED) {
                 // Then we need to deal with it
+                LOG.log(DEBUG, """
+                    Body processing finished, but upstream error was not \
+                    delivered. Handling the error.""");
                 assert terminated.error().isPresent();
-                var error = terminated.error().get();
-                LOG.log(DEBUG, () ->
-                    "Body processing finished, but upstream error was not delivered: " + error);
                 handleError(terminated.error().get());
                 // Note, we could also throw in a check for DOWNSTREAM_FAILED.
                 // But if we do, that error could end up being handled twice coz
@@ -366,8 +368,8 @@ final class HttpExchange
     private void validateRequest() {
         // Is NOT suitable as a before-action; they are invoked only for valid requests
         if (head.line().method().equals(TRACE) && !reqThin.body().isEmpty()) {
-            throw new IllegalRequestBodyException(head, reqThin.body(),
-                    "Body in a TRACE request.");
+            throw new IllegalRequestBodyException(
+                    head, reqThin.body(), "Body in a TRACE request.");
         }
     }
     
@@ -382,35 +384,39 @@ final class HttpExchange
         final int v = cntDown.decrementAndGet();
         if (thr == null || thr.getCause() == ABORTED) {
             if (v == 0) {
-                LOG.log(DEBUG, "Invocation chain finished after final response. " +
-                               "Preparing for a new HTTP exchange.");
+                LOG.log(DEBUG, """
+                    Invocation chain finished normally after final response. \
+                    Preparing for a new HTTP exchange.""");
                 prepareForNewExchange();
             } // else normal finish = do nothing, final response will try to prepare next
         } else {
             if (v == 0) {
-                LOG.log(WARNING,
-                        "Invocation chain returned exceptionally but final response already sent. " +
-                        "This error is ignored. " +
-                        "Preparing for a new HTTP exchange.", thr);
+                LOG.log(WARNING, """
+                    Invocation chain returned exceptionally but final response \
+                    was already sent. Will ignore the error and prepare for a \
+                    new HTTP exchange.""", thr);
                 prepareForNewExchange();
             } else {
+                LOG.log(DEBUG, """
+                    Invocation chain finished exceptionally, \
+                    handling the error.""");
                 handleError(thr);
             }
         }
     }
     
     private void handleWriteSuccess(Response rsp) {
-        if (rsp.isFinal()) {
-            if (cntDown.decrementAndGet() == 0) {
-                LOG.log(DEBUG, "Response sent is final. May prepare for a new HTTP exchange.");
-                prepareForNewExchange();
-            } else {
-                LOG.log(DEBUG,
-                    "Response sent is final but request's processing chain is still executing. " +
-                    "HTTP exchange remains active.");
-            }
+        if (!rsp.isFinal()) {
+            return;
+        }
+        if (cntDown.decrementAndGet() == 0) {
+            LOG.log(DEBUG,
+                "Response sent is final. Preparing for a new HTTP exchange.");
+            prepareForNewExchange();
         } else {
-            LOG.log(DEBUG, "Response sent is not final. HTTP exchange remains active.");
+            LOG.log(DEBUG, """
+                Response sent is final but the invocation chain is \
+                still executing. Not preparing for a new exchange.""");
         }
     }
     
@@ -623,7 +629,9 @@ final class HttpExchange
                     return;
                 } catch (Throwable next) {
                     if (t != next) {
-                        // New fail
+                        LOG.log(DEBUG, """
+                            Application error handler returned exceptionally. \
+                            Handling new error.""");
                         HttpExchange.this.handleError(next);
                         return;
                     } // else continue; Handler opted out
