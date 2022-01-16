@@ -4,9 +4,7 @@ import alpha.nomagichttp.message.BadHeaderException;
 import alpha.nomagichttp.message.DefaultContentHeaders;
 import alpha.nomagichttp.message.RawRequest;
 import alpha.nomagichttp.message.Request;
-import alpha.nomagichttp.util.Publishers;
 import org.junit.jupiter.api.Test;
-import org.mockito.Mockito;
 
 import java.net.http.HttpHeaders;
 import java.nio.ByteBuffer;
@@ -18,9 +16,12 @@ import java.util.List;
 import static alpha.nomagichttp.HttpConstants.Version.HTTP_1_1;
 import static alpha.nomagichttp.testutil.Assertions.assertFailed;
 import static alpha.nomagichttp.util.Headers.of;
+import static alpha.nomagichttp.util.Publishers.just;
 import static java.nio.charset.StandardCharsets.US_ASCII;
 import static java.nio.file.Files.notExists;
+import static java.time.Duration.ofDays;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.mock;
 
 /**
  * Small tests of {@link DefaultRequest}.
@@ -95,9 +96,9 @@ class DefaultRequestTest
         var head = new RawRequest.Head(line, new RequestHeaders(headers));
         var body = RequestBody.of(
                   (DefaultContentHeaders) head.headers(),
-                  Publishers.just(wrap(reqBody)),
-                  Mockito.mock(DefaultClientChannel.class),
-                  -1, null, null);
+                  just(wrap(reqBody)),
+                  mock(DefaultClientChannel.class),
+                  -1, ofDays(999), null);
         
         SkeletonRequest r = new SkeletonRequest(
                 head, SkeletonRequestTarget.parse("/?"), body, new DefaultAttributes());

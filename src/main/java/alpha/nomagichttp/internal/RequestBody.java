@@ -35,7 +35,6 @@ import static java.lang.System.Logger.Level.DEBUG;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.nio.file.StandardOpenOption.CREATE_NEW;
 import static java.nio.file.StandardOpenOption.WRITE;
-import static java.util.Objects.requireNonNull;
 import static java.util.concurrent.CompletableFuture.allOf;
 import static java.util.concurrent.CompletableFuture.completedStage;
 import static java.util.concurrent.CompletableFuture.failedStage;
@@ -61,31 +60,21 @@ final class RequestBody implements Request.Body
     private static final FileAttribute<?>[] NO_ATTRIBUTES = new FileAttribute[0];
     
     /**
-     * Construct a RequestBody.
+     * Create a request body.<p>
      * 
-     * The first three arguments are required.<p>
-     * 
-     * The {@code timeout} should always be provided, but may be skipped if the
-     * call-site knows the body is empty (in which case the HTTP exchange
-     * arranges for the response pipeline's timeout to start immediately) or the
-     * call-site intends to immediately discard the body with no further
-     * delay.<p>
-     * 
-     * The callback is also optional, and will be called just before this class
-     * subscribes the downstream subscriber (application) to the upstream
-     * publisher (channel), but only if the body has contents. Subscription to
-     * an empty body will delegate to an empty dummy and never invoke the
-     * callback.
+     * The optional callback will be called just before this class subscribes
+     * the downstream subscriber (application) to the upstream publisher
+     * (channel), but only if the body has contents. Subscription to an empty
+     * body will delegate to an empty dummy and never invoke the callback.
      * 
      * @param headers of request
      * @param chIn reading channel
      * @param chApi extended channel API (used for exceptional closure)
      * @param maxTrailersSize passed to {@link ChunkedDecoderOp}
-     * @param timeout duration (may be {@code null})
-     * @param beforeNonEmptyBodySubscription before callback (may be {@code null})
+     * @param timeout duration
+     * @param beforeNonEmptyBodySubscription before callback (nullable)
      * 
      * @return a request body
-     * @throws NullPointerException if any required argument is {@code null}
      * @throws BadRequestException on invalid message framing
      */
     static RequestBody of(
@@ -109,7 +98,7 @@ final class RequestBody implements Request.Body
             }
             long len = cl.getAsLong();
             if (len == 0) {
-                return emptyBody(chIn, chApi, headers);
+                return emptyBody(headers);
             }
             assert len > 0;
             content = new LengthLimitedOp(len, chIn);
@@ -119,7 +108,7 @@ final class RequestBody implements Request.Body
             //  the message body length is zero (no message body is present)."
             // (only outbound responses may be close-delimited)
             // https://tools.ietf.org/html/rfc7230#section-3.3.3
-            return emptyBody(chIn, chApi, headers);
+            return emptyBody(headers);
         } else {
             if (te.size() != 1 && !te.getLast().equalsIgnoreCase("chunked")) {
                 throw new UnsupportedOperationException(
@@ -135,14 +124,15 @@ final class RequestBody implements Request.Body
                 chApi, beforeNonEmptyBodySubscription);
     }
     
-    private static RequestBody emptyBody(
-            Flow.Publisher<?> chIn,
-            DefaultClientChannel chApi,
-            DefaultContentHeaders headers)
-    {
-        requireNonNull(chIn);
-        requireNonNull(chApi);
-        return new RequestBody(headers, null, null, null, null);
+    /**
+     * Create an empty request body.
+     * 
+     * @param headers HTTP headers
+     * @return an empty request body
+     */
+    public static RequestBody emptyBody(DefaultContentHeaders headers) {
+        assert headers != null;
+        return new RequestBody(headers, null, null, null);
     }
     
     private static RequestBody contentBody(
@@ -154,50 +144,51 @@ final class RequestBody implements Request.Body
             Runnable beforeNonEmptyBodySubscription)
     {
         // Upstream is ChannelByteBufferPublisher, he can handle async cancel
-        var timedOp = timeout == null ? null :
-                new TimeoutOp.Flow<>(false, true, content, timeout, () -> {
+        var top = new TimeoutOp.Flow<>(false, true, content, timeout, () -> {
                     if (LOG.isLoggable(DEBUG) && chApi.isOpenForReading()) {
-                        LOG.log(DEBUG, "Request body timed out, shutting down child channel's read stream.");
+                        LOG.log(DEBUG, """
+                            Request body timed out, shutting down \
+                            child channel's read stream.""");
                     }
                     // No new HTTP exchange
                     chApi.shutdownInputSafe();
                     return new RequestBodyTimeoutException();
                 });
-        
-        var monitor = subscribeTo(timedOp != null ? timedOp : content);
-        var discard = new OnCancelDiscardOp(monitor);
-        if (timedOp != null) {
-            timedOp.start();
-        }
+        top.start();
         return new RequestBody(
-                headers, trailers, monitor, discard,
+                headers, trailers, top,
                 beforeNonEmptyBodySubscription);
     }
     
     private final ContentHeaders headers;
+    private final CompletionStage<BetterHeaders> trailers;
     private final SubscriptionMonitoringOp monitor;
     private final OnCancelDiscardOp discard;
-    private final CompletionStage<BetterHeaders> trailers;
     private final Runnable beforeSub;
-    
     private final AtomicReference<CompletionStage<String>> cachedTxt;
     
     private RequestBody(
-            // Required
+            // Absolutely required
             ContentHeaders headers,
             // Only required if chunked body
             CompletionStage<BetterHeaders> trailers,
-            // All these are null if body is empty
-            SubscriptionMonitoringOp monitor,
-            OnCancelDiscardOp discard,
+            // Not needed for empty bodies, obviously
+            Flow.Publisher<? extends PooledByteBufferHolder> content,
+            // Optional
             Runnable beforeSub)
     {
         this.headers   = headers;
-        this.monitor   = monitor;
-        this.discard   = discard;
         this.trailers  = trailers;
+        if (content == null) {
+            monitor = null;
+            discard = null;
+            cachedTxt = null;
+        } else {
+            monitor = subscribeTo(content);
+            discard = new OnCancelDiscardOp(monitor);
+            cachedTxt = new AtomicReference<>(null);
+        }
         this.beforeSub = beforeSub;
-        this.cachedTxt = isEmpty() ? null : new AtomicReference<>(null);
     }
     
     @Override
@@ -299,8 +290,8 @@ final class RequestBody implements Request.Body
     }
     
     /**
-     * Execute the action when both the subscription and trailers have
-     * completed.<p>
+     * Execute the action when both the downstream subscription and trailers
+     * have completed.<p>
      * 
      * The subscription stage always terminates normally, the result of which is
      * passed forward to the given action.<p>

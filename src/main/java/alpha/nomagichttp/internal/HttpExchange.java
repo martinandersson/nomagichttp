@@ -36,6 +36,8 @@ import static alpha.nomagichttp.HttpConstants.Version.HTTP_1_1;
 import static alpha.nomagichttp.handler.ErrorHandler.DEFAULT;
 import static alpha.nomagichttp.internal.HeadersSubscriber.forRequestHeaders;
 import static alpha.nomagichttp.internal.InvocationChain.ABORTED;
+import static alpha.nomagichttp.internal.RequestBody.emptyBody;
+import static alpha.nomagichttp.internal.RequestBody.of;
 import static alpha.nomagichttp.internal.ResponsePipeline.Error;
 import static alpha.nomagichttp.internal.ResponsePipeline.Success;
 import static alpha.nomagichttp.internal.SubscriptionMonitoringOp.Reason.UPSTREAM_ERROR_NOT_DELIVERED;
@@ -304,7 +306,7 @@ final class HttpExchange
     }
     
     private RequestBody createBody(RawRequest.Head h) {
-        return RequestBody.of((DefaultContentHeaders) h.headers(), chIn, chApi,
+        return of((DefaultContentHeaders) h.headers(), chIn, chApi,
                 config.maxRequestTrailersSize(),
                 config.timeoutIdleConnection(),
                 this::tryRespond100Continue);
@@ -454,8 +456,7 @@ final class HttpExchange
         final var b = reqThin != null ? reqThin.body() :
                 // E.g. HttpVersionTooOldException -> 426 (Upgrade Required).
                 // So we fall back to a local dummy, just for the API.
-                RequestBody.of((DefaultContentHeaders) head.headers(),
-                        chIn, chApi, -1, null, null);
+                emptyBody((DefaultContentHeaders) head.headers());
         
         b.discardIfNoSubscriber();
         b.whenComplete((ign,ored) -> {
