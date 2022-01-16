@@ -411,9 +411,13 @@ class ExampleTest extends AbstractRealTest
                 .isExactlyInstanceOf(NoRouteFoundException.class);
     }
     
+    /**
+     * The happy version of
+     * {@link ErrorTest#Special_requestTrailers_errorNotHandled()}.
+     */
     // TODO: Currently not a public example. Update docs.
     @Test
-    @DisplayName("CountRequestsByMethod/TestClient")
+    @DisplayName("RequestTrailers/TestClient")
     void RequestTrailers() throws IOException {
         server().add("/", POST().apply(req -> req.body().toText()
                 .thenCompose(txt ->

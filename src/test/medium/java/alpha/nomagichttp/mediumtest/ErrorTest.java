@@ -1052,7 +1052,37 @@ class ErrorTest extends AbstractRealTest
         // Superclass asserts no error sent to error handler
     }
     
-    
+    /** The error version of {@link ExampleTest#RequestTrailers()}. */
+    @Test
+    void Special_requestTrailers_errorNotHandled() throws IOException, InterruptedException {
+        server().add("/", POST().apply(req -> req.body().toText()
+                .thenApply(Responses::text)));
+        var rsp = client().writeReadTextUntilEOS("""
+                POST / HTTP/1.1
+                Transfer-Encoding: chunked
+                
+                6
+                Hello\s
+                0
+                Crash Plz: Whitespace in header name!
+                
+                """);
+        assertThat(rsp).isEqualTo("""
+                HTTP/1.1 200 OK\r
+                Content-Length: 6\r
+                Content-Type: text/plain; charset=utf-8\r
+                Connection: close\r
+                \r
+                Hello\s""");
+        // The trailer exception effectively closed the channel,
+        // but no other effect than a logged warning
+        logRecorder().assertThatNoErrorWasLogged();
+        logRecorder().assertAwait(WARNING, """
+            Request trailers finished exceptionally: \
+            HeaderParseException{prev=(hex:0x68, decimal:104, char:"h"), \
+            curr=(hex:0x20, decimal:32, char:" "), pos=N/A, \
+            msg=Whitespace in header name or before colon is not accepted.}""");
+    }
     
     private void assertOopsException(Throwable oops) {
         assertThat(oops)
