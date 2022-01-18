@@ -137,7 +137,7 @@ import static org.junit.jupiter.api.Assertions.assertSame;
  */
 public abstract class AbstractRealTest
 {
-    private final static System.Logger LOG
+    private static final System.Logger LOG
             = System.getLogger(AbstractRealTest.class.getPackageName());
     
     private final boolean stopServerAfterEach,

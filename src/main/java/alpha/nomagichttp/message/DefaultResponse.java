@@ -125,7 +125,7 @@ final class DefaultResponse implements Response
      * 
      * @author Martin Andersson (webmaster at martinandersson.com)
      */
-    final static class DefaultBuilder
+    static final class DefaultBuilder
             extends AbstractImmutableBuilder<DefaultBuilder.MutableState>
             implements Response.Builder
     {

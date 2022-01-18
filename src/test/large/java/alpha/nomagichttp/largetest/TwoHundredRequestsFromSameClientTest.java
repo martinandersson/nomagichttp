@@ -46,7 +46,7 @@ class TwoHundredRequestsFromSameClientTest extends AbstractLargeRealTest
 {
     private static final int REQUESTS_PER_BATCH = 100;
     
-    private final static Map<String, LongStream.Builder> STATS = new HashMap<>();
+    private static final Map<String, LongStream.Builder> STATS = new HashMap<>();
     
     private Channel conn;
     @BeforeAll

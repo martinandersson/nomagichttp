@@ -277,7 +277,7 @@ public final class Logging
      * 
      * @see #startRecording(Class, Class[])
      */
-    public final static class Recorder {
+    public static final class Recorder {
         private final RecordListener[] l;
         private long timeout;
         private TimeUnit unit;

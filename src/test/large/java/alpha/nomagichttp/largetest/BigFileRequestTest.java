@@ -51,7 +51,7 @@ import static org.junit.jupiter.api.Assumptions.assumeTrue;
 @TestMethodOrder(OrderAnnotation.class)
 class BigFileRequestTest extends AbstractLargeRealTest
 {
-    private final static int FILE_SIZE = 40 * 1_000_000;
+    private static final int FILE_SIZE = 40 * 1_000_000;
     
     private static Path file;
     private static byte[] contents;
