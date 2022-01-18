@@ -19,6 +19,20 @@ public final class TestSubscribers {
     }
     
     /**
+     * Returns a subscriber that immediately requests the given value.<p>
+     * 
+     * All other methods except {@code onSubscribe} are NOP.
+     * 
+     * @param n demand to request
+     * @param <T> item type, inferred on call-site
+     * 
+     * @return a skeleton subscriber
+     */
+    public static <T> Flow.Subscriber<T> request(long n) {
+        return new SkeletonSubscriber<>(s -> s.request(n), null, null, null);
+    }
+    
+    /**
      * Returns a subscriber that delegates {@code onSubscribe()} to the given
      * implementation.<p>
      * 

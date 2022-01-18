@@ -8,9 +8,9 @@ import java.util.concurrent.Flow;
 
 import static alpha.nomagichttp.testutil.MemorizingSubscriber.MethodName.ON_COMPLETE;
 import static alpha.nomagichttp.testutil.MemorizingSubscriber.MethodName.ON_SUBSCRIBE;
-import static alpha.nomagichttp.testutil.MemorizingSubscriber.Request;
 import static alpha.nomagichttp.testutil.MemorizingSubscriber.drainItems;
 import static alpha.nomagichttp.testutil.MemorizingSubscriber.drainMethods;
+import static alpha.nomagichttp.testutil.TestSubscribers.onSubscribe;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
@@ -23,7 +23,7 @@ final class PublishersTest
     @Test
     void just_isReusable() {
         Flow.Publisher<String> p = Publishers.just("one");
-        MemorizingSubscriber<String> s = new MemorizingSubscriber<>(Request.IMMEDIATELY_MAX());
+        MemorizingSubscriber<String> s = new MemorizingSubscriber<>();
         p.subscribe(s);
         assertThat(s.items()).containsExactly("one");
         p.subscribe(s);
@@ -45,17 +45,9 @@ final class PublishersTest
     
     @Test
     void just_empty_cancelImmediately() {
-        MemorizingSubscriber<Object> ms = new MemorizingSubscriber<>(Request.NOTHING()){
-            @Override
-            public void onSubscribe(Flow.Subscription sub) {
-                sub.cancel();
-                super.onSubscribe(sub);
-            }
-        };
-        
-        Publishers.just().subscribe(ms);
-        
+        var s = new MemorizingSubscriber<>(onSubscribe(Flow.Subscription::cancel));
+        Publishers.just().subscribe(s);
         // but not ON_COMPLETE, because we cancelled!
-        assertThat(ms.methodNames()).containsExactly(ON_SUBSCRIBE);
+        assertThat(s.methodNames()).containsExactly(ON_SUBSCRIBE);
     }
 }

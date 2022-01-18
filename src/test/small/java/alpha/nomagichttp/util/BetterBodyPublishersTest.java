@@ -1,7 +1,6 @@
 package alpha.nomagichttp.util;
 
 import alpha.nomagichttp.testutil.MemorizingSubscriber;
-import alpha.nomagichttp.testutil.MemorizingSubscriber.Request;
 import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
@@ -18,6 +17,7 @@ import static alpha.nomagichttp.testutil.MemorizingSubscriber.MethodName.ON_NEXT
 import static alpha.nomagichttp.testutil.MemorizingSubscriber.MethodName.ON_SUBSCRIBE;
 import static alpha.nomagichttp.testutil.MemorizingSubscriber.drainItems;
 import static alpha.nomagichttp.testutil.MemorizingSubscriber.drainMethods;
+import static alpha.nomagichttp.testutil.TestSubscribers.request;
 import static alpha.nomagichttp.util.BetterBodyPublishers.concat;
 import static alpha.nomagichttp.util.BetterBodyPublishers.ofByteArray;
 import static alpha.nomagichttp.util.BetterBodyPublishers.ofFile;
@@ -73,7 +73,7 @@ class BetterBodyPublishersTest
         BodyPublisher p = ofByteArray(array(1));
         assertThat(p.contentLength()).isOne();
         
-        var s = new MemorizingSubscriber<>(Request.IMMEDIATELY_N(1));
+        var s = new MemorizingSubscriber<>(request(1));
         p.subscribe(s);
         
         assertThat(s.methodNames()).containsExactly(
@@ -131,7 +131,7 @@ class BetterBodyPublishersTest
         
         assertThat(c.contentLength()).isEqualTo(2);
         
-        var s = new MemorizingSubscriber<>(Request.IMMEDIATELY_N(2));
+        var s = new MemorizingSubscriber<>(request(2));
         c.subscribe(s);
         
         assertThat(s.methodNames()).containsExactly(

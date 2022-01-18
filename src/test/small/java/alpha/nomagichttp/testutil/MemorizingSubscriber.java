@@ -12,6 +12,7 @@ import static alpha.nomagichttp.testutil.MemorizingSubscriber.MethodName.ON_COMP
 import static alpha.nomagichttp.testutil.MemorizingSubscriber.MethodName.ON_ERROR;
 import static alpha.nomagichttp.testutil.MemorizingSubscriber.MethodName.ON_NEXT;
 import static alpha.nomagichttp.testutil.MemorizingSubscriber.MethodName.ON_SUBSCRIBE;
+import static alpha.nomagichttp.testutil.TestSubscribers.request;
 import static java.lang.Long.MAX_VALUE;
 import static java.util.Objects.requireNonNull;
 
@@ -22,121 +23,28 @@ import static java.util.Objects.requireNonNull;
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  */
-public class MemorizingSubscriber<T> implements Flow.Subscriber<T>
+public final class MemorizingSubscriber<T> implements Flow.Subscriber<T>
 {
     /**
-     * Subscribes a memorizing subscriber to the given publisher and then return
-     * the published {@link #items() items}.<p>
+     * A subscriber-received signal.
      * 
-     * The subscriber will immediately request {@code Long.MAX_VALUE}.<p>
-     * 
-     * The publisher should publish items eagerly in order for all [expected]
-     * items to be present in the returned collection.
-     * 
-     * @param from publisher to drain
-     * @param <T> type of item published
-     * @return all signals received
+     * Signals may carry an {@link #argument()}; the subscription object or the
+     * item/error from upstream. {@code onComplete} does not receive an
+     * argument.
      */
-    public static <T> List<T> drainItems(Flow.Publisher<? extends T> from) {
-        MemorizingSubscriber<T> s = new MemorizingSubscriber<>(Request.IMMEDIATELY_MAX());
-        from.subscribe(s);
-        return s.items();
-    }
-    
-    /**
-     * Subscribes a memorizing subscriber to the given publisher and then return
-     * all invoked methods.<p>
-     * 
-     * The subscriber will immediately request {@code Long.MAX_VALUE}.<p>
-     * 
-     * The publisher should be eager in order for all [expected] methods to be
-     * present in the returned collection.
-     * 
-     * @param from publisher to drain
-     * @return all methods invoked
-     */
-    public static List<MethodName> drainMethods(Flow.Publisher<?> from) {
-        var s = new MemorizingSubscriber<>(Request.IMMEDIATELY_MAX());
-        from.subscribe(s);
-        return s.methodNames();
-    }
-    
-    /**
-     * Subscribes a memorizing subscriber to the given publisher and then return
-     * all received signals.<p>
-     * 
-     * The subscriber will immediately request {@code Long.MAX_VALUE}.<p>
-     * 
-     * The publisher should be eager in order for all [expected] signals to be
-     * present in the returned collection.
-     * 
-     * @param from publisher to drain
-     * @return all methods invoked
-     */
-    public static List<Signal> drainSignals(Flow.Publisher<?> from) {
-        var s = new MemorizingSubscriber<>(Request.IMMEDIATELY_MAX());
-        from.subscribe(s);
-        return s.signals();
-    }
-    
-    /**
-     * Subscribes a memorizing subscriber to the given publisher and returns all
-     * received signals when the subscription completes.<p>
-     * 
-     * The subscriber will immediately request {@code Long.MAX_VALUE}.
-     * 
-     * @param from publisher to drain
-     * @return all signals received
-     */
-    public static CompletionStage<List<Signal>> drainSignalsAsync(Flow.Publisher<?> from) {
-        CompletableFuture<List<Signal>> r = new CompletableFuture<>();
-        var s = new MemorizingSubscriber<>(Request.IMMEDIATELY_MAX());
-        from.subscribe(s);
-        return s.asCompletionStage().thenApply(nil -> s.signals());
-    }
-    
-    /**
-     * Request strategy of a delegate-empty memorizing subscriber.
-     */
-    public static class Request {
-        private static final Request NOTHING = new Request(-1);
-        
+    public record Signal(MethodName methodName, Object argument) {
         /**
-         * Request nothing.
+         * Returns the signal argument.<p>
          * 
-         * @return a strategy that requests nothing
-         */
-        public static Request NOTHING() {
-            return NOTHING;
-        }
-        
-        /**
-         * Request the given value immediately.
+         * {@code onComplete} returns {@code Void.class}.
          * 
-         * @param value number of items to request
-         * @return a strategy that requests the given value immediately
+         * @param <T> argument type, inferred on call-site
+         * @return the signal argument
          */
-        public static Request IMMEDIATELY_N(long value) {
-            return new Request(value);
-        }
-        
-        /**
-         * Request {@code Long.MAX_VALUE} immediately.
-         *
-         * @return a strategy that requests {@code Long.MAX_VALUE} immediately
-         */
-        public static Request IMMEDIATELY_MAX() {
-            return new Request(MAX_VALUE);
-        }
-        
-        private final long value;
-        
-        private Request(long value) {
-            this.value = value;
-        }
-        
-        long value() {
-            return value;
+        public <T> T argumentAs() {
+            @SuppressWarnings("unchecked")
+            T typed = (T) argument();
+            return typed;
         }
     }
     
@@ -155,49 +63,82 @@ public class MemorizingSubscriber<T> implements Flow.Subscriber<T>
     }
     
     /**
-     * A signal received by the memorizing subscriber.
+     * Synchronously drain all items from the given publisher.<p>
      * 
-     * Signals may carry an {@link #argument()} received; the subscription
-     * object or the item/error from upstream. {@code onComplete} does not
-     * receive an argument.
+     * The publisher should publish items eagerly in order for all [expected]
+     * items to be present in the returned collection.
+     * 
+     * @param from publisher to drain
+     * @param <T> type of item published
+     * @return all signals received
      */
-    public record Signal(MethodName methodName, Object argument) {
-        /**
-         * Returns the signal argument.<p>
-         * 
-         * {@code onComplete} returns {@code Void.class}.
-         * 
-         * @param <T> argument type, inferred on call-site
-         * @return the signal argument
-         */
-        public <T> T argumentAs() {
-            @SuppressWarnings("unchecked")
-            T typed = (T) argument();
-            return typed;
-        }
+    public static <T> List<T> drainItems(Flow.Publisher<? extends T> from) {
+        var s = new MemorizingSubscriber<T>();
+        from.subscribe(s);
+        return s.items();
+    }
+    
+    /**
+     * Synchronously drain all subscriber-signalled methods from the given
+     * publisher.<p>
+     * 
+     * The publisher should be eager in order for all [expected] methods to be
+     * present in the returned collection.
+     * 
+     * @param from publisher to drain
+     * @return all methods invoked
+     */
+    public static List<MethodName> drainMethods(Flow.Publisher<?> from) {
+        var s = new MemorizingSubscriber<>();
+        from.subscribe(s);
+        return s.methodNames();
+    }
+    
+    /**
+     * Synchronously drain all subscriber-signals from the given publisher.<p>
+     * 
+     * The publisher should be eager in order for all [expected] signals to be
+     * present in the returned collection.
+     * 
+     * @param from publisher to drain
+     * @return all methods invoked
+     */
+    public static List<Signal> drainSignals(Flow.Publisher<?> from) {
+        var s = new MemorizingSubscriber<>();
+        from.subscribe(s);
+        return s.signals();
+    }
+    
+    /**
+     * Drain all subscriber-signals from the given publisher and return the
+     * signals only when the underlying subscription completes.
+     * 
+     * @param from publisher to drain
+     * @return all signals received
+     */
+    public static CompletionStage<List<Signal>> drainSignalsAsync(Flow.Publisher<?> from) {
+        var s = new MemorizingSubscriber<>();
+        from.subscribe(s);
+        return s.asCompletionStage().thenApply(nil -> s.signals());
     }
     
     private final Collection<Signal> signals;
-    private final Request strategy;
     private final Flow.Subscriber<T> delegate;
     private final CompletableFuture<Void> result;
     
     /**
-     * Constructs a {@code MemorizingSubscriber}.
+     * Initializes this object.<p>
      * 
-     * @param strategy request strategy
-     * 
-     * @throws NullPointerException if {@code delegate} is {@code null}
+     * The subscriber's {@code onSubscribe} method will immediately request
+     * {@code Long.MAX_VALUE}. All other methods are NOP. Well, except for
+     * recording the signals of course.
      */
-    public MemorizingSubscriber(Request strategy) {
-        this.signals  = new ConcurrentLinkedQueue<>();
-        this.strategy = requireNonNull(strategy);
-        this.delegate = null;
-        this.result   = new CompletableFuture<>();
+    public MemorizingSubscriber() {
+        this(request(MAX_VALUE));
     }
     
     /**
-     * Constructs a {@code MemorizingSubscriber}.
+     * Initializes this object.<p>
      * 
      * The delegate is called for each method called to this class, after first
      * having recorded the signal.
@@ -208,7 +149,6 @@ public class MemorizingSubscriber<T> implements Flow.Subscriber<T>
      */
     public MemorizingSubscriber(Flow.Subscriber<T> delegate) {
         this.signals  = new ConcurrentLinkedQueue<>();
-        this.strategy = null;
         this.delegate = requireNonNull(delegate);
         this.result   = new CompletableFuture<>();
     }
@@ -250,37 +190,26 @@ public class MemorizingSubscriber<T> implements Flow.Subscriber<T>
     @Override
     public void onSubscribe(Flow.Subscription sub) {
         signals.add(new Signal(ON_SUBSCRIBE, sub));
-        if (delegate != null) {
-            delegate.onSubscribe(sub);
-        } else if (strategy != Request.NOTHING) {
-            assert strategy != null;
-            sub.request(strategy.value());
-        }
+        delegate.onSubscribe(sub);
     }
     
     @Override
     public void onNext(T item) {
         signals.add(new Signal(ON_NEXT, item));
-        if (delegate != null) {
-            delegate.onNext(item);
-        }
+        delegate.onNext(item);
     }
     
     @Override
     public void onError(Throwable t) {
         signals.add(new Signal(ON_ERROR, t));
-        if (delegate != null) {
-            delegate.onError(t);
-        }
+        delegate.onError(t);
         result.complete(null);
     }
     
     @Override
     public void onComplete() {
         signals.add(new Signal(ON_COMPLETE, Void.class));
-        if (delegate != null) {
-            delegate.onComplete();
-        }
+        delegate.onComplete();
         result.complete(null);
     }
     
