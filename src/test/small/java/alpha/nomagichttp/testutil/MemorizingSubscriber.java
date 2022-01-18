@@ -25,13 +25,13 @@ import static java.util.Objects.requireNonNull;
 public class MemorizingSubscriber<T> implements Flow.Subscriber<T>
 {
     /**
-     * Subscribes a {@code MemorizingSubscriber} to the given publisher and then
-     * return the published {@link #items() items}.<p>
+     * Subscribes a memorizing subscriber to the given publisher and then return
+     * the published {@link #items() items}.<p>
      * 
      * The subscriber will immediately request {@code Long.MAX_VALUE}.<p>
      * 
-     * The publisher should publish items eagerly in order for the items to be
-     * present in the returned collection.
+     * The publisher should publish items eagerly in order for all [expected]
+     * items to be present in the returned collection.
      * 
      * @param from publisher to drain
      * @param <T> type of item published
@@ -44,8 +44,8 @@ public class MemorizingSubscriber<T> implements Flow.Subscriber<T>
     }
     
     /**
-     * Subscribes a {@code MemorizingSubscriber} to the given publisher and then
-     * return all invoked methods.<p>
+     * Subscribes a memorizing subscriber to the given publisher and then return
+     * all invoked methods.<p>
      * 
      * The subscriber will immediately request {@code Long.MAX_VALUE}.<p>
      * 
@@ -62,8 +62,8 @@ public class MemorizingSubscriber<T> implements Flow.Subscriber<T>
     }
     
     /**
-     * Subscribes a {@code MemorizingSubscriber} to the given publisher and then
-     * return all received signals.<p>
+     * Subscribes a memorizing subscriber to the given publisher and then return
+     * all received signals.<p>
      * 
      * The subscriber will immediately request {@code Long.MAX_VALUE}.<p>
      * 
@@ -80,8 +80,8 @@ public class MemorizingSubscriber<T> implements Flow.Subscriber<T>
     }
     
     /**
-     * Subscribes a {@code MemorizingSubscriber} to the given publisher and
-     * returns all received signals when the subscription completes.<p>
+     * Subscribes a memorizing subscriber to the given publisher and returns all
+     * received signals when the subscription completes.<p>
      * 
      * The subscriber will immediately request {@code Long.MAX_VALUE}.
      * 
@@ -92,16 +92,15 @@ public class MemorizingSubscriber<T> implements Flow.Subscriber<T>
         CompletableFuture<List<Signal>> r = new CompletableFuture<>();
         var s = new MemorizingSubscriber<>(Request.IMMEDIATELY_MAX());
         from.subscribe(s);
-        return s.asCompletionStage()
-                .thenApply(nil -> s.signals());
+        return s.asCompletionStage().thenApply(nil -> s.signals());
     }
     
     /**
-     * Request strategy of a memorizing subscriber that has no delegate.
+     * Request strategy of a delegate-empty memorizing subscriber.
      */
     public static class Request {
         private static final Request NOTHING = new Request(-1);
-    
+        
         /**
          * Request nothing.
          * 
