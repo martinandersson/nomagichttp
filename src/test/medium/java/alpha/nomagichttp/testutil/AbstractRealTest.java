@@ -82,7 +82,7 @@ import static org.junit.jupiter.api.Assertions.assertSame;
  * 
  * Log recording will by default be activated for each test. The recorder can be
  * retrieved using {@link #logRecorder()}. Records can be retrieved at any time
- * using {@link #stopLogRecording()}.<p>
+ * using {@link #logRecorderStop()}.<p>
  * 
  * Log recording is intended for detailed tests that are awaiting log events
  * and/or running asserts on log records. Tests concerned with performance ought
@@ -206,7 +206,7 @@ public abstract class AbstractRealTest
             }
         } finally {
             if (useLogRecording) {
-                stopLogRecording();
+                logRecorderStop();
             }
         }
         LOG.log(DEBUG, () -> "Finished " + toString(test));
@@ -428,7 +428,7 @@ public abstract class AbstractRealTest
      * 
      * @return all logged records
      */
-    protected final Stream<LogRecord> stopLogRecording() {
+    protected final Stream<LogRecord> logRecorderStop() {
         return Logging.stopRecording(key);
     }
     
@@ -507,7 +507,7 @@ public abstract class AbstractRealTest
         Predicate<String> match = source -> source != null &&
                                   excl.stream().anyMatch(source::startsWith);
         
-        assertThat(stopLogRecording()
+        assertThat(logRecorderStop()
                 .filter(r -> !match.test(r.getSourceClassName()))
                 .mapToInt(r -> r.getLevel().intValue()))
                 .noneMatch(v -> v > java.util.logging.Level.INFO.intValue());

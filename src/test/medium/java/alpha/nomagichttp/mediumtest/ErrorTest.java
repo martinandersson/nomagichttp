@@ -858,7 +858,7 @@ class ErrorTest extends AbstractRealTest
             "Content-Length: 0"                  + CRLF + 
             "Connection: close"                  + CRLF + CRLF);
         
-        assertThat(stopLogRecording()).extracting(LogRecord::getLevel, LogRecord::getMessage)
+        assertThat(logRecorderStop()).extracting(LogRecord::getLevel, LogRecord::getMessage)
                 .contains(rec(DEBUG,
                         "Subscription terminated. Will close the channel's read stream."));
         

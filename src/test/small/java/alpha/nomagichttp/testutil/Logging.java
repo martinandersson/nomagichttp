@@ -297,7 +297,7 @@ public final class Logging
          * 
          * @return a snapshot of all records observed
          */
-        public Stream<LogRecord> records() { // MOVE UP
+        public Stream<LogRecord> records() {
             return listeners()
                     .flatMap(RecordListener::records)
                     .sorted(comparing(LogRecord::getInstant));
