@@ -36,6 +36,12 @@ abstract class AugmentedAbstractUnicastPublisher<T, A>
     
     @Override
     @SuppressWarnings("unchecked")
+    public SubscriberWithAttachment<T, A> take() {
+        return (SubscriberWithAttachment<T, A>) super.take();
+    }
+    
+    @Override
+    @SuppressWarnings("unchecked")
     public SubscriberWithAttachment<T, A> shutdown() {
         return (SubscriberWithAttachment<T, A>) super.shutdown();
     }

@@ -233,8 +233,7 @@ public abstract class AbstractUnicastPublisher<T> implements Flow.Publisher<T>
     /**
      * Returns the subscriber.<p>
      * 
-     * Overridable to support a co-variant return type. Subclass must call
-     * through.
+     * Overridable to support a co-variant return type.
      * 
      * @return the subscriber (nullable)
      */
@@ -245,13 +244,13 @@ public abstract class AbstractUnicastPublisher<T> implements Flow.Publisher<T>
     /**
      * Clear the subscriber reference and return the old value.<p>
      * 
-     * The subclass should signal a completion event to the returned
-     * subscriber.<p>
+     * Overridable to support a co-variant return type. Subclass must call
+     * through.
      * 
      * @return the subscriber (nullable)
      * @see #shutdown() 
      */
-    protected final Flow.Subscriber<? super T> take() {
+    protected Flow.Subscriber<? super T> take() {
         return realOrNull(removeSubscriberIfNotInitializingOrClosed());
     }
     

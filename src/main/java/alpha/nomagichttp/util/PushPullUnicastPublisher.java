@@ -368,7 +368,10 @@ public class PushPullUnicastPublisher<T>
      * Is NOP if there is no subscriber active.
      */
     public void complete() {
-        ifPresent(s -> s.attachment().finish(s::onComplete));
+        var s = take();
+        if (s != null) {
+            s.attachment().finish(s::onComplete);
+        }
     }
     
     /**
