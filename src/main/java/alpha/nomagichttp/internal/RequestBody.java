@@ -296,8 +296,8 @@ final class RequestBody implements Request.Body
      * The subscription stage always terminates normally, the result of which is
      * passed forward to the given action.<p>
      * 
-     * The normal result from trailers is ignored. Trailers may however end
-     * exceptionally and if so, the throwable is passed forward to the
+     * The successful result from trailers is discarded. Trailers may however
+     * end exceptionally and if so, the throwable is passed forward to the
      * action.<p>
      * 
      * One does not exclude the other. The action is guaranteed to receive the

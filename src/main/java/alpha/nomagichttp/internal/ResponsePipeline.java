@@ -260,7 +260,7 @@ final class ResponsePipeline extends AbstractLocalEventEmitter
         } else {
             LOG.log(DEBUG,
                 "Will not emit response timeout; channel closed for writing " +
-                "- so, we were in effect not waiting for a response.");
+                "- so, we are in effect not waiting for a response.");
         }
     }
     
