@@ -485,7 +485,6 @@ public abstract class AbstractRealTest
      * Will gracefully stop the server (to capture all log records) and assert
      * that no log record was found with a level greater than {@code INFO}.
      */
-    // TODO: boolean to check also record throwable
     protected final void assertThatNoWarningOrErrorIsLogged() {
         assertThatNoWarningOrErrorIsLoggedExcept();
     }
@@ -496,7 +495,6 @@ public abstract class AbstractRealTest
      * 
      * @param excludeClasses classes that are allowed to log waring/error
      */
-    // TODO: boolean to check also record throwable
     protected final void assertThatNoWarningOrErrorIsLoggedExcept(Class<?>... excludeClasses) {
         requireServerStartedOnce();
         stopServer();
