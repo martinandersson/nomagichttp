@@ -126,9 +126,11 @@ final class HttpExchange
         this.chApi    = chApi;
         this.chain    = new InvocationChain(actions, routes, chApi);
         this.pipe     = new ResponsePipeline(this, chApi, actions);
-        this.cntDown  = new AtomicInteger(2); // <-- invocation chain + final response, then prepareForNewExchange()
+        // Request/invocation chain + final response, then prepareForNewExchange()
+        this.cntDown  = new AtomicInteger(2);
         this.result   = new CompletableFuture<>();
-        this.version  = HTTP_1_1; // <-- default until updated
+        // Default until updated
+        this.version  = HTTP_1_1;
     }
     
     /**
@@ -196,11 +198,11 @@ final class HttpExchange
             .thenRun(() -> { if (config.immediatelyContinueExpect100())
                 tryRespond100Continue(); })
             .thenCompose(nil -> chain.execute(reqThin, version))
-            .whenComplete((nil, thr) -> handleChainCompletion(thr));
+            .whenComplete((nil, thr) -> handleReqChainCompletion(thr));
     }
     
     private void setupPipeline() {
-        pipe.on(Success.class, (ev, rsp) -> handleWriteSuccess((Response) rsp));
+        pipe.on(Success.class, (ev, rsp) -> handlePipeWriteSuccess((Response) rsp));
         pipe.on(Error.class, (ev, thr) -> {
             LOG.log(DEBUG, "Response pipeline failed. Handling the error.");
             handleError((Throwable) thr);
@@ -376,7 +378,7 @@ final class HttpExchange
         }
     }
     
-    private void handleChainCompletion(Throwable thr) {
+    private void handleReqChainCompletion(Throwable thr) {
         final int v = cntDown.decrementAndGet();
         if (thr == null || thr.getCause() == ABORTED) {
             if (v == 0) {
@@ -388,20 +390,19 @@ final class HttpExchange
         } else {
             if (v == 0) {
                 LOG.log(WARNING, """
-                    Invocation chain returned exceptionally but final response \
+                    Request chain returned exceptionally but final response \
                     was already sent. Will ignore the error and prepare for a \
                     new HTTP exchange.""", thr);
                 prepareForNewExchange();
             } else {
-                LOG.log(DEBUG, """
-                    Invocation chain finished exceptionally, \
-                    handling the error.""");
+                LOG.log(DEBUG,
+                    "Request chain finished exceptionally, handling the error.");
                 handleError(thr);
             }
         }
     }
     
-    private void handleWriteSuccess(Response rsp) {
+    private void handlePipeWriteSuccess(Response rsp) {
         if (!rsp.isFinal()) {
             return;
         }
