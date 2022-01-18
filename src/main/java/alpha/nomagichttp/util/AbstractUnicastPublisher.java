@@ -14,35 +14,27 @@ import static java.util.Objects.requireNonNull;
  * and manages the subscriber reference in this class.<p>
  * 
  * Only one subscriber is allowed to be active at any given moment. However -
- * depending on constructor argument - the publisher may be re-used over time by
- * different subscribers. A rejected subscriber will be signalled an {@code
- * IllegalStateException}.<p>
+ * depending on a constructor argument - the publisher may be <i>reused</i> over
+ * time by different subscribers. A rejected subscriber will be signalled an
+ * {@link IllegalStateException}.<p>
  * 
- * The subscription object passed to each new subscriber will delegate all
- * call's to the subscription object returned by the abstract method {@link
- * #newSubscription(Flow.Subscriber)}. The subscription object is how the
- * subclass learn about the subscriber's demand and the {@code
- * newSubscription()} method also serves as the only opportunity for the
- * subclass to learn that a new subscription has been accepted.<p>
+ * For each subscriber, the abstract method {@link
+ * #newSubscription(Flow.Subscriber)} is called. The subclass must produce the
+ * subscription object by which it will get notified of the subscriber's
+ * demand.<p>
  * 
- * {@code signalError()}, {@code signalComplete()} and {@code
- * Flow.Subscription.cancel()} are all terminating signals; they will remove the
- * underlying subscriber reference in this class.<p>
+ * All terminating signals passed through this class (including {@code
+ * Flow.Subscription.cancel()}) will also clear the subscriber reference, and it
+ * does not matter if the subscriber returns exceptionally.<p>
  * 
- * End receivers (the publisher's subscription object and the subscriber) will
- * never receive concurrently running terminating signals. Only one of the
- * receivers will at most receive one terminating signal.<p>
+ * End receivers will never receive concurrently running terminating signals.
+ * Only one of the receivers will at most receive one terminating signal. Again,
+ * this also includes the {@code cancel()} method.<p>
  * 
  * Almost all exceptions from delivering a signal to the end receiver propagates
  * to the calling thread as-is. The only exception is {@code signalError()}
  * which catches all exceptions from the subscriber, then log- and ignores them
  * (as documented in {@link Publishers}).<p>
- * 
- * Exceptions propagate only after a possibly terminating effect (underlying
- * subscription reference removed). E.g., even if {@code signalComplete()}
- * returns exceptionally then the subscriber reference will still have been
- * removed and the subscriber will never again receive any signals (assuming
- * next paragraph has been implemented).<p>
  * 
  * <strong>All signals are passed through as-is.</strong> Either the subclass
  * has reason to assume that another origin's signals are already sent serially
@@ -50,7 +42,7 @@ import static java.util.Objects.requireNonNull;
  * mean that the subscriber is called concurrently or out of order (for example
  * {@code onComplete()} signalled followed by {@code onNext()}). For a reusable
  * publisher, overlapping calls could also mean that a delivery failure from
- * {@code signalNext()} unsubscribes/removes the wrong subscriber. Again, the
+ * {@code signalNext()} unsubscribes/removes the wrong subscriber. The
  * responsibility of this class is merely to provide the {@code subscribe()}
  * implementation and to manage the subscriber reference. The concrete class
  * must ensure serial signals.<p>
@@ -75,12 +67,12 @@ public abstract class AbstractUnicastPublisher<T> implements Flow.Publisher<T>
     private static final System.Logger LOG
             = System.getLogger(AbstractUnicastPublisher.class.getPackageName());
     
-    // These sentinel values may replace a real subscriber reference
+    // These sentinels may substitute a real subscriber reference
     private static final Flow.Subscriber<?>
             ACCEPTING    = noopNew(),
             NOT_REUSABLE = noopNew(),
             CLOSED       = noopNew(),
-    // This sentinel value is only used to indicate the intended target of a subscriber
+    // This sentinel is only used to indicate a signal any-cast
             ANYONE       = noopNew();
     
     @SuppressWarnings("unchecked")
@@ -96,7 +88,7 @@ public abstract class AbstractUnicastPublisher<T> implements Flow.Publisher<T>
     
     private boolean isReal(Flow.Subscriber<?> s) {
         assert s != null;
-        return !isSentinel(s) && s.getClass() != IsInitializing.class;
+        return !isSentinel(s) && s.getClass() != InitializingSubscriber.class;
     }
     
     private Flow.Subscriber<T> resetFlag() {
@@ -133,7 +125,7 @@ public abstract class AbstractUnicastPublisher<T> implements Flow.Publisher<T>
      * newSubscription()} is called or that the subscriber remains active
      * throughout the method invocation. Technically speaking - although
      * probably very unlikely - the subscriber can even be replaced (assuming
-     * publisher is re-usable) and concurrent or "out of order" invocations of
+     * publisher is reusable) and concurrent or "out of order" invocations of
      * {@code newSubscription()} might entail.<p>
      * 
      * Given the non-serial nature of {@code newSubscription()}; in order to
@@ -146,10 +138,10 @@ public abstract class AbstractUnicastPublisher<T> implements Flow.Publisher<T>
      * subscriber before this method executes - is a proxy that delegates to the
      * object returned by this method.<p>
      * 
-     * Calls to {@code request()} on the proxy during initialization ({@code
-     * onSubscribe()}) will not be relayed at that time. Instead, they will be
-     * enqueued to execute after the {@code newSubscription()} method has
-     * returned.<p>
+     * Calls to {@code request()} on the proxy during initialization - i.e.
+     * from {@code onSubscribe()} -  will not be relayed at that time. Instead,
+     * they will be enqueued to execute after the {@code newSubscription()}
+     * method has returned.<p>
      * 
      * The delay was needed because of two reasons. Firstly, a request for more
      * items could have spawned an asynchronous but immediate item delivery
@@ -170,21 +162,16 @@ public abstract class AbstractUnicastPublisher<T> implements Flow.Publisher<T>
      * the subscription has completed (!). Therefore, the <i>reusable</i>
      * publisher must ensure that an old subscriber can not accidentally
      * increase the demand [or trigger an invalid-demand error] for a new
-     * subscriber.<p>
-     * 
-     * A call to {@code newSubscription()} happens-before a subsequent call to
-     * {@code newSubscription()}.
+     * subscriber.
      * 
      * @param subscriber the installed subscriber
-     * 
-     * @return the subscription object passed to a new subscriber (never {@code null})
+     * @return a new subscription for a new subscriber (never null)
      */
     protected abstract Flow.Subscription newSubscription(Flow.Subscriber<? super T> subscriber);
     
     @Override
     public void subscribe(Flow.Subscriber<? super T> subscriber) {
-        final IsInitializing wrapper = new IsInitializing(requireNonNull(subscriber));
-        
+        final var wrapper = new InitializingSubscriber(requireNonNull(subscriber));
         final Flow.Subscriber<? super T> witness;
         if ((witness = ref.compareAndExchange(T(ACCEPTING), wrapper)) == ACCEPTING) {
             accept(wrapper);
@@ -193,13 +180,13 @@ public abstract class AbstractUnicastPublisher<T> implements Flow.Publisher<T>
         }
     }
     
-    private void accept(final IsInitializing wrapper) {
-        final Flow.Subscriber<? super T> newS = wrapper.get();
-        Subscriptions.TurnOnProxy proxy = new OnCancelResetReference(newS);
+    private void accept(final InitializingSubscriber wrapper) {
+        final var subscr = wrapper.get();
+        final Subscriptions.TurnOnProxy proxy = new OnCancelResetReference(subscr);
         
+        // Initialize subscriber
         try {
-            // Initialize subscriber
-            newS.onSubscribe(proxy);
+            subscr.onSubscribe(proxy);
         } catch (Throwable t) {
             // Attempt rollback (publisher could have closed or subscriber cancelled)
             boolean ignored = ref.compareAndSet(wrapper, T(ACCEPTING));
@@ -207,16 +194,15 @@ public abstract class AbstractUnicastPublisher<T> implements Flow.Publisher<T>
         }
         
         // Attempt install
-        final Flow.Subscriber<? super T> witness = ref.compareAndExchange(wrapper, newS);
-        
+        final var witness = ref.compareAndExchange(wrapper, subscr);
         if (witness == wrapper) {
             // The expected case; subscriber was installed
-            LOG.log(DEBUG, () -> getClass().getSimpleName() + " has a new subscriber: " + newS);
-            proxy.activate(newSubscription(newS));
+            LOG.log(DEBUG, () -> getClass().getSimpleName() + " has a new subscriber: " + subscr);
+            proxy.activate(newSubscription(subscr));
         } else if (witness == CLOSED) {
             // Publisher called shutdown() during initialization
             if (!proxy.isCancelled()) {
-                Subscribers.signalErrorSafe(newS,
+                Subscribers.signalErrorSafe(subscr,
                         new IllegalStateException("Publisher shutdown during initialization."));
             }
         } else if (witness != ACCEPTING && witness != NOT_REUSABLE) {
@@ -230,7 +216,7 @@ public abstract class AbstractUnicastPublisher<T> implements Flow.Publisher<T>
                     "Publisher was already subscribed to and is not reusable." :
                 witness == CLOSED ?
                      "Publisher has shutdown." :
-                witness.getClass() == IsInitializing.class ?
+                witness.getClass() == InitializingSubscriber.class ?
                     "Publisher is busy installing a different subscriber." :
              /* assert isReal(witness) */
                     "Publisher already has a subscriber.";
@@ -247,17 +233,71 @@ public abstract class AbstractUnicastPublisher<T> implements Flow.Publisher<T>
     /**
      * Returns the subscriber.<p>
      * 
-     * May be overridden to support a co-variant return type. Subclass should
-     * call through.
+     * Overridable to support a co-variant return type. Subclass must call
+     * through.
      * 
-     * @return the subscriber (may be {@code null})
+     * @return the subscriber (nullable)
      */
     protected Flow.Subscriber<? super T> get() {
         return realOrNull(value());
     }
     
     /**
-     * Signal an item to the current subscriber.<p>
+     * Clear the subscriber reference and return the old value.<p>
+     * 
+     * The subclass should signal a completion event to the returned
+     * subscriber.<p>
+     * 
+     * @return the subscriber (nullable)
+     * @see #shutdown() 
+     */
+    protected final Flow.Subscriber<? super T> take() {
+        return realOrNull(removeSubscriberIfNotInitializingOrClosed());
+    }
+    
+    /**
+     * Shutdown the publisher, only if no subscriber is active.<p>
+     * 
+     * Only if successful will no more subscribers be accepted (the "re-usable"
+     * option plays no role).<p>
+     * 
+     * Is NOP if there is no subscriber active or publisher was already
+     * shutdown.<p>
+     * 
+     * Note that the returned value is not a classic success flag indicating
+     * whether the operation had an effect. A {@code false} return value can
+     * only mean that no subscriber was active, i.e. NOP, but {@code true} means
+     * that one was active <i>or</i> that the publisher was already shutdown.
+     * 
+     * @return shutdown state (post-method invocation)
+     */
+    protected final boolean tryShutdown() {
+        return updateAndGetValueIf(v -> !isReal(v), T(CLOSED)) == CLOSED;
+    }
+    
+    /**
+     * Shutdown the publisher.<p>
+     * 
+     * The underlying subscriber reference will be cleared and no more
+     * subscribers will be accepted (the "re-usable" option plays no role).<p>
+     * 
+     * Is NOP if already shutdown.<p>
+     * 
+     * The subclass should signal a completion event prior to shutting down or
+     * manually send the signal using the returned reference.<p>
+     * 
+     * Overridable to support a co-variant return type. Subclass must call
+     * through.
+     * 
+     * @return the subscriber (nullable)
+     * @see #take()
+     */
+    protected Flow.Subscriber<? super T> shutdown() {
+        return realOrNull(ref.getAndSet(T(CLOSED)));
+    }
+    
+    /**
+     * Signal an item to the subscriber.<p>
      * 
      * A subscriber that returns exceptionally will be removed and then the
      * exception is re-thrown.<p>
@@ -274,8 +314,8 @@ public abstract class AbstractUnicastPublisher<T> implements Flow.Publisher<T>
     }
     
     /**
-     * Signal an item to the current subscriber, but only if the current
-     * subscriber {@code ==} the {@code expected} reference.
+     * Signal an item to the subscriber, but only if the subscriber {@code ==}
+     * the {@code expected} reference.
      * 
      * Same semantics as defined by {@link #signalNext(Object)} apply. The
      * former can safely be used by a non-reusable publisher. A reusable
@@ -285,6 +325,7 @@ public abstract class AbstractUnicastPublisher<T> implements Flow.Publisher<T>
      * @param item to deliver
      * @param expected subscriber reference
      * @return {@code true} if successful, otherwise no- or wrong subscriber
+     * 
      * @throws NullPointerException if {@code expected} is {@code null}
      */
     protected final boolean signalNext(T item, Flow.Subscriber<? super T> expected) {
@@ -303,46 +344,40 @@ public abstract class AbstractUnicastPublisher<T> implements Flow.Publisher<T>
     }
     
     /**
-     * Signal completion to the current subscriber.
-     *
+     * Signal completion to the subscriber.<p>
+     * 
      * The underlying subscriber reference will be removed and never again
      * signalled by this class.
-     *
+     * 
      * @return {@code true} if successful, otherwise no subscriber was active
      */
     protected final boolean signalComplete() {
-        final Flow.Subscriber<? super T> s
-                = realOrNull(removeSubscriberIfNotInitializingOrClosed());
-        
+        var s = take();
         if (s == null) {
             return false;
         }
-        
         s.onComplete();
         return true;
     }
     
     /**
-     * Signal completion to the current subscriber, but only if the current
-     * subscriber {@code ==} the {@code expected} reference.
+     * Signal completion to the subscriber, but only if the subscriber {@code
+     * ==} the {@code expected} reference.<p>
      * 
      * The underlying subscriber reference will be removed and never again
-     * signalled by this class, but only if the current subscriber {@code ==}
-     * the {@code expected} reference.
+     * signalled by this class, but only if the subscriber {@code ==} the {@code
+     * expected} reference.
      * 
      * @param expected subscriber
-     * 
      * @return {@code true} if successful, otherwise {@code false}
      * 
      * @throws NullPointerException if {@code expected} is {@code null}
      */
     protected final boolean signalComplete(Flow.Subscriber<? super T> expected) {
         requireNonNull(expected);
-        
         if (!removeSubscriberIfSameAs(expected)) {
             return false;
         }
-        
         expected.onComplete();
         return true;
     }
@@ -350,8 +385,8 @@ public abstract class AbstractUnicastPublisher<T> implements Flow.Publisher<T>
     /**
      * Signal error.<p>
      * 
-     * If the receiver ({@code Subscriber.onError()}) itself throws an
-     * exception, then the new exception is logged but otherwise ignored.<p>
+     * If the receiving ({@code Subscriber.onError()}) throws an exception, then
+     * the new exception is logged but otherwise ignored.<p>
      * 
      * The underlying subscriber reference will be removed and never again
      * signalled by this class.
@@ -362,13 +397,10 @@ public abstract class AbstractUnicastPublisher<T> implements Flow.Publisher<T>
      *     if {@code onError()} was signalled, otherwise no subscriber was active
      */
     protected final boolean signalError(Throwable t) {
-        final Flow.Subscriber<? super T> s
-                = realOrNull(removeSubscriberIfNotInitializingOrClosed());
-        
+        final var s = take();
         if (s == null) {
             return false;
         }
-        
         Subscribers.signalErrorSafe(s, t);
         return true;
     }
@@ -393,52 +425,11 @@ public abstract class AbstractUnicastPublisher<T> implements Flow.Publisher<T>
      */
     protected final boolean signalError(Throwable t, Flow.Subscriber<? super T> expected) {
         requireNonNull(expected);
-        
         if (!removeSubscriberIfSameAs(expected)) {
             return false;
         }
-        
         Subscribers.signalErrorSafe(expected, t);
         return true;
-    }
-    
-    /**
-     * Shutdown the publisher, only if no subscriber is active.<p>
-     * 
-     * If successful, then no more subscribers will be accepted (the "re-usable"
-     * option plays no role).<p>
-     * 
-     * Is NOP if already shutdown.<p>
-     * 
-     * Please note that a {@code false} return value means a subscriber was
-     * active and a {@code true} return value means that the method call had an
-     * effect <i>or</i> the publisher was already shutdown.
-     * 
-     * @return shutdown state (post-method invocation)
-     */
-    protected final boolean tryShutdown() {
-        return updateAndGetValueIf(v -> !isReal(v), T(CLOSED)) == CLOSED;
-    }
-    
-    /**
-     * Shutdown the publisher.<p>
-     * 
-     * The underlying subscriber reference will be cleared and no more
-     * subscribers will be accepted (the "re-usable" option plays no role).<p>
-     * 
-     * Is NOP if already shutdown.<p>
-     * 
-     * Please note that subclass should serially signal a completion event to an
-     * active subscriber prior to shutting down or manually perform such a
-     * signal using the returned reference.<p>
-     * 
-     * May be overridden to support a co-variant return type. Subclass must call
-     * through.
-     * 
-     * @return the current subscriber (if one is active, otherwise {@code null})
-     */
-    protected Flow.Subscriber<? super T> shutdown() {
-        return realOrNull(ref.getAndSet(T(CLOSED)));
     }
     
     private Flow.Subscriber<? super T> realOrNull(Flow.Subscriber<? super T> v) {
@@ -452,7 +443,7 @@ public abstract class AbstractUnicastPublisher<T> implements Flow.Publisher<T>
     private Flow.Subscriber<? super T> removeSubscriberIfNotInitializingOrClosed() {
         return getAndUpdateValueIf(v ->
             // If
-            v.getClass() != IsInitializing.class && v != CLOSED,
+            v.getClass() != InitializingSubscriber.class && v != CLOSED,
             // Set
             resetFlag());
     }
@@ -467,13 +458,13 @@ public abstract class AbstractUnicastPublisher<T> implements Flow.Publisher<T>
             if (isSentinel(other)) {
                 return false; }
             
-            if (other.getClass() != IsInitializing.class) {
+            if (other.getClass() != InitializingSubscriber.class) {
                 return false; }
             
             // Also same reference even if he is initializing
             // (we may be called from Subscription.cancel() during initialization)
             @SuppressWarnings("unchecked")
-            IsInitializing o = (IsInitializing) other;
+            InitializingSubscriber o = (InitializingSubscriber) other;
             return o.get() == thisOne;
             
             // If above is true, set:
@@ -501,11 +492,16 @@ public abstract class AbstractUnicastPublisher<T> implements Flow.Publisher<T>
         return ref.updateAndGet(v -> predicate.test(v) ? newValue : v);
     }
     
-    private final class IsInitializing implements Flow.Subscriber<T>
+    /**
+     * Holder of a subscriber reference currently undergoing initialization.<p>
+     * 
+     * All subscriber operations throw {@link UnsupportedOperationException}.
+     */
+    private final class InitializingSubscriber implements Flow.Subscriber<T>
     {
         private final Flow.Subscriber<? super T> who;
         
-        IsInitializing(Flow.Subscriber<? super T> who) {
+        InitializingSubscriber(Flow.Subscriber<? super T> who) {
             this.who = who;
         }
         
@@ -531,7 +527,7 @@ public abstract class AbstractUnicastPublisher<T> implements Flow.Publisher<T>
         private final Flow.Subscriber<? super T> owner;
         
         OnCancelResetReference(Flow.Subscriber<? super T> owner) {
-            assert owner.getClass() != IsInitializing.class;
+            assert owner.getClass() != InitializingSubscriber.class;
             this.owner = owner;
         }
         
