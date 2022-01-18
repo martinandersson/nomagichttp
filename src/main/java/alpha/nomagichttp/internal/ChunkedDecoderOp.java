@@ -27,7 +27,7 @@ import static java.util.HexFormat.fromHexDigitsToLong;
  * Chunk extensions are discarded. As far as I am aware, no server provides
  * support for them lol.<p>
  * 
- * Similar to {@link RequestLineSubscriber}'s parser, LF is the de facto line
+ * Similarly to {@link RequestLineSubscriber}'s parser, LF is the de facto line
  * terminator. A preceding CR is optional.<p>
  * 
  * LF is also the terminator when discarding chunk extensions, whose value
