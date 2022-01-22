@@ -1,13 +1,16 @@
 package alpha.nomagichttp.internal;
 
 import alpha.nomagichttp.event.AbstractEventEmitter;
+import alpha.nomagichttp.util.TriConsumer;
 
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.function.BiConsumer;
+import java.util.function.Consumer;
 
 /**
- * The subclass is not a thread-safe EventEmitter, it uses a {@code HashMap} and
- * {@code HashSet}(s) as backing data structures.<p>
+ * An EventEmitter using {@code HashMap} and {@code HashSet}(s) as backing data
+ * structures.<p>
  * 
  * Not being thread-safe is an optimization, albeit small (the gain is
  * essentially only cutting down on some atomic reads and writes).<p>
@@ -20,6 +23,9 @@ import java.util.HashSet;
  * not problematic, writes are) - as long as the listeners never unsubscribe,
  * i.e. modify the backing stores.<p>
  * 
+ * All {@code off} methods in this class throws {@link
+ * UnsupportedOperationException}.<p>
+ * 
  * Using a local event emitter by multiple threads is obviously an optimization
  * on top of an optimization and must be documented or otherwise understood by
  * the code context in which the emitter executes.<p>
@@ -28,8 +34,24 @@ import java.util.HashSet;
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  */
+// TODO: Throw exc if someone attempts to off!? This is a write!
 abstract class AbstractLocalEventEmitter extends AbstractEventEmitter {
     AbstractLocalEventEmitter() {
         super(new HashMap<>(), HashSet::new);
+    }
+    
+    @Override
+    public <T> boolean off(Class<T> eventType, Consumer<? super T> listener) {
+        throw new UnsupportedOperationException();
+    }
+    
+    @Override
+    public <T> boolean off(Class<T> eventType, BiConsumer<? super T, ?> listener) {
+        throw new UnsupportedOperationException();
+    }
+    
+    @Override
+    public <T> boolean off(Class<T> eventType, TriConsumer<? super T, ?, ?> listener) {
+        throw new UnsupportedOperationException();
     }
 }
