@@ -1,6 +1,5 @@
 package alpha.nomagichttp.internal;
 
-import alpha.nomagichttp.Config;
 import alpha.nomagichttp.event.ResponseSent;
 import alpha.nomagichttp.message.IllegalResponseBodyException;
 import alpha.nomagichttp.message.Response;
@@ -39,16 +38,14 @@ import static java.util.Objects.requireNonNull;
  * 
  * One known use-case for the lazy-head behavior, however, is an illegal body to
  * a HEAD/CONNECT request - which, can only reliably be identifier by this
- * class. The resulting {@code IllegalResponseBodyException} is an exception
- * this subscriber signals through the {@link #result() result stage}.<p>
+ * class. The resulting {@code IllegalResponseBodyException} completes
+ * exceptionally the {@link #result() result stage}.<p>
  * 
  * This class do expect to get a {@link ResponseTimeoutException} from the
  * upstream (well, hopefully not); asynchronously by {@link TimeoutOp}.
- * Therefore, the implementation of {@code onError()} can handle calls
- * concurrent to other signals from upstream. In addition, the timeout exception
- * will cause this class to shutdown the write stream (see {@link
- * Config#timeoutIdleConnection()}). All other signals from upstream, however,
- * must be delivered serially.
+ * Therefore, the implementation of {@code onError()} can handle concurrent
+ * calls. The timeout exception will cause this class to close the channel. All
+ * other signals from upstream must be delivered serially.
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  */
@@ -85,8 +82,7 @@ final class ResponseBodySubscriber
         this.chApi  = chApi;
         this.resu   = new CompletableFuture<>();
         this.sink   = AnnounceToChannel.write(chApi,
-                this::afterChannelFinished,
-                chApi.getServer().getConfig().timeoutIdleConnection());
+                this::afterChannelFinished);
     }
     
     /**
@@ -166,7 +162,7 @@ final class ResponseBodySubscriber
             propagates = sink.stopNow(t);
             // ...which closed only the stream. Finish the job:
             if (chApi.isAnythingOpen()) {
-                LOG.log(DEBUG, "Response timed out. Closing the child.");
+                LOG.log(DEBUG, "Response body publisher timed out. Closing the child.");
                 chApi.closeSafe();
             }
         } else {

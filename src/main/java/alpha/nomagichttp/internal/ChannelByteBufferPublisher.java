@@ -60,23 +60,35 @@ final class ChannelByteBufferPublisher implements Flow.Publisher<DefaultPooledBy
     private final DefaultClientChannel chApi;
     private final Deque<ByteBuffer> readable;
     private final PushPullUnicastPublisher<DefaultPooledByteBufferHolder> subscriber;
-    private final AnnounceToChannel channel;
+    private AnnounceToChannel channel;
     
     ChannelByteBufferPublisher(DefaultClientChannel chApi) {
         this.chApi = chApi;
         this.readable = new ConcurrentLinkedDeque<>();
         this.subscriber = hybrid(this::pollReadable,
                 this::afterSubscriberFinished, PooledByteBufferHolder::release);
+    }
+    
+    private void initChannel() {
         this.channel = read(chApi,
-                this::putReadableLast, this::afterChannelFinished);
-        
+            this::putReadableLast, this::afterChannelFinished);
         IntStream.generate(() -> BUF_SIZE)
-                .limit(BUF_COUNT)
-                .mapToObj(ByteBuffer::allocateDirect)
-                .forEach(channel::announce);
+            .limit(BUF_COUNT)
+            .mapToObj(ByteBuffer::allocateDirect)
+            .forEach(channel::announce);
     }
     
     private DefaultPooledByteBufferHolder pollReadable() {
+        if (channel == null) {
+            // Init the channel lazily to increase the chance of being able to
+            // push channel-errors to a downstream subscriber. Was only done
+            // once the need arose to deterministically test a super-low read
+            // timeout.
+            // TODO: Definitely need a Publishers.builder() where one can set
+            //       callbacks like onSubscriberAccept
+            initChannel();
+        }
+        
         final ByteBuffer b = readable.poll();
         
         if (b == null) {

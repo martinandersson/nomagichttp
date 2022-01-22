@@ -14,7 +14,6 @@ import alpha.nomagichttp.message.HttpVersionTooOldException;
 import alpha.nomagichttp.message.IllegalRequestBodyException;
 import alpha.nomagichttp.message.RawRequest;
 import alpha.nomagichttp.message.Request;
-import alpha.nomagichttp.message.RequestHeadTimeoutException;
 import alpha.nomagichttp.message.Response;
 import alpha.nomagichttp.util.SerialExecutor;
 
@@ -34,7 +33,6 @@ import static alpha.nomagichttp.HttpConstants.Method.TRACE;
 import static alpha.nomagichttp.HttpConstants.Version.HTTP_1_0;
 import static alpha.nomagichttp.HttpConstants.Version.HTTP_1_1;
 import static alpha.nomagichttp.handler.ErrorHandler.DEFAULT;
-import static alpha.nomagichttp.internal.HeadersSubscriber.forRequestHeaders;
 import static alpha.nomagichttp.internal.InvocationChain.ABORTED;
 import static alpha.nomagichttp.internal.RequestBody.emptyBody;
 import static alpha.nomagichttp.internal.RequestBody.of;
@@ -68,7 +66,6 @@ import static java.util.Objects.requireNonNull;
  *   <li>Has package-private accessors for the request head, HTTP version and request skeleton</li>
  *   <li>May pre-emptively schedule a 100 (Continue) depending on configuration</li>
  *   <li>Shuts down read stream if request has header "Connection: close"</li>
- *   <li>Shuts down read stream on {@link RequestHeadTimeoutException}</li>
  * </ul>
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
@@ -217,43 +214,22 @@ final class HttpExchange
     }
     
     private CompletionStage<RawRequest.Line> parseRequestLine() {
-        RequestLineSubscriber rls = new RequestLineSubscriber(
-                config.maxRequestHeadSize(), chApi);
-        var to = new TimeoutOp.Flow<>(false, true, chIn, config.timeoutIdleConnection(), () -> {
-            // No new HTTP exchange
-            if (chApi.isOpenForReading()) {
-                LOG.log(DEBUG, "Request head timed out, shutting down child channel's read stream.");
-                chApi.shutdownInputSafe();
-            }
-            return new RequestHeadTimeoutException();
-        });
-        to.subscribe(rls);
-        to.start();
+        var rls = new RequestLineSubscriber(config.maxRequestHeadSize(), chApi);
+        chIn.subscribe(rls);
         return rls.result();
     }
     
     private CompletionStage<RawRequest.Head> parseRequestHeaders(RawRequest.Line l) {
-        HeadersSubscriber<Request.Headers> sub = forRequestHeaders(
+        var hs = HeadersSubscriber.forRequestHeaders(
                 l.length(), config.maxRequestHeadSize(), chApi);
-        // TODO: DRY from parseRequestLine(),
-        //       but we just might rework the entire timeout plumbing.
-        var to = new TimeoutOp.Flow<>(false, true, chIn, config.timeoutIdleConnection(), () -> {
-            // No new HTTP exchange
-            if (chApi.isOpenForReading()) {
-                LOG.log(DEBUG, "Request head timed out, shutting down child channel's read stream.");
-                chApi.shutdownInputSafe();
-            }
-            return new RequestHeadTimeoutException();
-        });
-        to.subscribe(sub);
-        to.start();
-        return sub.result().thenApply(headers -> {
+        chIn.subscribe(hs);
+        return hs.result().thenApply(headers -> {
             var h = new RawRequest.Head(l, headers);
             server.events().dispatchLazy(RequestHeadReceived.INSTANCE, () -> h, () ->
                     new RequestHeadReceived.Stats(
                             l.nanoTimeOnStart(),
                             nanoTime(),
-                            addExact(l.length(), sub.read())));
+                            addExact(l.length(), hs.read())));
             return h;
         });
     }
@@ -310,7 +286,6 @@ final class HttpExchange
     private RequestBody createBody(RawRequest.Head h) {
         return of((DefaultContentHeaders) h.headers(), chIn, chApi,
                 config.maxRequestTrailersSize(),
-                config.timeoutIdleConnection(),
                 this::tryRespond100Continue);
     }
     
@@ -457,7 +432,7 @@ final class HttpExchange
         final var b = reqThin != null ? reqThin.body() :
                 // E.g. HttpVersionTooOldException -> 426 (Upgrade Required).
                 // So we fall back to a local dummy, just for the API.
-                emptyBody((DefaultContentHeaders) head.headers());
+                emptyBody(head.headers());
         
         b.discardIfNoSubscriber();
         b.whenComplete((ign,ored) -> {

@@ -25,7 +25,9 @@ final class DefaultConfig implements Config {
     private final boolean  rejectClientsUsingHTTP1_0,
                            ignoreRejectedInformational,
                            immediatelyContinueExpect100;
-    private final Duration timeoutIdleConnection;
+    private final Duration timeoutRead,
+                           timeoutResponse,
+                           timeoutWrite;
     private final boolean  implementMissingOptions;
     
     DefaultConfig(Builder b, DefaultBuilder.MutableState s) {
@@ -38,7 +40,9 @@ final class DefaultConfig implements Config {
         rejectClientsUsingHTTP1_0    = s.rejectClientsUsingHTTP1_0;
         ignoreRejectedInformational  = s.ignoreRejectedInformational;
         immediatelyContinueExpect100 = s.immediatelyContinueExpect100;
-        timeoutIdleConnection        = s.timeoutIdleConnection;
+        timeoutRead                  = s.timeoutRead;
+        timeoutResponse              = s.timeoutResponse;
+        timeoutWrite                 = s.timeoutWrite;
         implementMissingOptions      = s.implementMissingOptions;
     }
     
@@ -83,8 +87,18 @@ final class DefaultConfig implements Config {
     }
     
     @Override
-    public Duration timeoutIdleConnection() {
-        return timeoutIdleConnection;
+    public Duration timeoutRead() {
+        return timeoutRead;
+    }
+    
+    @Override
+    public Duration timeoutResponse() {
+        return timeoutResponse;
+    }
+    
+    @Override
+    public Duration timeoutWrite() {
+        return timeoutWrite;
     }
     
     @Override
@@ -112,7 +126,9 @@ final class DefaultConfig implements Config {
             boolean  rejectClientsUsingHTTP1_0    = false,
                      ignoreRejectedInformational  = true,
                      immediatelyContinueExpect100 = false;
-            Duration timeoutIdleConnection        = ofSeconds(90);
+            Duration timeoutRead                  = ofSeconds(90),
+                     timeoutResponse              = timeoutRead,
+                     timeoutWrite                 = timeoutRead;
             boolean  implementMissingOptions      = true;
         }
         
@@ -160,9 +176,21 @@ final class DefaultConfig implements Config {
         }
         
         @Override
-        public Builder timeoutIdleConnection(Duration newVal) {
+        public Builder timeoutRead(Duration newVal) {
             requireNonNull(newVal);
-            return new DefaultBuilder(this, s -> s.timeoutIdleConnection = newVal);
+            return new DefaultBuilder(this, s -> s.timeoutRead = newVal);
+        }
+        
+        @Override
+        public Builder timeoutResponse(Duration newVal) {
+            requireNonNull(newVal);
+            return new DefaultBuilder(this, s -> s.timeoutResponse = newVal);
+        }
+        
+        @Override
+        public Builder timeoutWrite(Duration newVal) {
+            requireNonNull(newVal);
+            return new DefaultBuilder(this, s -> s.timeoutWrite = newVal);
         }
         
         @Override

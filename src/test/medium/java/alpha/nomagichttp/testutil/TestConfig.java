@@ -24,8 +24,8 @@ public final class TestConfig implements Config {
      * @param injectedVal new value to return
      * @return a sneaky config object
      */
-    public static TestConfig timeoutIdleConnection(int n, Duration injectedVal) {
-        return new TestConfig(Method.timeoutIdleConnection, n, injectedVal);
+    public static TestConfig timeoutResponse(int n, Duration injectedVal) {
+        return new TestConfig(Method.timeoutResponse, n, injectedVal);
     }
     
     private enum Method {
@@ -37,7 +37,9 @@ public final class TestConfig implements Config {
         rejectClientsUsingHTTP1_0    (Config::rejectClientsUsingHTTP1_0),
         ignoreRejectedInformational  (Config::ignoreRejectedInformational),
         immediatelyContinueExpect100 (Config::immediatelyContinueExpect100),
-        timeoutIdleConnection        (Config::timeoutIdleConnection),
+        timeoutRead                  (Config::timeoutRead),
+        timeoutResponse              (Config::timeoutResponse),
+        timeoutWrite                 (Config::timeoutWrite),
         implementMissingOptions      (Config::implementMissingOptions);
         
         private final Function<Config, Object> get;
@@ -106,8 +108,18 @@ public final class TestConfig implements Config {
     }
     
     @Override
-    public Duration timeoutIdleConnection() {
-        return get(Method.timeoutIdleConnection);
+    public Duration timeoutRead() {
+        return get(Method.timeoutRead);
+    }
+    
+    @Override
+    public Duration timeoutResponse() {
+        return get(Method.timeoutResponse);
+    }
+    
+    @Override
+    public Duration timeoutWrite() {
+        return get(Method.timeoutWrite);
     }
     
     @Override

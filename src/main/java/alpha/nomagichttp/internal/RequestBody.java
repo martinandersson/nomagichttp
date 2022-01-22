@@ -7,7 +7,6 @@ import alpha.nomagichttp.message.DefaultContentHeaders;
 import alpha.nomagichttp.message.MediaType;
 import alpha.nomagichttp.message.PooledByteBufferHolder;
 import alpha.nomagichttp.message.Request;
-import alpha.nomagichttp.message.RequestBodyTimeoutException;
 import alpha.nomagichttp.util.Publishers;
 
 import java.nio.channels.AsynchronousFileChannel;
@@ -71,7 +70,6 @@ final class RequestBody implements Request.Body
      * @param chIn reading channel
      * @param chApi extended channel API (used for exceptional closure)
      * @param maxTrailersSize passed to {@link ChunkedDecoderOp}
-     * @param timeout duration
      * @param beforeNonEmptyBodySubscription before callback (nullable)
      * 
      * @return a request body
@@ -82,7 +80,6 @@ final class RequestBody implements Request.Body
             Flow.Publisher<DefaultPooledByteBufferHolder> chIn,
             DefaultClientChannel chApi,
             int maxTrailersSize,
-            Duration timeout,
             Runnable beforeNonEmptyBodySubscription)
     {
         final Flow.Publisher<? extends PooledByteBufferHolder> content;
@@ -119,45 +116,13 @@ final class RequestBody implements Request.Body
             trailers = chunked.trailers();
         }
         
-        return contentBody(
-                headers, trailers, content, timeout,
-                chApi, beforeNonEmptyBodySubscription);
-    }
-    
-    /**
-     * Create an empty request body.
-     * 
-     * @param headers HTTP headers
-     * @return an empty request body
-     */
-    public static RequestBody emptyBody(DefaultContentHeaders headers) {
-        assert headers != null;
-        return new RequestBody(headers, null, null, null);
-    }
-    
-    private static RequestBody contentBody(
-            DefaultContentHeaders headers,
-            CompletionStage<BetterHeaders> trailers,
-            Flow.Publisher<? extends PooledByteBufferHolder> content,
-            Duration timeout,
-            DefaultClientChannel chApi,
-            Runnable beforeNonEmptyBodySubscription)
-    {
-        // Upstream is ChannelByteBufferPublisher, he can handle async cancel
-        var top = new TimeoutOp.Flow<>(false, true, content, timeout, () -> {
-                    if (LOG.isLoggable(DEBUG) && chApi.isOpenForReading()) {
-                        LOG.log(DEBUG, """
-                            Request body timed out, shutting down \
-                            child channel's read stream.""");
-                    }
-                    // No new HTTP exchange
-                    chApi.shutdownInputSafe();
-                    return new RequestBodyTimeoutException();
-                });
-        top.start();
         return new RequestBody(
-                headers, trailers, top,
+                headers, trailers, content,
                 beforeNonEmptyBodySubscription);
+    }
+    
+    public static RequestBody emptyBody(ContentHeaders headers) {
+        return new RequestBody(headers, null, null, null);
     }
     
     private final ContentHeaders headers;
@@ -172,13 +137,14 @@ final class RequestBody implements Request.Body
             ContentHeaders headers,
             // Only required if chunked body
             CompletionStage<BetterHeaders> trailers,
-            // Not needed for empty bodies, obviously
+            // Not needed for an empty body, obviously
             Flow.Publisher<? extends PooledByteBufferHolder> content,
             // Optional
             Runnable beforeSub)
     {
-        this.headers   = headers;
-        this.trailers  = trailers;
+        assert headers != null;
+        this.headers  = headers;
+        this.trailers = trailers;
         if (content == null) {
             monitor = null;
             discard = null;

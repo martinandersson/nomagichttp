@@ -3,17 +3,11 @@ package alpha.nomagichttp.message;
 import alpha.nomagichttp.Config;
 
 /**
- * Thrown by the server on response timeout.<p>
- * 
- * The default error handler will upon receiving this error shut down the client
- * channel's read stream and respond {@link Responses#serviceUnavailable()}. The
- * underlying response pipeline (a collaborator/component of the client channel
- * implementation) who throws this exception will give up waiting on channel
- * closure after another 5 seconds have passed and proceed to close the channel
- * without any further ado.
+ * The client channel timed out waiting on a response or a response body
+ * publisher delayed emitting bytebuffers.
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
- * @see Config#timeoutIdleConnection()
+ * @see Config#timeoutResponse()
  */
 public final class ResponseTimeoutException extends RuntimeException {
     private static final long serialVersionUID = 1L;

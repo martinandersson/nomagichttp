@@ -19,7 +19,6 @@ import static alpha.nomagichttp.util.Headers.of;
 import static alpha.nomagichttp.util.Publishers.just;
 import static java.nio.charset.StandardCharsets.US_ASCII;
 import static java.nio.file.Files.notExists;
-import static java.time.Duration.ofDays;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
 
@@ -98,7 +97,7 @@ class DefaultRequestTest
                   (DefaultContentHeaders) head.headers(),
                   just(wrap(reqBody)),
                   mock(DefaultClientChannel.class),
-                  -1, ofDays(999), null);
+                  -1, null);
         
         SkeletonRequest r = new SkeletonRequest(
                 head, SkeletonRequestTarget.parse("/?"), body, new DefaultAttributes());

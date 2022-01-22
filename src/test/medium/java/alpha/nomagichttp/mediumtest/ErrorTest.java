@@ -17,8 +17,7 @@ import alpha.nomagichttp.message.MaxRequestHeadSizeExceededException;
 import alpha.nomagichttp.message.MediaType;
 import alpha.nomagichttp.message.MediaTypeParseException;
 import alpha.nomagichttp.message.PooledByteBufferHolder;
-import alpha.nomagichttp.message.RequestBodyTimeoutException;
-import alpha.nomagichttp.message.RequestHeadTimeoutException;
+import alpha.nomagichttp.message.ReadTimeoutException;
 import alpha.nomagichttp.message.RequestLineParseException;
 import alpha.nomagichttp.message.Response;
 import alpha.nomagichttp.message.ResponseTimeoutException;
@@ -38,9 +37,9 @@ import org.junit.jupiter.params.provider.ValueSource;
 import java.io.IOException;
 import java.nio.channels.Channel;
 import java.nio.channels.ClosedChannelException;
+import java.nio.channels.InterruptedByTimeoutException;
 import java.util.List;
 import java.util.concurrent.ArrayBlockingQueue;
-import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
@@ -65,7 +64,6 @@ import static alpha.nomagichttp.testutil.MemorizingSubscriber.MethodName.ON_ERRO
 import static alpha.nomagichttp.testutil.MemorizingSubscriber.MethodName.ON_NEXT;
 import static alpha.nomagichttp.testutil.MemorizingSubscriber.MethodName.ON_SUBSCRIBE;
 import static alpha.nomagichttp.testutil.TestClient.CRLF;
-import static alpha.nomagichttp.testutil.TestConfig.timeoutIdleConnection;
 import static alpha.nomagichttp.testutil.TestPublishers.blockSubscriberUntil;
 import static alpha.nomagichttp.testutil.TestRequests.get;
 import static alpha.nomagichttp.testutil.TestRequests.post;
@@ -617,13 +615,11 @@ class ErrorTest extends AbstractRealTest
     }
     
     @Test
-    void RequestHeadTimeoutException()
+    void ReadTimeoutException_duringHead()
             throws IOException, InterruptedException
     {
-        // Return uber low timeout on the first poll, i.e. for the request head,
-        // but use default timeout for request body and response.
-        usingConfig(
-            timeoutIdleConnection(1, ofMillis(0)));
+        usingConfiguration()
+            .timeoutRead(ofMillis(1));
         String rsp = client().writeReadTextUntilNewlines(
             // Server waits for CRLF + CRLF, but times out instead
             "GET / HTTP...");
@@ -632,76 +628,28 @@ class ErrorTest extends AbstractRealTest
             "Content-Length: 0"            + CRLF +
             "Connection: close"            + CRLF + CRLF);
         assertThat(pollServerError())
-            .isExactlyInstanceOf(RequestHeadTimeoutException.class)
-            .hasNoCause()
+            .isExactlyInstanceOf(ReadTimeoutException.class)
             .hasNoSuppressedExceptions()
-            .hasMessage(null);
+            // The message is set by the Java runtime lol
+            .hasMessage("java.nio.channels.InterruptedByTimeoutException")
+            .hasCauseExactlyInstanceOf(InterruptedByTimeoutException.class);
         logRecorder()
             .assertThatNoErrorWasLogged();
     }
     
-    @Test
-    void RequestBodyTimeoutException_beforeSubscriber()
-            throws IOException, InterruptedException
-    {
-        usingConfig(timeoutIdleConnection(3, ofMillis(0)));
-        Semaphore subscribe = new Semaphore(0);
-        onErrorRun(RequestBodyTimeoutException.class, subscribe::release);
-        final BlockingQueue<Throwable> appErr = new ArrayBlockingQueue<>(1);
-        // The async timeout, even though instant in this case, does
-        // not abort the eminent request handler invocation.
-        server().add("/", POST().accept((req, ch) -> {
-            try {
-                subscribe.acquire();
-            } catch (InterruptedException e) {
-                appErr.add(e);
-                return;
-            }
-            // or body().toText().exceptionally(), doesn't matter
-            req.body().subscribe(onError(appErr::add));
-        }));
-        
-        String rsp = client().writeReadTextUntilNewlines(
-            "POST / HTTP/1.1"              + CRLF +
-            "Content-Length: 2"            + CRLF + CRLF +
-            
-            "1");
-        assertThat(rsp).isEqualTo(
-            "HTTP/1.1 408 Request Timeout" + CRLF +
-            "Content-Length: 0"            + CRLF +
-            "Connection: close"            + CRLF + CRLF);
-        
-        assertThat(appErr.poll(1, SECONDS))
-                .isExactlyInstanceOf(IllegalStateException.class)
-                .hasNoCause()
-                .hasNoSuppressedExceptions()
-                .hasMessage("Publisher was already subscribed to and is not reusable.");
-        
-        assertThat(pollServerError())
-                .isExactlyInstanceOf(RequestBodyTimeoutException.class)
-                .hasNoCause()
-                .hasNoSuppressedExceptions()
-                .hasMessage(null);
-    
-        logRecorder()
-                .assertThatNoErrorWasLogged();
-    }
-    
-    // RequestBodyTimeoutException_afterSubscriber() ??
-    // Super tricky to do deterministically without also blocking the test.
-    // Skipping for now.
-    
-    // Low-level write timeout by InterruptedByTimeoutException?
-    // Same. Can't do deterministically. Need to mock the channel.
+    // ReadTimeoutException_duringBody ?
+    // No deterministic way of doing it, as we can not change the timeout
+    // half-way. There's no difference, however, between a ReadTimeoutException
+    // occurring during a body subscription versus any other type. So ignoring.
     
     @Test
     void ResponseTimeoutException_fromPipeline()
             throws IOException, InterruptedException
     {
-        usingConfig(
-            timeoutIdleConnection(4, ofMillis(0)));
+        usingConfiguration()
+            .timeoutResponse(ofMillis(1));
         server().add("/",
-             GET().accept((does,nothing) -> {}));
+             GET().accept(NOP));
         String rsp = client().writeReadTextUntilNewlines(
             "GET / HTTP/1.1"                   + CRLF + CRLF);
         assertThat(rsp).isEqualTo(
@@ -717,17 +665,17 @@ class ErrorTest extends AbstractRealTest
     
     @ParameterizedTest
     @ValueSource(booleans = {true, false})
-    void ResponseTimeoutException_fromResponseBody(boolean blockImmediately)
+    void ResponseTimeoutException_fromResponse(boolean blockImmediately)
             throws IOException, InterruptedException
     {
         Semaphore unblock = new Semaphore(0);
         Response rsp = blockImmediately ?
                 ok(blockSubscriberUntil(unblock)) :
                 // If not immediately, send 1 char first, then block
-                ok(concat(ofString("X"), blockSubscriberUntil(unblock)));
+                ok(concat(ofString("x"), blockSubscriberUntil(unblock)));
         
-        usingConfig(
-            timeoutIdleConnection(5, ofMillis(0)));
+        usingConfiguration()
+            .timeoutResponse(ofMillis(1));
         server().add("/",
             GET().respond(rsp));
         
@@ -742,11 +690,19 @@ class ErrorTest extends AbstractRealTest
         
         unblock.release(); // <-- must unblock request thread to guarantee log
         var fromLog = logRecorder().assertAwaitFirstLogError();
-        assertThat(fromLog)
+        
+        var thr = assertThat(fromLog)
             .isExactlyInstanceOf(ResponseTimeoutException.class)
-            .hasNoCause()
             // (may have suppressed ClosedChannelException)
-            .hasMessage("Gave up waiting on a response body bytebuffer.");
+            .hasNoCause();
+        
+        if (blockImmediately) {
+            // Can not deterministically assert if the timeout happened because
+            // we gave up waiting on the response, or response body bytebuffer.
+            thr.hasMessageStartingWith("Gave up waiting on a response");
+        } else {
+            thr.hasMessage("Gave up waiting on a response body bytebuffer.");
+        }
         
         // As with the response, there's no guarantee the exception was
         // delivered to the error handler (and so must read away this error or

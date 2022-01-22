@@ -2,8 +2,8 @@ package alpha.nomagichttp.internal;
 
 import alpha.nomagichttp.handler.EndOfStreamException;
 import alpha.nomagichttp.message.PooledByteBufferHolder;
+import alpha.nomagichttp.message.ReadTimeoutException;
 import alpha.nomagichttp.message.Request;
-import alpha.nomagichttp.message.RequestBodyTimeoutException;
 
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
@@ -188,7 +188,7 @@ final class SubscriptionMonitoringOp extends AbstractOp<PooledByteBufferHolder>
      * gives up waiting (documented in {@link Request.Body} to be the point
      * when the final response-body subscription completes. Additionally, an
      * upstream operator may end the subscription with a {@link
-     * RequestBodyTimeoutException}.
+     * ReadTimeoutException}.
      * 
      * @return a stage mimicking the life-cycle of a singleton subscription
      */

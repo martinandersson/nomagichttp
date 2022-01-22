@@ -611,9 +611,9 @@ public interface Request extends HeaderHolder, AttributeHolder
      * to recover the body (e.g. {@code toText() >} {@code
      * IllegalCharsetNameException}). Unexpected errors - in particular, errors
      * that originate from the channel's read operation - have used up a real
-     * subscription and also closed the read stream (e.g. {@code
-     * RequestBodyTimeoutException}). Before attempting to recover the body,
-     * always check first if the {@link ClientChannel#isOpenForReading()}.
+     * subscription and also closed the read stream. Before attempting to
+     * recover the body, always check first if the {@link
+     * ClientChannel#isOpenForReading()}.
      * 
      * 
      * <h2>Subscribing to bytes with a {@code Flow.Subscriber}</h2>
@@ -654,7 +654,7 @@ public interface Request extends HeaderHolder, AttributeHolder
      * The subscriber may request/demand any number of bytebuffers, but will
      * only receive the next bytebuffer after the previous one has been
      * released. So, awaiting more buffers before releasing old ones will
-     * inevitably result in a {@link RequestBodyTimeoutException}.<p>
+     * inevitably result in a {@link ReadTimeoutException}.<p>
      * 
      * For the Body API to support concurrent processing of many
      * bytebuffers without the risk of adding unnecessary delays or blockages,
@@ -710,7 +710,7 @@ public interface Request extends HeaderHolder, AttributeHolder
      * 
      * A request body subscriber should ensure his subscription runs all the way
      * to the end or is cancelled. Failure to request items in a timely manner
-     * will result in a {@link RequestBodyTimeoutException}.<p>
+     * will result in a {@link ReadTimeoutException}.<p>
      * 
      * But the application does not have to consume the body explicitly.
      * Earliest at the point when the request handler invocation has returned
@@ -723,9 +723,9 @@ public interface Request extends HeaderHolder, AttributeHolder
      * body bytes must be delayed, then there's at least two ways of solving
      * this. Either register a request body subscriber but delay requesting
      * items, or delay completing the server's response body subscription. Both
-     * approaches are still subject to {@link
-     * Config#timeoutIdleConnection()}. There is currently no API support to
-     * temporarily suspend timeouts.
+     * approaches are still subject to a {@linkplain Config#timeoutRead() read}
+     * and {@linkplain Config#timeoutResponse() response} timeout respectively.
+     * There is currently no API support to temporarily suspend timeouts.
      * 
      * <h3>Exception Handling</h3>
      * 

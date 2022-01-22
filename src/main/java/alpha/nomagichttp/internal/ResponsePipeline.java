@@ -273,8 +273,8 @@ final class ResponsePipeline extends AbstractLocalEventEmitter
         }
         if (stage == Command.INIT_RESPONSE_TIMER) {
             if (timer == null && !wroteFinal) {
-                // Note: The response body timer is set by method subscribeToResponse().
-                timer = new Timeout(cfg.timeoutIdleConnection());
+                // Note: A timer for the body is set by method subscribeToResponse().
+                timer = new Timeout(cfg.timeoutResponse());
                 timer.schedule(this::timeoutAction);
             }
             return true;
@@ -433,7 +433,7 @@ final class ResponsePipeline extends AbstractLocalEventEmitter
         
         // Response.body() (app) -> operator -> ResponseBodySubscriber (server)
         // On timeout, operator will cancel upstream and error out downstream.
-        var body = new TimeoutOp.Pub<>(true, false, rsp.body(), cfg.timeoutIdleConnection(), () -> {
+        var body = new TimeoutOp.Pub<>(true, false, rsp.body(), cfg.timeoutResponse(), () -> {
             scheduleClose(chApi);
             return new ResponseTimeoutException(
                     "Gave up waiting on a response body bytebuffer.");
