@@ -18,7 +18,12 @@ import static java.util.Objects.requireNonNull;
 /**
  * A subscriber that records all signals received.<p>
  * 
- * All factories in {@link TestSubscribers} returns a memorizing subscriber.
+ * When testing publishers and subscribers alike, the first stop ought to be
+ * {@link Assertions} which contains utils for asserting the content of
+ * publishers as well as received subscriber signals. For a more fine-grained
+ * control, use static "drainXXX()" methods in this class. For an even more
+ * fine-grained control, all factories in {@link TestSubscribers} returns a
+ * memorizing subscriber.
  * 
  * @param <T> type of item subscribed
  * 
@@ -99,7 +104,9 @@ public final class MemorizingSubscriber<T> implements Flow.Subscriber<T>
      * Synchronously drain all subscriber-signals from the given publisher.<p>
      * 
      * The publisher should be eager in order for all [expected] signals to be
-     * present in the returned collection.
+     * present in the returned collection.<p>
+     * 
+     * The returned list implements {@code RandomAccess}.
      * 
      * @param from publisher to drain
      * @return all methods invoked

@@ -1,6 +1,5 @@
 package alpha.nomagichttp.util;
 
-import alpha.nomagichttp.testutil.MemorizingSubscriber;
 import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
@@ -12,12 +11,14 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Flow;
 import java.util.concurrent.TimeoutException;
 
+import static alpha.nomagichttp.testutil.Assertions.assertPublisherEmits;
 import static alpha.nomagichttp.testutil.Assertions.assertPublisherIsEmpty;
+import static alpha.nomagichttp.testutil.Assertions.assertSubscriberOnNext;
 import static alpha.nomagichttp.testutil.MemorizingSubscriber.MethodName.ON_COMPLETE;
 import static alpha.nomagichttp.testutil.MemorizingSubscriber.MethodName.ON_NEXT;
 import static alpha.nomagichttp.testutil.MemorizingSubscriber.MethodName.ON_SUBSCRIBE;
-import static alpha.nomagichttp.testutil.MemorizingSubscriber.drainItems;
-import static alpha.nomagichttp.testutil.MemorizingSubscriber.drainMethods;
+import static alpha.nomagichttp.testutil.MemorizingSubscriber.Signal;
+import static alpha.nomagichttp.testutil.MemorizingSubscriber.drainSignalsAsync;
 import static alpha.nomagichttp.testutil.TestSubscribers.request;
 import static alpha.nomagichttp.util.BetterBodyPublishers.concat;
 import static alpha.nomagichttp.util.BetterBodyPublishers.ofByteArray;
@@ -52,51 +53,30 @@ class BetterBodyPublishersTest
     
     @Test
     void oneByte_reqMax() {
-        BodyPublisher p = ofByteArray(array(1));
+        var item = array(1);
+        BodyPublisher p = ofByteArray(item);
         assertThat(p.contentLength()).isOne();
-        
-        assertThat(drainMethods(p)).containsExactly(
-                ON_SUBSCRIBE,
-                ON_NEXT,
-                ON_COMPLETE);
-        
-        // This subscribes a new subscriber
-        assertThat(drainItems(p)).containsExactly(
-                wrap(array(1)));
+        assertPublisherEmits(p, wrap(item));
+        // Publisher can go again
+        assertPublisherEmits(p, wrap(item));
     }
     
     @Test
     void oneByte_reqOne() {
         BodyPublisher p = ofByteArray(array(1));
         assertThat(p.contentLength()).isOne();
-        
         var s = request(1);
         p.subscribe(s);
-        
-        assertThat(s.methodNames()).containsExactly(
-                ON_SUBSCRIBE,
-                ON_NEXT,
-                ON_COMPLETE);
-        
-        assertThat(s.items()).containsExactly(
-                wrap(array(1)));
+        assertSubscriberOnNext(s, wrap(array(1)));
     }
     
     @Test
     void slice() {
         // Extracting {2, 3}
         final byte[] data = {1, 2, 3, 4};
-        
         BodyPublisher p = ofByteArray(data, 1, 2);
         assertThat(p.contentLength()).isEqualTo(2);
-        
-        assertThat(drainMethods(p)).containsExactly(
-                ON_SUBSCRIBE,
-                ON_NEXT,
-                ON_COMPLETE);
-        
-        assertThat(drainItems(p)).containsExactly(
-                wrap(array(2, 3)));
+        assertPublisherEmits(p, wrap(array(2, 3)));
     }
     
     @Test
@@ -106,7 +86,7 @@ class BetterBodyPublishersTest
         assertThat(Files.size(f)).isOne();
         
         Flow.Publisher<ByteBuffer> p = ofFile(f);
-        List<MemorizingSubscriber.Signal> s = MemorizingSubscriber.drainSignalsAsync(p)
+        List<Signal> s = drainSignalsAsync(p)
                 .toCompletableFuture().get(1, SECONDS);
         
         assertThat(s).hasSize(3);
@@ -125,21 +105,10 @@ class BetterBodyPublishersTest
         var a = ofByteArray(array(1));
         var b = ofByteArray(array(2));
         var c = concat(a, b);
-        
         assertThat(c.contentLength()).isEqualTo(2);
-        
         var s = request(2);
         c.subscribe(s);
-        
-        assertThat(s.methodNames()).containsExactly(
-                ON_SUBSCRIBE,
-                ON_NEXT,
-                ON_NEXT,
-                ON_COMPLETE);
-        
-        assertThat(s.items()).containsExactly(
-                wrap(array(1)),
-                wrap(array(2)));
+        assertSubscriberOnNext(s, wrap(array(1)), wrap(array(2)));
     }
     
     @Test
@@ -147,18 +116,10 @@ class BetterBodyPublishersTest
         var a = ofByteArray(array(1));
         var b = Publishers.just(wrap(array(2)));
         var c = concat(a, b);
-        
         assertThat(c.contentLength()).isEqualTo(-1);
-        
-        assertThat(drainMethods(c)).containsExactly(
-                ON_SUBSCRIBE,
-                ON_NEXT,
-                ON_NEXT,
-                ON_COMPLETE);
-        
-        assertThat(drainItems(c)).containsExactly(
-                wrap(array(1)),
-                wrap(array(2)));
+        assertPublisherEmits(c, wrap(array(1)), wrap(array(2)));
+        // Publisher can go again
+        assertPublisherEmits(c, wrap(array(1)), wrap(array(2)));
     }
     
     private static byte[] array(int... bytes) {

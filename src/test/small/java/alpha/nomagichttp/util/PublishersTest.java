@@ -2,12 +2,11 @@ package alpha.nomagichttp.util;
 
 import org.junit.jupiter.api.Test;
 
-import java.util.Collection;
 import java.util.concurrent.Flow;
 
+import static alpha.nomagichttp.testutil.Assertions.assertPublisherEmits;
 import static alpha.nomagichttp.testutil.Assertions.assertPublisherIsEmpty;
 import static alpha.nomagichttp.testutil.MemorizingSubscriber.MethodName.ON_SUBSCRIBE;
-import static alpha.nomagichttp.testutil.MemorizingSubscriber.drainItems;
 import static alpha.nomagichttp.testutil.TestSubscribers.onSubscribe;
 import static alpha.nomagichttp.testutil.TestSubscribers.requestMax;
 import static alpha.nomagichttp.util.Publishers.just;
@@ -32,8 +31,7 @@ final class PublishersTest
     
     @Test
     void just_withTwoItems() {
-        Collection<String> items = drainItems(just("one", "two"));
-        assertThat(items).containsExactly("one", "two");
+        assertPublisherEmits(just("one", "two"), "one", "two");
     }
     
     @Test

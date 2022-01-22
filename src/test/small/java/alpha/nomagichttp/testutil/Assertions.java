@@ -3,6 +3,8 @@ package alpha.nomagichttp.testutil;
 import org.assertj.core.api.AbstractThrowableAssert;
 import org.assertj.core.api.ObjectAssert;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.CancellationException;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
@@ -13,11 +15,15 @@ import java.util.concurrent.TimeoutException;
 
 import static alpha.nomagichttp.testutil.MemorizingSubscriber.MethodName.ON_COMPLETE;
 import static alpha.nomagichttp.testutil.MemorizingSubscriber.MethodName.ON_ERROR;
+import static alpha.nomagichttp.testutil.MemorizingSubscriber.MethodName.ON_NEXT;
 import static alpha.nomagichttp.testutil.MemorizingSubscriber.MethodName.ON_SUBSCRIBE;
+import static alpha.nomagichttp.testutil.MemorizingSubscriber.Signal;
 import static alpha.nomagichttp.testutil.MemorizingSubscriber.drainSignals;
 import static alpha.nomagichttp.testutil.TestSubscribers.requestMax;
+import static alpha.nomagichttp.util.Streams.stream;
 import static java.time.Duration.ZERO;
 import static java.util.concurrent.TimeUnit.SECONDS;
+import static java.util.stream.Collectors.toCollection;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertSame;
 
@@ -105,6 +111,37 @@ public final class Assertions {
     
     /**
      * Drain all signals from the publisher and assert that the publisher
+     * completes normally without publishing items.
+     * 
+     * @param publisher to drain
+     * @see MemorizingSubscriber#drainSignals(Flow.Publisher) 
+     */
+    public static void assertPublisherIsEmpty(Flow.Publisher<?> publisher) {
+        var signals = drainSignals(publisher);
+        assertThat(signals).hasSize(2);
+        assertSame(signals.get(0).methodName(), ON_SUBSCRIBE);
+        assertSame(signals.get(1).methodName(), ON_COMPLETE);
+    }
+    
+    /**
+     * Drain all signals from the publisher and assert that the publisher
+     * emits only the given items.
+     * 
+     * @param <T> published item type
+     * @param publisher to drain
+     * @param first item
+     * @param more items
+     * @see MemorizingSubscriber#drainSignals(Flow.Publisher) 
+     */
+    @SafeVarargs
+    @SuppressWarnings("varargs")
+    public static <T> void assertPublisherEmits(
+            Flow.Publisher<? extends T> publisher, T first, T... more) {
+        assertItems(drainSignals(publisher), first, more);
+    }
+    
+    /**
+     * Drain all signals from the publisher and assert that the publisher
      * published only one error signal.
      * 
      * @param publisher to drain
@@ -119,17 +156,18 @@ public final class Assertions {
     }
     
     /**
-     * Drain all signals from the publisher and assert that the publisher
-     * completes normally without publishing items.
+     * Assert that the subscriber received exactly the given items.
      * 
-     * @param publisher to drain
-     * @see MemorizingSubscriber#drainSignals(Flow.Publisher) 
+     * @param <T> subscribed type
+     * @param subscriber to assert
+     * @param first item
+     * @param more items
      */
-    public static void assertPublisherIsEmpty(Flow.Publisher<?> publisher) {
-        var signals = drainSignals(publisher);
-        assertThat(signals).hasSize(2);
-        assertSame(signals.get(0).methodName(), ON_SUBSCRIBE);
-        assertSame(signals.get(1).methodName(), ON_COMPLETE);
+    @SafeVarargs
+    @SuppressWarnings("varargs")
+    public static <T> void assertSubscriberOnNext(
+            MemorizingSubscriber<? extends T> subscriber, T first, T... more) {
+        assertItems(subscriber.signals(), first, more);
     }
     
     /**
@@ -146,5 +184,34 @@ public final class Assertions {
         assertThat(received.get(0).methodName()).isEqualTo(ON_SUBSCRIBE);
         assertThat(received.get(1).methodName()).isEqualTo(ON_ERROR);
         return assertThat(received.get(1).<Throwable>argumentAs());
+    }
+    
+    @SafeVarargs
+    private static <T> void assertItems(
+            List<Signal> actual, T first, T... more)
+    {
+        @SuppressWarnings("varargs")
+        var expectedItems = stream(first, more)
+            .peek(i -> assertThat(i).isNotNull())
+            .collect(toCollection(ArrayList::new));
+        
+        // Items + ON_SUBSCRIBE and ON_COMPLETE
+        assertThat(actual).hasSize(expectedItems.size() + 2);
+        
+        // Fist signal
+        assertThat(actual.get(0)
+            .methodName()).isEqualTo(ON_SUBSCRIBE);
+        
+        // Assert the published items
+        var itemSignals = actual.subList(1, actual.size() - 1);
+        for (int i = 0; i < itemSignals.size(); ++i) {
+            var act = itemSignals.get(i);
+            assertThat(act.methodName()).isEqualTo(ON_NEXT);
+            assertThat(act.argument()).isEqualTo(expectedItems.get(i));
+        }
+        
+        // Last signal
+        assertThat(actual.get(actual.size() - 1)
+            .methodName()).isEqualTo(ON_COMPLETE);
     }
 }

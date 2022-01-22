@@ -19,10 +19,8 @@ import java.util.stream.Stream;
 
 import static alpha.nomagichttp.message.DefaultContentHeaders.empty;
 import static alpha.nomagichttp.testutil.Assertions.assertCancelled;
+import static alpha.nomagichttp.testutil.Assertions.assertPublisherEmits;
 import static alpha.nomagichttp.testutil.Assertions.assertPublisherError;
-import static alpha.nomagichttp.testutil.MemorizingSubscriber.MethodName.ON_COMPLETE;
-import static alpha.nomagichttp.testutil.MemorizingSubscriber.MethodName.ON_SUBSCRIBE;
-import static alpha.nomagichttp.testutil.MemorizingSubscriber.drainSignals;
 import static alpha.nomagichttp.testutil.TestPublishers.map;
 import static alpha.nomagichttp.testutil.TestPublishers.reusable;
 import static alpha.nomagichttp.util.Publishers.just;
@@ -54,12 +52,7 @@ final class ChunkedDecoderOpTest
                 "0\r\n" +
                 // Empty trailers
                 "\r\n");
-        
-        var received = drainSignals(map(testee, ByteBuffers::toString));
-        assertThat(received).hasSize(3);
-        assertThat(received.get(0).methodName()).isEqualTo(ON_SUBSCRIBE);
-        assertThat(received.get(1).argument()).isEqualTo("X");
-        assertThat(received.get(2).methodName()).isEqualTo(ON_COMPLETE);
+        assertPublisherEmits(map(testee, ByteBuffers::toString), "X");
         assertEmptyTrailers(testee);
     }
     
