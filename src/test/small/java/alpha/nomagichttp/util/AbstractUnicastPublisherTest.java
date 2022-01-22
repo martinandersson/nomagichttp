@@ -1,15 +1,13 @@
 package alpha.nomagichttp.util;
 
-import alpha.nomagichttp.testutil.MemorizingSubscriber;
 import org.junit.jupiter.api.Test;
 
 import java.util.concurrent.Flow;
 
+import static alpha.nomagichttp.testutil.Assertions.assertPublisherError;
 import static alpha.nomagichttp.testutil.MemorizingSubscriber.MethodName.ON_COMPLETE;
-import static alpha.nomagichttp.testutil.MemorizingSubscriber.MethodName.ON_ERROR;
 import static alpha.nomagichttp.testutil.MemorizingSubscriber.MethodName.ON_SUBSCRIBE;
 import static alpha.nomagichttp.testutil.MemorizingSubscriber.drainMethods;
-import static alpha.nomagichttp.testutil.MemorizingSubscriber.drainSignals;
 import static alpha.nomagichttp.testutil.TestSubscribers.onSubscribe;
 import static alpha.nomagichttp.util.Subscriptions.noop;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -57,15 +55,11 @@ class AbstractUnicastPublisherTest
     }
     
     private static void assertNoReuse(Flow.Publisher<?> pub) {
-        var s = drainSignals(pub);
-        assertThat(s.size()).isEqualTo(2);
-        assertThat(s.get(0).methodName()).isEqualTo(ON_SUBSCRIBE);
-        assertThat(s.get(1).methodName()).isEqualTo(ON_ERROR);
-        assertThat(s.get(1).<Exception>argumentAs())
-                .isExactlyInstanceOf(IllegalStateException.class)
-                .hasMessage("Publisher was already subscribed to and is not reusable.")
-                .hasNoCause()
-                .hasNoSuppressedExceptions();
+        assertPublisherError(pub)
+            .isExactlyInstanceOf(IllegalStateException.class)
+            .hasMessage("Publisher was already subscribed to and is not reusable.")
+            .hasNoCause()
+            .hasNoSuppressedExceptions();
     }
     
     private static void cancelAndAssertInit(Flow.Publisher<?> pub) {

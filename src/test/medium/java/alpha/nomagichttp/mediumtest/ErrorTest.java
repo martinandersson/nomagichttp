@@ -56,10 +56,10 @@ import static alpha.nomagichttp.message.Responses.ok;
 import static alpha.nomagichttp.message.Responses.processing;
 import static alpha.nomagichttp.message.Responses.status;
 import static alpha.nomagichttp.message.Responses.text;
+import static alpha.nomagichttp.testutil.Assertions.assertSubscriberOnError;
 import static alpha.nomagichttp.testutil.LogRecords.rec;
 import static alpha.nomagichttp.testutil.MemorizingSubscriber.MethodName;
 import static alpha.nomagichttp.testutil.MemorizingSubscriber.MethodName.ON_COMPLETE;
-import static alpha.nomagichttp.testutil.MemorizingSubscriber.MethodName.ON_ERROR;
 import static alpha.nomagichttp.testutil.MemorizingSubscriber.MethodName.ON_NEXT;
 import static alpha.nomagichttp.testutil.MemorizingSubscriber.MethodName.ON_SUBSCRIBE;
 import static alpha.nomagichttp.testutil.TestClient.CRLF;
@@ -854,13 +854,7 @@ class ErrorTest extends AbstractRealTest
                 "This new error is only logged but otherwise ignored.",
                 OopsException.class);
         
-        var s = sub.signals();
-        assertThat(s).hasSize(2);
-        
-        assertSame(s.get(0).methodName(), ON_SUBSCRIBE);
-        assertSame(s.get(1).methodName(), ON_ERROR);
-        
-        assertThat(s.get(1).<Throwable>argumentAs())
+        assertSubscriberOnError(sub)
             .isExactlyInstanceOf(EndOfStreamException.class)
             .hasMessage(null)
             .hasNoCause()

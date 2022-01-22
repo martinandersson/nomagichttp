@@ -6,7 +6,6 @@ import alpha.nomagichttp.message.DefaultContentHeaders;
 import alpha.nomagichttp.message.PooledByteBufferHolder;
 import alpha.nomagichttp.testutil.ByteBuffers;
 import alpha.nomagichttp.util.Headers;
-import org.assertj.core.api.AbstractThrowableAssert;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
@@ -20,8 +19,8 @@ import java.util.stream.Stream;
 
 import static alpha.nomagichttp.message.DefaultContentHeaders.empty;
 import static alpha.nomagichttp.testutil.Assertions.assertCancelled;
+import static alpha.nomagichttp.testutil.Assertions.assertPublisherError;
 import static alpha.nomagichttp.testutil.MemorizingSubscriber.MethodName.ON_COMPLETE;
-import static alpha.nomagichttp.testutil.MemorizingSubscriber.MethodName.ON_ERROR;
 import static alpha.nomagichttp.testutil.MemorizingSubscriber.MethodName.ON_SUBSCRIBE;
 import static alpha.nomagichttp.testutil.MemorizingSubscriber.drainSignals;
 import static alpha.nomagichttp.testutil.TestPublishers.map;
@@ -82,7 +81,7 @@ final class ChunkedDecoderOpTest
     @ValueSource(booleans = {true, false})
     void empty_prematurely(boolean emptyBuffer) {
         var testee = emptyBuffer ? decode("") : decode();
-        assertSubscriberOnError(testee)
+        assertPublisherError(testee)
             .isExactlyInstanceOf(AssertionError.class)
             .hasMessage("Unexpected: Channel closed gracefully before processor was done.")
             .hasNoCause()
@@ -100,7 +99,7 @@ final class ChunkedDecoderOpTest
     @Test
     void parseSize_noLastChunk() {
         var testee = decode("1\r\nX\r\n\r\n");
-        assertSubscriberOnError(testee)
+        assertPublisherError(testee)
             .isExactlyInstanceOf(DecoderException.class)
             .hasNoSuppressedExceptions()
             .hasNoCause()
@@ -112,7 +111,7 @@ final class ChunkedDecoderOpTest
     void parseSize_notHex() {
         // ';' triggers the size parsing
         var testee = decode("BOOM!;");
-        assertSubscriberOnError(testee)
+        assertPublisherError(testee)
             .isExactlyInstanceOf(DecoderException.class)
             .hasNoSuppressedExceptions()
             .getCause()
@@ -165,7 +164,7 @@ final class ChunkedDecoderOpTest
     @Test
     void parseSize_overflow_moreThan16HexChars() {
         var testee = decode("17" + FIFTEEN_F + ";");
-        assertSubscriberOnError(testee)
+        assertPublisherError(testee)
             // It's not really a DECODER issue lol
             .isExactlyInstanceOf(UnsupportedOperationException.class)
             .hasNoSuppressedExceptions()
@@ -179,7 +178,7 @@ final class ChunkedDecoderOpTest
     @Test
     void parseSize_overflow_negativeResult() {
         var testee = decode(FIFTEEN_F + "1;");
-        assertSubscriberOnError(testee)
+        assertPublisherError(testee)
             .isExactlyInstanceOf(UnsupportedOperationException.class)
             .hasMessage("Long overflow for hex-value \"FFFFFFFFFFFFFFF1\".")
             .hasNoSuppressedExceptions()
@@ -197,7 +196,7 @@ final class ChunkedDecoderOpTest
     @Test
     void chunkExtensions_quoted() {
         var testee = decode("1;bla=\"bla\".......");
-        assertSubscriberOnError(testee)
+        assertPublisherError(testee)
             .isExactlyInstanceOf(UnsupportedOperationException.class)
             .hasMessage("Quoted chunk-extension value.")
             .hasNoSuppressedExceptions()
@@ -216,7 +215,7 @@ final class ChunkedDecoderOpTest
     @Test
     void chunkData_notEndingWithCRLF() {
         var testee = decode("1\r\nX0\r\n\r\n");
-        assertSubscriberOnError(testee)
+        assertPublisherError(testee)
                 .isExactlyInstanceOf(DecoderException.class)
                 .hasMessage("Expected CR and/or LF after chunk. " +
                             "Received (hex:0x30, decimal:48, char:\"0\").")
@@ -258,15 +257,5 @@ final class ChunkedDecoderOpTest
     
     private static void assertEmptyTrailers(ChunkedDecoderOp testee) {
         assertThat(testee.trailers()).isCompletedWithValue(empty());
-    }
-    
-    private static AbstractThrowableAssert<?, ? extends Throwable>
-            assertSubscriberOnError(Flow.Publisher<PooledByteBufferHolder> data)
-    {
-        var received = drainSignals(data);
-        assertThat(received).hasSize(2);
-        assertThat(received.get(0).methodName()).isEqualTo(ON_SUBSCRIBE);
-        assertThat(received.get(1).methodName()).isEqualTo(ON_ERROR);
-        return assertThat(received.get(1).<Throwable>argumentAs());
     }
 }
