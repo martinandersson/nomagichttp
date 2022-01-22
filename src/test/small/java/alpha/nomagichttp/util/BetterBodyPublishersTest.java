@@ -12,6 +12,7 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Flow;
 import java.util.concurrent.TimeoutException;
 
+import static alpha.nomagichttp.testutil.Assertions.assertPublisherIsEmpty;
 import static alpha.nomagichttp.testutil.MemorizingSubscriber.MethodName.ON_COMPLETE;
 import static alpha.nomagichttp.testutil.MemorizingSubscriber.MethodName.ON_NEXT;
 import static alpha.nomagichttp.testutil.MemorizingSubscriber.MethodName.ON_SUBSCRIBE;
@@ -30,7 +31,7 @@ import static org.junit.jupiter.api.Assertions.assertSame;
 
 /**
  * Small tests of {@link BetterBodyPublishers}.
- *
+ * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  */
 class BetterBodyPublishersTest
@@ -39,18 +40,14 @@ class BetterBodyPublishersTest
     void emptyArray() {
         BodyPublisher p = ofByteArray(array());
         assertThat(p.contentLength()).isZero();
-        assertThat(drainMethods(p)).containsExactly(
-                ON_SUBSCRIBE,
-                ON_COMPLETE);
+        assertPublisherIsEmpty(p);
     }
     
     @Test
     void emptyString() {
         BodyPublisher p = ofString("");
         assertThat(p.contentLength()).isZero();
-        assertThat(drainMethods(p)).containsExactly(
-                ON_SUBSCRIBE,
-                ON_COMPLETE);
+        assertPublisherIsEmpty(p);
     }
     
     @Test

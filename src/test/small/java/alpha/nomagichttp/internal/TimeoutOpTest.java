@@ -6,10 +6,9 @@ import org.junit.jupiter.api.Test;
 
 import java.util.List;
 import java.util.concurrent.ExecutionException;
-import java.util.concurrent.Flow;
 import java.util.concurrent.TimeoutException;
 
-import static alpha.nomagichttp.testutil.MemorizingSubscriber.MethodName.ON_COMPLETE;
+import static alpha.nomagichttp.testutil.Assertions.assertPublisherIsEmpty;
 import static alpha.nomagichttp.testutil.MemorizingSubscriber.MethodName.ON_ERROR;
 import static alpha.nomagichttp.testutil.MemorizingSubscriber.MethodName.ON_SUBSCRIBE;
 import static alpha.nomagichttp.testutil.TestPublishers.blockSubscriber;
@@ -28,14 +27,14 @@ class TimeoutOpTest
 {
     @Test
     void timeoutEmpty_flow() {
-        assertCompletesNormally(new TimeoutOp.Flow<>(
-                false, false, empty(), ofMillis(0), AssertionError::new));
+        assertPublisherIsEmpty(new TimeoutOp.Flow<>(
+            false, false, empty(), ofMillis(0), AssertionError::new));
     }
     
     @Test
     void timeoutEmpty_pub() {
-        assertCompletesNormally(new TimeoutOp.Pub<>(
-                false, false, empty(), ofMillis(0), AssertionError::new));
+        assertPublisherIsEmpty(new TimeoutOp.Pub<>(
+            false, false, empty(), ofMillis(0), AssertionError::new));
     }
     
     @Test
@@ -48,12 +47,5 @@ class TimeoutOpTest
         assertSame(s.get(0).methodName(), ON_SUBSCRIBE);
         assertSame(s.get(1).methodName(), ON_ERROR);
         assertSame(s.get(1).argument(),   err);
-    }
-    
-    private void assertCompletesNormally(Flow.Publisher<?> op) {
-        List<Signal> s = MemorizingSubscriber.drainSignals(op);
-        assertThat(s).hasSize(2);
-        assertSame(s.get(0).methodName(), ON_SUBSCRIBE);
-        assertSame(s.get(1).methodName(), ON_COMPLETE);
     }
 }

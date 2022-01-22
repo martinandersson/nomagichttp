@@ -11,12 +11,15 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Flow;
 import java.util.concurrent.TimeoutException;
 
+import static alpha.nomagichttp.testutil.MemorizingSubscriber.MethodName.ON_COMPLETE;
 import static alpha.nomagichttp.testutil.MemorizingSubscriber.MethodName.ON_ERROR;
 import static alpha.nomagichttp.testutil.MemorizingSubscriber.MethodName.ON_SUBSCRIBE;
+import static alpha.nomagichttp.testutil.MemorizingSubscriber.drainSignals;
 import static alpha.nomagichttp.testutil.TestSubscribers.requestMax;
 import static java.time.Duration.ZERO;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.assertSame;
 
 /**
  * Assertion utils.
@@ -113,6 +116,20 @@ public final class Assertions {
         var s = requestMax();
         publisher.subscribe(s);
         return assertSubscriberOnError(s);
+    }
+    
+    /**
+     * Drain all signals from the publisher and assert that the publisher
+     * completes normally without publishing items.
+     * 
+     * @param publisher to drain
+     * @see MemorizingSubscriber#drainSignals(Flow.Publisher) 
+     */
+    public static void assertPublisherIsEmpty(Flow.Publisher<?> publisher) {
+        var signals = drainSignals(publisher);
+        assertThat(signals).hasSize(2);
+        assertSame(signals.get(0).methodName(), ON_SUBSCRIBE);
+        assertSame(signals.get(1).methodName(), ON_COMPLETE);
     }
     
     /**

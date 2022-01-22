@@ -5,7 +5,7 @@ import org.junit.jupiter.api.Test;
 import java.util.concurrent.Flow;
 
 import static alpha.nomagichttp.testutil.Assertions.assertPublisherError;
-import static alpha.nomagichttp.testutil.MemorizingSubscriber.MethodName.ON_COMPLETE;
+import static alpha.nomagichttp.testutil.Assertions.assertPublisherIsEmpty;
 import static alpha.nomagichttp.testutil.MemorizingSubscriber.MethodName.ON_SUBSCRIBE;
 import static alpha.nomagichttp.testutil.MemorizingSubscriber.drainMethods;
 import static alpha.nomagichttp.testutil.TestSubscribers.onSubscribe;
@@ -22,21 +22,15 @@ class AbstractUnicastPublisherTest
     @Test
     void pubImmediatelyCompletes_noReuse() {
         var testee = new ImmediatelyComplete(false);
-        assertThat(drainMethods(testee)).containsExactly(
-                ON_SUBSCRIBE,
-                ON_COMPLETE);
+        assertPublisherIsEmpty(testee);
         assertNoReuse(testee);
     }
     
     @Test
     void pubImmediatelyCompletes_reusable() {
         var testee = new ImmediatelyComplete(true);
-        assertThat(drainMethods(testee)).containsExactly(
-                ON_SUBSCRIBE,
-                ON_COMPLETE);
-        assertThat(drainMethods(testee)).containsExactly(
-                ON_SUBSCRIBE,
-                ON_COMPLETE);
+        assertPublisherIsEmpty(testee);
+        assertPublisherIsEmpty(testee);
     }
     
     @Test
@@ -51,7 +45,7 @@ class AbstractUnicastPublisherTest
         var testee = new Noop(true);
         cancelAndAssertInit(testee);
         assertThat(drainMethods(testee))
-                .containsExactly(ON_SUBSCRIBE);
+            .containsExactly(ON_SUBSCRIBE);
     }
     
     private static void assertNoReuse(Flow.Publisher<?> pub) {
