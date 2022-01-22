@@ -5,6 +5,8 @@ import alpha.nomagichttp.util.Subscribers;
 import java.util.concurrent.Flow;
 import java.util.function.Consumer;
 
+import static java.lang.Long.MAX_VALUE;
+
 /**
  * Whilst {@link Subscribers#onNext(Consumer)} is of interest to main- as well
  * as test classes, {@code TestSubscribers} has the remaining methods assumed to
@@ -13,7 +15,6 @@ import java.util.function.Consumer;
  * @author Martin Andersson (webmaster at martinandersson.com)
  */
 public final class TestSubscribers {
-    
     private TestSubscribers() {
         // Empty
     }
@@ -26,10 +27,23 @@ public final class TestSubscribers {
      * @param n demand to request
      * @param <T> item type, inferred on call-site
      * 
-     * @return a skeleton subscriber
+     * @return a stubbed memorizing subscriber
      */
-    public static <T> Flow.Subscriber<T> request(long n) {
-        return new SkeletonSubscriber<>(s -> s.request(n), null, null, null);
+    public static <T> MemorizingSubscriber<T> request(long n) {
+        return onSubscribe(s -> s.request(n));
+    }
+    
+    /**
+     * Returns a subscriber that immediately requests {@code Long.MAX_VALUE}.<p>
+     * 
+     * All other methods except {@code onSubscribe} are NOP.
+     * 
+     * @param <T> item type, inferred on call-site
+     * 
+     * @return a stubbed memorizing subscriber
+     */
+    public static <T> MemorizingSubscriber<T> requestMax() {
+        return onSubscribe(REQUEST_MAX);
     }
     
     /**
@@ -41,10 +55,12 @@ public final class TestSubscribers {
      * @param impl of onSubscribe
      * @param <T> item type, inferred on call-site
      * 
-     * @return a skeleton subscriber
+     * @return a stubbed memorizing subscriber
      */
-    public static <T> Flow.Subscriber<T> onSubscribe(Consumer<Flow.Subscription> impl) {
-        return new SkeletonSubscriber<>(impl, null, null, null);
+    public static <T> MemorizingSubscriber<T> onSubscribe(
+            Consumer<Flow.Subscription> impl) {
+        return new MemorizingSubscriber<>(new
+                SkeletonSubscriber<>(impl, null, null, null));
     }
     
     /**
@@ -56,10 +72,11 @@ public final class TestSubscribers {
      * @param impl of onNext
      * @param <T> item type, inferred on call-site
      * 
-     * @return a skeleton subscriber
+     * @return a stubbed memorizing subscriber
      */
-    public static <T> Flow.Subscriber<T> onNext(Consumer<? super T> impl) {
-        return new SkeletonSubscriber<>(null, impl, null, null);
+    public static <T> MemorizingSubscriber<T> onNext(Consumer<? super T> impl) {
+        return new MemorizingSubscriber<>(new
+                SkeletonSubscriber<>(REQUEST_MAX, impl, null, null));
     }
     
     /**
@@ -72,11 +89,12 @@ public final class TestSubscribers {
      * @param onComplete implementation
      * @param <T> item type, inferred on call-site
      * 
-     * @return a skeleton subscriber
+     * @return a stubbed memorizing subscriber
      */
-    public static <T> Flow.Subscriber<T> onNextAndComplete(
+    public static <T> MemorizingSubscriber<T> onNextAndComplete(
             Consumer<? super T> onNext, Runnable onComplete) {
-        return new SkeletonSubscriber<>(null, onNext, null, onComplete);
+        return new MemorizingSubscriber<>(
+                new SkeletonSubscriber<>(REQUEST_MAX, onNext, null, onComplete));
     }
     
     /**
@@ -89,11 +107,12 @@ public final class TestSubscribers {
      * @param onError implementation
      * @param <T> item type, inferred on call-site
      * 
-     * @return a skeleton subscriber
+     * @return a stubbed memorizing subscriber
      */
-    public static <T> Flow.Subscriber<T> onNextAndError(
+    public static <T> MemorizingSubscriber<T> onNextAndError(
             Consumer<? super T> onNext, Consumer<? super Throwable> onError) {
-        return new SkeletonSubscriber<>(null, onNext, onError, null);
+        return new MemorizingSubscriber<>(
+                new SkeletonSubscriber<>(REQUEST_MAX, onNext, onError, null));
     }
     
     /**
@@ -105,10 +124,11 @@ public final class TestSubscribers {
      * @param impl of onError
      * @param <T> item type, inferred on call-site
      * 
-     * @return a skeleton subscriber
+     * @return a stubbed memorizing subscriber
      */
-    public static <T> Flow.Subscriber<T> onError(Consumer<? super Throwable> impl) {
-        return new SkeletonSubscriber<>(null, null, impl, null);
+    public static <T> MemorizingSubscriber<T> onError(Consumer<? super Throwable> impl) {
+        return new MemorizingSubscriber<>(
+                new SkeletonSubscriber<>(REQUEST_MAX, null, impl, null));
     }
     
     /**
@@ -119,11 +139,12 @@ public final class TestSubscribers {
      * 
      * @param impl of onComplete
      * @param <T> item type, inferred on call-site
-     *
-     * @return a skeleton subscriber
+     * 
+     * @return a stubbed memorizing subscriber
      */
-    public static <T> Flow.Subscriber<T> onComplete(Runnable impl) {
-        return new SkeletonSubscriber<>(null, null, null, impl);
+    public static <T> MemorizingSubscriber<T> onComplete(Runnable impl) {
+        return new MemorizingSubscriber<>(
+                new SkeletonSubscriber<>(REQUEST_MAX, null, null, impl));
     }
     
     /**
@@ -138,11 +159,14 @@ public final class TestSubscribers {
      * @param impl the new {@code onNext} implementation
      * @return the decorator
      */
-    public static <T> Flow.Subscriber<T> replaceOnNext(
+    public static <T> MemorizingSubscriber<T> replaceOnNext(
             Flow.Subscriber<? super T> delegate, Consumer<? super T> impl) {
-        return new SkeletonSubscriber<>(
-                delegate::onSubscribe, impl, delegate::onError, delegate::onComplete);
+        return new MemorizingSubscriber<>(new SkeletonSubscriber<>(
+                delegate::onSubscribe, impl, delegate::onError, delegate::onComplete));
     }
+    
+    private static final Consumer<Flow.Subscription>
+            REQUEST_MAX = s -> s.request(MAX_VALUE);
     
     private static final class SkeletonSubscriber<T> implements Flow.Subscriber<T> {
         private final Consumer<Flow.Subscription> onSubscribe;
@@ -160,20 +184,12 @@ public final class TestSubscribers {
             this.onNext      = onNext;
             this.onError     = onError;
             this.onComplete  = onComplete;
-            
-            // At least one must be provided
-            assert !( onSubscribe == null &&
-                      onNext      == null &&
-                      onError     == null &&
-                      onComplete  == null );
         }
         
         @Override
         public void onSubscribe(Flow.Subscription s) {
             if (onSubscribe != null) {
                 onSubscribe.accept(s);
-            } else {
-                s.request(Long.MAX_VALUE);
             }
         }
         

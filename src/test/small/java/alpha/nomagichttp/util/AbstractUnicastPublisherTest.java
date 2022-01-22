@@ -69,11 +69,10 @@ class AbstractUnicastPublisherTest
     }
     
     private static void cancelAndAssertInit(Flow.Publisher<?> pub) {
-        var subsc = new MemorizingSubscriber<>(
-                // Immediately cancel during initialization (a "roll back")
-                onSubscribe(Flow.Subscription::cancel));
-        pub.subscribe(subsc);
-        assertThat(subsc.methodNames()).containsExactly(ON_SUBSCRIBE);
+        // Immediately cancel during initialization (a "roll back")
+        var s = onSubscribe(Flow.Subscription::cancel);
+        pub.subscribe(s);
+        assertThat(s.methodNames()).containsExactly(ON_SUBSCRIBE);
     }
     
     private static class ImmediatelyComplete

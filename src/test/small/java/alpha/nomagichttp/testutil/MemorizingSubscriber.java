@@ -12,12 +12,13 @@ import static alpha.nomagichttp.testutil.MemorizingSubscriber.MethodName.ON_COMP
 import static alpha.nomagichttp.testutil.MemorizingSubscriber.MethodName.ON_ERROR;
 import static alpha.nomagichttp.testutil.MemorizingSubscriber.MethodName.ON_NEXT;
 import static alpha.nomagichttp.testutil.MemorizingSubscriber.MethodName.ON_SUBSCRIBE;
-import static alpha.nomagichttp.testutil.TestSubscribers.request;
-import static java.lang.Long.MAX_VALUE;
+import static alpha.nomagichttp.testutil.TestSubscribers.requestMax;
 import static java.util.Objects.requireNonNull;
 
 /**
- * A subscriber that records all signals received.
+ * A subscriber that records all signals received.<p>
+ * 
+ * All factories in {@link TestSubscribers} returns a memorizing subscriber.
  * 
  * @param <T> type of item subscribed
  * 
@@ -73,7 +74,7 @@ public final class MemorizingSubscriber<T> implements Flow.Subscriber<T>
      * @return all signals received
      */
     public static <T> List<T> drainItems(Flow.Publisher<? extends T> from) {
-        var s = new MemorizingSubscriber<T>();
+        MemorizingSubscriber<T> s = requestMax();
         from.subscribe(s);
         return s.items();
     }
@@ -89,7 +90,7 @@ public final class MemorizingSubscriber<T> implements Flow.Subscriber<T>
      * @return all methods invoked
      */
     public static List<MethodName> drainMethods(Flow.Publisher<?> from) {
-        var s = new MemorizingSubscriber<>();
+        var s = requestMax();
         from.subscribe(s);
         return s.methodNames();
     }
@@ -104,7 +105,7 @@ public final class MemorizingSubscriber<T> implements Flow.Subscriber<T>
      * @return all methods invoked
      */
     public static List<Signal> drainSignals(Flow.Publisher<?> from) {
-        var s = new MemorizingSubscriber<>();
+        var s = requestMax();
         from.subscribe(s);
         return s.signals();
     }
@@ -117,7 +118,7 @@ public final class MemorizingSubscriber<T> implements Flow.Subscriber<T>
      * @return all signals received
      */
     public static CompletionStage<List<Signal>> drainSignalsAsync(Flow.Publisher<?> from) {
-        var s = new MemorizingSubscriber<>();
+        var s = requestMax();
         from.subscribe(s);
         return s.asCompletionStage().thenApply(nil -> s.signals());
     }
@@ -129,17 +130,6 @@ public final class MemorizingSubscriber<T> implements Flow.Subscriber<T>
     /**
      * Initializes this object.<p>
      * 
-     * The subscriber's {@code onSubscribe} method will immediately request
-     * {@code Long.MAX_VALUE}. All other methods are NOP. Well, except for
-     * recording the signals of course.
-     */
-    public MemorizingSubscriber() {
-        this(request(MAX_VALUE));
-    }
-    
-    /**
-     * Initializes this object.<p>
-     * 
      * The delegate is called for each method called to this class, after first
      * having recorded the signal.
      * 
@@ -147,7 +137,7 @@ public final class MemorizingSubscriber<T> implements Flow.Subscriber<T>
      * 
      * @throws NullPointerException if {@code delegate} is {@code null}
      */
-    public MemorizingSubscriber(Flow.Subscriber<T> delegate) {
+    MemorizingSubscriber(Flow.Subscriber<T> delegate) {
         this.signals  = new ConcurrentLinkedQueue<>();
         this.delegate = requireNonNull(delegate);
         this.result   = new CompletableFuture<>();

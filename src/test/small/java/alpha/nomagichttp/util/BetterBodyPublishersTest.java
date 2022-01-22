@@ -73,7 +73,7 @@ class BetterBodyPublishersTest
         BodyPublisher p = ofByteArray(array(1));
         assertThat(p.contentLength()).isOne();
         
-        var s = new MemorizingSubscriber<>(request(1));
+        var s = request(1);
         p.subscribe(s);
         
         assertThat(s.methodNames()).containsExactly(
@@ -131,7 +131,7 @@ class BetterBodyPublishersTest
         
         assertThat(c.contentLength()).isEqualTo(2);
         
-        var s = new MemorizingSubscriber<>(request(2));
+        var s = request(2);
         c.subscribe(s);
         
         assertThat(s.methodNames()).containsExactly(

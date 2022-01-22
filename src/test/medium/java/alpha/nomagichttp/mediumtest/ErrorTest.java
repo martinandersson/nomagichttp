@@ -29,7 +29,6 @@ import alpha.nomagichttp.route.MethodNotAllowedException;
 import alpha.nomagichttp.route.NoRouteFoundException;
 import alpha.nomagichttp.testutil.AbstractRealTest;
 import alpha.nomagichttp.testutil.IORunnable;
-import alpha.nomagichttp.testutil.MemorizingSubscriber;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
@@ -768,8 +767,7 @@ class ErrorTest extends AbstractRealTest
     @ParameterizedTest
     @ValueSource(strings = {"GET", "POST"})
     void Special_requestBodySubscriberFails_onSubscribe(String method) throws IOException, InterruptedException {
-        var sub = new MemorizingSubscriber<>(
-                onSubscribe(s -> { throw new OopsException(); }));
+        var sub = onSubscribe(s -> { throw new OopsException(); });
         
         onErrorAssert(OopsException.class, ch ->
             assertThat(ch.isEverythingOpen()).isTrue());
@@ -798,9 +796,8 @@ class ErrorTest extends AbstractRealTest
     // onNext() fails, error goes to ErrorHandler, channel's read stream is closed
     @Test
     void Special_requestBodySubscriberFails_onNext() throws IOException, InterruptedException {
-        var sub = new MemorizingSubscriber<>(
-                // Read stream closed in ChannelByteBufferPublisher.afterSubscriberFinished()
-                onNext(i -> { throw new OopsException(); }));
+        // Read stream closed in ChannelByteBufferPublisher.afterSubscriberFinished()
+        var sub = onNext(i -> { throw new OopsException(); });
         
         onErrorAssert(OopsException.class, ch ->
             assertThat(ch.isOpenForReading()).isFalse()); // FALSE!
@@ -835,7 +832,7 @@ class ErrorTest extends AbstractRealTest
     @Test
     void Special_requestBodySubscriberFails_onError() throws IOException, InterruptedException {
         var oops = new OopsException("is logged but not re-thrown");
-        var sub = new MemorizingSubscriber<>(onError(eos  -> { throw oops; }));
+        var sub = onError(eos  -> { throw oops; });
         var ch1 = new ArrayBlockingQueue<ClientChannel>(1);
         
         server().add("/", POST().accept((req, ch2) -> {
@@ -896,9 +893,9 @@ class ErrorTest extends AbstractRealTest
                 throw new AssertionError();
         }
         
-        var sub = new MemorizingSubscriber<>(onNextAndComplete(
+        var sub = onNextAndComplete(
                 PooledByteBufferHolder::discard,
-                ()   -> { throw new OopsException(); }));
+                ()   -> { throw new OopsException(); });
         
         server().add("/", builder(method).accept((req, ch) ->
             req.body().subscribe(sub)));
