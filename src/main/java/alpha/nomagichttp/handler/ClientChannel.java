@@ -3,9 +3,8 @@ package alpha.nomagichttp.handler;
 import alpha.nomagichttp.Config;
 import alpha.nomagichttp.HttpServer;
 import alpha.nomagichttp.action.AfterAction;
-import alpha.nomagichttp.action.BeforeAction;
-import alpha.nomagichttp.message.Response;
 import alpha.nomagichttp.message.AttributeHolder;
+import alpha.nomagichttp.message.Response;
 
 import java.io.Closeable;
 import java.io.IOException;
@@ -45,11 +44,9 @@ import java.util.concurrent.CompletionStage;
  * AfterAction}s are called before the observation, and so technically they
  * possess the ability to remove the header.<p>
  * 
- * Setting the "Connection: close" header alone, however, likely has no use-case
- * as again, the server manages the channel's life-cycle. It is more conceivable
- * that the application desires first to {@link #shutdownInput()} (abort a
- * request in-flight) and then send a response with the header set. For an
- * example of this, see the JavaDoc of {@link BeforeAction}.<p>
+ * The application may desire to {@link #shutdownInput()}, for example to
+ * explicitly abort a request/exchange, or to stop the {@linkplain
+ * Config#timeoutRead() read timeout} when sending long-lasting streams.<p>
  * 
  * When using low-level methods to operate the channel, or when storing
  * attributes on the channel, then have in mind that the "client" in {@code

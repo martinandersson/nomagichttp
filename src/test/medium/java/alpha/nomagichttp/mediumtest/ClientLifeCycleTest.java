@@ -411,7 +411,7 @@ class ClientLifeCycleTest extends AbstractRealTest
     
     // Server shuts down input after request, can still write response
     @Test
-    void intermittentStreamShutdown_serverInput() throws IOException {
+    void intermittentStreamShutdown_serverInput() throws IOException, InterruptedException {
         server().add("/", GET().accept((req, ch) -> {
             ch.shutdownInputSafe();
             ch.write(noContent());
@@ -421,5 +421,15 @@ class ClientLifeCycleTest extends AbstractRealTest
             .isEqualTo(
                 "HTTP/1.1 204 No Content" + CRLF +
                 "Connection: close"       + CRLF + CRLF);
+        
+        assertThatNoWarningOrErrorIsLogged();
+        
+        // We saw the effect already; "Connection: close" (this asserts why)
+        logRecorder().assertAwait(DEBUG, """
+            Connection-close flag propagates from request or current \
+            half-closed state of channel.""");
+        
+        // Should be no error on any level
+        logRecorder().assertThatNoErrorWasLogged();
     }
 }

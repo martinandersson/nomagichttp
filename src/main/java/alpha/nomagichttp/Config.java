@@ -269,9 +269,10 @@ public interface Config
      * perhaps the timeout ought to be increased.<p>
      * 
      * If the application does not expect more requests and wishes to maintain
-     * an outbound connection with the client used for interim responses or any
-     * other type of uni-directional streaming, simply call {@link
-     * ClientChannel#shutdownInput()} which effectively stops the timer.
+     * an outbound connection with the client used for interim responses
+     * stretched over a long time or any other type of uni-directional
+     * streaming, simply call {@link ClientChannel#shutdownInput()} which
+     * effectively stops the timer.
      * 
      * @return read timeout duration (default is one and a half minute)
      * @see #timeoutResponse()
