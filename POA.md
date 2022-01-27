@@ -408,24 +408,24 @@ Chunked decoding and encoding is transparent to the application code. Inbound
 there's no option to disable it. Similarly, outbound chunked transfer encoding
 is applied by the server only if necessary.
 
-### Request Dechunking
+### ~~Request Dechunking~~
 
-- Likely implemented using a concrete `AbstractOp` (semantically a
-  `Flow.Processor`) installed in `DefaultRequest` or somewhere else.
-- Request JavaDoc updated with a section on dechunking; advising against its
-  use.
-  - If trailers are not needed and length is already known, then chunking is
-    just unnecessary overhead.
-  - Server will be forced to move all body bytes through Java heap space and
-    not be able to benefit from direct bytebuffers.
-- Add `Request.trailers()` returning `CompletionStage<HttpHeaders>`.  
+- ~~Likely implemented using a concrete `AbstractOp` (semantically a
+  `Flow.Processor`) installed in `DefaultRequest` or somewhere else.~~
+- ~~Request JavaDoc updated with a section on dechunking; advising against its
+  use.~~
+  - ~~If trailers are not needed and length is already known, then chunking is
+    just unnecessary overhead.~~
+  - ~~Server will be forced to move all body bytes through Java heap space and
+    not be able to benefit from direct bytebuffers.~~
+- ~~Add `Request.trailers()` returning `CompletionStage<HttpHeaders>`.  
   If chunked encoding isn't in use, then the returned stage will already be
   completed with empty `HttpHeaders`, otherwise it will complete whenever the
-  body and trailing headers have been received.  
-  Implementation-wise, we prolly want to split RequestHead- subscriber+processor
+  body and trailing headers have been received.~~  
+  ~~Implementation-wise, we prolly want to split RequestHead- subscriber+processor
   into RequestLine and Headers (perhaps then combined into RequestHead). After
   the split, trailing headers logic can simply resubscribe yet another Headers
-  subscriber+processor.
+  subscriber+processor.~~
 
 ### Response Chunking
 
