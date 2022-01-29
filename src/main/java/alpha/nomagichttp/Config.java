@@ -254,8 +254,8 @@ public interface Config
      * read timeout even though the connection is technically still making
      * progress. Similarly, the timeout may also happen because the
      * application's body subscriber takes too long processing a bytebuffer. It
-     * can be argued that the purpose of the timeouts are not so much to protect
-     * against stale connections as they are to protect against HTTP exchanges
+     * can be argued that the purpose of the timeout is not so much to protect
+     * against a stale connection but rather to protect against HTTP exchanges
      * not making progress, whoever is at fault.<p>
      * 
      * The minimum acceptable transfer rate can be calculated. The default
@@ -289,22 +289,18 @@ public interface Config
      * translates it to a {@linkplain Responses#serviceUnavailable() 503
      * (Service Unavailable)}.<p>
      * 
-     * The timer starts only when the request invocation chain completes and the
-     * last request body bytebuffer has been released, and so the response will
-     * never timeout while a request is still actively being received or
-     * processed. Similarly, the timer is only active while a response is not
-     * being transmitted on the wire. The timer is reset for each response given
-     * (after possible stage completion). In other words, the timer is only
-     * active while the client channel is expecting to receive a response.<p>
+     * The timer is only active while the client channel is expecting to receive
+     * a response and while the server's response body subscriber has
+     * unfulfilled outstanding demand. The first time the timer is activated is
+     * when the request invocation chain completes and the last request body
+     * bytebuffer has been released, and so the response will never time out
+     * while a request is still actively being received or processed.<p>
      * 
      * A response producer that needs more time can reset the timer by sending a
      * 1XX (Informational) interim response or any other type of heartbeat.<p>
      * 
-     * The timer is also active when the server's response body subscriber has
-     * outstanding demand and the timer is reset on each bytebuffer received.
-     * I.e. the application must not only ensure that response objects are given
-     * to the client channel in a timely manner but also that message body bytes
-     * are emitted in a timely manner.
+     * The timer is not active while a response is being transmitted on the
+     * wire, this is covered by {@link #timeoutWrite()}.
      * 
      * @return response timeout duration (default is one and a half minute)
      */

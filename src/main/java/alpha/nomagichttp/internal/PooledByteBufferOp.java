@@ -34,8 +34,7 @@ import static java.util.Objects.requireNonNull;
  * 
  * An exception from the codec will attempt to be sent downstream. If there is
  * no active subscriber at that time, the exception will propagate upwards and
- * be observed by whichever thread is executing the embedded {@code onNext}
- * method.<p>
+ * be observed by whichever thread is executing the {@code onNext} method.<p>
  * 
  * To honor the contract of {@link Request.Body}, only one bytebuffer at a time
  * is sent downstream.
@@ -93,9 +92,7 @@ final class PooledByteBufferOp implements Flow.Publisher<PooledByteBufferHolder>
      * processor is inflating/deflating.
      *     As an outbound processor, we're most likely compressing. But it's
      * not expected this class is used for said purpose, since application
-     * bytebuffers are not pooled, as of today there's no such API support. But
-     * it's only a matter of time before the server starts auto-compressing
-     * responses.
+     * bytebuffers are not pooled, as of today there's no such API support.
      *    Today we're likely decompressing and will be doing so for some time
      * to come, so we pick two-thirds of the channel's inbound bytebuffer size,
      * hoping it's a good trade-off. In the future we'll likely provide a

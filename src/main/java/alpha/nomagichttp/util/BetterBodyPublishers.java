@@ -170,7 +170,7 @@ public final class BetterBodyPublishers
     }
     
     /**
-     * Wrap the delegate with a content-length set to -1 (unknown length).
+     * Wrap the delegate with a {@code contentLength} set to -1 (unknown).
      * 
      * @param delegate upstream source of bytebuffers
      * 

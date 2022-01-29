@@ -49,7 +49,9 @@ public final class TestPublishers {
      * 
      * Useful to test timeouts targeting the returned publisher. A timeout ought
      * to cancel the subscription and thus unblock the publisher. The test can
-     * release a permit asynchronously however it sees fit.
+     * asynchronously release the permit however it sees fit.<p>
+     * 
+     * The {@code contentLength} is -1 (unknown).
      * 
      * @param permit release when blocking thread unblocks
      * 

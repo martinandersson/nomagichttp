@@ -14,18 +14,19 @@ import static alpha.nomagichttp.util.Subscribers.signalErrorSafe;
 import static java.util.Objects.requireNonNull;
 
 /**
- * Is a thread-safe, non-blocking, and unicast publisher driven by a generator
- * function (constructor arg).<p>
+ * A unicast publisher driven by a generator function (constructor arg).<p>
  * 
  * This class honors the contract specified in {@link Publishers}.<p>
  * 
  * The generator function could be something as simple as polling a queue of
- * items, or it could be something far more advanced. A common pattern for using
- * this class is through composition and not inheritance, where a public-facing
- * publisher's subscribe method (or equivalent) delegates to this class.
- * Nevertheless, this class is agnostic and unaware of how items are produced.
- * The subclass, client and/or generator function are sometimes lumped together
- * and loosely referred to as "the upstream" by the JavaDoc in this class.<p>
+ * items, or it could be something far more advanced.<p>
+ * 
+ * A common pattern for using this class is through composition and not
+ * inheritance, where a publisher's subscribe method (or equivalent) delegates
+ * to this class. Nevertheless, this class is agnostic and unaware of how items
+ * are produced. The subclass, client and/or generator function are sometimes
+ * lumped together and loosely referred to as "the upstream" by the JavaDoc in
+ * this class.<p>
  * 
  * Although unicast, it is very easy to make the publisher multicast by
  * subscribing an intermittent fan-out processor or by creating a new delegate
@@ -67,8 +68,8 @@ import static java.util.Objects.requireNonNull;
  * that failed to be delivered.<p>
  * 
  * Some static factories in this class accepts a {@code postmortem} callback.
- * This guy is called exactly-once and only implicitly when the publisher
- * reaches its end of life. For example the generator returns exceptionally, or
+ * This guy is called exactly-once and only when the publisher reaches its end
+ * of life unexpectedly. For example the generator returns exceptionally, or
  * the final subscription is terminated from the downstream, e.g. exceptional
  * return from subscriber's {@code onNext} method or subscription cancellation.
  * If triggered through cancellation, the callback will run serially after- and

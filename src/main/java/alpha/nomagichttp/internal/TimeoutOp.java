@@ -22,7 +22,7 @@ import static java.util.Objects.requireNonNull;
  * demand, to the end of the subscription (basically always active, we expect a
  * continuous flow of items or else timeout). {@code Pub} ("publisher") is only
  * active when there is outstanding demand (i.e. focused solely on the upstream
- * publisher, downstream may take however long he wish to process the items or
+ * publisher, downstream may take however long he wishes to process the items or
  * run his own timeouts).<p>
  * 
  * The timeout signal will cancel the upstream and error out the downstream

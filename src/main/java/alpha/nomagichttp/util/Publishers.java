@@ -20,7 +20,7 @@ import static java.lang.Long.MAX_VALUE;
 import static java.util.Objects.requireNonNull;
 
 /**
- * Utility class for constructing thread-safe and non-blocking
+ * Utils for constructing thread-safe and non-blocking
  * {@link Flow.Publisher}s.<p>
  * 
  * Publishers produced by this class follows the <a

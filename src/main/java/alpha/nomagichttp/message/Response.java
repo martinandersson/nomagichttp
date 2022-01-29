@@ -209,7 +209,7 @@ public interface Response extends HeaderHolder
      * object instance as {@link Publishers#empty()}, or it returns a
      * {@link HttpRequest.BodyPublisher} implementation with {@code
      * contentLength()} set to 0, or the response has a {@code Content-Length}
-     * header set to 0 [in the future: and no chunked encoding].
+     * header set to 0.
      * 
      * @return {@code true} if the body is assumed to be empty,
      *         otherwise {@code false}
