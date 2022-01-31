@@ -348,7 +348,7 @@ final class HttpExchange
     
     private void tryRespond100Continue() {
         if (!getHttpVersion().isLessThan(HTTP_1_1) &&
-            head.headers().contain(EXPECT, "100-continue")) {
+            head.headers().contains(EXPECT, "100-continue")) {
             pipe.add(Command.TRY_SCHEDULE_100CONTINUE);
         }
     }
@@ -436,7 +436,7 @@ final class HttpExchange
         
         b.discardIfNoSubscriber();
         b.whenComplete((ign,ored) -> {
-            if (head.headers().contain(CONNECTION, "close") && chApi.isOpenForReading()) {
+            if (head.headers().contains(CONNECTION, "close") && chApi.isOpenForReading()) {
                 LOG.log(DEBUG, "Request set \"Connection: close\", shutting down input.");
                 chApi.shutdownInputSafe();
             }

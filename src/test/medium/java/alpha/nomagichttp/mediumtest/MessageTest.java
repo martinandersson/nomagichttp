@@ -146,7 +146,7 @@ class MessageTest extends AbstractRealTest
     
     private void addRequestBodyEchoRoute() throws IOException {
         server().add("/", POST().apply(req -> {
-            assertThat(req.headers().contain("Transfer-Encoding", "chunked")).isTrue();
+            assertThat(req.headers().contains("Transfer-Encoding", "chunked")).isTrue();
             var echoChunks = map(req.body(), pooled -> wrap(pooled.copy()));
             return ok(echoChunks, APPLICATION_OCTET_STREAM, -1)
                     .toBuilder().header("Connection", "close")

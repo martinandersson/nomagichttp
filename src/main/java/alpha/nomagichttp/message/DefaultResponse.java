@@ -93,7 +93,7 @@ final class DefaultResponse implements Response
         if (b instanceof BodyPublisher typed) {
             return typed.contentLength() == 0;
         }
-        return headers().contain(CONTENT_LENGTH, "0");
+        return headers().contains(CONTENT_LENGTH, "0");
     }
     
     private CompletionStage<Response> stage;
@@ -307,7 +307,7 @@ final class DefaultResponse implements Response
                     this);
             
             if (r.isInformational()) {
-                if (r.headers().contain(CONNECTION, "close")) {
+                if (r.headers().contains(CONNECTION, "close")) {
                     throw new IllegalStateException(
                             "\"Connection: close\" set on 1XX (Informational) response.");
                 }

@@ -115,7 +115,7 @@ public interface BetterHeaders
      * 
      * @throws NullPointerException if any argument is {@code null}
      */
-    default boolean contain(String headerName, String valueSubstring) {
+    default boolean contains(String headerName, String valueSubstring) {
         return delegate().allValues(requireNonNull(headerName)).stream()
                 .anyMatch(v -> containsIgnoreCase(v, valueSubstring));
     }

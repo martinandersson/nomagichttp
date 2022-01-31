@@ -537,7 +537,7 @@ final class ResponsePipeline extends AbstractLocalEventEmitter
     }
     
     private static boolean hasConnectionClose(HeaderHolder msg) {
-        return msg.headers().contain(CONNECTION, "close");
+        return msg.headers().contains(CONNECTION, "close");
     }
     
     private static Response setConnectionClose(Response rsp) {

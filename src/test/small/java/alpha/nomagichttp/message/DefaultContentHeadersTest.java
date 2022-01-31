@@ -18,7 +18,7 @@ class DefaultContentHeadersTest
                 .containsExactly(entry("name", List.of("VALUE")));
         assertThat(testee.allTokens("NAME"))
                 .containsOnly("VALUE");
-        assertThat(testee.contain("NAME", "value"))
+        assertThat(testee.contains("NAME", "value"))
                 .isTrue();
     }
     
