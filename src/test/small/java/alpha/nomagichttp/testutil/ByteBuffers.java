@@ -48,7 +48,7 @@ public final class ByteBuffers
      * @param str to encode
      * @return the bytes (allocated on heap)
      */
-    public static ByteBuffer toByteBuffer(String str) {
+    public static ByteBuffer toBuf(String str) {
         return wrap(str.getBytes(US_ASCII));
     }
     
@@ -58,7 +58,7 @@ public final class ByteBuffers
      * @param str to encode
      * @return the bytes (allocated on native memory)
      */
-    public static ByteBuffer toByteBufferDirect(String str) {
+    public static ByteBuffer toBufDirect(String str) {
         var bytes = str.getBytes(US_ASCII);
         var boxed = allocateDirect(bytes.length);
         boxed.put(bytes);
@@ -76,9 +76,9 @@ public final class ByteBuffers
      * @param str to encode
      * @return pooled bytes
      */
-    public static PooledByteBufferHolder toByteBufferPooled(String str) {
-        final var eagerEnc = toByteBuffer(str);
-        // TODO: Should prolly make default impl public instead of this
+    public static PooledByteBufferHolder toBufPooled(String str) {
+        final var eagerEnc = toBuf(str);
+        // TODO: Should probably make default impl public instead of this
         return new PooledByteBufferHolder() {
             public ByteBuffer get() {
                 return eagerEnc;

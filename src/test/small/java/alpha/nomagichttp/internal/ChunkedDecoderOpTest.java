@@ -245,7 +245,7 @@ final class ChunkedDecoderOpTest
     
     private ChunkedDecoderOp decode(String... upstreamBuffers) {
         return new ChunkedDecoderOp(
-                reusable(map(just(upstreamBuffers), ByteBuffers::toByteBuffer)),
+                reusable(map(just(upstreamBuffers), ByteBuffers::toBuf)),
                 MAX_VALUE, mock(ClientChannel.class));
     }
     

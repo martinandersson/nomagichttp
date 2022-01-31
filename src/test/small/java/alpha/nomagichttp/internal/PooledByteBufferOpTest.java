@@ -100,7 +100,7 @@ final class PooledByteBufferOpTest
     private static PooledByteBufferOp testee(
             BiConsumer<ByteBuffer, PooledByteBufferOp.Sink> decoder, String... items)
     {
-        var buffers = map(just(items), ByteBuffers::toByteBufferPooled);
+        var buffers = map(just(items), ByteBuffers::toBufPooled);
         return new PooledByteBufferOp(buffers, decoder);
     }
     

@@ -12,7 +12,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
 
 import static alpha.nomagichttp.testutil.ByteBuffers.onRelease;
-import static alpha.nomagichttp.testutil.ByteBuffers.toByteBufferPooled;
+import static alpha.nomagichttp.testutil.ByteBuffers.toBufPooled;
 import static alpha.nomagichttp.testutil.MemorizingSubscriber.drainItems;
 import static alpha.nomagichttp.testutil.TestSubscribers.replaceOnNext;
 import static alpha.nomagichttp.util.BetterBodyPublishers.asBodyPublisher;
@@ -115,7 +115,7 @@ public final class TestPublishers {
                 .map(buf -> onRelease(buf, addFirst))
                 .forEach(items::add);
         
-        var noMore = toByteBufferPooled("");
+        var noMore = toBufPooled("");
         items.add(noMore);
         
         var pub = PushPullUnicastPublisher.reusable(

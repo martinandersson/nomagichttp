@@ -122,7 +122,7 @@ final class RequestLineSubscriberTest
     
     private CompletionStage<RawRequest.Line> execute(String... items) {
         var rls = new RequestLineSubscriber(9_999, mock(ClientChannel.class));
-        var up = map(just(items), ByteBuffers::toByteBufferPooled);
+        var up = map(just(items), ByteBuffers::toBufPooled);
         up.subscribe(rls);
         return rls.result();
     }

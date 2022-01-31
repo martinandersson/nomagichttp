@@ -3,7 +3,7 @@ package alpha.nomagichttp.internal;
 import org.junit.jupiter.api.Test;
 
 import static alpha.nomagichttp.testutil.Assertions.assertPublisherEmits;
-import static alpha.nomagichttp.testutil.ByteBuffers.toByteBuffer;
+import static alpha.nomagichttp.testutil.ByteBuffers.toBuf;
 import static alpha.nomagichttp.util.Publishers.empty;
 import static alpha.nomagichttp.util.Publishers.just;
 
@@ -17,16 +17,16 @@ final class ChunkedEncoderOpTest
     @Test
     void happyPath() {
         var testee = new ChunkedEncoderOp(just(
-            toByteBuffer("hello"),
-            toByteBuffer("world!")));
+            toBuf("hello"),
+            toBuf("world!")));
         assertPublisherEmits(testee,
-            toByteBuffer("00000005\r\n"),
-            toByteBuffer("hello"),
-            toByteBuffer("\r\n"),
-            toByteBuffer("00000006\r\n"),
-            toByteBuffer("world!"),
-            toByteBuffer("\r\n"),
-            toByteBuffer("0\r\n\r\n"));
+            toBuf("00000005\r\n"),
+            toBuf("hello"),
+            toBuf("\r\n"),
+            toBuf("00000006\r\n"),
+            toBuf("world!"),
+            toBuf("\r\n"),
+            toBuf("0\r\n\r\n"));
     }
     
     @Test
@@ -34,14 +34,14 @@ final class ChunkedEncoderOpTest
         var testee = new ChunkedEncoderOp(
             empty());
         assertPublisherEmits(testee,
-            toByteBuffer("0\r\n\r\n"));
+            toBuf("0\r\n\r\n"));
     }
     
     @Test
     void empty_2() {
         var testee = new ChunkedEncoderOp(just(
-            toByteBuffer("")));
+            toBuf("")));
         assertPublisherEmits(testee,
-            toByteBuffer("0\r\n\r\n"));
+            toBuf("0\r\n\r\n"));
     }
 }

@@ -213,7 +213,7 @@ public class HeadersSubscriberTest
     
     private CompletionStage<Request.Headers> execute(String... items) {
         var hs = forRequestHeaders(0, 9_999, mock(ClientChannel.class));
-        var up = map(just(items), ByteBuffers::toByteBufferPooled);
+        var up = map(just(items), ByteBuffers::toBufPooled);
         up.subscribe(hs);
         return hs.result();
     }

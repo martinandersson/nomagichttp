@@ -51,11 +51,11 @@ final class HeapSubscriberTest
     }
     
     private static Flow.Publisher<PooledByteBufferHolder> publish(String... items) {
-        return publish0(ByteBuffers::toByteBuffer, items);
+        return publish0(ByteBuffers::toBuf, items);
     }
     
     private static Flow.Publisher<PooledByteBufferHolder> publishDirect(String... items) {
-        return publish0(ByteBuffers::toByteBufferDirect, items);
+        return publish0(ByteBuffers::toBufDirect, items);
     }
     
     private static Flow.Publisher<PooledByteBufferHolder> publish0(
