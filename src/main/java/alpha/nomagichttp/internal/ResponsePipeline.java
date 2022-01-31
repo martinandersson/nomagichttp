@@ -211,7 +211,7 @@ final class ResponsePipeline extends AbstractLocalEventEmitter
     }
     
     private void pollAndProcessAsync() {
-        actOnTimerTimeout();
+        tryActOnTimerTimeout();
         
         // Wait waaat! Why do we continue even after a possible timeout?
         // Coz ResponseTimeoutException doesn't immediately close the channel or
@@ -243,7 +243,7 @@ final class ResponsePipeline extends AbstractLocalEventEmitter
     
     private boolean timeoutEmitted;
     
-    private void actOnTimerTimeout() {
+    private void tryActOnTimerTimeout() {
         if (!timedOut || timeoutEmitted || wroteFinal) {
             return;
         }
