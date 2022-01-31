@@ -29,7 +29,6 @@ import java.util.logging.LogRecord;
 import java.util.stream.Stream;
 
 import static alpha.nomagichttp.Config.DEFAULT;
-import static java.lang.System.Logger.Level.ALL;
 import static java.lang.System.Logger.Level.DEBUG;
 import static java.util.Objects.requireNonNull;
 import static java.util.concurrent.TimeUnit.SECONDS;
@@ -185,7 +184,7 @@ public abstract class AbstractRealTest
     
     @BeforeAll
     static void beforeAll() {
-        Logging.setLevel(ALL);
+        Logging.everything();
     }
     
     @BeforeEach

@@ -34,7 +34,6 @@ import static alpha.nomagichttp.testutil.HttpClientFacade.Implementation.JETTY;
 import static alpha.nomagichttp.testutil.HttpClientFacade.Implementation.REACTOR;
 import static alpha.nomagichttp.testutil.TestClient.CRLF;
 import static alpha.nomagichttp.util.BetterBodyPublishers.ofFile;
-import static java.lang.System.Logger.Level.ALL;
 import static java.nio.file.StandardOpenOption.CREATE;
 import static java.nio.file.StandardOpenOption.TRUNCATE_EXISTING;
 import static java.nio.file.StandardOpenOption.WRITE;
@@ -59,7 +58,7 @@ class BigFileRequestTest extends AbstractLargeRealTest
     
     @BeforeAll
     void beforeAll() throws IOException {
-        Logging.setLevel(ALL);
+        Logging.everything();
         
         file = Files.createTempDirectory("nomagic").resolve("big-file");
         contents = DataUtils.bytes(FILE_SIZE);

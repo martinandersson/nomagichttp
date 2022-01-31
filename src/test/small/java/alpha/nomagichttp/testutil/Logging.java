@@ -50,19 +50,17 @@ public final class Logging
     }
     
     /**
-     * Set level globally.<p>
+     * Log everything.<p>
      * 
      * An invocation of this method behaves in exactly the same way as the
      * invocation
      * <pre>
      *     Logging.{@link #setLevel(Class, Level)
-     *       setLevel}(HttpServer.class, level);
+     *       setLevel}(HttpServer.class, level.ALL);
      * </pre>
-     * 
-     * @param level to set
      */
-    public static void setLevel(Level level) {
-        setLevel(HttpServer.class, level);
+    public static void everything() {
+        setLevel(HttpServer.class, Level.ALL);
     }
     
     /**
