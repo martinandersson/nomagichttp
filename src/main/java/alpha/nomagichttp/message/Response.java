@@ -207,9 +207,8 @@ public interface Response extends HeaderHolder
      * 
      * The body is assumed to be empty, if {@code this.body()} returns the same
      * object instance as {@link Publishers#empty()}, or it returns a
-     * {@link HttpRequest.BodyPublisher} implementation with {@code
-     * contentLength()} set to 0, or the response has a {@code Content-Length}
-     * header set to 0.
+     * {@link HttpRequest.BodyPublisher} with {@code contentLength()} set to 0,
+     * or the response has a {@code Content-Length} header set to 0.
      * 
      * @return {@code true} if the body is assumed to be empty,
      *         otherwise {@code false}
@@ -276,8 +275,10 @@ public interface Response extends HeaderHolder
         Builder reasonPhrase(String reasonPhrase);
         
         /**
-         * Set a header. This overwrites all previously set values for the given
-         * name.
+         * Set a header.<p>
+         * 
+         * This overwrites all previously set values for the given name
+         * (case-sensitive).
          * 
          * @param   name of header
          * @param   value of header
@@ -288,30 +289,37 @@ public interface Response extends HeaderHolder
         Builder header(String name, String value);
         
         /**
-         * Remove all previously set values for the given header name.
+         * Remove all occurrences of a header.<p>
+         * 
+         * This method operates without regard to casing.
          * 
          * @param name of the header
          * @return a new builder representing the new state
-         * @throws  NullPointerException if {@code name} is {@code null}
+         * @throws NullPointerException if {@code name} is {@code null}
          */
         Builder removeHeader(String name);
         
         /**
-         * Remove all occurrences of a header that has the given value.
+         * Remove all occurrences of given a header value.<p>
          * 
          * This method operates without regard to casing for both header name
-         * and value.
+         * and value.<p>
+         * 
+         * If there are no mapped values left after the operation, the header
+         * will also be removed.
          * 
          * @param name of the header
-         * @param presentValue predicate
+         * @param value predicate
          * @return a new builder representing the new state
-         * @throws  NullPointerException if any argument is {@code null}
+         * @throws NullPointerException if any argument is {@code null}
          */
-        Builder removeHeaderIf(String name, String presentValue);
+        Builder removeHeaderValue(String name, String value);
         
         /**
-         * Add a header to this response. If the header is already present then
-         * it will be repeated in the response.
+         * Add a header to this response.<p>
+         * 
+         * If the header is already present then it will be repeated in the
+         * response.
          * 
          * @param name of the header
          * @param value of the header

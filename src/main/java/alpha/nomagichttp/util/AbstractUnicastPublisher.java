@@ -9,9 +9,9 @@ import static java.lang.System.Logger.Level.DEBUG;
 import static java.util.Objects.requireNonNull;
 
 /**
- * Provides a lock-free and thread-safe {@code
- * Flow.Publisher.subscribe(Flow.Subscriber)} method implementation that stores
- * and manages the subscriber reference in this class.<p>
+ * Provides a thread-safe and non-blocking {@code
+ * Flow.Publisher.subscribe(Flow.Subscriber)} implementation that stores and
+ * manages the subscriber reference in this class.<p>
  * 
  * Only one subscriber is allowed to be active at any given moment. However -
  * depending on a constructor argument - the publisher may be <i>reused</i> over
@@ -20,16 +20,16 @@ import static java.util.Objects.requireNonNull;
  * 
  * For each subscriber, the abstract method {@link
  * #newSubscription(Flow.Subscriber)} is called. The subclass must produce the
- * subscription object by which it will get notified of the subscriber's
+ * subscription object through which it will get notified of the subscriber's
  * demand.<p>
  * 
  * All terminating signals passed through this class (including {@code
- * Flow.Subscription.cancel()}) will also clear the subscriber reference, and it
- * does not matter if the subscriber returns exceptionally.<p>
+ * Flow.Subscription.cancel()}) will also clear the subscriber reference, even
+ * if that call returns exceptionally.<p>
  * 
  * End receivers will never receive concurrently running terminating signals.
- * Only one of the receivers will at most receive one terminating signal. Again,
- * this also includes the {@code cancel()} method.<p>
+ * Only one of the receivers will at most receive one terminating signal. This
+ * also includes the {@code cancel()} method.<p>
  * 
  * Almost all exceptions from delivering a signal to the end receiver propagates
  * to the calling thread as-is. The only exception is {@code signalError()}
@@ -257,21 +257,25 @@ public abstract class AbstractUnicastPublisher<T> implements Flow.Publisher<T>
     /**
      * Shutdown the publisher, only if no subscriber is active.<p>
      * 
-     * Only if successful will no more subscribers be accepted (the "re-usable"
-     * option plays no role).<p>
+     * If the operation is successful, no more subscribers will be accepted (the
+     * "re-usable" option plays no role).<p>
      * 
-     * Is NOP if there is no subscriber active or publisher was already
-     * shutdown.<p>
+     * The method returns {@code true} only if the publisher was in an accepting
+     * state (includes also subscribers currently being installed/initializing)
+     * when this method was called and consequently the publisher shut down.
+     * {@code false} indicates a non-reusable publisher was already used up or
+     * the publisher was already shut down.
      * 
-     * Note that the returned value is not a classic success flag indicating
-     * whether the operation had an effect. A {@code false} return value can
-     * only mean that no subscriber was active, i.e. NOP, but {@code true} means
-     * that one was active <i>or</i> that the publisher was already shutdown.
-     * 
-     * @return shutdown state (post-method invocation)
+     * @return see JavaDoc
      */
     protected final boolean tryShutdown() {
-        return updateAndGetValueIf(v -> !isReal(v), T(CLOSED)) == CLOSED;
+        var old = getAndUpdateValueIf(
+            // Replace only sentinels (including NOT_REUSABLE) + initializing,
+            // real subscriber remains untouched
+            v -> !isReal(v),
+            // To closed
+            T(CLOSED));
+        return old != NOT_REUSABLE && old != CLOSED;
     }
     
     /**

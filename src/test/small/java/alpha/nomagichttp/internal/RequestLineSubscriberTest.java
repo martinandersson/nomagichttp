@@ -13,8 +13,8 @@ import java.util.concurrent.CompletionStage;
 
 import static alpha.nomagichttp.testutil.Assertions.assertFailed;
 import static alpha.nomagichttp.testutil.Assertions.assertSucceeded;
-import static alpha.nomagichttp.testutil.TestPublishers.map;
 import static alpha.nomagichttp.util.Publishers.just;
+import static alpha.nomagichttp.util.Publishers.map;
 import static org.mockito.Mockito.mock;
 
 /**

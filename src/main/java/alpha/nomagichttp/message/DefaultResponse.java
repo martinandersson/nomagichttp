@@ -7,7 +7,6 @@ import alpha.nomagichttp.util.Publishers;
 import java.net.http.HttpHeaders;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
-import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -140,23 +139,28 @@ final class DefaultResponse implements Response
                 if (headers == null) {
                     return;
                 }
-                headers.remove(name);
+                headers.entrySet().removeIf(e ->
+                    e.getKey().equalsIgnoreCase(name));
             }
             
-            void removeHeaderIf(String name, String presentValue) {
+            void removeHeaderValue(String name, String presentValue) {
                 assert name != null;
                 assert presentValue != null;
                 if (headers == null) {
                     return;
                 }
-                headers.entrySet().stream()
-                       .filter(e -> e.getKey().equalsIgnoreCase(name))
-                       .forEach(e -> {
-                           Iterator<String> v = e.getValue().iterator();
-                           while (v.hasNext() && v.next().equalsIgnoreCase(presentValue)) {
-                               v.remove();
-                           }
-                       });
+                var it = headers.entrySet().iterator();
+                while (it.hasNext()) {
+                    var e = it.next();
+                    if (!e.getKey().equalsIgnoreCase(name)) {
+                        continue;
+                    }
+                    e.getValue().removeIf(v ->
+                        v.equalsIgnoreCase(presentValue));
+                    if (e.getValue().isEmpty()) {
+                        it.remove();
+                    }
+                }
             }
             
             void addHeader(boolean clearFirst, String name, String value) {
@@ -213,10 +217,10 @@ final class DefaultResponse implements Response
         }
         
         @Override
-        public Response.Builder removeHeaderIf(String name, String presentValue) {
+        public Response.Builder removeHeaderValue(String name, String value) {
             requireNonNull(name, "name");
-            requireNonNull(presentValue, "presentValue");
-            return new DefaultBuilder(this, s -> s.removeHeaderIf(name, presentValue));
+            requireNonNull(value, "value");
+            return new DefaultBuilder(this, s -> s.removeHeaderValue(name, value));
         }
         
         @Override

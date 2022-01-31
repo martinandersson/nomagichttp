@@ -14,7 +14,6 @@ import java.nio.charset.Charset;
 import java.nio.file.OpenOption;
 import java.nio.file.Path;
 import java.nio.file.attribute.FileAttribute;
-import java.time.Duration;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
@@ -30,7 +29,6 @@ import static alpha.nomagichttp.internal.SubscriptionMonitoringOp.NO_DOWNSTREAM;
 import static alpha.nomagichttp.internal.SubscriptionMonitoringOp.TerminationResult;
 import static alpha.nomagichttp.internal.SubscriptionMonitoringOp.subscribeTo;
 import static alpha.nomagichttp.message.DefaultContentHeaders.empty;
-import static java.lang.System.Logger.Level.DEBUG;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.nio.file.StandardOpenOption.CREATE_NEW;
 import static java.nio.file.StandardOpenOption.WRITE;
@@ -45,9 +43,6 @@ import static java.util.concurrent.CompletableFuture.failedStage;
  */
 final class RequestBody implements Request.Body
 {
-    private static final System.Logger
-            LOG = System.getLogger(RequestBody.class.getPackageName());
-    
     private static final CompletionStage<String>
             COMPLETED_EMPTY_STR = completedStage("");
     

@@ -26,6 +26,7 @@ import java.util.function.Supplier;
 import static alpha.nomagichttp.util.PushPullUnicastPublisher.nonReusable;
 import static alpha.nomagichttp.util.Streams.stream;
 import static java.lang.Long.MAX_VALUE;
+import static java.lang.Long.MIN_VALUE;
 import static java.lang.System.Logger.Level.DEBUG;
 import static java.net.http.HttpRequest.BodyPublisher;
 import static java.nio.charset.StandardCharsets.UTF_8;
@@ -288,9 +289,12 @@ public final class BetterBodyPublishers
             this.delegate = requireNonNull(delegate);
         }
         
+        private long len = MIN_VALUE;
+        
         @Override
         public long contentLength() {
-            return length.getAsLong();
+            var l = len;
+            return l == MIN_VALUE ? (len = length.getAsLong()) : l;
         }
         
         @Override

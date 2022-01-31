@@ -9,9 +9,8 @@ import static java.lang.System.Logger.Level.DEBUG;
 
 /**
  * Upon receiving a cancel signal from downstream, instead of propagating the
- * signal upstream, this operator switches out the downstream subscriber into
- * logic that proceeds to discard all remaining bytes of all received
- * bytebuffers until no more bytebuffers are received from the upstream.<p>
+ * signal upstream, this operator replaces the downstream subscriber for logic
+ * that discards all received bytebuffers from the upstream until finish.<p>
  * 
  * This operator should be attached <strong>after</strong> other operators that
  * modifies the bytebuffer view (or we risk clearing bytes that crosses over a
@@ -20,8 +19,8 @@ import static java.lang.System.Logger.Level.DEBUG;
  * 
  * Is used by the server's request thread to make sure that if and when the
  * application's body subscription is prematurely cancelled, the read-position
- * in the underlying channel is moved forward so that the next request head
- * parser starts at a valid position.
+ * in the underlying channel is moved forward so that the next request line
+ * subscriber starts at a valid position.
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  * @see PooledByteBufferHolder#discard() 
@@ -71,7 +70,7 @@ final class OnCancelDiscardOp extends AbstractOp<PooledByteBufferHolder>
      * Is NOP if already discarding.
      */
     void discardIfNoSubscriber() {
-        if (!discarding && tryShutdown()) {
+        if (tryShutdown()) {
             discarding = true;
             LOG.log(DEBUG, "Switched to discarding mode");
             trySubscribeToUpstream();

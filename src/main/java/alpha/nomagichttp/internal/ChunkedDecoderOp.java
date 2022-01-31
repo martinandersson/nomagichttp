@@ -131,7 +131,7 @@ final class ChunkedDecoderOp implements Flow.Publisher<PooledByteBufferHolder>
         
         private void decodeSize(byte b) {
             parsing = switch (b) {
-                // Job done, switch to discarding
+                // Job done, switch to extensions
                 case SC -> {
                     parseSize();
                     yield CHUNK_EXT;

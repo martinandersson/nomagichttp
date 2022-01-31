@@ -172,7 +172,7 @@ public interface Config
      * 
      * The default implementation returns {@code false}.
      * 
-     * @return whether or not to reject HTTP/1.0 clients
+     * @return whether to reject HTTP/1.0 clients
      */
     boolean rejectClientsUsingHTTP1_0();
     
@@ -196,8 +196,8 @@ public interface Config
      * 
      * The default implementation returns {@code true}.
      * 
-     * @return whether or not to ignore failed 1XX (Informational) responses
-     *         sent to HTTP/1.0 clients
+     * @return whether to ignore failed 1XX (Informational) responses sent to
+     *         HTTP/1.0 clients
      */
     boolean ignoreRejectedInformational();
     
@@ -222,8 +222,8 @@ public interface Config
      * 
      * The default implementation returns {@code false}.
      * 
-     * @return whether or not to immediately respond a 100 (Continue)
-     *         interim response to a request with a {@code Expect: 100-continue} header
+     * @return whether to immediately respond a 100 (Continue) interim response
+     *         to a request with a {@code Expect: 100-continue} header
      * 
      * @see HttpConstants.StatusCode#ONE_HUNDRED
      */

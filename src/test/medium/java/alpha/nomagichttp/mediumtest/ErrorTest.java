@@ -31,6 +31,7 @@ import alpha.nomagichttp.testutil.AbstractRealTest;
 import alpha.nomagichttp.testutil.IORunnable;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.ValueSource;
 
 import java.io.IOException;
@@ -663,52 +664,80 @@ class ErrorTest extends AbstractRealTest
     }
     
     @ParameterizedTest
-    @ValueSource(booleans = {true, false})
-    void ResponseTimeoutException_fromResponse(boolean blockImmediately)
+    @CsvSource({"false,false", "true,false", "false,true", "true,true"})
+    void ResponseTimeoutException_fromResponse(
+            boolean blockImmediately, boolean addContentLength)
             throws IOException, InterruptedException
     {
         Semaphore unblock = new Semaphore(0);
-        Response rsp = blockImmediately ?
+        Response rsp1 = blockImmediately ?
                 ok(blockSubscriberUntil(unblock)) :
                 // If not immediately, send 1 char first, then block
                 ok(concat(ofString("x"), blockSubscriberUntil(unblock)));
         
+        // With content-length, pipeline's timer op will subscribe to the
+        // response body. Without, timer will subscribe to chunked encoder op.
+        if (addContentLength) {
+            rsp1 = rsp1.toBuilder().addHeader("Content-Length", "123").build();
+        }
+        
         usingConfiguration()
             .timeoutResponse(ofMillis(1));
         server().add("/",
-            GET().respond(rsp));
+            GET().respond(rsp1));
         
-        // Response may be
-        //   1) empty,
-        //   2) any portion of 200 (OK) - but never including the two ending CRLFs,
-        //   3) 503 (Service Unavailable).
         // The objective of this test is to ensure the connection closes.
         // Otherwise, our client would time out on this side.
-        String responseIgnored = client().writeReadTextUntilEOS(
+        String rsp2 = client().writeReadTextUntilEOS(
                 "GET / HTTP/1.1" + CRLF + CRLF);
         
-        unblock.release(); // <-- must unblock request thread to guarantee log
-        var fromLog = logRecorder().assertAwaitFirstLogError();
+        assertThat(rsp2).satisfiesAnyOf(
+                v -> assertThat(v).isEmpty(),
+                // any portion of 200 (OK)
+                v -> assertThat(v).startsWith("H"),
+                v -> assertThat(v).startsWith("HTTP/1.1 503 (Service Unavailable)"));
         
-        var thr = assertThat(fromLog)
-            .isExactlyInstanceOf(ResponseTimeoutException.class)
-            // (may have suppressed ClosedChannelException)
-            .hasNoCause();
+        // Must unblock request thread to guarantee log
+        unblock.release();
         
-        if (blockImmediately) {
-            // Can not deterministically assert if the timeout happened because
-            // we gave up waiting on the response, or response body bytebuffer.
-            thr.hasMessageStartingWith("Gave up waiting on a response");
+        var thr1 = pollServerError();
+        if (thr1 == null) {
+            // Response body timeout caused ResponseBodySubscriber to close channel
+            // (nothing delivered to error handler, but was logged)
+            var r = logRecorder().take(
+                    WARNING, """
+                      Child channel is closed for writing. \
+                      Can not resolve this error. \
+                      HTTP exchange is over.""",
+                    ResponseTimeoutException.class);
+            assertThat(r).isNotNull();
+            assertThat(r.getThrown()).hasMessage(
+                "Gave up waiting on a response body bytebuffer.");
+            // No other error
+            logRecorder().assertThatNoErrorWasLogged();
         } else {
-            thr.hasMessage("Gave up waiting on a response body bytebuffer.");
-        }
-        
-        // As with the response, there's no guarantee the exception was
-        // delivered to the error handler (and so must read away this error or
-        // else superclass failure)
-        var fromServer = pollServerErrorNow();
-        if (fromServer != null) {
-            assertSame(fromLog, fromServer);
+            // Error handler can get one or even two timeout exceptions
+            Consumer<Throwable> assertThr = t -> {
+                assertThat(t)
+                    .isExactlyInstanceOf(ResponseTimeoutException.class)
+                    .hasNoCause()
+                    .hasNoSuppressedExceptions();
+                assertThat(t.getMessage()).satisfiesAnyOf(
+                    v -> assertThat(v).isEqualTo("Gave up waiting on a response."),
+                    v -> assertThat(v).isEqualTo("Gave up waiting on a response body bytebuffer."));
+            };
+            assertThr.accept(thr1);
+            var thr2 = pollServerError(1, SECONDS);
+            if (thr2 != null) {
+                assertThr.accept(thr2);
+                assertThat(thr2.getMessage()).isNotEqualTo(thr1.getMessage());
+            }
+            logRecorder().assertThatLogContainsOnlyOnce(
+                    rec(ERROR, "Default error handler received:", thr1));
+            if (thr2 != null) {
+            logRecorder().assertThatLogContainsOnlyOnce(
+                    rec(ERROR, "Default error handler received:", thr2));
+            }
         }
         
         // Read away a trailing (failed) attempt to write 503 (Service Unavailable)
@@ -811,9 +840,10 @@ class ErrorTest extends AbstractRealTest
             "Content-Length: 0"                  + CRLF + 
             "Connection: close"                  + CRLF + CRLF);
         
-        assertThat(logRecorderStop()).extracting(LogRecord::getLevel, LogRecord::getMessage)
-                .contains(rec(DEBUG,
-                        "Subscription terminated. Will close the channel's read stream."));
+        assertThat(logRecorderStop()).extracting(
+                LogRecord::getLevel, LogRecord::getMessage, LogRecord::getThrown)
+            .contains(rec(DEBUG,
+                "Subscription terminated. Will close the channel's read stream."));
         
         var s = sub.signals();
         assertThat(s).hasSize(2);
@@ -930,7 +960,7 @@ class ErrorTest extends AbstractRealTest
         server().add("/", GET().respond(badRequest().toBuilder()
                 // This header would have caused the server to close the connection,
                 // but we want to run many "failed" responses
-                .removeHeaderIf("Connection", "close").build()));
+                .removeHeaderValue("Connection", "close").build()));
         
         IORunnable sendBadRequest = () -> {
             String rsp = client().writeReadTextUntilNewlines(get());

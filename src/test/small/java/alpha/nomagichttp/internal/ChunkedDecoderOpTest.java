@@ -21,9 +21,9 @@ import static alpha.nomagichttp.message.DefaultContentHeaders.empty;
 import static alpha.nomagichttp.testutil.Assertions.assertCancelled;
 import static alpha.nomagichttp.testutil.Assertions.assertPublisherEmits;
 import static alpha.nomagichttp.testutil.Assertions.assertPublisherError;
-import static alpha.nomagichttp.testutil.TestPublishers.map;
 import static alpha.nomagichttp.testutil.TestPublishers.reusable;
 import static alpha.nomagichttp.util.Publishers.just;
+import static alpha.nomagichttp.util.Publishers.map;
 import static java.lang.Integer.MAX_VALUE;
 import static java.nio.charset.StandardCharsets.US_ASCII;
 import static java.util.HexFormat.fromHexDigitsToLong;
@@ -61,6 +61,18 @@ final class ChunkedDecoderOpTest
         var testee = decode("5\r\n", "ABCDE\r\n", "0\r\n", "\r\n");
         assertThat(toString(testee)).isEqualTo("ABCDE");
         assertEmptyTrailers(testee);
+    }
+    
+    @Test
+    void happyPath_twoSeparatedDataChunks_twoPublishedItems() {
+        var testee = decode("2\r\nAB\r\n", "2\r\nCD\r\n", "0\r\n\r\n");
+        assertPublisherEmits(map(testee, ByteBuffers::toString), "AB", "CD");
+    }
+    
+    @Test
+    void happyPath_ifChunksFitOneReceivedBuffer_operatorProcessesBothIntoOne() {
+        var testee = decode("2\r\nAB\r\n2\r\nCD\r\n", "0\r\n\r\n");
+        assertPublisherEmits(map(testee, ByteBuffers::toString), "ABCD");
     }
     
     @Test

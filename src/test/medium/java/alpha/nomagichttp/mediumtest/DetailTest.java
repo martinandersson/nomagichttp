@@ -10,7 +10,6 @@ import alpha.nomagichttp.message.Responses;
 import alpha.nomagichttp.route.NoRouteFoundException;
 import alpha.nomagichttp.testutil.AbstractRealTest;
 import alpha.nomagichttp.testutil.IORunnable;
-import alpha.nomagichttp.util.Publishers;
 import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
@@ -40,8 +39,10 @@ import static alpha.nomagichttp.testutil.TestRequests.post;
 import static alpha.nomagichttp.testutil.TestRoutes.respondIsBodyEmpty;
 import static alpha.nomagichttp.testutil.TestRoutes.respondRequestBody;
 import static alpha.nomagichttp.util.BetterBodyPublishers.ofByteArray;
+import static alpha.nomagichttp.util.Publishers.just;
 import static java.lang.System.Logger.Level.DEBUG;
 import static java.lang.System.Logger.Level.WARNING;
+import static java.nio.ByteBuffer.allocate;
 import static java.nio.charset.StandardCharsets.US_ASCII;
 import static java.time.Duration.ZERO;
 import static java.time.Duration.between;
@@ -235,35 +236,38 @@ class DetailTest extends AbstractRealTest
     }
     
     @Test
-    void response_unknownLength_bodyNonEmpty() throws IOException, InterruptedException {
+    void response_unknownLength_bodyNonEmpty() throws IOException {
         server().add("/", GET().respond(
-                text("Hi").toBuilder()
-                          .removeHeader(CONTENT_LENGTH)
-                          .build()));
-        
-        String rsp = client().writeReadTextUntil(get(), "Hi");
-        assertThat(rsp).isEqualTo(
-            "HTTP/1.1 200 OK"                         + CRLF +
-            "Content-Type: text/plain; charset=utf-8" + CRLF +
-            "Connection: close"                       + CRLF + CRLF +
-            
-            "Hi");
-        
-        logRecorder().assertAwaitChildClose();
+            text("World").toBuilder()
+                         .removeHeader(CONTENT_LENGTH)
+                         .build()));
+        String rsp = client().writeReadTextUntil(
+            get(), "0\r\n\r\n");
+        assertThat(rsp).isEqualTo("""
+            HTTP/1.1 200 OK\r
+            Content-Type: text/plain; charset=utf-8\r
+            Transfer-Encoding: chunked\r
+            \r
+            00000005\r
+            World\r
+            0\r\n\r
+            """);
     }
     
     @Test
-    void response_unknownLength_bodyEmpty() throws IOException, InterruptedException {
-        var empty = Publishers.just(ByteBuffer.allocate(0));
-        server().add("/", GET().respond(ok(empty, "application/octet-stream", -1)));
-        
-        String rsp = client().writeReadTextUntilNewlines(get());
-        assertThat(rsp).isEqualTo(
-            "HTTP/1.1 200 OK"                         + CRLF +
-            "Content-Type: application/octet-stream"  + CRLF +
-            "Connection: close"                       + CRLF + CRLF);
-    
-        logRecorder().assertAwaitChildClose();
+    void response_unknownLength_bodyEmpty() throws IOException {
+        server().add("/", GET().respond(
+            ok(just(allocate(0)), "application/octet-stream", -1)));
+        String rsp = client().writeReadTextUntilEOS(
+            get("Connection: close"));
+        assertThat(rsp).isEqualTo("""
+            HTTP/1.1 200 OK\r
+            Content-Type: application/octet-stream\r
+            Transfer-Encoding: chunked\r
+            Connection: close\r
+            \r
+            0\r\n\r
+            """);
     }
     
     // And what about @Test request_unknownLength() ?
@@ -321,7 +325,7 @@ class DetailTest extends AbstractRealTest
                 "Content-Type: application/octet-stream" + CRLF + CRLF)
                 .getBytes(US_ASCII);
         
-        ByteBuffer merged = ByteBuffer.allocate(expHead.length + rspBody.length);
+        ByteBuffer merged = allocate(expHead.length + rspBody.length);
         for (byte b : expHead) merged.put(b);
         for (byte b : rspBody) merged.put(b);
         merged.flip();

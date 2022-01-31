@@ -2,16 +2,27 @@ package alpha.nomagichttp.mediumtest;
 
 import alpha.nomagichttp.message.Responses;
 import alpha.nomagichttp.testutil.AbstractRealTest;
+import alpha.nomagichttp.testutil.HttpClientFacade;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
 
 import java.io.IOException;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeoutException;
 
 import static alpha.nomagichttp.handler.RequestHandler.GET;
 import static alpha.nomagichttp.handler.RequestHandler.POST;
+import static alpha.nomagichttp.message.MediaType.APPLICATION_OCTET_STREAM;
+import static alpha.nomagichttp.message.Responses.ok;
 import static alpha.nomagichttp.message.Responses.text;
 import static alpha.nomagichttp.testutil.TestClient.CRLF;
 import static alpha.nomagichttp.testutil.TestRequests.post;
 import static alpha.nomagichttp.testutil.TestRoutes.respondIsBodyEmpty;
+import static alpha.nomagichttp.util.Publishers.map;
+import static java.nio.ByteBuffer.wrap;
+import static java.nio.charset.StandardCharsets.US_ASCII;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
@@ -90,4 +101,57 @@ class MessageTest extends AbstractRealTest
             
             "Hi");
     }
+    
+    @Test
+    @DisplayName("http_1_1_chunked/TestClient")
+    void http_1_1_chunked() throws IOException {
+        addRequestBodyEchoRoute();
+        var rsp = client().writeReadTextUntilEOS("""
+                POST / HTTP/1.1
+                Transfer-Encoding: chunked
+                
+                5
+                Hello
+                6
+                World!
+                0
+                
+                """);
+        // Both chunks fit into one buffer processed by ChunkedDecoderOp
+        assertThat(rsp).isEqualTo("""
+                HTTP/1.1 200 OK\r
+                Content-Type: application/octet-stream\r
+                Connection: close\r
+                Transfer-Encoding: chunked\r
+                \r
+                0000000b\r
+                HelloWorld!\r
+                0\r\n\r\n""");
+    }
+    
+    @ParameterizedTest(name = "http_1_1_chunked_compatibility/{0}")
+    @EnumSource
+    void http_1_1_chunked_compatibility(HttpClientFacade.Implementation impl)
+            throws IOException, InterruptedException, ExecutionException, TimeoutException
+    {
+        addRequestBodyEchoRoute();
+        var ch1 = "Hello".getBytes(US_ASCII);
+        var ch2 = "World!".getBytes(US_ASCII);
+        var cli = impl.create(serverPort());
+        var rsp = cli.postChunksAndReceiveText("/", ch1, ch2);
+        assertThat(rsp.statusCode()).isEqualTo(200);
+        assertThat(rsp.headers().firstValue("Transfer-Encoding")).hasValue("chunked");
+        assertThat(rsp.body()).isEqualTo("HelloWorld!");
+    }
+    
+    private void addRequestBodyEchoRoute() throws IOException {
+        server().add("/", POST().apply(req -> {
+            assertThat(req.headers().contain("Transfer-Encoding", "chunked")).isTrue();
+            var echoChunks = map(req.body(), pooled -> wrap(pooled.copy()));
+            return ok(echoChunks, APPLICATION_OCTET_STREAM, -1)
+                    .toBuilder().header("Connection", "close")
+                    .build().completedStage();
+        }));
+    }
+    
 }

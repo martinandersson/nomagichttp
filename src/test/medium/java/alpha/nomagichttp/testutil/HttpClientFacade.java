@@ -2,20 +2,31 @@ package alpha.nomagichttp.testutil;
 
 import alpha.nomagichttp.HttpConstants;
 import alpha.nomagichttp.util.Headers;
+import alpha.nomagichttp.util.Streams;
 import io.netty.buffer.ByteBuf;
+import okhttp3.MediaType;
 import okhttp3.OkHttpClient;
 import okhttp3.Protocol;
 import okhttp3.Request;
 import okhttp3.RequestBody;
 import okhttp3.ResponseBody;
+import okio.BufferedSink;
 import org.apache.hc.client5.http.async.methods.SimpleHttpRequest;
 import org.apache.hc.client5.http.async.methods.SimpleHttpResponse;
 import org.apache.hc.client5.http.async.methods.SimpleRequestBuilder;
+import org.apache.hc.client5.http.classic.methods.HttpPost;
 import org.apache.hc.client5.http.impl.async.HttpAsyncClients;
+import org.apache.hc.client5.http.impl.classic.HttpClients;
+import org.apache.hc.core5.http.HttpVersion;
+import org.apache.hc.core5.http.ParseException;
 import org.apache.hc.core5.http.ProtocolVersion;
+import org.apache.hc.core5.http.io.entity.EntityUtils;
+import org.apache.hc.core5.http.io.entity.InputStreamEntity;
 import org.eclipse.jetty.client.api.ContentResponse;
 import org.eclipse.jetty.client.util.BytesRequestContent;
+import org.eclipse.jetty.client.util.InputStreamRequestContent;
 import org.eclipse.jetty.client.util.StringRequestContent;
+import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.netty.ByteBufFlux;
 import reactor.netty.ByteBufMono;
@@ -24,12 +35,15 @@ import reactor.netty.http.client.HttpClient;
 import reactor.netty.http.client.HttpClient.ResponseReceiver;
 import reactor.netty.http.client.HttpClientResponse;
 
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.net.MalformedURLException;
 import java.net.URI;
 import java.net.http.HttpHeaders;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.EnumSet;
@@ -47,10 +61,14 @@ import java.util.function.Predicate;
 import java.util.function.Supplier;
 import java.util.stream.Stream;
 
+import static alpha.nomagichttp.HttpConstants.Version.HTTP_1_1;
+import static alpha.nomagichttp.util.Publishers.ofIterable;
+import static alpha.nomagichttp.util.Streams.toList;
 import static java.net.http.HttpClient.Version;
 import static java.net.http.HttpRequest.BodyPublisher;
 import static java.net.http.HttpRequest.BodyPublishers;
 import static java.net.http.HttpResponse.BodyHandlers;
+import static java.nio.ByteBuffer.allocate;
 import static java.util.Arrays.stream;
 import static java.util.Locale.ROOT;
 import static java.util.Objects.deepEquals;
@@ -60,7 +78,7 @@ import static java.util.function.Predicate.not;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * A HTTP client API that delegates to another {@link Implementation
+ * An HTTP client API that delegates to another {@link Implementation
  * implementation}.<p>
  * 
  * The NoMagicHTTP's own {@link TestClient} is <i>not</i> supported as a
@@ -121,6 +139,9 @@ import static org.assertj.core.api.Assertions.assertThat;
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  */
+// TODO: After modules, separate into its own package
+// TODO: Add throws Exception, and one has to go to each impl's JavaDoc to see which ones
+// TODO: Add JavaDoc links for each client
 public abstract class HttpClientFacade
 {
     /**
@@ -199,9 +220,9 @@ public abstract class HttpClientFacade
             return stream.map(i -> i.create(port));
         }
         
-        private final BiFunction<Implementation, Integer, HttpClientFacade> factory;
+        private final Function<Integer, HttpClientFacade> factory;
         
-        Implementation(BiFunction<Implementation, Integer, HttpClientFacade> f) {
+        Implementation(Function<Integer, HttpClientFacade> f) {
             factory = f;
         }
         
@@ -212,34 +233,22 @@ public abstract class HttpClientFacade
          * @return a client facade
          */
         public final HttpClientFacade create(int port) {
-            return factory.apply(this, port);
+            return factory.apply(port);
         }
     }
     
-    private final Implementation impl;
     private final int port;
     // "permits null elements", whatever that means
     private Map<String, List<String>> headers;
     
     /**
-     * Constructs a {@code HttpClientFacade}.
+     * Initializes this object.
      * 
-     * @param impl enum instance
      * @param port of server
      */
-    protected HttpClientFacade(Implementation impl, int port) {
-        this.impl = impl;
+    protected HttpClientFacade(int port) {
         this.port = port;
         this.headers = Map.of();
-    }
-    
-    /**
-     * Returns the enum instance representing this implementation.
-     * 
-     * @return the enum instance representing this implementation
-     */
-    public final Implementation toEnum() {
-        return impl;
     }
     
     @Override
@@ -265,10 +274,9 @@ public abstract class HttpClientFacade
     }
     
     /**
-     * Create a URI with "http://localhost:{port}" prefixed to the specified
-     * {@code path}.
+     * Create a "http://localhost:{port}" URI with the given path appended.
      * 
-     * @param path of server resource
+     * @param path of server resource (should start with forward slash)
      * @return a URI
      */
     protected final URI withBase(String path) {
@@ -297,6 +305,10 @@ public abstract class HttpClientFacade
     /**
      * Execute a GET request expecting no response body.
      * 
+     * @implSpec
+     * The implementation must <i>assert</i> that a body was not received. Do
+     * not discard!
+     * 
      * @param path of server resource
      * @param version of HTTP
      * @return the response
@@ -311,25 +323,13 @@ public abstract class HttpClientFacade
      * @throws ExecutionException
      *             if an underlying asynchronous operation fails
      * @throws TimeoutException
-     *             if an otherwise asynchronous operation times out
+     *             if an underlying asynchronous operation times out
      *             (timeout duration not specified)
      */
     // Is not final only because Reactor-Netty needs a custom hacked solution
     public ResponseFacade<Void> getEmpty(String path, HttpConstants.Version version)
             throws IOException, InterruptedException, ExecutionException, TimeoutException {
-        
-        ResponseFacade<byte[]> rsp = getBytes(path, version);
-        var b = rsp.body();
-        if (b != null) {
-            assertThat(b).isEmpty();
-        }
-        return retype(rsp);
-    }
-    
-    private static <T, U> T retype(U u) {
-        @SuppressWarnings("unchecked")
-        T t = (T) u;
-        return t;
+        return getBytes(path, version).assertEmpty();
     }
     
     /**
@@ -349,7 +349,7 @@ public abstract class HttpClientFacade
      * @throws ExecutionException
      *             if an underlying asynchronous operation fails
      * @throws TimeoutException
-     *             if an otherwise asynchronous operation times out
+     *             if an underlying asynchronous operation times out
      *             (timeout duration not specified)
      */
     public abstract ResponseFacade<byte[]> getBytes(String path, HttpConstants.Version version)
@@ -376,7 +376,7 @@ public abstract class HttpClientFacade
      * @throws ExecutionException
      *             if an underlying asynchronous operation fails
      * @throws TimeoutException
-     *             if an otherwise asynchronous operation times out
+     *             if an underlying asynchronous operation times out
      *             (timeout duration not specified)
      */
     public abstract ResponseFacade<String> getText(String path, HttpConstants.Version version)
@@ -387,10 +387,6 @@ public abstract class HttpClientFacade
      * 
      * Which charset to use for decoding is for the client implementation to
      * decide.
-     * 
-     * @implSpec
-     * The implementation must <i>assert</i> that no body was received without
-     * discarding.
      * 
      * @param path of server resource
      * @param version of HTTP
@@ -407,7 +403,7 @@ public abstract class HttpClientFacade
      * @throws ExecutionException
      *             if an underlying asynchronous operation fails
      * @throws TimeoutException
-     *             if an otherwise asynchronous operation times out
+     *             if an underlying asynchronous operation times out
      *             (timeout duration not specified)
      */
     public abstract ResponseFacade<String> postAndReceiveText(
@@ -432,18 +428,46 @@ public abstract class HttpClientFacade
      * @throws ExecutionException
      *             if an underlying asynchronous operation fails
      * @throws TimeoutException
-     *             if an otherwise asynchronous operation times out
+     *             if an underlying asynchronous operation times out
      *             (timeout duration not specified)
      */
     public abstract ResponseFacade<Void> postBytesAndReceiveEmpty(
             String path, HttpConstants.Version version, byte[] body)
             throws IOException, InterruptedException, ExecutionException, TimeoutException;
     
+    /**
+     * Execute an HTTP/1.1 chunked-encoded POST request expecting text in the
+     * response body.<p>
+     * 
+     * No client implementation supports or documents how to produce data chunks
+     * of a particular size. If possible, the byte arrays given to this method
+     * will be forwarded as-is to the client implementation which hopefully will
+     * transport each as a new chunk.
+     * 
+     * @param path of server resources
+     * @param firstChunk of request body
+     * @param more chunks of the request body
+     * @return the response
+     * 
+     * @throws IOException
+     *             if an I/O error occurs when sending or receiving
+     * @throws InterruptedException
+     *             if the operation is interrupted
+     * @throws ExecutionException
+     *             if an underlying asynchronous operation fails
+     * @throws TimeoutException
+     *             if an underlying asynchronous operation times out
+     *             (timeout duration not specified)
+     */
+    public abstract ResponseFacade<String> postChunksAndReceiveText(
+            String path, byte[] firstChunk, byte[]... more)
+            throws IOException, InterruptedException, ExecutionException, TimeoutException;
+    
     private static class JDK extends HttpClientFacade {
         private final java.net.http.HttpClient c;
         
-        JDK(Implementation impl, int port) {
-            super(impl, port);
+        JDK(int port) {
+            super(port);
             c = java.net.http.HttpClient.newHttpClient();
         }
         
@@ -478,6 +502,19 @@ public abstract class HttpClientFacade
             var req = POST(path, ver, BodyPublishers.ofByteArray(body));
             return execute(req, BodyHandlers.ofByteArray())
                     .assertEmpty();
+        }
+        
+        @Override
+        public ResponseFacade<String> postChunksAndReceiveText(
+                String path, byte[] firstChunk, byte[]... more)
+                throws IOException, InterruptedException
+        {
+            var bytebuffers = Streams.stream(firstChunk, more)
+                                     .map(ByteBuffer::wrap)
+                                     .toList();
+            var req = POST(path, HTTP_1_1,
+                    BodyPublishers.fromPublisher(ofIterable(bytebuffers)));
+            return execute(req, BodyHandlers.ofString());
         }
         
         private HttpRequest GET(String path, HttpConstants.Version ver) {
@@ -519,41 +556,56 @@ public abstract class HttpClientFacade
     }
     
     private static final class OkHttp extends HttpClientFacade {
-        OkHttp(Implementation impl, int port) {
-            super(impl, port);
+        OkHttp(int port) {
+            super(port);
         }
         
         @Override
         public ResponseFacade<byte[]> getBytes(String path, HttpConstants.Version ver)
-                throws IOException
-        {
+                throws IOException {
             return execute(GET(path), ver, ResponseBody::bytes);
         }
-        
+    
         @Override
         public ResponseFacade<String> getText(String path, HttpConstants.Version ver)
-                throws IOException
-        {
+                throws IOException {
             return execute(GET(path), ver, ResponseBody::string);
         }
-        
+    
         @Override
         public ResponseFacade<String> postAndReceiveText(
                 String path, HttpConstants.Version ver, String body)
-                throws IOException
-        {
+                throws IOException {
             var req = POST(path, RequestBody.create(body, null));
             return execute(req, ver, ResponseBody::string);
         }
-        
+    
         @Override
         public ResponseFacade<Void> postBytesAndReceiveEmpty(
                 String path, HttpConstants.Version ver, byte[] body)
-                throws IOException
-        {
+                throws IOException {
             var req = POST(path, RequestBody.create(body, null));
             return execute(req, ver, ResponseBody::bytes)
                     .assertEmpty();
+        }
+        
+        @Override
+        public ResponseFacade<String> postChunksAndReceiveText(
+                String path, byte[] firstChunk, byte[]... more) throws IOException {
+            // This is as clean as we can make it.
+            // Still quite okay, compare this with Apache lol
+            // https://square.github.io/okhttp/recipes/#post-streaming-kt-java
+            var req = POST(path, new RequestBody() {
+                public MediaType contentType() {
+                    return null;
+                }
+                public void writeTo(BufferedSink s) throws IOException {
+                    for (var byteArr : toList(firstChunk, more)) {
+                        s.write(byteArr);
+                    }
+                }
+            });
+            return execute(req, HTTP_1_1, ResponseBody::string);
         }
         
         private Request GET(String path) throws MalformedURLException {
@@ -605,8 +657,8 @@ public abstract class HttpClientFacade
     }
     
     private static final class Apache extends HttpClientFacade {
-        Apache(Implementation impl, int port) {
-            super(impl, port);
+        Apache(int port) {
+            super(port);
         }
         
         @Override
@@ -646,6 +698,38 @@ public abstract class HttpClientFacade
                     .assertEmpty();
         }
         
+        @Override
+        public ResponseFacade<String> postChunksAndReceiveText(
+                String path, byte[] firstChunk, byte[]... more)
+                throws IOException
+        {
+            // Sourced from
+            // https://github.com/apache/httpcomponents-client/blob/5.1.x/httpclient5/src/test/java/org/apache/hc/client5/http/examples/ClientChunkEncodedPost.java
+            var stream = new InputStreamEntity(
+                    newInputStream(firstChunk, more), -1, null);
+            var req = new HttpPost(withBase(path));
+            req.setEntity(stream);
+            req.setVersion(HttpVersion.HTTP_1_1);
+            copyClientHeaders(req::addHeader);
+            
+            // SIMPLE-HttpRequest we have to execute using Http-ASYNC-Client.
+            // For streaming we have to use... a blocking client!? omg!
+            String body;
+            try (var cli = HttpClients.createDefault()) {
+                var rsp = cli.execute(req);
+                try (rsp) {
+                    body = EntityUtils.toString(rsp.getEntity());
+                } catch (ParseException e) {
+                    // No other text-producing request throws this ParseExc
+                    // which is a first clue that something is wrong. You go
+                    // into the source code and voilà, you'll find that the
+                    // ParseExc isn't actually thrown lol
+                    throw new AssertionError(e);
+                }
+                return ResponseFacade.fromApache(rsp, () -> body);
+            }
+        }
+        
         private SimpleHttpRequest GET(String path, HttpConstants.Version ver) {
             return newRequestBuilder("GET", path, ver).build();
         }
@@ -666,25 +750,24 @@ public abstract class HttpClientFacade
                 Function<? super SimpleHttpResponse, ? extends B> rspBodyConverter)
                 throws IOException, InterruptedException, ExecutionException, TimeoutException
         {
-            try (var c = HttpAsyncClients.createDefault()) {
+            try (var cli = HttpAsyncClients.createDefault()) {
                 // Must "start" first, otherwise
                 //     java.util.concurrent.CancellationException: Request execution cancelled
-                c.start();
-                // Same as timeout given to TestClient in BigFileRequestTest
-                var rsp = c.execute(req, null).get(5, SECONDS);
-                return ResponseFacade.fromApache(rsp, rspBodyConverter.apply(rsp));
+                cli.start();
+                // Same as the timeout given to TestClient in BigFileRequestTest
+                var rsp = cli.execute(req, null).get(5, SECONDS);
+                return ResponseFacade.fromApache(rsp, () -> rspBodyConverter.apply(rsp));
             }
         }
         
         private static ProtocolVersion toApacheVersion(HttpConstants.Version ver) {
             return org.apache.hc.core5.http.HttpVersion.get(ver.major(), ver.minor().orElse(0));
         }
-        
     }
     
     private static final class Jetty extends HttpClientFacade {
-        Jetty(Implementation impl, int port) {
-            super(impl, port);
+        Jetty(int port) {
+            super(port);
         }
         
         @Override
@@ -722,6 +805,16 @@ public abstract class HttpClientFacade
                     new BytesRequestContent(body),
                     ContentResponse::getContent)
                         .assertEmpty();
+        }
+        
+        @Override
+        public ResponseFacade<String> postChunksAndReceiveText(
+                String path, byte[] firstChunk, byte[]... more)
+                throws ExecutionException, InterruptedException, TimeoutException
+        {
+            return executeReq("POST", path, HTTP_1_1,
+                    new InputStreamRequestContent(newInputStream(firstChunk, more)),
+                    ContentResponse::getContentAsString);
         }
         
         private <B> ResponseFacade<B> executeReq(
@@ -769,15 +862,15 @@ public abstract class HttpClientFacade
     }
     
     private static final class Reactor extends HttpClientFacade {
-        Reactor(Implementation impl, int port) {
-            super(impl, port);
+        Reactor(int port) {
+            super(port);
         }
         
         // On Reactor, the default implementation in HttpClientFacade returns NULL (!), causing NPE.
-        // It is conceivable the we'll have to drop support for Reactor, being ridiculous as it is.
+        // It is conceivable that we'll have to drop support for Reactor, being ridiculous as it is.
         @Override
         public ResponseFacade<Void> getEmpty(String path, HttpConstants.Version ver) {
-            return GET(path, ver, null);
+            return GET(path, ver, null).assertEmpty();
         }
         
         @Override
@@ -811,6 +904,16 @@ public abstract class HttpClientFacade
                     ByteBufFlux.fromInbound(Mono.just(body)),
                     ByteBufMono::asByteArray)
                         .assertEmpty();
+        }
+        
+        @Override
+        public ResponseFacade<String> postChunksAndReceiveText(
+                String path, byte[] firstChunk, byte[]... more) {
+            return executeReq(
+                    io.netty.handler.codec.http.HttpMethod.POST, path, HTTP_1_1,
+                    ByteBufFlux.fromInbound(
+                            Flux.fromStream(Streams.stream(firstChunk, more))),
+                    ByteBufMono::asString);
         }
         
         private <B> ResponseFacade<B> GET(
@@ -881,10 +984,15 @@ public abstract class HttpClientFacade
     }
     
     /**
-     * A HTTP response API.<p>
+     * An HTTP response API.<p>
      * 
      * Delegates all operations to the underlying client's response
-     * implementation (if possible, lazily) without caching.<p>
+     * implementation.<p>
+     * 
+     * This class not cache anything, and if possible, it'll delegate to the
+     * client's implementation lazily. The purpose is to have problems occur
+     * with a nice stack trace exactly when and where it is a problem, i.e. in
+     * response assert statements.<p>
      * 
      * Two instances are equal only if each operation-pair return equal values
      * (as determined by using {@link Objects#deepEquals(Object, Object)}), or
@@ -917,7 +1025,8 @@ public abstract class HttpClientFacade
                     () -> body);
         }
         
-        static <B> ResponseFacade<B> fromApache(SimpleHttpResponse apache, B body) {
+        static <B> ResponseFacade<B> fromApache(
+                org.apache.hc.core5.http.HttpResponse apache, Supplier<B> body) {
             return new ResponseFacade<>(
                     () -> apache.getVersion().toString(),
                     apache::getCode,
@@ -925,7 +1034,7 @@ public abstract class HttpClientFacade
                     supplyOurHeadersType(() -> stream(apache.getHeaders()),
                             org.apache.hc.core5.http.NameValuePair::getName,
                             org.apache.hc.core5.http.NameValuePair::getValue),
-                    () -> body);
+                    body);
         }
         
         static <B> ResponseFacade<B> fromJetty(
@@ -1100,5 +1209,18 @@ public abstract class HttpClientFacade
             }
             return deepEquals(v1, v2);
         }
+    }
+    
+    private static <T, U> T retype(U u) {
+        @SuppressWarnings("unchecked")
+        T t = (T) u;
+        return t;
+    }
+    
+    private static InputStream newInputStream(byte[] first, byte[]... more) {
+        var byteArrays = toList(first, more);
+        var byteBuffer = allocate(byteArrays.stream().mapToInt(b -> b.length).sum());
+        byteArrays.forEach(byteBuffer::put);
+        return new ByteArrayInputStream(byteBuffer.array());
     }
 }

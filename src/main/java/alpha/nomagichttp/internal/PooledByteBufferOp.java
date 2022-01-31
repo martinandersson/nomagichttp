@@ -205,12 +205,12 @@ final class PooledByteBufferOp implements Flow.Publisher<PooledByteBufferHolder>
             return null;
         }
         if (buf == NO_MORE) {
-            if (!sink.completed()) {
+            if (sink.completed()) {
+                downstream.complete();
+            } else {
                 downstream.stop(new AssertionError(
                     "Unexpected: Channel closed gracefully before processor was done."));
                 postmortem.run();
-            } else {
-                downstream.complete();
             }
             return null;
         }

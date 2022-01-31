@@ -68,6 +68,25 @@ public interface BetterHeaders
     HttpHeaders delegate();
     
     /**
+     * If a header is present, returns {@code true}, otherwise {@code false}.<p>
+     * 
+     * The mapped value(s) of the header has no effect. The value(s) may be
+     * empty and this method would still return {@code true}, as long as the
+     * header has been received.
+     * 
+     * @implSpec
+     * The default implementation uses {@link #delegate()}.
+     * 
+     * @param headerName header name filter
+     * @return {@code true} if header is present, otherwise {@code false}
+     * @throws NullPointerException if a is {@code null} 
+     */
+    default boolean contains(String headerName) {
+        // NPE is unfortunately not documented in JDK
+        return delegate().map().containsKey(requireNonNull(headerName));
+    }
+    
+    /**
      * If a header is present, check if it contains a value substring.<p>
      * 
      * Suppose the server receives this request:
@@ -97,7 +116,6 @@ public interface BetterHeaders
      * @throws NullPointerException if any argument is {@code null}
      */
     default boolean contain(String headerName, String valueSubstring) {
-        // NPE is unfortunately not documented in JDK
         return delegate().allValues(requireNonNull(headerName)).stream()
                 .anyMatch(v -> containsIgnoreCase(v, valueSubstring));
     }

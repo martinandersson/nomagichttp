@@ -18,6 +18,7 @@ import java.util.concurrent.ConcurrentLinkedDeque;
 
 import static alpha.nomagichttp.HttpConstants.HeaderName.CONNECTION;
 import static alpha.nomagichttp.HttpConstants.HeaderName.CONTENT_LENGTH;
+import static alpha.nomagichttp.HttpConstants.HeaderName.TRANSFER_ENCODING;
 import static alpha.nomagichttp.HttpConstants.StatusCode.ONE_HUNDRED;
 import static alpha.nomagichttp.HttpConstants.StatusCode.isClientError;
 import static alpha.nomagichttp.HttpConstants.StatusCode.isServerError;
@@ -47,8 +48,7 @@ import static java.util.concurrent.TimeUnit.SECONDS;
  * <ul>
  *   <li>From a queue of responses, schedule channel write operations</li>
  *   <li>Invoke all after-actions</li>
- *   <li>Apply low-level response transformations such as setting "Connection:
- *       close" if no "Content-Length"</li>
+ *   <li>Apply response transformations such HTTP/1.1 chunked encoding</li>
  *   <li>Track- and act on "Connection: close"</li>
  * </ul>
  * 
@@ -196,6 +196,7 @@ final class ResponsePipeline extends AbstractLocalEventEmitter
     private boolean timedOut;
     
     private void timeoutAction() {
+        scheduleClose(chApi);
         timedOut = true;
         op.run();
     }
@@ -230,15 +231,10 @@ final class ResponsePipeline extends AbstractLocalEventEmitter
             return;
         }
         
-        if (timer != null) {
-            // Going to process response; timer active only while waiting
-            timer.abort();
-        }
-        
         stage.thenApply    (this::acceptRejectOrAbort)
              .thenCompose  (this::invokeAfterActions)
              .thenApply    (this::closeHttp1_0)
-             .thenApply    (this::fixUnknownLength)
+             .thenApply    (this::tryChunkedEncoding)
              .thenApply    (this::trackConnectionClose)
              .thenApply    (this::trackUnsuccessful)
              .thenCompose  (this::subscribeToResponse)
@@ -248,13 +244,11 @@ final class ResponsePipeline extends AbstractLocalEventEmitter
     private boolean timeoutEmitted;
     
     private void actOnTimerTimeout() {
-        if (!timedOut || timeoutEmitted) {
+        if (!timedOut || timeoutEmitted || wroteFinal) {
             return;
         }
-        assert !wroteFinal : "No timer was supposed to be active after final response.";
         timeoutEmitted = true;
         if (chApi.isOpenForWriting()) {
-            scheduleClose(chApi);
             var thr = new ResponseTimeoutException("Gave up waiting on a response.");
             emitResult(Error.INSTANCE, thr, null);
         } else {
@@ -361,14 +355,25 @@ final class ResponsePipeline extends AbstractLocalEventEmitter
         return rsp;
     }
     
-    private Response fixUnknownLength(Response rsp) {
-        if (rsp.headers().isMissingOrEmpty(CONTENT_LENGTH) &&
-            !rsp.isBodyEmpty() &&
-            !hasConnectionClose(rsp))
+    private Response tryChunkedEncoding(Response rsp) {
+        if (exch.getHttpVersion() == HTTP_1_1 &&
+            rsp.headers().isMissingOrEmpty(CONTENT_LENGTH) &&
+            !rsp.isBodyEmpty())
         {
-            // TODO: In the future when implemented, chunked encoding may also be an option
-            LOG.log(DEBUG, "Response body of unknown length and not marked to close connection, setting \"Connection: close\".");
-            return setConnectionClose(rsp);
+            LOG.log(DEBUG, () ->
+                HTTP_1_1 + " response body of unknown length; applying chunked encoding.");
+            if (!rsp.headers().isMissingOrEmpty(TRANSFER_ENCODING)) {
+                // TODO: Once we use more codings, implement and use
+                //      Response.Builder.addHeaderToken()
+                // Note; it's okay to repeat TE; RFC 7230, 3.2.2, 3.3.1.
+                // But more clean to append.
+                throw new IllegalStateException(
+                        "Transfer-Encoding in response was not expected.");
+            }
+            return rsp.toBuilder()
+                .addHeader(TRANSFER_ENCODING, "chunked")
+                .body(new ChunkedEncoderOp(rsp.body()))
+                .build();
         }
         return rsp;
     }
@@ -428,9 +433,6 @@ final class ResponsePipeline extends AbstractLocalEventEmitter
     
     private CompletionStage<Long> subscribeToResponse(Response rsp) {
         LOG.log(DEBUG, () -> "Subscribing to response: " + rsp);
-        inFlight = rsp;
-        wroteFinal = rsp.isFinal();
-        
         // Response.body() (app) -> operator -> ResponseBodySubscriber (server)
         // On timeout, operator will cancel upstream and error out downstream.
         var body = new TimeoutOp.Pub<>(true, false, rsp.body(), cfg.timeoutResponse(), () -> {
@@ -440,7 +442,13 @@ final class ResponsePipeline extends AbstractLocalEventEmitter
         });
         var sub = new ResponseBodySubscriber(rsp, exch, chApi);
         body.subscribe(sub);
-        return sub.result();
+        if (timer != null) {
+            // Superseded by the timeout operator
+            timer.abort();
+        }
+        inFlight = rsp;
+        wroteFinal = rsp.isFinal();
+        return sub.start().result();
     }
     
     private void handleResult(/* This: */ Long bytesWritten, /* Or: */ Throwable thr) {

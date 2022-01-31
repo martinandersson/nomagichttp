@@ -60,10 +60,10 @@ final class ResponseBodySubscriber
     // Delta kept low because server could be handling a lot of responses and
     // we don't want to keep too much garbage in memory.
     private static final int
-            // Minimum bytebuffer demand.
-            DEMAND_MIN = 1,
-            // Maximum bytebuffer demand.
-            DEMAND_MAX = 3;
+            // Minimum bytebuffer demand which will trigger a new request.
+            DEMAND_MIN = 2,
+            // Initial and maximum bytebuffer demand.
+            DEMAND_MAX = 4;
     
     private final Response resp;
     private final HttpExchange exch;
@@ -116,7 +116,16 @@ final class ResponseBodySubscriber
     @Override
     public void onSubscribe(Flow.Subscription s) {
         this.subscription = SubscriberWithResult.validate(this.subscription, s);
-        s.request(requested = DEMAND_MAX);
+    }
+    
+    /**
+     * Request initial demand.
+     * 
+     * @return {@code this} for chaining/fluency
+     */
+    ResponseBodySubscriber start() {
+        subscription.request(requested = DEMAND_MAX);
+        return this;
     }
     
     @Override
@@ -136,7 +145,6 @@ final class ResponseBodySubscriber
                 subscription.cancel();
                 return;
             }
-            
             pushHead();
         }
         

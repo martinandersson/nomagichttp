@@ -286,7 +286,6 @@ final class AnnounceToChannel
         }
         
         final ByteBuffer b = buffers.poll();
-        
         if (b == null) {
             operation.complete();
             return;

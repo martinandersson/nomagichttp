@@ -22,6 +22,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.BlockingDeque;
 import java.util.concurrent.LinkedBlockingDeque;
+import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
 import java.util.logging.LogRecord;
@@ -396,12 +397,25 @@ public abstract class AbstractRealTest
      * Poll an error caught by the error handler, waiting at most 3 seconds.
      * 
      * @return an error, or {@code null} if none is available
-     * 
      * @throws InterruptedException if interrupted while waiting
      */
     protected final Throwable pollServerError() throws InterruptedException {
+        return pollServerError(3, SECONDS);
+    }
+    
+    /**
+     * Poll an error caught by the error handler, waiting at most 3 seconds.
+     * 
+     * @param timeout how long to wait before giving up, in units of unit
+     * @param unit determining how to interpret the timeout parameter
+     * @return an error, or {@code null} if none is available
+     * @throws InterruptedException if interrupted while waiting
+     */
+    protected final Throwable pollServerError(long timeout, TimeUnit unit)
+            throws InterruptedException
+    {
         requireServerStartedOnce();
-        return errors.poll(3, SECONDS);
+        return errors.poll(timeout, unit);
     }
     
     /**
