@@ -384,9 +384,11 @@ class ClientLifeCycleTest extends AbstractRealTest
     // Server shuts down output after response, can still read request
     @Test
     void intermittentStreamShutdown_serverOutput() throws IOException, InterruptedException {
-        BlockingQueue<String> received = new ArrayBlockingQueue<>(1);
+        var received = new ArrayBlockingQueue<String>(1);
         server().add("/", POST().accept((req, ch) -> {
+            // First install subscriber (client will linger with the body)
             req.body().toText().thenAccept(received::add);
+            // Write response and ask to close connection
             ch.write(noContent()
                     .toBuilder()
                     .header("Connection", "close")
@@ -394,6 +396,7 @@ class ClientLifeCycleTest extends AbstractRealTest
         }));
         Channel ch = client().openConnection();
         try (ch) {
+            // Until EOS! Server closes his write stream after response
             assertThat(client().writeReadTextUntilEOS(
                     "POST / HTTP/1.1"         + CRLF +
                     "Content-Length: 2"       + CRLF + CRLF))
@@ -401,8 +404,9 @@ class ClientLifeCycleTest extends AbstractRealTest
                     "HTTP/1.1 204 No Content" + CRLF +
                     "Connection: close"       + CRLF + CRLF);
             
-            // Send the rest of the request
+            // Client send the rest
             client().write("Hi");
+            // Server proactively close the child before we do
             logRecorder().assertAwaitChildClose();
         }
         

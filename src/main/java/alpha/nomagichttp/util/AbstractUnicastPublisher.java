@@ -261,10 +261,13 @@ public abstract class AbstractUnicastPublisher<T> implements Flow.Publisher<T>
      * "re-usable" option plays no role).<p>
      * 
      * The method returns {@code true} only if the publisher was in an accepting
-     * state (includes also subscribers currently being installed/initializing)
-     * when this method was called and consequently the publisher shut down.
-     * {@code false} indicates a non-reusable publisher was already used up or
-     * the publisher was already shut down.
+     * state (includes also subscribers currently being installed/initializing
+     * <sup>1</sup>) when this method was called and consequently the publisher
+     * shut down. {@code false} indicates a non-reusable publisher was already
+     * used up or the publisher was already shut down.<p>
+     * 
+     * <sup>1</sup>There is no guarantee the subscriber won't cancel, so we
+     * rather shut down.
      * 
      * @return see JavaDoc
      */
@@ -275,7 +278,7 @@ public abstract class AbstractUnicastPublisher<T> implements Flow.Publisher<T>
             v -> !isReal(v),
             // To closed
             T(CLOSED));
-        return old != NOT_REUSABLE && old != CLOSED;
+        return old == ACCEPTING || old.getClass() == InitializingSubscriber.class;
     }
     
     /**

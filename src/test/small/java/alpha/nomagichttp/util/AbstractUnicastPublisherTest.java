@@ -9,43 +9,65 @@ import static alpha.nomagichttp.testutil.Assertions.assertPublisherIsEmpty;
 import static alpha.nomagichttp.testutil.MemorizingSubscriber.MethodName.ON_SUBSCRIBE;
 import static alpha.nomagichttp.testutil.MemorizingSubscriber.drainMethods;
 import static alpha.nomagichttp.testutil.TestSubscribers.onSubscribe;
-import static alpha.nomagichttp.util.Subscriptions.noop;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * Small tests of {@link AbstractUnicastPublisher}.
- *
+ * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  */
 class AbstractUnicastPublisherTest
 {
     @Test
     void pubImmediatelyCompletes_noReuse() {
-        var testee = new ImmediatelyComplete(false);
+        var testee = new ImmediatelyCompleteImpl(false);
         assertPublisherIsEmpty(testee);
         assertNoReuse(testee);
     }
     
     @Test
     void pubImmediatelyCompletes_reusable() {
-        var testee = new ImmediatelyComplete(true);
+        var testee = new ImmediatelyCompleteImpl(true);
         assertPublisherIsEmpty(testee);
         assertPublisherIsEmpty(testee);
     }
     
     @Test
     void subImmediatelyCancels_noReuse() {
-        var testee = new AcceptNoSubscriber();
+        var testee = new AcceptNoSubscriberImpl();
         cancelAndAssertInit(testee);
         assertNoReuse(testee);
     }
     
     @Test
     void subImmediatelyCancels_reusable() {
-        var testee = new Noop(true);
+        var testee = new NoopImpl(true);
         cancelAndAssertInit(testee);
         assertThat(drainMethods(testee))
             .containsExactly(ON_SUBSCRIBE);
+    }
+    
+    @Test
+    void tryShutdown_noSubscriber() {
+        var testee = new NoopImpl(false);
+        assertThat(testee.tryShutdown()).isTrue();
+        assertPublisherError(testee)
+            .isExactlyInstanceOf(IllegalStateException.class)
+            .hasMessage("Publisher has shutdown.")
+            .hasNoCause()
+            .hasNoSuppressedExceptions();
+    }
+    
+    @Test
+    void tryShutdown_withSubscriber() {
+        var testee = new NoopImpl(false);
+        testee.subscribe(Subscribers.noop());
+        assertThat(testee.tryShutdown()).isFalse();
+        assertPublisherError(testee)
+            .isExactlyInstanceOf(IllegalStateException.class)
+            .hasMessage("Publisher already has a subscriber.")
+            .hasNoCause()
+            .hasNoSuppressedExceptions();
     }
     
     private static void assertNoReuse(Flow.Publisher<?> pub) {
@@ -63,36 +85,25 @@ class AbstractUnicastPublisherTest
         assertThat(s.methodNames()).containsExactly(ON_SUBSCRIBE);
     }
     
-    private static class ImmediatelyComplete
-            extends AbstractUnicastPublisher<Void>
-    {
-        ImmediatelyComplete(boolean reusable) {
-            super(reusable);
-        }
-        @Override protected Flow.Subscription newSubscription(
-                Flow.Subscriber<? super Void> s) {
+    static class ImmediatelyCompleteImpl extends AbstractUnicastPublisher<Void> {
+        ImmediatelyCompleteImpl(boolean reusable) {
+            super(reusable); }
+        protected Flow.Subscription newSubscription(Flow.Subscriber<? super Void> s) {
             assertThat(signalComplete()).isTrue();
-            return noop();
-        }
+            return Subscriptions.noop(); }
     }
     
-    private static class AcceptNoSubscriber extends AbstractUnicastPublisher<Void> {
-        AcceptNoSubscriber() {
-            super(false);
-        }
-        @Override protected Flow.Subscription newSubscription(
-                Flow.Subscriber<? super Void> subscriber) {
-            throw new AssertionError();
-        }
+    static class AcceptNoSubscriberImpl extends AbstractUnicastPublisher<Void> {
+        AcceptNoSubscriberImpl() {
+            super(false); }
+        protected Flow.Subscription newSubscription(Flow.Subscriber<? super Void> s) {
+            throw new AssertionError(); }
     }
     
-    private static class Noop extends AbstractUnicastPublisher<Void> {
-        Noop(boolean reusable) {
-            super(reusable);
-        }
-        @Override protected Flow.Subscription newSubscription(
-                Flow.Subscriber<? super Void> subscriber) {
-            return noop();
-        }
+    static class NoopImpl extends AbstractUnicastPublisher<Void> {
+        NoopImpl(boolean reusable) {
+            super(reusable); }
+        protected Flow.Subscription newSubscription(Flow.Subscriber<? super Void> s) {
+            return Subscriptions.noop(); }
     }
 }
