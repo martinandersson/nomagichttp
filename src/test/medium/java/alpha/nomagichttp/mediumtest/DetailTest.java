@@ -34,10 +34,9 @@ import static alpha.nomagichttp.message.Responses.processing;
 import static alpha.nomagichttp.message.Responses.text;
 import static alpha.nomagichttp.testutil.LogRecords.rec;
 import static alpha.nomagichttp.testutil.TestClient.CRLF;
+import static alpha.nomagichttp.testutil.TestRequestHandlers.respondIsBodyEmpty;
 import static alpha.nomagichttp.testutil.TestRequests.get;
 import static alpha.nomagichttp.testutil.TestRequests.post;
-import static alpha.nomagichttp.testutil.TestRoutes.respondIsBodyEmpty;
-import static alpha.nomagichttp.testutil.TestRoutes.respondRequestBody;
 import static alpha.nomagichttp.util.BetterBodyPublishers.ofByteArray;
 import static alpha.nomagichttp.util.Publishers.just;
 import static java.lang.System.Logger.Level.DEBUG;
@@ -69,7 +68,9 @@ class DetailTest extends AbstractRealTest
 {
     @Test
     void connection_reuse_standard() throws IOException {
-        server().add(respondRequestBody());
+        // Echo request body
+        server().add("/", POST().apply(req ->
+            req.body().toText().thenApply(Responses::text)));
         
         final String resHead =
             "HTTP/1.1 200 OK"                         + CRLF +
@@ -133,7 +134,7 @@ class DetailTest extends AbstractRealTest
     
     @Test
     void request_body_discard_all() throws IOException {
-        server().add(respondIsBodyEmpty());
+        server().add("/", respondIsBodyEmpty());
         
         IORunnable exchange = () -> {
             String req = post("x".repeat(10)),

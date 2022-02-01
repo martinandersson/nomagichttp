@@ -18,8 +18,8 @@ import static alpha.nomagichttp.message.MediaType.APPLICATION_OCTET_STREAM;
 import static alpha.nomagichttp.message.Responses.ok;
 import static alpha.nomagichttp.message.Responses.text;
 import static alpha.nomagichttp.testutil.TestClient.CRLF;
+import static alpha.nomagichttp.testutil.TestRequestHandlers.respondIsBodyEmpty;
 import static alpha.nomagichttp.testutil.TestRequests.post;
-import static alpha.nomagichttp.testutil.TestRoutes.respondIsBodyEmpty;
 import static alpha.nomagichttp.util.Publishers.map;
 import static java.nio.ByteBuffer.wrap;
 import static java.nio.charset.StandardCharsets.US_ASCII;
@@ -42,7 +42,8 @@ class MessageTest extends AbstractRealTest
     // TODO: If this can't run using different clients, just do GET instead of POST
     @Test
     void request_body_empty() throws IOException {
-        server().add(respondIsBodyEmpty());
+        server().add("/",
+            respondIsBodyEmpty());
         String res = client().writeReadTextUntil(post(""), "true");
         assertThat(res).isEqualTo(
             "HTTP/1.1 200 OK"                         + CRLF +
