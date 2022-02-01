@@ -238,7 +238,7 @@ public abstract class AbstractUnicastPublisher<T> implements Flow.Publisher<T>
      * @return the subscriber (nullable)
      */
     protected Flow.Subscriber<? super T> get() {
-        return realOrNull(value());
+        return realOrNull(refGet());
     }
     
     /**
@@ -251,7 +251,7 @@ public abstract class AbstractUnicastPublisher<T> implements Flow.Publisher<T>
      * @see #shutdown() 
      */
     protected Flow.Subscriber<? super T> take() {
-        return realOrNull(removeSubscriberIfNotInitializingOrClosed());
+        return realOrNull(refResetIfNotInitializingOrClosed());
     }
     
     /**
@@ -272,7 +272,7 @@ public abstract class AbstractUnicastPublisher<T> implements Flow.Publisher<T>
      * @return see JavaDoc
      */
     protected final boolean tryShutdown() {
-        var old = getAndUpdateValueIf(
+        var old = refGetAndUpdateIf(
             // Replace only sentinels (including NOT_REUSABLE) + initializing,
             // real subscriber remains untouched
             v -> !isReal(v),
@@ -341,7 +341,7 @@ public abstract class AbstractUnicastPublisher<T> implements Flow.Publisher<T>
             try {
                 s.onNext(item);
             } catch (Throwable t) {
-                removeSubscriberIfSameAs(s);
+                refResetIfSameAs(s);
                 throw t;
             }
             return true;
@@ -381,7 +381,7 @@ public abstract class AbstractUnicastPublisher<T> implements Flow.Publisher<T>
      */
     protected final boolean signalComplete(Flow.Subscriber<? super T> expected) {
         requireNonNull(expected);
-        if (!removeSubscriberIfSameAs(expected)) {
+        if (!refResetIfSameAs(expected)) {
             return false;
         }
         expected.onComplete();
@@ -431,7 +431,7 @@ public abstract class AbstractUnicastPublisher<T> implements Flow.Publisher<T>
      */
     protected final boolean signalError(Throwable t, Flow.Subscriber<? super T> expected) {
         requireNonNull(expected);
-        if (!removeSubscriberIfSameAs(expected)) {
+        if (!refResetIfSameAs(expected)) {
             return false;
         }
         Subscribers.signalErrorSafe(expected, t);
@@ -442,20 +442,20 @@ public abstract class AbstractUnicastPublisher<T> implements Flow.Publisher<T>
         return isReal(v) ? v : null;
     }
     
-    private Flow.Subscriber<? super T> value() {
+    private Flow.Subscriber<? super T> refGet() {
         return ref.get();
     }
     
-    private Flow.Subscriber<? super T> removeSubscriberIfNotInitializingOrClosed() {
-        return getAndUpdateValueIf(v ->
+    private Flow.Subscriber<? super T> refResetIfNotInitializingOrClosed() {
+        return refGetAndUpdateIf(v ->
             // If
             v.getClass() != InitializingSubscriber.class && v != CLOSED,
             // Set
             resetFlag());
     }
     
-    private boolean removeSubscriberIfSameAs(final Flow.Subscriber<? super T> thisOne) {
-        return updateValueIf(other -> {
+    private boolean refResetIfSameAs(final Flow.Subscriber<? super T> thisOne) {
+        return refUpdateIf(other -> {
             assert realOrNull(thisOne) != null; // i.e. real
             
             if (other == thisOne) {
@@ -477,21 +477,21 @@ public abstract class AbstractUnicastPublisher<T> implements Flow.Publisher<T>
         },  resetFlag());
     }
     
-    private boolean updateValueIf(
+    private boolean refUpdateIf(
             Predicate<Flow.Subscriber<? super T>> predicate,
             Flow.Subscriber<? super T> newValue)
     {
-        return getAndUpdateValueIf(predicate, newValue) != newValue;
+        return refGetAndUpdateIf(predicate, newValue) != newValue;
     }
     
-    private Flow.Subscriber<? super T> getAndUpdateValueIf(
+    private Flow.Subscriber<? super T> refGetAndUpdateIf(
             Predicate<Flow.Subscriber<? super T>> predicate,
             Flow.Subscriber<? super T> newValue)
     {
         return ref.getAndUpdate(v -> predicate.test(v) ? newValue : v);
     }
     
-    private Flow.Subscriber<? super T> updateAndGetValueIf(
+    private Flow.Subscriber<? super T> refUpdateAndGetIf(
             Predicate<Flow.Subscriber<? super T>> predicate,
             Flow.Subscriber<? super T> newValue)
     {
@@ -539,7 +539,7 @@ public abstract class AbstractUnicastPublisher<T> implements Flow.Publisher<T>
         
         @Override
         public void cancel() {
-            if (removeSubscriberIfSameAs(owner)) {
+            if (refResetIfSameAs(owner)) {
                 super.cancel();
             }
         }
