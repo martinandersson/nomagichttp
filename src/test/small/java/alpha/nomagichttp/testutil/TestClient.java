@@ -35,25 +35,52 @@ import static org.assertj.core.api.Assertions.assertThat;
 /**
  * A utility API on top of a {@code SocketChannel}.<p>
  * 
- * This class provides low-level access for test cases in direct control over
- * what bytes are put on the wire and to observe what bytes are received. This
- * class has no knowledge about the HTTP protocol. The test must implement the
- * protocol.<p>
+ * This client gives tests direct control over what bytes are put on the wire
+ * and a convenient way of observing what bytes are received. The client has no
+ * knowledge about the HTTP protocol. The test is free to implement the protocol
+ * however it sees fit, which is sort of the purpose.<p>
  * 
- * Low-level read methods accept a terminator; an expected "response end" or
- * "end of message". The terminator is a sequence of bytes after which, the
- * client stops the current read operation. When the client closes and if
- * unconsumed bytes remains in the read buffer, an {@code AssertionError} is
- * thrown.<p>
+ * Being protocol agnostic means that the client has no knowledge about message
+ * framing. Read methods need a given <i>terminator</i> (end of message), after
+ * which, the client stop reading.<p>
  * 
- * The read will stop at end-of-stream even if the terminator wasn't observed;
- * the terminator is not a "required" sequence of bytes. The test should always
- * run asserts on the returned response.<p>
+ * Expect a response body:
+ * 
+ * <pre>
+ *   TODO: Example after arg flip
+ * </pre>
+ * 
+ * There are methods that has a built-in terminator of two pairs of CR + LF,
+ * i.e. they stop reading after the end of the headers. Very useful when not
+ * expecting a response body.
+ * 
+ * <pre>
+ *   String response = client.writeReadTextUntilNewlines("GET /empty HTTP/1.1\r\n\r\n");
+ *   assertThat(response).isEqualTo("HTTP/1.1 204 No Content\r\n\r\n");
+ * </pre>
+ * 
+ * Unless a so-called persistent connection is already opened programmatically
+ * using {@link #openConnection()}, each server-communicating method declared in
+ * this class will start and stop a connection used for that call only.
+ * 
+ * When the connection closes and if unconsumed bytes remain in the read buffer,
+ * then an {@code AssertionError} is thrown. This is also true for a persistent
+ * connection. In the previous example, had the server sent response body bytes
+ * the test would've failed.<p>
+ * 
+ * The read will stop at end-of-stream (EOS) even if the terminator wasn't
+ * observed. I.e. the terminator is not a required sequence of bytes. The test
+ * should always verify that the whole response is exactly what was expected.<p>
  * 
  * To read all available data until EOS, the terminator can either be a sequence
- * of bytes never expected or {@code null}. More conveniently, use an override
- * with a name ending in "EOS". Specifying an empty terminator (empty String or
- * 0-length byte array) will make the read operation NOP.<p>
+ * of bytes never expected or {@code null}. More conveniently, use a method with
+ * a name ending in "EOS". Specifying an empty terminator (empty String or
+ * 0-length byte array) will effectively make the read operation NOP.
+ * 
+ * <pre>
+ *   // Server does not support HTTP/1.0 Keep-Alive and will close the connection
+ *   String response = client.writeReadTextUntilEOS("GET /empty HTTP/1.0\r\n\r\n");
+ * </pre>
  * 
  * Each read/write operation will by default timeout after 2 seconds, giving the
  * HTTP exchange a total of 4 seconds to complete. On timeout, the operation
@@ -62,12 +89,34 @@ import static org.assertj.core.api.Assertions.assertThat;
  * #interruptWriteAfter(long, TimeUnit)} and {@link
  * #interruptReadAfter(long, TimeUnit)} respectively.<p>
  * 
- * All methods in this class will by default open/close a new connection for
- * each call, unless a connection is already opened. The write operation does
- * not explicitly close the output stream when it completes. For manual control
- * over the connection, such as closing individual streams, or re-using the
- * same connection across method calls, manually {@link #openConnection()}
- * first.<p>
+ * This is a complete example of a client syncing his body upload timing with
+ * the server:
+ * 
+ * <pre>
+ *   server.add("/echo-body",
+ *       POST().apply(req ->
+ *           req.body().toText().thenApply(Responses::text)));
+ *   try (Channel ch = client.openConnection()) {
+ *       client().write("""
+ *           POST /echo-body HTTP/1.1\r
+ *           Expect: 100-continue\r
+ *           Content-Length: 3\r
+ *           Connection: close\r
+ *           \r\n""");
+ *       String response1 = client.readTextUntilNewlines();
+ *       assertThat(response1).isEqualTo(
+ *           "HTTP/1.1 100 Continue\r\n\r\n");
+ *       String response2 = client
+ *           .write("Hi!")
+ *           .readTextUntilEOS();
+ *       assertThat(response2).isEqualTo("""
+ *           HTTP/1.1 200 OK\r
+ *           Content-Length: 3\r
+ *           Content-Type: text/plain; charset=utf-8\r
+ *           Connection: close\r
+ *           \r
+ *           Hi!""");
+ * </pre>
  * 
  * Strings will be encoded/decoded using {@code US_ASCII}. Please note that
  * UTF-8 is backwards compatible with ASCII.<p>
