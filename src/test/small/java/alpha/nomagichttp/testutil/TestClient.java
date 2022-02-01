@@ -40,19 +40,26 @@ import static org.assertj.core.api.Assertions.assertThat;
  * knowledge about the HTTP protocol. The test is free to implement the protocol
  * however it sees fit, which is sort of the purpose.<p>
  * 
- * Being protocol agnostic means that the client has no knowledge about message
+ * Being protocol agnostic means that the client does not implement message
  * framing. Read methods need a given <i>terminator</i> (end of message), after
- * which, the client stop reading.<p>
- * 
- * Expect a response body:
+ * which, the client stop reading.
  * 
  * <pre>
- *   TODO: Example after arg flip
+ *  TestClient client = new TestClient(serverPort);
+ *  String response = client.writeReadTextUntil(
+ *      "GET /greeting HTTP/1.1\r\n\r\n",
+ *          "Hi!");
+ *  assertThat(response).isEqualTo("""
+ *      HTTP/1.1 200 OK\r
+ *      Content-Length: 3\r
+ *      Content-Type: text/plain; charset=utf-8\r
+ *      \r
+ *      Hi!""");
  * </pre>
  * 
  * There are methods that has a built-in terminator of two pairs of CR + LF,
- * i.e. they stop reading after the end of the headers. Very useful when not
- * expecting a response body.
+ * i.e. they stop reading after the end of the headers. Very handy-dandy when
+ * not expecting a response body.
  * 
  * <pre>
  *   String response = client.writeReadTextUntilNewlines("GET /empty HTTP/1.1\r\n\r\n");
@@ -68,7 +75,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  * connection. In the previous example, had the server sent response body bytes
  * the test would've failed.<p>
  * 
- * The read will stop at end-of-stream (EOS) even if the terminator wasn't
+ * Reading will stop at end-of-stream (EOS) even if the terminator wasn't
  * observed. I.e. the terminator is not a required sequence of bytes. The test
  * should always verify that the whole response is exactly what was expected.<p>
  * 
@@ -89,15 +96,15 @@ import static org.assertj.core.api.Assertions.assertThat;
  * #interruptWriteAfter(long, TimeUnit)} and {@link
  * #interruptReadAfter(long, TimeUnit)} respectively.<p>
  * 
- * This is a complete example of a client syncing his body upload timing with
- * the server:
+ * This is a complete example of a client syncing his body upload with the
+ * server:
  * 
  * <pre>
  *   server.add("/echo-body",
  *       POST().apply(req ->
  *           req.body().toText().thenApply(Responses::text)));
  *   try (Channel ch = client.openConnection()) {
- *       client().write("""
+ *       client.write("""
  *           POST /echo-body HTTP/1.1\r
  *           Expect: 100-continue\r
  *           Content-Length: 3\r
@@ -108,6 +115,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  *           "HTTP/1.1 100 Continue\r\n\r\n");
  *       String response2 = client
  *           .write("Hi!")
+ *           .shutdownOutput()
  *           .readTextUntilEOS();
  *       assertThat(response2).isEqualTo("""
  *           HTTP/1.1 200 OK\r
@@ -116,6 +124,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  *           Connection: close\r
  *           \r
  *           Hi!""");
+ *   }
  * </pre>
  * 
  * Strings will be encoded/decoded using {@code US_ASCII}. Please note that
