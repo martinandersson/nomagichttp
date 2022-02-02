@@ -166,12 +166,13 @@ public final class BetterBodyPublishers
      */
     public static BodyPublisher ofByteArray(byte[] buf, int offset, int length) {
         Objects.checkFromIndexSize(offset, length, buf.length);
-        return asBodyPublisher(length,
-                Publishers.ofIterable(new ByteBufferIterable(buf, offset, length)));
+        return asBodyPublisher(
+                Publishers.ofIterable(new ByteBufferIterable(buf, offset, length)),
+                length);
     }
     
     /**
-     * Wrap the delegate with a {@code contentLength} set to -1 (unknown).
+     * Wraps the given delegate with a {@code contentLength} set to -1 (unknown).
      * 
      * @param delegate upstream source of bytebuffers
      * 
@@ -180,23 +181,23 @@ public final class BetterBodyPublishers
      * @throws NullPointerException if {@code delegate} is {@code null}
      */
     public static BodyPublisher asBodyPublisher(Flow.Publisher<? extends ByteBuffer> delegate) {
-        return asBodyPublisher(-1, delegate);
+        return asBodyPublisher(delegate, -1);
     }
     
     /**
-     * Wrap the delegate with a content-length.
+     * Wraps the given delegate with a content-length.
      * 
-     * @param contentLength content length (byte count)
      * @param delegate upstream source of bytebuffers
+     * @param contentLength content length (byte count)
      * 
      * @return a new body publisher
      * 
      * @throws NullPointerException if {@code delegate} is {@code null}
      */
     public static BodyPublisher asBodyPublisher(
-            long contentLength, Flow.Publisher<? extends ByteBuffer> delegate)
+            Flow.Publisher<? extends ByteBuffer> delegate, long contentLength)
     {
-        return new Adapter(contentLength, delegate);
+        return new Adapter(delegate, contentLength);
     }
     
     /**
@@ -222,7 +223,7 @@ public final class BetterBodyPublishers
                 return -1;
             }
         };
-        return new Adapter(len, new FilePublisher(path));
+        return new Adapter(new FilePublisher(path), len);
     }
     
     /**
@@ -273,18 +274,18 @@ public final class BetterBodyPublishers
             len = -1;
         }
         
-        return asBodyPublisher(len, Publishers.concat(first, second, more));
+        return asBodyPublisher(Publishers.concat(first, second, more), len);
     }
     
     private static class Adapter implements BodyPublisher {
-        private final LongSupplier length;
         private final Flow.Publisher<? extends ByteBuffer> delegate;
+        private final LongSupplier length;
         
-        Adapter(long length, Flow.Publisher<? extends ByteBuffer> delegate) {
-            this(() -> length, delegate);
+        Adapter(Flow.Publisher<? extends ByteBuffer> delegate, long length) {
+            this(delegate, () -> length);
         }
         
-        Adapter(LongSupplier length, Flow.Publisher<? extends ByteBuffer> delegate) {
+        Adapter(Flow.Publisher<? extends ByteBuffer> delegate, LongSupplier length) {
             this.length   = requireNonNull(length);
             this.delegate = requireNonNull(delegate);
         }
