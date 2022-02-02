@@ -9,7 +9,6 @@ import alpha.nomagichttp.util.Publishers;
 import java.net.http.HttpHeaders;
 import java.net.http.HttpRequest;
 import java.nio.ByteBuffer;
-import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletionStage;
@@ -33,9 +32,11 @@ import static java.net.http.HttpRequest.BodyPublisher;
  * }</pre>
  * 
  * The {@code Response} object is immutable, but the builder who built it can be
- * retrieved, effectively transforming any response object to a template. This
- * also renders the {@link Responses} class as a repository of commonly used
- * status lines. This example is equivalent to the previous:
+ * retrieved and used to create new responses derived from the first. This
+ * effectively makes the {@link Responses} class a repository of commonly used
+ * status lines.<p>
+ * 
+ * This example is equivalent to the previous:
  * 
  * <pre>{@code
  *   Response r = Responses.noContent().toBuilder()
@@ -56,9 +57,7 @@ import static java.net.http.HttpRequest.BodyPublisher;
  * 
  * The content of the response head (status line and headers) will be written
  * to the client verbatim/unaltered; i.e. casing will be preserved, yes, even
- * space characters. The head is encoded into bytes using {@link
- * StandardCharsets#US_ASCII US_ASCII} (UTF-8 is backwards compatible with
- * ASCII).<p>
+ * space characters.<p>
  * 
  * When the headers are written on the wire, name and value will be concatenated
  * using a colon followed by a space (": "). Adding many values to the same
@@ -80,8 +79,9 @@ import static java.net.http.HttpRequest.BodyPublisher;
  * publisher} is thread-safe. If the publisher instance was retrieved using any
  * method provided by the NoMagicHTTP library (e.g. {@link
  * BetterBodyPublishers}), then it is fully thread-safe and non-blocking. All
- * responses created by {@link Responses} that does not accept the body
- * publisher as an argument uses a thread-safe body publisher under the hood.<p>
+ * responses with a body created by {@link Responses} that does not explicitly
+ * accept a body publisher as an argument uses a thread-safe body publisher
+ * under the hood.<p>
  * 
  * The {@code Response} implementation does not necessarily implement {@code
  * hashCode()} and {@code equals()}.
@@ -242,9 +242,12 @@ public interface Response extends HeaderHolder
      * builder reference as the builder that built a response can be retrieved
      * using {@link Response#toBuilder()}<p>
      * 
-     * Status code is the only required field. Please note that some message
-     * variants may build just fine but {@linkplain HttpServer blow up
-     * later}.<p>
+     * Status code is the only required field.<p>
+     * 
+     * Although the build logic will attempt to fail-fast, some message variants
+     * are illegal depending on context. They may build fine but blow up at a
+     * later point. For example responding a response with a body to a {@code
+     * HEAD} request.<p>
      * 
      * The implementation is thread-safe and non-blocking.<p>
      * 
