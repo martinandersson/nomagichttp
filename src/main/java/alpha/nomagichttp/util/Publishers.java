@@ -1,5 +1,6 @@
 package alpha.nomagichttp.util;
 
+import alpha.nomagichttp.message.Request;
 import alpha.nomagichttp.message.Response;
 
 import java.net.http.HttpRequest;
@@ -26,7 +27,12 @@ import static java.util.Objects.requireNonNull;
  * Publishers produced by this class follows the <a
  * href="https://github.com/reactive-streams/reactive-streams-jvm/blob/v1.0.3/README.md">
  * Reactive Streams</a> specification to a very large extent. Deviations will be
- * discussed in subsequent sections.
+ * discussed in subsequent sections.<p>
+ * 
+ * Unless documented differently, the publisher will reproduce the same finite
+ * data stream to each new subscriber. Using internet slang, this is called
+ * being a "cold" publisher. In contrast, the {@link Request.Body} is "hot" and
+ * does not support subscriber reuse.
  * 
  * <h2>Thread Semantics</h2>
  * 
@@ -34,7 +40,7 @@ import static java.util.Objects.requireNonNull;
  * JavaDoc of {@link Flow.Publisher} doesn't actually define the publisher as
  * being thread-safe, and some JDK implementations aren't (
  * <a href="https://bugs.openjdk.java.net/browse/JDK-8222968">JDK-8222968</a>).
- * Publishers created by this class <strong>is</strong> thread-safe.<p>
+ * Publishers created by this class <strong>are</strong> thread-safe.<p>
  * 
  * The Reactive Streams specification requires the publisher to signal the
  * subscriber serially (happens-before relationship between signals). The

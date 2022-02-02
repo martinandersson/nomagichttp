@@ -578,10 +578,10 @@ public interface Request extends HeaderHolder, AttributeHolder
      * And, it does not matter if {@code Flow.Subscription.cancel()} is called
      * after the subscription has effectively started but before actually
      * consuming bytes. A subsequent subscriber will still be signalled the
-     * {@code IllegalStateException}. The only exception is if a subscriber
-     * cancels the subscription synchronously from {@code onSubscribe} which
-     * will cause the subscription to roll back. This has the same effect as if
-     * the subscription request was never made.<p>
+     * {@code IllegalStateException}. The only exception (no pun intended) is if
+     * a subscriber cancels the subscription synchronously from within {@code
+     * onSubscribe} which will cause the subscription to roll back. This has the
+     * same effect as if the subscription request was never made.<p>
      * 
      * Some utility methods such as {@code toText()} cache the result and will
      * return the same stage on future invocations.<p>

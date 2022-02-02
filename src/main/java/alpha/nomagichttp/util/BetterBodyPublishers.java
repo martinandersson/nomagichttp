@@ -15,6 +15,7 @@ import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.Deque;
 import java.util.Iterator;
 import java.util.Objects;
@@ -89,16 +90,17 @@ public final class BetterBodyPublishers
     
     /**
      * Returns a body publisher whose body is the given {@code String},
-     * converted using the {@link StandardCharsets#UTF_8 UTF_8} character set.
+     * converted using the {@link StandardCharsets#UTF_8 UTF_8} character
+     * set.<p>
      * 
      * Is an alternative to {@link BodyPublishers#ofString(String)} except
      * it is likely more performant and has no thread-safety issues.<p>
      * 
      * Published bytebuffers are read-only.
      * 
-     * @param   body the String containing the body
-     * @return  a BodyPublisher
-     * @throws  NullPointerException if {@code body} is {@code null}
+     * @param  body the String containing the body
+     * @return a BodyPublisher
+     * @throws NullPointerException if {@code body} is {@code null}
      */
     public static BodyPublisher ofString(String body) {
         return ofString(body, UTF_8);
@@ -106,57 +108,59 @@ public final class BetterBodyPublishers
     
     /**
      * Returns a request body publisher whose body is the given {@code
-     * String}, converted using the given character set.
+     * String}, converted using the given character set.<p>
      * 
-     * Is an alternative to {@link BodyPublishers#ofString(String, Charset)}
-     * except it is likely more performant and has no thread-safety issues.<p>
+     * This method is an alternative to {@link
+     * BodyPublishers#ofString(String, Charset)} except it is likely more
+     * performant and has no thread-safety issues.<p>
      * 
      * Published bytebuffers are read-only.
      * 
-     * @param   str the String containing the body
-     * @param   charset the character set to convert the string to bytes
-     * @return  a BodyPublisher
-     * @throws  NullPointerException if any argument is {@code null}
+     * @param  str the String containing the body
+     * @param  charset the character set to convert the string to bytes
+     * @return a BodyPublisher
+     * @throws NullPointerException if any argument is {@code null}
      */
     public static BodyPublisher ofString(String str, Charset charset) {
         return ofByteArray(str.getBytes(charset));
     }
     
     /**
-     * Returns a body publisher whose body is the given byte array.<p>
+     * Returns a body publisher of bytes from an array.<p>
      * 
-     * Is an alternative to {@link BodyPublishers#ofByteArray(byte[])}  except
-     * it is likely more performant and has no thread-safety issues.
+     * This method is an alternative to {@link
+     * BodyPublishers#ofByteArray(byte[])}  except it is likely more performant
+     * and has no thread-safety issues.<p>
      * 
      * The given data array is <i>not</i> defensively copied. It should not be
      * modified after calling this method.<p>
      * 
      * Published bytebuffers are read-only.
      * 
-     * @param   buf the byte array containing the body
-     * @return  a BodyPublisher
-     * @throws  NullPointerException if {@code buf} is {@code null}
+     * @param  buf the byte array containing the body
+     * @return a BodyPublisher
+     * @throws NullPointerException if {@code buf} is {@code null}
      */
     public static BodyPublisher ofByteArray(byte[] buf) {
         return ofByteArray(buf, 0, buf.length);
     }
     
     /**
-     * Returns a body publisher whose body is the content of the given byte
-     * array of {@code length} bytes starting from the specified {@code offset}.
+     * Returns a body publisher of bytes from an array.<p>
      *
-     * Is an alternative to {@link BodyPublishers#ofByteArray(byte[], int, int)}
-     * except it is likely more performant and has no thread-safety issues.
+     * This method is an alternative to {@link
+     * BodyPublishers#ofByteArray(byte[], int, int)} except it is likely more
+     * performant and has no thread-safety issues.<p>
      * 
      * The given data array is <i>not</i> defensively copied. It should not be
      * modified after calling this method.<p>
      * 
      * Published bytebuffers are read-only.
      * 
-     * @param   buf the byte array containing the body
-     * @param   offset the offset of the first byte
-     * @param   length the number of bytes to use
-     * @return  a BodyPublisher
+     * @param  buf the byte array containing the body
+     * @param  offset the offset of the first byte
+     * @param  length the number of bytes to use
+     * @return a BodyPublisher
      * 
      * @throws NullPointerException
      *             if {@code buf} is {@code null}
@@ -201,16 +205,42 @@ public final class BetterBodyPublishers
     }
     
     /**
-     * A body publisher that publishes a file as bytebuffers.<p>
+     * Returns a body publisher of a file.<p>
      * 
-     * Is an alternative to {@link BodyPublishers#ofFile(Path)} except the
-     * implementation does not block and exceptions like {@link
+     * This method works like this:
+     * <pre>
+     *   {@link #ofFile(Path) ofFile}(Paths.{@link Paths#get(String, String...) get}(path, more))
+     * </pre>
+     * 
+     * @param path the path or initial part of the path to the file
+     * @param more more path parts
+     * @return a BodyPublisher
+     */
+    public static BodyPublisher ofFile(String path, String... more) {
+        return ofFile(Paths.get(path, more));
+    }
+    
+    /**
+     * Returns a body publisher of a file.<p>
+     * 
+     * The length of the file will be read only once when the first subscriber
+     * subscribes. If the file does not exist at this time, the content length
+     * will be set to {@code -1} (unknown). The file must exist no later than
+     * when the first subscriber requests items.<p>
+     * 
+     * It is important that the file size does not change while a subscription
+     * is active, or after a known file size has been acquired if future
+     * subscribers are expected. Post-modifications to the file size may lead to
+     * invalid HTTP message framing with undefined application behavior as a
+     * consequence.<p>
+     * 
+     * This method is an alternative to {@link BodyPublishers#ofFile(Path)}
+     * except the implementation does not block and exceptions like {@link
      * FileNotFoundException} are delivered to the subscriber, i.e., the HTTP
      * server itself, and therefore be dealt with globally using an
      * {@link ErrorHandler}.
      * 
      * @param path the path to the file containing the body
-     * 
      * @return a BodyPublisher
      */
     public static BodyPublisher ofFile(Path path) {
