@@ -189,6 +189,24 @@ class DetailTest extends AbstractRealTest
     }
     
     @Test
+    void request_body_discard_chunked() throws IOException {
+        server().add("/",
+            GET().respond(noContent()));
+        var rsp = client().writeReadTextUntilEOS("""
+            GET / HTTP/1.1
+            Transfer-Encoding: chunked
+            Connection: close
+            
+            0
+            Trailer: This too is discarded
+            
+            """);
+        assertThat(rsp).isEqualTo("""
+            HTTP/1.1 204 No Content\r
+            Connection: close\r\n\r\n""");
+    }
+    
+    @Test
     void expect100Continue_immediatelyThroughConfig() throws IOException {
         usingConfiguration()
             .immediatelyContinueExpect100(true);

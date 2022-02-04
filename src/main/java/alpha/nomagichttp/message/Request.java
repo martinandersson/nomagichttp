@@ -138,7 +138,8 @@ public interface Request extends HeaderHolder, AttributeHolder
      * finished sending the body.<p>
      * 
      * Because trailers occur on the wire after the request body, waiting on
-     * trailers to complete before consuming the body may halt progress.
+     * trailers to complete before consuming the body or sending a final
+     * response may halt progress.
      * <pre>
      *   // Bad, trailers may not complete before time out!
      *   request.trailers().thenCompose(tr -> request.body().toText()...)
@@ -172,8 +173,10 @@ public interface Request extends HeaderHolder, AttributeHolder
      * For requests of an older HTTP version ({@literal <} 1.1), this method
      * returns an already completed stage with an empty headers object.<p>
      * 
-     * If the body is empty, the returned stage will already be completed with
-     * an empty headers object.<p>
+     * If a non-chunked body is empty, the returned stage will already be
+     * completed with an empty headers object. A chunked body could technically
+     * be encoded as empty, but this body would still have to be consumed in
+     * order for the returned stage to complete.<p>
      * 
      * The returned stage may be a copy. It can not be cast to a {@code
      * CompletableFuture} and then used to cancel/abort processing trailers.
