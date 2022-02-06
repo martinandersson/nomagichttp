@@ -56,8 +56,8 @@ import static java.util.concurrent.TimeUnit.SECONDS;
  * <ol>
  *   <li>Emits the high-level {@link ResponseTimeoutException} on response
  *       enqueuing- and response body emission delay</li>
- *   <li>Also emits low-level exceptions from the underlying channel
- *       implementation (such as {@link InterruptedByTimeoutException}.</li>
+ *   <li>Also emits low-level exceptions from the socket channel
+ *       (such as {@link InterruptedByTimeoutException}.</li>
  *   <li>Implements {@link Config#maxUnsuccessfulResponses()}</li>
  * </ol>
  * 

@@ -95,9 +95,9 @@ import static java.net.InetAddress.getLoopbackAddress;
  * 
  * Life-cycle methods {@code start} and {@code stop} may block temporarily.<p>
  * 
- * The HttpServer API also functions as a route registry, to which we {@code
- * add} and {@code remove} routes. These methods are highly concurrent but may
- * impose minuscule blocks at the discretion of the implementation. Most
+ * The HttpServer API also functions as a route registry, to which one {@code
+ * add} and {@code remove} routes. Modifying operations are highly concurrent
+ * but may impose minuscule blocks at the discretion of the implementation. Most
  * importantly, looking up a route - as is done on every inbound request - never
  * blocks and features great performance no matter the size of the registry.<p>
  * 

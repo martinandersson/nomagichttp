@@ -178,7 +178,7 @@ public interface Config
     
     /**
      * Ignore rejected 1XX (Informational) responses when they fail to be sent
-     * to a HTTP/1.0 client.<p>
+     * to an HTTP/1.0 client.<p>
      * 
      * The default value is {@code true} and the application can safely write
      * 1XX (Informational) responses to the channel without concern for old
@@ -289,8 +289,8 @@ public interface Config
      * translates it to a {@linkplain Responses#serviceUnavailable() 503
      * (Service Unavailable)}.<p>
      * 
-     * The timer is only active while the client channel is expecting to receive
-     * a response and while the server's response body subscriber has
+     * The timer is active while the client channel is expecting to receive a
+     * response and also while the server's response body subscriber has
      * unfulfilled outstanding demand. The first time the timer is activated is
      * when the request invocation chain completes and the last request body
      * bytebuffer has been released, and so the response will never time out

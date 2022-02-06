@@ -76,8 +76,8 @@ class MessageTest extends AbstractRealTest
             "Received HTTP/1.0");
     }
     
-    // TODO: Some sucky clients will likely not be able to receive multiple responses,
-    //       just ignore them.
+    // TODO: Lots of so called HTTP clients will likely not be able to receive
+    //       multiple responses, just ignore them.
     // Note: There's a least one other expect100Continue-test in DetailTest
     @Test
     void expect100Continue_onFirstBodyAccess() throws IOException {

@@ -32,9 +32,9 @@ import static java.util.Objects.requireNonNull;
  * 
  * It is absolutely not anticipated that the application pushes an error to the
  * <i>body</i> subscriber for something it wishes to resolve through an error
- * handler. In fact, the only assumption a failed body publisher should make is
- * that "the head is probably already sent so there's no other response we can
- * produce".<p>
+ * handler. The only assumption a failed body publisher should make is that "the
+ * head or pieces of it is probably already sent so there's no other response we
+ * can produce".<p>
  * 
  * One known use-case for the lazy-head behavior, however, is an illegal body to
  * a HEAD/CONNECT request - which, can only reliably be identifier by this

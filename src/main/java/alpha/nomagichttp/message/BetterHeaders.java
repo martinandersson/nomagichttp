@@ -31,8 +31,8 @@ import static java.util.Objects.requireNonNull;
  * </pre>
  * 
  * Header name- and values will not contain leading and trailing whitespace. The
- * name will never contain whitespace at all. The name can not be empty, the
- * value can be empty.<p>
+ * name will never contain whitespace. The name can not be empty, the value can
+ * be empty.<p>
  * 
  * The order of header names is not specified (see {@link HttpHeaders}) nor is
  * the order significant (<a href="https://tools.ietf.org/html/rfc7230#section-3.2.2">RFC 7230 §3.2.2</a>)

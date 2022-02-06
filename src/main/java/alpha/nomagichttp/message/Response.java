@@ -52,26 +52,9 @@ import static java.net.http.HttpRequest.BodyPublisher;
  *   Response r = Responses.ok(body); // 200 OK
  * }</pre>
  * 
- * The status line will be built by the server by joining the active HTTP
- * protocol version, status code and reason phrase. E.g. "HTTP/1.1 200 OK".<p>
- * 
  * The content of the response head (status line and headers) will be written
- * to the client verbatim/unaltered; i.e. casing will be preserved, yes, even
- * space characters.<p>
- * 
- * When the headers are written on the wire, name and value will be concatenated
- * using a colon followed by a space (": "). Adding many values to the same
- * name replicates the header across multiple rows in the response. It does
- * <strong>not</strong> join the values on the same row. If this is desired,
- * first join multiple values and then pass it to the builder as one.<p>
- * 
- * Header order is not significant (see {@link ContentHeaders}), but - unless
- * documented differently - the response builder will preserve the addition
- * order on the wire (FIFO) except for duplicated names which will be grouped
- * together and inserted at the occurrence of the first value.<p>
- * 
- * The exact appearance of the headers on the wire can be customized by a custom
- * implementation of {@link #headersForWriting()}<p>
+ * to the client verbatim/unaltered; i.e. casing and white space will be
+ * preserved.<p>
  * 
  * The {@code Response} object can safely be reused sequentially over time to
  * the same client. The response can also be shared concurrently to different
@@ -149,19 +132,19 @@ public interface Response extends HeaderHolder
     String reasonPhrase();
     
     /**
-     * Returns header lines as they are written on the wire out to client.<p>
+     * Returns HTTP headers as they are written on the wire.<p>
      * 
      * The default implementation adheres to the contract as defined in JavaDoc
      * of {@link Response}. A custom implementation is free to change this.
      * 
-     * @return the headers as they are written on the wire (unmodifiable)
+     * @return HTTP headers
      */
     Iterable<String> headersForWriting();
     
     /**
      * Returns the message body (possibly empty).
      * 
-     * @return the message body (possibly empty)
+     * @return the message body
      */
     Flow.Publisher<ByteBuffer> body();
     
@@ -236,18 +219,36 @@ public interface Response extends HeaderHolder
     /**
      * Builder of a {@link Response}.<p>
      * 
-     * The builder can be used as a template to modify per-response state. Each
-     * method returns a new builder instance representing the new state. The API
-     * should be used in a fluent style. There's generally no reason to save a
-     * builder reference as the builder that built a response can be retrieved
-     * using {@link Response#toBuilder()}<p>
+     * The builder is immutable. All builder-returning methods return a new
+     * builder instance representing the new state. The builder can be used as a
+     * template to derive new responses. {@link Response#toBuilder()} returns
+     * the builder that built the response which effectively makes all responses
+     * into templates as well.<p>
      * 
      * Status code is the only required field.<p>
      * 
-     * Although the build logic will attempt to fail-fast, some message variants
-     * are illegal depending on context. They may build fine but blow up at a
-     * later point. For example responding a response with a body to a {@code
-     * HEAD} request.<p>
+     * All the remaining JavaDoc related to headers is true for the default
+     * builder implementation building the default response implementation.<p>
+     * 
+     * The content of header names and values are not validated. The application
+     * must not write invalid data such as a header name with whitespace in
+     * it (
+     * <a href="https://datatracker.ietf.org/doc/html/rfc7230#section-3.2">RFC 7230 §3.2</a>
+     * ).<p>
+     * 
+     * Adding many values to the same header name replicates the header across
+     * multiple rows in the response. It does <strong>not</strong> join the
+     * values on the same row. If this is desired, first join multiple values
+     * and then pass it to the builder as one.<p>
+     * 
+     * Header order is not significant, but the addition order will be preserved
+     * on the wire except for duplicated names which will be grouped together
+     * and inserted at the occurrence of the first.<p>
+     * 
+     * Although the builder will strive to fail-fast, some message variants are
+     * illegal depending on future context. They may build just fine but cause
+     * an exception to be thrown at a later point. For example responding a
+     * response with a body to a {@code HEAD} request.<p>
      * 
      * The implementation is thread-safe and non-blocking.<p>
      * 

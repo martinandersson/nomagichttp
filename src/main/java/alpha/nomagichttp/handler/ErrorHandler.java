@@ -127,8 +127,8 @@ import static java.util.stream.Stream.of;
  * </pre>
  * 
  * If there is a request available when the error handler is called, then {@link
- * Request#attributes()} is a good place to store state that needs to be passed
- * between handler invocations.<p>
+ * Request#attributes() Request.attibutes()} is a good place to store state that
+ * needs to be passed between handler invocations.<p>
  * 
  * The error handler must be thread-safe, as it may be called concurrently. As
  * far as the server is concerned, it does not need to implement 

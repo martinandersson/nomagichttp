@@ -35,7 +35,7 @@ import static java.util.Objects.requireNonNull;
  * through Response.Builder + Response.trailers() -> Optional{@literal <}Stage
  * {@literal >}.<p>
  * 
- * This class adheres to the contract specified by {@link Publishers},
+ * This class adheres to the contract specified by {@link Publishers}.
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  * @see <a href="https://datatracker.ietf.org/doc/html/rfc7230#section-4.1">RFC 7230 §4.1</a>
