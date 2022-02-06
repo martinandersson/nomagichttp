@@ -3,6 +3,7 @@ package alpha.nomagichttp.mediumtest;
 import alpha.nomagichttp.message.Responses;
 import alpha.nomagichttp.testutil.AbstractRealTest;
 import alpha.nomagichttp.testutil.HttpClientFacade;
+import alpha.nomagichttp.util.Headers;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -15,14 +16,17 @@ import java.util.concurrent.TimeoutException;
 import static alpha.nomagichttp.handler.RequestHandler.GET;
 import static alpha.nomagichttp.handler.RequestHandler.POST;
 import static alpha.nomagichttp.message.MediaType.APPLICATION_OCTET_STREAM;
+import static alpha.nomagichttp.message.Responses.accepted;
 import static alpha.nomagichttp.message.Responses.ok;
 import static alpha.nomagichttp.message.Responses.text;
 import static alpha.nomagichttp.testutil.TestClient.CRLF;
 import static alpha.nomagichttp.testutil.TestRequestHandlers.respondIsBodyEmpty;
+import static alpha.nomagichttp.testutil.TestRequests.get;
 import static alpha.nomagichttp.testutil.TestRequests.post;
 import static alpha.nomagichttp.util.Publishers.map;
 import static java.nio.ByteBuffer.wrap;
 import static java.nio.charset.StandardCharsets.US_ASCII;
+import static java.util.concurrent.CompletableFuture.completedStage;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
@@ -62,7 +66,7 @@ class MessageTest extends AbstractRealTest
     @Test
     void http_1_0() throws IOException {
         server().add("/", GET().apply(req ->
-                text("Received " + req.httpVersion()).completedStage()));
+            text("Received " + req.httpVersion()).completedStage()));
         
         String resp = client().writeReadTextUntil(
             "GET / HTTP/1.0" + CRLF + CRLF, "Received HTTP/1.0");
@@ -104,8 +108,8 @@ class MessageTest extends AbstractRealTest
     }
     
     @Test
-    @DisplayName("http_1_1_chunked/TestClient")
-    void http_1_1_chunked() throws IOException {
+    @DisplayName("http_1_1_chunked_request/TestClient")
+    void http_1_1_chunked_request() throws IOException {
         addRequestBodyEchoRoute();
         var rsp = client().writeReadTextUntilEOS("""
                 POST / HTTP/1.1
@@ -130,9 +134,9 @@ class MessageTest extends AbstractRealTest
                 0\r\n\r\n""");
     }
     
-    @ParameterizedTest(name = "http_1_1_chunked_compatibility/{0}")
+    @ParameterizedTest(name = "http_1_1_chunked_request_compatibility/{0}")
     @EnumSource
-    void http_1_1_chunked_compatibility(HttpClientFacade.Implementation impl)
+    void http_1_1_chunked_request_compatibility(HttpClientFacade.Implementation impl)
             throws IOException, InterruptedException, ExecutionException, TimeoutException
     {
         addRequestBodyEchoRoute();
@@ -153,6 +157,26 @@ class MessageTest extends AbstractRealTest
                     .toBuilder().header("Connection", "close")
                     .build().completedStage();
         }));
+    }
+    
+    @Test
+    @DisplayName("http_1_1_chunked_response/TestClient")
+    void http_1_1_chunked_response() throws IOException {
+        server().add("/",
+            GET().respond(accepted().toBuilder().addTrailers(
+                completedStage(Headers.of("Hello", "World"))).build()));
+        var rsp = client().writeReadTextUntilEOS(
+            get("Connection: close"));
+        assertThat(rsp).isEqualTo("""
+                HTTP/1.1 202 Accepted\r
+                Content-Length: 0\r
+                Transfer-Encoding: chunked\r
+                Connection: close\r
+                \r
+                0\r
+                Hello: World\r
+                \r
+                """);
     }
     
 }

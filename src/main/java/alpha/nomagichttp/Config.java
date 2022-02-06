@@ -8,6 +8,7 @@ import alpha.nomagichttp.message.MaxRequestHeadSizeExceededException;
 import alpha.nomagichttp.message.MaxRequestTrailersSizeExceededException;
 import alpha.nomagichttp.message.ReadTimeoutException;
 import alpha.nomagichttp.message.Request;
+import alpha.nomagichttp.message.Response;
 import alpha.nomagichttp.message.ResponseTimeoutException;
 import alpha.nomagichttp.message.Responses;
 import alpha.nomagichttp.route.MethodNotAllowedException;
@@ -280,8 +281,7 @@ public interface Config
     Duration timeoutRead();
     
     /**
-     * Max duration allowed for the {@link ClientChannel} to await a
-     * response.<p>
+     * Max duration allowed to await a response and response trailers.<p>
      * 
      * Assuming that the write stream is still open when the timeout occurs, a
      * {@link ResponseTimeoutException} will be delivered to the error
@@ -298,6 +298,9 @@ public interface Config
      * 
      * A response producer that needs more time can reset the timer by sending a
      * 1XX (Informational) interim response or any other type of heartbeat.<p>
+     * 
+     * The timer is also active after the response body publisher has completed
+     * until {@link Response#trailers()}, if provided, completes.<p>
      * 
      * The timer is not active while a response is being transmitted on the
      * wire, this is covered by {@link #timeoutWrite()}.

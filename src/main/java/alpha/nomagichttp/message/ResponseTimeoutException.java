@@ -3,8 +3,7 @@ package alpha.nomagichttp.message;
 import alpha.nomagichttp.Config;
 
 /**
- * The client channel timed out waiting on a response or a response body
- * publisher delayed emitting bytebuffers.
+ * Response timed out.
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  * @see Config#timeoutResponse()

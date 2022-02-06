@@ -26,7 +26,7 @@ final class ChunkedEncoderOpTest
             toBuf("00000006\r\n"),
             toBuf("world!"),
             toBuf("\r\n"),
-            toBuf("0\r\n\r\n"));
+            toBuf("0\r\n"));
     }
     
     @Test
@@ -34,7 +34,7 @@ final class ChunkedEncoderOpTest
         var testee = new ChunkedEncoderOp(
             empty());
         assertPublisherEmits(testee,
-            toBuf("0\r\n\r\n"));
+            toBuf("0\r\n"));
     }
     
     @Test
@@ -42,6 +42,6 @@ final class ChunkedEncoderOpTest
         var testee = new ChunkedEncoderOp(just(
             toBuf("")));
         assertPublisherEmits(testee,
-            toBuf("0\r\n\r\n"));
+            toBuf("0\r\n"));
     }
 }

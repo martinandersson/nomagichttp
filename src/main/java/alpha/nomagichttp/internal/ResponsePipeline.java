@@ -30,7 +30,6 @@ import static alpha.nomagichttp.message.Responses.continue_;
 import static java.lang.System.Logger.Level.DEBUG;
 import static java.lang.System.Logger.Level.WARNING;
 import static java.util.concurrent.CompletableFuture.completedStage;
-import static java.util.concurrent.TimeUnit.SECONDS;
 
 /**
  * Enqueues responses and schedules them to be written out on a network
@@ -196,18 +195,9 @@ final class ResponsePipeline extends AbstractLocalEventEmitter
     private boolean timedOut;
     
     private void timeoutAction() {
-        scheduleClose(chApi);
+        chApi.scheduleClose("Response timed out");
         timedOut = true;
         op.run();
-    }
-    
-    private static void scheduleClose(DefaultClientChannel chApi) {
-        Timeout.schedule(SECONDS.toNanos(5), () -> {
-            if (chApi.isAnythingOpen()) {
-                LOG.log(WARNING, "Response timed out, but after 5 seconds more the channel is still not closed. Closing child.");
-                chApi.closeSafe();
-            }
-        });
     }
     
     private void pollAndProcessAsync() {
@@ -356,13 +346,21 @@ final class ResponsePipeline extends AbstractLocalEventEmitter
     }
     
     private Response tryChunkedEncoding(Response rsp) {
-        if (exch.getHttpVersion() == HTTP_1_1 &&
-            rsp.headers().isMissingOrEmpty(CONTENT_LENGTH) &&
+        if (exch.getHttpVersion().isLessThan(HTTP_1_1)) {
+            if (rsp.trailers().isPresent()) {
+                LOG.log(DEBUG,
+                    "HTTP/1.0 has no support for response trailers, discarding them.");
+                return rsp.toBuilder().removeTrailers().build();
+            }
+            return rsp;
+        }
+        final boolean chunked;
+        if (rsp.headers().isMissingOrEmpty(CONTENT_LENGTH) &&
             !rsp.isBodyEmpty())
         {
-            LOG.log(DEBUG, () ->
-                HTTP_1_1 + " response body of unknown length; applying chunked encoding.");
-            if (!rsp.headers().isMissingOrEmpty(TRANSFER_ENCODING)) {
+            LOG.log(DEBUG, () -> exch.getHttpVersion() +
+                " response body of unknown length; applying chunked encoding.");
+            if (rsp.headers().contains(TRANSFER_ENCODING)) {
                 // TODO: Once we use more codings, implement and use
                 //      Response.Builder.addHeaderToken()
                 // Note; it's okay to repeat TE; RFC 7230, 3.2.2, 3.3.1.
@@ -370,6 +368,15 @@ final class ResponsePipeline extends AbstractLocalEventEmitter
                 throw new IllegalStateException(
                         "Transfer-Encoding in response was not expected.");
             }
+            chunked = true;
+        } else if (rsp.trailers().isPresent()) {
+            LOG.log(DEBUG, "Response trailers; applying chunked encoding.");
+            chunked = true;
+        } else {
+            // Body (if present) is not of unknown length and no trailers
+            chunked = false;
+        }
+        if (chunked) {
             return rsp.toBuilder()
                 .addHeader(TRANSFER_ENCODING, "chunked")
                 .body(new ChunkedEncoderOp(rsp.body()))
@@ -436,7 +443,7 @@ final class ResponsePipeline extends AbstractLocalEventEmitter
         // Response.body() (app) -> operator -> ResponseBodySubscriber (server)
         // On timeout, operator will cancel upstream and error out downstream.
         var body = new TimeoutOp.Pub<>(true, false, rsp.body(), cfg.timeoutResponse(), () -> {
-            scheduleClose(chApi);
+            chApi.scheduleClose("Response body publisher timed out");
             return new ResponseTimeoutException(
                     "Gave up waiting on a response body bytebuffer.");
         });

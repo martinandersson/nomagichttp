@@ -32,6 +32,7 @@ import java.util.function.Function;
 import static alpha.nomagichttp.HttpConstants.Version.HTTP_1_1;
 import static alpha.nomagichttp.handler.RequestHandler.GET;
 import static alpha.nomagichttp.handler.RequestHandler.POST;
+import static alpha.nomagichttp.message.Responses.noContent;
 import static alpha.nomagichttp.message.Responses.processing;
 import static alpha.nomagichttp.message.Responses.text;
 import static alpha.nomagichttp.testutil.HttpClientFacade.Implementation.JDK;
@@ -289,7 +290,7 @@ class ExampleTest extends AbstractRealTest
     }
     
     private void addEchoHeadersRoute(boolean closeChild) throws IOException {
-        Function<Request, Response> rsp = req -> Responses.noContent().toBuilder()
+        Function<Request, Response> rsp = req -> noContent().toBuilder()
                 .addHeaders(req.headers())
                 .build();
         
@@ -390,6 +391,8 @@ class ExampleTest extends AbstractRealTest
                 .isEqualTo("Foo");
     }
     
+    // TODO: Add UploadFile_compatibility
+    
     // TODO: Currently not a public example. Update docs.
     @Test
     @DisplayName("CountRequestsByMethod/TestClient")
@@ -410,6 +413,8 @@ class ExampleTest extends AbstractRealTest
         assertThat(pollServerError())
                 .isExactlyInstanceOf(NoRouteFoundException.class);
     }
+    
+    // TODO: Add CountRequestsByMethod_compatibility
     
     /**
      * The happy version of
@@ -445,6 +450,8 @@ class ExampleTest extends AbstractRealTest
                 \r
                 Hello World!""");
     }
+    
+    // TODO: Add RequestTrailers_compatibility
     
     private static Response tryScheduleClose(Response rsp, boolean ifTrue) {
         return ifTrue ? setHeaderConnectionClose(rsp) : rsp;

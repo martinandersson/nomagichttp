@@ -22,18 +22,19 @@ import static java.util.Objects.requireNonNull;
  * Encodes HTTP/1.1 chunked encoding.<p>
  * 
  * Is used by {@link ResponsePipeline} if the response body has an unknown
- * length.<p>
+ * length and/or the response has trailers (which in HTTP/1.1 requires chunked
+ * encoding; will likely not be necessary for HTTP/2).<p>
  * 
- * Each received bytebuffer from the upstream is sent to the downstream
- * untouched, it's simply the content of what this class publishes as one
- * {@code chunk-data}. The only real work done by this class is to bloat the
- * stream with extra protocol specific bytebuffers, for example preempting each
- * chunk with a tiny {@code chunk-size} bytebuffer declaring to the end-receiver
- * the expected size of the chunk.<p>
+ * In the RFC, a {@code chunked-body} is composed of any number of {@code
+ * chunk}s, followed by a {@code last-chunk}, followed by an optional {@code
+ * trailer-part}, finally followed by {@code CRLF}. As a response body encoder,
+ * this class will semantically transform each upstream bytebuffer into a {@code
+ * chunk} (through preempting a size, but the bytes remain untouched) and end
+ * the subscription with a {@code last-chunk}. The trailers and final {@code
+ * CRLF} is written after the body and is done by {@link
+ * ResponseBodySubscriber}.<p>
  * 
- * There's currently no support for chunk extensions. Trailers we'll likely add
- * through Response.Builder + Response.trailers() -> Optional{@literal <}Stage
- * {@literal >}.<p>
+ * There's currently no support for chunk extensions.<p>
  * 
  * This class adheres to the contract specified by {@link Publishers}.
  * 
@@ -62,7 +63,7 @@ class ChunkedEncoderOp implements Flow.Publisher<ByteBuffer>
         private final Flow.Subscriber<? super ByteBuffer> subscriber;
         private Flow.Subscription upstream;
         private PushPullUnicastPublisher<ByteBuffer> downstream;
-        private Deque<ByteBuffer> cache;
+        private Deque<ByteBuffer> readable;
         
         Encoder(Flow.Subscriber<? super ByteBuffer> s) {
             subscriber = requireNonNull(s);
@@ -71,15 +72,15 @@ class ChunkedEncoderOp implements Flow.Publisher<ByteBuffer>
         @Override
         public void onSubscribe(Flow.Subscription s) {
             upstream = s;
-            cache = new ConcurrentLinkedDeque<>();
-            downstream = nonReusable(this::poll, cache::clear);
+            readable = new ConcurrentLinkedDeque<>();
+            downstream = nonReusable(this::poll, readable::clear);
             downstream.subscribe(subscriber);
         }
         
         private boolean initiated;
         
         private ByteBuffer poll() {
-            var b = cache.poll();
+            var b = readable.poll();
             if (b == null) {
                 // TODO: When we have the Publisher builder, there should be
                 // support for on-first-subscriber-request
@@ -91,25 +92,23 @@ class ChunkedEncoderOp implements Flow.Publisher<ByteBuffer>
             }
             if (b == DONE) {
                 downstream.complete();
-                cache.clear();
+                readable.clear();
                 return null;
             }
             return b;
         }
         
-        private boolean receivedChunk = false;
-        
         @Override
-        public void onNext(ByteBuffer b) {
-            if (!b.hasRemaining()) {
+        public void onNext(ByteBuffer chunk) {
+            if (!chunk.hasRemaining()) {
                 LOG.log(WARNING, "Received empty bytebuffer.");
                 return;
             }
-            cache.add(size(b.remaining()));
-            cache.add(b);
+            readable.add(size(chunk.remaining()));
+            readable.add(chunk);
             // Almost a bit unbelievable to be honest, but chunk must have an
             // extra trailing CRLF despite the size already being specified lol
-            cache.add(wrap(CRLF));
+            readable.add(wrap(CRLF));
             downstream.announce();
             upstream.request(1);
         }
@@ -117,13 +116,13 @@ class ChunkedEncoderOp implements Flow.Publisher<ByteBuffer>
         @Override
         public void onError(Throwable t) {
             downstream.stop(t);
-            cache.clear();
+            readable.clear();
         }
         
         @Override
         public void onComplete() {
-            cache.add(lastChunk());
-            cache.add(DONE);
+            readable.add(lastChunk());
+            readable.add(DONE);
             downstream.announce();
         }
         
@@ -144,9 +143,6 @@ class ChunkedEncoderOp implements Flow.Publisher<ByteBuffer>
             return allocate(5)
                     // "0"
                     .put((byte) 48)
-                    .put(CRLF)
-                    // TODO: Temporarily we end with an extra CRLF,
-                    //  but trailers comes before this
                     .put(CRLF)
                     .flip();
         }

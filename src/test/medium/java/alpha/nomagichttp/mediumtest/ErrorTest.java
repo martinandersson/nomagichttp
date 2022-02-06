@@ -562,7 +562,7 @@ class ErrorTest extends AbstractRealTest
             .isExactlyInstanceOf(IllegalResponseBodyException.class)
             .hasNoCause()
             .hasNoSuppressedExceptions()
-            .hasMessage("Presumably a body in a 1XX (Informational) response.");
+            .hasMessage("Presumably a body in a 123 (Unknown) response.");
     }
     
     @Test

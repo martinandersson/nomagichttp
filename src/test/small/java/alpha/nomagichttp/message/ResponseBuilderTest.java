@@ -3,6 +3,8 @@ package alpha.nomagichttp.message;
 import org.junit.jupiter.api.Test;
 
 import static alpha.nomagichttp.util.Publishers.empty;
+import static java.util.List.of;
+import static java.util.Map.entry;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.junit.jupiter.api.Assertions.assertSame;
@@ -41,17 +43,20 @@ class ResponseBuilderTest
     @Test
     void header_addHeaders_multi() {
         Response r = builder(-1)
-                .header(    "k", "v1")
-                .addHeader( "k", "v2")
-                .addHeaders("k", "v3",
-                            "k", "v4")
-                .build();
+            .header(    "k", "v2")
+            .addHeader( "k", "v1")
+            .addHeaders("k", "v3",
+                        "k", "v2")
+            .build();
+        
+        assertThat(r.headers().delegate().map()).containsOnly(
+            entry("k", of("v2", "v1", "v3", "v2")));
         
         assertThat(r.headersForWriting()).containsExactly(
-                "k: v1",
-                "k: v2",
-                "k: v3",
-                "k: v4");
+            "k: v2",
+            "k: v1",
+            "k: v3",
+            "k: v2");
     }
     
     @Test

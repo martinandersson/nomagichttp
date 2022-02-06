@@ -82,7 +82,8 @@ import static java.util.stream.Stream.of;
  * Response#body()} but only if the body publisher has not yet published any
  * bytebuffers before the error was signalled. It doesn't make much sense trying
  * to recover the situation after the point where a response has already begun
- * transmitting back to the client.<p>
+ * transmitting back to the client. For the same reason, exceptions completing
+ * {@link Response#trailers()} are never sent to the error handler.<p>
  * 
  * The server will <strong>not</strong> call error handlers for errors that are
  * not directly involved in the HTTP exchange or for errors that occur

@@ -1,9 +1,11 @@
 package alpha.nomagichttp.message;
 
+import alpha.nomagichttp.Config;
 import alpha.nomagichttp.HttpConstants;
 import alpha.nomagichttp.HttpServer;
 import alpha.nomagichttp.handler.RequestHandler;
 import alpha.nomagichttp.util.BetterBodyPublishers;
+import alpha.nomagichttp.util.Headers;
 import alpha.nomagichttp.util.Publishers;
 
 import java.net.http.HttpHeaders;
@@ -11,6 +13,8 @@ import java.net.http.HttpRequest;
 import java.nio.ByteBuffer;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
+import java.util.concurrent.CancellationException;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.Flow;
 
@@ -19,8 +23,7 @@ import static alpha.nomagichttp.HttpConstants.StatusCode;
 import static java.net.http.HttpRequest.BodyPublisher;
 
 /**
- * A {@code Response} contains a status line, followed by optional headers and
- * body.<p>
+ * Contains a status line, followed by optional headers, body and trailers.<p>
  * 
  * Can be built using a {@link Response.Builder}:
  * 
@@ -147,6 +150,14 @@ public interface Response extends HeaderHolder
      * @return the message body
      */
     Flow.Publisher<ByteBuffer> body();
+    
+    /**
+     * Returns trailers.
+     * 
+     * @return trailers
+     * @see Request#trailers() 
+     */
+    Optional<CompletionStage<HttpHeaders>> trailers();
     
     /**
      * Returns {@code true} if the status-code is 1XX (Informational), otherwise
@@ -381,7 +392,7 @@ public interface Response extends HeaderHolder
          * @throws  NullPointerException if {@code headers} is {@code null}
          * @see     HttpConstants.HeaderName
          */
-        default Builder addHeaders(BetterHeaders headers) {
+        default Builder addHeaders(BetterHeaders headers) { // TODO: Remove!
             return addHeaders(headers.delegate().map());
         }
         
@@ -460,6 +471,39 @@ public interface Response extends HeaderHolder
         Builder body(Flow.Publisher<ByteBuffer> body);
         
         /**
+         * Add response trailers.<p>
+         * 
+         * The application should also populate the HTTP header "Trailer" with
+         * the names of the trailers that will be present.<p>
+         * 
+         * If the HTTP exchange is using a version less than 1.1, the given
+         * trailers will be silently discarded.<p>
+         * 
+         * Trailers will be written out on the wire in almost the same way
+         * headers are. The only exception is that the order is not defined.<p>
+         * 
+         * Completing the stage exceptionally with a {@link
+         * CancellationException} has the same effect as completing the stage
+         * with an empty headers object, that is to say, no trailers will be
+         * written.
+         * 
+         * @param trailers to add
+         * @return a new builder representing the new state
+         * @throws  NullPointerException if {@code trailers} is {@code null}
+         * @see Request#trailers()
+         * @see Headers
+         * @see Config#rejectClientsUsingHTTP1_0() 
+         */
+        Builder addTrailers(CompletionStage<HttpHeaders> trailers);
+        
+        /**
+         * Remove previously set trailers.
+         * 
+         * @return a new builder representing the new state
+         */
+        Builder removeTrailers();
+        
+        /**
          * Builds the response.<p>
          * 
          * This method returns a new response object on each call.
@@ -468,13 +512,13 @@ public interface Response extends HeaderHolder
          * 
          * @throws IllegalResponseBodyException
          *             if a body is presumably not empty (see {@link
-         *             Response#isBodyEmpty()}) and the status code is any one
+         *             Response#isBodyEmpty()}) and the status code is one of
          *             1XX (Informational), 204 (No Content) or 304 (Not
          *             Modified) 
          * 
          * @throws IllegalStateException
-         *             if the write stream of the channel or the channel has
-         *             been marked to shutdown/close and status-code is 1XX
+         *             if the channel's write stream or the channel itself has
+         *             been marked to shut down/close and the status code is 1XX
          *             (Informational)
          * 
          * @throws IllegalStateException
