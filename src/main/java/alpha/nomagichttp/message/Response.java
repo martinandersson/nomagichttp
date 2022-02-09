@@ -476,6 +476,17 @@ public interface Response extends HeaderHolder
          * The application should also populate the HTTP header "Trailer" with
          * the names of the trailers that will be present.<p>
          * 
+         * The application should only respond trailers if the client has
+         * indicated they are accepted
+         * (<a href="https://datatracker.ietf.org/doc/html/rfc7230#section-4.3">RFC 7230 $4.3</a>).
+         * 
+         * <pre>
+         *   boolean accepted = request.headers()
+         *       .allTokens("TE").anyMatch(Predicate.isEqual("trailers"));
+         *   // Alternatively
+         *   accepted = request.headers().contains("TE", "trailers");
+         * </pre>
+         * 
          * If the HTTP exchange is using a version less than 1.1, the given
          * trailers will be silently discarded.<p>
          * 
@@ -497,7 +508,7 @@ public interface Response extends HeaderHolder
         Builder addTrailers(CompletionStage<HttpHeaders> trailers);
         
         /**
-         * Remove previously set trailers.
+         * Remove previously set trailers, if present.
          * 
          * @return a new builder representing the new state
          */
