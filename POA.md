@@ -34,7 +34,7 @@ An item ~~crossed out~~ is complete, an item in __bold__ is work in progress.
 [~~Stage: Multiple Responses~~](#stage-multiple-responses)  
 [~~Stage: Connection Life-Cycle/Management~~](#stage-connection-life-cyclemanagement)  
 [~~Stage: Actions~~](#stage-actions)  
-[**Stage: Codings, Part 1/3 (Chunked Transfer)**](#stage-codings-part-13-chunked-transfer)  
+[~~Stage: Codings, Part 1/3 (Chunked Transfer)~~](#stage-codings-part-13-chunked-transfer)  
 [Stage: Codings, Part 2/3 (Response Body Compression)](#stage-codings-part-23-response-body-compression)  
 [Stage: Codings, Part 3/3 (Request Body Decompression)](#stage-codings-part-33-request-body-decompression)  
 [Stage: Multipart Part 1/3 (Consuming "multipart/*")](#stage-multipart-part-13-consuming-"multipart/_")  
@@ -394,19 +394,23 @@ example, a pre action doing authentication can be scoped to "/admin".~~
     different media types, and~~
   - ~~status code is 200 or 304~~
 
-## Stage: Codings, Part 1/3 (Chunked Transfer)
+## ~~Stage: Codings, Part 1/3 (Chunked Transfer)~~
 
-_Status: **In Progress**_
+_Status: **Delivered**_
 
-Chunking is a HTTP/1.1-specific protocol technique for streaming a message body
-when the `Content-Length` is unknown. It also enables trailing headers _after_
-the message body; good for lazily sending hashes based on transmitted content.
-Future work may specifically deal with message integrity.
+Result: Added `Request.trailers()`, `Response.trailers()` and
+`Response.Builder.addTrailers()`. Still remains; apply chunked if any other
+codec has been applied.
 
-Chunked decoding and encoding is transparent to the application code. Inbound
+~~Chunking is a HTTP/1.1-specific protocol technique for streaming a message
+body when the `Content-Length` is unknown. It also enables trailing headers
+_after_ the message body; good for lazily sending hashes based on transmitted
+content. Future work may specifically deal with message integrity.~~
+
+~~Chunked decoding and encoding is transparent to the application code. Inbound
 `Transfer-Encoding` (e.g. "gzip, chunked") is fully decoded by the server and
 there's no option to disable it. Similarly, outbound chunked transfer encoding
-is applied by the server only if necessary.
+is applied by the server only if necessary.~~
 
 ### ~~Request Dechunking~~
 
@@ -427,56 +431,56 @@ is applied by the server only if necessary.
   the split, trailing headers logic can simply resubscribe yet another Headers
   subscriber+processor.~~
 
-### Response Chunking
+### ~~Response Chunking~~
 
-Performed through a server-added post action decorating the body. Each published
-bytebuffer = one chunk.
+~~Performed through a server-added post action decorating the body. Each
+published bytebuffer = one chunk.~~
 
 - Add `Responses.bytes(Flow.Publisher<ByteBuffer> bytes)` and overload
   `bytes(bytes, contentLength)`.  
-  As with Request, JavaDoc explains chunked encoding and how providing the
-  length is always prefered.
-- Consider adding other "streaming" methods such as
-  `text(Flow.Publisher<String> chunks)`.
-- Add `Response.trailers()` returning `CompletableFuture<HttpHeaders>`.  
-  The application uses the returned future to set the trailing headers whenever
+  ~~As with Request, JavaDoc explains chunked encoding and how providing the
+  length is always prefered.~~
+- ~~Consider adding other "streaming" methods such as
+  `text(Flow.Publisher<String> chunks)`.~~
+- ~~Add `Response.trailers()` returning `CompletableFuture<HttpHeaders>`.~~  
+  ~~The application uses the returned future to set the trailing headers whenever
   they are ready. The method enables the application to use trailing headers for
-  "any message".
-  - Using response trailers will switch to chunked encoding and the application
-    _must_ complete the returned future at some point.
-  - Returns same instance on repeated access.
-  - Returns exceptionally if HTTP version != 1.1.  
-    (not sure yet if HTTP/2 _fully_ obsoletes chunking?)
-  - JavaDoc explains
-    - Method must be polled _before_ Response is handed over to the server,
+  "any message".~~
+  - ~~Using response trailers will switch to chunked encoding and the application
+    _must_ complete the returned future at some point.~~
+  - ~~Returns same instance on repeated access.~~
+  - ~~Returns exceptionally if HTTP version != 1.1.~~  
+    ~~(not sure yet if HTTP/2 _fully_ obsoletes chunking?)~~
+  - ~~JavaDoc explains~~
+    - ~~Method must be polled _before_ Response is handed over to the server,
       otherwise `IllegalStateException` (can't apply transfer encoding if
-      response already started).
-    - The application should set the `Trailer` header to give a head's up to
+      response already started).~~
+    - ~~The application should set the `Trailer` header to give a head's up to
       the client which headers exactly are trailing the message. This would be
-      impossible for the server to know in advance.
-    - Trailers should only be used if `TE: trailers` has been set in the request
+      impossible for the server to know in advance.~~
+    - ~~Trailers should only be used if `TE: trailers` has been set in the request
       as otherwise the client or an HTTP intermediary (e.g. HTTP 1.0 client
-      proxy) may discard the trailers (RFC 7230 §4.3).
+      proxy) may discard the trailers (RFC 7230 §4.3).~~
 
-Implementation-wise, `Response.trailers()` must be documented and implemented to
-set temporary `X-Temp-???` headers which instructs the post action to apply
+~~Implementation-wise, `Response.trailers()` must be documented and implemented
+to set temporary `X-Temp-???` headers which instructs the post action to apply
 chunked encoding. Or, we add `Response.isUsingTrailers()`, or we set
 `Request.attributes()`. But in some way or the other the post action must be
 able to figure this out without pulling trailers() as this would always return
-an instance regardless of application's intended use.
+an instance regardless of application's intended use.~~
 
 Armed with this capability, the post action applies chunked encoding only if:
 
-- Request method was not `HEAD` (body not expected) and
-- HTTP version == 1.1, and at least one of the following is true:
-  - Trailing headers for the response have been initiated or
-  - `Content-Length` is not set or
+- ~~Request method was not `HEAD` (body not expected) and~~
+- ~~HTTP version == 1.1, and at least one of the following is true:~~
+  - ~~Trailing headers for the response have been initiated or~~
+  - ~~`Content-Length` is not set or~~
   - `Transfer-Encoding` compression has been applied (see next section)
 
-The post action will also _remove_ `Content-Length` if it was set. The
-specification allows for both `Transfer-Encoding` and `Content-Length` to be
-present - the former overriding the latter - but the spec also recommendeds the
-client to treat this as an "error" (RFC 7230 §3.3.3). Hmm.
+~~The post action will also _remove_ `Content-Length` if it was set. The~~
+~~specification allows for both `Transfer-Encoding` and `Content-Length` to be~~
+~~present - the former overriding the latter - but the spec also recommends
+the client to treat this as an "error" (RFC 7230 §3.3.3). Hmm.~~
 
 ## Stage: Codings, Part 2/3 (Response Body Compression)
 
