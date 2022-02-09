@@ -427,7 +427,7 @@ public final class Responses
      * For an unknown body length, the length argument must be negative. For an
      * empty publisher, the length argument must be zero. Otherwise, the length
      * argument must be equal to the number of bytes emitted by the publisher.
-     * Discrepancies has unknown application behavior.
+     * Discrepancies have unknown application behavior.
      * 
      * @param body data
      * @param contentType header value
