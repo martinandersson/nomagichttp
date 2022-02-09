@@ -6,6 +6,9 @@ import alpha.nomagichttp.ReceiverOfUniqueRequestObject;
 import alpha.nomagichttp.action.AfterAction;
 import alpha.nomagichttp.action.BeforeAction;
 import alpha.nomagichttp.message.BadHeaderException;
+import alpha.nomagichttp.message.BadRequestException;
+import alpha.nomagichttp.message.DecoderException;
+import alpha.nomagichttp.message.HeaderParseException;
 import alpha.nomagichttp.message.HttpVersionParseException;
 import alpha.nomagichttp.message.HttpVersionTooNewException;
 import alpha.nomagichttp.message.HttpVersionTooOldException;
@@ -13,10 +16,9 @@ import alpha.nomagichttp.message.IllegalRequestBodyException;
 import alpha.nomagichttp.message.IllegalResponseBodyException;
 import alpha.nomagichttp.message.MaxRequestHeadSizeExceededException;
 import alpha.nomagichttp.message.MediaTypeParseException;
+import alpha.nomagichttp.message.ReadTimeoutException;
 import alpha.nomagichttp.message.Request;
-import alpha.nomagichttp.message.RequestBodyTimeoutException;
-import alpha.nomagichttp.message.RequestHeadParseException;
-import alpha.nomagichttp.message.RequestHeadTimeoutException;
+import alpha.nomagichttp.message.RequestLineParseException;
 import alpha.nomagichttp.message.Response;
 import alpha.nomagichttp.message.ResponseTimeoutException;
 import alpha.nomagichttp.message.Responses;
@@ -29,7 +31,7 @@ import alpha.nomagichttp.route.NoRouteFoundException;
 import java.util.concurrent.CompletionException;
 import java.util.stream.Stream;
 
-import static alpha.nomagichttp.HttpConstants.HeaderKey.ALLOW;
+import static alpha.nomagichttp.HttpConstants.HeaderName.ALLOW;
 import static alpha.nomagichttp.HttpConstants.Method.OPTIONS;
 import static alpha.nomagichttp.HttpConstants.Version.HTTP_1_1;
 import static alpha.nomagichttp.handler.ResponseRejectedException.Reason;
@@ -80,7 +82,8 @@ import static java.util.stream.Stream.of;
  * Response#body()} but only if the body publisher has not yet published any
  * bytebuffers before the error was signalled. It doesn't make much sense trying
  * to recover the situation after the point where a response has already begun
- * transmitting back to the client.<p>
+ * transmitting back to the client. For the same reason, exceptions completing
+ * {@link Response#trailers()} are never sent to the error handler.<p>
  * 
  * The server will <strong>not</strong> call error handlers for errors that are
  * not directly involved in the HTTP exchange or for errors that occur
@@ -125,8 +128,8 @@ import static java.util.stream.Stream.of;
  * </pre>
  * 
  * If there is a request available when the error handler is called, then {@link
- * Request#attributes()} is a good place to store state that needs to be passed
- * between handler invocations.<p>
+ * Request#attributes() Request.attibutes()} is a good place to store state that
+ * needs to be passed between handler invocations.<p>
  * 
  * The error handler must be thread-safe, as it may be called concurrently. As
  * far as the server is concerned, it does not need to implement 
@@ -146,7 +149,7 @@ public interface ErrorHandler
      * The {@code Throwable} and {@code ClientChannel} arguments will always be
      * non-null. The {@code Request} object may be null depending on how much
      * progress was made in the HTTP exchange before the error occurred. For
-     * example, if the error is a {@link RequestHeadParseException}, then the
+     * example, if the error is a {@link RequestLineParseException}, then the
      * request object will obviously not be present.<p>
      * 
      * If the error which the server caught is a {@link CompletionException},
@@ -188,16 +191,16 @@ public interface ErrorHandler
      *   </thead>
      *   <tbody>
      *   <tr>
-     *     <th scope="row"> {@link RequestHeadParseException} </th>
+     *     <th scope="row"> {@link RequestLineParseException} </th>
      *     <td> None </td>
      *     <td> No </td>
      *     <td> {@link Responses#badRequest()} </td>
      *   </tr>
      *   <tr>
-     *     <th scope="row"> {@link MaxRequestHeadSizeExceededException} </th>
+     *     <th scope="row"> {@link HeaderParseException} </th>
      *     <td> None </td>
-     *     <td> Yes </td>
-     *     <td> {@link Responses#entityTooLarge()} </td>
+     *     <td> No </td>
+     *     <td> {@link Responses#badRequest()} </td>
      *   </tr>
      *   <tr>
      *     <th scope="row"> {@link HttpVersionParseException} </th>
@@ -224,6 +227,18 @@ public interface ErrorHandler
      *     <td> {@link Responses#badRequest()} </td>
      *   </tr>
      *   <tr>
+     *     <th scope="row"> {@link BadRequestException} </th>
+     *     <td> None </td>
+     *     <td> No </td>
+     *     <td> {@link Responses#badRequest()} </td>
+     *   </tr>
+     *   <tr>
+     *     <th scope="row"> {@link MaxRequestHeadSizeExceededException} </th>
+     *     <td> None </td>
+     *     <td> Yes </td>
+     *     <td> {@link Responses#entityTooLarge()} </td>
+     *   </tr>
+     *   <tr>
      *     <th scope="row"> {@link NoRouteFoundException} </th>
      *     <td> None </td>
      *     <td> Yes </td>
@@ -235,7 +250,7 @@ public interface ErrorHandler
      *          {@link Config#implementMissingOptions()} returns {@code true}</td>
      *     <td> No </td>
      *     <td> {@link Responses#noContent()} with the header
-     *          {@value HttpConstants.HeaderKey#ALLOW} populated.</td>
+     *          {@value HttpConstants.HeaderName#ALLOW} populated.</td>
      *   </tr>
      *   <tr>
      *     <th scope="row"> {@link MethodNotAllowedException} </th>
@@ -243,7 +258,14 @@ public interface ErrorHandler
      *          {@link Config#implementMissingOptions()} returns {@code false}</td>
      *     <td> Yes </td>
      *     <td> {@link Responses#methodNotAllowed()} with the header
-     *          {@value HttpConstants.HeaderKey#ALLOW} populated.</td>
+     *          {@value HttpConstants.HeaderName#ALLOW} populated.</td>
+     *   </tr>
+     *   <tr>
+     *     <th scope="row"> {@link MediaTypeParseException} </th>
+     *     <td> None </td>
+     *     <td> Yes </td>
+     *     <td> {@link Responses#internalServerError()} <br>
+     *          Fault assumed to be the applications'.</td>
      *   </tr>
      *   <tr>
      *     <th scope="row"> {@link MediaTypeNotAcceptedException} </th>
@@ -264,11 +286,10 @@ public interface ErrorHandler
      *     <td> {@link Responses#internalServerError()} </td>
      *   </tr>
      *   <tr>
-     *     <th scope="row"> {@link MediaTypeParseException} </th>
+     *     <th scope="row"> {@link DecoderException} </th>
      *     <td> None </td>
-     *     <td> Yes </td>
-     *     <td> {@link Responses#internalServerError()} <br>
-     *          Fault assumed to be the applications'.</td>
+     *     <td> No </td>
+     *     <td> {@link Responses#badRequest()} </td>
      *   </tr>
      *   <tr>
      *     <th scope="row"> {@link IllegalRequestBodyException} </th>
@@ -283,18 +304,6 @@ public interface ErrorHandler
      *     <td> {@link Responses#internalServerError()} </td>
      *   </tr>
      *   <tr>
-     *     <th scope="row">{@link EndOfStreamException} </th>
-     *     <td> None </td>
-     *     <td> No </td>
-     *     <td> No response, closes the channel. <br>
-     *          This error signals the failure of a read operation due to client
-     *          disconnect <i>and</i> at least one byte of data was received
-     *          prior to the disconnect (if no bytes were received the error
-     *          handler is never called; no data loss, no problem). Currently,
-     *          however, there's no API support to retrieve the incomplete
-     *          request.</td>
-     *   </tr>
-     *   <tr>
      *     <th scope="row">{@link ResponseRejectedException} </th>
      *     <td> Response.{@link Response#isInformational() isInformational()}, and <br>
      *          rejected reason is {@link Reason#PROTOCOL_NOT_SUPPORTED
@@ -306,13 +315,7 @@ public interface ErrorHandler
      *     <td> No response, the failed interim response is ignored. </td>
      *   </tr>
      *   <tr>
-     *     <th scope="row"> {@link RequestHeadTimeoutException} </th>
-     *     <td> None </td>
-     *     <td> No </td>
-     *     <td> {@link Responses#requestTimeout()}</td>
-     *   </tr>
-     *   <tr>
-     *     <th scope="row"> {@link RequestBodyTimeoutException} </th>
+     *     <th scope="row"> {@link ReadTimeoutException} </th>
      *     <td> None </td>
      *     <td> No </td>
      *     <td> {@link Responses#requestTimeout()}</td>
@@ -323,6 +326,18 @@ public interface ErrorHandler
      *     <td> Yes </td>
      *     <td> First shutdown input stream, then
      *          {@link Responses#serviceUnavailable()}.</td>
+     *   </tr>
+     *   <tr>
+     *     <th scope="row">{@link EndOfStreamException} </th>
+     *     <td> None </td>
+     *     <td> No </td>
+     *     <td> No response, closes the channel. <br>
+     *          This error signals the failure of a read operation due to client
+     *          disconnect <i>and</i> at least one byte of data was received
+     *          prior to the disconnect (if no bytes were received the error
+     *          handler is never called; no data loss, no problem). Currently,
+     *          however, there's no API support to retrieve the incomplete
+     *          request.</td>
      *   </tr>
      *   <tr>
      *     <th scope="row"> <i>{@code Everything else}</i> </th>
@@ -337,18 +352,21 @@ public interface ErrorHandler
         final Response res;
         try {
             throw thr;
-        } catch (RequestHeadParseException |
-                 HttpVersionParseException |
-                 BadHeaderException        |
-                 IllegalRequestBodyException e) {
+        } catch (RequestLineParseException   |
+                 HeaderParseException        |
+                 HttpVersionParseException   |
+                 BadHeaderException          |
+                 BadRequestException         |
+                 IllegalRequestBodyException |
+                 DecoderException e) {
             res = badRequest();
-        } catch (MaxRequestHeadSizeExceededException e) {
-            log(thr);
-            res = entityTooLarge();
-        } catch (HttpVersionTooOldException e) {
+        }  catch (HttpVersionTooOldException e) {
             res = upgradeRequired(e.getUpgrade());
         } catch (HttpVersionTooNewException e) {
             res = httpVersionNotSupported();
+        } catch (MaxRequestHeadSizeExceededException e) {
+            log(thr);
+            res = entityTooLarge();
         } catch (NoRouteFoundException e) {
             log(thr);
             res = notFound();
@@ -383,7 +401,7 @@ public interface ErrorHandler
                 log(thr);
                 res = internalServerError();
             }
-        } catch (RequestHeadTimeoutException | RequestBodyTimeoutException e) {
+        } catch (ReadTimeoutException e) {
             res = requestTimeout();
         } catch (ResponseTimeoutException e) {
             log(thr);
@@ -392,10 +410,12 @@ public interface ErrorHandler
             }
             ch.shutdownInputSafe();
             res = serviceUnavailable();
-        } catch (MediaTypeParseException | IllegalResponseBodyException | AmbiguousHandlerException e) {
+        } catch (MediaTypeParseException      |
+                 IllegalResponseBodyException |
+                 AmbiguousHandlerException e) {
             log(thr);
             res = internalServerError();
-        } catch (Throwable unknown) {
+        } catch (Throwable everyThingElse) {
             log(thr);
             res = internalServerError();
         }

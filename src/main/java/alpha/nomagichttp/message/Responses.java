@@ -16,10 +16,10 @@ import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.function.ToDoubleFunction;
 
-import static alpha.nomagichttp.HttpConstants.HeaderKey.CONNECTION;
-import static alpha.nomagichttp.HttpConstants.HeaderKey.CONTENT_LENGTH;
-import static alpha.nomagichttp.HttpConstants.HeaderKey.CONTENT_TYPE;
-import static alpha.nomagichttp.HttpConstants.HeaderKey.UPGRADE;
+import static alpha.nomagichttp.HttpConstants.HeaderName.CONNECTION;
+import static alpha.nomagichttp.HttpConstants.HeaderName.CONTENT_LENGTH;
+import static alpha.nomagichttp.HttpConstants.HeaderName.CONTENT_TYPE;
+import static alpha.nomagichttp.HttpConstants.HeaderName.UPGRADE;
 import static alpha.nomagichttp.HttpConstants.ReasonPhrase.ACCEPTED;
 import static alpha.nomagichttp.HttpConstants.ReasonPhrase.BAD_REQUEST;
 import static alpha.nomagichttp.HttpConstants.ReasonPhrase.CONTINUE;
@@ -359,7 +359,7 @@ public final class Responses
      * @return a new 200 (OK) response
      * 
      * @see StatusCode#TWO_HUNDRED
-     * @see HttpConstants.HeaderKey#CONTENT_TYPE
+     * @see HttpConstants.HeaderName#CONTENT_TYPE
      */
     public static Response ok(BodyPublisher body, String contentType) {
         return CACHE.get(TWO_HUNDRED, OK).toBuilder()
@@ -377,7 +377,7 @@ public final class Responses
      * @return a new 200 (OK) response
      * 
      * @see StatusCode#TWO_HUNDRED
-     * @see HttpConstants.HeaderKey#CONTENT_TYPE
+     * @see HttpConstants.HeaderName#CONTENT_TYPE
      */
     public static Response ok(BodyPublisher body, MediaType contentType) {
         return ok(body, contentType.toString());
@@ -405,8 +405,8 @@ public final class Responses
      * 
      * @see StatusCode#TWO_HUNDRED
      * @see Response.Builder#body(Flow.Publisher)
-     * @see HttpConstants.HeaderKey#CONTENT_TYPE
-     * @see HttpConstants.HeaderKey#CONTENT_LENGTH
+     * @see HttpConstants.HeaderName#CONTENT_TYPE
+     * @see HttpConstants.HeaderName#CONTENT_LENGTH
      */
     public static Response ok(Flow.Publisher<ByteBuffer> body, String contentType, long contentLength) {
         Response.Builder b = CACHE.get(TWO_HUNDRED, OK).toBuilder()
@@ -427,7 +427,7 @@ public final class Responses
      * For an unknown body length, the length argument must be negative. For an
      * empty publisher, the length argument must be zero. Otherwise, the length
      * argument must be equal to the number of bytes emitted by the publisher.
-     * Discrepancies has unknown application behavior.
+     * Discrepancies have unknown application behavior.
      * 
      * @param body data
      * @param contentType header value
@@ -437,8 +437,8 @@ public final class Responses
      * 
      * @see StatusCode#TWO_HUNDRED
      * @see Response.Builder#body(Flow.Publisher) 
-     * @see HttpConstants.HeaderKey#CONTENT_TYPE
-     * @see HttpConstants.HeaderKey#CONTENT_LENGTH
+     * @see HttpConstants.HeaderName#CONTENT_TYPE
+     * @see HttpConstants.HeaderName#CONTENT_LENGTH
      */
     public static Response ok(Flow.Publisher<ByteBuffer> body, MediaType contentType, long contentLength) {
         return ok(body, contentType.toString(), contentLength);
@@ -466,7 +466,10 @@ public final class Responses
     }
     
     /**
-     * Retrieves a cached 400 (Bad Request) response with no body.
+     * Retrieves a cached 400 (Bad Request) response with no body.<p>
+     * 
+     * The returned response contains the header "Connection: close" which will
+     * cause the connection to gracefully close (see {@link ClientChannel}).
      * 
      * @return  a cached 400 (Bad Request) response
      * @see     StatusCode#FOUR_HUNDRED
@@ -518,7 +521,8 @@ public final class Responses
     /**
      * Creates a new 408 (Request Timeout) response with no body.<p>
      * 
-     * The header "Connection: close" will be set.
+     * The returned response contains the header "Connection: close" which will
+     * cause the connection to gracefully close (see {@link ClientChannel}).
      * 
      * @return  a new 408 (Request Timeout) response
      * @see     StatusCode#FOUR_HUNDRED_EIGHT
@@ -526,21 +530,20 @@ public final class Responses
     public static Response requestTimeout() {
         return CACHE.get(FOUR_HUNDRED_EIGHT, REQUEST_TIMEOUT).toBuilder()
                 .header(CONTENT_LENGTH, "0")
-                .header(CONNECTION, "close")
                 .build();
     }
     
     /**
      * Creates a new 413 (Entity Too Large) response with no body.<p>
      * 
-     * A header "Connection: close" will have been set.
+     * The returned response contains the header "Connection: close" which will
+     * cause the connection to gracefully close (see {@link ClientChannel}).
      * 
      * @return  a new 413 (Entity Too Large)
      * @see    StatusCode#FOUR_HUNDRED_THIRTEEN
      */
     public static Response entityTooLarge() {
-        return CACHE.get(FOUR_HUNDRED_THIRTEEN, ENTITY_TOO_LARGE).toBuilder()
-                .header(CONNECTION, "close").build();
+        return CACHE.get(FOUR_HUNDRED_THIRTEEN, ENTITY_TOO_LARGE);
     }
     
     /**
@@ -563,8 +566,8 @@ public final class Responses
     public static Response upgradeRequired(String upgrade) {
         return CACHE.get(FOUR_HUNDRED_TWENTY_SIX, UPGRADE_REQUIRED).toBuilder()
                 .addHeaders(
-                        UPGRADE, upgrade,
-                        CONNECTION, UPGRADE)
+                    UPGRADE, upgrade,
+                    CONNECTION, UPGRADE)
                 .build();
     }
     
@@ -591,17 +594,14 @@ public final class Responses
     /**
      * Creates a new 503 (Service Unavailable) response with no body.<p>
      * 
-     * The header "Connection: close" will be set which will cause the
-     * connection to gracefully close (see {@link ClientChannel}).
+     * The returned response contains the header "Connection: close" which will
+     * cause the connection to gracefully close (see {@link ClientChannel}).
      * 
      * @return  a new 503 (Service Unavailable) response
      * @see     StatusCode#FIVE_HUNDRED_THREE
      */
     public static Response serviceUnavailable() {
-        return CACHE.get(FIVE_HUNDRED_THREE, SERVICE_UNAVAILABLE).toBuilder()
-                .header(CONTENT_LENGTH, "0")
-                .header(CONNECTION, "close")
-                .build();
+        return CACHE.get(FIVE_HUNDRED_THREE, SERVICE_UNAVAILABLE);
     }
     
     /**
@@ -611,9 +611,7 @@ public final class Responses
      * @see    StatusCode#FIVE_HUNDRED_FIVE
      */
     public static Response httpVersionNotSupported() {
-        return CACHE.get(FIVE_HUNDRED_FIVE, HTTP_VERSION_NOT_SUPPORTED).toBuilder()
-                 .header(CONTENT_LENGTH, "0")
-                 .build();
+        return CACHE.get(FIVE_HUNDRED_FIVE, HTTP_VERSION_NOT_SUPPORTED);
     }
     
     private static Response create(String mime, String body, Charset charset) {
@@ -678,6 +676,9 @@ public final class Responses
         if (!isBodyForbidden(code)) {
             b = b.header(CONTENT_LENGTH, "0");
         }
+        if (isClosingConnection(code)) {
+            b = b.header(CONNECTION, "close");
+        }
         return b.build();
     }
     
@@ -700,6 +701,14 @@ public final class Responses
      * @return see JavaDoc
      */
     private static boolean isBodyForbidden(int code) {
+        // is-informational || 204
         return code >= 100 && code <= 199 || code == 204;
+    }
+    
+    private static boolean isClosingConnection(int code) {
+        return code == FOUR_HUNDRED          || // Bad Request
+               code == FOUR_HUNDRED_EIGHT    || // Request Timeout
+               code == FOUR_HUNDRED_THIRTEEN || // Payload Too Large
+               code == FIVE_HUNDRED_THREE;      // Service Unavailable
     }
 }

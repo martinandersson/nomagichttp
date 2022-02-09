@@ -27,7 +27,7 @@ import static java.lang.System.Logger.Level.DEBUG;
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  */
-final class HeapSubscriber<R> implements SubscriberAsStage<PooledByteBufferHolder, R>
+final class HeapSubscriber<R> implements SubscriberWithResult<PooledByteBufferHolder, R>
 {
     private static final System.Logger LOG = System.getLogger(HeapSubscriber.class.getPackageName());
     
@@ -44,13 +44,13 @@ final class HeapSubscriber<R> implements SubscriberAsStage<PooledByteBufferHolde
     }
     
     @Override
-    public CompletionStage<R> asCompletionStage() {
+    public CompletionStage<R> result() {
         return result;
     }
     
     @Override
     public void onSubscribe(Flow.Subscription subscription) {
-        this.subscription = SubscriberAsStage.validate(this.subscription, subscription);
+        this.subscription = SubscriberWithResult.validate(this.subscription, subscription);
         subscription.request(MAX_VALUE);
     }
     
@@ -65,9 +65,9 @@ final class HeapSubscriber<R> implements SubscriberAsStage<PooledByteBufferHolde
             LOG.log(DEBUG, "Received bytes although I'm done.");
             return;
         }
-        
         if (buf.hasArray()) {
             sink.write(buf.array(), buf.arrayOffset(), buf.remaining());
+            buf.position(buf.limit());
         } else {
             while (buf.hasRemaining()) {
                 sink.write(buf.get());

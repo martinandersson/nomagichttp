@@ -23,7 +23,7 @@ import static java.lang.ThreadLocal.withInitial;
  * to how many other actions is sitting in the queue. This comes with a
  * performance improvement since recursive actions impose virtually no overhead
  * at all and co-dependent actions will not appear to be out of order (discussed
- * monetarily). It may however produce a {@code StackOverflowError}.<p>
+ * momentarily). It may however produce a {@code StackOverflowError}.<p>
  * 
  * If {@code mayRecurse} is {@code false} then all actions will be scheduled for
  * the future no matter which thread is calling in; this stops recursion from

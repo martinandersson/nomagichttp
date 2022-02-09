@@ -15,7 +15,7 @@ import alpha.nomagichttp.internal.DefaultServer;
 import alpha.nomagichttp.message.HttpVersionTooOldException;
 import alpha.nomagichttp.message.IllegalRequestBodyException;
 import alpha.nomagichttp.message.IllegalResponseBodyException;
-import alpha.nomagichttp.message.RequestHead;
+import alpha.nomagichttp.message.RawRequest;
 import alpha.nomagichttp.message.Response;
 import alpha.nomagichttp.message.Responses;
 import alpha.nomagichttp.route.Route;
@@ -50,12 +50,13 @@ import static java.net.InetAddress.getLoopbackAddress;
  * has been constructed, it needs to <i>{@code start()}</i> which will open the
  * server's listening port.<p>
  * 
- * Routes can be dynamically added and removed using {@link #add(Route)} and
- * {@link #remove(Route)}. A legal server variant is to not even have any routes
- * registered. The idea is that resources (what's "behind the route") can be
- * short-lived and serve very specific purposes, so their presence can
- * change. Example:
+ * Routes can be dynamically added and removed using {@link #add(Route)
+ * add(Route)} and {@link #remove(Route) remove(Route)}. A legal server variant
+ * is to not even have any routes registered. The idea is that resources (what's
+ * "behind the route") can be short-lived and serve very specific purposes, so
+ * their presence can change.<p>
  * 
+ * Example:
  * <pre>
  *   HttpServer.{@link #create(ErrorHandler...)
  *     create}().{@link #add(String, RequestHandler, RequestHandler...)
@@ -84,34 +85,7 @@ import static java.net.InetAddress.getLoopbackAddress;
  * complete support for HTTP/1.0 and 1.1 is the first milestone, yet to be done
  * (see POA.md in repository). HTTP/2 will be implemented thereafter. HTTP
  * clients older than HTTP/1.0 is rejected (the exchange will crash with a
- * {@link HttpVersionTooOldException}.
- * 
- * <h2>HTTP message semantics</h2>
- * 
- * Only a very few message variants are specified to <i>not</i> have a body and
- * will be rejected by the server if they do ({@link
- * IllegalRequestBodyException}, {@link IllegalResponseBodyException}). These
- * variants <i>must</i> be rejected since including a body would have likely
- * killed the protocol.<p>
- * 
- * For all other variants of requests and responses, the body is optional and
- * the server does not reject the message based on the presence of a body. This
- * is mostly true for all other message variants as well; the server does not
- * have an opinionated view unless an opinionated view is warranted. The request
- * handler is mostly in control over how it interprets the request message and
- * what response it returns with no interference.<p>
- * 
- * For example, it might not be common but it <i>is</i>
- * allowed for {@link HttpConstants.Method#GET GET} requests (
- * <a href="https://tools.ietf.org/html/rfc7231#section-4.3.1">RFC 7231 §4.3.1</a>
- * ) to have a body and for {@link HttpConstants.Method#POST POST} requests to
- * not have a body (
- * <a href="https://tools.ietf.org/html/rfc7230#section-3.3.2">RFC 7230 §3.3.2</a>
- * ). Similarly, the {@link HttpConstants.StatusCode#TWO_HUNDRED_ONE 201
- * (Created)} response often do have a body which "typically describes and links
- * to the resource(s) created" (
- * <a href="https://tools.ietf.org/html/rfc7231#section-6.3.2">RFC 7231 §6.3.2</a>
- * ), but it's not required to. And so the list goes on.
+ * {@link HttpVersionTooOldException}).
  * 
  * <h2>Thread Safety and Threading Model</h2>
  * 
@@ -121,9 +95,9 @@ import static java.net.InetAddress.getLoopbackAddress;
  * 
  * Life-cycle methods {@code start} and {@code stop} may block temporarily.<p>
  * 
- * The HttpServer API also functions as a route registry, to which we {@code
- * add} and {@code remove} routes. These methods are highly concurrent but may
- * impose minuscule blocks at the discretion of the implementation. Most
+ * The HttpServer API also functions as a route registry, to which one {@code
+ * add} and {@code remove} routes. Modifying operations are highly concurrent
+ * but may impose minuscule blocks at the discretion of the implementation. Most
  * importantly, looking up a route - as is done on every inbound request - never
  * blocks and features great performance no matter the size of the registry.<p>
  * 
@@ -144,7 +118,7 @@ import static java.net.InetAddress.getLoopbackAddress;
  * 
  * This is bad:
  * <pre>
- *   RequestHandler h = GET().{@link RequestHandler.Builder#accept(RequestHandler.Logic)} 
+ *   RequestHandler h = GET().{@link RequestHandler.Builder#accept(RequestHandler.Logic)
  *         accept}((request, channel) -{@literal >} {
  *       String data = database.fetch("SELECT * FROM Something"); // {@literal <}-- blocks!
  *       Response resp = {@link Responses}.text(data);
@@ -155,7 +129,6 @@ import static java.net.InetAddress.getLoopbackAddress;
  * 
  * Instead, do this:
  * <pre>
- * 
  *   RequestHandler h = GET().accept((request, channel) -{@literal >} {
  *       CompletionStage{@literal <}String{@literal >} data = database.fetchAsync("SELECT * FROM Something");
  *       CompletionStage{@literal <}Response{@literal >} resp = data.thenApply(Responses::text);
@@ -165,14 +138,40 @@ import static java.net.InetAddress.getLoopbackAddress;
  * 
  * The problem is <i>not</i> synchronously producing a response <i>if</i> one
  * can be produced without blocking.
- * 
  * <pre>
- * 
  *   RequestHandler h = GET().accept((request, channel) -{@literal >} {
  *       Response resp = text(String.join(" ", "Short-lived", "CPU-bound work", "is fine!"));
  *       channel.write(resp);
  *   });
  * </pre>
+ * 
+ * <h2>HTTP message semantics</h2>
+ * 
+ * Only a very few message variants are specified to <i>not</i> have a body and
+ * will be rejected by the server if they do ({@link
+ * IllegalRequestBodyException}, {@link IllegalResponseBodyException}). These
+ * variants <i>must</i> be rejected since including a body would have likely
+ * killed the protocol.<p>
+ * 
+ * For all other variants of requests and responses, the body is optional and
+ * the server does not reject the message based on the presence (or absence) of
+ * a body. This is mostly true for all other message variants as well; the
+ * server does not have an opinionated view unless an opinionated view is
+ * warranted. The request handler is mostly in control over how it interprets
+ * the request message and what response it returns with no interference from
+ * the server.<p>
+ * 
+ * For example, it might not be common but it <i>is</i>
+ * allowed for {@link HttpConstants.Method#GET GET} requests (
+ * <a href="https://tools.ietf.org/html/rfc7231#section-4.3.1">RFC 7231 §4.3.1</a>
+ * ) to have a body and for {@link HttpConstants.Method#POST POST} requests to
+ * not have a body (
+ * <a href="https://tools.ietf.org/html/rfc7230#section-3.3.2">RFC 7230 §3.3.2</a>
+ * ). Similarly, the {@link HttpConstants.StatusCode#TWO_HUNDRED_ONE 201
+ * (Created)} response often do have a body which "typically describes and links
+ * to the resource(s) created" (
+ * <a href="https://tools.ietf.org/html/rfc7231#section-6.3.2">RFC 7231 §6.3.2</a>
+ * ), but it's not required to. And so the list goes on.
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  * 
@@ -347,7 +346,8 @@ public interface HttpServer extends RouteRegistry, ActionRegistry
      * Upon failure to close the server's listening port, the stage will
      * complete exceptionally with an {@code IOException}.<p>
      * 
-     * The returned stage can not be used to abort the shutdown.<p>
+     * The returned stage may be a copy. It can not be cast to a {@code
+     * CompletableFuture} and then used to abort the shutdown.<p>
      * 
      * The returned stage represents uniquely the invocation of this method.
      * This has a few noteworthy consequences.<p>
@@ -460,8 +460,8 @@ public interface HttpServer extends RouteRegistry, ActionRegistry
      *   </tr>
      *   <tr>
      *     <th scope="row"> {@link RequestHeadReceived} </th>
-     *     <td> {@link RequestHead} </td>
-     *     <td> {@code null} </td>
+     *     <td> {@link RawRequest.Head} </td>
+     *     <td> {@link RequestHeadReceived.Stats} </td>
      *   </tr>
      *   <tr>
      *     <th scope="row"> {@link ResponseSent} </th>

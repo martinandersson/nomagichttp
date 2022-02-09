@@ -1,33 +1,33 @@
 package alpha.nomagichttp.event;
 
 /**
- * A container of elapsed time and a byte count of a byte-processing task.
+ * A container of elapsed time and a count of bytes processed.
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  */
 public abstract class AbstractByteCountedStats extends AbstractStats
 {
-    private final long bytes;
+    private final long byteCount;
     
     /**
      * Constructs this object.
      * 
      * @param start {@link System#nanoTime()} on start
      * @param stop  {@link System#nanoTime()} on stop
-     * @param bytes processed
+     * @param byteCount processed
      */
-    public AbstractByteCountedStats(long start, long stop, long bytes) {
+    public AbstractByteCountedStats(long start, long stop, long byteCount) {
         super(start, stop);
-        this.bytes = bytes;
+        this.byteCount = byteCount;
     }
     
     /**
      * Returns the number of bytes processed.
      * 
-     * @return the number of bytes processed
+     * @return see JavaDoc
      */
-    public final long bytes() {
-        return bytes;
+    public final long byteCount() {
+        return byteCount;
     }
     
     private int hash;
@@ -38,7 +38,7 @@ public abstract class AbstractByteCountedStats extends AbstractStats
         // Copy-paste from String.hashCode()
         int h = hash;
         if (h == 0 && !hashIsZero) {
-            h = Long.hashCode(bytes) + super.hashCode();
+            h = Long.hashCode(byteCount) + super.hashCode();
             if (h == 0) {
                 hashIsZero = true;
             } else {
@@ -58,7 +58,7 @@ public abstract class AbstractByteCountedStats extends AbstractStats
             return false;
         }
         var other = (AbstractByteCountedStats) obj;
-        return this.bytes == other.bytes &&
+        return this.byteCount == other.byteCount &&
                this.nanoTimeOnStart() == other.nanoTimeOnStart() &&
                this.nanoTimeOnStop()  == other.nanoTimeOnStop();
     }

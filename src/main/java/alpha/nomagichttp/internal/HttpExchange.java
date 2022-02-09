@@ -4,15 +4,16 @@ import alpha.nomagichttp.Config;
 import alpha.nomagichttp.HttpConstants;
 import alpha.nomagichttp.HttpConstants.Version;
 import alpha.nomagichttp.HttpServer;
+import alpha.nomagichttp.event.RequestHeadReceived;
 import alpha.nomagichttp.handler.ClientChannel;
 import alpha.nomagichttp.handler.ErrorHandler;
 import alpha.nomagichttp.internal.ResponsePipeline.Command;
+import alpha.nomagichttp.message.DefaultContentHeaders;
 import alpha.nomagichttp.message.HttpVersionTooNewException;
 import alpha.nomagichttp.message.HttpVersionTooOldException;
 import alpha.nomagichttp.message.IllegalRequestBodyException;
+import alpha.nomagichttp.message.RawRequest;
 import alpha.nomagichttp.message.Request;
-import alpha.nomagichttp.message.RequestHead;
-import alpha.nomagichttp.message.RequestHeadTimeoutException;
 import alpha.nomagichttp.message.Response;
 import alpha.nomagichttp.util.SerialExecutor;
 
@@ -26,21 +27,26 @@ import java.util.concurrent.CompletionStage;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.BiConsumer;
 
-import static alpha.nomagichttp.HttpConstants.HeaderKey.CONNECTION;
-import static alpha.nomagichttp.HttpConstants.HeaderKey.EXPECT;
+import static alpha.nomagichttp.HttpConstants.HeaderName.CONNECTION;
+import static alpha.nomagichttp.HttpConstants.HeaderName.EXPECT;
 import static alpha.nomagichttp.HttpConstants.Method.TRACE;
 import static alpha.nomagichttp.HttpConstants.Version.HTTP_1_0;
 import static alpha.nomagichttp.HttpConstants.Version.HTTP_1_1;
 import static alpha.nomagichttp.handler.ErrorHandler.DEFAULT;
 import static alpha.nomagichttp.internal.InvocationChain.ABORTED;
+import static alpha.nomagichttp.internal.RequestBody.emptyBody;
+import static alpha.nomagichttp.internal.RequestBody.of;
 import static alpha.nomagichttp.internal.ResponsePipeline.Error;
 import static alpha.nomagichttp.internal.ResponsePipeline.Success;
+import static alpha.nomagichttp.internal.SubscriptionMonitoringOp.Reason.UPSTREAM_ERROR_NOT_DELIVERED;
 import static alpha.nomagichttp.util.IOExceptions.isCausedByBrokenInputStream;
 import static alpha.nomagichttp.util.IOExceptions.isCausedByBrokenOutputStream;
 import static java.lang.Integer.parseInt;
+import static java.lang.Math.addExact;
 import static java.lang.System.Logger.Level.DEBUG;
 import static java.lang.System.Logger.Level.ERROR;
 import static java.lang.System.Logger.Level.WARNING;
+import static java.lang.System.nanoTime;
 import static java.util.Objects.requireNonNull;
 
 /**
@@ -60,7 +66,6 @@ import static java.util.Objects.requireNonNull;
  *   <li>Has package-private accessors for the request head, HTTP version and request skeleton</li>
  *   <li>May pre-emptively schedule a 100 (Continue) depending on configuration</li>
  *   <li>Shuts down read stream if request has header "Connection: close"</li>
- *   <li>Shuts down read stream on {@link RequestHeadTimeoutException}</li>
  * </ul>
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
@@ -74,7 +79,7 @@ final class HttpExchange
      * {@link ResponsePipeline} whenever a request object has been created. The
      * first (and only) attachment is the request object created. The result
      * performed by this class is an update of the HTTP exchange state, so that
-     * the {@link ErrorHandler} can receive the most recent instance.
+     * the {@link ErrorHandler} can observe the most recent instance.
      */
     enum RequestCreated { INSTANCE }
     
@@ -97,7 +102,7 @@ final class HttpExchange
      * new Thread.start() for each task.
      */
     
-    private RequestHead head;
+    private RawRequest.Head head;
     private Version version;
     private SkeletonRequest reqThin;
     private Request reqFat;
@@ -118,9 +123,11 @@ final class HttpExchange
         this.chApi    = chApi;
         this.chain    = new InvocationChain(actions, routes, chApi);
         this.pipe     = new ResponsePipeline(this, chApi, actions);
-        this.cntDown  = new AtomicInteger(2); // <-- invocation chain + final response, then prepareForNewExchange()
+        // Request/invocation chain + final response, then prepareForNewExchange()
+        this.cntDown  = new AtomicInteger(2);
         this.result   = new CompletableFuture<>();
-        this.version  = HTTP_1_1; // <-- default until updated
+        // Default until updated
+        this.version  = HTTP_1_1;
     }
     
     /**
@@ -128,7 +135,7 @@ final class HttpExchange
      * 
      * @return the parsed request head, if available, otherwise {@code null}
      */
-    RequestHead getRequestHead() {
+    RawRequest.Head getRequestHead() {
         return head;
     }
     
@@ -182,17 +189,21 @@ final class HttpExchange
     private void begin0() {
         setupPipeline();
         subscribeToRequestObjects();
-        parseRequestHead()
-           .thenAccept(this::initialize)
-           .thenRun(() -> { if (config.immediatelyContinueExpect100())
-               tryRespond100Continue(); })
-           .thenCompose(nil -> chain.execute(reqThin, version))
-           .whenComplete((nil, thr) -> handleChainCompletion(thr));
+        parseRequestLine()
+            .thenCompose(this::parseRequestHeaders)
+            .thenAccept(this::initialize)
+            .thenRun(() -> { if (config.immediatelyContinueExpect100())
+                tryRespond100Continue(); })
+            .thenCompose(nil -> chain.execute(reqThin, version))
+            .whenComplete((nil, thr) -> handleReqChainCompletion(thr));
     }
     
     private void setupPipeline() {
-        pipe.on(Success.class, (ev, rsp) -> handleWriteSuccess((Response) rsp));
-        pipe.on(Error.class, (ev, thr) -> handleError((Throwable) thr));
+        pipe.on(Success.class, (ev, rsp) -> handlePipeWriteSuccess((Response) rsp));
+        pipe.on(Error.class, (ev, thr) -> {
+            LOG.log(DEBUG, "Response pipeline failed. Handling the error.");
+            handleError((Throwable) thr);
+        });
         chApi.usePipeline(pipe);
     }
     
@@ -202,60 +213,64 @@ final class HttpExchange
         pipe.on(RequestCreated.class, save);
     }
     
-    private CompletionStage<RequestHead> parseRequestHead() {
-        RequestHeadSubscriber rhs = new RequestHeadSubscriber(server, chApi);
-        
-        var to = new TimeoutOp.Flow<>(false, true, chIn, config.timeoutIdleConnection(), () -> {
-            if (LOG.isLoggable(DEBUG) && chApi.isOpenForReading()) {
-                LOG.log(DEBUG, "Request head timed out, shutting down child channel's read stream.");
-            }
-            // No new HTTP exchange
-            chApi.shutdownInputSafe();
-            return new RequestHeadTimeoutException();
-        });
-        to.subscribe(rhs);
-        to.start();
-        
-        return rhs.asCompletionStage();
+    private CompletionStage<RawRequest.Line> parseRequestLine() {
+        var rls = new RequestLineSubscriber(config.maxRequestHeadSize(), chApi);
+        chIn.subscribe(rls);
+        return rls.result();
     }
     
-    private void initialize(RequestHead h) {
+    private CompletionStage<RawRequest.Head> parseRequestHeaders(RawRequest.Line l) {
+        var hs = HeadersSubscriber.forRequestHeaders(
+                l.length(), config.maxRequestHeadSize(), chApi);
+        chIn.subscribe(hs);
+        return hs.result().thenApply(headers -> {
+            var h = new RawRequest.Head(l, headers);
+            server.events().dispatchLazy(RequestHeadReceived.INSTANCE, () -> h, () ->
+                    new RequestHeadReceived.Stats(
+                            l.nanoTimeOnStart(),
+                            nanoTime(),
+                            addExact(l.length(), hs.read())));
+            return h;
+        });
+    }
+    
+    private void initialize(RawRequest.Head h) {
         head = h;
         
-        version = parseHttpVersion(h);
+        version = parseHttpVersion(h.line().httpVersion());
         if (version == HTTP_1_0 && config.rejectClientsUsingHTTP1_0()) {
-            throw new HttpVersionTooOldException(h.httpVersion(), "HTTP/1.1");
+            throw new HttpVersionTooOldException(h.line().httpVersion(), "HTTP/1.1");
         }
         
         reqThin = new SkeletonRequest(h,
-                SkeletonRequestTarget.parse(h.target()),
+                SkeletonRequestTarget.parse(h.line().target()),
                 monitorBody(createBody(h)),
                 new DefaultAttributes());
         
         validateRequest();
     }
     
-    private static Version parseHttpVersion(RequestHead h) {
+    private static Version parseHttpVersion(String httpVersion) {
         final Version v;
         
         try {
-            v = Version.parse(h.httpVersion());
+            v = Version.parse(httpVersion);
         } catch (IllegalArgumentException e) {
             String[] comp = e.getMessage().split(":");
             if (comp.length == 1) {
                 // No literal for minor
-                requireHTTP1(parseInt(comp[0]), h.httpVersion(), "HTTP/1.1"); // for now
+                requireHTTP1(parseInt(comp[0]), httpVersion, "HTTP/1.1"); // for now
                 throw new AssertionError(
                         "String \"HTTP/<single digit>\" should have failed with parse exception (missing minor).");
             } else {
                 // No literal for major + minor (i.e., version older than HTTP/0.9)
                 assert comp.length == 2;
                 assert parseInt(comp[0]) <= 0;
-                throw new HttpVersionTooOldException(h.httpVersion(), "HTTP/1.1");
+                throw new HttpVersionTooOldException(httpVersion, "HTTP/1.1");
             }
         }
         
-        requireHTTP1(v.major(), h.httpVersion(), "HTTP/1.1");
+        requireHTTP1(v.major(), httpVersion, "HTTP/1.1");
         return v;
     }
     
@@ -268,73 +283,112 @@ final class HttpExchange
         }
     }
     
-    private RequestBody createBody(RequestHead h) {
-        return RequestBody.of(h.headers(), chIn, chApi,
-                config.timeoutIdleConnection(),
+    private RequestBody createBody(RawRequest.Head h) {
+        return of((DefaultContentHeaders) h.headers(), chIn, chApi,
+                config.maxRequestTrailersSize(),
                 this::tryRespond100Continue);
     }
     
-    private RequestBody monitorBody(RequestBody b) {
-        var mon = b.subscriptionMonitor();
-        mon.asCompletionStage().whenComplete((nil, thr) -> {
+    private RequestBody monitorBody(RequestBody rb) {
+        rb.whenComplete((res, thr) -> {
             // Note, an empty body is immediately completed normally
             pipe.add(Command.INIT_RESPONSE_TIMER);
-            if (thr != null && !mon.wasErrorDeliveredToDownstream()) {
+            if (res.reason() == UPSTREAM_ERROR_NOT_DELIVERED) {
                 // Then we need to deal with it
-                handleError(thr);
+                LOG.log(DEBUG, """
+                    Body processing finished, but upstream error was not \
+                    delivered. Handling the error.""");
+                assert res.error().isPresent();
+                handleError(res.error().get());
+                // Note, we could also throw in a check for DOWNSTREAM_FAILED.
+                // But if we do, that error could end up being handled twice coz
+                // the same exception may also complete exceptionally the
+                // invocation chain. Not that handling the same error twice
+                // would have a devastating effect, but it would clearly be
+                // weird for anyone noticing it, and, it makes our test cases
+                // less deterministic and hard to write. Further, it has
+                // clearly been noted in the JavaDoc of Request.Body that the
+                // subscriber should not throw an exception.
+            } else {
+                LOG.log(DEBUG, () -> "Body processing finished (" + res.reason() + ")");
+                // If <thr> is not null, trailers completed exceptionally, and
+                // there is no guarantee that the application has even accessed
+                // the trailer stage. So, not dealing with <thr> here means the
+                // exception could theoretically not be handled.
+                //    There's no easy way to provide an error-handling
+                // guarantee. We can not know for sure what the application will
+                // do in the future. Any imposed "magic" here may instead end up
+                // preempting the application's planed final response causing it
+                // to be ignored.
+                //    An exception lost ought to be an extremely rare event. It
+                // can safely be assumed that any endpoint receiving trailers
+                // will also arrange for them to be consumed and consequently be
+                // in charge of translating the exceptional outcome.
+                //     Nor is this really a problem. The application must at
+                // some point produce a final response, or else face a timeout.
+                // And that is good enough. Logging it here means it'll never be
+                // completely lost.
+                if (thr != null) {
+                    LOG.log(WARNING, () ->
+                        "Request trailers finished exceptionally: " +
+                        unpackCompletionException(thr));
+                }
             }
         });
-        return b;
+        return rb;
     }
     
     private void validateRequest() {
         // Is NOT suitable as a before-action; they are invoked only for valid requests
-        if (head.method().equals(TRACE) && !reqThin.body().isEmpty()) {
-            throw new IllegalRequestBodyException(head, reqThin.body(),
-                    "Body in a TRACE request.");
+        if (head.line().method().equals(TRACE) && !reqThin.body().isEmpty()) {
+            throw new IllegalRequestBodyException(
+                    head, reqThin.body(), "Body in a TRACE request.");
         }
     }
     
     private void tryRespond100Continue() {
         if (!getHttpVersion().isLessThan(HTTP_1_1) &&
-            head.headers().contain(EXPECT, "100-continue")) {
+            head.headers().contains(EXPECT, "100-continue")) {
             pipe.add(Command.TRY_SCHEDULE_100CONTINUE);
         }
     }
     
-    private void handleChainCompletion(Throwable thr) {
+    private void handleReqChainCompletion(Throwable thr) {
         final int v = cntDown.decrementAndGet();
         if (thr == null || thr.getCause() == ABORTED) {
             if (v == 0) {
-                LOG.log(DEBUG, "Invocation chain finished after final response. " +
-                               "Preparing for a new HTTP exchange.");
+                LOG.log(DEBUG, """
+                    Invocation chain finished normally after final response. \
+                    Preparing for a new HTTP exchange.""");
                 prepareForNewExchange();
             } // else normal finish = do nothing, final response will try to prepare next
         } else {
             if (v == 0) {
-                LOG.log(WARNING,
-                        "Invocation chain returned exceptionally but final response already sent. " +
-                        "This error is ignored. " +
-                        "Preparing for a new HTTP exchange.", thr);
+                LOG.log(WARNING, """
+                    Request chain returned exceptionally but final response \
+                    was already sent. Will ignore the error and prepare for a \
+                    new HTTP exchange.""", thr);
                 prepareForNewExchange();
             } else {
+                LOG.log(DEBUG,
+                    "Request chain finished exceptionally, handling the error.");
                 handleError(thr);
             }
         }
     }
     
-    private void handleWriteSuccess(Response rsp) {
-        if (rsp.isFinal()) {
-            if (cntDown.decrementAndGet() == 0) {
-                LOG.log(DEBUG, "Response sent is final. May prepare for a new HTTP exchange.");
-                prepareForNewExchange();
-            } else {
-                LOG.log(DEBUG,
-                    "Response sent is final but request's processing chain is still executing. " +
-                    "HTTP exchange remains active.");
-            }
+    private void handlePipeWriteSuccess(Response rsp) {
+        if (!rsp.isFinal()) {
+            return;
+        }
+        if (cntDown.decrementAndGet() == 0) {
+            LOG.log(DEBUG,
+                "Response sent is final. Preparing for a new HTTP exchange.");
+            prepareForNewExchange();
         } else {
-            LOG.log(DEBUG, "Response sent is not final. HTTP exchange remains active.");
+            LOG.log(DEBUG, """
+                Response sent is final but the invocation chain is \
+                still executing. Not preparing for a new exchange.""");
         }
     }
     
@@ -359,12 +413,15 @@ final class HttpExchange
         
         // Super early failure means no new HTTP exchange
         if (head == null) {
-            // e.g. RequestHeadParseException -> 400 (Bad Request)
+            // e.g. RequestLineParseException -> 400 (Bad Request)
             if (LOG.isLoggable(DEBUG)) {
                 if (chApi.isEverythingOpen()) {
-                    LOG.log(DEBUG, "No request head parsed. Closing child channel. (end of HTTP exchange)");
+                    LOG.log(DEBUG, """
+                        No request head parsed. Closing child channel. \
+                        (end of HTTP exchange)""");
                 } else {
-                    LOG.log(DEBUG, "No request head parsed. (end of HTTP exchange)");
+                    LOG.log(DEBUG,
+                        "No request head parsed. (end of HTTP exchange)");
                 }
             }
             chApi.closeSafe();
@@ -375,12 +432,11 @@ final class HttpExchange
         final var b = reqThin != null ? reqThin.body() :
                 // E.g. HttpVersionTooOldException -> 426 (Upgrade Required).
                 // So we fall back to a local dummy, just for the API.
-                RequestBody.of(head.headers(), chIn, chApi, null, null);
+                emptyBody(head.headers());
         
         b.discardIfNoSubscriber();
-        b.subscriptionMonitor().asCompletionStage().whenComplete((nil, thr) -> {
-            // Prepping new exchange = thr is ignored (already dealt with, hopefully lol)
-            if (head.headers().contain(CONNECTION, "close") && chApi.isOpenForReading()) {
+        b.whenComplete((ign,ored) -> {
+            if (head.headers().contains(CONNECTION, "close") && chApi.isOpenForReading()) {
                 LOG.log(DEBUG, "Request set \"Connection: close\", shutting down input.");
                 chApi.shutdownInputSafe();
             }
@@ -397,7 +453,7 @@ final class HttpExchange
     private void handleError(Throwable exc) {
         final Throwable unpacked = unpackCompletionException(exc);
         if (isTerminatingException(unpacked, chApi)) {
-            result.completeExceptionally(exc);
+            result.completeExceptionally(unpacked);
             return;
         }
         
@@ -448,7 +504,7 @@ final class HttpExchange
             return false;
         }
         
-        // Okay we've got an I/O error, but is it from our child?
+        // Okay we've got an I/O error (!), but is it from our child?
         if (chan.isEverythingOpen()) {
             // Nope. AnnounceToChannel closes the stream. Has to be from application code.
             // (we should probably examine stacktrace or mark our exceptions somehow)
@@ -544,7 +600,9 @@ final class HttpExchange
                     return;
                 } catch (Throwable next) {
                     if (t != next) {
-                        // New fail
+                        LOG.log(DEBUG, """
+                            Application error handler returned exceptionally. \
+                            Handling new error.""");
                         HttpExchange.this.handleError(next);
                         return;
                     } // else continue; Handler opted out

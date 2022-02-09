@@ -32,11 +32,12 @@ final class SerialTransferServiceTest
     @Test
     void synchronous_finish_is_immediate() {
         List<String> items = new ArrayList<>();
-        new SerialTransferService<String>(s -> {
-            assertTrue(s.finish());
-            return "Hello";
-        }, (selfIgnored, item) -> items.add(item))
-                .increaseDemand(2);
+        new SerialTransferService<String>(self -> {
+                assertTrue(self.finish());
+                return "Hello";
+            },
+            (selfIgnored, item) -> items.add(item))
+            .increaseDemand(2);
         
         assertThat(items).containsExactly("Hello");
     }

@@ -21,7 +21,7 @@ import java.util.function.BiFunction;
  * to propagate a correlation id from the request headers- or attributes,
  * falling back to no response modification if the value is not present:
  * <pre>
- *   import static alpha.nomagichttp.HttpConstants.HeaderKey.X_CORRELATION_ID;
+ *   import static alpha.nomagichttp.HttpConstants.HeaderName.X_CORRELATION_ID;
  *   ...
  *   
  *   HttpServer server = ...

@@ -9,8 +9,8 @@ import java.util.concurrent.Flow;
  * limit is reached, the operator will cancel the upstream and complete the
  * downstream.<p>
  * 
- * Is used by the server's request thread to make sure that the application's
- * body subscriber doesn't read beyond the message boundary.
+ * Is used by the server to make sure that the application's body subscriber
+ * doesn't read beyond a known message boundary.
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  */
@@ -28,7 +28,7 @@ final class LengthLimitedOp extends AbstractOp<DefaultPooledByteBufferHolder>
     /** {@code true} while we're waiting on a delivery from upstream. */
     private boolean waitingOnItem;
     
-    /** Collects and executes all state-modifying events serially (because coordinating all fields above was a nightmare). */
+    /** Collect and executes all state-modifying events serially (because coordinating all fields above was a nightmare). */
     private final SerialExecutor serially;
     
     LengthLimitedOp(long length, Flow.Publisher<DefaultPooledByteBufferHolder> upstream) {

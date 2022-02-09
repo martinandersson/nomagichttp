@@ -18,31 +18,42 @@ import static java.util.Objects.requireNonNull;
 final class DefaultConfig implements Config {
     private final Builder  builder;
     private final int      maxRequestHeadSize,
+                           maxRequestTrailersSize,
                            maxUnsuccessfulResponses,
                            maxErrorRecoveryAttempts,
                            threadPoolSize;
     private final boolean  rejectClientsUsingHTTP1_0,
                            ignoreRejectedInformational,
                            immediatelyContinueExpect100;
-    private final Duration timeoutIdleConnection;
+    private final Duration timeoutRead,
+                           timeoutResponse,
+                           timeoutWrite;
     private final boolean  implementMissingOptions;
     
     DefaultConfig(Builder b, DefaultBuilder.MutableState s) {
         builder                      = b;
         maxRequestHeadSize           = s.maxRequestHeadSize;
+        maxRequestTrailersSize       = s.maxRequestTrailersSize;
         maxUnsuccessfulResponses     = s.maxUnsuccessfulResponses;
         maxErrorRecoveryAttempts     = s.maxErrorRecoveryAttempts;
         threadPoolSize               = s.threadPoolSize;
         rejectClientsUsingHTTP1_0    = s.rejectClientsUsingHTTP1_0;
         ignoreRejectedInformational  = s.ignoreRejectedInformational;
         immediatelyContinueExpect100 = s.immediatelyContinueExpect100;
-        timeoutIdleConnection        = s.timeoutIdleConnection;
+        timeoutRead                  = s.timeoutRead;
+        timeoutResponse              = s.timeoutResponse;
+        timeoutWrite                 = s.timeoutWrite;
         implementMissingOptions      = s.implementMissingOptions;
     }
     
     @Override
     public int maxRequestHeadSize() {
         return maxRequestHeadSize;
+    }
+    
+    @Override
+    public int maxRequestTrailersSize() {
+        return maxRequestTrailersSize;
     }
     
     @Override
@@ -76,8 +87,18 @@ final class DefaultConfig implements Config {
     }
     
     @Override
-    public Duration timeoutIdleConnection() {
-        return timeoutIdleConnection;
+    public Duration timeoutRead() {
+        return timeoutRead;
+    }
+    
+    @Override
+    public Duration timeoutResponse() {
+        return timeoutResponse;
+    }
+    
+    @Override
+    public Duration timeoutWrite() {
+        return timeoutWrite;
     }
     
     @Override
@@ -98,13 +119,16 @@ final class DefaultConfig implements Config {
         
         static class MutableState {
             int      maxRequestHeadSize           = 8_000,
+                     maxRequestTrailersSize       = 8_000,
                      maxUnsuccessfulResponses     = 7,
                      maxErrorRecoveryAttempts     = 5,
                      threadPoolSize               = max(3, getRuntime().availableProcessors());
             boolean  rejectClientsUsingHTTP1_0    = false,
                      ignoreRejectedInformational  = true,
                      immediatelyContinueExpect100 = false;
-            Duration timeoutIdleConnection        = ofSeconds(90);
+            Duration timeoutRead                  = ofSeconds(90),
+                     timeoutResponse              = timeoutRead,
+                     timeoutWrite                 = timeoutRead;
             boolean  implementMissingOptions      = true;
         }
         
@@ -152,9 +176,21 @@ final class DefaultConfig implements Config {
         }
         
         @Override
-        public Builder timeoutIdleConnection(Duration newVal) {
+        public Builder timeoutRead(Duration newVal) {
             requireNonNull(newVal);
-            return new DefaultBuilder(this, s -> s.timeoutIdleConnection = newVal);
+            return new DefaultBuilder(this, s -> s.timeoutRead = newVal);
+        }
+        
+        @Override
+        public Builder timeoutResponse(Duration newVal) {
+            requireNonNull(newVal);
+            return new DefaultBuilder(this, s -> s.timeoutResponse = newVal);
+        }
+        
+        @Override
+        public Builder timeoutWrite(Duration newVal) {
+            requireNonNull(newVal);
+            return new DefaultBuilder(this, s -> s.timeoutWrite = newVal);
         }
         
         @Override

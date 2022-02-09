@@ -108,7 +108,7 @@ class ClientLifeCycleTest extends AbstractRealTest
     
     // Client immediately closes the channel,
     // is completely ignored (no error handler and no logging).
-    // See RequestHeadSubscriber.asCompletionStage() and ClientAbortedException
+    // See RequestLineSubscriber and ClientAbortedException
     @Test
     void clientClosesChannel_serverReceivedNoBytes() throws IOException, InterruptedException {
         client().openConnection().close();
@@ -138,6 +138,7 @@ class ClientLifeCycleTest extends AbstractRealTest
      * disconnect and subsequently ignores it without logging.
      * 
      * @see ErrorHandler
+     * @see ErrorTest#Special_requestBodySubscriberFails_onError() 
      */
     @Test
     void clientClosesChannel_serverReceivedPartialHead() throws IOException, InterruptedException {
@@ -240,7 +241,7 @@ class ClientLifeCycleTest extends AbstractRealTest
         // What can be said about the log before the end of the exchange is
         // dependent on the speed of the machine.
         // 
-        // On my Windows 10 machine (fast), a RequestHeadSubscriber subscribes
+        // On my Windows 10 machine (fast), a RequestLineSubscriber subscribes
         // to the channel and consequently the HttpExchange will observe the
         // broken pipe and ignore it, well, except for closing the child of
         // course. In this case, the log will only indicate a broken read. No
@@ -383,9 +384,11 @@ class ClientLifeCycleTest extends AbstractRealTest
     // Server shuts down output after response, can still read request
     @Test
     void intermittentStreamShutdown_serverOutput() throws IOException, InterruptedException {
-        BlockingQueue<String> received = new ArrayBlockingQueue<>(1);
+        var received = new ArrayBlockingQueue<String>(1);
         server().add("/", POST().accept((req, ch) -> {
+            // First install subscriber (client will linger with the body)
             req.body().toText().thenAccept(received::add);
+            // Write response and ask to close connection
             ch.write(noContent()
                     .toBuilder()
                     .header("Connection", "close")
@@ -393,6 +396,7 @@ class ClientLifeCycleTest extends AbstractRealTest
         }));
         Channel ch = client().openConnection();
         try (ch) {
+            // Until EOS! Server closes his write stream after response
             assertThat(client().writeReadTextUntilEOS(
                     "POST / HTTP/1.1"         + CRLF +
                     "Content-Length: 2"       + CRLF + CRLF))
@@ -400,8 +404,9 @@ class ClientLifeCycleTest extends AbstractRealTest
                     "HTTP/1.1 204 No Content" + CRLF +
                     "Connection: close"       + CRLF + CRLF);
             
-            // Send the rest of the request
+            // Client send the rest
             client().write("Hi");
+            // Server proactively close the child before we do
             logRecorder().assertAwaitChildClose();
         }
         
@@ -410,7 +415,7 @@ class ClientLifeCycleTest extends AbstractRealTest
     
     // Server shuts down input after request, can still write response
     @Test
-    void intermittentStreamShutdown_serverInput() throws IOException {
+    void intermittentStreamShutdown_serverInput() throws IOException, InterruptedException {
         server().add("/", GET().accept((req, ch) -> {
             ch.shutdownInputSafe();
             ch.write(noContent());
@@ -420,5 +425,15 @@ class ClientLifeCycleTest extends AbstractRealTest
             .isEqualTo(
                 "HTTP/1.1 204 No Content" + CRLF +
                 "Connection: close"       + CRLF + CRLF);
+        
+        assertThatNoWarningOrErrorIsLogged();
+        
+        // We saw the effect already; "Connection: close" (this asserts why)
+        logRecorder().assertAwait(DEBUG, """
+            Connection-close flag propagates from request or current \
+            half-closed state of channel.""");
+        
+        // Should be no error on any level
+        logRecorder().assertThatNoErrorWasLogged();
     }
 }

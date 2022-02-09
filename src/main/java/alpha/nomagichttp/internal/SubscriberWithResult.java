@@ -7,8 +7,7 @@ import java.util.concurrent.Flow;
 import static java.util.Objects.requireNonNull;
 
 /**
- * A single-use subscriber that processes items into an end-result retrievable
- * using {@link #asCompletionStage()}.<p>
+ * A single-use subscriber that processes items into a {@link #result()}.<p>
  * 
  * If the subscriber is used more than once, it will throw an {@code
  * IllegalStateException} on the thread calling {@code onSubscribe()}. There's
@@ -18,12 +17,14 @@ import static java.util.Objects.requireNonNull;
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  * 
- * @param <T> item type of subscriber
- * @param <R> result type of stage
+ * @param <T> subscribed item type
+ * @param <R> result type
  */
-interface SubscriberAsStage<T, R> extends Flow.Subscriber<T>
+interface SubscriberWithResult<T, R> extends Flow.Subscriber<T>
 {
     /**
+     * Returns the subscription's result.<p>
+     * 
      * The returned stage supports being cast to {@link
      * CompletableFuture}.<p>
      * 
@@ -31,9 +32,9 @@ interface SubscriberAsStage<T, R> extends Flow.Subscriber<T>
      * completing the future does not necessarily translate to a cancellation of
      * the underlying subscription.
      * 
-     * @return this as a completion stage
+     * @return see JavaDoc
      */
-    CompletionStage<R> asCompletionStage();
+    CompletionStage<R> result();
     
     /**
      * Returns {@code argument} if {@code field} is {@code null}.<p>
@@ -46,8 +47,10 @@ interface SubscriberAsStage<T, R> extends Flow.Subscriber<T>
      * 
      * @return {@code argument}
      * 
-     * @throws NullPointerException   if {@code argument} is {@code null}
-     * @throws IllegalStateException  if {@code field} is <strong>not</strong> {@code null}
+     * @throws NullPointerException
+     *             if {@code argument} is {@code null}
+     * @throws IllegalStateException
+     *             if {@code field} is <strong>not</strong> {@code null}
      */
     static Flow.Subscription validate(Flow.Subscription field, Flow.Subscription argument) {
         requireNonNull(argument);

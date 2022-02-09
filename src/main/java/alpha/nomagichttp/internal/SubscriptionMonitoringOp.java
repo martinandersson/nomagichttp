@@ -1,26 +1,30 @@
 package alpha.nomagichttp.internal;
 
+import alpha.nomagichttp.handler.EndOfStreamException;
 import alpha.nomagichttp.message.PooledByteBufferHolder;
+import alpha.nomagichttp.message.ReadTimeoutException;
 import alpha.nomagichttp.message.Request;
-import alpha.nomagichttp.message.RequestBodyTimeoutException;
 
 import java.util.Optional;
-import java.util.concurrent.CancellationException;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.Flow;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
-import static alpha.nomagichttp.util.Publishers.empty;
+import static alpha.nomagichttp.internal.SubscriptionMonitoringOp.Reason.DOWNSTREAM_CANCELLED;
+import static alpha.nomagichttp.internal.SubscriptionMonitoringOp.Reason.DOWNSTREAM_FAILED;
+import static alpha.nomagichttp.internal.SubscriptionMonitoringOp.Reason.UPSTREAM_COMPLETED;
+import static alpha.nomagichttp.internal.SubscriptionMonitoringOp.Reason.UPSTREAM_ERROR_DELIVERED;
+import static alpha.nomagichttp.internal.SubscriptionMonitoringOp.Reason.UPSTREAM_ERROR_NOT_DELIVERED;
+import static alpha.nomagichttp.internal.SubscriptionMonitoringOp.Reason.VOID;
 import static java.util.Optional.ofNullable;
-import static java.util.concurrent.CompletableFuture.completedFuture;
 
 /**
- * Exposes an API for monitoring the subscription.<p>
+ * Exposes an API for monitoring a downstream subscription.<p>
  * 
- * Is used by the {@link HttpExchange} to be notified of upstream errors and the
- * completion of the downstream's body processing at which point the next HTTP
+ * Is used by the {@link RequestBody} to in turn notify the HTTP exchange about
+ * the completion of the request body consumption at which point the next HTTP
  * exchange pair may commence.<p>
  * 
  * Unlike the default operator behavior, this operator subscribes eagerly to the
@@ -36,10 +40,84 @@ import static java.util.concurrent.CompletableFuture.completedFuture;
 final class SubscriptionMonitoringOp extends AbstractOp<PooledByteBufferHolder>
 {
     /**
-     * Construct a quote unquote "real" operator.
+     * A result with {@link Reason#VOID}.
+     */
+    public static final TerminationResult
+            NO_DOWNSTREAM = new TerminationResult(VOID);
+    
+    /**
+     * Holds the reason why the downstream subscription terminated and possibly
+     * also a throwable if it was an error that caused the subscription to
+     * terminate.<p>
+     * 
+     * Only {@code UPSTREAM_ERROR_DELIVERED}, {@code
+     * UPSTREAM_ERROR_NOT_DELIVERED} and {@code DOWNSTREAM_FAILED} will also
+     * contain a throwable.
+     */
+    public record TerminationResult(Reason reason, Optional<Throwable> error) {
+        private TerminationResult(Reason reason) {
+            this(reason, (Throwable) null);
+        }
+        private TerminationResult(Reason reason, Throwable error) {
+            this(reason, ofNullable(error));
+        }
+    }
+    
+    /**
+     * Why the downstream subscription terminated.
+     */
+    public enum Reason {
+        /**
+         * No downstream subscriber exists (empty request body).
+         */
+        VOID,
+        
+        /**
+         * Upstream completed normally.<p>
+         * 
+         * Note: {@link ChannelByteBufferPublisher} never closes normally, it
+         * always ends with {@link EndOfStreamException}. But the upstream is
+         * going to be either {@link LengthLimitedOp} or {@link
+         * HeadersSubscriber} (request trailers) which does complete normally.
+         */
+        UPSTREAM_COMPLETED,
+        
+        /**
+         * Upstream signalled {@code onError} and the error was delivered to an
+         * active subscriber.
+         */
+        UPSTREAM_ERROR_DELIVERED,
+        
+        /**
+         * Upstream signalled {@code onError} but the error was not delivered to
+         * a subscriber (none was active).<p>
+         * 
+         * Note that in the context of the request body, the {@link
+         * OnCancelDiscardOp} is the downstream subscriber, but it subscribes to
+         * the monitor lazily when his downstream subscriber has arrived (the
+         * application that is). Hence, the error not delivered was in effect
+         * not delivered to the application.
+         */
+        UPSTREAM_ERROR_NOT_DELIVERED,
+        
+        /**
+         * The subscriber's {@code onNext} method returned exceptionally.<p>
+         * 
+         * The exception is re-thrown, it is not suppressed.
+         */
+        DOWNSTREAM_FAILED,
+        
+        /**
+         * The subscriber cancelled the subscription.
+         */
+        DOWNSTREAM_CANCELLED;
+    }
+    
+    /**
+     * Construct a monitoring operator.
      * 
      * @param upstream the upstream publisher
-     * @return a new operator
+     * @return a monitoring operator
      */
     static SubscriptionMonitoringOp subscribeTo(
             Flow.Publisher<? extends PooledByteBufferHolder> upstream)
@@ -47,44 +125,29 @@ final class SubscriptionMonitoringOp extends AbstractOp<PooledByteBufferHolder>
         return new SubscriptionMonitoringOp(upstream);
     }
     
-    private static final SubscriptionMonitoringOp COMPLETED = new SubscriptionMonitoringOp();
-    
-    /**
-     * Returns an operator whose {@linkplain
-     * SubscriptionMonitoringOp#asCompletionStage() stage} is already completed
-     * normally and all other methods must not be used. Undefined application
-     * behavior if they are.
-     * 
-     * @return see JavaDoc
-     */
-    static SubscriptionMonitoringOp alreadyCompleted() {
-        return COMPLETED;
-    }
-    
     /** A count of bytebuffers in-flight. */
     private final AtomicInteger processing;
     
-    /** The subscription's terminal event. */
-    private final AtomicReference<TerminationCause> terminated;
+    /** The subscription's terminal event... */
+    private final AtomicReference<TerminationResult> terminated;
     
-    /** Stage completes when no items are in-flight and the subscription has terminated. */
-    private final CompletableFuture<Void> result;
+    /** ...is moved to the stage when no items are in-flight. */
+    private final CompletableFuture<TerminationResult> result;
     
     /** Evaluates condition and possibly completes the stage. */
     private void tryCompleteStage() {
-        final TerminationCause cause;
-        if ((cause = terminated.get()) == null || processing.get() > 0) {
+        final TerminationResult tr;
+        if ((tr = terminated.get()) == null || processing.get() > 0) {
             return;
         }
-        cause.error().ifPresentOrElse(result::completeExceptionally, () -> {
-            if (cause.wasCancelled()) {
-                boolean parameterHasNoEffect = true;
-                result.cancel(parameterHasNoEffect);
-            } else {
-                assert cause.wasCompleted();
-                result.complete(null);
-            }
-        });
+        result.complete(tr);
+    }
+    
+    /** {@link #tryCompleteStage()} with a result. */
+    private void tryCompleteStage(TerminationResult res) {
+        if (terminated.compareAndSet(null, res)) {
+            tryCompleteStage();
+        }
     }
     
     private SubscriptionMonitoringOp(
@@ -97,83 +160,40 @@ final class SubscriptionMonitoringOp extends AbstractOp<PooledByteBufferHolder>
         trySubscribeToUpstream();
     }
     
-    private SubscriptionMonitoringOp() {
-        super(empty());
-        processing = null;
-        terminated = null;
-        result = completedFuture(null);
-    }
-    
     /**
-     * Returns a stage that completes only when the subscription completes
-     * (through upstream completion/error or downstream cancellation) <i>and</i>
+     * Returns a stage that completes when the subscription completes <i>and</i>
      * all published bytebuffers have been released.<p>
      * 
-     * If the upstream signals an error, then this exception instance will be
-     * passed to the downstream subscriber and become the exception that
-     * completes the stage returned from this method.<p>
+     * The stage never completes exceptionally.
      * 
-     * If the downstream cancels the subscription, the returned stage completes
-     * exceptionally with a {@link CancellationException}.<p>
+     * <h4>Quirks that should be dealt with</h4>
      * 
-     * There is obviously a race between signals coming in from the upstream and
+     * There is a race between signals coming in from the upstream and
      * asynchronous signals coming in from the downstream. This means there are
      * no guarantees that A) the upstream publisher immediately stops publishing
      * items after downstream cancellation - so buffers may be processed even
      * after the stage completes - and B) the stage completes in exactly the
      * same manner as agreed by both the upstream and downstream.<p>
      * 
-     * In the context of the server's request thread, the cure for both A and B
-     * is for the server to sandwich the stage-operator between an upstream
-     * {@link LengthLimitedOp} and a downstream {@link OnCancelDiscardOp}. This
-     * will ensure no trailing bytebuffers beyond the message boundary will be
-     * published and it also completely takes out the cancellation signal from
-     * the equation; the returned stage will only complete normally or
-     * exceptionally as determined by the upstream.<p>
+     * In the context of the server's request thread, the cure for A is for the
+     * server to attach this operator to an upstream that only publishes
+     * bytebuffers one at a time, e.g. {@link LengthLimitedOp}. This ensures no
+     * trailing bytebuffers beyond the message boundary are published. The cure
+     * for B is for the server to attach a downstream {@link
+     * OnCancelDiscardOp} which will completely take out the cancellation signal
+     * from the equation.<p>
      * 
      * The stage may never complete if C) the application's subscriber never
      * arrives. The cure for C is for the server to have a point in time when he
      * gives up waiting (documented in {@link Request.Body} to be the point
      * when the final response-body subscription completes. Additionally, an
-     * upstream operator will end the subscription on {@link
-     * RequestBodyTimeoutException}.<p>
+     * upstream operator may end the subscription with a {@link
+     * ReadTimeoutException}.
      * 
-     * The terminating signal is passed through first, then the stage completes.
-     * The stage will complete in a finally-block, meaning that even if {@code
-     * onError}/{@code onComplete} or {@code cancel} returns exceptionally, the
-     * returned stage will still complete (the event is never lost).
-     * 
-     * @return a stage mimicking the life-cycle of the singleton subscription
+     * @return a stage mimicking the life-cycle of a singleton subscription
      */
-    CompletionStage<Void> asCompletionStage() {
+    CompletionStage<TerminationResult> asCompletionStage() {
         return result;
-    }
-    
-    private boolean deliveredError;
-    
-    /**
-     * Returns {@code true} if {@link #asCompletionStage()} has completed
-     * exceptionally with an error which was also delivered to the downstream
-     * subscriber, otherwise {@code false}.<p>
-     * 
-     * To be uber clear, a false return indicates that a subscriber was not
-     * subscribed when the error occurred, or the subscriber cancelled ({@link
-     * CancellationException}), or the stage completed normally.<p>
-     * 
-     * An upstream error (e.g. {@link RequestBodyTimeoutException}) not
-     * delivered to the downstream (i.e. application) must be resolved by the
-     * {@link HttpExchange} - otherwise the error (and the alternative response)
-     * would have been lost.<p>
-     * 
-     * This operation performs a non-volatile read of a state variable. It is
-     * assumed that the method is pulled only after the stage completes and that
-     * the asynchronous execution facility of the stage establishes a
-     * happens-before relationship (see comment in {@link HttpExchange}).
-     * 
-     * @return see JavaDoc
-     */
-    boolean wasErrorDeliveredToDownstream() {
-        return deliveredError;
     }
     
     @Override
@@ -184,80 +204,45 @@ final class SubscriptionMonitoringOp extends AbstractOp<PooledByteBufferHolder>
             }
         });
         processing.incrementAndGet();
-        super.fromUpstreamNext(item);
+        try {
+            super.fromUpstreamNext(item);
+        } catch (Throwable t) {
+            tryCompleteStage(new TerminationResult(DOWNSTREAM_FAILED, t));
+            throw t;
+        }
     }
     
     @Override
     protected void fromUpstreamError(Throwable t) {
-        alwaysTryComplete(
-                () -> {
-                    assert !deliveredError : "Expected only one terminating signal.";
-                    // In fact, the only reason we're using an atomic ref is
-                    // because of a possibly asynchronous bytebuffer release.
-                    // TODO: Replace CAS with volatile + more assert.
-                    deliveredError = signalError(t);
-                },
-                TerminationCause.ofError(t));
+        var reason = signalError(t) ?
+                UPSTREAM_ERROR_DELIVERED :
+                UPSTREAM_ERROR_NOT_DELIVERED;
+        tryCompleteStage(new TerminationResult(reason, t));
     }
+    
+    private static final TerminationResult COMPLETED
+            = new TerminationResult(UPSTREAM_COMPLETED);
+    private static final TerminationResult CANCELLED
+            = new TerminationResult(DOWNSTREAM_CANCELLED);
     
     @Override
     protected void fromUpstreamComplete() {
-        alwaysTryComplete(
-                super::fromUpstreamComplete,
-                TerminationCause.ofCompletion());
+        finallyTryCompleteStage(super::fromUpstreamComplete, COMPLETED);
     }
     
     @Override
     protected void fromDownstreamCancel() {
-        alwaysTryComplete(
-                super::fromDownstreamCancel,
-                TerminationCause.ofCancellation());
+        finallyTryCompleteStage(super::fromDownstreamCancel, CANCELLED);
     }
     
-    private void alwaysTryComplete(Runnable signal, TerminationCause cause) { // TODO: Rename to finallyTryComplete
-        boolean success = terminated.compareAndSet(null, cause);
+    private void finallyTryCompleteStage(Runnable signal, TerminationResult res) {
+        var success = terminated.compareAndSet(null, res);
         try {
             signal.run();
         } finally {
             if (success) {
                 tryCompleteStage();
             }
-        }
-    }
-    
-    private static class TerminationCause {
-        private static final TerminationCause
-                CANCELLED = new TerminationCause(null),
-                COMPLETED = new TerminationCause(null);
-        
-        private final Optional<Throwable> t;
-        
-        private TerminationCause(Throwable t) {
-            this.t = ofNullable(t);
-        }
-        
-        static TerminationCause ofCancellation() {
-            return CANCELLED;
-        }
-        
-        static TerminationCause ofError(Throwable t) {
-            return new TerminationCause(t);
-        }
-        
-        static TerminationCause ofCompletion() {
-            return COMPLETED;
-        }
-        
-        Optional<Throwable> error() {
-            return t;
-        }
-        
-        boolean wasCancelled() {
-            return this == CANCELLED;
-        }
-        
-        boolean wasCompleted() {
-            return this == COMPLETED;
         }
     }
 }

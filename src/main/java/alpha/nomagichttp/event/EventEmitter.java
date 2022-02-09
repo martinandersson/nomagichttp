@@ -1,7 +1,6 @@
 package alpha.nomagichttp.event;
 
 import alpha.nomagichttp.HttpServer;
-import alpha.nomagichttp.message.RequestHead;
 import alpha.nomagichttp.util.TriConsumer;
 
 import java.util.function.BiConsumer;
@@ -66,17 +65,13 @@ import java.util.function.Consumer;
  * events.<p>
  * 
  * Semantics concerning attachments are normally documented and defined by the
- * event type, and, normally always present or never present. For example, a
- * {@link RequestHeadReceived} event raised by the {@link HttpServer#events()
- * HttpServer} will always carry with it the {@link RequestHead} object as the
- * first and only attachment.<p>
+ * event type, and, normally always present or never present.<p>
  * 
  * However, the {@code EventEmitter} interface does not define any requirements
  * what so ever concerning the presence or type of the attachments. Technically,
  * an attachment can be given to the listener conditionally and/or independent
  * of the event type. Technically, attachments can even vary in the runtime type
- * of the given arguments - although, this would certainly be quite
- * confusing.<p>
+ * of the given arguments - although, this would certainly be confusing.<p>
  * 
  * The listener's functional type may accept none, one or two attachments,
  * independently of whether or not the event emitter actually has attachments to

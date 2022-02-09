@@ -1,10 +1,11 @@
 package alpha.nomagichttp.util;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.PrimitiveIterator;
+import java.util.function.Consumer;
+import java.util.function.IntPredicate;
+import java.util.stream.Stream;
 
 import static java.lang.Character.MIN_VALUE;
+import static java.util.Objects.requireNonNull;
 
 /**
  * String utilities.
@@ -18,41 +19,76 @@ public final class Strings
     }
     
     /**
-     * Split a string into an array of tokens.<p>
+     * Split a string into a returned stream.<p>
+     * 
+     * Works just as {@code String.split}, except this method never returns
+     * empty substrings.
+     * 
+     * @param str to split
+     * @param delimiter to split by
+     * 
+     * @return the substrings
+     * @throws NullPointerException if {@code str} is {@code null}
+     */
+    public static Stream<String> split(CharSequence str, char delimiter) {
+        var b = Stream.<String>builder();
+        splitToSink(str, delimiter, b);
+        return b.build();
+    }
+    
+    /**
+     * Split a string into a given sink.<p>
+     * 
+     * Works just as {@code String.split}, except this method never returns
+     * empty substrings.
+     * 
+     * @param str to split
+     * @param delimiter to split by
+     * @param sink of substrings
+     * 
+     * @throws NullPointerException
+     *             if {@code str} or {@code sink} is {@code null}
+     */
+    public static void splitToSink(
+            CharSequence str, char delimiter, Consumer<String> sink) {
+        split0(str, delimiter, c -> false, c -> false, sink);
+    }
+    
+    /**
+     * Split a string into a returned stream.<p>
      * 
      * Works just as {@code String.split}, except this method respects exclusion
      * zones within which, the delimiter will have no effect. Also, this method
-     * never returns empty tokens.<p>
+     * never returns empty substrings.<p>
      * 
      * For example, good to use when substrings may be quoted and no split
-     * should occur within the quoted parts.<p>
+     * should occur within the quoted parts.
      * 
-     * For example
      * <pre>
-     *   split("one.two", '.', '"') -> ["one", "two]
-     *   split("one.\"keep.this\"", '.', '"') -> ["one", ""keep.this""]
-     *   split("...", '.', '"') -> []
+     *   split("one.two", '.', '"') returns "one", "two"
+     *   split("one.\"keep.this\"", '.', '"') returns "one", ""keep.this""
+     *   split("...", '.', '"') returns an empty Stream
      * </pre>
      * 
-     * Note how the quoted part is kept intact. The call site would likely want
-     * to de-quote the quoted part.<p>
+     * Note how the quoted part is kept intact. It can be unquoted using {@link
+     * #unquote(String)}<p>
      * 
      * An immediately preceding backslash character is interpreted as escaping
      * the delimiter, but only within exclusion zones. Just as with the
      * delimiter character, the escaping backslash too is kept.
      * <pre>
-     *   split("one.\"t\\\"w.o\"", '.', '"') -> ["one", ""t\"w.o""]
+     *   split("one.\"t\\\"w.o\"", '.', '"') returns "one", ""t\"w.o""
      * </pre>
      * 
      * Outside an exclusion zone, the backslash character is just like any other
      * character.
      * <pre>
-     *   split("one\\.two", '.', '"') -> ["one\", "two"]
+     *   split("one\\.two", '.', '"') returns "one\", "two"
      * </pre>
      * 
-     * @param str input to split
-     * @param delimiter char to split by...
-     * @param excludeBoundary ...except if found within this boundary
+     * @param str to split
+     * @param delimiter to split by (if not excluded)
+     * @param excludeBoundary defines the exclusion zone
      * 
      * @return the substrings
      * 
@@ -60,35 +96,74 @@ public final class Strings
      *            if {@code str} is {@code null}
      * 
      * @throws IllegalArgumentException
-     *             if {@code delimiter} and {@code excludeBoundary}
-     *             are the same char
+     *             if {@code delimiter} is the backslash character, or
+     *             if {@code delimiter} and {@code excludeBoundary} are the same
      * 
      * @see #unquote(String) 
      */
-    public static String[] split(CharSequence str, char delimiter, char excludeBoundary) {
+    public static Stream<String> split(
+            CharSequence str, char delimiter, char excludeBoundary) {
+        var b = Stream.<String>builder();
+        splitToSink(str, delimiter, excludeBoundary, b);
+        return b.build();
+    }
+    
+    /**
+     * Split a string into tokens put in a sink.<p>
+     * 
+     * Works just as {@link #split(CharSequence, char, char)}, except pushes all
+     * substrings to the given sink instead of a returned stream.
+     * 
+     * @param str to split
+     * @param delimiter to split by (if not excluded)
+     * @param excludeBoundary defines the exclusion zone
+     * @param sink of substrings
+     * 
+     * @throws NullPointerException
+     *            if {@code str} or {@code sink} is {@code null}
+     * 
+     * @throws IllegalArgumentException
+     *             if {@code delimiter} is the backslash character, or
+     *             if {@code delimiter} and {@code excludeBoundary} are the same
+     */
+    public static void splitToSink(
+            CharSequence str, char delimiter, char excludeBoundary,
+            Consumer<String> sink)
+    {
+        if (delimiter == '\\') {
+            throw new IllegalArgumentException(
+                    "Delimiter char can not be the escape char.");
+        }
         if (delimiter == excludeBoundary) {
             throw new IllegalArgumentException(
-                    "Delimiter char can not be same as exclude char.");
+                    "Delimiter char can not be the same as exclude char.");
         }
-        
-        PrimitiveIterator.OfInt chars = str.chars().iterator();
-        
+        split0(str, delimiter, c -> c == '\\', c -> c == excludeBoundary, sink);
+    }
+    
+    private static void split0(
+            CharSequence str, char delimiter,
+            IntPredicate escapeChar, IntPredicate excludeChar,
+            Consumer<String> sink)
+    {
+        requireNonNull(sink);
         StringBuilder tkn = null;
-        List<String> sink = null;
+        
+        final int len = str.length();
+        char prev = MIN_VALUE;
         boolean excluding = false;
         
-        char prev = MIN_VALUE;
-        while (chars.hasNext()) {
+        for (int i = 0; i < len; ++i) {
+            final char c = str.charAt(i);
             boolean split;
-            final char c = (char) chars.nextInt();
             
-            if (prev == '\\' && excluding) {
+            if (escapeChar.test(prev) && excluding) {
                 // Whatever c is, keep building current token
                 split = false;
             } else if (c == delimiter) {
                 // We split only if we're not excluding
                 split = !excluding;
-            } else if (c == excludeBoundary) {
+            } else if (excludeChar.test(c)) {
                 // Certainly not cause for split
                 split = false;
                 // But does toggle the current mode
@@ -101,14 +176,9 @@ public final class Strings
             prev = c;
             
             if (split) {
-                // Push what we had and begin new token
-                if (tkn != null) {
-                    if (sink == null) {
-                        sink = new ArrayList<>();
-                    }
-                    sink.add(tkn.toString());
-                    tkn = null;
-                }
+                // Done, begin new token
+                pushNullable(tkn, sink);
+                tkn = null;
             } else {
                 // Add c to current token
                 if (tkn == null) {
@@ -118,17 +188,16 @@ public final class Strings
             }
         }
         
-        if (tkn != null) {
-            if (sink == null) {
-                sink = new ArrayList<>();
-            }
-            sink.add(tkn.toString());
-        }
-        
-        return sink == null ? EMPTY : sink.toArray(String[]::new);
+        pushNullable(tkn, sink);
     }
     
-    private static final String[] EMPTY = {};
+    private static void pushNullable(StringBuilder sb, Consumer<String> sink) {
+        if (sb != null) {
+            var s = sb.toString();
+            assert !s.isEmpty();
+            sink.accept(s);
+        }
+    }
     
     /**
      * Unquote a quoted string.<p>

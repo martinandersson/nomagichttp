@@ -5,16 +5,16 @@ import alpha.nomagichttp.handler.ErrorHandler;
 import alpha.nomagichttp.handler.ResponseRejectedException;
 import alpha.nomagichttp.message.HttpVersionTooOldException;
 import alpha.nomagichttp.message.MaxRequestHeadSizeExceededException;
+import alpha.nomagichttp.message.MaxRequestTrailersSizeExceededException;
+import alpha.nomagichttp.message.ReadTimeoutException;
 import alpha.nomagichttp.message.Request;
-import alpha.nomagichttp.message.RequestBodyTimeoutException;
-import alpha.nomagichttp.message.RequestHeadTimeoutException;
+import alpha.nomagichttp.message.Response;
 import alpha.nomagichttp.message.ResponseTimeoutException;
 import alpha.nomagichttp.message.Responses;
 import alpha.nomagichttp.route.MethodNotAllowedException;
 import alpha.nomagichttp.route.Route;
 
 import java.time.Duration;
-import java.util.concurrent.Flow;
 
 /**
  * Server configuration.<p>
@@ -59,9 +59,22 @@ public interface Config
      * as well as
      * <a href="https://stackoverflow.com/a/8623061/1268003">common practice</a>.
      * 
-     * @return number of request head bytes processed before exception is thrown
+     * @return number of request head bytes processed before exception
      */
     int maxRequestHeadSize();
+    
+    /**
+     * Returns the max number of bytes processed while parsing request trailers
+     * before giving up.<p>
+     * 
+     * Once the limit has been exceeded, a {@link
+     * MaxRequestTrailersSizeExceededException} is thrown.<p>
+     * 
+     * The default implementation returns {@code 8_000}.
+     * 
+     * @return number of request trailer bytes processed before exception
+     */
+    int maxRequestTrailersSize();
     
     /**
      * Returns the max number of consecutive responses sent to a client of
@@ -160,13 +173,13 @@ public interface Config
      * 
      * The default implementation returns {@code false}.
      * 
-     * @return whether or not to reject HTTP/1.0 clients
+     * @return whether to reject HTTP/1.0 clients
      */
     boolean rejectClientsUsingHTTP1_0();
     
     /**
      * Ignore rejected 1XX (Informational) responses when they fail to be sent
-     * to a HTTP/1.0 client.<p>
+     * to an HTTP/1.0 client.<p>
      * 
      * The default value is {@code true} and the application can safely write
      * 1XX (Informational) responses to the channel without concern for old
@@ -184,8 +197,8 @@ public interface Config
      * 
      * The default implementation returns {@code true}.
      * 
-     * @return whether or not to ignore failed 1XX (Informational) responses
-     *         sent to HTTP/1.0 clients
+     * @return whether to ignore failed 1XX (Informational) responses sent to
+     *         HTTP/1.0 clients
      */
     boolean ignoreRejectedInformational();
     
@@ -210,122 +223,111 @@ public interface Config
      * 
      * The default implementation returns {@code false}.
      * 
-     * @return whether or not to immediately respond a 100 (Continue)
-     *         interim response to a request with a {@code Expect: 100-continue} header
+     * @return whether to immediately respond a 100 (Continue) interim response
+     *         to a request with a {@code Expect: 100-continue} header
      * 
      * @see HttpConstants.StatusCode#ONE_HUNDRED
      */
     boolean immediatelyContinueExpect100();
     
     /**
-     * Returns the max duration allowed for idle connections, after which, the
-     * connection will begin closing.<p>
+     * Max duration allowed for a channel read operation to complete.<p>
      * 
-     * The "idling" is detected by different timers timing out on inactivity
-     * during different phases of the HTTP exchange; parsing a request head,
-     * processing a request body, waiting on a response from the application and
-     * finally writing a response to the underlying channel. The timeout
-     * duration for each timer is the value returned from this method and is
-     * polled at various points throughout the HTTP exchange.<p>
+     * On timeout, the underlying read-stream will shut down and then a {@link
+     * ReadTimeoutException} is thrown.<p>
      * 
-     * <strong>Request Timeout</strong><p>
+     * If the timeout occurs while a request head is expected or in-flight, then
+     * it'll be delivered to the error handler(s), the {@linkplain
+     * ErrorHandler#DEFAULT default} of which translates the exception to a
+     * {@linkplain Responses#requestTimeout() 408 (Request Timeout)}.<p>
      * 
-     * A timeout while a request head is expected or in-flight will cause the
-     * server to throw a {@link RequestHeadTimeoutException}, translated by the
-     * {@link ErrorHandler#DEFAULT default error handler} to a 408 (Request
-     * Timeout).<p>
+     * If the timeout occurs while there is an active request body subscriber,
+     * it'll be delivered to the subscriber's {@code onError} method. If the
+     * subscriber is the server's own discarding body subscriber, then the error
+     * will be delivered to the error handler(s). An application-installed body
+     * subscriber must deal with the timeout exception just as it needs to be
+     * prepared to deal with any other error passed to the subscriber. Failure
+     * to handle the exception will eventually result in a {@code
+     * ResponseTimeoutException} instead.<p>
      * 
-     * If a request body is expected, then another timer will start as soon as
-     * the request head parser terminates and ends when the request body
-     * subscription terminates. When the timer elapses, a {@link
-     * RequestBodyTimeoutException} is either thrown by the server or - if there
-     * is a body subscriber - delivered to the subscriber's {@link
-     * Flow.Subscriber#onError(Throwable) onError()} method. If it was thrown,
-     * or the subscriber is the server's own discarding body subscriber, then
-     * the error will pass through the error handler(s), the default of which
-     * translates the exception to a 408 (Request Timeout).<p>
-     * 
-     * An application-installed body subscriber must deal with the timeout
-     * exception (for example by responding {@link Responses#requestTimeout()}),
-     * just as the application needs to be prepared to deal with any other error
-     * passed to the body subscriber. Failure to deal with the exception, will
-     * likely and eventually result in a {@link ResponseTimeoutException}
-     * instead, as discussed in the next section.<p>
-     * 
-     * The request timers are not reset after each byte received on the wire.
-     * The timers are only reset on each bytebuffer observed through the
-     * processing chain. This means that an extremely slow client may cause a
-     * request timeout even though the connection is technically still making
-     * progress. Similarly, a request timeout may also happen because the
+     * The timer is only reset once a read-buffer has filled up and a new read
+     * operation is initiated. Therefore, an extremely slow client may cause a
+     * read timeout even though the connection is technically still making
+     * progress. Similarly, the timeout may also happen because the
      * application's body subscriber takes too long processing a bytebuffer. It
-     * can be argued that the purpose of the timeouts are not so much to protect
-     * against stale connections as they are to protect against HTTP exchanges
+     * can be argued that the purpose of the timeout is not so much to protect
+     * against a stale connection but rather to protect against HTTP exchanges
      * not making progress, whoever is at fault.<p>
      * 
-     * This coarse-grained resolution for timer reset is by design, as it
-     * improves greatly the server performance and also works as an automatic
-     * protection against slow clients hogging server connections.<p>
+     * The minimum acceptable transfer rate can be calculated. The default
+     * timeout duration is one and a half minute and the default server's buffer
+     * size is 16 384 bytes. This works out to a possible (dependent on request
+     * size, and so on) timeout for clients sending data on average equal to or
+     * slower than 1.456 kb/s (0.001456 Mbit/s) for one and a half minute. This
+     * calculated minimum rate is well within the transfer rate of cellular
+     * networks even older than 2G (10-15% of Cellular Digital Packet Data
+     * rate). But if the application's clients are expected to be on Mars, then
+     * perhaps the timeout ought to be increased.<p>
      * 
-     * The in-practice minimum acceptable transfer rate can be calculated. The
-     * default timeout duration is one and a half minute and the server's buffer
-     * size is 16 384 bytes. This works out to a <i>possible</i> (dependent on
-     * request size, and so on) timeout for clients sending data on average
-     * equal to or slower than 1.456 kb/s (0.001456 Mbit/s) for one and a half
-     * minute. This calculated minimum rate is well within the transfer rate of
-     * cellular networks even older than 2G (10-15% of Cellular Digital Packet
-     * Data rate). But if the application's clients are expected to be on Mars,
-     * then perhaps the timeout ought to be increased.<p>
+     * If the application does not expect more requests and wishes to maintain
+     * an outbound connection with the client used for interim responses
+     * stretched over a long time or any other type of uni-directional
+     * streaming, simply call {@link ClientChannel#shutdownInput()} which
+     * effectively stops the timer.
      * 
-     * <strong>Response Timeout</strong><p>
+     * @return read timeout duration (default is one and a half minute)
+     * @see #timeoutResponse()
+     */
+    Duration timeoutRead();
+    
+    /**
+     * Max duration allowed to await a response and response trailers.<p>
      * 
-     * Like the request timeout, different response timeouts are active at
-     * various stages of the HTTP exchange. Unlike the request timeout, there's
-     * only one exception type to be aware of: {@link ResponseTimeoutException}.
-     * The outcome of the exception is dependent on where the exception
-     * occurred.<p>
+     * Assuming that the write stream is still open when the timeout occurs, a
+     * {@link ResponseTimeoutException} will be delivered to the error
+     * handler(s), the {@linkplain ErrorHandler#DEFAULT default} of which
+     * translates it to a {@linkplain Responses#serviceUnavailable() 503
+     * (Service Unavailable)}.<p>
      * 
-     * One response timer will timeout on failure of the application to deliver
-     * a response to the {@link ClientChannel}. This timer starts when the
-     * request timer(s) end or times out, and so the ClientChannel will never
-     * timeout while a request is still actively being processed. The timer is
-     * similarly active only while a response is <i>not</i> actively being
-     * transmitted on the wire. The timer is reset for each response given
-     * (after possible stage completion). A response producer that needs more
-     * time can reset the timer by sending a 1XX (Informational) interim
-     * response.<p>
+     * The timer is active while the client channel is expecting to receive a
+     * response and also while the server's response body subscriber has
+     * unfulfilled outstanding demand. The first time the timer is activated is
+     * when the request invocation chain completes and the last request body
+     * bytebuffer has been released, and so the response will never time out
+     * while a request is still actively being received or processed.<p>
      * 
-     * Assuming that the write stream is still open when the exception occurs,
-     * the ClientChannel's {@code ResponseTimeoutException} is delivered to the
-     * error handler(s), the default of which translates it to a 503 (Service
-     * Unavailable).<p>
+     * A response producer that needs more time can reset the timer by sending a
+     * 1XX (Informational) interim response or any other type of heartbeat.<p>
      * 
-     * A second response timer is active only when the server's response body
-     * subscriber has outstanding demand and the timer is reset on each item
-     * received. I.e. the application must not only ensure that response objects
-     * are given to the ClientChannel in a timely manner but also that message
-     * body bytes are emitted in a timely manner.<p>
+     * The timer is also active after the response body publisher has completed
+     * until {@link Response#trailers()}, if provided, completes.<p>
      * 
-     * Unlike the first timer discussed, a response body timeout will never be
-     * delivered to the error handler(s). The exception will immediately
-     * and forcefully close the channel.<p>
+     * The timer is not active while a response is being transmitted on the
+     * wire, this is covered by {@link #timeoutWrite()}.
+     * 
+     * @return response timeout duration (default is one and a half minute)
+     */
+    Duration timeoutResponse();
+    
+    /**
+     * Max duration allowed for a channel write operation to complete.<p>
      * 
      * Analogous to the built-in protection against slow clients when receiving
-     * data, a third response timer will cause the underlying channel write
-     * operation to abort for response body bytebuffers not fully sent before
-     * the duration elapses. This exception will also not be delivered to the
-     * error handler(s) and close the channel immediately. The application can
-     * choose to publish very large response body bytebuffers without worrying
-     * about a possible timeout due to the increased time it may take to send a
-     * large buffer. The server will internally slice the buffer if need be.<p>
+     * data, this timer will cause the underlying channel write operation to
+     * abort for response body bytebuffers not fully sent before the duration
+     * elapses. The exception will not be delivered to the error handler(s) and
+     * instead cause the channel to close immediately.<p>
      * 
-     * Any timeout exception not delivered to the exception handler(s) is
-     * logged.<p>
+     * The application can choose to publish very large response body
+     * bytebuffers without worrying about a possible timeout due to the
+     * increased time it may take to send a large buffer. The server will
+     * internally slice the buffer [if need be] to match the read-operation's
+     * buffer size.
      * 
-     * The default implementation returns {@code Duration.ofSeconds(90)}.
-     * 
-     * @return a max allowed duration for idle connections
+     * @return write timeout duration (default is one and a half minute)
+     * @see #timeoutRead()
      */
-    Duration timeoutIdleConnection();
+    Duration timeoutWrite();
     
     /**
      * If {@code true} (which is the default), any {@link Route} not
@@ -339,7 +341,7 @@ public interface Config
      * enabled - respond a <i>successful</i> 204 (No Content). Had this
      * configuration not been enabled, the response would have been a <i>client
      * error</i> 405 (Method Not Allowed). In both cases, the {@value
-     * HttpConstants.HeaderKey#ALLOW} header will be set and populated with all
+     * HttpConstants.HeaderName#ALLOW} header will be set and populated with all
      * the HTTP methods that are indeed implemented. So there's really no other
      * difference between the two outcomes, other than the status code.<p>
      * 
@@ -473,9 +475,35 @@ public interface Config
          * @param newVal new value
          * @return a new builder representing the new state
          * @throws NullPointerException if {@code newVal} is {@code null}
-         * @see Config#timeoutIdleConnection()
+         * @see Config#timeoutRead()
          */
-        Builder timeoutIdleConnection(Duration newVal);
+        Builder timeoutRead(Duration newVal);
+        
+        /**
+         * Set a new value.
+         * 
+         * The value can be any duration, although a too short (or negative)
+         * duration will effectively make the server useless.
+         * 
+         * @param newVal new value
+         * @return a new builder representing the new state
+         * @throws NullPointerException if {@code newVal} is {@code null}
+         * @see Config#timeoutResponse()
+         */
+        Builder timeoutResponse(Duration newVal);
+        
+        /**
+         * Set a new value.
+         * 
+         * The value can be any duration, although a too short (or negative)
+         * duration will effectively make the server useless.
+         * 
+         * @param newVal new value
+         * @return a new builder representing the new state
+         * @throws NullPointerException if {@code newVal} is {@code null}
+         * @see Config#timeoutWrite()
+         */
+        Builder timeoutWrite(Duration newVal);
         
         /**
          * Set a new value.

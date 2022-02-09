@@ -16,7 +16,7 @@ public final class TestRequests
     /**
      * Make a "GET / HTTP/1.1" request.
      * 
-     * @param additionalHeaders optional
+     * @param additionalHeaders as lines, e.g. "Connection: close"
      * @return the request
      */
     public static String get(String... additionalHeaders) {
@@ -30,7 +30,7 @@ public final class TestRequests
      * Make a "POST / HTTP/1.1" request with a body.
      * 
      * @param body of request
-     * @param additionalHeaders optional
+     * @param additionalHeaders as lines, e.g. "Connection: close"
      * @return the request
      */
     public static String post(String body, String... additionalHeaders) {

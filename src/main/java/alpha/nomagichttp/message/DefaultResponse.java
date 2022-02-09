@@ -7,17 +7,17 @@ import alpha.nomagichttp.util.Publishers;
 import java.net.http.HttpHeaders;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
-import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.Flow;
 import java.util.function.Consumer;
 
-import static alpha.nomagichttp.HttpConstants.HeaderKey.CONNECTION;
-import static alpha.nomagichttp.HttpConstants.HeaderKey.CONTENT_LENGTH;
+import static alpha.nomagichttp.HttpConstants.HeaderName.CONNECTION;
+import static alpha.nomagichttp.HttpConstants.HeaderName.CONTENT_LENGTH;
 import static alpha.nomagichttp.HttpConstants.StatusCode.THREE_HUNDRED_FOUR;
 import static alpha.nomagichttp.HttpConstants.StatusCode.TWO_HUNDRED_FOUR;
 import static alpha.nomagichttp.util.Headers.of;
@@ -25,7 +25,7 @@ import static alpha.nomagichttp.util.Publishers.empty;
 import static java.net.http.HttpRequest.BodyPublisher;
 import static java.util.Collections.emptyList;
 import static java.util.Objects.requireNonNull;
-import static java.util.stream.Collectors.toUnmodifiableList;
+import static java.util.Optional.ofNullable;
 
 /**
  * Default implementation of {@link Response}.
@@ -39,9 +39,10 @@ final class DefaultResponse implements Response
     
     private final int statusCode;
     private final String reasonPhrase;
-    private final CommonHeaders headers;
+    private final ContentHeaders headers;
     private final Iterable<String> forWriting;
     private final Flow.Publisher<ByteBuffer> body;
+    private final Optional<CompletionStage<HttpHeaders>> trailers;
     private final DefaultBuilder origin;
     
     private DefaultResponse(
@@ -51,13 +52,15 @@ final class DefaultResponse implements Response
             // Is unmodifiable
             Iterable<String> forWriting,
             Flow.Publisher<ByteBuffer> body,
+            Optional<CompletionStage<HttpHeaders>> trailers,
             DefaultBuilder origin)
     {
         this.statusCode = statusCode;
         this.reasonPhrase = reasonPhrase;
-        this.headers = new DefaultCommonHeaders(headers);
+        this.headers = new DefaultContentHeaders(headers);
         this.forWriting = forWriting;
         this.body = body;
+        this.trailers = trailers;
         this.origin = origin;
     }
     
@@ -72,7 +75,7 @@ final class DefaultResponse implements Response
     }
     
     @Override
-    public CommonHeaders headers() {
+    public ContentHeaders headers() {
         return headers;
     }
     
@@ -87,6 +90,11 @@ final class DefaultResponse implements Response
     }
     
     @Override
+    public Optional<CompletionStage<HttpHeaders>> trailers() {
+        return trailers;
+    }
+    
+    @Override
     public boolean isBodyEmpty() {
         Flow.Publisher<ByteBuffer> b = body();
         if (b == Publishers.<ByteBuffer>empty()) {
@@ -95,7 +103,7 @@ final class DefaultResponse implements Response
         if (b instanceof BodyPublisher typed) {
             return typed.contentLength() == 0;
         }
-        return headers().contain(CONTENT_LENGTH, "0");
+        return headers().contains(CONTENT_LENGTH, "0");
     }
     
     private CompletionStage<Response> stage;
@@ -126,7 +134,7 @@ final class DefaultResponse implements Response
      * 
      * @author Martin Andersson (webmaster at martinandersson.com)
      */
-    final static class DefaultBuilder
+    static final class DefaultBuilder
             extends AbstractImmutableBuilder<DefaultBuilder.MutableState>
             implements Response.Builder
     {
@@ -135,29 +143,35 @@ final class DefaultResponse implements Response
             String reasonPhrase;
             Map<String, List<String>> headers;
             Flow.Publisher<ByteBuffer> body;
+            CompletionStage<HttpHeaders> trailers;
             
             void removeHeader(String name) {
                 assert name != null;
                 if (headers == null) {
                     return;
                 }
-                headers.remove(name);
+                headers.entrySet().removeIf(e ->
+                    e.getKey().equalsIgnoreCase(name));
             }
             
-            void removeHeaderIf(String name, String presentValue) {
+            void removeHeaderValue(String name, String value) {
                 assert name != null;
-                assert presentValue != null;
+                assert value != null;
                 if (headers == null) {
                     return;
                 }
-                headers.entrySet().stream()
-                       .filter(e -> e.getKey().equalsIgnoreCase(name))
-                       .forEach(e -> {
-                           Iterator<String> v = e.getValue().iterator();
-                           while (v.hasNext() && v.next().equalsIgnoreCase(presentValue)) {
-                               v.remove();
-                           }
-                       });
+                var it = headers.entrySet().iterator();
+                while (it.hasNext()) {
+                    var e = it.next();
+                    if (!e.getKey().equalsIgnoreCase(name)) {
+                        continue;
+                    }
+                    e.getValue().removeIf(v ->
+                        v.equalsIgnoreCase(value));
+                    if (e.getValue().isEmpty()) {
+                        it.remove();
+                    }
+                }
             }
             
             void addHeader(boolean clearFirst, String name, String value) {
@@ -214,10 +228,10 @@ final class DefaultResponse implements Response
         }
         
         @Override
-        public Response.Builder removeHeaderIf(String name, String presentValue) {
+        public Response.Builder removeHeaderValue(String name, String value) {
             requireNonNull(name, "name");
-            requireNonNull(presentValue, "presentValue");
-            return new DefaultBuilder(this, s -> s.removeHeaderIf(name, presentValue));
+            requireNonNull(value, "value");
+            return new DefaultBuilder(this, s -> s.removeHeaderValue(name, value));
         }
         
         @Override
@@ -280,11 +294,27 @@ final class DefaultResponse implements Response
         }
         
         @Override
+        public Builder addTrailers(CompletionStage<HttpHeaders> trailers) {
+            requireNonNull(trailers, "trailers");
+            return new DefaultBuilder(this, s -> s.trailers = trailers);
+        }
+        
+        @Override
+        public Builder removeTrailers() {
+            return new DefaultBuilder(this, s -> s.trailers = null);
+        }
+        
+        @Override
         public Response build() {
             MutableState s = constructState(MutableState::new);
             setDefaults(s);
             
-            final HttpHeaders headers = s.headers == null ? of() : of(s.headers);
+            final HttpHeaders headers;
+            try {
+                headers = s.headers == null ? of() : of(s.headers);
+            } catch (IllegalArgumentException e) {
+                throw new IllegalStateException(e);
+            }
             
             if (headers.allValues(CONTENT_LENGTH).size() > 1) {
                 throw new IllegalStateException("Multiple " + CONTENT_LENGTH + " headers.");
@@ -293,7 +323,7 @@ final class DefaultResponse implements Response
             Iterable<String> forWriting = s.headers == null ? emptyList() :
                     s.headers.entrySet().stream().flatMap(e ->
                             e.getValue().stream().map(v -> e.getKey() + ": " + v))
-                    .collect(toUnmodifiableList());
+                    .toList();
             
             Response r = new DefaultResponse(
                     s.statusCode,
@@ -301,10 +331,11 @@ final class DefaultResponse implements Response
                     headers,
                     forWriting,
                     s.body,
+                    ofNullable(s.trailers),
                     this);
             
             if (r.isInformational()) {
-                if (r.headers().contain(CONNECTION, "close")) {
+                if (r.headers().contains(CONNECTION, "close")) {
                     throw new IllegalStateException(
                             "\"Connection: close\" set on 1XX (Informational) response.");
                 }
@@ -329,7 +360,7 @@ final class DefaultResponse implements Response
         
         private static IllegalResponseBodyException IllegalResponseBodyException(Response r) {
             return new IllegalResponseBodyException(
-                    "Presumably a body in a 1XX (Informational) response.", r);
+                    "Presumably a body in a " + r.statusCode() + " (" + r.reasonPhrase() + ") response.", r);
         }
     }
 }

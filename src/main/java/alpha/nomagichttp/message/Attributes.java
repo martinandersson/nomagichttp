@@ -23,10 +23,6 @@ import java.util.concurrent.ConcurrentMap;
  * The implementation is thread-safe and never replaced throughout the life of
  * the header holder.<p>
  * 
- * For as long as the holder object is reachable, the attributes are reachable.
- * The other way around is not true as the attributes does not keep a
- * back-reference to the holder object.<p>
- * 
  * The NoMagicHTTP library reserves the right to use the namespace
  * "alpha.nomagichttp.*" exclusively. Applications are encouraged to avoid
  * using this prefix in their names.

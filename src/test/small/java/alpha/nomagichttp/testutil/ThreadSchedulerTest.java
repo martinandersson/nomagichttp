@@ -67,62 +67,66 @@ class ThreadSchedulerTest
     
     @Test
     void indirectRecursion() throws Throwable {
+        final String[] expectedFlow = {
+            "T1S1 yielding", // <-- Thread 1, goes into T2
+                "T2S1 yielding",
+                    "T1S2 exiting", // <-- Also Thread 1
+                "T2S1 exiting",
+            "T1S1 exiting" };
+        
         Yielder y = new Yielder();
-        Queue<String> s = new ConcurrentLinkedQueue<>();
+        Queue<String> log = new ConcurrentLinkedQueue<>();
         
         Stage t1s1 = new Stage("T1", "S1", () -> {
-            s.add(threadName() + "S1 yielding");
+            log.add(threadName() + "S1 yielding");
                 y.continueStage("T2S1");
-            s.add(threadName() + "S1 exiting");
+            log.add(threadName() + "S1 exiting");
         });
         
         Stage t2s1 = new Stage("T2", "S1", () -> {
-            s.add(threadName() + "S1 yielding");
+            log.add(threadName() + "S1 yielding");
                 y.continueStage("T1S2");
-            s.add(threadName() + "S1 exiting");
+            log.add(threadName() + "S1 exiting");
         });
         
         Stage t1s2 = new Stage("T1", "S2", () ->
-            s.add(threadName() + "S2 exiting"));
+            log.add(threadName() + "S2 exiting"));
         
         ThreadScheduler.runSequentially(y, t1s1, t2s1, t1s2);
-        assertThat(s).containsExactly(
-                "T1S1 yielding", // <-- Thread 1
-                    "T2S1 yielding",
-                        "T1S2 exiting", // <-- Also Thread 1
-                    "T2S1 exiting",
-                "T1S1 exiting");
+        assertThat(log).containsExactly(expectedFlow);
     }
     
     @Test
     void threadsPlayingPingPong() throws Throwable {
+        final String[] expectedFlow = {
+                "T1 Ping",
+                "T2 Pong",
+                "T1 Ping",
+                "T2 Pong",
+                "T3 Pang!" };
+        
         Yielder y = new Yielder();
-        Queue<String> s = new ConcurrentLinkedQueue<>();
+        Queue<String> log = new ConcurrentLinkedQueue<>();
         
         Stage ping = new Stage("T1", "Ping", () -> {
-            s.add(threadName() + " Ping");
+            log.add(threadName() + " Ping");
                 y.continueStage("T2Pong");
-            s.add(threadName() + " Ping");
+            log.add(threadName() + " Ping");
                 y.continueStage("T2Pong");
         });
         
         Stage pong = new Stage("T2", "Pong", () -> {
-            s.add(threadName() + " Pong");
+            log.add(threadName() + " Pong");
                 y.continueStage("T1Ping");
-            s.add(threadName() + " Pong");
+            log.add(threadName() + " Pong");
                 y.continueStage("T3Pang");
         });
         
         Stage pang = new Stage("T3", "Pang", () ->
-            s.add(threadName() + " Pang!"));
+            log.add(threadName() + " Pang!"));
         
         ThreadScheduler.runSequentially(y, ping, pong, pang);
-        assertThat(s).containsExactly(
-                "T1 Ping",
-                "T2 Pong",
-                "T1 Ping",
-                "T2 Pong",
-                "T3 Pang!");
+        assertThat(log).containsExactly(expectedFlow);
     }
     
     @Test

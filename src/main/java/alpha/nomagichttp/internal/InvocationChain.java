@@ -4,12 +4,11 @@ import alpha.nomagichttp.action.BeforeAction;
 import alpha.nomagichttp.action.Chain;
 import alpha.nomagichttp.handler.ClientChannel;
 import alpha.nomagichttp.handler.RequestHandler;
-import alpha.nomagichttp.message.RequestHead;
+import alpha.nomagichttp.message.RawRequest;
 import alpha.nomagichttp.route.NoRouteFoundException;
 import alpha.nomagichttp.route.Route;
 
 import java.util.Iterator;
-import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -23,11 +22,7 @@ import static java.util.concurrent.CompletableFuture.completedStage;
 
 /**
  * Represents a work flow of finding and executing before-actions and a request
- * handler. These entities will co-operate to write responses to a channel.
- * There is no other resulting outcome from this work flow, except of course
- * possible errors.<p>
- * 
- * There's one instance of this class per HTTP exchange.<p>
+ * handler. These entities will co-operate to write responses to a channel.<p>
  * 
  * The entry point is {@link #execute(SkeletonRequest, Version)}.
  * 
@@ -72,10 +67,10 @@ final class InvocationChain extends AbstractLocalEventEmitter
      *      {@link #ABORTED}</li>
      * </ul>
      * 
-     * A normal completion as well as a throwable where {@code getCause() ==
-     * ABORTED} ought to semantically have the same outcome; i.e. none if the
-     * {@linkplain ResponsePipeline pipeline} is still waiting for the final
-     * response, otherwise a new HTTP exchange.
+     * A normal completion and a throwable where {@code getCause() == ABORTED}
+     * ought to semantically have the same outcome; i.e. if the {@linkplain
+     * ResponsePipeline pipeline} is still waiting for the final response then
+     * none, otherwise a new HTTP exchange.
      * 
      * @param req request
      * @param ver HTTP version
@@ -84,16 +79,18 @@ final class InvocationChain extends AbstractLocalEventEmitter
      */
     CompletionStage<Void> execute(SkeletonRequest req, Version ver) {
         return invokeBeforeActions(req, ver)
-                .thenRun(() -> invokeRequestHandler(req, ver));
+                   .thenRun(() ->
+                       invokeRequestHandler(req, ver));
     }
     
     private CompletionStage<Void> invokeBeforeActions(SkeletonRequest req, Version ver) {
-        List<Match<BeforeAction>> matches = actions.lookupBefore(req.target());
+        var matches = actions.lookupBefore(req.target());
         if (matches.isEmpty()) {
             return COMPLETED;
         }
-        CompletableFuture<Void> allOf = new CompletableFuture<>();
-        new ChainImpl(matches.iterator(), allOf, req, ver).callAction();
+        var allOf = new CompletableFuture<Void>();
+        new ChainImpl(matches.iterator(), allOf, req, ver)
+                .callAction();
         return allOf;
     }
     
@@ -107,9 +104,9 @@ final class InvocationChain extends AbstractLocalEventEmitter
             .logic().accept(real, chApi);
     }
     
-    private static RequestHandler findRequestHandler(RequestHead rh, Route r) {
+    private static RequestHandler findRequestHandler(RawRequest.Head rh, Route r) {
         RequestHandler h = r.lookup(
-                rh.method(),
+                rh.line().method(),
                 rh.headers().contentType().orElse(null),
                 rh.headers().accept());
         LOG.log(DEBUG, () -> "Matched handler: " + h);
@@ -168,7 +165,8 @@ final class InvocationChain extends AbstractLocalEventEmitter
             if (!matches.hasNext()) {
                 allOf.complete(null);
             } else {
-                new ChainImpl(matches, allOf, shared, ver).callAction();
+                new ChainImpl(matches, allOf, shared, ver)
+                        .callAction();
             }
         }
         

@@ -16,7 +16,8 @@ import java.util.concurrent.Flow;
  * @param <T> type of published item
  * @param <A> type of attachment
  */
-abstract class AugmentedAbstractUnicastPublisher<T, A> extends AbstractUnicastPublisher<T>
+abstract class AugmentedAbstractUnicastPublisher<T, A>
+        extends AbstractUnicastPublisher<T>
 {
     protected AugmentedAbstractUnicastPublisher(boolean reusable) {
         super(reusable);
@@ -35,22 +36,33 @@ abstract class AugmentedAbstractUnicastPublisher<T, A> extends AbstractUnicastPu
     
     @Override
     @SuppressWarnings("unchecked")
+    public SubscriberWithAttachment<T, A> take() {
+        return (SubscriberWithAttachment<T, A>) super.take();
+    }
+    
+    @Override
+    @SuppressWarnings("unchecked")
     public SubscriberWithAttachment<T, A> shutdown() {
         return (SubscriberWithAttachment<T, A>) super.shutdown();
     }
     
-    protected abstract SubscriberWithAttachment<T, A> giveAttachment(Flow.Subscriber<? super T> subscriber);
+    protected abstract SubscriberWithAttachment<T, A>
+            giveAttachment(Flow.Subscriber<? super T> subscriber);
     
     @Override
-    protected final Flow.Subscription newSubscription(Flow.Subscriber<? super T> subscriber) {
+    protected final Flow.Subscription
+            newSubscription(Flow.Subscriber<? super T> subscriber)
+    {
         @SuppressWarnings("unchecked")
-        SubscriberWithAttachment<T, A> s = (SubscriberWithAttachment<T, A>) subscriber;
+        var s = (SubscriberWithAttachment<T, A>) subscriber;
         return newSubscription(s);
     }
     
-    protected abstract Flow.Subscription newSubscription(SubscriberWithAttachment<T, A> subscriber);
+    protected abstract Flow.Subscription
+            newSubscription(SubscriberWithAttachment<T, A> subscriber);
     
-    static final class SubscriberWithAttachment<T, A> implements Flow.Subscriber<T>
+    static final class SubscriberWithAttachment<T, A>
+            implements Flow.Subscriber<T>
     {
         private final Flow.Subscriber<? super T> d;
         private A a;

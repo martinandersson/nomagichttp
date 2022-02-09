@@ -1,9 +1,5 @@
 package alpha.nomagichttp.internal;
 
-import alpha.nomagichttp.message.RequestBodyTimeoutException;
-import alpha.nomagichttp.message.RequestHeadTimeoutException;
-import alpha.nomagichttp.message.ResponseTimeoutException;
-
 import java.time.Duration;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
@@ -26,7 +22,7 @@ import static java.util.Objects.requireNonNull;
  * demand, to the end of the subscription (basically always active, we expect a
  * continuous flow of items or else timeout). {@code Pub} ("publisher") is only
  * active when there is outstanding demand (i.e. focused solely on the upstream
- * publisher, downstream may take however long he wish to process the items or
+ * publisher, downstream may take however long he wishes to process the items or
  * run his own timeouts).<p>
  * 
  * The timeout signal will cancel the upstream and error out the downstream
@@ -43,10 +39,8 @@ abstract class TimeoutOp<T> extends AbstractOp.Async<T> {
      * downstream increase of demand and is active until the subscription
      * completes.<p>
      * 
-     * Currently, used by {@link HttpExchange} to abort {@link
-     * RequestHeadSubscriber} with a {@link RequestHeadTimeoutException} and
-     * used by {@link RequestBody} to abort the body subscriber with a {@link
-     * RequestBodyTimeoutException}.
+     * Was used by the severs request- line and headers subscriber but was
+     * superseded by a low-level read timeout instead. So not used anymore.
      * 
      * @param <T> published item type
      */
@@ -102,9 +96,8 @@ abstract class TimeoutOp<T> extends AbstractOp.Async<T> {
      * A timeout operator that is only active while there is outstanding demand
      * from the downstream.<p>
      * 
-     * Is foreseen to be used by {@link ResponseBodySubscriber} for producing
-     * {@link ResponseTimeoutException} (downstream channel uses its own write
-     * timeout).
+     * Is used by the {@link ResponsePipeline} to abort its application response
+     * subscription.
      * 
      * @param <T> published item type
      */

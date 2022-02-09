@@ -1,6 +1,6 @@
 package alpha.nomagichttp.internal;
 
-import alpha.nomagichttp.Config;
+import alpha.nomagichttp.message.ReadTimeoutException;
 import alpha.nomagichttp.util.IOExceptions;
 import alpha.nomagichttp.util.SeriallyRunnable;
 
@@ -41,23 +41,24 @@ import static java.util.concurrent.TimeUnit.NANOSECONDS;
  * 
  * Read mode specifies an {@code onComplete} callback which is invoked with the
  * container bytebuffer after each operation completes. The buffer will have
- * already been flipped and is therefore ready to be consumed as-is. The last
- * bytebuffer to reach the callback may not be the last bytebuffer(s) announced
- * but may have been replaced with the sentinel value {@link #EOS}.<p>
+ * already been flipped and is therefore ready to be consumed as-is. The final
+ * bytebuffer to reach the callback may be the sentinel {@link #EOS}.<p>
  * 
  * The {@link WhenDone#accept(long, Throwable) whenDone} callback executes
  * exactly-once whenever the last pending operation completes.<p>
  * 
- * In write mode, the service will self-{@link #stop(Throwable)} with an {@link
- * InterruptedByTimeoutException} if the operation takes longer than the
- * configured timeout. Read operations never time out (by this class). See
- * {@link Config#timeoutIdleConnection}.<p>
+ * The service will self-{@link #stop(Throwable)} on timeout, having first
+ * closed the stream in use. In read mode, the exception will be a {@link
+ * ReadTimeoutException}, caused by an {@link InterruptedByTimeoutException}. In
+ * write mode, the exception will only be the {@code
+ * InterruptedByTimeoutException}.<p>
  * 
  * Please note that the responsibility of this class is to manage a particular
  * type of channel <i>operations</i> (read or write) for as long as the service
- * remains running, not the channel's life cycle itself. The only two occasions
- * when this class shuts down the channel's stream in use is if a channel
- * operation completes exceptionally or end-of-stream is reached.<p>
+ * remains running, not the channel's life-cycle itself or any one of its
+ * streams. The only two occasions when this class shuts down the channel's
+ * stream in use is if a channel operation completes exceptionally or
+ * end-of-stream is reached.<p>
  * 
  * This class is thread-safe and mostly non-blocking (closing stream may block).
  * 
@@ -83,15 +84,18 @@ final class AnnounceToChannel
             Consumer<? super ByteBuffer> onComplete,
             WhenDone whenDone)
     {
-        return new AnnounceToChannel(Mode.READ, source, onComplete, whenDone, null);
+        return new AnnounceToChannel(
+                Mode.READ, source, onComplete, whenDone,
+                source.getServer().getConfig().timeoutRead());
     }
     
     static AnnounceToChannel write(
             DefaultClientChannel destination,
-            WhenDone whenDone,
-            Duration timeout)
+            WhenDone whenDone)
     {
-        return new AnnounceToChannel(Mode.WRITE, destination, null, whenDone, timeout);
+        return new AnnounceToChannel(
+                Mode.WRITE, destination, null, whenDone,
+                destination.getServer().getConfig().timeoutWrite());
     }
     
     /**
@@ -150,7 +154,7 @@ final class AnnounceToChannel
         this.onComplete = onComplete != null ? onComplete : ignored -> {};
         this.whenDone   = requireNonNull(whenDone);
         // with nanos, no further unit conversions in JDK's ScheduledThreadPoolExecutor
-        this.timeoutNs  = mode == Mode.READ ? -1 : timeout.toNanos();
+        this.timeoutNs  = timeout.toNanos();
         
         this.operation = new SeriallyRunnable(this::pollAndInitiate, true);
         this.handler   = new Handler();
@@ -237,16 +241,13 @@ final class AnnounceToChannel
             if (v == RUNNING) {
                 return t != null ? t : STOPPED;
             }
-            
             return v;
         });
-        
         if (prev == RUNNING) {
             // Ensure callback executes
             operation.run();
             return true;
         }
-        
         return false;
     }
     
@@ -256,7 +257,7 @@ final class AnnounceToChannel
      * returned.<p>
      * 
      * An ongoing operation will be aborted with an {@link
-     * AsynchronousCloseException}. If this methods returns {@code true}, then
+     * AsynchronousCloseException}. If this method returns {@code true}, then
      * the close exception will be added as suppressed by the given error.<p>
      * 
      * Note: The stream will always shutdown, no matter the boolean return value
@@ -285,7 +286,6 @@ final class AnnounceToChannel
         }
         
         final ByteBuffer b = buffers.poll();
-        
         if (b == null) {
             operation.complete();
             return;
@@ -298,7 +298,7 @@ final class AnnounceToChannel
         var ch = chApi.getDelegateNoProxy();
         try {
             switch (mode) {
-                case READ  -> ch.read(b, b, handler);
+                case READ  -> ch.read( b, timeoutNs, NANOSECONDS, b, handler);
                 case WRITE -> ch.write(b, timeoutNs, NANOSECONDS, b, handler);
                 default    -> throw new UnsupportedOperationException("What is this?: " + mode);
             }
@@ -309,7 +309,6 @@ final class AnnounceToChannel
     
     private void executeCallbackOnce() {
         final Throwable prev = state.getAndSet(STOPPED);
-        
         if (whenDone != null) {
             // Propagate null instead of sentinel
             final Throwable real = prev == RUNNING || prev == STOPPED ? null : prev;
@@ -337,7 +336,8 @@ final class AnnounceToChannel
         }
     }
     
-    private final class Handler implements java.nio.channels.CompletionHandler<Integer, ByteBuffer>
+    private final class Handler implements
+            java.nio.channels.CompletionHandler<Integer, ByteBuffer>
     {
         @Override
         public void completed(Integer result, ByteBuffer buf) {
@@ -345,8 +345,10 @@ final class AnnounceToChannel
             
             if (r == -1) {
                 assert mode == Mode.READ;
-                LOG.log(DEBUG, "End of stream. Will shut down channel's input stream.");
-                shutdownStream();
+                if (isStreamOpen()) {
+                    LOG.log(DEBUG, "End of stream. Will shut down channel's input stream.");
+                    shutdownStream();
+                }
                 buffers.addFirst(NO_MORE); // <-- will cause stop() to be called next run
                 buf = EOS;
             } else {
@@ -373,7 +375,7 @@ final class AnnounceToChannel
         
         @Override
         public void failed(Throwable exc, ByteBuffer ignored) {
-            final boolean pushed = stop(exc);
+            final boolean pushed = stop(tryReadWrap(exc));
             boolean loggedStack = false;
             
             // If we manage to push the error to someone else, we need not bother
@@ -402,6 +404,9 @@ final class AnnounceToChannel
                     // Log "broken pipe", but no stack dump
                     LOG.log(DEBUG, () -> mode.capitalized() +
                         " operation failed (broken pipe), will shutdown stream.");
+                } else if (exc instanceof InterruptedByTimeoutException) {
+                    LOG.log(DEBUG, () ->
+                        mode.capitalized() + " operation timed out, will shut down the stream.");
                 } else {
                     Supplier<String> msg = () -> mode.capitalized() +
                         " operation failed and stream is still open, will shut it down.";
@@ -418,6 +423,13 @@ final class AnnounceToChannel
             
             operation.run();
             operation.complete();
+        }
+        
+        private Throwable tryReadWrap(Throwable t1) {
+            if (mode == Mode.READ && t1 instanceof InterruptedByTimeoutException t2) {
+                return new ReadTimeoutException(t2);
+            }
+            return t1;
         }
     }
     

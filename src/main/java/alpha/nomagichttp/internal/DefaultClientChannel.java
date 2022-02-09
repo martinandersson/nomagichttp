@@ -2,8 +2,8 @@ package alpha.nomagichttp.internal;
 
 import alpha.nomagichttp.HttpServer;
 import alpha.nomagichttp.handler.ClientChannel;
-import alpha.nomagichttp.message.Response;
 import alpha.nomagichttp.message.Attributes;
+import alpha.nomagichttp.message.Response;
 
 import java.io.IOException;
 import java.net.SocketAddress;
@@ -19,7 +19,9 @@ import java.util.concurrent.CompletionStage;
 import static alpha.nomagichttp.internal.DefaultServer.becauseChannelOrGroupClosed;
 import static java.lang.System.Logger.Level.DEBUG;
 import static java.lang.System.Logger.Level.ERROR;
+import static java.lang.System.Logger.Level.WARNING;
 import static java.util.Objects.requireNonNull;
+import static java.util.concurrent.TimeUnit.SECONDS;
 
 final class DefaultClientChannel implements ClientChannel
 {
@@ -251,6 +253,21 @@ final class DefaultClientChannel implements ClientChannel
                 throw t;
             }
         } 
+    }
+    
+    /**
+     * Schedule a close of the channel in 5 seconds.
+     * 
+     * @param whatHappened prefixed to logged warning message on close
+     */
+    public void scheduleClose(String whatHappened) {
+        Timeout.schedule(SECONDS.toNanos(5), () -> {
+            if (isAnythingOpen()) {
+                LOG.log(WARNING, () -> whatHappened +
+                    ", but after 5 seconds more the channel is still not fully closed. Closing child.");
+                closeSafe();
+            }
+        });
     }
     
     private NetworkChannel proxy;

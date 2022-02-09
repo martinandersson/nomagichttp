@@ -1,5 +1,6 @@
 package alpha.nomagichttp.util;
 
+import alpha.nomagichttp.message.Request;
 import alpha.nomagichttp.message.Response;
 
 import java.net.http.HttpRequest;
@@ -13,19 +14,25 @@ import java.util.function.BiConsumer;
 import java.util.function.Function;
 
 import static alpha.nomagichttp.util.Streams.stream;
+import static alpha.nomagichttp.util.Subscribers.signalErrorSafe;
 import static alpha.nomagichttp.util.Subscriptions.CanOnlyBeCancelled;
 import static alpha.nomagichttp.util.Subscriptions.TurnOnProxy;
 import static java.lang.Long.MAX_VALUE;
 import static java.util.Objects.requireNonNull;
 
 /**
- * Utility class for constructing thread-safe and non-blocking
+ * Utils for constructing thread-safe and non-blocking
  * {@link Flow.Publisher}s.<p>
  * 
  * Publishers produced by this class follows the <a
  * href="https://github.com/reactive-streams/reactive-streams-jvm/blob/v1.0.3/README.md">
  * Reactive Streams</a> specification to a very large extent. Deviations will be
- * discussed in subsequent sections.
+ * discussed in subsequent sections.<p>
+ * 
+ * Unless documented differently, the publisher will reproduce the same finite
+ * data stream to each new subscriber. Using internet slang, this is called
+ * being a "cold" publisher. In contrast, the {@link Request.Body} is "hot" and
+ * does not support subscriber reuse.
  * 
  * <h2>Thread Semantics</h2>
  * 
@@ -33,7 +40,7 @@ import static java.util.Objects.requireNonNull;
  * JavaDoc of {@link Flow.Publisher} doesn't actually define the publisher as
  * being thread-safe, and some JDK implementations aren't (
  * <a href="https://bugs.openjdk.java.net/browse/JDK-8222968">JDK-8222968</a>).
- * Publishers created by this class <strong>is</strong> thread-safe.<p>
+ * Publishers created by this class <strong>are</strong> thread-safe.<p>
  * 
  * The Reactive Streams specification requires the publisher to signal the
  * subscriber serially (happens-before relationship between signals). The
@@ -73,18 +80,14 @@ import static java.util.Objects.requireNonNull;
  * 
  * <h2>Exception Semantics</h2>
  * 
- * Exceptions thrown by {@code Subscriber.onSubscribe()} and {@code onNext()}
- * propagates to the calling thread - after having been forwarded to {@code
- * Subscriber.onError()} as the <i>cause</i> of a {@link
- * SubscriberFailedException}. Having said that, the subscription is voided and
- * the publisher will no longer interact with the subscriber that failed.<p>
+ * Exceptions thrown by {@code Subscriber.onSubscribe()}/{@code onNext()}/{@code
+ * onComplete()} propagates to the calling thread. After the exceptional return,
+ * the subscription is voided and the publisher will no longer interact with the
+ * subscriber. The subscriber should never throw an exception.<p>
  * 
- * Exceptions from {@code Subscriber.onComplete()} will also propagate to the
- * calling thread but is <i>not</i> first sent to {@code onError()} (there's no
- * need; subscription already terminated).<p>
- * 
- * Exceptions from {@code Subscriber.onError()} will be logged but otherwise
- * ignored.
+ * Exceptions sent to {@code Subscriber.onError()} represents an upstream error
+ * from the publisher. An exception thrown by {@code onError()} will be logged
+ * but otherwise ignored.
  * 
  * <h2>Other details</h2>
  * 
@@ -97,8 +100,8 @@ import static java.util.Objects.requireNonNull;
  * 
  * According to §1.9, the publisher is required to always call {@code
  * Subscriber.onSubscribe()} even if the publisher's intent is to immediately
- * terminate the subscription. It's perhaps misfortune to force a subscriber to
- * initialize even when the publisher has no intention to give the subscriber
+ * terminate the subscription. It's perhaps misfortunate to force a subscriber
+ * to initialize even when the publisher has no intention to give the subscriber
  * any items. It can be argued that the rule is counterintuitive which might
  * help explain why the {@code OneShotPublisher} example given in the javadoc of
  * {@link Flow} just happened to forget about it. However that might be, this
@@ -106,9 +109,21 @@ import static java.util.Objects.requireNonNull;
  * {@code onSubscribe()} first and if the intent is to immediately terminate the
  * subscription, the subscription object will be a temporary dummy. The dummy
  * will still be monitored and if {@code cancel()} is called on the dummy, then
- * the subscription will not receive the completion signal (§1.8, §3.12).
+ * the subscriber will not receive the completion signal (§1.8, §3.12).
  * Requesting demand from the dummy is NOP (see {@link
- * Subscriptions#canOnlyBeCancelled()}).
+ * Subscriptions#canOnlyBeCancelled()}). A subscriber performing expensive
+ * initialization in the {@code onSubscribe} method ought to first check that
+ * the subscription object is not of type {@code
+ * Subscriptions.CanOnlyBeCancelled}, or delay initialization until the first
+ * item arrives.<p>
+ * 
+ * A publisher produced by this class will make the decision to accept or reject
+ * the subscriber immediately and thus invoke {@code Subscriber.onSubscribe}
+ * synchronously by the same thread calling {@code Publisher.subscribe}
+ * (although the subscription object may be a dummy, as described in the
+ * previous section).<p>
+ * 
+ * {@code null} is never published as an item to the subscriber.
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  * 
@@ -181,7 +196,7 @@ public final class Publishers
      * only used by one subscriber at a time or the iterable source must be
      * thread-safe.<p>
      * 
-     * The iterator is invoked serially with full memory visibility between item
+     * The iterator is invoked serially with memory visibility between item
      * emissions.<p>
      * 
      * The iterator should never return a null item (
@@ -202,10 +217,10 @@ public final class Publishers
     }
     
     /**
-     * Creates a {@code Flow.Publisher} that immediately signals {@code onError}
-     * for each new subscriber.
+     * Creates a {@code Flow.Publisher} that immediately signals the given error
+     * to each new subscriber.
      * 
-     * @param error to complete subscriptions with
+     * @param error to complete all subscriptions with
      * @param <T> type of item
      * 
      * @return a failing publisher
@@ -214,6 +229,22 @@ public final class Publishers
      */
     public static <T> Flow.Publisher<T> failed(Throwable error) {
         return new FailedPublisher<>(error);
+    }
+    
+    /**
+     * Map upstream items to downstream items of another type.
+     * 
+     * @param <T> the subscribed item type
+     * @param <R> the published item type
+     * @param upstream publisher
+     * @param mapper function
+     * @return a publisher publishing the new resulting type
+     * @throws NullPointerException if any arg is {@code null}
+     */
+    public static <T, R> Flow.Publisher<R> map(
+            Flow.Publisher<? extends T> upstream,
+            Function<? super T, ? extends R> mapper) {
+        return new Operator<>(upstream, mapper);
     }
     
     /**
@@ -268,7 +299,7 @@ public final class Publishers
             
             if (!it.hasNext()) {
                 CanOnlyBeCancelled tmp = Subscriptions.canOnlyBeCancelled();
-                Subscribers.signalOnSubscribeOrTerminate(s, tmp);
+                s.onSubscribe(tmp);
                 if (!tmp.isCancelled()) {
                     s.onComplete();
                 }
@@ -276,55 +307,55 @@ public final class Publishers
             }
             
             TurnOnProxy proxy = Subscriptions.turnOnProxy();
-            Subscribers.signalOnSubscribeOrTerminate(s, proxy);
+            s.onSubscribe(proxy);
             if (!proxy.isCancelled()) {
                 proxy.activate(newSubscription(it, s));
             }
         }
         
         private Flow.Subscription newSubscription(
-                Iterator<? extends T> it, Flow.Subscriber<? super T> subsc)
+                Iterator<? extends T> it, Flow.Subscriber<? super T> sub)
         {
             return new Flow.Subscription() {
-                private final SerialTransferService<T> delegate = newService(it, subsc);
+                private final SerialTransferService<T> sts = newService(it, sub);
                 
                 @Override
                 public void request(long n) {
                     try {
-                        delegate.increaseDemand(n);
+                        sts.increaseDemand(n);
                     } catch (IllegalArgumentException e) {
-                        delegate.finish(() -> Subscribers.signalErrorSafe(subsc, e));
+                        sts.finish(() -> signalErrorSafe(sub, e));
                     }
                 }
                 
                 @Override
                 public void cancel() {
-                    delegate.finish();
+                    sts.finish();
                 }
             };
         }
         
         private SerialTransferService<T> newService(
-                Iterator<? extends T> it, Flow.Subscriber<? super T> s)
+                Iterator<? extends T> it, Flow.Subscriber<? super T> sub)
         {
             Function<SerialTransferService<T>, ? extends T> generator = self -> {
                 if (it.hasNext()) {
                     T t = it.next();
                     if (t == null) {
                         var exc = new NullPointerException("Item is null.");
-                        self.finish(() -> Subscribers.signalErrorSafe(s, exc));
+                        self.finish(() -> signalErrorSafe(sub, exc));
                     }
                     return t;
                 } else {
-                    self.finish(s::onComplete);
+                    self.finish(sub::onComplete);
                     return null;
                 }
             };
             
             BiConsumer<SerialTransferService<T>, ? super T> receiver = (self, item) -> {
-                Subscribers.signalNextOrTerminate(s, item);
+                sub.onNext(item);
                 if (!it.hasNext()) {
-                    self.finish(s::onComplete);
+                    self.finish(sub::onComplete);
                 }
             };
             
@@ -343,10 +374,50 @@ public final class Publishers
         public void subscribe(Flow.Subscriber<? super T> s) {
             requireNonNull(s);
             CanOnlyBeCancelled tmp = Subscriptions.canOnlyBeCancelled();
-            Subscribers.signalOnSubscribeOrTerminate(s, tmp);
+            s.onSubscribe(tmp);
             if (!tmp.isCancelled()) {
-                Subscribers.signalErrorSafe(s, err);
+                signalErrorSafe(s, err);
             }
+        }
+    }
+    
+    // AbstractOp will likely be deprecated.
+    // Subscribes up as many times as subscribers subscribe.
+    // No volatile semantics - none needed!
+    private static final class Operator<T, R> implements Flow.Publisher<R>  {
+        private final Flow.Publisher<? extends T> up;
+        private final Function<? super T, ? extends R> f;
+        
+        Operator(Flow.Publisher<? extends T> upstream,
+                 Function<? super T, ? extends R> mapper)
+        {
+            up = requireNonNull(upstream);
+            f  = requireNonNull(mapper);
+        }
+        
+        @Override
+        public void subscribe(Flow.Subscriber<? super R> s) {
+            up.subscribe(new Apply(s));
+        }
+        
+        private final class Apply implements Flow.Subscriber<T> {
+            private final Flow.Subscriber<? super R> d;
+            
+            Apply(Flow.Subscriber<? super R> delegate) {
+                d = requireNonNull(delegate);
+            }
+            
+            public void onSubscribe(Flow.Subscription s) {
+                d.onSubscribe(s); }
+            
+            public void onNext(T item) {
+                d.onNext(f.apply(item)); }
+            
+            public void onError(Throwable t) {
+                d.onError(t); }
+            
+            public void onComplete() {
+                d.onComplete(); }
         }
     }
     

@@ -22,13 +22,13 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.BlockingDeque;
 import java.util.concurrent.LinkedBlockingDeque;
+import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
 import java.util.logging.LogRecord;
 import java.util.stream.Stream;
 
 import static alpha.nomagichttp.Config.DEFAULT;
-import static java.lang.System.Logger.Level.ALL;
 import static java.lang.System.Logger.Level.DEBUG;
 import static java.util.Objects.requireNonNull;
 import static java.util.concurrent.TimeUnit.SECONDS;
@@ -82,7 +82,7 @@ import static org.junit.jupiter.api.Assertions.assertSame;
  * 
  * Log recording will by default be activated for each test. The recorder can be
  * retrieved using {@link #logRecorder()}. Records can be retrieved at any time
- * using {@link #stopLogRecording()}.<p>
+ * using {@link #logRecorderStop()}.<p>
  * 
  * Log recording is intended for detailed tests that are awaiting log events
  * and/or running asserts on log records. Tests concerned with performance ought
@@ -137,7 +137,7 @@ import static org.junit.jupiter.api.Assertions.assertSame;
  */
 public abstract class AbstractRealTest
 {
-    private final static System.Logger LOG
+    private static final System.Logger LOG
             = System.getLogger(AbstractRealTest.class.getPackageName());
     
     private final boolean stopServerAfterEach,
@@ -184,7 +184,7 @@ public abstract class AbstractRealTest
     
     @BeforeAll
     static void beforeAll() {
-        Logging.setLevel(ALL);
+        Logging.everything();
     }
     
     @BeforeEach
@@ -206,7 +206,7 @@ public abstract class AbstractRealTest
             }
         } finally {
             if (useLogRecording) {
-                stopLogRecording();
+                logRecorderStop();
             }
         }
         LOG.log(DEBUG, () -> "Finished " + toString(test));
@@ -396,12 +396,25 @@ public abstract class AbstractRealTest
      * Poll an error caught by the error handler, waiting at most 3 seconds.
      * 
      * @return an error, or {@code null} if none is available
-     * 
      * @throws InterruptedException if interrupted while waiting
      */
     protected final Throwable pollServerError() throws InterruptedException {
+        return pollServerError(3, SECONDS);
+    }
+    
+    /**
+     * Poll an error caught by the error handler, waiting at most 3 seconds.
+     * 
+     * @param timeout how long to wait before giving up, in units of unit
+     * @param unit determining how to interpret the timeout parameter
+     * @return an error, or {@code null} if none is available
+     * @throws InterruptedException if interrupted while waiting
+     */
+    protected final Throwable pollServerError(long timeout, TimeUnit unit)
+            throws InterruptedException
+    {
         requireServerStartedOnce();
-        return errors.poll(3, SECONDS);
+        return errors.poll(timeout, unit);
     }
     
     /**
@@ -428,7 +441,7 @@ public abstract class AbstractRealTest
      * 
      * @return all logged records
      */
-    protected final Stream<LogRecord> stopLogRecording() {
+    protected final Stream<LogRecord> logRecorderStop() {
         return Logging.stopRecording(key);
     }
     
@@ -485,7 +498,6 @@ public abstract class AbstractRealTest
      * Will gracefully stop the server (to capture all log records) and assert
      * that no log record was found with a level greater than {@code INFO}.
      */
-    // TODO: boolean to check also record throwable
     protected final void assertThatNoWarningOrErrorIsLogged() {
         assertThatNoWarningOrErrorIsLoggedExcept();
     }
@@ -496,7 +508,6 @@ public abstract class AbstractRealTest
      * 
      * @param excludeClasses classes that are allowed to log waring/error
      */
-    // TODO: boolean to check also record throwable
     protected final void assertThatNoWarningOrErrorIsLoggedExcept(Class<?>... excludeClasses) {
         requireServerStartedOnce();
         stopServer();
@@ -507,7 +518,7 @@ public abstract class AbstractRealTest
         Predicate<String> match = source -> source != null &&
                                   excl.stream().anyMatch(source::startsWith);
         
-        assertThat(stopLogRecording()
+        assertThat(logRecorderStop()
                 .filter(r -> !match.test(r.getSourceClassName()))
                 .mapToInt(r -> r.getLevel().intValue()))
                 .noneMatch(v -> v > java.util.logging.Level.INFO.intValue());

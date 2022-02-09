@@ -30,10 +30,11 @@ import static java.util.function.Function.identity;
 /**
  * A concurrent tree structure.<p>
  * 
- * No node in the tree store its key. Instead, the node's position defines the
- * key which is effectively split into segments and distributed across the
- * branch. All descendants of a node share a common key prefix and the root is
- * the only node whose prefix is the empty key (because it has no parent).<p>
+ * Nodes optionally store an associated value, but not the node's key. Instead,
+ * the node's position defines the key which is effectively split into segments
+ * and distributed across the branch. All descendants of a node share a common
+ * key prefix and the root is the only node whose prefix is the empty key
+ * (because it has no parent).<p>
  * 
  * With this class, the client will add-, remove- and lookup entries by
  * traversing the tree, one segment/node at a time. Traversing the tree is done

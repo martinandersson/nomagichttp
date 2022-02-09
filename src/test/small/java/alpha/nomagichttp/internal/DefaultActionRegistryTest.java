@@ -323,7 +323,6 @@ public class DefaultActionRegistryTest
             var expOrder = new ArrayDeque<RunSpec<A>>();
             RunSpec<A> curr;
             for (curr = this; curr.pattern == null; curr = curr.prev) {
-                System.out.println("Adding "+ curr);
                 expOrder.addFirst(curr);
             }
             return expOrder;

@@ -14,7 +14,12 @@ import static java.lang.Long.MAX_VALUE;
 import static java.util.Arrays.stream;
 import static org.assertj.core.api.Assertions.assertThat;
 
-class LengthLimitedOpTest
+/**
+ * Small tests for {@link LengthLimitedOp}.
+ * 
+ * @author Martin Andersson (webmaster at martinandersson.com)
+ */
+final class LengthLimitedOpTest
 {
     @Test
     void all() {

@@ -10,7 +10,6 @@ import alpha.nomagichttp.message.Responses;
 import alpha.nomagichttp.route.NoRouteFoundException;
 import alpha.nomagichttp.testutil.AbstractRealTest;
 import alpha.nomagichttp.testutil.IORunnable;
-import alpha.nomagichttp.util.Publishers;
 import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
@@ -24,23 +23,25 @@ import java.util.concurrent.Flow;
 import java.util.function.Consumer;
 import java.util.function.ToLongBiFunction;
 
-import static alpha.nomagichttp.HttpConstants.HeaderKey.CONTENT_LENGTH;
+import static alpha.nomagichttp.HttpConstants.HeaderName.CONTENT_LENGTH;
 import static alpha.nomagichttp.handler.RequestHandler.GET;
 import static alpha.nomagichttp.handler.RequestHandler.POST;
 import static alpha.nomagichttp.message.Responses.accepted;
 import static alpha.nomagichttp.message.Responses.continue_;
+import static alpha.nomagichttp.message.Responses.noContent;
 import static alpha.nomagichttp.message.Responses.ok;
 import static alpha.nomagichttp.message.Responses.processing;
 import static alpha.nomagichttp.message.Responses.text;
 import static alpha.nomagichttp.testutil.LogRecords.rec;
 import static alpha.nomagichttp.testutil.TestClient.CRLF;
+import static alpha.nomagichttp.testutil.TestRequestHandlers.respondIsBodyEmpty;
 import static alpha.nomagichttp.testutil.TestRequests.get;
 import static alpha.nomagichttp.testutil.TestRequests.post;
-import static alpha.nomagichttp.testutil.TestRoutes.respondIsBodyEmpty;
-import static alpha.nomagichttp.testutil.TestRoutes.respondRequestBody;
 import static alpha.nomagichttp.util.BetterBodyPublishers.ofByteArray;
+import static alpha.nomagichttp.util.Publishers.just;
 import static java.lang.System.Logger.Level.DEBUG;
 import static java.lang.System.Logger.Level.WARNING;
+import static java.nio.ByteBuffer.allocate;
 import static java.nio.charset.StandardCharsets.US_ASCII;
 import static java.time.Duration.ZERO;
 import static java.time.Duration.between;
@@ -66,8 +67,10 @@ import static org.assertj.core.api.Assertions.assertThat;
 class DetailTest extends AbstractRealTest
 {
     @Test
-    void connection_reuse() throws IOException {
-        server().add(respondRequestBody());
+    void connection_reuse_standard() throws IOException {
+        // Echo request body
+        server().add("/", POST().apply(req ->
+            req.body().toText().thenApply(Responses::text)));
         
         final String resHead =
             "HTTP/1.1 200 OK"                         + CRLF +
@@ -85,8 +88,53 @@ class DetailTest extends AbstractRealTest
     }
     
     @Test
+    void connection_reuse_chunking() throws IOException {
+        server()
+            .add("/ignore-body-and-trailers", POST().respond(noContent()))
+            .add("/echo-trailers", POST().apply(req -> req.body().toText()
+                       .thenCompose(ignore -> req.trailers().thenApply(tr ->
+                               text(tr.delegate().firstValue("Trailer").get())))));
+        
+        var template = """
+            POST /$1 HTTP/1.1
+            Transfer-Encoding: chunked
+            $2
+            
+            3
+            abc
+            0
+            Trailer: $3
+            
+            """;
+        
+        Channel ch = client().openConnection();
+        try (ch) {
+            // Discard both the body and trailers
+            var req1 = template.replace("$1", "ignore-body-and-trailers")
+                               .replace("$2", "X-Extra: lots of fun tiz is")
+                               .replace("$3", "blabla we don't care");
+            var rsp1 = client().writeReadTextUntilNewlines(req1);
+            assertThat(rsp1).isEqualTo(
+                    "HTTP/1.1 204 No Content\r\n\r\n");
+            
+            // Can push a message over the same conn and echo the last trailer
+            var req2 = template.replace("$1", "echo-trailers")
+                               .replace("$2", "Connection: close")
+                               .replace("$3", "I care!");
+            var rsp2 = client().writeReadTextUntilEOS(req2);
+            assertThat(rsp2).isEqualTo("""
+                HTTP/1.1 200 OK\r
+                Content-Length: 7\r
+                Content-Type: text/plain; charset=utf-8\r
+                Connection: close\r
+                \r
+                I care!""");
+        }
+    }
+    
+    @Test
     void request_body_discard_all() throws IOException {
-        server().add(respondIsBodyEmpty());
+        server().add("/", respondIsBodyEmpty());
         
         IORunnable exchange = () -> {
             String req = post("x".repeat(10)),
@@ -105,7 +153,7 @@ class DetailTest extends AbstractRealTest
             exchange.run();
             
             // The endpoint didn't read the body contents, i.e. auto-discarded.
-            // If done correctly, we should be be able to send a new request using the same connection:
+            // If done correctly, we should be able to send a new request using the same connection:
             exchange.run();
         }
     }
@@ -138,6 +186,24 @@ class DetailTest extends AbstractRealTest
             exchange.run();
             exchange.run();
         }
+    }
+    
+    @Test
+    void request_body_discard_chunked() throws IOException {
+        server().add("/",
+            GET().respond(noContent()));
+        var rsp = client().writeReadTextUntilEOS("""
+            GET / HTTP/1.1
+            Transfer-Encoding: chunked
+            Connection: close
+            
+            0
+            Trailer: This too is discarded
+            
+            """);
+        assertThat(rsp).isEqualTo("""
+            HTTP/1.1 204 No Content\r
+            Connection: close\r\n\r\n""");
     }
     
     @Test
@@ -189,35 +255,38 @@ class DetailTest extends AbstractRealTest
     }
     
     @Test
-    void response_unknownLength_bodyNonEmpty() throws IOException, InterruptedException {
+    void response_unknownLength_bodyNonEmpty() throws IOException {
         server().add("/", GET().respond(
-                text("Hi").toBuilder()
-                          .removeHeader(CONTENT_LENGTH)
-                          .build()));
-        
-        String rsp = client().writeReadTextUntil(get(), "Hi");
-        assertThat(rsp).isEqualTo(
-            "HTTP/1.1 200 OK"                         + CRLF +
-            "Content-Type: text/plain; charset=utf-8" + CRLF +
-            "Connection: close"                       + CRLF + CRLF +
-            
-            "Hi");
-        
-        logRecorder().assertAwaitChildClose();
+            text("World").toBuilder()
+                         .removeHeader(CONTENT_LENGTH)
+                         .build()));
+        String rsp = client().writeReadTextUntil(
+            get(), "0\r\n\r\n");
+        assertThat(rsp).isEqualTo("""
+            HTTP/1.1 200 OK\r
+            Content-Type: text/plain; charset=utf-8\r
+            Transfer-Encoding: chunked\r
+            \r
+            00000005\r
+            World\r
+            0\r\n\r
+            """);
     }
     
     @Test
-    void response_unknownLength_bodyEmpty() throws IOException, InterruptedException {
-        var empty = Publishers.just(ByteBuffer.allocate(0));
-        server().add("/", GET().respond(ok(empty, "application/octet-stream", -1)));
-        
-        String rsp = client().writeReadTextUntilNewlines(get());
-        assertThat(rsp).isEqualTo(
-            "HTTP/1.1 200 OK"                         + CRLF +
-            "Content-Type: application/octet-stream"  + CRLF +
-            "Connection: close"                       + CRLF + CRLF);
-    
-        logRecorder().assertAwaitChildClose();
+    void response_unknownLength_bodyEmpty() throws IOException {
+        server().add("/", GET().respond(
+            ok(just(allocate(0)), "application/octet-stream", -1)));
+        String rsp = client().writeReadTextUntilEOS(
+            get("Connection: close"));
+        assertThat(rsp).isEqualTo("""
+            HTTP/1.1 200 OK\r
+            Content-Type: application/octet-stream\r
+            Transfer-Encoding: chunked\r
+            Connection: close\r
+            \r
+            0\r\n\r
+            """);
     }
     
     // And what about @Test request_unknownLength() ?
@@ -275,7 +344,7 @@ class DetailTest extends AbstractRealTest
                 "Content-Type: application/octet-stream" + CRLF + CRLF)
                 .getBytes(US_ASCII);
         
-        ByteBuffer merged = ByteBuffer.allocate(expHead.length + rspBody.length);
+        ByteBuffer merged = allocate(expHead.length + rspBody.length);
         for (byte b : expHead) merged.put(b);
         for (byte b : rspBody) merged.put(b);
         merged.flip();
@@ -358,7 +427,7 @@ class DetailTest extends AbstractRealTest
         
         assertThat(s.elapsedDuration()).isGreaterThanOrEqualTo(ZERO);
         assertThat(s.elapsedDuration()).isLessThanOrEqualTo(expDur);
-        assertThat(s.bytes()).isEqualTo(exchToExpByteCnt.applyAsLong(req + CRLF, rsp));
+        assertThat(s.byteCount()).isEqualTo(exchToExpByteCnt.applyAsLong(req + CRLF, rsp));
     }
     
     private static class AfterByteTargetStop implements Flow.Subscriber<PooledByteBufferHolder>
@@ -389,7 +458,6 @@ class DetailTest extends AbstractRealTest
                     break;
                 }
             }
-            
             item.release();
         }
         

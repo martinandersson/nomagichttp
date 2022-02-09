@@ -10,7 +10,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.RandomAccess;
 
-import static alpha.nomagichttp.util.Streams.randomAndUnmodifiable;
 import static alpha.nomagichttp.util.PercentDecoder.decode;
 import static java.util.Collections.unmodifiableList;
 import static java.util.Collections.unmodifiableMap;
@@ -48,7 +47,7 @@ final class SkeletonRequestTarget
     static SkeletonRequestTarget parse(String rt) {
         // At the very least, we're parsing a "/"
         String parse = rt.isEmpty() ? "/" : rt;
-        assert !parse.isBlank() : "RequestHeadProcessor should not give us a blank string.";
+        assert !parse.isBlank() : "The request-line parser should not give us a blank string.";
         
         final int skip = parse.startsWith("/") ? 1 : 0;
         
@@ -153,9 +152,7 @@ final class SkeletonRequestTarget
     }
     
     private List<String> mkSegments() {
-        var sr = segmentsRaw();
-        return randomAndUnmodifiable(
-                sr.size(), sr.stream().map(PercentDecoder::decode));
+        return segmentsRaw().stream().map(PercentDecoder::decode).toList();
     }
     
     /**

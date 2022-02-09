@@ -7,9 +7,9 @@ import static java.nio.charset.StandardCharsets.UTF_8;
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  */
-final class DataUtil
+final class DataUtils
 {
-    private DataUtil() {
+    private DataUtils() {
         // Private
     }
     

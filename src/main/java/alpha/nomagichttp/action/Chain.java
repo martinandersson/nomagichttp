@@ -17,8 +17,8 @@ import alpha.nomagichttp.Config;
  * 
  * It is important that the before-action either returns exceptionally from the
  * {@code apply} method or interacts with the given chain object. Failure to do
- * so will eventually trigger a {@linkplain Config#timeoutIdleConnection()
- * timeout error}.
+ * so will eventually raise a {@linkplain Config#timeoutRead() read} or
+ * {@linkplain Config#timeoutResponse() response} timeout.
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  */

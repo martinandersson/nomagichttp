@@ -1,18 +1,20 @@
 package alpha.nomagichttp.event;
 
-import alpha.nomagichttp.message.RequestHead;
+import alpha.nomagichttp.message.RawRequest;
 
 /**
- * A request head has been received by the HTTP server.<p>
+ * A request head has been received and intermittently processed by the HTTP
+ * server.<p>
  * 
- * The event is emitted before validation and parsing of the request head has
- * begun. For example, it is possible that the request head is later rejected
- * for invalid token data or any other fault after the emission of the event.<p>
+ * The event is emitted immediately after the last HTTP header and before
+ * validation and parsing of the request head has begun. For example, it is
+ * possible that the request head is later rejected for invalid token data or
+ * any other fault after the emission of the event.<p>
  * 
  * The intended purpose of this event is to gather metrics.<p>
  * 
- * The first attachment given to the listener is the {@link RequestHead}. The
- * second attachment is an instance of {@link Stats}.
+ * The first attachment given to the listener is the {@link RawRequest.Head}.
+ * The second attachment is an instance of {@link Stats}.
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  */
@@ -37,14 +39,14 @@ public enum RequestHeadReceived {
     public static final class Stats extends AbstractByteCountedStats
     {
         /**
-         * Constructs this object.
+         * Initializes this object.
          * 
          * @param start {@link System#nanoTime()} on start
          * @param stop  {@link System#nanoTime()} on stop
-         * @param bytes processed
+         * @param byteCount processed
          */
-        public Stats(long start, long stop, long bytes) {
-            super(start, stop, bytes);
+        public Stats(long start, long stop, long byteCount) {
+            super(start, stop, byteCount);
         }
         
         @Override
@@ -52,7 +54,7 @@ public enum RequestHeadReceived {
             return RequestHeadReceived.class.getSimpleName() + '.' + Stats.class.getSimpleName() + "{" +
                     "start=" + nanoTimeOnStart() +
                     ", stop=" + nanoTimeOnStop() +
-                    ", bytes=" + bytes() + '}';
+                    ", byteCount=" + byteCount() + '}';
         }
     }
 }

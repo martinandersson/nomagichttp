@@ -6,6 +6,7 @@ import alpha.nomagichttp.message.MediaType;
 import alpha.nomagichttp.message.MediaTypeParseException;
 import alpha.nomagichttp.message.Request;
 import alpha.nomagichttp.message.Response;
+import alpha.nomagichttp.message.Responses;
 import alpha.nomagichttp.route.AmbiguousHandlerException;
 import alpha.nomagichttp.route.HandlerCollisionException;
 import alpha.nomagichttp.route.NoHandlerResolvedException;
@@ -110,7 +111,7 @@ import static java.util.Objects.requireNonNull;
  * <h3>Qualify handler by consuming media type</h3>
  * 
  * If a request has a {@link MediaType} set in the {@value
- * HttpConstants.HeaderKey#CONTENT_TYPE} header, then this hints that an
+ * HttpConstants.HeaderName#CONTENT_TYPE} header, then this hints that an
  * entity-body will be attached and the server will proceed to filter out all
  * handlers that does not consume a {@link MediaType#compatibility(MediaType)
  * compatible} media type.<p>
@@ -133,7 +134,7 @@ import static java.util.Objects.requireNonNull;
  * 
  * <h3>Qualify handler by producing media type (proactive content negotiation)</h3>
  * 
- * The {@value HttpConstants.HeaderKey#ACCEPT} header of a request indicates
+ * The {@value HttpConstants.HeaderName#ACCEPT} header of a request indicates
  * what media type(s) the client is willing to accept as response body. Each
  * such media type - or "media range" to be technically correct - can carry with
  * it a "quality" value indicating the client's preference. It makes no sense
@@ -173,8 +174,8 @@ import static java.util.Objects.requireNonNull;
  * a less specific one.<p>
  * 
  * The server ignores other headers such as {@value
- * HttpConstants.HeaderKey#ACCEPT_CHARSET} and {@value
- * HttpConstants.HeaderKey#ACCEPT_LANGUAGE}.<p>
+ * HttpConstants.HeaderName#ACCEPT_CHARSET} and {@value
+ * HttpConstants.HeaderName#ACCEPT_LANGUAGE}.<p>
  * 
  * There is no library-provided support for magical request parameters
  * ("?format=json") and so called "URL suffixes" ("/my-resource.json"). The
@@ -389,23 +390,32 @@ public interface RequestHandler
      * @see #logic()
      */
     @FunctionalInterface
-    interface Logic extends BiConsumer<Request, ClientChannel>, ReceiverOfUniqueRequestObject {
+    interface Logic extends
+            BiConsumer<Request, ClientChannel>,
+            ReceiverOfUniqueRequestObject {
         // Empty
     }
     
     /**
-     * Builder of {@link RequestHandler}.<p>
+     * Builder of a {@link RequestHandler}.<p>
+     * 
+     * A builder instance can be retrieved using static factories from the
+     * enclosing class:
+     * <pre>
+     *   RequestHandler.Builder forGetRequests = RequestHandler.{@link #GET() GET}();
+     * </pre>
      * 
      * When the builder has been constructed, the request handler method will
-     * have already been set. What remains is to optionally set consuming and
-     * producing media types and finally build the handler.<p>
+     * have already been set. What remains is to set consuming and producing
+     * media types (optionally) and lastly set the request-processing
+     * function.<p>
      * 
      * Consuming and producing media types will by default be set to {@link
      * MediaType#__NOTHING_AND_ALL} and "*&#47;*" respectively, meaning that
      * unless more restrictive media types are set, the handler is willing to
      * serve all requests no matter the presence- or value of the request's
-     * {@value HttpConstants.HeaderKey#CONTENT_TYPE} and {@value
-     * HttpConstants.HeaderKey#ACCEPT} headers.<p>
+     * {@value HttpConstants.HeaderName#CONTENT_TYPE} and {@value
+     * HttpConstants.HeaderName#ACCEPT} headers.<p>
      * 
      * The handler is built and returned from the setter method that specifies
      * the request-processing logic. Three different styles of setter methods
@@ -417,15 +427,15 @@ public interface RequestHandler
      * {@code respond()} is a good choice when the function does not need to
      * access the request object:
      * <pre>
-     *   RequestHandler static = GET().respond(text("Hello!"));
+     *   RequestHandler static = GET().respond({@link Responses#text(String)
+     *       text}("Hello!"));
      * </pre>
      * 
-     * {@code apply()} is a good choice when the function needs to the request
+     * {@code apply()} is a good choice when the function needs the request
      * object and produces an asynchronous response (the request body is the
      * asynchronous part in this example which returns a {@code
      * CompletionStage}):
      * <pre>
-     * 
      *   RequestHandler greeter = POST()
      *           .apply(request -{@literal >} request.body().toText()
      *                   .thenApply(name -{@literal >} text("Hello " + name + "!")));
@@ -435,7 +445,6 @@ public interface RequestHandler
      * explicitness, {@code accept()} is given the undressed handler logic
      * function which must use the client channel to write a response:
      * <pre>
-     * 
      *   RequestHandler greeter = POST().accept((request, channel) -{@literal >} {
      *       if (request.body().isEmpty()) {
      *           Response bad = Responses.badRequest();
@@ -453,7 +462,6 @@ public interface RequestHandler
      * be necessary for more advanced use-cases that needs hot-swapping,
      * request-scoped dependencies, and so forth.
      * <pre>
-     * 
      *   class MyLogic implements BiConsumer{@literal <}Request, ClientChannel{@literal >} {
      *       MyLogic(My dependencies) {
      *           ...
@@ -467,7 +475,6 @@ public interface RequestHandler
      * 
      * Or, if you wish to skip the builder completely:
      * <pre>
-     * 
      *   class MyEndpoint implements RequestHandler {
      *       MyEndpoint(My dependencies) {
      *           ...

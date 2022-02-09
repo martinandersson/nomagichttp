@@ -6,7 +6,7 @@ import alpha.nomagichttp.message.MediaType;
 
 import java.util.Collection;
 
-import static alpha.nomagichttp.HttpConstants.HeaderKey.CONTENT_TYPE;
+import static alpha.nomagichttp.HttpConstants.HeaderName.CONTENT_TYPE;
 import static java.text.MessageFormat.format;
 import static java.util.Objects.requireNonNull;
 
@@ -50,7 +50,7 @@ public class MediaTypeUnsupportedException extends NoHandlerResolvedException {
      * {@inheritDoc}
      * 
      * @return Content-Type (never {@code null})
-     * @see HttpConstants.HeaderKey#CONTENT_TYPE
+     * @see HttpConstants.HeaderName#CONTENT_TYPE
      */
     @Override
     public MediaType getContentType() {

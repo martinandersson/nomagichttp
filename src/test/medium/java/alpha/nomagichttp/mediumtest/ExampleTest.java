@@ -2,8 +2,8 @@ package alpha.nomagichttp.mediumtest;
 
 import alpha.nomagichttp.event.RequestHeadReceived;
 import alpha.nomagichttp.handler.RequestHandler;
+import alpha.nomagichttp.message.RawRequest;
 import alpha.nomagichttp.message.Request;
-import alpha.nomagichttp.message.RequestHead;
 import alpha.nomagichttp.message.Response;
 import alpha.nomagichttp.message.Responses;
 import alpha.nomagichttp.route.NoRouteFoundException;
@@ -32,6 +32,7 @@ import java.util.function.Function;
 import static alpha.nomagichttp.HttpConstants.Version.HTTP_1_1;
 import static alpha.nomagichttp.handler.RequestHandler.GET;
 import static alpha.nomagichttp.handler.RequestHandler.POST;
+import static alpha.nomagichttp.message.Responses.noContent;
 import static alpha.nomagichttp.message.Responses.processing;
 import static alpha.nomagichttp.message.Responses.text;
 import static alpha.nomagichttp.testutil.HttpClientFacade.Implementation.JDK;
@@ -289,7 +290,7 @@ class ExampleTest extends AbstractRealTest
     }
     
     private void addEchoHeadersRoute(boolean closeChild) throws IOException {
-        Function<Request, Response> rsp = req -> Responses.noContent().toBuilder()
+        Function<Request, Response> rsp = req -> noContent().toBuilder()
                 .addHeaders(req.headers())
                 .build();
         
@@ -384,9 +385,13 @@ class ExampleTest extends AbstractRealTest
         assertThat(res2).isEqualTo(
             "HTTP/1.1 500 Internal Server Error" + CRLF +
             "Content-Length: 0"                  + CRLF + CRLF);
-        assertThat(pollServerError()).isExactlyInstanceOf(FileAlreadyExistsException.class);
-        assertThat(Files.readString(file)).isEqualTo("Foo");
+        assertThat(pollServerError())
+                .isExactlyInstanceOf(FileAlreadyExistsException.class);
+        assertThat(Files.readString(file))
+                .isEqualTo("Foo");
     }
+    
+    // TODO: Add UploadFile_compatibility
     
     // TODO: Currently not a public example. Update docs.
     @Test
@@ -394,8 +399,8 @@ class ExampleTest extends AbstractRealTest
     void CountRequestsByMethod() throws IOException, InterruptedException {
         final Map<String, LongAdder> freqs = new ConcurrentHashMap<>();
         
-        BiConsumer<RequestHeadReceived, RequestHead> incrementer = (event, head) ->
-                freqs.computeIfAbsent(head.method(), m -> new LongAdder()).increment();
+        BiConsumer<RequestHeadReceived, RawRequest.Head> incrementer = (event, head) ->
+                freqs.computeIfAbsent(head.line().method(), m -> new LongAdder()).increment();
         
         // We don't need to add routes here, sort of the whole point lol
         server().events().on(RequestHeadReceived.class, incrementer);
@@ -403,9 +408,50 @@ class ExampleTest extends AbstractRealTest
         var responseIgnored = client()
                 .writeReadTextUntilNewlines("GET / HTTP/1.1" + CRLF + CRLF);
         
-        assertThat(freqs.get("GET").sum()).isOne();
-        assertThat(pollServerError()).isExactlyInstanceOf(NoRouteFoundException.class);
+        assertThat(freqs.get("GET").sum())
+                .isOne();
+        assertThat(pollServerError())
+                .isExactlyInstanceOf(NoRouteFoundException.class);
     }
+    
+    // TODO: Add CountRequestsByMethod_compatibility
+    
+    /**
+     * The happy version of
+     * {@link ErrorTest#Special_requestTrailers_errorNotHandled()}.
+     */
+    // TODO: Currently not a public example. Update docs.
+    @Test
+    @DisplayName("RequestTrailers/TestClient")
+    void RequestTrailers() throws IOException {
+        server().add("/", POST().apply(req -> req.body().toText()
+                .thenCompose(txt ->
+                    req.trailers().thenApply(tr ->
+                        txt + tr.delegate().firstValue("Append-This").get()))
+                .thenApply(Responses::text)));
+        
+        var rsp = client().writeReadTextUntilEOS("""
+                POST / HTTP/1.1
+                Transfer-Encoding: chunked
+                Connection: close
+                
+                6
+                Hello\s
+                0
+                Append-This: World!
+                
+                """);
+        
+        assertThat(rsp).isEqualTo("""
+                HTTP/1.1 200 OK\r
+                Content-Length: 12\r
+                Content-Type: text/plain; charset=utf-8\r
+                Connection: close\r
+                \r
+                Hello World!""");
+    }
+    
+    // TODO: Add RequestTrailers_compatibility
     
     private static Response tryScheduleClose(Response rsp, boolean ifTrue) {
         return ifTrue ? setHeaderConnectionClose(rsp) : rsp;

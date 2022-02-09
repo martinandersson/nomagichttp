@@ -10,6 +10,7 @@ import alpha.nomagichttp.route.Route;
 import alpha.nomagichttp.util.Publishers;
 
 import java.net.URLDecoder;
+import java.nio.ByteBuffer;
 import java.nio.channels.AsynchronousByteChannel;
 import java.nio.channels.AsynchronousFileChannel;
 import java.nio.channels.GatheringByteChannel;
@@ -43,8 +44,8 @@ import java.util.stream.Stream;
  * E.g. attribute entries and caching layers such as the lazy processing of path
  * parameters, the query string and header parsing.<p>
  * 
- * The request object does not implement {@code hashCode()} and {@code equals()}.
- * Its identity is unique per receiver (see {@link
+ * The request object does not implement {@code hashCode()} and {@code
+ * equals()}. Its identity is unique per receiver (see {@link
  * ReceiverOfUniqueRequestObject}).
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
@@ -124,6 +125,67 @@ public interface Request extends HeaderHolder, AttributeHolder
     Body body();
     
     /**
+     * Returns trailing headers.<p>
+     * 
+     * The client can append a header section after the message body. Apart from
+     * the placement, these so-called trailing headers are identical to the more
+     * commonly known header fields that occur before the message body.<p>
+     * 
+     * Trailing headers are good for sending metadata that was not available
+     * before the body started transmitting. For example, appending a hash that
+     * the receiver can use to verify message integrity. Another example is
+     * having the client provide metrics, such as a timestamp when the client
+     * finished sending the body.<p>
+     * 
+     * Because trailers occur on the wire after the request body, waiting on
+     * trailers to complete before consuming the body or sending a final
+     * response may halt progress.
+     * <pre>
+     *   // Bad, trailers may not complete before time out!
+     *   request.trailers().thenCompose(tr -> request.body().toText()...)
+     *   // Okay, body is consumed, trailers will follow
+     *   request.body().toText().thenCompose(txt -> request.trailers()...)
+     * </pre>
+     * 
+     * RFC 7230 §4.4 defines an HTTP header "Trailer" which it says ought to
+     * list what trailers will be sent after the body. The RFC also suggest that
+     * the server move trailers to the "existing header fields" and then remove
+     * the "Trailer" header, i.e. make it look like trailing headers are normal
+     * headers (asynchronous APIs were not so common at the time!). And to
+     * preempt the damage that may result from hoisting trailers, the RFC also
+     * lists field names that it says must not be used as a trailing header,
+     * e.g. "Host" and "Content-Length".<p>
+     * 
+     * The NoMagicHTTP does none of this stuff. The "Trailer" header and all
+     * trailers will remain untouched. However, the RFC hack may be applied by
+     * HTTP intermediaries who buffer up and dechunk an HTTP/1.1 message before
+     * forwarding it. The application can therefore not generally be sure that
+     * the "Trailer" header and trailers are received in the same manner they
+     * were sent. Unless the application has knowledge or make assumptions
+     * about the request chain, it ought to fall back and look for missing
+     * trailers amongst the ordinary HTTP headers.<p>
+     * 
+     * Trailing headers were first introduced in HTTP/1.1 chunked encoding (
+     * <a href="https://tools.ietf.org/html/rfc7230#section-4.1.2">RFC 7230 §4.1.2</a>)
+     * and although HTTP/2 discontinues chunked encoding in favor of its own
+     * data frames, trailing headers remain supported (
+     * <a href="https://tools.ietf.org/html/rfc7540#section-8.1">RFC 7540 §8.1</a>).
+     * For requests of an older HTTP version ({@literal <} 1.1), this method
+     * returns an already completed stage with an empty headers object.<p>
+     * 
+     * If a non-chunked body is empty, the returned stage will already be
+     * completed with an empty headers object. A chunked body could technically
+     * be encoded as empty, but this body would still have to be consumed in
+     * order for the returned stage to complete.<p>
+     * 
+     * The returned stage may be a copy. It can not be cast to a {@code
+     * CompletableFuture} and then used to cancel/abort processing trailers.
+     * 
+     * @return trailing headers (never {@code null})
+     */
+    CompletionStage<BetterHeaders> trailers();
+    
+    /**
      * An API to access segments, path parameters (interpreted segments), query
      * key/value pairs and a fragment from the resource-target of a request.<p>
      * 
@@ -143,7 +205,7 @@ public interface Request extends HeaderHolder, AttributeHolder
      * The exact structure of the query string is not standardized (
      * <a href="https://en.wikipedia.org/wiki/Query_string">Wikipedia</a>). The
      * NoMagicHTTP library supports repeated query keys and query keys with no
-     * value (will be mapped to the empty string "").<p>
+     * value (will be mapped to the empty string).<p>
      * 
      * Tokens (path parameter values, query keys/values) are not interpreted or
      * parsed by the HTTP server. In particular, please note that there is no
@@ -470,25 +532,19 @@ public interface Request extends HeaderHolder, AttributeHolder
     /**
      * Request-specific headers.
      */
-    interface Headers extends CommonHeaders {
+    interface Headers extends ContentHeaders {
         /**
-         * Parses all "Accept" values.<p>
+         * Parses all "Accept" values.
          * 
-         * The accept-header may be specified by clients that wish to retrieve a
-         * particular resource representation.<p>
-         * 
-         * <i>All</i> accept-header keys are taken into account in order,
-         * splitting the values by the comma character (",") - except for quoted
-         * values (;param="quo,ted"), then feeding each token to {@link
-         * MediaType#parse(String)}.
-         * 
-         * @return parsed values (unmodifiable, implements {@link RandomAccess})
+         * @return parsed values
+         *         (unmodifiable, {@link RandomAccess}, not {@code null})
          * 
          * @throws BadHeaderException
          *             if parsing failed (the cause is set to a
          *             {@link MediaTypeParseException})
          * 
-         * @see HttpConstants.HeaderKey#ACCEPT
+         * @see HttpConstants.HeaderName#ACCEPT
+         * @see MediaType#parse(String) 
          */
         List<MediaType> accept();
     }
@@ -498,10 +554,9 @@ public interface Request extends HeaderHolder, AttributeHolder
      * various forms.<p>
      * 
      * High-level methods (for example, {@link #toText()}), returns a {@link
-     * CompletionStage} because the request handler will be invoked and
-     * therefore have access to the Body API immediately after the server is
-     * done parsing the request head. At this point in time, not all bytes will
-     * necessarily have made it through on the network.<p>
+     * CompletionStage} because the request handler will be called immediately
+     * after the server is done parsing the request head. At this point in time,
+     * not all bytes will necessarily have made it through on the network.<p>
      * 
      * The body bytes may be converted into any arbitrary Java type using the
      * {@link #convert(BiFunction)} method or consumed directly "on arrival"
@@ -516,17 +571,20 @@ public interface Request extends HeaderHolder, AttributeHolder
      * 
      * The body bytes can not be directly consumed more than once; they are not
      * saved by the server. An attempt to {@code convert()} or {@code
-     * subscribe()} more than once will result in an {@code
-     * IllegalStateException}.<p>
+     * subscribe()} more than once will signal an {@code IllegalStateException}
+     * to the subscriber.<p>
      * 
-     * Same is is also true for utility methods that trickle down. If for
-     * example {@code convert()} is used followed by {@code toText()}, then the
-     * latter will complete exceptionally with an {@code
-     * IllegalStateException}.<p>
+     * Same is true for utility methods that trickle down. If for example
+     * {@code convert()} is used followed by {@code toText()}, then the latter
+     * will complete exceptionally with an {@code IllegalStateException}.<p>
      * 
-     * And, it does not matter if a {@code Flow.Subscription} is immediately
-     * cancelled with or without actually consuming any bytes. Subscription
-     * cancellation will cause the body to be discarded.<p>
+     * And, it does not matter if {@code Flow.Subscription.cancel()} is called
+     * after the subscription has effectively started but before actually
+     * consuming bytes. A subsequent subscriber will still be signalled the
+     * {@code IllegalStateException}. The only exception (no pun intended) is if
+     * a subscriber cancels the subscription synchronously from within {@code
+     * onSubscribe} which will cause the subscription to roll back. This has the
+     * same effect as if the subscription request was never made.<p>
      * 
      * Some utility methods such as {@code toText()} cache the result and will
      * return the same stage on future invocations.<p>
@@ -556,9 +614,9 @@ public interface Request extends HeaderHolder, AttributeHolder
      * to recover the body (e.g. {@code toText() >} {@code
      * IllegalCharsetNameException}). Unexpected errors - in particular, errors
      * that originate from the channel's read operation - have used up a real
-     * subscription and also closed the read stream (e.g. {@code
-     * RequestBodyTimeoutException}). Before attempting to recover the body,
-     * always check first if the {@link ClientChannel#isOpenForReading()}.
+     * subscription and also closed the read stream. Before attempting to
+     * recover the body, always check first if the {@link
+     * ClientChannel#isOpenForReading()}.
      * 
      * 
      * <h2>Subscribing to bytes with a {@code Flow.Subscriber}</h2>
@@ -567,7 +625,8 @@ public interface Request extends HeaderHolder, AttributeHolder
      * JavaDoc of {@link Publishers} applies to the {@code Body} as a publisher
      * as well. The only exception is that the body does not support subscriber
      * reuse, again because the server does not keep the bytes after
-     * consumption.<p>
+     * consumption. Subscribing more than once will cause an {@link
+     * IllegalStateException} to be signalled.<p>
      * 
      * The subscriber will receive bytebuffers in the same order they are read
      * from the underlying channel. The subscriber can not read beyond the
@@ -579,30 +638,32 @@ public interface Request extends HeaderHolder, AttributeHolder
      * The published bytebuffers are pooled and may be processed synchronously
      * or asynchronously. Whenever the application has finished processing
      * a bytebuffer, it must be {@link PooledByteBufferHolder#release()
-     * released} which is a signal to the server that the bytebuffer may be
-     * reused for new channel operations. The thread doing the release may be
+     * released} which is a signal to the upstream publisher that the bytebuffer
+     * may be reused for new operations. The thread doing the release may be
      * used to immediately publish new bytebuffers to the subscriber.<p>
      * 
      * Releasing the bytebuffer with bytes remaining to be read will cause the
      * bytebuffer to immediately become available for re-publication (ahead of
-     * other bytebuffers already available).<p>
+     * other bytebuffers already available). To reduce the chattiness, the
+     * subscriber is encouraged to consume all remaining bytes before
+     * releasing.<p>
      * 
-     * Cancelling the subscription does not cause the bytebuffer to be released.
-     * Releasing has to be done explicitly, or implicitly through an exceptional
-     * return of {@code Subscriber.onNext()}.
+     * Cancelling the subscription does not cause an outstanding bytebuffer to
+     * be released. Releasing has to be done explicitly, or implicitly through
+     * an exceptional return of {@code Subscriber.onNext()}.
      * 
      * <h3>Processing bytebuffers</h3>
      * 
      * The subscriber may request/demand any number of bytebuffers, but will
      * only receive the next bytebuffer after the previous one has been
      * released. So, awaiting more buffers before releasing old ones will
-     * inevitably result in a {@link RequestBodyTimeoutException}.<p>
+     * inevitably result in a {@link ReadTimeoutException}.<p>
      * 
      * For the Body API to support concurrent processing of many
      * bytebuffers without the risk of adding unnecessary delays or blockages,
      * the API would have to declare methods that the application can use to
      * learn how many bytebuffers are immediately available and possibly also
-     * learn the size of the server's bytebuffer pool.<p>
+     * learn the size of the upstream bytebuffer pool.<p>
      * 
      * This is not very likely to ever happen for a number of reasons. The API
      * complexity would increase dramatically for a doubtful benefit. In fact,
@@ -613,72 +674,90 @@ public interface Request extends HeaderHolder, AttributeHolder
      * bytebuffers, then this is a sign that the application's processing code
      * would have blocked the request thread (see "Threading Model" in {@link
      * HttpServer}). For example, {@link GatheringByteChannel} expects a {@code
-     * ByteBuffer[]} but is a blocking API. Instead, submit the bytebuffers one
-     * at a time to {@link AsynchronousByteChannel}, releasing each in the
-     * completion handler.<p>
+     * ByteBuffer[]} but is a blocking API. In this particular case, the
+     * solution is instead to submit the bytebuffers one at a time to {@link
+     * AsynchronousByteChannel}, releasing each in the completion handler.<p>
      * 
      * Given how only one bytebuffer at a time is published then there's no
      * difference between requesting {@code Long.MAX_VALUE} versus requesting
      * one at a time. Unfortunately, the
      * <a href="https://github.com/reactive-streams/reactive-streams-jvm/blob/v1.0.3/README.md">
      * Reactive Streams</a> calls the latter approach an "inherently inefficient
-     * 'stop-and-wait' protocol". In our context, this is wrong. The bytebuffers
-     * are pooled and cached upstream already. Requesting a bytebuffer is
-     * essentially the same as polling a stupidly fast queue of buffers. The
-     * advantage of requesting {@code Long.MAX_VALUE} is implementation
-     * simplicity.<p>
+     * 'stop-and-wait' protocol". In our context, this is wrong. For starters,
+     * there's no stop. Furthermore, the bytebuffers are pooled and cached
+     * upstream already. Requesting a bytebuffer is essentially the same as
+     * polling a stupidly fast queue of buffers. The advantage of requesting
+     * {@code Long.MAX_VALUE} is implementation simplicity.<p>
      * 
-     * The default implementation uses <i>direct</i> bytebuffers in order to
-     * support "zero-copy" transfers. I.e., no data is moved into Java heap
-     * space unless the subscriber itself causes this to happen. Whenever
-     * possible, always pass forward the bytebuffers to the destination without
-     * reading the bytes in application code!
+     * The channel uses <i>direct</i> bytebuffers in order to support
+     * "zero-copy" transfers. I.e., the channel itself does not move data into
+     * Java heap space. Whenever possible, pass forward the bytebuffers to the
+     * next destination without reading the bytes in application code.<p>
      * 
-     * <h3>The HTTP exchange and body discarding</h3>
+     * There may be one or many processors installed between the channel and the
+     * body publisher, which does not use direct bytebuffers. For example, an
+     * HTTP/1.1 chunked decoder is publishing [decoded] bytebuffers allocated on
+     * the heap. If the application uses {@link ByteBuffer#array()} to access
+     * the bytes directly, do not forget to also set the new {@link
+     * ByteBuffer#position(int)} before releasing it. Doing both at the same
+     * time is exactly what {@link PooledByteBufferHolder#discard()} do.<p>
      * 
-     * The HTTP exchange is considered done as soon as 1) the request handler
-     * invocation has returned, and 2) the request body subscription completes,
-     * and 3) the final response body subscription completes. Not until then
-     * will the next HTTP message-exchange commence on the same channel.<p>
+     * Reading remaining bytes directly but not updating the bytebuffer's
+     * position will cause an endless loop where the upstream re-releases the
+     * same bytebuffer over and over again.<p>
      * 
-     * This means that a request body subscriber should ensure his subscription
-     * runs all the way to the end or is cancelled. Failure to request items in
-     * a timely manner will result in a {@link RequestBodyTimeoutException}.<p>
+     * TODO: Implement exception if released without consumption 100x in a row,
+     * then the last paragraph can be removed).
      * 
-     * But the application does not have to consume the body explicitly. When
-     * the server's final response body subscription completes and earliest at
-     * that point no request body subscriber has arrived, then the server will
-     * assume that the body was intentionally ignored and proceed to discard it
-     * - after which it can not be subscribed to by the application any more.<p>
+     * <h3>Body discarding</h3>
+     * 
+     * A request body subscriber should ensure his subscription runs all the way
+     * to the end or is cancelled. Failure to request items in a timely manner
+     * will result in a {@link ReadTimeoutException}.<p>
+     * 
+     * But the application does not have to consume the body explicitly.
+     * Earliest at the point when the request handler invocation has returned
+     * and the server's final response body subscription completes; if no
+     * request body subscriber has arrived, then the server will assume that the
+     * body was intentionally ignored and proceed to discard it - after which it
+     * can not be subscribed to by the application anymore.<p>
      * 
      * If a final response must be sent back immediately but reading the request
      * body bytes must be delayed, then there's at least two ways of solving
      * this. Either register a request body subscriber but delay requesting
      * items, or delay completing the server's response body subscription. Both
-     * approaches are still subject to {@link
-     * Config#timeoutIdleConnection()}. There is currently no API support to
-     * temporarily suspend timeouts.
+     * approaches are still subject to a {@linkplain Config#timeoutRead() read}
+     * and {@linkplain Config#timeoutResponse() response} timeout respectively.
+     * There is currently no API support to temporarily suspend timeouts.
      * 
      * <h3>Exception Handling</h3>
      * 
      * The {@code Body} as a publisher follows the same exception semantics
-     * specified in the JavaDoc of {@link Publishers}, decorated with some added
-     * behavior on top.<p>
+     * specified in the JavaDoc of {@link Publishers}.<p>
      * 
-     * An exception thrown by {@code
-     * Flow.Subscriber.onSubscribe()/onNext()/onComplete()} propagates to the
-     * calling thread. If this thread is the HTTP server's request thread, then
-     * standard {@link ErrorHandler error handling} is kicked off.<p>
+     * If an exception propagating from {@code
+     * Flow.Subscriber.onSubscribe()/onNext()/onComplete()} is observed by the
+     * HTTP server's request thread, then standard {@link ErrorHandler error
+     * handling} is kicked off.<p>
      * 
-     * An exception thrown by the subscriber's {@code onNext()} will cause the
-     * server to close the channel's read stream (the write stream remains
-     * untouched so that a response in-flight can complete or a new one
-     * commence).<p>
+     * An exception signalled to {@code Subscriber.onError()} can safely be
+     * assumed to indicate a low-level problem with the underlying channel or
+     * JVM. The exception will have been logged by the HTTP server followed by
+     * read-stream closure. These exceptions should generally be handled by
+     * responding a 500 (Internal Server Error). Exceptions from {@code
+     * onError()} itself, does not propagate anywhere.<p>
      * 
-     * Exceptions signalled to {@code Subscriber.onError()} that are <i>not
-     * caused by</i> the subscriber itself can safely be assumed to indicate
-     * low-level problems with the underlying channel. They will also have been
-     * logged by the HTTP server followed suite by read-stream closure.
+     * It's never a good design to rely on the error handler to resolve
+     * errors thrown by the subscriber, as these can be lost and unobserved by
+     * the server. The subscriber should never throw an exception.<p>
+     * 
+     * On the other hand, handling exceptions explicitly is not really necessary
+     * when transforming the request body stage into a response stage passed to
+     * the client channel. In this case, the application code is not the end
+     * consumer, it's merely declaring transformations, and upstream errors as
+     * well as intermittent stage errors will trickle down to the response
+     * stage, which is observed by the server and consequently passed to the
+     * error handler.
      * 
      * @author Martin Andersson (webmaster at martinandersson.com)
      */
@@ -702,7 +781,7 @@ public interface Request extends HeaderHolder, AttributeHolder
          * complete exceptionally with (but not limited to):<p> 
          * 
          * {@link BadHeaderException}
-         *     if headers has multiple Content-Type keys.<p>
+         *     if headers has multiple Content-Type values.<p>
          * {@link IllegalCharsetNameException}
          *     if the charset name is illegal (for example, "123").<p>
          * {@link UnsupportedCharsetException}
@@ -770,16 +849,16 @@ public interface Request extends HeaderHolder, AttributeHolder
         /**
          * Convert the request body into an arbitrary Java type.<p>
          * 
-         * All body bytes will be collected into a byte[]. Once all of the body
+         * All body bytes will be collected into a byte[]. Once the whole body
          * has been read, the byte[] will be passed to the specified function
          * together with a count of valid bytes that can be safely read from the
-         * array.<p>
+         * array (starting at index 0).<p>
          * 
-         * For example;
+         * For example, this is a naive implementation of {@link #toText()} that
+         * use a hardcoded charset:
          * <pre>{@code
          *   BiFunction<byte[], Integer, String> f = (buf, count) ->
          *       new String(buf, 0, count, StandardCharsets.US_ASCII);
-         *   
          *   CompletionStage<String> text = myRequest.body().convert(f);
          * }</pre>
          * 

@@ -3,7 +3,7 @@ package alpha.nomagichttp.internal;
 import alpha.nomagichttp.handler.EndOfStreamException;
 import alpha.nomagichttp.message.PooledByteBufferHolder;
 import alpha.nomagichttp.message.Request;
-import alpha.nomagichttp.util.PushPullPublisher;
+import alpha.nomagichttp.util.PushPullUnicastPublisher;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -13,20 +13,22 @@ import java.util.concurrent.Flow;
 import java.util.stream.IntStream;
 
 import static alpha.nomagichttp.internal.AnnounceToChannel.EOS;
+import static alpha.nomagichttp.internal.AnnounceToChannel.read;
 import static alpha.nomagichttp.internal.DefaultServer.becauseChannelOrGroupClosed;
 import static alpha.nomagichttp.util.IOExceptions.isCausedByBrokenInputStream;
-import static java.lang.System.Logger.Level.ERROR;
+import static alpha.nomagichttp.util.PushPullUnicastPublisher.hybrid;
+import static java.lang.System.Logger.Level.DEBUG;
 import static java.lang.System.Logger.Level.WARNING;
 
 /**
  * A unicast publisher of bytebuffers read from an asynchronous socket
  * channel.<p>
  * 
- * Many aspects of how to consume published bytebuffers has been documented in
+ * Many aspects of how to consume published bytebuffers have been documented in
  * {@link Request.Body} and {@link PooledByteBufferHolder}.<p>
  * 
  * When the channel's end-of-stream is reached, the active subscriber will be
- * signalled a {@link EndOfStreamException}.
+ * signalled an {@link EndOfStreamException}.
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  */
@@ -57,23 +59,36 @@ final class ChannelByteBufferPublisher implements Flow.Publisher<DefaultPooledBy
     
     private final DefaultClientChannel chApi;
     private final Deque<ByteBuffer> readable;
-    private final PushPullPublisher<DefaultPooledByteBufferHolder> subscriber;
-    private final AnnounceToChannel channel;
+    private final PushPullUnicastPublisher<DefaultPooledByteBufferHolder> subscriber;
+    private AnnounceToChannel channel;
     
     ChannelByteBufferPublisher(DefaultClientChannel chApi) {
-        this.chApi      = chApi;
-        this.readable   = new ConcurrentLinkedDeque<>();
-        this.subscriber = new PushPullPublisher<>(true, this::pollReadable);
-        this.channel    = AnnounceToChannel.read(
-                chApi, this::putReadableLast, this::afterChannelFinished);
-        
+        this.chApi = chApi;
+        this.readable = new ConcurrentLinkedDeque<>();
+        this.subscriber = hybrid(this::pollReadable,
+                this::afterSubscriberFinished, PooledByteBufferHolder::release);
+    }
+    
+    private void initChannel() {
+        this.channel = read(chApi,
+            this::putReadableLast, this::afterChannelFinished);
         IntStream.generate(() -> BUF_SIZE)
-                .limit(BUF_COUNT)
-                .mapToObj(ByteBuffer::allocateDirect)
-                .forEach(channel::announce);
+            .limit(BUF_COUNT)
+            .mapToObj(ByteBuffer::allocateDirect)
+            .forEach(channel::announce);
     }
     
     private DefaultPooledByteBufferHolder pollReadable() {
+        if (channel == null) {
+            // Init the channel lazily to increase the chance of being able to
+            // push channel-errors to a downstream subscriber. Was only done
+            // once the need arose to deterministically test a super-low read
+            // timeout.
+            // TODO: Definitely need a Publishers.builder() where one can set
+            //       callbacks like onSubscriberAccept
+            initChannel();
+        }
+        
         final ByteBuffer b = readable.poll();
         
         if (b == null) {
@@ -81,7 +96,7 @@ final class ChannelByteBufferPublisher implements Flow.Publisher<DefaultPooledBy
         } else if (b == EOS) {
             // Channel dried up
             subscriber.stop(new EndOfStreamException());
-            readable.clear();
+            assert readable.isEmpty();
             return null;
         } else if (!b.hasRemaining()) {
             LOG.log(WARNING, () ->
@@ -96,15 +111,23 @@ final class ChannelByteBufferPublisher implements Flow.Publisher<DefaultPooledBy
         }
         
         return new DefaultPooledByteBufferHolder(
-                b, readCountIgnored -> afterSubscriberPipeline(b));
+                b, readCountIgnored -> afterSubscriberReleased(b));
     }
     
-    private void afterSubscriberPipeline(ByteBuffer b) {
+    private void afterSubscriberReleased(ByteBuffer b) {
         if (b.hasRemaining()) {
             putReadableFirst(b);
         } else {
             channel.announce(b);
         }
+    }
+    
+    private void afterSubscriberFinished() {
+        readable.clear();
+        if (chApi.isOpenForReading()) {
+            LOG.log(DEBUG, "Subscription terminated." + CLOSE_MSG);
+            chApi.shutdownInputSafe();
+        } // else assume whoever closed the stream also logged the exception
     }
     
     private void afterChannelFinished(long byteCntIgnored, Throwable t) {
@@ -124,27 +147,13 @@ final class ChannelByteBufferPublisher implements Flow.Publisher<DefaultPooledBy
     private void putReadableFirst(ByteBuffer b) {
         assert b.hasRemaining();
         readable.addFirst(b);
-        subscriberAnnounce();
+        subscriber.announce();
     }
     
     private void putReadableLast(ByteBuffer b) {
         assert b == EOS || b.hasRemaining();
         readable.addLast(b);
-        subscriberAnnounce();
-    }
-    
-    private void subscriberAnnounce() {
-        try {
-            subscriber.announce(exc -> {
-                if (chApi.isOpenForReading()) {
-                    LOG.log(ERROR, () -> "Signalling subscriber failed. " + CLOSE_MSG, exc);
-                    chApi.shutdownInputSafe();
-                } // else assume whoever closed the stream also logged the exception
-            });
-        } catch (Throwable t) {
-            readable.clear();
-            throw t;
-        }
+        subscriber.announce();
     }
     
     @Override

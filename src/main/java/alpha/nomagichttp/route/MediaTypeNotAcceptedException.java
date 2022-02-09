@@ -5,7 +5,7 @@ import alpha.nomagichttp.message.MediaType;
 
 import java.util.Collection;
 
-import static alpha.nomagichttp.HttpConstants.HeaderKey.ACCEPT;
+import static alpha.nomagichttp.HttpConstants.HeaderName.ACCEPT;
 import static java.text.MessageFormat.format;
 import static java.util.stream.Collectors.joining;
 

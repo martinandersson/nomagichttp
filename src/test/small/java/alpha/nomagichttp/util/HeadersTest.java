@@ -36,8 +36,8 @@ class HeadersTest
     
     @Test
     void of_pair_1() {
-        assertPairs("key", "val").containsExactlyInAnyOrderEntriesOf(Map.ofEntries(
-                Map.entry("key", List.of("val"))));
+        assertPairs("name", "val").containsExactlyInAnyOrderEntriesOf(Map.ofEntries(
+                Map.entry("name", List.of("val"))));
     }
     
     @Test
@@ -54,8 +54,8 @@ class HeadersTest
                 Map.entry("k2", List.of("v2"))));
     }
     
-    private static MapAssert<String, List<String>> assertPairs(String... keyValuePairs) {
-        return assertThat(Headers.of(keyValuePairs).map());
+    private static MapAssert<String, List<String>> assertPairs(String... nameValuePairs) {
+        return assertThat(Headers.of(nameValuePairs).map());
     }
     
     

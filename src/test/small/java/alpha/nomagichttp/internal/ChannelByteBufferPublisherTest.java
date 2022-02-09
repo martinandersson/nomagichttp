@@ -1,9 +1,9 @@
 package alpha.nomagichttp.internal;
 
 import alpha.nomagichttp.HttpServer;
-import alpha.nomagichttp.testutil.TestClient;
 import alpha.nomagichttp.testutil.Logging;
 import alpha.nomagichttp.testutil.SkeletonServer;
+import alpha.nomagichttp.testutil.TestClient;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -14,11 +14,13 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeoutException;
 import java.util.function.BiFunction;
 
+import static alpha.nomagichttp.Config.DEFAULT;
 import static java.lang.System.Logger.Level.ALL;
 import static java.util.concurrent.Flow.Publisher;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 /**
  * Tests for {@code ChannelByteBufferPublisher}.
@@ -27,9 +29,6 @@ import static org.mockito.Mockito.mock;
  */
 class ChannelByteBufferPublisherTest
 {
-    // TODO: Most of this plumbing is copy-pasted from RequestHeadSubscriberTest.
-    //       DRY; refactor to common superclass or something.
-    
     private static SkeletonServer SERVER;
     private static TestClient CLIENT;
     private ChannelByteBufferPublisher testee;
@@ -49,8 +48,9 @@ class ChannelByteBufferPublisherTest
     
     ChannelByteBufferPublisher testee() throws InterruptedException {
         if (testee == null) {
-            DefaultClientChannel chApi = new DefaultClientChannel(
-                    SERVER.accept(), mock(HttpServer.class));
+            var server = mock(HttpServer.class);
+            when(server.getConfig()).thenReturn(DEFAULT);
+            var chApi = new DefaultClientChannel(SERVER.accept(), server);
             testee = new ChannelByteBufferPublisher(chApi);
         }
         return testee;
@@ -92,6 +92,6 @@ class ChannelByteBufferPublisherTest
     }
     
     private static <R> R get(HeapSubscriber<R> subscriber) throws InterruptedException, ExecutionException, TimeoutException {
-        return subscriber.asCompletionStage().toCompletableFuture().get(3, SECONDS);
+        return subscriber.result().toCompletableFuture().get(3, SECONDS);
     }
 }

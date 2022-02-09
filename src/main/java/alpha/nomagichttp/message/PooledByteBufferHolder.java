@@ -7,20 +7,21 @@ import java.util.function.IntConsumer;
  * Holder of a pooled byte buffer.<p>
  * 
  * Pooling byte buffers makes a data generator (the origin) able to re-use
- * buffers for data emissions instead of creating new buffers; reducing garbage
+ * buffers for data emissions rather than creating new buffers; reducing garbage
  * and increasing performance.<p>
  * 
  * The receiver may process the buffer synchronously or asynchronously, but the
- * buffer must always be {@link #release() released} after processing. Never
- * releasing buffers will possibly have the effect that the origin runs out of
- * bytebuffers to use.<p>
+ * buffer must always be {@link #release() released} after processing. Failure
+ * to release may have dire consequences such as the origin running out of
+ * bytebuffers to use. Some origins cap how many bytebuffers are allowed to be
+ * in-flight at any given moment and may not emit more of them until the
+ * previous buffer(s) has been released.<p>
  * 
  * The bytebuffer-receiving method does not have to process the buffer in a
  * try-finally block. If the receiver returns exceptionally then the buffer will
- * automatically be released. Thus, asynchronous processing should only be
- * initiated if it is guaranteed that the receiver returns normally - for
- * example, by letting the submission of a task to an executor be the last
- * statement.<p>
+ * be released. Thus, asynchronous processing should only be initiated if it is
+ * guaranteed that the receiver returns normally - for example, by letting the
+ * submission of a task to an executor be the last statement.<p>
  * 
  * Operating on a bytebuffer after release has undefined application
  * behavior.<p>
@@ -34,27 +35,7 @@ import java.util.function.IntConsumer;
 public interface PooledByteBufferHolder
 {
     /**
-     * Discard bytebuffer.<p>
-     * 
-     * The bytebuffer's position will be set to its limit (i.e. no more
-     * remaining bytes) and then released.
-     * 
-     * @param holder of bytebuffer
-     * @throws NullPointerException if {@code holder} is {@code null}
-     */
-    // static coz application code should never have a need to use this method?
-    // (less visibility, so to speak)
-    static void discard(PooledByteBufferHolder holder) {
-        ByteBuffer b = holder.get();
-        b.position(b.limit());
-        holder.release();
-    }
-    
-    /**
      * Get the bytebuffer.<p>
-     * 
-     * The returned instance should only be used for read operations. Any other
-     * modifying operation has undefined application behavior.
      * 
      * The returned instance does not have to be the original bytebuffer used by
      * the origin but could be a <i>view</i> and even change <i>over time</i>.
@@ -69,21 +50,59 @@ public interface PooledByteBufferHolder
      * Release the bytebuffer back to the origin.<p>
      * 
      * If the released bytebuffer has bytes remaining to be read, the origin
-     * will immediately re-publish the bytebuffer. Otherwise, the origin is free
-     * to re-use the buffer for new data storage.<p>
+     * will immediately re-publish the same bytebuffer. Otherwise, the origin is
+     * free to re-use the buffer for new data storage.<p>
      * 
      * Is NOP if already released.
      */
     void release();
     
     /**
-     * Schedule a callback to be executed upon release by the thread
-     * releasing.<p>
+     * Discard the bytebuffer.<p>
+     * 
+     * The bytebuffer's position will be set to its limit (i.e. no more
+     * remaining bytes) and then released.
+     */
+    void discard();
+    
+    /**
+     * Copy all remaining bytes from the bytebuffer.<p>
+     * 
+     * Consuming bytes from the bytebuffer directly without creating an
+     * unnecessary byte array is more performant than using this method. Use
+     * this method judiciously only if there is no other alternative, such as
+     * when the next destination requires a {@code byte[]} without support for
+     * using an index offset.<p>
+     * 
+     * Dumb example, decode a String (one has no guarantee that all bytes needed
+     * for proper decoding is present in the bytebuffer):
+     * <pre>
+     *   final ByteBuffer buf = holder.get();
+     *   final String str;
+     *   if (buf.hasArray()) {
+     *       // Still no need for a copy!
+     *       str = new String(buf.array(), buf.arrayOffset(), buf.remaining(), UTF_8);
+     *       // Update position and release
+     *       holder.discard();
+     *   } else {
+     *       // Okay, a new array is unavoidable
+     *       str = new String(holder.copy(), UTF_8);
+     *   }
+     * </pre>
+     * 
+     * This method also {@linkplain #discard() discards} the holder.
+     * 
+     * @return a copy of all remaining bytes
+     */
+    byte[] copy();
+    
+    /**
+     * Schedule a callback to execute upon release by the thread releasing.<p>
      * 
      * The callback will receive the count of bytes read from the buffer prior
      * to releasing.<p>
      * 
-     * Callbacks are executed in the order they were added; FIFO.<p>
+     * Callbacks are executed in the order they were added.<p>
      * 
      * Exceptions from the callback will be visible by the thread releasing the
      * buffer and brake the callback chain. Further, the exception will not

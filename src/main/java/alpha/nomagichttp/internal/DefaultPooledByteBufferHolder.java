@@ -7,6 +7,7 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.IntConsumer;
 import java.util.function.UnaryOperator;
 
+import static java.lang.System.arraycopy;
 import static java.util.Objects.requireNonNull;
 
 /**
@@ -40,10 +41,10 @@ final class DefaultPooledByteBufferHolder implements PooledByteBufferHolder
     /**
      * Constructs a {@code DefaultPooledByteBufferHolder}.<p>
      * 
-     * The {@code afterRelease} callback is executed after other callbacks
-     * possibly registered using the method {@link #onRelease(IntConsumer)}.
-     * {@code afterRelease} is guaranteed to be called even if an on-release
-     * callback throws an exception.
+     * The {@code afterRelease} callback is executed after callbacks registered
+     * using the method {@link #onRelease(IntConsumer)}. {@code afterRelease} is
+     * guaranteed to be called even if an on-release callback throws an
+     * exception.
      * 
      * @param buf bytebuffer source
      * @param afterRelease a sort of try-release-finally callback (may be {@code null})
@@ -53,6 +54,11 @@ final class DefaultPooledByteBufferHolder implements PooledByteBufferHolder
         this.thenRemaining = buf.remaining();
         this.onRelease = new AtomicReference<>(NOOP);
         this.afterRelease = afterRelease != null ? afterRelease : NOOP;
+    }
+    
+    void limit(int newLimit) {
+        // Possible NPE if method is used after release; which we assume will never happen.
+        view = buf.slice().limit(newLimit);
     }
     
     @Override
@@ -83,6 +89,29 @@ final class DefaultPooledByteBufferHolder implements PooledByteBufferHolder
     }
     
     @Override
+    public void discard() {
+        drain(get());
+        release();
+    }
+    
+    @Override
+    public byte[] copy() {
+        final var buf = get();
+        final var dst = new byte[buf.remaining()];
+        if (buf.hasArray()) {
+            var src = buf.array();
+            arraycopy(src, 0, dst, 0, dst.length);
+            drain(buf);
+        } else {
+            for (int i = 0; i < dst.length; ++i) {
+                dst[i] = buf.get();
+            }
+        }
+        release();
+        return dst;
+    }
+    
+    @Override
     public boolean onRelease(IntConsumer onRelease) {
         requireNonNull(onRelease);
         UnaryOperator<IntConsumer> keepReleasedOrAdd = v ->
@@ -90,8 +119,7 @@ final class DefaultPooledByteBufferHolder implements PooledByteBufferHolder
         return this.onRelease.getAndUpdate(keepReleasedOrAdd) != RELEASED;
     }
     
-    void limit(int newLimit) {
-        // Possible NPE if method is used after release; which we assume will never happen.
-        view = buf.slice().limit(newLimit);
+    private static void drain(ByteBuffer buf) {
+        buf.position(buf.limit());
     }
 }

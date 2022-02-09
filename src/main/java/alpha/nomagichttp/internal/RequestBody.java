@@ -1,10 +1,12 @@
 package alpha.nomagichttp.internal;
 
-import alpha.nomagichttp.message.CommonHeaders;
+import alpha.nomagichttp.message.BadRequestException;
+import alpha.nomagichttp.message.BetterHeaders;
+import alpha.nomagichttp.message.ContentHeaders;
+import alpha.nomagichttp.message.DefaultContentHeaders;
 import alpha.nomagichttp.message.MediaType;
 import alpha.nomagichttp.message.PooledByteBufferHolder;
 import alpha.nomagichttp.message.Request;
-import alpha.nomagichttp.message.RequestBodyTimeoutException;
 import alpha.nomagichttp.util.Publishers;
 
 import java.nio.channels.AsynchronousFileChannel;
@@ -12,22 +14,25 @@ import java.nio.charset.Charset;
 import java.nio.file.OpenOption;
 import java.nio.file.Path;
 import java.nio.file.attribute.FileAttribute;
-import java.time.Duration;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.Flow;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.BiConsumer;
 import java.util.function.BiFunction;
 
+import static alpha.nomagichttp.HttpConstants.HeaderName.CONTENT_LENGTH;
+import static alpha.nomagichttp.HttpConstants.HeaderName.TRANSFER_ENCODING;
 import static alpha.nomagichttp.internal.AtomicReferences.lazyInit;
-import static alpha.nomagichttp.internal.SubscriptionMonitoringOp.alreadyCompleted;
+import static alpha.nomagichttp.internal.SubscriptionMonitoringOp.NO_DOWNSTREAM;
+import static alpha.nomagichttp.internal.SubscriptionMonitoringOp.TerminationResult;
 import static alpha.nomagichttp.internal.SubscriptionMonitoringOp.subscribeTo;
-import static java.lang.System.Logger.Level.DEBUG;
+import static alpha.nomagichttp.message.DefaultContentHeaders.empty;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.nio.file.StandardOpenOption.CREATE_NEW;
 import static java.nio.file.StandardOpenOption.WRITE;
-import static java.util.Objects.requireNonNull;
+import static java.util.concurrent.CompletableFuture.allOf;
 import static java.util.concurrent.CompletableFuture.completedStage;
 import static java.util.concurrent.CompletableFuture.failedStage;
 
@@ -38,119 +43,120 @@ import static java.util.concurrent.CompletableFuture.failedStage;
  */
 final class RequestBody implements Request.Body
 {
-    private static final System.Logger LOG = System.getLogger(RequestBody.class.getPackageName());
-    private static final CompletionStage<String> COMPLETED_EMPTY_STR = completedStage("");
+    private static final CompletionStage<String>
+            COMPLETED_EMPTY_STR = completedStage("");
+    
+    private static final CompletionStage<BetterHeaders>
+            COMPLETED_TRAILERS = completedStage(empty());
     
     // Copy-pasted from AsynchronousFileChannel.NO_ATTRIBUTES
     @SuppressWarnings({"rawtypes"}) // generic array construction
     private static final FileAttribute<?>[] NO_ATTRIBUTES = new FileAttribute[0];
     
     /**
-     * Construct a RequestBody.
+     * Create a request body.<p>
      * 
-     * The first three arguments are required.<p>
-     * 
-     * The {@code timeout} should always be provided, but may be skipped if the
-     * call-site knows the body is empty (in which case the HTTP exchange
-     * arranges for the response pipeline's timeout to start immediately) or the
-     * call-site intends to immediately discard the body with no further
-     * delay.<p>
-     * 
-     * The callback is also optional, and will be called just before this class
-     * subscribes the downstream subscriber (application) to the upstream
-     * publisher (channel), but only if the body has contents. Subscription to
-     * an empty body will delegate to an empty dummy and never invoke the
-     * callback.
+     * The optional callback will be called just before this class subscribes
+     * the downstream subscriber (application) to the upstream publisher
+     * (channel), but only if the body has contents. Subscription to an empty
+     * body will delegate to an empty dummy and never invoke the callback.
      * 
      * @param headers of request
      * @param chIn reading channel
-     * @param chApi extended channel API (exceptional closure)
-     * @param timeout duration (may be {@code null})
-     * @param beforeNonEmptyBodySubscription before callback (may be {@code null})
+     * @param chApi extended channel API (used for exceptional closure)
+     * @param maxTrailersSize passed to {@link ChunkedDecoderOp}
+     * @param beforeNonEmptyBodySubscription before callback (nullable)
      * 
      * @return a request body
-     * @throws NullPointerException if any required argument is {@code null}
+     * @throws BadRequestException on invalid message framing
      */
     static RequestBody of(
-            CommonHeaders headers,
+            DefaultContentHeaders headers,
             Flow.Publisher<DefaultPooledByteBufferHolder> chIn,
             DefaultClientChannel chApi,
-            Duration timeout,
+            int maxTrailersSize,
             Runnable beforeNonEmptyBodySubscription)
     {
-        // TODO: If length is not present, then body is possibly chunked.
-        // https://tools.ietf.org/html/rfc7230#section-3.3.3
+        final Flow.Publisher<? extends PooledByteBufferHolder> content;
+        final CompletionStage<BetterHeaders> trailers;
         
-        // TODO: Server should throw BadRequestException if Content-Length is present AND Content-Encoding
-        // https://tools.ietf.org/html/rfc7230#section-3.3.2
+        var cl = headers.contentLength();
+        var te = headers.transferEncoding();
         
-        // "If this is a request message and none of the above are true, then"
-        //  the message body length is zero (no message body is present)."
-        //  - RFC 7230 §3.3.3 Message Body Length
-        final long len = headers.contentLength().orElse(0);
-        
-        if (len <= 0) {
-            requireNonNull(chIn);
-            requireNonNull(chApi);
-            return new RequestBody(headers, null, null, null);
-        } else {
-            var bounded = new LengthLimitedOp(len, chIn);
-            
-            // Upstream is ChannelByteBufferPublisher, he can handle async cancel
-            var timedOp = timeout == null ? null :
-                    new TimeoutOp.Flow<>(false, true, bounded, timeout, () -> {
-                        if (LOG.isLoggable(DEBUG) && chApi.isOpenForReading()) {
-                            LOG.log(DEBUG, "Request body timed out, shutting down child channel's read stream.");
-                        }
-                        // No new HTTP exchange
-                        chApi.shutdownInputSafe();
-                        return new RequestBodyTimeoutException();
-                    });
-            
-            var monitor = subscribeTo(timedOp != null ? timedOp : bounded);
-            var onError = new OnDownstreamErrorCloseReadStream<>(monitor, chApi);
-            var discard = new OnCancelDiscardOp(onError);
-            
-            if (timedOp != null) {
-                timedOp.start();
+        if (cl.isPresent()) {
+            if (!te.isEmpty()) {
+                throw new BadRequestException(
+                    CONTENT_LENGTH + " and " + TRANSFER_ENCODING + " present.");
             }
-            
-            return new RequestBody(
-                    headers,
-                    discard,
-                    monitor,
-                    beforeNonEmptyBodySubscription);
+            long len = cl.getAsLong();
+            if (len == 0) {
+                return emptyBody(headers);
+            }
+            assert len > 0;
+            content = new LengthLimitedOp(len, chIn);
+            trailers = null;
+        } else if (te.isEmpty()) {
+            // "If this is a request message [...] then"
+            //  the message body length is zero (no message body is present)."
+            // (only outbound responses may be close-delimited)
+            // https://tools.ietf.org/html/rfc7230#section-3.3.3
+            return emptyBody(headers);
+        } else {
+            if (te.size() != 1 && !te.getLast().equalsIgnoreCase("chunked")) {
+                throw new UnsupportedOperationException(
+                        "Only chunked decoding supported, at the moment.");
+            }
+            var chunked = new ChunkedDecoderOp(chIn, maxTrailersSize, chApi);
+            content = chunked;
+            trailers = chunked.trailers();
         }
+        
+        return new RequestBody(
+                headers, trailers, content,
+                beforeNonEmptyBodySubscription);
     }
     
-    private final CommonHeaders headers;
-    private final OnCancelDiscardOp chIn;
+    public static RequestBody emptyBody(ContentHeaders headers) {
+        return new RequestBody(headers, null, null, null);
+    }
+    
+    private final ContentHeaders headers;
+    private final CompletionStage<BetterHeaders> trailers;
     private final SubscriptionMonitoringOp monitor;
-    private final Runnable beforeSubsc;
-
-    private final AtomicReference<CompletionStage<String>> cachedText;
+    private final OnCancelDiscardOp discard;
+    private final Runnable beforeSub;
+    private final AtomicReference<CompletionStage<String>> cachedTxt;
     
     private RequestBody(
-            // Required
-            CommonHeaders headers,
-            // All optional (relevant only for body contents)
-            OnCancelDiscardOp chIn,
-            SubscriptionMonitoringOp monitor,
-            Runnable beforeSubsc)
+            // Absolutely required
+            ContentHeaders headers,
+            // Only required if chunked body
+            CompletionStage<BetterHeaders> trailers,
+            // Not needed for an empty body, obviously
+            Flow.Publisher<? extends PooledByteBufferHolder> content,
+            // Optional
+            Runnable beforeSub)
     {
-        this.headers     = headers;
-        this.chIn        = chIn;
-        this.monitor     = monitor;
-        this.beforeSubsc = beforeSubsc;
-        this.cachedText  = chIn == null ? null : new AtomicReference<>(null);
+        assert headers != null;
+        this.headers  = headers;
+        this.trailers = trailers;
+        if (content == null) {
+            monitor = null;
+            discard = null;
+            cachedTxt = null;
+        } else {
+            monitor = subscribeTo(content);
+            discard = new OnCancelDiscardOp(monitor);
+            cachedTxt = new AtomicReference<>(null);
+        }
+        this.beforeSub = beforeSub;
     }
     
     @Override
     public CompletionStage<String> toText() {
-        if (isEmpty()) {
-            return COMPLETED_EMPTY_STR;
-        }
-        return lazyInit(cachedText, CompletableFuture::new, v -> copyResult(mkText(), v));
+        return isEmpty() ? COMPLETED_EMPTY_STR :
+               lazyInit(cachedTxt, CompletableFuture::new,
+                       v -> copyResult(mkText(), v));
     }
     
     private CompletionStage<String> mkText() {
@@ -182,26 +188,26 @@ final class RequestBody implements Request.Body
         final Set<? extends OpenOption> opt = !options.isEmpty() ? options :
                 Set.of(WRITE, CREATE_NEW);
         
-        final AsynchronousFileChannel fs;
+        final AsynchronousFileChannel fc;
         
         try {
             // TODO: Potentially re-use server's async group
             //       (currently not possible to specify group?)
-            fs = AsynchronousFileChannel.open(file, opt, null, attrs);
+            fc = AsynchronousFileChannel.open(file, opt, null, attrs);
         } catch (Throwable t) {
             return failedStage(t);
         }
         
-        FileSubscriber s = new FileSubscriber(file, fs);
-        subscribe(s);
-        return s.asCompletionStage();
+        var fs = new FileSubscriber(file, fc);
+        subscribe(fs);
+        return fs.result();
     }
     
     @Override
     public <R> CompletionStage<R> convert(BiFunction<byte[], Integer, R> f) {
-        HeapSubscriber<R> s = new HeapSubscriber<>(f);
-        subscribe(s);
-        return s.asCompletionStage();
+        var hs = new HeapSubscriber<>(f);
+        subscribe(hs);
+        return hs.result();
     }
     
     @Override
@@ -209,44 +215,87 @@ final class RequestBody implements Request.Body
         if (isEmpty()) {
             Publishers.<PooledByteBufferHolder>empty().subscribe(subscriber);
         } else {
-            if (beforeSubsc != null) {
-                beforeSubsc.run();
+            if (beforeSub != null) {
+                beforeSub.run();
             }
-            chIn.subscribe(subscriber);
+            discard.subscribe(subscriber);
         }
     }
     
     @Override
     public boolean isEmpty() {
-        return chIn == null;
+        return monitor == null;
     }
     
     /**
-     * Returns the subscription monitor.<p>
+     * Returns trailing headers.
      * 
-     * If the body is empty, then {@link
-     * SubscriptionMonitoringOp#alreadyCompleted()}} is returned.
-     * 
-     * @return the subscription monitor
+     * @return trailing headers (never {@code null})
+     * @see Request#trailers() 
      */
-    SubscriptionMonitoringOp subscriptionMonitor() {
-        return isEmpty() ? alreadyCompleted() : monitor;
+    CompletionStage<BetterHeaders> trailers() {
+        return trailers == null? COMPLETED_TRAILERS : trailers;
     }
     
     /**
      * If no downstream body subscriber is active, complete downstream and
      * discard upstream.<p>
-     *
+     * 
      * Is NOP if body is empty or already discarding.
      */
     void discardIfNoSubscriber() {
         if (isEmpty()) {
             return;
         }
-        chIn.discardIfNoSubscriber();
+        discard.discardIfNoSubscriber();
     }
     
-    private static <T> void copyResult(CompletionStage<? extends T> from, CompletableFuture<? super T> to) {
+    /**
+     * Execute the action when both the downstream subscription and trailers
+     * have completed.<p>
+     * 
+     * The subscription stage always terminates normally, the result of which is
+     * passed forward to the given action.<p>
+     * 
+     * The successful result from trailers is discarded. Trailers may however
+     * end exceptionally and if so, the throwable is passed forward to the
+     * action.<p>
+     * 
+     * One does not exclude the other. The action is guaranteed to receive the
+     * subscription's termination result, but may also receive an exception from
+     * the trailers.
+     * 
+     * @param action see JavaDoc
+     */
+    void whenComplete(BiConsumer<? super TerminationResult, ? super Throwable> action) {
+        assert action != null;
+        // This entire method could be compressed to one simple "allOf()"
+        // statement. But lots of requests are going to be bodiless or not use
+        // trailers. As a library we have to care a little about performance.
+        if (isEmpty()) {
+            action.accept(NO_DOWNSTREAM, null);
+            return;
+        }
+        var bodyStage = monitor.asCompletionStage();
+        if (trailers == null) {
+            bodyStage.whenComplete((res, nil) -> {
+                assert nil == null;
+                action.accept(res, null);
+            });
+        } else {
+            var bodyFut = bodyStage.toCompletableFuture();
+            allOf(bodyFut, trailers.toCompletableFuture())
+                    .whenComplete((nil, thr) -> {
+                        var res = bodyFut.getNow(null);
+                        assert res != null;
+                        action.accept(res, thr);
+                    });
+        }
+    }
+    
+    private static <T> void copyResult(
+            CompletionStage<? extends T> from, CompletableFuture<? super T> to)
+    {
         from.whenComplete((val, exc) -> {
             if (exc == null) {
                 to.complete(val);

@@ -50,19 +50,17 @@ public final class Logging
     }
     
     /**
-     * Set level globally.<p>
+     * Log everything.<p>
      * 
      * An invocation of this method behaves in exactly the same way as the
      * invocation
      * <pre>
      *     Logging.{@link #setLevel(Class, Level)
-     *       setLevel}(HttpServer.class, level);
+     *       setLevel}(HttpServer.class, level.ALL);
      * </pre>
-     * 
-     * @param level to set
      */
-    public static void setLevel(Level level) {
-        setLevel(HttpServer.class, level);
+    public static void everything() {
+        setLevel(HttpServer.class, Level.ALL);
     }
     
     /**
@@ -220,7 +218,7 @@ public final class Logging
     public static Stream<LogRecord> stopRecording(Recorder key) { // TODO: Replace with recorder.stop()
         return key.listeners()
                 .peek(r -> removeHandler(r.component(), r))
-                .flatMap(RecordListener::records)
+                .flatMap(RecordListener::recordsStream)
                 .sorted(comparing(LogRecord::getInstant));
     }
     
@@ -277,7 +275,7 @@ public final class Logging
      * 
      * @see #startRecording(Class, Class[])
      */
-    public final static class Recorder {
+    public static final class Recorder {
         private final RecordListener[] l;
         private long timeout;
         private TimeUnit unit;
@@ -297,10 +295,46 @@ public final class Logging
          * 
          * @return a snapshot of all records observed
          */
-        public Stream<LogRecord> records() { // MOVE UP
+        public Stream<LogRecord> records() {
             return listeners()
-                    .flatMap(RecordListener::records)
+                    .flatMap(RecordListener::recordsStream)
                     .sorted(comparing(LogRecord::getInstant));
+        }
+        
+        /**
+         * Take the earliest record found that fulfils the given criteria.
+         * 
+         * This method is useful to extract log records and run assertions only
+         * on what is left behind. For example, to ensure a specific log record
+         * of an error was the only logged error, call this method and then
+         * {@link #assertThatNoErrorWasLogged()}.
+         * 
+         * @param level record level predicate
+         * @param messageStartsWith record message predicate
+         * @param error record error predicate (instance of)
+         * @return the record, or {@code null} if not found
+         */
+        public LogRecord take(
+                Level level, String messageStartsWith,
+                Class<? extends Throwable> error)
+        {
+            var jul = toJUL(level);
+            LogRecord match = null;
+            for (var listener : l) {
+                var it = listener.recordsDeque().iterator();
+                while (it.hasNext()) {
+                    var r = it.next();
+                    if (r.getLevel().equals(jul) &&
+                        r.getMessage().startsWith(messageStartsWith) &&
+                        error.isInstance(r.getThrown()))
+                    {
+                        it.remove();
+                        match = r;
+                        break;
+                    }
+                }
+            }
+            return match;
         }
         
         /**
@@ -522,6 +556,8 @@ public final class Logging
          *             if {@code filter} is {@code null}
          * @throws InterruptedException
          *             if the current thread is interrupted while waiting
+         * @throws AssertionError
+         *             on timeout (throwable not observed)
          */
         public Throwable assertAwaitFirstLogErrorOf(
                 Class<? extends Throwable> filter)
@@ -537,7 +573,9 @@ public final class Logging
                 }
                 return false;
             });
-            return thr.get();
+            var t = thr.get();
+            assert t != null; // Just my paranoia lol
+            return t;
         }
         
         /**
@@ -558,12 +596,15 @@ public final class Logging
         /**
          * Assert that observed log records contains the given values only once.
          * 
-         * @param values use {@link LogRecords#rec(Level, String)}
+         * @param values use {@link LogRecords#rec(Level, String, Throwable error)}
          */
         public void assertThatLogContainsOnlyOnce(Tuple... values) {
             assertThat(records())
-                    .extracting(LogRecord::getLevel, LogRecord::getMessage)
-                    .containsOnlyOnce(values);
+                .extracting(
+                    LogRecord::getLevel,
+                    LogRecord::getMessage,
+                    LogRecord::getThrown)
+                .containsOnlyOnce(values);
         }
     }
     
@@ -588,7 +629,7 @@ public final class Logging
          */
         synchronized void monitor(Consumer<LogRecord> consumer) {
             requireNonNull(consumer);
-            records().forEach(consumer);
+            recordsStream().forEach(consumer);
             mon.add(consumer);
         }
         
@@ -596,7 +637,11 @@ public final class Logging
             return cmp;
         }
         
-        Stream<LogRecord> records() {
+        Deque<LogRecord> recordsDeque() {
+            return deq;
+        }
+        
+        Stream<LogRecord> recordsStream() {
             return deq.stream();
         }
         

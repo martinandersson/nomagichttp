@@ -1,16 +1,15 @@
 package alpha.nomagichttp.util;
 
-import alpha.nomagichttp.testutil.MemorizingSubscriber;
 import org.junit.jupiter.api.Test;
 
-import java.util.Collection;
 import java.util.concurrent.Flow;
 
-import static alpha.nomagichttp.testutil.MemorizingSubscriber.Request;
-import static alpha.nomagichttp.testutil.MemorizingSubscriber.Signal.MethodName.ON_COMPLETE;
-import static alpha.nomagichttp.testutil.MemorizingSubscriber.Signal.MethodName.ON_SUBSCRIBE;
-import static alpha.nomagichttp.testutil.MemorizingSubscriber.drainItems;
-import static alpha.nomagichttp.testutil.MemorizingSubscriber.drainMethods;
+import static alpha.nomagichttp.testutil.Assertions.assertPublisherEmits;
+import static alpha.nomagichttp.testutil.Assertions.assertPublisherIsEmpty;
+import static alpha.nomagichttp.testutil.MemorizingSubscriber.MethodName.ON_SUBSCRIBE;
+import static alpha.nomagichttp.testutil.TestSubscribers.onSubscribe;
+import static alpha.nomagichttp.testutil.TestSubscribers.requestMax;
+import static alpha.nomagichttp.util.Publishers.just;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
@@ -21,40 +20,29 @@ import static org.assertj.core.api.Assertions.assertThat;
 final class PublishersTest
 {
     @Test
-    void just_reuse() {
-        Flow.Publisher<String> p = Publishers.just("one");
-        MemorizingSubscriber<String> s = new MemorizingSubscriber<>(Request.IMMEDIATELY_MAX());
-        p.subscribe(s);
-        assertThat(s.items()).containsExactly("one");
-        p.subscribe(s);
-        assertThat(s.items()).containsExactly("one", "one");
+    void just_isReusable() {
+        var publisher = just("one");
+        var subscriber = requestMax();
+        publisher.subscribe(subscriber);
+        assertThat(subscriber.items()).containsExactly("one");
+        publisher.subscribe(subscriber);
+        assertThat(subscriber.items()).containsExactly("one", "one");
     }
     
     @Test
-    void just_two_items() {
-        Collection<String> items = drainItems(Publishers.just("one", "two"));
-        assertThat(items).containsExactly("one", "two");
+    void just_withTwoItems() {
+        assertPublisherEmits(just("one", "two"), "one", "two");
     }
     
     @Test
     void just_empty() {
-        assertThat(drainMethods(Publishers.just())).containsExactly(
-                ON_SUBSCRIBE,
-                ON_COMPLETE);
+        assertPublisherIsEmpty(just());
     }
     
     @Test
-    void just_empty_with_cancellation() {
-        MemorizingSubscriber<Object> s = new MemorizingSubscriber<>(Request.NOTHING()){
-            @Override
-            public void onSubscribe(Flow.Subscription subscription) {
-                subscription.cancel();
-                super.onSubscribe(subscription);
-            }
-        };
-        
-        Publishers.just().subscribe(s);
-    
+    void just_empty_cancelImmediately() {
+        var s = onSubscribe(Flow.Subscription::cancel);
+        just().subscribe(s);
         // but not ON_COMPLETE, because we cancelled!
         assertThat(s.methodNames()).containsExactly(ON_SUBSCRIBE);
     }

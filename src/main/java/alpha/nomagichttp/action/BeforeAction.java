@@ -35,9 +35,9 @@ import alpha.nomagichttp.util.TriConsumer;
  * </pre>
  * 
  * An action writing a final response to the channel ought to also <i>abort</i>
- * the HTTP exchange, or otherwise <i>proceed</i>. Interactions (or the lack
- * thereof) with the client channel has no magical effect at all concerning what
- * happens after the action completes.
+ * the HTTP exchange. Interactions (or the lack thereof) with the client channel
+ * has no magical effect at all concerning what happens after the action
+ * completes.
  * <pre>
  *   BeforeAction onlyAdminsAllowed = (request, channel, chain) -{@literal >} {
  *       String role = request.attributes().getAny("user.role");
@@ -62,8 +62,7 @@ import alpha.nomagichttp.util.TriConsumer;
  *           throw throwable;
  *       } catch (MySuspiciousRequestException e) {
  *           channel.shutdownInputSafe();
- *           var rsp = Responses.notFound().toBuilder().header("Connection", "close").build();
- *           channel.write(rsp);
+ *           channel.write(Responses.notFound());
  *       }
  *   };
  *   HttpServer server = HttpServer.create(weRatherHide);

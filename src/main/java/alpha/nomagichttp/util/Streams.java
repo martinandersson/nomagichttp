@@ -1,17 +1,12 @@
 package alpha.nomagichttp.util;
 
-import java.util.ArrayList;
 import java.util.List;
-import java.util.RandomAccess;
-import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import static java.util.Collections.unmodifiableList;
-import static java.util.stream.Collectors.toCollection;
 import static java.util.stream.Stream.of;
 
 /**
- * Utils for producing- or working with streams.
+ * Utils for working with streams.
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  */
@@ -54,22 +49,19 @@ public final class Streams {
     }
     
     /**
-     * Collect all elements of the stream to a {@link RandomAccess} list which
-     * is also unmodifiable.<p>
+     * Combine the given arguments into a List.<p>
      * 
-     * This method is semantically the same as using a {@link
-     * Collectors#toUnmodifiableList()}, except with a capacity hint and no
-     * unnecessary copying.
+     * The returned list is unmodifiable.
      * 
-     * @param initialCapacity of sink
-     * @param stream source
-     * @param <T> element type
-     * @return see JavaDoc
+     * @param <T> the type of elements in the list
+     * @param first element
+     * @param more elements
+     * @return a list
      */
-    public static <T> List<T> randomAndUnmodifiable(
-            int initialCapacity, Stream<? extends T> stream)
-    {
-        return unmodifiableList(stream.collect(toCollection(
-                () -> new ArrayList<>(initialCapacity))));
+    @SafeVarargs
+    public static <T> List<T> toList(T first, T... more) {
+        @SuppressWarnings("varargs")
+        var s = stream(first, more);
+        return s.toList();
     }
 }

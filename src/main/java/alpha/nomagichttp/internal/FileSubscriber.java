@@ -17,7 +17,7 @@ import java.util.concurrent.Flow;
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  */
-final class FileSubscriber implements SubscriberAsStage<PooledByteBufferHolder, Long>
+final class FileSubscriber implements SubscriberWithResult<PooledByteBufferHolder, Long>
 {
     /*
      * Currently, subscribes to- and writes only one bytebuffer at a time. This
@@ -63,13 +63,13 @@ final class FileSubscriber implements SubscriberAsStage<PooledByteBufferHolder, 
     }
     
     @Override
-    public CompletionStage<Long> asCompletionStage() {
+    public CompletionStage<Long> result() {
         return result;
     }
     
     @Override
     public void onSubscribe(Flow.Subscription subscription) {
-        this.subscription = SubscriberAsStage.validate(this.subscription, subscription);
+        this.subscription = SubscriberWithResult.validate(this.subscription, subscription);
         subscription.request(1);
     }
     

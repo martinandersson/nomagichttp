@@ -38,7 +38,7 @@ public final class LogRecords {
      *             if {@code level} is {@code null}, perhaps also for {@code msg}
      */
     public static Tuple rec(Level level, String msg) {
-        return tuple(toJUL(level), msg);
+        return rec(level, msg, null);
     }
     
     /**
