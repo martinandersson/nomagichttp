@@ -98,12 +98,12 @@ public final class BetterBodyPublishers
      * 
      * Published bytebuffers are read-only.
      * 
-     * @param  body the String containing the body
+     * @param  str the String containing the body
      * @return a BodyPublisher
      * @throws NullPointerException if {@code body} is {@code null}
      */
-    public static BodyPublisher ofString(String body) {
-        return ofString(body, UTF_8);
+    public static BodyPublisher ofString(String str) {
+        return ofString(str, UTF_8);
     }
     
     /**

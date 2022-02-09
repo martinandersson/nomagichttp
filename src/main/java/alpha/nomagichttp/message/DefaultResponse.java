@@ -309,7 +309,12 @@ final class DefaultResponse implements Response
             MutableState s = constructState(MutableState::new);
             setDefaults(s);
             
-            final HttpHeaders headers = s.headers == null ? of() : of(s.headers);
+            final HttpHeaders headers;
+            try {
+                headers = s.headers == null ? of() : of(s.headers);
+            } catch (IllegalArgumentException e) {
+                throw new IllegalStateException(e);
+            }
             
             if (headers.allValues(CONTENT_LENGTH).size() > 1) {
                 throw new IllegalStateException("Multiple " + CONTENT_LENGTH + " headers.");

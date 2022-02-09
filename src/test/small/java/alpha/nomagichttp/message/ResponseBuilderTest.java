@@ -60,6 +60,30 @@ class ResponseBuilderTest
     }
     
     @Test
+    void header_empty_key() {
+        var b = builder(-1).header("  ", "<-- empty");
+        assertThatThrownBy(b::build)
+            // From HttpHeaders.of
+            .isExactlyInstanceOf(IllegalStateException.class)
+            .hasNoSuppressedExceptions()
+            .getCause()
+                .isExactlyInstanceOf(IllegalArgumentException.class)
+                .hasNoSuppressedExceptions()
+                .hasNoCause()
+                .hasMessage("empty key");
+    }
+    
+    @Test
+    void header_empty_value() {
+        var r = builder(-1).addHeaders(
+            "Key 1", "",
+            "Key 2", "   ").build();
+        assertThat(r.headersForWriting()).containsExactly(
+            "Key 1: ",
+            "Key 2:    ");
+    }
+    
+    @Test
     void header_removeHeader() {
         Response r = builder(-1).header("k", "v").removeHeader("k").build();
         assertThat(r.headersForWriting()).isEmpty();

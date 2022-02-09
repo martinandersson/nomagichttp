@@ -4,6 +4,7 @@ import alpha.nomagichttp.HttpConstants;
 import alpha.nomagichttp.util.Headers;
 import alpha.nomagichttp.util.Streams;
 import io.netty.buffer.ByteBuf;
+import kotlin.Pair;
 import okhttp3.MediaType;
 import okhttp3.OkHttpClient;
 import okhttp3.Protocol;
@@ -11,17 +12,18 @@ import okhttp3.Request;
 import okhttp3.RequestBody;
 import okhttp3.ResponseBody;
 import okio.BufferedSink;
-import org.apache.hc.client5.http.async.methods.SimpleHttpRequest;
-import org.apache.hc.client5.http.async.methods.SimpleHttpResponse;
-import org.apache.hc.client5.http.async.methods.SimpleRequestBuilder;
+import org.apache.hc.client5.http.classic.methods.HttpGet;
 import org.apache.hc.client5.http.classic.methods.HttpPost;
-import org.apache.hc.client5.http.impl.async.HttpAsyncClients;
+import org.apache.hc.client5.http.classic.methods.HttpUriRequestBase;
 import org.apache.hc.client5.http.impl.classic.HttpClients;
-import org.apache.hc.core5.http.HttpVersion;
-import org.apache.hc.core5.http.ParseException;
+import org.apache.hc.core5.http.ClassicHttpRequest;
+import org.apache.hc.core5.http.ClassicHttpResponse;
+import org.apache.hc.core5.http.HttpEntity;
+import org.apache.hc.core5.http.NameValuePair;
 import org.apache.hc.core5.http.ProtocolVersion;
-import org.apache.hc.core5.http.io.entity.EntityUtils;
+import org.apache.hc.core5.http.io.entity.ByteArrayEntity;
 import org.apache.hc.core5.http.io.entity.InputStreamEntity;
+import org.apache.hc.core5.http.io.entity.StringEntity;
 import org.eclipse.jetty.client.api.ContentResponse;
 import org.eclipse.jetty.client.util.BytesRequestContent;
 import org.eclipse.jetty.client.util.InputStreamRequestContent;
@@ -36,8 +38,10 @@ import reactor.netty.http.client.HttpClient.ResponseReceiver;
 import reactor.netty.http.client.HttpClientResponse;
 
 import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.UncheckedIOException;
 import java.net.MalformedURLException;
 import java.net.URI;
 import java.net.http.HttpHeaders;
@@ -60,6 +64,7 @@ import java.util.function.IntSupplier;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
 import java.util.stream.Stream;
+import java.util.stream.StreamSupport;
 
 import static alpha.nomagichttp.HttpConstants.Version.HTTP_1_1;
 import static alpha.nomagichttp.util.Publishers.ofIterable;
@@ -69,12 +74,14 @@ import static java.net.http.HttpRequest.BodyPublisher;
 import static java.net.http.HttpRequest.BodyPublishers;
 import static java.net.http.HttpResponse.BodyHandlers;
 import static java.nio.ByteBuffer.allocate;
+import static java.nio.charset.StandardCharsets.US_ASCII;
+import static java.time.Duration.ofSeconds;
 import static java.util.Arrays.stream;
 import static java.util.Locale.ROOT;
 import static java.util.Objects.deepEquals;
 import static java.util.Objects.requireNonNull;
-import static java.util.concurrent.TimeUnit.SECONDS;
 import static java.util.function.Predicate.not;
+import static org.apache.hc.core5.http.ContentType.APPLICATION_OCTET_STREAM;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
@@ -303,16 +310,14 @@ public abstract class HttpClientFacade
     }
     
     /**
-     * Execute a GET request expecting no response body.
-     * 
-     * @implSpec
-     * The implementation must <i>assert</i> that a body was not received. Do
-     * not discard!
+     * Executes a GET request and expects no response body.
      * 
      * @param path of server resource
      * @param version of HTTP
      * @return the response
-     *
+     * 
+     * @throws AssertionError
+     *             if the response has a body
      * @throws IllegalArgumentException
      *             if no equivalent implementation-specific version exists, or
      *             if the version is otherwise not supported (too old or too new) 
@@ -333,7 +338,7 @@ public abstract class HttpClientFacade
     }
     
     /**
-     * Execute a GET request expecting bytes in the response body.
+     * Executes a GET request and returns the response body non-decoded.
      * 
      * @param path of server resource
      * @param version of HTTP
@@ -356,7 +361,7 @@ public abstract class HttpClientFacade
             throws IOException, InterruptedException, ExecutionException, TimeoutException;
     
     /**
-     * Execute a GET request expecting text in the response body.<p>
+     * Executes a GET request and returns the response body as text.<p>
      * 
      * Which charset to use for decoding is for the client implementation to
      * decide. In practice, this will likely be extracted from the Content-Type
@@ -383,7 +388,7 @@ public abstract class HttpClientFacade
             throws IOException, InterruptedException, ExecutionException, TimeoutException;
     
     /**
-     * Execute a POST request expecting text in the response body.<p>
+     * Executes a POST request and return the response body as text.<p>
      * 
      * Which charset to use for decoding is for the client implementation to
      * decide.
@@ -411,7 +416,7 @@ public abstract class HttpClientFacade
             throws IOException, InterruptedException, ExecutionException, TimeoutException;
     
     /**
-     * Execute a POST request expecting no response body.
+     * Executes a POST request expecting no response body.
      * 
      * @param path of server resource
      * @param version of HTTP
@@ -436,8 +441,8 @@ public abstract class HttpClientFacade
             throws IOException, InterruptedException, ExecutionException, TimeoutException;
     
     /**
-     * Execute an HTTP/1.1 chunked-encoded POST request expecting text in the
-     * response body.<p>
+     * Executes an HTTP/1.1 chunked-encoded POST request and returns the
+     * response body as text.<p>
      * 
      * No client implementation supports or documents how to produce data chunks
      * of a particular size. If possible, the byte arrays given to this method
@@ -463,12 +468,12 @@ public abstract class HttpClientFacade
             String path, byte[] firstChunk, byte[]... more)
             throws IOException, InterruptedException, ExecutionException, TimeoutException;
     
-    private static class JDK extends HttpClientFacade {
-        private final java.net.http.HttpClient c;
+    private static final class JDK extends HttpClientFacade {
+        private final java.net.http.HttpClient cli;
         
         JDK(int port) {
             super(port);
-            c = java.net.http.HttpClient.newHttpClient();
+            cli = java.net.http.HttpClient.newHttpClient();
         }
         
         @Override
@@ -500,8 +505,7 @@ public abstract class HttpClientFacade
                 throws IOException, InterruptedException
         {
             var req = POST(path, ver, BodyPublishers.ofByteArray(body));
-            return execute(req, BodyHandlers.ofByteArray())
-                    .assertEmpty();
+            return execute(req, BodyHandlers.ofByteArray()).assertEmpty();
         }
         
         @Override
@@ -541,7 +545,7 @@ public abstract class HttpClientFacade
                 HttpResponse.BodyHandler<B> rspBodyConverter)
                 throws IOException, InterruptedException
         {
-            var rsp = c.send(req, rspBodyConverter);
+            var rsp = cli.send(req, rspBodyConverter);
             return ResponseFacade.fromJDK(rsp);
         }
         
@@ -565,13 +569,13 @@ public abstract class HttpClientFacade
                 throws IOException {
             return execute(GET(path), ver, ResponseBody::bytes);
         }
-    
+        
         @Override
         public ResponseFacade<String> getText(String path, HttpConstants.Version ver)
                 throws IOException {
             return execute(GET(path), ver, ResponseBody::string);
         }
-    
+        
         @Override
         public ResponseFacade<String> postAndReceiveText(
                 String path, HttpConstants.Version ver, String body)
@@ -579,22 +583,18 @@ public abstract class HttpClientFacade
             var req = POST(path, RequestBody.create(body, null));
             return execute(req, ver, ResponseBody::string);
         }
-    
+        
         @Override
         public ResponseFacade<Void> postBytesAndReceiveEmpty(
                 String path, HttpConstants.Version ver, byte[] body)
                 throws IOException {
             var req = POST(path, RequestBody.create(body, null));
-            return execute(req, ver, ResponseBody::bytes)
-                    .assertEmpty();
+            return execute(req, ver, ResponseBody::bytes).assertEmpty();
         }
         
         @Override
         public ResponseFacade<String> postChunksAndReceiveText(
                 String path, byte[] firstChunk, byte[]... more) throws IOException {
-            // This is as clean as we can make it.
-            // Still quite okay, compare this with Apache lol
-            // https://square.github.io/okhttp/recipes/#post-streaming-kt-java
             var req = POST(path, new RequestBody() {
                 public MediaType contentType() {
                     return null;
@@ -636,7 +636,6 @@ public abstract class HttpClientFacade
             var cli = new OkHttpClient.Builder()
                     .protocols(List.of(toSquareVersion(ver)))
                     .build();
-            
             // No close callback from our Response type, so must consume eagerly
             var rsp = cli.newCall(req).execute();
             B bdy;
@@ -663,39 +662,34 @@ public abstract class HttpClientFacade
         
         @Override
         public ResponseFacade<byte[]> getBytes(String path, HttpConstants.Version ver)
-                throws IOException, InterruptedException, ExecutionException, TimeoutException
-        {
-            return execute(GET(path, ver), SimpleHttpResponse::getBodyBytes);
+                throws IOException {
+            var r = req(HttpGet::new, path, ver);
+            return execute(r, BYTE_ARR);
         }
         
         @Override
         public ResponseFacade<String> getText(String path, HttpConstants.Version ver)
-                throws IOException, ExecutionException, InterruptedException, TimeoutException
-        {
-            return execute(GET(path, ver), SimpleHttpResponse::getBodyText);
+                throws IOException {
+            var r = req(HttpGet::new, path, ver);
+            return execute(r, STRING);
         }
         
         @Override
         public ResponseFacade<String> postAndReceiveText(
-                String path, HttpConstants.Version ver, String body)
-                throws IOException, InterruptedException, ExecutionException, TimeoutException
-        {
-            var req = newRequestBuilder("POST", path, ver)
-                    .setBody(body, null)
-                    .build();
-            return execute(req, SimpleHttpResponse::getBodyText);
+            String path, HttpConstants.Version ver, String body)
+                throws IOException {
+            var r = req(HttpPost::new, path, ver);
+            r.setEntity(new StringEntity(body));
+            return execute(r, STRING);
         }
         
         @Override
         public ResponseFacade<Void> postBytesAndReceiveEmpty(
-                String path, HttpConstants.Version ver, byte[] body)
-                throws IOException, ExecutionException, InterruptedException, TimeoutException
-        {
-            var req = newRequestBuilder("POST", path, ver)
-                    .setBody(body, null)
-                    .build();
-            return execute(req, SimpleHttpResponse::getBodyBytes)
-                    .assertEmpty();
+            String path, HttpConstants.Version ver, byte[] body)
+                throws IOException {
+            var r = req(HttpPost::new, path, ver);
+            r.setEntity(new ByteArrayEntity(body, APPLICATION_OCTET_STREAM ));
+            return execute(r, BYTE_ARR).assertEmpty();
         }
         
         @Override
@@ -707,62 +701,53 @@ public abstract class HttpClientFacade
             // https://github.com/apache/httpcomponents-client/blob/5.1.x/httpclient5/src/test/java/org/apache/hc/client5/http/examples/ClientChunkEncodedPost.java
             var stream = new InputStreamEntity(
                     newInputStream(firstChunk, more), -1, null);
-            var req = new HttpPost(withBase(path));
+            var req = req(HttpPost::new, path, HTTP_1_1);
             req.setEntity(stream);
-            req.setVersion(HttpVersion.HTTP_1_1);
-            copyClientHeaders(req::addHeader);
-            
-            // SIMPLE-HttpRequest we have to execute using Http-ASYNC-Client.
-            // For streaming we have to use... a blocking client!? omg!
-            String body;
-            try (var cli = HttpClients.createDefault()) {
-                var rsp = cli.execute(req);
-                try (rsp) {
-                    body = EntityUtils.toString(rsp.getEntity());
-                } catch (ParseException e) {
-                    // No other text-producing request throws this ParseExc
-                    // which is a first clue that something is wrong. You go
-                    // into the source code and voilà, you'll find that the
-                    // ParseExc isn't actually thrown lol
-                    throw new AssertionError(e);
-                }
-                return ResponseFacade.fromApache(rsp, () -> body);
-            }
+            return execute(req, STRING);
         }
         
-        private SimpleHttpRequest GET(String path, HttpConstants.Version ver) {
-            return newRequestBuilder("GET", path, ver).build();
-        }
-        
-        private SimpleRequestBuilder newRequestBuilder(
-                String method, String path, HttpConstants.Version ver)
+        private <T extends HttpUriRequestBase> T req(
+                Function<URI, T> method, String path, HttpConstants.Version ver)
         {
-            var b = SimpleRequestBuilder
-                    .create(method)
-                    .setUri(withBase(path))
-                    .setVersion(toApacheVersion(ver));
-            copyClientHeaders(b::addHeader);
-            return b;
+            var req = method.apply(withBase(path));
+            req.setVersion(toApacheVersion(ver));
+            copyClientHeaders(req::addHeader);
+            return req;
         }
         
         private <B> ResponseFacade<B> execute(
-                SimpleHttpRequest req,
-                Function<? super SimpleHttpResponse, ? extends B> rspBodyConverter)
-                throws IOException, InterruptedException, ExecutionException, TimeoutException
-        {
-            try (var cli = HttpAsyncClients.createDefault()) {
-                // Must "start" first, otherwise
-                //     java.util.concurrent.CancellationException: Request execution cancelled
-                cli.start();
-                // Same as the timeout given to TestClient in BigFileRequestTest
-                var rsp = cli.execute(req, null).get(5, SECONDS);
-                return ResponseFacade.fromApache(rsp, () -> rspBodyConverter.apply(rsp));
+                ClassicHttpRequest req, IOFunction<HttpEntity, B> rspBodyConverter)
+                throws IOException {
+            B body = null;
+            try (var cli = HttpClients.createDefault()) {
+                var rsp = cli.execute(req);
+                try (rsp) {
+                    var entity = rsp.getEntity();
+                    if (entity != null) {
+                        body = rspBodyConverter.apply(entity);
+                    }
+                }
+                return ResponseFacade.fromApache(rsp, body);
             }
         }
         
         private static ProtocolVersion toApacheVersion(HttpConstants.Version ver) {
-            return org.apache.hc.core5.http.HttpVersion.get(ver.major(), ver.minor().orElse(0));
+            return org.apache.hc.core5.http.HttpVersion
+                    .get(ver.major(), ver.minor().orElse(0));
         }
+        
+        private static IOFunction<HttpEntity, ByteArrayOutputStream> BYTES
+                = entity -> {
+                    var sink = new ByteArrayOutputStream();
+                    entity.getContent().transferTo(sink);
+                    return sink;
+                };
+        
+        private static IOFunction<HttpEntity, byte[]> BYTE_ARR
+                = BYTES.andThen(ByteArrayOutputStream::toByteArray);
+        
+        private static IOFunction<HttpEntity, String> STRING
+                = BYTES.andThen(stream -> stream.toString(US_ASCII));
     }
     
     private static final class Jetty extends HttpClientFacade {
@@ -803,8 +788,7 @@ public abstract class HttpClientFacade
         {
             return executeReq("POST", path, ver,
                     new BytesRequestContent(body),
-                    ContentResponse::getContent)
-                        .assertEmpty();
+                    ContentResponse::getContent).assertEmpty();
         }
         
         @Override
@@ -824,40 +808,35 @@ public abstract class HttpClientFacade
                 Function<? super ContentResponse, ? extends B> rspBodyConverter
                 ) throws ExecutionException, InterruptedException, TimeoutException
         {
-            var c = new org.eclipse.jetty.client.HttpClient();
-            
+            var cli = new org.eclipse.jetty.client.HttpClient();
             try {
-                c.start();
-            } catch (Exception e) { // <-- oh, wow...
+                cli.start();
+            } catch (Exception e) { // <-- lol
                 throw new RuntimeException(e);
             }
-            
             ContentResponse rsp;
             try {
-                var req = c.newRequest(withBase(path))
+                var req = cli.newRequest(withBase(path))
                            .method(method)
                            .version(toJettyVersion(ver))
                            .body(reqBody);
-                
                 copyClientHeaders((k, v) ->
                         req.headers(h -> h.add(k, v)));
-                
                 rsp = req.send();
             } finally {
                 try {
-                    c.stop();
+                    cli.stop();
                 } catch (Exception e) {
                     throw new RuntimeException(e);
                 }
             }
-            
             return ResponseFacade.fromJetty(rsp, rspBodyConverter);
         }
         
         private static org.eclipse.jetty.http.HttpVersion
-                toJettyVersion(HttpConstants.Version ver)
-        {
-            return org.eclipse.jetty.http.HttpVersion.fromString(ver.toString());
+                toJettyVersion(HttpConstants.Version ver) {
+            return org.eclipse.jetty.http.HttpVersion
+                    .fromString(ver.toString());
         }
     }
     
@@ -900,7 +879,7 @@ public abstract class HttpClientFacade
         {
             return executeReq(
                     io.netty.handler.codec.http.HttpMethod.POST, path, ver,
-                    // "from inbound" hahahahahaha
+                    // "from inbound" lol
                     ByteBufFlux.fromInbound(Mono.just(body)),
                     ByteBufMono::asByteArray)
                         .assertEmpty();
@@ -938,7 +917,7 @@ public abstract class HttpClientFacade
             for (var entry : clientHeaders()) {
                 var name = entry.getKey();
                 for (var value : entry.getValue()) {
-                    // Yup, you "consume" a mutable object, but... also returns a new client
+                    // Yup, one "consume" a mutable object, but... also returns a new client
                     // (who doesn't love a good surprise huh!)
                     client = client.headers(h -> h.add(name, value));
                 }
@@ -1006,14 +985,13 @@ public abstract class HttpClientFacade
     public static final class ResponseFacade<B> {
         
         static <B> ResponseFacade<B> fromJDK(java.net.http.HttpResponse<? extends B> jdk) {
-            Supplier<String> version = () -> HttpConstants.Version.valueOf(jdk.version().name()).toString(),
-                             phrase  = () -> {throw new UnsupportedOperationException();};
             return new ResponseFacade<>(
-                    version,
+                    () -> HttpConstants.Version.valueOf(jdk.version().name()).toString(),
                     jdk::statusCode,
-                    phrase,
+                    unsupported(),
                     jdk::headers,
-                    jdk::body);
+                    jdk::body,
+                    unsupportedIO());
         }
         
         static <B> ResponseFacade<B> fromOkHttp(okhttp3.Response okhttp, B body) {
@@ -1022,19 +1000,28 @@ public abstract class HttpClientFacade
                     okhttp::code,
                     okhttp::message,
                     () -> Headers.of(okhttp.headers().toMultimap()),
-                    () -> body);
+                    () -> body,
+                    supplyOurHeadersTypeIO(() ->
+                        StreamSupport.stream(okhttp.trailers().spliterator(), false),
+                        Pair::component1,
+                        Pair::component2));
         }
         
         static <B> ResponseFacade<B> fromApache(
-                org.apache.hc.core5.http.HttpResponse apache, Supplier<B> body) {
+                ClassicHttpResponse apache, B body) {
             return new ResponseFacade<>(
                     () -> apache.getVersion().toString(),
                     apache::getCode,
                     apache::getReasonPhrase,
-                    supplyOurHeadersType(() -> stream(apache.getHeaders()),
-                            org.apache.hc.core5.http.NameValuePair::getName,
-                            org.apache.hc.core5.http.NameValuePair::getValue),
-                    body);
+                    supplyOurHeadersType(() ->
+                        stream(apache.getHeaders()),
+                        NameValuePair::getName,
+                        NameValuePair::getValue),
+                    () -> body,
+                    supplyOurHeadersTypeIO(() ->
+                        apache.getEntity().getTrailers().get().stream(),
+                        NameValuePair::getName,
+                        NameValuePair::getValue));
         }
         
         static <B> ResponseFacade<B> fromJetty(
@@ -1048,7 +1035,8 @@ public abstract class HttpClientFacade
                     supplyOurHeadersType(() -> jetty.getHeaders().stream(),
                             org.eclipse.jetty.http.HttpField::getName,
                             org.eclipse.jetty.http.HttpField::getValue),
-                    () -> bodyConverter.apply(jetty));
+                    () -> bodyConverter.apply(jetty),
+                    unsupportedIO());
         }
         
         static <B> ResponseFacade<B> fromReactor(HttpClientResponse reactor, B body) {
@@ -1056,14 +1044,31 @@ public abstract class HttpClientFacade
                     () -> reactor.version().toString(),
                     () -> reactor.status().code(),
                     () -> reactor.status().reasonPhrase(),
-                    supplyOurHeadersType(() -> reactor.responseHeaders().entries().stream(),
-                            Map.Entry::getKey,
-                            Map.Entry::getValue),
-                    () -> body);
+                    supplyOurHeadersType(
+                        () -> reactor.responseHeaders().entries().stream(),
+                        Map.Entry::getKey,
+                        Map.Entry::getValue),
+                    () -> body,
+                    supplyOurHeadersTypeIO(() ->
+                        StreamSupport.stream(reactor.trailerHeaders().block(ofSeconds(2)).spliterator(), false),
+                        Map.Entry::getKey,
+                        Map.Entry::getValue));
         }
         
         private static <T> Supplier<HttpHeaders> supplyOurHeadersType(
                 Supplier<Stream<T>> fromNativeHeaders,
+                Function<? super T, String> name, Function<? super T, String> value) {
+            return () -> {
+                try {
+                    return supplyOurHeadersTypeIO(fromNativeHeaders::get, name, value).get();
+                } catch (IOException e) {
+                    throw new UncheckedIOException(e);
+                }
+            };
+        }
+        
+        private static <T> IOSupplier<HttpHeaders> supplyOurHeadersTypeIO(
+                IOSupplier<Stream<T>> fromNativeHeaders,
                 Function<? super T, String> name, Function<? super T, String> value) {
             return () -> {
                 var pairs = fromNativeHeaders.get()
@@ -1075,24 +1080,35 @@ public abstract class HttpClientFacade
             };
         }
         
+        private static <T> Supplier<T> unsupported() {
+            return () -> { throw new UnsupportedOperationException(); };
+        }
+        
+        private static <T> IOSupplier<T> unsupportedIO() {
+            return () -> { throw new UnsupportedOperationException(); };
+        }
+        
         private final Supplier<String> version;
         private final IntSupplier statusCode;
         private final Supplier<String> reasonPhrase;
         private final Supplier<HttpHeaders> headers;
         private final Supplier<? extends B> body;
+        private final IOSupplier<HttpHeaders> trailers;
         
         private ResponseFacade(
                 Supplier<String> version,
                 IntSupplier statusCode,
                 Supplier<String> reasonPhrase,
                 Supplier<HttpHeaders> headers,
-                Supplier<? extends B> body)
+                Supplier<? extends B> body,
+                IOSupplier<HttpHeaders> trailers)
         {
             this.version      = version;
             this.statusCode   = statusCode;
             this.reasonPhrase = reasonPhrase;
             this.headers      = headers;
             this.body         = body;
+            this.trailers     = trailers;
         }
         
         /**
@@ -1140,7 +1156,18 @@ public abstract class HttpClientFacade
          * @return body
          */
         public B body() {
+            // TODO: Throw Unsupported if empty
             return body.get();
+        }
+        
+        /**
+         * Returns the trailers.
+         * 
+         * @return the trailers
+         * @throws IOException if an I/O error occurs (only by OkHttp)
+         */
+        public HttpHeaders trailers() throws IOException {
+            return trailers.get();
         }
         
         ResponseFacade<Void> assertEmpty() {

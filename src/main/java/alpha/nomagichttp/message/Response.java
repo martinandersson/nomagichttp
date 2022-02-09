@@ -241,11 +241,11 @@ public interface Response extends HeaderHolder
      * All the remaining JavaDoc related to headers is true for the default
      * builder implementation building the default response implementation.<p>
      * 
-     * The content of header names and values are not validated. The application
-     * must not write invalid data such as a header name with whitespace in
-     * it (
+     * The content of header names and values are generally not validated. The
+     * application must not write invalid data such as a header name with
+     * whitespace in it (
      * <a href="https://datatracker.ietf.org/doc/html/rfc7230#section-3.2">RFC 7230 §3.2</a>
-     * ).<p>
+     * ). Header values can be empty.<p>
      * 
      * Adding many values to the same header name replicates the header across
      * multiple rows in the response. It does <strong>not</strong> join the
@@ -514,17 +514,11 @@ public interface Response extends HeaderHolder
          *             if a body is presumably not empty (see {@link
          *             Response#isBodyEmpty()}) and the status code is one of
          *             1XX (Informational), 204 (No Content) or 304 (Not
-         *             Modified) 
+         *             Modified)
          * 
          * @throws IllegalStateException
-         *             if the channel's write stream or the channel itself has
-         *             been marked to shut down/close and the status code is 1XX
-         *             (Informational)
-         * 
-         * @throws IllegalStateException
-         *             if response contains multiple {@code Content-Length} headers
-         * 
-         * @throws IllegalStateException
+         *             if headers are unaccepted,
+         *             e.g. multiple {@code Content-Length} headers; or
          *             if status code is 1XX (Informational) and header {@code
          *             Connection: close} is set (see
          *             <a href="https://tools.ietf.org/html/rfc7230#section-6.1">RFC 7231 §6.1</a>)

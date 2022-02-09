@@ -354,12 +354,23 @@ final class ResponsePipeline extends AbstractLocalEventEmitter
             }
             return rsp;
         }
-        final boolean chunked;
-        if (rsp.headers().isMissingOrEmpty(CONTENT_LENGTH) &&
-            !rsp.isBodyEmpty())
-        {
-            LOG.log(DEBUG, () -> exch.getHttpVersion() +
-                " response body of unknown length; applying chunked encoding.");
+        boolean chunked = false,
+                removeLen = false;
+        if (rsp.trailers().isPresent()) {
+            LOG.log(DEBUG, "Response trailers; applying chunked encoding.");
+            chunked = true;
+            removeLen = rsp.headers().contains(CONTENT_LENGTH);
+        } else if (!rsp.isBodyEmpty()) {
+            // Can not contain multiple Content-Length (see Response.Builder.build)
+            var len = rsp.headers().delegate().firstValue(CONTENT_LENGTH);
+            if (len.isEmpty() || len.get().startsWith("-")) {
+                LOG.log(DEBUG, () -> exch.getHttpVersion() +
+                    " response body of unknown length; applying chunked encoding.");
+                chunked = true;
+                removeLen = len.isPresent();
+            }
+        }
+        if (chunked) {
             if (rsp.headers().contains(TRANSFER_ENCODING)) {
                 // TODO: Once we use more codings, implement and use
                 //      Response.Builder.addHeaderToken()
@@ -368,19 +379,14 @@ final class ResponsePipeline extends AbstractLocalEventEmitter
                 throw new IllegalStateException(
                         "Transfer-Encoding in response was not expected.");
             }
-            chunked = true;
-        } else if (rsp.trailers().isPresent()) {
-            LOG.log(DEBUG, "Response trailers; applying chunked encoding.");
-            chunked = true;
-        } else {
-            // Body (if present) is not of unknown length and no trailers
-            chunked = false;
-        }
-        if (chunked) {
-            return rsp.toBuilder()
-                .addHeader(TRANSFER_ENCODING, "chunked")
-                .body(new ChunkedEncoderOp(rsp.body()))
-                .build();
+            var b = rsp.toBuilder();
+            if (removeLen) {
+                // May have been set to 0
+                b = b.removeHeader(CONTENT_LENGTH);
+            }
+            return b.addHeader(TRANSFER_ENCODING, "chunked")
+                    .body(new ChunkedEncoderOp(rsp.body()))
+                    .build();
         }
         return rsp;
     }
