@@ -141,7 +141,7 @@ public class DefaultContentHeaders implements ContentHeaders
     }
     
     /**
-     * Returns all Transfer-Encoding tokens.
+     * Returns all Transfer-Encoding tokens.<p>
      * 
      * The returned deque is modifiable, and consequently, not cached.
      * 

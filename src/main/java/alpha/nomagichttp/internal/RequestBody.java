@@ -7,6 +7,7 @@ import alpha.nomagichttp.message.DefaultContentHeaders;
 import alpha.nomagichttp.message.MediaType;
 import alpha.nomagichttp.message.PooledByteBufferHolder;
 import alpha.nomagichttp.message.Request;
+import alpha.nomagichttp.message.UnsupportedTransferCodingException;
 import alpha.nomagichttp.util.Publishers;
 
 import java.nio.channels.AsynchronousFileChannel;
@@ -102,9 +103,13 @@ final class RequestBody implements Request.Body
             // https://tools.ietf.org/html/rfc7230#section-3.3.3
             return emptyBody(headers);
         } else {
-            if (te.size() != 1 && !te.getLast().equalsIgnoreCase("chunked")) {
-                throw new UnsupportedOperationException(
-                        "Only chunked decoding supported, at the moment.");
+            for (var v : te) {
+                if (!v.equalsIgnoreCase("chunked")) {
+                    throw new UnsupportedTransferCodingException(v);
+                }
+            }
+            if (te.size() > 1) {
+                throw new BadRequestException("Chunked encoding applied multiple times.");
             }
             var chunked = new ChunkedDecoderOp(chIn, maxTrailersSize, chApi);
             content = chunked;

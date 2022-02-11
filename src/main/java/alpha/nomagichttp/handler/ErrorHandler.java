@@ -22,6 +22,7 @@ import alpha.nomagichttp.message.RequestLineParseException;
 import alpha.nomagichttp.message.Response;
 import alpha.nomagichttp.message.ResponseTimeoutException;
 import alpha.nomagichttp.message.Responses;
+import alpha.nomagichttp.message.UnsupportedTransferCodingException;
 import alpha.nomagichttp.route.AmbiguousHandlerException;
 import alpha.nomagichttp.route.MediaTypeNotAcceptedException;
 import alpha.nomagichttp.route.MediaTypeUnsupportedException;
@@ -44,6 +45,7 @@ import static alpha.nomagichttp.message.Responses.methodNotAllowed;
 import static alpha.nomagichttp.message.Responses.noContent;
 import static alpha.nomagichttp.message.Responses.notAcceptable;
 import static alpha.nomagichttp.message.Responses.notFound;
+import static alpha.nomagichttp.message.Responses.notImplemented;
 import static alpha.nomagichttp.message.Responses.requestTimeout;
 import static alpha.nomagichttp.message.Responses.serviceUnavailable;
 import static alpha.nomagichttp.message.Responses.unsupportedMediaType;
@@ -233,6 +235,12 @@ public interface ErrorHandler
      *     <td> {@link Responses#badRequest()} </td>
      *   </tr>
      *   <tr>
+     *     <th scope="row"> {@link UnsupportedTransferCodingException} </th>
+     *     <td> None </td>
+     *     <td> No </td>
+     *     <td> {@link Responses#notImplemented()}} </td>
+     *   </tr>
+     *   <tr>
      *     <th scope="row"> {@link MaxRequestHeadSizeExceededException} </th>
      *     <td> None </td>
      *     <td> Yes </td>
@@ -364,6 +372,8 @@ public interface ErrorHandler
             res = upgradeRequired(e.getUpgrade());
         } catch (HttpVersionTooNewException e) {
             res = httpVersionNotSupported();
+        } catch (UnsupportedTransferCodingException e) {
+            res = notImplemented();
         } catch (MaxRequestHeadSizeExceededException e) {
             log(thr);
             res = entityTooLarge();
