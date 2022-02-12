@@ -33,7 +33,7 @@ final class DefaultPooledByteBufferHolder implements PooledByteBufferHolder
     }
     
     private ByteBuffer buf;
-    private volatile ByteBuffer view;
+    private ByteBuffer view;
     private final int thenRemaining;
     private final AtomicReference<IntConsumer> onRelease;
     private final IntConsumer afterRelease;
@@ -56,6 +56,14 @@ final class DefaultPooledByteBufferHolder implements PooledByteBufferHolder
         this.afterRelease = afterRelease != null ? afterRelease : NOOP;
     }
     
+    /**
+     * Sets a new limit to the underlying buffer.<p>
+     * 
+     * The method must be called before releasing the buffer (no volatile
+     * semantics).
+     * 
+     * @param newLimit new limit
+     */
     void limit(int newLimit) {
         // Possible NPE if method is used after release; which we assume will never happen.
         view = buf.slice().limit(newLimit);
