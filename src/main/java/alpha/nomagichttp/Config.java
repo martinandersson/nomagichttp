@@ -334,16 +334,17 @@ public interface Config
      * implementing the {@value HttpConstants.Method#OPTIONS} method will get
      * one.<p>
      * 
-     * This works in the following way: As with any HTTP method, if the
-     * implementation is missing, a {@link MethodNotAllowedException} is thrown
-     * which may eventually reach the {@linkplain  ErrorHandler#DEFAULT default
-     * error handler}. This handler in turn will - if this configuration is
-     * enabled - respond a <i>successful</i> 204 (No Content). Had this
-     * configuration not been enabled, the response would have been a <i>client
-     * error</i> 405 (Method Not Allowed). In both cases, the {@value
-     * HttpConstants.HeaderName#ALLOW} header will be set and populated with all
-     * the HTTP methods that are indeed implemented. So there's really no other
-     * difference between the two outcomes, other than the status code.<p>
+     * This works in the following way: As with any HTTP method, if the route
+     * exists but the method implementation is missing, a {@link
+     * MethodNotAllowedException} is thrown which may eventually reach the
+     * {@linkplain ErrorHandler#DEFAULT default error handler}. This handler in
+     * turn will - if this configuration is enabled - respond a
+     * <i>successful</i> 204 (No Content). Had this configuration not been
+     * enabled, the response would have been a <i>client error</i> 405 (Method
+     * Not Allowed). In both cases, the {@value HttpConstants.HeaderName#ALLOW}
+     * header will be set and populated with all the HTTP methods that are
+     * implemented. So there's really no other difference between the two
+     * outcomes, other than the status code.<p>
      * 
      * With or without this configuration enabled, the application can easily
      * add its own {@code OPTIONS} implementation to the route or override the
