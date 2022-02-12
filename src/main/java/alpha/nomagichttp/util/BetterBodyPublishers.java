@@ -176,7 +176,12 @@ public final class BetterBodyPublishers
     }
     
     /**
-     * Wraps the given delegate with a {@code contentLength} set to -1 (unknown).
+     * Wraps the given delegate with a {@code contentLength} set to -1
+     * (unknown).<p>
+     * 
+     * This method is an alternative to {@link
+     * BodyPublishers#fromPublisher(Flow.Publisher)} except it is documented to
+     * be thread-safe.
      * 
      * @param delegate upstream source of bytebuffers
      * 
@@ -185,11 +190,16 @@ public final class BetterBodyPublishers
      * @throws NullPointerException if {@code delegate} is {@code null}
      */
     public static BodyPublisher asBodyPublisher(Flow.Publisher<? extends ByteBuffer> delegate) {
-        return asBodyPublisher(delegate, -1);
+        return new Adapter(delegate, -1);
     }
     
     /**
      * Wraps the given delegate with a content-length.
+     * 
+     * This method is an alternative to {@link
+     * BodyPublishers#fromPublisher(Flow.Publisher, long)} except it is
+     * documented to be thread-safe and the content-length is accepted to be
+     * zero.
      * 
      * @param delegate upstream source of bytebuffers
      * @param contentLength content length (byte count)
@@ -197,10 +207,15 @@ public final class BetterBodyPublishers
      * @return a new body publisher
      * 
      * @throws NullPointerException if {@code delegate} is {@code null}
+     * @throws IllegalArgumentException if {@code contentLength} is negative
      */
     public static BodyPublisher asBodyPublisher(
             Flow.Publisher<? extends ByteBuffer> delegate, long contentLength)
     {
+        if (contentLength < 0) {
+            throw new IllegalArgumentException(
+                "negative contentLength: " + contentLength);
+        }
         return new Adapter(delegate, contentLength);
     }
     
@@ -303,8 +318,7 @@ public final class BetterBodyPublishers
         } catch (Negative e) {
             len = -1;
         }
-        
-        return asBodyPublisher(Publishers.concat(first, second, more), len);
+        return new Adapter(Publishers.concat(first, second, more), len);
     }
     
     private static class Adapter implements BodyPublisher {
