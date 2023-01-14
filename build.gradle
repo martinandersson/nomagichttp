@@ -183,7 +183,7 @@ tasks.withType(Javadoc) {
             "Werror" : "Xwerror";
         
         options.addBooleanOption(opt, true)
-    } 
+    }
     
     // No warnings for missed comments (can't disable only for private symbols)
     options.addBooleanOption('Xdoclint:all,-missing', true)
