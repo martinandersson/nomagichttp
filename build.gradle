@@ -87,11 +87,6 @@ version = '0.5-SNAPSHOT'
 // Unless environment variable HACKING=true.
 var Werror = !(System.env.HACKING ?: false).toBoolean()
 
-wrapper {
-    gradleVersion = '7.3'
-    distributionType = Wrapper.DistributionType.ALL
-}
-
 // Ensure backwards compatibility
 // https://stackoverflow.com/a/43103038/1268003
 // https://docs.gradle.org/6.6/release-notes.html#javacompile-release
