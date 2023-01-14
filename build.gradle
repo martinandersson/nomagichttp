@@ -99,7 +99,7 @@ compileJava {
     options.release = RELEASE_FOR.getMajorVersion().toInteger()
 }
 
-tasks.withType(JavaCompile) {
+tasks.withType(JavaCompile).configureEach {
     options.compilerArgs.addAll([
         '-Xlint',                  // Enable all warnings
         '-Xdoclint:all/protected', // Also check JavaDoc (protected and higher)
@@ -115,7 +115,7 @@ tasks.withType(Test).configureEach {
     finalizedBy jacocoTestReport
 }
 
-task mediumTest(type: Test) {
+tasks.register('mediumTest', Test) {
     description = 'Runs the medium tests.'
     group = 'verification'
     
@@ -124,7 +124,7 @@ task mediumTest(type: Test) {
     shouldRunAfter test
 }
 
-task largeTest(type: Test) {
+tasks.register('largeTest', Test) {
     description = 'Runs the large tests.'
     group = 'verification'
     
@@ -149,7 +149,7 @@ javadoc {
 }
 
 // Build JavaDoc HTML for developers
-task javadocAll(type: Javadoc) {
+tasks.register('javadocAll', Javadoc) {
     title = javadoc.title + ' (for library developers)'
     description = 'Generates all Javadoc API documentation (public+private symbols and test classes).'
     group = 'documentation'
@@ -167,7 +167,7 @@ task javadocAll(type: Javadoc) {
     destinationDir = file("$buildDir/docs/javadoc-all")
 }
 
-tasks.withType(Javadoc) {
+tasks.withType(Javadoc).configureEach {
     // Add support for modern JavaDoc tags
     // https://openjdk.java.net/jeps/8068562
     options.tags(
