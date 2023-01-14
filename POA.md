@@ -70,7 +70,7 @@ artifacts.
 - User guide (GitHub pages?) for examples and aggregated how-to's  
   _Result: Postponed_
 - README.md for super quick introduction followed by project-building how-to's  
-  _Result: Postponed_
+  _Result: We have introduction but still no docs on the Gradle project_
 - CONTRIBUTING.md for tech-heavy contributing how-to's  
   _Result: Postponed_
 - DESIGN.md is plausible, linked from CONTRIBUTING.md  
