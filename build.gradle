@@ -218,3 +218,5 @@ publishing.publications {
         }
     }
 }
+
+// TODO: cleanTest should also remove Jacoco files
