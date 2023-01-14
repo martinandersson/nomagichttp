@@ -119,7 +119,7 @@ final class ChunkedDecoderOpTest
         assertPublisherError(testee)
             .isExactlyInstanceOf(DecoderException.class)
             .hasNoSuppressedExceptions()
-            .getCause()
+            .cause()
                 .isExactlyInstanceOf(NumberFormatException.class)
                 .hasMessage("not a hexadecimal digit: \"O\" = 79");
         assertCancelled(testee.trailers());
@@ -174,7 +174,7 @@ final class ChunkedDecoderOpTest
             .isExactlyInstanceOf(UnsupportedOperationException.class)
             .hasNoSuppressedExceptions()
             .hasMessage("Long overflow.")
-            .getCause()
+            .cause()
                 .isExactlyInstanceOf(BufferOverflowException.class)
                 .hasMessage(null);
         assertCancelled(testee.trailers());

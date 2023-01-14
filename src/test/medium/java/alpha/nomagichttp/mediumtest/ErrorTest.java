@@ -250,7 +250,7 @@ class ErrorTest extends AbstractRealTest
             .isExactlyInstanceOf(BadHeaderException.class)
             .hasMessage("Failed to parse Content-Type header.")
             .hasNoSuppressedExceptions()
-            .getCause()
+            .cause()
                 .isExactlyInstanceOf(MediaTypeParseException.class)
                 .hasNoSuppressedExceptions()
                 .hasNoCause()

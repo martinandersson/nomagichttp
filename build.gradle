@@ -67,17 +67,17 @@ repositories {
 }
 
 dependencies {
-    testImplementation platform('org.junit:junit-bom:5.8.1')
+    testImplementation platform('org.junit:junit-bom:5.9.2')
     testImplementation 'org.junit.jupiter:junit-jupiter'
     
-    testImplementation 'org.assertj:assertj-core:3.21.0'
-    testImplementation 'org.mockito:mockito-core:4.0.0'
+    testImplementation 'org.assertj:assertj-core:3.24.1'
+    testImplementation 'org.mockito:mockito-core:4.11.0'
     
     // HTTP client implementations used by HttpClientFacade
-    mediumTestImplementation 'com.squareup.okhttp3:okhttp:4.9.2'
+    mediumTestImplementation 'com.squareup.okhttp3:okhttp:4.10.0'
     mediumTestImplementation 'org.apache.httpcomponents.client5:httpclient5:5.1.1'
-    mediumTestImplementation 'org.eclipse.jetty:jetty-client:11.0.6'
-    mediumTestImplementation 'io.projectreactor.netty:reactor-netty-http:1.0.13'
+    mediumTestImplementation 'org.eclipse.jetty:jetty-client:11.0.13'
+    mediumTestImplementation 'io.projectreactor.netty:reactor-netty-http:1.1.2'
 }
 
 // To be bumped by task in future or perhaps not even set in this file

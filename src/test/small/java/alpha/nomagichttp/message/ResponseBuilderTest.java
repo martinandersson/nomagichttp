@@ -66,7 +66,7 @@ class ResponseBuilderTest
             // From HttpHeaders.of
             .isExactlyInstanceOf(IllegalStateException.class)
             .hasNoSuppressedExceptions()
-            .getCause()
+            .cause()
                 .isExactlyInstanceOf(IllegalArgumentException.class)
                 .hasNoSuppressedExceptions()
                 .hasNoCause()

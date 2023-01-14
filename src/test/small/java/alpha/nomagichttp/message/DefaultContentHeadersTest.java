@@ -49,7 +49,7 @@ class DefaultContentHeadersTest
             .isExactlyInstanceOf(BadHeaderException.class)
             .hasMessage("Can not parse Content-Length (\"NaN\") into a long.")
             .hasNoSuppressedExceptions()
-            .getCause()
+            .cause()
                 .isExactlyInstanceOf(NumberFormatException.class)
                 .hasMessage("For input string: \"NaN\"");
     }

@@ -103,7 +103,7 @@ class RouteBuilderTest
         BiConsumer<String, Consumer<String>> assertParseExc = (s, f) ->
                 assertThatThrownBy(() -> f.accept(s))
                         .isExactlyInstanceOf(RoutePatternInvalidException.class)
-                        .getCause()
+                        .cause()
                         .isExactlyInstanceOf(IllegalArgumentException.class)
                         .hasMessage("Static segment value is empty.");
         
@@ -134,7 +134,7 @@ class RouteBuilderTest
     void duplicated_param() {
         assertThatThrownBy(() -> builder("/:p/:p"))
                 .isExactlyInstanceOf(RoutePatternInvalidException.class)
-                .getCause()
+                .cause()
                 .isExactlyInstanceOf(IllegalStateException.class)
                 .hasMessage("Duplicated parameter name: \"p\"");
     }
@@ -143,7 +143,7 @@ class RouteBuilderTest
     void catchAll_not_last() {
         assertThatThrownBy(() -> builder("/*catch-all/something"))
                 .isExactlyInstanceOf(RoutePatternInvalidException.class)
-                .getCause()
+                .cause()
                 .isExactlyInstanceOf(IllegalStateException.class)
                 .hasMessage("Catch-all path parameter must be the last segment.");
     }

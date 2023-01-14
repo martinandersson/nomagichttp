@@ -60,7 +60,7 @@ class ThreadSchedulerTest
         Stage t2s1 = new Stage("T2", "S1", () -> {throw new RuntimeException("Wazzap!");});
         assertThatThrownBy(() -> ThreadScheduler.runSequentially(y, t1s1, t2s1))
                 .isExactlyInstanceOf(CompletionException.class)
-                .getCause()
+                .cause()
                 .isExactlyInstanceOf(RuntimeException.class)
                 .hasMessage("Wazzap!");
     }
