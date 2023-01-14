@@ -1,9 +1,7 @@
 package alpha.nomagichttp.util;
 
-import alpha.nomagichttp.handler.ErrorHandler;
 import alpha.nomagichttp.message.Response;
 
-import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.net.http.HttpRequest.BodyPublishers;
@@ -14,6 +12,7 @@ import java.nio.channels.CompletionHandler;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
+import java.nio.file.LinkOption;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Deque;
@@ -176,7 +175,12 @@ public final class BetterBodyPublishers
     }
     
     /**
-     * Wraps the given delegate with a {@code contentLength} set to -1 (unknown).
+     * Wraps the given delegate with a {@code contentLength} set to -1
+     * (unknown).<p>
+     * 
+     * This method is an alternative to {@link
+     * BodyPublishers#fromPublisher(Flow.Publisher)} except it is documented to
+     * be thread-safe.
      * 
      * @param delegate upstream source of bytebuffers
      * 
@@ -185,11 +189,16 @@ public final class BetterBodyPublishers
      * @throws NullPointerException if {@code delegate} is {@code null}
      */
     public static BodyPublisher asBodyPublisher(Flow.Publisher<? extends ByteBuffer> delegate) {
-        return asBodyPublisher(delegate, -1);
+        return new Adapter(delegate, -1);
     }
     
     /**
      * Wraps the given delegate with a content-length.
+     * 
+     * This method is an alternative to {@link
+     * BodyPublishers#fromPublisher(Flow.Publisher, long)} except it is
+     * documented to be thread-safe and the content-length is accepted to be
+     * zero.
      * 
      * @param delegate upstream source of bytebuffers
      * @param contentLength content length (byte count)
@@ -197,10 +206,15 @@ public final class BetterBodyPublishers
      * @return a new body publisher
      * 
      * @throws NullPointerException if {@code delegate} is {@code null}
+     * @throws IllegalArgumentException if {@code contentLength} is negative
      */
     public static BodyPublisher asBodyPublisher(
             Flow.Publisher<? extends ByteBuffer> delegate, long contentLength)
     {
+        if (contentLength < 0) {
+            throw new IllegalArgumentException(
+                "negative contentLength: " + contentLength);
+        }
         return new Adapter(delegate, contentLength);
     }
     
@@ -228,6 +242,9 @@ public final class BetterBodyPublishers
      * will be set to {@code -1} (unknown). The file must exist no later than
      * when the first subscriber requests items.<p>
      * 
+     * The application should check if {@link Files#exists(Path, LinkOption...)
+     * File.exists} before calling this method.<p>
+     * 
      * It is important that the file size does not change while a subscription
      * is active, or after a known file size has been acquired if future
      * subscribers are expected. Post-modifications to the file size may lead to
@@ -235,10 +252,7 @@ public final class BetterBodyPublishers
      * consequence.<p>
      * 
      * This method is an alternative to {@link BodyPublishers#ofFile(Path)}
-     * except the implementation does not block and exceptions like {@link
-     * FileNotFoundException} are delivered to the subscriber, i.e., the HTTP
-     * server itself, and therefore be dealt with globally using an
-     * {@link ErrorHandler}.
+     * except the implementation does not block.
      * 
      * @param path the path to the file containing the body
      * @return a BodyPublisher
@@ -303,8 +317,7 @@ public final class BetterBodyPublishers
         } catch (Negative e) {
             len = -1;
         }
-        
-        return asBodyPublisher(Publishers.concat(first, second, more), len);
+        return new Adapter(Publishers.concat(first, second, more), len);
     }
     
     private static class Adapter implements BodyPublisher {

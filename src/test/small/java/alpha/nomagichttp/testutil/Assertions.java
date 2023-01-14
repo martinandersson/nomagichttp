@@ -66,7 +66,7 @@ public final class Assertions {
         try {
             f.getNow(null);
         } catch (CompletionException e) {
-            return assertThat(e).getCause();
+            return assertThat(e).cause();
         }
         throw new AssertionError();
     }
@@ -89,7 +89,7 @@ public final class Assertions {
         try {
             stage.toCompletableFuture().get(3, SECONDS);
         } catch (ExecutionException e) {
-            return assertThat(e).getCause();
+            return assertThat(e).cause();
         }
         throw new AssertionError("Did not complete exceptionally.");
     }

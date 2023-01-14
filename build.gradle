@@ -67,17 +67,17 @@ repositories {
 }
 
 dependencies {
-    testImplementation platform('org.junit:junit-bom:5.8.1')
+    testImplementation platform('org.junit:junit-bom:5.9.2')
     testImplementation 'org.junit.jupiter:junit-jupiter'
     
-    testImplementation 'org.assertj:assertj-core:3.21.0'
-    testImplementation 'org.mockito:mockito-core:4.0.0'
+    testImplementation 'org.assertj:assertj-core:3.24.1'
+    testImplementation 'org.mockito:mockito-core:4.11.0'
     
     // HTTP client implementations used by HttpClientFacade
-    mediumTestImplementation 'com.squareup.okhttp3:okhttp:4.9.2'
+    mediumTestImplementation 'com.squareup.okhttp3:okhttp:4.10.0'
     mediumTestImplementation 'org.apache.httpcomponents.client5:httpclient5:5.1.1'
-    mediumTestImplementation 'org.eclipse.jetty:jetty-client:11.0.6'
-    mediumTestImplementation 'io.projectreactor.netty:reactor-netty-http:1.0.13'
+    mediumTestImplementation 'org.eclipse.jetty:jetty-client:11.0.13'
+    mediumTestImplementation 'io.projectreactor.netty:reactor-netty-http:1.1.2'
 }
 
 // To be bumped by task in future or perhaps not even set in this file
@@ -87,11 +87,6 @@ version = '0.5-SNAPSHOT'
 // Unless environment variable HACKING=true.
 var Werror = !(System.env.HACKING ?: false).toBoolean()
 
-wrapper {
-    gradleVersion = '7.3'
-    distributionType = Wrapper.DistributionType.ALL
-}
-
 // Ensure backwards compatibility
 // https://stackoverflow.com/a/43103038/1268003
 // https://docs.gradle.org/6.6/release-notes.html#javacompile-release
@@ -99,7 +94,7 @@ compileJava {
     options.release = RELEASE_FOR.getMajorVersion().toInteger()
 }
 
-tasks.withType(JavaCompile) {
+tasks.withType(JavaCompile).configureEach {
     options.compilerArgs.addAll([
         '-Xlint',                  // Enable all warnings
         '-Xdoclint:all/protected', // Also check JavaDoc (protected and higher)
@@ -115,7 +110,7 @@ tasks.withType(Test).configureEach {
     finalizedBy jacocoTestReport
 }
 
-task mediumTest(type: Test) {
+tasks.register('mediumTest', Test) {
     description = 'Runs the medium tests.'
     group = 'verification'
     
@@ -124,7 +119,7 @@ task mediumTest(type: Test) {
     shouldRunAfter test
 }
 
-task largeTest(type: Test) {
+tasks.register('largeTest', Test) {
     description = 'Runs the large tests.'
     group = 'verification'
     
@@ -149,7 +144,7 @@ javadoc {
 }
 
 // Build JavaDoc HTML for developers
-task javadocAll(type: Javadoc) {
+tasks.register('javadocAll', Javadoc) {
     title = javadoc.title + ' (for library developers)'
     description = 'Generates all Javadoc API documentation (public+private symbols and test classes).'
     group = 'documentation'
@@ -167,7 +162,7 @@ task javadocAll(type: Javadoc) {
     destinationDir = file("$buildDir/docs/javadoc-all")
 }
 
-tasks.withType(Javadoc) {
+tasks.withType(Javadoc).configureEach {
     // Add support for modern JavaDoc tags
     // https://openjdk.java.net/jeps/8068562
     options.tags(
@@ -183,7 +178,7 @@ tasks.withType(Javadoc) {
             "Werror" : "Xwerror";
         
         options.addBooleanOption(opt, true)
-    } 
+    }
     
     // No warnings for missed comments (can't disable only for private symbols)
     options.addBooleanOption('Xdoclint:all,-missing', true)
@@ -218,3 +213,5 @@ publishing.publications {
         }
     }
 }
+
+// TODO: cleanTest should also remove Jacoco files

@@ -309,6 +309,10 @@ final class HttpExchange
                 // less deterministic and hard to write. Further, it has
                 // clearly been noted in the JavaDoc of Request.Body that the
                 // subscriber should not throw an exception.
+                //    One fix would be to make handleError NOP on duplicates and
+                // then handle DOWNSTREAM_FAILED. This would strengthen the
+                // error guarantees we can make in Request.Body, but also
+                // complicate the documentation.
             } else {
                 LOG.log(DEBUG, () -> "Body processing finished (" + res.reason() + ")");
                 // If <thr> is not null, trailers completed exceptionally, and

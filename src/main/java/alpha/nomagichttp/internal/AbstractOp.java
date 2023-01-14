@@ -48,6 +48,7 @@ import static java.util.Objects.requireNonNull;
  * @param <T> type of item to publish
  * @see alpha.nomagichttp.internal
  */
+// TODO: Rename to AbstractFlowDecorator ?
 abstract class AbstractOp<T> extends AbstractUnicastPublisher<T>
 {
     private final Flow.Publisher<? extends T> upstream;
@@ -75,6 +76,9 @@ abstract class AbstractOp<T> extends AbstractUnicastPublisher<T>
     }
     
     protected void fromDownstreamRequest(long n) {
+        // TODO: Must subscribe eagerly. In theory this could produce NPE
+        //       This would also remove the need for explicit eager-behavior by some OPs.
+        //       See PooledByteBufferOp
         subscription.request(n);
     }
     
@@ -125,6 +129,8 @@ abstract class AbstractOp<T> extends AbstractUnicastPublisher<T>
      * 
      * @param <T> type of item
      */
+    // TODO: Performance improvements. Serialize only if
+    //       Publisher/Subscriber/Subscription is not instanceof ThreadSafe
     static class Async<T> extends AbstractOp<T> {
         private final SerialExecutor up, down;
         

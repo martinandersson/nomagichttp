@@ -2712,8 +2712,7 @@ public final class HttpConstants {
         public static final String TRAILER = "Trailer";
         
         /**
-         * Hop-by-hop transport encoding. {@link #CONTENT_ENCODING} applies
-         * end-to-end.<p>
+         * Hop-by-hop transport encoding.<p>
          * 
          * May be used in both request and response.<p>
          * 

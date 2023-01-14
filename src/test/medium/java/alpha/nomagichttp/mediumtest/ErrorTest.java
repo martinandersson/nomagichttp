@@ -22,6 +22,7 @@ import alpha.nomagichttp.message.RequestLineParseException;
 import alpha.nomagichttp.message.Response;
 import alpha.nomagichttp.message.ResponseTimeoutException;
 import alpha.nomagichttp.message.Responses;
+import alpha.nomagichttp.message.UnsupportedTransferCodingException;
 import alpha.nomagichttp.route.AmbiguousHandlerException;
 import alpha.nomagichttp.route.MediaTypeNotAcceptedException;
 import alpha.nomagichttp.route.MediaTypeUnsupportedException;
@@ -239,7 +240,7 @@ class ErrorTest extends AbstractRealTest
             GET().accept(NOP));
         String rsp = client().writeReadTextUntilEOS("""
             GET / HTTP/1.1\r
-            Content-Type: BOOM!\r\n\r\n
+            Content-Type: BOOM!\r\n\r
             """);
         assertThat(rsp).isEqualTo("""
             HTTP/1.1 400 Bad Request\r
@@ -249,7 +250,7 @@ class ErrorTest extends AbstractRealTest
             .isExactlyInstanceOf(BadHeaderException.class)
             .hasMessage("Failed to parse Content-Type header.")
             .hasNoSuppressedExceptions()
-            .getCause()
+            .cause()
                 .isExactlyInstanceOf(MediaTypeParseException.class)
                 .hasNoSuppressedExceptions()
                 .hasNoCause()
@@ -265,7 +266,7 @@ class ErrorTest extends AbstractRealTest
         String rsp = client().writeReadTextUntilEOS("""
             GET / HTTP/1.1\r
             Transfer-Encoding: chunked\r
-            Content-Length: 123\r\n\r\n
+            Content-Length: 123\r\n\r
             """);
         assertThat(rsp).isEqualTo("""
             HTTP/1.1 400 Bad Request\r
@@ -276,6 +277,24 @@ class ErrorTest extends AbstractRealTest
             .hasNoCause()
             .hasNoSuppressedExceptions()
             .hasMessage("Content-Length and Transfer-Encoding present.");
+        logRecorder()
+            .assertThatNoErrorWasLogged();
+    }
+    
+    @Test
+    void UnsupportedTransferCodingException() throws IOException, InterruptedException {
+        String rsp = client().writeReadTextUntilNewlines("""
+            GET / HTTP/1.1\r
+            Transfer-Encoding: blabla, chunked\r\n\r
+            """);
+        assertThat(rsp).isEqualTo("""
+            HTTP/1.1 501 Not Implemented\r
+            Content-Length: 0\r\n\r\n""");
+        assertThat(pollServerError())
+            .isExactlyInstanceOf(UnsupportedTransferCodingException.class)
+            .hasNoCause()
+            .hasNoSuppressedExceptions()
+            .hasMessage("Unsupported Transfer-Encoding: blabla");
         logRecorder()
             .assertThatNoErrorWasLogged();
     }
