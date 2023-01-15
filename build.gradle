@@ -5,7 +5,7 @@ plugins {
     id 'maven-publish'
 }
 
-final var RELEASE_FOR = JavaVersion.VERSION_17
+final var RELEASE_FOR = JavaVersion.VERSION_19
 if (!JavaVersion.current().isCompatibleWith(RELEASE_FOR)) {
     throw new Exception(
          "Java ${JavaVersion.current()} is not supported. " +
@@ -98,10 +98,15 @@ tasks.withType(JavaCompile).configureEach {
     options.compilerArgs.addAll([
         '-Xlint',                  // Enable all warnings
         '-Xdoclint:all/protected', // Also check JavaDoc (protected and higher)
-        '-Xdiags:verbose'])        // Talk more
+        '-Xdiags:verbose',         // Talk more
+        // Just temporarily, while virtual threads and friends are not public API
+        '--enable-preview',
+        '--add-modules',
+        'jdk.incubator.concurrent'])
     
     // Fail on any warning
-    if (Werror) options.compilerArgs.add '-Werror'
+    // Commented out because udsing incubator modules produces a warning
+    // if (Werror) options.compilerArgs.add '-Werror'
 }
 
 // All tests will use JUnit and generate coverage report
