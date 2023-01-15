@@ -16,7 +16,7 @@ public class NoRouteFoundException extends RuntimeException
 {
     private static final long serialVersionUID = 1L;
     
-    private final Iterable<String> segments;
+    private final transient Iterable<String> segments;
     
     /**
      * Constructs a {@code NoRouteFoundException}.

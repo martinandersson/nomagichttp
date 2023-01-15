@@ -18,8 +18,12 @@ import static java.lang.System.Logger.Level.INFO;
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  */
-public class Interrupt
+public final class Interrupt
 {
+    private Interrupt() {
+        // Intentionally empty
+    }
+    
     private static final System.Logger LOG = System.getLogger(Interrupt.class.getPackageName());
     
     /**

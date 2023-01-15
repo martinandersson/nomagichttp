@@ -12,6 +12,10 @@ import static java.util.Objects.requireNonNull;
  */
 public final class TestSubscriptions
 {
+    private TestSubscriptions() {
+        // Intentionally empty
+    }
+    
     /**
      * Creates a subscription object whose {@code request(long)} method
      * delegates to the given {@code impl} and {@code cancel()} is NOOP.

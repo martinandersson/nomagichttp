@@ -95,6 +95,10 @@ import static java.util.stream.Stream.of;
  */
 public final class ThreadScheduler
 {
+    private ThreadScheduler() {
+        // Intentionally empty
+    }
+    
     /**
      * Value type containing thread- and stage names and a runnable.
      */
@@ -546,6 +550,14 @@ public final class ThreadScheduler
      * May be used by a stage to yield execution to another stage.
      */
     public static final class Yielder {
+        
+        /**
+         * Constructs a {@code Yielder}.
+         */
+        public Yielder() {
+            // Intentionally empty
+        }
+        
         /**
          * Yield control from one stage to the specified other.<p>
          * 

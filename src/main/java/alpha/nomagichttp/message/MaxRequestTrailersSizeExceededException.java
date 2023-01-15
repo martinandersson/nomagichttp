@@ -10,7 +10,13 @@ import alpha.nomagichttp.Config;
  * 
  * @see Config#maxRequestTrailersSize()
  */
-public class MaxRequestTrailersSizeExceededException extends RuntimeException {
+public final class MaxRequestTrailersSizeExceededException extends RuntimeException {
     private static final long serialVersionUID = 1L;
-    // Empty
+    
+    /**
+     * Constructs a {@code MaxRequestTrailersSizeExceededException}.
+     */
+    public MaxRequestTrailersSizeExceededException() {
+        // Intentionally empty
+    }
 }

@@ -15,7 +15,10 @@ public final class RawRequest
     }
     
     /**
-     * A raw request head.
+     * Constructs a raw request head.
+     * 
+     * @param line the request line
+     * @param headers the request headers
      */
     public record Head(Line line, Request.Headers headers)
             implements HeaderHolder {
@@ -28,6 +31,12 @@ public final class RawRequest
      * 
      * String tokens returned by this interface are never {@code null} nor
      * empty.
+     * 
+     * @param method of request
+     * @param target of request
+     * @param httpVersion of request
+     * @param nanoTimeOnStart see {@link #nanoTimeOnStart()}
+     * @param length see {@link #length()}
      */
     public record Line(
             String method, String target, String httpVersion,

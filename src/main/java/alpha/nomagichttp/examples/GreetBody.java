@@ -12,8 +12,12 @@ import static alpha.nomagichttp.message.Responses.text;
  *
  * @author Martin Andersson (webmaster at martinandersson.com)
  */
-public class GreetBody
+public final class GreetBody
 {
+    private GreetBody() {
+        // Intentionally empty
+    }
+    
     private static final int PORT = 8080;
     
     /**

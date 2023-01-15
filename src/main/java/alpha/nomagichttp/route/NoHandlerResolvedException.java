@@ -24,9 +24,9 @@ public abstract class NoHandlerResolvedException extends RuntimeException
     private static final long serialVersionUID = 1L;
     
     private final String method;
-    private final Route route;
-    private final MediaType contentType;
-    private final Collection<MediaType> accepts;
+    private final transient Route route;
+    private final transient MediaType contentType;
+    private final transient Collection<MediaType> accepts;
     
     /**
      * Constructs this object.

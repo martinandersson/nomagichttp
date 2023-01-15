@@ -30,7 +30,7 @@ public class IllegalResponseBodyException extends RuntimeException
 {
     private static final long serialVersionUID = 1L;
     
-    private final Response response;
+    private final transient Response response;
     
     /**
      * Constructs this object.

@@ -15,6 +15,13 @@ import static org.assertj.core.api.Assertions.assertThat;
  */
 public class PushPullUnicastPublisherTest
 {
+    /**
+     * Constructs a {@code PushPullUnicastPublisherTest}.
+     */
+    PushPullUnicastPublisherTest() {
+        // Intentionally empty
+    }
+    
     @Test
     void reusable() {
         var items = new ArrayList<String>();

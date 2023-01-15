@@ -12,8 +12,12 @@ import static alpha.nomagichttp.handler.RequestHandler.GET;
  *
  * @author Martin Andersson (webmaster at martinandersson.com)
  */
-public class EchoHeaders
+public final class EchoHeaders
 {
+    private EchoHeaders() {
+        // Intentionally empty
+    }
+    
     private static final int PORT = 8080;
     
     /**

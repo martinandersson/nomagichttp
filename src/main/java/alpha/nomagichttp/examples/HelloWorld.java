@@ -12,8 +12,12 @@ import java.io.IOException;
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  */
-public class HelloWorld
+public final class HelloWorld
 {
+    private HelloWorld() {
+        // Intentionally empty
+    }
+    
     /**
      * Application entry point.
      * 

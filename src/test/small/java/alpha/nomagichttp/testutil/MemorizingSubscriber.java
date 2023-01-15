@@ -25,9 +25,8 @@ import static java.util.Objects.requireNonNull;
  * fine-grained control, all factories in {@link TestSubscribers} returns a
  * memorizing subscriber.
  * 
- * @param <T> type of item subscribed
- * 
  * @author Martin Andersson (webmaster at martinandersson.com)
+ * @param <T> type of item subscribed
  */
 public final class MemorizingSubscriber<T> implements Flow.Subscriber<T>
 {
@@ -37,6 +36,9 @@ public final class MemorizingSubscriber<T> implements Flow.Subscriber<T>
      * Signals may carry an {@link #argument()}; the subscription object or the
      * item/error from upstream. {@code onComplete} does not receive an
      * argument.
+     * 
+     * @param methodName of method signalled
+     * @param argument received by the signalled method
      */
     public record Signal(MethodName methodName, Object argument) {
         /**
