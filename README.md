@@ -70,7 +70,7 @@ In subfolder `src/main/java`, create a new file `Greeter.java`:
         }
     }
 
-Make sure you are using Java 17+, then start the server:
+Make sure you are using Java 19+, then start the server:
 
 ```console
 foo@bar:~$ gradle run
