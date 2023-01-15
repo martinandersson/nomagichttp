@@ -27,6 +27,13 @@ import static org.mockito.Mockito.mock;
  */
 public class HeadersSubscriberTest
 {
+    /**
+     * Constructs a {@code HeadersSubscriberTest}.
+     */
+    HeadersSubscriberTest() {
+        // Intentionally empty
+    }
+    
     @Test
     void ending_mixed() {
         // Three line endings; \r\n, \n, \n\r\n

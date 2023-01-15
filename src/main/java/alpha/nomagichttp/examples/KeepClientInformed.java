@@ -17,8 +17,12 @@ import static java.util.concurrent.TimeUnit.SECONDS;
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  */
-public class KeepClientInformed
+public final class KeepClientInformed
 {
+    private KeepClientInformed() {
+        // Intentionally empty
+    }
+    
     private static final int PORT = 8080;
     
     /**

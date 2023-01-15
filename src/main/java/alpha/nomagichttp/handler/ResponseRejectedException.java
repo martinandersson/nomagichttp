@@ -28,7 +28,7 @@ public class ResponseRejectedException extends RuntimeException
     
     private static final long serialVersionUID = 1L;
     
-    private final Response rejected;
+    private final transient Response rejected;
     private final Reason reason;
     
     /**

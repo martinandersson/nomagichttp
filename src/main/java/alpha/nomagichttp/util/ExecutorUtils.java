@@ -8,8 +8,12 @@ import java.util.function.Consumer;
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  */
-public class ExecutorUtils
+final class ExecutorUtils
 {
+    private ExecutorUtils() {
+        // Intentionally empty
+    }
+    
     /**
      * Execute the given runnable.<p>
      * 

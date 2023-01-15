@@ -19,7 +19,7 @@ public final class AmbiguousHandlerException extends NoHandlerResolvedException
 {
     private static final long serialVersionUID = 1L;
     
-    private final Set<RequestHandler> ambiguous;
+    private final transient Set<RequestHandler> ambiguous;
     
     static AmbiguousHandlerException createAmbiguousEx(
             Route route,

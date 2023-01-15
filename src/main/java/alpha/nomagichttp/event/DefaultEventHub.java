@@ -11,6 +11,13 @@ import java.util.function.Supplier;
  */
 public class DefaultEventHub extends AbstractScatteringEventEmitter implements EventHub
 {
+    /**
+     * Constructs a {@code DefaultEventHub}.
+     */
+    public DefaultEventHub() {
+        // Intentionally empty
+    }
+    
     @Override
     public int dispatch(Object event) {
         return emit(event, null, null);

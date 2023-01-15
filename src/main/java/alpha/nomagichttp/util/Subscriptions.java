@@ -132,6 +132,13 @@ public final class Subscriptions
      */
     public static abstract class TurnOnProxy implements Flow.Subscription
     {
+        /**
+         * Constructs a {@link TurnOnProxy}.
+         */
+        TurnOnProxy() {
+            // Intentionally empty
+        }
+        
         private final Queue<Long> delayedDemand = new ConcurrentLinkedQueue<>();
         private volatile Flow.Subscription delegate;
         private boolean cancelled;

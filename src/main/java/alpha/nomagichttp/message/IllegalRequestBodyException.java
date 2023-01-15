@@ -23,8 +23,8 @@ import static java.util.Objects.requireNonNull;
 public class IllegalRequestBodyException extends RuntimeException
 {
     private static final long serialVersionUID = 1L;
-    private final RawRequest.Head head;
-    private final Request.Body body;
+    private final transient RawRequest.Head head;
+    private final transient Request.Body body;
     
     /**
      * Initializes this object.
