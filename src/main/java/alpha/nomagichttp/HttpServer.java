@@ -8,7 +8,6 @@ import alpha.nomagichttp.event.HttpServerStopped;
 import alpha.nomagichttp.event.RequestHeadReceived;
 import alpha.nomagichttp.event.ResponseSent;
 import alpha.nomagichttp.event.ScatteringEventEmitter;
-import alpha.nomagichttp.handler.ClientChannel;
 import alpha.nomagichttp.handler.ErrorHandler;
 import alpha.nomagichttp.handler.RequestHandler;
 import alpha.nomagichttp.internal.DefaultServer;
@@ -20,6 +19,7 @@ import alpha.nomagichttp.message.Response;
 import alpha.nomagichttp.message.Responses;
 import alpha.nomagichttp.route.Route;
 import alpha.nomagichttp.route.RouteRegistry;
+import jdk.incubator.concurrent.StructuredTaskScope;
 
 import java.io.IOException;
 import java.net.InetAddress;
@@ -27,7 +27,6 @@ import java.net.InetSocketAddress;
 import java.net.SocketAddress;
 import java.nio.channels.AsynchronousServerSocketChannel;
 import java.time.Instant;
-import java.util.concurrent.CompletionStage;
 
 import static java.net.InetAddress.getLoopbackAddress;
 
@@ -35,11 +34,10 @@ import static java.net.InetAddress.getLoopbackAddress;
  * Listens on a port for HTTP connections.<p>
  * 
  * The server's function is to provide port- and channel management, parse
- * an inbound request head and resolve a handler within a target route (also
- * known as a "server resource") that is qualified to handle the request. Once
- * the handler has been invoked, it has almost total freedom in regards to how
- * it interprets the request headers- and body as well as what headers and body
- * it responds.<p>
+ * an inbound request head and resolve a handler against a target route (also
+ * known as a "server resource") that is qualified to handle the request. The
+ * handler has almost total freedom in regards to how it interprets the request
+ * headers- and body as well as what headers and body it responds.<p>
  * 
  * The process of receiving a request and respond responses (any number of
  * intermittent responses, followed by a final response) is often called an
@@ -66,18 +64,17 @@ import static java.net.InetAddress.getLoopbackAddress;
  *             text}("Hello"))).{@link #start() start}();
  * </pre>
  * 
+ * 
  * <h2>Server Life-Cycle</h2>
  * 
- * It is possible to start many server instances on different ports. One
- * use-case for this pattern is to expose public endpoints on one port but keep
- * more sensitive administrator endpoints on another more secluded port.<p>
+ * It is possible to start server instances on different ports. One use-case for
+ * this pattern is to expose public endpoints on one port but keep more
+ * sensitive administrator endpoints on another more secluded port.<p>
  * 
- * If at least one server is running, then the JVM will not shutdown when the
- * main application thread dies. For the application process to end, all
- * server instances must {@link #stop()}.<p>
+ * TODO: Give StructuredTaskScope example.<p>
  * 
- * The server may be recycled, i.e. started anew after having been stopped, any
- * number of times.
+ * A server instance can not be recycled; it can only start and stop once.<p>
+ * 
  * 
  * <h2>Supported HTTP Versions</h2>
  *
@@ -85,65 +82,34 @@ import static java.net.InetAddress.getLoopbackAddress;
  * complete support for HTTP/1.0 and 1.1 is the first milestone, yet to be done
  * (see POA.md in repository). HTTP/2 will be implemented thereafter. HTTP
  * clients older than HTTP/1.0 is rejected (the exchange will crash with a
- * {@link HttpVersionTooOldException}).
+ * {@link HttpVersionTooOldException}).<p>
+ * 
  * 
  * <h2>Thread Safety and Threading Model</h2>
  * 
- * The server is fully thread-safe, and mostly, asynchronous and
- * non-blocking. This is mostly true for the entire library API. It's actually
- * quite hard to screw up when programming with the NoMagicHTTP server.<p>
+ * All methods found on the {@code HttpServer} interface are thread-safe.<p>
  * 
- * Life-cycle methods {@code start} and {@code stop} may block temporarily.<p>
+ * The default implementation uses virtual threads to handle inbound
+ * connections, invoke the application's request handlers and so on. Using
+ * virtual threads enables the rest of the library API to expose a simple and
+ * semantically blocking API to the application code, but virtual threads do not
+ * block; instead they will unmount from the carrier thread making it available
+ * to be mounted by a different virtual thread.<p>
  * 
- * The HttpServer API also functions as a route registry, to which one {@code
- * add} and {@code remove} routes. Modifying operations are highly concurrent
- * but may impose minuscule blocks at the discretion of the implementation. Most
- * importantly, looking up a route - as is done on every inbound request - never
- * blocks and features great performance no matter the size of the registry.<p>
+ * It is safe to call methods found in the {@code HttpServer} interface, its
+ * super-interfaces and related API (e.g. constructing objects such as routes
+ * and handlers) from a native thread.<p>
  * 
- * All servers running in the same JVM share a common pool of threads (aka
- * "request threads"). The pool handles I/O completion events and executes
- * application-provided entities such as the request- and error handlers. The
- * pool size is fixed and set to the value of {@link Config#threadPoolSize()}.
- * <p>
+ * However, application code executing within the scope of an HTTP exchange
+ * should not use other parts of the library API from a native thread. Parts of
+ * the API that would've caused a native thread to block reserves the right to
+ * throw a {@link WrongThreadException}, if called using a native thread.<p>
  * 
- * It is <strong>absolutely crucial</strong> that the application does not block
- * a request thread, for example by synchronously waiting on an I/O result. The
- * request thread is suitable only for short-lived and CPU-bound work. I/O work
- * or long-lived tasks should execute somewhere else. Blocking the request
- * thread will have a negative impact on scalability and could at worse starve
- * the pool of available threads making the server unable to make progress with
- * tasks such as accepting new client connections or processing other
- * requests.<p>
+ * TODO: Give bad example of concurrent outbound calls to dependent services
+ * using a parallel Stream on native threads.<p>
  * 
- * This is bad:
- * <pre>
- *   RequestHandler h = GET().{@link RequestHandler.Builder#accept(RequestHandler.Logic)
- *         accept}((request, channel) -{@literal >} {
- *       String data = database.fetch("SELECT * FROM Something"); // {@literal <}-- blocks!
- *       Response resp = {@link Responses}.text(data);
- *       channel.{@link ClientChannel#write(CompletionStage)
- *         write}(resp); // {@literal <}-- never blocks. Server is fully asynchronous.
- *   });
- * </pre>
+ * TODO: Give good example using {@link StructuredTaskScope}<p>
  * 
- * Instead, do this:
- * <pre>
- *   RequestHandler h = GET().accept((request, channel) -{@literal >} {
- *       CompletionStage{@literal <}String{@literal >} data = database.fetchAsync("SELECT * FROM Something");
- *       CompletionStage{@literal <}Response{@literal >} resp = data.thenApply(Responses::text);
- *       channel.write(resp);
- *   });
- * </pre>
- * 
- * The problem is <i>not</i> synchronously producing a response <i>if</i> one
- * can be produced without blocking.
- * <pre>
- *   RequestHandler h = GET().accept((request, channel) -{@literal >} {
- *       Response resp = text(String.join(" ", "Short-lived", "CPU-bound work", "is fine!"));
- *       channel.write(resp);
- *   });
- * </pre>
  * 
  * <h2>HTTP message semantics</h2>
  * 
@@ -157,9 +123,9 @@ import static java.net.InetAddress.getLoopbackAddress;
  * the server does not reject the message based on the presence (or absence) of
  * a body. This is mostly true for all other message variants as well; the
  * server does not have an opinionated view unless an opinionated view is
- * warranted. The request handler is mostly in control over how it interprets
- * the request message and what response it returns with no interference from
- * the server.<p>
+ * warranted. The request handler is almost in full control over how it
+ * interprets the request message and what response it returns with no
+ * interference from the server.<p>
  * 
  * For example, it might not be common but it <i>is</i>
  * allowed for {@link HttpConstants.Method#GET GET} requests (
@@ -202,7 +168,7 @@ public interface HttpServer extends RouteRegistry, ActionRegistry
     }
     
     /**
-     * Create a server.<p>
+     * Creates a server.<p>
      * 
      * The provided array of error handlers will be copied as-is. The
      * application should make sure that the array does not contain duplicates,
@@ -222,7 +188,7 @@ public interface HttpServer extends RouteRegistry, ActionRegistry
     }
     
     /**
-     * Listen for client connections on a system-picked port on the loopback
+     * Listens for client connections on a system-picked port on the loopback
      * address (IPv4 127.0.0.1, IPv6 ::1).<p>
      * 
      * This method is useful for inter-process communication on the same machine
@@ -243,21 +209,21 @@ public interface HttpServer extends RouteRegistry, ActionRegistry
      *   return {@link #start(SocketAddress) start}(local);
      * </pre>
      * 
-     * @return this (for chaining/fluency)
+     * @return nothing
      * 
-     * @throws IllegalStateException
-     *             if the server is already running (see {@link #start(SocketAddress)})
-     * @throws IOException
-     *             if an I/O error occurs
+     * @throws NullPointerException {@code address} is {@code null}
+     * @throws IllegalStateException server is already running
+     * @throws IOException I/O error
+     * @throws InterruptedException while waiting on client connections to terminate
      * 
      * @see InetAddress
      */
-    default HttpServer start() throws IOException {
+    default Void start() throws IOException, InterruptedException {
         return start(new InetSocketAddress(getLoopbackAddress(), 0));
     }
     
     /**
-     * Listen for client connections on the specified port on the wildcard
+     * Listens for client connections on the specified port on the wildcard
      * address.<p>
      * 
      * The wildcard address is also known as "any local address" and "the
@@ -271,22 +237,22 @@ public interface HttpServer extends RouteRegistry, ActionRegistry
      * 
      * @param port to use
      * 
-     * @return this (for chaining/fluency)
+     * @return nothing
      * 
-     * @throws IllegalStateException
-     *             if the server is already running (see {@link #start(SocketAddress)})
-     * @throws IOException
-     *             if an I/O error occurs
+     * @throws NullPointerException {@code address} is {@code null}
+     * @throws IllegalStateException server is already running
+     * @throws IOException I/O error
+     * @throws InterruptedException while waiting on client connections to terminate
      * 
      * @see InetAddress
      * @see #start(SocketAddress)
      */
-    default HttpServer start(int port) throws IOException  {
+    default Void start(int port) throws IOException, InterruptedException {
         return start(new InetSocketAddress(port));
     }
     
     /**
-     * Listen for client connections on a given hostname and port.
+     * Listens for client connections on a given hostname and port.
      * 
      * @implSpec
      * The default implementation is equivalent to:
@@ -297,107 +263,101 @@ public interface HttpServer extends RouteRegistry, ActionRegistry
      * @param hostname to use
      * @param port to use
      * 
-     * @return this (for chaining/fluency)
+     * @return nothing
      * 
-     * @throws IllegalStateException
-     *             if the server is already running (see {@link #start(SocketAddress)})
-     * @throws IOException
-     *             if an I/O error occurs
+     * @throws NullPointerException {@code address} is {@code null}
+     * @throws IllegalStateException server is already running
+     * @throws IOException I/O error
+     * @throws InterruptedException while waiting on client connections to terminate
      * 
      * @see InetAddress
      * @see #start(SocketAddress) 
      */
-    default HttpServer start(String hostname, int port) throws IOException {
+    default Void start(String hostname, int port) throws IOException, InterruptedException {
         return start(new InetSocketAddress(hostname, port));
     }
     
     /**
-     * Listen for client connections on a given address.<p>
+     * Listens for client connections.<p>
      * 
-     * This method blocks if the invoking thread is the one to initiate the
-     * startup routine. Another thread invoking this method concurrently will
-     * receive an {@link IllegalStateException}.
+     * This method may block indefinitely if the calling thread is the one to
+     * bind the server's address and go into a listening accept-loop. The thread
+     * will only return once the server's socket and all client connections have
+     * been closed. Then, the return will only happen exceptionally, likely for
+     * one of the following reasons:<p>
+     * 
+     * <pre>java.net.SocketException: Closed by interrupt</pre>
+     * The application process was killed.<p>
+     * TODO: Verify
+     * 
+     * <pre>java.net.SocketException: Socket closed</pre>
+     * The application called {@link #stop()} or {@link #kill()}.<p>
+     * 
+     * Any other thread invoking this method whilst the server is running will
+     * receive an {@link IllegalStateException}. That is to say, this method
+     * never returns normally.<p>
+     * 
+     * The return type is declared {@code Void} as opposed to {@code void} only
+     * to enable this method to be used as a {@code Callable<V>} expression
+     * lambda.
      * 
      * @param address to use
      * 
-     * @return this (for chaining/fluency)
+     * @return nothing
      * 
-     * @throws NullPointerException if {@code address} is {@code null}
-     * @throws IllegalStateException if server is already running
-     * @throws IOException if an I/O error occurs
-     *
+     * @throws NullPointerException {@code address} is {@code null}
+     * @throws IllegalStateException server is already running
+     * @throws IOException I/O error
+     * @throws InterruptedException while waiting on client connections to terminate
+     * 
      * @see InetAddress
      */
-    HttpServer start(SocketAddress address) throws IOException;
+    Void start(SocketAddress address) throws IOException, InterruptedException;
     
     /**
-     * Stop listening for client connections and do not begin new HTTP
-     * exchanges.<p>
+     * Closes the port listening for client connections.<p>
      * 
-     * The server's listening port will be immediately closed and then this
-     * method returns. No HTTP exchanges are aborted, but no new exchanges will
-     * begin. When all client connections that were accepted through the port
-     * have been closed the return stage completes.<p>
+     * This method will cause all client connections that are currently not
+     * active to close and signal active HTTP exchanges to terminate gracefully
+     * after the final response. The thread blocked in {@code start()} will
+     * return when the last HTTP exchange completes. The thread invoking {@code
+     * stop()} does not wait for anything.<p>
      * 
-     * If the server was just started and is still in the midst of opening the
-     * server's listening port, then this method will block until the startup
-     * routine is completed before initiating the shutdown.<p>
+     * If the server has not started, or it has already stopped, then this
+     * method is NOP.
      * 
-     * Upon failure to close the server's listening port, the stage will
-     * complete exceptionally with an {@code IOException}.<p>
-     * 
-     * The returned stage may be a copy. It can not be cast to a {@code
-     * CompletableFuture} and then used to abort the shutdown.<p>
-     * 
-     * The returned stage represents uniquely the invocation of this method.
-     * This has a few noteworthy consequences.<p>
-     * 
-     * 1. If the server is not {@link #isRunning() running} (listening
-     * on a port) then the returned stage is already completed. This is true
-     * even if exchanges from a previous run cycle is still executing (i.e. a
-     * previously returned stage has yet to complete).<p>
-     * 
-     * 2. If the application starts the same server again concurrent to the
-     * completion of the last HTTP exchange, then technically it is possible for
-     * the returned stage to complete at the same time the server is considered
-     * to be in a running state.<p>
-     * 
-     * 3. A concurrent (or subsequent) start can not hinder the returned stage
-     * from completing.
-     * 
-     * @return the result
+     * @throws IOException I/O error
      */
-    CompletionStage<Void> stop();
+    void stop() throws IOException;
     
     /**
-     * Stop listening for client connections and immediately close all active
-     * client connections (no HTTP exchanges will be able to progress
-     * further).<p>
+     * Closes the port listening for client connections.<p>
      * 
-     * This method blocks until the listening port and all connections have been
-     * closed.<p>
+     * This method will cause all client connections to close, regardless if
+     * the connection is currently the intermediary of an HTTP exchange.<p>
      * 
-     * If the server was just started and is still in the midst of opening the
-     * server's listening port, then this method will block until the startup
-     * routine is completed before initiating the shutdown.
+     * If the server has not started, or it has already stopped, then this
+     * method is NOP.
      * 
-     * @throws IOException if an I/O error occurs
+     * @throws IOException I/O error
      */
-    void stopNow() throws IOException;
+    void kill() throws IOException;
     
     /**
-     * Returns {@code true} if the server is running, otherwise {@code false}.<p>
+     * Returns {@code true} if the server is running.<p>
      * 
-     * By running means that the server has completed a startup, and has also
-     * not completed a subsequent closure of the server's listening port. This
-     * method answers the question; is the server listening on a port?<p>
+     * By running means that the server socket has previously bound to an
+     * address (the server started) and has not yet been closed. In other words:
+     * is the server listening on a port?<p>
      * 
-     * The method does not take into account the state of lingering HTTP
-     * exchanges and/or the state of underlying client channels.<p>
+     * The answer is an assumption as this method does not probe the socket's
+     * actual state.<p>
      * 
-     * This method does not block.
+     * This method does not take into account the state of client connections.
+     * Only a return from the blocked thread in {@code start()} marks the end of
+     * all connections.
      * 
-     * @return {@code true} if the server is running, otherwise {@code false}
+     * @return {@code true} if the server is running
      */
     boolean isRunning();
     
