@@ -26,6 +26,7 @@ import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
 import java.nio.channels.AsynchronousServerSocketChannel;
+import java.time.Duration;
 import java.time.Instant;
 
 import static java.net.InetAddress.getLoopbackAddress;
@@ -181,7 +182,7 @@ public interface HttpServer extends RouteRegistry, ActionRegistry
      * @return an instance of {@link DefaultServer}
      * 
      * @throws NullPointerException
-     *             if any argument or array element is {@code null}
+     *             if an argument or array element is {@code null}
      */
     static HttpServer create(Config config, ErrorHandler... eh) {
         return new DefaultServer(config, eh);
@@ -211,10 +212,14 @@ public interface HttpServer extends RouteRegistry, ActionRegistry
      * 
      * @return nothing
      * 
-     * @throws NullPointerException {@code address} is {@code null}
-     * @throws IllegalStateException server is already running
-     * @throws IOException I/O error
-     * @throws InterruptedException while waiting on client connections to terminate
+     * @throws NullPointerException
+     *             if {@code address} is {@code null}
+     * @throws IllegalStateException
+     *             if server is already running
+     * @throws IOException
+     *             if an I/O error occurs
+     * @throws InterruptedException
+     *             if interrupted while waiting on client connections to terminate
      * 
      * @see InetAddress
      */
@@ -239,10 +244,14 @@ public interface HttpServer extends RouteRegistry, ActionRegistry
      * 
      * @return nothing
      * 
-     * @throws NullPointerException {@code address} is {@code null}
-     * @throws IllegalStateException server is already running
-     * @throws IOException I/O error
-     * @throws InterruptedException while waiting on client connections to terminate
+     * @throws NullPointerException
+     *             if {@code address} is {@code null}
+     * @throws IllegalStateException
+     *             if the server is already running
+     * @throws IOException
+     *             if an I/O error occurs
+     * @throws InterruptedException
+     *             if interrupted while waiting on client connections to terminate
      * 
      * @see InetAddress
      * @see #start(SocketAddress)
@@ -265,10 +274,14 @@ public interface HttpServer extends RouteRegistry, ActionRegistry
      * 
      * @return nothing
      * 
-     * @throws NullPointerException {@code address} is {@code null}
-     * @throws IllegalStateException server is already running
-     * @throws IOException I/O error
-     * @throws InterruptedException while waiting on client connections to terminate
+     * @throws NullPointerException
+     *             if {@code hostname} is {@code null}
+     * @throws IllegalStateException
+     *             if the server is already running
+     * @throws IOException
+     *             if an I/O error occurs
+     * @throws InterruptedException
+     *             if interrupted while waiting on client connections to terminate
      * 
      * @see InetAddress
      * @see #start(SocketAddress) 
@@ -297,18 +310,21 @@ public interface HttpServer extends RouteRegistry, ActionRegistry
      * receive an {@link IllegalStateException}. That is to say, this method
      * never returns normally.<p>
      * 
-     * The return type is declared {@code Void} as opposed to {@code void} only
-     * to enable this method to be used as a {@code Callable<V>} expression
-     * lambda.
+     * The return type is declared {@code Void} as opposed to {@code void} to
+     * enable this method to be used as a {@code Callable<V>} expression lambda.
      * 
      * @param address to use
      * 
      * @return nothing
      * 
-     * @throws NullPointerException {@code address} is {@code null}
-     * @throws IllegalStateException server is already running
-     * @throws IOException I/O error
-     * @throws InterruptedException while waiting on client connections to terminate
+     * @throws NullPointerException
+     *             if {@code address} is {@code null}
+     * @throws IllegalStateException
+     *             if the server is already running
+     * @throws IOException
+     *             if an I/O error occurs
+     * @throws InterruptedException
+     *             if while waiting on client connections to terminate
      * 
      * @see InetAddress
      */
@@ -318,44 +334,106 @@ public interface HttpServer extends RouteRegistry, ActionRegistry
      * Closes the port listening for client connections.<p>
      * 
      * This method will cause all client connections that are currently not
-     * active to close and signal active HTTP exchanges to terminate gracefully
-     * after the final response. The thread blocked in {@code start()} will
-     * return when the last HTTP exchange completes. The thread invoking {@code
-     * stop()} does not wait for anything.<p>
+     * being used to close and signal all active HTTP exchanges to close the
+     * underlying client connection after the final response. This is also known
+     * as a graceful shutdown.<p>
      * 
-     * If the server has not started, or it has already stopped, then this
-     * method is NOP.
+     * The thread blocked in {@code start()} will only return when the last
+     * client connection is closed. The thread invoking this method returns
+     * immediately.<p>
      * 
-     * @throws IOException I/O error
+     * Using this method can in theory result in the {@code start} thread
+     * waiting forever for the completion of HTTP exchanges (the server guards
+     * against stale exchanges not making any progress but does not impose a
+     * maximum runtime length). Consider using one of the other {@code stop}
+     * methods.<p>
+     * 
+     * This method is NOP if the server has already stopped.
+     * 
+     * @throws IOException if an I/O error occurs
      */
     void stop() throws IOException;
     
     /**
      * Closes the port listening for client connections.<p>
      * 
+     * Equivalent to {@link #stop()}, except the graceful period — during which
+     * the thread in {@code start()} awaits an orderly close of all client
+     * connections — ends around the time of the deadline, at which point
+     * all client connections will close.<p>
+     * 
+     * Technically, this method is never NOP, because it will always set a new
+     * deadline (and overwrite a previously set deadline/timeout). However, this
+     * in turn will only have a noticeable effect if the server hasn't already
+     * stopped.
+     * 
+     * @param deadline when to force-close all client connections
+     * 
+     * @throws NullPointerException
+     *             if {@code deadline} is {@code null}
+     * @throws IOException
+     *             if an I/O error occurs
+     */
+    void stop(Instant deadline) throws IOException;
+    
+    /**
+     * Closes the port listening for client connections.<p>
+     * 
+     * Equivalent to {@link #stop()}, except the graceful period — during which
+     * the thread in {@code start()} awaits an orderly close of all client
+     * connections — ends after a given timeout, at which point all client
+     * connections will close.<p>
+     * 
+     * Technically, this method is never NOP, because it will always set a new
+     * deadline (and overwrite a previously set deadline/timeout). However, this
+     * in turn will only have a noticeable effect if the server hasn't already
+     * stopped.
+     * 
+     * @param timeout when to force-close all client connections
+     * 
+     * @throws NullPointerException
+     *             if {@code timeout} is {@code null}
+     * @throws IOException
+     *             if an I/O error occurs
+     */
+    void stop(Duration timeout) throws IOException;
+    
+    /**
+     * Closes the port listening for client connections.<p>
+     * 
      * This method will cause all client connections to close, regardless if
-     * the connection is currently the intermediary of an HTTP exchange.<p>
+     * the connection is currently being used by an active HTTP exchange.<p>
      * 
      * If the server has not started, or it has already stopped, then this
      * method is NOP.
      * 
-     * @throws IOException I/O error
+     * @throws IOException if an I/O error occurs
      */
     void kill() throws IOException;
     
     /**
      * Returns {@code true} if the server is running.<p>
      * 
-     * By running means that the server socket has previously bound to an
-     * address (the server started) and has not yet been closed. In other words:
-     * is the server listening on a port?<p>
-     * 
-     * The answer is an assumption as this method does not probe the socket's
-     * actual state.<p>
+     * By running means, is the server listening on a port for new client
+     * connections?<p>
      * 
      * This method does not take into account the state of client connections.
-     * Only a return from the blocked thread in {@code start()} marks the end of
-     * all connections.
+     * Only a return from the thread waiting in {@code start()} indicates the
+     * end of all client connections.<p>
+     * 
+     * The answer is an approximated assumption; this method does not probe the
+     * server socket's actual state.<p>
+     * 
+     * A {@code true} return value is always correct. This method will never
+     * return {@code true} before the server's socket has been bound and the
+     * method will never return {@code true} after the socket has been
+     * closed.<p>
+     * 
+     * This method could return a false {@code false} only during a minuscule
+     * time window when another thread is executing {@code stop/kill} and was
+     * scheduled to close the socket. A {@code false} return value will therefor
+     * semantically mean "server is not running, or it is just about to stop
+     * within the blink of an eye".
      * 
      * @return {@code true} if the server is running
      */
@@ -432,6 +510,7 @@ public interface HttpServer extends RouteRegistry, ActionRegistry
      * </table>
      * 
      * @return the event hub associated with this server (never {@code null})
+     * 
      * @see EventEmitter
      */
     EventHub events();
@@ -448,8 +527,10 @@ public interface HttpServer extends RouteRegistry, ActionRegistry
      * 
      * @return the port used by the server
      * 
-     * @throws IllegalStateException if the server is not running
-     * @throws IOException if an I/O error occurs
+     * @throws IllegalStateException
+     *             if the server is not running
+     * @throws IOException
+     *             if an I/O error occurs
      * 
      * @see AsynchronousServerSocketChannel#getLocalAddress() 
      */
