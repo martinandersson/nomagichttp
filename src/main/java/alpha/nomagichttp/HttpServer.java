@@ -538,5 +538,5 @@ public interface HttpServer extends RouteRegistry, ActionRegistry
      * @throws IllegalStateException if the server is not running
      * @see ServerSocket#getLocalSocketAddress()
      */
-    InetSocketAddress getLocalSocketAddress();
+    SocketAddress getLocalSocketAddress();
 }
