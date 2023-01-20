@@ -19,6 +19,7 @@ import alpha.nomagichttp.message.Response;
 import alpha.nomagichttp.message.Responses;
 import alpha.nomagichttp.route.Route;
 import alpha.nomagichttp.route.RouteRegistry;
+import jdk.incubator.concurrent.ScopedValue;
 import jdk.incubator.concurrent.StructuredTaskScope;
 
 import java.io.IOException;
@@ -28,6 +29,7 @@ import java.net.ServerSocket;
 import java.net.SocketAddress;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.NoSuchElementException;
 
 import static java.net.InetAddress.getLoopbackAddress;
 
@@ -148,6 +150,40 @@ import static java.net.InetAddress.getLoopbackAddress;
  */
 public interface HttpServer extends RouteRegistry, ActionRegistry
 {
+    /**
+     * A scoped reference to the running server.<p>
+     * 
+     * This field is used by the NoMagicHTTP library code to bind the running
+     * server instance. Application code ought to statically import and use
+     * {@link #httpServer()}.
+     */
+    ScopedValue<HttpServer> RUNNING = ScopedValue.newInstance();
+    
+    /**
+     * Returns the running server.<p>
+     * 
+     * The value will be bound and accessible for application components running
+     * within an HTTP exchange, such as before-actions and request handlers.<p>
+     * 
+     * Accessing the server instance from within the exchange may be useful for
+     * things like dispatching events and querying the server's
+     * configuration.<p>
+     * 
+     * <pre>
+     *   // Within a request handler
+     *   httpServer().{@link #events()
+     *     events}().{@link EventHub#dispatch(Object)
+     *       dispatch}("Something happened");
+     * </pre>
+     * 
+     * @return the running server instance
+     * 
+     * @throws NoSuchElementException if the server instance is not bound
+     */
+    static HttpServer httpServer() {
+        return RUNNING.get();
+    }
+    
     /**
      * Create a server using {@linkplain Config#DEFAULT default
      * configuration}.<p>
