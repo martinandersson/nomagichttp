@@ -24,8 +24,8 @@ import jdk.incubator.concurrent.StructuredTaskScope;
 import java.io.IOException;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
+import java.net.ServerSocket;
 import java.net.SocketAddress;
-import java.nio.channels.AsynchronousServerSocketChannel;
 import java.time.Duration;
 import java.time.Instant;
 
@@ -196,7 +196,7 @@ public interface HttpServer extends RouteRegistry, ActionRegistry
      * or to start a server in a test environment.<p>
      * 
      * The port can be retrieved using {@link
-     * #getLocalAddress()}{@code .getPort()}.<p>
+     * #getLocalSocketAddress()}{@code .getPort()}.<p>
      * 
      * Production code ought to specify an address using any other overload of
      * the start method.
@@ -523,16 +523,20 @@ public interface HttpServer extends RouteRegistry, ActionRegistry
     Config getConfig();
     
     /**
-     * Returns the socket address that the server is listening on.
+     * Returns the local address of the server socket.
      * 
-     * @return the port used by the server
-     * 
-     * @throws IllegalStateException
-     *             if the server is not running
-     * @throws IOException
-     *             if an I/O error occurs
-     * 
-     * @see AsynchronousServerSocketChannel#getLocalAddress() 
+     * @return the local address of the server socket (never {@code null})
+     * @throws IllegalStateException if the server is not running
+     * @see ServerSocket#getInetAddress()
      */
-    InetSocketAddress getLocalAddress() throws IllegalStateException, IOException;
+    InetAddress getInetAddress();
+    
+    /**
+     * Returns the address of the endpoint the server socket is bound to.
+     * 
+     * @return the address of the endpoint the server socket is bound to (never {@code null})
+     * @throws IllegalStateException if the server is not running
+     * @see ServerSocket#getLocalSocketAddress()
+     */
+    InetSocketAddress getLocalSocketAddress();
 }
