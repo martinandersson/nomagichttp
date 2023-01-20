@@ -1,6 +1,7 @@
 package alpha.nomagichttp.internal;
 
 import java.util.Objects;
+import java.util.Optional;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
@@ -122,16 +123,16 @@ public final class Confined<V>
      * 
      * The call-site must not mutate the value.
      * 
-     * @return the confined value ({@code null} if not present)
+     * @return the confined value
      */
-    V peek() {
+    Optional<V> peek() {
         Object o = ref.get();
         if (IS_USER_VALUE.test(o)) {
             @SuppressWarnings("unchecked")
             V v = (V) o;
-            return v;
+            return Optional.of(v);
         }
-        return null;
+        return Optional.empty();
     }
     
     /**
