@@ -34,16 +34,19 @@ public final class ScopedValues
      * {@link #httpServer()}.
      */
     // TODO: Use service loading to find instances initialized by server impl, not static fields
+    //       This will also ensure application code can not rebind.
     public static ScopedValue<HttpServer> HTTP_SERVER = ScopedValue.newInstance();
     
     /**
      * Returns the server.<p>
      * 
      * The value will be accessible by code executing within a server. For
-     * example before-actions, request handlers and event listeners.<p> 
+     * example before-actions, request handlers. The value will also always be
+     * accessible by the server's event listeners, even if the event is
+     * dispatched from the outside.<p> 
      * 
-     * Accessing the server from within the exchange may be useful for things
-     * like dispatching events and querying the server's configuration.<p>
+     * Accessing the server may be useful for things like dispatching events and
+     * querying the server's configuration.<p>
      * 
      * <pre>
      *   httpServer().{@link HttpServer#events()
