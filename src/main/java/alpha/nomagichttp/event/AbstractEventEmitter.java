@@ -1,12 +1,14 @@
 package alpha.nomagichttp.event;
 
 import alpha.nomagichttp.util.TriConsumer;
+import jdk.incubator.concurrent.ScopedValue;
 
 import java.util.Collection;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.BiConsumer;
+import java.util.function.BooleanSupplier;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
 
@@ -34,12 +36,29 @@ import static java.util.Objects.requireNonNull;
  *   }
  * }</pre>
  * 
+ * Constructors in this class optionally accept a when-condition that if it
+ * returns true, will make this class call the decorator which in turn must call
+ * the provided {@code Runnable} argument which will then call the listeners. If
+ * the when-condition returns false, the listeners will be called directly
+ * without involving the decorator. The intended use case is for implementations
+ * to be able to ensure that a {@link ScopedValue} is always bound.
+ * 
+ * <pre>{@code
+ *   EventEmitter emitter = new DefaultEventHub(
+ *         () -> !MY_SCOPED_VALUE.isBound(),
+ *         runnable -> ScopedValue.where(MY_SCOPED_VALUE, ...).run(runnable));
+ *   // Listeners will always be able to retrieve the scoped value
+ *   emitter.dispatch("event");
+ * }</pre>
+ * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  */
 public abstract class AbstractEventEmitter implements EventEmitter
 {
     private final Map<Class<?>, Set<Object>> listeners;
     private final Supplier<? extends Set<Object>> setImpl;
+    private final BooleanSupplier when;
+    private final Consumer<Runnable> decorator;
     
     /**
      * Constructs a non-blocking and thread-safe emitter backed by a {@link
@@ -52,11 +71,24 @@ public abstract class AbstractEventEmitter implements EventEmitter
     }
     
     /**
+     * Constructs a non-blocking and thread-safe emitter backed by a {@link
+     * ConcurrentHashMap} and value-sets from the same type.
+     * 
+     * @param when conditionally decorate the call to listeners
+     * @param decorator of the listener's call
+     * @throws NullPointerException if any argument is {@code null}
+     * @see AbstractEventEmitter
+     */
+    protected AbstractEventEmitter(BooleanSupplier when, Consumer<Runnable> decorator) {
+        this(new ConcurrentHashMap<>(), ConcurrentHashMap::newKeySet, when, decorator);
+    }
+    
+    /**
      * Constructs an emitter.
      * 
      * @param mapImpl to use as listeners' map
      * @param setImpl to use as listeners' container (map value)
-     * @throws NullPointerException if any arg is {@code null}
+     * @throws NullPointerException if any argument is {@code null}
      */
     protected AbstractEventEmitter(
             Map<Class<?>, Set<Object>> mapImpl,
@@ -64,6 +96,27 @@ public abstract class AbstractEventEmitter implements EventEmitter
     {
         this.listeners = requireNonNull(mapImpl);
         this.setImpl   = requireNonNull(setImpl);
+        this.when = null;
+        this.decorator = null;
+    }
+    
+    /**
+     * Constructs an emitter.
+     * 
+     * @param mapImpl to use as listeners' map
+     * @param setImpl to use as listeners' container (map value)
+     * @throws NullPointerException if any argument is {@code null}
+     */
+    protected AbstractEventEmitter(
+            Map<Class<?>, Set<Object>> mapImpl,
+            Supplier<? extends Set<Object>> setImpl,
+            BooleanSupplier when,
+            Consumer<Runnable> decorator)
+    {
+        this.listeners = requireNonNull(mapImpl);
+        this.setImpl   = requireNonNull(setImpl);
+        this.when      = requireNonNull(when);
+        this.decorator = requireNonNull(decorator);
     }
     
     /**
@@ -107,7 +160,7 @@ public abstract class AbstractEventEmitter implements EventEmitter
      * @return a count of listeners invoked (capped at {@code Integer.MAX_VALUE})
      * @throws NullPointerException if {@code ev} is {@code null}
      */
-    protected static int emit(Collection<?> listeners, Object ev, Object att1, Object att2) {
+    protected int emit(Collection<?> listeners, Object ev, Object att1, Object att2) {
         // I have JIT trust issues (avoid creating new Iterator() in emit0())
         if (listeners.isEmpty()) {
             return 0;
@@ -129,14 +182,14 @@ public abstract class AbstractEventEmitter implements EventEmitter
      *             if any attachment supplier is {@code null} and there are
      *             listeners for the event (lazy, implicit validation)
      */
-    protected static int emitLazy(Collection<?> listeners, Object ev, Supplier<?> att1, Supplier<?> att2) {
+    protected int emitLazy(Collection<?> listeners, Object ev, Supplier<?> att1, Supplier<?> att2) {
         if (listeners.isEmpty()) {
             return 0;
         }
         return emit0(listeners, ev, att1.get(), att2.get());
     }
     
-    private static int emit0(Collection<?> listeners, Object ev, Object att1, Object att2) {
+    private int emit0(Collection<?> listeners, Object ev, Object att1, Object att2) {
         int n = 0;
         for (Object l : listeners) {
             // An early implementation used a "ListenerProxy" so that the type
@@ -153,13 +206,25 @@ public abstract class AbstractEventEmitter implements EventEmitter
             // over and decided that "early optimization is the root of all evil".
             if (l instanceof Consumer) {
                 Consumer<Object> uni = retype(l);
-                uni.accept(ev);
+                if (when != null && when.getAsBoolean()) {
+                    decorator.accept(() -> uni.accept(ev));
+                } else {
+                    uni.accept(ev);
+                }
             } else if (l instanceof BiConsumer) {
                 BiConsumer<Object, Object> bi = retype(l);
-                bi.accept(ev, att1);
+                if (when != null && when.getAsBoolean()) {
+                    decorator.accept(() -> bi.accept(ev, att1));
+                } else {
+                    bi.accept(ev, att1);
+                }
             } else {
                 TriConsumer<Object, Object, Object> tri = retype(l);
-                tri.accept(ev, att1, att2);
+                if (when != null && when.getAsBoolean()) {
+                    decorator.accept(() -> tri.accept(ev, att1, att2));
+                } else {
+                    tri.accept(ev, att1, att2);
+                }
             }
             if (n < Integer.MAX_VALUE) {
                 ++n;
@@ -222,7 +287,8 @@ public abstract class AbstractEventEmitter implements EventEmitter
         requireNotInterface(eventType);
         requireNonNull(listener);
         if (!supports(eventType)) {
-            throw new IllegalArgumentException("Event type not supported.");
+            throw new IllegalArgumentException(
+                    "Event type not supported: " + eventType);
         }
         return listeners.computeIfAbsent(eventType, k -> setImpl.get())
                 .add(listener);

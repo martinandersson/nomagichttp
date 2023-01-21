@@ -1,5 +1,7 @@
 package alpha.nomagichttp.event;
 
+import java.util.function.BooleanSupplier;
+import java.util.function.Consumer;
 import java.util.function.Supplier;
 
 /**
@@ -16,6 +18,17 @@ public class DefaultEventHub extends AbstractScatteringEventEmitter implements E
      */
     public DefaultEventHub() {
         // Empty
+    }
+    
+    /**
+     * Constructs a {@code DefaultEventHub}.
+     * 
+     * @param when see {@link AbstractEventEmitter}
+     * @param decorator see {@link AbstractEventEmitter}
+     * @throws NullPointerException if any argument is {@code null}
+     */
+    public DefaultEventHub(BooleanSupplier when, Consumer<Runnable> decorator) {
+        super(when, decorator);
     }
     
     @Override

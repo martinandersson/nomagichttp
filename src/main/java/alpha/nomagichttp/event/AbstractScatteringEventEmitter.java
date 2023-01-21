@@ -2,17 +2,20 @@ package alpha.nomagichttp.event;
 
 import alpha.nomagichttp.util.TriConsumer;
 
-import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.function.Supplier;
+import java.util.function.BooleanSupplier;
+import java.util.function.Consumer;
 
 import static java.util.Objects.requireNonNull;
 
 /**
  * A synchronous implementation of both {@code ScatteringEventEmitter} and
  * {@link EventEmitter}, servicing the subclass with a protected {@link
- * #emit(Object, Object, Object)} method.
+ * #emit(Object, Object, Object)} method.<p>
+ * 
+ * This class stores all listeners in non-blocking and thread-safe data
+ * structures.
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  */
@@ -20,30 +23,25 @@ public abstract class AbstractScatteringEventEmitter
                 extends AbstractEventEmitter
                 implements ScatteringEventEmitter
 {
-    private final Set<TriConsumer<?, ?, ?>> catchAll;
+    private final Set<TriConsumer<?, ?, ?>> catchAll = ConcurrentHashMap.newKeySet(1);
     
     /**
-     * Constructs this object using non-blocking and thread-safe data structures
-     * to store listeners in.
+     * Constructs this object.
      */
     protected AbstractScatteringEventEmitter() {
-        catchAll = ConcurrentHashMap.newKeySet(1);
+        // Empty
     }
     
     /**
      * Constructs this object.
      * 
-     * @param catchAllSetImpl to use for catch-all listeners
-     * @param listenerMapImpl to use as ordinary listeners' map
-     * @param listenerSetImpl to use as ordinary listeners' container (map value)
+     * @param when see {@link AbstractEventEmitter}
+     * @param decorator see {@link AbstractEventEmitter}
+     * @throws NullPointerException if any argument is {@code null}
      */
     protected AbstractScatteringEventEmitter(
-            Set<TriConsumer<?, ?, ?>> catchAllSetImpl,
-            Map<Class<?>, Set<Object>> listenerMapImpl,
-            Supplier<? extends Set<Object>> listenerSetImpl)
-    {
-        super(listenerMapImpl, listenerSetImpl);
-        catchAll = requireNonNull(catchAllSetImpl);
+            BooleanSupplier when, Consumer<Runnable> decorator) {
+        super(when, decorator);
     }
     
     @Override
