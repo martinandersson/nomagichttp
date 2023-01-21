@@ -175,13 +175,13 @@ public final class Confined<V>
     /**
      * Conditionally update the reference value to a Reservation object.
      * 
-     * @param condition receives the current reference value
+     * @param when a condition that receives the current reference value
      * 
-     * @return if condition matched; the reservation,
+     * @return if the when-condition matched; the reservation,
      *         otherwise the current untouched value
      */
-    private Object reserve(Predicate<Object> condition) {
-        return ref.updateAndGet(v -> condition.test(v) ?
+    private Object reserve(Predicate<Object> when) {
+        return ref.updateAndGet(v -> when.test(v) ?
                 new Reservation(currentThread().threadId(), v) :
                 v);
     }
