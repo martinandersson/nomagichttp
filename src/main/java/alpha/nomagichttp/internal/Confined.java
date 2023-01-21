@@ -23,13 +23,12 @@ import static java.util.Objects.requireNonNull;
  * and have side effects (because it will run exactly-once).<p>
  * 
  * The first use case for this class was to hold a reference to a {@code
- * ServerSocket} which is not defined to be thread-safe. The socket's
- * constructor could also in theory involve I/O and have system-wide side
- * effects (not something one wishes to do injudiciously in an update function).
- * An extra benefit was being able to bind the socket as part of the
- * initialization which in turn provided stronger semantics for {@code
- * HttpServer.isRunning} without sacrificing performance (a value present means
- * that the socket has been both created and bound).<p>
+ * ServerSocketChannel}. Constructing the channel could in theory involve I/O
+ * and have system-wide side effects (not something one wishes to do
+ * injudiciously in an update function). An extra benefit was being able to bind
+ * the channel as part of the initialization which in turn provided stronger
+ * semantics for {@code HttpServer.isRunning} without sacrificing performance
+ * (a value present means that the channel has been both created and bound).<p>
  * 
  * <h2>Memory consistency effects</h2>
  * 

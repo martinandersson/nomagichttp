@@ -24,8 +24,9 @@ import jdk.incubator.concurrent.StructuredTaskScope;
 import java.io.IOException;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
-import java.net.ServerSocket;
 import java.net.SocketAddress;
+import java.nio.channels.AsynchronousCloseException;
+import java.nio.channels.ServerSocketChannel;
 import java.time.Duration;
 import java.time.Instant;
 
@@ -196,7 +197,7 @@ public interface HttpServer extends RouteRegistry, ActionRegistry
      * or to start a server in a test environment.<p>
      * 
      * The port can be retrieved using {@link
-     * #getLocalSocketAddress()}{@code .getPort()}.<p>
+     * #getLocalAddress()}{@code .getPort()}.<p>
      * 
      * Production code ought to specify an address using any other overload of
      * the start method.
@@ -293,18 +294,12 @@ public interface HttpServer extends RouteRegistry, ActionRegistry
     /**
      * Listens for client connections.<p>
      * 
-     * This method may block indefinitely if the calling thread is the one to
-     * bind the server's address and go into a listening accept-loop. The thread
-     * will only return once the server's socket and all client connections have
-     * been closed. Then, the return will only happen exceptionally, likely for
-     * one of the following reasons:<p>
-     * 
-     * <pre>java.net.SocketException: Closed by interrupt</pre>
-     * The application process was killed.<p>
-     * TODO: Verify
-     * 
-     * <pre>java.net.SocketException: Socket closed</pre>
-     * The application called {@link #stop()} or {@link #kill()}.<p>
+     * This method may block for an unlimited period of time if the calling
+     * thread is the one to bind the server's address and go into a listening
+     * accept-loop. The thread will only return once the server's channel and
+     * all client connections have been closed. Then, the return will only
+     * happen exceptionally, likely with an {@link
+     * AsynchronousCloseException}.<p>
      * 
      * Any other thread invoking this method whilst the server is running will
      * receive an {@link IllegalStateException}. That is to say, this method
@@ -324,7 +319,7 @@ public interface HttpServer extends RouteRegistry, ActionRegistry
      * @throws IOException
      *             if an I/O error occurs
      * @throws InterruptedException
-     *             if while waiting on client connections to terminate
+     *             if interrupted while waiting on client connections to terminate
      * 
      * @see InetAddress
      */
@@ -422,18 +417,18 @@ public interface HttpServer extends RouteRegistry, ActionRegistry
      * end of all client connections.<p>
      * 
      * The answer is an approximated assumption; this method does not probe the
-     * server socket's actual state.<p>
+     * server channel's actual state.<p>
      * 
      * A {@code true} return value is always correct. This method will never
-     * return {@code true} before the server's socket has been bound and the
-     * method will never return {@code true} after the socket has been
+     * return {@code true} before the server's channel has been bound and the
+     * method will never return {@code true} after the channel has been
      * closed.<p>
      * 
      * This method could return a false {@code false} only during a minuscule
      * time window when another thread is executing {@code stop/kill} and was
-     * scheduled to close the socket. A {@code false} return value will therefor
-     * semantically mean "server is not running, or it is just about to stop
-     * within the blink of an eye".
+     * scheduled to close the channel. A {@code false} return value will
+     * therefor semantically mean "server is not running, or it is just about to
+     * stop within the blink of an eye".
      * 
      * @return {@code true} if the server is running
      */
@@ -523,20 +518,13 @@ public interface HttpServer extends RouteRegistry, ActionRegistry
     Config getConfig();
     
     /**
-     * Returns the local address of the server socket.
+     * Returns the socket address that the server's channel's socket is bound to.
      * 
-     * @return the local address of the server socket (never {@code null})
-     * @throws IllegalStateException if the server is not running
-     * @see ServerSocket#getInetAddress()
-     */
-    InetAddress getInetAddress();
-    
-    /**
-     * Returns the address of the endpoint the server socket is bound to.
+     * @return the socket address that the server's channel's socket is bound to
+     *         (never {@code null})
      * 
-     * @return the address of the endpoint the server socket is bound to (never {@code null})
      * @throws IllegalStateException if the server is not running
-     * @see ServerSocket#getLocalSocketAddress()
+     * @see ServerSocketChannel#getLocalAddress()
      */
-    SocketAddress getLocalSocketAddress();
+    SocketAddress getLocalAddress() throws IOException;
 }
