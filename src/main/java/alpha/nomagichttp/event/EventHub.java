@@ -5,13 +5,13 @@ import java.util.function.Supplier;
 import static alpha.nomagichttp.util.Streams.stream;
 
 /**
- * An event emitter that can be used to redistribute events from other emitters
- * and/or programmatically dispatch events from application code. Also commonly
- * referred to on the internet as an "event bus".<p>
+ * Redistributes events from other emitters and can be used to programmatically
+ * dispatch events. Also commonly referred to on the internet as an "event bus".
+ * <p>
  * 
  * An event hub can be used as a middleman to decouple the emitter from the
- * consumer. The NoMagicHTTP server uses it to primarily redistribute events
- * from internal components which are not otherwise exposed to application
+ * consumer. The NoMagicHTTP server uses an event hub to primarily redistribute
+ * events from internal components which are not otherwise exposed to application
  * code.
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)

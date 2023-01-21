@@ -15,7 +15,7 @@ public class DefaultEventHub extends AbstractScatteringEventEmitter implements E
      * Constructs a {@code DefaultEventHub}.
      */
     public DefaultEventHub() {
-        // Intentionally empty
+        // Empty
     }
     
     @Override

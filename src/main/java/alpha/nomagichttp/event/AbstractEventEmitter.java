@@ -24,15 +24,15 @@ import static java.util.Objects.requireNonNull;
  * override {@link #supports(Class)}.<p>
  * 
  * By default, the emitter will be backed by concurrent data structures. But
- * this can be customized. For example, here's how to created an emitter which
+ * this can be customized. For example, here's how to create an emitter that
  * is not thread-safe: 
- * <pre>
- *   class UnsafeLocalEmitter extends AbstractEventEmitter {
- *       UnsafeLocalEmitter() {
+ * <pre>{@code
+ *   class ComponentScopedEmitter extends AbstractEventEmitter {
+ *       ComponentScopedEmitter() {
  *           super(new HashMap{@literal <}{@literal >}(), HashSet::new);
  *       }
  *   }
- * </pre>
+ * }</pre>
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  */

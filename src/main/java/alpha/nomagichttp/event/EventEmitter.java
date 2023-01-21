@@ -7,22 +7,20 @@ import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 
 /**
- * Emits events as they happen, to which, event listeners may come and go.<p>
+ * Emits events when they happen.<p>
  * 
- * Which events are emitted should be documented by the emitter. The emission
- * <i>may</i> also carry with it one or two attachments, which are arbitrary
- * objects for passing event-related data. The event object itself can therefore
- * be a constant without any need to create objects and produce unnecessary
- * garbage.<p>
+ * What events may be emitted should be documented by the emitter. The emission
+ * <i>may</i> carry one or two attachments, which are arbitrary objects for
+ * passing event-related data. The event object itself should be a constant as
+ * to not produce unnecessary garbage.<p>
  * 
  * Events can be used to decouple components and to simplify the architecture,
- * e.g. as an alternative to callback arguments. But, events can also make code
- * traceability harder and add unnecessary complexity. With great power comes
- * great responsibility! Events should never be a replacement of what would
- * otherwise have been a simple method call even if that entails coupling.
- * Normally, only when the side-effect is clearly a different concern <i>and</i>
- * there are at least two side-effects happening should decoupling using events
- * be considered an option.
+ * for example as an alternative to callback arguments. Events can also make
+ * code traceability harder and add unnecessary complexity. Events should never
+ * be a replacement of what would otherwise have been a simple method call even
+ * if that means coupling. Only when the side effect is clearly a different
+ * concern <i>and</i> there are at least two such side effects should decoupling
+ * by using events be considered an option.
  * 
  * <pre>
  *   class ShoppingCart extends {@link AbstractEventEmitter} {
@@ -91,31 +89,34 @@ import java.util.function.Consumer;
  * There is no back-pressure control. If needed, this could be added by
  * connecting a third-party library as the consumer.<p>
  * 
- * <strong>The remaining JavaDoc</strong> describes the implementations of event
- * emitters provided by the NoMagicHTTP library, including the {@link EventHub}
- * returned from {@link HttpServer#events()}. A custom implementation is free
- * to behave differently.<p>
+ * <strong>The rest of this JavaDoc</strong> describes the implementations of
+ * event emitters provided by the NoMagicHTTP library, including the {@link
+ * EventHub} returned from {@link HttpServer#events()}. A custom implementation
+ * is free to behave differently.<p>
  * 
  * Events are not saved. A new listener does not receive past events.<p>
  * 
- * The thread emitting the event is also the thread that invokes listeners of
- * the event. This may be the server's request thread, and so, a listener must
- * not block or take time processing the event.<p>
+ * The thread emitting the event is also the thread that invokes the listeners.
+ * For the NoMagicHTTP server, this will be a virtual thread. Virtual threads
+ * do not technically block its carrier thread, but will nonetheless stall the
+ * server's enclosing task for as long as the listeners execute. A job that will
+ * take long to process should be scheduled by the listener to execute somewhere
+ * else.<p>
  * 
  * The event emitter (i.e. subscribing and unsubscribing a listener) is
- * non-blocking and thread-safe. The listener, however, may be invoked
+ * thread-safe and non-blocking. The listener, however, may be invoked
  * concurrently and so must be thread-safe.<p>
  * 
  * There is no defined limit to how many listeners may be active.<p>
  * 
  * Event emission order may and should in many cases be defined; {@code
- * Thing.Created} before {@code Thing.Destroyed}. But the order of listener
- * invocations is undefined. Listener B who subscribed last may be called before
- * listener A who subscribed first.<p>
+ * Something.Created} before {@code Something.Destroyed}. But the invocation
+ * order on listeners mapped to the same event type is undefined. Listener B who
+ * subscribed last may be called before listener A who subscribed first.<p>
  * 
  * The listener implementation must have <i>well-behaved</i> implementations of
  * {@code hashCode()} and {@code equals()} as it will be stored in a hash-based
- * data structure. Duplicates not allowed (based on event type key and
+ * data structure. Duplicates are not allowed (based on event type key and
  * listener's object equality).<p>
  * 
  * Lambdas create different instances. This will subscribe but fail to
@@ -138,12 +139,11 @@ import java.util.function.Consumer;
  * 
  * There is no special handling/logic concerning exceptions. If a listener
  * throws an exception, then that exception will propagate up the call stack and
- * remaining listeners in the call chain will miss out on the event. For the
- * HTTP server's events, throwing an exception from the listener may have
- * undefined application behavior.<p>
+ * remaining listeners in the call chain will not observe the event. Throwing an
+ * exception from the listener may have undefined application behavior.<p>
  * 
  * References are kept using strong references (not weak, soft or whatever
- * else). If one need to subscribe magical beans as listeners with a "scope"
+ * else). If one needs to subscribe magical beans as listeners with a "scope"
  * smaller than the emitter itself, then one should probably also unsubscribe in
  * a "pre destroy" container callback - or you know, just stop all the magic and
  * start writing real code instead.
