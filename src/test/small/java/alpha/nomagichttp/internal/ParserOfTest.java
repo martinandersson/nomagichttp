@@ -10,7 +10,7 @@ import org.junit.jupiter.api.Test;
 import java.util.List;
 import java.util.concurrent.CompletionStage;
 
-import static alpha.nomagichttp.internal.HeadersSubscriber.forRequestHeaders;
+import static alpha.nomagichttp.internal.ParserOf.forRequestHeaders;
 import static alpha.nomagichttp.testutil.Assertions.assertFailed;
 import static alpha.nomagichttp.testutil.Assertions.assertSucceeded;
 import static alpha.nomagichttp.util.Publishers.just;
@@ -21,16 +21,16 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
 
 /**
- * Small tests for {@link HeadersSubscriber}.
+ * Small tests for {@link ParserOf}.
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  */
-public class HeadersSubscriberTest
+public class ParserOfTest
 {
     /**
      * Constructs a {@code HeadersSubscriberTest}.
      */
-    HeadersSubscriberTest() {
+    ParserOfTest() {
         // Intentionally empty
     }
     

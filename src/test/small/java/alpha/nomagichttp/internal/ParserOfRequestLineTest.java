@@ -18,11 +18,11 @@ import static alpha.nomagichttp.util.Publishers.map;
 import static org.mockito.Mockito.mock;
 
 /**
- * Small tests for {@link RequestLineSubscriber}.
+ * Small tests for {@link ParserOfRequestLine}.
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  */
-final class RequestLineSubscriberTest
+final class ParserOfRequestLineTest
 {
     @Test
     void happyPath() {
@@ -121,7 +121,7 @@ final class RequestLineSubscriberTest
     }
     
     private CompletionStage<RawRequest.Line> execute(String... items) {
-        var rls = new RequestLineSubscriber(9_999, mock(ClientChannel.class));
+        var rls = new ParserOfRequestLine(9_999, mock(ClientChannel.class));
         var up = map(just(items), ByteBuffers::toBufPooled);
         up.subscribe(rls);
         return rls.result();

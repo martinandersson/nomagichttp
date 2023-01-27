@@ -17,6 +17,6 @@ public final class MaxRequestHeadSizeExceededException extends RuntimeException 
      * Constructs a {@code MaxRequestHeadSizeExceededException}.
      */
     public MaxRequestHeadSizeExceededException() {
-        // Intentionally empty
+        // Empty
     }
 }

@@ -1,6 +1,5 @@
 package alpha.nomagichttp.internal;
 
-import alpha.nomagichttp.handler.ClientChannel;
 import alpha.nomagichttp.message.BetterHeaders;
 import alpha.nomagichttp.message.DefaultContentHeaders;
 import alpha.nomagichttp.message.HeaderParseException;
@@ -20,101 +19,86 @@ import java.util.function.Supplier;
 import static java.lang.System.Logger.Level.DEBUG;
 
 /**
- * Parse bytes into headers.<p>
- * 
- * Exceptions that originate from the channel will already have closed the
- * read stream. Any exception that originates from this class will close the
- * read stream; message framing lost.<p>
- * 
- * On parse error, the stage will complete with a {@link HeaderParseException}.
+ * A parser of headers/trailers.<p>
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
- * @param <T> parsed header's type
+ * @param <H> parsed header's type
  */
-final class HeadersSubscriber<T> extends AbstractByteSubscriber<T>
+final class ParserOf<H extends BetterHeaders> extends AbstractResultParser<H>
 {
     private static final System.Logger LOG
-            = System.getLogger(HeadersSubscriber.class.getPackageName());
+            = System.getLogger(ParserOf.class.getPackageName());
     
     /**
-     * Creates a subscriber of request headers.
+     * Creates a parser of request headers.
      * 
      * If the delta between the two given integers are exceeded while parsing,
-     * the result stage will complete exceptionally with a {@link
-     * MaxRequestHeadSizeExceededException}.
+     * the parser will throw a {@link MaxRequestHeadSizeExceededException}.
      * 
-     * @param requestLineLength number of bytes already parsed from the head
-     * @param maxRequestHeadSize max total bytes to parse
-     * @param chApi used for exceptional shutdown of read stream
-     * @return a subscriber of request headers
+     * @param in byte source
+     * @param lineLen number of bytes already parsed from the head
+     * @param maxHeadSize max total bytes to parse for a head
+     * 
+     * @return a parser of request headers
      */
-    public static HeadersSubscriber<Request.Headers> forRequestHeaders(
-            int requestLineLength, int maxRequestHeadSize, ClientChannel chApi) {
-        return new HeadersSubscriber<>(
-                requestLineLength,
-                maxRequestHeadSize - requestLineLength, chApi,
+    public static ParserOf<Request.Headers>
+            headers(ChannelReader in, int lineLen, int maxHeadSize)
+    {
+        return new ParserOf<>(
+                in, lineLen,
+                maxHeadSize - lineLen,
                 MaxRequestHeadSizeExceededException::new,
                 RequestHeaders::new);
     }
     
     /**
-     * Creates a subscriber of request trailers.
+     * Creates a parser of request trailers.
      * 
-     * If {@code maxTrailersSize} is exceeded while parsing, the result stage
-     * will complete exceptionally with a {@link
-     * MaxRequestTrailersSizeExceededException}.
+     * If {@code maxTrailersSize} is exceeded while parsing, the parser will
+     * throw a {@link MaxRequestTrailersSizeExceededException}.
      * 
+     * @param in byte source
      * @param maxTrailersSize max bytes to parse
-     * @param chApi used for exceptional shutdown of read stream
-     * @return a subscriber of request trailers
+     * @return a parser of request trailers
      */
-    public static HeadersSubscriber<BetterHeaders> forRequestTrailers(
-            int maxTrailersSize, ClientChannel chApi) {
-        return new HeadersSubscriber<>(
-                -1, maxTrailersSize, chApi,
+    public static ParserOf<BetterHeaders>
+            trailers(ChannelReader in, int maxTrailersSize)
+    {
+        return new ParserOf<>(
+                in, -1,
+                maxTrailersSize,
                 MaxRequestTrailersSizeExceededException::new,
                 DefaultContentHeaders::new);
     }
     
-    private final int posDelta, maxBytes;
-    private final ClientChannel chApi;
+    private final int logicalPos, maxBytes;
     private final Supplier<? extends RuntimeException> exceeded;
-    private final Function<HttpHeaders, ? extends T> finisher;
+    private final Function<HttpHeaders, ? extends H> finisher;
     private final Parser parser;
     
-    private HeadersSubscriber(
-            int posDelta,
+    private ParserOf(
+            ChannelReader in,
+            int logicalPos,
             int maxBytes,
-            ClientChannel chApi,
             Supplier<? extends RuntimeException> exceeded,
-            Function<HttpHeaders, ? extends T> finisher)
+            Function<HttpHeaders, ? extends H> finisher)
     {
-        this.posDelta = posDelta;
+        super(in);
+        this.logicalPos = logicalPos;
         this.maxBytes = maxBytes;
-        this.chApi = chApi;
         assert maxBytes >= 0;
-        assert chApi != null;
         this.exceeded = exceeded;
         this.finisher = finisher;
         this.parser = new Parser();
     }
     
     @Override
-    protected T parse(byte b) {
-        int n = read();
+    protected H parse(byte b) throws HeaderParseException {
+        final int n = getCount();
         if (n == maxBytes) {
-            throw exceeded.get(); }
-        try {
-            return parser.parse(b);
-        } catch (Throwable t) {
-            if (chApi.isOpenForReading()) {
-                LOG.log(DEBUG,
-                    "Headers parsing failed, " +
-                    "shutting down the channel's read stream.");
-                chApi.shutdownInputSafe();
-            }
-            throw t;
+            throw exceeded.get();
         }
+        return parser.parse(b);
     }
     
     private static final int
@@ -124,8 +108,8 @@ final class HeadersSubscriber<T> extends AbstractByteSubscriber<T>
      * Parses bytes into HTTP headers.<p>
      * 
      * This parser interprets the HTTP line terminator the same as is done and
-     * documented by the {@link RequestLineSubscriber}'s parser (see section
-     * "General rules"). The parser also follows the contract defined by {@link
+     * documented by the {@link ParserOfRequestLine}'s parser (see section
+     * "General rules"). This parser also follows the contract defined by {@link
      * BetterHeaders}, e.g. header names may not be empty but the values may.
      * 
      * 
@@ -174,7 +158,7 @@ final class HeadersSubscriber<T> extends AbstractByteSubscriber<T>
         private int parsing = NAME;
         private Map<String, List<String>> values;
         
-        T parse(byte b) {
+        H parse(byte b) {
             curr = b;
             parsing = switch (parsing) {
                 case NAME -> parseName();
@@ -264,11 +248,11 @@ final class HeadersSubscriber<T> extends AbstractByteSubscriber<T>
         
         @Override
         protected HeaderParseException parseException(String msg) {
-            int p = posDelta == -1 ? -1 : posDelta + read() - 1;
+            int p = logicalPos == -1 ? -1 : logicalPos + getCount() - 1;
             return new HeaderParseException(msg, prev, curr, p);
         }
         
-        private T build() {
+        private H build() {
             HttpHeaders h;
             try {
                 h = Headers.of(values != null ? values : Map.of());
