@@ -5,12 +5,14 @@ import alpha.nomagichttp.handler.RequestHandler;
 
 import java.util.Optional;
 import java.util.concurrent.ConcurrentMap;
+import java.util.function.Supplier;
+
+import static java.util.Objects.requireNonNull;
 
 /**
- * Is an API for storing and accessing arbitrary objects associated with the
- * holder.<p>
+ * An API for storing and accessing objects associated with a holder.<p>
  * 
- * Is useful when passing data across executional boundaries where the holder is
+ * Is useful when passing data across execution boundaries where the holder is
  * the data carrier, such as passing data from a {@link BeforeAction} to a
  * {@link RequestHandler}.
  * 
@@ -26,7 +28,7 @@ import java.util.concurrent.ConcurrentMap;
  * The NoMagicHTTP library reserves the right to use the namespace
  * "alpha.nomagichttp.*" exclusively. Applications are encouraged to avoid
  * using this prefix in their names.
- *
+ * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  */
 public interface Attributes {
@@ -52,6 +54,34 @@ public interface Attributes {
      * @throws NullPointerException if {@code name} is {@code null}
      */
     Object set(String name, Object value);
+    
+    /**
+     * Gets a named value if present, otherwise creates and stores it.<p>
+     * 
+     * @implSpec
+     * The default implementation is equivalent to:
+     * <pre>{@code
+     *   return this.<V>asMapAny()
+     *              .computeIfAbsent(name,
+     *                  keyIgnored -> Objects.requireNonNull(s.get()));
+     * }</pre>
+     * 
+     * @param name of value (any non-null string)
+     * @param factory of a new value if not already present
+     * @param <V> value type
+     *            (explicitly provided on call site or inferred by Java compiler)
+     * 
+     * @return the named value (never {@code null})
+     * 
+     * @throws NullPointerException
+     *             if any argument is {@code null}, or
+     *             if the value created by {@code s} is {@code null}
+     */
+    default <V> V getOrCreate(String name, Supplier<? extends V> factory) {
+        return this.<V>asMapAny()
+                   .computeIfAbsent(name,
+                       x -> requireNonNull(factory.get()));
+    }
     
     /**
      * Returns the value of the named attribute cast to V.
