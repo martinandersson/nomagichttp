@@ -48,10 +48,6 @@ import java.util.concurrent.CompletionStage;
  * explicitly abort a request/exchange, or to stop the {@linkplain
  * Config#timeoutRead() read timeout} when sending long-lasting streams.<p>
  * 
- * When using low-level methods to operate the channel, or when storing
- * attributes on the channel, then have in mind that the "client" in {@code
- * ClientChannel} may be an HTTP proxy which represents many human end users.<p>
- * 
  * The implementation is thread-safe and mostly non-blocking. Underlying channel
  * life-cycle APIs used to query the state of a channel or close it may block
  * and if so, the block is minuscule.
