@@ -2,9 +2,12 @@ package alpha.nomagichttp.util;
 
 import alpha.nomagichttp.HttpServer;
 import alpha.nomagichttp.event.EventHub;
+import alpha.nomagichttp.handler.ClientChannel;
+import alpha.nomagichttp.message.Attributes;
 import jdk.incubator.concurrent.ScopedValue;
 
 import java.util.NoSuchElementException;
+import java.util.function.Supplier;
 
 /**
  * A namespace for scoped values.<p>
@@ -26,24 +29,20 @@ public final class ScopedValues
         // Empty
     }
     
-    /**
-     * A scoped reference to the running server.<p>
-     * 
-     * This field is used by the NoMagicHTTP library code to bind the running
-     * server instance. Application code ought to statically import and use
-     * {@link #httpServer()}.
-     */
     // TODO: Use service loading to find instances initialized by server impl, not static fields
     //       This will also ensure application code can not rebind.
-    public static ScopedValue<HttpServer> HTTP_SERVER = ScopedValue.newInstance();
+    
+    public static ScopedValue<HttpServer> __HTTP_SERVER = ScopedValue.newInstance();
     
     /**
      * Returns the server.<p>
      * 
      * The value will be accessible by code executing within a server. For
-     * example before-actions, request handlers. The value will also always be
-     * accessible by the server's event listeners, even if the event is
-     * dispatched from the outside.<p> 
+     * example before-actions, request handlers and after-actions.<p>
+     * 
+     * The value will always be accessible by the server's event listeners, even
+     * if the event is dispatched [and consequently executed by a thread] from
+     * outside the server.<p> 
      * 
      * Accessing the server may be useful for things like dispatching events and
      * querying the server's configuration.<p>
@@ -59,6 +58,33 @@ public final class ScopedValues
      * @throws NoSuchElementException if the server instance is not bound
      */
     public static HttpServer httpServer() {
-        return HTTP_SERVER.get();
+        return __HTTP_SERVER.get();
+    }
+    
+    public static ScopedValue<ClientChannel> __CLIENT_CHANNEL = ScopedValue.newInstance();
+    
+    /**
+     * Returns the client channel.<p>
+     * 
+     * The value will be accessible by code executing within an HTTP exchange.
+     * For example before-actions, request handlers and after-actions.<p>
+     * 
+     * Given how the HTTP exchange is executed using a single virtual thread,
+     * and how the client channel may be long-lived, its attributes could be
+     * useful to store objects that are not thread-safe and expensive to create.
+     * 
+     * <pre>
+     *   var nf = clientChannel().{@link ClientChannel#attributes()
+     *     attributes}().{@link Attributes#getOrCreate(String, Supplier)
+     *       getOrCreate}("cache-numberformat", NumberFormat::getInstance);
+     * </pre>
+     * 
+     * @return the running server instance
+     * 
+     * @throws NoSuchElementException
+     *             if the client channel instance is not bound
+     */
+    public static ClientChannel clientChannel() {
+        return __CLIENT_CHANNEL.get();
     }
 }
