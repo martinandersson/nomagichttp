@@ -24,7 +24,9 @@ final class DefaultAttributes implements Attributes {
     
     @Override
     public Object set(String name, Object value) {
-        return map.put(name, value);
+        return value == null ?
+                map.remove(name) :
+                map.put(name, value);
     }
     
     @Override
