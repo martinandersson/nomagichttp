@@ -21,8 +21,9 @@ import static java.lang.System.Logger.Level.WARNING;
 import static java.util.concurrent.CompletableFuture.completedStage;
 
 /**
- * Represents a work flow of finding and executing before-actions and a request
- * handler. These entities will co-operate to write responses to a channel.<p>
+ * Executes before-actions and a request handler.
+ * 
+ * These entities will co-operate to write responses to a channel.<p>
  * 
  * The entry point is {@link #execute(SkeletonRequest, Version)}.
  * 
