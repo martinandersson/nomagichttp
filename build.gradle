@@ -5,12 +5,19 @@ plugins {
     id 'maven-publish'
 }
 
-final var RELEASE_FOR = JavaVersion.VERSION_19
+final var RELEASE_FOR = JavaVersion.VERSION_21
 if (!JavaVersion.current().isCompatibleWith(RELEASE_FOR)) {
     throw new Exception(
          "Java ${JavaVersion.current()} is not supported. " +
          "Please use at least version ${RELEASE_FOR}.");
 }
+
+// ------------   TEMP   --------------------
+compileJava {
+    options.compilerArgs.addAll(['--enable-preview'])
+    options.compilerArgs.addAll(['--add-modules', 'jdk.incubator.concurrent'])
+}
+// ------------------------------------------
 
 sourceSets {
     // Move "unit" test locations from default '/test' to '/test/small'
