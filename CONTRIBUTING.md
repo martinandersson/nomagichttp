@@ -1,7 +1,7 @@
 # Contributing
 
 This document is an early draft. If you wish to become a contributor, please
-reach out to me; webmaster at martinandersson.com.
+reach out to; webmaster at martinandersson.com.
 
 ## Upgrading Gradle Wrapper
 
