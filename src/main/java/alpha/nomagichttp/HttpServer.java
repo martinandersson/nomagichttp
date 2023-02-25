@@ -126,7 +126,7 @@ import java.util.function.IntConsumer;
  * TODO: Give bad example of concurrent outbound calls to dependent services
  * using a parallel Stream on native threads.<p>
  * 
- * TODO: Give good example using {@link StructuredTaskScope}<p>
+ * TODO: Give good example using {@link StructuredTaskScope}.
  * 
  * <h2>HTTP message semantics</h2>
  * 

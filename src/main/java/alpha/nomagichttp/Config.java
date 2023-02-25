@@ -135,7 +135,7 @@ public interface Config
      * recipient is incompatible. This necessitates that the application must
      * either handle the exception explicitly, or query the active HTTP version
      * ({@link Request#httpVersion()}) before attempting to send such a
-     * response.<p>
+     * response.
      * 
      * @return whether to discard 1XX responses for incompatible clients
      */
@@ -161,7 +161,8 @@ public interface Config
      * Regardless of the configured value, the server never attempts to
      * send a 100 (Continue) response to an HTTP/1.0 client since HTTP/1.0 does
      * not support interim responses (
-     * <a href="https://tools.ietf.org/html/rfc7231#section-5.1.1">RFC 7231 §5.1.1</a>).<p>
+     * <a href="https://tools.ietf.org/html/rfc7231#section-5.1.1">RFC 7231 §5.1.1</a>
+     * ).
      * 
      * @return whether to immediately respond a 100 (Continue) interim response
      *         to a request with a {@code Expect: 100-continue} header
@@ -421,7 +422,7 @@ public interface Config
         Builder timeoutWrite(Duration newVal);
         
         /**
-         * Sets a new value.<p>
+         * Sets a new value.
          * 
          * @param newVal new value
          * @return a new builder representing the new state
