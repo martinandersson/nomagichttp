@@ -48,7 +48,7 @@ import static alpha.nomagichttp.message.MediaType.parse;
  * 
  * A final response may be preceded by any number of interim responses from
  * category 1XX (Informational) (since HTTP 1.1). For example, interim responses
- * can be used to send progress reports on a long-running job.<p>
+ * can be used to send progress reports on a long-running job.
  * 
  * <pre>
  *     requestIgnored -> {
@@ -80,7 +80,7 @@ import static alpha.nomagichttp.message.MediaType.parse;
  * returned from the {@code apply} method. If the application needs to execute
  * logic post-transmission of a response and this logic must execute within the
  * request handler, then writing the final response explicitly is an
- * alternative.<p>
+ * alternative.
  * 
  * <pre>{@code
  *     request -> {

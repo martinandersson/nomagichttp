@@ -56,7 +56,7 @@ public interface Attributes {
     Object set(String name, Object value);
     
     /**
-     * Gets a named value if present, otherwise creates and stores it.<p>
+     * Gets a named value if present, otherwise creates and stores it.
      * 
      * @implSpec
      * The default implementation is equivalent to:

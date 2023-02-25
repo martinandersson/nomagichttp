@@ -41,6 +41,15 @@ public final class RawRequest
             String method, String target, String httpVersion,
             long nanoTimeOnStart, int length)
     {
+        /**
+         * Constructs this object.
+         * 
+         * @param method of request
+         * @param target of request
+         * @param httpVersion of request
+         * @param nanoTimeOnStart see {@link #nanoTimeOnStart()}
+         * @param length see {@link #length()}
+         */
         public Line {
             requireNonEmpty(method, "method");
             requireNonEmpty(target, "target");

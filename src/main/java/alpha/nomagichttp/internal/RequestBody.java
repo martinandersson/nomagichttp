@@ -39,6 +39,7 @@ import static java.nio.file.StandardOpenOption.WRITE;
 final class RequestBody implements Request.Body
 {
     // Copy-pasted from FileChannel.NO_ATTRIBUTES
+    @SuppressWarnings("rawtypes")
     private static final FileAttribute<?>[]
             NO_ATTRIBUTES = new FileAttribute[0];
     

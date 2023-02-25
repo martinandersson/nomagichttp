@@ -18,8 +18,6 @@ public interface NonThrowingChain extends Chain
      * 
      * @throws UnsupportedOperationException
      *             {@inheritDoc}
-     * @throws Exception
-     *             {@inheritDoc}
      * 
      * @see Chain
      */

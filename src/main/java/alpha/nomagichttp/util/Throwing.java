@@ -13,11 +13,15 @@ public final class Throwing {
     
     /**
      * Represents an operation that does not return a result.
+     * 
+     * @param <X> the type of problem that can happen
      */
     @FunctionalInterface
     public interface Runnable<X extends Exception> {
         /**
          * Runs this operation.
+         * 
+         * @throws X should be documented by implementation
          */
         void run() throws X;
     }
@@ -26,7 +30,7 @@ public final class Throwing {
      * A value consumer that may throw an exception.
      * 
      * @param <T> the type of the input to the operation
-     * @param <X> the type of shit that can happen
+     * @param <X> the type of problem that can happen
      */
     @FunctionalInterface
     public interface Consumer<T, X extends Exception> {
@@ -34,7 +38,7 @@ public final class Throwing {
          * Gets a result.
          * 
          * @param t value to consume
-         * @throws X if shit happens
+         * @throws X should be documented by implementation
          */
         void accept(T t) throws X;
     }
@@ -42,8 +46,8 @@ public final class Throwing {
     /**
      * A value supplier that may throw an exception.
      * 
-     * @author Martin Andersson (webmaster at martinandersson.com)
-     * @param <T> the type of shit that can happen
+     * @param <T> the result type
+     * @param <X> the type of problem that can happen
      */
     @FunctionalInterface
     public interface Supplier<T, X extends Exception> {
@@ -51,7 +55,7 @@ public final class Throwing {
          * Gets a result.
          * 
          * @return a result
-         * @throws X if shit happens
+         * @throws X should be documented by implementation
          */
         T get() throws X;
     }
@@ -61,7 +65,7 @@ public final class Throwing {
      * 
      * @param <T> the type of the input to the function
      * @param <R> the type of the result of the function
-     * @param <X> the type of shit that can happen
+     * @param <X> the type of problem that can happen
      */
     public interface Function<T, R, X extends Exception> {
         /**
@@ -69,7 +73,7 @@ public final class Throwing {
          * 
          * @param t the function argument
          * @return the function result
-         * @throws X if shit happens
+         * @throws X should be documented by implementation
          */
         R apply(T t) throws X;
     }
@@ -80,7 +84,7 @@ public final class Throwing {
      * @param <T> the type of the first argument to the function
      * @param <U> the type of the second argument to the function
      * @param <R> the type of the result of the function
-     * @param <X> the type of shit that can happen
+     * @param <X> the type of problem that can happen
      */
     public interface BiFunction<T, U, R, X extends Exception> {
         /**
@@ -89,7 +93,7 @@ public final class Throwing {
          * @param t the first function argument
          * @param u the second function argument
          * @return the function result
-         * @throws X if shit happens
+         * @throws X should be documented by implementation
          */
         R apply(T t, U u) throws X;
     }

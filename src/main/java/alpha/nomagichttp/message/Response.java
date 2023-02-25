@@ -162,7 +162,7 @@ public interface Response extends HeaderHolder
      * more specifically; after {@code ByteBufferIterable.close} has been
      * called. The method must then return non-empty trailers. The server does
      * not verify that the actual trailers sent was correctly enumerated in the
-     * "Trailer" header.<p>
+     * "Trailer" header.
      * 
      * @apiNote
      * Although

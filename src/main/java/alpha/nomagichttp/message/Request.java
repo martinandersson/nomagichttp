@@ -599,7 +599,7 @@ public interface Request extends HeaderHolder, AttributeHolder
     }
     
     /**
-     * Is an API for reading the request body in various forms.<p>
+     * Is an API for reading the request body in various forms.
      * 
      * <h2>Reading bytes</h2>
      * 
@@ -734,7 +734,7 @@ public interface Request extends HeaderHolder, AttributeHolder
         CharSequence toCharSequence() throws IOException;
         
         /**
-         * Converts the remaining body bytes to a string.<p>
+         * Converts the remaining body bytes to a string.
          * 
          * @implSpec
          * The default implementation is equivalent to:

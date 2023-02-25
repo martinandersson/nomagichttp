@@ -72,7 +72,7 @@ import static java.util.stream.Stream.of;
  * the event of a failure. Therefore, an error handler must return a response,
  * either by returning one directly, or yielding to the next error handler,
  * which will eventually be the server's base handler, which has a fallback
- * response for all exceptions.<p>
+ * response for all exceptions.
  * 
  * <pre>{@code
  *   ErrorHandler forMyExpected = (exception, chain, request) -> {
@@ -138,6 +138,8 @@ public interface ErrorHandler
      * @param exc the error (never null)
      * @param chain yielder of control (never null)
      * @param req request object
+     * 
+     * @return a fallback response
      * 
      * @see ErrorHandler
      */

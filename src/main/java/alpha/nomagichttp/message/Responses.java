@@ -285,6 +285,10 @@ public final class Responses
      * 
      * @return a new 200 (OK) response
      * 
+     * @throws CharacterCodingException
+     *             if input is malformed, or
+     *             if a character is unmappable
+     * 
      * @see StatusCode#TWO_HUNDRED
      */
     public static Response html(

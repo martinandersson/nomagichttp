@@ -30,7 +30,7 @@ import static java.util.Objects.requireNonNull;
  * injudiciously in an update function). An extra benefit was being able to bind
  * the channel as part of the initialization which in turn provided stronger
  * semantics for {@code HttpServer.isRunning} without sacrificing performance
- * (a value present means that the channel has been both created and bound).<p>
+ * (a value present means that the channel has been both created and bound).
  * 
  * <h2>Memory consistency effects</h2>
  * 
@@ -45,6 +45,13 @@ import static java.util.Objects.requireNonNull;
  */
 public final class Confined<V>
 {
+    /**
+     * Constructs this object.
+     */
+    public Confined() {
+        // Empty
+    }
+    
     private final AtomicReference<Object> ref = new AtomicReference<>();
     
     /**

@@ -137,7 +137,7 @@ import alpha.nomagichttp.route.RouteRegistry;
  * </pre>
  * 
  * For clarity in code, actions should be added to the registry in the order of
- * invocation.<p>
+ * invocation.
  * 
  * <pre>
  *   HttpServer.create(myGlobalErrorHandlers)

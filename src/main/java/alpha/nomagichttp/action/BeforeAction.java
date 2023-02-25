@@ -22,7 +22,7 @@ import jdk.incubator.concurrent.ScopedValue;
  * 
  * Although a before-action can be used to handle exceptions — and for well
  * defined route patterns this is certainly an option — the {@link ErrorHandler}
- * is what should be used for global errors.<p>
+ * is what should be used for global errors.
  * 
  * <pre>
  *   BeforeAction giveRole = (request, chain) -{@literal >} {

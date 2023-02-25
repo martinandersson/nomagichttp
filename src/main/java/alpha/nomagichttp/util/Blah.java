@@ -42,6 +42,7 @@ public final class Blah
      * 
      * @param a first
      * @param b second
+     * @param c third
      * 
      * @return the result
      */
@@ -60,6 +61,7 @@ public final class Blah
      * @param method to call
      * @param resource to close
      * @param <T> result type
+     * @param <X> exception type
      * 
      * @return what the method returns
      * 

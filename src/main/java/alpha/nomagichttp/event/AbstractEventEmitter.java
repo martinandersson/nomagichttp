@@ -106,7 +106,13 @@ public abstract class AbstractEventEmitter implements EventEmitter
      * 
      * @param mapImpl to use as listeners' map
      * @param setImpl to use as listeners' container (map value)
-     * @throws NullPointerException if any argument is {@code null}
+     * @param when condition is {@code true}...
+     * @param decorator ...route listener call through this
+     * 
+     * @throws NullPointerException
+     *             if any argument is {@code null}
+     * 
+     * @see AbstractEventEmitter
      */
     protected AbstractEventEmitter(
             Map<Class<?>, Set<Object>> mapImpl,

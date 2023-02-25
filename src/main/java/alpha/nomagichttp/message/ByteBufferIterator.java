@@ -37,6 +37,7 @@ public interface ByteBufferIterator extends Closeable
      * An empty iterator.
      */
     enum Empty implements ByteBufferIterator {
+        /** The singleton instance. */
         INSTANCE;
         public boolean hasNext() {
             return false; }
@@ -72,7 +73,7 @@ public interface ByteBufferIterator extends Closeable
     /**
      * Performs the given action for each remaining bytebuffer.<p>
      * 
-     * Exceptions thrown by the action immediately propagates to the caller.<p>
+     * Exceptions thrown by the action immediately propagates to the caller.
      * 
      * @implSpec
      * The default implementation is equivalent to:

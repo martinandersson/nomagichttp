@@ -32,6 +32,7 @@ public final class ScopedValues
     // TODO: Use service loading to find instances initialized by server impl, not static fields.
     //       This will also ensure application code can not rebind.
     
+    /** TEMPORARILY */
     public static ScopedValue<HttpServer>
             __HTTP_SERVER = ScopedValue.newInstance();
     
@@ -46,7 +47,7 @@ public final class ScopedValues
      * outside the server.<p> 
      * 
      * Accessing the server may be useful for things like dispatching events and
-     * querying the server's configuration.<p>
+     * querying the server's configuration.
      * 
      * <pre>
      *   httpServer().{@link HttpServer#events()
@@ -62,6 +63,7 @@ public final class ScopedValues
         return __HTTP_SERVER.get();
     }
     
+    /** TEMPORARILY */
     public static ScopedValue<ClientChannel>
             __CHANNEL = ScopedValue.newInstance();
     

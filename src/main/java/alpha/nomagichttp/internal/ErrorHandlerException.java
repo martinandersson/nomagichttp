@@ -3,8 +3,9 @@ package alpha.nomagichttp.internal;
 import alpha.nomagichttp.Chain;
 import alpha.nomagichttp.NonThrowingChain;
 
-final class ErrorHandlerException extends RuntimeException
-{
+final class ErrorHandlerException extends RuntimeException {
+    private static final long serialVersionUID = 1L;
+    
     static NonThrowingChain unchecked(Chain delegate) {
         return () -> {
             try {
