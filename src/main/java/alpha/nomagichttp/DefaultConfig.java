@@ -5,8 +5,6 @@ import alpha.nomagichttp.util.AbstractImmutableBuilder;
 import java.time.Duration;
 import java.util.function.Consumer;
 
-import static java.lang.Math.max;
-import static java.lang.Runtime.getRuntime;
 import static java.time.Duration.ofSeconds;
 import static java.util.Objects.requireNonNull;
 
@@ -19,9 +17,7 @@ final class DefaultConfig implements Config {
     private final Builder  builder;
     private final int      maxRequestHeadSize,
                            maxRequestTrailersSize,
-                           maxUnsuccessfulResponses,
-                           maxErrorRecoveryAttempts,
-                           threadPoolSize;
+                           maxUnsuccessfulResponses;
     private final boolean  rejectClientsUsingHTTP1_0,
                            ignoreRejectedInformational,
                            immediatelyContinueExpect100;
@@ -35,8 +31,6 @@ final class DefaultConfig implements Config {
         maxRequestHeadSize           = s.maxRequestHeadSize;
         maxRequestTrailersSize       = s.maxRequestTrailersSize;
         maxUnsuccessfulResponses     = s.maxUnsuccessfulResponses;
-        maxErrorRecoveryAttempts     = s.maxErrorRecoveryAttempts;
-        threadPoolSize               = s.threadPoolSize;
         rejectClientsUsingHTTP1_0    = s.rejectClientsUsingHTTP1_0;
         ignoreRejectedInformational  = s.ignoreRejectedInformational;
         immediatelyContinueExpect100 = s.immediatelyContinueExpect100;
@@ -62,22 +56,12 @@ final class DefaultConfig implements Config {
     }
     
     @Override
-    public int maxErrorRecoveryAttempts() {
-        return maxErrorRecoveryAttempts;
-    }
-    
-    @Override
-    public int threadPoolSize() {
-        return threadPoolSize;
-    }
-    
-    @Override
     public boolean rejectClientsUsingHTTP1_0() {
         return rejectClientsUsingHTTP1_0;
     }
     
     @Override
-    public boolean ignoreRejectedInformational() {
+    public boolean discardRejectedInformational() {
         return ignoreRejectedInformational;
     }
     
@@ -120,9 +104,7 @@ final class DefaultConfig implements Config {
         static class MutableState {
             int      maxRequestHeadSize           = 8_000,
                      maxRequestTrailersSize       = 8_000,
-                     maxUnsuccessfulResponses     = 7,
-                     maxErrorRecoveryAttempts     = 5,
-                     threadPoolSize               = max(3, getRuntime().availableProcessors());
+                     maxUnsuccessfulResponses     = 3;
             boolean  rejectClientsUsingHTTP1_0    = false,
                      ignoreRejectedInformational  = true,
                      immediatelyContinueExpect100 = false;
@@ -148,16 +130,6 @@ final class DefaultConfig implements Config {
         @Override
         public Builder maxUnsuccessfulResponses(int newVal) {
             return new DefaultBuilder(this, s -> s.maxUnsuccessfulResponses = newVal);
-        }
-        
-        @Override
-        public Builder maxErrorRecoveryAttempts(int newVal) {
-            return new DefaultBuilder(this, s -> s.maxErrorRecoveryAttempts = newVal);
-        }
-        
-        @Override
-        public Builder threadPoolSize(int newVal) {
-            return new DefaultBuilder(this, s -> s.threadPoolSize = newVal);
         }
         
         @Override

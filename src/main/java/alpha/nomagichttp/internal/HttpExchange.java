@@ -1,280 +1,245 @@
 package alpha.nomagichttp.internal;
 
+import alpha.nomagichttp.Chain;
+import alpha.nomagichttp.ChannelWriter;
 import alpha.nomagichttp.Config;
-import alpha.nomagichttp.HttpConstants;
 import alpha.nomagichttp.HttpConstants.Version;
 import alpha.nomagichttp.HttpServer;
 import alpha.nomagichttp.event.RequestHeadReceived;
 import alpha.nomagichttp.handler.ClientChannel;
 import alpha.nomagichttp.handler.ErrorHandler;
-import alpha.nomagichttp.internal.ResponsePipeline.Command;
-import alpha.nomagichttp.message.DefaultContentHeaders;
 import alpha.nomagichttp.message.HttpVersionTooNewException;
 import alpha.nomagichttp.message.HttpVersionTooOldException;
 import alpha.nomagichttp.message.IllegalRequestBodyException;
 import alpha.nomagichttp.message.RawRequest;
-import alpha.nomagichttp.message.Request;
 import alpha.nomagichttp.message.Response;
-import alpha.nomagichttp.util.SerialExecutor;
+import jdk.incubator.concurrent.ScopedValue;
 
 import java.io.IOException;
-import java.nio.channels.AsynchronousCloseException;
-import java.nio.channels.InterruptedByTimeoutException;
 import java.util.Collection;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.CompletionException;
-import java.util.concurrent.CompletionStage;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.function.BiConsumer;
+import java.util.NoSuchElementException;
+import java.util.Optional;
 
-import static alpha.nomagichttp.HttpConstants.HeaderName.CONNECTION;
 import static alpha.nomagichttp.HttpConstants.HeaderName.EXPECT;
 import static alpha.nomagichttp.HttpConstants.Method.TRACE;
 import static alpha.nomagichttp.HttpConstants.Version.HTTP_1_0;
 import static alpha.nomagichttp.HttpConstants.Version.HTTP_1_1;
-import static alpha.nomagichttp.handler.ErrorHandler.DEFAULT;
-import static alpha.nomagichttp.internal.InvocationChain.ABORTED;
-import static alpha.nomagichttp.internal.RequestBody.emptyBody;
-import static alpha.nomagichttp.internal.RequestBody.of;
-import static alpha.nomagichttp.internal.ResponsePipeline.Error;
-import static alpha.nomagichttp.internal.ResponsePipeline.Success;
-import static alpha.nomagichttp.internal.SubscriptionMonitoringOp.Reason.UPSTREAM_ERROR_NOT_DELIVERED;
-import static alpha.nomagichttp.util.IOExceptions.isCausedByBrokenInputStream;
-import static alpha.nomagichttp.util.IOExceptions.isCausedByBrokenOutputStream;
+import static alpha.nomagichttp.handler.ErrorHandler.BASE;
+import static alpha.nomagichttp.internal.DefaultRequest.requestWithoutParams;
+import static alpha.nomagichttp.internal.ErrorHandlerException.unchecked;
+import static alpha.nomagichttp.message.Responses.continue_;
 import static java.lang.Integer.parseInt;
 import static java.lang.Math.addExact;
 import static java.lang.System.Logger.Level.DEBUG;
 import static java.lang.System.Logger.Level.ERROR;
 import static java.lang.System.Logger.Level.WARNING;
 import static java.lang.System.nanoTime;
-import static java.util.Objects.requireNonNull;
+import static java.util.Optional.of;
+import static jdk.incubator.concurrent.ScopedValue.where;
 
 /**
- * Orchestrator of an HTTP exchange from request to response, erm, "ish".<p>
+ * Orchestrator of an HTTP exchange from request to response.<p>
  * 
  * Core responsibilities:
  * <ul>
- *   <li>Setup channel with a new response pipeline</li>
- *   <li>Schedule a request head subscriber on the channel</li>
- *   <li>Trigger the invocation chain</li>
- *   <li>When invocation chain and response pipeline completes, prepare a new exchange</li>
- *   <li>Hand off all errors to the error handler(s)</li>
+ *   <li>Parse a request head</li>
+ *   <li>Execute the request chain</li>
+ *   <li>Resolve an exception using error handler(s)</li>
+ *   <li>Write the response</li>
+ *   <li>Discard remaining data in request body</li>
  * </ul>
  * 
- * In addition:
+ * Additionally:
  * <ul>
- *   <li>Has package-private accessors for the request head, HTTP version and request skeleton</li>
- *   <li>May pre-emptively schedule a 100 (Continue) depending on configuration</li>
- *   <li>Shuts down read stream if request has header "Connection: close"</li>
+ *   <li>Respond 100 (Continue)</li>
+ *   <li>Reject a TRACE request with a body</li>
+ *   <li>Log the exchange workflow on DEBUG level</li>
  * </ul>
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  */
 final class HttpExchange
 {
-    private static final System.Logger LOG = System.getLogger(HttpExchange.class.getPackageName());
+    private static final System.Logger
+            LOG = System.getLogger(HttpExchange.class.getPackageName());
+    
+    private static final ScopedValue<Optional<SkeletonRequest>>
+            REQUEST = ScopedValue.newInstance();
     
     /**
-     * Event emitted by the collaborators {@link InvocationChain} and
-     * {@link ResponsePipeline} whenever a request object has been created. The
-     * first (and only) attachment is the request object created. The result
-     * performed by this class is an update of the HTTP exchange state, so that
-     * the {@link ErrorHandler} can observe the most recent instance.
+     * Returns the skeleton request.<p>
+     * 
+     * The skeleton request is only available after the request head has been
+     * received and parsed, which includes the HTTP version. Until then, this
+     * method returns {@code null}. This is especially important to be aware of
+     * for the channel writer who be executed at a very early stage.
+     * 
+     * @return see JavaDoc
      */
-    enum RequestCreated { INSTANCE }
+    static Optional<SkeletonRequest> request() {
+        try {
+            return REQUEST.get();
+        } catch (NoSuchElementException e) {
+            return Optional.empty();
+        }
+    }
     
     private final HttpServer server;
-    private final Config config;
+    private final Config conf;
     private final Collection<ErrorHandler> handlers;
-    private final ChannelByteBufferPublisher chIn;
-    private final DefaultClientChannel chApi;
-    private final InvocationChain chain;
-    private final ResponsePipeline pipe;
-    private final AtomicInteger cntDown;
-    private final CompletableFuture<Void> result;
-    
-    /*
-     * Mutable fields related to the request chain in this class are not
-     * volatile nor synchronized. It is assumed that the asynchronous execution
-     * facility of the CompletionStage implementation establishes a
-     * happens-before relationship. This is certainly true for JDK's
-     * CompletableFuture which uses an Executor/ExecutorService, or at worst, a
-     * new Thread.start() for each task.
-     */
-    
-    private RawRequest.Head head;
-    private Version version;
-    private SkeletonRequest reqThin;
-    private Request reqFat;
-    private ErrorResolver errRes;
+    private final ClientChannel channel;
+    private final ChannelReader reader;
+    private final ChannelWriter writer;
+    private final RequestProcessor reqProc;
     
     HttpExchange(
             HttpServer server,
             DefaultActionRegistry actions,
             DefaultRouteRegistry routes,
             Collection<ErrorHandler> handlers,
-            ChannelByteBufferPublisher chIn,
-            DefaultClientChannel chApi)
+            ClientChannel channel,
+            ChannelReader reader,
+            ChannelWriter writer)
     {
         this.server   = server;
-        this.config   = server.getConfig();
+        this.conf     = server.getConfig();
         this.handlers = handlers;
-        this.chIn     = chIn;
-        this.chApi    = chApi;
-        this.chain    = new InvocationChain(actions, routes, chApi);
-        this.pipe     = new ResponsePipeline(this, chApi, actions);
-        // Request/invocation chain + final response, then prepareForNewExchange()
-        this.cntDown  = new AtomicInteger(2);
-        this.result   = new CompletableFuture<>();
-        // Default until updated
-        this.version  = HTTP_1_1;
-    }
-    
-    /**
-     * Returns the parsed request head, if available, otherwise {@code null}.
-     * 
-     * @return the parsed request head, if available, otherwise {@code null}
-     */
-    RawRequest.Head getRequestHead() {
-        return head;
-    }
-    
-    /**
-     * Returns the active HTTP version.<p>
-     * 
-     * Before the version has been parsed and accepted from the request, this
-     * method returns a default {@link HttpConstants.Version#HTTP_1_1}. The
-     * value may subsequently be updated both down and up.
-     * 
-     * @return the active HTTP version
-     */
-    Version getHttpVersion() {
-        return version;
-    }
-    
-    /**
-     * Returns the request, if available, otherwise {@code null}.
-     * 
-     * @return the request, if available, otherwise {@code null}
-     */
-    SkeletonRequest getSkeletonRequest() {
-        return reqThin;
+        this.channel  = channel;
+        this.reader   = reader;
+        this.writer   = writer;
+        this.reqProc  = new RequestProcessor(actions, routes, reader);
     }
     
     /**
      * Begin the exchange.<p>
      * 
-     * The returned stage should mostly complete normally as HTTP exchange
-     * errors are dealt with internally (through {@link ErrorHandler}). Any
-     * other error will be logged in this class. The server should close the
-     * child if the result completes exceptionally.
+     * The exchange will attempt to deal with exceptions through the error
+     * handler(s), the default of which has a fallback response for all
+     * exceptions. If an exception can not be processed into a response, it will
+     * be logged and the channel will be set in a half-closed or fully closed
+     * state. The exception is considered handled and not re-thrown.<p>
      * 
-     * @return a stage (never {@code null})
+     * Only a Throwable (that is not an Exception) may come out of this
+     * method.<p>
+     * 
+     * The channel may half-close or fully close for other reasons than
+     * unhandled exceptions. For example, the channel reader may reach an
+     * expected end-of-stream, or the channel writer may terminate the HTTP
+     * connection. This is expected and will not throw an exception.<p>
+     * 
+     * All things considered, the server must only begin the next HTTP exchange
+     * if this method returns normally, and both the input- and output streams
+     * remain open.
      */
-    CompletionStage<Void> begin() {
-        LOG.log(DEBUG, "Beginning a new HTTP exchange.");
+    void begin() {
         try {
             begin0();
-        } catch (Throwable t) {
-            unexpected(t);
+        } catch (Exception e) {
+            if (channel.isInputOpen() && channel.isOutputOpen()) {
+                throw new AssertionError(e);
+            }
+            // Else considered handled and ignored
         }
-        return result;
     }
     
-    private void unexpected(Throwable t) {
-        LOG.log(ERROR, "Unexpected.", t);
-        result.completeExceptionally(t);
-    }
-    
-    private void begin0() {
-        setupPipeline();
-        subscribeToRequestObjects();
-        parseRequestLine()
-            .thenCompose(this::parseRequestHeaders)
-            .thenAccept(this::initialize)
-            .thenRun(() -> { if (config.immediatelyContinueExpect100())
-                tryRespond100Continue(); })
-            .thenCompose(nil -> chain.execute(reqThin, version))
-            .whenComplete((nil, thr) -> handleReqChainCompletion(thr));
-    }
-    
-    private void setupPipeline() {
-        pipe.on(Success.class, (ev, rsp) -> handlePipeWriteSuccess((Response) rsp));
-        pipe.on(Error.class, (ev, thr) -> {
-            LOG.log(DEBUG, "Response pipeline failed. Handling the error.");
-            handleError((Throwable) thr);
-        });
-        chApi.usePipeline(pipe);
-    }
-    
-    private void subscribeToRequestObjects() {
-        BiConsumer<RequestCreated, Request> save = (ev, req) -> reqFat = req;
-        chain.on(RequestCreated.class, save);
-        pipe.on(RequestCreated.class, save);
-    }
-    
-    private CompletionStage<RawRequest.Line> parseRequestLine() {
-        var rls = new RequestLineSubscriber(config.maxRequestHeadSize(), chApi);
-        chIn.subscribe(rls);
-        return rls.result();
-    }
-    
-    private CompletionStage<RawRequest.Head> parseRequestHeaders(RawRequest.Line l) {
-        var hs = HeadersSubscriber.forRequestHeaders(
-                l.length(), config.maxRequestHeadSize(), chApi);
-        chIn.subscribe(hs);
-        return hs.result().thenApply(headers -> {
-            var h = new RawRequest.Head(l, headers);
-            server.events().dispatchLazy(RequestHeadReceived.INSTANCE, () -> h, () ->
-                    new RequestHeadReceived.Stats(
-                            l.nanoTimeOnStart(),
-                            nanoTime(),
-                            addExact(l.length(), hs.read())));
-            return h;
-        });
-    }
-    
-    private void initialize(RawRequest.Head h) {
-        head = h;
-        
-        version = parseHttpVersion(h.line().httpVersion());
-        if (version == HTTP_1_0 && config.rejectClientsUsingHTTP1_0()) {
-            throw new HttpVersionTooOldException(h.line().httpVersion(), "HTTP/1.1");
+    void begin0() throws Exception {
+        SkeletonRequest req = null;
+        Response rsp;
+        try {
+            LOG.log(DEBUG, "Parsing the request");
+            req = parseRequest();
+            LOG.log(DEBUG, "Executing the request processing chain");
+            rsp = processRequest(req);
+        } catch (Exception exc) {
+            if (req == null) {
+                LOG.log(DEBUG,
+                    "Parsing request failed, shutting down the input stream");
+                channel.shutdownInput();
+            }
+            rsp = handleException(exc, req);
         }
-        
-        reqThin = new SkeletonRequest(h,
+        if (rsp != null) {
+            assert !writer.wroteFinal();
+            LOG.log(DEBUG, "Writing final response");
+            try {
+                writer.write(rsp);
+            } catch (RuntimeException exc) {
+                writer.write(handleException(exc, req));
+            }
+        }
+        if (!channel.isInputOpen() || !channel.isOutputOpen()) {
+            LOG.log(DEBUG, """
+                    Channel is half-closed or closed, \
+                    a new HTTP exchange will not begin""");
+            return;
+        }
+        assert req != null : "Input stream was shutdown";
+        assert writer.wroteFinal();
+        tryToDiscardNonEmptyRequest(req);
+    }
+    
+    private SkeletonRequest parseRequest() throws IOException {
+        var line = new ParserOfRequestLine(reader, conf.maxRequestHeadSize())
+                .parse();
+        var head = __parseRequestHeaders(line);
+        return __createRequest(head);
+    }
+    
+    private RawRequest.Head __parseRequestHeaders(RawRequest.Line l)
+            throws IOException {
+        var p = ParserOf.headers(reader, l.length(), conf.maxRequestHeadSize());
+        var hs = p.parse();
+        var h = new RawRequest.Head(l, hs);
+        server.events().dispatchLazy(RequestHeadReceived.INSTANCE,
+                () -> h,
+                () -> new RequestHeadReceived.Stats(
+                        l.nanoTimeOnStart(),
+                        nanoTime(),
+                        addExact(l.length(), p.getByteCount())));
+        return h;
+    }
+    
+    private SkeletonRequest __createRequest(RawRequest.Head h) {
+        Version v = __parseHttpVersion(h.line().httpVersion());
+        if (v == HTTP_1_0 && conf.rejectClientsUsingHTTP1_0()) {
+            throw new HttpVersionTooOldException(
+                    h.line().httpVersion(), "HTTP/1.1");
+        }
+        var req = new SkeletonRequest(h, v,
                 SkeletonRequestTarget.parse(h.line().target()),
-                monitorBody(createBody(h)),
+                RequestBody.of(h.headers(), reader),
                 new DefaultAttributes());
-        
-        validateRequest();
+        __requireNoBodyInTRACE(req);
+        return req;
     }
     
-    private static Version parseHttpVersion(String httpVersion) {
+    private static Version __parseHttpVersion(String httpVersion) {
+        final String upgrade = "HTTP/1.1"; // for now
         final Version v;
-        
         try {
             v = Version.parse(httpVersion);
         } catch (IllegalArgumentException e) {
             String[] comp = e.getMessage().split(":");
             if (comp.length == 1) {
                 // No literal for minor
-                requireHTTP1(parseInt(comp[0]), httpVersion, "HTTP/1.1"); // for now
-                throw new AssertionError(
-                        "String \"HTTP/<single digit>\" should have failed with parse exception (missing minor).");
+                __requireHTTP1(parseInt(comp[0]), httpVersion, upgrade);
+                throw new AssertionError("""
+                        String "HTTP/<single digit>" should have failed with \
+                        parse exception (missing minor).""");
             } else {
-                // No literal for major + minor (i.e., version older than HTTP/0.9)
+                // No literal for major + minor (i.e., version < HTTP/0.9)
                 assert comp.length == 2;
                 assert parseInt(comp[0]) <= 0;
-                throw new HttpVersionTooOldException(httpVersion, "HTTP/1.1");
+                throw new HttpVersionTooOldException(httpVersion, upgrade);
             }
         }
-        
-        requireHTTP1(v.major(), httpVersion, "HTTP/1.1");
+        __requireHTTP1(v.major(), httpVersion, "HTTP/1.1");
         return v;
     }
     
-    private static void requireHTTP1(int major, String rejectedVersion, String upgrade) {
+    private static void __requireHTTP1(
+            int major, String rejectedVersion, String upgrade)
+    {
         if (major < 1) {
             throw new HttpVersionTooOldException(rejectedVersion, upgrade);
         }
@@ -283,345 +248,215 @@ final class HttpExchange
         }
     }
     
-    private RequestBody createBody(RawRequest.Head h) {
-        return of((DefaultContentHeaders) h.headers(), chIn, chApi,
-                config.maxRequestTrailersSize(),
-                this::tryRespond100Continue);
-    }
-    
-    private RequestBody monitorBody(RequestBody rb) {
-        rb.whenComplete((res, thr) -> {
-            // Note, an empty body is immediately completed normally
-            pipe.add(Command.INIT_RESPONSE_TIMER);
-            if (res.reason() == UPSTREAM_ERROR_NOT_DELIVERED) {
-                // Then we need to deal with it
-                LOG.log(DEBUG, """
-                    Body processing finished, but upstream error was not \
-                    delivered. Handling the error.""");
-                assert res.error().isPresent();
-                handleError(res.error().get());
-                // Note, we could also throw in a check for DOWNSTREAM_FAILED.
-                // But if we do, that error could end up being handled twice coz
-                // the same exception may also complete exceptionally the
-                // invocation chain. Not that handling the same error twice
-                // would have a devastating effect, but it would clearly be
-                // weird for anyone noticing it, and, it makes our test cases
-                // less deterministic and hard to write. Further, it has
-                // clearly been noted in the JavaDoc of Request.Body that the
-                // subscriber should not throw an exception.
-                //    One fix would be to make handleError NOP on duplicates and
-                // then handle DOWNSTREAM_FAILED. This would strengthen the
-                // error guarantees we can make in Request.Body, but also
-                // complicate the documentation.
-            } else {
-                LOG.log(DEBUG, () -> "Body processing finished (" + res.reason() + ")");
-                // If <thr> is not null, trailers completed exceptionally, and
-                // there is no guarantee that the application has even accessed
-                // the trailer stage. So, not dealing with <thr> here means the
-                // exception could theoretically not be handled.
-                //    There's no easy way to provide an error-handling
-                // guarantee. We can not know for sure what the application will
-                // do in the future. Any imposed "magic" here may instead end up
-                // preempting the application's planed final response causing it
-                // to be ignored.
-                //    An exception lost ought to be an extremely rare event. It
-                // can safely be assumed that any endpoint receiving trailers
-                // will also arrange for them to be consumed and consequently be
-                // in charge of translating the exceptional outcome.
-                //     Nor is this really a problem. The application must at
-                // some point produce a final response, or else face a timeout.
-                // And that is good enough. Logging it here means it'll never be
-                // completely lost.
-                if (thr != null) {
-                    LOG.log(WARNING, () ->
-                        "Request trailers finished exceptionally: " +
-                        unpackCompletionException(thr));
-                }
-            }
-        });
-        return rb;
-    }
-    
-    private void validateRequest() {
-        // Is NOT suitable as a before-action; they are invoked only for valid requests
-        if (head.line().method().equals(TRACE) && !reqThin.body().isEmpty()) {
+    // NOT suitable as a before-action; they are invoked only for valid requests
+    private static void __requireNoBodyInTRACE(SkeletonRequest req) {
+        if (req.head().line().method().equals(TRACE) && !req.body().isEmpty()) {
             throw new IllegalRequestBodyException(
-                    head, reqThin.body(), "Body in a TRACE request.");
-        }
-    }
-    
-    private void tryRespond100Continue() {
-        if (!getHttpVersion().isLessThan(HTTP_1_1) &&
-            head.headers().contains(EXPECT, "100-continue")) {
-            pipe.add(Command.TRY_SCHEDULE_100CONTINUE);
-        }
-    }
-    
-    private void handleReqChainCompletion(Throwable thr) {
-        final int v = cntDown.decrementAndGet();
-        if (thr == null || thr.getCause() == ABORTED) {
-            if (v == 0) {
-                LOG.log(DEBUG, """
-                    Invocation chain finished normally after final response. \
-                    Preparing for a new HTTP exchange.""");
-                prepareForNewExchange();
-            } // else normal finish = do nothing, final response will try to prepare next
-        } else {
-            if (v == 0) {
-                LOG.log(WARNING, """
-                    Request chain returned exceptionally but final response \
-                    was already sent. Will ignore the error and prepare for a \
-                    new HTTP exchange.""", thr);
-                prepareForNewExchange();
-            } else {
-                LOG.log(DEBUG,
-                    "Request chain finished exceptionally, handling the error.");
-                handleError(thr);
-            }
-        }
-    }
-    
-    private void handlePipeWriteSuccess(Response rsp) {
-        if (!rsp.isFinal()) {
-            return;
-        }
-        if (cntDown.decrementAndGet() == 0) {
-            LOG.log(DEBUG,
-                "Response sent is final. Preparing for a new HTTP exchange.");
-            prepareForNewExchange();
-        } else {
-            LOG.log(DEBUG, """
-                Response sent is final but the invocation chain is \
-                still executing. Not preparing for a new exchange.""");
-        }
-    }
-    
-    private void prepareForNewExchange() {
-        // To have a new HTTP exchange, we must first make sure the body is
-        // consumed either normally or through us discarding it. But if the
-        // read stream is not open, well no point in continuing at all. Let the
-        // server close the channel.
-        //    Note: We don't care about the state of the write stream. It may
-        // very well be shut down and so there will be no new exchange, but we
-        // still must not kill an ongoing inbound request. The body will be
-        // discarded only if no subscriber is active. Then after body
-        // completion, will we also complete the active exchange. At that point
-        // the server will close the channel because not everything remained
-        // open.
-        
-        if (!chApi.isOpenForReading()) {
-            LOG.log(DEBUG, "Input stream was shut down. HTTP exchange is over.");
-            result.complete(null);
-            return;
-        }
-        
-        // Super early failure means no new HTTP exchange
-        if (head == null) {
-            // e.g. RequestLineParseException -> 400 (Bad Request)
-            if (LOG.isLoggable(DEBUG)) {
-                if (chApi.isEverythingOpen()) {
-                    LOG.log(DEBUG, """
-                        No request head parsed. Closing child channel. \
-                        (end of HTTP exchange)""");
-                } else {
-                    LOG.log(DEBUG,
-                        "No request head parsed. (end of HTTP exchange)");
-                }
-            }
-            chApi.closeSafe();
-            result.complete(null);
-            return;
-        }
-        
-        final var b = reqThin != null ? reqThin.body() :
-                // E.g. HttpVersionTooOldException -> 426 (Upgrade Required).
-                // So we fall back to a local dummy, just for the API.
-                emptyBody(head.headers());
-        
-        b.discardIfNoSubscriber();
-        b.whenComplete((ign,ored) -> {
-            if (head.headers().contains(CONNECTION, "close") && chApi.isOpenForReading()) {
-                LOG.log(DEBUG, "Request set \"Connection: close\", shutting down input.");
-                chApi.shutdownInputSafe();
-            }
-            // Note
-            //   ResponsePipeline shuts down output on "Connection: close".
-            //   DefaultServer will not start a new exchange if child or any stream thereof is closed.
-            LOG.log(DEBUG, "Normal end of HTTP exchange.");
-            result.complete(null);
-        });
-    }
-    
-    private final SerialExecutor serially = new SerialExecutor(true);
-    
-    private void handleError(Throwable exc) {
-        final Throwable unpacked = unpackCompletionException(exc);
-        if (isTerminatingException(unpacked, chApi)) {
-            result.completeExceptionally(unpacked);
-            return;
-        }
-        
-        if (chApi.isOpenForWriting())  {
-            // We don't expect errors to be arriving concurrently from the same
-            // exchange, this would be kind of weird. But technically, it could
-            // happen, e.g. a synchronous error from the request handler and an
-            // asynchronous error from the response pipeline. That's the only
-            // reason a serial executor is used here. It's either that or the
-            // synchronized keyword. The latter normally being the preferred
-            // choice when the lock is expected to not be contended. However,
-            // the thread is likely the server's request thread, and this guy
-            // must under no circumstances - ever - be blocked.
-            serially.execute(() -> {
-                if (errRes == null) {
-                    errRes = new ErrorResolver();
-                }
-                errRes.resolve(unpacked);
-            });
-        } else {
-            LOG.log(WARNING, () ->
-                "Child channel is closed for writing. " +
-                "Can not resolve this error. " +
-                "HTTP exchange is over.", unpacked);
-            result.completeExceptionally(unpacked);
+                    req.head(), req.body(), "Body in a TRACE request.");
         }
     }
     
     /**
-     * Returns {@code true} if it is meaningless to attempt resolving the
-     * exception and/or logging it would just be noise.<p>
+     * Executes the request processor.<p>
      * 
-     * If this method returns true and need be, then this method will also have
-     * logged a DEBUG message.
+     * The returned response is guaranteed to be in conformance with the state
+     * of the writer: either null because the final response was already
+     * written, or a non-null final response.
      * 
-     * @param thr to examine
-     * @param chan child channel
+     * @param r request (assumed to not be null)
      * @return see JavaDoc
+     * @throws Exception from the request processor
      */
-    private static boolean isTerminatingException(Throwable thr, ClientChannel chan) {
-        if (thr instanceof ClientAbortedException) {
-            LOG.log(DEBUG, "Client aborted the HTTP exchange.");
-            return true;
-        }
-        
-        if (!(thr instanceof IOException io)) {
-            // EndOfStreamException goes to error handler
-            return false;
-        }
-        
-        // Okay we've got an I/O error (!), but is it from our child?
-        if (chan.isEverythingOpen()) {
-            // Nope. AnnounceToChannel closes the stream. Has to be from application code.
-            // (we should probably examine stacktrace or mark our exceptions somehow)
-            return false;
-        }
-        
-        if (thr instanceof InterruptedByTimeoutException) {
-            LOG.log(DEBUG, "Low-level write timed out. Closing channel. (end of HTTP exchange)");
-            chan.closeSafe();
-            return true;
-        }
-        
-        if (thr instanceof AsynchronousCloseException) {
-            // No need to log anything. Outstanding async operation was aborted
-            // because channel closed already. I.e. exchange ended already, and
-            // we assume that the reason for closing and ending the exchange has
-            // already been logged. E.g. timeout exceptions will cause this.
-            return true;
-        }
-        
-        if (isCausedByBrokenInputStream(io) || isCausedByBrokenOutputStream(io)) {
-            LOG.log(DEBUG, "Broken pipe, closing channel. (end of HTTP exchange)");
-            chan.closeSafe();
-            return true;
-        }
-        
-        // IOExc from our child, yes, but it can not be deduced as abruptly
-        // terminating and so we'd rather pass it to the error handler (maybe)
-        // or log it.
-        //    For ex., if app write a response on a closed channel
-        // (ClosedChannelException), it will not pass to an error handler but it
-        // will be logged and thereafter end the HTTP exchange (also see JavaDoc
-        // of ClientChannel.write() and test case
-        // ClientLifeCycleTest.serverClosesChannel_beforeResponse().
-        return false;
-    }
-    
-    private class ErrorResolver {
-        private Throwable prev;
-        private int attemptCount;
-        
-        void resolve(Throwable t) {
-            // Unlike Java's try-with-resources which propagates the block error
-            // and suppresses the subsequent close error - for synchronous
-            // errors/recursive calls, our "propagation" is an attempt of
-            // resolving the new, more recent error, having suppressed the old.
-            if (prev != null) {
-                assert prev != t;
-                t.addSuppressed(prev);
-            }
-            prev = t;
-            try {
-                resolve0(t);
-            } finally {
-                // New synchronous errors are immediately and recursively
-                // resolved. A return from resolve0() means that the error is
-                // now considered handled.
-                prev = null;
-            }
-        }
-        
-        private void resolve0(Throwable t) {
-            if (handlers.isEmpty()) {
-                usingDefault(t);
-                return;
-            }
-            
-            if (++attemptCount > config.maxErrorRecoveryAttempts()) {
-                LOG.log(ERROR,
-                    "Error recovery attempts depleted, will close the channel. " +
-                    "This error is ignored.", t);
-                chApi.closeSafe();
-                return;
-            }
-            
-            LOG.log(DEBUG, () -> "Attempting error recovery #" + attemptCount);
-            usingHandlers(t);
-        }
-        
-        private void usingDefault(Throwable t) {
-            try {
-                DEFAULT.apply(t, chApi, reqFat);
-            } catch (Throwable next) {
-                next.addSuppressed(t);
-                unexpected(next);
-            }
-        }
-        
-        private void usingHandlers(Throwable t) {
-            for (ErrorHandler h : handlers) {
-                try {
-                    h.apply(t, chApi, reqFat);
-                    return;
-                } catch (Throwable next) {
-                    if (t != next) {
-                        LOG.log(DEBUG, """
-                            Application error handler returned exceptionally. \
-                            Handling new error.""");
-                        HttpExchange.this.handleError(next);
-                        return;
-                    } // else continue; Handler opted out
+    private Response processRequest(SkeletonRequest r) throws Exception {
+        return where(REQUEST, of(r), () -> {
+            // Potentially send 100 (Continue)...
+            if (!r.httpVersion().isLessThan(HTTP_1_1) &&
+                 r.head().headers().contains(EXPECT, "100-continue"))
+            {
+                if (conf.immediatelyContinueExpect100()) {
+                    // ...right away
+                    writer.write(continue_());
+                } else {
+                    // ...or when app requests the body
+                    r.body().onConsumption(() -> {
+                        if (!writer.wroteFinal()) {
+                            writer.write(continue_());
+                        }
+                    });
                 }
             }
-            // All handlers opted out
-            usingDefault(t);
+            var rsp = reqProc.execute(r);
+            return __requireWriterConformance(rsp, "Request");
+        });
+    }
+    
+    private void __tryRespond100Continue(SkeletonRequest req)
+            throws IOException {
+        if (!req.httpVersion().isLessThan(HTTP_1_1) &&
+            req.head().headers().contains(EXPECT, "100-continue")) {
+            writer.write(continue_());
         }
     }
     
-    private static Throwable unpackCompletionException(Throwable t) {
-        requireNonNull(t);
-        if (!(t instanceof CompletionException)) {
-            return t;
+    private Response __requireWriterConformance(Response rsp, String entity) {
+        if (rsp == null) {
+            if (!writer.wroteFinal()) {
+                throw new NullPointerException(entity +
+                    " processing returned null without writing a final response");
+            }
+        } else if (!rsp.isFinal()) {
+            throw new IllegalArgumentException(entity +
+                " processing returned a non-final response");
+        } else if (writer.wroteFinal()) {
+            throw new IllegalArgumentException(entity +
+                " processing both wrote and returned a final response");
         }
-        return t.getCause() == null ? t : unpackCompletionException(t.getCause());
+        return rsp;
+    }
+    
+    /**
+     * Executes the error handler chain.<p>
+     * 
+     * As is the case with {@link #processRequest(SkeletonRequest)}, this method
+     * also guarantees that the returned response is in conformance with the
+     * state of the writer.<p>
+     * 
+     * If the exception can not be processed, it is re-thrown. If an error
+     * handler throws an exception, it will be suppressed in favor of
+     * propagating the given exception (just like Java's try-with-resources).<p>
+     * 
+     * Before throwing an exception, this method will ensure that the channel is
+     * either in a half-closed state or fully closed. This is merely to signal
+     * the enclosing server that it should not begin a new HTTP exchange.<p>
+     * 
+     * Before any exception leaves this method, it will first be logged.<p>
+     * 
+     * This method is the "end station"; either we can produce a response or
+     * it'll be the end of this exchange.<p>
+     * 
+     * @param e exception to handle
+     * @param req the request (okay to be null)
+     * 
+     * @return the response produced by the error handler chain
+     * 
+     * @throws Exception see JavaDoc
+     */
+    private Response handleException(
+            Exception e, SkeletonRequest req) throws Exception
+    {
+        if (e instanceof InterruptedException) {
+            // There's no spurious interruption
+            LOG.log(WARNING, "Exchange is over; thread interrupted", e);
+            channel.close();
+            throw e;
+        }
+        if (e instanceof AfterActionException) {
+            // TODO: DRY
+            LOG.log(ERROR, "Breach of developer contract", e);
+            channel.close();
+            throw e;
+        }
+        if (writer.byteCount() > 0) {
+            LOG.log(ERROR,
+                "Response bytes already sent, can not handle this error", e);
+            channel.close();
+            throw e;
+        }
+        if (!channel.isOutputOpen()) {
+            LOG.log(ERROR,
+                "Output stream is not open, can not handle this error", e);
+            throw e;
+        }
+        LOG.log(DEBUG, () -> "Attempting to resolve " + e);
+        return __resolve(e, req);
+    }
+    
+    Response __resolve(Exception e, SkeletonRequest req) throws Exception {
+        try {
+            if (handlers.isEmpty()) {
+                return BASE.apply(e, null, null);
+            }
+            var rsp = where(REQUEST, of(req), () -> __usingHandlers(e));
+            return __requireWriterConformance(rsp, "Error");
+        } catch (Exception suppressed) {
+            channel.close();
+            e.addSuppressed(suppressed);
+            LOG.log(ERROR, "Error processing chain failed to handle this", e);
+            throw e;
+        }
+    }
+    
+    private Response __usingHandlers(Exception e) {
+        class ChainImpl extends AbstractChain<ErrorHandler> {
+            ChainImpl() { super(handlers); }
+            
+            @Override
+            Response callIntermittentHandler(
+                    ErrorHandler eh, Chain passMeThrough) {
+                var req = request()
+                        .map(r -> requestWithoutParams(reader, r))
+                        .orElse(null);
+                return eh.apply(e, unchecked(passMeThrough), req);
+            }
+            
+            @Override
+            Response callFinalHandler() {
+                return BASE.apply(e, null, null);
+            }
+        }
+        try {
+            // Throws Exception but our method signature does not
+            return new ChainImpl().ignite();
+        } catch (Exception trouble) {
+            if (trouble instanceof ErrorHandlerException couldHappen) {
+                LOG.log(ERROR, "Breach of developer contract", couldHappen);
+                channel.close();
+                throw couldHappen;
+            }
+            throw new AssertionError(trouble);
+        }
+    }
+    
+    /**
+     * Try to discard remaining message data in the channel.<p>
+     * 
+     * If discarding is not possible, the channel will be closed.
+     * 
+     * @param r the request
+     */
+    private void tryToDiscardNonEmptyRequest(SkeletonRequest r)
+            throws IOException
+    {
+        // TODO: For HTTP/2, we may need another strategy here
+        if (r.head().headers().isChunked()) {
+            // Trailers may of course not even be there,
+            // thank you, RFC, for telling clients they "should" add the Trailer header
+            __justClose("Successful discard of trailers is not guaranteed");
+            return;
+        }
+        final long len = r.body().length();
+        if (len == 0) {
+            return;
+        }
+        if (len == -1) {
+            __justClose("Unknown length of request data is remaining");
+        } else if (len >= 666) {
+            __justClose("A satanic volume of request data is remaining");
+        } else {
+            LOG.log(DEBUG, "Discarding remaining data before new exchange");
+            try {
+                r.body().iterator().forEachRemaining(buf ->
+                        buf.position(buf.limit()));
+            } catch (IOException e) {
+                LOG.log(WARNING, "I/O error while discarding request body", e);
+                throw e;
+            }
+            assert r.body().isEmpty();
+        }
+    }
+    
+    private void __justClose(String whyIsThat) {
+        LOG.log(DEBUG, () -> whyIsThat + ", closing channel");
+        channel.close();
     }
 }

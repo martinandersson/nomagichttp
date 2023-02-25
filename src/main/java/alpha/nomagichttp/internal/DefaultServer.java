@@ -10,34 +10,35 @@ import alpha.nomagichttp.event.HttpServerStarted;
 import alpha.nomagichttp.event.HttpServerStopped;
 import alpha.nomagichttp.handler.ErrorHandler;
 import alpha.nomagichttp.route.Route;
-import jdk.incubator.concurrent.ScopedValue;
 import jdk.incubator.concurrent.StructuredTaskScope;
 
 import java.io.IOException;
+import java.net.InetSocketAddress;
 import java.net.SocketAddress;
+import java.net.UnixDomainSocketAddress;
 import java.nio.channels.ClosedChannelException;
 import java.nio.channels.ServerSocketChannel;
-import java.nio.channels.ShutdownChannelGroupException;
 import java.nio.channels.SocketChannel;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
 import java.util.concurrent.TimeoutException;
+import java.util.function.IntConsumer;
 
-import static alpha.nomagichttp.util.ScopedValues.__CLIENT_CHANNEL;
+import static alpha.nomagichttp.util.ScopedValues.__CHANNEL;
 import static alpha.nomagichttp.util.ScopedValues.__HTTP_SERVER;
 import static java.lang.System.Logger.Level.DEBUG;
+import static java.lang.System.Logger.Level.ERROR;
 import static java.lang.System.Logger.Level.INFO;
+import static java.net.InetAddress.getLoopbackAddress;
+import static java.net.StandardProtocolFamily.UNIX;
+import static java.nio.channels.ServerSocketChannel.open;
 import static java.time.Instant.now;
 import static java.util.Objects.requireNonNull;
+import static jdk.incubator.concurrent.ScopedValue.where;
 
 /**
- * A fully JDK-based {@code HttpServer} implementation.
- * 
- * The server code use no native calls (explicitly), it does not use selector
- * threads (event polling) or any other type of blocking techniques. All put
- * together translates to maximum performance across all operating systems that
- * runs Java.
+ * A fully JDK-based {@code HttpServer} implementation using virtual threads.
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  */
@@ -51,8 +52,8 @@ public final class DefaultServer implements HttpServer
     private final DefaultRouteRegistry routes;
     private final List<ErrorHandler> eh;
     private final EventHub events;
-    // Would prefer ServerSocket,
-    //     using Channel for direct transfer operations and bytebuffers
+    // Would prefer ServerSocket > Socket > Input/OutputStream,
+    //     using channel for direct transfer operations and bytebuffers
     private final Confined<ServerSocketChannel> parent;
     private       Instant started;
     // Memory consistency not specified between
@@ -71,18 +72,32 @@ public final class DefaultServer implements HttpServer
         this.routes  = new DefaultRouteRegistry(this);
         this.eh      = List.of(eh);
         this.events  = new DefaultEventHub(
-            () -> !__HTTP_SERVER.isBound(),
-             r -> ScopedValue.where(__HTTP_SERVER, this).run(r));
+                () -> !__HTTP_SERVER.isBound(),
+                r -> where(__HTTP_SERVER, this).run(r));
         this.parent  = new Confined<>();
         this.started = null;
         this.waitForChildren = null;
     }
     
     @Override
-    public Void start(SocketAddress address) throws IOException, InterruptedException {
-        requireNonNull(address);
+    public Void start(IntConsumer ofPort)
+            throws IOException, InterruptedException {
+        var address = new InetSocketAddress(getLoopbackAddress(), 0);
+        return start0(address, requireNonNull(ofPort));
+    }
+    
+    @Override
+    public Void start(SocketAddress address)
+            throws IOException, InterruptedException {
+        return start0(requireNonNull(address), null);
+    }
+    
+    private Void start0(SocketAddress address, IntConsumer ofPort)
+            throws IOException, InterruptedException
+    {
         var parent = this.parent.initThrowsX(() -> {
-            var p = ServerSocketChannel.open();
+            var p = address instanceof UnixDomainSocketAddress ?
+                        open(UNIX) : open();
             assert p.isBlocking();
             p.bind(address);
             return p;
@@ -94,6 +109,9 @@ public final class DefaultServer implements HttpServer
             started = now();
             LOG.log(INFO, () -> "Opened server channel: " + parent);
             events().dispatch(HttpServerStarted.INSTANCE, started);
+            if (ofPort != null) {
+                ofPort.accept(getPort());
+            }
             runAcceptLoop(parent);
         } finally {
             // Can not stop() as this could override app's waitForChildren
@@ -102,10 +120,12 @@ public final class DefaultServer implements HttpServer
         throw new InternalError("Returns exceptionally");
     }
     
-    private void runAcceptLoop(ServerSocketChannel parent) throws IOException, InterruptedException {
+    private void runAcceptLoop(ServerSocketChannel parent)
+            throws IOException, InterruptedException
+    {
         try {
-            ScopedValue.where(__HTTP_SERVER, this)
-                       .call(() -> runAcceptLoop0(parent));
+            where(__HTTP_SERVER, this).call(
+                () -> runAcceptLoop0(parent));
         } catch (Exception e) {
             switch (e) {
                 case IOException t -> throw t;
@@ -121,11 +141,24 @@ public final class DefaultServer implements HttpServer
     {
         try (var scope = new StructuredTaskScope<>()) {
             try {
+                // Cannot complete without throwing an exception
                 for (;;) {
-                    var channel = parent.accept();
-                    assert channel.isBlocking();
-                    LOG.log(DEBUG, () -> "Accepted child: " + channel);
-                    scope.fork(() -> handleChild(channel));
+                    var child = parent.accept();
+                    // Reader and writer depend on this for correct behavior
+                    assert child.isBlocking();
+                    LOG.log(DEBUG, () -> "Accepted child: " + child);
+                    scope.fork(() -> {
+                        try {
+                            handleChild(child);
+                        } catch (Throwable t) {
+                            if (!(t instanceof Exception)) { // Throwable or Error
+                                // Virtual threads do not log anything, we're more kind
+                                LOG.log(ERROR, "Unexpected", t);
+                            }
+                            throw t;
+                        }
+                        return null;
+                    });
                 }
             } finally {
                 // Must signal children we're closing down
@@ -136,18 +169,25 @@ public final class DefaultServer implements HttpServer
         }
     }
     
-    private static Void handleChild(SocketChannel ch) throws IOException {
+    private void handleChild(SocketChannel ch) throws IOException {
         try (ch) {
-            ScopedValue.where(__CLIENT_CHANNEL, ch, () -> {
-                try {
-                    executeBlockingHttpExchange
-                } catch (Throwable t) {
-                    callErrorHandlers
+            var api = new DefaultClientChannel(ch);
+            var r = new ChannelReader(ch);
+            for (;;) {
+                var w = new DefaultChannelWriter(ch, actions, r);
+                api.use(w);
+                var exch = new HttpExchange(
+                        this, actions, routes, eh, api, r, w);
+                where(__CHANNEL, api, exch::begin);
+                r.dismiss();
+                w.dismiss();
+                if (api.isInputOpen() && api.isOutputOpen()) {
+                    r = r.newReader();
+                } else {
+                    break;
                 }
-            });
+            }
         }
-        throw new InternalError(
-                "Returns exceptionally? Not if connection is not persistent?");
     }
     
     /** Shutdown then join, or joinUntil then shutdown. */
@@ -239,12 +279,14 @@ public final class DefaultServer implements HttpServer
     }
     
     @Override
-    public HttpServer before(String pattern, BeforeAction first, BeforeAction... more) {
+    public HttpServer before(
+            String pattern, BeforeAction first, BeforeAction... more) {
         return actions.before(pattern, first, more);
     }
     
     @Override
-    public HttpServer after(String pattern, AfterAction first, AfterAction... more) {
+    public HttpServer after(
+            String pattern, AfterAction first, AfterAction... more) {
         return actions.after(pattern, first, more);
     }
     
@@ -277,28 +319,5 @@ public final class DefaultServer implements HttpServer
     
     private static IllegalStateException notRunning() {
         return new IllegalStateException("Server is not running");
-    }
-    
-    /**
-     * Returns {@code true} if the channel operation failed because the channel
-     * or the group to which the channel belongs, was closed - otherwise {@code
-     * false}.<p>
-     * 
-     * For a long time, these errors were observed only on failed accept and
-     * read/write initiating operations. Only once on MacOS, however, was a
-     * {@code ShutdownChannelGroupException} also observed on a child channel
-     * {@code close()}.
-     * 
-     * @param t throwable to test
-     * 
-     * @return see JavaDoc
-     * 
-     * @deprecated don't think we need this crap any more
-     */
-    @Deprecated
-    static boolean becauseChannelOrGroupClosed(Throwable t) {
-        return t instanceof ClosedChannelException || // note: AsynchronousCloseException extends ClosedChannelException
-               t instanceof ShutdownChannelGroupException ||
-               t instanceof IOException && t.getCause() instanceof ShutdownChannelGroupException;
     }
 }

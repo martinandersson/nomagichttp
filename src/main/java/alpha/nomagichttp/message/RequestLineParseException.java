@@ -5,7 +5,7 @@ import alpha.nomagichttp.handler.ErrorHandler;
 /**
  * Parsing a request-line from a request head failed.<p>
  * 
- * The {@linkplain ErrorHandler#DEFAULT default error handler} translates this
+ * The {@linkplain ErrorHandler#BASE base error handler} translates this
  * exception to a {@link Responses#badRequest() 400 (Bad Request)}.
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)

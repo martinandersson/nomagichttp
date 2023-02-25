@@ -1,306 +1,52 @@
 package alpha.nomagichttp.internal;
 
-import alpha.nomagichttp.HttpServer;
+import alpha.nomagichttp.ChannelWriter;
 import alpha.nomagichttp.handler.ClientChannel;
 import alpha.nomagichttp.message.Attributes;
 import alpha.nomagichttp.message.Response;
+import alpha.nomagichttp.util.Throwing;
 
 import java.io.IOException;
-import java.net.SocketAddress;
-import java.net.SocketOption;
-import java.nio.channels.AsynchronousSocketChannel;
-import java.nio.channels.ClosedChannelException;
-import java.nio.channels.NetworkChannel;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Set;
-import java.util.concurrent.CompletionStage;
+import java.nio.channels.SocketChannel;
 
-import static alpha.nomagichttp.internal.DefaultServer.becauseChannelOrGroupClosed;
-import static java.lang.System.Logger.Level.DEBUG;
-import static java.lang.System.Logger.Level.ERROR;
 import static java.lang.System.Logger.Level.WARNING;
-import static java.util.Objects.requireNonNull;
-import static java.util.concurrent.TimeUnit.SECONDS;
 
+/**
+ * Default implementation of {@code ClientChannel}.<p>
+ * 
+ * Implements shutdown/close methods and delegates the writer-api to
+ * {@link ChannelWriter}.
+ * 
+ * @author Martin Andersson (webmaster at martinandersson.com)
+ */
 final class DefaultClientChannel implements ClientChannel
 {
     private static final System.Logger LOG
             = System.getLogger(DefaultClientChannel.class.getPackageName());
     
-    private final AsynchronousSocketChannel child;
-    private final HttpServer server;
-    private final List<Runnable> onClose;
+    private final SocketChannel child;
     private final Attributes attr;
-    private volatile ResponsePipeline pipe;
-    
-    private volatile boolean readShutdown,
-                            writeShutdown;
+    private ChannelWriter writer;
+    private boolean inputClosed,
+                    outputClosed;
     
     /**
-     * Constructs a {@code DefaultClientChannel}.<p>
-     * 
-     * The channel can not be used for writing responses before this instance
-     * has been {@link #usePipeline(ResponsePipeline) initialized}.
+     * Constructs this object.
      * 
      * @param child channel
-     * @param server parent
-     * 
-     * @throws NullPointerException if any argument is {@code null}
      */
-    DefaultClientChannel(AsynchronousSocketChannel child, HttpServer server) {
-        this.child   = requireNonNull(child);
-        this.server  = requireNonNull(server);
-        this.onClose = new ArrayList<>(1);
-        this.attr    = new DefaultAttributes();
-        this.pipe    = null;
-        readShutdown = writeShutdown = false;
+    DefaultClientChannel(SocketChannel child) {
+        this.child = child;
+        this.attr  = new DefaultAttributes();
     }
     
     /**
-     * Schedule a callback to run on channel close.<p>
+     * Sets or replaces the backing writer.
      * 
-     * This operation is not thread-safe with no memory fencing. Should only be
-     * called before the first HTTP exchange begins. The callback may be invoked
-     * concurrently, even multiple times. The callback is only called if the
-     * channel is closed through the API exposed by this class.
-     * 
-     * @param callback on channel close
-     * @throws NullPointerException if {@code callback} is {@code null}
+     * @param writer to be used as backing write implementation
      */
-    void onClose(Runnable callback) {
-        onClose.add(requireNonNull(callback));
-        if (!child.isOpen()) {
-            callback.run();
-        }
-    }
-    
-    /**
-     * Initialize this channel with a pipeline or replace an old.<p>
-     * 
-     * This operation will enable the response-writing API of the interface.
-     * Until then, only the channel state-management API is useful.<p>
-     * 
-     * The write is volatile. For two reasons. 1) any thread enqueuing responses
-     * must use the "latest" pipe (the channel instance's scope outlives the
-     * HTTP exchange), and 2) {@link ResponsePipeline} can now safely be a
-     * {@link AbstractLocalEventEmitter}, given that the listeners subscriber before
-     * this method is called (before first emission takes place).
-     * 
-     * @param pipe response pipeline
-     */
-    void usePipeline(ResponsePipeline pipe) {
-        this.pipe = pipe;
-    }
-    
-    @Override
-    public void write(Response resp) {
-        write(resp.completedStage());
-    }
-    
-    @Override
-    public void write(CompletionStage<Response> response) {
-        pipe.add(response);
-    }
-    
-    @Override
-    public void writeFirst(Response response) {
-        writeFirst(response.completedStage());
-    }
-    
-    @Override
-    public void writeFirst(CompletionStage<Response> response) {
-        pipe.addFirst(response);
-    }
-    
-    @Override
-    public boolean isOpenForReading() {
-        if (!readShutdown) {
-            // We think reading is open but doesn't hurt probing a little bit more:
-            return child.isOpen();
-        }
-        return false;
-    }
-    
-    @Override
-    public boolean isOpenForWriting() {
-        if (!writeShutdown) {
-            return child.isOpen();
-        }
-        return false;
-    }
-    
-    boolean isAnythingOpen() {
-        return !readShutdown || !writeShutdown || child.isOpen();
-    }
-    
-    @Override
-    public boolean isEverythingOpen() {
-        return !readShutdown && !writeShutdown && child.isOpen();
-    }
-    
-    @Override
-    public void shutdownInput() throws IOException {
-        if (readShutdown) {
-            return;
-        }
-        
-        try {
-            shutdownInputImpl();
-        } catch (ClosedChannelException e) {
-            readShutdown = true;
-            return;
-        } catch (IOException t) {
-            LOG.log(ERROR, "Failed to shutdown child channel's input stream.", t);
-        }
-        
-        if (writeShutdown) {
-            close();
-        }
-    }
-    
-    @Override
-    public void shutdownInputSafe() {
-        try {
-            shutdownInput();
-        } catch (IOException e) {
-            LOG.log(ERROR, () -> "Failed to close child: " + child, e);
-        }
-    }
-    
-    private void shutdownInputImpl() throws IOException {
-        child.shutdownInput();
-        readShutdown = true;
-        LOG.log(DEBUG, () -> "Shutdown input stream of child: " + child);
-    }
-    
-    @Override
-    public void shutdownOutput() throws IOException {
-        if (writeShutdown) {
-            return;
-        }
-        
-        try {
-            shutdownOutputImpl();
-        } catch (ClosedChannelException e) {
-            writeShutdown = true;
-            return;
-        } catch (IOException t) {
-            LOG.log(ERROR, "Failed to shutdown child channel's output stream.", t);
-        }
-        
-        if (readShutdown) {
-            close();
-        }
-    }
-    
-    @Override
-    public void shutdownOutputSafe() {
-        try {
-            shutdownOutput();
-        } catch (IOException e) {
-            LOG.log(ERROR, () -> "Failed to close child: " + child, e);
-        }
-    }
-    
-    private void shutdownOutputImpl() throws IOException {
-        child.shutdownOutput();
-        writeShutdown = true;
-        LOG.log(DEBUG, () -> "Shutdown output stream of child: " + child);
-    }
-    
-    @Override
-    public void close() throws IOException {
-        if (!child.isOpen()) {
-            return;
-        }
-        
-        // https://stackoverflow.com/a/20749656/1268003
-        try {
-            if (!readShutdown) {
-                shutdownInputImpl();
-            }
-        } catch (IOException t) {
-            LOG.log(DEBUG, "Failed to shutdown child channel's input stream.", t);
-        }
-        
-        try {
-            if (!writeShutdown) {
-                shutdownOutputImpl();
-            }
-        } catch (IOException t) {
-            LOG.log(DEBUG, "Failed to shutdown child channel's output stream.", t);
-        }
-        
-        child.close();
-        LOG.log(DEBUG, () -> "Closed child: " + child);
-        onClose.forEach(Runnable::run);
-    }
-    
-    @Override
-    public void closeSafe() {
-        try {
-            close();
-        } catch (IOException e) {
-            LOG.log(DEBUG, () -> "Failed to close child: " + child, e);
-        } catch (Throwable t) {
-            // TODO: Only one third of the tests inside this method applies,
-            //       because we catched IOException already. Consider merging
-            //       these two clauses.
-            if (becauseChannelOrGroupClosed(t)) {
-                LOG.log(DEBUG, () -> "Child already closed: " + child, t);
-            } else {
-                throw t;
-            }
-        } 
-    }
-    
-    /**
-     * Schedule a close of the channel in 5 seconds.
-     * 
-     * @param whatHappened prefixed to logged warning message on close
-     */
-    public void scheduleClose(String whatHappened) {
-        Timeout.schedule(SECONDS.toNanos(5), () -> {
-            if (isAnythingOpen()) {
-                LOG.log(WARNING, () -> whatHappened +
-                    ", but after 5 seconds more the channel is still not fully closed. Closing child.");
-                closeSafe();
-            }
-        });
-    }
-    
-    private NetworkChannel proxy;
-    
-    @Override
-    public NetworkChannel getDelegate() {
-        NetworkChannel p = proxy;
-        if (p == null) {
-            proxy = p = new ProxiedNetworkChannel(child);
-        }
-        return p;
-    }
-    
-    /**
-     * Returns the raw delegate, not wrapped in a proxy.<p>
-     *
-     * The purpose of the proxy is to capture close-calls, so that we can make
-     * safe assumptions about the channel state as well as to run
-     * server-side close-callbacks for resource cleanup.<p>
-     *
-     * This method may be used when the interface {@code NetworkChannel} is not
-     * sufficient or as a performance optimization but only if the close method
-     * is not invoked on the returned reference.
-     *
-     * @return non-proxied delegate
-     */
-    AsynchronousSocketChannel getDelegateNoProxy() {
-        return child;
-    }
-    
-    @Override
-    public HttpServer getServer() {
-        return server;
+    void use(ChannelWriter writer) {
+        this.writer = writer;
     }
     
     @Override
@@ -308,47 +54,82 @@ final class DefaultClientChannel implements ClientChannel
         return attr;
     }
     
-    private final class ProxiedNetworkChannel implements NetworkChannel
-    {
-        private final AsynchronousSocketChannel d;
-        
-        ProxiedNetworkChannel(AsynchronousSocketChannel d) {
-            this.d = d;
+    // SHUTDOWN/CLOSE
+    // --------------
+    
+    @Override
+    public boolean isInputOpen() {
+        return !inputClosed;
+    }
+    
+    @Override
+    public boolean isOutputOpen() {
+        return !outputClosed;
+    }
+    
+    @Override
+    public void shutdownOutput() {
+        if (outputClosed) {
+            return;
         }
-        
-        @Override
-        public NetworkChannel bind(SocketAddress local) throws IOException {
-            return d.bind(local);
+        try {
+            runSafe(child::shutdownOutput, "shutdownOutput");
+        } finally {
+            if (inputClosed) {
+                close();
+            }
+            outputClosed = true;
         }
-        
-        @Override
-        public SocketAddress getLocalAddress() throws IOException {
-            return d.getLocalAddress();
+    }
+    
+    @Override
+    public void shutdownInput() {
+        if (inputClosed) {
+            return;
         }
-        
-        @Override
-        public <T> NetworkChannel setOption(SocketOption<T> name, T value) throws IOException {
-            return d.setOption(name, value);
+        try {
+            runSafe(child::shutdownInput, "shutdownInput");
+        } finally {
+            if (outputClosed) {
+                close();
+            }
+            inputClosed = true;
         }
-        
-        @Override
-        public <T> T getOption(SocketOption<T> name) throws IOException {
-            return d.getOption(name);
+    }
+    
+    @Override
+    public void close() {
+        if (inputClosed && outputClosed) {
+            return;
         }
-        
-        @Override
-        public Set<SocketOption<?>> supportedOptions() {
-            return d.supportedOptions();
+        inputClosed = outputClosed = true;
+        runSafe(child::close, "close");
+    }
+    
+    private void runSafe(Throwing.Runnable<IOException> r, String method) {
+        try {
+            r.run();
+        } catch (IOException e) {
+            LOG.log(WARNING, () ->
+                    "Not propagating this exception; the " +
+                    method + " method call is considered successful.", e);
         }
-        
-        @Override
-        public boolean isOpen() {
-            return d.isOpen();
-        }
-        
-        @Override
-        public void close() throws IOException {
-            DefaultClientChannel.this.close();
-        }
+    }
+    
+    // WRITER
+    // ------
+    
+    @Override
+    public long write(Response response) throws IOException {
+        return writer.write(response);
+    }
+    @Override
+    public boolean wroteFinal() {
+        return writer.wroteFinal();
+    }
+    
+    @Override
+    public long byteCount() {
+        return writer.byteCount();
     }
 }

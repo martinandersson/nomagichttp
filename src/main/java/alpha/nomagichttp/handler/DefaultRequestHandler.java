@@ -3,14 +3,15 @@ package alpha.nomagichttp.handler;
 import alpha.nomagichttp.message.MediaRange;
 import alpha.nomagichttp.message.MediaType;
 import alpha.nomagichttp.message.Request;
+import alpha.nomagichttp.message.Response;
+import alpha.nomagichttp.util.Throwing;
 
 import java.util.Objects;
 import java.util.StringJoiner;
-import java.util.function.BiConsumer;
 
-import static alpha.nomagichttp.message.MediaType.__ALL;
-import static alpha.nomagichttp.message.MediaType.__NOTHING;
-import static alpha.nomagichttp.message.MediaType.__NOTHING_AND_ALL;
+import static alpha.nomagichttp.message.MediaType.ALL;
+import static alpha.nomagichttp.message.MediaType.NOTHING;
+import static alpha.nomagichttp.message.MediaType.NOTHING_AND_ALL;
 import static java.text.MessageFormat.format;
 import static java.util.Objects.requireNonNull;
 
@@ -25,21 +26,20 @@ final class DefaultRequestHandler implements RequestHandler
 {
     private final String m;
     private final MediaType c, p;
-    private final Logic l;
+    private final Throwing.Function<Request, Response, ? extends Exception> l;
     private final int h;
     
     DefaultRequestHandler(
             String method,
             MediaType consumes,
             MediaType produces,
-            Logic logic)
+            Throwing.Function<Request, Response, ? extends Exception> logic)
     {
         m = requireNonNull(method);
         c = consumes;
         p = produces;
         l = requireNonNull(logic);
         h = Objects.hash(method, consumes, produces);
-        
         if (c != null) {
             validateConsumes(c);
         }
@@ -64,8 +64,8 @@ final class DefaultRequestHandler implements RequestHandler
     }
     
     @Override
-    public Logic logic() {
-        return l;
+    public Response apply(Request request) throws Exception {
+        return l.apply(request);
     }
     
     @Override
@@ -78,17 +78,13 @@ final class DefaultRequestHandler implements RequestHandler
         if (this == obj) {
             return true;
         }
-        
         if (obj == null) {
             return false;
         }
-        
         if (DefaultRequestHandler.class != obj.getClass()) {
             return false;
         }
-        
         DefaultRequestHandler other = (DefaultRequestHandler) obj;
-        
         return this.m.equals(other.m) &&
                this.consumes().equals(other.consumes()) &&
                this.produces().equals(other.produces());
@@ -101,8 +97,8 @@ final class DefaultRequestHandler implements RequestHandler
                 .add("consumes=\"" + consumes() + "\"")
                 .add("produces=\"" + produces() + "\"")
                 .add("logic=?");
-        
-        return DefaultRequestHandler.class.getSimpleName() + '{' + contents + '}';
+        return DefaultRequestHandler.class.getSimpleName() +
+                '{' + contents + '}';
     }
     
     private static void validateConsumes(MediaType c) {
@@ -111,8 +107,8 @@ final class DefaultRequestHandler implements RequestHandler
     
     private static void validateProduces(MediaType p) {
         requireQualityOne(p);
-        requireNotSame(p, __NOTHING);
-        requireNotSame(p, __NOTHING_AND_ALL);
+        requireNotSame(p, NOTHING);
+        requireNotSame(p, NOTHING_AND_ALL);
     }
     
     private static void requireQualityOne(MediaType type) {
@@ -126,30 +122,27 @@ final class DefaultRequestHandler implements RequestHandler
         if (produces == invalid) {
             throw new IllegalArgumentException(format(
                     "Handler's producing media type must not be \"{0}\". Maybe try \"{1}\"?",
-                    invalid, __ALL));
+                    invalid, ALL));
         }
     }
     
     /**
-     * Default implementation of {@link RequestHandler.Builder}.
+     * Default implementation of {@code RequestHandler.Builder}.
      * 
      * @author Martin Andersson (webmaster at martinandersson.com)
      */
     static class Builder implements RequestHandler.Builder {
         private final String m;
         private MediaType c, p;
-        private BiConsumer<Request, ClientChannel> l;
         
         Builder(String method) {
             if (method.isEmpty()) {
                 throw new IllegalArgumentException("Empty method.");
             }
-            
             if (method.chars().anyMatch(Character::isWhitespace)) {
                 throw new IllegalArgumentException(
                         "Whitespace in method \"" + method + "\".");
             }
-            
             m = method;
         }
         
@@ -166,8 +159,9 @@ final class DefaultRequestHandler implements RequestHandler
         }
         
         @Override
-        public RequestHandler accept(Logic l) {
-            return new DefaultRequestHandler(m, c, p, l);
+        public RequestHandler apply(
+                Throwing.Function<Request, Response, ? extends Exception> logic) {
+            return new DefaultRequestHandler(m, c, p, logic);
         }
     }
 }

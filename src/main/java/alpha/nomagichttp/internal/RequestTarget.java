@@ -14,22 +14,31 @@ import static alpha.nomagichttp.internal.Segments.COLON_CH;
 import static java.util.Collections.unmodifiableMap;
 
 /**
- * Default implementation of {@link Request.Target}.<p>
+ * Default implementation of {@code Request.Target}.<p>
  * 
- * This class is mostly a facade for {@link SkeletonRequestTarget}. This class
- * adds missing path parameters and are therefore dependent on the declared
- * segments/pattern of the target server resource.
+ * This class gets most if its data from {@link SkeletonRequestTarget}. What
+ * this class may add is path parameters, which are mapped from the resource's
+ * segments/pattern.
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  */
 final class RequestTarget implements Request.Target
 {
+    static RequestTarget requestTargetWithParams(
+            SkeletonRequestTarget rt, Iterable<String> resourceSegments) {
+        return new RequestTarget(rt, resourceSegments);
+    }
+    
+    static RequestTarget requestTargetWithoutParams(
+            SkeletonRequestTarget rt) {
+        return new RequestTarget(rt, null);
+    }
+    
     private final SkeletonRequestTarget rt;
     private final Iterable<String> resourceSegments;
     
-    RequestTarget(SkeletonRequestTarget rt, Iterable<String> resourceSegments) {
-        assert rt != null;
-        assert resourceSegments != null;
+    private RequestTarget(
+            SkeletonRequestTarget rt, Iterable<String> resourceSegments) {
         this.rt = rt;
         this.resourceSegments = resourceSegments;
     }
@@ -72,6 +81,10 @@ final class RequestTarget implements Request.Target
     private PathParams params;
     
     private PathParams params() {
+        if (resourceSegments == null) {
+            throw new UnsupportedOperationException(
+                    "Path parameters are not available");
+        }
         var p = params;
         return p != null ? p : (params = new PathParams());
     }

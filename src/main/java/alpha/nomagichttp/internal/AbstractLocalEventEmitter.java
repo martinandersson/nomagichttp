@@ -34,7 +34,6 @@ import java.util.function.Consumer;
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  */
-// TODO: Throw exc if someone attempts to off!? This is a write!
 abstract class AbstractLocalEventEmitter extends AbstractEventEmitter {
     AbstractLocalEventEmitter() {
         super(new HashMap<>(), HashSet::new);

@@ -1,131 +1,141 @@
 package alpha.nomagichttp.internal;
 
-import alpha.nomagichttp.handler.ClientChannel;
-import alpha.nomagichttp.message.BetterHeaders;
+import alpha.nomagichttp.message.ByteBufferIterable;
+import alpha.nomagichttp.message.ByteBufferIterator;
 import alpha.nomagichttp.message.DecoderException;
-import alpha.nomagichttp.message.PooledByteBufferHolder;
 
+import java.io.IOException;
 import java.nio.BufferOverflowException;
-import java.nio.BufferUnderflowException;
 import java.nio.ByteBuffer;
 import java.nio.CharBuffer;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.CompletionStage;
-import java.util.concurrent.Flow;
-import java.util.function.BiConsumer;
+import java.util.NoSuchElementException;
 
-import static alpha.nomagichttp.internal.ParserOf.forRequestTrailers;
 import static alpha.nomagichttp.message.Char.toDebugString;
-import static java.lang.System.Logger.Level.ERROR;
-import static java.lang.System.Logger.Level.WARNING;
-import static java.nio.CharBuffer.allocate;
+import static java.nio.ByteBuffer.allocate;
 import static java.util.HexFormat.fromHexDigitsToLong;
 
 /**
  * Decodes HTTP/1.1 chunked encoding.<p>
  * 
- * Chunk extensions are discarded. As far as I am aware, no server provides
- * support for them lol.<p>
+ * Chunk extensions are discarded. As far as the author is aware, no server
+ * provides support for them. Total over-engineering by the RFC lol<p>
  * 
  * Similarly to {@link ParserOfRequestLine}'s parser, LF is the de facto line
  * terminator. A preceding CR is optional.<p>
  * 
  * LF is also the terminator when discarding chunk extensions, whose value
- * technically may be quoted and thus could technically contain CR/CRLF - which
- * would be super weird. To safeguard against message corruption, if a
+ * technically may be quoted and thus could technically contain CR/CRLF — which
+ * would be like super weird. To safeguard against message corruption, if a
  * double-quote char is encountered whilst discarding extensions, the processor
  * blows up.
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  * @see <a href="https://datatracker.ietf.org/doc/html/rfc7230#section-4.1">RFC 7230 §4.1</a>
  */
-final class ChunkedDecoderOp implements Flow.Publisher<PooledByteBufferHolder>
+public final class ChunkedDecoder implements ByteBufferIterable
 {
-    private static final System.Logger LOG
-            = System.getLogger(ChunkedDecoderOp.class.getPackageName());
+    private static final int BUFFER_SIZE = 512;
     
-    private static final byte CR = 13, LF = 10, SC = ';', DQ = 34;
+    /*
+     * Technically, as far as this class is concerned, we could've always
+     * returned length -1 and a new iterator for each client.
+     *    However, by caching the iterator, we are now able to switch length to
+     * 0 after the last chunk. This may or may not be a benefit to the
+     * application code, but it does matter to DefaultRequest.trailers() which
+     * is banking on a reliable implementation of Request.Body.isEmpty().
+     */
     
-    private final Flow.Publisher<? extends PooledByteBufferHolder> upstream, decoder;
-    private final int maxTrailersSize;
-    private final ClientChannel chApi;
-    private final CompletableFuture<BetterHeaders> trailers;
+    private final ByteBufferIterable upstream;
+    private ByteBufferIterator it;
     
-    ChunkedDecoderOp(
-            Flow.Publisher<? extends PooledByteBufferHolder> upstream,
-            int maxTrailersSize, ClientChannel chApi)
-    {
+    ChunkedDecoder(ByteBufferIterable upstream) {
         this.upstream = upstream;
-        this.maxTrailersSize = maxTrailersSize;
-        this.chApi = chApi;
-        this.trailers = new CompletableFuture<>();
-        this.decoder  = new PooledByteBufferOp(upstream, new Decoder(), () -> {
-            boolean parameterHasNoEffect = true;
-            trailers.cancel(parameterHasNoEffect);
-        });
     }
     
     @Override
-    public void subscribe(Flow.Subscriber<? super PooledByteBufferHolder> s) {
-        decoder.subscribe(s);
+    public long length() {
+        // Any content we're aware of, length is unknown
+        if (it != null && it.hasNext()) {
+            return -1;
+        }
+        // We know we're empty only if upstream has no more
+        return upstream.length() == 0 ? 0 : -1;
     }
     
-    CompletionStage<BetterHeaders> trailers() {
-        return trailers.copy();
+    @Override
+    public ByteBufferIterator iterator() {
+        // While we have remaining in the view, keep returning it
+        if (it != null && it.hasNext()) {
+            return it;
+        }
+        // Otherwise we attempt a new subscription
+        return (it = new Impl());
     }
     
-    private void subscribeTrailers() {
-        var hs = forRequestTrailers(maxTrailersSize, chApi);
-        upstream.subscribe(hs);
-        hs.result().whenComplete((res, thr) -> {
-            if (res != null) {
-                if (!trailers.complete(res)) {
-                    LOG.log(WARNING,
-                        "Request-trailers finished but stage was already completed.");
-                }
-            } else {
-                if (!trailers.completeExceptionally(thr)) {
-                    LOG.log(ERROR,
-                        "Request-trailers finished exceptionally but stage was already completed.", thr);
-                }
-            }
-        });
-    }
-    
-    private final class Decoder
-            implements BiConsumer<ByteBuffer, PooledByteBufferOp.Sink>
-    {
+    private final class Impl implements ByteBufferIterator {
+        
+        private final ByteBuffer buf = allocate(BUFFER_SIZE).position(BUFFER_SIZE);
+        private final ByteBuffer view = buf.asReadOnlyBuffer();
+        private ByteBufferIterator raw;
+        
         private static final int
                 CHUNK_SIZE = 0, CHUNK_EXT = 1, CHUNK_DATA = 2, DONE = 4;
         
         private int parsing = CHUNK_SIZE;
         
         @Override
-        public void accept(ByteBuffer enc, PooledByteBufferOp.Sink s) {
-            for (;;) {
-                if (parsing == DONE) {
-                    s.complete();
-                    subscribeTrailers();
-                    return;
-                }
-                final byte b;
-                try {
-                    b = enc.get();
-                } catch (BufferUnderflowException ignore) {
-                    // No remaining, await next buffer
-                    return;
-                }
+        public boolean hasNext() {
+            return view.hasRemaining() || parsing < DONE;
+        }
+        
+        @Override
+        public ByteBuffer next() throws IOException {
+            if (raw == null) {
+                raw = upstream.iterator();
+            } else if (view.hasRemaining()) {
+                return view;
+            }
+            if (parsing == DONE) {
+                throw new NoSuchElementException();
+            }
+            buf.clear();
+            view.clear();
+            decode();
+            view.limit(buf.position());
+            return view;
+        }
+        
+        private void decode() throws IOException {
+            var enc = getNext();
+            while (enc.hasRemaining() && buf.hasRemaining()) {
+                final byte b = enc.get();
                 switch (parsing) {
                     case CHUNK_SIZE -> decodeSize(b);
                     case CHUNK_EXT  -> decodeExtensions(b);
-                    case CHUNK_DATA -> decodeData(b, s);
+                    case CHUNK_DATA -> decodeData(b);
                     default         -> throw new AssertionError();
+                }
+                // If we're not done, ask for more
+                if (parsing < DONE && buf.hasRemaining() && !enc.hasRemaining()) {
+                    enc = getNext();
                 }
             }
         }
         
+        private ByteBuffer getNext() throws IOException {
+            var enc = raw.next();
+            if (!enc.hasRemaining()) {
+                // TODO: CodecException
+                throw new RuntimeException(
+                        "Channel presumably reached end-of-stream but decoding is not done");
+            }
+            return enc;
+        }
+        
+        private static final byte CR = 13, LF = 10, SC = ';', DQ = 34;
+        
         // Chunk size are encoded as hex digits
-        private final CharBuffer sizeBuf = allocate(16);
+        private final CharBuffer sizeBuf = CharBuffer.allocate(16);
         // Parsed into this (bytes of current data chunk left to consume)
         private long remaining;
         
@@ -191,20 +201,20 @@ final class ChunkedDecoderOp implements Flow.Publisher<PooledByteBufferHolder>
             };
         }
         
-        private void decodeData(byte b, PooledByteBufferOp.Sink s) {
+        private void decodeData(byte b) {
             assert remaining >= 0;
             parsing = switch (b) {
                 // May be real data (consumed), may be trailing CR (ignored)
                 case CR -> {
                     if (hasRemaining()) {
-                        consumeData(b, s);
+                        consumeData(b);
                     }
                     yield CHUNK_DATA;
                 }
                 // Consume or finish chunk
                 case LF -> {
                     if (hasRemaining()) {
-                        consumeData(b, s);
+                        consumeData(b);
                         yield CHUNK_DATA;
                     }
                     yield CHUNK_SIZE;
@@ -216,7 +226,7 @@ final class ChunkedDecoderOp implements Flow.Publisher<PooledByteBufferHolder>
                             "Expected CR and/or LF after chunk. " +
                             "Received " + toDebugString((char) b) + ".");
                     }
-                    consumeData(b, s);
+                    consumeData(b);
                     // Technically we could go to CHUNK_SIZE if !hasRemaining().
                     // But the chunk is supposed to be line terminated.
                     yield CHUNK_DATA;
@@ -228,9 +238,9 @@ final class ChunkedDecoderOp implements Flow.Publisher<PooledByteBufferHolder>
             return remaining > 0;
         }
         
-        private void consumeData(byte b, PooledByteBufferOp.Sink s) {
+        private void consumeData(byte b) {
             --remaining;
-            s.accept(b);
+            buf.put(b);
         }
     }
 }

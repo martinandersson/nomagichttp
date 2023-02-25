@@ -13,11 +13,9 @@ import java.util.Collection;
 import java.util.stream.Stream;
 
 /**
- * A {@code Route} is "a target resource upon which to apply semantics"
- * (<a href="https://tools.ietf.org/html/rfc7230#section-5.1">RFC 7230 §5.1</a>).
- * It can be built using a {@link #builder(String)}. There's also a convenient
- * method available which both builds and add the route at the same time; {@link
- * HttpServer#add(String, RequestHandler, RequestHandler...)}.<p>
+ * Is "a target resource upon which to apply semantics" (
+ * <a href="https://tools.ietf.org/html/rfc7230#section-5.1">RFC 7230 §5.1</a>
+ * ).<p>
  * 
  * The route is associated with one or more <i>request handlers</i>. In HTTP
  * parlance, handlers are also known as different "representations" of the
@@ -25,23 +23,26 @@ import java.util.stream.Stream;
  * by qualifying metadata and specificity, as detailed in the Javadoc of {@link
  * RequestHandler}.<p>
  * 
- * A request will match exactly one or no route in the {@link RouteRegistry}
- * held by the HTTP server. Your users will not suffer from unintended surprises
- * and there are no complex and hard to understand priority rules to learn.
- * Attempting to add a route to a route registry which already has an
- * equivalent route registered will throw a {@link RouteCollisionException}.<p>
+ * A {@code Route} can be built using {@link #builder(String)}. For convince,
+ * the {@code HttpServer} has a method that both builds and add the route at the
+ * same time; {@link HttpServer#add(String, RequestHandler, RequestHandler...)}.
+ * <p>
  * 
- * An example of a request (copy-pasted from
- * <a href="https://tools.ietf.org/html/rfc7230#section-5.3.1">RFC 7230 §5.3.1</a>):
+ * An inbound request will match exactly zero or one route in the
+ * {@link RouteRegistry} held by the HTTP server. Attempting to add a route to a
+ * route registry which already has an equivalent route registered will throw a
+ * {@link RouteCollisionException}.<p>
+ * 
+ * Example request:
  * <pre>{@code
  *   GET /where?q=now HTTP/1.1
  *   Host: www.example.com
  * }</pre>
  * 
- * The request-target "/where?q=now" has a path component and a query component.
- * The path "/where" will match a route which declares exactly one segment
- * "where". The query "?q=now" specifies a "q"-named parameter with the value
- * "now".<p>
+ * The string "/where?q=now" is a request-target, composed of a path component
+ * and a query component. The path "/where" will match a route which declares
+ * exactly one segment "where". The query "?q=now" specifies a "q"-named
+ * parameter with the value "now".<p>
  * 
  * The route may declare named path parameters which act like a wildcard segment
  * whose dynamic value is given by the client through the request path. Path-
@@ -121,9 +122,9 @@ import java.util.stream.Stream;
  * including no value at all. One can not register {@code "/src"} and {@code
  * "/src/*filepath"} in the same registry at the same time.<p>
  * 
- * Query parameters are always optional, they can not be used to distinguish one
- * route from another, nor do they affect how a request path is matched against
- * a route.<p>
+ * Query parameters are always optional (can not be configured as required),
+ * they can not be used to distinguish one route from another, nor do they
+ * affect how a request path is matched against a route.<p>
  * 
  * In order to find a matching route, the following steps are applied to the
  * request path:

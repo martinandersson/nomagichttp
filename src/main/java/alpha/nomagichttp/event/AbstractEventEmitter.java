@@ -40,8 +40,9 @@ import static java.util.Objects.requireNonNull;
  * returns true, will make this class call the decorator which in turn must call
  * the provided {@code Runnable} argument which will then call the listeners. If
  * the when-condition returns false, the listeners will be called directly
- * without involving the decorator. The intended use case is for implementations
- * to be able to ensure that a {@link ScopedValue} is always bound.
+ * without going through the decorator. The intended use case is for
+ * implementations to be able to ensure that a {@link ScopedValue} is always
+ * bound.
  * 
  * <pre>{@code
  *   EventEmitter emitter = new DefaultEventHub(

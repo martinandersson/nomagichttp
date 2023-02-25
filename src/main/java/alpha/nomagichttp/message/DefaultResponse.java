@@ -2,33 +2,27 @@ package alpha.nomagichttp.message;
 
 import alpha.nomagichttp.HttpConstants;
 import alpha.nomagichttp.util.AbstractImmutableBuilder;
-import alpha.nomagichttp.util.Publishers;
 
+import java.io.IOException;
 import java.net.http.HttpHeaders;
-import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.CompletionStage;
-import java.util.concurrent.Flow;
 import java.util.function.Consumer;
+import java.util.function.Supplier;
 
 import static alpha.nomagichttp.HttpConstants.HeaderName.CONNECTION;
 import static alpha.nomagichttp.HttpConstants.HeaderName.CONTENT_LENGTH;
 import static alpha.nomagichttp.HttpConstants.StatusCode.THREE_HUNDRED_FOUR;
 import static alpha.nomagichttp.HttpConstants.StatusCode.TWO_HUNDRED_FOUR;
+import static alpha.nomagichttp.util.ByteBufferIterables.empty;
 import static alpha.nomagichttp.util.Headers.of;
-import static alpha.nomagichttp.util.Publishers.empty;
-import static java.net.http.HttpRequest.BodyPublisher;
 import static java.util.Collections.emptyList;
 import static java.util.Objects.requireNonNull;
-import static java.util.Optional.ofNullable;
 
 /**
- * Default implementation of {@link Response}.
+ * Default implementation of {@code Response}.
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  */
@@ -41,8 +35,8 @@ final class DefaultResponse implements Response
     private final String reasonPhrase;
     private final ContentHeaders headers;
     private final Iterable<String> forWriting;
-    private final Flow.Publisher<ByteBuffer> body;
-    private final Optional<CompletionStage<HttpHeaders>> trailers;
+    private final ResourceByteBufferIterable body;
+    private final Supplier<HttpHeaders> trailers;
     private final DefaultBuilder origin;
     
     private DefaultResponse(
@@ -51,8 +45,8 @@ final class DefaultResponse implements Response
             HttpHeaders headers,
             // Is unmodifiable
             Iterable<String> forWriting,
-            Flow.Publisher<ByteBuffer> body,
-            Optional<CompletionStage<HttpHeaders>> trailers,
+            ResourceByteBufferIterable body,
+            Supplier<HttpHeaders> trailers,
             DefaultBuilder origin)
     {
         this.statusCode = statusCode;
@@ -85,33 +79,13 @@ final class DefaultResponse implements Response
     }
     
     @Override
-    public Flow.Publisher<ByteBuffer> body() {
+    public ResourceByteBufferIterable body() {
         return body;
     }
     
     @Override
-    public Optional<CompletionStage<HttpHeaders>> trailers() {
-        return trailers;
-    }
-    
-    @Override
-    public boolean isBodyEmpty() {
-        Flow.Publisher<ByteBuffer> b = body();
-        if (b == Publishers.<ByteBuffer>empty()) {
-            return true;
-        }
-        if (b instanceof BodyPublisher typed) {
-            return typed.contentLength() == 0;
-        }
-        return headers().contains(CONTENT_LENGTH, "0");
-    }
-    
-    private CompletionStage<Response> stage;
-    
-    @Override
-    public CompletionStage<Response> completedStage() {
-        var s = stage;
-        return s != null ? s : (stage = CompletableFuture.completedStage(this));
+    public HttpHeaders trailers() {
+        return trailers == null ? null : trailers.get();
     }
     
     @Override
@@ -130,7 +104,7 @@ final class DefaultResponse implements Response
     }
     
     /**
-     * Default implementation of {@link Response.Builder}.
+     * Default implementation of {@code Response.Builder}.
      * 
      * @author Martin Andersson (webmaster at martinandersson.com)
      */
@@ -142,8 +116,8 @@ final class DefaultResponse implements Response
             Integer statusCode;
             String reasonPhrase;
             Map<String, List<String>> headers;
-            Flow.Publisher<ByteBuffer> body;
-            CompletionStage<HttpHeaders> trailers;
+            ResourceByteBufferIterable body;
+            Supplier<HttpHeaders> trailers;
             
             void removeHeader(String name) {
                 assert name != null;
@@ -205,20 +179,24 @@ final class DefaultResponse implements Response
         
         @Override
         public Response.Builder statusCode(int statusCode) {
-            return new DefaultBuilder(this, s -> s.statusCode = statusCode);
+            return new DefaultBuilder(this, s ->
+                    s.statusCode = statusCode);
         }
         
         @Override
         public Response.Builder reasonPhrase(String reasonPhrase) {
             requireNonNull(reasonPhrase, "reasonPhrase");
-            return new DefaultBuilder(this, s -> s.reasonPhrase = reasonPhrase);
+            return new DefaultBuilder(this, s ->
+                    s.reasonPhrase = reasonPhrase);
         }
         
         @Override
         public Response.Builder header(String name, String value) {
             requireNonNull(name, "name");
             requireNonNull(value, "value");
-            return new DefaultBuilder(this, s -> s.addHeader(true, name, value));
+            requireNotContentLength(name);
+            return new DefaultBuilder(this, s ->
+                    s.addHeader(true, name, value));
         }
         
         @Override
@@ -231,36 +209,36 @@ final class DefaultResponse implements Response
         public Response.Builder removeHeaderValue(String name, String value) {
             requireNonNull(name, "name");
             requireNonNull(value, "value");
-            return new DefaultBuilder(this, s -> s.removeHeaderValue(name, value));
+            return new DefaultBuilder(this, s ->
+                    s.removeHeaderValue(name, value));
         }
         
         @Override
         public Response.Builder addHeader(String name, String value) {
             requireNonNull(name, "name");
             requireNonNull(value, "value");
-            return new DefaultBuilder(this, s -> s.addHeader(false, name, value));
+            requireNotContentLength(name);
+            return new DefaultBuilder(this, s ->
+                    s.addHeader(false, name, value));
         }
         
         @Override
         public Response.Builder addHeaders(String name, String value, String... morePairs) {
             requireNonNull(name, "name");
             requireNonNull(value, "value");
-            
+            requireNotContentLength(name);
             for (int i = 0; i < morePairs.length; ++i) {
                 requireNonNull(morePairs[i], "morePairs[" + i + "]");
+                requireNotContentLength(morePairs[i]);
             }
-            
             if (morePairs.length % 2 != 0) {
                 throw new IllegalArgumentException("morePairs.length is not even");
             }
-            
             return new DefaultBuilder(this, ms -> {
                 ms.addHeader(false, name, value);
-                
                 for (int i = 0; i < morePairs.length - 1; i += 2) {
                     String k = morePairs[i],
                            v = morePairs[i + 1];
-                    
                     ms.addHeader(false, k, v);
                 }
             });
@@ -268,33 +246,21 @@ final class DefaultResponse implements Response
         
         @Override
         public Response.Builder addHeaders(Map<String, List<String>> headers) {
-            requireNonNull(headers, "headers");
+            headers.keySet()
+                   .forEach(DefaultBuilder::requireNotContentLength);
             return new DefaultBuilder(this, s ->
                     headers.forEach((name, values) ->
                             values.forEach(v -> s.addHeader(false, name, v))));
         }
         
         @Override
-        public Response.Builder body(Flow.Publisher<ByteBuffer> body) {
+        public Response.Builder body(ResourceByteBufferIterable body) {
             requireNonNull(body, "body");
-            final DefaultBuilder b = new DefaultBuilder(this, s -> s.body = body);
-            
-            if (body == Publishers.<ByteBuffer>empty()) {
-                return b.removeHeader(CONTENT_LENGTH);
-            } else if (body instanceof BodyPublisher) {
-                long len = ((BodyPublisher) body).contentLength();
-                if (len < 0) {
-                    return b.removeHeader(CONTENT_LENGTH);
-                } else {
-                    return b.header(CONTENT_LENGTH, Long.toString(len));
-                }
-            }
-            
-            return b;
+            return new DefaultBuilder(this, s -> s.body = body);
         }
         
         @Override
-        public Builder addTrailers(CompletionStage<HttpHeaders> trailers) {
+        public Builder addTrailers(Supplier<HttpHeaders> trailers) {
             requireNonNull(trailers, "trailers");
             return new DefaultBuilder(this, s -> s.trailers = trailers);
         }
@@ -316,10 +282,6 @@ final class DefaultResponse implements Response
                 throw new IllegalStateException(e);
             }
             
-            if (headers.allValues(CONTENT_LENGTH).size() > 1) {
-                throw new IllegalStateException("Multiple " + CONTENT_LENGTH + " headers.");
-            }
-            
             Iterable<String> forWriting = s.headers == null ? emptyList() :
                     s.headers.entrySet().stream().flatMap(e ->
                             e.getValue().stream().map(v -> e.getKey() + ": " + v))
@@ -331,7 +293,7 @@ final class DefaultResponse implements Response
                     headers,
                     forWriting,
                     s.body,
-                    ofNullable(s.trailers),
+                    s.trailers,
                     this);
             
             if (r.isInformational()) {
@@ -339,15 +301,23 @@ final class DefaultResponse implements Response
                     throw new IllegalStateException(
                             "\"Connection: close\" set on 1XX (Informational) response.");
                 }
-                if (!r.isBodyEmpty()) {
+                if (!isEmpty(r)) {
                     throw IllegalResponseBodyException(r);
                 }
             } else if ((r.statusCode() == TWO_HUNDRED_FOUR    ||
-                        r.statusCode() == THREE_HUNDRED_FOUR) && !r.isBodyEmpty()) {
+                        r.statusCode() == THREE_HUNDRED_FOUR) && !isEmpty(r)) {
                 throw IllegalResponseBodyException(r);
             }
             
             return r;
+        }
+        
+        private static void requireNotContentLength(String header) {
+            if (CONTENT_LENGTH.equalsIgnoreCase(header)) {
+                throw new IllegalArgumentException(
+                        "The server sets \"$1\", not the application."
+                        .replace("$1", header));
+            }
         }
         
         private static void setDefaults(MutableState s) {
@@ -356,6 +326,15 @@ final class DefaultResponse implements Response
             
             if (s.body == null) {
                 s.body = empty(); }
+        }
+        
+        private static boolean isEmpty(Response r) {
+            try {
+                return r.body().isEmpty();
+            } catch (IOException ignored) {
+                // Something caused that to happen, after all
+                return true;
+            }
         }
         
         private static IllegalResponseBodyException IllegalResponseBodyException(Response r) {

@@ -14,34 +14,33 @@ import static alpha.nomagichttp.handler.RequestHandler.GET;
  */
 public final class EchoHeaders
 {
-    private EchoHeaders() {
-        // Intentionally empty
-    }
-    
     private static final int PORT = 8080;
     
+    private EchoHeaders() {
+        // Empty
+    }
+    
     /**
-     * Application entry point.
+     * Application's entry point.
      * 
      * @param args ignored
      * 
-     * @throws IOException If an I/O error occurs
+     * @throws IOException
+     *             if an I/O error occurs
+     * @throws InterruptedException
+     *             if interrupted while waiting on client connections to terminate
      */
-    public static void main(String... args) throws IOException {
+    public static void main(String... args) throws IOException, InterruptedException {
         HttpServer app = HttpServer.create();
         
-        app.add("/echo", GET().apply(req -> {
-            // A Response.Builder can be constructed anew (Response.builder()),
-            // or extracted from an already built Response. Just like a Java
-            // Stream, each modifying operation returns a new instance.
-            return Responses.noContent()       // Response "204 No Content"
-                            .toBuilder()       // Response.Builder
-                                .addHeaders(req.headers())
-                                .build()       // Response
-                            .completedStage(); // CompletionStage<Response>
-        }));
+        app.add("/echo", GET().apply(request ->
+                // 204 (No Content)
+                Responses.noContent()
+                         .toBuilder()
+                             .addHeaders(request.headers())
+                             .build()));
         
-        app.start(PORT);
         System.out.println("Listening on port " + PORT + ".");
+        app.start(PORT);
     }
 }

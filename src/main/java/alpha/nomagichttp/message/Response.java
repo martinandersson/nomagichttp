@@ -4,26 +4,19 @@ import alpha.nomagichttp.Config;
 import alpha.nomagichttp.HttpConstants;
 import alpha.nomagichttp.HttpServer;
 import alpha.nomagichttp.handler.RequestHandler;
-import alpha.nomagichttp.util.BetterBodyPublishers;
+import alpha.nomagichttp.util.ByteBufferIterables;
 import alpha.nomagichttp.util.Headers;
-import alpha.nomagichttp.util.Publishers;
 
 import java.net.http.HttpHeaders;
-import java.net.http.HttpRequest;
-import java.nio.ByteBuffer;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
-import java.util.concurrent.CancellationException;
-import java.util.concurrent.CompletionStage;
-import java.util.concurrent.Flow;
+import java.util.function.Supplier;
 
 import static alpha.nomagichttp.HttpConstants.ReasonPhrase;
 import static alpha.nomagichttp.HttpConstants.StatusCode;
-import static java.net.http.HttpRequest.BodyPublisher;
 
 /**
- * Contains a status line, followed by optional headers, body and trailers.<p>
+ * A status line, followed by optional headers, body and trailers.<p>
  * 
  * Can be built using a {@link Response.Builder}:
  * 
@@ -34,9 +27,10 @@ import static java.net.http.HttpRequest.BodyPublisher;
  *                        .build();
  * }</pre>
  * 
- * The {@code Response} object is immutable, but the builder who built it can be
- * retrieved and used to create new responses derived from the first. This
- * effectively makes the {@link Responses} class a repository of commonly used
+ * The {@code Response} object is immutable, but the builder that built the
+ * response can be retrieved and used to create new response derivatives, which
+ * effectively makes any {@code Response} instance a cacheable template, and the
+ * {@link Responses} class can be considered a repository of commonly used
  * status lines.<p>
  * 
  * This example is equivalent to the previous:
@@ -47,11 +41,11 @@ import static java.net.http.HttpRequest.BodyPublisher;
  *                         .build();
  * }</pre>
  * 
- * {@code Responses} in combination with body factories in {@link
- * BetterBodyPublishers} ought to cover for the most common use cases.
+ * {@code Responses} in combination with {@link ByteBufferIterables} for
+ * creating bodies should be an adequate API for most use cases.
  * 
  * <pre>{@code
- *   BodyPublisher body = BetterBodyPublishers.ofByteArray(...);
+ *   ByteBufferIterable body = ByteBufferIterables.just(...);
  *   Response r = Responses.ok(body); // 200 OK
  * }</pre>
  * 
@@ -59,18 +53,21 @@ import static java.net.http.HttpRequest.BodyPublisher;
  * to the client verbatim/unaltered; i.e. casing and white space will be
  * preserved.<p>
  * 
- * The {@code Response} object can safely be reused sequentially over time to
- * the same client. The response can also be shared concurrently to different
- * clients, assuming the {@linkplain Builder#body(Flow.Publisher) body
- * publisher} is thread-safe. If the publisher instance was retrieved using any
- * method provided by the NoMagicHTTP library (e.g. {@link
- * BetterBodyPublishers}), then it is fully thread-safe and non-blocking. All
- * responses with a body created by {@link Responses} that does not explicitly
- * accept a body publisher as an argument uses a thread-safe body publisher
- * under the hood.<p>
+ * Bear in mind that the response header Content-Length (case-insensitive)
+ * should be set by the application only for exceptional cases (
+ * <a href="https://datatracker.ietf.org/doc/html/rfc7230#section-3.3.2">RFC 7230 §3.3.2</a>
+ * ). Otherwise, the server will take care of copy and pasting the body's
+ * {@link ResourceByteBufferIterable#length() length} to said header.<p>
  * 
- * The {@code Response} implementation does not necessarily implement {@code
- * hashCode()} and {@code equals()}.
+ * The application should always set response containing a body must set the Content-Type header (as
+ * the server can not know this information). These headers are not a concern
+ * when one is building responses using the factories in {@link Responses} or
+ * using the {@link Response.Builder}.<p>
+ * 
+ * The implementation is fully thread-safe and can be freely cached.<p>
+ * 
+ * The implementation does not necessarily implement {@code hashCode} and
+ * {@code equals}.
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  * 
@@ -99,10 +96,14 @@ public interface Response extends HeaderHolder
      * 
      * @param statusCode response status code
      * @param reasonPhrase response reason phrase
+     * 
      * @return a builder (doesn't have to be a new instance)
+     * 
      * @see #statusCode()
      * @see #reasonPhrase()
-     * @throws NullPointerException if {@code reasonPhrase} is {@code null}
+     * 
+     * @throws NullPointerException
+     *             if {@code reasonPhrase} is {@code null}
      */
     static Builder builder(int statusCode, String reasonPhrase) {
         return Responses.status(statusCode, reasonPhrase).toBuilder();
@@ -121,7 +122,7 @@ public interface Response extends HeaderHolder
     int statusCode();
     
     /**
-     * Returns the reason phrase.
+     * Returns the reason phrase.<p>
      * 
      * The returned value may be {@code null} or an empty string, in which case
      * no reason phrase will be added to the status line.<p>
@@ -149,19 +150,40 @@ public interface Response extends HeaderHolder
      * 
      * @return the message body
      */
-    Flow.Publisher<ByteBuffer> body();
+    ResourceByteBufferIterable body();
     
     /**
-     * Returns trailers.
+     * Returns trailers.<p>
      * 
-     * @return trailers
+     * A response that wishes to send trailers must set the "Trailer" header.
+     * The value(s) should precisely match the trailer name(s). The server will
+     * not even call this method if the "Trailer" header is not set. Otherwise,
+     * this method will be called exactly once after the body has been written,
+     * more specifically; after {@code ByteBufferIterable.close} has been
+     * called. The method must then return non-empty trailers. The server does
+     * not verify that the actual trailers sent was correctly enumerated in the
+     * "Trailer" header.<p>
+     * 
+     * @apiNote
+     * Although
+     * <a href="https://www.rfc-editor.org/rfc/rfc7230#section-4.4">RFC 7230 §4.4</a>
+     * specifies the "Trailer" header as optional (unfortunately), the server
+     * must know in advance before sending the body whether trailers will be
+     * present, as trailers may require the server to apply chunked encoding.
+     * Thus, why the trailer is upgraded to be required.
+     * 
+     * @implSpec
+     * The default implementation returns {@code null}.
+     * 
+     * @return trailers (possibly {@code null})
      * @see Request#trailers() 
      */
-    Optional<CompletionStage<HttpHeaders>> trailers();
+    default HttpHeaders trailers() {
+        return null;
+    }
     
     /**
-     * Returns {@code true} if the status-code is 1XX (Informational), otherwise
-     * {@code false}.
+     * Returns {@code true} if the status-code is 1XX (Informational).
      * 
      * @implSpec
      * The default implementation is equivalent to:
@@ -170,16 +192,30 @@ public interface Response extends HeaderHolder
      *       isInformational}(this.statusCode());
      * </pre>
      * 
-     * @return {@code true} if the status-code is 1XX (Informational),
-     *         otherwise {@code false}
+     * @return see JavaDoc
      */
     default boolean isInformational() {
         return StatusCode.isInformational(statusCode());
     }
     
     /**
-     * Returns {@code true} if the status-code is not 1XX (Informational),
-     * otherwise {@code false}.
+     * Returns {@code true} if the status-code is 2XX (Successful).
+     * 
+     * @implSpec
+     * The default implementation is equivalent to:
+     * <pre>
+     *   return StatusCode.{@link StatusCode#isSuccessful(int)
+     *       isInformational}(this.statusCode());
+     * </pre>
+     * 
+     * @return see JavaDoc
+     */
+    default boolean isSuccessful() {
+        return StatusCode.isSuccessful(statusCode());
+    }
+    
+    /**
+     * Returns {@code true} if the status-code is not 1XX (Informational).
      * 
      * @implSpec
      * The default implementation is equivalent to:
@@ -188,35 +224,11 @@ public interface Response extends HeaderHolder
      *       isFinal}(this.statusCode());
      * </pre>
      * 
-     * @return {@code true} if the status-code is not 1XX (Informational),
-     *         otherwise {@code false}
+     * @return see JavaDoc
      */
     default boolean isFinal() {
         return StatusCode.isFinal(statusCode());
     }
-    
-    /**
-     * Returns {@code true} if the body is assumed to be empty, otherwise
-     * {@code false}.<p>
-     * 
-     * The body is assumed to be empty, if {@code this.body()} returns the same
-     * object instance as {@link Publishers#empty()}, or it returns a
-     * {@link HttpRequest.BodyPublisher} with {@code contentLength()} set to 0,
-     * or the response has a {@code Content-Length} header set to 0.
-     * 
-     * @return {@code true} if the body is assumed to be empty,
-     *         otherwise {@code false}
-     */
-    boolean isBodyEmpty();
-    
-    /**
-     * Returns this response object boxed in an already completed stage.
-     * 
-     * @return this response object boxed in an already completed stage
-     * 
-     * @see HttpServer
-     */
-    CompletionStage<Response> completedStage();
     
     /**
      * Returns the builder instance that built this response.<p>
@@ -231,10 +243,10 @@ public interface Response extends HeaderHolder
      * Builder of a {@link Response}.<p>
      * 
      * The builder is immutable. All builder-returning methods return a new
-     * builder instance representing the new state. The builder can be used as a
+     * instance representing the new state. The builder can be used as a
      * template to derive new responses. {@link Response#toBuilder()} returns
-     * the builder that built the response which effectively makes all responses
-     * into templates as well.<p>
+     * the builder that built the response which effectively makes any response
+     * function as a template.<p>
      * 
      * Status code is the only required field.<p>
      * 
@@ -263,59 +275,63 @@ public interface Response extends HeaderHolder
      * 
      * The implementation is thread-safe and non-blocking.<p>
      * 
-     * The implementation does not necessarily implement {@code hashCode()} and
-     * {@code equals()}.
+     * The implementation does not necessarily implement {@code hashCode} and
+     * {@code equals}.
      * 
      * @author Martin Andersson (webmaster at martinandersson.com)
      */
     interface Builder
     {
         /**
-         * Set status code.
+         * Sets a status code.
          * 
-         * @param   statusCode value (any integer value)
-         * @return  a new builder representing the new state
-         * @see     StatusCode
+         * @param  statusCode value (any integer value)
+         * @return a new builder representing the new state
+         * @see    StatusCode
          */
         Builder statusCode(int statusCode);
         
         /**
-         * Set reason phrase.
+         * Sets a reason phrase.
          * 
-         * @param   reasonPhrase value (any non-null string)
-         * @throws  NullPointerException if {@code reasonPhrase} is {@code null}
-         * @return  a new builder representing the new state
-         * @see     ReasonPhrase
+         * @param  reasonPhrase value (any non-null string)
+         * @throws NullPointerException if {@code reasonPhrase} is {@code null}
+         * @return a new builder representing the new state
+         * @see    ReasonPhrase
          */
         Builder reasonPhrase(String reasonPhrase);
         
         /**
-         * Set a header.<p>
+         * Sets a header.<p>
          * 
-         * This overwrites all previously set values for the given name
+         * This method overwrites all previously set values for the given name
          * (case-sensitive).
          * 
-         * @param   name of header
-         * @param   value of header
-         * @return  a new builder representing the new state
-         * @throws  NullPointerException if any argument is {@code null}
-         * @see     HttpConstants.HeaderName
+         * @param  name of header
+         * @param  value of header
+         * 
+         * @return a new builder representing the new state
+         * 
+         * @throws NullPointerException
+         *             if any argument is {@code null}
+         * 
+         * @see HttpConstants.HeaderName
          */
         Builder header(String name, String value);
         
         /**
-         * Remove all occurrences of a header.<p>
+         * Removes all occurrences of a header.<p>
          * 
          * This method operates without regard to casing.
          * 
-         * @param name of the header
+         * @param  name of the header
          * @return a new builder representing the new state
          * @throws NullPointerException if {@code name} is {@code null}
          */
         Builder removeHeader(String name);
         
         /**
-         * Remove all occurrences of given a header value.<p>
+         * Removes all occurrences of given a header value.<p>
          * 
          * This method operates without regard to casing for both header name
          * and value.<p>
@@ -323,18 +339,18 @@ public interface Response extends HeaderHolder
          * If there are no mapped values left after the operation, the header
          * will also be removed.
          * 
-         * @param name of the header
-         * @param value predicate
+         * @param  name of the header
+         * @param  value predicate
          * @return a new builder representing the new state
          * @throws NullPointerException if any argument is {@code null}
          */
         Builder removeHeaderValue(String name, String value);
         
         /**
-         * Add a header to this response.<p>
+         * Adds a header to this response.<p>
          * 
-         * If the header is already present then it will be repeated in the
-         * response.
+         * If the header is already present (case-sensitive) then it will be
+         * repeated in the response.
          * 
          * @param name of the header
          * @param value of the header
@@ -342,16 +358,19 @@ public interface Response extends HeaderHolder
          * @return a new builder representing the new state
          * 
          * @throws NullPointerException
-         *             if any argument or array element is {@code null}
+         *             if any argument or is {@code null}
+         * @throws IllegalArgumentException
+         *             if {@code name} equals "Content-length"
+         *             (case insensitive)
          * 
          * @see HttpConstants.HeaderName
          */
         Builder addHeader(String name, String value);
         
         /**
-         * Add header(s) to this response.<p>
+         * Adds header(s) to this response.<p>
          * 
-         * Iterating the {@code String[]} must alternate between header- names
+         * Iterating the {@code String[]} must alternate between header-names
          * and values. To add several values to the same name then the same
          * name must be supplied with each additional value.<p>
          * 
@@ -368,13 +387,16 @@ public interface Response extends HeaderHolder
          *             if any argument or array element is {@code null}
          * @throws IllegalArgumentException
          *             if {@code morePairs.length} is odd
+         * @throws IllegalArgumentException
+         *             if a header name equals "Content-length"
+         *             (case insensitive)
          * 
          * @see HttpConstants.HeaderName
          */
         Builder addHeaders(String name, String value, String... morePairs);
         
         /**
-         * Add all headers from the given headers object.
+         * Adds all headers from the given headers object.
          * 
          * @implSpec
          * The default implementation is
@@ -387,128 +409,106 @@ public interface Response extends HeaderHolder
          * The delegate's map does not provide a guarantee regarding the
          * ordering.
          * 
-         * @param   headers to add
-         * @return  a new builder representing the new state
-         * @throws  NullPointerException if {@code headers} is {@code null}
-         * @see     HttpConstants.HeaderName
+         * @param headers to add
+         * 
+         * @return a new builder representing the new state
+         * 
+         * @throws NullPointerException
+         *             if {@code headers} is {@code null}
+         * @throws IllegalArgumentException
+         *             if a header name equals "Content-length"
+         *             (case insensitive)
+         * 
+         * @see HttpConstants.HeaderName
          */
         default Builder addHeaders(BetterHeaders headers) { // TODO: Remove!
             return addHeaders(headers.delegate().map());
         }
         
         /**
-         * Add all headers from the given map.<p>
+         * Adds all headers from the given map.<p>
          * 
          * The order of the response headers will follow the iteration order of
-         * the provided map.
+         * the provided map.<p>
          * 
-         * @param   headers to add
-         * @return  a new builder representing the new state
-         * @throws  NullPointerException if {@code headers} is {@code null}
-         * @see     HttpConstants.HeaderName
+         * The specified {@code Map} (and its values) must be effectively
+         * unmodifiable. Changes to the contents after this method returns will
+         * have undefined application behavior.
+         * 
+         * @param headers to add
+         * 
+         * @return a new builder representing the new state
+         * 
+         * @throws NullPointerException
+         *             if {@code headers} is {@code null}
+         * @throws IllegalArgumentException
+         *             if a header name equals "Content-length"
+         *             (case insensitive)
+         * 
+         * @see HttpConstants.HeaderName
          */
         Builder addHeaders(Map<String, List<String>> headers);
         
         /**
-         * Set a message body.<p>
+         * Sets a message body.<p>
          * 
-         * If never set, will default to an empty body.<p>
+         * If the response is used only once, then the body does not need to be
+         * regenerative (see JavaDoc of {@link ResourceByteBufferIterable}. If
+         * the response is cached and used many times, then the body must be
+         * regenerative.<p>
          * 
-         * Each response transmission will cause the server to subscribe with a
-         * new subscriber, consuming all of the remaining bytes in each
-         * published bytebuffer.<p>
+         * To remove an already set body, it's as easy as specifying an empty
+         * body to this method, for example, using
+         * {@link ByteBufferIterables#empty()}.
          * 
-         * Most responses are probably only used once. But the application may
-         * wish to cache and re-use responses. This is always safe if the
-         * response is only sent to a dedicated client (two subscriptions
-         * for the same client will never run in parallel). If the response is
-         * re-used concurrently to different clients, then the body publisher
-         * must be thread-safe and designed for concurrency; producing new
-         * bytebuffers with the same data for each new subscriber.<p>
+         * @param body content
          * 
-         * Multiple response objects derived/templated from the same builder(s)
-         * will share the same underlying body publisher reference. So same rule
-         * apply; the publisher must be thread-safe if the derivatives go out to
-         * different clients.<p>
+         * @return a new builder representing the new state
          * 
-         * Response objects created by factory methods from the NoMagicHTTP
-         * library API (and derivatives created from them) are fully thread-safe
-         * and may be shared wildly. No worries! If none of these factories
-         * suits you and there's a need to create a body publisher manually,
-         * then consider using a publisher from {@link Publishers} or {@link
-         * BetterBodyPublishers}. Not only are these defined to be thread-safe,
-         * they are also non-blocking.<p>
-         * 
-         * If the body argument is a {@link BodyPublisher} and {@code
-         * BodyPublisher.contentLength()} returns a negative value, then any
-         * present {@code Content-Length} header will be removed (unknown
-         * length). A positive value ({@code >= 0}) will set the header value
-         * (possibly overwriting an old). So, it's unnecessary to set the header
-         * manually as long as the body is a {@code BodyPublisher}.<p>
-         * 
-         * To remove an already set body, it's as easy as passing in as argument
-         * to this method a {@link Publishers#empty()} or a {@code
-         * BodyPublisher} with {@code contentLength() == 0}. Both cases will
-         * also set the {@code Content-Length} header to 0.<p>
-         * 
-         * Any other publisher implementation must also be accompanied with an
-         * explicit builder-call to either remove the {@code Content-Length}
-         * header (for unknown length) or set it to the new length (or in
-         * future; apply chunked encoding). Failure to comply may end up
-         * re-using an old legacy {@code Content-Length} value with unspecified
-         * application behavior as a result.<p>
-         * 
-         * A known length is always preferred over an unknown length as in the
-         * latter case, the server will have to schedule a close of the
-         * connection after the active exchange (in future: or apply chunked
-         * encoding). There's no other way around that and still maintain proper
-         * HTTP message framing.
-         * 
-         * @param   body publisher
-         * @return  a new builder representing the new state
-         * @throws  NullPointerException if {@code body} is {@code null}
+         * @throws NullPointerException
+         *             if {@code body} is {@code null}
          */
-        Builder body(Flow.Publisher<ByteBuffer> body);
+        Builder body(ResourceByteBufferIterable body);
         
         /**
          * Add response trailers.<p>
          * 
-         * The application should also populate the HTTP header "Trailer" with
-         * the names of the trailers that will be present.<p>
+         * The given supplier will be used as a delegate implementation for
+         * {@link Response#trailers()}.<p>
          * 
-         * The application should only respond trailers if the client has
-         * indicated they are accepted
-         * (<a href="https://datatracker.ietf.org/doc/html/rfc7230#section-4.3">RFC 7230 $4.3</a>).
+         * The application should populate the HTTP header "Trailer" with the
+         * names of the trailers that will be sent.<p>
+         * 
+         * The application should only send trailers if the client has indicated
+         * that they are accepted (
+         * <a href="https://datatracker.ietf.org/doc/html/rfc7230#section-4.3">RFC 7230 $4.3</a>
+         * ).
          * 
          * <pre>
-         *   boolean accepted = request.headers()
-         *       .allTokens("TE").anyMatch(Predicate.isEqual("trailers"));
-         *   // Alternatively
-         *   accepted = request.headers().contains("TE", "trailers");
+         *   boolean accepted = request.headers().contains("TE", "trailers");
          * </pre>
          * 
-         * If the HTTP exchange is using a version less than 1.1, the given
+         * If the HTTP exchange is using a version less than 1.1, then the
          * trailers will be silently discarded.<p>
          * 
          * Trailers will be written out on the wire in almost the same way
-         * headers are. The only exception is that the order is not defined.<p>
+         * headers are. The only exception is that the order is not defined.
          * 
-         * Completing the stage exceptionally with a {@link
-         * CancellationException} has the same effect as completing the stage
-         * with an empty headers object, that is to say, no trailers will be
-         * written.
+         * @param trailers called after the body has been iterated
          * 
-         * @param trailers to add
          * @return a new builder representing the new state
-         * @throws  NullPointerException if {@code trailers} is {@code null}
+         * 
+         * @throws NullPointerException
+         *             if {@code trailers} is {@code null}
+         * 
          * @see Request#trailers()
          * @see Headers
          * @see Config#rejectClientsUsingHTTP1_0() 
          */
-        Builder addTrailers(CompletionStage<HttpHeaders> trailers);
+        Builder addTrailers(Supplier<HttpHeaders> trailers);
         
         /**
-         * Remove previously set trailers, if present.
+         * Remove a previously set trailers' supplier, if present.
          * 
          * @return a new builder representing the new state
          */
@@ -521,18 +521,19 @@ public interface Response extends HeaderHolder
          * 
          * @return a response
          * 
-         * @throws IllegalResponseBodyException
-         *             if a body is presumably not empty (see {@link
-         *             Response#isBodyEmpty()}) and the status code is one of
-         *             1XX (Informational), 204 (No Content) or 304 (Not
-         *             Modified)
-         * 
          * @throws IllegalStateException
-         *             if headers are unaccepted,
-         *             e.g. multiple {@code Content-Length} headers; or
+         *             if a header name is duplicated using different casing
+         * @throws IllegalStateException
+         *             if a header name is empty (after trimming whitespaces)
+         * @throws IllegalStateException
          *             if status code is 1XX (Informational) and header {@code
-         *             Connection: close} is set (see
+         *             Connection: close} is set (
          *             <a href="https://tools.ietf.org/html/rfc7230#section-6.1">RFC 7231 §6.1</a>)
+         * @throws IllegalResponseBodyException
+         *             if the body is not knowingly
+         *             {@link ResourceByteBufferIterable#isEmpty() empty},
+         *             and the status code is one of
+         *             1XX (Informational), 204 (No Content), 304 (Not Modified)
          */
         Response build();
     }

@@ -118,10 +118,13 @@ public final class MediaRange extends MediaType {
     }
     
     private static NumberFormat nf() {
-        return ThreadLocalCache.get(NumberFormat.class, () -> {
-            NumberFormat nf = NumberFormat.getInstance();
-            nf.setMaximumFractionDigits(3);
-            return nf;
-        });
+        // TODO: Used to use ThreadLocalCache before virtual threads.
+        //       We should implement and provide a replacement, something like
+        //         "var result = PooledObject.use(numberFormatFactory, nf -> ...)
+        //       which will essentially wrap a ThreadLocalCache (strong refs) and
+        //       run the code on ForkJoinPool or whatever.
+        NumberFormat nf = NumberFormat.getInstance();
+        nf.setMaximumFractionDigits(3);
+        return nf;
     }
 }

@@ -10,14 +10,13 @@ import java.util.function.IntFunction;
 import static java.util.Arrays.stream;
 
 /**
- * A read-only cache of things derived from a status-code or from a status-code
- * and reason-phrase.<p>
+ * An immutable cache of objects derived from a status-code and/or
+ * reason-phrase.<p>
  * 
  * The cache is stupidly fast. The cache is essentially just a
  * single-dimensional and sparse array of the cached values whose indices are
  * the status codes (after applied offset). It is hard to see how this could
- * have been made faster. Sparsity creates more memory usage of course, which is
- * the price paid for increased performance (and implementation simplicity).
+ * have been made faster. Sparsity uses more memory, which is the price paid.
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  * @param <T> type of cached thing

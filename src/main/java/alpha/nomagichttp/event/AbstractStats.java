@@ -6,7 +6,7 @@ import java.util.Arrays;
 import static java.util.concurrent.TimeUnit.NANOSECONDS;
 
 /**
- * A container of elapsed time of a task that was completed (successfully).<p>
+ * A holder of elapsed time of a task that was completed (successfully).<p>
  * 
  * This class contains no references to wall-clock time. The event is emitted
  * immediately after {@link #nanoTimeOnStop()}, and so, a wall-clock reference

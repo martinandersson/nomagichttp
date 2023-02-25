@@ -1,6 +1,5 @@
 package alpha.nomagichttp.internal;
 
-import alpha.nomagichttp.ReceiverOfUniqueRequestObject;
 import alpha.nomagichttp.route.Route;
 import alpha.nomagichttp.util.PercentDecoder;
 
@@ -16,9 +15,11 @@ import static java.util.Collections.unmodifiableMap;
 import static java.util.stream.Collectors.toMap;
 
 /**
- * An almost complete version of {@link RequestTarget}. The one thing missing is
- * support for path parameters as these are unique per {@link
- * ReceiverOfUniqueRequestObject}.
+ * A parsed result of a request-target.<p>
+ * 
+ * This class has all components related to a request-target; the segments, the
+ * query map, and the fragment. The complete {@link RequestTarget} adds the
+ * missing path parameters.
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  */

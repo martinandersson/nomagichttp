@@ -15,6 +15,7 @@ import static alpha.nomagichttp.util.Streams.stream;
  * code.
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
+ * 
  * @see EventEmitter
  */
 public interface EventHub extends ScatteringEventEmitter, EventEmitter

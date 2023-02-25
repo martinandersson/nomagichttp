@@ -11,7 +11,7 @@ import alpha.nomagichttp.handler.ErrorHandler;
  *   <li>Transfer-Encoding contains multiple "chunked" tokens.</li>
  * </ul>
  * 
- * The {@link ErrorHandler#DEFAULT default error handler} translates this
+ * The {@link ErrorHandler#BASE base error handler} translates this
  * exception to a 400 (Bad Request) response.
  * 
  * @see <a href="https://datatracker.ietf.org/doc/html/rfc7230#section-3.3.3">RFC 7230 §3.3.3 paragraph 3</a>

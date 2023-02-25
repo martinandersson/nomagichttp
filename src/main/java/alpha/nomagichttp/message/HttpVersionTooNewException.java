@@ -19,7 +19,7 @@ import static java.util.Objects.requireNonNull;
  * if the client <i>begin</i> a new exchange using HTTP/2. Future work will add
  * support for HTTP/2.<p>
  * 
- * The {@link ErrorHandler#DEFAULT default error handler} will translate this
+ * The {@link ErrorHandler#BASE base error handler} will translate this
  * exception to a {@link Responses#httpVersionNotSupported() 505 HTTP Version
  * Not Supported}.
  * 

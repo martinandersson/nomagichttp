@@ -5,10 +5,9 @@ import alpha.nomagichttp.message.Response;
 import alpha.nomagichttp.message.Responses;
 
 import java.io.IOException;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.Executor;
 
 import static alpha.nomagichttp.handler.RequestHandler.GET;
+import static alpha.nomagichttp.util.ScopedValues.channel;
 import static java.util.concurrent.TimeUnit.SECONDS;
 
 /**
@@ -19,42 +18,42 @@ import static java.util.concurrent.TimeUnit.SECONDS;
  */
 public final class KeepClientInformed
 {
-    private KeepClientInformed() {
-        // Intentionally empty
-    }
-    
     private static final int PORT = 8080;
     
+    private KeepClientInformed() {
+        // Empty
+    }
+    
     /**
-     * Application entry point.
-     *
+     * Application's entry point.
+     * 
      * @param args ignored
-     *
-     * @throws IOException If an I/O error occurs
+     * 
+     * @throws IOException
+     *             if an I/O error occurs
+     * @throws InterruptedException
+     *             if interrupted while waiting on client connections to terminate
      */
-    public static void main(String... args) throws IOException {
+    public static void main(String... args) throws IOException, InterruptedException {
         HttpServer app = HttpServer.create();
         
-        Executor after1sec = CompletableFuture.delayedExecutor(1, SECONDS);
-        
-        app.add("/", GET().accept((req, ch) -> {
-            ch.write(mkProgressReport(3));
-            
-            CompletableFuture
-                .runAsync(() ->
-                      ch.write(mkProgressReport(2)), after1sec)
-                .thenRunAsync(() ->
-                      ch.write(mkProgressReport(1)), after1sec)
-                .thenRunAsync(() ->
-                      ch.write(Responses.noContent()), after1sec);
+        // A final response can be preceded with interim responses
+        app.add("/", GET().apply(requestIgnored -> {
+            channel().write(mkProgressReport(3));
+            SECONDS.sleep(1);
+            channel().write(mkProgressReport(2));
+            SECONDS.sleep(1);
+            channel().write(mkProgressReport(1));
+            SECONDS.sleep(1);
+            return Responses.noContent(); // 204 (No Content)
         }));
         
-        app.start(PORT);
         System.out.println("Listening on port " + PORT + ".");
+        app.start(PORT);
     }
     
     private static Response mkProgressReport(int secondsLeft) {
-        return Responses.processing()
+        return Responses.processing() // 102 (Processing)
                         .toBuilder()
                             .addHeader("Time-Left", secondsLeft + " second(s)")
                             .build();

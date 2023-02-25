@@ -8,17 +8,17 @@ import alpha.nomagichttp.route.RouteRegistry;
  * Provides thread-safe store operations of actions.<p>
  * 
  * As with {@link Route} and it's accompanying {@link RouteRegistry}, this
- * registry too accepts a pattern which translates to a position in a
+ * registry also accepts a pattern which translates to a position in a
  * hierarchical tree where the action is stored. An action may as well as a
  * route declare static segments, single-segment path parameters and catch-all
  * path parameters.<p>
  * 
- * The purpose of the implementation is also semi-equivalent to that of the
+ * The purpose of the action registry is also semi-equivalent to that of the
  * route registry; map an inbound request-target to decorative actions. The key
  * difference between this registry and the route registry is that
  * <i>multiple</i> actions can be stored at the same position, as long as they
- * are not equal objects as determined by {@code Object.equals(Object)}
- * (duplicates allowed at different positions).<p>
+ * are not equal objects as determined by {@code Object.equals(Object)} (an
+ * action can be spread out at different positions).<p>
  * 
  * Further, whereas the route registry enforces constructs such as positional
  * mutual exclusivity for non-static segment types, this registry does not. A
@@ -77,8 +77,9 @@ import alpha.nomagichttp.route.RouteRegistry;
  * their implicit unspecificity (catch-all first, then single-segment path, then
  * static segment) and thirdly by their registration order. The rule is to match
  * from the most broad action first to the most niche action last, but still
- * maintain the registration order provided by the application. For instance:
+ * maintain the registration order provided by the application.<p>
  * 
+ * For example:
  * <pre>
  *   Request path: /
  *   
@@ -135,27 +136,41 @@ import alpha.nomagichttp.route.RouteRegistry;
  *   /*             4) copy correlation id to response header
  * </pre>
  * 
- * An action added to the registry is not necessarily immediately visible to
- * currently active HTTP exchanges. Matched before-actions are retrieved only
- * once after a valid request head was received; at the beginning of each new
- * HTTP exchange. Matched after-actions are retrieved only once after the first
- * response was received and accepted by the channel.<p>
+ * For clarity in code, actions should be added to the registry in the order of
+ * invocation.<p>
+ * 
+ * <pre>
+ *   HttpServer.create(myGlobalErrorHandlers)
+ *             .before(myAllRequestsAction)
+ *                 .before(mySpecificPathAction)
+ *                 .add(mySpecificPathResource)
+ *                 .after(mySpecificPathAction)
+ *             .after(myAllResponsesAction)
+ *             ...
+ * </pre>
+ * 
+ * An action added to the registry is not necessarily <i>immediately</i> visible
+ * to currently active HTTP exchanges and should generally be registered before
+ * the server starts. Before-actions are matched only once after a valid request
+ * head was received; at the beginning of each HTTP exchange. After-actions are
+ * matched only once after the first response was received and accepted by the
+ * channel.<p>
  * 
  * Unlike {@link RouteRegistry}, this interface does not declare remove
- * operations. The chief reasons behind this decision was to reduce the API
- * footprint as well as to enable certain performance optimizations in the
- * implementation. Nor is this expected to hinder the demands of most
- * applications. Routes may come and go at runtime and serve specific purposes
- * only for a limited amount of time. Actions on the other hand represents
- * cross-cutting concerns. E.g. security and metrics are likely setup once
- * during initialization with no need to ever turn them off again. This could of
- * course be implemented in the action itself through a feature flag of sorts.
+ * operations. The reasons behind this decision was to reduce the API footprint
+ * as well as to enable certain performance optimizations in the implementation.
+ * Nor is this expected to hinder the demands of most applications. Routes may
+ * come and go at runtime and serve specific purposes only for a limited amount
+ * of time. Actions on the other hand represents cross-cutting concerns. E.g.
+ * security and metrics are likely setup once during initialization with no need
+ * to ever turn them off again. This could of course be implemented in the
+ * action itself by using a feature flag or whatever.
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  */
 public interface ActionRegistry {
      /**
-     * Register a before action.
+     * Register a before-action.
      * 
      * @param pattern of action(s)
      * @param first   action
@@ -175,7 +190,7 @@ public interface ActionRegistry {
     HttpServer before(String pattern, BeforeAction first, BeforeAction... more);
     
     /**
-     * Register an after action.
+     * Register an after-action.
      * 
      * @param pattern of action(s)
      * @param first   action

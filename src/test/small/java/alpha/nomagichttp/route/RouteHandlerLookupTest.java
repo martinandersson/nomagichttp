@@ -10,9 +10,9 @@ import java.util.Set;
 
 import static alpha.nomagichttp.handler.RequestHandler.GET;
 import static alpha.nomagichttp.message.MediaType.TEXT_PLAIN;
-import static alpha.nomagichttp.message.MediaType.__ALL;
-import static alpha.nomagichttp.message.MediaType.__NOTHING;
-import static alpha.nomagichttp.message.MediaType.__NOTHING_AND_ALL;
+import static alpha.nomagichttp.message.MediaType.ALL;
+import static alpha.nomagichttp.message.MediaType.NOTHING;
+import static alpha.nomagichttp.message.MediaType.NOTHING_AND_ALL;
 import static alpha.nomagichttp.message.MediaType.parse;
 import static alpha.nomagichttp.message.Responses.accepted;
 import static java.util.Arrays.stream;
@@ -106,31 +106,31 @@ class RouteHandlerLookupTest
     
     @Test
     void order_by_specificity_1() {
-                                create(__NOTHING_AND_ALL, __ALL);
-        RequestHandler target = create(__NOTHING_AND_ALL, TEXT_PLAIN);
+                                create(NOTHING_AND_ALL, ALL);
+        RequestHandler target = create(NOTHING_AND_ALL, TEXT_PLAIN);
         assertThat(exec(null, "text/*")).isSameAs(target);
     }
     
     @Test
     void order_by_specificity_2() {
-        RequestHandler target = create(__NOTHING, __ALL);
-                                create(__NOTHING_AND_ALL, __ALL);
+        RequestHandler target = create(NOTHING, ALL);
+                                create(NOTHING_AND_ALL, ALL);
         // In this case, NOTHING is more specific than NOTHING_AND_ALL
         assertThat(exec((MediaType) null)).isSameAs(target);
     }
     
     @Test
     void order_by_specificity_3() {
-                                create(__NOTHING, __ALL);
-        RequestHandler target = create(__NOTHING_AND_ALL, __ALL);
+                                create(NOTHING, ALL);
+        RequestHandler target = create(NOTHING_AND_ALL, ALL);
         // In this case, NOTHING_AND_ALL is more specific than NOTHING
         assertThat(exec("bla/bla")).isSameAs(target);
     }
     
     @Test
     void order_by_specificity_4() {
-                                create(__NOTHING_AND_ALL, __ALL);
-        RequestHandler target = create(__ALL, __ALL);
+                                create(NOTHING_AND_ALL, ALL);
+        RequestHandler target = create(ALL, ALL);
         // In this case, ALL is more specific than NOTHING_AND_ALL
         assertThat(exec("bla/bla")).isSameAs(target);
     }
@@ -157,7 +157,7 @@ class RouteHandlerLookupTest
     
     @Test
     void produces_params_specific() {
-        RequestHandler target = create(__NOTHING_AND_ALL, parse("text/plain; charset=utf-8; something=else"));
+        RequestHandler target = create(NOTHING_AND_ALL, parse("text/plain; charset=utf-8; something=else"));
         
         assertThatThrownBy(() -> exec(null, "*/*"))
                 .isExactlyInstanceOf(MediaTypeNotAcceptedException.class)
@@ -169,15 +169,15 @@ class RouteHandlerLookupTest
     
     @Test
     void produces_params_all() {
-        RequestHandler target = create(__NOTHING_AND_ALL, parse("text/html"));
-        assertThat(exec(__NOTHING_AND_ALL, parse("*/*;       bla=bla"))).isSameAs(target);
-        assertThat(exec(__NOTHING_AND_ALL, parse("text/*;    bla=bla"))).isSameAs(target);
-        assertThat(exec(__NOTHING_AND_ALL, parse("text/html; bla=bla"))).isSameAs(target);
+        RequestHandler target = create(NOTHING_AND_ALL, parse("text/html"));
+        assertThat(exec(NOTHING_AND_ALL, parse("*/*;       bla=bla"))).isSameAs(target);
+        assertThat(exec(NOTHING_AND_ALL, parse("text/*;    bla=bla"))).isSameAs(target);
+        assertThat(exec(NOTHING_AND_ALL, parse("text/html; bla=bla"))).isSameAs(target);
     }
     
     @Test
     void stupid_client() {
-        create(__NOTHING_AND_ALL, __ALL);
+        create(NOTHING_AND_ALL, ALL);
         // Client has nothing to provide us and accepts nothing in return.
         assertThatThrownBy(() -> exec(null, "*/*;q=0"))
                 .isExactlyInstanceOf(MediaTypeNotAcceptedException.class)
@@ -212,28 +212,28 @@ class RouteHandlerLookupTest
                 "*/*;q=0.5"};
         
         // "text/plain" is the client's last preference, but the only one we have.
-        RequestHandler target = create(__NOTHING_AND_ALL, parse("text/plain"));
+        RequestHandler target = create(NOTHING_AND_ALL, parse("text/plain"));
         assertThat(exec(null, accepts)).isSameAs(target);
         
         // So we keep adding more preferred handlers (the "given type" in RFC),
         // and the same request gets routed to the new handlers accordingly.
         
-        target = create(__NOTHING_AND_ALL, parse("text/html;level=2"));
+        target = create(NOTHING_AND_ALL, parse("text/html;level=2"));
         assertThat(exec(null, accepts)).isSameAs(target);
         
-        target = create(__NOTHING_AND_ALL, parse("image/jpeg"));
+        target = create(NOTHING_AND_ALL, parse("image/jpeg"));
         assertThat(exec(null, accepts)).isSameAs(target);
         
-        target = create(__NOTHING_AND_ALL, parse("text/html"));
+        target = create(NOTHING_AND_ALL, parse("text/html"));
         assertThat(exec(null, accepts)).isSameAs(target);
         
         // Same Q ("0.7") as last one and media type even more specific.
         // But handler specifies a parameter and request doesn't.
         // So the more generic handler "text/html" with no params is still the match.
-        create(__NOTHING_AND_ALL, parse("text/html;level=3"));
+        create(NOTHING_AND_ALL, parse("text/html;level=3"));
         assertThat(exec(null, accepts)).isSameAs(target);
         
-        target = create(__NOTHING_AND_ALL, parse("text/html;level=1"));
+        target = create(NOTHING_AND_ALL, parse("text/html;level=1"));
         assertThat(exec(null, accepts)).isSameAs(target);
     }
     

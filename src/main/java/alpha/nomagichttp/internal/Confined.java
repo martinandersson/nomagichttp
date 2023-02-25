@@ -1,5 +1,7 @@
 package alpha.nomagichttp.internal;
 
+import alpha.nomagichttp.util.Throwing;
+
 import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicReference;
@@ -65,7 +67,7 @@ public final class Confined<V>
             IS_USER_VALUE = o -> o != null && !(o instanceof Reservation);
     
     /**
-     * Initialize this box with a value.<p>
+     * Initializes this box with a value.<p>
      * 
      * The box can ever only initialize once. The initializing thread will
      * receive the value in return, all other threads receive {@code null}.<p>
@@ -82,7 +84,7 @@ public final class Confined<V>
     }
     
     /**
-     * Initialize this box with a value.<p>
+     * Initializes this box with a value.<p>
      * 
      * This method is equivalent to {@link #init(Supplier)}, except it allows
      * for the factory to throw a checked exception.
@@ -135,7 +137,7 @@ public final class Confined<V>
     }
     
     /**
-     * Drop the contained value to never be seen again.<p>
+     * Drops the contained value to never be seen again.<p>
      * 
      * The {@code disposer} will be called exactly once and only if the value
      * has been initialized. All other calls will be NOP.
@@ -149,7 +151,7 @@ public final class Confined<V>
     }
     
     /**
-     * Drop the contained value to never be seen again.<p>
+     * Drops the contained value to never be seen again.<p>
      * 
      * This method is equivalent to {@link #drop(Consumer)}, except it allows
      * for the disposer to throw a checked exception.
@@ -172,7 +174,7 @@ public final class Confined<V>
     }
     
     /**
-     * Conditionally update the reference value to a Reservation object.
+     * Conditionally updates the reference value to a Reservation object.
      * 
      * @param when a condition that receives the current reference value
      * 

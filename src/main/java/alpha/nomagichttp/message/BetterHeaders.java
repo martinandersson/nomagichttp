@@ -79,7 +79,7 @@ public interface BetterHeaders
      * 
      * @param headerName header name filter
      * @return {@code true} if header is present, otherwise {@code false}
-     * @throws NullPointerException if a is {@code null} 
+     * @throws NullPointerException if {@code headerName} is {@code null} 
      */
     default boolean contains(String headerName) {
         // NPE is unfortunately not documented in JDK
@@ -122,7 +122,14 @@ public interface BetterHeaders
     
     /**
      * Returns {@code true} if the given header is missing or all of its mapped
-     * values are empty, otherwise {@code false}.
+     * values are empty, otherwise {@code false}.<p>
+     * 
+     * A method semantically equivalent to "isMissing" is provided:
+     * <pre>
+     *   if (!headers.{@link #contains(String) contains}("Blah")) {
+     *       // Is missing, but possibly empty
+     *   }
+     * </pre>
      * 
      * @implSpec
      * The default implementation uses {@link #delegate()}.
@@ -164,7 +171,7 @@ public interface BetterHeaders
      * 
      * @param name of header
      * @return tokens
-     * @throws NullPointerException if {@code header} is {@code null}
+     * @throws NullPointerException if {@code name} is {@code null}
      * @see #allTokensKeepQuotes(String)
      * @see <a href="https://datatracker.ietf.org/doc/html/rfc7230#section-3.2.2">RFC 7230 §3.2.2</a>
      * @see <a href="https://datatracker.ietf.org/doc/html/rfc7230#section-3.2.6">RFC 7230 §3.2.6</a>
@@ -189,7 +196,7 @@ public interface BetterHeaders
      * 
      * @param name header name
      * @return tokens
-     * @throws NullPointerException if {@code header} is {@code null}
+     * @throws NullPointerException if {@code name} is {@code null}
      * @see <a href="https://datatracker.ietf.org/doc/html/rfc7230#section-3.2.2">RFC 7230 §3.2.2</a>
      * @see <a href="https://datatracker.ietf.org/doc/html/rfc7230#section-3.2.6">RFC 7230 §3.2.6</a>
      * @see Strings#split(CharSequence, char, char) 

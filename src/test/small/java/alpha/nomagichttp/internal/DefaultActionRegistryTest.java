@@ -3,7 +3,7 @@ package alpha.nomagichttp.internal;
 import alpha.nomagichttp.action.ActionNonUniqueException;
 import alpha.nomagichttp.action.AfterAction;
 import alpha.nomagichttp.action.BeforeAction;
-import alpha.nomagichttp.action.Chain;
+import alpha.nomagichttp.Chain;
 import alpha.nomagichttp.handler.ClientChannel;
 import alpha.nomagichttp.message.Request;
 import alpha.nomagichttp.message.Response;

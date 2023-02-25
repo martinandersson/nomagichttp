@@ -16,9 +16,9 @@ import java.util.TreeSet;
 import java.util.stream.Stream;
 
 import static alpha.nomagichttp.message.MediaType.Score.NOPE;
-import static alpha.nomagichttp.message.MediaType.__ALL;
-import static alpha.nomagichttp.message.MediaType.__NOTHING;
-import static alpha.nomagichttp.message.MediaType.__NOTHING_AND_ALL;
+import static alpha.nomagichttp.message.MediaType.ALL;
+import static alpha.nomagichttp.message.MediaType.NOTHING;
+import static alpha.nomagichttp.message.MediaType.NOTHING_AND_ALL;
 import static alpha.nomagichttp.route.AmbiguousHandlerException.createAmbiguousEx;
 import static java.lang.String.join;
 import static java.text.MessageFormat.format;
@@ -147,12 +147,12 @@ public final class DefaultRoute implements Route
     {
         final MediaType consumes = handler.consumes();
         
-        if (consumes == __NOTHING_AND_ALL) {
+        if (consumes == NOTHING_AND_ALL) {
             return true;
         }
         
         boolean contentTypeProvided = contentType != null,
-                consumesNothing     = consumes == __NOTHING;
+                consumesNothing     = consumes == NOTHING;
         
         if (contentTypeProvided) {
             if (consumesNothing) {
@@ -337,7 +337,7 @@ public final class DefaultRoute implements Route
             return this;
         }
         
-        private static final Set<MediaType> SPECIAL = Set.of(__NOTHING, __NOTHING_AND_ALL, __ALL);
+        private static final Set<MediaType> SPECIAL = Set.of(NOTHING, NOTHING_AND_ALL, ALL);
         
         @Override
         public Route.Builder handler(RequestHandler first, RequestHandler... more) {
@@ -354,7 +354,7 @@ public final class DefaultRoute implements Route
                 if (specials.equals(SPECIAL)) {
                     throw new HandlerCollisionException(format(
                             "All other meta data being equal; if there''s a consumes {0} then {1} is effectively equal to {2}.",
-                            __NOTHING, __NOTHING_AND_ALL, __ALL));
+                            NOTHING, NOTHING_AND_ALL, ALL));
                 }
             }
             

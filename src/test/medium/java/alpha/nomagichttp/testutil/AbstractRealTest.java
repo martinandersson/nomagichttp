@@ -478,7 +478,7 @@ public abstract class AbstractRealTest
      * {@link Logging.Recorder#assertAwaitFirstLogError()} is the same
      * instance.<p>
      * 
-     * May be used when test case needs to assert the default error handler was
+     * May be used when test case needs to assert the base error handler was
      * delivered a particular error <i>and</i> logged it (or, someone did).
      * 
      * @return an assert API of sorts

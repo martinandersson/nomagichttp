@@ -752,10 +752,10 @@ class ErrorTest extends AbstractRealTest
                 assertThat(thr2.getMessage()).isNotEqualTo(thr1.getMessage());
             }
             logRecorder().assertThatLogContainsOnlyOnce(
-                    rec(ERROR, "Default error handler received:", thr1));
+                    rec(ERROR, "Base error handler received:", thr1));
             if (thr2 != null) {
             logRecorder().assertThatLogContainsOnlyOnce(
-                    rec(ERROR, "Default error handler received:", thr2));
+                    rec(ERROR, "Base error handler received:", thr2));
             }
         }
         

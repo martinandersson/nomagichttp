@@ -1,6 +1,8 @@
 package alpha.nomagichttp;
 
 import alpha.nomagichttp.action.ActionRegistry;
+import alpha.nomagichttp.action.AfterAction;
+import alpha.nomagichttp.action.BeforeAction;
 import alpha.nomagichttp.event.EventEmitter;
 import alpha.nomagichttp.event.EventHub;
 import alpha.nomagichttp.event.HttpServerStarted;
@@ -19,18 +21,20 @@ import alpha.nomagichttp.message.Response;
 import alpha.nomagichttp.message.Responses;
 import alpha.nomagichttp.route.Route;
 import alpha.nomagichttp.route.RouteRegistry;
+import alpha.nomagichttp.util.ScopedValues;
+import alpha.nomagichttp.util.Throwing;
 import jdk.incubator.concurrent.StructuredTaskScope;
 
 import java.io.IOException;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
+import java.net.UnixDomainSocketAddress;
 import java.nio.channels.AsynchronousCloseException;
 import java.nio.channels.ServerSocketChannel;
 import java.time.Duration;
 import java.time.Instant;
-
-import static java.net.InetAddress.getLoopbackAddress;
+import java.util.function.IntConsumer;
 
 /**
  * Listens on a port for HTTP connections.<p>
@@ -42,7 +46,7 @@ import static java.net.InetAddress.getLoopbackAddress;
  * headers- and body as well as what headers and body it responds.<p>
  * 
  * The process of receiving a request and respond responses (any number of
- * intermittent responses, followed by a final response) is often called an
+ * interim responses, followed by a final response) is often called an
  * "exchange".<p>
  * 
  * This interface declares static <i>{@code create}</i> methods that construct
@@ -50,75 +54,86 @@ import static java.net.InetAddress.getLoopbackAddress;
  * has been constructed, it needs to <i>{@code start()}</i> which will open the
  * server's listening port.<p>
  * 
- * Routes can be dynamically added and removed using {@link #add(Route)
- * add(Route)} and {@link #remove(Route) remove(Route)}. A legal server variant
- * is to not even have any routes registered. The idea is that resources (what's
- * "behind the route") can be short-lived and serve very specific purposes, so
- * their presence can change.<p>
- * 
- * Example:
+ * A trivial example:
  * <pre>
- *   HttpServer.{@link #create(ErrorHandler...)
- *     create}().{@link #add(String, RequestHandler, RequestHandler...)
- *       add}("/", {@link RequestHandler#GET()
- *         GET}().{@link RequestHandler.Builder#respond(Response)
- *           respond}({@link Responses#text(String)
- *             text}("Hello"))).{@link #start() start}();
+ *   HttpServer.{@link #create(ErrorHandler...) create}()
+ *             .{@link #add(String, RequestHandler, RequestHandler...) add
+ *                 }("/", {@link RequestHandler#GET()
+ *                 GET}().{@link RequestHandler.Builder#apply(Throwing.Function)
+ *                 apply}(request -> {@link Responses#text(String)
+ *                 text}("Hello")))
+ *             .{@link #start(IntConsumer) start}(port ->
+ *                 System.out.println("Listening on port: " + port));
  * </pre>
  * 
+ * What was <i>added</i> to the server is a {@link RequestHandler} mapped to a
+ * {@link Route} pattern. Optionally, one can also register
+ * {@link BeforeAction}s that executes before the request handler (both together
+ * often called the "request processing chain"), and {@link AfterAction}s that
+ * can manipulate responses before they are sent. Exceptions can be handled
+ * globally using any number of {@link ErrorHandler}s. And there you have it,
+ * that's about all the types one needs to get familiar with. No magic.
  * 
  * <h2>Server Life-Cycle</h2>
  * 
- * It is possible to start server instances on different ports. One use-case for
- * this pattern is to expose public endpoints on one port but keep more
- * sensitive administrator endpoints on another more secluded port.<p>
+ * The {@code start} method blocks indefinitely and returns only exceptionally.
+ * Either a port is not specified, in which case the system picks a port and an
+ * {@code IntConsumer} of that port must be provided, or a port or an address is
+ * specified. When starting only one server instance, then the call to
+ * {@code start} should be the last statement of the application's entry
+ * point.<p>
  * 
- * TODO: Give StructuredTaskScope example.<p>
+ * It is possible to start multiple server instances on different ports. One
+ * use-case is to expose public endpoints on one port but keep more sensitive
+ * administrator endpoints on another more secluded port.<p>
+ * 
+ * TODO: Give StructuredTaskScope(?) example starting multiple servers.<p>
  * 
  * A server instance can not be recycled; it can only start and stop once.<p>
  * 
+ * Code executing within the server (for example the request handler), and all
+ * listeners who registered with {@link #events()}, will be able to retrieve
+ * the server instance using {@link ScopedValues#httpServer()}.
  * 
  * <h2>Supported HTTP Versions</h2>
  *
- * Currently, the NoMagicHTTP server is a project in its infancy. Almost
+ * Currently, the NoMagicHTTP library is a project in its infancy. Almost
  * complete support for HTTP/1.0 and 1.1 is the first milestone, yet to be done
  * (see POA.md in repository). HTTP/2 will be implemented thereafter. HTTP
  * clients older than HTTP/1.0 is rejected (the exchange will crash with a
- * {@link HttpVersionTooOldException}).<p>
- * 
+ * {@link HttpVersionTooOldException}).
  * 
  * <h2>Thread Safety and Threading Model</h2>
  * 
  * All methods found on the {@code HttpServer} interface are thread-safe.<p>
  * 
- * The default implementation uses virtual threads to handle inbound
- * connections, invoke the application's request handlers and so on. Using
- * virtual threads enables the rest of the library API to expose a simple and
- * semantically blocking API to the application code, but virtual threads do not
- * block; instead they will unmount from the carrier thread making it available
- * to be mounted by a different virtual thread.<p>
+ * Many components operated within the HTTP exchange is <i>not</i> thread-safe.
+ * And, there's a reason for that. The default server implementation uses one
+ * virtual thread per client channel, semantically known as "one thread per
+ * request" (technically one thread for each client connection, which may be
+ * used for many consecutive exchanges). This thread will run through the entire
+ * request processing chain and write the response.<p>
  * 
- * It is safe to call methods found in the {@code HttpServer} interface, its
- * super-interfaces and related API (e.g. constructing objects such as routes
- * and handlers) from a native thread.<p>
+ * For the application developer, it is both safe and elegant to write
+ * semantically blocking code. If and when a method would have blocked, the
+ * virtual thread will unmount from its carrier thread, making the carrier
+ * thread available to be mounted by a another virtual thread.<p>
  * 
- * However, application code executing within the scope of an HTTP exchange
- * should not use other parts of the library API from a native thread. Parts of
- * the API that would've caused a native thread to block reserves the right to
- * throw a {@link WrongThreadException}, if called using a native thread.<p>
+ * The application should <i>not</i> process the request asynchronously. The
+ * library API may throw a {@link WrongThreadException} if called by a platform
+ * thread and that call would have caused the thread block.<p>
  * 
  * TODO: Give bad example of concurrent outbound calls to dependent services
  * using a parallel Stream on native threads.<p>
  * 
  * TODO: Give good example using {@link StructuredTaskScope}<p>
  * 
- * 
  * <h2>HTTP message semantics</h2>
  * 
  * Only a very few message variants are specified to <i>not</i> have a body and
  * will be rejected by the server if they do ({@link
  * IllegalRequestBodyException}, {@link IllegalResponseBodyException}). These
- * variants <i>must</i> be rejected since including a body would have likely
+ * variants <i>must</i> be rejected since including a body would likely have
  * killed the protocol.<p>
  * 
  * For all other variants of requests and responses, the body is optional and
@@ -139,13 +154,10 @@ import static java.net.InetAddress.getLoopbackAddress;
  * (Created)} response often do have a body which "typically describes and links
  * to the resource(s) created" (
  * <a href="https://tools.ietf.org/html/rfc7231#section-6.3.2">RFC 7231 §6.3.2</a>
- * ), but it's not required to. And so the list goes on.
+ * ), but it's not required to. And so the list goes on (for more info, see
+ * <a href="https://stackoverflow.com/a/70157919/1268003">this StackOverflow answer</a>).
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
- * 
- * @see Route
- * @see RequestHandler
- * @see ErrorHandler
  */
 public interface HttpServer extends RouteRegistry, ActionRegistry
 {
@@ -196,14 +208,10 @@ public interface HttpServer extends RouteRegistry, ActionRegistry
      * This method is useful for inter-process communication on the same machine
      * or to start a server in a test environment.<p>
      * 
-     * The port can be retrieved using {@link
-     * #getLocalAddress()}{@code .getPort()}.<p>
-     * 
      * Production code ought to specify an address using any other overload of
-     * the start method.
+     * the start method.<p>
      * 
-     * @implSpec
-     * The default implementation is equivalent to:
+     * The implementation is semantically equivalent to:
      * <pre>
      *   InetAddress addr = InetAddress.getLoopbackAddress();
      *   int port = 0;
@@ -211,10 +219,12 @@ public interface HttpServer extends RouteRegistry, ActionRegistry
      *   return {@link #start(SocketAddress) start}(local);
      * </pre>
      * 
-     * @return nothing
+     * @param ofPort receives the listening port (must not be {@code null})
+     * 
+     * @return never normally
      * 
      * @throws NullPointerException
-     *             if {@code address} is {@code null}
+     *             if {@code ofPort} is {@code null}
      * @throws IllegalStateException
      *             if server is already running
      * @throws IOException
@@ -224,9 +234,7 @@ public interface HttpServer extends RouteRegistry, ActionRegistry
      * 
      * @see InetAddress
      */
-    default Void start() throws IOException, InterruptedException {
-        return start(new InetSocketAddress(getLoopbackAddress(), 0));
-    }
+    Void start(IntConsumer ofPort) throws IOException, InterruptedException;
     
     /**
      * Listens for client connections on the specified port on the wildcard
@@ -243,10 +251,8 @@ public interface HttpServer extends RouteRegistry, ActionRegistry
      * 
      * @param port to use
      * 
-     * @return nothing
+     * @return never normally
      * 
-     * @throws NullPointerException
-     *             if {@code address} is {@code null}
      * @throws IllegalStateException
      *             if the server is already running
      * @throws IOException
@@ -273,7 +279,7 @@ public interface HttpServer extends RouteRegistry, ActionRegistry
      * @param hostname to use
      * @param port to use
      * 
-     * @return nothing
+     * @return never normally
      * 
      * @throws NullPointerException
      *             if {@code hostname} is {@code null}
@@ -310,7 +316,7 @@ public interface HttpServer extends RouteRegistry, ActionRegistry
      * 
      * @param address to use
      * 
-     * @return nothing
+     * @return never normally
      * 
      * @throws NullPointerException
      *             if {@code address} is {@code null}
@@ -446,12 +452,11 @@ public interface HttpServer extends RouteRegistry, ActionRegistry
      * }</pre>
      * 
      * The hub can also be used to emit application-specific events
-     * programmatically.
-     * <pre>{@code
-     *   server.events().on(String.class, msg ->
-     *           System.out.println("Received message: " + msg));
-     *   server.events().dispatch("Hello!");
-     * }</pre>
+     * programmatically, even from application-code executing within the server.
+     * <pre>
+     *   {@link ScopedValues#httpServer() httpServer
+     *   }().events().{@link EventHub#dispatch(Object) dispatch}("Hello!");
+     * </pre>
      * 
      * The hub is not bound to the running state of the server. The hub can be
      * used by the application to dispatch its own events before the server has
@@ -513,18 +518,46 @@ public interface HttpServer extends RouteRegistry, ActionRegistry
     /**
      * Returns the server's configuration.
      * 
-     * @return the server's configuration (never {@code null})
+     * @return see JavaDoc (never {@code null})
      */
     Config getConfig();
     
     /**
      * Returns the socket address that the server's channel's socket is bound to.
      * 
-     * @return the socket address that the server's channel's socket is bound to
-     *         (never {@code null})
+     * @return see JavaDoc (never {@code null})
      * 
-     * @throws IllegalStateException if the server is not running
+     * @throws IllegalStateException
+     *             if the server is not running
+     * @throws IOException
+     *             if an I/O error occurs
+     * 
      * @see ServerSocketChannel#getLocalAddress()
      */
     SocketAddress getLocalAddress() throws IOException;
+    
+    /**
+     * Returns the port this server is listening to.
+     * 
+     * @implSpec
+     * The default implementation is equivalent to:
+     * <pre>
+     *   return (({@link InetSocketAddress
+     *       }) {@link #getLocalAddress() getLocalAddress
+     *       }()).{@link InetSocketAddress#getPort() getPort}();
+     * </pre>
+     * 
+     * @return see JavaDoc
+     * 
+     * @throws IllegalStateException
+     *             if the server is not running
+     * @throws ClassCastException
+     *             if the server was created using an
+     *             {@link UnixDomainSocketAddress}
+     * @throws IOException
+     *             if an I/O error occurs
+     */
+    default int getPort() throws IOException {
+        return ((InetSocketAddress) getLocalAddress()).getPort();
+    }
 }

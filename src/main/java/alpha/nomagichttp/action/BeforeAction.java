@@ -1,79 +1,94 @@
 package alpha.nomagichttp.action;
 
+import alpha.nomagichttp.Chain;
 import alpha.nomagichttp.HttpServer;
-import alpha.nomagichttp.ReceiverOfUniqueRequestObject;
 import alpha.nomagichttp.event.RequestHeadReceived;
-import alpha.nomagichttp.handler.ClientChannel;
 import alpha.nomagichttp.handler.ErrorHandler;
 import alpha.nomagichttp.message.Request;
-import alpha.nomagichttp.util.TriConsumer;
+import alpha.nomagichttp.message.Response;
+import alpha.nomagichttp.util.Throwing;
+import jdk.incubator.concurrent.ScopedValue;
 
 /**
- * An action executed after a valid request has been received and before the
- * server attempts at resolving the request handler. The action decides whether
- * to proceed or abort the HTTP exchange and may freely populate attributes for
- * future consumption.<p>
+ * Is an action executed before the request handler.<p>
+ * 
+ * The action is executed between a valid request head has been received and
+ * the server attempts at resolving the request handler. The action may decide
+ * to proceed the request processing chain or return a response directly.<p>
  * 
  * Before-actions are useful to implement cross-cutting concerns such as
- * authentication, rate-limiting, collecting metrics, logging, auditing, and so
- * on.<p>
+ * authentication, rate-limiting, collecting metrics, fault tolerance (retry,
+ * circuit breaker ...), and so on.<p>
  * 
- * An action is known on other corners of the internet as a "filter", although
- * the NoMagicHTTP library has avoided this naming convention due to the fact
- * that an action has no obligation to approve, reject or modify requests. It is
- * free to do anything, including ordering pizza online.
+ * Although a before-action can be used to handle exceptions — and for well
+ * defined route patterns this is certainly an option — the {@link ErrorHandler}
+ * is what should be used for global errors.<p>
  * 
  * <pre>
- *   BeforeAction giveRole = (request, channel, chain) -{@literal >} {
+ *   BeforeAction giveRole = (request, chain) -{@literal >} {
  *       String role = myAuthLogic(request.headers());
  *       request.attributes().set("user.role", role);
- *       chain.proceed();
+ *       return chain.proceed();
  *   };
  *   HttpServer server = ...
  *   // Apply to all requests
  *   server.before("/*", giveRole);
  * </pre>
  * 
- * An action writing a final response to the channel ought to also <i>abort</i>
- * the HTTP exchange. Interactions (or the lack thereof) with the client channel
- * has no magical effect at all concerning what happens after the action
- * completes.
+ * If the value stored in the attributes acts as a default and will need to be
+ * temporarily rebound at a later point in time, consider using a
+ * {@link ScopedValue} instead.<p>
+ * 
+ * TODO: Give example.<p>
+ * 
+ * Word of caution: Error handlers are called from outside of the request
+ * processing chain. For the previous example, this means that error handlers
+ * will not be able to observe the bound value. They will, however, be able to
+ * read request attributes (assuming the request exists at that point in
+ * time).<p>
+ * 
+ * An action is known on other corners of the internet as a "filter", although
+ * the NoMagicHTTP library has avoided this naming convention due to the fact
+ * that an action has no obligation to approve, reject or modify requests. It is
+ * free to do anything, including ordering pizza online.<p>
+ * 
+ * In particular, a before-action has no obligation to proceed the request
+ * processing chain.
+ * 
  * <pre>
- *   BeforeAction onlyAdminsAllowed = (request, channel, chain) -{@literal >} {
+ *   BeforeAction onlyAdminsAllowed = (request, chain) -{@literal >} {
  *       String role = request.attributes().getAny("user.role");
- *       if ("admin".equals(role)) {
- *           chain.proceed();
- *       } else {
- *           channel.write(Responses.forbidden());
- *           chain.abort();
+ *       if (!"admin".equals(role)) {
+ *           // Short-circuit the rest of the processing chain
+ *           return Responses.forbidden();
  *       }
+ *       return chain.proceed();
  *   };
  *   HttpServer server = ...
  *   // Apply to the "admin" namespace
  *   server.before("/admin/*", onlyAdminsAllowed);
  * </pre>
  * 
- * An exception thrown from the before-action is an alternative to explicitly
- * aborting through the {@link Chain} object. The exception is handed off to the
- * {@link ErrorHandler}. This is a variant of the previous example:
+ * An exception thrown from the before-action will be handed off to the error
+ * handlers. This is a variant of the previous example:
  * <pre>
- *   ErrorHandler weRatherHide = (throwable, channel, request) -{@literal >} {
- *       try {
- *           throw throwable;
- *       } catch (MySuspiciousRequestException e) {
- *           channel.shutdownInputSafe();
- *           channel.write(Responses.notFound());
+ *   ErrorHandler hideResource = (exc, chain, request) -{@literal >} {
+ *       if (exc instanceof MySuspiciousRequestException) {
+ *           // Or set response header "Connection: close" (equivalent)
+ *           channel().shutdownInput();
+ *           return Responses.notFound();
  *       }
+ *       return chain.proceed();
  *   };
- *   HttpServer server = HttpServer.create(weRatherHide);
- *   BeforeAction expectAdmin = (request, channel, chain) -{@literal >} {
+ *   HttpServer server = HttpServer.create(hideResource);
+ *   BeforeAction requireAdmin = (request, chain) -{@literal >} {
  *       request.attributes()
  *              .getOpt("user.role")
  *              .filter("admin"::equals)
  *              .orElseThrow(MySuspiciousRequestException::new);
- *       chain.proceed();
+ *       return chain.proceed();
  *   };
- *   server.before("/admin/*", expectAdmin);
+ *   server.before("/admin/*", requireAdmin);
  * </pre>
  * 
  * The action is called only after a request head has been received and
@@ -90,23 +105,22 @@ import alpha.nomagichttp.util.TriConsumer;
  * that the action is called even if a particular route turns out to not exist
  * or the route exists but has no applicable request handler.<p>
  * 
- * The action may be called concurrently and must be thread-safe. It is likely
- * called by the server's request thread and so must not block. No argument
- * passed to the action will be {@code null}.<p>
+ * The action may be called concurrently and must be thread-safe.<p>
+ * 
+ * No argument passed to the action will be {@code null}.<p>
  * 
  * As a word of advice; magic obfuscates and will render the architecture harder
  * to understand. Some features, although cross-cutting in nature, ought to be
- * implemented much closer to the use site, i.e. in the request handler or one
- * of its collaborators. This likely includes fault tolerance (retry, fallback,
- * ...) and transaction demarcation.
+ * implemented much closer to where it is applied, that is to say, in the
+ * request handler or in one of its collaborators. This likely includes
+ * transaction demarcation.
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
+ * 
  * @see ActionRegistry
  */
 @FunctionalInterface
-public interface BeforeAction extends
-        TriConsumer<Request, ClientChannel, Chain>,
-        ReceiverOfUniqueRequestObject
-{
+public interface BeforeAction
+       extends Throwing.BiFunction<Request, Chain, Response, Exception> {
     // Empty
 }

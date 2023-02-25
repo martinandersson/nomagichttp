@@ -4,8 +4,13 @@ import alpha.nomagichttp.HttpServer;
 import alpha.nomagichttp.handler.RequestHandler;
 
 /**
- * Provides thread-safe add- and remove operations over a bunch of routes. Also
- * known in other corners of the internet as a "router".<p>
+ * Provides thread-safe add- and remove operations of routes.<p>
+ * 
+ * Also known in other corners of the internet as a "router".<p>
+ * 
+ * Routes can be dynamically added and removed from the server. The idea is that
+ * resources (what's "behind the route") can be short-lived and serve very
+ * specific purposes, so their presence can change.<p>
  * 
  * The default implementation is similar in nature to many other router
  * implementations. The internally used data structure is a concurrent tree with

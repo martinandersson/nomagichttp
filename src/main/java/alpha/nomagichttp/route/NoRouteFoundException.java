@@ -7,7 +7,7 @@ import static java.util.stream.StreamSupport.stream;
 
 /**
  * Thrown by a route registry that failed to lookup a route because the route
- * was not found. {@link ErrorHandler#DEFAULT} maps this exception to a "404 Not
+ * was not found. {@link ErrorHandler#BASE} maps this exception to a "404 Not
  * Found" response.
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)

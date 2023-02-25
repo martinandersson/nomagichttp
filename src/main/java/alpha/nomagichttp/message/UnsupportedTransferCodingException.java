@@ -9,7 +9,7 @@ import static java.util.Objects.requireNonNull;
  * A coding listed in the request's {@value
  * HttpConstants.HeaderName#TRANSFER_ENCODING} header is not supported.<p>
  * 
- * The {@linkplain ErrorHandler#DEFAULT default error handler} translates this
+ * The {@linkplain ErrorHandler#BASE base error handler} translates this
  * exception to a {@link Responses#notImplemented() 501 (Not Implemented)}
  * response.
  * 

@@ -1,6 +1,5 @@
 package alpha.nomagichttp.message;
 
-import alpha.nomagichttp.HttpConstants;
 import alpha.nomagichttp.util.Strings;
 
 import java.net.http.HttpHeaders;
@@ -59,6 +58,27 @@ public class DefaultContentHeaders implements ContentHeaders
     @Override
     public final HttpHeaders delegate() {
         return jdk;
+    }
+    
+    @Override
+    public Stream<String> allTokens(String name) {
+        return allTokens0(name, false);
+    }
+    
+    @Override
+    public Stream<String> allTokensKeepQuotes(String name) {
+        return allTokens0(name, true);
+    }
+    
+    private Stream<String> allTokens0(String name, boolean keepQuotes) {
+        // NPE not documented in JDK
+        return jdk.allValues(requireNonNull(name))
+                  .stream()
+                  .<String>mapMulti((line, sink) -> {
+                      if (keepQuotes) Strings.splitToSink(line, ',', '"', sink);
+                      else Strings.splitToSink(line, ',', sink);})
+                  .map(String::strip)
+                  .filter(not(String::isEmpty));
     }
     
     private Optional<MediaType> cc;
@@ -120,39 +140,6 @@ public class DefaultContentHeaders implements ContentHeaders
     }
     
     @Override
-    public Stream<String> allTokens(String name) {
-        return allTokens0(name, false);
-    }
-    
-    @Override
-    public Stream<String> allTokensKeepQuotes(String name) {
-        return allTokens0(name, true);
-    }
-    
-    private Stream<String> allTokens0(String name, boolean keepQuotes) {
-        // NPE not documented in JDK
-        return jdk.allValues(requireNonNull(name))
-                  .stream()
-                  .<String>mapMulti((line, sink) -> {
-                      if (keepQuotes) Strings.splitToSink(line, ',', '"', sink);
-                      else Strings.splitToSink(line, ',', sink);})
-                  .map(String::strip)
-                  .filter(not(String::isEmpty));
-    }
-    
-    /**
-     * Returns all Transfer-Encoding tokens.<p>
-     * 
-     * The returned deque is modifiable, and consequently, not cached.
-     * 
-     * @return all Transfer-Encoding tokens (never {@code null})
-     * 
-     * @throws BadHeaderException
-     *       if the last token in the Transfer-Encoding header is not "chunked"
-     * 
-     * @see HttpConstants.HeaderName#TRANSFER_ENCODING
-     * @see <a href="https://bugs.openjdk.java.net/browse/JDK-6407460">JDK-6407460</a>
-     */
     public final Deque<String> transferEncoding() {
         var te = allTokens(TRANSFER_ENCODING)
                      .collect(toCollection(ArrayDeque::new));

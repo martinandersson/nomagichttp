@@ -9,9 +9,9 @@ import java.util.logging.Handler;
 
 import static alpha.nomagichttp.message.MediaType.TEXT_PLAIN;
 import static alpha.nomagichttp.message.MediaType.TEXT_PLAIN_UTF8;
-import static alpha.nomagichttp.message.MediaType.__ALL;
-import static alpha.nomagichttp.message.MediaType.__NOTHING;
-import static alpha.nomagichttp.message.MediaType.__NOTHING_AND_ALL;
+import static alpha.nomagichttp.message.MediaType.ALL;
+import static alpha.nomagichttp.message.MediaType.NOTHING;
+import static alpha.nomagichttp.message.MediaType.NOTHING_AND_ALL;
 import static alpha.nomagichttp.message.MediaType.parse;
 import static java.util.List.of;
 import static java.util.logging.Level.WARNING;
@@ -27,7 +27,7 @@ class MediaTypeTest
     @Test
     void cache() {
         // Each constant is put in the cache
-        assertSame(__ALL, parse("*/*"));
+        assertSame(ALL, parse("*/*"));
         assertSame(TEXT_PLAIN, parse("text/plain"));
         assertSame(TEXT_PLAIN_UTF8, parse("text/plain; charset=utf-8"));
         
@@ -139,7 +139,7 @@ class MediaTypeTest
     
     @Test
     void sentinel_equality() {
-        var sentinels = of(__ALL, __NOTHING, __NOTHING_AND_ALL);
+        var sentinels = of(ALL, NOTHING, NOTHING_AND_ALL);
         for (MediaType a : sentinels) {
             for (MediaType b : sentinels) {
                 if (a == b) {

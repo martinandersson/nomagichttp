@@ -117,7 +117,7 @@ public class MediaType
      * 
      * @see RequestHandler
      */
-    public static final MediaType __NOTHING
+    public static final MediaType NOTHING
             = new MediaType("<nothing>", null, null, Map.of()) {};
     
     // All modifiers repeated because otherwise the JavaDoc won't be picked up lol
@@ -132,7 +132,7 @@ public class MediaType
      * 
      * @see RequestHandler
      */
-    public static final MediaType __NOTHING_AND_ALL
+    public static final MediaType NOTHING_AND_ALL
             = new MediaType("<nothing and all>", null, null, Map.of()) {};
     
     /**
@@ -146,7 +146,7 @@ public class MediaType
      * 
      * @see RequestHandler
      */
-    public static final MediaType __ALL = parse0("*/*");
+    public static final MediaType ALL = parse0("*/*");
     
     // TODO: Usually there's no point in repeating modifiers.
     //       Alas Java < 17 will not pick up the JavaDoc if they aren't.
@@ -260,7 +260,7 @@ public class MediaType
         Map<String, MediaType> m = new HashMap<>();
         Stream.of(
             parse0("text/*"), parse0("text/*; charset=utf-8"),
-            __ALL,
+            ALL,
             TEXT_PLAIN,       TEXT_PLAIN_UTF8,
             TEXT_HTML,        TEXT_HTML_UTF8,
             TEXT_CSS,         TEXT_CSS_UTF8,
@@ -638,11 +638,11 @@ public class MediaType
      * @return an integer value for specificity
      */
     public final int specificity() {
-        if (this == __NOTHING_AND_ALL) {
+        if (this == NOTHING_AND_ALL) {
             return 7;
         }
         
-        if (this == __NOTHING) {
+        if (this == NOTHING) {
             return 6;
         }
         
@@ -686,8 +686,8 @@ public class MediaType
         
         // These sentinel objects use identity based equality.
         // (i.e. for the same instance, the method has already returned true)
-        if (this == __NOTHING         || obj == __NOTHING ||
-            this == __NOTHING_AND_ALL || obj == __NOTHING_AND_ALL) {
+        if (this == NOTHING || obj == NOTHING ||
+            this == NOTHING_AND_ALL || obj == NOTHING_AND_ALL) {
             return false;
         }
         
@@ -718,13 +718,11 @@ public class MediaType
      */
     public String toStringNormalized() {
         String s = type + "/" + subtype;
-        
         if (!params.isEmpty()) {
             s += "; " + params.entrySet().stream()
                     .map(e -> e.getKey() + "=" + e.getValue())
                     .collect(joining("; "));
         }
-        
         return s;
     }
 }

@@ -1,6 +1,9 @@
 package alpha.nomagichttp.internal;
 
+import alpha.nomagichttp.message.ByteBufferIterable;
 import alpha.nomagichttp.message.Char;
+
+import java.io.IOException;
 
 import static java.lang.System.Logger.Level.DEBUG;
 
@@ -15,11 +18,11 @@ abstract class AbstractResultParser<R>
     private static final System.Logger LOG
             = System.getLogger(AbstractResultParser.class.getPackageName());
     
-    private final ChannelReader in;
+    private final ByteBufferIterable bytes;
     private int count;
     
-    AbstractResultParser(ChannelReader in) {
-        this.in = in;
+    AbstractResultParser(ByteBufferIterable bytes) {
+        this.bytes = bytes;
     }
     
     /**
@@ -27,7 +30,7 @@ abstract class AbstractResultParser<R>
      * 
      * @return the number of bytes read from the channel
      */
-    final int getCount() {
+    final int getByteCount() {
         return count;
     }
     
@@ -36,22 +39,27 @@ abstract class AbstractResultParser<R>
      * 
      * @return the result
      */
-    final R parse() {
-        for (var buf : in) {
-            while (buf.hasRemaining()) {
-                final byte b = buf.get();
-                ++count;
-                // TODO: WAAAT, why does the reported position start at 1 !? Start at 0.
-                //       Also see ParserOfHeaders.parseException - index subtracted by one
-                LOG.log(DEBUG, () ->
-                    "[Parsing] pos=" + getCount() + ", byte=\"" + Char.toDebugString((char) b) + "\"");
-                final R r = parse(b);
-                if (r != null) {
-                    return r;
+    final R parse() throws IOException {
+        // ChannelReader has no close impl, this we do out of principle
+        try (var src = bytes.iterator()) {
+            while (src.hasNext()) {
+                var buf = src.next();
+                while (buf.hasRemaining()) {
+                    final byte b = buf.get();
+                    // TODO: WAAAT, why does the reported position start at 1 !? Start at 0.
+                    //       Also see ParserOfHeaders.parseException - index subtracted by one
+                    ++count;
+                    LOG.log(DEBUG, () ->
+                            "[Parsing] pos=%s, \"byte=%s\"".formatted(
+                            getByteCount(), Char.toDebugString((char) b)));
+                    final R r = parse(b);
+                    if (r != null) {
+                        return r;
+                    }
                 }
             }
         }
-        throw new AssertionError("Empty channel");
+        throw new AssertionError("Empty upstream");
     }
     
     /**

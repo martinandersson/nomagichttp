@@ -3,8 +3,9 @@ package alpha.nomagichttp.message;
 /**
  * A namespace for raw request components.<p>
  * 
- * An API for accessing a fully parsed and <i>accepted</i> request head is
- * embedded in the API of {@link Request}.
+ * With raw is meant tokenized strings as received on the wire. An API for
+ * accessing a parsed and <i>accepted</i> request head is embedded in the API of
+ * {@link Request}.
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  */
@@ -20,17 +21,15 @@ public final class RawRequest
      * @param line the request line
      * @param headers the request headers
      */
-    public record Head(Line line, Request.Headers headers)
-            implements HeaderHolder {
+    public record Head(RawRequest.Line line, Request.Headers headers)
+           implements HeaderHolder {
         // Empty
     }
     
     /**
-     * A raw request-line where each component can be retrieved as observed on
-     * the wire.<p>
+     * A raw request-line.<p>
      * 
-     * String tokens returned by this interface are never {@code null} nor
-     * empty.
+     * Returned string tokens are never {@code null} nor empty.
      * 
      * @param method of request
      * @param target of request
@@ -42,6 +41,18 @@ public final class RawRequest
             String method, String target, String httpVersion,
             long nanoTimeOnStart, int length)
     {
+        public Line {
+            requireNonEmpty(method, "method");
+            requireNonEmpty(target, "target");
+            requireNonEmpty(httpVersion, "httpVersion");
+        }
+        
+        private void requireNonEmpty(String val, String name) {
+            if (val.isEmpty()) {
+                throw new IllegalArgumentException(name + " is empty.");
+            }
+        }
+        
         /**
          * Returns the value from {@link System#nanoTime()} polled just before
          * parsing the request-line began.

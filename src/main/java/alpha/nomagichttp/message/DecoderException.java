@@ -8,7 +8,7 @@ import alpha.nomagichttp.handler.ErrorHandler;
  * A byte decoder decodes a stream of bytes into another stream of bytes, e.g.
  * HTTP/1.1 dechunking.<p>
  * 
- * The {@link ErrorHandler#DEFAULT default error handler} will translate this
+ * The {@link ErrorHandler#BASE base error handler} will translate this
  * exception to a {@link Responses#badRequest() 400 Bad Request}.
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)

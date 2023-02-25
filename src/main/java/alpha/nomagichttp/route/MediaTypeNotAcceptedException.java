@@ -15,7 +15,7 @@ import static java.util.stream.Collectors.joining;
  * (failed content negotiation).
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
- * @see ErrorHandler#DEFAULT
+ * @see ErrorHandler#BASE
  */
 public class MediaTypeNotAcceptedException extends NoHandlerResolvedException {
     private static final long serialVersionUID = 1L;

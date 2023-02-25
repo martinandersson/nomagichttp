@@ -909,7 +909,7 @@ public final class HttpConstants {
         /**
          * {@value} {@value ReasonPhrase#METHOD_NOT_ALLOWED}.<p>
          * 
-         * This is the {@link ErrorHandler#DEFAULT default response} when a
+         * This is the {@link ErrorHandler#BASE default response} when a
          * route/resource exists, but no request handler is mapped to the
          * request-provided HTTP method.
          * 
@@ -921,7 +921,7 @@ public final class HttpConstants {
         /**
          * {@value} {@value ReasonPhrase#NOT_ACCEPTABLE}.<p>
          * 
-         * This is the {@link ErrorHandler#DEFAULT default response} when a
+         * This is the {@link ErrorHandler#BASE default response} when a
          * route/resource exists, but no request handler produces the requested
          * media type.
          * 
@@ -1846,7 +1846,7 @@ public final class HttpConstants {
          * 
          * Example: {@code Allow: GET, HEAD}<p>
          * 
-         * This header is populated in the {@link ErrorHandler#DEFAULT default
+         * This header is populated in the {@link ErrorHandler#BASE default
          * response} when a route/resource exists, but no request handler is
          * mapped to the request-provided HTTP method.
          * 
@@ -2751,7 +2751,7 @@ public final class HttpConstants {
          * 
          * Example: {@code Upgrade: h2c, HTTPS/1.3, IRC/6.9, RTA/x11, websocket}<p>
          * 
-         * The NoMagicHTTP server's {@link ErrorHandler#DEFAULT default error
+         * The NoMagicHTTP server's {@link ErrorHandler#BASE base error
          * handler} uses this header to suggest a new protocol version if an old
          * version was rejected.
          * 

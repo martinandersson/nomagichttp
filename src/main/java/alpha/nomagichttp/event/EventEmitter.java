@@ -16,11 +16,11 @@ import java.util.function.Consumer;
  * 
  * Events can be used to decouple components and to simplify the architecture,
  * for example as an alternative to callback arguments. Events can also make
- * code traceability harder and add unnecessary complexity. Events should never
- * be a replacement of what would otherwise have been a simple method call even
- * if that means coupling. Only when the side effect is clearly a different
- * concern <i>and</i> there are at least two such side effects should decoupling
- * by using events be considered an option.
+ * code traceability harder and add unnecessary complexity. Events should
+ * generally not be a replacement of what would otherwise have been a simple
+ * method call even if that means coupling. Generally, only when the side effect
+ * is a different concern <i>and</i> there are at least two such side effects
+ * should decoupling by using events be considered an option.
  * 
  * <pre>
  *   class ShoppingCart extends {@link AbstractEventEmitter} {
@@ -99,15 +99,13 @@ import java.util.function.Consumer;
  * The thread emitting the event is also the thread that invokes the listeners.
  * For the NoMagicHTTP server, this will be a virtual thread. Virtual threads
  * do not technically block its carrier thread, but will nonetheless stall the
- * server's enclosing task for as long as the listeners execute. A job that will
- * take long to process should be scheduled by the listener to execute somewhere
- * else.<p>
+ * server's enclosing task for as long as the listeners execute.<p>
  * 
  * The event emitter (i.e. subscribing and unsubscribing a listener) is
  * thread-safe and non-blocking. The listener, however, may be invoked
  * concurrently and so must be thread-safe.<p>
  * 
- * There is no defined limit to how many listeners may be active.<p>
+ * There is no defined limit as to how many listeners may be active.<p>
  * 
  * Event emission order may and should in many cases be defined; {@code
  * Something.Created} before {@code Something.Destroyed}. But the invocation
@@ -137,10 +135,10 @@ import java.util.function.Consumer;
  *   emitter.off(Something.class, listener);
  * </pre>
  * 
- * There is no special handling/logic concerning exceptions. If a listener
- * throws an exception, then that exception will propagate up the call stack and
- * remaining listeners in the call chain will not observe the event. Throwing an
- * exception from the listener may have undefined application behavior.<p>
+ * If a listener throws an exception, then that exception will propagate up the
+ * call stack and remaining listeners in the call chain will not observe the
+ * event. Throwing an exception from the listener may have undefined application
+ * behavior.<p>
  * 
  * References are kept using strong references (not weak, soft or whatever
  * else). If one needs to subscribe magical beans as listeners with a "scope"

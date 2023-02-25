@@ -1,5 +1,7 @@
 package alpha.nomagichttp.handler;
 
+import alpha.nomagichttp.ChannelWriter;
+import alpha.nomagichttp.HttpConstants;
 import alpha.nomagichttp.message.Response;
 
 import static java.util.Objects.requireNonNull;
@@ -7,15 +9,18 @@ import static java.util.Objects.requireNonNull;
 /**
  * A response has been rejected for writing.<p>
  * 
- * Is thrown by the server if a response is rejected for a {@link #reason()}.
+ * Is thrown by {@link ChannelWriter#write(Response)} if a response is rejected
+ * for a {@link #reason()}. The {@link ErrorHandler#BASE base error
+ * handler} will translate this exception to a {@value
+ * HttpConstants.StatusCode#FOUR_HUNDRED_TWENTY_SIX} ({@value
+ * HttpConstants.ReasonPhrase#UPGRADE_REQUIRED}) response.
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
- * 
- * @see ClientChannel#write(Response)
- * @see ErrorHandler
  */
 public class ResponseRejectedException extends RuntimeException
 {
+    // TODO: Encapsulate reason in static factories, just like ExchangeDeath
+    
     /**
      * The reason why a response was rejected.
      */
@@ -24,6 +29,8 @@ public class ResponseRejectedException extends RuntimeException
          * The response status-code is 1XX and HTTP version used is {@literal <} 1.1.
          */
         PROTOCOL_NOT_SUPPORTED;
+        
+        // TODO: Any other reason added here will require JavaDoc update
     }
     
     private static final long serialVersionUID = 1L;

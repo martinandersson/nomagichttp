@@ -34,6 +34,7 @@ import static java.util.Objects.requireNonNull;
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  */
+@Deprecated // Not good for virtual threads
 final class ThreadLocalCache
 {
     private ThreadLocalCache() {

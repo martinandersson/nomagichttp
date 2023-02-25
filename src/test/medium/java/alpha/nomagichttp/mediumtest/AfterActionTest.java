@@ -97,7 +97,7 @@ class AfterActionTest extends AbstractRealTest
     @Test
     void crash() throws IOException, InterruptedException {
         // 1. NoRouteFoundException
-        // 2. default error handler writes 404
+        // 2. base error handler writes 404
         // 3. after-action crashes with IllegalStateException
         // 4. custom error handler writes 503
         

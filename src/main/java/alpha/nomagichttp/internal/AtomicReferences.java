@@ -89,6 +89,7 @@ final class AtomicReferences
             return created.thing = requireNonNull(factory.get());
         });
         
+        // TODO: What if the postInit fails?
         if (latest == created.thing) {
             postInit.accept(created.thing);
         }

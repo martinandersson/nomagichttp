@@ -1,19 +1,16 @@
 package alpha.nomagichttp.action;
 
-import alpha.nomagichttp.Config;
-import alpha.nomagichttp.HttpServer;
-import alpha.nomagichttp.ReceiverOfUniqueRequestObject;
-import alpha.nomagichttp.event.ResponseSent;
 import alpha.nomagichttp.handler.ClientChannel;
 import alpha.nomagichttp.message.Request;
 import alpha.nomagichttp.message.Response;
 
-import java.util.concurrent.CompletionStage;
 import java.util.function.BiFunction;
 
 /**
- * An action executed after a response to a valid request has been received by
- * the {@link ClientChannel} and before it attempts to be sent on the wire. The
+ * Is an action executed after the channel has received a response.<p>
+ * 
+ * More specifically, the action is executed just before the
+ * {@link ClientChannel} attempts to send a valid response on the wire. The
  * action may return the same response instance unmodified, or produce another
  * alternative response.<p>
  * 
@@ -25,23 +22,18 @@ import java.util.function.BiFunction;
  *   ...
  *   
  *   HttpServer server = ...
- *   AfterAction setId = (req, rsp) -{@literal >}
+ *   AfterAction trySetId = (req, rsp) -{@literal >}
  *           req.attributes().{@literal <}String{@literal >}getOptAny("my.saved.correlation-id")
  *              .or(() -{@literal >} req.headers().firstValue(X_CORRELATION_ID))
  *              .map(id -{@literal >} rsp.toBuilder().header(X_CORRELATION_ID, id).build())
- *              .orElse(rsp)
- *              .completedStage();
- *   server.after("/*", setId);
+ *              .orElse(rsp);
+ *   // Propagate for all exchanges
+ *   server.after("/*", trySetId);
  * </pre>
  * 
- * If the action returns exceptionally, then the exception is passed to the
- * server's error handler(s) which is just the same as with before-actions and
- * request handlers. An after-action should probably never throw an exception,
- * as this would be highly subject to a never-ending loop: request handler
- * -{@literal >} channel -{@literal >} after-action -{@literal >} exception
- * handler -{@literal >} channel -{@literal >} after-action -{@literal >}
- * exception handler -{@literal >} channel -{@literal >} after-action ... (see
- * {@link Config#maxErrorRecoveryAttempts()})<p>
+ * An after-action must never throw an exception. It wouldn't make sense to run
+ * such an error though the error handlers as doing so would be subject to a
+ * never-ending loop.<p>
  * 
  * Returning {@code null} is the same as throwing a {@code
  * NullPointerException}.<p>
@@ -49,25 +41,14 @@ import java.util.function.BiFunction;
  * Similar to {@link BeforeAction}, the after-action is only called for
  * responses responding to a valid request. For example, if a request head fails
  * to parse and the error handler writes an alternative response, for that
- * response instance no after action will be called.<p>
+ * response instance no after action will be called. Both arguments provided to
+ * the after-action will never be {@code null}.<p>
  * 
- * An action that will be invoked for responses to all <i>valid</i> requests
- * hitting the server can be registered using the path "/*". If the purpose for
- * such an action is to gather metrics, consider instead tapping into all
- * responses sent out by the server regardless if the request was valid, by
- * subscribing to the {@link ResponseSent} event (see {@link
- * HttpServer#events()}).<p>
- * 
- * The action may be called concurrently and must be thread-safe. It may be
- * called by the server's request thread and so must not block. No argument
- * passed to the action will be {@code null}.
+ * The action may be called concurrently and must be thread-safe.
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  */
 @FunctionalInterface
-public interface AfterAction extends
-        BiFunction<Request, Response, CompletionStage<Response>>,
-        ReceiverOfUniqueRequestObject
-{
+public interface AfterAction extends BiFunction<Request, Response, Response> {
     // Empty
 }

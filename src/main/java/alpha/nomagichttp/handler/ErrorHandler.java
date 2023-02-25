@@ -2,7 +2,7 @@ package alpha.nomagichttp.handler;
 
 import alpha.nomagichttp.Config;
 import alpha.nomagichttp.HttpConstants;
-import alpha.nomagichttp.ReceiverOfUniqueRequestObject;
+import alpha.nomagichttp.NonThrowingChain;
 import alpha.nomagichttp.action.AfterAction;
 import alpha.nomagichttp.action.BeforeAction;
 import alpha.nomagichttp.message.BadHeaderException;
@@ -29,12 +29,10 @@ import alpha.nomagichttp.route.MediaTypeUnsupportedException;
 import alpha.nomagichttp.route.MethodNotAllowedException;
 import alpha.nomagichttp.route.NoRouteFoundException;
 
-import java.util.concurrent.CompletionException;
 import java.util.stream.Stream;
 
 import static alpha.nomagichttp.HttpConstants.HeaderName.ALLOW;
 import static alpha.nomagichttp.HttpConstants.Method.OPTIONS;
-import static alpha.nomagichttp.HttpConstants.Version.HTTP_1_1;
 import static alpha.nomagichttp.handler.ResponseRejectedException.Reason;
 import static alpha.nomagichttp.handler.ResponseRejectedException.Reason.PROTOCOL_NOT_SUPPORTED;
 import static alpha.nomagichttp.message.Responses.badRequest;
@@ -50,6 +48,9 @@ import static alpha.nomagichttp.message.Responses.requestTimeout;
 import static alpha.nomagichttp.message.Responses.serviceUnavailable;
 import static alpha.nomagichttp.message.Responses.unsupportedMediaType;
 import static alpha.nomagichttp.message.Responses.upgradeRequired;
+import static alpha.nomagichttp.util.ScopedValues.channel;
+import static alpha.nomagichttp.util.ScopedValues.httpServer;
+import static java.lang.System.Logger.Level;
 import static java.lang.System.Logger.Level.DEBUG;
 import static java.lang.System.Logger.Level.ERROR;
 import static java.util.stream.Collectors.joining;
@@ -57,126 +58,93 @@ import static java.util.stream.Stream.concat;
 import static java.util.stream.Stream.of;
 
 /**
- * Handles a {@code Throwable}, presumably by translating it into a response.<p>
+ * Translates an {@code Exception} into a response.<p>
  * 
- * Error handler(s) should only be used for generic and server-global errors.
- * Another use case could be to customize the server's default error
- * responses.<p>
+ * Error handlers may be used to handle generic and server-global errors.
+ * Another use case is to short-circuit the server's {@link #BASE base handler}
+ * in favor of creating a customized response.<p>
  * 
- * The server will call error handlers only during an active HTTP exchange and
- * only if the channel remains open for writing at the time of the error. The
- * purpose of error handlers is to be able to cater the client with a response
- * even in the event of failure.<p>
+ * The error handlers will be called to handle exceptions that occur during the
+ * HTTP exchange. For example maybe request parsing failed or the request
+ * processing chain failed.<p>
  * 
- * Specifically, the error handler may be called for:<p>
+ * The purpose of error handlers is to cater the client with a response even in
+ * the event of a failure. Therefore, an error handler must return a response,
+ * either by returning one directly, or yielding to the next error handler,
+ * which will eventually be the server's base handler, which has a fallback
+ * response for all exceptions.<p>
  * 
- * 1) Exceptions occurring while receiving and parsing a request head.<p>
+ * <pre>{@code
+ *   ErrorHandler forMyExpected = (exception, chain, request) -> {
+ *       if (exception instanceof MyExpectedException e) {
+ *           return someResponse();
+ *       }
+ *       // Don't know what this is, so try the next error handler
+ *       return chain.proceed();
+ *   };
+ * }</pre>
  * 
- * 2) Exceptions from the execution of {@link BeforeAction}s, {@link
- * RequestHandler}s and {@link AfterAction}s.<p>
+ * Error handlers will be called in the same order they were registered with the
+ * server.<p>
  * 
- * 3) Exceptions that complete exceptionally the {@code
- * CompletionStage<Response>} given to the {@link
- * ClientChannel#write(Response) ClientChannel} and those returned from an
- * {@link AfterAction}, but only if a final response has not yet been sent.<p>
+ * The server will call error handlers only if the channel remains open for
+ * writing at the time of the error, and only if no response bytes have already
+ * been written. The error handler itself must never throw an exception.<p>
  * 
- * 4) Exceptions signalled to the server's {@code Flow.Subscriber} of the {@link
- * Response#body()} but only if the body publisher has not yet published any
- * bytebuffers before the error was signalled. It doesn't make much sense trying
- * to recover the situation after the point where a response has already begun
- * transmitting back to the client. For the same reason, exceptions completing
- * {@link Response#trailers()} are never sent to the error handler.<p>
+ * An exception that can not- or couldn't be handled will be logged on level
+ * {@link Level#WARNING WARNING} or {@link Level#ERROR ERROR}.<p>
  * 
- * The server will <strong>not</strong> call error handlers for errors that are
- * not directly involved in the HTTP exchange or for errors that occur
- * asynchronously in another thread than the request thread or for any other
- * errors when there's already an avenue in place for exception handling. For
- * example, low-level exceptions related to channel management and error signals
- * raised through the {@link Request.Body} API (all methods of which either
- * return a {@code CompletionStage} or accepts a {@code Flow.Subscriber}.<p>
+ * The error handler must be thread-safe, as it may be called concurrently.<p>
  * 
- * For errors caught but not propagated to an error handler, the server's
- * strategy is usually to log the error and immediately close the client's
- * channel.<p>
+ * The error handler should not need to store exchange-dependent state. A retry
+ * mechanism is best implemented as a {@link BeforeAction} or in the
+ * {@link RequestHandler} itself.<p>
  * 
- * Any number of error handlers can be configured. If many are configured, they
- * will be called in the same order they were added. First handler to return
- * normally - i.e., first handler to <i>not</i> throw an exception - breaks the
- * call chain. The {@link #DEFAULT default handler} will be used if no other
- * handler is configured.<p>
+ * The error handler implementation does not need to implement {@code hashCode}
+ * and {@code equals}.<p>
  * 
- * An error handler that is unwilling to handle the exception must re-throw the
- * same throwable instance which will then propagate to the next handler,
- * eventually reaching the default handler.<p>
- * 
- * If a handler throws a different instance, then this is considered to be a new
- * error and the whole cycle is restarted.<p>
- * 
- * This design was deliberately crafted to enable writing error handlers using
- * Java's standard try-catch block:
- * <pre>
- *     ErrorHandler eh = (throwable, channel, request) -{@literal >} {
- *         try {
- *             throw throwable;
- *         } catch (ExpectedException e) {
- *             channel.{@link ClientChannel#writeFirst(Response) writeFirst}(myAlternativeResponse());
- *             // normal return; breaks the call chain
- *         } catch (AnotherExpectedException e) {
- *             channel.writeFirst(someOtherAlternativeResponse());
- *             // normal return; breaks the call chain
- *         }
- *         // else not handled by this handler; propagates throughout the chain
- *     };
- * </pre>
- * 
- * If there is a request available when the error handler is called, then {@link
- * Request#attributes() Request.attibutes()} is a good place to store state that
- * needs to be passed between handler invocations.<p>
- * 
- * The error handler must be thread-safe, as it may be called concurrently. As
- * far as the server is concerned, it does not need to implement 
- * {@code hashCode()} and {@code equals(Object)}.
+ * Just to be perfectly clear; error handlers are optional. Any executed entity
+ * is free to handle exceptions however the application sees fit. For example, a
+ * request handler could catch an exception and return a fallback response from
+ * the catch block.
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  * 
- * @see Config#maxErrorRecoveryAttempts() 
- * @see ErrorHandler#apply(Throwable, ClientChannel, Request)
+ * @see ErrorHandler#apply(Exception, NonThrowingChain, Request)
  */
+// TODO: 1) Rename to ExceptionHandler
+//       2) We want to have a fallback response for outbound FileNotFoundExc
 @FunctionalInterface
 public interface ErrorHandler
 {
     /**
-     * Optionally handles an exception.<p>
+     * Produces a response.<p>
      * 
-     * The {@code Throwable} and {@code ClientChannel} arguments will always be
-     * non-null. The {@code Request} object may be null depending on how much
-     * progress was made in the HTTP exchange before the error occurred. For
-     * example, if the error is a {@link RequestLineParseException}, then the
-     * request object will obviously not be present.<p>
+     * The given exception is what this error handler ought to process into a
+     * response. Either directly or by yielding control to the rest of the
+     * chain.<p>
      * 
-     * If the error which the server caught is a {@link CompletionException},
-     * then the server will attempt to recursively unpack a non-null cause and
-     * pass the cause to the error handler instead.<p>
+     * The {@code Request} object may be null depending on how much progress was
+     * made in the HTTP exchange before the error occurred. For example, if the
+     * error is a {@link RequestLineParseException}, then the request object
+     * will obviously not be available.<p>
      * 
-     * The {@link ErrorHandler} interface does not extend {@link
-     * ReceiverOfUniqueRequestObject}. The error handler will receive the last
-     * request object created within the HTTP exchange, if available. I.e. the
-     * request's path parameters' keys and values is dependent on whichever
-     * entity was invoked last prior to the crash; generally speaking, they are
-     * nondeterministic and unsafe to access.
+     * The request object's path parameters are only available to
+     * {@link BeforeAction}s, the {@link RequestHandler}, and
+     * {@link AfterAction}s (as they provided a pattern from which to
+     * extrapolate the keys). All path parameter accessors of the request object
+     * given to this method will throw an {@link UnsupportedOperationException}.
      * 
-     * @param thr the error (never null)
-     * @param ch client channel (never null)
-     * @param req request object (may be null)
-     * 
-     * @throws Throwable may be {@code thr} or a new one
+     * @param exc the error (never null)
+     * @param chain yielder of control (never null)
+     * @param req request object
      * 
      * @see ErrorHandler
      */
-    void apply(Throwable thr, ClientChannel ch, Request req) throws Throwable;
+    Response apply(Exception exc, NonThrowingChain chain, Request req);
     
     /**
-     * Is the default error handler used by the server if no other
+     * Is the base error handler used by the server if no other
      * application-provided handler handled the error.<p>
      * 
      * The error will be dealt with accordingly:
@@ -306,6 +274,12 @@ public interface ErrorHandler
      *     <td> {@link Responses#badRequest()} </td>
      *   </tr>
      *   <tr>
+     *     <th scope="row"> {@link EndOfStreamException} </th>
+     *     <td> None </td>
+     *     <td> No </td>
+     *     <td> {@link Responses#badRequest()} </td>
+     *   </tr>
+     *   <tr>
      *     <th scope="row"> {@link IllegalResponseBodyException} </th>
      *     <td> None </td>
      *     <td> Yes </td>
@@ -313,14 +287,17 @@ public interface ErrorHandler
      *   </tr>
      *   <tr>
      *     <th scope="row">{@link ResponseRejectedException} </th>
-     *     <td> Response.{@link Response#isInformational() isInformational()}, and <br>
-     *          rejected reason is {@link Reason#PROTOCOL_NOT_SUPPORTED
-     *          PROTOCOL_NOT_SUPPORTED}, and <br>
-     *          HTTP version is {@literal <} 1.1, and <br>
-     *          {@link Config#ignoreRejectedInformational()
-     *          ignoreRejectedInformational()} is {@code true}</td>
+     *     <td> Reason is
+     *          {@link Reason#PROTOCOL_NOT_SUPPORTED}</td>
      *     <td> No </td>
-     *     <td> No response, the failed interim response is ignored. </td>
+     *     <td> {@link Responses#upgradeRequired(String)} </td>
+     *   </tr>
+     *   <tr>
+     *     <th scope="row">{@link ResponseRejectedException} </th>
+     *     <td> Reason is <strong>not</strong>
+     *          {@link Reason#PROTOCOL_NOT_SUPPORTED}</td>
+     *     <td> No </td>
+     *     <td> {@link Responses#internalServerError()} </td>
      *   </tr>
      *   <tr>
      *     <th scope="row"> {@link ReadTimeoutException} </th>
@@ -336,18 +313,6 @@ public interface ErrorHandler
      *          {@link Responses#serviceUnavailable()}.</td>
      *   </tr>
      *   <tr>
-     *     <th scope="row">{@link EndOfStreamException} </th>
-     *     <td> None </td>
-     *     <td> No </td>
-     *     <td> No response, closes the channel. <br>
-     *          This error signals the failure of a read operation due to client
-     *          disconnect <i>and</i> at least one byte of data was received
-     *          prior to the disconnect (if no bytes were received the error
-     *          handler is never called; no data loss, no problem). Currently,
-     *          however, there's no API support to retrieve the incomplete
-     *          request.</td>
-     *   </tr>
-     *   <tr>
      *     <th scope="row"> <i>{@code Everything else}</i> </th>
      *     <td> None </td>
      *     <td> Yes </td>
@@ -356,87 +321,75 @@ public interface ErrorHandler
      *   </tbody>
      * </table>
      */
-    ErrorHandler DEFAULT = (thr, ch, req) -> {
+    ErrorHandler BASE = (exc, chainIsNull, requestIsIgnored) -> {
         final Response res;
         try {
-            throw thr;
+            throw exc;
         } catch (RequestLineParseException   |
                  HeaderParseException        |
                  HttpVersionParseException   |
                  BadHeaderException          |
                  BadRequestException         |
                  IllegalRequestBodyException |
-                 DecoderException e) {
+                 DecoderException            |
+                 EndOfStreamException e) {
             res = badRequest();
-        }  catch (HttpVersionTooOldException e) {
+        } catch (HttpVersionTooOldException e) {
             res = upgradeRequired(e.getUpgrade());
         } catch (HttpVersionTooNewException e) {
             res = httpVersionNotSupported();
         } catch (UnsupportedTransferCodingException e) {
             res = notImplemented();
         } catch (MaxRequestHeadSizeExceededException e) {
-            log(thr);
+            log(exc);
             res = entityTooLarge();
         } catch (NoRouteFoundException e) {
-            log(thr);
+            log(exc);
             res = notFound();
         } catch (MethodNotAllowedException e) {
             Response status = methodNotAllowed();
             Stream<String> allow = e.getRoute().supportedMethods();
-            if (req.method().equals(OPTIONS) && ch.getServer().getConfig().implementMissingOptions()) {
+            if (requestIsIgnored.method().equals(OPTIONS) && httpServer().getConfig().implementMissingOptions()) {
                 status = noContent();
                 // Now OPTIONS is a supported method lol
                 allow = concat(of(OPTIONS), allow);
             } else {
-                log(thr);
+                log(exc);
             }
             res = status.toBuilder().addHeader(ALLOW, allow.collect(joining(", "))).build();
         } catch (MediaTypeNotAcceptedException e) {
-            log(thr);
+            log(exc);
             res = notAcceptable();
         } catch (MediaTypeUnsupportedException e) {
-            log(thr);
+            log(exc);
             res = unsupportedMediaType();
-        } catch (EndOfStreamException e) {
-            ch.closeSafe();
-            res = null;
         } catch (ResponseRejectedException e) {
-            if (e.rejected().isInformational() &&
-                e.reason() == PROTOCOL_NOT_SUPPORTED &&
-                req.httpVersion().isLessThan(HTTP_1_1) &&
-                ch.getServer().getConfig().ignoreRejectedInformational()) {
-                // Ignore
-                res = null;
-            } else {
-                log(thr);
-                res = internalServerError();
-            }
+            res = e.reason() == PROTOCOL_NOT_SUPPORTED ?
+                    upgradeRequired("HTTP/1.1") :
+                    internalServerError();
         } catch (ReadTimeoutException e) {
             res = requestTimeout();
         } catch (ResponseTimeoutException e) {
-            log(thr);
-            if (ch.isOpenForReading()) {
-                logger().log(DEBUG, "Service unavailable, shutting down channel's input stream.");
+            log(exc);
+            if (channel().isInputOpen()) {
+                logger().log(DEBUG,
+                    "Service unavailable, shutting down channel's input stream.");
             }
-            ch.shutdownInputSafe();
+            channel().shutdownInput();
             res = serviceUnavailable();
-        } catch (MediaTypeParseException      |
-                 IllegalResponseBodyException |
-                 AmbiguousHandlerException e) {
-            log(thr);
-            res = internalServerError();
-        } catch (Throwable everyThingElse) {
-            log(thr);
+        } catch (Exception everythingElse) {
+            // Expected
+            //   MediaTypeParseException
+            //   AmbiguousHandlerException
+            //   IllegalResponseBodyException
+            log(exc);
             res = internalServerError();
         }
-        
-        if (res != null) {
-            ch.writeFirst(res);
-        }
+        return res;
     };
     
-    private static void log(Throwable thr) {
-        logger().log(ERROR, "Default error handler received:", thr);
+    private static void log(Exception exc) {
+        logger().log(ERROR, "This might be interesting", exc);
     }
     
     private static System.Logger logger() {

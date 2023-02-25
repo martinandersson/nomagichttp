@@ -16,20 +16,23 @@ import static alpha.nomagichttp.message.Responses.text;
  */
 public final class GreetParameter
 {
-    private GreetParameter() {
-        // Intentionally empty
-    }
-    
     private static final int PORT = 8080;
     
+    private GreetParameter() {
+        // Empty
+    }
+    
     /**
-     * Application entry point.
-     *
+     * Application's entry point.
+     * 
      * @param args ignored
-     *
-     * @throws IOException If an I/O error occurs
+     * 
+     * @throws IOException
+     *             if an I/O error occurs
+     * @throws InterruptedException
+     *             if interrupted while waiting on client connections to terminate
      */
-    public static void main(String... args) throws IOException {
+    public static void main(String... args) throws IOException, InterruptedException {
         HttpServer app = HttpServer.create();
         
         /*
@@ -38,7 +41,7 @@ public final class GreetParameter
          * 1) Single path parameters are required for matching the route,
          *    target().pathParam(key) will always return a non-empty string.
          * 
-         * 2) Query parameters are always optional,
+         * 2) Query parameters are optional,
          *    target().queryFirst(key) returns an Optional of the first occurred value.
          * 
          * Example requests:
@@ -47,30 +50,29 @@ public final class GreetParameter
          * "/hello"              400 Bad Request
          */
         
-        app.add("/hello/:name", GET().accept((request, channel) -> {
+        // Name given by request target
+        app.add("/hello/:name", GET().apply(request -> {
             String name = request.target().pathParam("name");
             String msg  = "Hello " + name + "!";
-            channel.write(text(msg));
+            return text(msg);
         }));
         
-        app.add("/hello", GET().accept((request, channel) -> {
-            Response r = request.target()
-                                .queryFirst("name")
-                                .map(str -> text("Hello " + str + "!"))
-                                .orElse(badRequest());
-            
-            channel.write(r);
-        }));
+        // Name given by query
+        app.add("/hello", GET().apply(request ->
+                request.target()
+                       .queryFirst("name")
+                       .map(string -> text("Hello " + string + "!"))
+                       .orElse(badRequest())));
         
-        app.start(PORT);
         System.out.println("Listening on port " + PORT + ".");
+        app.start(PORT);
         
         /*
          * Wait! Where would request "/hello/John?name=John" be routed?
          * 
          * It would be routed to the first route which declares the path
          * parameter. Path parameters are required for a match and query
-         * parameters are always optional. Read more in JavaDoc of Route.
+         * parameters are optional. Read more in JavaDoc of Route.
          */
     }
 }

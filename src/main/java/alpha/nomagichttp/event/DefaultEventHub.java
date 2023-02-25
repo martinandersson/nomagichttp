@@ -25,7 +25,9 @@ public class DefaultEventHub extends AbstractScatteringEventEmitter implements E
      * 
      * @param when see {@link AbstractEventEmitter}
      * @param decorator see {@link AbstractEventEmitter}
-     * @throws NullPointerException if any argument is {@code null}
+     * 
+     * @throws NullPointerException
+     *             if any argument is {@code null}
      */
     public DefaultEventHub(BooleanSupplier when, Consumer<Runnable> decorator) {
         super(when, decorator);

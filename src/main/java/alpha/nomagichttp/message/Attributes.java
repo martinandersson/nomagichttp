@@ -12,9 +12,8 @@ import static java.util.Objects.requireNonNull;
 /**
  * An API for storing and accessing objects associated with a holder.<p>
  * 
- * Is useful when passing data across execution boundaries where the holder is
- * the data carrier, such as passing data from a {@link BeforeAction} to a
- * {@link RequestHandler}.
+ * Is useful when passing data across non-nested execution boundaries where the
+ * holder is the data carrier. Within a nested scope, 
  * 
  * <pre>{@code
  *   request.attributes().set("my.stuff", new MyClass());
@@ -31,6 +30,7 @@ import static java.util.Objects.requireNonNull;
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  */
+// TODO: Update JavaDoc. ScopedValue from BeforeAction is the preferred method
 public interface Attributes {
     /**
      * Returns the value of the named attribute as an object.
@@ -84,7 +84,7 @@ public interface Attributes {
     }
     
     /**
-     * Returns the value of the named attribute cast to V.
+     * Returns the value of the named attribute cast to V.<p>
      * 
      * This method is equivalent to:
      * <pre>{@code

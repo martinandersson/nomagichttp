@@ -1,11 +1,12 @@
 package alpha.nomagichttp.internal;
 
+import alpha.nomagichttp.message.ByteBufferIterable;
 import alpha.nomagichttp.message.MaxRequestHeadSizeExceededException;
 import alpha.nomagichttp.message.RawRequest;
 import alpha.nomagichttp.message.RequestLineParseException;
 
 /**
- * A parser of {@link RawRequest.Line}.
+ * A parser of {@code RawRequest.Line}.
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  */
@@ -23,7 +24,8 @@ final class ParserOfRequestLine extends AbstractResultParser<RawRequest.Line>
      * @param in byte source
      * @param maxRequestHeadSize max bytes to parse
      */
-    ParserOfRequestLine(ChannelReader in, int maxRequestHeadSize) {
+    // TODO: Use httpServer().getConfig() instead of argument
+    ParserOfRequestLine(ByteBufferIterable in, int maxRequestHeadSize) {
         super(in);
         maxBytes = maxRequestHeadSize;
         parser = new Parser();
@@ -33,7 +35,7 @@ final class ParserOfRequestLine extends AbstractResultParser<RawRequest.Line>
     protected RawRequest.Line parse(byte b)
             throws RequestLineParseException, MaxRequestHeadSizeExceededException
     {
-        final int r = getCount();
+        final int r = getByteCount();
         if (r == maxBytes) {
             throw new MaxRequestHeadSizeExceededException(); }
         if (r == 1) {
@@ -48,8 +50,7 @@ final class ParserOfRequestLine extends AbstractResultParser<RawRequest.Line>
      * Parses bytes into a request-line.<p>
      * 
      * When left with a choice, this parser follows rather a lenient model than
-     * a strict one.
-     * 
+     * a strict one.<p>
      * 
      * <h2>General rules</h2>
      * 
@@ -65,8 +66,7 @@ final class ParserOfRequestLine extends AbstractResultParser<RawRequest.Line>
      * This parser ignores CR immediately preceding LF; it is never consumed as
      * part of the request. If anything else follows the CR an exception is
      * thrown, except for cases where it is either considered as a word boundary
-     * (start-line) or ignored as leading whitespace.
-     * 
+     * (start-line) or ignored as leading whitespace.<p>
      * 
      * <h2>Request-line rules</h2>
      *
@@ -101,7 +101,7 @@ final class ParserOfRequestLine extends AbstractResultParser<RawRequest.Line>
             };
             prev = curr;
             return parsing != DONE ? null :
-                    new RawRequest.Line(method, rt, ver, started, getCount());
+                    new RawRequest.Line(method, rt, ver, started, getByteCount());
         }
         
         private String method;
@@ -157,7 +157,7 @@ final class ParserOfRequestLine extends AbstractResultParser<RawRequest.Line>
         
         @Override
         protected RequestLineParseException parseException(String msg) {
-            return new RequestLineParseException(msg, prev, curr, getCount() - 1);
+            return new RequestLineParseException(msg, prev, curr, getByteCount() - 1);
         }
     }
 }

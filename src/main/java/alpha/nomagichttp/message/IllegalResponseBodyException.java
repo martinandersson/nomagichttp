@@ -1,5 +1,6 @@
 package alpha.nomagichttp.message;
 
+import alpha.nomagichttp.ChannelWriter;
 import alpha.nomagichttp.HttpConstants;
 import alpha.nomagichttp.HttpServer;
 import alpha.nomagichttp.handler.ErrorHandler;
@@ -7,19 +8,23 @@ import alpha.nomagichttp.handler.ErrorHandler;
 import static java.util.Objects.requireNonNull;
 
 /**
- * Is thrown:
- * <ul>
- *   <li>By {@link Response.Builder#build()} if the response status-code is 1XX
- *       (Informational), or 204 (No Content), or 304 (Not Modified) - and, the
- *       response presumably has a body (
- *       <a href="https://tools.ietf.org/html/rfc7230#section-3.3.3">RFC 7230 §3.3.3</a>).</li>
- *   <li>By the server if a response body publisher publishes a bytebuffer in
- *       response to a {@link HttpConstants.Method#HEAD HEAD}
- *       (<a href="https://tools.ietf.org/html/rfc7231#section-4.3.2">RFC 7231 §4.3.8</a>)
- *       or {@link HttpConstants.Method#CONNECT CONNECT} (
- *       <a href="https://tools.ietf.org/html/rfc7231#section-4.3.6">RFC 7231 §4.3.6</a>)
- *       request.</li>
- * </ul>
+ * A response has a body when none was expected.<p>
+ * 
+ * Is thrown from {@link Response.Builder#build()} if the response has a body,
+ * but the status-code is 1XX (Informational), 204 (No Content), or 304
+ * (Not Modified) (
+ * <a href="https://tools.ietf.org/html/rfc7230#section-3.3.3">RFC 7230 §3.3.3</a>
+ * ).<p>
+ * 
+ * The exception is also thrown from {@link ChannelWriter#write(Response)} for
+ * the same reasons, but additionally in the case the response has a body and
+ * the request method — to which the response is a response — has HTTP method
+ * {@link HttpConstants.Method#HEAD HEAD} (
+ * <a href="https://tools.ietf.org/html/rfc7231#section-4.3.2">RFC 7231 §4.3.8</a>
+ * ).<p>
+ * 
+ * The former is a fail-fast mechanism. But the request's HTTP method can only
+ * be checked during a live HTTP exchange.
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  * 

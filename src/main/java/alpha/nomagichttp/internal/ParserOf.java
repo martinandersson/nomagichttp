@@ -1,6 +1,7 @@
 package alpha.nomagichttp.internal;
 
 import alpha.nomagichttp.message.BetterHeaders;
+import alpha.nomagichttp.message.ByteBufferIterable;
 import alpha.nomagichttp.message.DefaultContentHeaders;
 import alpha.nomagichttp.message.HeaderParseException;
 import alpha.nomagichttp.message.MaxRequestHeadSizeExceededException;
@@ -19,9 +20,10 @@ import java.util.function.Supplier;
 import static java.lang.System.Logger.Level.DEBUG;
 
 /**
- * A parser of headers/trailers.<p>
+ * A parser of headers or trailers.
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
+ * 
  * @param <H> parsed header's type
  */
 final class ParserOf<H extends BetterHeaders> extends AbstractResultParser<H>
@@ -30,7 +32,7 @@ final class ParserOf<H extends BetterHeaders> extends AbstractResultParser<H>
             = System.getLogger(ParserOf.class.getPackageName());
     
     /**
-     * Creates a parser of request headers.
+     * Creates a parser of request headers.<p>
      * 
      * If the delta between the two given integers are exceeded while parsing,
      * the parser will throw a {@link MaxRequestHeadSizeExceededException}.
@@ -41,8 +43,10 @@ final class ParserOf<H extends BetterHeaders> extends AbstractResultParser<H>
      * 
      * @return a parser of request headers
      */
-    public static ParserOf<Request.Headers>
-            headers(ChannelReader in, int lineLen, int maxHeadSize)
+    // TODO: use httpServer().getConfig() instead of argument
+    //       (less arg pollution and better traceability)
+    static ParserOf<Request.Headers>
+            headers(ByteBufferIterable in, int lineLen, int maxHeadSize)
     {
         return new ParserOf<>(
                 in, lineLen,
@@ -52,7 +56,7 @@ final class ParserOf<H extends BetterHeaders> extends AbstractResultParser<H>
     }
     
     /**
-     * Creates a parser of request trailers.
+     * Creates a parser of request trailers.<p>
      * 
      * If {@code maxTrailersSize} is exceeded while parsing, the parser will
      * throw a {@link MaxRequestTrailersSizeExceededException}.
@@ -61,8 +65,10 @@ final class ParserOf<H extends BetterHeaders> extends AbstractResultParser<H>
      * @param maxTrailersSize max bytes to parse
      * @return a parser of request trailers
      */
-    public static ParserOf<BetterHeaders>
-            trailers(ChannelReader in, int maxTrailersSize)
+    // TODO: use httpServer().getConfig() instead of argument
+    //       (less arg pollution and better traceability)
+    static ParserOf<BetterHeaders>
+            trailers(ByteBufferIterable in, int maxTrailersSize)
     {
         return new ParserOf<>(
                 in, -1,
@@ -77,7 +83,7 @@ final class ParserOf<H extends BetterHeaders> extends AbstractResultParser<H>
     private final Parser parser;
     
     private ParserOf(
-            ChannelReader in,
+            ByteBufferIterable in,
             int logicalPos,
             int maxBytes,
             Supplier<? extends RuntimeException> exceeded,
@@ -94,7 +100,7 @@ final class ParserOf<H extends BetterHeaders> extends AbstractResultParser<H>
     
     @Override
     protected H parse(byte b) throws HeaderParseException {
-        final int n = getCount();
+        final int n = getByteCount();
         if (n == maxBytes) {
             throw exceeded.get();
         }
@@ -110,8 +116,7 @@ final class ParserOf<H extends BetterHeaders> extends AbstractResultParser<H>
      * This parser interprets the HTTP line terminator the same as is done and
      * documented by the {@link ParserOfRequestLine}'s parser (see section
      * "General rules"). This parser also follows the contract defined by {@link
-     * BetterHeaders}, e.g. header names may not be empty but the values may.
-     * 
+     * BetterHeaders}, e.g. header names may not be empty but the values may.<p>
      * 
      * <h2>Header names</h2>
      * 
@@ -138,7 +143,6 @@ final class ParserOf<H extends BetterHeaders> extends AbstractResultParser<H>
      * https://github.com/bbyars/mountebank/issues/282 <br>
      * https://stackoverflow.com/a/56047701/1268003 <br>
      * https://stackoverflow.com/questions/50179659/what-is-considered-as-whitespace-in-http-header
-     * 
      * 
      * <h2>Header values</h2>
      * 
@@ -248,7 +252,7 @@ final class ParserOf<H extends BetterHeaders> extends AbstractResultParser<H>
         
         @Override
         protected HeaderParseException parseException(String msg) {
-            int p = logicalPos == -1 ? -1 : logicalPos + getCount() - 1;
+            int p = logicalPos == -1 ? -1 : logicalPos + getByteCount() - 1;
             return new HeaderParseException(msg, prev, curr, p);
         }
         

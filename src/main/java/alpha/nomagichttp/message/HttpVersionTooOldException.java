@@ -12,7 +12,7 @@ import static java.util.Objects.requireNonNull;
  * 
  * Any HTTP version below 1.0 is too old.<p>
  * 
- * The {@link ErrorHandler#DEFAULT default error handler} will translate this
+ * The {@link ErrorHandler#BASE base error handler} will translate this
  * exception to a {@link Responses#upgradeRequired(String) 426 Upgrade Required}.
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)

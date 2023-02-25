@@ -11,7 +11,7 @@ import java.util.Collection;
  * has been added that supports the method.
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
- * @see ErrorHandler#DEFAULT
+ * @see ErrorHandler#BASE
  */
 public class MethodNotAllowedException extends NoHandlerResolvedException {
     private static final long serialVersionUID = 1L;

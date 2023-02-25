@@ -15,7 +15,7 @@ import static java.util.Objects.requireNonNull;
  * registered handler consumes the message payload.
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
- * @see ErrorHandler#DEFAULT
+ * @see ErrorHandler#BASE
  */
 public class MediaTypeUnsupportedException extends NoHandlerResolvedException {
     private static final long serialVersionUID = 1L;

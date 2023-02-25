@@ -25,7 +25,12 @@ import java.time.Duration;
  * 
  * Any configuration object can be turned into a builder for customization. The
  * static method {@link #configuration()} is a shortcut for {@code
- * Config.DEFAULT.toBuilder()}.
+ * Config.DEFAULT.toBuilder()}.<p>
+ * 
+ * In the JDK Reference Implementation, the number of platform threads available
+ * for scheduling virtual threads may be specified using the system property
+ * <pre>jdk.virtualThreadScheduler.parallelism</pre> (see JavaDoc of
+ * {@link Thread}).
  * 
  * @author Martin Andersson (webmaster at martinandersson.com
  */
@@ -35,9 +40,7 @@ public interface Config
      * Values used:<p>
      * 
      * Max request head size = 8 000 <br>
-     * Max unsuccessful responses = 7 <br>
-     * Max error recovery attempts = 5 <br>
-     * Thread pool-size = {@code Runtime.getRuntime().availableProcessors()}<br>
+     * Max unsuccessful responses = 3 <br>
      * Reject clients using HTTP/1.0 = true <br>
      * Ignore rejected informational = true <br>
      * Immediately continue Expect 100 = false <br>
@@ -74,6 +77,7 @@ public interface Config
      * 
      * @return number of request trailer bytes processed before exception
      */
+    // TODO: Rename to length
     int maxRequestTrailersSize();
     
     /**
@@ -84,70 +88,12 @@ public interface Config
      * Closing the channel after repeatedly unsuccessful exchanges increases
      * security.<p>
      * 
-     * The default implementation returns {@code 7}.
+     * The default implementation returns {@code 3}.
      * 
      * @return max number of consecutively unsuccessful responses
      *         before closing channel
      */
     int maxUnsuccessfulResponses();
-    
-    /**
-     * Returns the max number of attempts at recovering a failed HTTP
-     * exchange.<p>
-     * 
-     * The active count is bumped for each new error that the server attempts to
-     * resolve through the {@link ErrorHandler}. When all tries have been
-     * exhausted, the server will log the error and close the client channel, at
-     * which point any ongoing read or write operation will fail.<p>
-     * 
-     * The default implementation returns {@code 5}.
-     * 
-     * @return max number of attempts
-     * 
-     * @see ErrorHandler
-     */
-    int maxErrorRecoveryAttempts();
-    
-    /**
-     * Returns the number of request threads that are allocated for processing
-     * HTTP exchanges.<p>
-     * 
-     * The value is retrieved only once at the time of the start of the first
-     * server instance. All subsequent servers will share the same thread pool.
-     * To effectively change the thread pool size, all server instances must
-     * first stop.<p>
-     * 
-     * The default implementation returns {@code 3} or {@link
-     * Runtime#availableProcessors()}, whichever one is the greatest.<p>
-     * 
-     * The request thread is only supposed to perform short CPU-bound work - not
-     * idling/being dormant awaiting I/O. Hence, the desired target is equal to
-     * the number of CPUs available. It is not very conceivable that the
-     * throughput will increase if the ceiling is raised - in particular since
-     * the HTTP server is natively asynchronous and therefore already possess
-     * the ability to switch which requests and responses are being processed
-     * based on what data is readily available for consumption - although to
-     * date no experiments on raising the ceiling have been made.<p>
-     * 
-     * The default implementation imposes a lower floor set to 3 as a minimum
-     * pool size.<p>
-     * 
-     * A modern computer can be expected to have many cores, in particular
-     * server machines (32+ cores). But all cores are not necessarily available
-     * to the JVM. A server machine in production often run a plethora of
-     * containers (including multiple instances of the same app), each of which
-     * is assigned a reserved or limited set of the machine's resources, which
-     * often translates to a very small number of CPU:s for any one particular
-     * JVM. It is not uncommon for a poorly configured environment to expose
-     * only 1 single CPUif not less. Without a floor on the pool size, this
-     * would be not so great for the throughput and that is why the default
-     * implementation has a minimum size of 3, which aims to increase the level
-     * of concurrency albeit at a small cost of OS context switching. 
-     * 
-     * @return thread pool size
-     * @see HttpServer
-     */
-    int threadPoolSize();
     
     /**
      * Reject HTTP/1.0 clients, yes or no.<p>
@@ -178,50 +124,44 @@ public interface Config
     boolean rejectClientsUsingHTTP1_0();
     
     /**
-     * Ignore rejected 1XX (Informational) responses when they fail to be sent
-     * to an HTTP/1.0 client.<p>
+     * Discard 1XX (Informational) responses when the recipient is an
+     * HTTP/1.0 client.<p>
      * 
      * The default value is {@code true} and the application can safely write
-     * 1XX (Informational) responses to the channel without concern for old
-     * incompatible clients.<p>
+     * 1XX responses to the channel without concern for incompatible clients.<p>
      * 
-     * Caution: If this option is disabled (changed to return false), then the
-     * default error handler will instead of ignoring the failure, write a final
-     * 500 (Internal Server Error) response, meaning that the application will
-     * not be able to write its intended final response, or may even write its
-     * final response to a another subsequent HTTP exchange. Turning this option
-     * off necessitates that the application must query the active HTTP version
-     * ({@link Request#httpVersion()}) and restrain itself from attempting to
-     * send interim responses to HTTP/1.0 clients. Alternatively, install a
-     * custom error handler for {@link ResponseRejectedException}.<p>
+     * Turning this option off causes {@link ClientChannel#write(Response)} to
+     * throw a {@link ResponseRejectedException} if the response is 1XX and the
+     * recipient is incompatible. This necessitates that the application must
+     * either handle the exception explicitly, or query the active HTTP version
+     * ({@link Request#httpVersion()}) before attempting to send such a
+     * response.<p>
      * 
-     * The default implementation returns {@code true}.
-     * 
-     * @return whether to ignore failed 1XX (Informational) responses sent to
-     *         HTTP/1.0 clients
+     * @return whether to discard 1XX responses for incompatible clients
      */
-    boolean ignoreRejectedInformational();
+    boolean discardRejectedInformational();
     
     /**
      * Immediately respond a 100 (Continue) interim response to a request with a
      * {@code Expect: 100-continue} header.<p>
      * 
-     * By default, this value is {@code false} leaving the client and
-     * application in control.<p>
+     * This value is by default {@code false}, which enables the application to
+     * delay the client's body submission until it responds a 100 (Continue).<p>
      * 
-     * Even when {@code false}, the server will respond a 100 (Continue)
-     * response to the client on first access of a non-empty request body (all
-     * methods in {@link Request.Body} except {@link Request.Body#isEmpty()})
-     * unless one has already been sent. This is convenient for the application
-     * developer who does not need to know anything about this particular
-     * protocol feature.<p>
+     * Even when this configuration value is {@code false}, the server will
+     * still attempt to respond a 100 (Continue) to the client, but delayed
+     * until the application's first access of a non-empty request body (all
+     * methods in {@link Request.Body} except {@link Request.Body#length() size}
+     * and {@link Request.Body#isEmpty() isEmpty}).<p>
      * 
-     * Independent of the configured value, the server never attempts to
-     * automatically send a 100 (Continue) response to a HTTP/1.0 client since
-     * HTTP/1.0 does not support interim responses (
+     * This means that the application developer does not need to be aware of
+     * the {@code Expect: 100-continue} but still receive the full benefit, and
+     * the developer who is aware can take full charge as he pleases.<p>
+     * 
+     * Regardless of the configured value, the server never attempts to
+     * send a 100 (Continue) response to an HTTP/1.0 client since HTTP/1.0 does
+     * not support interim responses (
      * <a href="https://tools.ietf.org/html/rfc7231#section-5.1.1">RFC 7231 §5.1.1</a>).<p>
-     * 
-     * The default implementation returns {@code false}.
      * 
      * @return whether to immediately respond a 100 (Continue) interim response
      *         to a request with a {@code Expect: 100-continue} header
@@ -238,7 +178,7 @@ public interface Config
      * 
      * If the timeout occurs while a request head is expected or in-flight, then
      * it'll be delivered to the error handler(s), the {@linkplain
-     * ErrorHandler#DEFAULT default} of which translates the exception to a
+     * ErrorHandler#BASE default} of which translates the exception to a
      * {@linkplain Responses#requestTimeout() 408 (Request Timeout)}.<p>
      * 
      * If the timeout occurs while there is an active request body subscriber,
@@ -285,7 +225,7 @@ public interface Config
      * 
      * Assuming that the write stream is still open when the timeout occurs, a
      * {@link ResponseTimeoutException} will be delivered to the error
-     * handler(s), the {@linkplain ErrorHandler#DEFAULT default} of which
+     * handler(s), the {@linkplain ErrorHandler#BASE default} of which
      * translates it to a {@linkplain Responses#serviceUnavailable() 503
      * (Service Unavailable)}.<p>
      * 
@@ -337,18 +277,18 @@ public interface Config
      * This works in the following way: As with any HTTP method, if the route
      * exists but the method implementation is missing, a {@link
      * MethodNotAllowedException} is thrown which may eventually reach the
-     * {@linkplain ErrorHandler#DEFAULT default error handler}. This handler in
-     * turn will - if this configuration is enabled - respond a
-     * <i>successful</i> 204 (No Content). Had this configuration not been
-     * enabled, the response would have been a <i>client error</i> 405 (Method
-     * Not Allowed). In both cases, the {@value HttpConstants.HeaderName#ALLOW}
-     * header will be set and populated with all the HTTP methods that are
-     * implemented. So there's really no other difference between the two
-     * outcomes, other than the status code.<p>
+     * {@linkplain ErrorHandler#BASE base error handler}. This handler in turn
+     * will - if this configuration is enabled - respond a <i>successful</i> 204
+     * (No Content). Had this configuration not been enabled, the response would
+     * have been a <i>client error</i> 405 (Method Not Allowed). In both cases,
+     * the {@value HttpConstants.HeaderName#ALLOW} header will be set and
+     * populated with all the HTTP methods that are implemented. So there's
+     * really no other difference between the two outcomes, other than the
+     * status code.<p>
      * 
      * With or without this configuration enabled, the application can easily
      * add its own {@code OPTIONS} implementation to the route or override the
-     * default error handler.
+     * base error handler.
      * 
      * @return see JavaDoc
      */
@@ -391,7 +331,7 @@ public interface Config
      */
     interface Builder {
         /**
-         * Set a new value.
+         * Sets a new value.<p>
          * 
          * The value can be any integer, although a value too small (or
          * negative) will risk rejecting all requests.
@@ -403,7 +343,7 @@ public interface Config
         Builder maxRequestHeadSize(int newVal);
         
         /**
-         * Set a new value.
+         * Sets a new value.<p>
          * 
          * The value can be any integer, although a value too small (or
          * negative) will risk closing the connection early.
@@ -415,33 +355,7 @@ public interface Config
         Builder maxUnsuccessfulResponses(int newVal);
         
         /**
-         * Set a new value.
-         * 
-         * The value can be any integer, although a value too small (or
-         * negative) will risk not invoking error handlers provided by the
-         * application.
-         * 
-         * @param newVal new value
-         * @return a new builder representing the new state
-         * @see Config#maxErrorRecoveryAttempts()
-         */
-        Builder maxErrorRecoveryAttempts(int newVal);
-        
-        /**
-         * Set a new value.
-         * 
-         * The value can be any integer, although a zero value (or negative)
-         * will likely cause the HttpServer {@code start()} to blow up with an
-         * {@code IllegalArgumentException}.
-         * 
-         * @param newVal new value
-         * @return a new builder representing the new state
-         * @see Config#threadPoolSize()
-         */
-        Builder threadPoolSize(int newVal);
-        
-        /**
-         * Set a new value.
+         * Sets a new value.
          * 
          * @param newVal new value
          * @return a new builder representing the new state
@@ -450,16 +364,16 @@ public interface Config
         Builder rejectClientsUsingHTTP1_0(boolean newVal);
         
         /**
-         * Set a new value.
+         * Sets a new value.
          * 
          * @param newVal new value
          * @return a new builder representing the new state
-         * @see Config#ignoreRejectedInformational()
+         * @see Config#discardRejectedInformational()
          */
         Builder ignoreRejectedInformational(boolean newVal);
         
         /**
-         * Set a new value.
+         * Sets a new value.
          * 
          * @param newVal new value
          * @return a new builder representing the new state
@@ -468,7 +382,7 @@ public interface Config
         Builder immediatelyContinueExpect100(boolean newVal);
         
         /**
-         * Set a new value.
+         * Sets a new value.<p>
          * 
          * The value can be any duration, although a too short (or negative)
          * duration will effectively make the server useless.
@@ -481,7 +395,7 @@ public interface Config
         Builder timeoutRead(Duration newVal);
         
         /**
-         * Set a new value.
+         * Sets a new value.<p>
          * 
          * The value can be any duration, although a too short (or negative)
          * duration will effectively make the server useless.
@@ -494,7 +408,7 @@ public interface Config
         Builder timeoutResponse(Duration newVal);
         
         /**
-         * Set a new value.
+         * Sets a new value.<p>
          * 
          * The value can be any duration, although a too short (or negative)
          * duration will effectively make the server useless.
@@ -507,7 +421,7 @@ public interface Config
         Builder timeoutWrite(Duration newVal);
         
         /**
-         * Set a new value.
+         * Sets a new value.<p>
          * 
          * @param newVal new value
          * @return a new builder representing the new state

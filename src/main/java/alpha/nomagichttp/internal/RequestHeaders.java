@@ -11,7 +11,9 @@ import java.util.List;
 
 import static alpha.nomagichttp.HttpConstants.HeaderName.ACCEPT;
 
-final class RequestHeaders extends DefaultContentHeaders implements Request.Headers {
+final class RequestHeaders
+        extends DefaultContentHeaders implements Request.Headers
+{
     RequestHeaders(HttpHeaders headers) {
         super(headers);
     }
@@ -30,7 +32,8 @@ final class RequestHeaders extends DefaultContentHeaders implements Request.Head
                     .map(MediaType::parse)
                     .toList();
         } catch (MediaTypeParseException e) {
-            throw new BadHeaderException("Failed to parse " + ACCEPT + " header.", e);
+            throw new BadHeaderException(
+                    "Failed to parse " + ACCEPT + " header.", e);
         }
     }
 }

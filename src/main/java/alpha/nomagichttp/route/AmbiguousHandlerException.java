@@ -13,7 +13,7 @@ import static java.util.Collections.unmodifiableSet;
  * The request handler resolution process ended ambiguously.
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
- * @see ErrorHandler#DEFAULT
+ * @see ErrorHandler#BASE
  */
 public final class AmbiguousHandlerException extends NoHandlerResolvedException
 {
