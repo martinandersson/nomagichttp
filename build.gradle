@@ -5,7 +5,7 @@ plugins {
     id 'maven-publish'
 }
 
-final var RELEASE_FOR = JavaVersion.VERSION_21
+final var RELEASE_FOR = JavaVersion.VERSION_19
 if (!JavaVersion.current().isCompatibleWith(RELEASE_FOR)) {
     throw new Exception(
          "Java ${JavaVersion.current()} is not supported. " +
