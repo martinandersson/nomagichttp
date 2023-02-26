@@ -1,9 +1,9 @@
 package alpha.nomagichttp.examples;
 
 import alpha.nomagichttp.HttpServer;
-import alpha.nomagichttp.message.Response;
 
 import java.io.IOException;
+import java.util.Optional;
 
 import static alpha.nomagichttp.handler.RequestHandler.GET;
 import static alpha.nomagichttp.message.Responses.badRequest;
@@ -58,11 +58,13 @@ public final class GreetParameter
         }));
         
         // Name given by query
-        app.add("/hello", GET().apply(request ->
-                request.target()
-                       .queryFirst("name")
-                       .map(string -> text("Hello " + string + "!"))
-                       .orElse(badRequest())));
+        app.add("/hello", GET().apply(request -> {
+            Optional<String> opt = request.target().queryFirst("name");
+            if (opt.isEmpty()) {
+                return badRequest();
+            }
+            return text("Hello " + opt.get() + "!");
+        }));
         
         System.out.println("Listening on port " + PORT + ".");
         app.start(PORT);
