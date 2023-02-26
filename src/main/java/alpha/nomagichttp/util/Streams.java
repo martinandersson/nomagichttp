@@ -26,6 +26,9 @@ public final class Streams {
      */
     @SafeVarargs
     public static <T> Stream<T> stream(T first, T... more) {
+        if (more.length == 0) {
+            return of(first);
+        }
         @SuppressWarnings("varargs")
         var m = java.util.Arrays.stream(more);
         return Stream.concat(of(first), m);
