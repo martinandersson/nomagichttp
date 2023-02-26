@@ -1,39 +1,26 @@
 package alpha.nomagichttp.internal;
 
-import alpha.nomagichttp.handler.ClientChannel;
 import alpha.nomagichttp.message.HeaderParseException;
 import alpha.nomagichttp.message.Request;
-import alpha.nomagichttp.testutil.ByteBuffers;
 import org.assertj.core.api.MapAssert;
 import org.junit.jupiter.api.Test;
 
+import java.io.IOException;
 import java.util.List;
-import java.util.concurrent.CompletionStage;
 
-import static alpha.nomagichttp.internal.ParserOf.forRequestHeaders;
-import static alpha.nomagichttp.testutil.Assertions.assertFailed;
-import static alpha.nomagichttp.testutil.Assertions.assertSucceeded;
-import static alpha.nomagichttp.util.Publishers.just;
-import static alpha.nomagichttp.util.Publishers.map;
+import static alpha.nomagichttp.internal.ParserOf.headers;
+import static alpha.nomagichttp.testutil.TestByteBufferIterables.just;
 import static java.util.List.of;
 import static java.util.Map.entry;
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.Mockito.mock;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
- * Small tests for {@link ParserOf}.
+ * Small tests of {@link ParserOf}.
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  */
 public class ParserOfTest
 {
-    /**
-     * Constructs a {@code HeadersSubscriberTest}.
-     */
-    ParserOfTest() {
-        // Intentionally empty
-    }
-    
     @Test
     void ending_mixed() {
         // Three line endings; \r\n, \n, \n\r\n
@@ -43,7 +30,7 @@ public class ParserOfTest
             Host: www.example.com
             Accept: text/plain;charset=utf-8\n\r
             """;
-        assertResult(execute(str)).containsOnly(
+        assertThat(parse(str)).containsOnly(
             entry("User-Agent", of("curl/7.16.3 libcurl/7.16.3 OpenSSL/0.9.7l zlib/1.2.3")),
             entry("Host",       of("www.example.com")),
             entry("Accept",     of("text/plain;charset=utf-8")));
@@ -53,7 +40,7 @@ public class ParserOfTest
     void ending_missing() {
         // Each header-field is finished with CRLF, + one CRLF after the section
         // RFC 7230, §3, §4.1.2 and 4.1
-        assertFailed(execute("Foo: Bar\n"))
+        assertThatThrownBy(() -> parse("Foo: Bar\n"))
             .isExactlyInstanceOf(AssertionError.class)
             .hasNoCause()
             .hasNoSuppressedExceptions()
@@ -62,13 +49,13 @@ public class ParserOfTest
     
     @Test
     void compact() {
-        assertResult(execute("hello:world\n\n"))
+        assertThat(parse("hello:world\n\n"))
                 .containsOnly(entry("hello", of("world")));
     }
     
     @Test
     void empty_1() {
-        assertFailed(execute(""))
+        assertThatThrownBy(() -> parse(""))
             .isExactlyInstanceOf(AssertionError.class)
             .hasNoCause()
             .hasNoSuppressedExceptions()
@@ -77,12 +64,12 @@ public class ParserOfTest
     
     @Test
     void empty_2() {
-        assertResult(execute("\r\n")).isEmpty();
+        assertThat(parse("\r\n")).isEmpty();
     }
     
     @Test
     void name_empty() {
-        assertFailed(execute(":world\n\n"))
+        assertThatThrownBy(() -> parse(":world\n\n"))
             .isExactlyInstanceOf(HeaderParseException.class)
             .hasNoCause()
             .hasNoSuppressedExceptions()
@@ -96,7 +83,7 @@ public class ParserOfTest
     
     @Test
     void name_spaceInName_sp() {
-        assertFailed(execute("Has Space: blabla..."))
+        assertThatThrownBy(() -> parse("Has Space: blabla..."))
             .isExactlyInstanceOf(HeaderParseException.class)
             .hasNoCause()
             .hasNoSuppressedExceptions()
@@ -110,7 +97,7 @@ public class ParserOfTest
     
     @Test
     void name_spaceInName_LF() {
-        assertFailed(execute("Has\nSpace: blabla..."))
+        assertThatThrownBy(() -> parse("Has\nSpace: blabla..."))
             .isExactlyInstanceOf(HeaderParseException.class)
             .hasNoCause()
             .hasNoSuppressedExceptions()
@@ -124,7 +111,7 @@ public class ParserOfTest
     
     @Test
     void name_spaceAfterName() {
-        assertFailed(execute("Has-Space : blabla..."))
+        assertThatThrownBy(() -> parse("Has-Space : blabla..."))
             .isExactlyInstanceOf(HeaderParseException.class)
             .hasNoCause()
             .hasNoSuppressedExceptions()
@@ -138,7 +125,7 @@ public class ParserOfTest
     
     @Test
     void name_spaceBeforeName() {
-        assertFailed(execute(" Has-Space..."))
+        assertThatThrownBy(() -> parse(" Has-Space..."))
             .isExactlyInstanceOf(HeaderParseException.class)
             .hasNoCause()
             .hasNoSuppressedExceptions()
@@ -152,7 +139,7 @@ public class ParserOfTest
     
     @Test
     void name_duplicate() {
-        assertFailed(execute("""
+        assertThatThrownBy(() -> parse("""
                 foo: bar
                 FOO: bar\n
                 """))
@@ -164,13 +151,13 @@ public class ParserOfTest
     
     @Test
     void value_isTrimmed_content() {
-        assertResult(execute("Name:   bla bla   \n\n"))
+        assertThat(parse("Name:   bla bla   \n\n"))
                 .containsOnly(entry("Name", of("bla bla")));
     }
     
     @Test
     void value_isTrimmed_empty() {
-        assertResult(execute("Name:      \n\n"))
+        assertThat(parse("Name:      \n\n"))
                 .containsOnly(entry("Name", of("")));
     }
     
@@ -182,7 +169,7 @@ public class ParserOfTest
             Foo: world
             Foo: again\n
             """;
-        assertResult(execute(str)).containsOnly(
+        assertThat(parse(str)).containsOnly(
             entry("Foo", of("", "world", "again")),
             entry("Bar", of("hello")));
     }
@@ -194,7 +181,7 @@ public class ParserOfTest
               Line 2
             Another: Value\n
             """;
-        assertResult(execute(str)).containsOnly(
+        assertThat(parse(str)).containsOnly(
             entry("Name",    of("Line 1 Line 2")),
             entry("Another", of("Value")));
     }
@@ -207,30 +194,26 @@ public class ParserOfTest
              Line:1\s\s\s
                Line 2\s\s\s\n
             """;
-        assertResult(execute(str)).containsOnly(
+        assertThat(parse(str)).containsOnly(
             // Trailing space on line 1 kept, leading+trailing on line 2 cut
             entry("Name", of("Line:1   Line 2")));
     }
     
     @Test
     void value_folded_orSoParserThought_butHeadersEnded() {
-        assertResult(execute("Name:\n   \n\n"))
+        assertThat(parse("Name:\n   \n\n"))
                 .containsOnly(entry("Name", of("")));
     }
     
-    private CompletionStage<Request.Headers> execute(String... items) {
-        var hs = forRequestHeaders(0, 9_999, mock(ClientChannel.class));
-        var up = map(just(items), ByteBuffers::toBufPooled);
-        up.subscribe(hs);
-        return hs.result();
+    private Request.Headers parse(String... items) {
+        try {
+            return headers(just(items), 0, 9_999).parse();
+        } catch (IOException e) {
+            throw new AssertionError(e);
+        }
     }
     
-    private MapAssert<String, List<String>> assertResult(
-            CompletionStage<Request.Headers> actual) {
-        assertSucceeded(actual);
-        // lol try to do this with AssertJ's extracting + asInstance...
-        return assertThat(actual
-                .toCompletableFuture().getNow(null)
-                .delegate().map());
+    private static MapAssert<String, List<String>> assertThat(Request.Headers actual) {
+        return org.assertj.core.api.Assertions.assertThat(actual.delegate().map());
     }
 }
