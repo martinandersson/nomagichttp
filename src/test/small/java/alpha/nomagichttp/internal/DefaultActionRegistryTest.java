@@ -1,10 +1,9 @@
 package alpha.nomagichttp.internal;
 
+import alpha.nomagichttp.Chain;
 import alpha.nomagichttp.action.ActionNonUniqueException;
 import alpha.nomagichttp.action.AfterAction;
 import alpha.nomagichttp.action.BeforeAction;
-import alpha.nomagichttp.Chain;
-import alpha.nomagichttp.handler.ClientChannel;
 import alpha.nomagichttp.message.Request;
 import alpha.nomagichttp.message.Response;
 import org.junit.jupiter.api.Test;
@@ -16,10 +15,10 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.concurrent.CompletionStage;
 import java.util.function.Function;
 
 import static alpha.nomagichttp.internal.DefaultActionRegistry.Match;
+import static alpha.nomagichttp.internal.RequestTarget.requestTargetWithParams;
 import static alpha.nomagichttp.internal.SkeletonRequestTarget.parse;
 import static java.util.Collections.reverseOrder;
 import static java.util.stream.Collectors.toList;
@@ -242,29 +241,15 @@ public class DefaultActionRegistryTest
     
     private static BeforeAction beforeDummy(String name) {
         return new BeforeAction() {
-            @Override
-            public void accept(Request request, ClientChannel channel, Chain chain) {
-                // Empty
-            }
-            
-            @Override
-            public String toString() {
-                return name;
-            }
+            public Response apply(Request a, Chain b) { return null; }
+            public String toString() { return name; }
         };
     }
     
     private static AfterAction afterDummy(String name) {
         return new AfterAction() {
-            @Override
-            public CompletionStage<Response> apply(Request req, Response rsp) {
-                return rsp.completedStage();
-            }
-            
-            @Override
-            public String toString() {
-                return name;
-            }
+            public Response apply(Request a, Response b) { return null; }
+            public String toString() { return name; }
         };
     }
     
@@ -338,7 +323,8 @@ public class DefaultActionRegistryTest
         private static <A> List<TestMatch<A>> executeLookup(RunSpec<A> root) {
             var pathSegments = parse(root.pattern);
             return root.method.apply(pathSegments).stream().map(act -> {
-                        var actParams = new RequestTarget(pathSegments, act.segments());
+                        var actParams = requestTargetWithParams(
+                                pathSegments, act.segments());
                         return new TestMatch<>(
                                 act.action(),
                                 actParams.pathParamRawMap(),
