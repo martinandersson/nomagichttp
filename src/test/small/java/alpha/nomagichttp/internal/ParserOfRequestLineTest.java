@@ -1,21 +1,19 @@
 package alpha.nomagichttp.internal;
 
-import alpha.nomagichttp.handler.ClientChannel;
 import alpha.nomagichttp.message.RawRequest;
 import alpha.nomagichttp.message.RequestLineParseException;
-import alpha.nomagichttp.testutil.ByteBuffers;
 import org.assertj.core.api.AbstractListAssert;
 import org.assertj.core.api.ObjectAssert;
 import org.junit.jupiter.api.Test;
 
+import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.util.List;
-import java.util.concurrent.CompletionStage;
 
-import static alpha.nomagichttp.testutil.Assertions.assertFailed;
-import static alpha.nomagichttp.testutil.Assertions.assertSucceeded;
-import static alpha.nomagichttp.util.Publishers.just;
-import static alpha.nomagichttp.util.Publishers.map;
-import static org.mockito.Mockito.mock;
+import static alpha.nomagichttp.util.ByteBufferIterables.just;
+import static java.nio.charset.StandardCharsets.US_ASCII;
+import static java.util.Arrays.stream;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
  * Small tests for {@link ParserOfRequestLine}.
@@ -26,35 +24,35 @@ final class ParserOfRequestLineTest
 {
     @Test
     void happyPath() {
-        var rl = "GET /hello.txt HTTP/1.1\r\n";
-        assertResult(execute(rl))
-            .containsExactly("GET", "/hello.txt", "HTTP/1.1", rl.length());
+        var input = "GET /hello.txt HTTP/1.1\r\n";
+        assertThat(parse(input)).contains(
+                "GET", "/hello.txt", "HTTP/1.1", input.length());
     }
     
     @Test
     void anyWhitespaceBetweenTokensIsDelimiter() {
-        var rl = "GET\t/hello.txt    HTTP/1.1\r\n";
-        assertResult(execute(rl))
-            .containsExactly("GET", "/hello.txt", "HTTP/1.1", rl.length());
+        var input = "GET\t/hello.txt    HTTP/1.1\r\n";
+        assertThat(parse(input)).contains(
+                "GET", "/hello.txt", "HTTP/1.1", input.length());
     }
     
     @Test
     void method_leadingWhitespaceIgnored() {
-        var rl = "\r\n \t \r\n GET /hello.txt HTTP/1.1\r\n";
-        assertResult(execute(rl))
-            .containsExactly("GET", "/hello.txt", "HTTP/1.1", rl.length());
+        var input = "\r\n \t \r\n GET /hello.txt HTTP/1.1\r\n";
+        assertThat(parse(input)).contains(
+                "GET", "/hello.txt", "HTTP/1.1", input.length());
     }
     
     @Test
     void target_leadingWhitespaceIgnored() {
-        var rl = "GET\r \t/hello.txt HTTP/1.1\n";
-        assertResult(execute(rl))
-            .containsExactly("GET", "/hello.txt", "HTTP/1.1", rl.length());
+        var input = "GET\r \t/hello.txt HTTP/1.1\n";
+        assertThat(parse(input)).contains(
+                "GET", "/hello.txt", "HTTP/1.1", input.length());
     }
     
     @Test
     void target_leadingWhitespaceLineFeedIsIllegal() {
-        assertFailed(execute("GET \n/hello...."))
+        assertThatThrownBy(() -> parse("GET \n/hello...."))
             .isExactlyInstanceOf(RequestLineParseException.class)
             .hasNoCause()
             .hasNoSuppressedExceptions()
@@ -68,14 +66,14 @@ final class ParserOfRequestLineTest
     
     @Test
     void version_leadingWhitespaceIgnored() {
-        var rl = "GET /hello.txt \tHTTP/1.1\n";
-        assertResult(execute(rl))
-            .containsExactly("GET", "/hello.txt", "HTTP/1.1", rl.length());
+        var input = "GET /hello.txt \tHTTP/1.1\n";
+        assertThat(parse(input)).contains(
+                "GET", "/hello.txt", "HTTP/1.1", input.length());
     }
     
     @Test
     void version_leadingWhitespaceLineFeedIsIllegal() {
-        assertFailed(execute("GET /hello.txt \nHTTP...."))
+        assertThatThrownBy(() -> parse("GET /hello.txt \nHTTP...."))
             .isExactlyInstanceOf(RequestLineParseException.class)
             .hasNoCause()
             .hasNoSuppressedExceptions()
@@ -94,7 +92,7 @@ final class ParserOfRequestLineTest
     // TODO: Giving CR different semantics is inconsistent. Research.
     @Test
     void version_illegalLineBreak() {
-        assertFailed(execute("GET\r/hello.txt\rBoom!"))
+        assertThatThrownBy(() -> parse("GET\r/hello.txt\rBoom!"))
             .isExactlyInstanceOf(RequestLineParseException.class)
             .hasNoCause()
             .hasNoSuppressedExceptions()
@@ -108,7 +106,7 @@ final class ParserOfRequestLineTest
     
     @Test
     void version_illegalWhitespaceInToken() {
-        assertFailed(execute("GET /hello.txt HT TP/1...."))
+        assertThatThrownBy(() -> parse("GET /hello.txt HT TP/1...."))
             .isExactlyInstanceOf(RequestLineParseException.class)
             .hasNoCause()
             .hasNoSuppressedExceptions()
@@ -120,16 +118,21 @@ final class ParserOfRequestLineTest
                 msg=Whitespace in HTTP-version not accepted.}""");
     }
     
-    private CompletionStage<RawRequest.Line> execute(String... items) {
-        var rls = new ParserOfRequestLine(9_999, mock(ClientChannel.class));
-        var up = map(just(items), ByteBuffers::toBufPooled);
-        up.subscribe(rls);
-        return rls.result();
+    private RawRequest.Line parse(String... items) {
+        var bufs = stream(items)
+                .map(str -> str.getBytes(US_ASCII))
+                .map(ByteBuffer::wrap)
+                .toList();
+        try {
+            return new ParserOfRequestLine(just(bufs), 9_999).parse();
+        } catch (IOException e) {
+            throw new AssertionError(e);
+        }
     }
     
-    private AbstractListAssert<?, List<?>, Object, ObjectAssert<Object>>
-        assertResult(CompletionStage<RawRequest.Line> actual) {
-            return assertSucceeded(actual).extracting(
-                "method", "target", "httpVersion", "length");
+    private static AbstractListAssert<?, List<?>, Object, ObjectAssert<Object>>
+        assertThat(RawRequest.Line actual) {
+            return org.assertj.core.api.Assertions.assertThat(actual)
+                    .extracting("method", "target", "httpVersion", "length");
     }
 }
