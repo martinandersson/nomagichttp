@@ -1,26 +1,27 @@
 package alpha.nomagichttp.internal;
 
 import alpha.nomagichttp.message.BadHeaderException;
-import alpha.nomagichttp.message.DefaultContentHeaders;
 import alpha.nomagichttp.message.RawRequest;
 import alpha.nomagichttp.message.Request;
 import org.junit.jupiter.api.Test;
 
+import java.io.IOException;
 import java.net.http.HttpHeaders;
 import java.nio.ByteBuffer;
+import java.nio.channels.ReadableByteChannel;
 import java.nio.charset.IllegalCharsetNameException;
 import java.nio.charset.UnsupportedCharsetException;
 import java.nio.file.Paths;
-import java.util.List;
 
 import static alpha.nomagichttp.HttpConstants.Version.HTTP_1_1;
-import static alpha.nomagichttp.testutil.Assertions.assertFailed;
+import static alpha.nomagichttp.internal.DefaultRequest.requestWithoutParams;
+import static alpha.nomagichttp.internal.SkeletonRequestTarget.parse;
 import static alpha.nomagichttp.util.Headers.of;
-import static alpha.nomagichttp.util.Publishers.just;
+import static java.nio.ByteBuffer.wrap;
 import static java.nio.charset.StandardCharsets.US_ASCII;
 import static java.nio.file.Files.notExists;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.Mockito.mock;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
  * Small tests of {@link DefaultRequest}.
@@ -30,16 +31,14 @@ import static org.mockito.Mockito.mock;
 class DefaultRequestTest
 {
     @Test
-    void body_toText_happyPath() {
-        var req = createRequest(of("Content-Length", "3"),"abc");
-        assertThat(req.body().toText())
-                .isCompletedWithValue("abc");
+    void body_toText_happyPath() throws IOException {
+        var req = createRequest(of("Content-Length", "3"), "abc");
+        assertThat(req.body().toText()).isEqualTo("abc");
     }
     
     @Test
-    void body_toText_empty() {
-        assertThat(createEmptyRequest().body().toText())
-                .isCompletedWithValue("");
+    void body_toText_empty() throws IOException {
+        assertThat(createEmptyRequest().body().toText()).isEmpty();
     }
     
     @Test
@@ -49,7 +48,7 @@ class DefaultRequestTest
                 "Content-Type", "first",
                 "Content-Type", "second"),
                 "abc");
-        assertFailed(req.body().toText())
+        assertThatThrownBy(() -> req.body().toText())
                 .isExactlyInstanceOf(BadHeaderException.class)
                 .hasMessage("Multiple Content-Type values in request.");
     }
@@ -60,7 +59,7 @@ class DefaultRequestTest
                 "Content-Length", "3",
                 "Content-Type", "text/plain;charset=."),
                 "abc");
-        assertFailed(req.body().toText())
+        assertThatThrownBy(() -> req.body().toText())
                 .isExactlyInstanceOf(IllegalCharsetNameException.class);
                 // Message not specified
     }
@@ -71,46 +70,74 @@ class DefaultRequestTest
                 "Content-Length", "3",
                 "Content-Type", "text/plain;charset=from-another-galaxy"),
                 "abc");
-        assertFailed(req.body().toText())
+        assertThatThrownBy(() -> req.body().toText())
                 .isExactlyInstanceOf(UnsupportedCharsetException.class);
     }
     
     @Test
-    void body_toFile_empty() {
-        var letsHopeItDoesNotExist = Paths.get("list of great child porn sites.txt");
+    void body_toFile_empty() throws IOException {
+        var letsHopeItDoesNotExist = Paths.get("child porn sites.txt");
         // Pre condition
         assertThat(notExists(letsHopeItDoesNotExist))
                 .isTrue();
         // Execute
         assertThat(createEmptyRequest().body().toFile(letsHopeItDoesNotExist))
-                .isCompletedWithValue(0L);
-        // Post condition (either test failed legitimately or machine is a pedophile)
+                .isZero();
+        // Post condition (test failed legitimately, or machine is a pedophile?)
         assertThat(notExists(letsHopeItDoesNotExist))
                 .isTrue();
     }
     
     private static Request createRequest(HttpHeaders headers, String reqBody) {
         var line = new RawRequest.Line(
-                       "test-method", "test-requestTarget", "test-httpVersion", -1, -1);
-        var head = new RawRequest.Head(line, new RequestHeaders(headers));
+                       "test-method",
+                       "test-requestTarget",
+                       "test-httpVersion",
+                       -1, -1);
+        var head = new RawRequest.Head(
+                       line,
+                       new RequestHeaders(headers));
         var body = RequestBody.of(
-                  (DefaultContentHeaders) head.headers(),
-                  just(wrap(reqBody)),
-                  mock(DefaultClientChannel.class),
-                  -1, null);
-        
-        SkeletonRequest r = new SkeletonRequest(
-                head, SkeletonRequestTarget.parse("/?"), body, new DefaultAttributes());
-        
-        return new DefaultRequest(HTTP_1_1, r, List.of());
+                       head.headers(),
+                       readerOf(reqBody));
+        var skel = new SkeletonRequest(
+                       head,
+                       HTTP_1_1,
+                       parse("/?"),
+                       body,
+                       new DefaultAttributes());
+        return requestWithoutParams(null, skel);
     }
     
     private static Request createEmptyRequest() {
         return createRequest(of(), "");
     }
     
-    private static DefaultPooledByteBufferHolder wrap(String val) {
-        ByteBuffer b = ByteBuffer.wrap(val.getBytes(US_ASCII));
-        return new DefaultPooledByteBufferHolder(b, ignored -> {});
+    private static ChannelReader readerOf(String data) {
+        var src = wrap(data.getBytes(US_ASCII));
+        var upstream = new ReadableByteChannel() {
+            public int read(ByteBuffer dst) {
+                if (!src.hasRemaining()) {
+                    return -1;
+                }
+                if (!dst.hasRemaining()) {
+                    return 0;
+                }
+                int n = 0;
+                while (src.hasRemaining() && dst.hasRemaining()) {
+                    dst.put(src.get());
+                    ++n;
+                }
+                assert n > 0;
+                return n;
+            }
+            public boolean isOpen() {
+                return true;
+            }
+            public void close() {
+                // Empty
+            }
+        };
+        return new ChannelReader(upstream);
     }
 }
