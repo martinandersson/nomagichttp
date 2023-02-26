@@ -7,12 +7,9 @@ import org.assertj.core.api.ObjectAssert;
 import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
-import java.nio.ByteBuffer;
 import java.util.List;
 
-import static alpha.nomagichttp.util.ByteBufferIterables.just;
-import static java.nio.charset.StandardCharsets.US_ASCII;
-import static java.util.Arrays.stream;
+import static alpha.nomagichttp.testutil.TestByteBufferIterables.just;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
@@ -119,12 +116,8 @@ final class ParserOfRequestLineTest
     }
     
     private RawRequest.Line parse(String... items) {
-        var bufs = stream(items)
-                .map(str -> str.getBytes(US_ASCII))
-                .map(ByteBuffer::wrap)
-                .toList();
         try {
-            return new ParserOfRequestLine(just(bufs), 9_999).parse();
+            return new ParserOfRequestLine(just(items), 9_999).parse();
         } catch (IOException e) {
             throw new AssertionError(e);
         }
