@@ -16,6 +16,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.NoSuchElementException;
 import java.util.stream.Stream;
+import java.util.stream.StreamSupport;
 
 import static alpha.nomagichttp.util.Blah.addExactOrMaxValue;
 import static alpha.nomagichttp.util.Blah.getOrCloseResource;
@@ -97,6 +98,25 @@ public final class ByteBufferIterables
      */
     public static ByteBufferIterable just(ByteBuffer first, ByteBuffer... more) {
         return new OfByteBuffers(stream(first, more));
+    }
+    
+    /**
+     * Returns an iterable of the given bytebuffers.<p> 
+     * 
+     * The iterable's content is the given bytebuffers, they are not copied. The
+     * application should not modify the bytebuffers after having called this
+     * method.
+     * 
+     * @param items backing byte arrays
+     * 
+     * @return see JavaDoc
+     * 
+     * @throws NullPointerException
+     *             if {@code items} is {@code null}
+     */
+    public static ByteBufferIterable just(Iterable<ByteBuffer> items) {
+        return new OfByteBuffers(
+                StreamSupport.stream(items.spliterator(), false));
     }
     
     /**

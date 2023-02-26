@@ -1,8 +1,11 @@
 package alpha.nomagichttp.testutil;
 
+import alpha.nomagichttp.message.ResourceByteBufferIterable;
 import org.assertj.core.api.AbstractThrowableAssert;
 import org.assertj.core.api.ObjectAssert;
 
+import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CancellationException;
@@ -21,6 +24,7 @@ import static alpha.nomagichttp.testutil.MemorizingSubscriber.Signal;
 import static alpha.nomagichttp.testutil.MemorizingSubscriber.drainSignals;
 import static alpha.nomagichttp.testutil.TestSubscribers.requestMax;
 import static alpha.nomagichttp.util.Streams.stream;
+import static java.nio.ByteBuffer.allocate;
 import static java.time.Duration.ZERO;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static java.util.stream.Collectors.toCollection;
@@ -138,6 +142,50 @@ public final class Assertions {
     public static <T> void assertPublisherEmits(
             Flow.Publisher<? extends T> publisher, T first, T... more) {
         assertItems(drainSignals(publisher), first, more);
+    }
+    
+    /**
+     * Asserts that the iterated items are equal to the expected.<p>
+     * 
+     * The assertion will fail if:
+     * 
+     * <ul>
+     *   <li>Number of iterated items are fewer or more</li>
+     *   <li>Iterated items are not {@link ByteBuffer#equals(Object) equal}
+     *       (in order)</li>
+     *   <li>A known {@link ResourceByteBufferIterable#length() length} is the
+     *       same as the sum of all remaining bytes in the expected</li>
+     * </ul>
+     * 
+     * @param iterable to iterate
+     * @param first item expected
+     * @param more items expected
+     * 
+     * @throws IOException on I/O error
+     */
+    public static void assertIterable(
+            ResourceByteBufferIterable iterable,
+            ByteBuffer first, ByteBuffer... more)
+            throws IOException {
+        long len;
+        var actual = new ArrayList<>();
+        try (var it = iterable.iterator()) {
+            len = iterable.length();
+            while (it.hasNext()) {
+                var buf = it.next();
+                var copy = allocate(buf.remaining());
+                while (buf.hasRemaining()) {
+                    copy.put(buf.get());
+                }
+                actual.add(copy.flip());
+            }
+        }
+        var expected = stream(first, more).toList();
+        if (len >= 0) {
+            assertThat(len).isEqualTo(
+                    expected.stream().mapToInt(ByteBuffer::remaining).sum());
+        }
+        assertThat(actual).isEqualTo(expected);
     }
     
     /**
