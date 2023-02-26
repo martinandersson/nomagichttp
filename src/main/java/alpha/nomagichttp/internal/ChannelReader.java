@@ -278,14 +278,19 @@ public final class ChannelReader implements ByteBufferIterable
         }
         
         private int read() throws IOException {
+            final int v;
             try {
-                return child.read(buf);
+                v = child.read(buf);
+                if (v > 0) {
+                    buf.flip();
+                }
             } catch (Throwable t) {
                 forceDismiss();
                 // Likely already shut down, this is more for updating our state
                 channel().shutdownInput();
                 throw t;
             }
+            return v;
         }
         
         private ByteBuffer handleEOS() {
