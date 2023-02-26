@@ -11,10 +11,9 @@ import java.util.function.Supplier;
 import java.util.stream.Stream;
 
 import static alpha.nomagichttp.testutil.Assertions.assertIterable;
-import static alpha.nomagichttp.util.ByteBufferIterables.just;
+import static alpha.nomagichttp.testutil.TestByteBufferIterables.just;
 import static java.nio.ByteBuffer.wrap;
 import static java.nio.charset.StandardCharsets.US_ASCII;
-import static java.util.Arrays.stream;
 import static java.util.HexFormat.fromHexDigitsToLong;
 import static java.util.stream.Stream.concat;
 import static java.util.stream.Stream.of;
@@ -186,10 +185,7 @@ final class ChunkedDecoderTest
                 .hasNoCause();
     }
     
-    private ChunkedDecoder decode(String... upstreamBuffers) {
-        var items = stream(upstreamBuffers)
-                .map(ChunkedDecoderTest::buf)
-                .toList();
+    private ChunkedDecoder decode(String... items) {
         return new ChunkedDecoder(just(items));
     }
     
