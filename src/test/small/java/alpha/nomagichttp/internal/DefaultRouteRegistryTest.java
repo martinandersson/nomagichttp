@@ -14,6 +14,7 @@ import java.util.Map;
 import java.util.stream.Stream;
 
 import static alpha.nomagichttp.handler.RequestHandler.GET;
+import static alpha.nomagichttp.internal.RequestTarget.requestTargetWithParams;
 import static alpha.nomagichttp.internal.SkeletonRequestTarget.parse;
 import static alpha.nomagichttp.message.Responses.accepted;
 import static alpha.nomagichttp.util.PercentDecoder.decode;
@@ -285,7 +286,7 @@ class DefaultRouteRegistryTest
         Route r = testee.lookup(segments);
         assertThat(r).isSameAs(expectSame);
         
-        var rt = new RequestTarget(segments, r.segments());
+        var rt = requestTargetWithParams(segments, r.segments());
         assertThat(rt.pathParamRawMap()).isEqualTo(expectedParamValuesRaw);
         
         Map<String, String> decoded = new HashMap<>(expectedParamValuesRaw);
@@ -309,7 +310,7 @@ class DefaultRouteRegistryTest
     // TODO: Rename to dummy()
     private static Route dummyRoute(String pattern) {
         return Route.builder(pattern)
-                .handler(GET().apply(requestIgnored -> accepted().completedStage()))
+                .handler(GET().apply(requestIgnored -> accepted()))
                 .build();
     }
     
