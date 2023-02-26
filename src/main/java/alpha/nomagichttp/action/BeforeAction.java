@@ -7,7 +7,6 @@ import alpha.nomagichttp.handler.ErrorHandler;
 import alpha.nomagichttp.message.Request;
 import alpha.nomagichttp.message.Response;
 import alpha.nomagichttp.util.Throwing;
-import jdk.incubator.concurrent.ScopedValue;
 
 /**
  * Is an action executed before the request handler.<p>
@@ -37,7 +36,7 @@ import jdk.incubator.concurrent.ScopedValue;
  * 
  * If the value stored in the attributes acts as a default and will need to be
  * temporarily rebound at a later point in time, consider using a
- * {@link ScopedValue} instead.<p>
+ * {@code ScopedValue} instead.<p>
  * 
  * TODO: Give example.<p>
  * 

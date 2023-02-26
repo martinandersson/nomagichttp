@@ -13,7 +13,7 @@ import alpha.nomagichttp.message.HttpVersionTooOldException;
 import alpha.nomagichttp.message.IllegalRequestBodyException;
 import alpha.nomagichttp.message.RawRequest;
 import alpha.nomagichttp.message.Response;
-import jdk.incubator.concurrent.ScopedValue;
+import alpha.nomagichttp.util.DummyScopedValue;
 
 import java.io.IOException;
 import java.util.Collection;
@@ -28,6 +28,7 @@ import static alpha.nomagichttp.handler.ErrorHandler.BASE;
 import static alpha.nomagichttp.internal.DefaultRequest.requestWithoutParams;
 import static alpha.nomagichttp.internal.ErrorHandlerException.unchecked;
 import static alpha.nomagichttp.message.Responses.continue_;
+import static alpha.nomagichttp.util.DummyScopedValue.where;
 import static java.lang.Integer.parseInt;
 import static java.lang.Math.addExact;
 import static java.lang.System.Logger.Level.DEBUG;
@@ -35,7 +36,6 @@ import static java.lang.System.Logger.Level.ERROR;
 import static java.lang.System.Logger.Level.WARNING;
 import static java.lang.System.nanoTime;
 import static java.util.Optional.of;
-import static jdk.incubator.concurrent.ScopedValue.where;
 
 /**
  * Orchestrator of an HTTP exchange from request to response.<p>
@@ -63,8 +63,8 @@ final class HttpExchange
     private static final System.Logger
             LOG = System.getLogger(HttpExchange.class.getPackageName());
     
-    private static final ScopedValue<Optional<SkeletonRequest>>
-            REQUEST = ScopedValue.newInstance();
+    private static final DummyScopedValue<Optional<SkeletonRequest>>
+            REQUEST = DummyScopedValue.newInstance();
     
     /**
      * Returns the skeleton request.<p>

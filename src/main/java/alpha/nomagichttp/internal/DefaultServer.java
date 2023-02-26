@@ -25,6 +25,7 @@ import java.util.List;
 import java.util.concurrent.TimeoutException;
 import java.util.function.IntConsumer;
 
+import static alpha.nomagichttp.util.DummyScopedValue.where;
 import static alpha.nomagichttp.util.ScopedValues.__CHANNEL;
 import static alpha.nomagichttp.util.ScopedValues.__HTTP_SERVER;
 import static java.lang.System.Logger.Level.DEBUG;
@@ -35,7 +36,6 @@ import static java.net.StandardProtocolFamily.UNIX;
 import static java.nio.channels.ServerSocketChannel.open;
 import static java.time.Instant.now;
 import static java.util.Objects.requireNonNull;
-import static jdk.incubator.concurrent.ScopedValue.where;
 
 /**
  * A fully JDK-based {@code HttpServer} implementation using virtual threads.
@@ -73,7 +73,7 @@ public final class DefaultServer implements HttpServer
         this.eh      = List.of(eh);
         this.events  = new DefaultEventHub(
                 () -> !__HTTP_SERVER.isBound(),
-                r -> where(__HTTP_SERVER, this).run(r));
+                r -> where(__HTTP_SERVER, this, r));
         this.parent  = new Confined<>();
         this.started = null;
         this.waitForChildren = null;
@@ -124,8 +124,7 @@ public final class DefaultServer implements HttpServer
             throws IOException, InterruptedException
     {
         try {
-            where(__HTTP_SERVER, this).call(
-                () -> runAcceptLoop0(parent));
+            where(__HTTP_SERVER, this, () -> runAcceptLoop0(parent));
         } catch (Exception e) {
             switch (e) {
                 case IOException t -> throw t;

@@ -1,7 +1,6 @@
 package alpha.nomagichttp.event;
 
 import alpha.nomagichttp.util.TriConsumer;
-import jdk.incubator.concurrent.ScopedValue;
 
 import java.util.Collection;
 import java.util.Map;
@@ -41,14 +40,14 @@ import static java.util.Objects.requireNonNull;
  * the provided {@code Runnable} argument which will then call the listeners. If
  * the when-condition returns false, the listeners will be called directly
  * without going through the decorator. The intended use case is for
- * implementations to be able to ensure that a {@link ScopedValue} is always
+ * implementations to be able to ensure that a {@code ScopedValue} is always
  * bound.
  * 
  * <pre>{@code
  *   EventEmitter emitter = new DefaultEventHub(
  *         () -> !MY_SCOPED_VALUE.isBound(),
- *         runnable -> ScopedValue.where(MY_SCOPED_VALUE, ...).run(runnable));
- *   // Listeners will always be able to retrieve the scoped value
+ *         listeners -> ScopedValue.where(MY_SCOPED_VALUE, ..., listeners));
+ *   // Listeners will now always be able to retrieve the scoped value
  *   emitter.dispatch("event");
  * }</pre>
  * 
