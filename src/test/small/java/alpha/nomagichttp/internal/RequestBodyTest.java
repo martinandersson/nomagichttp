@@ -19,7 +19,7 @@ final class RequestBodyTest
         var crash = headers(
                 "Content-Length", "123",
                 "Transfer-Encoding", "chunked");
-        assertThatThrownBy(() -> RequestBody.of(crash, null, null, -1, null))
+        assertThatThrownBy(() -> RequestBody.of(crash, null))
                 .isExactlyInstanceOf(BadRequestException.class)
                 .hasMessage("Content-Length and Transfer-Encoding present.")
                 .hasNoSuppressedExceptions()
