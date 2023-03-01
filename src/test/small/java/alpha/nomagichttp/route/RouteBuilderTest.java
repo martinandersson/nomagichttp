@@ -21,7 +21,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  */
-class RouteBuilderTest
+final class RouteBuilderTest
 {
     Route.Builder testee;
     

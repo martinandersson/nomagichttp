@@ -24,7 +24,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  */
-class RouteHandlerLookupTest
+final class RouteHandlerLookupTest
 {
     @Test
     void simple() {
