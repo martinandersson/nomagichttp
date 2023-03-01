@@ -263,7 +263,6 @@ public final class ChannelReader implements ByteBufferIterable
                 return handleEOS();
             }
             count = addExactOrMaxValue(count, r);
-            view.limit(buf.position());
             assert view.hasRemaining();
             return view;
         }
@@ -282,6 +281,7 @@ public final class ChannelReader implements ByteBufferIterable
             try {
                 v = child.read(buf);
                 if (v > 0) {
+                    view.limit(buf.position());
                     buf.flip();
                 }
             } catch (Throwable t) {
