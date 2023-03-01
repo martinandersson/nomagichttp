@@ -72,9 +72,9 @@ final class ChunkedDecoderTest
         var testee = decode("1\r\nX\r\n\r\n");
         assertThatThrownBy(() -> toString(testee))
             .isExactlyInstanceOf(DecoderException.class)
+            .hasMessage("No chunk-size specified.")
             .hasNoSuppressedExceptions()
-            .hasNoCause()
-            .hasMessage("No chunk-size specified.");
+            .hasNoCause();
     }
     
     @Test
@@ -136,8 +136,8 @@ final class ChunkedDecoderTest
         assertThatThrownBy(() -> toString(testee))
             // It's not really a DECODER issue lol
             .isExactlyInstanceOf(UnsupportedOperationException.class)
-            .hasNoSuppressedExceptions()
             .hasMessage("Long overflow.")
+            .hasNoSuppressedExceptions()
             .cause()
                 .isExactlyInstanceOf(BufferOverflowException.class)
                 .hasMessage(null);

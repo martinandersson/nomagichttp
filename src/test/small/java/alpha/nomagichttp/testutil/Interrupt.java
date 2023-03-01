@@ -24,7 +24,8 @@ public final class Interrupt
         // Intentionally empty
     }
     
-    private static final System.Logger LOG = System.getLogger(Interrupt.class.getPackageName());
+    private static final System.Logger LOG
+            = System.getLogger(Interrupt.class.getPackageName());
     
     /**
      * Executes the given action and interrupts the current thread after a
@@ -63,7 +64,9 @@ public final class Interrupt
      * @throws IOException if an I/O error occurs
      *                     (this includes {@link ClosedByInterruptException}!)
      */
-    public static <V> V after(long duration, TimeUnit unit, String op, IOSupplier<V> action) throws IOException {
+    public static <V> V after(
+            long duration, TimeUnit unit, String op, IOSupplier<V> action)
+            throws IOException {
         final Thread worker = Thread.currentThread();
         
         if (duration <= 0) {
@@ -75,7 +78,8 @@ public final class Interrupt
         ScheduledFuture<?> task = SCHEDULER.schedule(() -> {
             synchronized (timer) {
                 if (timer[0]) {
-                    LOG.log(INFO, () -> "Interrupting operation \"" + op + "\".");
+                    LOG.log(INFO, () ->
+                            "Interrupting operation \"" + op + "\".");
                     worker.interrupt();
                     timer[0] = false;
                 }

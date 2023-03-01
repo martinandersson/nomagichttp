@@ -339,9 +339,9 @@ class DetailTest extends AbstractRealTest
         byte[] req = ("GET / HTTP/1.1" + CRLF + CRLF).getBytes(US_ASCII);
         
         byte[] expHead =
-                ("HTTP/1.1 200 OK"                       + CRLF +
-                "Content-Length: 16385"                  + CRLF +
-                "Content-Type: application/octet-stream" + CRLF + CRLF)
+                ("HTTP/1.1 200 OK"                        + CRLF +
+                 "Content-Length: 16385"                  + CRLF +
+                 "Content-Type: application/octet-stream" + CRLF + CRLF)
                 .getBytes(US_ASCII);
         
         ByteBuffer merged = allocate(expHead.length + rspBody.length);

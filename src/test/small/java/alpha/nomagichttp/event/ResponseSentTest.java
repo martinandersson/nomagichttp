@@ -22,7 +22,8 @@ final class ResponseSentTest {
         
         assertThat(testee.hashCode()).isEqualTo(testee.hashCode());
         assertThat(testee).isEqualTo(testee);
-        assertThat(testee.toString()).isEqualTo("ResponseSent.Stats{start=0, stop=1000000000, byteCount=3}");
+        assertThat(testee.toString()).isEqualTo(
+                "ResponseSent.Stats{start=0, stop=1000000000, byteCount=3}");
         
         assertThat(testee.elapsedNanos()).isEqualTo(stop);
         assertThat(testee.elapsedMillis()).isEqualTo(1_000);
