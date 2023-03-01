@@ -165,13 +165,10 @@ public final class ThreadScheduler
      *
      * @throws NullPointerException
      *             if {@code code} is {@code null}
-     *
      * @throws InterruptedException
      *             if driver thread is interrupted
-     *
      * @throws TimeoutException
      *             if the run takes longer than 3 seconds
-     *
      * @throws CompletionException
      *             anything else thrown from the worker
      */
@@ -214,16 +211,12 @@ public final class ThreadScheduler
      *
      * @throws IllegalArgumentException
      *             if any integer argument is less than 1
-     *
      * @throws NullPointerException
      *             if {@code code} is {@code null}
-     *
      * @throws InterruptedException
      *             if driver thread is interrupted
-     *
      * @throws TimeoutException
      *             if the run takes longer than 3 seconds
-     *
      * @throws CompletionException
      *             anything else thrown from a worker
      */
@@ -253,16 +246,12 @@ public final class ThreadScheduler
      * 
      * @throws IllegalArgumentException
      *             if any integer argument is less than 1
-     * 
      * @throws NullPointerException
      *             if {@code code} is {@code null}
-     * 
      * @throws InterruptedException
      *             if driver thread is interrupted
-     * 
      * @throws TimeoutException
      *             if the run takes longer than 3 seconds
-     * 
      * @throws CompletionException
      *             anything else thrown from a worker
      */
@@ -302,13 +291,10 @@ public final class ThreadScheduler
      * 
      * @throws NullPointerException
      *             if any arg (or element thereof) is {@code null}
-     * 
      * @throws InterruptedException
      *             if driver thread is interrupted
-     * 
      * @throws TimeoutException
      *             if the run takes longer than 3 seconds
-     * 
      * @throws CompletionException
      *             anything else thrown from a worker
      */
@@ -345,13 +331,10 @@ public final class ThreadScheduler
      * 
      * @throws NullPointerException
      *             if any arg (or element thereof) is {@code null}
-     * 
      * @throws InterruptedException
      *             if driver thread is interrupted
-     * 
      * @throws TimeoutException
      *             if the run takes longer than 3 seconds
-     * 
      * @throws CompletionException
      *             anything else thrown from a worker/stage
      */
