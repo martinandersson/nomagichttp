@@ -16,9 +16,8 @@ import java.nio.file.Paths;
 import static alpha.nomagichttp.HttpConstants.Version.HTTP_1_1;
 import static alpha.nomagichttp.internal.DefaultRequest.requestWithoutParams;
 import static alpha.nomagichttp.internal.SkeletonRequestTarget.parse;
+import static alpha.nomagichttp.util.Blah.asciiBytes;
 import static alpha.nomagichttp.util.Headers.of;
-import static java.nio.ByteBuffer.wrap;
-import static java.nio.charset.StandardCharsets.US_ASCII;
 import static java.nio.file.Files.notExists;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -114,7 +113,7 @@ final class DefaultRequestTest
     }
     
     private static ChannelReader readerOf(String data) {
-        var src = wrap(data.getBytes(US_ASCII));
+        var src = asciiBytes(data);
         var upstream = new ReadableByteChannel() {
             public int read(ByteBuffer dst) {
                 if (!src.hasRemaining()) {

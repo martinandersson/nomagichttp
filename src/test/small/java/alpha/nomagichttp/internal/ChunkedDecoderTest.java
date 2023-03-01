@@ -12,7 +12,7 @@ import java.util.stream.Stream;
 
 import static alpha.nomagichttp.testutil.Assertions.assertIterable;
 import static alpha.nomagichttp.testutil.TestByteBufferIterables.just;
-import static java.nio.ByteBuffer.wrap;
+import static alpha.nomagichttp.util.Blah.asciiBytes;
 import static java.nio.charset.StandardCharsets.US_ASCII;
 import static java.util.HexFormat.fromHexDigitsToLong;
 import static java.util.stream.Stream.concat;
@@ -38,24 +38,26 @@ final class ChunkedDecoderTest
                 "0\r\n" +
                 // Empty trailers
                 "\r\n");
-        assertIterable(testee, buf("X"));
+        assertIterable(testee, asciiBytes("X"));
     }
     
     @Test
     void happyPath_distinctBuffers_1() throws IOException {
         var testee = decode("5\r\n", "ABCDE\r\n", "0\r\n", "\r\n");
-        assertIterable(testee, buf("ABCDE"));
+        assertIterable(testee, asciiBytes("ABCDE"));
     }
     
     @Test
     void happyPath_distinctBuffers_2() throws IOException {
         var testee = decode("2\r\nAB\r\n", "2\r\nCD\r\n", "0\r\n\r\n");
-        assertIterable(testee, buf("ABCDE"));
+        assertIterable(testee, asciiBytes("ABCD"));
     }
     
     @Test
     void empty_1() throws IOException {
         var testee = decode("0\r\n\r\n ...trailing data in stream...");
+        assertIterable(testee, asciiBytes(""));
+        // Or, alternatively:
         assertThat(toString(testee)).isEmpty();
     }
     

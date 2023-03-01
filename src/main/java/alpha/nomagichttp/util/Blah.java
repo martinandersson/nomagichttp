@@ -1,9 +1,13 @@
 package alpha.nomagichttp.util;
 
 import java.io.Closeable;
+import java.nio.ByteBuffer;
+import java.nio.charset.StandardCharsets;
 
 import static java.lang.Long.MAX_VALUE;
 import static java.lang.Math.addExact;
+import static java.nio.ByteBuffer.wrap;
+import static java.nio.charset.StandardCharsets.US_ASCII;
 
 /**
  * Is a namespace for things that doesn't belong anywhere.
@@ -48,6 +52,16 @@ public final class Blah
      */
     public static long addExactOrMaxValue(long a, long b, long c) {
         return addExactOrMaxValue(addExactOrMaxValue(a, b), c);
+    }
+    
+    /**
+     * Encode the given string using {@link StandardCharsets#US_ASCII}.
+     * 
+     * @param str to encode
+     * @return the bytes
+     */
+    public static ByteBuffer asciiBytes(String str) {
+        return wrap(str.getBytes(US_ASCII));
     }
     
     /**

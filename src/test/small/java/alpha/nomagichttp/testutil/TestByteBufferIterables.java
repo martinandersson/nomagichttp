@@ -1,11 +1,9 @@
 package alpha.nomagichttp.testutil;
 
 import alpha.nomagichttp.message.ByteBufferIterable;
+import alpha.nomagichttp.util.Blah;
 import alpha.nomagichttp.util.ByteBufferIterables;
 
-import java.nio.ByteBuffer;
-
-import static java.nio.charset.StandardCharsets.US_ASCII;
 import static java.util.Arrays.stream;
 
 /**
@@ -25,10 +23,7 @@ public final class TestByteBufferIterables {
      * @return see JavaDoc
      */
     public static ByteBufferIterable just(String... items) {
-        var bufs = stream(items)
-                .map(str -> str.getBytes(US_ASCII))
-                .map(ByteBuffer::wrap)
-                .toList();
-        return ByteBufferIterables.just(bufs);
+        return ByteBufferIterables.just(
+                stream(items).map(Blah::asciiBytes).toList());
     }
 }

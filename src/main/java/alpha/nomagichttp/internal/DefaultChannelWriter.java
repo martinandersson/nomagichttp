@@ -38,6 +38,7 @@ import static alpha.nomagichttp.internal.Blah.CHANNEL_BLOCKING;
 import static alpha.nomagichttp.internal.DefaultRequest.requestWithParams;
 import static alpha.nomagichttp.internal.HttpExchange.request;
 import static alpha.nomagichttp.util.Blah.addExactOrMaxValue;
+import static alpha.nomagichttp.util.Blah.asciiBytes;
 import static alpha.nomagichttp.util.Blah.getOrCloseResource;
 import static alpha.nomagichttp.util.ScopedValues.channel;
 import static alpha.nomagichttp.util.ScopedValues.httpServer;
@@ -46,8 +47,6 @@ import static java.lang.String.valueOf;
 import static java.lang.System.Logger.Level.DEBUG;
 import static java.lang.System.Logger.Level.WARNING;
 import static java.lang.System.nanoTime;
-import static java.nio.ByteBuffer.wrap;
-import static java.nio.charset.StandardCharsets.US_ASCII;
 import static java.util.Objects.requireNonNull;
 import static java.util.Objects.requireNonNullElse;
 import static java.util.stream.Collectors.joining;
@@ -252,7 +251,7 @@ public final class DefaultChannelWriter implements ChannelWriter
         
         // TODO: For each component, including headers, we can cache the
         //       ByteBuffers and feed the channel slices.
-        return doWrite(wrap(head.getBytes(US_ASCII)));
+        return doWrite(asciiBytes(head));
     }
     
     private long tryWriteBody(ByteBufferIterator it) throws IOException {
@@ -280,7 +279,7 @@ public final class DefaultChannelWriter implements ChannelWriter
                     (e, sink) -> e.getValue().forEach(v ->
                         sink.accept(e.getKey() + ": " + v)))
                 .collect(joining(CRLF_STR));
-        return doWrite(wrap((forWriting + CRLF_STR).getBytes(US_ASCII)));
+        return doWrite(asciiBytes(forWriting + CRLF_STR));
     }
     
     private int doWrite(ByteBuffer buf) throws IOException {
