@@ -19,7 +19,7 @@ public final class TestConstants
      * Returns a hardcoded list of all status codes and reason-phrases found in
      * {@link HttpConstants}.<p>
      * 
-     * The fact that this list is up to date is tested by {@code
+     * The fact that this list is up-to-date is tested by {@code
      * HttpConstantsTest}. Exported here for re-use by other tests as well.
      * 
      * @return status lines
