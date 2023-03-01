@@ -191,9 +191,6 @@ final class ChunkedDecoderTest
         return new ChunkedDecoder(just(items));
     }
     
-    private static ByteBuffer buf(String str) {
-        return wrap(str.getBytes(US_ASCII));
-    }
     
     private static String toString(ByteBufferIterable bytes) throws IOException {
         var b = new StringBuilder();
