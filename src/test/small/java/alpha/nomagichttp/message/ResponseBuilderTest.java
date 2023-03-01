@@ -2,7 +2,7 @@ package alpha.nomagichttp.message;
 
 import org.junit.jupiter.api.Test;
 
-import static alpha.nomagichttp.util.Publishers.empty;
+import static alpha.nomagichttp.util.ByteBufferIterables.empty;
 import static java.util.List.of;
 import static java.util.Map.entry;
 import static org.assertj.core.api.Assertions.assertThat;
