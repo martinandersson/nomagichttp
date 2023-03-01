@@ -171,7 +171,7 @@ final class RouteBuilderTest
     
     private RequestHandler createHandler(MediaType consumes) {
         return GET().consumes(consumes)
-                    .respond(accepted());
+                    .apply(req -> accepted());
     }
     
     private Route.Builder builder(String pattern) {
@@ -179,7 +179,7 @@ final class RouteBuilderTest
     }
     
     private static RequestHandler dummy() {
-        return GET().respond(accepted());
+        return GET().apply(req -> accepted());
     }
     
     private void assertSegments(String... segments) {
