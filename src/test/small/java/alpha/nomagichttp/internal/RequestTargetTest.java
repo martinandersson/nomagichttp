@@ -5,6 +5,7 @@ import org.junit.jupiter.api.Test;
 import java.util.List;
 import java.util.Map;
 
+import static alpha.nomagichttp.internal.RequestTarget.requestTargetWithParams;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
@@ -181,7 +182,7 @@ final class RequestTargetTest
     
     private void init(String parse) {
         var skeleton = SkeletonRequestTarget.parse(parse);
-        testee = new RequestTarget(skeleton, skeleton.segments());
+        testee = requestTargetWithParams(skeleton, skeleton.segments());
         assertThat(testee.raw()).isSameAs(parse);
     }
     
