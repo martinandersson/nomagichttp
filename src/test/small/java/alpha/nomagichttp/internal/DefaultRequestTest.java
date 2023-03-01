@@ -12,6 +12,7 @@ import java.nio.channels.ReadableByteChannel;
 import java.nio.charset.IllegalCharsetNameException;
 import java.nio.charset.UnsupportedCharsetException;
 import java.nio.file.Paths;
+import java.util.concurrent.ExecutionException;
 
 import static alpha.nomagichttp.HttpConstants.Version.HTTP_1_1;
 import static alpha.nomagichttp.internal.DefaultRequest.requestWithoutParams;
@@ -19,6 +20,7 @@ import static alpha.nomagichttp.internal.SkeletonRequestTarget.parse;
 import static alpha.nomagichttp.util.Blah.asciiBytes;
 import static alpha.nomagichttp.util.Headers.of;
 import static java.nio.file.Files.notExists;
+import static java.util.concurrent.Executors.newVirtualThreadPerTaskExecutor;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
@@ -30,9 +32,14 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 final class DefaultRequestTest
 {
     @Test
-    void body_toText_happyPath() throws IOException {
+    void body_toText_happyPath() throws ExecutionException, InterruptedException {
         var req = createRequest(of("Content-Length", "3"), "abc");
-        assertThat(req.body().toText()).isEqualTo("abc");
+        // Otherwise WrongThreadException
+        final String str;
+        try (var vThread = newVirtualThreadPerTaskExecutor()) {
+            str = vThread.submit(() -> req.body().toText()).get();
+        }
+        assertThat(str).isEqualTo("abc");
     }
     
     @Test
