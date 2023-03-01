@@ -199,8 +199,7 @@ tasks.withType(Javadoc).configureEach {
     options.overview = 'src/main/java/overview.html'
     
     // Link to JDK JavaDoc
-    var v = compileJava.options.release.get()
-    options.links("https://docs.oracle.com/en/java/javase/$v/docs/api")
+    options.links("https://docs.oracle.com/en/java/javase/$RELEASE_FOR/docs/api")
 }
 
 // Add tasks "javadocJar" and "sourcesJar" (for IDE:s and other tooling)
