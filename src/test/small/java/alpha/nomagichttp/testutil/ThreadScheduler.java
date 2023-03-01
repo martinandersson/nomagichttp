@@ -92,7 +92,12 @@ import static java.util.stream.Stream.of;
  * See also {@code ThreadSchedulerTest}.
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
+ * 
+ * @deprecated
+ * Was once used to test concurrent code before virtual threads. Leaving it a
+ * little longer to see if it becomes useful again.
  */
+@Deprecated(forRemoval = true)
 public final class ThreadScheduler
 {
     private ThreadScheduler() {
