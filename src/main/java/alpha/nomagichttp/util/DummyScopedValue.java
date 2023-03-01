@@ -12,7 +12,7 @@ import java.util.concurrent.Callable;
  * 
  * The method signatures in this class and their JavaDoc has been copy and
  * pasted from the JDK's {@code jdk.incubator.concurrent.ScopedValue}. This
- * class serves as a temporary replacement until Gradle supports Java 21, at
+ * class serves as a temporary replacement until Gradle supports Java 20, at
  * which time we will upgrade to Java 21 and call sites will simply replace the
  * {@code DummyScopedValue} with a real {@code ScopedValue}.<p>
  * 
