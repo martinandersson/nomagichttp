@@ -285,7 +285,7 @@ public final class ByteBufferIterables
                 if (!hasNext()) {
                     throw new NoSuchElementException();
                 }
-                return bufs[++idx].asReadOnlyBuffer();
+                return bufs[idx++].asReadOnlyBuffer();
             }
         }
     }
