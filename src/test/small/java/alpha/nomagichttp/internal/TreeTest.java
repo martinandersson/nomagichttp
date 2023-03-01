@@ -15,7 +15,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  */
-class TreeTest
+final class TreeTest
 {
     private final Tree<String> testee = new Tree<>();
     

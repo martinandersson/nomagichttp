@@ -13,7 +13,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  */
-class DefaultAttributesTest {
+final class DefaultAttributesTest {
     private final Attributes testee = new DefaultAttributes();
     
     @Test

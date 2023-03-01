@@ -20,7 +20,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  *
  * @author Martin Andersson (webmaster at martinandersson.com)
  */
-class HttpVersionParseTest
+final class HttpVersionParseTest
 {
     @Test
     void happy_path() {

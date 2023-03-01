@@ -15,7 +15,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  */
-class HeadersTest
+final class HeadersTest
 {
     @Test
     void of_empty() {

@@ -19,7 +19,7 @@ import static org.junit.jupiter.api.Assertions.fail;
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  */
-class ThreadSchedulerTest
+final class ThreadSchedulerTest
 {
     @Test
     void atomicIntegerExample() throws InterruptedException, TimeoutException {

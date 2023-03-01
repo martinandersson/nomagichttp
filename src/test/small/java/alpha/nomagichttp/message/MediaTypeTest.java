@@ -22,7 +22,7 @@ import static org.junit.jupiter.api.Assertions.assertNotSame;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.mockito.ArgumentMatchers.argThat;
 
-class MediaTypeTest
+final class MediaTypeTest
 {
     @Test
     void cache() {

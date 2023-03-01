@@ -31,15 +31,8 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
  *
  * @author Martin Andersson (webmaster at martinandersson.com)
  */
-public class DefaultActionRegistryTest
+final class DefaultActionRegistryTest
 {
-    /**
-     * Constructs a {@code DefaultActionRegistryTest}.
-     */
-    DefaultActionRegistryTest() {
-        // Intentionally empty
-    }
-    
     private DefaultActionRegistry testee;
     private BeforeAction bef_R, bef_Rx, bef_Rxz, bef_Rxzy;
     private AfterAction aft_R, aft_Rx, aft_Rxz, aft_Rxzy;

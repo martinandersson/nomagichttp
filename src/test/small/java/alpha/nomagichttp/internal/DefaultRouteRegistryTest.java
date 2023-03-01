@@ -27,7 +27,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  */
-class DefaultRouteRegistryTest
+final class DefaultRouteRegistryTest
 {
     private static final Route ROOT_NOOP = dummyRoute("/");
     

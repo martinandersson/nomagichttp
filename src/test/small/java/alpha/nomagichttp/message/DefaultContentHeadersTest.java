@@ -9,7 +9,7 @@ import static java.util.Map.entry;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-class DefaultContentHeadersTest
+final class DefaultContentHeadersTest
 {
     @Test
     void caseIsRetained_butQueryingIsNotCaseSensitive() {

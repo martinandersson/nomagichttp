@@ -14,7 +14,7 @@ import static org.junit.jupiter.api.Assertions.assertSame;
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  */
-class ResponseBuilderTest
+final class ResponseBuilderTest
 {
     @Test
     void happy_path() {

@@ -9,7 +9,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  */
-class RequestHandlerBuilderTest
+final class RequestHandlerBuilderTest
 {
     @Test
     void of_method_null() {

@@ -28,7 +28,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  */
-class DefaultRequestTest
+final class DefaultRequestTest
 {
     @Test
     void body_toText_happyPath() throws IOException {

@@ -15,7 +15,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  */
-class DefaultEventHubTest {
+final class DefaultEventHubTest {
     private final Set<String> events = new HashSet<>();
     private final BiConsumer<String, ?> collector
             = (ev, att) -> events.add(ev + ":" + att);

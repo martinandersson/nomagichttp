@@ -15,7 +15,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  */
-class CodeAndPhraseCacheTest {
+final class CodeAndPhraseCacheTest {
     @Test
     void ofStatusLines() {
         CodeAndPhraseCache<String> testee = build(

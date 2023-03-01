@@ -19,7 +19,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  */
-public class ParserOfTest
+final class ParserOfTest
 {
     @Test
     void ending_mixed() {

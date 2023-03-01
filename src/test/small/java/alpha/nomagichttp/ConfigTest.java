@@ -10,7 +10,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  */
-class ConfigTest {
+final class ConfigTest {
     @Test
     void parentStateUnaffected() {
         final int was = DEFAULT.maxRequestHeadSize();

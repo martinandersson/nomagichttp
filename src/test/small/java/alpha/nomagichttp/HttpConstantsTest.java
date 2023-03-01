@@ -56,7 +56,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  */
-class HttpConstantsTest
+final class HttpConstantsTest
 {
     @Test
     void statusCode_constants_eq_values() throws IllegalAccessException {
