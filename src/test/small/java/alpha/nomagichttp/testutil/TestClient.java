@@ -173,7 +173,7 @@ public final class TestClient
      * @throws IOException if an I/O error occurs
      */
     public TestClient(HttpServer server) throws IOException {
-        this(server.getLocalAddress().getPort());
+        this(server.getPort());
     }
     
     /**
