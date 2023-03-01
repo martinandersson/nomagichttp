@@ -7,6 +7,7 @@ import org.junit.jupiter.api.Test;
 import java.io.IOException;
 import java.nio.BufferOverflowException;
 import java.nio.ByteBuffer;
+import java.util.NoSuchElementException;
 import java.util.function.Supplier;
 import java.util.stream.Stream;
 
@@ -64,7 +65,16 @@ final class ChunkedDecoderTest
     @Test
     void empty_2() {
         var testee = decode();
-        assertThat(toString(testee)).isEmpty();
+        assertThatThrownBy(() -> toString(testee))
+            .isExactlyInstanceOf(DecoderException.class)
+            .hasMessage("Upstream is empty but decoding is not done.")
+            .hasNoSuppressedExceptions()
+            .cause()
+                // From alpha.nomagichttp.message.ByteBufferIterator$Empty.next
+                .isExactlyInstanceOf(NoSuchElementException.class)
+                .hasMessage(null)
+                .hasNoSuppressedExceptions()
+                .hasNoCause();
     }
     
     @Test
