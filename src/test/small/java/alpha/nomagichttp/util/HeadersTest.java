@@ -1,6 +1,5 @@
 package alpha.nomagichttp.util;
 
-import alpha.nomagichttp.util.Headers;
 import org.assertj.core.api.MapAssert;
 import org.junit.jupiter.api.Test;
 
