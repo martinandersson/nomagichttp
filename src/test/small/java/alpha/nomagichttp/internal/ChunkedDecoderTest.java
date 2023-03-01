@@ -93,6 +93,9 @@ final class ChunkedDecoderTest
         var testee = decode("BOOM!;");
         assertThatThrownBy(() -> toString(testee))
             .isExactlyInstanceOf(DecoderException.class)
+            .hasMessage("""
+                 java.lang.NumberFormatException: \
+                 not a hexadecimal digit: "O" = 79""")
             .hasNoSuppressedExceptions()
             .cause()
                 .isExactlyInstanceOf(NumberFormatException.class)
@@ -125,7 +128,7 @@ final class ChunkedDecoderTest
         assertThat(fromHexDigitsToLong("7" + FIFTEEN_F))
                 .isEqualTo(Long.MAX_VALUE);
         
-        // Prepended something bigger than 7, we start running into overflow issues
+        // Prepended something bigger than 7 and value overflows
         Supplier<Stream<String>> eight9abcdef
                 = () -> of("8", "9", "A", "B", "C", "D", "E", "F");
         eight9abcdef.get().forEach(n ->
