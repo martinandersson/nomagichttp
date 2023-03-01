@@ -85,6 +85,7 @@ public final class ChunkedDecoder implements ByteBufferIterable
         
         @Override
         public boolean hasNext() {
+            // Either we have something already or we want to go again
             return view.hasRemaining() || parsing < DONE;
         }
         
@@ -102,13 +103,14 @@ public final class ChunkedDecoder implements ByteBufferIterable
             view.clear();
             decode();
             view.limit(buf.position());
+            assert buf.hasRemaining() || parsing == DONE;
             return view;
         }
         
         private void decode() throws IOException {
-            var enc = getNext();
-            while (enc.hasRemaining() && buf.hasRemaining()) {
-                final byte b = enc.get();
+            var src = getNext();
+            while (parsing < DONE && src.hasRemaining() && buf.hasRemaining()) {
+                final byte b = src.get();
                 switch (parsing) {
                     case CHUNK_SIZE -> decodeSize(b);
                     case CHUNK_EXT  -> decodeExtensions(b);
@@ -116,18 +118,22 @@ public final class ChunkedDecoder implements ByteBufferIterable
                     default         -> throw new AssertionError();
                 }
                 // If we're not done, ask for more
-                if (parsing < DONE && buf.hasRemaining() && !enc.hasRemaining()) {
-                    enc = getNext();
+                if (!src.hasRemaining() && parsing < DONE && buf.hasRemaining()) {
+                    src = getNext();
                 }
             }
         }
         
         private ByteBuffer getNext() throws IOException {
-            var enc = raw.next();
+            var err = "Upstream is empty but decoding is not done.";
+            ByteBuffer enc;
+            try {
+                enc = raw.next();
+            } catch (NoSuchElementException e) {
+                throw new DecoderException(err, e);
+            }
             if (!enc.hasRemaining()) {
-                // TODO: CodecException
-                throw new RuntimeException(
-                        "Channel presumably reached end-of-stream but decoding is not done");
+                throw new DecoderException(err);
             }
             return enc;
         }
