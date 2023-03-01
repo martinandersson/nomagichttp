@@ -12,13 +12,6 @@ if (!JavaVersion.current().isCompatibleWith(RELEASE_FOR)) {
          "Please use at least version ${RELEASE_FOR}.");
 }
 
-// ------------   TEMP   --------------------
-compileJava {
-    options.compilerArgs.addAll(['--enable-preview'])
-    options.compilerArgs.addAll(['--add-modules', 'jdk.incubator.concurrent'])
-}
-// ------------------------------------------
-
 sourceSets {
     // Move "unit" test locations from default '/test' to '/test/small'
     test {
@@ -94,26 +87,41 @@ version = '0.5-SNAPSHOT'
 // Unless environment variable HACKING=true.
 var Werror = !(System.env.HACKING ?: false).toBoolean()
 
-// Ensure backwards compatibility
-// https://stackoverflow.com/a/43103038/1268003
-// https://docs.gradle.org/6.6/release-notes.html#javacompile-release
-compileJava {
-    options.release = RELEASE_FOR.getMajorVersion().toInteger()
+
+
+// ---------------------   TEMP   ------------------------
+tasks.withType(JavaCompile).configureEach {
+    options.compilerArgs.addAll(
+        // Fixes "DefaultServer.java:130: error: patterns in switch statements are a preview feature and are disabled by default"
+        '--enable-preview',
+        // Fixes "HttpServer.java:26: error: package jdk.incubator.concurrent is not visible"
+        '--add-modules', 'jdk.incubator.concurrent')
 }
+tasks.withType(Test).configureEach {
+    // Fixes "java.lang.UnsupportedClassVersionError: Preview features are not enabled..."
+    jvmArgs('--enable-preview')
+}
+// Preview features and incubator modules produce warnings, so suppress treating warning as errors:
+Werror = false;
+// TODO: Will probably have to add the JVM flags to withType(JavaExec) as well
+// -------------------------------------------------------
+
+
 
 tasks.withType(JavaCompile).configureEach {
-    options.compilerArgs.addAll([
-        '-Xlint',                  // Enable all warnings
-        '-Xdoclint:all/protected', // Also check JavaDoc (protected and higher)
-        '-Xdiags:verbose',         // Talk more
-        // Just temporarily, while virtual threads and friends are not public API
-        '--enable-preview',
-        '--add-modules',
-        'jdk.incubator.concurrent'])
+    options.compilerArgs.addAll(
+        // Enable all warnings
+        '-Xlint:all',
+        // Also check JavaDoc (protected and higher)
+        '-Xdoclint:all/protected',
+        // Talk more
+        '-Xdiags:verbose',
+        // https://stackoverflow.com/a/43103038/1268003
+        // https://docs.gradle.org/6.6/release-notes.html#javacompile-release
+        '--release', RELEASE_FOR)
     
     // Fail on any warning
-    // Commented out because udsing incubator modules produces a warning
-    // if (Werror) options.compilerArgs.add '-Werror'
+    if (Werror) options.compilerArgs.add '-Werror'
 }
 
 // All tests will use JUnit and generate coverage report
