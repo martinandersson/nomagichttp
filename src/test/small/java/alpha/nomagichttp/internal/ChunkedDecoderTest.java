@@ -62,7 +62,7 @@ final class ChunkedDecoderTest
     }
     
     @Test
-    void empty_2() throws IOException {
+    void empty_2() {
         var testee = decode();
         assertThat(toString(testee)).isEmpty();
     }
@@ -154,7 +154,7 @@ final class ChunkedDecoderTest
     }
     
     @Test
-    void chunkExtensions_discarded() throws IOException {
+    void chunkExtensions_discarded() {
         var testee = decode("1;bla=bla\r\nX\r\n0\r\n\r\n");
         assertThat(toString(testee)).isEqualTo("X");
     }
@@ -170,7 +170,7 @@ final class ChunkedDecoderTest
     }
     
     @Test
-    void chunkData_withCRLF() throws IOException {
+    void chunkData_withCRLF() {
         var data = "\r\nX\r\n";
         var testee = decode(data.length() + "\r\n" + data + "\r\n0\r\n\r\n");
         assertThat(toString(testee)).isEqualTo(data);
@@ -191,14 +191,20 @@ final class ChunkedDecoderTest
         return new ChunkedDecoder(just(items));
     }
     
-    
-    private static String toString(ByteBufferIterable bytes) throws IOException {
+    private static String toString(ByteBufferIterable bytes) {
         var b = new StringBuilder();
         var it = bytes.iterator();
         while (it.hasNext()) {
-            var buf = it.next();
-            b.append(buf.asCharBuffer());
-            buf.position(buf.limit());
+            final ByteBuffer buf;
+            try {
+                buf = it.next();
+            } catch (IOException e) {
+                throw new AssertionError(e);
+            }
+            // buf is read-only, can't do buf.array()
+            var arr = new byte[buf.remaining()];
+            buf.get(arr);
+            b.append(new String(arr, US_ASCII));
         }
         return b.toString();
     }
