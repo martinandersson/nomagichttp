@@ -1,5 +1,6 @@
 package alpha.nomagichttp.internal;
 
+import java.util.function.Function;
 import java.util.function.Supplier;
 
 import static java.lang.Byte.MIN_VALUE;
@@ -19,23 +20,33 @@ abstract class AbstractTokenParser
     private static final System.Logger LOG
             = System.getLogger(AbstractTokenParser.class.getPackageName());
     
-    private static final byte CR = 13, LF = 10;
+    private final Function<String, RuntimeException> parseExc;
     
-    // Plz update before each byte processed
-    protected byte curr = MIN_VALUE;
+    protected AbstractTokenParser(Function<String, RuntimeException> parseExc) {
+        this.parseExc = parseExc;
+    }
     
-    // Plz update after each byte processed
-    protected byte prev = MIN_VALUE;
-    
-    private final ReusableStringBuilder token = new ReusableStringBuilder();
+    private byte curr = MIN_VALUE;
     
     /**
-     * Returns a parser-unique parse exception.
+     * Sets the current byte being processed.<p>
      * 
-     * @param msg throwable message
+     * The concrete parser must call this method before processing the byte.
+     * 
+     * @param b see JavaDoc
+     */
+    protected final void current(byte b) {
+        this.curr = b;
+    }
+    
+    /**
+     * Returns the current byte being processed.
+     * 
      * @return see JavaDoc
      */
-    protected abstract RuntimeException parseException(String msg);
+    final byte current() {
+        return curr;
+    }
     
     /**
      * Returns true if no bytes have been consumed and the current character is
@@ -46,6 +57,33 @@ abstract class AbstractTokenParser
     final boolean isLeadingWhitespace() {
         return !hasConsumed() && isWhitespace();
     }
+    
+    private byte prev = MIN_VALUE;
+    
+    /**
+     * Sets the previous byte processed.<p>
+     * 
+     * The concrete parser must call this method after each byte processed.
+     * 
+     * @param b see JavaDoc
+     */
+    protected final void previous(byte b) {
+        this.prev = b;
+        current(MIN_VALUE);
+    }
+    
+    /**
+     * Returns the previous byte processed.
+     * 
+     * @return see JavaDoc
+     */
+    final byte previous() {
+        return prev;
+    }
+    
+    private final ReusableStringBuilder token = new ReusableStringBuilder();
+    
+    private static final byte CR = 13, LF = 10;
     
     /**
      * Returns true if the current character is carriage-return.
@@ -106,7 +144,7 @@ abstract class AbstractTokenParser
      */
     final void requireIsNotLF() {
         if (isLF()) {
-            throw parseException("Unexpected LF.");
+            throw parseExc.apply("Unexpected LF.");
         }
     }
     
@@ -170,7 +208,7 @@ abstract class AbstractTokenParser
     final String finishNonEmpty(String tokenName) {
         final var v = finish();
         if (v.isEmpty()) {
-            throw parseException("Empty " + requireNonNull(tokenName) + ".");
+            throw parseExc.apply("Empty " + requireNonNull(tokenName) + ".");
         }
         return v;
     }
@@ -209,7 +247,7 @@ abstract class AbstractTokenParser
                 return what.get();
             }
             else {
-                throw parseException("CR followed by something other than LF.");
+                throw parseExc.apply("CR followed by something other than LF.");
             }
         }
         else if (isLF()) {

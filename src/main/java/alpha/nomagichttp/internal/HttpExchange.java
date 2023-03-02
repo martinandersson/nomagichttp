@@ -195,7 +195,7 @@ final class HttpExchange
                 () -> new RequestHeadReceived.Stats(
                         l.nanoTimeOnStart(),
                         nanoTime(),
-                        addExact(l.length(), p.getByteCount())));
+                        addExact(l.length(), p.byteCount())));
         return h;
     }
     

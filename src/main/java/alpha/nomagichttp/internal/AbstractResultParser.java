@@ -5,6 +5,7 @@ import alpha.nomagichttp.message.Char;
 
 import java.io.IOException;
 
+import static java.lang.Math.min;
 import static java.lang.System.Logger.Level.DEBUG;
 
 /**
@@ -23,7 +24,8 @@ abstract class AbstractResultParser<R>
     private int count;
     
     AbstractResultParser(ByteBufferIterable bytes) {
-        this.bytes = bytes;
+        this.bytes  = bytes;
+        this.count  = 0;
     }
     
     /**
@@ -31,8 +33,23 @@ abstract class AbstractResultParser<R>
      * 
      * @return the number of bytes read from the upstream
      */
-    final int getByteCount() {
+    final int byteCount() {
         return count;
+    }
+    
+    /**
+     * Returns the current position.<p>
+     * 
+     * The position could be thought of as an index of a byte stream.<p>
+     * 
+     * This implementation returns {@code byteCount() - 1}. But the concrete
+     * parser is free to override this logic.
+     * 
+     * @return see JavaDoc
+     */
+    int position() {
+        int v = byteCount();
+        return v == 0 ? 0 : v - 1;
     }
     
     /**
@@ -49,20 +66,18 @@ abstract class AbstractResultParser<R>
                 var buf = src.next();
                 while (buf.hasRemaining()) {
                     final byte b = buf.get();
-                    // TODO: WAAAT, why does the reported position start at 1 !? Start at 0.
-                    //       Also see ParserOfHeaders.parseException - index subtracted by one
                     ++count;
                     LOG.log(DEBUG, () ->
                             "[Parsing] pos=%s, \"byte=%s\"".formatted(
-                            getByteCount(), Char.toDebugString((char) b)));
-                    final R r = parse(b);
+                            position(), Char.toDebugString((char) b)));
+                    final R r = tryParse(b);
                     if (r != null) {
                         return r;
                     }
                 }
             }
         }
-        throw new AssertionError("Empty upstream");
+        throw parseException("Upstream finished prematurely.");
     }
     
     /**
@@ -73,5 +88,14 @@ abstract class AbstractResultParser<R>
      * @return the final result, or
      *         {@code null} if more bytes are needed
      */
-    protected abstract R parse(byte b);
+    protected abstract R tryParse(byte b);
+    
+    /**
+     * Produces a parse exception.
+     * 
+     * @param msg of throwable
+     * 
+     * @return see JavaDoc
+     */
+    protected abstract RuntimeException parseException(String msg);
 }

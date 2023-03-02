@@ -20,7 +20,51 @@ import java.util.function.Supplier;
 import static java.lang.System.Logger.Level.DEBUG;
 
 /**
- * A parser of headers or trailers.
+ * A parser of headers or trailers (same thing).<p>
+ * 
+ * This parser interprets the HTTP line terminator the same as is done and
+ * documented by the {@link ParserOfRequestLine}'s parser (see section "General
+ * rules"). This parser also follows the contract defined by
+ * {@link BetterHeaders}, e.g. header names may not be empty but the values
+ * may.<p>
+ * 
+ * <h2>Header names</h2>
+ * 
+ * Citation from
+ * <a href="https://tools.ietf.org/html/rfc7230#section-3.2.4">RFC 7230 §3.2.4</a>:
+ * 
+ * <blockquote>
+ *     No whitespace is allowed between the header field-name and colon.
+ * </blockquote>
+ * 
+ * One could argue semantically that whitespace is not allowed inside the header
+ * name (what would make or not make the whitespace before the colon be a part
+ * of a legal field name?). I haven't found anything conclusive for or against
+ * whitespace in header names. It does, however, seem to be extremely uncommon
+ * and will complicate the processor logic. It further appears to be banned in
+ * HTTP/2 and other projects (with zero documentation and exception handling)
+ * will crash [unexpectedly] when processing whitespace in header names. Netty
+ * 4.1.48 even hangs indefinitely lol.<p>
+ * 
+ * This parser will not allow whitespace in header names.<p>
+ * 
+ * References: <br>
+ * https://github.com/bbyars/mountebank/issues/282 <br>
+ * https://stackoverflow.com/a/56047701/1268003 <br>
+ * https://stackoverflow.com/questions/50179659/what-is-considered-as-whitespace-in-http-header
+ * 
+ * <h2>Header values</h2>
+ * 
+ * Empty header values are allowed.<p>
+ * 
+ * Line folding is deprecated for all header values except media types. Why? I
+ * do not know. What I do know is that allowing line folding for some but not
+ * all is obviously complicating things. This processor will allow it for all
+ * headers.<p>
+ * 
+ * References: <br>
+ * https://github.com/eclipse/jetty.project/issues/1116 <br>
+ * https://stackoverflow.com/a/31324422/1268003
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  * 
@@ -38,7 +82,7 @@ final class ParserOf<H extends BetterHeaders> extends AbstractResultParser<H>
      * the parser will throw a {@link MaxRequestHeadSizeExceededException}.
      * 
      * @param in byte source
-     * @param lineLen number of bytes already parsed from the head
+     * @param reqLineLen number of bytes already parsed from the head
      * @param maxHeadSize max total bytes to parse for a head
      * 
      * @return a parser of request headers
@@ -46,11 +90,11 @@ final class ParserOf<H extends BetterHeaders> extends AbstractResultParser<H>
     // TODO: use httpServer().getConfig() instead of argument
     //       (less arg pollution and better traceability)
     static ParserOf<Request.Headers>
-            headers(ByteBufferIterable in, int lineLen, int maxHeadSize)
+            headers(ByteBufferIterable in, int reqLineLen, int maxHeadSize)
     {
         return new ParserOf<>(
-                in, lineLen,
-                maxHeadSize - lineLen,
+                in, reqLineLen,
+                maxHeadSize - reqLineLen,
                 MaxRequestHeadSizeExceededException::new,
                 RequestHeaders::new);
     }
@@ -80,7 +124,7 @@ final class ParserOf<H extends BetterHeaders> extends AbstractResultParser<H>
     private final int logicalPos, maxBytes;
     private final Supplier<? extends RuntimeException> exceeded;
     private final Function<HttpHeaders, ? extends H> finisher;
-    private final Parser parser;
+    private final TokenParser parser;
     
     private ParserOf(
             ByteBufferIterable in,
@@ -95,82 +139,49 @@ final class ParserOf<H extends BetterHeaders> extends AbstractResultParser<H>
         assert maxBytes >= 0;
         this.exceeded = exceeded;
         this.finisher = finisher;
-        this.parser = new Parser();
+        this.parser = new TokenParser();
     }
     
     @Override
-    protected H parse(byte b) throws HeaderParseException {
-        final int n = getByteCount();
+    int position() {
+        return logicalPos == -1 ? -1 : logicalPos + super.position();
+    }
+    
+    @Override
+    protected H tryParse(byte b) throws HeaderParseException {
+        final int n = byteCount();
         if (n == maxBytes) {
             throw exceeded.get();
         }
         return parser.parse(b);
     }
     
+    @Override
+    protected RuntimeException parseException(String msg) {
+        return new HeaderParseException(
+                msg, parser.previous(), parser.current(), position());
+    }
+    
     private static final int
             NAME = 0, VAL = 1, FOLD = 2, DONE = 3;
     
-    /**
-     * Parses bytes into HTTP headers.<p>
-     * 
-     * This parser interprets the HTTP line terminator the same as is done and
-     * documented by the {@link ParserOfRequestLine}'s parser (see section
-     * "General rules"). This parser also follows the contract defined by {@link
-     * BetterHeaders}, e.g. header names may not be empty but the values may.<p>
-     * 
-     * <h2>Header names</h2>
-     * 
-     * Citation from
-     * <a href="https://tools.ietf.org/html/rfc7230#section-3.2.4">RFC 7230 §3.2.4</a>
-     * 
-     * <blockquote>
-     *     No whitespace is allowed between the header field-name and colon.
-     * </blockquote>
-     * 
-     * One could argue semantically that whitespace is not allowed inside the
-     * header name (what would make or not make the whitespace before the colon
-     * be a part of a legal field name?). I haven't found anything conclusive
-     * for or against whitespace in header names. It does, however, seem to be
-     * extremely uncommon and will complicate the processor logic. It further
-     * appears to be banned in HTTP/2 and other projects (with zero
-     * documentation and exception handling) will crash [unexpectedly] when
-     * processing whitespace in header names. Netty 4.1.48 even hangs
-     * indefinitely.<p>
-     * 
-     * This parser will not allow whitespace in header names.<p>
-     * 
-     * References: <br>
-     * https://github.com/bbyars/mountebank/issues/282 <br>
-     * https://stackoverflow.com/a/56047701/1268003 <br>
-     * https://stackoverflow.com/questions/50179659/what-is-considered-as-whitespace-in-http-header
-     * 
-     * <h2>Header values</h2>
-     * 
-     * Empty header values are allowed.<p>
-     * 
-     * Line folding is deprecated for all header values except media types. Why?
-     * I do not know. What I do know is that allowing line folding for some but
-     * not all is obviously complicating things. This processor will allow it
-     * for all headers.<p>
-     * 
-     * References: <br>
-     * https://github.com/eclipse/jetty.project/issues/1116 <br>
-     * https://stackoverflow.com/a/31324422/1268003
-     */
-    private final class Parser extends AbstractTokenParser
-    {
+    private final class TokenParser extends AbstractTokenParser {
+        TokenParser() {
+            super(ParserOf.this::parseException);
+        }
+        
         private int parsing = NAME;
         private Map<String, List<String>> values;
         
         H parse(byte b) {
-            curr = b;
+            current(b);
             parsing = switch (parsing) {
                 case NAME -> parseName();
                 case VAL  -> parseVal();
                 case FOLD -> parseValFolded();
                 default -> throw new AssertionError("Not parsing anything lol.");
             };
-            prev = curr;
+            previous(b);
             return parsing == DONE ? build() : null;
         }
         
@@ -248,12 +259,6 @@ final class ParserOf<H extends BetterHeaders> extends AbstractResultParser<H>
             }
             // else ignore all leading whitespace
             return FOLD;
-        }
-        
-        @Override
-        protected HeaderParseException parseException(String msg) {
-            int p = logicalPos == -1 ? -1 : logicalPos + getByteCount() - 1;
-            return new HeaderParseException(msg, prev, curr, p);
         }
         
         private H build() {

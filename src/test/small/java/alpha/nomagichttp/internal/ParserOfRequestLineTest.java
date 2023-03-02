@@ -3,6 +3,8 @@ package alpha.nomagichttp.internal;
 import alpha.nomagichttp.message.RawRequest;
 import alpha.nomagichttp.message.RequestLineParseException;
 import org.assertj.core.api.AbstractListAssert;
+import org.assertj.core.api.AbstractThrowableAssert;
+import org.assertj.core.api.Assertions;
 import org.assertj.core.api.ObjectAssert;
 import org.junit.jupiter.api.Test;
 
@@ -49,10 +51,7 @@ final class ParserOfRequestLineTest
     
     @Test
     void target_leadingWhitespaceLineFeedIsIllegal() {
-        assertThatThrownBy(() -> parse("GET \n/hello...."))
-            .isExactlyInstanceOf(RequestLineParseException.class)
-            .hasNoCause()
-            .hasNoSuppressedExceptions()
+        assertParseException("GET \n/hello....")
             .hasToString("""
                 RequestLineParseException{\
                 prev=(hex:0x20, decimal:32, char:" "), \
@@ -70,10 +69,7 @@ final class ParserOfRequestLineTest
     
     @Test
     void version_leadingWhitespaceLineFeedIsIllegal() {
-        assertThatThrownBy(() -> parse("GET /hello.txt \nHTTP...."))
-            .isExactlyInstanceOf(RequestLineParseException.class)
-            .hasNoCause()
-            .hasNoSuppressedExceptions()
+        assertParseException("GET /hello.txt \nHTTP....")
             .hasToString("""
                 RequestLineParseException{\
                 prev=(hex:0x20, decimal:32, char:" "), \
@@ -89,10 +85,7 @@ final class ParserOfRequestLineTest
     // TODO: Giving CR different semantics is inconsistent. Research.
     @Test
     void version_illegalLineBreak() {
-        assertThatThrownBy(() -> parse("GET\r/hello.txt\rBoom!"))
-            .isExactlyInstanceOf(RequestLineParseException.class)
-            .hasNoCause()
-            .hasNoSuppressedExceptions()
+        assertParseException("GET\r/hello.txt\rBoom!")
             .hasToString("""
                 RequestLineParseException{\
                 prev=(hex:0xD, decimal:13, char:"\\r"), \
@@ -103,10 +96,7 @@ final class ParserOfRequestLineTest
     
     @Test
     void version_illegalWhitespaceInToken() {
-        assertThatThrownBy(() -> parse("GET /hello.txt HT TP/1...."))
-            .isExactlyInstanceOf(RequestLineParseException.class)
-            .hasNoCause()
-            .hasNoSuppressedExceptions()
+        assertParseException("GET /hello.txt HT TP/1....")
             .hasToString("""
                 RequestLineParseException{\
                 prev=(hex:0x54, decimal:84, char:"T"), \
@@ -115,7 +105,7 @@ final class ParserOfRequestLineTest
                 msg=Whitespace in HTTP-version not accepted.}""");
     }
     
-    private RawRequest.Line parse(String... items) {
+    private static RawRequest.Line parse(String... items) {
         try {
             return new ParserOfRequestLine(just(items), 9_999).parse();
         } catch (IOException e) {
@@ -125,7 +115,16 @@ final class ParserOfRequestLineTest
     
     private static AbstractListAssert<?, List<?>, Object, ObjectAssert<Object>>
         assertThat(RawRequest.Line actual) {
-            return org.assertj.core.api.Assertions.assertThat(actual)
-                    .extracting("method", "target", "httpVersion", "length");
+            return Assertions.assertThat(actual)
+                             .extracting(
+                                 "method", "target", "httpVersion", "length");
+    }
+    
+    private static AbstractThrowableAssert<?, ? extends Throwable>
+        assertParseException(String input) {
+            return assertThatThrownBy(() -> parse(input))
+                    .isExactlyInstanceOf(RequestLineParseException.class)
+                    .hasNoCause()
+                    .hasNoSuppressedExceptions();
     }
 }

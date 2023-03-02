@@ -2,6 +2,8 @@ package alpha.nomagichttp.internal;
 
 import alpha.nomagichttp.message.HeaderParseException;
 import alpha.nomagichttp.message.Request;
+import org.assertj.core.api.AbstractThrowableAssert;
+import org.assertj.core.api.Assertions;
 import org.assertj.core.api.MapAssert;
 import org.junit.jupiter.api.Test;
 
@@ -39,27 +41,31 @@ final class ParserOfTest
     @Test
     void ending_missing() {
         // Each header-field is finished with CRLF, + one CRLF after the section
-        // RFC 7230, §3, §4.1.2 and 4.1
-        assertThatThrownBy(() -> parse("Foo: Bar\n"))
-            .isExactlyInstanceOf(AssertionError.class)
-            .hasNoCause()
-            .hasNoSuppressedExceptions()
-            .hasMessage("Unexpected: Channel closed gracefully before parser was done.");
+        // (RFC 7230, §3, §4.1.2 and 4.1)
+        assertParseException("Foo: Bar\n") // <-- only one LF
+            .hasToString("""
+                HeaderParseException{\
+                prev=(hex:0xA, decimal:10, char:"\\n"), \
+                curr=N/A, \
+                pos=8, \
+                msg=Upstream finished prematurely.}""");
     }
     
     @Test
     void compact() {
         assertThat(parse("hello:world\n\n"))
-                .containsOnly(entry("hello", of("world")));
+            .containsOnly(entry("hello", of("world")));
     }
     
     @Test
     void empty_1() {
-        assertThatThrownBy(() -> parse(""))
-            .isExactlyInstanceOf(AssertionError.class)
-            .hasNoCause()
-            .hasNoSuppressedExceptions()
-            .hasMessage("Unexpected: Channel closed gracefully before parser was done.");
+        assertParseException("")
+            .hasToString("""
+                HeaderParseException{\
+                prev=N/A, \
+                curr=N/A, \
+                pos=0, \
+                msg=Upstream finished prematurely.}""");
     }
     
     @Test
@@ -69,10 +75,7 @@ final class ParserOfTest
     
     @Test
     void name_empty() {
-        assertThatThrownBy(() -> parse(":world\n\n"))
-            .isExactlyInstanceOf(HeaderParseException.class)
-            .hasNoCause()
-            .hasNoSuppressedExceptions()
+        assertParseException(":world\n\n")
             .hasToString("""
                 HeaderParseException{\
                 prev=N/A, \
@@ -83,10 +86,7 @@ final class ParserOfTest
     
     @Test
     void name_spaceInName_sp() {
-        assertThatThrownBy(() -> parse("Has Space: blabla..."))
-            .isExactlyInstanceOf(HeaderParseException.class)
-            .hasNoCause()
-            .hasNoSuppressedExceptions()
+        assertParseException("Has Space: blabla...")
             .hasToString("""
                 HeaderParseException{\
                 prev=(hex:0x73, decimal:115, char:"s"), \
@@ -97,10 +97,7 @@ final class ParserOfTest
     
     @Test
     void name_spaceInName_LF() {
-        assertThatThrownBy(() -> parse("Has\nSpace: blabla..."))
-            .isExactlyInstanceOf(HeaderParseException.class)
-            .hasNoCause()
-            .hasNoSuppressedExceptions()
+        assertParseException("Has\nSpace: blabla...")
             .hasToString("""
                 HeaderParseException{\
                 prev=(hex:0x73, decimal:115, char:"s"), \
@@ -111,10 +108,7 @@ final class ParserOfTest
     
     @Test
     void name_spaceAfterName() {
-        assertThatThrownBy(() -> parse("Has-Space : blabla..."))
-            .isExactlyInstanceOf(HeaderParseException.class)
-            .hasNoCause()
-            .hasNoSuppressedExceptions()
+        assertParseException("Has-Space : blabla...")
             .hasToString("""
                 HeaderParseException{\
                 prev=(hex:0x65, decimal:101, char:"e"), \
@@ -125,10 +119,7 @@ final class ParserOfTest
     
     @Test
     void name_spaceBeforeName() {
-        assertThatThrownBy(() -> parse(" Has-Space..."))
-            .isExactlyInstanceOf(HeaderParseException.class)
-            .hasNoCause()
-            .hasNoSuppressedExceptions()
+        assertParseException(" Has-Space...")
             .hasToString("""
                 HeaderParseException{\
                 prev=N/A, \
@@ -146,7 +137,8 @@ final class ParserOfTest
             .isExactlyInstanceOf(HeaderParseException.class)
             .hasToString("HeaderParseException{prev=N/A, curr=N/A, pos=N/A, msg=null}")
             // "duplicate key: foo"
-            .hasCauseExactlyInstanceOf(IllegalArgumentException.class);
+            .hasCauseExactlyInstanceOf(IllegalArgumentException.class)
+            .hasNoSuppressedExceptions();
     }
     
     @Test
@@ -205,7 +197,7 @@ final class ParserOfTest
                 .containsOnly(entry("Name", of("")));
     }
     
-    private Request.Headers parse(String... items) {
+    private static Request.Headers parse(String... items) {
         try {
             return headers(just(items), 0, 9_999).parse();
         } catch (IOException e) {
@@ -213,7 +205,16 @@ final class ParserOfTest
         }
     }
     
-    private static MapAssert<String, List<String>> assertThat(Request.Headers actual) {
-        return org.assertj.core.api.Assertions.assertThat(actual.delegate().map());
+    private static MapAssert<String, List<String>>
+        assertThat(Request.Headers actual) {
+            return Assertions.assertThat(actual.delegate().map());
+    }
+    
+    private static AbstractThrowableAssert<?, ? extends Throwable>
+        assertParseException(String input) {
+            return assertThatThrownBy(() -> parse(input))
+                    .isExactlyInstanceOf(HeaderParseException.class)
+                    .hasNoCause()
+                    .hasNoSuppressedExceptions();
     }
 }
