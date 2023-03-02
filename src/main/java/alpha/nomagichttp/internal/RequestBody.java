@@ -61,7 +61,8 @@ final class RequestBody implements Request.Body
         if (len.isPresent()) {
             if (!enc.isEmpty()) {
                 throw new BadRequestException(
-                    CONTENT_LENGTH + " and " + TRANSFER_ENCODING + " present");
+                    "%s and %s are both present.".formatted(
+                    CONTENT_LENGTH, TRANSFER_ENCODING));
             }
             content = reader.limit(len.getAsLong());
         } else if (enc.isEmpty()) {
