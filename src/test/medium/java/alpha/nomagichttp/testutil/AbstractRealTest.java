@@ -37,21 +37,19 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertSame;
 
 /**
- * Will setup a {@link #server()} (on first access) and a {@link #client()} (on
- * first access), the latter configured with the server's port.<p>
+ * Will create a {@link #server() server} (on first access) and a
+ * {@link #client() client} (on first access).<p>
  * 
- * Both the server- and client APIs are pretty easy-to-use already. The added
- * value of this class are related details such as automatic- log recording and
- * collection/memorization of server errors.<p>
+ * The client will be configured with the server's port.<p>
  * 
- * This class will assert on server stop that no errors were delivered to the
+ * Both the server- and client APIs are already pretty easy to use on their own.
+ * The added value of this class is packaging both into one class with some
+ * added details such as automatic log recording and collection/verification of
+ * server errors.<p>
+ * 
+ * This class will assert on server stop that no errors were delivered to an
  * error handler. If errors are expected, then the test must consume all errors
  * using {@link #pollServerError()}.<p>
- * 
- * After each test - by default - the server will be stopped and the
- * server+client reference will be set to null (a test that manually opened a
- * {@linkplain TestClient#openConnection() persistent connection} must also
- * close it). This is great for test isolation.
  * 
  * <pre>
  *   class MyTest extends AbstractRealTest {
@@ -72,12 +70,12 @@ import static org.junit.jupiter.api.Assertions.assertSame;
  *   }
  * </pre>
  * 
- * The automatic stop and set-reference-to-null actions can be disabled through
- * a constructor argument, and thus, the life of the server and/or client can be
- * extended at the discretion of the subclass. An extended server scope can be
- * used to save on port resources when running a large number of test cases
- * where isolation is not needed or perhaps even unwanted. A client with an
- * extended scoped is useful when it is desired to have many tests share a
+ * The default constructor will ensure that the server is stopped, and both the
+ * server and client reference is set to null after each test. This can be
+ * disabled through constructor arguments. An extended server is good for
+ * reducing system taxation when running a large number of test cases where
+ * test isolation is not needed or perhaps even unwanted. A client with an
+ * extended scope is useful when it is desired to have many tests share a
  * persistent connection.<p>
  * 
  * Log recording will by default be activated for each test. The recorder can be
@@ -85,8 +83,8 @@ import static org.junit.jupiter.api.Assertions.assertSame;
  * using {@link #logRecorderStop()}.<p>
  * 
  * Log recording is intended for detailed tests that are awaiting log events
- * and/or running asserts on log records. Tests concerned with performance ought
- * to not use log recording which can be disabled with a constructor
+ * and/or running assertions on log records. Tests concerned with performance
+ * ought to not use log recording which can be disabled with a constructor
  * argument.
  * 
  * <pre>
@@ -115,9 +113,9 @@ import static org.junit.jupiter.api.Assertions.assertSame;
  * 
  * This class will in a static {@code @BeforeAll} method named "beforeAll" call
  * {@code Logging.setLevel(ALL)} in order to enable very detailed logging, such
- * as each char processed in the request head processor. Tests that run a large
- * number of requests and/or are concerned about performance ought to stop JUnit
- * from calling the method by hiding it.
+ * as each byte processed in the request head. Tests that run a large number of
+ * requests and/or are concerned about performance ought to stop JUnit from
+ * calling the method by hiding it.
  * 
  * <pre>
  *   class MyQuietTest extends AbstractRealTest {
@@ -130,8 +128,8 @@ import static org.junit.jupiter.api.Assertions.assertSame;
  * 
  * Please note that currently, the {@code TestClient} is not thread-safe nor is
  * this class (well, except for the collection and retrieval of server errors).
- * This will likely change when work commence to add tests that executes
- * requests in parallel.
+ * This will likely change when work commence to add tests that execute requests
+ * in parallel.
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  */
@@ -336,7 +334,10 @@ public abstract class AbstractRealTest
     }
     
     /**
-     * Returns the server instance.
+     * Returns the server instance.<p>
+     * 
+     * If the current server reference is null, a server will be created;
+     * listening on a system-picked port.
      * 
      * @return the server instance
      * 
@@ -379,7 +380,12 @@ public abstract class AbstractRealTest
     }
     
     /**
-     * Returns the client instance.
+     * Returns the client instance.<p>
+     * 
+     * If the current client reference is null, a client will be created with
+     * the server's port. In this case, the server will be accessed using the
+     * {@link #server() server} method. Consequently, a test only needs to call
+     * this method to set up both.
      * 
      * @return the client instance
      * 

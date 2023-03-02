@@ -42,7 +42,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  * 
  * Being protocol agnostic means that the client does not implement message
  * framing. Read methods need a given <i>terminator</i> (end of message), after
- * which, the client stop reading.
+ * which, the client stops reading.
  * 
  * <pre>
  *  TestClient client = new TestClient(serverPort);
@@ -66,9 +66,10 @@ import static org.assertj.core.api.Assertions.assertThat;
  *   assertThat(response).isEqualTo("HTTP/1.1 204 No Content\r\n\r\n");
  * </pre>
  * 
- * Unless a so-called persistent connection is already opened programmatically
- * using {@link #openConnection()}, each server-communicating method declared in
- * this class will start and stop a connection used for that call only.
+ * Each server-communicating method declared in this class will start and stop
+ * a connection used for that call only, unless, a so-called persistent
+ * connection has already been opened programmatically using
+ * {@link #openConnection()}.<p>
  * 
  * When the connection closes and if unconsumed bytes remain in the read buffer,
  * then an {@code AssertionError} is thrown. This is also true for a persistent
@@ -234,7 +235,7 @@ public final class TestClient
     }
     
     /**
-     * Open a connection.<p>
+     * Opens a persistent connection.<p>
      * 
      * Test code must manually close the returned channel.
      * 
