@@ -21,7 +21,7 @@ final class RequestBodyTest
                 "Transfer-Encoding", "chunked");
         assertThatThrownBy(() -> RequestBody.of(crash, null))
                 .isExactlyInstanceOf(BadRequestException.class)
-                .hasMessage("Content-Length and Transfer-Encoding present.")
+                .hasMessage("Content-Length and Transfer-Encoding are both present.")
                 .hasNoSuppressedExceptions()
                 .hasNoCause();
     }
