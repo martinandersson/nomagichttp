@@ -163,7 +163,7 @@ public abstract class AbstractRealTest
             boolean afterEachStop,
             boolean useLogRecording)
     {
-        this.afterEachStop = afterEachStop
+        this.afterEachStop = afterEachStop;
         this.useLogRecording = useLogRecording;
         this.onError = new HashMap<>();
     }
