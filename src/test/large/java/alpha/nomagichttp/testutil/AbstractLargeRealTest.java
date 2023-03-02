@@ -26,6 +26,6 @@ public abstract class AbstractLargeRealTest extends AbstractRealTest {
      * Constructs this object.
      */
     protected AbstractLargeRealTest() {
-        super(false, false, false);
+        super(false, false);
     }
 }

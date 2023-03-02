@@ -70,13 +70,12 @@ import static org.junit.jupiter.api.Assertions.assertSame;
  *   }
  * </pre>
  * 
- * The default constructor will ensure that the server is stopped, and both the
- * server and client reference is set to null after each test. This can be
- * disabled through constructor arguments. An extended server is good for
- * reducing system taxation when running a large number of test cases where
- * test isolation is not needed or perhaps even unwanted. A client with an
- * extended scope is useful when it is desired to have many tests share a
- * persistent connection.<p>
+ * By default, after each test; the server is stopped and both the server and
+ * client reference is set to null. This can be disabled through a constructor
+ * argument "afterEachStop". Sharing the server across tests is good for
+ * reducing system taxation when running a large number of tests where test
+ * isolation is not needed or perhaps even unwanted. Also useful could be to
+ * share a client's persistent connection across many tests.<p>
  * 
  * Log recording will by default be activated for each test. The recorder can be
  * retrieved using {@link #logRecorder()}. Records can be retrieved at any time
@@ -94,15 +93,16 @@ import static org.junit.jupiter.api.Assertions.assertSame;
  *       MyRepeatedTest() {
  *           // Save server + client references across tests,
  *           // and disable log recording.
- *           super(false, false, false);
+ *           super(false, false);
  *           conn = client().openConnection();
  *       }
- *      {@literal @}RepeatedTest(999_999_999)
+ *       // Each message pair is exchange over the same connection
+ *       {@literal @}RepeatedTest(999_999_999)
  *       void httpExchange() {
  *           server()...
  *           client().writeReadTextUntilNewlines(...)
  *       }
- *      {@literal @}AfterAll
+ *       {@literal @}AfterAll
  *       void afterAll() { //  {@literal <}-- no need to be static (coz of PER_CLASS thing)
  *           stopServer();
  *           conn.close();
@@ -138,8 +138,7 @@ public abstract class AbstractRealTest
     private static final System.Logger LOG
             = System.getLogger(AbstractRealTest.class.getPackageName());
     
-    private final boolean stopServerAfterEach,
-                          nullifyClientAfterEach,
+    private final boolean afterEachStop,
                           useLogRecording;
     
     // impl permits null values and keys
@@ -151,23 +150,20 @@ public abstract class AbstractRealTest
      * @see AbstractRealTest
      */
     protected AbstractRealTest() {
-        this(true, true, true);
+        this(true, true);
     }
     
     /**
      * Constructs this object.
      * 
-     * @param stopServerAfterEach see {@link AbstractRealTest}
-     * @param nullifyClientAfterEach see {@link AbstractRealTest}
+     * @param afterEachStop see {@link AbstractRealTest}
      * @param useLogRecording see {@link AbstractRealTest}
      */
     protected AbstractRealTest(
-            boolean stopServerAfterEach,
-            boolean nullifyClientAfterEach,
+            boolean afterEachStop,
             boolean useLogRecording)
     {
-        this.stopServerAfterEach = stopServerAfterEach;
-        this.nullifyClientAfterEach = nullifyClientAfterEach;
+        this.afterEachStop = afterEachStop
         this.useLogRecording = useLogRecording;
         this.onError = new HashMap<>();
     }
@@ -196,10 +192,8 @@ public abstract class AbstractRealTest
     @AfterEach
     final void afterEach(TestInfo test) {
         try {
-            if (nullifyClientAfterEach) {
+            if (afterEachStop) {
                 client = null;
-            }
-            if (stopServerAfterEach) {
                 stopServer();
             }
         } finally {
