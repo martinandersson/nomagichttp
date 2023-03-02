@@ -194,7 +194,6 @@ final class DefaultResponse implements Response
         public Response.Builder header(String name, String value) {
             requireNonNull(name, "name");
             requireNonNull(value, "value");
-            requireNotContentLength(name);
             return new DefaultBuilder(this, s ->
                     s.addHeader(true, name, value));
         }
@@ -217,7 +216,6 @@ final class DefaultResponse implements Response
         public Response.Builder addHeader(String name, String value) {
             requireNonNull(name, "name");
             requireNonNull(value, "value");
-            requireNotContentLength(name);
             return new DefaultBuilder(this, s ->
                     s.addHeader(false, name, value));
         }
@@ -226,10 +224,8 @@ final class DefaultResponse implements Response
         public Response.Builder addHeaders(String name, String value, String... morePairs) {
             requireNonNull(name, "name");
             requireNonNull(value, "value");
-            requireNotContentLength(name);
             for (int i = 0; i < morePairs.length; ++i) {
                 requireNonNull(morePairs[i], "morePairs[" + i + "]");
-                requireNotContentLength(morePairs[i]);
             }
             if (morePairs.length % 2 != 0) {
                 throw new IllegalArgumentException("morePairs.length is not even");
@@ -246,8 +242,7 @@ final class DefaultResponse implements Response
         
         @Override
         public Response.Builder addHeaders(Map<String, List<String>> headers) {
-            headers.keySet()
-                   .forEach(DefaultBuilder::requireNotContentLength);
+            requireNonNull(headers);
             return new DefaultBuilder(this, s ->
                     headers.forEach((name, values) ->
                             values.forEach(v -> s.addHeader(false, name, v))));
@@ -310,14 +305,6 @@ final class DefaultResponse implements Response
             }
             
             return r;
-        }
-        
-        private static void requireNotContentLength(String header) {
-            if (CONTENT_LENGTH.equalsIgnoreCase(header)) {
-                throw new IllegalArgumentException(
-                        "The server sets \"$1\", not the application."
-                        .replace("$1", header));
-            }
         }
         
         private static void setDefaults(MutableState s) {
