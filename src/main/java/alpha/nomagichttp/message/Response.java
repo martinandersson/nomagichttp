@@ -53,17 +53,6 @@ import static alpha.nomagichttp.HttpConstants.StatusCode;
  * to the client verbatim/unaltered; i.e. casing and white space will be
  * preserved.<p>
  * 
- * Bear in mind that the response header Content-Length (case-insensitive)
- * should be set by the application only for exceptional cases (
- * <a href="https://datatracker.ietf.org/doc/html/rfc7230#section-3.3.2">RFC 7230 §3.3.2</a>
- * ). Otherwise, the server will take care of copy and pasting the body's
- * {@link ResourceByteBufferIterable#length() length} to said header.<p>
- * 
- * The application should always set response containing a body must set the Content-Type header (as
- * the server can not know this information). These headers are not a concern
- * when one is building responses using the factories in {@link Responses} or
- * using the {@link Response.Builder}.<p>
- * 
  * The implementation is fully thread-safe and can be freely cached.<p>
  * 
  * The implementation does not necessarily implement {@code hashCode} and
@@ -359,9 +348,6 @@ public interface Response extends HeaderHolder
          * 
          * @throws NullPointerException
          *             if any argument or is {@code null}
-         * @throws IllegalArgumentException
-         *             if {@code name} equals "Content-length"
-         *             (case insensitive)
          * 
          * @see HttpConstants.HeaderName
          */
@@ -371,8 +357,7 @@ public interface Response extends HeaderHolder
          * Adds header(s) to this response.<p>
          * 
          * Iterating the {@code String[]} must alternate between header-names
-         * and values. To add several values to the same name then the same
-         * name must be supplied with each additional value.<p>
+         * and values.<p>
          * 
          * The results are undefined if the {@code String[]} is modified before
          * the response has been built.
@@ -387,9 +372,6 @@ public interface Response extends HeaderHolder
          *             if any argument or array element is {@code null}
          * @throws IllegalArgumentException
          *             if {@code morePairs.length} is odd
-         * @throws IllegalArgumentException
-         *             if a header name equals "Content-length"
-         *             (case insensitive)
          * 
          * @see HttpConstants.HeaderName
          */
@@ -415,9 +397,6 @@ public interface Response extends HeaderHolder
          * 
          * @throws NullPointerException
          *             if {@code headers} is {@code null}
-         * @throws IllegalArgumentException
-         *             if a header name equals "Content-length"
-         *             (case insensitive)
          * 
          * @see HttpConstants.HeaderName
          */
@@ -441,9 +420,6 @@ public interface Response extends HeaderHolder
          * 
          * @throws NullPointerException
          *             if {@code headers} is {@code null}
-         * @throws IllegalArgumentException
-         *             if a header name equals "Content-length"
-         *             (case insensitive)
          * 
          * @see HttpConstants.HeaderName
          */
@@ -451,6 +427,18 @@ public interface Response extends HeaderHolder
         
         /**
          * Sets a message body.<p>
+         * 
+         * The application should always set the Content-Type header as the
+         * server can not know this information. This header is usually
+         * implicitly specified and set when using factories in
+         * {@link Responses}.<p>
+         * 
+         * Generally, the server will copy and paste the body's
+         * {@link ResourceByteBufferIterable#length() length} to the response
+         * header Content-Length, and so, the application should only set this
+         * header for exceptional cases (
+         * <a href="https://datatracker.ietf.org/doc/html/rfc7230#section-3.3.2">RFC 7230 §3.3.2</a>
+         * ).<p>
          * 
          * If the response is used only once, then the body does not need to be
          * regenerative (see JavaDoc of {@link ResourceByteBufferIterable}. If
@@ -522,7 +510,7 @@ public interface Response extends HeaderHolder
          * @return a response
          * 
          * @throws IllegalStateException
-         *             if a header name is duplicated using different casing
+         *             If a header name is repeated using different casing
          * @throws IllegalStateException
          *             if a header name is empty (after trimming whitespaces)
          * @throws IllegalStateException
