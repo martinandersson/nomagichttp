@@ -8,10 +8,11 @@ import java.io.IOException;
 import static java.lang.System.Logger.Level.DEBUG;
 
 /**
- * Abstract parser of one byte at a time.
+ * Abstract parser.
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
- * @param <R> result type
+ * 
+ * @param <R> parsed result type
  */
 abstract class AbstractResultParser<R>
 {
@@ -26,9 +27,9 @@ abstract class AbstractResultParser<R>
     }
     
     /**
-     * Returns the number of bytes read from the channel
+     * Returns the number of bytes read from the upstream
      * 
-     * @return the number of bytes read from the channel
+     * @return the number of bytes read from the upstream
      */
     final int getByteCount() {
         return count;
@@ -38,6 +39,8 @@ abstract class AbstractResultParser<R>
      * Parses the result
      * 
      * @return the result
+     * 
+     * @throws IOException from upstream's {@code next} method
      */
     final R parse() throws IOException {
         // ChannelReader has no close impl, this we do out of principle

@@ -6,6 +6,8 @@ import alpha.nomagichttp.handler.ClientChannel;
 import alpha.nomagichttp.handler.ErrorHandler;
 import alpha.nomagichttp.handler.RequestHandler;
 import alpha.nomagichttp.handler.ResponseRejectedException;
+import alpha.nomagichttp.message.BadHeaderException;
+import alpha.nomagichttp.message.ContentHeaders;
 import alpha.nomagichttp.message.IllegalResponseBodyException;
 import alpha.nomagichttp.message.ResourceByteBufferIterable;
 import alpha.nomagichttp.message.Response;
@@ -69,6 +71,9 @@ public interface ChannelWriter
      *             if {@link Config#discardRejectedInformational()} returns false,
      *             and status-code is 1XX,
      *             and HTTP version used is {@literal <} 1.1
+     * @throws BadHeaderException
+     *             for the same reasons as specified in
+     *             {@link ContentHeaders#contentLength()}
      * @throws IllegalArgumentException
      *             if message framing is invalid
      *             (for example, a Content-Length header has been set in a 1xx response)
