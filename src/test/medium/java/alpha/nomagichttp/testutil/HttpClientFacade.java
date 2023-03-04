@@ -47,7 +47,6 @@ import java.net.URI;
 import java.net.http.HttpHeaders;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
-import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.EnumSet;
@@ -67,7 +66,6 @@ import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
 import static alpha.nomagichttp.HttpConstants.Version.HTTP_1_1;
-import static alpha.nomagichttp.util.Publishers.ofIterable;
 import static alpha.nomagichttp.util.Streams.toList;
 import static java.net.http.HttpClient.Version;
 import static java.net.http.HttpRequest.BodyPublisher;
@@ -86,7 +84,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * An HTTP client API that delegates to another {@link Implementation
- * implementation}.<p>
+ * Implementation}.<p>
  * 
  * The NoMagicHTTP's own {@link TestClient} is <i>not</i> supported as a
  * delegate. The {@code TestClient} should be used explicitly in its own
@@ -123,23 +121,24 @@ import static org.assertj.core.api.Assertions.assertThat;
  * quite expectedly - zero documentation regarding the client's life-cycle and
  * how it should be cached and used. Never mind concerns such as thread-safety
  * and identity lol. Hence, this class will mostly not cache the client object,
- * using one new client for each request executed.<p>
- * 
- * Likely, the underlying client connection will live in a client-specific
- * connection pool until timeout. Attempts to hack the connection may fail. For
- * example, the JDK client will throw an {@code IllegalArgumentException} if
- * the "Connection: close" header is set.<p>
- * 
- * But, if the connection is never closed, then a test class extending {@code
- * AbstractRealTest} will timeout after each test when the superclass stops the
- * server and gracefully awaits child channel closures. To fix this problem, the
- * test ought to close the child from the server-installed request handler.<p>
+ * using one new client instance for each request executed.<p>
  * 
  * A specified HTTP version may be rejected with an {@code
  * IllegalArgumentException}, but only on a best-effort basis. Which versions
- * specifically a client implementation supports is not always that clear
- * hahaha. The argument will be passed forward to the client who may then blow
- * up with another exception.<p>
+ * specifically a client implementation supports is not always clear lol. The
+ * argument will be passed forward to the client who may then blow up with
+ * another exception.<p>
+ * 
+ * Noteworthy: The underlying client connection will likely live in a
+ * client-specific connection pool until some weird stale timeout, and attempts
+ * to hack the connection may fail. For example, the JDK client will throw an
+ * {@code IllegalArgumentException} if the "Connection: close" header is set.
+ * This used to be a problem with the legacy asynchronous server implementation;
+ * mandating a server-installed test request handler to close the connection, or
+ * otherwise this class would time out. The new server build on top of virtual
+ * threads should be much more structured. The new {@code HttpServer.stop()}
+ * method should never return until the port is closed and all children's
+ * threads are finished.<p>
  * 
  * This class is not thread-safe and does not implement {@code hashCode} or
  * {@code equals}.
@@ -513,11 +512,9 @@ public abstract class HttpClientFacade
                 String path, byte[] firstChunk, byte[]... more)
                 throws IOException, InterruptedException
         {
-            var bytebuffers = Streams.stream(firstChunk, more)
-                                     .map(ByteBuffer::wrap)
-                                     .toList();
+            var bufs = new ByteBufferPublisher(firstChunk, more);
             var req = POST(path, HTTP_1_1,
-                    BodyPublishers.fromPublisher(ofIterable(bytebuffers)));
+                    BodyPublishers.fromPublisher(bufs));
             return execute(req, BodyHandlers.ofString());
         }
         
