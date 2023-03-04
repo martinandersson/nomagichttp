@@ -18,24 +18,23 @@ import static org.assertj.core.api.Assertions.assertThat;
 class BeforeActionTest extends AbstractRealTest
 {
     @Test
-    void triple() throws IOException {
-        server().before("/:A/*", (r, ch, chain) -> {
+    void triple() throws IOException, InterruptedException {
+        server().before("/:A/*", (r, chain) -> {
                     // Set first segment as "msg" attribute
                     r.attributes().set("msg",
                             r.target().pathParam("A"));
-                    chain.proceed();
+                    return chain.proceed();
                 })
-                .before("/:B/:C", (r, ch, chain) -> {
+                .before("/:B/:C", (r, chain) -> {
                     // Concatenate with the second segment
                     r.attributes().<String>asMapAny().merge("msg",
                             r.target().pathParam("C"), String::concat);
-                    chain.proceed();
+                    return chain.proceed();
                 })
-                .before("/hello/world", (r, ch, chain) -> {
-                    // Write response (see, no need for a request handler lol)
-                    ch.write(text(r.attributes().getAny("msg")));
-                    chain.abort();
-                });
+                .before("/hello/world", (r, chain) ->
+                    // Produce response (no need for a request handler lol)
+                    text(r.attributes().getAny("msg"))
+                );
         String rsp = client().writeReadTextUntilEOS(
             "GET /hello/world HTTP/1.1"               + CRLF +
             "Connection: close"                       + CRLF + CRLF);
@@ -52,11 +51,11 @@ class BeforeActionTest extends AbstractRealTest
     @Test
     void proceedToRequestHandler() throws IOException {
         server()
-            .before("/", (r, ch, chain) -> {
+            .before("/", (r, chain) -> {
                 r.attributes().set("msg", "hello");
-                chain.proceed(); })
+                return chain.proceed(); })
             .add("/", GET().apply(r ->
-                text(r.attributes().getAny("msg")).completedStage()));
+                text(r.attributes().getAny("msg"))));
         String rsp = client().writeReadTextUntilEOS(
             "GET / HTTP/1.1"                          + CRLF +
             "Connection: close"                       + CRLF + CRLF);
@@ -71,7 +70,7 @@ class BeforeActionTest extends AbstractRealTest
     
     @Test
     void crash() throws IOException, InterruptedException {
-        server().before("/*", (r, ch, chain) -> {
+        server().before("/*", (r, chain) -> {
             throw new RuntimeException("Oops!");
         });
         String rsp = client().writeReadTextUntilNewlines(
