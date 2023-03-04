@@ -11,7 +11,9 @@ import java.nio.CharBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.charset.CharacterCodingException;
 import java.nio.charset.Charset;
-import java.nio.charset.StandardCharsets;
+import java.nio.charset.CharsetEncoder;
+import java.nio.charset.CodingErrorAction;
+import java.nio.charset.MalformedInputException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.NoSuchElementException;
@@ -20,9 +22,11 @@ import java.util.stream.StreamSupport;
 
 import static alpha.nomagichttp.util.Blah.addExactOrMaxValue;
 import static alpha.nomagichttp.util.Blah.getOrCloseResource;
+import static alpha.nomagichttp.util.ByteBuffers.asArray;
 import static alpha.nomagichttp.util.Streams.stream;
 import static java.nio.ByteBuffer.allocateDirect;
 import static java.nio.channels.FileChannel.open;
+import static java.nio.charset.CodingErrorAction.REPLACE;
 import static java.nio.charset.CodingErrorAction.REPORT;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.nio.file.StandardOpenOption.READ;
@@ -120,13 +124,7 @@ public final class ByteBufferIterables
     }
     
     /**
-     * Returns an iterable of a {@code String} as encoded bytes.<p>
-     * 
-     * This method is equivalent to:
-     * <pre>
-     *   {@link #ofString(String, Charset) ofString
-     *   }(str, {@link StandardCharsets#UTF_8 UTF_8})
-     * </pre>
+     * Returns an iterable of a {@code String} encoded using UTF-8.
      * 
      * @param str to be encoded
      * 
@@ -144,7 +142,39 @@ public final class ByteBufferIterables
     }
     
     /**
-     * Returns an iterable of a {@code String} as encoded bytes.
+     * Returns an iterable of a {@code String} encoded using UTF-8.<p>
+     * 
+     * Malformed input and unmappable characters will be replaced. This should
+     * not happen for most inputs. Nonetheless, specifying the string "\uD83F"
+     * (illegal code point) will produce bytes that decoded using UTF-8 equals
+     * the '?' character. Specifying the same string to
+     * {@link #ofString(String) ofString} throws a
+     * {@link MalformedInputException}. That is why this method should generally
+     * not be used, except for cases when the range of input is known in
+     * advance, such as in test cases, and even then, the only reason this
+     * method offers a benefit is to not have to deal with a checked exception.
+     * 
+     * @param str to be encoded
+     * 
+     * @return see JavaDoc
+     * 
+     * @throws NullPointerException
+     *             if {@code str} is {@code null}
+     * 
+     * @see <a href="https://stackoverflow.com/a/27781166">StackOverflow answer</a>
+     */
+    public static ByteBufferIterable ofStringUnsafe(String str) {
+        try {
+            return ofString(str, UTF_8.newEncoder()
+                                      .onMalformedInput(REPLACE)
+                                      .onUnmappableCharacter(REPLACE));
+        } catch (CharacterCodingException e) {
+            throw new AssertionError(e);
+        }
+    }
+    
+    /**
+     * Returns an iterable of an encoded {@code String}.
      * 
      * @param str to be encoded
      * @param cs to use for encoding
@@ -159,20 +189,38 @@ public final class ByteBufferIterables
      */
     public static ByteBufferIterable ofString(String str, Charset cs)
             throws CharacterCodingException {
-        var buf = cs.newEncoder()
-                    .onMalformedInput(REPORT)
-                    .onUnmappableCharacter(REPORT)
-                    .encode(CharBuffer.wrap(requireNonNull(str)));
-        final byte[] bytes;
-        if (buf.hasArray() &&
-            buf.arrayOffset() == 0 &&
-            buf.array().length == buf.remaining()) {
-            bytes = buf.array();
-        } else {
-            bytes = new byte[buf.remaining()];
-            buf.get(bytes);
-        }
-        return just(bytes);
+        return ofString(str, cs.newEncoder()
+                               .onMalformedInput(REPORT)
+                               .onUnmappableCharacter(REPORT));
+    }
+    
+    /**
+     * Returns an iterable of a {@code String} as encoded bytes.<p>
+     * 
+     * The method used for encoding is
+     * {@link CharsetEncoder#encode(CharBuffer)}, which will reset the encoder
+     * before an entire encoding operation takes place. The given encoder must
+     * not be used concurrently.<p>
+     * 
+     * A {@link CharacterCodingException} is only thrown if the given encoder
+     * is configured to use {@link CodingErrorAction#REPORT} and the string
+     * contains bad input triggering the action.
+     * 
+     * @param str to be encoded
+     * @param enc encoder to use
+     * 
+     * @return see JavaDoc
+     * 
+     * @throws NullPointerException
+     *             if any argument is {@code null}
+     * @throws CharacterCodingException
+     *             may be thrown if input is malformed, or
+     *             if a character is unmappable
+     */
+    public static ByteBufferIterable ofString(String str, CharsetEncoder enc)
+            throws CharacterCodingException {
+        var buf = enc.encode(CharBuffer.wrap(str));
+        return just(asArray(buf));
     }
     
     /**
