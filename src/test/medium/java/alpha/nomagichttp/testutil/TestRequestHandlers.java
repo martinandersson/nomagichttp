@@ -23,6 +23,6 @@ public final class TestRequestHandlers {
      */
     public static RequestHandler respondIsBodyEmpty() {
         return POST().apply(req ->
-                text(String.valueOf(req.body().isEmpty())).completedStage());
+                text(String.valueOf(req.body().isEmpty())));
     }
 }
