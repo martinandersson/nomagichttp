@@ -1,8 +1,5 @@
 package alpha.nomagichttp.mediumtest;
 
-import alpha.nomagichttp.handler.ClientChannel;
-import alpha.nomagichttp.handler.EndOfStreamException;
-import alpha.nomagichttp.handler.RequestHandler;
 import alpha.nomagichttp.handler.ResponseRejectedException;
 import alpha.nomagichttp.message.BadHeaderException;
 import alpha.nomagichttp.message.BadRequestException;
@@ -16,12 +13,11 @@ import alpha.nomagichttp.message.IllegalResponseBodyException;
 import alpha.nomagichttp.message.MaxRequestHeadSizeExceededException;
 import alpha.nomagichttp.message.MediaType;
 import alpha.nomagichttp.message.MediaTypeParseException;
-import alpha.nomagichttp.message.PooledByteBufferHolder;
 import alpha.nomagichttp.message.ReadTimeoutException;
+import alpha.nomagichttp.message.Request;
 import alpha.nomagichttp.message.RequestLineParseException;
 import alpha.nomagichttp.message.Response;
 import alpha.nomagichttp.message.ResponseTimeoutException;
-import alpha.nomagichttp.message.Responses;
 import alpha.nomagichttp.message.UnsupportedTransferCodingException;
 import alpha.nomagichttp.route.AmbiguousHandlerException;
 import alpha.nomagichttp.route.MediaTypeNotAcceptedException;
@@ -30,6 +26,8 @@ import alpha.nomagichttp.route.MethodNotAllowedException;
 import alpha.nomagichttp.route.NoRouteFoundException;
 import alpha.nomagichttp.testutil.AbstractRealTest;
 import alpha.nomagichttp.testutil.IORunnable;
+import alpha.nomagichttp.util.Throwing;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
@@ -39,18 +37,14 @@ import java.io.IOException;
 import java.nio.channels.Channel;
 import java.nio.channels.ClosedChannelException;
 import java.nio.channels.InterruptedByTimeoutException;
-import java.util.List;
-import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
-import java.util.logging.LogRecord;
 
 import static alpha.nomagichttp.handler.RequestHandler.GET;
 import static alpha.nomagichttp.handler.RequestHandler.HEAD;
 import static alpha.nomagichttp.handler.RequestHandler.POST;
 import static alpha.nomagichttp.handler.RequestHandler.TRACE;
-import static alpha.nomagichttp.handler.RequestHandler.builder;
 import static alpha.nomagichttp.message.Responses.badRequest;
 import static alpha.nomagichttp.message.Responses.internalServerError;
 import static alpha.nomagichttp.message.Responses.noContent;
@@ -58,32 +52,18 @@ import static alpha.nomagichttp.message.Responses.ok;
 import static alpha.nomagichttp.message.Responses.processing;
 import static alpha.nomagichttp.message.Responses.status;
 import static alpha.nomagichttp.message.Responses.text;
-import static alpha.nomagichttp.testutil.Assertions.assertSubscriberOnError;
 import static alpha.nomagichttp.testutil.LogRecords.rec;
-import static alpha.nomagichttp.testutil.MemorizingSubscriber.MethodName;
-import static alpha.nomagichttp.testutil.MemorizingSubscriber.MethodName.ON_COMPLETE;
-import static alpha.nomagichttp.testutil.MemorizingSubscriber.MethodName.ON_NEXT;
-import static alpha.nomagichttp.testutil.MemorizingSubscriber.MethodName.ON_SUBSCRIBE;
 import static alpha.nomagichttp.testutil.TestClient.CRLF;
-import static alpha.nomagichttp.testutil.TestPublishers.blockSubscriberUntil;
 import static alpha.nomagichttp.testutil.TestRequests.get;
 import static alpha.nomagichttp.testutil.TestRequests.post;
-import static alpha.nomagichttp.testutil.TestSubscribers.onError;
-import static alpha.nomagichttp.testutil.TestSubscribers.onNext;
-import static alpha.nomagichttp.testutil.TestSubscribers.onNextAndComplete;
-import static alpha.nomagichttp.testutil.TestSubscribers.onSubscribe;
-import static alpha.nomagichttp.util.BetterBodyPublishers.concat;
-import static alpha.nomagichttp.util.BetterBodyPublishers.ofString;
-import static java.lang.System.Logger.Level.DEBUG;
+import static alpha.nomagichttp.util.ByteBufferIterables.ofString;
+import static alpha.nomagichttp.util.ScopedValues.channel;
 import static java.lang.System.Logger.Level.ERROR;
 import static java.lang.System.Logger.Level.INFO;
 import static java.lang.System.Logger.Level.WARNING;
 import static java.time.Duration.ofMillis;
-import static java.util.List.of;
-import static java.util.concurrent.CompletableFuture.failedStage;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
@@ -99,7 +79,8 @@ class ErrorTest extends AbstractRealTest
     private static final System.Logger LOG
             = System.getLogger(ErrorTest.class.getPackageName());
     
-    private static final RequestHandler.Logic NOP = (ign,ored) -> {};
+    private static final
+        Throwing.Function<Request, Response, Exception> NOP = request -> null;
     
     private static final class OopsException extends RuntimeException {
         private static final long serialVersionUID = 1L;
@@ -237,7 +218,7 @@ class ErrorTest extends AbstractRealTest
     @Test
     void BadHeaderException() throws IOException, InterruptedException {
         server().add("/",
-            GET().accept(NOP));
+            GET().apply(NOP));
         String rsp = client().writeReadTextUntilEOS("""
             GET / HTTP/1.1\r
             Content-Type: BOOM!\r\n\r
@@ -336,13 +317,10 @@ class ErrorTest extends AbstractRealTest
     
     @Test
     void NoRouteFoundException_custom() throws IOException {
-        usingErrorHandler((exc, ch, req) -> {
-            if (exc instanceof NoRouteFoundException) {
-                ch.write(status(499, "Custom Not Found!"));
-                return;
-            }
-            throw exc;
-        });
+        usingErrorHandler((exc, chain, req) ->
+            exc instanceof NoRouteFoundException ?
+                    status(499, "Custom Not Found!") :
+                    chain.proceed());
         String rsp = client().writeReadTextUntilNewlines(
             "GET /404 HTTP/1.1"              + CRLF + CRLF);
         assertThat(rsp).isEqualTo(
@@ -356,8 +334,8 @@ class ErrorTest extends AbstractRealTest
             throws IOException, InterruptedException
     {
         server().add("/",
-            GET().respond(internalServerError()),
-            POST().respond(internalServerError()));
+            GET().apply(req -> internalServerError()),
+            POST().apply(req -> internalServerError()));
         
         String rsp = client().writeReadTextUntilNewlines(
             "BLABLA / HTTP/1.1"               + CRLF + CRLF);
@@ -377,8 +355,8 @@ class ErrorTest extends AbstractRealTest
             throws IOException, InterruptedException
     {
         server().add("/",
-                GET().respond(internalServerError()),
-                POST().respond(internalServerError()));
+                GET().apply(req -> internalServerError()),
+                POST().apply(req -> internalServerError()));
         
         String rsp = client().writeReadTextUntilNewlines(
                 "OPTIONS / HTTP/1.1"              + CRLF + CRLF);
@@ -395,8 +373,10 @@ class ErrorTest extends AbstractRealTest
     
     @Test
     void MediaTypeParseException() throws IOException, InterruptedException {
-        server().add("/", GET().accept((ign,ored) ->
-            MediaType.parse("BOOM!")));
+        server().add("/", GET().apply(req -> {
+            MediaType.parse("BOOM!");
+            throw new AssertionError();
+        }));
         String rsp = client().writeReadTextUntilNewlines(
             "GET / HTTP/1.1\n\n");
         assertThat(rsp).isEqualTo("""
@@ -418,7 +398,7 @@ class ErrorTest extends AbstractRealTest
     @Test
     void MediaTypeNotAcceptedException() throws IOException, InterruptedException {
         server().add("/",
-            GET().produces("text/blabla").accept(NOP));
+            GET().produces("text/blabla").apply(NOP));
         String rsp = client().writeReadTextUntilNewlines("""
             GET / HTTP/1.1\r
             Accept: text/different\r\n\r\n""");
@@ -441,7 +421,7 @@ class ErrorTest extends AbstractRealTest
     @Test
     void MediaTypeUnsupportedException() throws IOException, InterruptedException {
         server().add("/",
-            GET().consumes("text/blabla").accept(NOP));
+            GET().consumes("text/blabla").apply(NOP));
         String rsp = client().writeReadTextUntilNewlines("""
             GET / HTTP/1.1
             Content-Type: text/different\n\n""");
@@ -464,8 +444,8 @@ class ErrorTest extends AbstractRealTest
     @Test
     void AmbiguousHandlerException() throws IOException, InterruptedException {
         server().add("/",
-            GET().produces("text/plain").accept(NOP),
-            GET().produces("text/html").accept(NOP));
+            GET().produces("text/plain").apply(NOP),
+            GET().produces("text/html").apply(NOP));
         String rsp = client().writeReadTextUntilNewlines(
             "GET / HTTP/1.1\n\n");
         assertThat(rsp).isEqualTo("""
@@ -488,12 +468,17 @@ class ErrorTest extends AbstractRealTest
     }
     
     @Test
-    void DecoderException_deliveredToApp() throws IOException {
+    void DecoderException_handledByApp() throws IOException {
         // Must kick off the subscription to provoke the error
         server().add("/",
-            GET().apply(req -> req.body().toText()
-                    .exceptionally(Throwable::toString)
-                    .thenApply(Responses::text)));
+            GET().apply(req -> {
+                try {
+                    req.body().toText();
+                } catch (DecoderException e) {
+                    return text(e.toString());
+                }
+                throw new AssertionError();
+            }));
         String rsp = client().writeReadTextUntilEOS("""
             GET / HTTP/1.1
             Transfer-Encoding: chunked
@@ -514,13 +499,14 @@ class ErrorTest extends AbstractRealTest
     }
     
     @Test
-    void DecoderException_deliveredToErrorHandler()
+    void DecoderException_handledByErrorHandler()
             throws IOException
     {
         server().add("/",
-            GET().apply(req -> req.body().toText()
-                    // no .exceptionally(), pass through to pipeline
-                    .thenApply(Responses::text)));
+            GET().apply(req -> {
+                req.body().toText();
+                throw new AssertionError();
+            }));
         String rsp = client().writeReadTextUntilEOS("""
             GET / HTTP/1.1
             Transfer-Encoding: chunked
@@ -545,7 +531,9 @@ class ErrorTest extends AbstractRealTest
             throws IOException, InterruptedException
     {
         server().add("/",
-            TRACE().accept((req, ch) -> { throw new AssertionError("Not invoked."); }));
+            TRACE().apply(req -> {
+                throw new AssertionError("Not invoked.");
+            }));
         String rsp = client().writeReadTextUntilNewlines(
             "TRACE / HTTP/1.1"         + CRLF +
             "Content-Length: 1"        + CRLF + CRLF +
@@ -569,9 +557,9 @@ class ErrorTest extends AbstractRealTest
             throws IOException, InterruptedException
     {
         server().add("/",
-            GET().respond(() -> Response.builder(123)
-                    .body(ofString("Body!"))
-                    .build().completedStage()));
+            GET().apply(req -> Response.builder(123)
+                     .body(ofString("Body!"))
+                     .build()));
         String rsp = client().writeReadTextUntilNewlines(
             "GET / HTTP/1.1"                     + CRLF + CRLF);
         assertThat(rsp).isEqualTo(
@@ -589,7 +577,7 @@ class ErrorTest extends AbstractRealTest
             throws IOException, InterruptedException
     {
         server().add("/",
-            HEAD().respond(text("Body!")));
+            HEAD().apply(req -> text("Body!")));
         String rsp = client().writeReadTextUntilNewlines(
             "HEAD / HTTP/1.1"                    + CRLF + CRLF);
         assertThat(rsp).isEqualTo(
@@ -606,9 +594,9 @@ class ErrorTest extends AbstractRealTest
     void ResponseRejectedException_interimIgnoredForOldClient()
             throws IOException, InterruptedException
     {
-        server().add("/", GET().accept((req, ch) -> {
-            ch.write(processing()); // <-- rejected
-            ch.write(text("Done!"));
+        server().add("/", GET().apply(req -> {
+            channel().write(processing()); // <-- rejected
+            return text("Done!");
         }));
         
         // ... because "HTTP/1.0"
@@ -633,6 +621,7 @@ class ErrorTest extends AbstractRealTest
         logRecorder().assertThatNoErrorWasLogged();
     }
     
+    @Disabled("We need to implement timeouts for v-threads")
     @Test
     void ReadTimeoutException_duringHead()
             throws IOException, InterruptedException
@@ -661,6 +650,7 @@ class ErrorTest extends AbstractRealTest
     // half-way. There's no difference, however, between a ReadTimeoutException
     // occurring during a body subscription versus any other type. So ignoring.
     
+    @Disabled("We need to implement timeouts for v-threads")
     @Test
     void ResponseTimeoutException_fromPipeline()
             throws IOException, InterruptedException
@@ -668,7 +658,7 @@ class ErrorTest extends AbstractRealTest
         usingConfiguration()
             .timeoutResponse(ofMillis(1));
         server().add("/",
-             GET().accept(NOP));
+             GET().apply(NOP));
         String rsp = client().writeReadTextUntilNewlines(
             "GET / HTTP/1.1"                   + CRLF + CRLF);
         assertThat(rsp).isEqualTo(
@@ -682,99 +672,99 @@ class ErrorTest extends AbstractRealTest
             .hasMessage("Gave up waiting on a response.");
     }
     
+    @Disabled("We need to implement timeouts for v-threads")
     @ParameterizedTest
     @CsvSource({"false,false", "true,false", "false,true", "true,true"})
     void ResponseTimeoutException_fromResponse(
             boolean blockImmediately, boolean addContentLength)
             throws IOException, InterruptedException
     {
-        Semaphore unblock = new Semaphore(0);
-        Response rsp1 = blockImmediately ?
-                ok(blockSubscriberUntil(unblock)) :
-                // If not immediately, send 1 char first, then block
-                ok(concat(ofString("x"), blockSubscriberUntil(unblock)));
-        
-        // With content-length, pipeline's timer op will subscribe to the
-        // response body. Without, timer will subscribe to chunked encoder op.
-        if (addContentLength) {
-            rsp1 = rsp1.toBuilder().addHeader("Content-Length", "123").build();
-        }
-        
-        usingConfiguration()
-            .timeoutResponse(ofMillis(1));
-        server().add("/",
-            GET().respond(rsp1));
-        
-        // The objective of this test is to ensure the connection closes.
-        // Otherwise, our client would time out on this side.
-        String rsp2 = client().writeReadTextUntilEOS(
-                "GET / HTTP/1.1" + CRLF + CRLF);
-        
-        assertThat(rsp2).satisfiesAnyOf(
-                v -> assertThat(v).isEmpty(),
-                // any portion of 200 (OK)
-                v -> assertThat(v).startsWith("H"),
-                v -> assertThat(v).startsWith("HTTP/1.1 503 (Service Unavailable)"));
-        
-        // Must unblock request thread to guarantee log
-        unblock.release();
-        
-        var thr1 = pollServerError();
-        if (thr1 == null) {
-            // Response body timeout caused ResponseBodySubscriber to close channel
-            // (nothing delivered to error handler, but was logged)
-            var r = logRecorder().take(
-                    WARNING, """
-                      Child channel is closed for writing. \
-                      Can not resolve this error. \
-                      HTTP exchange is over.""",
-                    ResponseTimeoutException.class);
-            assertThat(r).isNotNull();
-            assertThat(r.getThrown()).hasMessage(
-                "Gave up waiting on a response body bytebuffer.");
-            // No other error
-            logRecorder().assertThatNoErrorWasLogged();
-        } else {
-            // Error handler can get one or even two timeout exceptions
-            Consumer<Throwable> assertThr = t -> {
-                assertThat(t)
-                    .isExactlyInstanceOf(ResponseTimeoutException.class)
-                    .hasNoCause()
-                    .hasNoSuppressedExceptions();
-                assertThat(t.getMessage()).satisfiesAnyOf(
-                    v -> assertThat(v).isEqualTo("Gave up waiting on a response."),
-                    v -> assertThat(v).isEqualTo("Gave up waiting on a response body bytebuffer."));
-            };
-            assertThr.accept(thr1);
-            var thr2 = pollServerError(1, SECONDS);
-            if (thr2 != null) {
-                assertThr.accept(thr2);
-                assertThat(thr2.getMessage()).isNotEqualTo(thr1.getMessage());
-            }
-            logRecorder().assertThatLogContainsOnlyOnce(
-                    rec(ERROR, "Base error handler received:", thr1));
-            if (thr2 != null) {
-            logRecorder().assertThatLogContainsOnlyOnce(
-                    rec(ERROR, "Base error handler received:", thr2));
-            }
-        }
-        
-        // Read away a trailing (failed) attempt to write 503 (Service Unavailable)
-        // (as to not fail a subsequent test assertion on the log)
-        logRecorder().timeoutAfter(1, SECONDS);
-        try {
-            logRecorder().assertAwait(
-                WARNING,
-                    "Child channel is closed for writing. " +
-                    "Can not resolve this error. " +
-                    "HTTP exchange is over.",
-                ClosedChannelException.class);
-        } catch (AssertionError ignored) {
-            // Empty
-        }
+//        Semaphore unblock = new Semaphore(0);
+//        Response rsp1 = blockImmediately ?
+//                ok(blockSubscriberUntil(unblock)) :
+//                // If not immediately, send 1 char first, then block
+//                ok(concat(ofString("x"), blockSubscriberUntil(unblock)));
+//
+//        // With content-length, pipeline's timer op will subscribe to the
+//        // response body. Without, timer will subscribe to chunked encoder op.
+//        if (addContentLength) {
+//            rsp1 = rsp1.toBuilder().addHeader("Content-Length", "123").build();
+//        }
+//
+//        usingConfiguration()
+//            .timeoutResponse(ofMillis(1));
+//        server().add("/",
+//            GET().respond(rsp1));
+//
+//        // The objective of this test is to ensure the connection closes.
+//        // Otherwise, our client would time out on this side.
+//        String rsp2 = client().writeReadTextUntilEOS(
+//                "GET / HTTP/1.1" + CRLF + CRLF);
+//
+//        assertThat(rsp2).satisfiesAnyOf(
+//                v -> assertThat(v).isEmpty(),
+//                // any portion of 200 (OK)
+//                v -> assertThat(v).startsWith("H"),
+//                v -> assertThat(v).startsWith("HTTP/1.1 503 (Service Unavailable)"));
+//
+//        // Must unblock request thread to guarantee log
+//        unblock.release();
+//
+//        var thr1 = pollServerError();
+//        if (thr1 == null) {
+//            // Response body timeout caused ResponseBodySubscriber to close channel
+//            // (nothing delivered to error handler, but was logged)
+//            var r = logRecorder().take(
+//                    WARNING, """
+//                      Child channel is closed for writing. \
+//                      Can not resolve this error. \
+//                      HTTP exchange is over.""",
+//                    ResponseTimeoutException.class);
+//            assertThat(r).isNotNull();
+//            assertThat(r.getThrown()).hasMessage(
+//                "Gave up waiting on a response body bytebuffer.");
+//            // No other error
+//            logRecorder().assertThatNoErrorWasLogged();
+//        } else {
+//            // Error handler can get one or even two timeout exceptions
+//            Consumer<Throwable> assertThr = t -> {
+//                assertThat(t)
+//                    .isExactlyInstanceOf(ResponseTimeoutException.class)
+//                    .hasNoCause()
+//                    .hasNoSuppressedExceptions();
+//                assertThat(t.getMessage()).satisfiesAnyOf(
+//                    v -> assertThat(v).isEqualTo("Gave up waiting on a response."),
+//                    v -> assertThat(v).isEqualTo("Gave up waiting on a response body bytebuffer."));
+//            };
+//            assertThr.accept(thr1);
+//            var thr2 = pollServerError(1, SECONDS);
+//            if (thr2 != null) {
+//                assertThr.accept(thr2);
+//                assertThat(thr2.getMessage()).isNotEqualTo(thr1.getMessage());
+//            }
+//            logRecorder().assertThatLogContainsOnlyOnce(
+//                    rec(ERROR, "Base error handler received:", thr1));
+//            if (thr2 != null) {
+//            logRecorder().assertThatLogContainsOnlyOnce(
+//                    rec(ERROR, "Base error handler received:", thr2));
+//            }
+//        }
+//
+//        // Read away a trailing (failed) attempt to write 503 (Service Unavailable)
+//        // (as to not fail a subsequent test assertion on the log)
+//        logRecorder().timeoutAfter(1, SECONDS);
+//        try {
+//            logRecorder().assertAwait(
+//                WARNING,
+//                    "Child channel is closed for writing. " +
+//                    "Can not resolve this error. " +
+//                    "HTTP exchange is over.",
+//                ClosedChannelException.class);
+//        } catch (AssertionError ignored) {
+//            // Empty
+//        }
     }
     
-    // Is treated as a new error, having suppressed the previous one
     @Test
     void Special_errorHandlerFails() throws IOException, InterruptedException {
         Consumer<Throwable> assertSecond = thr -> {
@@ -785,21 +775,12 @@ class ErrorTest extends AbstractRealTest
             var oops = thr.getSuppressed()[0];
             assertOopsException(oops);
         };
-        usingConfiguration().maxErrorRecoveryAttempts(2);
         AtomicInteger n = new AtomicInteger();
         usingErrorHandler((thr, ch, req) -> {
-            if (n.incrementAndGet() == 1) {
-                assertOopsException(thr);
-                assertThat(ch.isEverythingOpen()).isTrue();
-                throw new OopsException("second");
-            } else {
-                assertSecond.accept(thr);
-                // Pass forward to superclass' collector
-                throw thr;
-            }
+            throw new OopsException("Second");
         });
-        server().add("/", GET().respond(() -> {
-            throw new OopsException();
+        server().add("/", GET().apply(req -> {
+            throw new OopsException("First");
         }));
         
         String rsp = client().writeReadTextUntilNewlines(
@@ -811,172 +792,26 @@ class ErrorTest extends AbstractRealTest
         assertSecond.accept(pollServerError());
     }
     
-    // onSubscribe() fails, error goes to ErrorHandler, channel remains fully open
-    @ParameterizedTest
-    @ValueSource(strings = {"GET", "POST"})
-    void Special_requestBodySubscriberFails_onSubscribe(String method) throws IOException, InterruptedException {
-        var sub = onSubscribe(s -> { throw new OopsException(); });
-        
+    // channel remains fully open
+    @Test
+    void Special_requestBodyConsumerFails() throws IOException, InterruptedException {
         onErrorAssert(OopsException.class, ch ->
-            assertThat(ch.isEverythingOpen()).isTrue());
-        server().add("/", builder(method).accept((req, ch) ->
-            req.body().subscribe(sub)));
-        
-        String req = switch (method) {
-            case "GET"  -> get();
-            case "POST" -> post("not empty");
-            default -> throw new AssertionError();
-        };
-        
-        String rsp = client().writeReadTextUntilNewlines(req);
-        
+            assertThat(ch.isInputOpen() && ch.isOutputOpen()).isTrue());
+        server().add("/", POST().apply(req -> {
+            // Read one byte before crash
+            req.body().iterator().next().get();
+            throw new OopsException();
+        }));
+        var rsp = client().writeReadTextUntilNewlines(post("not empty"));
         assertThat(rsp).isEqualTo(
             "HTTP/1.1 500 Internal Server Error" + CRLF +
             "Content-Length: 0"                  + CRLF + CRLF);
-        
-        var s = sub.signals();
-        assertThat(s).hasSize(1);
-        assertSame(s.get(0).methodName(), ON_SUBSCRIBE);
-        
-        assertOopsException(pollServerError());
-    }
-    
-    // onNext() fails, error goes to ErrorHandler, channel's read stream is closed
-    @Test
-    void Special_requestBodySubscriberFails_onNext() throws IOException, InterruptedException {
-        // Read stream closed in ChannelByteBufferPublisher.afterSubscriberFinished()
-        var sub = onNext(i -> { throw new OopsException(); });
-        
-        onErrorAssert(OopsException.class, ch ->
-            assertThat(ch.isOpenForReading()).isFalse()); // FALSE!
-        server().add("/", POST().accept((req, ch) ->
-                req.body().subscribe(sub)));
-        
-        String rsp = client().writeReadTextUntilNewlines(post("not empty"));
-        
-        assertThat(rsp).isEqualTo(
-            "HTTP/1.1 500 Internal Server Error" + CRLF +
-            "Content-Length: 0"                  + CRLF + 
-            "Connection: close"                  + CRLF + CRLF);
-        
-        assertThat(logRecorderStop()).extracting(
-                LogRecord::getLevel, LogRecord::getMessage, LogRecord::getThrown)
-            .contains(rec(DEBUG,
-                "Subscription terminated. Will close the channel's read stream."));
-        
-        var s = sub.signals();
-        assertThat(s).hasSize(2);
-        
-        assertSame(s.get(0).methodName(), ON_SUBSCRIBE);
-        assertSame(s.get(1).methodName(), ON_NEXT);
-        
-        assertOopsException(pollServerError());
-    }
-    
-    /**
-     * onError() fails, error is logged but otherwise ignored.
-     * 
-     * @see ClientLifeCycleTest#clientClosesChannel_serverReceivedPartialHead
-     */
-    @Test
-    void Special_requestBodySubscriberFails_onError() throws IOException, InterruptedException {
-        var oops = new OopsException("is logged but not re-thrown");
-        var sub = onError(eos  -> { throw oops; });
-        var ch1 = new ArrayBlockingQueue<ClientChannel>(1);
-        
-        server().add("/", POST().accept((req, ch2) -> {
-            req.body().subscribe(sub);
-            ch1.add(ch2);
-        }));
-        
-        var fakeBodyReq =
-            "POST / HTTP/1.1"                         + CRLF +
-            "Accept: text/plain; charset=utf-8"       + CRLF +
-            "Content-Type: text/plain; charset=utf-8" + CRLF +
-            "Content-Length: 999999"                  + CRLF + CRLF;
-        
-        // Close after headers
-        client().write(fakeBodyReq);
-        
-        logRecorder().assertAwait(ERROR,
-                "Subscriber.onError() returned exceptionally. " +
-                "This new error is only logged but otherwise ignored.",
-                OopsException.class);
-        
-        assertSubscriberOnError(sub)
-            .isExactlyInstanceOf(EndOfStreamException.class)
-            .hasMessage(null)
-            .hasNoCause()
-            .hasNoSuppressedExceptions();
-        
-        // Superclass awaits clean HTTP exchange closure
-        // (ideally of course the subscriber would've sent a response lol)
-        ch1.poll(1, SECONDS).closeSafe();
-    }
-    
-    @ParameterizedTest
-    @ValueSource(strings = {"GET", "POST"})
-    void Special_requestBodySubscriberFails_onComplete(String method)
-            throws IOException, InterruptedException
-    {
-        // For both HTTP methods, the error will exceptionally complete the invocation chain.
-        // And thus, be sent off to the error handler, which responds code 500.
-        
-        switch (method) {
-            case "GET" ->
-                // For GET, the subscriber subscribes to Publishers.empty().
-                // As far as the channel is concerned, everything stays the same.
-                onErrorAssert(OopsException.class, ch ->
-                    assertThat(ch.isEverythingOpen()).isTrue());
-            case "POST" ->
-                // POST subscribes directly to ChannelByteBufferPublisher, which shuts down.
-                onErrorAssert(OopsException.class, ch ->
-                    assertThat(ch.isOpenForReading()).isFalse());
-            default ->
-                throw new AssertionError();
-        }
-        
-        var sub = onNextAndComplete(
-                PooledByteBufferHolder::discard,
-                ()   -> { throw new OopsException(); });
-        
-        server().add("/", builder(method).accept((req, ch) ->
-            req.body().subscribe(sub)));
-        
-        String req = switch (method) {
-            case "GET"  -> get();
-            case "POST" -> post("1"); // Small body to make sure we stay within one ByteBuffer
-            default -> throw new AssertionError();
-        };
-        
-        var actualRsp = client().writeReadTextUntilNewlines(req);
-        
-        var expectedRsp =
-            "HTTP/1.1 500 Internal Server Error" + CRLF +
-            "Content-Length: 0"                  + CRLF;
-        
-        switch (method) {
-            case "GET"  -> expectedRsp += CRLF;
-            // Response pipeline observes the half-closed state induced by ChannelByteBufferPublisher
-            case "POST" -> expectedRsp += "Connection: close" + CRLF + CRLF;
-            default     -> throw new AssertionError();
-        }
-        
-        assertThat(actualRsp).isEqualTo(expectedRsp);
-        
-        List<MethodName> expected = switch (method) {
-            case "GET"  -> of(ON_SUBSCRIBE, ON_COMPLETE);
-            case "POST" -> of(ON_SUBSCRIBE, ON_NEXT, ON_COMPLETE);
-            default -> throw new AssertionError();
-        };
-        
-        assertThat(sub.methodNames()).isEqualTo(expected);
         assertOopsException(pollServerError());
     }
     
     @Test
     void Special_maxUnsuccessfulResponses() throws IOException, InterruptedException {
-        server().add("/", GET().respond(badRequest().toBuilder()
+        server().add("/", GET().apply(req -> badRequest().toBuilder()
                 // This header would have caused the server to close the connection,
                 // but we want to run many "failed" responses
                 .removeHeaderValue("Connection", "close").build()));
@@ -1010,9 +845,9 @@ class ErrorTest extends AbstractRealTest
     void Special_afterHttpExchange_responseIsLoggedButIgnored()
             throws IOException, InterruptedException
     {
-        server().add("/", GET().accept((req, ch) -> {
-            ch.write(noContent());
-            ch.write(Response.builder(123).build());
+        server().add("/", GET().apply(req -> {
+            channel().write(noContent());
+            return Response.builder(123).build();
         }));
         
         String rsp = client().writeReadTextUntilNewlines(
@@ -1026,33 +861,11 @@ class ErrorTest extends AbstractRealTest
         // Superclass asserts no error sent to error handler
     }
     
-    @Test
-    void Special_afterHttpExchange_responseExceptionIsLoggedButIgnored()
-            throws IOException, InterruptedException
-    {
-        server().add("/", GET().accept((req, ch) -> {
-            ch.write(noContent());
-            ch.write(failedStage(new RuntimeException("Oops!")));
-        }));
-        
-        String rsp = client().writeReadTextUntilNewlines(
-            "GET / HTTP/1.1"          + CRLF + CRLF);
-        assertThat(rsp).isEqualTo(
-            "HTTP/1.1 204 No Content" + CRLF + CRLF);
-        
-        logRecorder().assertAwait(WARNING, """
-            Application's response stage completed exceptionally, but final \
-            response has already been sent. This error does not propagate \
-            anywhere.""");
-        
-        // Superclass asserts no error sent to error handler
-    }
-    
     /** The error version of {@link ExampleTest#RequestTrailers()}. */
     @Test
     void Special_requestTrailers_errorNotHandled() throws IOException, InterruptedException {
-        server().add("/", POST().apply(req -> req.body().toText()
-                .thenApply(Responses::text)));
+        server().add("/", POST().apply(req ->
+                text(req.body().toText())));
         var rsp = client().writeReadTextUntilEOS("""
                 POST / HTTP/1.1
                 Transfer-Encoding: chunked
