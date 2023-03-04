@@ -1,6 +1,10 @@
 package alpha.nomagichttp.util;
 
 import java.nio.ByteBuffer;
+import java.nio.charset.StandardCharsets;
+
+import static java.nio.ByteBuffer.wrap;
+import static java.nio.charset.StandardCharsets.US_ASCII;
 
 /**
  * {@code ByteBuffer} utils.
@@ -39,5 +43,15 @@ public final class ByteBuffers
             buf.get(buf.position(), bytes);
         }
         return bytes;
+    }
+    
+    /**
+     * Encode the given string using {@link StandardCharsets#US_ASCII}.
+     * 
+     * @param str to encode
+     * @return the bytes
+     */
+    public static ByteBuffer asciiBytes(String str) {
+        return wrap(str.getBytes(US_ASCII));
     }
 }

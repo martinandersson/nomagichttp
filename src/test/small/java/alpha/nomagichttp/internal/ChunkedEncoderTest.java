@@ -7,8 +7,8 @@ import java.nio.ByteBuffer;
 import java.util.List;
 
 import static alpha.nomagichttp.testutil.Assertions.assertIterable;
-import static alpha.nomagichttp.util.Blah.asciiBytes;
 import static alpha.nomagichttp.util.ByteBufferIterables.just;
+import static alpha.nomagichttp.util.ByteBuffers.asciiBytes;
 
 /**
  * Small tests for {@link ChunkedEncoder}.

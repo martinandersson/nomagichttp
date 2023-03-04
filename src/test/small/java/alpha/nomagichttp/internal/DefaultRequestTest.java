@@ -17,7 +17,7 @@ import java.util.concurrent.ExecutionException;
 import static alpha.nomagichttp.HttpConstants.Version.HTTP_1_1;
 import static alpha.nomagichttp.internal.DefaultRequest.requestWithoutParams;
 import static alpha.nomagichttp.internal.SkeletonRequestTarget.parse;
-import static alpha.nomagichttp.util.Blah.asciiBytes;
+import static alpha.nomagichttp.util.ByteBuffers.asciiBytes;
 import static alpha.nomagichttp.util.Headers.of;
 import static java.nio.file.Files.notExists;
 import static java.util.concurrent.Executors.newVirtualThreadPerTaskExecutor;

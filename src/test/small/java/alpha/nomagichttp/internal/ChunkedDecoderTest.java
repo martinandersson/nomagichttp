@@ -13,7 +13,7 @@ import java.util.stream.Stream;
 
 import static alpha.nomagichttp.testutil.Assertions.assertIterable;
 import static alpha.nomagichttp.testutil.TestByteBufferIterables.just;
-import static alpha.nomagichttp.util.Blah.asciiBytes;
+import static alpha.nomagichttp.util.ByteBuffers.asciiBytes;
 import static java.nio.charset.StandardCharsets.US_ASCII;
 import static java.util.HexFormat.fromHexDigitsToLong;
 import static java.util.stream.Stream.concat;

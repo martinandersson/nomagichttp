@@ -55,16 +55,6 @@ public final class Blah
     }
     
     /**
-     * Encode the given string using {@link StandardCharsets#US_ASCII}.
-     * 
-     * @param str to encode
-     * @return the bytes
-     */
-    public static ByteBuffer asciiBytes(String str) {
-        return wrap(str.getBytes(US_ASCII));
-    }
-    
-    /**
      * Retrieves the result of the given method.<p>
      * 
      * If the method returns exceptionally, the given resource will be closed.

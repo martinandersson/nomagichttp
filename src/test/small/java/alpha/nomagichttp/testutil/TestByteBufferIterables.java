@@ -1,8 +1,8 @@
 package alpha.nomagichttp.testutil;
 
 import alpha.nomagichttp.message.ByteBufferIterable;
-import alpha.nomagichttp.util.Blah;
 import alpha.nomagichttp.util.ByteBufferIterables;
+import alpha.nomagichttp.util.ByteBuffers;
 
 import static java.util.Arrays.stream;
 
@@ -24,6 +24,6 @@ public final class TestByteBufferIterables {
      */
     public static ByteBufferIterable just(String... items) {
         return ByteBufferIterables.just(
-                stream(items).map(Blah::asciiBytes).toList());
+                stream(items).map(ByteBuffers::asciiBytes).toList());
     }
 }
