@@ -3,21 +3,23 @@ package alpha.nomagichttp.util;
 import jdk.incubator.concurrent.StructureViolationException;
 import jdk.incubator.concurrent.StructuredTaskScope;
 
+import java.util.Deque;
+import java.util.LinkedList;
 import java.util.NoSuchElementException;
 import java.util.concurrent.Callable;
 
 /**
- * An insanely stupid implementation mimicking the API of
- * {@code ScopedValue}.<p>
+ * A stupid version of {@code ScopedValue}.<p>
  * 
- * The method signatures in this class and their JavaDoc has been copy and
+ * The method signatures in this class and their JavaDoc have been copy and
  * pasted from the JDK's {@code jdk.incubator.concurrent.ScopedValue}. This
- * class serves as a temporary replacement until Gradle supports Java 20, at
- * which time we will upgrade to Java 21 and call sites will simply replace the
- * {@code DummyScopedValue} with a real {@code ScopedValue}.<p>
+ * class serves as a temporary stand-in until Gradle supports Java 20, at
+ * which time we will upgrade to Java 20 (or 21), and call-sites will simply
+ * replace the {@code DummyScopedValue} with a real {@code ScopedValue}.<p>
  * 
- * This class supports binding a value, but not rebinding. An attempt to rebind
- * will throw an {@link UnsupportedOperationException}.
+ * This class is stupid, because it is backed by thread-locals, which is sort of
+ * the thing <a href="https://openjdk.org/jeps/429">JEP-429</a> is trying to
+ * replace for virtual threads.
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  * @param <T> the type of the object bound to this ScopedValue
@@ -50,10 +52,10 @@ public final class DummyScopedValue<T>
      *
      * @implNote
      * This method is implemented to be equivalent to:
-     * {@snippet lang=java :
+     * {@snippet lang = java:
      *     // @link substring="call" target="Carrier#call(Callable)" :
-     *     ScopedValue.where(key, value).call(op);
-     * }
+     *     ScopedValue.where(key, stack).call(op);
+     *}
      *
      * @param key the {@code ScopedValue} key
      * @param value the value, can be {@code null}
@@ -66,8 +68,12 @@ public final class DummyScopedValue<T>
     public static <T, R> R where(DummyScopedValue<T> key,
                                  T value,
                                  Callable<? extends R> op) throws Exception {
-        key.set(value);
-        return op.call();
+        key.add(value);
+        try {
+            return op.call();
+        } finally {
+            key.remove();
+        }
     }
     
     /**
@@ -86,10 +92,10 @@ public final class DummyScopedValue<T>
      *
      * @implNote
      * This method is implemented to be equivalent to:
-     * {@snippet lang=java :
+     * {@snippet lang = java:
      *     // @link substring="run" target="Carrier#run(Runnable)" :
-     *     ScopedValue.where(key, value).run(op);
-     * }
+     *     ScopedValue.where(key, stack).run(op);
+     *}
      *
      * @param key the {@code ScopedValue} key
      * @param value the value, can be {@code null}
@@ -97,14 +103,21 @@ public final class DummyScopedValue<T>
      * @param op the operation to call
      */
     public static <T> void where(DummyScopedValue<T> key, T value, Runnable op) {
-        key.set(value);
-        op.run();
+        key.add(value);
+        try {
+            op.run();
+        } finally {
+            key.remove();
+        }
     }
     
-    private final ThreadLocal<T> value;
+    private final InheritableThreadLocal<Deque<T>> stack;
     
     private DummyScopedValue() {
-        value = new ThreadLocal<>();
+        var tl = new InheritableThreadLocal<Deque<T>>();
+        // ArrayDeque does not permit null, LinkedList does
+        tl.set(new LinkedList<>());
+        stack = tl;
     }
     
     /**
@@ -115,24 +128,25 @@ public final class DummyScopedValue<T>
      * @throws NoSuchElementException if the scoped value is not bound
      */
     public T get() {
-        T t = value.get();
+        T t = stack.get().peek();
         if (t == null) {
             throw new NoSuchElementException();
         }
         return t;
     }
     
-    private void set(T value) {
-        if (isBound()) {
-            throw new UnsupportedOperationException("Rebinding");
-        }
-        this.value.set(value);
+    private void add(T value) {
+        this.stack.get().add(value);
+    }
+    
+    private void remove() {
+        this.stack.get().remove();
     }
     
     /**
      * {@return {@code true} if this scoped value is bound in the current thread}
      */
     public boolean isBound() {
-        return value.get() != null;
+        return stack.get().peek() != null;
     }
 }
