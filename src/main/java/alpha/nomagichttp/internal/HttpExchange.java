@@ -21,6 +21,7 @@ import java.util.NoSuchElementException;
 import java.util.Optional;
 
 import static alpha.nomagichttp.HttpConstants.HeaderName.EXPECT;
+import static alpha.nomagichttp.HttpConstants.HeaderName.TRANSFER_ENCODING;
 import static alpha.nomagichttp.HttpConstants.Method.TRACE;
 import static alpha.nomagichttp.HttpConstants.Version.HTTP_1_0;
 import static alpha.nomagichttp.HttpConstants.Version.HTTP_1_1;
@@ -428,7 +429,7 @@ final class HttpExchange
             throws IOException
     {
         // TODO: For HTTP/2, we may need another strategy here
-        if (r.head().headers().isChunked()) {
+        if (r.head().headers().contains(TRANSFER_ENCODING, "chunked")) {
             // Trailers may of course not even be there,
             // thank you, RFC, for telling clients they "should" add the Trailer header
             __justClose("Successful discard of trailers is not guaranteed");
