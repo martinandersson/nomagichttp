@@ -276,7 +276,7 @@ public interface HttpServer extends RouteRegistry, ActionRegistry
      * will bind the address, then start a virtual thread that runs the
      * accept-loop, and then return out.<p>
      * 
-     * <pre>
+     * <pre>{@code
      *     HttpServer testee = ...
      *     Future<Void> future = testee.startAsync();
      *     var client = new MyTestHttpClient(testee.getPort());
@@ -284,7 +284,7 @@ public interface HttpServer extends RouteRegistry, ActionRegistry
      *     assertThat(response).isEqualTo(...);
      *     testee.stop();
      *     assertThat(future)...
-     * </pre>
+     * }</pre>
      * 
      * TODO: Complete the previous example
      * <p>
