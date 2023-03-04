@@ -3,24 +3,18 @@ package alpha.nomagichttp.mediumtest;
 import alpha.nomagichttp.event.AbstractByteCountedStats;
 import alpha.nomagichttp.event.RequestHeadReceived;
 import alpha.nomagichttp.event.ResponseSent;
-import alpha.nomagichttp.handler.RequestHandler;
-import alpha.nomagichttp.message.PooledByteBufferHolder;
-import alpha.nomagichttp.message.Response;
-import alpha.nomagichttp.message.Responses;
+import alpha.nomagichttp.message.ByteBufferIterable;
+import alpha.nomagichttp.message.ByteBufferIterator;
 import alpha.nomagichttp.route.NoRouteFoundException;
 import alpha.nomagichttp.testutil.AbstractRealTest;
 import alpha.nomagichttp.testutil.IORunnable;
 import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
-import java.nio.ByteBuffer;
 import java.nio.channels.Channel;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.concurrent.ArrayBlockingQueue;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.Flow;
-import java.util.function.Consumer;
 import java.util.function.ToLongBiFunction;
 
 import static alpha.nomagichttp.HttpConstants.HeaderName.CONTENT_LENGTH;
@@ -30,18 +24,15 @@ import static alpha.nomagichttp.message.Responses.accepted;
 import static alpha.nomagichttp.message.Responses.continue_;
 import static alpha.nomagichttp.message.Responses.noContent;
 import static alpha.nomagichttp.message.Responses.ok;
-import static alpha.nomagichttp.message.Responses.processing;
 import static alpha.nomagichttp.message.Responses.text;
 import static alpha.nomagichttp.testutil.LogRecords.rec;
 import static alpha.nomagichttp.testutil.TestClient.CRLF;
 import static alpha.nomagichttp.testutil.TestRequestHandlers.respondIsBodyEmpty;
 import static alpha.nomagichttp.testutil.TestRequests.get;
 import static alpha.nomagichttp.testutil.TestRequests.post;
-import static alpha.nomagichttp.util.BetterBodyPublishers.ofByteArray;
-import static alpha.nomagichttp.util.Publishers.just;
+import static alpha.nomagichttp.util.ScopedValues.channel;
 import static java.lang.System.Logger.Level.DEBUG;
 import static java.lang.System.Logger.Level.WARNING;
-import static java.nio.ByteBuffer.allocate;
 import static java.nio.charset.StandardCharsets.US_ASCII;
 import static java.time.Duration.ZERO;
 import static java.time.Duration.between;
@@ -70,7 +61,7 @@ class DetailTest extends AbstractRealTest
     void connection_reuse_standard() throws IOException {
         // Echo request body
         server().add("/", POST().apply(req ->
-            req.body().toText().thenApply(Responses::text)));
+            text(req.body().toText())));
         
         final String resHead =
             "HTTP/1.1 200 OK"                         + CRLF +
@@ -90,10 +81,14 @@ class DetailTest extends AbstractRealTest
     @Test
     void connection_reuse_chunking() throws IOException {
         server()
-            .add("/ignore-body-and-trailers", POST().respond(noContent()))
-            .add("/echo-trailers", POST().apply(req -> req.body().toText()
-                       .thenCompose(ignore -> req.trailers().thenApply(tr ->
-                               text(tr.delegate().firstValue("Trailer").get())))));
+            .add("/ignore-body-and-trailers",
+                POST().apply(req -> noContent()))
+            .add("/echo-trailer",
+                POST().apply(req -> {
+                    var ignore = req.body().toText();
+                    var val = req.trailers().delegate().firstValue("X-Trailer").get();
+                    return text(val);
+                }));
         
         var template = """
             POST /$1 HTTP/1.1
@@ -103,7 +98,7 @@ class DetailTest extends AbstractRealTest
             3
             abc
             0
-            Trailer: $3
+            X-Trailer: $3
             
             """;
         
@@ -118,7 +113,7 @@ class DetailTest extends AbstractRealTest
                     "HTTP/1.1 204 No Content\r\n\r\n");
             
             // Can push a message over the same conn and echo the last trailer
-            var req2 = template.replace("$1", "echo-trailers")
+            var req2 = template.replace("$1", "echo-trailer")
                                .replace("$2", "Connection: close")
                                .replace("$3", "I care!");
             var rsp2 = client().writeReadTextUntilEOS(req2);
@@ -164,13 +159,18 @@ class DetailTest extends AbstractRealTest
         final int length = 100_000,
                   midway = length / 2;
         
-        RequestHandler discardMidway = POST().apply(req -> {
-            req.body().subscribe(
-                    new AfterByteTargetStop(midway, Flow.Subscription::cancel));
-            return accepted().completedStage();
-        });
-        
-        server().add("/", discardMidway);
+        server().add("/", POST().apply(req -> {
+            // Read only half of the body
+            var it = req.body().iterator();
+            while (it.hasNext()) {
+                var buf = it.next();
+                int n = 0;
+                while (n++ < midway) {
+                    buf.get();
+                }
+            }
+            return accepted();
+        }));
         
         IORunnable exchange = () -> {
             String req = post("x".repeat(length)),
@@ -191,7 +191,7 @@ class DetailTest extends AbstractRealTest
     @Test
     void request_body_discard_chunked() throws IOException {
         server().add("/",
-            GET().respond(noContent()));
+            GET().apply(req -> noContent()));
         var rsp = client().writeReadTextUntilEOS("""
             GET / HTTP/1.1
             Transfer-Encoding: chunked
@@ -212,7 +212,7 @@ class DetailTest extends AbstractRealTest
             .immediatelyContinueExpect100(true);
         server().add("/",
             // Request body doesn't matter
-            GET().respond(text("end")));
+            GET().apply(req -> text("end")));
         String rsp = client().writeReadTextUntil(
             "GET / HTTP/1.1"                          + CRLF + 
             "Expect: 100-continue"                    + CRLF + CRLF, "end");
@@ -229,12 +229,13 @@ class DetailTest extends AbstractRealTest
     /** Also see {@link MessageTest#expect100Continue_onFirstBodyAccess()} */
     @Test
     void expect100Continue_repeatedIgnored() throws IOException {
-        server().add("/", GET().accept((req, ch) -> {
+        server().add("/", GET().apply(req -> {
             // In response to GET without Expect and no body - app gets what app wants.
+            var ch = channel();
             ch.write(continue_());
             ch.write(continue_());
             ch.write(continue_());
-            ch.write(accepted());
+            return accepted();
         }));
         
         String req = "GET / HTTP/1.1" + CRLF + CRLF;
@@ -256,7 +257,7 @@ class DetailTest extends AbstractRealTest
     
     @Test
     void response_unknownLength_bodyNonEmpty() throws IOException {
-        server().add("/", GET().respond(
+        server().add("/", GET().apply(req ->
             text("World").toBuilder()
                          .removeHeader(CONTENT_LENGTH)
                          .build()));
@@ -275,8 +276,16 @@ class DetailTest extends AbstractRealTest
     
     @Test
     void response_unknownLength_bodyEmpty() throws IOException {
-        server().add("/", GET().respond(
-            ok(just(allocate(0)), "application/octet-stream", -1)));
+        var empty = new ByteBufferIterable() {
+            public ByteBufferIterator iterator() {
+                return ByteBufferIterator.Empty.INSTANCE;
+            }
+            public long length() {
+                return -1;
+            }
+        };
+        server().add("/", GET().apply(req ->
+            ok(empty)));
         String rsp = client().writeReadTextUntilEOS(
             get("Connection: close"));
         assertThat(rsp).isEqualTo("""
@@ -294,71 +303,12 @@ class DetailTest extends AbstractRealTest
     // Only the server's response may have unknown length terminated by
     // connection close (RFC 7230 §3.3.3 Message Body Length; bullet item 6).
     
-    @Test
-    void responseOrderMaintained() throws IOException {
-        server().add("/", GET().accept((req, ch) -> {
-            CompletableFuture<Response> first  = new CompletableFuture<>();
-            Response second = processing().toBuilder().header("ID", "2").build();
-            CompletableFuture<Response> third = new CompletableFuture<>();
-            ch.write(first);
-            ch.write(second);
-            ch.write(third);
-            third.complete(text("done"));
-            first.complete(processing().toBuilder().header("ID", "1").build());
-        }));
-        
-        String rsp = client().writeReadTextUntil(get(), "done");
-        assertThat(rsp).isEqualTo(
-            "HTTP/1.1 102 Processing"                 + CRLF +
-            "ID: 1"                                   + CRLF + CRLF +
-            
-            "HTTP/1.1 102 Processing"                 + CRLF +
-            "ID: 2"                                   + CRLF + CRLF +
-            
-            "HTTP/1.1 200 OK"                         + CRLF +
-            "Content-Length: 4"                       + CRLF +
-            "Content-Type: text/plain; charset=utf-8" + CRLF + CRLF +
-            
-            "done");
-    }
-    
-    // See ResponseBodySubscriber.sliceIntoChunks()
-    @Test
-    void responseBodyBufferOversized() throws IOException {
-        // End of message
-        final byte eom = 9;
-        
-        // TODO: Need improved "HTTP message" API in TestClient
-        
-        // Same as ChannelByteBufferPublisher.BUF_SIZE/**/
-        byte[] rspBody = new byte[16 * 1_024 + 1];
-        rspBody[rspBody.length - 1] = eom;
-        Response r = Responses.ok(ofByteArray(rspBody));
-        server().add("/", GET().respond(r));
-        
-        byte[] req = ("GET / HTTP/1.1" + CRLF + CRLF).getBytes(US_ASCII);
-        
-        byte[] expHead =
-                ("HTTP/1.1 200 OK"                        + CRLF +
-                 "Content-Length: 16385"                  + CRLF +
-                 "Content-Type: application/octet-stream" + CRLF + CRLF)
-                .getBytes(US_ASCII);
-        
-        ByteBuffer merged = allocate(expHead.length + rspBody.length);
-        for (byte b : expHead) merged.put(b);
-        for (byte b : rspBody) merged.put(b);
-        merged.flip();
-        
-        ByteBuffer rsp = client().writeReadBytesUntil(req, new byte[]{eom});
-        assertThat(rsp).isEqualTo(merged);
-    }
-    
     // "Accept: text/plain; charset=utf-8; q=0.9, text/plain; charset=iso-8859-1"
     // ISO 8859 wins, coz implicit q = 1
     @Test
     void charsetPreferenceThroughQ() throws IOException {
         server().add("/", GET().apply(req ->
-                text("hello", req).completedStage()));
+            text("hello", req)));
         
         // Default is UTF-8
         // (important to keep this here as we need to make sure the next test
@@ -428,47 +378,5 @@ class DetailTest extends AbstractRealTest
         assertThat(s.elapsedDuration()).isGreaterThanOrEqualTo(ZERO);
         assertThat(s.elapsedDuration()).isLessThanOrEqualTo(expDur);
         assertThat(s.byteCount()).isEqualTo(exchToExpByteCnt.applyAsLong(req + CRLF, rsp));
-    }
-    
-    private static class AfterByteTargetStop implements Flow.Subscriber<PooledByteBufferHolder>
-    {
-        private final long byteTarget;
-        private final Consumer<Flow.Subscription> how;
-        private Flow.Subscription subscription;
-        private long read;
-        
-        AfterByteTargetStop(long byteTarget, Consumer<Flow.Subscription> how) {
-            this.byteTarget = byteTarget;
-            this.how = how;
-        }
-        
-        @Override
-        public void onSubscribe(Flow.Subscription subscription) {
-            (this.subscription = subscription).request(Long.MAX_VALUE);
-        }
-        
-        @Override
-        public void onNext(PooledByteBufferHolder item) {
-            assert read < byteTarget;
-            ByteBuffer b = item.get();
-            while (b.hasRemaining()) {
-                b.get();
-                if (++read == byteTarget) {
-                    how.accept(subscription);
-                    break;
-                }
-            }
-            item.release();
-        }
-        
-        @Override
-        public void onError(Throwable throwable) {
-            // Empty
-        }
-        
-        @Override
-        public void onComplete() {
-            // Empty
-        }
     }
 }
