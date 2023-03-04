@@ -34,6 +34,7 @@ import java.nio.channels.AsynchronousCloseException;
 import java.nio.channels.ServerSocketChannel;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.concurrent.Future;
 import java.util.function.IntConsumer;
 
 /**
@@ -71,23 +72,48 @@ import java.util.function.IntConsumer;
  * {@link BeforeAction}s that executes before the request handler (both together
  * often called the "request processing chain"), and {@link AfterAction}s that
  * can manipulate responses before they are sent. Exceptions can be handled
- * globally using any number of {@link ErrorHandler}s. And there you have it,
- * that's about all the types one needs to get familiar with. No magic.
+ * server-globally using any number of {@link ErrorHandler}s. And there you have
+ * it, that's about all the types one needs to get familiar with. No magic.
  * 
  * <h2>Server Life-Cycle</h2>
  * 
- * The {@code start} method blocks indefinitely and returns only exceptionally.
- * Either a port is not specified, in which case the system picks a port and an
- * {@code IntConsumer} of that port must be provided, or a port or an address is
- * specified. When starting only one server instance, then the call to
- * {@code start} should be the last statement of the application's entry
- * point.<p>
+ * Almost all {@code start} methods block indefinitely, the only exception being
+ * is the {@link #startAsync() startAsync} method. None of the start methods
+ * create a platform thread, and all virtual threads created are always
+ * non-daemon. Meaning that all opened server ports and client connections are
+ * immediately closed (with no grace-period defined) when the application's main
+ * thread terminates, unless the application itself created a non-daemon
+ * platform thread.<p>
+ * 
+ * One could register an administrator endpoint to handle a graceful shut down
+ * of the server, but the handler would generally be hard to implement as the
+ * HTTP protocol has no built-in feature to pause and resume an exchange. What
+ * to do if a client is in the middle of streaming data?<p>
+ * 
+ * Thus, the call to one of the blocking {@code start} methods will likely be
+ * one of, if not the last, statement done by the application code; relying on
+ * an external process termination to close the server.<p>
+ * 
+ * TODO: Give example of main method throwing what exactly?
+ * <p>
  * 
  * It is possible to start multiple server instances on different ports. One
  * use-case is to expose public endpoints on one port but keep more sensitive
  * administrator endpoints on another more secluded port.<p>
  * 
- * TODO: Give StructuredTaskScope(?) example starting multiple servers.<p>
+ * <pre>{@code
+ *   try (var exec = Executors.newVirtualThreadPerTaskExecutor()) {
+ *       exec.submit(() -> HttpServer.create().start(8080));
+ *       exec.submit(() -> HttpServer.create().start(8081));
+ *       // Implicit exec.close() will await termination of both servers
+ *   }
+ * }</pre>
+ * 
+ * This example also illustrated why all blocking {@code start} methods' return
+ * type is declared {@code Void}, as opposed to {@code void}; it is to enable
+ * the exception-throwing {@code start} method to be used as a
+ * {@code Callable<V>} expression lambda. Otherwise, the example would not have
+ * compiled (and the alternative code is very clumsy, to say the least).<p>
  * 
  * A server instance can not be recycled; it can only start and stop once.<p>
  * 
@@ -110,9 +136,9 @@ import java.util.function.IntConsumer;
  * Many components operated within the HTTP exchange is <i>not</i> thread-safe.
  * And, there's a reason for that. The default server implementation uses one
  * virtual thread per client channel, semantically known as "one thread per
- * request" (technically one thread for each client connection, which may be
+ * request" (technically, one thread for each client connection, which may be
  * used for many consecutive exchanges). This thread will run through the entire
- * request processing chain and write the response.<p>
+ * request processing chain and also be the one that writes the response.<p>
  * 
  * For the application developer, it is both safe and elegant to write
  * semantically blocking code. If and when a method would have blocked, the
@@ -121,7 +147,7 @@ import java.util.function.IntConsumer;
  * 
  * The application should <i>not</i> process the request asynchronously. The
  * library API may throw a {@link WrongThreadException} if called by a platform
- * thread and that call would have caused the thread block.<p>
+ * thread and that call would have caused the thread to block.<p>
  * 
  * TODO: Give bad example of concurrent outbound calls to dependent services
  * using a parallel Stream on native threads.<p>
@@ -141,7 +167,7 @@ import java.util.function.IntConsumer;
  * a body. This is mostly true for all other message variants as well; the
  * server does not have an opinionated view unless an opinionated view is
  * warranted. The request handler is almost in full control over how it
- * interprets the request message and what response it returns with no
+ * interprets the request message and what response it returns with little
  * interference from the server.<p>
  * 
  * For example, it might not be common but it <i>is</i>
@@ -206,18 +232,22 @@ public interface HttpServer extends RouteRegistry, ActionRegistry
      * address (IPv4 127.0.0.1, IPv6 ::1).<p>
      * 
      * This method is useful for inter-process communication on the same machine
-     * or to start a server in a test environment.<p>
+     * and for local testing. Production code should use a {@code start} method
+     * that allows to specify a port or an address.<p>
      * 
-     * Production code ought to specify an address using any other overload of
-     * the start method.<p>
-     * 
-     * The implementation is semantically equivalent to:
+     * The implementation is equivalent to:
      * <pre>
      *   InetAddress addr = InetAddress.getLoopbackAddress();
      *   int port = 0;
      *   SocketAddress local = new InetSocketAddress(addr, port);
      *   return {@link #start(SocketAddress) start}(local);
      * </pre>
+     * 
+     * The given port consumer is invoked by the same thread calling this
+     * method, after having bound the address but before going into the
+     * accept-loop of new client connections. Thus, no code executed inside the
+     * consumer should rely on the server serving requests. If this is needed,
+     * use the method {@link #startAsync() startAsync} instead.
      * 
      * @param ofPort receives the listening port (must not be {@code null})
      * 
@@ -226,7 +256,7 @@ public interface HttpServer extends RouteRegistry, ActionRegistry
      * @throws NullPointerException
      *             if {@code ofPort} is {@code null}
      * @throws IllegalStateException
-     *             if server is already running
+     *             if the server is already running
      * @throws IOException
      *             if an I/O error occurs
      * @throws InterruptedException
@@ -235,6 +265,45 @@ public interface HttpServer extends RouteRegistry, ActionRegistry
      * @see InetAddress
      */
     Void start(IntConsumer ofPort) throws IOException, InterruptedException;
+    
+    /**
+     * Equivalent to {@link #start(IntConsumer)}, but will not go into the
+     * accept-loop.<p>
+     * 
+     * All other start methods block indefinitely, because the thread executing
+     * one of these methods will bind the server's address and then run the
+     * accept-loop; aka. "listen" for client connections. This method, however,
+     * will bind the address, then start a virtual thread that runs the
+     * accept-loop, and then return out.<p>
+     * 
+     * <pre>
+     *     HttpServer testee = ...
+     *     Future<Void> future = testee.startAsync();
+     *     var client = new MyTestHttpClient(testee.getPort());
+     *     var response = client.sendSomeRequest();
+     *     assertThat(response).isEqualTo(...);
+     *     testee.stop();
+     *     assertThat(future)...
+     * </pre>
+     * 
+     * TODO: Complete the previous example
+     * <p>
+     * 
+     * An {@code IOException} thrown by this method originates from binding the
+     * address. An {@code IOException} from the accept-loop is relayed through
+     * the returned {@code Future}.<p>
+     * 
+     * Calling the method {@code cancel} on the returned Future does nothing.
+     * 
+     * @return a future that only completes exceptionally
+     *         (see {@link #start(SocketAddress)})
+     * 
+     * @throws IllegalStateException
+     *             if the server is already running
+     * @throws IOException
+     *             if an I/O error occurs whilst binding the address
+     */
+    Future<Void> startAsync() throws IOException;
     
     /**
      * Listens for client connections on the specified port on the wildcard
@@ -246,7 +315,9 @@ public interface HttpServer extends RouteRegistry, ActionRegistry
      * @implSpec
      * The default implementation is equivalent to:
      * <pre>
-     *     return {@link #start(SocketAddress) start}(new InetSocketAddress(port));
+     *     return {@link #start(SocketAddress) start
+     *     }(new {@link InetSocketAddress#InetSocketAddress(int) InetSocketAddress
+     *     }(port));
      * </pre>
      * 
      * @param port to use
@@ -273,7 +344,9 @@ public interface HttpServer extends RouteRegistry, ActionRegistry
      * @implSpec
      * The default implementation is equivalent to:
      * <pre>
-     *     return {@link #start(SocketAddress) start}(new InetSocketAddress(hostname, port));
+     *     return {@link #start(SocketAddress) start
+     *     }(new {@link InetSocketAddress#InetSocketAddress(String, int) InetSocketAddress
+     *     }(hostname, port));
      * </pre>
      * 
      * @param hostname to use
@@ -301,18 +374,15 @@ public interface HttpServer extends RouteRegistry, ActionRegistry
      * Listens for client connections.<p>
      * 
      * This method may block for an unlimited period of time if the calling
-     * thread is the one to bind the server's address and go into a listening
-     * accept-loop. The thread will only return once the server's channel and
-     * all client connections have been closed. Then, the return will only
-     * happen exceptionally, likely with an {@link
+     * thread is the one to bind the server's address and run an accept-loop;
+     * aka. "listening" for client connections. The thread will only return once
+     * the server's channel and all client connections have been closed. Then,
+     * the return will only happen exceptionally, likely with an {@link
      * AsynchronousCloseException}.<p>
      * 
      * Any other thread invoking this method whilst the server is running will
      * receive an {@link IllegalStateException}. That is to say, this method
-     * never returns normally.<p>
-     * 
-     * The return type is declared {@code Void} as opposed to {@code void} to
-     * enable this method to be used as a {@code Callable<V>} expression lambda.
+     * never returns normally.
      * 
      * @param address to use
      * 
@@ -339,29 +409,30 @@ public interface HttpServer extends RouteRegistry, ActionRegistry
      * underlying client connection after the final response. This is also known
      * as a graceful shutdown.<p>
      * 
-     * The thread blocked in {@code start()} will only return when the last
-     * client connection is closed. The thread invoking this method returns
-     * immediately.<p>
+     * The thread invoking this method and the thread blocked in {@code start()}
+     * will only return when the last client connection is closed.<p>
      * 
-     * Using this method can in theory result in the {@code start} thread
-     * waiting forever for the completion of HTTP exchanges (the server guards
-     * against stale exchanges not making any progress but does not impose a
-     * maximum runtime length). Consider using one of the other {@code stop}
-     * methods.<p>
+     * Using this method can in theory result in both threads waiting forever
+     * for the completion of HTTP exchanges (the server guards against stale
+     * exchanges not making any progress but does not impose a maximum runtime
+     * length). Consider using one of the other {@code stop} methods.<p>
      * 
      * This method is NOP if the server has already stopped.
      * 
-     * @throws IOException if an I/O error occurs
+     * @throws IOException
+     *             if an I/O error occurs
+     * @throws InterruptedException
+     *             if interrupted while waiting on client connections to terminate
      */
-    void stop() throws IOException;
+    void stop() throws IOException, InterruptedException;
     
     /**
      * Closes the port listening for client connections.<p>
      * 
      * Equivalent to {@link #stop()}, except the graceful period — during which
-     * the thread in {@code start()} awaits an orderly close of all client
-     * connections — ends around the time of the deadline, at which point
-     * all client connections will close.<p>
+     * the threads awaiting an orderly close of all client connections — ends
+     * around the time of the deadline, at which point all client connections
+     * will close.<p>
      * 
      * Technically, this method is never NOP, because it will always set a new
      * deadline (and overwrite a previously set deadline/timeout). However, this
@@ -374,16 +445,18 @@ public interface HttpServer extends RouteRegistry, ActionRegistry
      *             if {@code deadline} is {@code null}
      * @throws IOException
      *             if an I/O error occurs
+     * @throws InterruptedException
+     *             if interrupted while waiting on client connections to terminate
      */
-    void stop(Instant deadline) throws IOException;
+    void stop(Instant deadline) throws IOException, InterruptedException;
     
     /**
      * Closes the port listening for client connections.<p>
      * 
      * Equivalent to {@link #stop()}, except the graceful period — during which
-     * the thread in {@code start()} awaits an orderly close of all client
-     * connections — ends after a given timeout, at which point all client
-     * connections will close.<p>
+     * the threads awaiting an orderly close of all client connections — ends
+     * after a given timeout, at which point all client connections will
+     * close.<p>
      * 
      * Technically, this method is never NOP, because it will always set a new
      * deadline (and overwrite a previously set deadline/timeout). However, this
@@ -396,8 +469,10 @@ public interface HttpServer extends RouteRegistry, ActionRegistry
      *             if {@code timeout} is {@code null}
      * @throws IOException
      *             if an I/O error occurs
+     * @throws InterruptedException
+     *             if interrupted while waiting on client connections to terminate
      */
-    void stop(Duration timeout) throws IOException;
+    void stop(Duration timeout) throws IOException, InterruptedException;
     
     /**
      * Closes the port listening for client connections.<p>
@@ -408,9 +483,12 @@ public interface HttpServer extends RouteRegistry, ActionRegistry
      * If the server has not started, or it has already stopped, then this
      * method is NOP.
      * 
-     * @throws IOException if an I/O error occurs
+     * @throws IOException
+     *             if an I/O error occurs
+     * @throws InterruptedException
+     *             if interrupted while waiting on client connections to terminate
      */
-    void kill() throws IOException;
+    void kill() throws IOException, InterruptedException;
     
     /**
      * Returns {@code true} if the server is running.<p>
@@ -474,7 +552,7 @@ public interface HttpServer extends RouteRegistry, ActionRegistry
      * All event objects emitted by the HttpServer is an enum instance and does
      * not contain any event-specific information. The event metadata is passed
      * as attachments. The following table lists the events emitted by the
-     * HttpServer.
+     * HttpServer.<p>
      * 
      * <table class="striped">
      *   <caption style="display:none">Events emitted</caption>

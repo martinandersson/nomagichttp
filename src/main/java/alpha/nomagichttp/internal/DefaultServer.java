@@ -22,6 +22,9 @@ import java.nio.channels.SocketChannel;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.Future;
 import java.util.concurrent.TimeoutException;
 import java.util.function.IntConsumer;
 
@@ -55,6 +58,7 @@ public final class DefaultServer implements HttpServer
     // Would prefer ServerSocket > Socket > Input/OutputStream,
     //     using channel for direct transfer operations and bytebuffers
     private final Confined<ServerSocketChannel> parent;
+    private final CountDownLatch terminated;
     private       Instant started;
     // Memory consistency not specified between
     //     ServerSocketChannel.close() and AsynchronousCloseException
@@ -75,6 +79,7 @@ public final class DefaultServer implements HttpServer
                 () -> !__HTTP_SERVER.isBound(),
                 r -> where(__HTTP_SERVER, this, r));
         this.parent  = new Confined<>();
+        this.terminated = new CountDownLatch(1);
         this.started = null;
         this.waitForChildren = null;
     }
@@ -82,24 +87,41 @@ public final class DefaultServer implements HttpServer
     @Override
     public Void start(IntConsumer ofPort)
             throws IOException, InterruptedException {
-        var address = new InetSocketAddress(getLoopbackAddress(), 0);
-        return start0(address, requireNonNull(ofPort));
+        return start0(lookBackSystemPickedPort(), requireNonNull(ofPort), null);
+    }
+    
+    @Override
+    public Future<Void> startAsync() throws IOException {
+        // TODO: The fut-pill is a bit messy, we may need to rework this.
+        //       I'd just like to have solid life-cycle tests in place first.
+        var fut = new CompletableFuture<Void>();
+        try {
+            start0(lookBackSystemPickedPort(), null, fut);
+        } catch (InterruptedException e) {
+            throw new InternalError(e);
+        }
+        return fut;
+    }
+    
+    private static SocketAddress lookBackSystemPickedPort() {
+        return new InetSocketAddress(getLoopbackAddress(), 0);
     }
     
     @Override
     public Void start(SocketAddress address)
             throws IOException, InterruptedException {
-        return start0(requireNonNull(address), null);
+        return start0(requireNonNull(address), null, null);
     }
     
-    private Void start0(SocketAddress address, IntConsumer ofPort)
+    private Void start0(
+            SocketAddress addr, IntConsumer ofPort, CompletableFuture fut)
             throws IOException, InterruptedException
     {
         var parent = this.parent.initThrowsX(() -> {
-            var p = address instanceof UnixDomainSocketAddress ?
+            var p = addr instanceof UnixDomainSocketAddress ?
                         open(UNIX) : open();
             assert p.isBlocking();
-            p.bind(address);
+            p.bind(addr);
             return p;
         });
         if (parent == null) {
@@ -110,14 +132,26 @@ public final class DefaultServer implements HttpServer
             LOG.log(INFO, () -> "Opened server channel: " + parent);
             events().dispatch(HttpServerStarted.INSTANCE, started);
             if (ofPort != null) {
-                ofPort.accept(getPort());
+                int port = getPort();
+                where(__HTTP_SERVER, this, () -> ofPort.accept(port));
             }
-            runAcceptLoop(parent);
+            if (fut == null) {
+                runAcceptLoop(parent);
+                throw new InternalError("Returns exceptionally");
+            } else {
+                Thread.startVirtualThread(() -> {
+                    try {
+                        runAcceptLoop(parent);
+                    } catch (Throwable t) {
+                        fut.completeExceptionally(t);
+                    }
+                });
+                return null;
+            }
         } finally {
             // Can not stop() as this could override app's waitForChildren
             close();
         }
-        throw new InternalError("Returns exceptionally");
     }
     
     private void runAcceptLoop(ServerSocketChannel parent)
@@ -127,7 +161,9 @@ public final class DefaultServer implements HttpServer
             where(__HTTP_SERVER, this, () -> runAcceptLoop0(parent));
         } catch (Exception e) {
             switch (e) {
+                // From accept() or close()
                 case IOException t -> throw t;
+                // From exit()
                 case InterruptedException t -> throw t;
                 // Would only expect StructureViolationException at this point
                 default -> throw new AssertionError(e);
@@ -150,7 +186,7 @@ public final class DefaultServer implements HttpServer
                         try {
                             handleChild(child);
                         } catch (Throwable t) {
-                            if (!(t instanceof Exception)) { // Throwable or Error
+                            if (!(t instanceof Exception)) { // Throwable, Error
                                 // Virtual threads do not log anything, we're more kind
                                 LOG.log(ERROR, "Unexpected", t);
                             }
@@ -161,7 +197,6 @@ public final class DefaultServer implements HttpServer
                 }
             } finally {
                 // Must signal children we're closing down
-                // (can not stop() as this could override app's waitForChildren)
                 close();
                 exit(scope);
             }
@@ -180,7 +215,7 @@ public final class DefaultServer implements HttpServer
                 where(__CHANNEL, api, exch::begin);
                 r.dismiss();
                 w.dismiss();
-                if (api.isInputOpen() && api.isOutputOpen()) {
+                if (api.isInputOpen() && api.isOutputOpen() && parent.isPresent()) {
                     r = r.newReader();
                 } else {
                     break;
@@ -191,51 +226,59 @@ public final class DefaultServer implements HttpServer
     
     /** Shutdown then join, or joinUntil then shutdown. */
     private void exit(StructuredTaskScope<?> scope) throws InterruptedException {
-        Object o = waitForChildren;
-        if (o == null) {
-            // On shutdown, children should observe:
-            //     java.net.ClosedByInterruptException
-            scope.shutdown();
-            scope.join();
-        } else {
-            if (o instanceof Duration d) {
-                // joinUntil() is going to reverse this lol
-                o = now().plus(d);
+        try {
+            Object obj = waitForChildren;
+            if (obj == null) {
+                // On shutdown, children should observe:
+                //     java.net.ClosedByInterruptException
+                scope.shutdown();
+                scope.join();
+            } else {
+                if (obj instanceof Duration d) {
+                    // joinUntil() is going to reverse this lol
+                    obj = now().plus(d);
+                }
+                assert obj.getClass() == Instant.class;
+                try {
+                    scope.joinUntil((Instant) obj);
+                } catch (TimeoutException ignored) {
+                    // Enclosing try-with-resources > scope.close() > scope.shutdown()
+                }
             }
-            assert o.getClass() == Instant.class;
-            try {
-                scope.joinUntil((Instant) o);
-            } catch (TimeoutException ignored) {
-                // Enclosing try-with-resources > scope.close() > scope.shutdown()
-            }
+        } finally {
+            terminated.countDown();
         }
     }
     
     @Override
-    public void stop() throws IOException {
+    public void stop() throws IOException, InterruptedException {
         stop(Instant.MAX);
     }
     
     @Override
-    public void stop(Instant deadline) throws IOException {
+    public void stop(Instant deadline)
+            throws IOException, InterruptedException {
         waitForChildren = requireNonNull(deadline);
-        close();
+        closeAndAwaitChildren();
     }
     
     @Override
-    public void stop(Duration timeout) throws IOException {
+    public void stop(Duration timeout)
+            throws IOException, InterruptedException {
         waitForChildren = requireNonNull(timeout);
-        close();
+        closeAndAwaitChildren();
     }
     
     // Aliasing for correct semantics and a stacktrace that makes sense for app developer
     @Override
-    public void kill() throws IOException {
-        close();
+    public void kill()
+            throws IOException, InterruptedException {
+        waitForChildren = Instant.now();
+        closeAndAwaitChildren();
     }
     
-    private void close() throws IOException {
-        this.parent.dropThrowsX(channel -> {
+    private boolean close() throws IOException {
+        return this.parent.dropThrowsX(channel -> {
             try {
                 channel.close();
                 LOG.log(INFO, () -> "Closed server channel: " + channel);
@@ -255,6 +298,13 @@ public final class DefaultServer implements HttpServer
                 events().dispatch(HttpServerStopped.INSTANCE, now(), started);
             }
         });
+    }
+    
+    private void closeAndAwaitChildren()
+            throws IOException, InterruptedException {
+        if (close()) {
+            terminated.await();
+        }
     }
     
     @Override
