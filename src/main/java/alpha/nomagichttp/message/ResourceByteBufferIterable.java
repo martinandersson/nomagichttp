@@ -23,11 +23,11 @@ import java.io.IOException;
  * must support being iterated concurrently by multiple threads.<p>
  * 
  * Non-regenerative means that iterators drain bytes from a non-repeatable
- * source. For example, each new iterator of a request body is like reading from
- * an updating cursor position inside a segment of a byte stream (the socket).
- * Iteration will reduce the iterable's length, which will eventually become
- * empty and stay empty. Many iterations can come and go, but the implementation
- * is not required to support concurrent iterations.
+ * source. For example, each new iterator of a request body is reading from an
+ * updating cursor position inside a logically delimited segment of a byte
+ * stream (the socket). Iteration will reduce the iterable's length, which will
+ * eventually become empty and stay empty. Many iterations can come and go, but
+ * the implementation is not required to support concurrent iterations.
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  */
