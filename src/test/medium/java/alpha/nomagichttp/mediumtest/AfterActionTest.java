@@ -12,7 +12,7 @@ import static alpha.nomagichttp.message.Responses.noContent;
 import static alpha.nomagichttp.message.Responses.serviceUnavailable;
 import static alpha.nomagichttp.message.Responses.text;
 import static alpha.nomagichttp.testutil.TestClient.CRLF;
-import static alpha.nomagichttp.util.BetterBodyPublishers.ofString;
+import static alpha.nomagichttp.util.ByteBufferIterables.ofStringUnsafe;
 import static java.lang.String.valueOf;
 import static java.lang.System.Logger.Level.ERROR;
 import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
@@ -26,21 +26,21 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class AfterActionTest extends AbstractRealTest
 {
     @Test
-    void javadoc_ex() throws IOException {
+    void javadoc_ex() throws IOException, InterruptedException {
         server()
-            .before("/*", (req, ch, chain) -> {
+            .before("/*", (req, chain) -> {
                 if (req.headers().isMissingOrEmpty(X_CORRELATION_ID)) {
                     req.attributes().set(X_CORRELATION_ID, "123");
                 }
-                chain.proceed(); })
+                return chain.proceed(); })
             .add("/:msg", GET().apply(req ->
-                text(req.target().pathParam("msg")).completedStage()))
+                text(req.target().pathParam("msg"))))
             .after("/*", (req, rsp) ->
-                req.attributes().<String>getOptAny(X_CORRELATION_ID)
+                req.attributes()
+                   .<String>getOptAny(X_CORRELATION_ID)
                    .or(() -> req.headers().delegate().firstValue(X_CORRELATION_ID))
                    .map(id -> rsp.toBuilder().header(X_CORRELATION_ID, id).build())
-                   .orElse(rsp)
-                   .completedStage());
+                   .orElse(rsp));
         
         var ch = client().openConnection();
         try (ch) {
@@ -74,10 +74,11 @@ class AfterActionTest extends AbstractRealTest
     @Test
     void multistage() throws IOException, InterruptedException {
         server()
-            .after("/*", (req, rsp) -> rsp.toBuilder().header("X-Count", "1").build().completedStage())
+            .after("/*", (req, rsp) ->
+                rsp.toBuilder().header("X-Count", "1").build())
             .after("/*", (req, rsp) -> {
                 long v = rsp.headers().delegate().firstValueAsLong("X-Count").getAsLong();
-                return rsp.toBuilder().header("X-Count", valueOf(++v)).build().completedStage();
+                return rsp.toBuilder().header("X-Count", valueOf(++v)).build();
             });
         
         var rsp = client().writeReadTextUntilNewlines(
@@ -101,21 +102,18 @@ class AfterActionTest extends AbstractRealTest
         // 3. after-action crashes with IllegalStateException
         // 4. custom error handler writes 503
         
-        usingErrorHandler((thr, ch, req) -> {
-            try {
-                throw thr;
-            } catch (IllegalStateException e) {
-                // Weirdly translate ISE to 503
-                ch.write(serviceUnavailable().toBuilder()
-                        .body(ofString(e.getMessage())).build());
-            }
-        });
+        usingErrorHandler((thr, ch, req) ->
+            thr instanceof IllegalStateException ?
+                serviceUnavailable().toBuilder()
+                                    .body(ofStringUnsafe(thr.getMessage()))
+                                    .build() :
+                ch.proceed());
         server().after("/", (req, rsp) -> {
             if (rsp.statusCode() != 503) {
-                // Weirdly crash for everything but 503
+                // Weirdly crash for everything not 503
                 throw new IllegalStateException("hello");
             }
-            return rsp.completedStage();
+            return rsp;
         });
         
         var rsp = client().writeReadTextUntilEOS(
@@ -136,10 +134,8 @@ class AfterActionTest extends AbstractRealTest
     
     @Test
     void NullPointerException() throws IOException, InterruptedException {
-        usingConfiguration()
-            .maxErrorRecoveryAttempts(0);
         server()
-            .add("/", GET().respond(noContent()))
+            .add("/", GET().apply(req -> noContent()))
             .after("/", (req, rsp) -> {
                 String npe = null;
                 npe.toString();
