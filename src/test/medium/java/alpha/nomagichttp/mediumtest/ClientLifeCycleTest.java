@@ -4,7 +4,6 @@ import alpha.nomagichttp.handler.EndOfStreamException;
 import alpha.nomagichttp.handler.ErrorHandler;
 import alpha.nomagichttp.handler.RequestHandler;
 import alpha.nomagichttp.message.Char;
-import alpha.nomagichttp.message.PooledByteBufferHolder;
 import alpha.nomagichttp.message.Response;
 import alpha.nomagichttp.testutil.AbstractRealTest;
 import alpha.nomagichttp.testutil.Environment;
@@ -16,6 +15,7 @@ import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.ValueSource;
 
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.nio.channels.Channel;
 import java.nio.channels.ClosedByInterruptException;
 import java.nio.channels.ClosedChannelException;
@@ -30,7 +30,7 @@ import static alpha.nomagichttp.handler.RequestHandler.GET;
 import static alpha.nomagichttp.handler.RequestHandler.POST;
 import static alpha.nomagichttp.message.Responses.noContent;
 import static alpha.nomagichttp.testutil.TestClient.CRLF;
-import static alpha.nomagichttp.testutil.TestSubscribers.onNextAndError;
+import static alpha.nomagichttp.util.ScopedValues.channel;
 import static java.lang.System.Logger.Level.DEBUG;
 import static java.lang.System.Logger.Level.WARNING;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
@@ -57,7 +57,7 @@ class ClientLifeCycleTest extends AbstractRealTest
     // For HTTP/1.0, server will respond "Connection: close"
     @Test
     void http1_0_nonPersistent() throws IOException, InterruptedException {
-        server().add("/", GET().respond(noContent()));
+        server().add("/", GET().apply(req -> noContent()));
         
         Channel ch = client().openConnection();
         try (ch) {
@@ -77,13 +77,13 @@ class ClientLifeCycleTest extends AbstractRealTest
     @ParameterizedTest
     @ValueSource(booleans = {true, false})
     void serverClosesChannel_beforeResponse(boolean streamOnly) throws IOException, InterruptedException {
-        server().add("/", GET().accept((req, ch) -> {
+        server().add("/", GET().apply(req -> {
             if (streamOnly) {
-                ch.shutdownOutputSafe();
+                channel().shutdownOutput();
             } else {
-                ch.closeSafe();
+                channel().close();
             }
-            ch.write(noContent());
+            return noContent();
         }));
         
         Channel ch = client().openConnection();
@@ -143,7 +143,7 @@ class ClientLifeCycleTest extends AbstractRealTest
     @Test
     void clientClosesChannel_serverReceivedPartialHead() throws IOException, InterruptedException {
         onErrorAssert(EndOfStreamException.class, channel ->
-                assertThat(channel.isOpenForReading()).isFalse());
+                assertThat(channel.isInputOpen()).isFalse());
         
         client().write("XXX /incomplete");
         
@@ -158,14 +158,21 @@ class ClientLifeCycleTest extends AbstractRealTest
     void clientShutsDownWriteStream_serverReceivedPartialBody() throws IOException, InterruptedException {
         BlockingQueue<Throwable> appErr = new ArrayBlockingQueue<>(1);
         Semaphore shutdown = new Semaphore(0);
-        server().add("/", GET().accept((req, ch) -> {
-            req.body().subscribe(onNextAndError(
-                    PooledByteBufferHolder::discard,
-                    thr -> {
-                        appErr.add(thr);
-                        ch.closeSafe();
-                    }));
+        server().add("/", GET().apply(req -> {
+            var it = req.body().iterator();
+            while (it.hasNext()) {
+                ByteBuffer buf;
+                try {
+                    buf = it.next();
+                } catch (Throwable t) {
+                    appErr.add(t);
+                    channel().close();
+                    break;
+                }
+                buf.position(buf.limit());
+            }
             shutdown.release();
+            return null;
         }));
         Channel ch = client().openConnection();
         try (ch) {
@@ -286,7 +293,7 @@ class ClientLifeCycleTest extends AbstractRealTest
     {
         var resp  = new CompletableFuture<Response>();
         var meth = useRequestBody ? RequestHandler.POST() : GET();
-        server().add("/", meth.respond(resp));
+        server().add("/", meth.apply(req -> resp.get()));
         Channel ch = client().openConnection();
         try (ch) {
             String[] conn = setConnectionCloseHeader ?
@@ -330,10 +337,11 @@ class ClientLifeCycleTest extends AbstractRealTest
     @ParameterizedTest
     @ValueSource(booleans = {true, false})
     void intermittentStreamShutdown_clientInput(boolean setConnectionCloseHeader) throws IOException, InterruptedException {
-        BlockingQueue<String> received = new ArrayBlockingQueue<>(1);
-        server().add("/", POST().accept((req, ch) -> {
-            ch.write(noContent());
-            req.body().toText().thenAccept(received::add);
+        var received = new ArrayBlockingQueue<String>(1);
+        server().add("/", POST().apply(req -> {
+            channel().write(noContent());
+            received.add(req.body().toText());
+            return null;
         }));
         Channel ch = client().openConnection();
         try (ch) {
@@ -385,14 +393,15 @@ class ClientLifeCycleTest extends AbstractRealTest
     @Test
     void intermittentStreamShutdown_serverOutput() throws IOException, InterruptedException {
         var received = new ArrayBlockingQueue<String>(1);
-        server().add("/", POST().accept((req, ch) -> {
-            // First install subscriber (client will linger with the body)
-            req.body().toText().thenAccept(received::add);
+        server().add("/", POST().apply(req -> {
             // Write response and ask to close connection
-            ch.write(noContent()
+            channel().write(noContent()
                     .toBuilder()
                     .header("Connection", "close")
                     .build());
+            // Read the request
+            received.add(req.body().toText());
+            return null;
         }));
         Channel ch = client().openConnection();
         try (ch) {
@@ -409,16 +418,15 @@ class ClientLifeCycleTest extends AbstractRealTest
             // Server proactively close the child before we do
             logRecorder().assertAwaitChildClose();
         }
-        
         assertThat(received.poll(1, SECONDS)).isEqualTo("Hi");
     }
     
     // Server shuts down input after request, can still write response
     @Test
     void intermittentStreamShutdown_serverInput() throws IOException, InterruptedException {
-        server().add("/", GET().accept((req, ch) -> {
-            ch.shutdownInputSafe();
-            ch.write(noContent());
+        server().add("/", GET().apply(req -> {
+            channel().shutdownInput();
+            return noContent();
         }));
         assertThat(client().writeReadTextUntilEOS(
                 TestRequests.get()))
