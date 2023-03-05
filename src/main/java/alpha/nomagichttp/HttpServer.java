@@ -417,7 +417,7 @@ public interface HttpServer extends RouteRegistry, ActionRegistry
      * exchanges not making any progress but does not impose a maximum runtime
      * length). Consider using one of the other {@code stop} methods.<p>
      * 
-     * This method is NOP if the server has already stopped.
+     * This method is NOP if the server is stopping or has already stopped.
      * 
      * @throws IOException
      *             if an I/O error occurs
@@ -434,10 +434,8 @@ public interface HttpServer extends RouteRegistry, ActionRegistry
      * around the time of the deadline, at which point all client connections
      * will close.<p>
      * 
-     * Technically, this method is never NOP, because it will always set a new
-     * deadline (and overwrite a previously set deadline/timeout). However, this
-     * in turn will only have a noticeable effect if the server hasn't already
-     * stopped.
+     * This method has no observable effect if the server is stopping or has
+     * already stopped.
      * 
      * @param deadline when to force-close all client connections
      * 
@@ -448,6 +446,9 @@ public interface HttpServer extends RouteRegistry, ActionRegistry
      * @throws InterruptedException
      *             if interrupted while waiting on client connections to terminate
      */
+    // TODO: "No observable effect" because the new deadline will always be set.
+    //       But not sure this is such a good idea. Just don't; the thread that
+    //       closes also set his deadline. Then we change to NOP in this JavaDoc.
     void stop(Instant deadline) throws IOException, InterruptedException;
     
     /**
