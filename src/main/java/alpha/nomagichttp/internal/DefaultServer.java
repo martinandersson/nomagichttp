@@ -216,7 +216,7 @@ public final class DefaultServer implements HttpServer
                 where(__CHANNEL, api, exch::begin);
                 r.dismiss();
                 w.dismiss();
-                if (api.isInputOpen() && api.isOutputOpen() && parent.isPresent()) {
+                if (api.isInputOpen() && api.isOutputOpen() && isRunning()) {
                     r = r.newReader();
                 } else {
                     break;
