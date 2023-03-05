@@ -176,7 +176,7 @@ public final class DefaultServer implements HttpServer
     {
         try (var scope = new StructuredTaskScope<>()) {
             try {
-                // Cannot complete without throwing an exception
+                // Accept loop; can not complete without throwing an exception
                 for (;;) {
                     var child = parent.accept();
                     // Reader and writer depend on this for correct behavior
@@ -207,6 +207,7 @@ public final class DefaultServer implements HttpServer
         try (ch) {
             var api = new DefaultClientChannel(ch);
             var r = new ChannelReader(ch);
+            // Exchange loop; breaks when a new exchange should not begin
             for (;;) {
                 var w = new DefaultChannelWriter(ch, actions, r);
                 api.use(w);
