@@ -1,6 +1,7 @@
 package alpha.nomagichttp.testutil;
 
 import alpha.nomagichttp.HttpConstants;
+import alpha.nomagichttp.HttpServer;
 import alpha.nomagichttp.util.Headers;
 import alpha.nomagichttp.util.Streams;
 import io.netty.buffer.ByteBuf;
@@ -129,16 +130,20 @@ import static org.assertj.core.api.Assertions.assertThat;
  * argument will be passed forward to the client who may then blow up with
  * another exception.<p>
  * 
- * Noteworthy: The underlying client connection will likely live in a
- * client-specific connection pool until some weird stale timeout, and attempts
- * to hack the connection may fail. For example, the JDK client will throw an
- * {@code IllegalArgumentException} if the "Connection: close" header is set.
- * This used to be a problem with the legacy asynchronous server implementation;
- * mandating a server-installed test request handler to close the connection, or
- * otherwise this class would time out. The new server build on top of virtual
- * threads should be much more structured. The new {@code HttpServer.stop()}
- * method should never return until the port is closed and all children's
- * threads are finished.<p>
+ * The underlying client connection will likely live in a connection pool (aka.
+ * be persistent) until some weird stale timeout. And, attempts to change the
+ * persistent state on the client's side may fail. For example, the JDK client
+ * will throw an {@code IllegalArgumentException} if the "Connection: close"
+ * header is set.<p>
+ * 
+ * Even though the test may have executed only one exchange; when it proceeds to
+ * call {@link HttpServer#stop()}, a new logical exchange may have already
+ * commenced and so the connection will not close until timeout — if specified
+ * (and if not specified, the stop method may never return until, and if, the
+ * client's connection pool times out!). So, unless a persistent connection is a
+ * criteria for the test case itself, the request handler ought to set a
+ * "Connection: close" response header. Regardless, it's always a good idea to
+ * increase test isolation by cleaning up resources in-between lol.<p>
  * 
  * This class is not thread-safe and does not implement {@code hashCode} or
  * {@code equals}.
