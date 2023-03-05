@@ -153,6 +153,12 @@ import static org.assertj.core.api.Assertions.assertThat;
 // TODO: After modules, separate into its own package
 // TODO: Add throws Exception, and one has to go to each impl's JavaDoc to see which ones
 // TODO: Add JavaDoc links for each client
+// TODO: See the JavaDoc above on how a new exchange may have begun, but without
+//       actual data transmission, which does no good except for staling the
+//       server stop. Thus, we need a "soft interrupt" mechanism! Then we may be
+//       be able to remove the recommendation to set "Connection: close", and
+//       consequently the implemented behavior in test classes (see
+//       "_compatibility" methods in ExampleTest and MessageTest).
 public abstract class HttpClientFacade
 {
     /**
