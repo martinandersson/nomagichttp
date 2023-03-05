@@ -289,7 +289,9 @@ class ExampleTest extends AbstractRealTest
     @DisplayName("KeepClientInformed/TestClient")
     public void KeepClientInformed() throws IOException {
         addRouteKeepClientInformed(false);
-        
+        // TODO: This isn't up to date with the example.
+        //       Also revise the other test cases.
+        //       We want a one-to-one exchange replica for each example.
         String rsp = client().writeReadTextUntil(
             "GET / HTTP/1.1" + CRLF + CRLF, "Done!");
         assertThat(rsp).isEqualTo(
