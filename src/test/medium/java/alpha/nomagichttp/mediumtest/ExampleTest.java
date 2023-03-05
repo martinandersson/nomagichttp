@@ -1,14 +1,13 @@
 package alpha.nomagichttp.mediumtest;
 
 import alpha.nomagichttp.event.RequestHeadReceived;
-import alpha.nomagichttp.handler.RequestHandler;
 import alpha.nomagichttp.message.RawRequest;
 import alpha.nomagichttp.message.Request;
 import alpha.nomagichttp.message.Response;
-import alpha.nomagichttp.message.Responses;
 import alpha.nomagichttp.route.NoRouteFoundException;
 import alpha.nomagichttp.testutil.AbstractRealTest;
 import alpha.nomagichttp.testutil.HttpClientFacade;
+import alpha.nomagichttp.util.Throwing;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -21,13 +20,11 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.EnumSet;
 import java.util.Map;
-import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.LongAdder;
 import java.util.function.BiConsumer;
-import java.util.function.Function;
 
 import static alpha.nomagichttp.HttpConstants.Version.HTTP_1_1;
 import static alpha.nomagichttp.handler.RequestHandler.GET;
@@ -42,13 +39,14 @@ import static alpha.nomagichttp.testutil.HttpClientFacade.Implementation.REACTOR
 import static alpha.nomagichttp.testutil.HttpClientFacade.ResponseFacade;
 import static alpha.nomagichttp.testutil.TestClient.CRLF;
 import static alpha.nomagichttp.util.Headers.of;
+import static alpha.nomagichttp.util.ScopedValues.channel;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * Mimics all the examples provided in {@link alpha.nomagichttp.examples}.<p>
  * 
  * The main purpose is to have a guarantee that new code changes won't break
- * code examples.
+ * the examples.
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  * 
@@ -59,7 +57,7 @@ class ExampleTest extends AbstractRealTest
     @Test
     @DisplayName("HelloWorld/TestClient")
     void HelloWorld() throws IOException {
-        addHelloWorldRoute(false);
+        addRouteHelloWorld(false);
         
         String req =
             "GET /hello HTTP/1.1"               + CRLF +
@@ -80,7 +78,7 @@ class ExampleTest extends AbstractRealTest
     void HelloWorld_compatibility(HttpClientFacade.Implementation impl)
             throws IOException, InterruptedException, TimeoutException, ExecutionException
     {
-        addHelloWorldRoute(true);
+        addRouteHelloWorld(true);
         
         ResponseFacade<String> rsp = impl.create(serverPort())
                 .addClientHeader("Accept", "text/plain; charset=utf-8")
@@ -102,15 +100,15 @@ class ExampleTest extends AbstractRealTest
             "Hello World!");
     }
     
-    private void addHelloWorldRoute(boolean closeChild) throws IOException {
-        var rsp = tryScheduleClose(text("Hello World!"), closeChild);
-        server().add("/hello", GET().respond(rsp));
+    private void addRouteHelloWorld(boolean closeChild) throws IOException {
+        server().add("/hello", GET().apply(
+              greet(req -> "World", closeChild)));
     }
     
     @Test
     @DisplayName("GreetParameter/TestClient")
     void GreetParameter() throws IOException {
-        addGreetParameterRoutes(false);
+        addRoutesGreetParameter(false);
         
         String req1 =
             "GET /hello/John HTTP/1.1"          + CRLF +
@@ -137,7 +135,7 @@ class ExampleTest extends AbstractRealTest
     void GreetParameter_compatibility(HttpClientFacade.Implementation impl)
             throws IOException, ExecutionException, InterruptedException, TimeoutException
     {
-        addGreetParameterRoutes(true);
+        addRoutesGreetParameter(true);
         
         HttpClientFacade req = impl.create(serverPort())
                 .addClientHeader("Accept", "text/plain; charset=utf-8");
@@ -164,27 +162,19 @@ class ExampleTest extends AbstractRealTest
         assertThat(rsp1).isEqualTo(rsp2);
     }
     
-    private void addGreetParameterRoutes(boolean closeChild) throws IOException {
-        Function<String, CompletionStage<Response>> factory = name -> {
-            var rsp = tryScheduleClose(text("Hello " + name + "!"), closeChild);
-            return rsp.completedStage();
-        };
-        
-        server().add("/hello/:name", GET().apply(req -> {
-            String n = req.target().pathParam("name");
-            return factory.apply(n);
-        }));
-        
-        server().add("/hello", GET().apply(req -> {
-            String n = req.target().queryFirst("name").get();
-            return factory.apply(n);
-        }));
+    private void addRoutesGreetParameter(boolean closeChild) throws IOException {
+        // Name from path
+        server().add("/hello/:name", GET().apply(
+              greet(req -> req.target().pathParam("name"), closeChild)));
+        // Name from query
+        server().add("/hello", GET().apply(
+              greet(req -> req.target().queryFirst("name").get(), closeChild)));
     }
     
     @Test
     @DisplayName("GreetBody/TestClient")
     void GreetBody() throws IOException {
-        addGreetBodyRoute(false);
+        addRouteGreetBody(false);
         
         String req =
             "POST /hello HTTP/1.1"                    + CRLF +
@@ -209,7 +199,7 @@ class ExampleTest extends AbstractRealTest
     void GreetBody_compatibility(HttpClientFacade.Implementation impl)
             throws IOException, InterruptedException, ExecutionException, TimeoutException
     {
-        addGreetBodyRoute(true);
+        addRouteGreetBody(true);
         
         HttpClientFacade req = impl.create(serverPort())
                 .addClientHeader("Accept", "text/plain; charset=utf-8");
@@ -231,18 +221,15 @@ class ExampleTest extends AbstractRealTest
             "Hello John!");
     }
     
-    private void addGreetBodyRoute(boolean closeChild) throws IOException {
-        RequestHandler echo = POST().apply(req ->
-                req.body().toText().thenApply(name ->
-                        tryScheduleClose(text("Hello " + name + "!"), closeChild)));
-        
-        server().add("/hello", echo);
+    private void addRouteGreetBody(boolean closeChild) throws IOException {
+        server().add("/hello", POST().apply(
+              greet(req -> req.body().toText(), closeChild)));
     }
     
     @Test
     @DisplayName("EchoHeaders/TestClient")
     void EchoHeaders() throws IOException {
-        addEchoHeadersRoute(false);
+        addRouteEchoHeaders(false);
         
         String req =
             "GET /echo HTTP/1.1"        + CRLF +
@@ -269,7 +256,7 @@ class ExampleTest extends AbstractRealTest
             throw new TestAbortedException();
         }
         
-        addEchoHeadersRoute(true);
+        addRouteEchoHeaders(true);
         
         var rsp = impl.create(serverPort())
                 .addClientHeader("My-Header", "Value 1")
@@ -289,20 +276,19 @@ class ExampleTest extends AbstractRealTest
             "My-Header")).containsExactly("Value 1", "Value 2");
     }
     
-    private void addEchoHeadersRoute(boolean closeChild) throws IOException {
-        Function<Request, Response> rsp = req -> noContent().toBuilder()
+    private void addRouteEchoHeaders(boolean closeChild) throws IOException {
+        server().add("/echo", GET().apply(req -> {
+            var rsp = noContent().toBuilder()
                 .addHeaders(req.headers())
                 .build();
-        
-        server().add("/echo", GET().apply(req ->
-                tryScheduleClose(rsp.apply(req), closeChild)
-                        .completedStage()));
+            return tryScheduleClose(rsp, closeChild);
+        }));
     }
     
     @Test
     @DisplayName("KeepClientInformed/TestClient")
     public void KeepClientInformed() throws IOException {
-        addKeepClientInformedRoute(false);
+        addRouteKeepClientInformed(false);
         
         String rsp = client().writeReadTextUntil(
             "GET / HTTP/1.1" + CRLF + CRLF, "Done!");
@@ -333,16 +319,17 @@ class ExampleTest extends AbstractRealTest
             throw new TestAbortedException();
         }
         
-        addKeepClientInformedRoute(true);
+        addRouteKeepClientInformed(true);
         var rsp = impl.create(serverPort()).getText("/", HTTP_1_1);
         assertThat(rsp.body()).isEqualTo("Done!");
     }
     
-    private void addKeepClientInformedRoute(boolean closeChild) throws IOException {
-        server().add("/", GET().accept((req, ch) -> {
+    private void addRouteKeepClientInformed(boolean closeChild) throws IOException {
+        server().add("/", GET().apply(req -> {
+            var ch = channel();
             ch.write(processing());
             ch.write(processing());
-            ch.write(tryScheduleClose(text("Done!"), closeChild));
+            return tryScheduleClose(text("Done!"), closeChild);
         }));
     }
     
@@ -352,17 +339,13 @@ class ExampleTest extends AbstractRealTest
     @Test
     @DisplayName("UploadFile/TestClient")
     void UploadFile() throws IOException, InterruptedException {
-        // 1. Save to new file
-        // ---
+        // Destination file
         Path file = Files.createTempDirectory("nomagic")
                 .resolve("some-file.txt");
         
-        RequestHandler saver = POST().apply(req ->
-                req.body().toFile(file)
-                          .thenApply(n -> Long.toString(n))
-                          .thenApply(Responses::text));
-        
-        server().add("/small-file", saver);
+        // Handler saves the file bytes and return byte count as response body
+        server().add("/small-file", POST().apply(req ->
+                text(Long.toString(req.body().toFile(file)))));
         
         final String reqHead =
             "POST /small-file HTTP/1.1" + CRLF +
@@ -378,8 +361,7 @@ class ExampleTest extends AbstractRealTest
             "3");
         assertThat(Files.readString(file)).isEqualTo("Foo");
         
-        // 2. By default, existing files are not overwritten
-        // ---
+        // By default, existing files are not overwritten
         String res2 = client().writeReadTextUntilNewlines(reqHead + "Bar");
         
         assertThat(res2).isEqualTo(
@@ -424,11 +406,10 @@ class ExampleTest extends AbstractRealTest
     @Test
     @DisplayName("RequestTrailers/TestClient")
     void RequestTrailers() throws IOException {
-        server().add("/", POST().apply(req -> req.body().toText()
-                .thenCompose(txt ->
-                    req.trailers().thenApply(tr ->
-                        txt + tr.delegate().firstValue("Append-This").get()))
-                .thenApply(Responses::text)));
+        // Echo body and append trailer value
+        server().add("/", POST().apply(req ->
+                text(req.body().toText() +
+                     req.trailers().delegate().firstValue("Append-This").get())));
         
         var rsp = client().writeReadTextUntilEOS("""
                 POST / HTTP/1.1
@@ -452,6 +433,16 @@ class ExampleTest extends AbstractRealTest
     }
     
     // TODO: Add RequestTrailers_compatibility
+    
+    private static
+        Throwing.Function<Request, Response, IOException> greet(
+                Throwing.Function<Request, String, IOException> getName,
+                boolean closeChild) {
+        return req -> {
+            var rsp = text("Hello " + getName.apply(req) + "!");
+            return tryScheduleClose(rsp, closeChild);
+        };
+    }
     
     private static Response tryScheduleClose(Response rsp, boolean ifTrue) {
         return ifTrue ? setHeaderConnectionClose(rsp) : rsp;
