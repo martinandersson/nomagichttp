@@ -59,9 +59,6 @@ import static java.util.Objects.requireNonNull;
  */
 public final class ByteBufferIterables
 {
-    private static final System.Logger LOG
-            = System.getLogger(ByteBufferIterables.class.getPackageName());
-    
     private ByteBufferIterables() {
         // Empty
     }
