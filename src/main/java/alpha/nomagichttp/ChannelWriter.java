@@ -49,7 +49,8 @@ public interface ChannelWriter
      * For both of the aforementioned cases, this method short-circuits and
      * returns 0. Otherwise, the method will invoke relevant
      * {@link AfterAction}s (who may modify the response), and then write the
-     * response to the underlying channel, and then — assuming the length of the
+     * response to the underlying channel (using relative get methods of the
+     * response body's bytebuffers), and then — assuming the length of the
      * response is finite — return the number of bytes written, which will be a
      * positive number.
      * 

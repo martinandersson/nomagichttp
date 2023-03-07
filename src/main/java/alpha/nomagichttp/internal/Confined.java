@@ -1,5 +1,6 @@
 package alpha.nomagichttp.internal;
 
+import alpha.nomagichttp.HttpServer;
 import alpha.nomagichttp.util.Throwing;
 
 import java.util.Objects;
@@ -24,12 +25,12 @@ import static java.util.Objects.requireNonNull;
  * more relaxed requirements; the update function (initializer) can be costly
  * and have side effects (because it will run exactly-once).<p>
  * 
- * The first use case for this class was to hold a reference to a {@code
- * ServerSocketChannel}. Constructing the channel could in theory involve I/O
- * and have system-wide side effects (not something one wishes to do
- * injudiciously in an update function). An extra benefit was being able to bind
- * the channel as part of the initialization which in turn provided stronger
- * semantics for {@code HttpServer.isRunning} without sacrificing performance
+ * One use case for this class is to hold a reference to a
+ * {@code ServerSocketChannel}. Constructing the channel can in theory involve
+ * I/O and have system-wide side effects (not something one wishes to do
+ * injudiciously in an update function). An extra benefit is being able to bind
+ * the channel as part of the initialization which in turn provides stronger
+ * semantics for {@link HttpServer#isRunning()}, without sacrificing performance
  * (a value present means that the channel has been both created and bound).
  * 
  * <h2>Memory consistency effects</h2>

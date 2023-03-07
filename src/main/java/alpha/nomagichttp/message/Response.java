@@ -429,7 +429,7 @@ public interface Response extends HeaderHolder
          * Sets a message body.<p>
          * 
          * The application should always set the Content-Type header as the
-         * server can not know this information. This header is usually
+         * server can not know this information. The header is usually
          * implicitly specified and set when using factories in
          * {@link Responses}.<p>
          * 
@@ -441,9 +441,9 @@ public interface Response extends HeaderHolder
          * ).<p>
          * 
          * If the response is used only once, then the body does not need to be
-         * regenerative (see JavaDoc of {@link ResourceByteBufferIterable}. If
-         * the response is cached and used many times, then the body must be
-         * regenerative.<p>
+         * regenerative (see JavaDoc of {@link ResourceByteBufferIterable}). If
+         * the response is cached and used many times, then the body should be
+         * regenerative, at the very least thread-safe.<p>
          * 
          * To remove an already set body, it's as easy as specifying an empty
          * body to this method, for example, using

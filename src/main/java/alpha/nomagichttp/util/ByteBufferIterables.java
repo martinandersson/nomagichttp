@@ -35,18 +35,27 @@ import static java.util.Objects.requireNonNull;
 /**
  * Factories for creating bytebuffer iterables.<p>
  * 
- * The produced iterables are re-generative and suitable as response bodies (see
- * JavaDoc of {@link ResourceByteBufferIterable}).<p>
+ * All iterables produced by this class are suitable to be used as a response
+ * body.<p>
  * 
- * Unless documented differently, the iterables produced by this class do not
- * yield back unconsumed bytes. In other words; each call to {@code next}
- * returns a new bytebuffer whether the previous bytebuffer was fully consumed.
- * The implication is that the consumer can use bulk methods or access a backing
- * array without updating the position.<p>
+ * All iterated bytebuffers are read-only.<p>
  * 
- * All iterated bytebuffers are read-only.
+ * The rest of this JavaDoc applies to iterables created by all methods, except
+ * to the iterable created by {@link #ofSupplier(Throwing.Supplier)}, the
+ * semantics of which depends in large parts on the nature of its given
+ * data-supplying function.<p>
+ * 
+ * The iterables are re-generative and thread-safe; they can be cached and
+ * shared across different responses.<p>
+ * 
+ * The iterables does not yield back unconsumed bytes. In other words; each call
+ * to {@code next} returns a new bytebuffer regardless if the previous
+ * bytebuffer was fully consumed. The implication is that the consumer can use
+ * bulk methods or access a backing array without updating the position.
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
+ * 
+ * @see ResourceByteBufferIterable
  */
 public final class ByteBufferIterables
 {
@@ -259,7 +268,12 @@ public final class ByteBufferIterables
      * Each new iterator will pull the supplier at least once, until an empty
      * bytebuffer is returned.<p>
      * 
-     * The supplier must be thread-safe.
+     * This method is intended to be used for streaming response bodies.<p>
+     * 
+     * If used as a response body, then the response object may be cached and
+     * shared only if the supplier is thread-safe, and it yields
+     * thread-exclusive bytebuffers on each invocation (because
+     * {@code ByteBuffer} is not thread-safe).<p>
      * 
      * @param s supplier of the iterable's content
      * 
