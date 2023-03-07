@@ -216,7 +216,8 @@ public final class DefaultServer implements HttpServer
                 where(__CHANNEL, api, exch::begin);
                 r.dismiss();
                 w.dismiss();
-                if (api.isInputOpen() && api.isOutputOpen() && isRunning()) {
+                // DefaultChannelWriter will set "Connection: close" if !isRunning()
+                if (api.isInputOpen() && api.isOutputOpen()) {
                     r = r.newReader();
                 } else {
                     break;

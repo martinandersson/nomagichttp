@@ -1,7 +1,6 @@
 package alpha.nomagichttp.internal;
 
 import alpha.nomagichttp.ChannelWriter;
-import alpha.nomagichttp.Config;
 import alpha.nomagichttp.HttpConstants;
 import alpha.nomagichttp.action.AfterAction;
 import alpha.nomagichttp.event.ResponseSent;
@@ -57,21 +56,10 @@ import static java.util.stream.Collectors.joining;
  * Core responsibilities:
  * <ul>
  *   <li>Invoke after-actions</li>
- *   <li>Apply response transformations such as HTTP/1.1 chunked encoding</li>
- *   <li>Track- and act on "Connection: close"</li>
+ *   <li>Applies message delimiting (Transfer-Encoding or Content-Length)</li>
  *   <li>Write the response</li>
+ *   <li>Manages the persistent nature of the HTTP connection</li>
  * </ul>
- * 
- * This class manages the persistent nature of the HTTP connection through a
- * couple of simple mechanisms. There is no support for HTTP/1.0 Keep-Alive, so
- * for all HTTP/1.0 clients, the "Connection: close" will be set. HTTP/1.1
- * connections are by default persistent, unless the request or the response
- * has set the "Connection: close" header, or the channel's input stream has
- * been shut down, all of which causes this writer to set "Connection: close"
- * and shut down the output stream.<p>
- * 
- * Additionally, this class implements
- * {@link Config#maxUnsuccessfulResponses()} by closing the channel.<p>
  * 
  * The writer instance is legal to use immediately after having been created
  * until the final response has been written, or after an explicit call to
@@ -411,16 +399,22 @@ public final class DefaultChannelWriter implements ChannelWriter
                 // Update flag, but no need to modify response
                 sawConnectionClose = true;
                 out = r;
-            } else if (r.isFinal() &&
-                    (__reqHasConnectionClose() || !channel().isInputOpen())) {
-                LOG.log(DEBUG,
-                    "Connection-close flag propagates from request " +
-                    "or half-closed state of channel.");
-                sawConnectionClose = true;
-                out = __setConnectionClose(r);
-            } else {
+            } else if (!r.isFinal()) {
                 // Haven't seen the header before and no current state indicates we need it = NOP
                 out = r;
+            } else {
+                final String why =
+                    __reqHasConnectionClose() ? "request" : 
+                    !channel().isInputOpen()  ? "half-closed state of channel" :
+                    !httpServer().isRunning() ? "server has stopped" :
+                    null;
+                if (why != null) {
+                    LOG.log(DEBUG, "Connection-close flag derived from " + why);
+                    sawConnectionClose = true;
+                    out = __setConnectionClose(r);
+                } else {
+                    out = r;
+                }
             }
             return out;
         }
