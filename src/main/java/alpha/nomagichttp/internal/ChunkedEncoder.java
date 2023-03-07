@@ -6,6 +6,7 @@ import alpha.nomagichttp.message.ResourceByteBufferIterable;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.nio.file.NoSuchFileException;
 import java.util.ArrayDeque;
 import java.util.Deque;
 import java.util.HexFormat;
@@ -84,6 +85,10 @@ final class ChunkedEncoder implements ResourceByteBufferIterable
             ByteBuffer chunk;
             try {
                 chunk = inputChunks.next();
+                if (!chunk.hasRemaining()) {
+                    assert !inputChunks.hasNext();
+                    throw new NoSuchElementException();
+                }
             } catch (NoSuchElementException e) {
                 // If upstream is done we're done
                 return fill(lastChunk(), DONE).take();
