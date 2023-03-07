@@ -270,7 +270,7 @@ public final class ByteBufferIterables
      * If used as a response body, then the response object may be cached and
      * shared only if the supplier is thread-safe, and it yields
      * thread-exclusive bytebuffers on each invocation (because
-     * {@code ByteBuffer} is not thread-safe).<p>
+     * {@code ByteBuffer} is not thread-safe).
      * 
      * @param s supplier of the iterable's content
      * 
