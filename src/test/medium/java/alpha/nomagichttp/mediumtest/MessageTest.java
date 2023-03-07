@@ -1,6 +1,5 @@
 package alpha.nomagichttp.mediumtest;
 
-import alpha.nomagichttp.message.Responses;
 import alpha.nomagichttp.testutil.AbstractRealTest;
 import alpha.nomagichttp.testutil.HttpClientFacade;
 import alpha.nomagichttp.util.Headers;
@@ -16,7 +15,6 @@ import java.util.concurrent.TimeoutException;
 import static alpha.nomagichttp.HttpConstants.Version.HTTP_1_1;
 import static alpha.nomagichttp.handler.RequestHandler.GET;
 import static alpha.nomagichttp.handler.RequestHandler.POST;
-import static alpha.nomagichttp.message.MediaType.APPLICATION_OCTET_STREAM;
 import static alpha.nomagichttp.message.Responses.ok;
 import static alpha.nomagichttp.message.Responses.text;
 import static alpha.nomagichttp.testutil.HttpClientFacade.Implementation.JDK;
@@ -25,18 +23,15 @@ import static alpha.nomagichttp.testutil.TestClient.CRLF;
 import static alpha.nomagichttp.testutil.TestRequestHandlers.respondIsBodyEmpty;
 import static alpha.nomagichttp.testutil.TestRequests.get;
 import static alpha.nomagichttp.testutil.TestRequests.post;
-import static alpha.nomagichttp.util.Publishers.map;
-import static java.nio.ByteBuffer.wrap;
+import static alpha.nomagichttp.util.ByteBufferIterables.ofSupplier;
 import static java.nio.charset.StandardCharsets.US_ASCII;
 import static java.util.List.of;
 import static java.util.Map.entry;
-import static java.util.concurrent.CompletableFuture.completedStage;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 /**
- * Coarse-grained HTTP exchanges suitable to run using many different
- * clients.<p>
+ * Coarse-grained HTTP exchanges suitable to run using different clients.<p>
  * 
  * Tests here perform classical "GET ..." requests and then expect "HTTP/1.1
  * 200 ..." responses. The purpose is to ensure the NoMagicHTTP library can in
@@ -64,14 +59,14 @@ class MessageTest extends AbstractRealTest
     
     // TODO: Any client that can't do HTTP/1.0 can simply be ignored
     /**
-     * Can make a HTTP/1.0 request (and get HTTP/1.0 response).<p>
+     * Can make an HTTP/1.0 request (and get HTTP/1.0 response).<p>
      * 
      * See {@link ErrorTest} for cases related to unsupported versions.
      */
     @Test
     void http_1_0() throws IOException {
         server().add("/", GET().apply(req ->
-            text("Received " + req.httpVersion()).completedStage()));
+            text("Received " + req.httpVersion())));
         
         String resp = client().writeReadTextUntil(
             "GET / HTTP/1.0" + CRLF + CRLF, "Received HTTP/1.0");
@@ -91,7 +86,7 @@ class MessageTest extends AbstractRealTest
     @Test
     void expect100Continue_onFirstBodyAccess() throws IOException {
         server().add("/", POST().apply(req ->
-            req.body().toText().thenApply(Responses::text)));
+            text(req.body().toText())));
         
         String req = "POST / HTTP/1.1" + CRLF +
             "Expect: 100-continue"     + CRLF +
@@ -127,7 +122,7 @@ class MessageTest extends AbstractRealTest
                 0
                 
                 """);
-        // Both chunks fit into one buffer processed by ChunkedDecoderOp
+        // Both chunks fit into one buffer processed by ChunkedDecoder
         assertThat(rsp).isEqualTo("""
                 HTTP/1.1 200 OK\r
                 Content-Type: application/octet-stream\r
@@ -156,11 +151,12 @@ class MessageTest extends AbstractRealTest
     
     private void addRouteThatEchoesTheRequestBody() throws IOException {
         server().add("/", POST().apply(req -> {
-            assertThat(req.headers().contains("Transfer-Encoding", "chunked")).isTrue();
-            var echoChunks = map(req.body(), pooled -> wrap(pooled.copy()));
-            return ok(echoChunks, APPLICATION_OCTET_STREAM, -1)
-                    .toBuilder().header("Connection", "close")
-                    .build().completedStage();
+            assertThat(req.headers().transferEncoding().getLast())
+                    .isEqualTo("chunked");
+            return ok(ofSupplier(req.body().iterator()::next))
+                    .toBuilder()
+                    .header("Connection", "close")
+                    .build();
         }));
     }
     
@@ -208,10 +204,12 @@ class MessageTest extends AbstractRealTest
     }
     
     private void addRouteThatRespondChunked() throws IOException {
-        server().add("/", GET().respond(
-            text("Hello").toBuilder()
-                .addHeader("Connection", "close")
-                .addTrailers(completedStage(Headers.of(
-                    "One", "Foo", "Two", "Bar"))).build()));
+        server().add("/", GET().apply(req ->
+                text("Hello")
+                    .toBuilder()
+                    .addHeader("Connection", "close")
+                    .addTrailers(() -> Headers.of(
+                        "One", "Foo", "Two", "Bar"))
+                    .build()));
     }
 }
