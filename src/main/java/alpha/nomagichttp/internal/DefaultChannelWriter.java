@@ -245,9 +245,13 @@ public final class DefaultChannelWriter implements ChannelWriter
     private long tryWriteBody(ByteBufferIterator it) throws IOException {
         long n = 0;
         while (it.hasNext()) {
-            // On different lines for traceability
             var buf = it.next();
-            n = addExactOrMaxValue(n, doWrite(buf));
+            if (buf.hasRemaining()) {
+                n = addExactOrMaxValue(n, doWrite(buf));
+            } else {
+                assert !it.hasNext() :
+                    "This was a streaming body turned end-of-stream";
+            }
         }
         return n;
     }
