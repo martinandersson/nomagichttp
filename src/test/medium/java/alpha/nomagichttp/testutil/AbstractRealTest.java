@@ -406,12 +406,17 @@ public abstract class AbstractRealTest
      * 
      * This method is useful for testing communication on the port even after
      * the server has stopped (at which point the port can no longer be
-     * retrieved from the server).
+     * retrieved from the server instance).
      * 
-     * @return the cached server port
+     * @return see JavaDoc
+     * 
+     * @throws IllegalStateException
+     *             if the server has never started
      */
     protected final int serverPort() {
-        requireServerStartedOnce();
+        if (port == 0) {
+            throw new IllegalStateException("Server never started.");
+        }
         return port;
     }
     
