@@ -9,6 +9,8 @@ import java.util.IdentityHashMap;
 import java.util.Iterator;
 import java.util.Set;
 
+import static java.util.Collections.newSetFromMap;
+
 /**
  * Provides {@code Chain.proceed} verification.<p>
  * 
@@ -31,7 +33,7 @@ abstract class AbstractChain<E>
     
     AbstractChain(Collection<? extends E> entities) {
         this.entities = entities.iterator();
-        this.yielded = new IdentityHashMap<>(entities.size()).keySet();
+        this.yielded = newSetFromMap(new IdentityHashMap<>(entities.size()));
     }
     
     abstract Response callIntermittentHandler(
