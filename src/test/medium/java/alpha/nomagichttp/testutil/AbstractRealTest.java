@@ -217,7 +217,7 @@ public abstract class AbstractRealTest
      * @param config of server
      */
     protected final void usingConfig(Config config) {
-        requireServerNotStarted();
+        requireServerIsNotRunning();
         this.config = config;
     }
     
@@ -277,7 +277,7 @@ public abstract class AbstractRealTest
      *             if the server has already been started
      */
     protected final void usingErrorHandler(ErrorHandler handler) {
-        requireServerNotStarted();
+        requireServerIsNotRunning();
         this.custom = handler;
     }
     
@@ -307,7 +307,7 @@ public abstract class AbstractRealTest
     {
         requireNonNull(trigger);
         requireNonNull(action);
-        requireServerNotStarted();
+        requireServerIsNotRunning();
         onError.compute(trigger, (k, v) -> {
             if (v == null) {
                 v = new ArrayList<>();
@@ -342,7 +342,7 @@ public abstract class AbstractRealTest
     {
         requireNonNull(trigger);
         requireNonNull(action);
-        requireServerNotStarted();
+        requireServerIsNotRunning();
         onError.compute(trigger, (k, v) -> {
             if (v == null) {
                 v = new ArrayList<>();
@@ -460,7 +460,7 @@ public abstract class AbstractRealTest
     protected final Exception pollServerError(long timeout, TimeUnit unit)
             throws InterruptedException
     {
-        requireServerStartedOnce();
+        requireServerIsRunning();
         return errors.poll(timeout, unit);
     }
     
@@ -470,7 +470,7 @@ public abstract class AbstractRealTest
      * @return an error, or {@code null} if none is available
      */
     protected final Exception pollServerErrorNow() {
-        requireServerStartedOnce();
+        requireServerIsRunning();
         return errors.pollFirst();
     }
     
@@ -524,7 +524,7 @@ public abstract class AbstractRealTest
     protected final AbstractThrowableAssert<?, ? extends Throwable>
             assertThatServerErrorObservedAndLogged() throws InterruptedException
     {
-        requireServerStartedOnce();
+        requireServerIsRunning();
         Throwable t = pollServerError();
         assertSame(t, logRecorder().assertAwaitFirstLogError());
         return assertThat(t);
@@ -549,7 +549,7 @@ public abstract class AbstractRealTest
             Class<?>... excludeClasses)
             throws IOException, InterruptedException
     {
-        requireServerStartedOnce();
+        requireServerIsRunning();
         stopServer();
         
         Set<String> excl = excludeClasses.length == 0 ? Set.of() :
@@ -585,16 +585,15 @@ public abstract class AbstractRealTest
         return n + " -> " + test.getDisplayName();
     }
     
-    private void requireServerNotStarted() {
-        if (server != null) {
-            throw new IllegalStateException("Server already started.");
+    private void requireServerIsRunning() {
+        if (server == null) {
+            throw new IllegalStateException("Server is not running.");
         }
     }
     
-    private void requireServerStartedOnce() {
-        if (server == null) {
-            throw new IllegalStateException(
-                    "Server never started. Call server() first.");
+    private void requireServerIsNotRunning() {
+        if (server != null) {
+            throw new IllegalStateException("Server is running.");
         }
     }
 }
