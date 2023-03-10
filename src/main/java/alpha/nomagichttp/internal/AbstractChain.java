@@ -64,12 +64,12 @@ abstract class AbstractChain<E>
             throw new UnsupportedOperationException(Chain.class.getSimpleName() +
                     ".proceed() not called from within the processing chain");
         }
-        var a = ENTITY_RUNNING.get();
+        var ent = ENTITY_RUNNING.get();
         // TODO: We might have to remove this requirement!
         //       Coz, what if a BeforeAction implements a retry mechanism??
         //       Erm, actually, we can leave it conditionally:
         //          Retries okay as long as the chain did not return normally!
-        if (!yielded.add(a)) {
+        if (!yielded.add(ent)) {
             throw new UnsupportedOperationException(Chain.class.getSimpleName() +
                     ".proceed() was already called");
         }
