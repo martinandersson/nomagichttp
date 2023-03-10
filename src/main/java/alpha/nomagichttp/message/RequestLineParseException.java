@@ -15,7 +15,7 @@ public class RequestLineParseException extends AbstractParseException
     private static final long serialVersionUID = 1L;
     
     /**
-     * Initializes this object.
+     * Initializes this object.<p>
      *
      * If the previous character does not exist, pass in a negative value.
      * 
