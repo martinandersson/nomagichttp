@@ -137,8 +137,8 @@ Make a request to the port in a new terminal window:
 ```console
 foo@bar:~$ curl -i localhost:52063/hello
 HTTP/1.1 200 OK
-Content-Length: 12
 Content-Type: text/plain; charset=utf-8
+Content-Length: 12
 
 Hello World!
 ```
