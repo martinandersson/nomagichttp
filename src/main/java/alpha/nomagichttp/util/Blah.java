@@ -1,13 +1,9 @@
 package alpha.nomagichttp.util;
 
 import java.io.Closeable;
-import java.nio.ByteBuffer;
-import java.nio.charset.StandardCharsets;
 
 import static java.lang.Long.MAX_VALUE;
 import static java.lang.Math.addExact;
-import static java.nio.ByteBuffer.wrap;
-import static java.nio.charset.StandardCharsets.US_ASCII;
 
 /**
  * Is a namespace for things that doesn't belong anywhere.
@@ -78,6 +74,37 @@ public final class Blah
     {
         try {
             return method.get();
+        } catch (Throwable fromMethod) {
+            try {
+                resource.close();
+            } catch (Throwable fromClose) {
+                fromMethod.addSuppressed(fromClose);
+            }
+            throw fromMethod;
+        }
+    }
+    
+    /**
+     * Runs the given method.<p>
+     * 
+     * If the method returns exceptionally, the given resource will be closed.
+     * If that close call returns exceptionally, the first exception will
+     * propagate having suppressed the latter (as is the case with Java's
+     * try-with-resources).
+     * 
+     * @param method to call
+     * @param resource to close
+     * @param <X> exception type
+     * 
+     * @throws X if method throws
+     */
+    public static <X extends Exception> void runOrCloseResource(
+          Throwing.Runnable<X> method,
+          Closeable resource)
+          throws X
+    {
+        try {
+            method.run();
         } catch (Throwable fromMethod) {
             try {
                 resource.close();
