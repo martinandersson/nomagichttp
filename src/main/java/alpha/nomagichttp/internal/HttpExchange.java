@@ -291,14 +291,6 @@ final class HttpExchange
         });
     }
     
-    private void __tryRespond100Continue(SkeletonRequest req)
-            throws IOException {
-        if (!req.httpVersion().isLessThan(HTTP_1_1) &&
-            req.head().headers().contains(EXPECT, "100-continue")) {
-            writer.write(continue_());
-        }
-    }
-    
     private Response __requireWriterConformance(Response rsp, String entity) {
         if (rsp == null) {
             if (!writer.wroteFinal()) {
