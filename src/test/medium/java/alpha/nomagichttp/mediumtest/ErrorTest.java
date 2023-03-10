@@ -775,7 +775,6 @@ class ErrorTest extends AbstractRealTest
             var oops = thr.getSuppressed()[0];
             assertOopsException(oops);
         };
-        AtomicInteger n = new AtomicInteger();
         usingErrorHandler((thr, ch, req) -> {
             throw new OopsException("Second");
         });
