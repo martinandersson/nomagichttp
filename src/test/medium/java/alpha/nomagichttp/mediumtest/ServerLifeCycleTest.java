@@ -1,16 +1,18 @@
 package alpha.nomagichttp.mediumtest;
 
-import alpha.nomagichttp.message.Responses;
+import alpha.nomagichttp.event.HttpServerStopped;
 import alpha.nomagichttp.testutil.AbstractRealTest;
 import alpha.nomagichttp.testutil.TestClient;
 import org.junit.jupiter.api.Test;
 
-import java.io.IOException;
 import java.net.ConnectException;
 import java.nio.channels.Channel;
-import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.Semaphore;
 
 import static alpha.nomagichttp.handler.RequestHandler.POST;
+import static alpha.nomagichttp.message.Responses.text;
 import static alpha.nomagichttp.testutil.TestClient.CRLF;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
@@ -27,7 +29,7 @@ import static org.assertj.core.api.AssertionsForClassTypes.assertThatThrownBy;
 class ServerLifeCycleTest extends AbstractRealTest
 {
     @Test
-    void serverStop_serverCompletesActiveExchange() throws IOException, InterruptedException {
+    void serverStop_serverCompletesActiveExchange() throws Exception {
         // Client send request head, not body
         // Server consumes the head, returns 100 (Continue)
         // Client call HttpServer.stop()
@@ -37,11 +39,11 @@ class ServerLifeCycleTest extends AbstractRealTest
         //     Stage completes
         
         server().add("/", POST().apply(req ->
-                req.body().toText().thenApply(Responses::text)));
+                text(req.body().toText())));
         
-        CompletableFuture<Void> fut;
+        Future<Void> fut;
         Channel ch = client().openConnection();
-        try (ch) {
+        try (ch; var exec = Executors.newVirtualThreadPerTaskExecutor()) {
             String rsp1 = client().writeReadTextUntilNewlines(
                 "POST / HTTP/1.1"                        + CRLF +
                 "Content-Length: 3"                      + CRLF +
@@ -51,8 +53,16 @@ class ServerLifeCycleTest extends AbstractRealTest
             assertThat(rsp1).isEqualTo(
                 "HTTP/1.1 100 Continue" + CRLF + CRLF);
             
-            fut = server().stop().toCompletableFuture();
-            assertThat(fut).isNotCompleted();
+            var toContinue = new Semaphore(1);
+            server().events().on(HttpServerStopped.class, x -> {
+                toContinue.release();
+            });
+            fut = exec.submit(() -> {
+                server().stop();
+                return null;
+            });
+            toContinue.acquire();
+            assertThat(fut.isDone()).isFalse();
             assertThat(server().isRunning()).isFalse();
             assertNewConnectionIsRejected();
             
@@ -69,7 +79,7 @@ class ServerLifeCycleTest extends AbstractRealTest
             logRecorder().assertAwaitChildClose();
         }
         
-        assertThat(fut).succeedsWithin(1, SECONDS).isNull();
+        assertThat(fut.get(1, SECONDS)).isNull();
         assertThat(server().isRunning()).isFalse();
         assertNewConnectionIsRejected();
     }
