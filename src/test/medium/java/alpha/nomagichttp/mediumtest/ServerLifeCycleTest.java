@@ -1,5 +1,6 @@
 package alpha.nomagichttp.mediumtest;
 
+import alpha.nomagichttp.HttpServer;
 import alpha.nomagichttp.event.HttpServerStopped;
 import alpha.nomagichttp.message.RequestLineParseException;
 import alpha.nomagichttp.testutil.AbstractRealTest;
@@ -9,13 +10,14 @@ import org.junit.jupiter.api.Test;
 import java.io.IOException;
 import java.net.ConnectException;
 import java.nio.channels.Channel;
-import java.util.concurrent.Executors;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Future;
 import java.util.concurrent.Semaphore;
 
 import static alpha.nomagichttp.handler.RequestHandler.POST;
 import static alpha.nomagichttp.message.Responses.text;
 import static alpha.nomagichttp.testutil.TestClient.CRLF;
+import static java.util.concurrent.Executors.newVirtualThreadPerTaskExecutor;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
 import static org.assertj.core.api.AssertionsForClassTypes.assertThatThrownBy;
@@ -31,13 +33,14 @@ import static org.assertj.core.api.AssertionsForClassTypes.assertThatThrownBy;
 class ServerLifeCycleTest extends AbstractRealTest
 {
     @Test
-    void simpleServerStartStop() throws IOException, InterruptedException {
+    void simpleStartStop_async() throws IOException, InterruptedException {
         // Implicit startAsync() + getPort()
         server();
         // Can open connection
         client().openConnection().close();
         // We MAY instead throw an ignored ClientAbortedException
-        // (is what the asynchronous legacy code used to do lol)
+        // (conditionally if no bytes were received; is what the asynchronous
+        //  legacy code used to do lol)
         assertThat(pollServerError())
             .isExactlyInstanceOf(RequestLineParseException.class)
             .hasNoCause()
@@ -54,6 +57,25 @@ class ServerLifeCycleTest extends AbstractRealTest
         assertNewConnectionIsRejected();
     }
     
+    // Without the superclass support; this test is much more simple
+    @Test
+    void simpleStartStop_block() throws InterruptedException, IOException {
+        var server = HttpServer.create();
+        var latch = new CountDownLatch(1);
+        Future<Void> fut;
+        // ForkJoinPool wraps the AsyncCloseExc in two layers of RuntimeException lol
+        try (var exec = newVirtualThreadPerTaskExecutor()) {
+            fut = exec.submit(() ->
+                    server.start(port -> latch.countDown()));
+            latch.await();
+            assertThat(fut.isDone()).isFalse();
+            server.stop();
+            assertThat(server.isRunning()).isFalse();
+        }
+        assertThatServerStoppedNormally(fut);
+    }
+    
+    // Rename? start_writeHalfRequest_stop_writeTheRest
     @Test
     void serverStop_serverCompletesActiveExchange() throws Exception {
         // Client send request head, not body
@@ -69,7 +91,7 @@ class ServerLifeCycleTest extends AbstractRealTest
         
         Future<Void> fut;
         Channel ch = client().openConnection();
-        try (ch; var exec = Executors.newVirtualThreadPerTaskExecutor()) {
+        try (ch; var exec = newVirtualThreadPerTaskExecutor()) {
             String rsp1 = client().writeReadTextUntilNewlines(
                 "POST / HTTP/1.1"                        + CRLF +
                 "Content-Length: 3"                      + CRLF +

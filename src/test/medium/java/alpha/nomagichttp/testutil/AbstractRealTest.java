@@ -397,6 +397,7 @@ public abstract class AbstractRealTest
                     new ErrorHandler[]{executeActions, custom, collectErrors};
             var s = HttpServer.create(arg1, arg2);
             var fut = s.startAsync();
+            assertThat(s.isRunning()).isTrue();
             // May wish to save this future and perform other assertions on it
             assertThat(fut).isNotDone();
             port = s.getPort();
@@ -508,16 +509,9 @@ public abstract class AbstractRealTest
         }
         try {
             server.stop(Duration.ofSeconds(1));
+            assertThat(server.isRunning()).isFalse();
             assertThat(errors).isEmpty();
-            assertThatThrownBy(() -> start.get())
-                .isExactlyInstanceOf(ExecutionException.class)
-                .hasNoSuppressedExceptions()
-                .hasMessage("java.nio.channels.AsynchronousCloseException")
-                .cause()
-                  .isExactlyInstanceOf(AsynchronousCloseException.class)
-                  .hasNoSuppressedExceptions()
-                  .hasNoCause()
-                  .hasMessage(null);
+            assertThatServerStoppedNormally(start);
         } finally {
             server = null;
             start = null;
@@ -577,6 +571,28 @@ public abstract class AbstractRealTest
                 .filter(r -> !match.test(r.getSourceClassName()))
                 .mapToInt(r -> r.getLevel().intValue()))
                 .noneMatch(v -> v > java.util.logging.Level.INFO.intValue());
+    }
+    
+    /**
+     * Asserts that the given future completed with an
+     * {@code AsynchronousCloseException}.<p>
+     * 
+     * The {@code AsynchronousCloseException} is how a {@code HttpServer.start}
+     * method normally returns, if the server was normally stopped.
+     * 
+     * @param fut representing the {@code start} method call
+     */
+    protected static void assertThatServerStoppedNormally(Future<Void> fut) {
+        assertThat(fut.isDone()).isTrue();
+        assertThatThrownBy(fut::get)
+            .isExactlyInstanceOf(ExecutionException.class)
+            .hasNoSuppressedExceptions()
+            .hasMessage("java.nio.channels.AsynchronousCloseException")
+            .cause()
+              .isExactlyInstanceOf(AsynchronousCloseException.class)
+              .hasNoSuppressedExceptions()
+              .hasNoCause()
+              .hasMessage(null);
     }
     
     /**
