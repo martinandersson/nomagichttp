@@ -15,6 +15,7 @@ import java.io.IOException;
 import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Method;
 import java.lang.reflect.Proxy;
+import java.nio.channels.AsynchronousCloseException;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -22,6 +23,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.BlockingDeque;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Future;
 import java.util.concurrent.LinkedBlockingDeque;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
@@ -36,6 +39,7 @@ import static java.util.Objects.requireNonNull;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static java.util.stream.Collectors.toSet;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.junit.jupiter.api.Assertions.assertSame;
 
 /**
@@ -172,6 +176,7 @@ public abstract class AbstractRealTest
     
     private Logging.Recorder key;
     private HttpServer server;
+    private Future<Void> start;
     private Config config;
     private ErrorHandler custom;
     private BlockingDeque<Exception> errors;
@@ -394,9 +399,9 @@ public abstract class AbstractRealTest
             var fut = s.startAsync();
             // May wish to save this future and perform other assertions on it
             assertThat(fut).isNotDone();
-            var p = s.getPort();
+            port = s.getPort();
             server = s;
-            port = p;
+            start = fut;
         }
         return server;
     }
@@ -504,8 +509,18 @@ public abstract class AbstractRealTest
         try {
             server.stop(Duration.ofSeconds(1));
             assertThat(errors).isEmpty();
+            assertThatThrownBy(() -> start.get())
+                .isExactlyInstanceOf(ExecutionException.class)
+                .hasNoSuppressedExceptions()
+                .hasMessage("java.nio.channels.AsynchronousCloseException")
+                .cause()
+                  .isExactlyInstanceOf(AsynchronousCloseException.class)
+                  .hasNoSuppressedExceptions()
+                  .hasNoCause()
+                  .hasMessage(null);
         } finally {
             server = null;
+            start = null;
         }
     }
     
