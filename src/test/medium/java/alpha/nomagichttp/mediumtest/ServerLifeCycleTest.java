@@ -33,12 +33,9 @@ class ServerLifeCycleTest extends AbstractRealTest
     @Test
     void simpleServerStartStop() throws IOException, InterruptedException {
         // Implicit startAsync() + getPort()
-        var s = server();
+        server();
         // Can open connection
         client().openConnection().close();
-        s.stop();
-        // Can not open connection
-        assertNewConnectionIsRejected();
         // We MAY instead throw an ignored ClientAbortedException
         // (is what the asynchronous legacy code used to do lol)
         assertThat(pollServerError())
@@ -51,6 +48,10 @@ class ServerLifeCycleTest extends AbstractRealTest
                 curr=N/A, \
                 pos=0, \
                 msg=Upstream finished prematurely.}""");
+        // Implicit stop()
+        assertThatNoWarningOrErrorIsLogged();
+        // Can not open connection
+        assertNewConnectionIsRejected();
     }
     
     @Test
