@@ -271,9 +271,9 @@ public interface HttpServer extends RouteRegistry, ActionRegistry
      * accept-loop.<p>
      * 
      * All other start methods block indefinitely, because the thread executing
-     * one of these methods will bind the server's address and then run the
-     * accept-loop; aka. "listen" for client connections. This method, however,
-     * will bind the address, then start a virtual thread that runs the
+     * one of the other start methods will bind the server's address and then
+     * run the accept-loop; aka. "listen" for client connections. This method,
+     * however, will bind the address, then start a virtual thread that runs the
      * accept-loop, and then return out.<p>
      * 
      * <pre>{@code
