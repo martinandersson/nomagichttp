@@ -27,6 +27,6 @@ public class RequestLineParseException extends AbstractParseException
     public RequestLineParseException(
             String message, byte prev, byte curr, int pos) {
         super(message, prev, curr, pos);
-        assert pos > 0 : "We ought to know the position when parsing request-line.";
+        assert pos >= 0 : "We ought to know the position when parsing request-line.";
     }
 }
