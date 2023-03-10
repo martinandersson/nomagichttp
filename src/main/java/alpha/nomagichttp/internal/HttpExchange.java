@@ -116,10 +116,11 @@ final class HttpExchange
      * Begin the exchange.<p>
      * 
      * The exchange will attempt to deal with exceptions through the error
-     * handler(s), the default of which has a fallback response for all
+     * handler(s), and the base handler has a fallback response for all
      * exceptions. If an exception can not be processed into a response, it will
      * be logged and the channel will be set in a half-closed or fully closed
-     * state. The exception is considered handled and not re-thrown.<p>
+     * state. In either way, the exception is considered handled and not
+     * re-thrown.<p>
      * 
      * Only a Throwable (that is not an Exception) may come out of this
      * method.<p>
@@ -129,9 +130,9 @@ final class HttpExchange
      * expected end-of-stream, or the channel writer may terminate the HTTP
      * connection. This is expected and will not throw an exception.<p>
      * 
-     * All things considered, the server must only begin the next HTTP exchange
-     * if this method returns normally, and both the input- and output streams
-     * remain open.
+     * All things considered, the server must only begin a new next HTTP
+     * exchange over the same channel if this method returns normally, and both
+     * the input- and output streams remain open.
      */
     void begin() {
         try {
