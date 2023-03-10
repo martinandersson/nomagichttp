@@ -115,6 +115,8 @@ class ServerLifeCycleTest extends AbstractRealTest
         // On Windows 10, msg is "Connection refused: connect"
         // On Ubuntu 20.04, msg is "Connection refused"
         assertThatThrownBy(client::openConnection)
-                .isExactlyInstanceOf(ConnectException.class);
+            .isExactlyInstanceOf(ConnectException.class)
+            // And on MacOS? I guess we'll find out lol
+            .hasMessageStartingWith("Connection refused");
     }
 }
