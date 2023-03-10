@@ -377,7 +377,7 @@ public interface HttpServer extends RouteRegistry, ActionRegistry
      * thread is the one to bind the server's address and run an accept-loop;
      * aka. "listening" for client connections. The thread will only return once
      * the server's channel and all client connections have been closed. Then,
-     * the return will only happen exceptionally, likely with an {@link
+     * the return will only happen exceptionally, most likely with an {@link
      * AsynchronousCloseException}.<p>
      * 
      * Any other thread invoking this method whilst the server is running will
