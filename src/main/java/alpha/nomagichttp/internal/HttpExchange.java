@@ -400,12 +400,10 @@ final class HttpExchange
         try {
             // Throws Exception but our method signature does not
             return new ChainImpl().ignite();
+        } catch (ErrorHandlerException couldHappen) {
+            // Breach of developer contract, i.e. UnsupportedOperationException
+            throw (RuntimeException) couldHappen.getCause();
         } catch (Exception trouble) {
-            if (trouble instanceof ErrorHandlerException couldHappen) {
-                LOG.log(ERROR, "Breach of developer contract", couldHappen);
-                channel.close();
-                throw couldHappen;
-            }
             throw new AssertionError(trouble);
         }
     }
