@@ -98,8 +98,11 @@ tasks.withType(JavaCompile).configureEach {
         '--add-modules', 'jdk.incubator.concurrent')
 }
 tasks.withType(Test).configureEach {
-    // Fixes "java.lang.UnsupportedClassVersionError: Preview features are not enabled..."
-    jvmArgs('--enable-preview')
+    jvmArgs(
+        // Fixes "java.lang.UnsupportedClassVersionError: Preview features are not enabled..."
+        '--enable-preview',
+        // java.lang.ClassNotFoundException: jdk.incubator.concurrent.StructuredTaskScope
+        '--add-modules', 'jdk.incubator.concurrent')
 }
 // Preview features and incubator modules produce warnings, so suppress treating warning as errors:
 Werror = false;
