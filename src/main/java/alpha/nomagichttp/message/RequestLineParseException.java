@@ -25,8 +25,8 @@ public class RequestLineParseException extends AbstractParseException
      * @param pos     byte position when encountering the error
      */
     public RequestLineParseException(
-            String message, byte prev, byte curr, int pos) {
-        super(message, prev, curr, pos);
-        assert pos >= 0 : "We ought to know the position when parsing request-line.";
+            String message, byte prev, byte curr, int pos, int byteCount) {
+        super(message, prev, curr, pos, byteCount);
+        assert pos >= 0 : "We ought to know the position when parsing a request-line.";
     }
 }

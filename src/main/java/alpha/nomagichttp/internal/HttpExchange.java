@@ -12,6 +12,7 @@ import alpha.nomagichttp.message.HttpVersionTooNewException;
 import alpha.nomagichttp.message.HttpVersionTooOldException;
 import alpha.nomagichttp.message.IllegalRequestBodyException;
 import alpha.nomagichttp.message.RawRequest;
+import alpha.nomagichttp.message.RequestLineParseException;
 import alpha.nomagichttp.message.Response;
 import alpha.nomagichttp.util.DummyScopedValue;
 
@@ -32,12 +33,12 @@ import static alpha.nomagichttp.message.Responses.continue_;
 import static alpha.nomagichttp.util.DummyScopedValue.where;
 import static java.lang.Integer.parseInt;
 import static java.lang.Math.addExact;
+import static java.lang.System.Logger.Level;
 import static java.lang.System.Logger.Level.DEBUG;
 import static java.lang.System.Logger.Level.ERROR;
 import static java.lang.System.Logger.Level.WARNING;
 import static java.lang.System.nanoTime;
 import static java.util.Optional.of;
-import static java.lang.System.Logger.Level;
 
 /**
  * Orchestrator of an HTTP exchange from request to response.<p>
@@ -351,7 +352,10 @@ final class HttpExchange
         if (writer.byteCount() > 0) {
             closeChannel(ERROR,
                 "Response bytes already sent, can not handle this error", e);
-            channel.close();
+            throw e;
+        }
+        if (e instanceof RequestLineParseException pe && pe.byteCount() == 0) {
+            closeChannel(DEBUG, "Client aborted the exchange");
             throw e;
         }
         if (!channel.isOutputOpen()) {

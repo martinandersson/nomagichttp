@@ -20,13 +20,14 @@ public class HeaderParseException extends AbstractParseException
      * The previous character may not exist, and the position may not be known.
      * If so, pass in a negative value for each.
      * 
-     * @param message passed as-is to {@link Throwable#Throwable(String)}
-     * @param prev    previous character before encountering the error
-     * @param curr    current character when encountering the error
-     * @param pos     byte position when encountering the error
+     * @param message   passed as-is to {@link Throwable#Throwable(String)}
+     * @param prev      previous character before encountering the error
+     * @param curr      current character when encountering the error
+     * @param pos       byte position when encountering the error
+     * @param byteCount number of bytes read from upstream
      */
     public HeaderParseException(
-            String message, byte prev, byte curr, int pos) {
-        super(message, prev, curr, pos);
+            String message, byte prev, byte curr, int pos, int byteCount) {
+        super(message, prev, curr, pos, byteCount);
     }
 }

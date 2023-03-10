@@ -5,7 +5,7 @@ abstract class AbstractParseException extends RuntimeException
     private static final long serialVersionUID = 1L;
     
     private final byte prev, curr;
-    private final int pos;
+    private final int pos, byteCount;
     
     /**
      * Initializes this object.<p>
@@ -13,16 +13,28 @@ abstract class AbstractParseException extends RuntimeException
      * The previous and/or the current character may not exist, and the position
      * may not be known. If so, pass in a negative value for each.
      * 
-     * @param message passed as-is to {@link Throwable#Throwable(String)}
-     * @param prev    previous character before encountering the error
-     * @param curr    current character when encountering the error
-     * @param pos     byte position when encountering the error
+     * @param message   passed as-is to {@link Throwable#Throwable(String)}
+     * @param prev      previous character before encountering the error
+     * @param curr      current character when encountering the error
+     * @param pos       byte position when encountering the error
+     * @param byteCount number of bytes read from upstream
      */
-    AbstractParseException(String message, byte prev, byte curr, int pos) {
+    AbstractParseException(
+            String message, byte prev, byte curr, int pos, int byteCount) {
         super(message);
         this.prev = prev;
         this.curr = curr;
         this.pos  = pos;
+        this.byteCount = byteCount;
+    }
+    
+    /**
+     * Returns the number of bytes read from upstream.
+     * 
+     * @return see JavaDoc
+     */
+    public final int byteCount() {
+        return byteCount;
     }
     
     @Override

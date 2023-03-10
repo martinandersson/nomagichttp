@@ -2,7 +2,6 @@ package alpha.nomagichttp.mediumtest;
 
 import alpha.nomagichttp.HttpServer;
 import alpha.nomagichttp.event.HttpServerStopped;
-import alpha.nomagichttp.message.RequestLineParseException;
 import alpha.nomagichttp.testutil.AbstractRealTest;
 import alpha.nomagichttp.testutil.TestClient;
 import org.junit.jupiter.api.Test;
@@ -38,26 +37,13 @@ class ServerLifeCycleTest extends AbstractRealTest
         server();
         // Can open connection
         client().openConnection().close();
-        // We MAY instead throw an ignored ClientAbortedException
-        // (conditionally if no bytes were received; is what the asynchronous
-        //  legacy code used to do lol)
-        assertThat(pollServerError())
-            .isExactlyInstanceOf(RequestLineParseException.class)
-            .hasNoCause()
-            .hasNoSuppressedExceptions()
-            .hasToString("""
-                RequestLineParseException{\
-                prev=N/A, \
-                curr=N/A, \
-                pos=0, \
-                msg=Upstream finished prematurely.}""");
         // Implicit stop()
         assertThatNoWarningOrErrorIsLogged();
         // Can not open connection
         assertNewConnectionIsRejected();
     }
     
-    // Without the superclass support; this test is much more simple
+    // Without the superclass support; asserting less
     @Test
     void simpleStartStop_block() throws InterruptedException, IOException {
         var server = HttpServer.create();

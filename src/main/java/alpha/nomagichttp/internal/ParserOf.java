@@ -159,7 +159,7 @@ final class ParserOf<H extends BetterHeaders> extends AbstractResultParser<H>
     @Override
     protected RuntimeException parseException(String msg) {
         return new HeaderParseException(
-                msg, parser.previous(), parser.current(), position());
+                msg, parser.previous(), parser.current(), position(), byteCount());
     }
     
     private static final int
@@ -266,7 +266,7 @@ final class ParserOf<H extends BetterHeaders> extends AbstractResultParser<H>
             try {
                 h = Headers.of(values != null ? values : Map.of());
             } catch (IllegalArgumentException cause) {
-                var t = new HeaderParseException(null, (byte) -1, (byte) -1, -1);
+                var t = new HeaderParseException(null, (byte) -1, (byte) -1, -1, byteCount());
                 t.initCause(cause);
                 throw t;
             }
