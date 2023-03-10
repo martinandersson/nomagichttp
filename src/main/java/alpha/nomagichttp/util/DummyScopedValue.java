@@ -128,7 +128,7 @@ public final class DummyScopedValue<T>
      * @throws NoSuchElementException if the scoped value is not bound
      */
     public T get() {
-        T t = stack.get().peek();
+        T t = stack.get().peekLast();
         if (t == null) {
             throw new NoSuchElementException();
         }
@@ -136,17 +136,17 @@ public final class DummyScopedValue<T>
     }
     
     private void add(T value) {
-        this.stack.get().add(value);
+        this.stack.get().addLast(value);
     }
     
     private void remove() {
-        this.stack.get().remove();
+        this.stack.get().removeLast();
     }
     
     /**
      * {@return {@code true} if this scoped value is bound in the current thread}
      */
     public boolean isBound() {
-        return stack.get().peek() != null;
+        return stack.get().peekLast() != null;
     }
 }
