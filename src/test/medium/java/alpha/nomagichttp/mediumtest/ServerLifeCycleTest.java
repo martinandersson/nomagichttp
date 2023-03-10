@@ -1,10 +1,12 @@
 package alpha.nomagichttp.mediumtest;
 
 import alpha.nomagichttp.event.HttpServerStopped;
+import alpha.nomagichttp.message.RequestLineParseException;
 import alpha.nomagichttp.testutil.AbstractRealTest;
 import alpha.nomagichttp.testutil.TestClient;
 import org.junit.jupiter.api.Test;
 
+import java.io.IOException;
 import java.net.ConnectException;
 import java.nio.channels.Channel;
 import java.util.concurrent.Executors;
@@ -28,6 +30,29 @@ import static org.assertj.core.api.AssertionsForClassTypes.assertThatThrownBy;
  */
 class ServerLifeCycleTest extends AbstractRealTest
 {
+    @Test
+    void simpleServerStartStop() throws IOException, InterruptedException {
+        // Implicit startAsync() + getPort()
+        var s = server();
+        // Can open connection
+        client().openConnection().close();
+        s.stop();
+        // Can not open connection
+        assertNewConnectionIsRejected();
+        // We MAY instead throw an ignored ClientAbortedException
+        // (is what the asynchronous legacy code used to do lol)
+        assertThat(pollServerError())
+            .isExactlyInstanceOf(RequestLineParseException.class)
+            .hasNoCause()
+            .hasNoSuppressedExceptions()
+            .hasToString("""
+                RequestLineParseException{\
+                prev=N/A, \
+                curr=N/A, \
+                pos=0, \
+                msg=Upstream finished prematurely.}""");
+    }
+    
     @Test
     void serverStop_serverCompletesActiveExchange() throws Exception {
         // Client send request head, not body

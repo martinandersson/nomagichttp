@@ -28,12 +28,15 @@ import java.util.concurrent.Future;
 import java.util.concurrent.TimeoutException;
 import java.util.function.IntConsumer;
 
+import static alpha.nomagichttp.util.Blah.getOrCloseResource;
+import static alpha.nomagichttp.util.Blah.runOrCloseResource;
 import static alpha.nomagichttp.util.DummyScopedValue.where;
 import static alpha.nomagichttp.util.ScopedValues.__CHANNEL;
 import static alpha.nomagichttp.util.ScopedValues.__HTTP_SERVER;
 import static java.lang.System.Logger.Level.DEBUG;
 import static java.lang.System.Logger.Level.ERROR;
 import static java.lang.System.Logger.Level.INFO;
+import static java.lang.Thread.startVirtualThread;
 import static java.net.InetAddress.getLoopbackAddress;
 import static java.net.StandardProtocolFamily.UNIX;
 import static java.nio.channels.ServerSocketChannel.open;
@@ -87,78 +90,82 @@ public final class DefaultServer implements HttpServer
     @Override
     public Void start(IntConsumer ofPort)
             throws IOException, InterruptedException {
-        return start0(lookBackSystemPickedPort(), requireNonNull(ofPort), null);
-    }
-    
-    @Override
-    public Future<Void> startAsync() throws IOException {
-        // TODO: The fut-pill is a bit messy, we may need to rework this.
-        //       I'd just like to have solid life-cycle tests in place first.
-        var fut = new CompletableFuture<Void>();
-        try {
-            start0(lookBackSystemPickedPort(), null, fut);
-        } catch (InterruptedException e) {
-            throw new InternalError(e);
-        }
-        return fut;
-    }
-    
-    private static SocketAddress lookBackSystemPickedPort() {
-        return new InetSocketAddress(getLoopbackAddress(), 0);
+        start0(lookBackSystemPickedPort(), requireNonNull(ofPort));
+        // Because start0() returns exceptionally
+        throw new InternalError("Dead code");
     }
     
     @Override
     public Void start(SocketAddress address)
             throws IOException, InterruptedException {
-        return start0(requireNonNull(address), null, null);
+        start0(requireNonNull(address), null);
+        throw new InternalError("Dead code");
     }
     
-    private Void start0(
-            SocketAddress addr, IntConsumer ofPort, CompletableFuture fut)
+    private void start0(SocketAddress addr, IntConsumer ofPort)
             throws IOException, InterruptedException
     {
-        var parent = this.parent.initThrowsX(() -> {
-            var p = addr instanceof UnixDomainSocketAddress ?
-                        open(UNIX) : open();
-            assert p.isBlocking();
-            p.bind(addr);
-            return p;
-        });
-        if (parent == null) {
-            throw new IllegalStateException("Server has started once before");
-        }
-        try {
-            started = now();
-            LOG.log(INFO, () -> "Opened server channel: " + parent);
-            events().dispatch(HttpServerStarted.INSTANCE, started);
+        try (ServerSocketChannel ch = openOrFail(addr)) {
             if (ofPort != null) {
                 int port = getPort();
                 where(__HTTP_SERVER, this, () -> ofPort.accept(port));
             }
-            if (fut == null) {
-                runAcceptLoop(parent);
-                throw new InternalError("Returns exceptionally");
-            } else {
-                Thread.startVirtualThread(() -> {
-                    try {
-                        runAcceptLoop(parent);
-                    } catch (Throwable t) {
-                        fut.completeExceptionally(t);
-                    }
-                });
-                return null;
-            }
-        } finally {
-            // Can not stop() as this could override app's waitForChildren
-            close();
+            runAcceptLoop(ch);
         }
+        assert false;
     }
     
-    private void runAcceptLoop(ServerSocketChannel parent)
+    @Override
+    public Future<Void> startAsync() throws IOException {
+        final var fut = new CompletableFuture<Void>();
+        final ServerSocketChannel ch
+                = openOrFail(lookBackSystemPickedPort());
+        runOrCloseResource(() ->
+            startVirtualThread(() -> {
+                try {
+                    runAcceptLoop(ch);
+                } catch (Throwable t) {
+                    fut.completeExceptionally(t);
+                    return;
+                }
+                fut.completeExceptionally(
+                    new InternalError("Dead code"));
+        }), ch);
+        return getOrCloseResource(() ->
+            fut.whenComplete((isNull, thrFromLoop) -> {
+                try {
+                    ch.close();
+                } catch (Throwable fromClose) {
+                    thrFromLoop.addSuppressed(fromClose);
+                }
+            }), ch);
+    }
+    
+    private ServerSocketChannel openOrFail(SocketAddress addr)
+            throws IOException {
+        var ssc2 = this.parent.initThrowsX(() -> {
+            var ssc1 = addr instanceof UnixDomainSocketAddress ?
+                    open(UNIX) : open();
+            runOrCloseResource(() -> {
+                assert ssc1.isBlocking();
+                ssc1.bind(addr);
+                started = now();
+                LOG.log(INFO, () -> "Opened server channel: " + ssc1);
+                events().dispatch(HttpServerStarted.INSTANCE, started);
+            }, ssc1);
+            return ssc1;
+        });
+        if (ssc2 == null) {
+            throw new IllegalStateException("Server has started once before");
+        }
+        return ssc2;
+    }
+    
+    private void runAcceptLoop(ServerSocketChannel ch)
             throws IOException, InterruptedException
     {
         try {
-            where(__HTTP_SERVER, this, () -> runAcceptLoop0(parent));
+            where(__HTTP_SERVER, this, () -> runAcceptLoop0(ch));
         } catch (Exception e) {
             switch (e) {
                 // From accept() or close()
@@ -169,6 +176,7 @@ public final class DefaultServer implements HttpServer
                 default -> throw new AssertionError(e);
             }
         }
+        assert false;
     }
     
     private Void runAcceptLoop0(ServerSocketChannel parent)
@@ -182,6 +190,8 @@ public final class DefaultServer implements HttpServer
                     // Reader and writer depend on this for correct behavior
                     assert child.isBlocking();
                     LOG.log(DEBUG, () -> "Accepted child: " + child);
+                    // TODO: Deal with exception, like RejectedExecutionException
+                    //       Must close child
                     scope.fork(() -> {
                         try {
                             handleChild(child);
@@ -366,6 +376,10 @@ public final class DefaultServer implements HttpServer
         } catch (ClosedChannelException e) {
             throw notRunning();
         }
+    }
+    
+    private static SocketAddress lookBackSystemPickedPort() {
+        return new InetSocketAddress(getLoopbackAddress(), 0);
     }
     
     private static IllegalStateException notRunning() {
