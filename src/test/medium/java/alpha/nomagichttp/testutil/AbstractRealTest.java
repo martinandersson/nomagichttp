@@ -391,7 +391,9 @@ public abstract class AbstractRealTest
                     new ErrorHandler[]{executeActions, collectErrors} :
                     new ErrorHandler[]{executeActions, custom, collectErrors};
             var s = HttpServer.create(arg1, arg2);
-            s.startAsync();
+            var fut = s.startAsync();
+            // May wish to save this future and perform other assertions on it
+            assertThat(fut).isNotDone();
             var p = s.getPort();
             server = s;
             port = p;
