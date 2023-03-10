@@ -140,7 +140,13 @@ public final class DefaultChannelWriter implements ChannelWriter
         } finally {
             if (bag.closeChannel()) {
                 dismiss();
-                channel().close();
+                var ch = channel();
+                if (ch.isInputOpen() || ch.isOutputOpen()) {
+                    LOG.log(DEBUG, """
+                            Max number of unsuccessful responses reached, \
+                            closing channel.""");
+                    ch.close();
+                }
             } else if (bag.closeConnection() && channel().isOutputOpen()) {
                 LOG.log(DEBUG, "Saw \"Connection: close\", shutting down output.");
                 dismiss();
@@ -282,7 +288,11 @@ public final class DefaultChannelWriter implements ChannelWriter
         } catch (Throwable t) {
             dismiss();
             // Likely already shut down, this is more for updating our state
-            channel().shutdownOutput();
+            var ch = channel();
+            if (ch.isOutputOpen()) {
+                LOG.log(DEBUG, "Write operation failed, shutting down output stream.");
+                channel().shutdownOutput();
+            }
             throw t;
         }
         byteCount = addExactOrMaxValue(byteCount, n);
@@ -431,11 +441,7 @@ public final class DefaultChannelWriter implements ChannelWriter
             if (isClientError(r.statusCode()) || isServerError(r.statusCode())) {
                 // Bump error counter
                 int n = channel().attributes().<Integer>asMapAny().merge(key, 1, Integer::sum);
-                if (n >= httpServer().getConfig().maxUnsuccessfulResponses()) {
-                    LOG.log(DEBUG, "Max number of unsuccessful responses reached. " +
-                                   "Channel will close after this response-write attempt.");
-                    return true;
-                }
+                return n >= httpServer().getConfig().maxUnsuccessfulResponses();
             } else {
                 // Reset
                 channel().attributes().set(key, 0);

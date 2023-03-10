@@ -376,8 +376,8 @@ public interface ErrorHandler
             if (channel().isInputOpen()) {
                 logger().log(DEBUG,
                     "Service unavailable, shutting down channel's input stream.");
+                channel().shutdownInput();
             }
-            channel().shutdownInput();
             res = serviceUnavailable();
         } catch (Exception everythingElse) {
             // Expected

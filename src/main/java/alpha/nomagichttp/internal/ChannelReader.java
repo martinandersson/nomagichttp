@@ -14,6 +14,7 @@ import static alpha.nomagichttp.internal.Blah.CHANNEL_BLOCKING;
 import static alpha.nomagichttp.internal.Blah.requireVirtualThread;
 import static alpha.nomagichttp.util.Blah.addExactOrMaxValue;
 import static alpha.nomagichttp.util.ScopedValues.channel;
+import static java.lang.System.Logger.Level.DEBUG;
 import static java.nio.ByteBuffer.allocate;
 import static java.nio.ByteBuffer.allocateDirect;
 
@@ -44,6 +45,9 @@ import static java.nio.ByteBuffer.allocateDirect;
 //    2) Implement exception if buf is released back without new position 2x in a row
 public final class ChannelReader implements ByteBufferIterable
 {
+    private static final System.Logger
+            LOG = System.getLogger(ChannelReader.class.getPackageName());
+    
     private static final int
             /** Same as BufferedOutputStream/JEP-435 */
             BUFFER_SIZE = 512,
@@ -286,15 +290,14 @@ public final class ChannelReader implements ByteBufferIterable
                 }
             } catch (Throwable t) {
                 forceDismiss();
-                // Likely already shut down, this is more for updating our state
-                channel().shutdownInput();
+                shutdownInput("Read operation failed");
                 throw t;
             }
             return v;
         }
         
         private ByteBuffer handleEOS() {
-            channel().shutdownInput();
+            shutdownInput("EOS");
             view = EOS;
             if (isLimitSet()) {
                 forceDismiss();
@@ -352,6 +355,15 @@ public final class ChannelReader implements ByteBufferIterable
         if (view == EOS) {
             throw new UnsupportedOperationException(
                 "Channel reached end-of-stream");
+        }
+    }
+    
+    private static void shutdownInput(String why) {
+        // Likely already shut down, this is more for updating our state
+        var ch = channel();
+        if (ch.isInputOpen()) {
+            LOG.log(DEBUG, () -> why + ", shutting down input stream.");
+            channel().shutdownInput();
         }
     }
 }

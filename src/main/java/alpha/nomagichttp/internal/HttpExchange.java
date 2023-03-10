@@ -37,6 +37,7 @@ import static java.lang.System.Logger.Level.ERROR;
 import static java.lang.System.Logger.Level.WARNING;
 import static java.lang.System.nanoTime;
 import static java.util.Optional.of;
+import static java.lang.System.Logger.Level;
 
 /**
  * Orchestrator of an HTTP exchange from request to response.<p>
@@ -152,7 +153,7 @@ final class HttpExchange
             LOG.log(DEBUG, "Executing the request processing chain");
             rsp = processRequest(req);
         } catch (Exception exc) {
-            if (req == null) {
+            if (req == null && channel.isInputOpen()) {
                 LOG.log(DEBUG,
                     "Parsing request failed, shutting down the input stream");
                 channel.shutdownInput();
@@ -339,25 +340,22 @@ final class HttpExchange
     {
         if (e instanceof InterruptedException) {
             // There's no spurious interruption
-            LOG.log(WARNING, "Exchange is over; thread interrupted", e);
-            channel.close();
+            closeChannel(WARNING, "Exchange is over; thread interrupted", e);
             throw e;
         }
         if (e instanceof AfterActionException) {
-            // TODO: DRY
-            LOG.log(ERROR, "Breach of developer contract", e);
-            channel.close();
+            closeChannel(ERROR, "Breach of developer contract", e);
             throw e;
         }
         if (writer.byteCount() > 0) {
-            LOG.log(ERROR,
+            closeChannel(ERROR,
                 "Response bytes already sent, can not handle this error", e);
             channel.close();
             throw e;
         }
         if (!channel.isOutputOpen()) {
             LOG.log(ERROR,
-                "Output stream is not open, can not handle this error", e);
+                "Output stream is not open, can not handle this error.", e);
             throw e;
         }
         LOG.log(DEBUG, () -> "Attempting to resolve " + e);
@@ -369,12 +367,14 @@ final class HttpExchange
             if (handlers.isEmpty()) {
                 return BASE.apply(e, null, null);
             }
-            var rsp = where(REQUEST, of(req), () -> __usingHandlers(e));
+            var rsp = where(REQUEST,
+                    req == null ? null : of(req),
+                    () -> __usingHandlers(e));
             return __requireWriterConformance(rsp, "Error");
         } catch (Exception suppressed) {
-            channel.close();
             e.addSuppressed(suppressed);
             LOG.log(ERROR, "Error processing chain failed to handle this", e);
+            channel.close();
             throw e;
         }
     }
@@ -424,7 +424,8 @@ final class HttpExchange
         if (r.head().headers().contains(TRANSFER_ENCODING, "chunked")) {
             // Trailers may of course not even be there,
             // thank you, RFC, for telling clients they "should" add the Trailer header
-            __justClose("Successful discard of trailers is not guaranteed");
+            closeChannel(DEBUG,
+                "Successful discard of trailers is not guaranteed");
             return;
         }
         final long len = r.body().length();
@@ -432,24 +433,37 @@ final class HttpExchange
             return;
         }
         if (len == -1) {
-            __justClose("Unknown length of request data is remaining");
+            closeChannel(DEBUG,
+                "Unknown length of request data is remaining");
         } else if (len >= 666) {
-            __justClose("A satanic volume of request data is remaining");
+            closeChannel(DEBUG,
+                "A satanic volume of request data is remaining");
         } else {
             LOG.log(DEBUG, "Discarding remaining data before new exchange");
             try {
                 r.body().iterator().forEachRemaining(buf ->
                         buf.position(buf.limit()));
             } catch (IOException e) {
-                LOG.log(WARNING, "I/O error while discarding request body", e);
+                LOG.log(WARNING, "I/O error while discarding request body.", e);
                 throw e;
             }
             assert r.body().isEmpty();
         }
     }
     
-    private void __justClose(String whyIsThat) {
-        LOG.log(DEBUG, () -> whyIsThat + ", closing channel");
-        channel.close();
+    private void closeChannel(Level level, String why) {
+        if (channel.isInputOpen() || channel.isOutputOpen()) {
+            LOG.log(level, () -> why + "; closing the channel.");
+            channel.close();
+        }
+    }
+    
+    private void closeChannel(Level level, String why, Exception exc) {
+        if (channel.isInputOpen() || channel.isOutputOpen()) {
+            LOG.log(level, () -> why + "; closing channel.", exc);
+            channel.close();
+        } else {
+            LOG.log(level, () -> why + ".", exc);
+        }
     }
 }

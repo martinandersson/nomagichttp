@@ -696,7 +696,7 @@ public final class TestClient
     private void closeChannel() throws IOException {
         if (ch != null) {
             ch.close();
-            LOG.log(DEBUG, "Closed client channel.");
+            LOG.log(DEBUG, "Closed test-client channel.");
             ch = null;
         }
         if (unconsumed.flip().hasRemaining()) {
