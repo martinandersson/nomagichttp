@@ -511,7 +511,7 @@ public abstract class AbstractRealTest
             server.stop(Duration.ofSeconds(1));
             assertThat(server.isRunning()).isFalse();
             assertThat(errors).isEmpty();
-            assertThatServerStoppedNormally(start);
+            assertThatServerStopsNormally(start);
         } finally {
             server = null;
             start = null;
@@ -574,17 +574,22 @@ public abstract class AbstractRealTest
     }
     
     /**
-     * Asserts that the given future completed with an
+     * Asserts that the given future completes with an
      * {@code AsynchronousCloseException}.<p>
      * 
      * The {@code AsynchronousCloseException} is how a {@code HttpServer.start}
-     * method normally returns, if the server was normally stopped.
+     * method normally returns, if the server was normally stopped.<p>
+     * 
+     * There is no defined order which method returns first;
+     * {@code HttpServer.start()} or {@code stop()}. And so, this method awaits
+     * at most 1 second for the future to complete. In most cases though, the
+     * actual waiting time (if any) will probably be more like a millisecond or
+     * two.
      * 
      * @param fut representing the {@code start} method call
      */
-    protected static void assertThatServerStoppedNormally(Future<Void> fut) {
-        assertThat(fut.isDone()).isTrue();
-        assertThatThrownBy(fut::get)
+    protected static void assertThatServerStopsNormally(Future<Void> fut) {
+        assertThatThrownBy(() -> fut.get(1, SECONDS))
             .isExactlyInstanceOf(ExecutionException.class)
             .hasNoSuppressedExceptions()
             .hasMessage("java.nio.channels.AsynchronousCloseException")

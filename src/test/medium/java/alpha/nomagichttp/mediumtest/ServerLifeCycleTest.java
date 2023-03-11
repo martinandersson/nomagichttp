@@ -58,7 +58,7 @@ class ServerLifeCycleTest extends AbstractRealTest
             server.stop();
             assertThat(server.isRunning()).isFalse();
         }
-        assertThatServerStoppedNormally(fut);
+        assertThatServerStopsNormally(fut);
     }
     
     // Rename? start_writeHalfRequest_stop_writeTheRest

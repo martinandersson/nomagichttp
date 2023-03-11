@@ -410,7 +410,8 @@ public interface HttpServer extends RouteRegistry, ActionRegistry
      * as a graceful shutdown.<p>
      * 
      * The thread invoking this method and the thread blocked in {@code start()}
-     * will only return when the last client connection is closed.<p>
+     * will only return when the last client connection is closed. Which one
+     * returns first is not defined.<p>
      * 
      * Using this method can in theory result in both threads waiting forever
      * for the completion of HTTP exchanges (the server guards against stale
