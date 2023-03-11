@@ -164,8 +164,8 @@ In a new terminal, run:
 ```console
 foo@bar:~$ curl -i localhost:8080/hello/John
 HTTP/1.1 200 OK
-Content-Length: 11
 Content-Type: text/plain; charset=utf-8
+Content-Length: 11
 
 Hello John!
 ```
