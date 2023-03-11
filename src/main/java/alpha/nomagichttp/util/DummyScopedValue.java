@@ -114,10 +114,17 @@ public final class DummyScopedValue<T>
     private final InheritableThreadLocal<Deque<T>> stack;
     
     private DummyScopedValue() {
-        var tl = new InheritableThreadLocal<Deque<T>>();
-        // ArrayDeque does not permit null, LinkedList does
-        tl.set(new LinkedList<>());
-        stack = tl;
+        stack = new InheritableThreadLocal<>() {
+            @Override
+            protected Deque<T> initialValue() {
+                // ArrayDeque does not permit null, LinkedList does
+                return new LinkedList<>();
+            }
+            @Override
+            protected Deque<T> childValue(Deque<T> parentValue) {
+                return new LinkedList<>(parentValue);
+            }
+        };
     }
     
     /**
