@@ -11,7 +11,7 @@ import org.junit.jupiter.api.Test;
 import java.io.IOException;
 import java.util.List;
 
-import static alpha.nomagichttp.testutil.TestByteBufferIterables.just;
+import static alpha.nomagichttp.testutil.ByteBufferIterables.just;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**

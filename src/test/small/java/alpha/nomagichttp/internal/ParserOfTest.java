@@ -11,7 +11,7 @@ import java.io.IOException;
 import java.util.List;
 
 import static alpha.nomagichttp.internal.ParserOf.headers;
-import static alpha.nomagichttp.testutil.TestByteBufferIterables.just;
+import static alpha.nomagichttp.testutil.ByteBufferIterables.just;
 import static java.util.List.of;
 import static java.util.Map.entry;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;

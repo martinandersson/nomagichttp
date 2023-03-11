@@ -10,8 +10,8 @@ import java.util.function.Supplier;
 import java.util.stream.Stream;
 
 import static alpha.nomagichttp.testutil.Assertions.assertIterable;
-import static alpha.nomagichttp.testutil.TestByteBufferIterables.getString;
-import static alpha.nomagichttp.testutil.TestByteBufferIterables.just;
+import static alpha.nomagichttp.testutil.ByteBufferIterables.getString;
+import static alpha.nomagichttp.testutil.ByteBufferIterables.just;
 import static alpha.nomagichttp.util.ByteBuffers.asciiBytes;
 import static java.util.HexFormat.fromHexDigitsToLong;
 import static java.util.stream.Stream.concat;

@@ -6,7 +6,7 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeoutException;
 
 import static alpha.nomagichttp.testutil.ReadableByteChannels.ofString;
-import static alpha.nomagichttp.testutil.TestByteBufferIterables.getStringVThread;
+import static alpha.nomagichttp.testutil.ByteBufferIterables.getStringVThread;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**

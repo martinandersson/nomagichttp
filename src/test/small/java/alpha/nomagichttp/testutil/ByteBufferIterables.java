@@ -1,7 +1,6 @@
 package alpha.nomagichttp.testutil;
 
 import alpha.nomagichttp.message.ByteBufferIterable;
-import alpha.nomagichttp.util.ByteBufferIterables;
 import alpha.nomagichttp.util.ByteBuffers;
 
 import java.io.IOException;
@@ -19,8 +18,8 @@ import static java.util.concurrent.TimeUnit.SECONDS;
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  */
-public final class TestByteBufferIterables {
-    private TestByteBufferIterables() {
+public final class ByteBufferIterables {
+    private ByteBufferIterables() {
         // Empty
     }
     
@@ -31,7 +30,7 @@ public final class TestByteBufferIterables {
      * @return see JavaDoc
      */
     public static ByteBufferIterable just(String... items) {
-        return ByteBufferIterables.just(
+        return alpha.nomagichttp.util.ByteBufferIterables.just(
                 stream(items).map(ByteBuffers::asciiBytes).toList());
     }
     
