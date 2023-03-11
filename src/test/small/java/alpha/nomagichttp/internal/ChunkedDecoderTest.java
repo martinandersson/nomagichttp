@@ -1,20 +1,18 @@
 package alpha.nomagichttp.internal;
 
-import alpha.nomagichttp.message.ByteBufferIterable;
 import alpha.nomagichttp.message.DecoderException;
 import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
 import java.nio.BufferOverflowException;
-import java.nio.ByteBuffer;
 import java.util.NoSuchElementException;
 import java.util.function.Supplier;
 import java.util.stream.Stream;
 
 import static alpha.nomagichttp.testutil.Assertions.assertIterable;
+import static alpha.nomagichttp.testutil.TestByteBufferIterables.getString;
 import static alpha.nomagichttp.testutil.TestByteBufferIterables.just;
 import static alpha.nomagichttp.util.ByteBuffers.asciiBytes;
-import static java.nio.charset.StandardCharsets.US_ASCII;
 import static java.util.HexFormat.fromHexDigitsToLong;
 import static java.util.stream.Stream.concat;
 import static java.util.stream.Stream.of;
@@ -59,13 +57,13 @@ final class ChunkedDecoderTest
         var testee = decode("0\r\n\r\n ...trailing data in stream...");
         assertIterable(testee, asciiBytes(""));
         // Or, alternatively:
-        assertThat(toString(testee)).isEmpty();
+        assertThat(getString(testee)).isEmpty();
     }
     
     @Test
     void empty_2() {
         var testee = decode();
-        assertThatThrownBy(() -> toString(testee))
+        assertThatThrownBy(() -> getString(testee))
             .isExactlyInstanceOf(DecoderException.class)
             .hasMessage("Upstream is empty but decoding is not done.")
             .hasNoSuppressedExceptions()
@@ -80,7 +78,7 @@ final class ChunkedDecoderTest
     @Test
     void parseSize_noLastChunk() {
         var testee = decode("1\r\nX\r\n\r\n");
-        assertThatThrownBy(() -> toString(testee))
+        assertThatThrownBy(() -> getString(testee))
             .isExactlyInstanceOf(DecoderException.class)
             .hasMessage("No chunk-size specified.")
             .hasNoSuppressedExceptions()
@@ -91,7 +89,7 @@ final class ChunkedDecoderTest
     void parseSize_notHex() {
         // ';' triggers the size parsing
         var testee = decode("BOOM!;");
-        assertThatThrownBy(() -> toString(testee))
+        assertThatThrownBy(() -> getString(testee))
             .isExactlyInstanceOf(DecoderException.class)
             .hasMessage("""
                  java.lang.NumberFormatException: \
@@ -146,7 +144,7 @@ final class ChunkedDecoderTest
     @Test
     void parseSize_overflow_moreThan16HexChars() {
         var testee = decode("17" + FIFTEEN_F + ";");
-        assertThatThrownBy(() -> toString(testee))
+        assertThatThrownBy(() -> getString(testee))
             // It's not really a DECODER issue lol
             .isExactlyInstanceOf(UnsupportedOperationException.class)
             .hasMessage("Long overflow.")
@@ -159,7 +157,7 @@ final class ChunkedDecoderTest
     @Test
     void parseSize_overflow_negativeResult() {
         var testee = decode(FIFTEEN_F + "1;");
-        assertThatThrownBy(() -> toString(testee))
+        assertThatThrownBy(() -> getString(testee))
             .isExactlyInstanceOf(UnsupportedOperationException.class)
             .hasMessage("Long overflow for hex-value \"FFFFFFFFFFFFFFF1\".")
             .hasNoSuppressedExceptions()
@@ -169,13 +167,13 @@ final class ChunkedDecoderTest
     @Test
     void chunkExtensions_discarded() {
         var testee = decode("1;bla=bla\r\nX\r\n0\r\n\r\n");
-        assertThat(toString(testee)).isEqualTo("X");
+        assertThat(getString(testee)).isEqualTo("X");
     }
     
     @Test
     void chunkExtensions_quoted() {
         var testee = decode("1;bla=\"bla\".......");
-        assertThatThrownBy(() -> toString(testee))
+        assertThatThrownBy(() -> getString(testee))
             .isExactlyInstanceOf(UnsupportedOperationException.class)
             .hasMessage("Quoted chunk-extension value.")
             .hasNoSuppressedExceptions()
@@ -186,13 +184,13 @@ final class ChunkedDecoderTest
     void chunkData_withCRLF() {
         var data = "\r\nX\r\n";
         var testee = decode(data.length() + "\r\n" + data + "\r\n0\r\n\r\n");
-        assertThat(toString(testee)).isEqualTo(data);
+        assertThat(getString(testee)).isEqualTo(data);
     }
     
     @Test
     void chunkData_notEndingWithCRLF() {
         var testee = decode("1\r\nX0\r\n\r\n");
-        assertThatThrownBy(() -> toString(testee))
+        assertThatThrownBy(() -> getString(testee))
                 .isExactlyInstanceOf(DecoderException.class)
                 .hasMessage("Expected CR and/or LF after chunk. " +
                             "Received (hex:0x30, decimal:48, char:\"0\").")
@@ -202,23 +200,5 @@ final class ChunkedDecoderTest
     
     private ChunkedDecoder decode(String... items) {
         return new ChunkedDecoder(just(items));
-    }
-    
-    private static String toString(ByteBufferIterable bytes) {
-        var b = new StringBuilder();
-        var it = bytes.iterator();
-        while (it.hasNext()) {
-            final ByteBuffer buf;
-            try {
-                buf = it.next();
-            } catch (IOException e) {
-                throw new AssertionError(e);
-            }
-            // buf is read-only, can't do buf.array()
-            var arr = new byte[buf.remaining()];
-            buf.get(arr);
-            b.append(new String(arr, US_ASCII));
-        }
-        return b.toString();
     }
 }

@@ -4,10 +4,18 @@ import alpha.nomagichttp.message.ByteBufferIterable;
 import alpha.nomagichttp.util.ByteBufferIterables;
 import alpha.nomagichttp.util.ByteBuffers;
 
+import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeoutException;
+
+import static java.nio.charset.StandardCharsets.US_ASCII;
 import static java.util.Arrays.stream;
+import static java.util.concurrent.Executors.newVirtualThreadPerTaskExecutor;
+import static java.util.concurrent.TimeUnit.SECONDS;
 
 /**
- * Special bytebuffer iterables for testing.
+ * Utils for {@code ByteBufferIterable}s.
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  */
@@ -25,5 +33,44 @@ public final class TestByteBufferIterables {
     public static ByteBufferIterable just(String... items) {
         return ByteBufferIterables.just(
                 stream(items).map(ByteBuffers::asciiBytes).toList());
+    }
+    
+    /**
+     * Decodes all remaining bytes as a US-ASCII string.
+     * 
+     * @param bytes to decode
+     * 
+     * @return the decoded content
+     */
+    public static String getString(ByteBufferIterable bytes) {
+        var b = new StringBuilder();
+        var it = bytes.iterator();
+        while (it.hasNext()) {
+            final ByteBuffer buf;
+            try {
+                buf = it.next();
+            } catch (IOException e) {
+                throw new AssertionError(e);
+            }
+            // buf is read-only, can't do buf.array()
+            var arr = new byte[buf.remaining()];
+            buf.get(arr);
+            b.append(new String(arr, US_ASCII));
+        }
+        return b.toString();
+    }
+    
+    /**
+     * Decodes all remaining bytes as a US-ASCII string, using a virtual thread.
+     * 
+     * @param bytes to decode
+     * 
+     * @return the decoded content
+     */
+    public static String getStringVThread(ByteBufferIterable bytes)
+            throws ExecutionException, InterruptedException, TimeoutException {
+        try (var exec = newVirtualThreadPerTaskExecutor()) {
+            return exec.submit(() -> getString(bytes)).get(1, SECONDS);
+        }
     }
 }

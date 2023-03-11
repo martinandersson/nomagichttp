@@ -7,8 +7,6 @@ import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
 import java.net.http.HttpHeaders;
-import java.nio.ByteBuffer;
-import java.nio.channels.ReadableByteChannel;
 import java.nio.charset.IllegalCharsetNameException;
 import java.nio.charset.UnsupportedCharsetException;
 import java.nio.file.Paths;
@@ -17,7 +15,7 @@ import java.util.concurrent.ExecutionException;
 import static alpha.nomagichttp.HttpConstants.Version.HTTP_1_1;
 import static alpha.nomagichttp.internal.DefaultRequest.requestWithoutParams;
 import static alpha.nomagichttp.internal.SkeletonRequestTarget.parse;
-import static alpha.nomagichttp.util.ByteBuffers.asciiBytes;
+import static alpha.nomagichttp.testutil.ReadableByteChannels.ofString;
 import static alpha.nomagichttp.util.Headers.of;
 import static java.nio.file.Files.notExists;
 import static java.util.concurrent.Executors.newVirtualThreadPerTaskExecutor;
@@ -105,7 +103,7 @@ final class DefaultRequestTest
                        new RequestHeaders(headers));
         var body = RequestBody.of(
                        head.headers(),
-                       readerOf(reqBody));
+                       new ChannelReader(ofString(reqBody)));
         var skel = new SkeletonRequest(
                        head,
                        HTTP_1_1,
@@ -117,33 +115,5 @@ final class DefaultRequestTest
     
     private static Request createEmptyRequest() {
         return createRequest(of(), "");
-    }
-    
-    private static ChannelReader readerOf(String data) {
-        var src = asciiBytes(data);
-        var upstream = new ReadableByteChannel() {
-            public int read(ByteBuffer dst) {
-                if (!src.hasRemaining()) {
-                    return -1;
-                }
-                if (!dst.hasRemaining()) {
-                    return 0;
-                }
-                int n = 0;
-                while (src.hasRemaining() && dst.hasRemaining()) {
-                    dst.put(src.get());
-                    ++n;
-                }
-                assert n > 0;
-                return n;
-            }
-            public boolean isOpen() {
-                return true;
-            }
-            public void close() {
-                // Empty
-            }
-        };
-        return new ChannelReader(upstream);
     }
 }
