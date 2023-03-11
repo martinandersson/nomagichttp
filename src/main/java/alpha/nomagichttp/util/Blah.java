@@ -2,7 +2,6 @@ package alpha.nomagichttp.util;
 
 import java.io.Closeable;
 
-import static java.lang.Long.MAX_VALUE;
 import static java.lang.Math.addExact;
 
 /**
@@ -22,6 +21,22 @@ public final class Blah
     public static final byte[] EMPTY_BYTEARRAY = new byte[0];
     
     /**
+     * Adds two numbers; fitting the result at {@code Integer.MAX_VALUE}.
+     * 
+     * @param a first
+     * @param b second
+     * 
+     * @return the result
+     */
+    public static int addExactOrMaxValue(int a, int b) {
+        try {
+            return addExact(a, b);
+        } catch (ArithmeticException e) {
+            return Integer.MAX_VALUE;
+        }
+    }
+    
+    /**
      * Adds two numbers; capping the result at {@code Long.MAX_VALUE}.
      * 
      * @param a first
@@ -33,7 +48,7 @@ public final class Blah
         try {
             return addExact(a, b);
         } catch (ArithmeticException e) {
-            return MAX_VALUE;
+            return Long.MAX_VALUE;
         }
     }
     
@@ -112,6 +127,22 @@ public final class Blah
                 fromMethod.addSuppressed(fromClose);
             }
             throw fromMethod;
+        }
+    }
+    
+    /**
+     * Returns {@code v} as an integer; capping the result at
+     * {@code Integer.MAX_VALUE}
+     * 
+     * @param v to cast to an integer
+     * 
+     * @return the result
+     */
+    public static int toIntOrMaxValue(long v) {
+        try {
+            return Math.toIntExact(v);
+        } catch (ArithmeticException e) {
+            return Integer.MAX_VALUE;
         }
     }
 }

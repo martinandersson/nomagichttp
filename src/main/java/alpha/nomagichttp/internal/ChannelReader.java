@@ -13,6 +13,7 @@ import java.util.NoSuchElementException;
 import static alpha.nomagichttp.internal.Blah.CHANNEL_BLOCKING;
 import static alpha.nomagichttp.internal.Blah.requireVirtualThread;
 import static alpha.nomagichttp.util.Blah.addExactOrMaxValue;
+import static alpha.nomagichttp.util.Blah.toIntOrMaxValue;
 import static alpha.nomagichttp.util.ScopedValues.channel;
 import static java.lang.System.Logger.Level.DEBUG;
 import static java.nio.ByteBuffer.allocate;
@@ -60,7 +61,7 @@ public final class ChannelReader implements ByteBufferIterable
     private final ByteBuffer buf;
     private       ByteBuffer view;
     private final ByteBufferIterator it;
-    private long count;
+    // Is counted down by number of bytes read
     private long limit;
     
     /**
@@ -94,7 +95,6 @@ public final class ChannelReader implements ByteBufferIterable
         this.buf   = buf;
         this.view  = view != null ? view : buf.asReadOnlyBuffer();
         this.it    = new IteratorImpl();
-        this.count = 0;
         this.limit = UNLIMITED;
     }
     
@@ -134,8 +134,10 @@ public final class ChannelReader implements ByteBufferIterable
             throw new IllegalArgumentException("Negative limit: " + limit);
         }
         requireLimitNotSet();
-        this.limit = limit;
-        this.count = 0;
+        if (limit < view.remaining()) {
+            throw new AbstractMethodError("Implement me, with a mark?");
+        }
+        this.limit = limit - view.remaining();
         return this;
     }
     
@@ -210,28 +212,19 @@ public final class ChannelReader implements ByteBufferIterable
         if (view == EOS || isDismissed()) {
             return 0;
         }
+        // May be UNLIMITED (-1)
         if (limit == UNLIMITED) {
-            return -1; // Same
+            return UNLIMITED;
         }
-        return addExactOrMaxValue(view.remaining(), desireLong());
+        return addExactOrMaxValue(view.remaining(), desire());
     }
     
-    private long desireLong() {
-        assert limit >= UNLIMITED : "Unreachable if DISMISSED";
+    private int desire() {
         if (limit == UNLIMITED) {
-            return Long.MAX_VALUE;
-        }
-        final long d = limit - count;
-        assert d >= 0L : "Weird to have negative cravings";
-        return d;
-    }
-    
-    private int desireInt() {
-        try {
-            return Math.toIntExact(desireLong());
-        } catch (ArithmeticException e) {
             return Integer.MAX_VALUE;
         }
+        assert limit >= 0;
+        return toIntOrMaxValue(limit);
     }
     
     @Override
@@ -249,13 +242,13 @@ public final class ChannelReader implements ByteBufferIterable
         @Override
         public ByteBuffer next() throws IOException {
             requireNotDismissed();
+            if (view == EOS || !hasNext()) {
+                throw new NoSuchElementException();
+            }
             if (view.hasRemaining()) {
                 return view;
             }
-            if (view == EOS) {
-                throw new NoSuchElementException();
-            }
-            final int d = desireInt();
+            final int d = desire();
             if (d == 0) {
                 throw new NoSuchElementException();
             }
@@ -266,17 +259,19 @@ public final class ChannelReader implements ByteBufferIterable
             if (r == -1) {
                 return handleEOS();
             }
-            count = addExactOrMaxValue(count, r);
+            if (limit != UNLIMITED) {
+                limit -= r;
+            }
             assert view.hasRemaining();
             return view;
         }
         
-        private void clearAndLimitBuffers(int desire) {
+        private void clearAndLimitBuffers(int limit) {
             buf.clear();
             view.clear();
-            if (desire < buf.capacity()) {
-                buf.limit(desire);
-                view.limit(desire);
+            if (limit < buf.capacity()) {
+                buf.limit(limit);
+                view.limit(limit);
             }
         }
         

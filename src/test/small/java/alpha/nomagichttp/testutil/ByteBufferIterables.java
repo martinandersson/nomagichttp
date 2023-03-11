@@ -72,4 +72,19 @@ public final class ByteBufferIterables {
             return exec.submit(() -> getString(bytes)).get(1, SECONDS);
         }
     }
+    
+    /**
+     * Reads one byte, using a virtual thread.
+     * 
+     * @param source to read from
+     * 
+     * @return the byte
+     */
+    public static byte getNextByteVThread(ByteBufferIterable source)
+            throws ExecutionException, InterruptedException, TimeoutException {
+        try (var exec = newVirtualThreadPerTaskExecutor()) {
+            return exec.submit(() -> source.iterator().next().get())
+                    .get(1, SECONDS);
+        }
+    }
 }

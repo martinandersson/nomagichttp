@@ -5,8 +5,9 @@ import org.junit.jupiter.api.Test;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeoutException;
 
-import static alpha.nomagichttp.testutil.ReadableByteChannels.ofString;
+import static alpha.nomagichttp.testutil.ByteBufferIterables.getNextByteVThread;
 import static alpha.nomagichttp.testutil.ByteBufferIterables.getStringVThread;
+import static alpha.nomagichttp.testutil.ReadableByteChannels.ofString;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
@@ -17,7 +18,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 final class ChannelReaderTest
 {
     @Test
-    void twoIterations()
+    void twoIterations_limited()
             throws ExecutionException, InterruptedException, TimeoutException
     {
         // Setup
@@ -46,4 +47,19 @@ final class ChannelReaderTest
         assertThat(testee.isEmpty()).isTrue();
         assertThat(testee.length()).isEqualTo(0);
     }
+    
+    @Test
+    void twoIterations_unlimitedThenLimited()
+            throws ExecutionException, InterruptedException, TimeoutException
+    {
+        var testee = new ChannelReader(ofString("abc"));
+        var b = (int) getNextByteVThread(testee);
+        assertThat(b).isEqualTo('a');
+        testee.limit(2);
+        assertThat(testee.length()).isEqualTo(2);
+        assertThat(getStringVThread(testee)).isEqualTo("bc");
+        assertThat(testee.isEmpty()).isTrue();
+        assertThat(testee.length()).isEqualTo(0);
+    }
+    
 }
