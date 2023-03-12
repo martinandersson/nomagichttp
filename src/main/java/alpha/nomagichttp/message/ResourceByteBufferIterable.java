@@ -11,7 +11,8 @@ import java.io.IOException;
  * be a file, a socket, or a pizza oven. Notably, the iterable may not
  * even be finite; the iteration could go on forever.<p>
  * 
- * Iterables come in two major forms; regenerative and non-regenerative.<p>
+ * The behavior of implementations can generally be grouped into two categories;
+ * <i>regenerative</i> and <i>non-regenerative</i>.<p>
  * 
  * Being regenerative means that new iterators are forever supported. They are
  * mostly derived from finite and repeatable sources. For example, each new

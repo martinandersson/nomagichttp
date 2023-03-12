@@ -20,12 +20,12 @@ import static java.nio.ByteBuffer.allocate;
 import static java.nio.ByteBuffer.allocateDirect;
 
 /**
- * Is a reader of bytes from a channel.<p>
+ * Is an iterable reader of bytes from a channel.<p>
  * 
  * The characteristics of this class is covered well by the JavaDoc of
  * {@link Request.Body}, who is just one of many that will over time iterate
  * bytes from this reader (i.e., the underlying child channel). Prior to the
- * request body there will be two parsers respectively for the request line and
+ * request body, there will be two parsers respectively for the request line and
  * headers. Following the body there may be a parser of request trailers.<p>
  * 
  * Parsers and body decoders ought to know when they have reached their
@@ -104,7 +104,7 @@ public final class ChannelReader implements ByteBufferIterable
      * How many bytes that may have been consumed in the past is irrelevant.<p>
      * 
      * Setting a limit will set the total number of bytes that all future
-     * iterators can consume in the aggregate. If the next iterator consumes 3
+     * iterations can consume in the aggregate. If the next iterator consumes 3
      * bytes, then that will be 3 fewer bytes available for the subsequent
      * iterator.<p>
      * 
@@ -161,13 +161,15 @@ public final class ChannelReader implements ByteBufferIterable
     /**
      * Marks this reader as not usable anymore.<p>
      * 
-     * Future calls to {@code iterator} will throw an {@link
+     * Meaning that future calls to {@code iterator} will throw an {@link
      * IllegalStateException}, and that is why this method must be called at the
      * end of the HTTP exchange.<p>
      * 
      * Assuming the reader is empty; consecutive calls to this method are NOP.
      * 
      * @throws IllegalStateException if not empty
+     * 
+     * @see Request
      */
     void dismiss() {
         requireEmpty();

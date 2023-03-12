@@ -601,19 +601,22 @@ public interface Request extends HeaderHolder, AttributeHolder
     /**
      * Is an API for reading the request body in various forms.
      * 
-     * <h2>Reading bytes</h2>
-     * 
      * <pre>{@code
-     *   // Classic
+     *   // High-level conversion
+     *   var string = request.body().toText();
+     *   
+     *   // Low-level read of all bytes
+     *   byte[] onHeap = request.body().bytes();
+     *   
+     *   // Low-level byte iteration (classic)
      *   var it = request.body().iterator();
      *   while (it.hasNext()) {
      *       var byteBuffer = it.next();
      *       ...
      *   }
-     *   // Functional
+     *   
+     *   // Low-level byte iteration (functional)
      *   request.body().iterator().forEachRemaining(buf -> ...);
-     *   // Even more classic
-     *   byte[] onHeap = request.body().bytes();
      * }</pre>
      * 
      * The request processing chain will be invoked immediately after the
@@ -626,20 +629,20 @@ public interface Request extends HeaderHolder, AttributeHolder
      * The buffer should be either partially or fully consumed at once. If the
      * buffer is not fully consumed (it has bytes {@link Buffer#remaining()
      * remaining}), then the next call to {@code next} (no pun intended) will
-     * shortcut the channel read operation and simply return the buffer
+     * shortcut the channel read operation and simply return the same buffer
      * immediately.<p>
      * 
      * To ensure progress, the iteration <strong>must use relative get or
      * relative bulk get methods</strong> on the bytebuffer. Absolut methods can
-     * be used to intentionally peek but not consume data.<p>
+     * be used to intentionally <i>peek</i> but not consume data.<p>
      * 
      * If the iteration uses {@link ByteBuffer#array()} to read bytes directly
      * (assuming the bytebuffer is backed by an array), one must also set the
      * new {@link ByteBuffer#position(int)}.<p>
      * 
      * The implementation does not cache bytes, and eventually, there will be no
-     * more bytes remaining and subsequent calls to {@code iterator} will return
-     * an empty iterator.<p>
+     * more bytes remaining, and subsequent calls to {@code iterator} will
+     * return an empty iterator.<p>
      * 
      * A non-finite streaming body will keep reading from the channel until
      * end-of-stream, at which point {@code next} returns an empty buffer.
