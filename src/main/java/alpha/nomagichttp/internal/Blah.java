@@ -1,8 +1,5 @@
 package alpha.nomagichttp.internal;
 
-import static java.lang.Long.MAX_VALUE;
-import static java.lang.Math.addExact;
-
 /**
  * Is a namespace for things that doesn't belong anywhere.
  * 
