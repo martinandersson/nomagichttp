@@ -15,6 +15,7 @@ import static alpha.nomagichttp.internal.Blah.requireVirtualThread;
 import static alpha.nomagichttp.util.Blah.addExactOrMaxValue;
 import static alpha.nomagichttp.util.Blah.toIntOrMaxValue;
 import static alpha.nomagichttp.util.ScopedValues.channel;
+import static java.lang.Math.min;
 import static java.lang.System.Logger.Level.DEBUG;
 import static java.nio.ByteBuffer.allocate;
 import static java.nio.ByteBuffer.allocateDirect;
@@ -52,17 +53,21 @@ public final class ChannelReader implements ByteBufferIterable
     private static final int
             /** Same as BufferedOutputStream/JEP-435 */
             BUFFER_SIZE = 512,
+            // Sentinel; no limit has been set
             UNLIMITED = -1,
+            // Sentinel; causes next() to throw IllegalStateExc
             DISMISSED = -2;
     
+    // Sentinel; end-of-stream
     private static final ByteBuffer EOS = allocate(0);
     
-    private final ReadableByteChannel child;
-    private final ByteBuffer buf;
+    private final ReadableByteChannel src;
+    private final ByteBuffer dst;
+    // Not final because can be switched to EOS
     private       ByteBuffer view;
     private final ByteBufferIterator it;
-    // Is counted down by number of bytes read
-    private long limit;
+    // Number of bytes remaining to be read from the upstream
+    private long desire;
     
     /**
      * Constructs this object.<p>
@@ -71,31 +76,33 @@ public final class ChannelReader implements ByteBufferIterable
      * created using this constructor. Successors must be derived from the
      * predecessor using {@link #newReader()}.
      * 
-     * @param child channel to read from
+     * @param upstream to read from
      */
-    ChannelReader(ReadableByteChannel child) {
-        // The view is created with no remaining to force-read on first call to next()
+    ChannelReader(ReadableByteChannel upstream) {
+        // The buffers are created with no remaining to force a channel read
         
-        // The buffer is reused throughout the exchange; had we used one new
-        // for each request then it would be wise to use heap buffers instead.
-        // Direct "typically" has higher allocation and de-allocation cost
-        // according to JDK JavaDoc.
-        
-        // TODO: We should profile the application at runtime. Small body sizes.
-        // Maybe we should start on heap and switch to direct only when there's
-        // a large body? Content type could also be an indicator (text).
-        this(child, allocateDirect(BUFFER_SIZE).position(BUFFER_SIZE), null);
+        // A direct buffer "typically" has higher allocation and de-allocation
+        // cost [than heap] according to JDK JavaDoc. Out buffer is reused
+        // throughout the channel's life, and hopefully will be used to serve
+        // many exchanges. So this author is not necessarily concerned with the
+        // [de-]allocation cost. However:
+        // TODO: Need to throw some braincells at this, and profile.
+        //       Maybe it would be wise to start on heap and switch to direct
+        //       only when there's a large body - or, something? Content type
+        //       could also be an indicator (most requests are likely to be
+        //       text, and so, heap?).
+        this(upstream, allocateDirect(BUFFER_SIZE).position(BUFFER_SIZE), null);
     }
     
     private ChannelReader(
-            ReadableByteChannel child,
-            ByteBuffer buf, ByteBuffer view)
+            ReadableByteChannel src,
+            ByteBuffer dst, ByteBuffer view)
     {
-        this.child = child;
-        this.buf   = buf;
-        this.view  = view != null ? view : buf.asReadOnlyBuffer();
-        this.it    = new IteratorImpl();
-        this.limit = UNLIMITED;
+        this.src    = src;
+        this.dst    = dst;
+        this.view   = view != null ? view : dst.asReadOnlyBuffer();
+        this.it     = new IteratorImpl();
+        this.desire = UNLIMITED;
     }
     
     /**
@@ -134,10 +141,8 @@ public final class ChannelReader implements ByteBufferIterable
             throw new IllegalArgumentException("Negative limit: " + limit);
         }
         requireLimitNotSet();
-        if (limit < view.remaining()) {
-            throw new AbstractMethodError("Implement me, with a mark?");
-        }
-        this.limit = limit - view.remaining();
+        desire = limit;
+        limitView();
         return this;
     }
     
@@ -155,7 +160,8 @@ public final class ChannelReader implements ByteBufferIterable
         requireNotDismissed();
         requireLimitSet();
         requireEmpty();
-        limit = UNLIMITED;
+        desire = UNLIMITED;
+        limitView();
     }
     
     /**
@@ -174,10 +180,6 @@ public final class ChannelReader implements ByteBufferIterable
     void dismiss() {
         requireEmpty();
         forceDismiss();
-    }
-    
-    private void forceDismiss() {
-        limit = DISMISSED;
     }
     
     /**
@@ -206,7 +208,7 @@ public final class ChannelReader implements ByteBufferIterable
     ChannelReader newReader() {
         requireDismissed();
         requireNotEOS();
-        return new ChannelReader(child, buf, view);
+        return new ChannelReader(src, dst, view);
     }
     
     @Override
@@ -214,19 +216,10 @@ public final class ChannelReader implements ByteBufferIterable
         if (view == EOS || isDismissed()) {
             return 0;
         }
-        // May be UNLIMITED (-1)
-        if (limit == UNLIMITED) {
-            return UNLIMITED;
+        if (desire == UNLIMITED) {
+            return UNLIMITED; // -1
         }
         return addExactOrMaxValue(view.remaining(), desire());
-    }
-    
-    private int desire() {
-        if (limit == UNLIMITED) {
-            return Integer.MAX_VALUE;
-        }
-        assert limit >= 0;
-        return toIntOrMaxValue(limit);
     }
     
     @Override
@@ -250,47 +243,42 @@ public final class ChannelReader implements ByteBufferIterable
             if (view.hasRemaining()) {
                 return view;
             }
-            final int d = desire();
-            if (d == 0) {
+            if (desire() == 0) {
                 throw new NoSuchElementException();
             }
+            if (view.limit() < dst.position()) {
+                // Expose from buffered data
+                limitView();
+                assert view.hasRemaining();
+                return view;
+            }
+            // Read from upstream
             requireVirtualThread();
-            clearAndLimitBuffers(d);
+            clearBuffers();
             final int r = read();
-            assert r != 0 : CHANNEL_BLOCKING;
-            if (r == -1) {
+            if (r > 0) {
+                limitView();
+                assert view.hasRemaining();
+                return view;
+            } else if (r == -1) {
                 return handleEOS();
             }
-            if (limit != UNLIMITED) {
-                limit -= r;
-            }
-            assert view.hasRemaining();
-            return view;
+            throw new AssertionError(CHANNEL_BLOCKING);
         }
         
-        private void clearAndLimitBuffers(int limit) {
-            buf.clear();
+        private void clearBuffers() {
+            dst.clear();
             view.clear();
-            if (limit < buf.capacity()) {
-                buf.limit(limit);
-                view.limit(limit);
-            }
         }
         
         private int read() throws IOException {
-            final int v;
             try {
-                v = child.read(buf);
-                if (v > 0) {
-                    view.limit(buf.position());
-                    buf.flip();
-                }
+                return src.read(dst);
             } catch (Throwable t) {
                 forceDismiss();
                 shutdownInput("Read operation failed");
                 throw t;
             }
-            return v;
         }
         
         private ByteBuffer handleEOS() {
@@ -304,12 +292,38 @@ public final class ChannelReader implements ByteBufferIterable
         }
     }
     
+    private void limitView() {
+        if (desire == UNLIMITED) {
+            // Expose as much as we have data available
+            view.limit(dst.position());
+        } else {
+            // Well, expose as much as we can
+            int ideal = addExactOrMaxValue(view.position(), desire()),
+                bound = min(ideal, dst.position());
+            view.limit(bound);
+            desire -= view.remaining();
+        }
+    }
+    
+    private void forceDismiss() {
+        desire = DISMISSED;
+    }
+    
+    private int desire() {
+        if (desire == UNLIMITED) {
+            return Integer.MAX_VALUE;
+        }
+        assert desire >= 0 :
+            "This method must not be called if reader is dismissed";
+        return toIntOrMaxValue(desire);
+    }
+    
     private boolean isDismissed() {
-        return limit == DISMISSED;
+        return desire == DISMISSED;
     }
     
     private boolean isLimitSet() {
-        return limit >= 0;
+        return desire >= 0;
     }
     
     private void requireEmpty() {
