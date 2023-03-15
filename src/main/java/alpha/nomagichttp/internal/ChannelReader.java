@@ -314,7 +314,7 @@ public final class ChannelReader implements ByteBufferIterable
             return Integer.MAX_VALUE;
         }
         assert desire >= 0 :
-            "This method must not be called if reader is dismissed";
+            "This method must not be called if reader is dismissed.";
         return toIntOrMaxValue(desire);
     }
     
@@ -329,28 +329,28 @@ public final class ChannelReader implements ByteBufferIterable
     private void requireEmpty() {
         if (!isEmpty()) {
             throw new IllegalStateException(
-                "Reader has contents");
+                "Is not empty.");
         }
     }
     
     private void requireLimitNotSet() {
         if (isLimitSet()) {
             throw new UnsupportedOperationException(
-                "Limit is set");
+                "Limit is already set.");
         }
     }
     
     private void requireLimitSet() {
         if (!isLimitSet()) {
             throw new UnsupportedOperationException(
-                "Limit is not set");
+                "Limit has not been set.");
         }
     }
     
     private void requireDismissed() {
         if (!isDismissed()) {
             throw new IllegalStateException(
-                "Reader is not dismissed");
+                "Reader is not dismissed.");
         }
     }
     
@@ -358,14 +358,14 @@ public final class ChannelReader implements ByteBufferIterable
         if (isDismissed()) {
             // lol, a more user friendly message
             throw new IllegalStateException(
-                "Body is already consumed or the exchange is over");
+                "Body is already consumed or the exchange is over.");
         }
     }
     
     private void requireNotEOS() {
         if (view == EOS) {
             throw new UnsupportedOperationException(
-                "Channel reached end-of-stream");
+                "Channel reached end-of-stream.");
         }
     }
     

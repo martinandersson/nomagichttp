@@ -5,13 +5,17 @@ import alpha.nomagichttp.util.ByteBuffers;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeoutException;
 
 import static java.nio.charset.StandardCharsets.US_ASCII;
 import static java.util.Arrays.stream;
+import static java.util.Collections.unmodifiableList;
 import static java.util.concurrent.Executors.newVirtualThreadPerTaskExecutor;
 import static java.util.concurrent.TimeUnit.SECONDS;
+import static java.util.stream.Collectors.joining;
 
 /**
  * Utils for {@code ByteBufferIterable}s.
@@ -42,21 +46,9 @@ public final class ByteBufferIterables {
      * @return the decoded content
      */
     public static String getString(ByteBufferIterable bytes) {
-        var b = new StringBuilder();
-        var it = bytes.iterator();
-        while (it.hasNext()) {
-            final ByteBuffer buf;
-            try {
-                buf = it.next();
-            } catch (IOException e) {
-                throw new AssertionError(e);
-            }
-            // buf is read-only, can't do buf.array()
-            var arr = new byte[buf.remaining()];
-            buf.get(arr);
-            b.append(new String(arr, US_ASCII));
-        }
-        return b.toString();
+        return getItems(bytes).stream()
+                              .map(arr -> new String(arr, US_ASCII))
+                              .collect(joining());
     }
     
     /**
@@ -85,6 +77,51 @@ public final class ByteBufferIterables {
         try (var exec = newVirtualThreadPerTaskExecutor()) {
             return exec.submit(() -> source.iterator().next().get())
                     .get(1, SECONDS);
+        }
+    }
+    
+    /**
+     * Copies all iterated bytearrays.<p>
+     * 
+     * This method is intended for tests that need to assert the contents of the
+     * source as well as how exactly the contents was iterated.
+     * 
+     * @param source to iterate
+     * 
+     * @return see JavaDoc
+     */
+    public static List<byte[]> getItems(ByteBufferIterable source) {
+        var items = new ArrayList<byte[]>();
+        var it = source.iterator();
+        while (it.hasNext()) {
+            final ByteBuffer buf;
+            try {
+                buf = it.next();
+            } catch (IOException e) {
+                throw new AssertionError(e);
+            }
+            // buf is read-only, can't do buf.array()
+            var arr = new byte[buf.remaining()];
+            buf.get(arr);
+            items.add(arr);
+        }
+        return unmodifiableList(items);
+    }
+    
+    /**
+     * Copies all iterated bytearrays, using a virtual thread.<p>
+     * 
+     * This method is intended for tests that need to assert the contents of the
+     * source as well as how exactly the contents was iterated.
+     * 
+     * @param source to iterate
+     * 
+     * @return see JavaDoc
+     */
+    public static List<byte[]> getItemsVThread(ByteBufferIterable source)
+            throws ExecutionException, InterruptedException, TimeoutException {
+        try (var exec = newVirtualThreadPerTaskExecutor()) {
+            return exec.submit(() -> getItems(source)).get(1, SECONDS);
         }
     }
 }
