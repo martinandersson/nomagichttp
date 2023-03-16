@@ -53,19 +53,6 @@ public final class Blah
     }
     
     /**
-     * Adds three numbers; capping the result at {@code Long.MAX_VALUE}.
-     * 
-     * @param a first
-     * @param b second
-     * @param c third
-     * 
-     * @return the result
-     */
-    public static long addExactOrMaxValue(long a, long b, long c) {
-        return addExactOrMaxValue(addExactOrMaxValue(a, b), c);
-    }
-    
-    /**
      * Retrieves the result of the given method.<p>
      * 
      * If the method returns exceptionally, the given resource will be closed.
