@@ -187,7 +187,7 @@ public final class DefaultServer implements HttpServer
                 // Accept loop; can not complete without throwing an exception
                 for (;;) {
                     var child = parent.accept();
-                    // Reader and writer depend on this for correct behavior
+                    // Reader and writer depend on blocking mode for correct behavior
                     assert child.isBlocking();
                     LOG.log(DEBUG, () -> "Accepted child: " + child);
                     // TODO: Deal with exception, like RejectedExecutionException
