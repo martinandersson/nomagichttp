@@ -20,7 +20,7 @@ import java.util.NoSuchElementException;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
-import static alpha.nomagichttp.util.Blah.addExactOrMaxValue;
+import static alpha.nomagichttp.util.Blah.addExactOrCap;
 import static alpha.nomagichttp.util.Blah.getOrCloseResource;
 import static alpha.nomagichttp.util.ByteBuffers.asArray;
 import static alpha.nomagichttp.util.Streams.stream;
@@ -314,7 +314,7 @@ public final class ByteBufferIterables
                           .toArray(ByteBuffer[]::new);
             long len = 0;
             for (var b : bufs) {
-                len = addExactOrMaxValue(len, b.remaining());
+                len = addExactOrCap(len, b.remaining());
             }
             this.len = len;
         }
@@ -423,7 +423,7 @@ public final class ByteBufferIterables
                 int v = ch.read(buf);
                 assert v != -1 : "End-Of-Stream not expected";
                 assert v > 0 : "We had some desire left";
-                count = addExactOrMaxValue(count, v);
+                count = addExactOrCap(count, v);
                 view.limit(buf.position());
                 assert view.hasRemaining();
                 return view;

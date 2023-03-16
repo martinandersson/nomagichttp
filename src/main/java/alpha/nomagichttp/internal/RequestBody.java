@@ -24,7 +24,7 @@ import static alpha.nomagichttp.HttpConstants.HeaderName.CONTENT_LENGTH;
 import static alpha.nomagichttp.HttpConstants.HeaderName.TRANSFER_ENCODING;
 import static alpha.nomagichttp.internal.Blah.requireVirtualThread;
 import static alpha.nomagichttp.util.Blah.EMPTY_BYTEARRAY;
-import static alpha.nomagichttp.util.Blah.addExactOrMaxValue;
+import static alpha.nomagichttp.util.Blah.addExactOrCap;
 import static java.nio.ByteBuffer.wrap;
 import static java.nio.charset.CodingErrorAction.REPORT;
 import static java.nio.charset.StandardCharsets.UTF_8;
@@ -166,7 +166,7 @@ final class RequestBody implements Request.Body
                 var buf = src.next();
                 int r = dst.write(buf);
                 assert r > 0;
-                c = addExactOrMaxValue(c, r);
+                c = addExactOrCap(c, r);
             }
         } finally {
             if (opts.contains(CREATE_NEW) && c == 0) {

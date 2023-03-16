@@ -21,34 +21,44 @@ public final class Blah
     public static final byte[] EMPTY_BYTEARRAY = new byte[0];
     
     /**
-     * Adds two numbers; fitting the result at {@code Integer.MAX_VALUE}.
+     * Adds two numbers.<p>
+     * 
+     * The implementation uses {@link Math#addExact(int, int)}, but instead of
+     * throwing an {@link ArithmeticException}, {@code Integer.MIN_VALUE} or
+     * {@code MAX_VALUE} is returned.
      * 
      * @param a first
      * @param b second
      * 
      * @return the result
      */
-    public static int addExactOrMaxValue(int a, int b) {
+    public static int addExactOrCap(int a, int b) {
         try {
             return addExact(a, b);
         } catch (ArithmeticException e) {
-            return Integer.MAX_VALUE;
+            return a < 0 && b < 0 ?
+                Integer.MIN_VALUE : Integer.MAX_VALUE;
         }
     }
     
     /**
-     * Adds two numbers; capping the result at {@code Long.MAX_VALUE}.
+     * Adds two numbers.<p>
+     * 
+     * The implementation uses {@link Math#addExact(long, long)}, but instead of
+     * throwing an {@link ArithmeticException}, {@code Long.MIN_VALUE} or
+     * {@code MAX_VALUE} is returned.
      * 
      * @param a first
      * @param b second
      * 
      * @return the result
      */
-    public static long addExactOrMaxValue(long a, long b) {
+    public static long addExactOrCap(long a, long b) {
         try {
             return addExact(a, b);
         } catch (ArithmeticException e) {
-            return Long.MAX_VALUE;
+            return a < 0 && b < 0 ?
+                Long.MIN_VALUE : Long.MAX_VALUE;
         }
     }
     

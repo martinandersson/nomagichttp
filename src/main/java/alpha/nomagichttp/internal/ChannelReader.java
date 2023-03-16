@@ -12,7 +12,7 @@ import java.util.NoSuchElementException;
 
 import static alpha.nomagichttp.internal.Blah.CHANNEL_BLOCKING;
 import static alpha.nomagichttp.internal.Blah.requireVirtualThread;
-import static alpha.nomagichttp.util.Blah.addExactOrMaxValue;
+import static alpha.nomagichttp.util.Blah.addExactOrCap;
 import static alpha.nomagichttp.util.Blah.toIntOrMaxValue;
 import static alpha.nomagichttp.util.ScopedValues.channel;
 import static java.lang.Math.min;
@@ -219,7 +219,7 @@ public final class ChannelReader implements ByteBufferIterable
         if (desire == UNLIMITED) {
             return UNLIMITED; // -1
         }
-        return addExactOrMaxValue(view.remaining(), desire());
+        return addExactOrCap(view.remaining(), desire());
     }
     
     @Override
@@ -298,7 +298,7 @@ public final class ChannelReader implements ByteBufferIterable
             view.limit(dst.position());
         } else {
             // Well, expose as much as we can
-            int ideal = addExactOrMaxValue(view.position(), desire()),
+            int ideal = addExactOrCap(view.position(), desire()),
                 bound = min(ideal, dst.position());
             view.limit(bound);
             desire -= view.remaining();

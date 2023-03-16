@@ -36,7 +36,7 @@ import static alpha.nomagichttp.handler.ResponseRejectedException.Reason.PROTOCO
 import static alpha.nomagichttp.internal.Blah.CHANNEL_BLOCKING;
 import static alpha.nomagichttp.internal.DefaultRequest.requestWithParams;
 import static alpha.nomagichttp.internal.HttpExchange.request;
-import static alpha.nomagichttp.util.Blah.addExactOrMaxValue;
+import static alpha.nomagichttp.util.Blah.addExactOrCap;
 import static alpha.nomagichttp.util.Blah.getOrCloseResource;
 import static alpha.nomagichttp.util.ByteBuffers.asciiBytes;
 import static alpha.nomagichttp.util.ScopedValues.channel;
@@ -217,10 +217,10 @@ public final class DefaultChannelWriter implements ChannelWriter
         inflight = true;
         started = nanoTime();
         var it = rsp.body().iterator();
-        long n = addExactOrMaxValue(writeHead(rsp), tryWriteBody(it));
+        long n = addExactOrCap(writeHead(rsp), tryWriteBody(it));
         // Request.trailers() documented close() must be called first
         it.close();
-        n = addExactOrMaxValue(n, tryWriteTrailers(rsp));
+        n = addExactOrCap(n, tryWriteTrailers(rsp));
         final long finished = nanoTime();
         // Revert only on success; otherwise channel is corrupt
         inflight = false;
@@ -253,7 +253,7 @@ public final class DefaultChannelWriter implements ChannelWriter
         while (it.hasNext()) {
             var buf = it.next();
             if (buf.hasRemaining()) {
-                n = addExactOrMaxValue(n, doWrite(buf));
+                n = addExactOrCap(n, doWrite(buf));
             } else {
                 assert !it.hasNext() :
                     "This was a streaming body turned end-of-stream";
@@ -295,7 +295,7 @@ public final class DefaultChannelWriter implements ChannelWriter
             }
             throw t;
         }
-        byteCount = addExactOrMaxValue(byteCount, n);
+        byteCount = addExactOrCap(byteCount, n);
         return n;
     }
     
