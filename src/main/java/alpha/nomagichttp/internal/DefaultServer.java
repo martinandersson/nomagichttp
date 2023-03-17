@@ -190,9 +190,7 @@ public final class DefaultServer implements HttpServer
                     // Reader and writer depend on blocking mode for correct behavior
                     assert child.isBlocking();
                     LOG.log(DEBUG, () -> "Accepted child: " + child);
-                    // TODO: Deal with exception, like RejectedExecutionException
-                    //       Must close child
-                    scope.fork(() -> {
+                    runOrCloseResource(() -> scope.fork(() -> {
                         try {
                             handleChild(child);
                         } catch (Throwable t) {
@@ -203,7 +201,7 @@ public final class DefaultServer implements HttpServer
                             throw t;
                         }
                         return null;
-                    });
+                    }), child);
                 }
             } finally {
                 // Must signal children we're closing down
