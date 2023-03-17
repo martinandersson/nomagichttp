@@ -730,6 +730,8 @@ public interface Request extends HeaderHolder, AttributeHolder
          * @throws CharacterCodingException
          *             if input is malformed, or
          *             if a character is unmappable
+         * @throws MaxRequestBodyConversionSizeExceededException
+         *             if the body size exceeds the internal buffer limit
          * @throws IOException
          *             if an I/O error occurs
          * 
@@ -761,6 +763,8 @@ public interface Request extends HeaderHolder, AttributeHolder
          * @throws CharacterCodingException
          *             if input is malformed, or
          *             if a character is unmappable
+         * @throws MaxRequestBodyConversionSizeExceededException
+         *             if the body size exceeds the internal buffer limit
          * @throws IOException
          *             if an I/O error occurs
          * 
@@ -857,6 +861,8 @@ public interface Request extends HeaderHolder, AttributeHolder
          *             if {@code length} is unknown
          * @throws BufferOverflowException
          *             if {@code length} is greater than {@code Integer.MAX_VALUE}
+         * @throws MaxRequestBodyConversionSizeExceededException
+         *             if the body size exceeds the internal buffer limit
          * @throws IOException
          *             if an I/O error occurs
          */

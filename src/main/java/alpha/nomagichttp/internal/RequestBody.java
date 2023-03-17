@@ -4,11 +4,13 @@ import alpha.nomagichttp.message.BadRequestException;
 import alpha.nomagichttp.message.ByteBufferIterable;
 import alpha.nomagichttp.message.ByteBufferIterator;
 import alpha.nomagichttp.message.ContentHeaders;
+import alpha.nomagichttp.message.MaxRequestBodyConversionSizeExceededException;
 import alpha.nomagichttp.message.MediaType;
 import alpha.nomagichttp.message.Request;
 import alpha.nomagichttp.message.UnsupportedTransferCodingException;
 import alpha.nomagichttp.util.Throwing;
 
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.nio.BufferOverflowException;
 import java.nio.ByteBuffer;
@@ -25,6 +27,7 @@ import static alpha.nomagichttp.HttpConstants.HeaderName.TRANSFER_ENCODING;
 import static alpha.nomagichttp.internal.Blah.requireVirtualThread;
 import static alpha.nomagichttp.util.Blah.EMPTY_BYTEARRAY;
 import static alpha.nomagichttp.util.Blah.addExactOrCap;
+import static alpha.nomagichttp.util.ScopedValues.httpServer;
 import static java.nio.ByteBuffer.wrap;
 import static java.nio.charset.CodingErrorAction.REPORT;
 import static java.nio.charset.StandardCharsets.UTF_8;
@@ -183,42 +186,63 @@ final class RequestBody implements Request.Body
     
     @Override
     public byte[] bytes() throws IOException {
-        long v = requireKnownLength();
+        final long v = length();
         if (v == 0) {
             return EMPTY_BYTEARRAY;
+        } else if (v > 0) {
+            if (v > Integer.MAX_VALUE) {
+                throw new BufferOverflowException();
+            }
+            return bytesFast((int) v);
+        } else {
+            assert v == -1;
+            return bytesSlow();
         }
-        if (v > Integer.MAX_VALUE) {
-            throw new BufferOverflowException();
-        }
-        return bytes0((int) v);
     }
     
-    private long requireKnownLength() {
-        long len = length();
-        if (len == -1) {
-            throw new UnsupportedOperationException("Length is unknown");
+    private byte[] bytesFast(int cap) throws IOException {
+        if (cap > httpServer().getConfig().maxRequestBodyConversionSize()) {
+            throw new MaxRequestBodyConversionSizeExceededException();
         }
-        return len;
-    }
-    
-    private byte[] bytes0(int cap) throws IOException {
-        assert cap >= 0;
         final byte[] dst = new byte[cap];
         int offset = 0;
         var it = content.iterator();
         while (it.hasNext()) {
             final var src = it.next();
-            final int len = src.remaining();
+            final int rem = src.remaining();
             try {
-                src.get(dst, offset, len);
+                src.get(dst, offset, rem);
             } catch (IndexOutOfBoundsException e) {
                 // Content length supposed to be reliable at this point lol
                 throw new AssertionError("Sink-buffer overflow", e);
             }
-            offset += len;
+            offset += rem;
         }
         assert offset == cap : "Sink-buffer underflow";
         return dst;
+    }
+    
+    private byte[] bytesSlow() throws IOException {
+        var os = new ByteArrayOutputStream();
+        var it = content.iterator();
+        while (it.hasNext()) {
+            var buf = it.next();
+            if (!buf.hasRemaining()) {
+                assert !it.hasNext() : "End-Of-Stream";
+                break;
+            }
+            if (buf.hasArray()) {
+                // Transfer
+                os.write(buf.array(), buf.arrayOffset(), buf.remaining());
+                // Mark consumed
+                buf.position(buf.limit());
+            } else {
+                while (buf.hasRemaining()) {
+                    os.write(buf.get());
+                }
+            }
+        }
+        return os.toByteArray();
     }
     
     private class FirstRespond100Continue implements ByteBufferIterator {

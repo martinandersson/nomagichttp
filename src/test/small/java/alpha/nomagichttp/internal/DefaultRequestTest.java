@@ -1,5 +1,6 @@
 package alpha.nomagichttp.internal;
 
+import alpha.nomagichttp.HttpServer;
 import alpha.nomagichttp.message.BadHeaderException;
 import alpha.nomagichttp.message.RawRequest;
 import alpha.nomagichttp.message.Request;
@@ -10,17 +11,21 @@ import java.net.http.HttpHeaders;
 import java.nio.charset.IllegalCharsetNameException;
 import java.nio.charset.UnsupportedCharsetException;
 import java.nio.file.Paths;
-import java.util.concurrent.ExecutionException;
 
+import static alpha.nomagichttp.Config.DEFAULT;
 import static alpha.nomagichttp.HttpConstants.Version.HTTP_1_1;
 import static alpha.nomagichttp.internal.DefaultRequest.requestWithoutParams;
 import static alpha.nomagichttp.internal.SkeletonRequestTarget.parse;
 import static alpha.nomagichttp.testutil.ReadableByteChannels.ofString;
+import static alpha.nomagichttp.util.DummyScopedValue.where;
 import static alpha.nomagichttp.util.Headers.of;
+import static alpha.nomagichttp.util.ScopedValues.__HTTP_SERVER;
 import static java.nio.file.Files.notExists;
 import static java.util.concurrent.Executors.newVirtualThreadPerTaskExecutor;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 /**
  * Small tests of {@link DefaultRequest}.
@@ -30,13 +35,20 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 final class DefaultRequestTest
 {
     @Test
-    void body_toText_happyPath() throws ExecutionException, InterruptedException {
+    void body_toText_happyPath() throws Exception {
         var req = createRequest(of("Content-Length", "3"), "abc");
-        // Otherwise WrongThreadException
-        final String str;
-        try (var vThread = newVirtualThreadPerTaskExecutor()) {
-            str = vThread.submit(() -> req.body().toText()).get();
-        }
+        
+        // Implementation needs access to Config.maxRequestBodyConversionSize()
+        var server = mock(HttpServer.class);
+        when(server.getConfig()).thenReturn(DEFAULT);
+        
+        final String str = where(__HTTP_SERVER, server, () -> {
+            // ...and a virtual thread, otherwise WrongThreadException
+            try (var vThread = newVirtualThreadPerTaskExecutor()) {
+                return vThread.submit(() -> req.body().toText()).get();
+            }
+        });
+        
         assertThat(str).isEqualTo("abc");
     }
     
