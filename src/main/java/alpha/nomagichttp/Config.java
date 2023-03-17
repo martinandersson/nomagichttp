@@ -4,6 +4,7 @@ import alpha.nomagichttp.handler.ClientChannel;
 import alpha.nomagichttp.handler.ErrorHandler;
 import alpha.nomagichttp.handler.ResponseRejectedException;
 import alpha.nomagichttp.message.HttpVersionTooOldException;
+import alpha.nomagichttp.message.MaxRequestBodyConversionSizeExceededException;
 import alpha.nomagichttp.message.MaxRequestHeadSizeExceededException;
 import alpha.nomagichttp.message.MaxRequestTrailersSizeExceededException;
 import alpha.nomagichttp.message.ReadTimeoutException;
@@ -14,7 +15,10 @@ import alpha.nomagichttp.message.Responses;
 import alpha.nomagichttp.route.MethodNotAllowedException;
 import alpha.nomagichttp.route.Route;
 
+import java.nio.file.Path;
+import java.nio.file.attribute.FileAttribute;
 import java.time.Duration;
+import java.util.Set;
 
 /**
  * Server configuration.<p>
@@ -65,6 +69,34 @@ public interface Config
      * @return number of request head bytes processed before exception
      */
     int maxRequestHeadSize();
+    
+    /**
+     * Returns the max number of bytes that the {@link Request.Body} API accepts
+     * to internally buffer.<p>
+     * 
+     * Once the limit has been exceeded, a {@link
+     * MaxRequestBodyConversionSizeExceededException} is thrown.<p>
+     * 
+     * This configuration applies <i>only</i> to high-level methods that
+     * internally buffer up the whole body, such as {@link Request.Body#bytes()}
+     * and {@link Request.Body#toText()}.<p>
+     * 
+     * The request body size itself has no limit (nor is there such a
+     * configuration option). The application can consume an unlimited amount
+     * of bytes however it desires, by iterating the body, or use other methods
+     * that do not buffer the body, such as
+     * {@link Request.Body#toFile(Path, Set, FileAttribute[])}<p>
+     * 
+     * Methods provided by the library that collect bytes in the memory, must be
+     * constrained for a number of a reasons. Perhaps primarily because it would
+     * have been too easy for a bad actor to crash the server (by streaming a
+     * body straight into memory until memory runs out).<p>
+     * 
+     * The default implementation returns {@code 20_971_520} (20 MB).
+     * 
+     * @return see JavaDoc
+     */
+    int maxRequestBodyConversionSize();
     
     /**
      * Returns the max number of bytes processed while parsing request trailers
@@ -342,6 +374,18 @@ public interface Config
          * @see Config#maxRequestHeadSize()
          */
         Builder maxRequestHeadSize(int newVal);
+        
+        /**
+         * Sets a new value.<p>
+         * 
+         * The value can be any integer, although a value too small (or
+         * negative) will risk failing most request body conversions.
+         * 
+         * @param newVal new value
+         * @return a new builder representing the new state
+         * @see Config#maxRequestBodyConversionSize()
+         */
+        Builder maxRequestBodyConversionSize(int newVal);
         
         /**
          * Sets a new value.<p>

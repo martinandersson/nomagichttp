@@ -14,7 +14,9 @@ import alpha.nomagichttp.message.HttpVersionTooNewException;
 import alpha.nomagichttp.message.HttpVersionTooOldException;
 import alpha.nomagichttp.message.IllegalRequestBodyException;
 import alpha.nomagichttp.message.IllegalResponseBodyException;
+import alpha.nomagichttp.message.MaxRequestBodyConversionSizeExceededException;
 import alpha.nomagichttp.message.MaxRequestHeadSizeExceededException;
+import alpha.nomagichttp.message.MaxRequestTrailersSizeExceededException;
 import alpha.nomagichttp.message.MediaTypeParseException;
 import alpha.nomagichttp.message.ReadTimeoutException;
 import alpha.nomagichttp.message.Request;
@@ -217,6 +219,18 @@ public interface ErrorHandler
      *     <td> {@link Responses#entityTooLarge()} </td>
      *   </tr>
      *   <tr>
+     *     <th scope="row"> {@link MaxRequestTrailersSizeExceededException} </th>
+     *     <td> None </td>
+     *     <td> Yes </td>
+     *     <td> {@link Responses#entityTooLarge()} </td>
+     *   </tr>
+     *   <tr>
+     *     <th scope="row"> {@link MaxRequestBodyConversionSizeExceededException} </th>
+     *     <td> None </td>
+     *     <td> Yes </td>
+     *     <td> {@link Responses#entityTooLarge()} </td>
+     *   </tr>
+     *   <tr>
      *     <th scope="row"> {@link NoRouteFoundException} </th>
      *     <td> None </td>
      *     <td> Yes </td>
@@ -342,7 +356,9 @@ public interface ErrorHandler
             res = httpVersionNotSupported();
         } catch (UnsupportedTransferCodingException e) {
             res = notImplemented();
-        } catch (MaxRequestHeadSizeExceededException e) {
+        } catch (MaxRequestHeadSizeExceededException |
+                 MaxRequestTrailersSizeExceededException |
+                 MaxRequestBodyConversionSizeExceededException e) {
             log(exc);
             res = entityTooLarge();
         } catch (NoRouteFoundException e) {

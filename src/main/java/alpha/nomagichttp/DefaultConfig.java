@@ -16,6 +16,7 @@ import static java.util.Objects.requireNonNull;
 final class DefaultConfig implements Config {
     private final Builder  builder;
     private final int      maxRequestHeadSize,
+                           maxRequestBodyConversionSize,
                            maxRequestTrailersSize,
                            maxUnsuccessfulResponses;
     private final boolean  rejectClientsUsingHTTP1_0,
@@ -29,6 +30,7 @@ final class DefaultConfig implements Config {
     DefaultConfig(Builder b, DefaultBuilder.MutableState s) {
         builder                      = b;
         maxRequestHeadSize           = s.maxRequestHeadSize;
+        maxRequestBodyConversionSize = s.maxRequestBodyConversionSize;
         maxRequestTrailersSize       = s.maxRequestTrailersSize;
         maxUnsuccessfulResponses     = s.maxUnsuccessfulResponses;
         rejectClientsUsingHTTP1_0    = s.rejectClientsUsingHTTP1_0;
@@ -43,6 +45,11 @@ final class DefaultConfig implements Config {
     @Override
     public int maxRequestHeadSize() {
         return maxRequestHeadSize;
+    }
+    
+    @Override
+    public int maxRequestBodyConversionSize() {
+        return maxRequestBodyConversionSize;
     }
     
     @Override
@@ -103,6 +110,7 @@ final class DefaultConfig implements Config {
         
         static class MutableState {
             int      maxRequestHeadSize           = 8_000,
+                     maxRequestBodyConversionSize = 20_971_520,
                      maxRequestTrailersSize       = 8_000,
                      maxUnsuccessfulResponses     = 3;
             boolean  rejectClientsUsingHTTP1_0    = false,
@@ -125,6 +133,11 @@ final class DefaultConfig implements Config {
         @Override
         public Builder maxRequestHeadSize(int newVal) {
             return new DefaultBuilder(this, s -> s.maxRequestHeadSize = newVal);
+        }
+        
+        @Override
+        public Builder maxRequestBodyConversionSize(int newVal) {
+            return new DefaultBuilder(this, s -> s.maxRequestBodyConversionSize = newVal);
         }
         
         @Override
