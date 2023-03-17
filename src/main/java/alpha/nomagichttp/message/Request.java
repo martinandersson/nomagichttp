@@ -602,21 +602,22 @@ public interface Request extends HeaderHolder, AttributeHolder
      * Is an API for reading the request body in various forms.
      * 
      * <pre>{@code
-     *   // High-level conversion
+     *   // Convert all bytes to String
      *   var string = request.body().toText();
      *   
-     *   // Low-level read of all bytes
+     *   // Gather all bytes
      *   byte[] onHeap = request.body().bytes();
      *   
-     *   // Low-level byte iteration (classic)
+     *   // Classic iteration
      *   var it = request.body().iterator();
      *   while (it.hasNext()) {
      *       var byteBuffer = it.next();
      *       ...
      *   }
      *   
-     *   // Low-level byte iteration (functional)
-     *   request.body().iterator().forEachRemaining(buf -> ...);
+     *   // Functional iteration
+     *   request.body().iterator()
+     *                 .forEachRemaining(byteBuffer -> ...);
      * }</pre>
      * 
      * The request processing chain will be invoked immediately after the
