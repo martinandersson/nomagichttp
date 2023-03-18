@@ -206,7 +206,7 @@ final class RequestBody implements Request.Body
         }
         final byte[] dst = new byte[cap];
         int offset = 0;
-        var it = content.iterator();
+        var it = iterator();
         while (it.hasNext()) {
             final var src = it.next();
             final int rem = src.remaining();
@@ -224,7 +224,7 @@ final class RequestBody implements Request.Body
     
     private byte[] bytesSlow() throws IOException {
         var os = new ByteArrayOutputStream();
-        var it = content.iterator();
+        var it = iterator();
         while (it.hasNext()) {
             var buf = it.next();
             if (!buf.hasRemaining()) {
