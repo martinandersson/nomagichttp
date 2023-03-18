@@ -5,6 +5,7 @@ import alpha.nomagichttp.message.Responses;
 
 import java.io.IOException;
 
+import static alpha.nomagichttp.HttpConstants.HeaderName.CONTENT_LENGTH;
 import static alpha.nomagichttp.handler.RequestHandler.GET;
 
 /**
@@ -38,6 +39,8 @@ public final class EchoHeaders
                 Responses.noContent()
                          .toBuilder()
                              .addHeaders(request.headers())
+                             // 204 response must not contain this header
+                             .removeHeader(CONTENT_LENGTH)
                              .build()));
         
         System.out.println("Listening on port " + PORT + ".");

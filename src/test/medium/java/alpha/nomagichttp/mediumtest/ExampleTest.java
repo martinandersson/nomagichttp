@@ -26,6 +26,7 @@ import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.LongAdder;
 import java.util.function.BiConsumer;
 
+import static alpha.nomagichttp.HttpConstants.HeaderName.CONTENT_LENGTH;
 import static alpha.nomagichttp.HttpConstants.Version.HTTP_1_1;
 import static alpha.nomagichttp.handler.RequestHandler.GET;
 import static alpha.nomagichttp.handler.RequestHandler.POST;
@@ -280,6 +281,7 @@ class ExampleTest extends AbstractRealTest
         server().add("/echo", GET().apply(req -> {
             var rsp = noContent().toBuilder()
                 .addHeaders(req.headers())
+                .removeHeader(CONTENT_LENGTH)
                 .build();
             return tryScheduleClose(rsp, closeChild);
         }));
