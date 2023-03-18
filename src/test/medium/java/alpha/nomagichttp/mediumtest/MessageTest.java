@@ -73,9 +73,9 @@ class MessageTest extends AbstractRealTest
         
         assertThat(resp).isEqualTo(
             "HTTP/1.0 200 OK"                         + CRLF +
-            "Content-Length: 17"                      + CRLF +
             "Content-Type: text/plain; charset=utf-8" + CRLF +
-            "Connection: close"                       + CRLF + CRLF +
+            "Connection: close"                       + CRLF +
+            "Content-Length: 17"                      + CRLF + CRLF +
             
             "Received HTTP/1.0");
     }
