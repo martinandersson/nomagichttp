@@ -3,6 +3,7 @@ package alpha.nomagichttp.internal;
 import alpha.nomagichttp.message.ByteBufferIterable;
 import alpha.nomagichttp.message.ByteBufferIterator;
 import alpha.nomagichttp.message.DecoderException;
+import alpha.nomagichttp.message.Request;
 
 import java.io.IOException;
 import java.nio.BufferOverflowException;
@@ -27,7 +28,15 @@ import static java.util.HexFormat.fromHexDigitsToLong;
  * technically may be quoted and thus could technically contain CR/CRLF — which
  * would be like super weird. To safeguard against message corruption, if a
  * double-quote char is encountered whilst discarding extensions, the processor
- * blows up.
+ * blows up.<p>
+ * 
+ * The implementation supports single-use only. Technically, as far as this
+ * class is concerned, it could have been easy to implement to start a new
+ * decoding operation for each new iterator. However,
+ * {@link DefaultRequest#trailers()} is banking on a reliable implementation of
+ * {@link Request.Body#isEmpty()}, and so this implementation will switch length
+ * to 0 as soon as the first (and only) decoding operation is done. The
+ * underlying channel reader can then be used to parse request trailers.
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  * @see <a href="https://datatracker.ietf.org/doc/html/rfc7230#section-4.1">RFC 7230 §4.1</a>
@@ -36,47 +45,34 @@ public final class ChunkedDecoder implements ByteBufferIterable
 {
     private static final int BUFFER_SIZE = 512;
     
-    /*
-     * Technically, as far as this class is concerned, we could've always
-     * returned length -1 and a new iterator for each client.
-     *    However, by caching the iterator, we are now able to switch length to
-     * 0 after the last chunk. This may or may not be a benefit to the
-     * application code, but it does matter to DefaultRequest.trailers() which
-     * is banking on a reliable implementation of Request.Body.isEmpty().
-     */
-    
-    private final ByteBufferIterable upstream;
-    private ByteBufferIterator it;
+    private final ByteBufferIterator it;
     
     ChunkedDecoder(ByteBufferIterable upstream) {
-        this.upstream = upstream;
+        it = new Impl(upstream);
     }
     
     @Override
     public long length() {
-        // Any content we're aware of, length is unknown
-        if (it != null && it.hasNext()) {
-            return -1;
-        }
-        // We know we're empty only if upstream has no more
-        return upstream.length() == 0 ? 0 : -1;
+        return it.hasNext() ? -1 : 0;
     }
     
     @Override
     public ByteBufferIterator iterator() {
-        // While we have remaining in the view, keep returning it
-        if (it != null && it.hasNext()) {
-            return it;
-        }
-        // Otherwise we attempt a new subscription
-        return (it = new Impl());
+        return it;
     }
     
-    private final class Impl implements ByteBufferIterator {
-        
-        private final ByteBuffer buf = allocate(BUFFER_SIZE).position(BUFFER_SIZE);
-        private final ByteBuffer view = buf.asReadOnlyBuffer();
+    private static final class Impl implements ByteBufferIterator {
+        private final ByteBufferIterable upstream;
+        private final ByteBuffer buf;
+        private final ByteBuffer view;
         private ByteBufferIterator raw;
+        
+        Impl(ByteBufferIterable upstream) {
+            this.upstream = upstream;
+            this.buf = allocate(BUFFER_SIZE).position(BUFFER_SIZE);
+            this.view = buf.asReadOnlyBuffer();
+            this.raw = null;
+        }
         
         private static final int
                 CHUNK_SIZE = 0, CHUNK_EXT = 1, CHUNK_DATA = 2, DONE = 4;

@@ -38,6 +38,9 @@ final class ChunkedDecoderTest
                 // Empty trailers
                 "\r\n");
         assertIterable(testee, asciiBytes("X"));
+        // Single-use only
+        assertThat(testee.length()).isEqualTo(0);
+        assertThat(testee.isEmpty()).isTrue();
     }
     
     @Test

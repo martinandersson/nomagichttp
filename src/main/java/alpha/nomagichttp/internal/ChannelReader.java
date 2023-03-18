@@ -31,9 +31,7 @@ import static java.nio.ByteBuffer.allocateDirect;
  * 
  * Parsers and body decoders ought to know when they have reached their
  * respective delimiter. For a body of a known length, the method
- * {@link #limit(long) limit} must be used to cap the reader, followed
- * by a call to the {@link #reset() reset} method before subscribing a parser
- * of trailers.<p>
+ * {@link #limit(long) limit} must be used to cap the reader.<p>
  * 
  * The reader must be invalidated at the end of the HTTP exchange by calling the
  * method {@link #dismiss() dismiss}. This class self-dismisses on channel
@@ -149,7 +147,12 @@ public final class ChannelReader implements ByteBufferIterable
     /**
      * Unset the {@link #limit(long) limit}.<p>
      * 
-     * The intended use case is to read request body trailers.
+     * @apiNote
+     * This method was added in anticipation of a particular
+     * {@code DefaultRequest.trailers()} implementation, which had to be
+     * changed, because the reader was already unlimited (chunked). Today this
+     * method is used only in test cases. It is not used in production nor is it
+     * conceivable that it ever will.
      * 
      * @throws IllegalStateException
      *             if this reader is dismissed, or

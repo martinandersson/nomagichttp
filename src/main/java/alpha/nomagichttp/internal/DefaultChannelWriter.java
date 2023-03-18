@@ -35,7 +35,7 @@ import static alpha.nomagichttp.HttpConstants.Version.HTTP_1_1;
 import static alpha.nomagichttp.handler.ResponseRejectedException.Reason.PROTOCOL_NOT_SUPPORTED;
 import static alpha.nomagichttp.internal.Blah.CHANNEL_BLOCKING;
 import static alpha.nomagichttp.internal.DefaultRequest.requestWithParams;
-import static alpha.nomagichttp.internal.HttpExchange.request;
+import static alpha.nomagichttp.internal.HttpExchange.skeletonRequest;
 import static alpha.nomagichttp.util.Blah.addExactOrCap;
 import static alpha.nomagichttp.util.Blah.getOrCloseResource;
 import static alpha.nomagichttp.util.ByteBuffers.asciiBytes;
@@ -189,17 +189,17 @@ public final class DefaultChannelWriter implements ChannelWriter
     }
     
     private Response invokeUserActions(Response r) {
-        final var req = request().orElse(null);
-        if (req == null) {
+        final var skeleton = skeletonRequest().orElse(null);
+        if (skeleton == null) {
             LOG.log(DEBUG,
                 "No valid request available; will not run after-actions");
             return r;
         }
         if (matches == null) {
-            matches = userActions.lookupAfter(req.target());
+            matches = userActions.lookupAfter(skeleton.target());
         }
         for (var m : matches) {
-            final Request app = requestWithParams(reader, req, m.segments());
+            final Request app = requestWithParams(reader, skeleton, m.segments());
             final Response rsp;
             try {
                 rsp = m.action().apply(app, r);
@@ -300,7 +300,7 @@ public final class DefaultChannelWriter implements ChannelWriter
     }
     
     private static HttpConstants.Version httpVersion() {
-        return request().map(SkeletonRequest::httpVersion).orElse(HTTP_1_1);
+        return skeletonRequest().map(SkeletonRequest::httpVersion).orElse(HTTP_1_1);
     }
     
     private record Result (
@@ -454,7 +454,7 @@ public final class DefaultChannelWriter implements ChannelWriter
                 return __dealWithTransferEncoding(r);
             }
             assert len >= 0 : "If <= -1, chunked encoding was applied";
-            final var rMethod = request().map(req -> req.head().line().method());
+            final var rMethod = skeletonRequest().map(req -> req.head().line().method());
             if (rMethod.filter(HEAD::equals).isPresent()) {
                 return __dealWithHeadRequest(r, len);
             }
@@ -476,7 +476,7 @@ public final class DefaultChannelWriter implements ChannelWriter
         }
         
         private static boolean __reqHasConnectionClose() {
-            return request().map(SkeletonRequest::head)
+            return skeletonRequest().map(SkeletonRequest::head)
                             .map(ResponseProcessor::__rspHasConnectionClose)
                             .orElse(false);
         }

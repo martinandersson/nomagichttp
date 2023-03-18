@@ -429,9 +429,9 @@ class ExampleTest extends AbstractRealTest
         
         assertThat(rsp).isEqualTo("""
                 HTTP/1.1 200 OK\r
-                Content-Length: 12\r
                 Content-Type: text/plain; charset=utf-8\r
                 Connection: close\r
+                Content-Length: 12\r
                 \r
                 Hello World!""");
     }

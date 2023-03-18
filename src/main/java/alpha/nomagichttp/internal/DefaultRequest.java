@@ -109,10 +109,11 @@ final class DefaultRequest implements Request
                     Request.trailers() may block until timeout""");
         }
         var maxLen = httpServer().getConfig().maxRequestTrailersSize();
-        reader.reset();
-        var tr = ParserOf.trailers(reader, maxLen).parse();
-        reader.limit(0);
-        return tr;
+        try {
+            return ParserOf.trailers(reader, maxLen).parse();
+        } finally {
+            reader.limit(0);
+        }
     }
     
     @Override

@@ -5,8 +5,12 @@ import org.junit.jupiter.api.Test;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.charset.MalformedInputException;
+import java.util.List;
 
+import static alpha.nomagichttp.testutil.Assertions.assertIterable;
+import static alpha.nomagichttp.util.ByteBufferIterables.just;
 import static alpha.nomagichttp.util.ByteBuffers.asArray;
+import static alpha.nomagichttp.util.ByteBuffers.asciiBytes;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -18,6 +22,15 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
  */
 final class ByteBufferIterablesTest
 {
+    @Test
+    void just_iterable() throws IOException {
+        var buf1 = asciiBytes("Hello");
+        var buf2 = asciiBytes("World");
+        var col = List.of(buf1, buf2);
+        var testee = just(col);
+        assertIterable(testee, buf1, buf2);
+    }
+    
     @Test
     void ofStringUnsafe_happyPath() {
         assertThat(runOfStringUnsafe("hello")).isEqualTo("hello");

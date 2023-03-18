@@ -67,7 +67,7 @@ final class HttpExchange
             LOG = System.getLogger(HttpExchange.class.getPackageName());
     
     private static final DummyScopedValue<Optional<SkeletonRequest>>
-            REQUEST = DummyScopedValue.newInstance();
+            SKELETON_REQUEST = DummyScopedValue.newInstance();
     
     /**
      * Returns the skeleton request.<p>
@@ -75,13 +75,13 @@ final class HttpExchange
      * The skeleton request is only available after the request head has been
      * received and parsed, which includes the HTTP version. Until then, this
      * method returns {@code null}. This is especially important to be aware of
-     * for the channel writer who be executed at a very early stage.
+     * for the channel writer who may be executed at a very early stage.
      * 
      * @return see JavaDoc
      */
-    static Optional<SkeletonRequest> request() {
+    static Optional<SkeletonRequest> skeletonRequest() {
         try {
-            return REQUEST.get();
+            return SKELETON_REQUEST.get();
         } catch (NoSuchElementException e) {
             return Optional.empty();
         }
@@ -131,9 +131,9 @@ final class HttpExchange
      * expected end-of-stream, or the channel writer may terminate the HTTP
      * connection. This is expected and will not throw an exception.<p>
      * 
-     * All things considered, the server must only begin a new next HTTP
-     * exchange over the same channel if this method returns normally, and both
-     * the input- and output streams remain open.
+     * All things considered, the server must only begin a new HTTP exchange
+     * over the same channel if this method returns normally, and both the
+     * input- and output streams remain open.
      */
     void begin() {
         try {
@@ -166,7 +166,10 @@ final class HttpExchange
             assert !writer.wroteFinal();
             LOG.log(DEBUG, "Writing final response");
             try {
-                writer.write(rsp);
+                final var rsp2 = rsp;
+                where(SKELETON_REQUEST,
+                    req == null ? null : of(req),
+                    () -> writer.write(rsp2));
             } catch (RuntimeException exc) {
                 writer.write(handleException(exc, req));
             }
@@ -272,7 +275,7 @@ final class HttpExchange
      * @throws Exception from the request processor
      */
     private Response processRequest(SkeletonRequest r) throws Exception {
-        return where(REQUEST, of(r), () -> {
+        return where(SKELETON_REQUEST, of(r), () -> {
             // Potentially send 100 (Continue)...
             if (!r.httpVersion().isLessThan(HTTP_1_1) &&
                  r.head().headers().contains(EXPECT, "100-continue"))
@@ -372,7 +375,7 @@ final class HttpExchange
             if (handlers.isEmpty()) {
                 return BASE.apply(e, null, null);
             }
-            var rsp = where(REQUEST,
+            var rsp = where(SKELETON_REQUEST,
                     req == null ? null : of(req),
                     () -> __usingHandlers(e));
             return __requireWriterConformance(rsp, "Error");
@@ -391,7 +394,7 @@ final class HttpExchange
             @Override
             Response callIntermittentHandler(
                     ErrorHandler eh, Chain passMeThrough) {
-                var req = request()
+                var req = skeletonRequest()
                         .map(r -> requestWithoutParams(reader, r))
                         .orElse(null);
                 return eh.apply(e, unchecked(passMeThrough), req);
