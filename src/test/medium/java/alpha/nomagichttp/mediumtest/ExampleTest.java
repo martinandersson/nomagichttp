@@ -359,8 +359,8 @@ class ExampleTest extends AbstractRealTest
         
         assertThat(res1).isEqualTo(
             "HTTP/1.1 200 OK"                          + CRLF +
-            "Content-Length: 1"                        + CRLF +
-            "Content-Type: text/plain; charset=utf-8"  + CRLF + CRLF +
+            "Content-Type: text/plain; charset=utf-8"  + CRLF +
+            "Content-Length: 1"                        + CRLF + CRLF +
             
             "3");
         assertThat(Files.readString(file)).isEqualTo("Foo");
