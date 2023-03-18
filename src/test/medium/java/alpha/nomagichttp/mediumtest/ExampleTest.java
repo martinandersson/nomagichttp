@@ -383,7 +383,7 @@ class ExampleTest extends AbstractRealTest
     @Test
     @DisplayName("CountRequestsByMethod/TestClient")
     void CountRequestsByMethod() throws IOException, InterruptedException {
-        final Map<String, LongAdder> freqs = new ConcurrentHashMap<>();
+        final var freqs = new ConcurrentHashMap<String, LongAdder>();
         
         BiConsumer<RequestHeadReceived, RawRequest.Head> incrementer = (event, head) ->
                 freqs.computeIfAbsent(head.line().method(), m -> new LongAdder()).increment();
@@ -395,9 +395,9 @@ class ExampleTest extends AbstractRealTest
                 .writeReadTextUntilNewlines("GET / HTTP/1.1" + CRLF + CRLF);
         
         assertThat(freqs.get("GET").sum())
-                .isOne();
+              .isOne();
         assertThat(pollServerError())
-                .isExactlyInstanceOf(NoRouteFoundException.class);
+              .isExactlyInstanceOf(NoRouteFoundException.class);
     }
     
     // TODO: Add CountRequestsByMethod_compatibility
