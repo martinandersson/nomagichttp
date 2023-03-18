@@ -38,9 +38,11 @@ import static alpha.nomagichttp.testutil.HttpClientFacade.Implementation.JETTY;
 import static alpha.nomagichttp.testutil.HttpClientFacade.Implementation.OKHTTP;
 import static alpha.nomagichttp.testutil.HttpClientFacade.Implementation.REACTOR;
 import static alpha.nomagichttp.testutil.HttpClientFacade.ResponseFacade;
+import static alpha.nomagichttp.testutil.LogRecords.rec;
 import static alpha.nomagichttp.testutil.TestClient.CRLF;
 import static alpha.nomagichttp.util.Headers.of;
 import static alpha.nomagichttp.util.ScopedValues.channel;
+import static java.lang.System.Logger.Level.WARNING;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
@@ -426,6 +428,9 @@ class ExampleTest extends AbstractRealTest
                 Append-This: World!
                 
                 """);
+        
+        logRecorder().assertThatLogContainsOnlyOnce(rec(WARNING,
+            "No trailer header present, Request.trailers() may block until timeout"));
         
         assertThat(rsp).isEqualTo("""
                 HTTP/1.1 200 OK\r
