@@ -51,8 +51,8 @@ class MessageTest extends AbstractRealTest
         String res = client().writeReadTextUntil(post(""), "true");
         assertThat(res).isEqualTo(
             "HTTP/1.1 200 OK"                         + CRLF +
-            "Content-Length: 4"                       + CRLF +
-            "Content-Type: text/plain; charset=utf-8" + CRLF + CRLF +
+            "Content-Type: text/plain; charset=utf-8" + CRLF +
+            "Content-Length: 4"                       + CRLF + CRLF +
             
             "true");
     }
