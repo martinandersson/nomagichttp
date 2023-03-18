@@ -22,13 +22,14 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
  */
 final class ByteBufferIterablesTest
 {
+    final static ByteBuffer HELLO = asciiBytes("Hello"),
+                            WORLD = asciiBytes("World");
+    
     @Test
     void just_iterable() throws IOException {
-        var buf1 = asciiBytes("Hello");
-        var buf2 = asciiBytes("World");
-        var col = List.of(buf1, buf2);
+        var col = List.of(HELLO, WORLD);
         var testee = just(col);
-        assertIterable(testee, buf1, buf2);
+        assertIterable(testee, HELLO, WORLD);
     }
     
     @Test
@@ -48,6 +49,14 @@ final class ByteBufferIterablesTest
             .hasMessage("Input length = 1")
             .hasNoSuppressedExceptions()
             .hasNoCause();
+    }
+    
+    @Test
+    void ofSupplier() throws IOException {
+        var empty = ByteBuffer.allocate(0);
+        var col = List.of(HELLO, WORLD, empty);
+        var testee = ByteBufferIterables.ofSupplier(col.iterator()::next);
+        assertIterable(testee, HELLO, WORLD, empty);
     }
     
     private static String runOfStringUnsafe(String input) {
