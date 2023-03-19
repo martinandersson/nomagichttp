@@ -1,12 +1,10 @@
 package alpha.nomagichttp.internal;
 
 import alpha.nomagichttp.message.ByteBufferIterator;
-import alpha.nomagichttp.message.ByteBufferIterator.Empty;
 import alpha.nomagichttp.message.ResourceByteBufferIterable;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.nio.file.NoSuchFileException;
 import java.util.ArrayDeque;
 import java.util.Deque;
 import java.util.HexFormat;
@@ -18,6 +16,21 @@ import static java.nio.charset.StandardCharsets.US_ASCII;
 import static java.util.Collections.addAll;
 import static java.util.Objects.requireNonNull;
 
+/**
+ * Encodes each upstream bytebuffer into a chunked chunk.<p>
+ * 
+ * Is used to by {@link DefaultChannelWriter} to decorate the response body if
+ * the body has an unknown length and/or the response has trailers (which in
+ * HTTP/1.1 requires chunked encoding; will likely not be necessary for
+ * HTTP/2?).<p>
+ * 
+ * Specifically, this class encodes {@code chunk} and {@code last-chunk} from
+ * <a href="https://datatracker.ietf.org/doc/html/rfc7230#section-4.1">RFC 7230 §4.1</a>
+ * . The trailers (optional) and final {@code CRLF} is added/written by the
+ * channel writer.
+ * 
+ * @author Martin Andersson (webmaster at martinandersson.com)
+ */
 final class ChunkedEncoder implements ResourceByteBufferIterable
 {
     private static final ByteBuffer DONE = allocate(0);
@@ -30,15 +43,15 @@ final class ChunkedEncoder implements ResourceByteBufferIterable
     
     @Override
     public long length() {
-        return it == null ? 0 : -1;
+        return it.hasNext() ? -1 : 0;
     }
     
     @Override
     public ByteBufferIterator iterator() {
-        return it == null ? Empty.INSTANCE : it;
+        return it;
     }
     
-    private final class Impl implements ByteBufferIterator {
+    private static final class Impl implements ByteBufferIterator {
         
         private ByteBufferIterator inputChunks;
         private final Deque<ByteBuffer> pipe;

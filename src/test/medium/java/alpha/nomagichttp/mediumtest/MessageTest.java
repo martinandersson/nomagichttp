@@ -170,6 +170,7 @@ class MessageTest extends AbstractRealTest
             HTTP/1.1 200 OK\r
             Content-Type: text/plain; charset=utf-8\r
             Connection: close\r
+            Trailer: One, Two\r
             Transfer-Encoding: chunked\r
             \r
             00000005\r
@@ -207,9 +208,12 @@ class MessageTest extends AbstractRealTest
         server().add("/", GET().apply(req ->
                 text("Hello")
                     .toBuilder()
-                    .addHeader("Connection", "close")
+                    .addHeaders(
+                        "Connection", "close",
+                        "Trailer", "One, Two")
                     .addTrailers(() -> Headers.of(
-                        "One", "Foo", "Two", "Bar"))
+                        "One", "Foo",
+                        "Two", "Bar"))
                     .build()));
     }
 }

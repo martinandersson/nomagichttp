@@ -264,7 +264,11 @@ public final class DefaultChannelWriter implements ChannelWriter
     
     private int tryWriteTrailers(Response r) throws IOException {
         if (!r.headers().contains(TRAILER)) {
-            return 0;
+            // This is UGLY, and will be removed soon
+            // (this whole class will be refactored)
+            return r.headers().contains(TRANSFER_ENCODING, "chunked") ?
+                    doWrite(asciiBytes(CRLF_STR)) :
+                    0;
         }
         var map = r.trailers().map();
         if (map.isEmpty()) {
@@ -277,7 +281,7 @@ public final class DefaultChannelWriter implements ChannelWriter
                     (e, sink) -> e.getValue().forEach(v ->
                         sink.accept(e.getKey() + ": " + v)))
                 .collect(joining(CRLF_STR));
-        return doWrite(asciiBytes(forWriting + CRLF_STR));
+        return doWrite(asciiBytes(forWriting + CRLF_STR + CRLF_STR));
     }
     
     private int doWrite(ByteBuffer buf) throws IOException {
@@ -454,7 +458,8 @@ public final class DefaultChannelWriter implements ChannelWriter
                 return __dealWithTransferEncoding(r);
             }
             assert len >= 0 : "If <= -1, chunked encoding was applied";
-            final var rMethod = skeletonRequest().map(req -> req.head().line().method());
+            final var rMethod = skeletonRequest().map(req ->
+                    req.head().line().method());
             if (rMethod.filter(HEAD::equals).isPresent()) {
                 return __dealWithHeadRequest(r, len);
             }
