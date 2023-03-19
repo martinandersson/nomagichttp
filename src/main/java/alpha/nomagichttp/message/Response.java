@@ -144,7 +144,9 @@ public interface Response extends HeaderHolder
     /**
      * Returns trailers.<p>
      * 
-     * A response that wishes to send trailers must set the "Trailer" header.
+     * A response that wishes to send trailers must set the
+     * {@value HttpConstants.HeaderName#TRAILER} header.<p>
+     * 
      * The value(s) should precisely match the trailer name(s). The server will
      * not even call this method if the "Trailer" header is not set. Otherwise,
      * this method will be called exactly once after the body has been written,
@@ -464,7 +466,7 @@ public interface Response extends HeaderHolder
          * The given supplier will be used as a delegate implementation for
          * {@link Response#trailers()}.<p>
          * 
-         * The application should populate the HTTP header "Trailer" with the
+         * The application must populate the HTTP header "Trailer" with the
          * names of the trailers that will be sent.<p>
          * 
          * The application should only send trailers if the client has indicated

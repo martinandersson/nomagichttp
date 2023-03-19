@@ -2703,7 +2703,7 @@ public final class HttpConstants {
          * 
          * May be used in both request and response.<p>
          * 
-         * Example: {@code Trailer: My-Hash}
+         * Example: {@code Trailer: My-Hash, And-Something-Else}
          * 
          * @see #TE
          * @see <a href="https://tools.ietf.org/html/rfc7230#section-4.4">RFC 7230 §4.4</a>
