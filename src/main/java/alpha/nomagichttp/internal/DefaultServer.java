@@ -231,6 +231,8 @@ public final class DefaultServer implements HttpServer
                     break;
                 }
             }
+        } finally {
+            LOG.log(DEBUG, () -> "Closed child: " + ch);
         }
     }
     

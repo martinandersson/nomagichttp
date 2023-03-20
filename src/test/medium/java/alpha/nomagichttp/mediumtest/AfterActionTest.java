@@ -9,13 +9,12 @@ import java.io.IOException;
 import static alpha.nomagichttp.HttpConstants.HeaderName.X_CORRELATION_ID;
 import static alpha.nomagichttp.handler.RequestHandler.GET;
 import static alpha.nomagichttp.message.Responses.noContent;
-import static alpha.nomagichttp.message.Responses.serviceUnavailable;
 import static alpha.nomagichttp.message.Responses.text;
 import static alpha.nomagichttp.testutil.TestClient.CRLF;
-import static alpha.nomagichttp.util.ByteBufferIterables.ofStringUnsafe;
 import static java.lang.String.valueOf;
 import static java.lang.System.Logger.Level.ERROR;
 import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
+import static org.eclipse.jetty.http.HttpStatus.NOT_FOUND_404;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
@@ -48,9 +47,9 @@ class AfterActionTest extends AbstractRealTest
                 "GET /hello HTTP/1.1"                     + CRLF + CRLF, "hello");
             assertThat(rsp1).isEqualTo(
                 "HTTP/1.1 200 OK"                         + CRLF +
-                "Content-Length: 5"                       + CRLF +
                 "Content-Type: text/plain; charset=utf-8" + CRLF +
-                "X-Correlation-ID: 123"                   + CRLF + CRLF +
+                "X-Correlation-ID: 123"                   + CRLF +
+                "Content-Length: 5"                       + CRLF + CRLF +
                 
                 "hello");
             
@@ -59,11 +58,11 @@ class AfterActionTest extends AbstractRealTest
                 "X-Correlation-ID: 456"                   + CRLF +
                 "Connection: close"                       + CRLF + CRLF);
             assertThat(rsp2).isEqualTo(
-                "HTTP/1.1 200 OK" + CRLF +
-                "Content-Length: 3"                       + CRLF +
+                "HTTP/1.1 200 OK"                         + CRLF +
                 "Content-Type: text/plain; charset=utf-8" + CRLF +
                 "X-Correlation-ID: 456"                   + CRLF +
-                "Connection: close"                       + CRLF + CRLF +
+                "Connection: close"                       + CRLF +
+                "Content-Length: 3"                       + CRLF + CRLF +
                 
                 "bye");
             
@@ -85,8 +84,8 @@ class AfterActionTest extends AbstractRealTest
             "GET /404 HTTP/1.1"      + CRLF + CRLF);
         assertThat(rsp).isEqualTo(
             "HTTP/1.1 404 Not Found" + CRLF +
-            "Content-Length: 0"      + CRLF +
-            "X-Count: 2"             + CRLF + CRLF);
+            "X-Count: 2"             + CRLF +
+            "Content-Length: 0"      + CRLF + CRLF);
         
         assertThatServerErrorObservedAndLogged()
                 .isExactlyInstanceOf(NoRouteFoundException.class)
@@ -97,39 +96,29 @@ class AfterActionTest extends AbstractRealTest
     
     @Test
     void crash() throws IOException, InterruptedException {
-        // 1. NoRouteFoundException
-        // 2. base error handler writes 404
-        // 3. after-action crashes with IllegalStateException
-        // 4. custom error handler writes 503
-        
-        usingErrorHandler((thr, ch, req) ->
-            thr instanceof IllegalStateException ?
-                serviceUnavailable().toBuilder()
-                                    .body(ofStringUnsafe(thr.getMessage()))
-                                    .build() :
-                ch.proceed());
+        // After-action crashes with IllegalStateException.
+        // Exception is logged, then child is closed.
         server().after("/", (req, rsp) -> {
-            if (rsp.statusCode() != 503) {
-                // Weirdly crash for everything not 503
-                throw new IllegalStateException("hello");
-            }
-            return rsp;
+            assertThat(rsp.statusCode())
+                  .isEqualTo(NOT_FOUND_404);
+            throw new IllegalStateException("boom!");
         });
-        
         var rsp = client().writeReadTextUntilEOS(
-            "GET / HTTP/1.1"                   + CRLF + CRLF);
-        assertThat(rsp).isEqualTo(
-            "HTTP/1.1 503 Service Unavailable" + CRLF +
-            "Content-Length: 5"                + CRLF +
-            "Connection: close"                + CRLF + CRLF +
-            
-            "hello");
-        
+              "GET / HTTP/1.1" + CRLF + CRLF);
+        assertThat(rsp)
+              .isEmpty();
+        // First error was handed to the error handler, who also logged it
         assertThatServerErrorObservedAndLogged()
-                .isExactlyInstanceOf(NoRouteFoundException.class)
-                .hasMessage("/")
-                .hasNoCause()
-                .hasNoSuppressedExceptions();
+              .isExactlyInstanceOf(NoRouteFoundException.class)
+              .hasMessage("/")
+              .hasNoCause()
+              .hasNoSuppressedExceptions();
+        // The subsequent after-action exception was logged, but no error handler
+        var list = logRecorder().recordedErrors();
+        assertThat(list.size()).isEqualTo(2);
+        assertThat(list.getLast()).hasToString(
+            "alpha.nomagichttp.internal.AfterActionException: " +
+                "java.lang.IllegalStateException: boom!");
     }
     
     @Test
