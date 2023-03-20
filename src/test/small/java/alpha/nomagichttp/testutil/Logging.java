@@ -4,9 +4,11 @@ import alpha.nomagichttp.HttpServer;
 import org.assertj.core.groups.Tuple;
 
 import java.io.OutputStream;
+import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Deque;
 import java.util.List;
+import java.util.Objects;
 import java.util.concurrent.ConcurrentLinkedDeque;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
@@ -27,6 +29,7 @@ import static java.lang.System.Logger.Level.WARNING;
 import static java.util.Comparator.comparing;
 import static java.util.Objects.requireNonNull;
 import static java.util.concurrent.TimeUnit.SECONDS;
+import static java.util.stream.Collectors.toCollection;
 import static java.util.stream.Stream.of;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -293,12 +296,24 @@ public final class Logging
         /**
          * Stream a snapshot of all records observed.
          * 
-         * @return a snapshot of all records observed
+         * @return see JavaDoc
          */
         public Stream<LogRecord> records() {
             return listeners()
                     .flatMap(RecordListener::recordsStream)
                     .sorted(comparing(LogRecord::getInstant));
+        }
+    
+        /**
+         * Returns a snapshot of all recorded errors.
+         * 
+         * @return see JavaDoc
+         */
+        public Deque<Throwable> recordedErrors() {
+            return records()
+                    .map(LogRecord::getThrown)
+                    .filter(Objects::nonNull)
+                    .collect(toCollection(ArrayDeque::new));
         }
         
         /**
@@ -372,23 +387,23 @@ public final class Logging
          */
         public boolean await(Predicate<LogRecord> test) throws InterruptedException {
             requireNonNull(test);
-            
-            CountDownLatch cl = new CountDownLatch(1);
-            
+            var latch = new CountDownLatch(1);
             for (RecordListener rl : l) {
                 rl.monitor(rec -> {
+                    // Run callback only once
+                    if (latch.getCount() == 0) {
+                        return;
+                    }
                     if (test.test(rec)) {
-                        cl.countDown();
+                        latch.countDown();
                     }
                 });
-                
                 // optimization (no need to continue), that's all
-                if (cl.getCount() == 0) {
+                if (latch.getCount() == 0) {
                     return true;
                 }
             }
-            
-            return cl.await(timeout, unit);
+            return latch.await(timeout, unit);
         }
         
         /**

@@ -17,6 +17,7 @@ import static alpha.nomagichttp.handler.RequestHandler.POST;
 import static alpha.nomagichttp.message.Responses.text;
 import static alpha.nomagichttp.testutil.TestClient.CRLF;
 import static java.util.concurrent.Executors.newVirtualThreadPerTaskExecutor;
+import static java.util.concurrent.ForkJoinPool.commonPool;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
 import static org.assertj.core.api.AssertionsForClassTypes.assertThatThrownBy;
@@ -77,7 +78,7 @@ class ServerLifeCycleTest extends AbstractRealTest
         
         Future<Void> fut;
         Channel ch = client().openConnection();
-        try (ch; var exec = newVirtualThreadPerTaskExecutor()) {
+        try (ch) {
             String rsp1 = client().writeReadTextUntilNewlines(
                 "POST / HTTP/1.1"                        + CRLF +
                 "Content-Length: 3"                      + CRLF +
@@ -87,11 +88,11 @@ class ServerLifeCycleTest extends AbstractRealTest
             assertThat(rsp1).isEqualTo(
                 "HTTP/1.1 100 Continue" + CRLF + CRLF);
             
-            var toContinue = new Semaphore(1);
+            var toContinue = new Semaphore(0);
             server().events().on(HttpServerStopped.class, x -> {
                 toContinue.release();
             });
-            fut = exec.submit(() -> {
+            fut = commonPool().submit(() -> {
                 server().stop();
                 return null;
             });
@@ -104,8 +105,9 @@ class ServerLifeCycleTest extends AbstractRealTest
                 "Hi!"                                     + CRLF + CRLF, "Hi!");
             assertThat(rsp2).isEqualTo(
                 "HTTP/1.1 200 OK"                         + CRLF +
-                "Content-Length: 3"                       + CRLF +
-                "Content-Type: text/plain; charset=utf-8" + CRLF + CRLF +
+                "Content-Type: text/plain; charset=utf-8" + CRLF +
+                "Connection: close"                       + CRLF +
+                "Content-Length: 3"                       + CRLF + CRLF +
                 
                 "Hi!");
             
