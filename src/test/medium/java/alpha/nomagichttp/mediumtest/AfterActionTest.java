@@ -5,6 +5,7 @@ import alpha.nomagichttp.testutil.AbstractRealTest;
 import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
+import java.util.Deque;
 
 import static alpha.nomagichttp.HttpConstants.HeaderName.X_CORRELATION_ID;
 import static alpha.nomagichttp.handler.RequestHandler.GET;
@@ -12,10 +13,8 @@ import static alpha.nomagichttp.message.Responses.noContent;
 import static alpha.nomagichttp.message.Responses.text;
 import static alpha.nomagichttp.testutil.TestClient.CRLF;
 import static java.lang.String.valueOf;
-import static java.lang.System.Logger.Level.ERROR;
 import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
 import static org.eclipse.jetty.http.HttpStatus.NOT_FOUND_404;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * Medium tests for after-actions.
@@ -94,10 +93,9 @@ class AfterActionTest extends AbstractRealTest
                 .hasNoSuppressedExceptions();
     }
     
+    // No request handler, only after-action; crashes with IllegalStateException
     @Test
-    void crash() throws IOException, InterruptedException {
-        // After-action crashes with IllegalStateException.
-        // Exception is logged, then child is closed.
+    void crash_1() throws IOException, InterruptedException {
         server().after("/", (req, rsp) -> {
             assertThat(rsp.statusCode())
                   .isEqualTo(NOT_FOUND_404);
@@ -107,36 +105,38 @@ class AfterActionTest extends AbstractRealTest
               "GET / HTTP/1.1" + CRLF + CRLF);
         assertThat(rsp)
               .isEmpty();
-        // First error was handed to the error handler, who also logged it
+        // First error is handed to the error handler, who also logs it
         assertThatServerErrorObservedAndLogged()
               .isExactlyInstanceOf(NoRouteFoundException.class)
               .hasMessage("/")
               .hasNoCause()
               .hasNoSuppressedExceptions();
-        // The subsequent after-action exception was logged, but no error handler
-        var list = logRecorder().recordedErrors();
-        assertThat(list.size()).isEqualTo(2);
-        assertThat(list.getLast()).hasToString(
-            "alpha.nomagichttp.internal.AfterActionException: " +
-                "java.lang.IllegalStateException: boom!");
+        // The subsequent after-action exception is logged, but no error handler
+        Deque<Throwable> errors = logRecorder().recordedErrors();
+        assertThat(errors.size())
+              .isEqualTo(2);
+        // The first error already asserted; NoRouteFoundException
+        assertThat(errors.getLast())
+              .hasToString(
+                  "alpha.nomagichttp.internal.AfterActionException: " +
+                      "java.lang.IllegalStateException: boom!");
     }
     
+    // Has request handler, then after-action returns null
     @Test
-    void NullPointerException() throws IOException, InterruptedException {
+    void crash_2() throws IOException {
         server()
-            .add("/", GET().apply(req -> noContent()))
-            .after("/", (req, rsp) -> {
-                String npe = null;
-                npe.toString();
-                return null;
-            });
-        
-        var rsp = client().writeReadTextUntilEOS("GET / HTTP/1.1" + CRLF + CRLF);
-        
-        assertThat(rsp).isEmpty();
-        assertTrue(logRecorder().await(ERROR,
-                "Error recovery attempts depleted, will close the channel. " +
-                "This error is ignored.",
-                NullPointerException.class));
+              .add("/", GET().apply(req -> noContent()))
+              .after("/", (req, rsp) -> null);
+        var rsp = client()
+              .writeReadTextUntilEOS("GET / HTTP/1.1" + CRLF + CRLF);
+        assertThat(rsp)
+              .isEmpty();
+        // Error handler is not called, but error logged
+        Deque<Throwable> errors = logRecorder().recordedErrors();
+        assertThat(errors.size()).isEqualTo(1);
+        assertThat(errors.getLast()).hasToString(
+              "alpha.nomagichttp.internal.AfterActionException: " +
+              "java.lang.NullPointerException");
     }
 }

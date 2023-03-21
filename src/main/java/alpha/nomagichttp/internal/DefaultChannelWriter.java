@@ -200,13 +200,11 @@ public final class DefaultChannelWriter implements ChannelWriter
         }
         for (var m : matches) {
             final Request app = requestWithParams(reader, skeleton, m.segments());
-            final Response rsp;
             try {
-                rsp = m.action().apply(app, r);
+                r = requireNonNull(m.action().apply(app, r));
             } catch (RuntimeException e) {
                 throw new AfterActionException(e);
             }
-            r = requireNonNull(rsp);
         }
         return r;
     }
