@@ -90,7 +90,7 @@ final class HttpExchange
     private final HttpServer server;
     private final Config conf;
     private final Collection<ErrorHandler> handlers;
-    private final ClientChannel channel;
+    private final ClientChannel child;
     private final ChannelReader reader;
     private final ChannelWriter writer;
     private final RequestProcessor reqProc;
@@ -100,14 +100,14 @@ final class HttpExchange
             DefaultActionRegistry actions,
             DefaultRouteRegistry routes,
             Collection<ErrorHandler> handlers,
-            ClientChannel channel,
+            ClientChannel child,
             ChannelReader reader,
             ChannelWriter writer)
     {
         this.server   = server;
         this.conf     = server.getConfig();
         this.handlers = handlers;
-        this.channel  = channel;
+        this.child    = child;
         this.reader   = reader;
         this.writer   = writer;
         this.reqProc  = new RequestProcessor(actions, routes, reader);
@@ -139,7 +139,7 @@ final class HttpExchange
         try {
             begin0();
         } catch (Exception e) {
-            if (channel.isInputOpen() && channel.isOutputOpen()) {
+            if (child.isInputOpen() && child.isOutputOpen()) {
                 throw new AssertionError(e);
             }
             // Else considered handled and ignored
@@ -155,10 +155,10 @@ final class HttpExchange
             LOG.log(DEBUG, "Executing the request processing chain");
             rsp = processRequest(req);
         } catch (Exception exc) {
-            if (req == null && channel.isInputOpen()) {
+            if (req == null && child.isInputOpen()) {
                 LOG.log(DEBUG,
                     "Parsing request failed, shutting down the input stream");
-                channel.shutdownInput();
+                child.shutdownInput();
             }
             rsp = handleException(exc, req);
         }
@@ -174,7 +174,7 @@ final class HttpExchange
                 writer.write(handleException(exc, req));
             }
         }
-        if (!channel.isInputOpen() || !channel.isOutputOpen()) {
+        if (!child.isInputOpen() || !child.isOutputOpen()) {
             LOG.log(DEBUG, """
                     Channel is half-closed or closed, \
                     a new HTTP exchange will not begin""");
@@ -361,8 +361,8 @@ final class HttpExchange
             closeChannel(DEBUG, "Client aborted the exchange");
             throw e;
         }
-        if (!channel.isOutputOpen()) {
-            LOG.log(ERROR,
+        if (!child.isOutputOpen()) {
+            LOG.log(WARNING,
                 "Output stream is not open, can not handle this error.", e);
             throw e;
         }
@@ -382,7 +382,7 @@ final class HttpExchange
         } catch (Exception suppressed) {
             e.addSuppressed(suppressed);
             LOG.log(ERROR, "Error processing chain failed to handle this", e);
-            channel.close();
+            child.close();
             throw e;
         }
     }
@@ -458,16 +458,16 @@ final class HttpExchange
     }
     
     private void closeChannel(Level level, String why) {
-        if (channel.isInputOpen() || channel.isOutputOpen()) {
+        if (child.isInputOpen() || child.isOutputOpen()) {
             LOG.log(level, () -> why + "; closing the channel.");
-            channel.close();
+            child.close();
         }
     }
     
     private void closeChannel(Level level, String why, Exception exc) {
-        if (channel.isInputOpen() || channel.isOutputOpen()) {
+        if (child.isInputOpen() || child.isOutputOpen()) {
             LOG.log(level, () -> why + "; closing channel.", exc);
-            channel.close();
+            child.close();
         } else {
             LOG.log(level, () -> why + ".", exc);
         }
