@@ -15,15 +15,14 @@ import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.ValueSource;
 
 import java.io.IOException;
-import java.nio.ByteBuffer;
+import java.nio.channels.AsynchronousCloseException;
 import java.nio.channels.Channel;
 import java.nio.channels.ClosedByInterruptException;
 import java.nio.channels.ClosedChannelException;
+import java.util.ArrayList;
 import java.util.Objects;
 import java.util.concurrent.ArrayBlockingQueue;
-import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.Semaphore;
 import java.util.logging.LogRecord;
 
 import static alpha.nomagichttp.handler.RequestHandler.GET;
@@ -54,7 +53,7 @@ class ClientLifeCycleTest extends AbstractRealTest
     // https://stackoverflow.com/questions/10240694/java-socket-api-how-to-tell-if-a-connection-has-been-closed/10241044#10241044
     // https://stackoverflow.com/questions/155243/why-is-it-impossible-without-attempting-i-o-to-detect-that-tcp-socket-was-grac
     
-    // For HTTP/1.0, server will respond "Connection: close"
+    // For HTTP/1.0 clients, server will close the child
     @Test
     void http1_0_nonPersistent() throws IOException, InterruptedException {
         server().add("/", GET().apply(req -> noContent()));
@@ -73,7 +72,7 @@ class ClientLifeCycleTest extends AbstractRealTest
         }
     }
     
-    // Writing to a closed channel logs ClosedChannelException
+    // Writing to a closed channel logs a closed exception
     @ParameterizedTest
     @ValueSource(booleans = {true, false})
     void serverClosesChannel_beforeResponse(boolean streamOnly) throws IOException, InterruptedException {
@@ -88,91 +87,102 @@ class ClientLifeCycleTest extends AbstractRealTest
         
         Channel ch = client().openConnection();
         try (ch) {
-            String rsp = client().writeReadTextUntilNewlines("GET / HTTP/1.1" + CRLF + CRLF);
-            
-            assertThat(rsp).isEmpty();
-            
+            var rsp = client()
+                  .writeReadTextUntilNewlines("GET / HTTP/1.1" + CRLF + CRLF);
+            assertThat(rsp)
+                  .isEmpty();
             logRecorder().assertAwait(
-                WARNING,
-                    "Child channel is closed for writing. " +
-                    "Can not resolve this error. " +
-                    "HTTP exchange is over.",
-                ClosedChannelException.class);
+                  WARNING,
+                  "Output stream is not open, can not handle this error.",
+                  // This I can't really explain. lol?
+                  streamOnly ?
+                      AsynchronousCloseException.class :
+                      ClosedChannelException.class);
             
-            // Clean close from server caused our end (test worker) to receive EOS
-            logRecorder().assertAwait(DEBUG, "EOS; server closed channel's read stream.");
+            // Clean close from server caused our end to receive EOS
+            // (it is the test worker thread that logs this message)
+            logRecorder().assertAwait(
+                    DEBUG, "EOS; server closed channel's read stream.");
+            logRecorder().assertAwaitChildClose();
         }
         
-        // <implicit assert that no error was delivered to the error handler>
+        // Implicit assert that no error was delivered to the error handler
     }
     
-    // Client immediately closes the channel,
-    // is completely ignored (no error handler and no logging).
-    // See RequestLineSubscriber and ClientAbortedException
+    // Client immediately closes the channel; no error handler and no warning
     @Test
     void clientClosesChannel_serverReceivedNoBytes() throws IOException, InterruptedException {
-        client().openConnection().close();
-        
         /*
-         Just for the "record" (no pun intended), the log is as of 2021-03-21
+         Just for the "record" (no pun intended), the log is as of 2023-03-22
          something like this:
-         
-           {tstamp} | Test worker | INFO | {pkg}.DefaultServer initialize | Opened server channel: {...}
-           {tstamp} | dead-25     | FINE | {pkg}.DefaultServer$OnAccept setup | Accepted child: {...}
-           {tstamp} | Test worker | INFO | {pkg}.DefaultServer stopServer | Closed server channel: {...}
-           {tstamp} | dead-24     | FINE | {pkg}.DefaultServer$OnAccept failed | Parent channel closed. Will accept no more children.
-           {tstamp} | dead-24     | FINE | {pkg}.AnnounceToChannel$Handler completed | End of stream; other side must have closed. Will close channel's input stream.
-           {tstamp} | dead-25     | FINE | {pkg}.AbstractUnicastPublisher accept | PollPublisher has a new subscriber: {...}
-           {tstamp} | dead-25     | FINE | {pkg}.HttpExchange resolve | Client aborted the HTTP exchange.
-           {tstamp} | dead-25     | FINE | {pkg}.DefaultChannelOperations orderlyClose | Closed child: {...}
+           
+           {tstamp} | Test worker | INFO | {pkg}.DefaultServer lambda$openOrFail$8 | Opened server channel: {...}
+           {tstamp} | dead-35     | FINE | {pkg}.DefaultServer runAcceptLoop0 | Accepted child: {...}
+           {tstamp} | Test worker | FINE | {pkg}.TestClient closeChannel | Closed test-client channel.
+           {tstamp} | Test worker | INFO | {pkg}.DefaultServer lambda$close$17 | Closed server channel: {...}
+           {tstamp} | dead-44     | FINE | {pkg}.HttpExchange begin0 | Parsing the request
+           {tstamp} | dead-44     | FINE | {pkg}.ChannelReader shutdownInput | EOS, shutting down input stream.
+           {tstamp} | dead-44     | FINE | {pkg}.HttpExchange closeChannel | Client aborted the exchange; closing the channel.
+           {tstamp} | dead-44     | FINE | {pkg}.DefaultServer handleChild | Closed child: {...}
          */
-        
-        logRecorder().assertAwaitChildAccept();
+        client().openConnection().close();
+        // This one is pretty important for the test, hence the assert
+        logRecorder().assertAwait(
+              DEBUG, "Client aborted the exchange; closing the channel.");
+        logRecorder().assertAwaitChildClose();
         assertThatNoWarningOrErrorIsLogged();
-        // that no error was thrown is asserted by super class
     }
     
     /**
-     * Client writes an incomplete request and then closes the channel. Error
-     * handler is called, but default handler notices that the error is due to a
-     * disconnect and subsequently ignores it without logging.
+     * Client writes an incomplete request and then closes the channel.<p>
      * 
-     * @see ErrorHandler
-     * @see ErrorTest#Special_requestBodySubscriberFails_onError() 
+     * The channel reader's size is unlimited at the time of the connection
+     * shutdown, and so it signals an EOS by issuing an empty buffer to the
+     * downstream request-line parser, which throws a parse exception, which the
+     * base handler does not log, and responds 400 (Bad Request).
+     * 
+     * @see ErrorTest#Special_requestBodyConsumerFails() 
      */
     @Test
-    void clientClosesChannel_serverReceivedPartialHead() throws IOException, InterruptedException {
-        onErrorAssert(EndOfStreamException.class, channel ->
-                assertThat(channel.isInputOpen()).isFalse());
-        
-        client().write("XXX /incomplete");
-        
+    void clientClosesChannel_serverReceivedPartialHead()
+            throws IOException, InterruptedException {
+        client()
+            .write("XXX /incomplete");
         assertThat(pollServerError())
-                .isExactlyInstanceOf(EndOfStreamException.class);
-        
-        assertThatNoWarningOrErrorIsLogged();
+            .hasToString("""
+                RequestLineParseException{\
+                prev=(hex:0x65, decimal:101, char:"e"), \
+                curr=N/A, \
+                pos=14, \
+                msg=Upstream finished prematurely.}""")
+            .hasNoCause()
+            .hasNoSuppressedExceptions();
+        assert400BadRequestNoWarning();
     }
     
-    // A variant of the previous test, except EOS goes to body subscriber
+    /**
+     * A variant of the previous test, except now the upstream channel reader
+     * has a known limit, and so it throws an EOS exception.<p>
+     * 
+     * Apart from that, the outcome is the same.
+     */
     @Test
-    void clientShutsDownWriteStream_serverReceivedPartialBody() throws IOException, InterruptedException {
-        BlockingQueue<Throwable> appErr = new ArrayBlockingQueue<>(1);
-        Semaphore shutdown = new Semaphore(0);
+    void clientShutsDownWriteStream_serverReceivedPartialBody()
+            throws IOException, InterruptedException {
+        var consumed = new ArrayList<Byte>();
+        var observed = new ArrayBlockingQueue<Throwable>(1);
         server().add("/", GET().apply(req -> {
-            var it = req.body().iterator();
-            while (it.hasNext()) {
-                ByteBuffer buf;
-                try {
-                    buf = it.next();
-                } catch (Throwable t) {
-                    appErr.add(t);
-                    channel().close();
-                    break;
-                }
-                buf.position(buf.limit());
+            try {
+                req.body().iterator().forEachRemaining(buf -> {
+                    while (buf.hasRemaining()) {
+                        consumed.add(buf.get());
+                    }
+                });
+            } catch (Throwable t) {
+                observed.add(t);
+                throw t;
             }
-            shutdown.release();
-            return null;
+            throw new AssertionError();
         }));
         Channel ch = client().openConnection();
         try (ch) {
@@ -181,15 +191,29 @@ class ClientLifeCycleTest extends AbstractRealTest
                 "Content-Length: 2" + CRLF + CRLF +
                 
                 "1");
-            assertThat(shutdown.tryAcquire(1, SECONDS)).isTrue();
             client().shutdownOutput();
-            
-            assertThat(appErr.poll(1, SECONDS))
-                    .isExactlyInstanceOf(EndOfStreamException.class)
-                    .hasNoCause()
-                    .hasNoSuppressedExceptions();
+            var thr = observed.poll(1, SECONDS);
+            // We did get the byte sent, before EOS
+            assertThat(consumed).containsExactly((byte) '1');
+            assertThat(observed).isEmpty();
+            // EOS was provided to the base handler
+            assertThat(thr).isSameAs(pollServerError());
+            assertThat(thr)
+                .isExactlyInstanceOf(EndOfStreamException.class)
+                .hasNoCause()
+                .hasNoSuppressedExceptions();
+            assert400BadRequestNoWarning();
         }
-        logRecorder().assertThatNoErrorWasLogged();
+    }
+    
+    private void assert400BadRequestNoWarning()
+            throws InterruptedException, IOException {
+        logRecorder()
+            .assertAwait(DEBUG, "Sent 400 (Bad Request)");
+        logRecorder()
+            .assertAwaitChildClose();
+        // No warnings or errors!
+        assertThatNoWarningOrErrorIsLogged();
     }
     
     // Broken pipe always end the exchange, no error handling no logging
