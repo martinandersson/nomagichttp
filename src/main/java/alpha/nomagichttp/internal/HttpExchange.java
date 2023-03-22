@@ -170,7 +170,7 @@ final class HttpExchange
                 where(SKELETON_REQUEST,
                     req == null ? null : of(req),
                     () -> writer.write(rsp2));
-            } catch (RuntimeException exc) {
+            } catch (Exception exc) {
                 writer.write(handleException(exc, req));
             }
         }
