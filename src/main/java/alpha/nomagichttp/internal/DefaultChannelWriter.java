@@ -419,13 +419,14 @@ public final class DefaultChannelWriter implements ChannelWriter
                 // Haven't seen the header before and no current state indicates we need it = NOP
                 out = r;
             } else {
-                final String src =
-                    __reqHasConnectionClose() ? "request" : 
-                    !channel().isInputOpen()  ? "half-closed state of channel" :
+                final String why =
+                    __reqHasConnectionClose() ? "request headers' did" :
+                    !channel().isInputOpen()  ? "client's input stream has shut down" :
                     !httpServer().isRunning() ? "server has stopped" :
                     null;
-                if (src != null) {
-                    LOG.log(DEBUG, "Connection-close flag is derived from " + src);
+                if (why != null) {
+                    LOG.log(DEBUG, () ->
+                        "Will set \"Connection: close\" because the " + why + ".");
                     sawConnectionClose = true;
                     out = __setConnectionClose(r);
                 } else {
