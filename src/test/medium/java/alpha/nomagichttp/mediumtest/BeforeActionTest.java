@@ -40,9 +40,9 @@ class BeforeActionTest extends AbstractRealTest
             "Connection: close"                       + CRLF + CRLF);
         assertThat(rsp).isEqualTo(
             "HTTP/1.1 200 OK"                         + CRLF +
-            "Content-Length: 10"                      + CRLF +
             "Content-Type: text/plain; charset=utf-8" + CRLF +
-            "Connection: close"                       + CRLF + CRLF +
+            "Connection: close"                       + CRLF +
+            "Content-Length: 10"                      + CRLF + CRLF +
             
             "helloworld");
         assertThatNoWarningOrErrorIsLogged();
