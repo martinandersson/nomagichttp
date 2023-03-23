@@ -177,7 +177,7 @@ final class HttpExchange
         if (!child.isInputOpen() || !child.isOutputOpen()) {
             LOG.log(DEBUG, """
                     Channel is half-closed or closed, \
-                    a new HTTP exchange will not begin""");
+                    a new HTTP exchange will not begin.""");
             return;
         }
         assert req != null : "Input stream was shutdown";

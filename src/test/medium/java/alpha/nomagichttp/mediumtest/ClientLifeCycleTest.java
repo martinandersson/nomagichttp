@@ -2,17 +2,13 @@ package alpha.nomagichttp.mediumtest;
 
 import alpha.nomagichttp.handler.EndOfStreamException;
 import alpha.nomagichttp.handler.ErrorHandler;
-import alpha.nomagichttp.handler.RequestHandler;
 import alpha.nomagichttp.message.Char;
-import alpha.nomagichttp.message.Response;
 import alpha.nomagichttp.testutil.AbstractRealTest;
 import alpha.nomagichttp.testutil.Environment;
 import alpha.nomagichttp.testutil.TestClient;
-import alpha.nomagichttp.testutil.TestRequests;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.ValueSource;
 
 import java.io.IOException;
@@ -23,13 +19,14 @@ import java.nio.channels.ClosedChannelException;
 import java.util.ArrayList;
 import java.util.Objects;
 import java.util.concurrent.ArrayBlockingQueue;
-import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.Semaphore;
 import java.util.logging.LogRecord;
 
 import static alpha.nomagichttp.handler.RequestHandler.GET;
 import static alpha.nomagichttp.handler.RequestHandler.POST;
 import static alpha.nomagichttp.message.Responses.noContent;
 import static alpha.nomagichttp.testutil.TestClient.CRLF;
+import static alpha.nomagichttp.testutil.TestRequests.get;
 import static alpha.nomagichttp.util.ScopedValues.channel;
 import static java.lang.System.Logger.Level.DEBUG;
 import static java.lang.System.Logger.Level.WARNING;
@@ -310,53 +307,40 @@ class ClientLifeCycleTest extends AbstractRealTest
         assertThatNoWarningOrErrorIsLoggedExcept(TestClient.class, ErrorHandler.class);
     }
     
-    // Client shuts down output stream after request, still receives the full response
+    // Client shuts down output stream after request, still receives full response
     @ParameterizedTest
-    @CsvSource({"true,false", "false,false", "true,true", "false,true"})
+    @ValueSource(booleans = {true, false})
     void intermittentStreamShutdown_clientOutput(
-            boolean setConnectionCloseHeader, boolean useRequestBody)
-            throws IOException, InterruptedException
-    {
-        var resp  = new CompletableFuture<Response>();
-        var meth = useRequestBody ? RequestHandler.POST() : GET();
-        server().add("/", meth.apply(req -> resp.get()));
+            boolean addConnCloseHeader)
+            throws IOException, InterruptedException {
+        var send = new Semaphore(0);
+        server().add("/", GET().apply(req -> {
+            send.acquire();
+            return noContent();
+        }));
         Channel ch = client().openConnection();
         try (ch) {
-            String[] conn = setConnectionCloseHeader ?
-                    new String[]{"Connection: close"} :
-                    new String[0];
-            String req = useRequestBody ?
-                    TestRequests.post("body", conn) :
-                    TestRequests.get(conn);
-            client().write(req);
-            client().shutdownOutput();
-            resp.complete(noContent());
-            String rsp = client().readTextUntilEOS();
-            
-            if (setConnectionCloseHeader) {
-                assertThat(rsp).isEqualTo(
-                    "HTTP/1.1 204 No Content" + CRLF +
-                    "Connection: close"       + CRLF + CRLF);
-            } else {
-                // No guarantee the server observes the half-close before response,
-                // so no guarantee the close header has been set in response.
-                assertThat(rsp).startsWith(
-                    "HTTP/1.1 204 No Content" + CRLF);
+            client().write(addConnCloseHeader ?
+                           get("Connection: close") : get())
+                    .shutdownOutput();
+            send.release();
+            var rsp = client().readTextUntilEOS();
+            assertThat(rsp)
+                .startsWith("HTTP/1.1 204 No Content" + CRLF);
+            if (addConnCloseHeader) {
+                assertThat(rsp)
+                    .endsWith("Connection: close" + CRLF + CRLF);
             }
-            
             // Sooner or later the half-close will be observed
             logRecorder().assertAwaitChildClose();
         }
-        
-        // We can't say exactly how the HTTP exchange ends,
-        // except it's going to end in one of three ways:
-        assertTrue(logRecorder().await(rec ->
-            // 1) Client's shutdown may be observed...
-            "Input stream was shut down. HTTP exchange is over.".equals(rec.getMessage()) ||
-            // 2) before the close-header, or if none of these, ...
-            "Request set \"Connection: close\", shutting down input.".equals(rec.getMessage()) ||
-            // 3) the next logical exchange will immediately abort.
-            "Client aborted the HTTP exchange.".equals(rec.getMessage())));
+        // Reason why exchange ended, is
+        logRecorder().assertAwait(DEBUG, addConnCloseHeader ?
+            // because server's writer shut down the output stream, or
+            "Channel is half-closed or closed, a new HTTP exchange will not begin." :
+            // the next logical exchange actually started, but immediately aborted
+            "Client aborted the exchange; closing the channel.");
+        assertThatNoWarningOrErrorIsLogged();
     }
     
     // Client receives response first, then shuts down input stream, then server gets the request
@@ -455,7 +439,7 @@ class ClientLifeCycleTest extends AbstractRealTest
             return noContent();
         }));
         assertThat(client().writeReadTextUntilEOS(
-                TestRequests.get()))
+                get()))
             .isEqualTo(
                 "HTTP/1.1 204 No Content" + CRLF +
                 "Connection: close"       + CRLF + CRLF);
