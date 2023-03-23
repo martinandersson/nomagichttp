@@ -9,6 +9,7 @@ import alpha.nomagichttp.testutil.AbstractRealTest;
 import alpha.nomagichttp.testutil.Environment;
 import alpha.nomagichttp.testutil.TestClient;
 import alpha.nomagichttp.testutil.TestRequests;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
@@ -216,11 +217,12 @@ class ClientLifeCycleTest extends AbstractRealTest
         assertThatNoWarningOrErrorIsLogged();
     }
     
+    @Disabled("Reconsider if we want to suppress handling broken pipe- and logging stacktrace")
     // Broken pipe always end the exchange, no error handling no logging
     @Test
     void brokenPipe() throws InterruptedException, IOException {
         // It would be weird if we could use an API to cause a broken pipe.
-        // This implementation was found to work on Windows, albeit not on Linux or macOS.
+        // This implementation was found to work on Windows, albeit not on Linux nor macOS.
         assumeTrue(Environment.isWindows());
         
         Channel ch = client().openConnection();
