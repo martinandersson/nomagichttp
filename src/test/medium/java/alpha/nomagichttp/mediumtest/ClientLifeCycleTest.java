@@ -102,7 +102,7 @@ class ClientLifeCycleTest extends AbstractRealTest
             // Clean close from server caused our end to receive EOS
             // (it is the test worker thread that logs this message)
             logRecorder().assertAwait(
-                    DEBUG, "EOS; server closed channel's read stream.");
+                    DEBUG, "EOS; server closed my read stream.");
             logRecorder().assertAwaitChildClose();
         }
         

@@ -651,7 +651,7 @@ public final class TestClient
             ByteBuffer buf = allocate(BUF_SIZE);
             while (!sink.hasReachedEnd()) {
                 if (ch.read(buf) == -1) {
-                    LOG.log(DEBUG, "EOS; server closed channel's read stream.");
+                    LOG.log(DEBUG, "EOS; server closed my read stream.");
                     break;
                 }
                 buf.flip();
