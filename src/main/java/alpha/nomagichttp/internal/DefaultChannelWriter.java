@@ -440,7 +440,7 @@ public final class DefaultChannelWriter implements ChannelWriter
             // TODO: This is legacy code from before we had virtual threads when
             //       we could not rely on thread identity. Now, we might as well
             //       just use a thread-local. Probably faster.
-            final String key = "alpha.nomagichttp.responsepipeline.nUnsuccessful";
+            final String key = "alpha.nomagichttp.dcw.nUnsuccessful";
             if (isClientError(r.statusCode()) || isServerError(r.statusCode())) {
                 // Bump error counter
                 int n = channel().attributes().<Integer>asMapAny().merge(key, 1, Integer::sum);
