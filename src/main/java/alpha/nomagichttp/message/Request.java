@@ -51,7 +51,7 @@ import java.util.stream.Stream;
  * 
  * All other components of the request object is shared by all request instances
  * created throughout the HTTP exchange, most importantly the request attributes
- * and body. Changes to these structures propagate across execution boundaries,
+ * and body. Changes to these structures is visible across execution boundaries,
  * such as setting attributes and consuming the body bytes (which should be
  * done only once!).<p>
  * 
@@ -187,7 +187,9 @@ public interface Request extends HeaderHolder, AttributeHolder
      * data frames, trailing headers remain supported (
      * <a href="https://tools.ietf.org/html/rfc7540#section-8.1">RFC 7540 §8.1</a>).
      * For requests of an older HTTP version ({@literal <} 1.1), this method
-     * returns an empty headers object.
+     * returns an empty headers object.<p>
+     * 
+     * The trailers are cached and this method can be called many times.
      * 
      * @return trailing headers
      * 

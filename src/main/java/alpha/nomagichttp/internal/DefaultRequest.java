@@ -52,6 +52,7 @@ final class DefaultRequest implements Request
     private final ChannelReader reader;
     private final SkeletonRequest shared;
     private final RequestTarget rt;
+    private BetterHeaders trailers;
     
     /**
      * Constructs this object.
@@ -95,6 +96,13 @@ final class DefaultRequest implements Request
     
     @Override
     public BetterHeaders trailers() throws IOException {
+        if (trailers != null) {
+            return trailers;
+        }
+        return (trailers = trailers0());
+    }
+    
+    private BetterHeaders trailers0() throws IOException {
         // We could also require a chunk-encoded body,
         // but would not be compatible with HTTP/2?
         if (!body().isEmpty()) {
