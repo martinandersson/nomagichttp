@@ -8,12 +8,16 @@ import alpha.nomagichttp.message.ByteBufferIterator;
 import alpha.nomagichttp.route.NoRouteFoundException;
 import alpha.nomagichttp.testutil.AbstractRealTest;
 import alpha.nomagichttp.testutil.IORunnable;
+import alpha.nomagichttp.util.ByteBufferIterables;
+import alpha.nomagichttp.util.ByteBuffers;
 import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.nio.channels.Channel;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.List;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.function.ToLongBiFunction;
 
@@ -30,6 +34,7 @@ import static alpha.nomagichttp.testutil.TestClient.CRLF;
 import static alpha.nomagichttp.testutil.TestRequestHandlers.respondIsBodyEmpty;
 import static alpha.nomagichttp.testutil.TestRequests.get;
 import static alpha.nomagichttp.testutil.TestRequests.post;
+import static alpha.nomagichttp.util.ByteBuffers.asciiBytes;
 import static alpha.nomagichttp.util.ScopedValues.channel;
 import static java.lang.System.Logger.Level.DEBUG;
 import static java.lang.System.Logger.Level.WARNING;
@@ -256,15 +261,16 @@ class DetailTest extends AbstractRealTest
     
     @Test
     void response_unknownLength_bodyNonEmpty() throws IOException {
+        var empty = ByteBuffer.allocate(0);
+        var items = List.of(asciiBytes("World"), empty);
+        var body = ByteBufferIterables.ofSupplier(items.iterator()::next);
         server().add("/", GET().apply(req ->
-            text("World").toBuilder()
-                         .removeHeader(CONTENT_LENGTH)
-                         .build()));
+            ok(body)));
         String rsp = client().writeReadTextUntil(
             get(), "0\r\n\r\n");
         assertThat(rsp).isEqualTo("""
             HTTP/1.1 200 OK\r
-            Content-Type: text/plain; charset=utf-8\r
+            Content-Type: application/octet-stream\r
             Transfer-Encoding: chunked\r
             \r
             00000005\r
