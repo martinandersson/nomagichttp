@@ -128,7 +128,9 @@ class DetailTest extends AbstractRealTest
     
     @Test
     void request_body_discard_all() throws IOException {
-        server().add("/", respondIsBodyEmpty());
+        server().add("/",
+                // Does not consume the body
+                respondIsBodyEmpty());
         
         IORunnable exchange = () -> {
             String req = post("x".repeat(10)),
@@ -145,27 +147,25 @@ class DetailTest extends AbstractRealTest
         Channel ch = client().openConnection();
         try (ch) {
             exchange.run();
-            
-            // The endpoint didn't read the body contents, i.e. auto-discarded.
-            // If done correctly, we should be able to send a new request using the same connection:
+            // Body auto-discarded. This is using the same connection:
             exchange.run();
         }
     }
     
     @Test
     void request_body_discard_half() throws IOException {
-        // Previous test was pretty small, so why not roll with a large body
-        final int length = 100_000,
+        final int length = 100,
                   midway = length / 2;
         
         server().add("/", POST().apply(req -> {
             // Read only half of the body
+            int n = 0;
             var it = req.body().iterator();
-            while (it.hasNext()) {
+            while (it.hasNext() && n < midway) {
                 var buf = it.next();
-                int n = 0;
-                while (n++ < midway) {
+                while (buf.hasRemaining()) {
                     buf.get();
+                    ++n;
                 }
             }
             return accepted();

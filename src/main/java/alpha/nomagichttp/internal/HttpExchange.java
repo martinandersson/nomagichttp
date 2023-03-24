@@ -165,6 +165,12 @@ final class HttpExchange
         if (rsp != null) {
             assert !writer.wroteFinal();
             LOG.log(DEBUG, "Writing final response");
+            if (req != null && child.isInputOpen() && !canDiscardRequestData(req)) {
+                LOG.log(DEBUG, """
+                        Can not discard remaining request data, \
+                        shutting down the input stream.""");
+                child.shutdownInput();
+            }
             try {
                 final var rsp2 = rsp;
                 where(SKELETON_REQUEST,
@@ -416,6 +422,22 @@ final class HttpExchange
         }
     }
     
+    private static boolean canDiscardRequestData(SkeletonRequest r) {
+        final long len = r.body().length();
+        if (len == 0) {
+            // Closing channel may be completely unnecessary, because
+            // trailers may not even be there. Thank you, RFC, for telling
+            // clients they "should" add the Trailer header.
+            if (r.head().headers().contains("Trailer")) {
+                return true;
+            } // TODO: For HTTP/2, we may need another strategy here
+              else return !r.head().headers().contains(TRANSFER_ENCODING, "chunked");
+        }
+        if (len == -1) {
+            return false;
+        } else return len < 666;
+    }
+    
     /**
      * Try to discard remaining message data in the channel.<p>
      * 
@@ -430,11 +452,7 @@ final class HttpExchange
         if (len == 0) {
             if (r.head().headers().contains("Trailer")) {
                 requestWithoutParams(reader, r).trailers();
-            } // TODO: For HTTP/2, we may need another strategy here
-              else if (r.head().headers().contains(TRANSFER_ENCODING, "chunked")) {
-                // Closing channel may be completely unnecessary, because
-                // trailers may not even be there. Thank you, RFC, for telling
-                // clients they "should" add the Trailer header.
+            } else if (r.head().headers().contains(TRANSFER_ENCODING, "chunked")) {
                 closeChannel(DEBUG, "It is unknown if trailers are present");
                 return;
             }
