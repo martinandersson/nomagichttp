@@ -182,7 +182,7 @@ final class HttpExchange
         }
         assert req != null : "Input stream was shutdown";
         assert writer.wroteFinal();
-        tryToDiscardNonEmptyRequest(req);
+        tryToDiscardRequestDataInChannel(req);
     }
     
     private SkeletonRequest parseRequest() throws IOException {
@@ -423,7 +423,7 @@ final class HttpExchange
      * 
      * @param r the request
      */
-    private void tryToDiscardNonEmptyRequest(SkeletonRequest r)
+    private void tryToDiscardRequestDataInChannel(SkeletonRequest r)
             throws IOException
     {
         // TODO: For HTTP/2, we may need another strategy here
