@@ -34,7 +34,6 @@ import static java.util.concurrent.TimeUnit.MILLISECONDS;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 /**
@@ -214,9 +213,9 @@ class ClientLifeCycleTest extends AbstractRealTest
         assertThatNoWarningOrErrorIsLogged();
     }
     
-    @Disabled("Reconsider if we want to suppress handling broken pipe- and logging stacktrace")
     // Broken pipe always end the exchange, no error handling no logging
     @Test
+    @Disabled("Reconsider if we want to suppress handling broken pipe- and logging stacktrace")
     void brokenPipe() throws InterruptedException, IOException {
         // It would be weird if we could use an API to cause a broken pipe.
         // This implementation was found to work on Windows, albeit not on Linux nor macOS.
@@ -307,7 +306,9 @@ class ClientLifeCycleTest extends AbstractRealTest
         assertThatNoWarningOrErrorIsLoggedExcept(TestClient.class, ErrorHandler.class);
     }
     
-    // Client shuts down output stream after request, still receives full response
+    // Client writes request,
+    //   then shuts down output,
+    //     then receives full response
     @ParameterizedTest
     @ValueSource(booleans = {true, false})
     void intermittentStreamShutdown_clientOutput(
@@ -325,28 +326,25 @@ class ClientLifeCycleTest extends AbstractRealTest
                     .shutdownOutput();
             send.release();
             var rsp = client().readTextUntilEOS();
-            assertThat(rsp)
-                .startsWith("HTTP/1.1 204 No Content" + CRLF);
-            if (addConnCloseHeader) {
-                assertThat(rsp)
-                    .endsWith("Connection: close" + CRLF + CRLF);
-            }
-            // Sooner or later the half-close will be observed
+            assert204NoContent(rsp, addConnCloseHeader);
+            // Either server closed channel's output,
+            // or server will notice client closed server's input
+            // (in the next exchange) — and so, we can await child closure
+            // before test client fully closes.
             logRecorder().assertAwaitChildClose();
         }
-        // Reason why exchange ended, is
-        logRecorder().assertAwait(DEBUG, addConnCloseHeader ?
-            // because server's writer shut down the output stream, or
-            "Channel is half-closed or closed, a new HTTP exchange will not begin." :
-            // the next logical exchange actually started, but immediately aborted
-            "Client aborted the exchange; closing the channel.");
-        assertThatNoWarningOrErrorIsLogged();
+        assertHttpExchangeCompletes(addConnCloseHeader);
     }
     
-    // Client receives response first, then shuts down input stream, then server gets the request
+    // Client writes head,
+    //   then receives response,
+    //     then shuts down input,
+    //       then writes the body
     @ParameterizedTest
     @ValueSource(booleans = {true, false})
-    void intermittentStreamShutdown_clientInput(boolean setConnectionCloseHeader) throws IOException, InterruptedException {
+    void intermittentStreamShutdown_clientInput(
+            boolean addConnCloseHeader)
+            throws IOException, InterruptedException {
         var received = new ArrayBlockingQueue<String>(1);
         server().add("/", POST().apply(req -> {
             channel().write(noContent());
@@ -358,71 +356,76 @@ class ClientLifeCycleTest extends AbstractRealTest
             client().write(
                 "POST / HTTP/1.1"   + CRLF +
                 "Content-Length: 5" + CRLF);
-            if (setConnectionCloseHeader) {
+            // SIMPLIFY
+            if (addConnCloseHeader) {
                 client().write(
                     "Connection: close" + CRLF + CRLF);
             } else {
                 client().write(CRLF);
             }
-            
-            String rsp = client().readTextUntilNewlines();
-            if (setConnectionCloseHeader) {
-                assertThat(rsp).isEqualTo(
-                    "HTTP/1.1 204 No Content" + CRLF +
-                    "Connection: close"       + CRLF + CRLF);
-            } else {
-                assertThat(rsp).startsWith(
-                    "HTTP/1.1 204 No Content" + CRLF);
-            }
-            
+            var rsp = client().readTextUntilNewlines();
+            assert204NoContent(rsp, addConnCloseHeader);
             // Done reading, but not done sending
             client().shutdownInput();
             // Server is still able to receive this:
             client().write("Body!");
-            
             assertThat(received.poll(1, SECONDS)).isEqualTo("Body!");
-            
-            // Half-closed is NOT observed by server
-            // (coz there's no outstanding channel operation after having sent the response)
-            if (setConnectionCloseHeader) {
+            // Client's shut down of input is not observed by the server, as
+            // there is no pending write operation after the response.
+            if (addConnCloseHeader) {
                 logRecorder().assertAwaitChildClose();
             }
         }
-        
-        if (setConnectionCloseHeader) {
-            logRecorder().assertAwait(DEBUG, "Normal end of HTTP exchange.");
-        } else {
-            // As with the previous test, no guarantee how (when) exactly the exchange ends
-            assertTrue(logRecorder().await(rec ->
-              "Input stream was shut down. HTTP exchange is over.".equals(rec.getMessage()) ||
-              "Normal end of HTTP exchange.".equals(rec.getMessage())));
+        if (!addConnCloseHeader) {
+            logRecorder().assertAwaitChildClose();
         }
+        assertHttpExchangeCompletes(addConnCloseHeader);
+    }
+    
+    private static void assert204NoContent(
+            String rsp, boolean requestHadConnClose) {
+        assertThat(rsp).startsWith("HTTP/1.1 204 No Content" + CRLF);
+        if (requestHadConnClose) {
+            assertThat(rsp).endsWith("Connection: close" + CRLF + CRLF);
+        }
+    }
+    
+    private void assertHttpExchangeCompletes(boolean requestHadConnClose)
+            throws IOException, InterruptedException {
+        // Reason why exchange ended, is
+        logRecorder().assertAwait(DEBUG, requestHadConnClose ?
+            // because server's writer shut down the output stream, or
+            "Channel is half-closed or closed, a new HTTP exchange will not begin." :
+            // the next logical exchange actually started, but immediately aborted
+            "Client aborted the exchange; closing the channel.");
+        assertThatNoWarningOrErrorIsLogged();
     }
     
     // Server shuts down output after response, can still read request
     @Test
-    void intermittentStreamShutdown_serverOutput() throws IOException, InterruptedException {
+    void intermittentStreamShutdown_serverOutput()
+            throws IOException, InterruptedException {
         var received = new ArrayBlockingQueue<String>(1);
         server().add("/", POST().apply(req -> {
-            // Write response and ask to close connection
             channel().write(noContent()
                     .toBuilder()
                     .header("Connection", "close")
                     .build());
+            assertThat(channel().isOutputOpen())
+                    .isFalse();
             // Read the request
             received.add(req.body().toText());
             return null;
         }));
         Channel ch = client().openConnection();
         try (ch) {
-            // Until EOS! Server closes his write stream after response
+            // Until EOS!
             assertThat(client().writeReadTextUntilEOS(
                     "POST / HTTP/1.1"         + CRLF +
                     "Content-Length: 2"       + CRLF + CRLF))
                 .isEqualTo(
                     "HTTP/1.1 204 No Content" + CRLF +
                     "Connection: close"       + CRLF + CRLF);
-            
             // Client send the rest
             client().write("Hi");
             // Server proactively close the child before we do
@@ -436,6 +439,7 @@ class ClientLifeCycleTest extends AbstractRealTest
     void intermittentStreamShutdown_serverInput() throws IOException, InterruptedException {
         server().add("/", GET().apply(req -> {
             channel().shutdownInput();
+            assertThat(channel().isInputOpen()).isFalse();
             return noContent();
         }));
         assertThat(client().writeReadTextUntilEOS(
@@ -443,14 +447,11 @@ class ClientLifeCycleTest extends AbstractRealTest
             .isEqualTo(
                 "HTTP/1.1 204 No Content" + CRLF +
                 "Connection: close"       + CRLF + CRLF);
-        
         assertThatNoWarningOrErrorIsLogged();
-        
-        // We saw the effect already; "Connection: close" (this asserts why)
+        // We saw the effect already; "Connection: close"
+        // (this asserts why)
         logRecorder().assertAwait(DEBUG, """
-            Connection-close flag propagates from request or current \
-            half-closed state of channel.""");
-        
+            Will set "Connection: close" because the client's input stream has shut down.""");
         // Should be no error on any level
         logRecorder().assertThatNoErrorWasLogged();
     }
