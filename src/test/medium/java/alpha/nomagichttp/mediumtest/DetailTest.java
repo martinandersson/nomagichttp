@@ -63,17 +63,17 @@ class DetailTest extends AbstractRealTest
         server().add("/", POST().apply(req ->
             text(req.body().toText())));
         
-        final String resHead =
+        final var resHead =
             "HTTP/1.1 200 OK"                         + CRLF +
-            "Content-Length: 3"                       + CRLF +
-            "Content-Type: text/plain; charset=utf-8" + CRLF + CRLF;
+            "Content-Type: text/plain; charset=utf-8" + CRLF +
+            "Content-Length: 3"                       + CRLF + CRLF;
         
         Channel ch = client().openConnection();
         try (ch) {
-            String res1 = client().writeReadTextUntil(post("ABC"), "ABC");
+            var res1 = client().writeReadTextUntil(post("ABC"), "ABC");
             assertThat(res1).isEqualTo(resHead + "ABC");
             
-            String res2 = client().writeReadTextUntil(post("DEF"), "DEF");
+            var res2 = client().writeReadTextUntil(post("DEF"), "DEF");
             assertThat(res2).isEqualTo(resHead + "DEF");
         }
     }
