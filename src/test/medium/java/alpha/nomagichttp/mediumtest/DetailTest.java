@@ -322,8 +322,8 @@ class DetailTest extends AbstractRealTest
             "GET / HTTP/1.1"                          + CRLF + CRLF, "hello");
         assertThat(rsp1).isEqualTo(
             "HTTP/1.1 200 OK"                         + CRLF +
-            "Content-Length: 5"                       + CRLF +
-            "Content-Type: text/plain; charset=utf-8" + CRLF + CRLF +
+            "Content-Type: text/plain; charset=utf-8" + CRLF +
+            "Content-Length: 5"                       + CRLF + CRLF +
             
             "hello");
         
@@ -333,9 +333,9 @@ class DetailTest extends AbstractRealTest
             "Accept: text/plain; charset=utf-8; q=0.9, " +
                     "text/plain; charset=iso-8859-1"  + CRLF + CRLF, "hello");
         assertThat(rsp2).isEqualTo(
-            "HTTP/1.1 200 OK"                         + CRLF +
-            "Content-Length: 5"                       + CRLF +
-            "Content-Type: text/plain; charset=iso-8859-1" + CRLF + CRLF +
+            "HTTP/1.1 200 OK"                              + CRLF +
+            "Content-Type: text/plain; charset=iso-8859-1" + CRLF +
+            "Content-Length: 5"                            + CRLF + CRLF +
             
             "hello");
     }
