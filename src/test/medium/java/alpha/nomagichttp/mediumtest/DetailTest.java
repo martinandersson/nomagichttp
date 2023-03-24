@@ -219,8 +219,8 @@ class DetailTest extends AbstractRealTest
             "HTTP/1.1 100 Continue"                   + CRLF + CRLF +
             
             "HTTP/1.1 200 OK"                         + CRLF +
-            "Content-Length: 3"                       + CRLF +
-            "Content-Type: text/plain; charset=utf-8" + CRLF + CRLF +
+            "Content-Type: text/plain; charset=utf-8" + CRLF +
+            "Content-Length: 3"                       + CRLF + CRLF +
             
             "end");
     }
