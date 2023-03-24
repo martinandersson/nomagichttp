@@ -426,16 +426,18 @@ final class HttpExchange
     private void tryToDiscardRequestDataInChannel(SkeletonRequest r)
             throws IOException
     {
-        // TODO: For HTTP/2, we may need another strategy here
-        if (r.head().headers().contains(TRANSFER_ENCODING, "chunked")) {
-            // Trailers may of course not even be there,
-            // thank you, RFC, for telling clients they "should" add the Trailer header
-            closeChannel(DEBUG,
-                "Successful discard of trailers is not guaranteed");
-            return;
-        }
         final long len = r.body().length();
         if (len == 0) {
+            if (r.head().headers().contains("Trailer")) {
+                requestWithoutParams(reader, r).trailers();
+            } // TODO: For HTTP/2, we may need another strategy here
+              else if (r.head().headers().contains(TRANSFER_ENCODING, "chunked")) {
+                // Closing channel may be completely unnecessary, because
+                // trailers may not even be there. Thank you, RFC, for telling
+                // clients they "should" add the Trailer header.
+                closeChannel(DEBUG, "It is unknown if trailers are present");
+                return;
+            }
             return;
         }
         if (len == -1) {

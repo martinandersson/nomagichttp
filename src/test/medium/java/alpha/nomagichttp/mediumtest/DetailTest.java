@@ -81,18 +81,20 @@ class DetailTest extends AbstractRealTest
     @Test
     void connection_reuse_chunking() throws IOException {
         server()
-            .add("/ignore-body-and-trailers",
-                POST().apply(req -> noContent()))
-            .add("/echo-trailer",
-                POST().apply(req -> {
-                    var ignore = req.body().toText();
-                    var val = req.trailers().delegate().firstValue("X-Trailer").get();
-                    return text(val);
-                }));
-        
+            .add("/discard-body", POST().apply(req -> {
+                var discard = req.body().toText();
+                return noContent();
+            }))
+            .add("/echo-trailer", POST().apply(req -> {
+                // Still must consume the body before trailers lol
+                var discard = req.body().toText();
+                var trailer = req.trailers().delegate().firstValue("X-Trailer").get();
+                return text(trailer);
+            }));
         var template = """
-            POST /$1 HTTP/1.1
+            POST $1 HTTP/1.1
             Transfer-Encoding: chunked
+            Trailer: Just to save the connection
             $2
             
             3
@@ -101,27 +103,24 @@ class DetailTest extends AbstractRealTest
             X-Trailer: $3
             
             """;
-        
         Channel ch = client().openConnection();
         try (ch) {
-            // Discard both the body and trailers
-            var req1 = template.replace("$1", "ignore-body-and-trailers")
-                               .replace("$2", "X-Extra: lots of fun tiz is")
-                               .replace("$3", "blabla we don't care");
+            var req1 = template.replace("$1", "/discard-body")
+                               .replace("$2", "X-Dummy: value")
+                               .replace("$3", "dummy value");
             var rsp1 = client().writeReadTextUntilNewlines(req1);
             assertThat(rsp1).isEqualTo(
                     "HTTP/1.1 204 No Content\r\n\r\n");
-            
             // Can push a message over the same conn and echo the last trailer
-            var req2 = template.replace("$1", "echo-trailer")
+            var req2 = template.replace("$1", "/echo-trailer")
                                .replace("$2", "Connection: close")
                                .replace("$3", "I care!");
             var rsp2 = client().writeReadTextUntilEOS(req2);
             assertThat(rsp2).isEqualTo("""
                 HTTP/1.1 200 OK\r
-                Content-Length: 7\r
                 Content-Type: text/plain; charset=utf-8\r
                 Connection: close\r
+                Content-Length: 7\r
                 \r
                 I care!""");
         }
