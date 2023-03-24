@@ -136,8 +136,8 @@ class DetailTest extends AbstractRealTest
             
             assertThat(res).isEqualTo(
                 "HTTP/1.1 200 OK"                         + CRLF +
-                "Content-Length: 5"                       + CRLF +
-                "Content-Type: text/plain; charset=utf-8" + CRLF + CRLF +
+                "Content-Type: text/plain; charset=utf-8" + CRLF +
+                "Content-Length: 5"                       + CRLF + CRLF +
                 
                 "false");
         };
