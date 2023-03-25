@@ -5,10 +5,10 @@ import org.junit.jupiter.api.Test;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.charset.MalformedInputException;
-import java.nio.file.Files;
 import java.util.List;
 
 import static alpha.nomagichttp.testutil.Assertions.assertIterable;
+import static alpha.nomagichttp.testutil.TestFiles.writeTempFile;
 import static alpha.nomagichttp.util.ByteBufferIterables.just;
 import static alpha.nomagichttp.util.ByteBuffers.asArray;
 import static alpha.nomagichttp.util.ByteBuffers.asciiBytes;
@@ -55,9 +55,8 @@ final class ByteBufferIterablesTest
     
     @Test
     void ofFile() throws IOException {
-        var file = Files.createTempDirectory("nomagic").resolve("test");
         var content = asciiBytes("Hello, World!");
-        Files.write(file, content.array());
+        var file = writeTempFile(content);
         var testee = ByteBufferIterables.ofFile(file);
         assertIterable(testee, content);
         // Can go again
