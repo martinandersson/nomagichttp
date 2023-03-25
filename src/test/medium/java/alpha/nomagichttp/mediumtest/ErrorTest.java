@@ -244,13 +244,13 @@ class ErrorTest extends AbstractRealTest
             """);
         assertThat(rsp).isEqualTo("""
             HTTP/1.1 400 Bad Request\r
-            Content-Length: 0\r
-            Connection: close\r\n\r\n""");
+            Connection: close\r
+            Content-Length: 0\r\n\r\n""");
         assertThat(pollServerError())
             .isExactlyInstanceOf(BadRequestException.class)
             .hasNoCause()
             .hasNoSuppressedExceptions()
-            .hasMessage("Content-Length and Transfer-Encoding present.");
+            .hasMessage("Content-Length and Transfer-Encoding are both present.");
         logRecorder()
             .assertThatNoErrorWasLogged();
     }
