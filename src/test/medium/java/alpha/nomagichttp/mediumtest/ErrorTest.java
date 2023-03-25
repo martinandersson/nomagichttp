@@ -35,7 +35,6 @@ import org.junit.jupiter.params.provider.ValueSource;
 import java.io.IOException;
 import java.nio.channels.Channel;
 import java.nio.channels.InterruptedByTimeoutException;
-import java.util.function.Consumer;
 
 import static alpha.nomagichttp.handler.RequestHandler.GET;
 import static alpha.nomagichttp.handler.RequestHandler.HEAD;
@@ -749,28 +748,32 @@ class ErrorTest extends AbstractRealTest
     
     @Test
     void Special_errorHandlerFails() throws IOException, InterruptedException {
-        Consumer<Throwable> assertSecond = thr -> {
-            assertThat(thr)
-                    .isExactlyInstanceOf(OopsException.class)
-                    .hasMessage("second")
-                    .hasNoCause();
-            var oops = thr.getSuppressed()[0];
-            assertOopsException(oops);
-        };
         usingErrorHandler((thr, ch, req) -> {
-            throw new OopsException("Second");
+            throw new OopsException("second");
         });
         server().add("/", GET().apply(req -> {
-            throw new OopsException("First");
+            throw new OopsException("first");
         }));
         
-        String rsp = client().writeReadTextUntilNewlines(
-            "GET / HTTP/1.1"                     + CRLF + CRLF);
-        assertThat(rsp).isEqualTo(
-            "HTTP/1.1 500 Internal Server Error" + CRLF +
-            "Content-Length: 0"                  + CRLF + CRLF);
-        
-        assertSecond.accept(pollServerError());
+        String rsp = client().writeReadTextUntilEOS(
+            "GET / HTTP/1.1" + CRLF + CRLF);
+        // No response
+        assertThat(rsp)
+              .isEmpty();
+        // But the exceptions were logged
+        var thr = logRecorder().assertAwaitFirstLogError();
+        assertThat(thr)
+              .isExactlyInstanceOf(OopsException.class)
+              .hasMessage("first")
+              .hasNoCause();
+        var suppressed = thr.getSuppressed();
+        assertThat(suppressed)
+              .hasSize(1);
+        assertThat(suppressed[0])
+              .isExactlyInstanceOf(OopsException.class)
+              .hasMessage("second")
+              .hasNoCause()
+              .hasNoSuppressedExceptions();
     }
     
     // channel remains fully open
