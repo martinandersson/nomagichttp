@@ -5,12 +5,14 @@ import org.junit.jupiter.api.Test;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.charset.MalformedInputException;
+import java.nio.file.Files;
 import java.util.List;
 
 import static alpha.nomagichttp.testutil.Assertions.assertIterable;
 import static alpha.nomagichttp.util.ByteBufferIterables.just;
 import static alpha.nomagichttp.util.ByteBuffers.asArray;
 import static alpha.nomagichttp.util.ByteBuffers.asciiBytes;
+import static java.nio.ByteBuffer.allocate;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -52,8 +54,19 @@ final class ByteBufferIterablesTest
     }
     
     @Test
+    void ofFile() throws IOException {
+        var file = Files.createTempDirectory("nomagic").resolve("test");
+        var content = asciiBytes("Hello, World!");
+        Files.write(file, content.array());
+        var testee = ByteBufferIterables.ofFile(file);
+        assertIterable(testee, content);
+        // Can go again
+        assertIterable(testee, content);
+    }
+    
+    @Test
     void ofSupplier() throws IOException {
-        var empty = ByteBuffer.allocate(0);
+        var empty = allocate(0);
         var col = List.of(HELLO, WORLD, empty);
         var testee = ByteBufferIterables.ofSupplier(col.iterator()::next);
         assertIterable(testee, HELLO, WORLD, empty);
