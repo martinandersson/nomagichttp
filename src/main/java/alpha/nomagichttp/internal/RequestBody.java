@@ -162,6 +162,7 @@ final class RequestBody implements Request.Body
         final var opt = !opts.isEmpty() ? opts : Set.of(WRITE, CREATE_NEW);
         long c = 0;
         try (var dst = FileChannel.open(path, opt, attrs);
+             var lck = dst.lock();
              var src = iterator())
         {
             while (src.hasNext()) {
