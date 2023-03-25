@@ -20,10 +20,13 @@ import static alpha.nomagichttp.message.Responses.text;
 import static alpha.nomagichttp.testutil.HttpClientFacade.Implementation.JDK;
 import static alpha.nomagichttp.testutil.HttpClientFacade.Implementation.JETTY;
 import static alpha.nomagichttp.testutil.TestClient.CRLF;
+import static alpha.nomagichttp.testutil.TestFiles.writeTempFile;
 import static alpha.nomagichttp.testutil.TestRequestHandlers.respondIsBodyEmpty;
 import static alpha.nomagichttp.testutil.TestRequests.get;
 import static alpha.nomagichttp.testutil.TestRequests.post;
+import static alpha.nomagichttp.util.ByteBufferIterables.ofFile;
 import static alpha.nomagichttp.util.ByteBufferIterables.ofSupplier;
+import static alpha.nomagichttp.util.ByteBuffers.asciiBytes;
 import static java.nio.charset.StandardCharsets.US_ASCII;
 import static java.util.List.of;
 import static java.util.Map.entry;
@@ -215,5 +218,21 @@ class MessageTest extends AbstractRealTest
                         "One", "Foo",
                         "Two", "Bar"))
                     .build()));
+    }
+    
+    @Test
+    void fileResponse() throws IOException {
+        var content = asciiBytes("Hello, World!");
+        var file = writeTempFile(content);
+        server().add(
+            "/", GET().apply(req -> ok(ofFile(file))));
+        var rsp = client()
+            .writeReadTextUntil(get(), "!");
+        assertThat(rsp).isEqualTo("""
+            HTTP/1.1 200 OK\r
+            Content-Type: application/octet-stream\r
+            Content-Length: 13\r
+            \r
+            Hello, World!""");
     }
 }
