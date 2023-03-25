@@ -179,6 +179,8 @@ public final class DefaultChannelWriter implements ChannelWriter
     private static boolean discard1XXInformational(Response r) {
         if (r.isInformational() && httpVersion().isLessThan(HTTP_1_1)) {
             if (httpServer().getConfig().discardRejectedInformational()) {
+                LOG.log(DEBUG,
+                    "Ignoring 1XX (Informational) response for HTTP/1.0 client.");
                 return true;
             }
             throw new ResponseRejectedException(r, PROTOCOL_NOT_SUPPORTED,

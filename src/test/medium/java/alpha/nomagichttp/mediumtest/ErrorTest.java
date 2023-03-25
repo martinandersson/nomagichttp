@@ -1,6 +1,5 @@
 package alpha.nomagichttp.mediumtest;
 
-import alpha.nomagichttp.handler.ResponseRejectedException;
 import alpha.nomagichttp.message.BadHeaderException;
 import alpha.nomagichttp.message.BadRequestException;
 import alpha.nomagichttp.message.DecoderException;
@@ -53,6 +52,7 @@ import static alpha.nomagichttp.testutil.TestRequests.get;
 import static alpha.nomagichttp.testutil.TestRequests.post;
 import static alpha.nomagichttp.util.ByteBufferIterables.ofString;
 import static alpha.nomagichttp.util.ScopedValues.channel;
+import static java.lang.System.Logger.Level.DEBUG;
 import static java.lang.System.Logger.Level.INFO;
 import static java.lang.System.Logger.Level.WARNING;
 import static java.time.Duration.ofMillis;
@@ -583,34 +583,24 @@ class ErrorTest extends AbstractRealTest
     }
     
     @Test
-    void ResponseRejectedException_interimIgnoredForOldClient()
-            throws IOException, InterruptedException
-    {
+    void interimResponseIgnoredForOldClient() throws IOException, InterruptedException {
         server().add("/", GET().apply(req -> {
             channel().write(processing()); // <-- rejected
             return text("Done!");
         }));
-        
         // ... because "HTTP/1.0"
         String rsp = client().writeReadTextUntil(
             "GET / HTTP/1.0"                          + CRLF + CRLF, "Done!");
         assertThat(rsp).isEqualTo(
             "HTTP/1.0 200 OK"                         + CRLF +
-            "Content-Length: 5"                       + CRLF +
             "Content-Type: text/plain; charset=utf-8" + CRLF +
-            "Connection: close"                       + CRLF + CRLF +
+            "Connection: close"                       + CRLF +
+            "Content-Length: 5"                       + CRLF + CRLF +
             
             "Done!");
-        
-        // Exception delivered to error handler, yes
-        assertThat(pollServerError())
-                .isExactlyInstanceOf(ResponseRejectedException.class)
-                .hasNoCause()
-                .hasNoSuppressedExceptions()
-                .hasMessage("HTTP/1.0 does not support 1XX (Informational) responses.");
-        
-        // but exception NOT logged. That's the "ignored" part.
-        logRecorder().assertThatNoErrorWasLogged();
+        logRecorder().assertAwait(DEBUG,
+                "Ignoring 1XX (Informational) response for HTTP/1.0 client.");
+        assertThatNoWarningOrErrorIsLogged();
     }
     
     @Disabled("We need to implement timeouts for v-threads")
