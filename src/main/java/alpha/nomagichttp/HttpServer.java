@@ -99,7 +99,7 @@ import java.util.function.IntConsumer;
  * 
  * It is possible to start multiple server instances on different ports. One
  * use-case is to expose public endpoints on one port but keep more sensitive
- * administrator endpoints on another more secluded port.<p>
+ * administrator endpoints on another more secluded port.
  * 
  * <pre>{@code
  *   try (var exec = Executors.newVirtualThreadPerTaskExecutor()) {
@@ -274,7 +274,7 @@ public interface HttpServer extends RouteRegistry, ActionRegistry
      * one of the other start methods will bind the server's address and then
      * run the accept-loop; aka. "listen" for client connections. This method,
      * however, will bind the address, then start a virtual thread that runs the
-     * accept-loop, and then return out.<p>
+     * accept-loop, and then return out.
      * 
      * <pre>{@code
      *     HttpServer testee = ...
@@ -554,7 +554,7 @@ public interface HttpServer extends RouteRegistry, ActionRegistry
      * All event objects emitted by the HttpServer is an enum instance and does
      * not contain any event-specific information. The event metadata is passed
      * as attachments. The following table lists the events emitted by the
-     * HttpServer.<p>
+     * HttpServer.
      * 
      * <table class="striped">
      *   <caption style="display:none">Events emitted</caption>

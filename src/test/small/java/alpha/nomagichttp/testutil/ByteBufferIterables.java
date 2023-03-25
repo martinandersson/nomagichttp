@@ -57,6 +57,13 @@ public final class ByteBufferIterables {
      * @param bytes to decode
      * 
      * @return the decoded content
+     * 
+     * @throws ExecutionException
+     *             if {@link #getString(ByteBufferIterable)} throws an exception
+     * @throws InterruptedException
+     *             if the current thread was interrupted while waiting
+     * @throws TimeoutException
+     *             if waiting more than 1 second for the result
      */
     public static String getStringVThread(ByteBufferIterable bytes)
             throws ExecutionException, InterruptedException, TimeoutException {
@@ -71,6 +78,13 @@ public final class ByteBufferIterables {
      * @param source to read from
      * 
      * @return the byte
+     * 
+     * @throws ExecutionException
+     *             if the given source throws an exception
+     * @throws InterruptedException
+     *             if the current thread was interrupted while waiting
+     * @throws TimeoutException
+     *             if waiting more than 1 second for the result
      */
     public static byte getNextByteVThread(ByteBufferIterable source)
             throws ExecutionException, InterruptedException, TimeoutException {
@@ -117,6 +131,13 @@ public final class ByteBufferIterables {
      * @param source to iterate
      * 
      * @return see JavaDoc
+     * 
+     * @throws ExecutionException
+     *             if {@link #getItems(ByteBufferIterable)} throws an exception
+     * @throws InterruptedException
+     *             if the current thread was interrupted while waiting
+     * @throws TimeoutException
+     *             if waiting more than 1 second for the result
      */
     public static List<byte[]> getItemsVThread(ByteBufferIterable source)
             throws ExecutionException, InterruptedException, TimeoutException {

@@ -19,10 +19,11 @@ public class RequestLineParseException extends AbstractParseException
      *
      * If the previous character does not exist, pass in a negative value.
      * 
-     * @param message passed as-is to {@link Throwable#Throwable(String)}
-     * @param prev    previous character before encountering the error
-     * @param curr    current character when encountering the error
-     * @param pos     byte position when encountering the error
+     * @param message    passed as-is to {@link Throwable#Throwable(String)}
+     * @param prev       previous character before encountering the error
+     * @param curr       current character when encountering the error
+     * @param pos        byte position when encountering the error
+     * @param byteCount  the number of bytes read from the upstream
      */
     public RequestLineParseException(
             String message, byte prev, byte curr, int pos, int byteCount) {
