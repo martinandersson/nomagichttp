@@ -310,14 +310,14 @@ final class HttpExchange
         if (rsp == null) {
             if (!writer.wroteFinal()) {
                 throw new NullPointerException(entity +
-                    " processing returned null without writing a final response");
+                    " processing returned null without writing a final response.");
             }
         } else if (!rsp.isFinal()) {
             throw new IllegalArgumentException(entity +
-                " processing returned a non-final response");
+                " processing returned a non-final response.");
         } else if (writer.wroteFinal()) {
             throw new IllegalArgumentException(entity +
-                " processing both wrote and returned a final response");
+                " processing both wrote and returned a final response.");
         }
         return rsp;
     }

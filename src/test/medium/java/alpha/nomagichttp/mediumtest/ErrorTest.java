@@ -52,6 +52,7 @@ import static alpha.nomagichttp.testutil.TestRequests.post;
 import static alpha.nomagichttp.util.ByteBufferIterables.ofString;
 import static alpha.nomagichttp.util.ScopedValues.channel;
 import static java.lang.System.Logger.Level.DEBUG;
+import static java.lang.System.Logger.Level.ERROR;
 import static java.lang.System.Logger.Level.INFO;
 import static java.lang.System.Logger.Level.WARNING;
 import static java.time.Duration.ofMillis;
@@ -831,23 +832,36 @@ class ErrorTest extends AbstractRealTest
     }
     
     @Test
-    void Special_afterHttpExchange_responseIsLoggedButIgnored()
+    void Special_writingTwoFinalResponses()
             throws IOException, InterruptedException
     {
         server().add("/", GET().apply(req -> {
             channel().write(noContent());
-            return Response.builder(123).build();
+            return text("this won't work");
         }));
-        
         String rsp = client().writeReadTextUntilNewlines(
             "GET / HTTP/1.1"          + CRLF + CRLF);
+        // First one succeeds
         assertThat(rsp).isEqualTo(
             "HTTP/1.1 204 No Content" + CRLF + CRLF);
-        
-        logRecorder().assertAwait(
-            WARNING, "HTTP exchange not active. This response is ignored: DefaultResponse{statusCode=123");
-        
-        // Superclass asserts no error sent to error handler
+        logRecorder()
+            .assertAwaitChildClose();
+        // Second one causes some problems
+        var rec = logRecorder().take(
+            ERROR, """
+              Response bytes already sent, \
+              can not handle this error; closing channel.""",
+            IllegalArgumentException.class);
+        assertThat(rec).isNotNull();
+        assertThat(rec.getThrown())
+            .hasMessage(
+                "Request processing both wrote and returned a final response.")
+            .hasNoCause()
+            .hasNoSuppressedExceptions();
+        logRecorder()
+            // No other errors were logged
+            .assertThatNoErrorWasLogged();
+        // Implicit assert that no error was delivered to the error handler
     }
     
     /** The error version of {@link ExampleTest#RequestTrailers()}. */
