@@ -506,8 +506,8 @@ class ErrorTest extends AbstractRealTest
             ABCDEX.....\n""");
         assertThat(rsp).isEqualTo("""
             HTTP/1.1 400 Bad Request\r
-            Content-Length: 0\r
-            Connection: close\r\n\r\n""");
+            Connection: close\r
+            Content-Length: 0\r\n\r\n""");
         logRecorder()
             .assertThatNoErrorWasLogged();
         assertThat(pollServerErrorNow())
