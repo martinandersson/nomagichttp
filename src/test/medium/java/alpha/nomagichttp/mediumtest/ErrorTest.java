@@ -153,9 +153,9 @@ class ErrorTest extends AbstractRealTest
             "GET / HTTP/" + version         + CRLF + CRLF);
         assertThat(rsp).isEqualTo(
             "HTTP/1.1 426 Upgrade Required" + CRLF +
-            "Content-Length: 0"             + CRLF +
             "Upgrade: HTTP/1.1"             + CRLF +
-            "Connection: Upgrade"           + CRLF + CRLF);
+            "Connection: Upgrade"           + CRLF +
+            "Content-Length: 0"             + CRLF + CRLF);
         assertThat(pollServerError())
             .isExactlyInstanceOf(HttpVersionTooOldException.class)
             .hasNoCause()

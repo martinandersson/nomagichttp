@@ -155,9 +155,6 @@ final class HttpExchange
             LOG.log(DEBUG, "Executing the request processing chain");
             rsp = processRequest(req);
         } catch (Exception exc) {
-            if (req == null) {
-                writer.scheduleClose("parsing request failed.");
-            }
             rsp = handleException(exc, req);
         }
         if (rsp != null) {
@@ -181,16 +178,26 @@ final class HttpExchange
                     a new HTTP exchange will not begin.""");
             return;
         }
-        assert req != null : "Input stream was shutdown";
         assert writer.wroteFinal();
-        tryToDiscardRequestDataInChannel(req);
+        if (req != null) {
+            tryToDiscardRequestDataInChannel(req);
+        }
+        // Else we parsed a request, but it just wasn't valid/accepted.
+        // This doesn't end the connection, which for instance may be upgraded.
+        // TODO: This is terrible. We need to discard data from invalid request as well.
     }
     
     private SkeletonRequest parseRequest() throws IOException {
-        var line = new ParserOfRequestLine(reader, conf.maxRequestHeadSize())
-                .parse();
-        var head = __parseRequestHeaders(line);
-        return __createRequest(head);
+        final RawRequest.Head h;
+        try {
+            RawRequest.Line l = new ParserOfRequestLine(
+                    reader, conf.maxRequestHeadSize()).parse();
+            h = __parseRequestHeaders(l);
+        } catch (Throwable t) {
+            writer.scheduleClose("parsing request failed.");
+            throw t;
+        }
+        return __createRequest(h);
     }
     
     private RawRequest.Head __parseRequestHeaders(RawRequest.Line l)
