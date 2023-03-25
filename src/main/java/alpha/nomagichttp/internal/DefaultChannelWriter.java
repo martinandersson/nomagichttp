@@ -87,6 +87,7 @@ public final class DefaultChannelWriter implements ChannelWriter
     private List<Match<AfterAction>> matches;
     private boolean dismissed;
     private long byteCount;
+    private String scheduledClose;
     // Message has begun writing, but not finished
     private boolean inflight;
     // After final response no more
@@ -124,6 +125,13 @@ public final class DefaultChannelWriter implements ChannelWriter
     @Override
     public long byteCount() {
         return byteCount;
+    }
+    
+    @Override
+    public void scheduleClose(String reason) {
+        if (scheduledClose == null) {
+            scheduledClose = reason;
+        }
     }
     
     @Override
@@ -316,7 +324,7 @@ public final class DefaultChannelWriter implements ChannelWriter
         }
     }
     
-    private static final class ResponseProcessor
+    private final class ResponseProcessor
     {
         private boolean sawConnectionClose;
         
@@ -420,13 +428,13 @@ public final class DefaultChannelWriter implements ChannelWriter
                 out = r;
             } else {
                 final String why =
-                    __reqHasConnectionClose() ? "request headers' did" :
-                    !channel().isInputOpen()  ? "client's input stream has shut down" :
-                    !httpServer().isRunning() ? "server has stopped" :
-                    null;
+                    __reqHasConnectionClose() ? "the request headers' did." :
+                    !channel().isInputOpen()  ? "the client's input stream has shut down." :
+                    !httpServer().isRunning() ? "the server has stopped." :
+                    scheduledClose;
                 if (why != null) {
                     LOG.log(DEBUG, () ->
-                        "Will set \"Connection: close\" because the " + why + ".");
+                        "Will set \"Connection: close\" because " + why);
                     sawConnectionClose = true;
                     out = __setConnectionClose(r);
                 } else {

@@ -132,4 +132,9 @@ final class DefaultClientChannel implements ClientChannel
     public long byteCount() {
         return writer.byteCount();
     }
+    
+    @Override
+    public void scheduleClose(String reason) {
+        writer.scheduleClose(reason);
+    }
 }

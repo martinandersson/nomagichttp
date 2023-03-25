@@ -155,21 +155,16 @@ final class HttpExchange
             LOG.log(DEBUG, "Executing the request processing chain");
             rsp = processRequest(req);
         } catch (Exception exc) {
-            if (req == null && child.isInputOpen()) {
-                LOG.log(DEBUG,
-                    "Parsing request failed, shutting down the input stream");
-                child.shutdownInput();
+            if (req == null) {
+                writer.scheduleClose("parsing request failed.");
             }
             rsp = handleException(exc, req);
         }
         if (rsp != null) {
             assert !writer.wroteFinal();
             LOG.log(DEBUG, "Writing final response");
-            if (req != null && child.isInputOpen() && !canDiscardRequestData(req)) {
-                LOG.log(DEBUG, """
-                        Can not discard remaining request data, \
-                        shutting down the input stream.""");
-                child.shutdownInput();
+            if (req != null && !canDiscardRequestData(req)) {
+                writer.scheduleClose("can not discard remaining request data.");
             }
             try {
                 final var rsp2 = rsp;
