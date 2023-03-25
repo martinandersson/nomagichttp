@@ -479,9 +479,9 @@ class ErrorTest extends AbstractRealTest
             ABCDEX.....\n""");
         assertThat(rsp).isEqualTo("""
             HTTP/1.1 200 OK\r
-            Content-Length: 110\r
             Content-Type: text/plain; charset=utf-8\r
             Connection: close\r
+            Content-Length: 110\r
             \r
             alpha.nomagichttp.message.DecoderException: \
             java.lang.NumberFormatException: \
