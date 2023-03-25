@@ -317,7 +317,8 @@ class ErrorTest extends AbstractRealTest
         String rsp = client().writeReadTextUntilNewlines(
             "GET /404 HTTP/1.1"              + CRLF + CRLF);
         assertThat(rsp).isEqualTo(
-            "HTTP/1.1 499 Custom Not Found!" + CRLF + CRLF);
+            "HTTP/1.1 499 Custom Not Found!" + CRLF +
+            "Content-Length: 0"              + CRLF + CRLF);
         logRecorder().assertThatNoErrorWasLogged();
     }
     
