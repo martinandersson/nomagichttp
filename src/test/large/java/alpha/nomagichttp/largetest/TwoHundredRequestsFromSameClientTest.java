@@ -51,20 +51,19 @@ class TwoHundredRequestsFromSameClientTest extends AbstractLargeRealTest
     private Channel conn;
     @BeforeAll
     void addHandler() throws IOException {
-        server().add("/", POST().apply(req ->
-                req.body().toText().thenApply(txt -> {
-                    var rsp = Responses.text(txt);
-                    // TODO: We need to extend the life-time of client connections.
-                    //       E.g. by keeping a thread local client instance.
-                    //       Then add HttpClientFacade.shutdown() or something like that.
-                    //       Move DetailTest.connection_reuse() to ClientLifeCycleTest
-                    //       and add a client compatibility test for the reuse.
-                    //       After-all in this test class will shutdown, no server-side hacks.
-                    if (!req.headers().contains("User-Agent", "TestClient")) {
-                        rsp = setHeaderConnectionClose(rsp);
-                    }
-                    return rsp;
-                })));
+        server().add("/", POST().apply(req -> {
+            var rsp = Responses.text(req.body().toText());
+            // TODO: We need to extend the life-time of client connections.
+            //       E.g. by keeping a thread local client instance.
+            //       Then add HttpClientFacade.shutdown() or something like that.
+            //       Move DetailTest.connection_reuse() to ClientLifeCycleTest
+            //       and add a client compatibility test for the reuse.
+            //       After-all in this test class will shutdown, no server-side hacks.
+            if (!req.headers().contains("User-Agent", "TestClient")) {
+                rsp = setHeaderConnectionClose(rsp);
+            }
+            return rsp;
+        }));
     }
     
     @AfterAll

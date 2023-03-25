@@ -3,6 +3,8 @@ package alpha.nomagichttp.testutil;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.TestInstance;
 
+import java.io.IOException;
+
 import static org.junit.jupiter.api.TestInstance.Lifecycle.PER_CLASS;
 
 /**
@@ -18,7 +20,7 @@ public abstract class AbstractLargeRealTest extends AbstractRealTest {
     }
     
     @AfterAll
-    void afterAll() {
+    void afterAll() throws IOException, InterruptedException {
         stopServer();
     }
     
