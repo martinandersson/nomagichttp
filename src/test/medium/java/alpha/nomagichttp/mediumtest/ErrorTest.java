@@ -330,17 +330,18 @@ class ErrorTest extends AbstractRealTest
         server().add("/",
             GET().apply(req -> internalServerError()),
             POST().apply(req -> internalServerError()));
-        
         String rsp = client().writeReadTextUntilNewlines(
             "BLABLA / HTTP/1.1"               + CRLF + CRLF);
         assertThat(rsp).isEqualTo(
             "HTTP/1.1 405 Method Not Allowed" + CRLF +
-            "Content-Length: 0"               + CRLF +
             // Actually, order is not defined, let's see for how long this test pass
-            "Allow: POST, GET"                + CRLF + CRLF);
+            "Allow: POST, GET"                + CRLF +
+            "Content-Length: 0"               + CRLF + CRLF);
         assertThatServerErrorObservedAndLogged()
             .isExactlyInstanceOf(MethodNotAllowedException.class)
-            .hasMessage("No handler found for method token \"BLABLA\".");
+            .hasMessage("No handler found for method token \"BLABLA\".")
+            .hasNoCause()
+            .hasNoSuppressedExceptions();
     }
     
     // ...but if the method is OPTIONS, the default configuration implements it

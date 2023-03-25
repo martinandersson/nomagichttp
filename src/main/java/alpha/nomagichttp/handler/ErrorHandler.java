@@ -337,7 +337,7 @@ public interface ErrorHandler
      *   </tbody>
      * </table>
      */
-    ErrorHandler BASE = (exc, chainIsNull, requestIsIgnored) -> {
+    ErrorHandler BASE = (exc, chainIsNull, req) -> {
         final Response res;
         try {
             throw exc;
@@ -367,7 +367,7 @@ public interface ErrorHandler
         } catch (MethodNotAllowedException e) {
             Response status = methodNotAllowed();
             Stream<String> allow = e.getRoute().supportedMethods();
-            if (requestIsIgnored.method().equals(OPTIONS) && httpServer().getConfig().implementMissingOptions()) {
+            if (req.method().equals(OPTIONS) && httpServer().getConfig().implementMissingOptions()) {
                 status = noContent();
                 // Now OPTIONS is a supported method lol
                 allow = concat(of(OPTIONS), allow);

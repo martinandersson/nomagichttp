@@ -12,6 +12,7 @@ import alpha.nomagichttp.message.HttpVersionTooNewException;
 import alpha.nomagichttp.message.HttpVersionTooOldException;
 import alpha.nomagichttp.message.IllegalRequestBodyException;
 import alpha.nomagichttp.message.RawRequest;
+import alpha.nomagichttp.message.Request;
 import alpha.nomagichttp.message.RequestLineParseException;
 import alpha.nomagichttp.message.Response;
 import alpha.nomagichttp.util.DummyScopedValue;
@@ -402,15 +403,18 @@ final class HttpExchange
             @Override
             Response callIntermittentHandler(
                     ErrorHandler eh, Chain passMeThrough) {
-                var req = skeletonRequest()
-                        .map(r -> requestWithoutParams(reader, r))
-                        .orElse(null);
-                return eh.apply(e, unchecked(passMeThrough), req);
+                return eh.apply(e, unchecked(passMeThrough), req());
             }
             
             @Override
             Response callFinalHandler() {
-                return BASE.apply(e, null, null);
+                return BASE.apply(e, null, req());
+            }
+            
+            private Request req() {
+                return skeletonRequest()
+                        .map(r -> requestWithoutParams(reader, r))
+                        .orElse(null);
             }
         }
         try {
