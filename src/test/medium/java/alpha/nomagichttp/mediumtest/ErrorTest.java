@@ -54,7 +54,6 @@ import static alpha.nomagichttp.util.ScopedValues.channel;
 import static java.lang.System.Logger.Level.DEBUG;
 import static java.lang.System.Logger.Level.ERROR;
 import static java.lang.System.Logger.Level.INFO;
-import static java.lang.System.Logger.Level.WARNING;
 import static java.time.Duration.ofMillis;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -866,11 +865,12 @@ class ErrorTest extends AbstractRealTest
     
     /** The error version of {@link ExampleTest#RequestTrailers()}. */
     @Test
-    void Special_requestTrailers_errorNotHandled() throws IOException, InterruptedException {
+    void Special_requestTrailersDiscarded_errorNotHandled() throws IOException, InterruptedException {
         server().add("/", POST().apply(req ->
                 text(req.body().toText())));
         var rsp = client().writeReadTextUntilEOS("""
                 POST / HTTP/1.1
+                Trailer: just to trigger discarding
                 Transfer-Encoding: chunked
                 
                 6
@@ -881,18 +881,24 @@ class ErrorTest extends AbstractRealTest
                 """);
         assertThat(rsp).isEqualTo("""
                 HTTP/1.1 200 OK\r
-                Content-Length: 6\r
                 Content-Type: text/plain; charset=utf-8\r
-                Connection: close\r
+                Content-Length: 6\r
                 \r
                 Hello\s""");
-        // The trailer exception effectively closed the channel,
-        // but no other effect than a logged warning
-        logRecorder().assertThatNoErrorWasLogged();
-        logRecorder().assertAwait(WARNING, """
-            Request trailers finished exceptionally: \
-            HeaderParseException{prev=(hex:0x68, decimal:104, char:"h"), \
-            curr=(hex:0x20, decimal:32, char:" "), pos=N/A, \
-            msg=Whitespace in header name or before colon is not accepted.}""");
+        var rec = logRecorder().take(
+            DEBUG, "Error while discarding request trailers, shutting down the input stream.",
+            HeaderParseException.class);
+        assertThat(rec).isNotNull();
+        assertThat(rec.getThrown())
+            .hasToString("""
+                HeaderParseException{prev=(hex:0x68, decimal:104, char:"h"), \
+                curr=(hex:0x20, decimal:32, char:" "), pos=N/A, \
+                msg=Whitespace in header name or before colon is not accepted.}""")
+            .hasNoCause()
+            .hasNoSuppressedExceptions();
+        logRecorder()
+            // No other errors were logged
+            .assertThatNoErrorWasLogged();
+        // Implicit assert that no error was delivered to the error handler
     }
 }

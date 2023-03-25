@@ -457,7 +457,17 @@ final class HttpExchange
         final long len = r.body().length();
         if (len == 0) {
             if (r.head().headers().contains("Trailer")) {
-                requestWithoutParams(reader, r).trailers();
+                LOG.log(DEBUG, "Discarding request trailers before new exchange");
+                try {
+                    requestWithoutParams(reader, r).trailers();
+                } catch (HeaderParseException | MaxRequestTrailersSizeExceededException e) {
+                    // DEBUG because the app was obviously not interested in the request
+                    LOG.log(DEBUG, """
+                        Error while discarding request trailers, \
+                        shutting down the input stream.""", e);
+                    child.shutdownInput();
+                    throw e;
+                }
             } else if (r.head().headers().contains(TRANSFER_ENCODING, "chunked")) {
                 closeChannel(DEBUG, "It is unknown if trailers are present");
                 return;
@@ -471,12 +481,14 @@ final class HttpExchange
             closeChannel(DEBUG,
                 "A satanic volume of request data is remaining");
         } else {
-            LOG.log(DEBUG, "Discarding remaining data before new exchange");
+            LOG.log(DEBUG, "Discarding request body before new exchange");
             try {
                 r.body().iterator().forEachRemaining(buf ->
                         buf.position(buf.limit()));
             } catch (IOException e) {
-                LOG.log(WARNING, "I/O error while discarding request body.", e);
+                // DEBUG because the app was obviously not interested in the request
+                LOG.log(DEBUG, "I/O error while discarding request body.", e);
+                assert !child.isInputOpen();
                 throw e;
             }
             assert r.body().isEmpty();

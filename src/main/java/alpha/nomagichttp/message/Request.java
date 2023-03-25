@@ -195,6 +195,8 @@ public interface Request extends HeaderHolder, AttributeHolder
      * 
      * @throws IllegalStateException
      *             if the body has not been consumed
+     * @throws HeaderParseException
+     *             if parsing fails
      * @throws MaxRequestTrailersSizeExceededException
      *             if the length of trailers exceeds the configured tolerance
      * @throws IOException
