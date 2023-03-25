@@ -218,8 +218,8 @@ class ErrorTest extends AbstractRealTest
             """);
         assertThat(rsp).isEqualTo("""
             HTTP/1.1 400 Bad Request\r
-            Content-Length: 0\r
-            Connection: close\r\n\r\n""");
+            Connection: close\r
+            Content-Length: 0\r\n\r\n""");
         assertThat(pollServerError())
             .isExactlyInstanceOf(BadHeaderException.class)
             .hasMessage("Failed to parse Content-Type header.")
