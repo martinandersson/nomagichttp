@@ -377,12 +377,14 @@ public final class ByteBufferIterables
             private long count;
             
             Iterator() throws IOException {
-                var ch = acquireSharedLock(open(file, READ));
-                long len = getOrCloseResource(ch::size, ch);
-                this.buf = allocateDirect(BUF_SIZE);
+                var buf = allocateDirect(BUF_SIZE);
                 // The view is created with no remaining to force-read on first
                 // call to next()
-                this.view = buf.asReadOnlyBuffer().position(BUF_SIZE);
+                var view = buf.asReadOnlyBuffer().position(BUF_SIZE);
+                var ch = acquireSharedLock(open(file, READ));
+                long len = getOrCloseResource(ch::size, ch);
+                this.buf = buf;
+                this.view = view;
                 this.ch = ch;
                 this.len = len;
                 this.count = 0;
