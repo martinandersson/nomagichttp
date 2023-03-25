@@ -111,8 +111,8 @@ class ErrorTest extends AbstractRealTest
              H e a d e r: Oops!\r\n""");
         assertThat(rsp).isEqualTo("""
              HTTP/1.1 400 Bad Request\r
-             Content-Length: 0\r
-             Connection: close\r\n\r\n""");
+             Connection: close\r
+             Content-Length: 0\r\n\r\n""");
         assertThat(pollServerError())
             .isExactlyInstanceOf(HeaderParseException.class)
             .hasNoCause()
