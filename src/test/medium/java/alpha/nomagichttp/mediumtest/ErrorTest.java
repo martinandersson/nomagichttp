@@ -579,7 +579,7 @@ class ErrorTest extends AbstractRealTest
             .isExactlyInstanceOf(IllegalResponseBodyException.class)
             .hasNoCause()
             .hasNoSuppressedExceptions()
-            .hasMessage("Body in response to a HEAD request.");
+            .hasMessage("Possibly non-empty body in response to a HEAD request.");
     }
     
     @Test

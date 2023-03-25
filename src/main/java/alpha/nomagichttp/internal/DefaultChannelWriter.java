@@ -521,7 +521,7 @@ public final class DefaultChannelWriter implements ChannelWriter
             // We don't care about the presence of Content-Length, but:
             if (actualLen != 0) {
                 throw new IllegalResponseBodyException(
-                        "Possibly non-empty body in response to a $1 request"
+                        "Possibly non-empty body in response to a $1 request."
                         .replace("$1", HEAD), r);
             }
             // "A server MAY send a Content-Length header field in a response to
