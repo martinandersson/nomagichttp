@@ -357,7 +357,6 @@ class ErrorTest extends AbstractRealTest
         assertThat(rsp).isEqualTo(
                 "HTTP/1.1 204 No Content"         + CRLF +
                 "Allow: OPTIONS, POST, GET"       + CRLF + CRLF);
-        
         assertThat(pollServerError())
                 .isExactlyInstanceOf(MethodNotAllowedException.class)
                 .hasMessage("No handler found for method token \"OPTIONS\".");
