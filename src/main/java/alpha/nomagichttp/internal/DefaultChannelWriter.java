@@ -144,7 +144,7 @@ public final class DefaultChannelWriter implements ChannelWriter
         final Response app2 = invokeUserActions(app1);
         final Result bag = libActions.process(app2);
         try (bag) {
-            return write0(bag.response());
+            return write0(bag.response(), bag.body());
         } finally {
             if (bag.closeChannel()) {
                 dismiss();
@@ -219,15 +219,14 @@ public final class DefaultChannelWriter implements ChannelWriter
         return r;
     }
     
-    private long write0(Response rsp) throws IOException {
+    private long write0(Response rsp, ByteBufferIterator body) throws IOException {
         final long started;
         wroteFinal = rsp.isFinal();
         inflight = true;
         started = nanoTime();
-        var it = rsp.body().iterator();
-        long n = addExactOrCap(writeHead(rsp), tryWriteBody(it));
+        long n = addExactOrCap(writeHead(rsp), tryWriteBody(body));
         // Request.trailers() documented close() must be called first
-        it.close();
+        body.close();
         n = addExactOrCap(n, tryWriteTrailers(rsp));
         final long finished = nanoTime();
         // Revert only on success; otherwise channel is corrupt
