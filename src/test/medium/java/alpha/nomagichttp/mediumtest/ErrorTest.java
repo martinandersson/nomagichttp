@@ -283,8 +283,8 @@ class ErrorTest extends AbstractRealTest
             "AB");
         assertThat(rsp).isEqualTo("""
             HTTP/1.1 413 Entity Too Large\r
-            Content-Length: 0\r
-            Connection: close\r\n\r\n""");
+            Connection: close\r
+            Content-Length: 0\r\n\r\n""");
         assertThatServerErrorObservedAndLogged()
             .isExactlyInstanceOf(MaxRequestHeadSizeExceededException.class)
             .hasNoCause()
