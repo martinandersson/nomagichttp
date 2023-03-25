@@ -352,7 +352,6 @@ class ErrorTest extends AbstractRealTest
         server().add("/",
                 GET().apply(req -> internalServerError()),
                 POST().apply(req -> internalServerError()));
-        
         String rsp = client().writeReadTextUntilNewlines(
                 "OPTIONS / HTTP/1.1"              + CRLF + CRLF);
         assertThat(rsp).isEqualTo(
@@ -362,7 +361,6 @@ class ErrorTest extends AbstractRealTest
         assertThat(pollServerError())
                 .isExactlyInstanceOf(MethodNotAllowedException.class)
                 .hasMessage("No handler found for method token \"OPTIONS\".");
-        
         assertThatNoWarningOrErrorIsLogged();
     }
     
