@@ -132,8 +132,8 @@ class ErrorTest extends AbstractRealTest
             "GET / Oops"               + CRLF + CRLF);
         assertThat(rsp).isEqualTo(
             "HTTP/1.1 400 Bad Request" + CRLF +
-            "Content-Length: 0"        + CRLF + 
-            "Connection: close"        + CRLF + CRLF);
+            "Connection: close"        + CRLF +
+            "Content-Length: 0"        + CRLF + CRLF);
         assertThat(pollServerError())
             .isExactlyInstanceOf(HttpVersionParseException.class)
             .hasNoCause()
