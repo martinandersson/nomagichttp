@@ -790,7 +790,12 @@ class ErrorTest extends AbstractRealTest
         assertThat(rsp).isEqualTo(
             "HTTP/1.1 500 Internal Server Error" + CRLF +
             "Content-Length: 0"                  + CRLF + CRLF);
-        assertOopsException(pollServerError());
+        assertThat(pollServerError())
+            .isExactlyInstanceOf(OopsException.class)
+            .hasNoCause()
+            .hasNoSuppressedExceptions();
+        logRecorder().assertAwait(DEBUG,
+            "Client aborted the exchange; closing the channel.");
     }
     
     @Test
@@ -875,12 +880,5 @@ class ErrorTest extends AbstractRealTest
             HeaderParseException{prev=(hex:0x68, decimal:104, char:"h"), \
             curr=(hex:0x20, decimal:32, char:" "), pos=N/A, \
             msg=Whitespace in header name or before colon is not accepted.}""");
-    }
-    
-    private void assertOopsException(Throwable oops) {
-        assertThat(oops)
-                .isExactlyInstanceOf(OopsException.class)
-                .hasNoCause()
-                .hasNoSuppressedExceptions();
     }
 }
