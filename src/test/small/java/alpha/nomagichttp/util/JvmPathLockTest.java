@@ -1,18 +1,23 @@
 package alpha.nomagichttp.util;
 
+import alpha.nomagichttp.testutil.IOSupplier;
+import alpha.nomagichttp.testutil.Interrupt;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 
 import java.nio.file.Path;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.stream.Stream;
 
+import static java.util.concurrent.Executors.newSingleThreadExecutor;
 import static java.util.concurrent.ForkJoinPool.commonPool;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
@@ -112,11 +117,23 @@ final class JvmPathLockTest
          }
     }
     
-    @Test
-    void lockUpgrading_crash()
-         throws InterruptedException, TimeoutException {
+    @ParameterizedTest
+    @ValueSource(ints = {0, 9999})
+    void lockUpgrading_crash(int timeout)
+            throws InterruptedException, TimeoutException {
          var r = readLock();
-         assertThatThrownBy(() -> writeLock())
+         // TODO: This is terrible. Need to modernize Interrupt.after
+         IOSupplier<JvmPathLock> testee = () -> {
+             try {
+                 return JvmPathLock.writeLock(blabla, timeout, SECONDS);
+             } catch (InterruptedException | TimeoutException e) {
+                 throw new RuntimeException(e);
+             }
+         };
+         // Unlike the JDK (which would block until timeout), our API crashes,
+         // and no matter the specified timeout; it happens at once
+         assertThatThrownBy(() ->
+                 Interrupt.after(1, SECONDS, "writeLock", testee))
              .isExactlyInstanceOf(IllegalLockUpgradeException.class)
              .hasMessage(null)
              .hasNoCause()
@@ -142,11 +159,42 @@ final class JvmPathLockTest
     @Test
     void differentPathsDifferentLocks()
          throws InterruptedException, TimeoutException {
-         // Normally upgrading wouldn't be okay, but these are different locks
+         // Read-to-write upgrading not okay for the same path
          try (var r = readLock();
               var w = JvmPathLock.writeLock(Path.of("other"), 1, SECONDS)) {
               assertLocksHeld(1, 1);
          }
+    }
+    
+    @ParameterizedTest
+    @ValueSource(booleans = {false, true})
+    void IllegalMonitorException(boolean readOrWrite)
+         throws ExecutionException, InterruptedException, TimeoutException {
+         try (var t2 = newSingleThreadExecutor()) {
+             var x = t2.submit(() -> readOrWrite ? readLock() : writeLock())
+                       .get(1, SECONDS);
+             // Test worker is not the thread holding the lock
+             assertLocksHeld(0, 0);
+             assertThatThrownBy(x::close)
+                 .isExactlyInstanceOf(IllegalMonitorStateException.class)
+                 .hasMessage(null)
+                 .hasNoCause()
+                 .hasNoSuppressedExceptions();
+             // And this is just to not crash @AfterEach...
+             t2.submit(x::close);
+         }
+    }
+    
+    @ParameterizedTest
+    @ValueSource(booleans = {false, true})
+    void closeTwice_nop(boolean readOrWrite)
+            throws InterruptedException, TimeoutException {
+        var x = readOrWrite ? readLock() : writeLock();
+        x.close();
+        assertLocksHeld(0, 0);
+        assertThatCode(x::close)
+            .doesNotThrowAnyException();
+        assertLocksHeld(0, 0);
     }
     
     private static JvmPathLock readLock()
