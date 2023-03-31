@@ -14,11 +14,14 @@ import alpha.nomagichttp.message.ResponseTimeoutException;
 import alpha.nomagichttp.message.Responses;
 import alpha.nomagichttp.route.MethodNotAllowedException;
 import alpha.nomagichttp.route.Route;
+import alpha.nomagichttp.util.ByteBufferIterables;
 
+import java.nio.file.OpenOption;
 import java.nio.file.Path;
 import java.nio.file.attribute.FileAttribute;
 import java.time.Duration;
 import java.util.Set;
+import java.util.concurrent.TimeUnit;
 
 /**
  * Server configuration.<p>
@@ -85,7 +88,8 @@ public interface Config
      * configuration option). The application can consume an unlimited amount
      * of bytes however it desires, by iterating the body, or use other methods
      * that do not buffer the body, such as
-     * {@link Request.Body#toFile(Path, Set, FileAttribute[])}<p>
+     * {@link Request.Body#toFile(Path, long, TimeUnit, Set, FileAttribute[]) Request.Body.toFile(Path, ...)}
+     * <p>
      * 
      * Methods provided by the library that collect bytes in the memory, must be
      * constrained for a number of a reasons. Perhaps primarily because it would
@@ -303,6 +307,20 @@ public interface Config
     Duration timeoutWrite();
     
     /**
+     * Max duration the library awaits a file lock.<p>
+     * 
+     * This configuration value is used by
+     * {@link Request.Body#toFile(Path, OpenOption...)} and
+     * {@link ByteBufferIterables#ofFile(Path)}.<p>
+     * 
+     * The call-site is free to cap the total length of the duration to
+     * {@code Long.MAX_VALUE} nanoseconds (that's over 292 years).
+     * 
+     * @return file-lock timeout duration (default is 3 seconds)
+     */
+    Duration timeoutFileLock();
+    
+    /**
      * If {@code true} (which is the default), any {@link Route} not
      * implementing the {@value HttpConstants.Method#OPTIONS} method will get
      * one.<p>
@@ -464,6 +482,20 @@ public interface Config
          * @see Config#timeoutWrite()
          */
         Builder timeoutWrite(Duration newVal);
+        
+        /**
+         * Sets a new value.<p>
+         * 
+         * The value can be any duration, and even empty, which would
+         * effectively make the library API not spend any time waiting on a
+         * lock. What happens if the duration is negative is not specified.
+         * 
+         * @param newVal new value
+         * @return a new builder representing the new state
+         * @throws NullPointerException if {@code newVal} is {@code null}
+         * @see Config#timeoutFileLock()
+         */
+        Builder timeoutFileLock(Duration newVal);
         
         /**
          * Sets a new value.

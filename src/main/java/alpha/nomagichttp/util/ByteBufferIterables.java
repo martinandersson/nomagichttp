@@ -1,9 +1,13 @@
 package alpha.nomagichttp.util;
 
+import alpha.nomagichttp.ChannelWriter;
+import alpha.nomagichttp.Config;
+import alpha.nomagichttp.HttpServer;
 import alpha.nomagichttp.message.ByteBufferIterable;
 import alpha.nomagichttp.message.ByteBufferIterator;
 import alpha.nomagichttp.message.Request;
 import alpha.nomagichttp.message.ResourceByteBufferIterable;
+import alpha.nomagichttp.message.Response;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -15,15 +19,21 @@ import java.nio.charset.CharsetEncoder;
 import java.nio.charset.CodingErrorAction;
 import java.nio.charset.MalformedInputException;
 import java.nio.file.Files;
+import java.nio.file.NoSuchFileException;
+import java.nio.file.OpenOption;
 import java.nio.file.Path;
 import java.util.NoSuchElementException;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
 import static alpha.nomagichttp.util.Blah.addExactOrCap;
 import static alpha.nomagichttp.util.Blah.getOrCloseResource;
 import static alpha.nomagichttp.util.ByteBuffers.asArray;
+import static alpha.nomagichttp.util.ScopedValues.httpServer;
 import static alpha.nomagichttp.util.Streams.stream;
+import static java.lang.Long.MAX_VALUE;
 import static java.nio.ByteBuffer.allocateDirect;
 import static java.nio.channels.FileChannel.open;
 import static java.nio.charset.CodingErrorAction.REPLACE;
@@ -31,6 +41,7 @@ import static java.nio.charset.CodingErrorAction.REPORT;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.nio.file.StandardOpenOption.READ;
 import static java.util.Objects.requireNonNull;
+import static java.util.concurrent.TimeUnit.NANOSECONDS;
 
 /**
  * Factories for creating bytebuffer iterables.<p>
@@ -40,18 +51,25 @@ import static java.util.Objects.requireNonNull;
  * 
  * All iterated bytebuffers are read-only.<p>
  * 
- * The rest of this JavaDoc applies to iterables created by all methods, except
- * to the iterable created by {@link #ofSupplier(Throwing.Supplier)}, the
- * semantics of which depends in large parts on the nature of its given
- * data-supplying function.<p>
+ * Almost all iterables created by this class are regenerative and thread-safe,
+ * the iterator is also thread-safe. Meaning that the iterable can be cached
+ * globally and shared across different responses, and the encapsulating
+ * responses can also be cached globally and reused. The one exception to this
+ * rule is {@link #ofSupplier(Throwing.Supplier)}, which may or may not be
+ * thread-safe; the semantics depends on the nature of its given data-supplying
+ * function.<p>
  * 
- * The iterables are re-generative and thread-safe; they can be cached and
- * shared across different responses.<p>
- * 
- * The iterables does not yield back unconsumed bytes. In other words; each call
- * to {@code next} returns a new bytebuffer regardless if the previous
- * bytebuffer was fully consumed. The implication is that the consumer can use
- * bulk methods or access a backing array without updating the position.
+ * Almost all iterables created by this class does not yield back unconsumed
+ * bytes. In other words; each call to {@code next} returns a new bytebuffer,
+ * regardless if the previous bytebuffer was fully consumed. One implication is
+ * that the consumer can use bulk methods or access a backing array without
+ * updating the position. The two exceptions to this rule is {@code ofSupplier}
+ * (depends on the function) and all {@code ofFile} methods. The {@code ofFile}
+ * iterable's iterator works much like the {@link Request.Body}; it uses only
+ * one underlying bytebuffer for file read operations, and so same requirements
+ * apply; the bytebuffer should be partially or fully consumed at once using
+ * relative get or relative bulk get methods (which is what the
+ * {@link ChannelWriter#write(Response) ChannelWriter} do; no sweat!).
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  * 
@@ -92,7 +110,7 @@ public final class ByteBufferIterables
     }
     
     /**
-     * Returns an iterable of the given bytebuffers.<p> 
+     * Returns an iterable backed by the given bytebuffers.<p> 
      * 
      * The iterable's content is the given bytebuffers, they are not copied. The
      * application should not modify the bytebuffers after having called this
@@ -232,23 +250,21 @@ public final class ByteBufferIterables
     /**
      * Returns an iterable of a file.<p>
      * 
-     * This method does not require the file to exist, nor does it require the
-     * file to be non-empty. The file should exist, however, no later than when
-     * an iterator is created.<p>
+     * An invocation of this method behaves in exactly the same way as the
+     * invocation
+     * <pre>
+     *     ByteBufferIterables.{@link #ofFile(Path,long,TimeUnit)
+     *       ofFile}(file, timeout, unit);
+     * </pre>
+     * where the values used for {@code timeout} and {@code unit} are derived
+     * (at runtime/by iterator) from
+     * <pre>
+     *     {@link ScopedValues#httpServer() httpServer
+     *     }().{@link HttpServer#getConfig() getConfig
+     *     }().{@link Config#timeoutFileLock() timeoutFileLock}()
+     * </pre>
      * 
-     * When an iterator is created, a new file channel is opened (for reading)
-     * and a shared lock will be acquired using the method
-     * {@link FileChannel#lock(long, long, boolean)} where the position is
-     * specified as {@code 0} and the size is specified as
-     * {@code Long.MAX_VALUE}.<p>
-     * 
-     * As is the case with {@link Request.Body}, the returned iterable uses only
-     * one underlying bytebuffer for read operations and will yield back
-     * unconsumed bytes. Same requirements apply; the bytebuffer should be
-     * partially or fully consumed at once using relative get or relative bulk
-     * get methods.
-     * 
-     * @param file path to read bytes from
+     * @param file to read bytes from
      * 
      * @return see JavaDoc
      * 
@@ -256,7 +272,69 @@ public final class ByteBufferIterables
      *             if {@code file} is {@code null}
      */
     public static ResourceByteBufferIterable ofFile(Path file) {
-        return new OfFile(file);
+        return new OfFile(file, true);
+    }
+    
+    /**
+     * Returns an iterable of a file.<p>
+     * 
+     * This method does not require the file to exist. The file should exist,
+     * however, no later than when an iterator is created; which is when the
+     * implementation uses {@link FileChannel#open(Path, OpenOption...)} to open
+     * the file for reading; which unfortunately does not specify what happens
+     * if the file does not exist. It's probably safe to expect an {@code
+     * IOException} at this point ({@link NoSuchFileException}, to be more
+     * specific).<p>
+     * 
+     * The returned iterable's {@code iterator} method will try to acquire a
+     * read-lock which will ensure that no other co-operating thread within the
+     * currently running JVM can write to the same file at the same time;
+     * concurrent reads are accepted (the {@code iterator} method will return
+     * exceptionally if a lock can not be acquired). With being
+     * <i>co-operative</i> means that any other concurrent thread must acquire a
+     * lock for the same file before accessing it, using {@link JvmPathLock}
+     * directly, or by calling a method that uses the {@code JvmPathLock},
+     * which is exactly what the {@code iterator} method does.<p>
+     * 
+     * The lock is unlocked no later than when the iterator's {@code close}
+     * method is called.<p>
+     * 
+     * @param file     to read bytes from
+     * @param timeout  the time the iterator waits for a lock
+     * @param unit     the time unit of the timeout argument
+     * 
+     * @return see JavaDoc
+     * 
+     * @throws NullPointerException
+     *             if any argument is {@code null}
+     */
+    public static ResourceByteBufferIterable ofFile(
+            Path file, long timeout, TimeUnit unit) {
+        return new OfFile(file, timeout, unit);
+    }
+    
+    /**
+     * Returns an iterable of a file.<p>
+     * 
+     * An invocation of this method behaves in exactly the same way as the
+     * invocation
+     * <pre>
+     *     ByteBufferIterables.{@link #ofFile(Path,long,TimeUnit)
+     *       ofFile}(file, timeout, unit);
+     * </pre>
+     * except the iterator will <strong>not</strong> acquire any kind of lock;
+     * not in the currently running JVM nor outside of it. The application has
+     * the responsibility to co-ordinate file access; if warranted.
+     * 
+     * @param file to read bytes from
+     * 
+     * @return see JavaDoc
+     * 
+     * @throws NullPointerException
+     *             if {@code file} is {@code null}
+     */
+    public static ResourceByteBufferIterable ofFileNoLock(Path file) {
+        return new OfFile(file, false);
     }
     
     /**
@@ -267,10 +345,17 @@ public final class ByteBufferIterables
      * 
      * This method is intended to be used for streaming response bodies.<p>
      * 
-     * If used as a response body, then the response object may be cached and
-     * shared only if the supplier is thread-safe, and it yields
-     * thread-exclusive bytebuffers on each invocation (because
-     * {@code ByteBuffer} is not thread-safe).
+     * When used as a response body; the given function does not have to track
+     * the consumption of and yield back bytebuffers that wasn't fully consumed,
+     * because the channel writer will fully consume the bytebuffers using
+     * relative get-methods.<p>
+     * 
+     * The iterable can be shared across different responses, and the
+     * encapsulating response can also be cached globally and reused — only if
+     * the supplier is thread-safe, and it yields thread-exclusive bytebuffers
+     * on each invocation ({@code ByteBuffer} is not thread-safe). One way to
+     * accomplish thread-safety out of a shared bytebuffer is to simply return
+     * {@link ByteBuffer#asReadOnlyBuffer()}.
      * 
      * @param s supplier of the iterable's content
      * 
@@ -353,15 +438,28 @@ public final class ByteBufferIterables
         // Same as jdk.internal.net.http.common.Utils.DEFAULT_BUFSIZE
         // (used by JDK's BodyPublishers.ofFile(), and is HTTP/2 max frame size)
         private static final int BUF_SIZE = 16 * 1_024;
-        
         private final Path file;
+        private final boolean useLock;
+        private final Long timeout;
+        private final TimeUnit unit;
         
-        OfFile(Path file) {
+        OfFile(Path file, boolean useLock) {
             this.file = requireNonNull(file);
+            this.useLock = useLock;
+            this.timeout = null;
+            this.unit = null;
+        }
+        
+        OfFile(Path file, long timeout, TimeUnit unit) {
+            this.file = requireNonNull(file);
+            this.useLock = true;
+            this.timeout = timeout;
+            this.unit = requireNonNull(unit);
         }
         
         @Override
-        public ByteBufferIterator iterator() throws IOException {
+        public ByteBufferIterator iterator()
+                throws InterruptedException, TimeoutException, IOException {
             return new Iterator();
         }
         
@@ -371,30 +469,40 @@ public final class ByteBufferIterables
         }
         
         private class Iterator implements ByteBufferIterator {
-            private final FileChannel ch;
             private final ByteBuffer buf, view;
+            private final JvmPathLock lck;
+            private final FileChannel ch;
             private final long len;
             private long count;
             
-            Iterator() throws IOException {
-                var buf = allocateDirect(BUF_SIZE);
+            Iterator()
+                  throws InterruptedException, TimeoutException, IOException {
+                this.buf = allocateDirect(BUF_SIZE);
                 // The view is created with no remaining to force-read on first
                 // call to next()
-                var view = buf.asReadOnlyBuffer().position(BUF_SIZE);
-                var ch = acquireSharedLock(open(file, READ));
-                long len = getOrCloseResource(ch::size, ch);
-                this.buf = buf;
-                this.view = view;
-                this.ch = ch;
-                this.len = len;
+                this.view = buf.asReadOnlyBuffer().position(BUF_SIZE);
+                this.lck = useLock ? readLock() : null;
+                this.ch = getOrCloseResource(() -> open(file, READ), this);
+                this.len = getOrCloseResource(ch::size, this);
                 this.count = 0;
+            }
+            
+            private JvmPathLock readLock()
+                    throws InterruptedException, TimeoutException {
+                long t = MAX_VALUE;
+                if (timeout == null) {
+                    try {
+                        t = httpServer().getConfig().timeoutFileLock().toNanos();
+                    } catch (ArithmeticException useMaxVal) {}
+                }
+                return JvmPathLock.readLock(file, t, NANOSECONDS);
             }
             
             private static FileChannel acquireSharedLock(FileChannel ch)
                     throws IOException
             {
                 var lock = getOrCloseResource(() ->
-                        ch.lock(0, Long.MAX_VALUE, true), ch);
+                        ch.lock(0, MAX_VALUE, true), ch);
                 if (!lock.isShared()) {
                     // TODO: Config.acceptExclusiveFileLock() ??
                     // (don't want to force-check this on JVM startup; we may never serve files)
@@ -424,7 +532,7 @@ public final class ByteBufferIterables
                 clearAndLimitBuffers(d);
                 int v = ch.read(buf);
                 assert v != -1 : "End-Of-Stream not expected";
-                assert v > 0 : "We had some desire left";
+                assert v > 0 : "Should have read something";
                 count = addExactOrCap(count, v);
                 view.limit(buf.position());
                 assert view.hasRemaining();
@@ -452,7 +560,12 @@ public final class ByteBufferIterables
             
             @Override
             public void close() throws IOException {
-                ch.close();
+                try {
+                    // Can be null; see iterator()
+                    if (ch != null) ch.close();
+                } finally {
+                    lck.close();
+                }
             }
         }
     }

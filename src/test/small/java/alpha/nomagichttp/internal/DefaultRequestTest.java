@@ -11,6 +11,9 @@ import java.net.http.HttpHeaders;
 import java.nio.charset.IllegalCharsetNameException;
 import java.nio.charset.UnsupportedCharsetException;
 import java.nio.file.Paths;
+import java.util.Set;
+import java.util.concurrent.Callable;
+import java.util.concurrent.ExecutionException;
 
 import static alpha.nomagichttp.Config.DEFAULT;
 import static alpha.nomagichttp.HttpConstants.Version.HTTP_1_1;
@@ -22,6 +25,7 @@ import static alpha.nomagichttp.util.Headers.of;
 import static alpha.nomagichttp.util.ScopedValues.__HTTP_SERVER;
 import static java.nio.file.Files.notExists;
 import static java.util.concurrent.Executors.newVirtualThreadPerTaskExecutor;
+import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;
@@ -91,17 +95,27 @@ final class DefaultRequestTest
     }
     
     @Test
-    void body_toFile_empty() throws IOException {
+    void body_toFile_empty()
+            throws InterruptedException, ExecutionException {
         var letsHopeItDoesNotExist = Paths.get("child porn sites.txt");
         // Pre condition
         assertThat(notExists(letsHopeItDoesNotExist))
                 .isTrue();
         // Execute
-        assertThat(createEmptyRequest().body().toFile(letsHopeItDoesNotExist))
+        var body = createEmptyRequest().body();
+        assertThat(getUsingVThread(() ->
+            body.toFile(letsHopeItDoesNotExist, 0, SECONDS, Set.of())))
                 .isZero();
         // Post condition (test failed legitimately, or machine is a pedophile?)
         assertThat(notExists(letsHopeItDoesNotExist))
                 .isTrue();
+    }
+    
+    private static long getUsingVThread(Callable<Long> task)
+            throws InterruptedException, ExecutionException {
+        try (var exec = newVirtualThreadPerTaskExecutor()) {
+            return exec.submit(task).get();
+        }
     }
     
     private static Request createRequest(HttpHeaders headers, String reqBody) {

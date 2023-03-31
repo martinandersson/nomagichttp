@@ -221,18 +221,17 @@ class MessageTest extends AbstractRealTest
     }
     
     @Test
-    void fileResponse() throws IOException {
-        var content = asciiBytes("Hello, World!");
-        var file = writeTempFile(content);
+    void fileResponse_okay() throws IOException, InterruptedException {
+        var file = writeTempFile(asciiBytes("Hello, World!"));;
         server().add(
             "/", GET().apply(req -> ok(ofFile(file))));
-        var rsp = client()
-            .writeReadTextUntil(get(), "!");
+        var rsp = client().writeReadTextUntil(get(), "!");
         assertThat(rsp).isEqualTo("""
             HTTP/1.1 200 OK\r
             Content-Type: application/octet-stream\r
             Content-Length: 13\r
             \r
             Hello, World!""");
+        assertThatNoWarningOrErrorIsLogged();
     }
 }

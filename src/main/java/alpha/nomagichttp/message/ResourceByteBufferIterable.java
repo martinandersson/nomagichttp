@@ -1,6 +1,12 @@
 package alpha.nomagichttp.message;
 
+import alpha.nomagichttp.util.JvmPathLock;
+
 import java.io.IOException;
+import java.nio.channels.FileChannel;
+import java.nio.file.OpenOption;
+import java.nio.file.Path;
+import java.util.concurrent.TimeoutException;
 
 /**
  * An {@code Iterable} of {@code ByteBuffer}s, backed by a closeable
@@ -19,7 +25,8 @@ import java.io.IOException;
  * iterator of a response body may read bytes from a byte array or a backing
  * file. The {@link #length() length} is the number of bytes that each new
  * iterator will observe. Iteration should not drain or take bytes away from the
- * iterable. The length will only change if the contents of the source changes.
+ * iterable; different iterations should normally observe the same byte
+ * sequence. The length will only change if the contents of the source changes.
  * The empty state can over time toggle back and forth. A regenerative iterable
  * must support being iterated concurrently by multiple threads.<p>
  * 
@@ -36,14 +43,29 @@ import java.io.IOException;
 public interface ResourceByteBufferIterable
 {
     /**
-     * Returns an iterator of bytebuffers.
+     * Returns an iterator of bytebuffers.<p>
+     * 
+     * These are the expected origins when an implementation obtained from the
+     * NoMagicHTTP library throws a checked exception:
+     * 
+     * <ul>
+     *   <li>{@code InterruptedException}: {@link JvmPathLock}</li>
+     *   <li>{@code TimeoutException}: {@link JvmPathLock}</li>
+     *   <li>{@code IOException}: {@link
+     *           FileChannel#open(Path, OpenOption...) FileChannel.open}</li>
+     * </ul>
      * 
      * @return an iterator of bytebuffers (never {@code null})
      * 
-     * @throws IOException if an I/O error occurs
-     *                     (presumably from opening the resource)
+     * @throws InterruptedException
+     *             if interrupted while waiting on something
+     * @throws TimeoutException
+     *             when a blocking operation times out
+     * @throws IOException
+     *             on I/O error
      */
-    ByteBufferIterator iterator() throws IOException;
+    ByteBufferIterator iterator()
+            throws InterruptedException, TimeoutException, IOException;
     
     /**
      * Returns the number of iterable bytes.<p>

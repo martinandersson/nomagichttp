@@ -117,9 +117,9 @@ class BigFileRequestTest extends AbstractLargeRealTest
                     .readTextUntilNewlines();
             assertThat(head).isEqualTo(
                 "HTTP/1.0 200 OK"                        + CRLF +
-                "Content-Length: " + FILE_SIZE           + CRLF +
                 "Content-Type: application/octet-stream" + CRLF +
-                "Connection: close"                      + CRLF + CRLF);
+                "Connection: close"                      + CRLF +
+                "Content-Length: " + FILE_SIZE           + CRLF + CRLF);
             // The TestClient can sometimes take time to complete. Most of the
             // time - on my machine - it takes roughly 2.2 seconds. Reactor
             // about 1.5 seconds, and all other clients from 0.8 to 1 second.
@@ -137,7 +137,7 @@ class BigFileRequestTest extends AbstractLargeRealTest
         }
     }
     
-//    @ParameterizedTest(name = "post/{0}")
+    @ParameterizedTest(name = "post/{0}")
     @EnumSource
     void post_compatibility(HttpClientFacade.Implementation impl)
             throws IOException, ExecutionException, InterruptedException, TimeoutException
@@ -154,7 +154,7 @@ class BigFileRequestTest extends AbstractLargeRealTest
         assertThat(rsp.headers().firstValueAsLong("Received")).hasValue(FILE_SIZE);
     }
     
-//    @ParameterizedTest(name = "get/{0}")
+    @ParameterizedTest(name = "get/{0}")
     @EnumSource
     void get_compatibility(HttpClientFacade.Implementation impl) {
         assumeTrue(saved);

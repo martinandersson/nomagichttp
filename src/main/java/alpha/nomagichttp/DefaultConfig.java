@@ -24,7 +24,8 @@ final class DefaultConfig implements Config {
                            immediatelyContinueExpect100;
     private final Duration timeoutRead,
                            timeoutResponse,
-                           timeoutWrite;
+                           timeoutWrite,
+                           timeoutFileLock;
     private final boolean  implementMissingOptions;
     
     DefaultConfig(Builder b, DefaultBuilder.MutableState s) {
@@ -39,6 +40,7 @@ final class DefaultConfig implements Config {
         timeoutRead                  = s.timeoutRead;
         timeoutResponse              = s.timeoutResponse;
         timeoutWrite                 = s.timeoutWrite;
+        timeoutFileLock              = s.timeoutFileLock;
         implementMissingOptions      = s.implementMissingOptions;
     }
     
@@ -93,6 +95,11 @@ final class DefaultConfig implements Config {
     }
     
     @Override
+    public Duration timeoutFileLock() {
+        return timeoutFileLock;
+    }
+    
+    @Override
     public boolean implementMissingOptions() {
         return implementMissingOptions;
     }
@@ -118,7 +125,8 @@ final class DefaultConfig implements Config {
                      immediatelyContinueExpect100 = false;
             Duration timeoutRead                  = ofSeconds(90),
                      timeoutResponse              = timeoutRead,
-                     timeoutWrite                 = timeoutRead;
+                     timeoutWrite                 = timeoutRead,
+                     timeoutFileLock              = ofSeconds(3);
             boolean  implementMissingOptions      = true;
         }
         
@@ -176,6 +184,12 @@ final class DefaultConfig implements Config {
         public Builder timeoutWrite(Duration newVal) {
             requireNonNull(newVal);
             return new DefaultBuilder(this, s -> s.timeoutWrite = newVal);
+        }
+        
+        @Override
+        public Builder timeoutFileLock(Duration newVal) {
+            requireNonNull(newVal);
+            return new DefaultBuilder(this, s -> s.timeoutFileLock = newVal);
         }
         
         @Override

@@ -116,6 +116,7 @@ import static java.util.stream.Stream.of;
  */
 // TODO: 1) Rename to ExceptionHandler
 //       2) We want to have a fallback response for outbound FileNotFoundExc
+//       3) CharacterCodingException = Bad Request, and document
 @FunctionalInterface
 public interface ErrorHandler
 {
@@ -337,6 +338,7 @@ public interface ErrorHandler
      *   </tbody>
      * </table>
      */
+    // TODO: TimeoutException; ask client to "retry later"
     ErrorHandler BASE = (exc, chainIsNull, req) -> {
         final Response res;
         try {
@@ -400,6 +402,7 @@ public interface ErrorHandler
             //   MediaTypeParseException
             //   AmbiguousHandlerException
             //   IllegalResponseBodyException
+            //   IllegalLockUpgradeException
             log(exc);
             res = internalServerError();
         }

@@ -81,6 +81,7 @@ public final class Blah
      */
     public static <T, X extends Exception> T getOrCloseResource(
           Throwing.Supplier<? extends T, X> method,
+          // TODO: AutoCloseable, then change close "this" to close "lck" in OfFile
           Closeable resource)
           throws X
     {

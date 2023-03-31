@@ -6,10 +6,9 @@ package alpha.nomagichttp.message;
  * This iterable is not backed by a closeable resource, otherwise, this type is
  * fully specified by its supertype {@link ResourceByteBufferIterable}.<p>
  * 
- * More specifically, this type erases the {@code throws IOException} clause
- * from the methods {@code iterator}, {@code length}, {@code isEmpty}, and it is
- * hereby documented that there is no use of the method
- * {@code ByteBufferIterator.close}.
+ * More specifically, this type erases the throws clauses from methods
+ * {@code iterator}, {@code length} and {@code isEmpty}, and it is hereby
+ * documented that the method {@code ByteBufferIterator.close} is no-operation.
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  */

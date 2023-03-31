@@ -60,6 +60,8 @@ import static org.assertj.core.api.Assertions.assertThat;
  */
 class DetailTest extends AbstractRealTest
 {
+    // TODO: Extract ConnectionTest (includes discarding)
+    
     @Test
     void connection_reuse_standard() throws IOException {
         // Echo request body

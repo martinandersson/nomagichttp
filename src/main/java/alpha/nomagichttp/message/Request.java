@@ -1,10 +1,14 @@
 package alpha.nomagichttp.message;
 
+import alpha.nomagichttp.Config;
 import alpha.nomagichttp.HttpConstants;
+import alpha.nomagichttp.HttpServer;
 import alpha.nomagichttp.action.BeforeAction;
 import alpha.nomagichttp.handler.ClientChannel;
 import alpha.nomagichttp.handler.RequestHandler;
 import alpha.nomagichttp.route.Route;
+import alpha.nomagichttp.util.IllegalLockUpgradeException;
+import alpha.nomagichttp.util.JvmPathLock;
 import alpha.nomagichttp.util.ScopedValues;
 
 import java.io.IOException;
@@ -18,14 +22,19 @@ import java.nio.charset.Charset;
 import java.nio.charset.CharsetDecoder;
 import java.nio.charset.IllegalCharsetNameException;
 import java.nio.charset.UnsupportedCharsetException;
+import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.OpenOption;
 import java.nio.file.Path;
+import java.nio.file.StandardOpenOption;
 import java.nio.file.attribute.FileAttribute;
 import java.util.List;
 import java.util.Map;
+import java.util.NoSuchElementException;
 import java.util.Optional;
 import java.util.RandomAccess;
 import java.util.Set;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import java.util.stream.Stream;
 
 /**
@@ -603,10 +612,11 @@ public interface Request extends HeaderHolder, AttributeHolder
     }
     
     /**
-     * Is an API for reading the request body in various forms.
+     * Is an API for reading the request body in various forms.<p>
      * 
+     * A few examples:
      * <pre>{@code
-     *   // Convert all bytes to String
+     *   // Convert all bytes to a String
      *   var string = request.body().toText();
      *   
      *   // Gather all bytes
@@ -623,6 +633,71 @@ public interface Request extends HeaderHolder, AttributeHolder
      *   request.body().iterator()
      *                 .forEachRemaining(byteBuffer -> ...);
      * }</pre>
+     * 
+     * <h2>Handling errors</h2>
+     * 
+     * In general, high-level exception types — in particular, when documented —
+     * occurs before a channel read operation is made and will leave the
+     * channel's input stream open. The application can generally attempt a new
+     * operation to recover the body (for example, {@code toText() >} {@code
+     * CharacterCodingException}).<p>
+     * 
+     * Errors that originate from the channel's read operation will have shut
+     * down the input stream. Before attempting to read the body again, always
+     * check first if
+     * <pre>
+     *   {@link ScopedValues#channel() channel
+     *       }().{@link ClientChannel#isInputOpen() isInputOpen}()
+     * </pre>
+     * 
+     * <h2>Saving to file</h2>
+     * 
+     * All implementations of the {@code toFile} and {@code toFileNoLock}
+     * methods use the standard library's
+     * {@link FileChannel#open(Path,Set,FileAttribute[])}, and passes through
+     * almost all arguments that are named the same, as-is. The one exception is
+     * the set of {@link OpenOption}s, but only if the set is empty, in which
+     * case a set of {@link StandardOpenOption#WRITE} and
+     * {@link StandardOpenOption#CREATE_NEW} will be used. Code that specifies
+     * any open option(s) ought to re-specify {@code WRITE}!.<p>
+     * 
+     * All exceptions from
+     * {@link FileChannel#open(Path,Set,FileAttribute[]) FileChannel.open}
+     * propagates as-is, and have — for the sake of brevity — not been repeated
+     * by the JavaDoc in this interface. For example, trying to save the body to
+     * a file that already exists, and no open option was specified, will throw
+     * a {@link FileAlreadyExistsException} <i>(
+     * {@linkplain java.nio.file optional specific exception})</i>.<p>
+     * 
+     * The {@code toFile} methods will try to acquire a write-lock which will
+     * ensure that no other co-operating thread within the currently running JVM
+     * can read from, or write to the same file (returning exceptionally if a
+     * lock can not be acquired). With being <i>co-operative</i> means that any
+     * other concurrent thread must acquire a lock for the same file before
+     * accessing it, using {@link JvmPathLock} directly, or by calling a method
+     * that uses the {@code JvmPathLock}, which is exactly what the
+     * {@code toFile} methods do.<p>
+     * 
+     * The {@code toFileNoLock} methods will <strong>not</strong> acquire any
+     * kind of lock; not in the currently running JVM nor outside of it. The
+     * application has the responsibility to co-ordinate file access; if
+     * warranted.<p>
+     * 
+     * Future work will add API-support for resuming file uploads and downloads.
+     * For now, an application that does not want to implement such a feature on
+     * its own, will likely want to do something like this:
+     * 
+     * <pre>
+     *   try {
+     *       request.body().toFile(path, ...);
+     *   } catch (IOException rethrow) {
+     *       // Channel read or file write failed
+     *       Files.deleteIfExists(path);
+     *       throw rethrow;
+     *   }
+     * </pre>
+     * 
+     * <h2>Consuming bytes</h2>
      * 
      * The request processing chain will be invoked immediately after the
      * request headers have been parsed, and it is likely that the body hasn't
@@ -664,22 +739,6 @@ public interface Request extends HeaderHolder, AttributeHolder
      * server may send interim responses, does mean that 98% of the internet is
      * blatantly wrong when it labels HTTP as a <i>synchronous one-to-one</i>
      * protocol!
-     * 
-     * <h2>Handling errors</h2>
-     * 
-     * In general, high-level exception types — in particular, when documented —
-     * occurs before a channel read operation is made and will leave the
-     * channel's input stream open. The application can generally attempt a new
-     * operation to recover the body (for example, {@code toText() >} {@code
-     * CharacterCodingException}).<p>
-     * 
-     * Errors that originate from the channel's read operation will have shut
-     * down the input stream. Before attempting to recover the body, always
-     * check first if
-     * <pre>
-     *   {@link ScopedValues#channel() channel
-     *       }().{@link ClientChannel#isInputOpen() isInputOpen}()
-     * </pre>
      * 
      * <h2>Direct bytebuffer</h2>
      * 
@@ -727,9 +786,9 @@ public interface Request extends HeaderHolder, AttributeHolder
          *             if no support for the charset name is available in this
          *             instance of the Java virtual machine.
          * @throws UnsupportedOperationException
-         *             if {@code length} is unknown
+         *             if {@link #length() length} is unknown
          * @throws BufferOverflowException
-         *             if {@code length} is greater than
+         *             if {@link #length() length} is greater than
          *             {@code Integer.MAX_VALUE}
          * @throws CharacterCodingException
          *             if input is malformed, or
@@ -760,9 +819,9 @@ public interface Request extends HeaderHolder, AttributeHolder
          *             if no support for the charset name is available in this
          *             instance of the Java virtual machine.
          * @throws UnsupportedOperationException
-         *             if {@code length} is unknown
+         *             if {@link #length() length} is unknown
          * @throws BufferOverflowException
-         *             if {@code length} is greater than
+         *             if {@link #length() length} is greater than
          *             {@code Integer.MAX_VALUE}
          * @throws CharacterCodingException
          *             if input is malformed, or
@@ -788,21 +847,40 @@ public interface Request extends HeaderHolder, AttributeHolder
          * An invocation of this method behaves in exactly the same way as the
          * invocation
          * <pre>
-         *     body.{@link #toFile(Path,Set,FileAttribute[])
-         *       toFile}(path, opts, new FileAttribute&lt;?&gt;[0]);
+         *     body.{@link #toFile(Path,long,TimeUnit,Set,FileAttribute[])
+         *       toFile}(path, timeout, unit, opts, new FileAttribute&lt;?&gt;[0]);
          * </pre>
-         * where {@code opts} is a {@code Set} containing the options specified
-         * to this method.
+         * where the values used for {@code timeout} and {@code unit} are
+         * derived from
+         * <pre>
+         *     {@link ScopedValues#httpServer() httpServer
+         *     }().{@link HttpServer#getConfig() getConfig
+         *     }().{@link Config#timeoutFileLock() timeoutFileLock}()
+         * </pre>
+         * and {@code opts} is a {@code Set} containing the options specified to
+         * this method.
          * 
          * @param path where to dump the body bytes
          * @param opts specifies how the file is opened
          * 
          * @return the number of bytes written to the file
-         *         (capped at {@code Long.MAX_VALUE})
+         *         (capped at {@link Long#MAX_VALUE})
          * 
-         * @throws IOException if an I/O error occurs
+         * @throws NullPointerException
+         *             if any argument is {@code null}
+         * @throws NoSuchElementException
+         *             if the server instance is not bound
+         * @throws IllegalLockUpgradeException
+         *             if the current thread holds a read-lock for the same path
+         * @throws InterruptedException
+         *             if the current thread is interrupted while acquiring a lock
+         * @throws TimeoutException
+         *             if a lock is not acquired within the specified duration
+         * @throws IOException
+         *             if an I/O error occurs
          */
-        long toFile(Path path, OpenOption... opts) throws IOException;
+        long toFile(Path path, OpenOption... opts)
+                throws InterruptedException, TimeoutException, IOException;
         
         /**
          * Saves the remaining body bytes to a file.<p>
@@ -812,41 +890,91 @@ public interface Request extends HeaderHolder, AttributeHolder
          *     {@link FileChannel#open(Path,Set,FileAttribute[])
          *       FileChannel.open}(file, opts, attrs);
          * </pre>
+         * except if {@code opts} is empty, a set of
+         * {@link StandardOpenOption#WRITE WRITE} and
+         * {@link StandardOpenOption#CREATE_NEW CREATE_NEW} will be used.<p>
          * 
-         * ...except if {@code options} is empty, a set of {@code WRITE} and
-         * {@code CREATE_NEW} will be used (if the file exists the operation
-         * will fail).<p>
+         * See {@link Request.Body} for more details.
          * 
-         * Future work will add API support for resuming uploads and downloads.
-         * For now, the application will likely want to do something like this:
-         * 
-         * <pre>
-         *   try {
-         *       request.body().toFile(path, ...);
-         *   } catch (IOException e) {
-         *       // Channel read or file write failed
-         *       Files.deleteIfExists(path);
-         *       throw e;
-         *   }
-         * </pre>
-         * 
-         * All exceptions thrown by {@code FileChannel.open()} propagates as-is
-         * from this method.
-         * 
-         * @param path  where to dump the body bytes
-         * @param opts  specifies how the file is opened
-         * @param attrs an optional list of file attributes to set atomically
-         *              when creating the file
+         * @param path     where to dump the body bytes
+         * @param timeout  the time to wait for a lock
+         * @param unit     the time unit of the timeout argument
+         * @param opts     specifies how the file is opened
+         * @param attrs    attributes to set atomically when creating the file
          * 
          * @return the number of bytes written to file
-         *         (capped at {@code Long.MAX_VALUE})
+         *         (capped at {@link Long#MAX_VALUE})
          * 
-         * @throws IOException if an I/O error occurs
+         * @throws NullPointerException
+         *             if any argument is {@code null}
+         * @throws IllegalLockUpgradeException
+         *             if the current thread holds a read-lock for the same path
+         * @throws InterruptedException
+         *             if the current thread is interrupted while acquiring a lock
+         * @throws TimeoutException
+         *             if a lock is not acquired within the specified duration
+         * @throws IOException
+         *             if an I/O error occurs
          */
         long toFile(
+                Path path, long timeout, TimeUnit unit,
+                Set<? extends OpenOption> opts, FileAttribute<?>... attrs)
+                throws InterruptedException, TimeoutException, IOException;
+        
+        /**
+         * Saves the remaining body bytes to a file.<p>
+         * 
+         * An invocation of this method behaves in exactly the same way as the
+         * invocation
+         * <pre>
+         *     body.{@link #toFileNoLock(Path,Set,FileAttribute[])
+         *       toFileNoLock}(path, opts, new FileAttribute&lt;?&gt;[0]);
+         * </pre>
+         * where {@code opts} is a {@code Set} containing the options specified
+         * to this method.
+         * 
+         * @param path where to dump the body bytes
+         * @param opts specifies how the file is opened
+         * 
+         * @return the number of bytes written to the file
+         *         (capped at {@link Long#MAX_VALUE})
+         * 
+         * @throws NullPointerException
+         *             if any argument is {@code null}
+         * @throws IOException
+         *             if an I/O error occurs
+         */
+        long toFileNoLock(Path path, OpenOption... opts) throws IOException;
+        
+        /**
+         * Saves the remaining body bytes to a file.<p>
+         * 
+         * This method is equivalent to
+         * <pre>
+         *     {@link FileChannel#open(Path,Set,FileAttribute[])
+         *       FileChannel.open}(path, opts, attrs);
+         * </pre>
+         * except if {@code opts} is empty, a set of
+         * {@link StandardOpenOption#WRITE WRITE} and
+         * {@link StandardOpenOption#CREATE_NEW CREATE_NEW} will be used.<p>
+         * 
+         * See {@link Request.Body} for more details.
+         * 
+         * @param path     where to dump the body bytes
+         * @param opts     specifies how the file is opened
+         * @param attrs    attributes to set atomically when creating the file
+         * 
+         * @return the number of bytes written to file
+         *         (capped at {@link Long#MAX_VALUE})
+         * 
+         * @throws NullPointerException
+         *             if any argument is {@code null}
+         * @throws IOException
+         *             if an I/O error occurs
+         */
+        long toFileNoLock(
                 Path path, Set<? extends OpenOption> opts,
-                FileAttribute<?>... attrs)
-                throws IOException;
+                FileAttribute<?>... attrs) throws IOException;
         
         // TODO: toEverythingElse()
         

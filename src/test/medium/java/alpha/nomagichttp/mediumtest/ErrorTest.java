@@ -35,6 +35,7 @@ import org.junit.jupiter.params.provider.ValueSource;
 import java.io.IOException;
 import java.nio.channels.Channel;
 import java.nio.channels.InterruptedByTimeoutException;
+import java.nio.channels.OverlappingFileLockException;
 
 import static alpha.nomagichttp.handler.RequestHandler.GET;
 import static alpha.nomagichttp.handler.RequestHandler.HEAD;
@@ -43,17 +44,23 @@ import static alpha.nomagichttp.handler.RequestHandler.TRACE;
 import static alpha.nomagichttp.message.Responses.badRequest;
 import static alpha.nomagichttp.message.Responses.internalServerError;
 import static alpha.nomagichttp.message.Responses.noContent;
+import static alpha.nomagichttp.message.Responses.ok;
 import static alpha.nomagichttp.message.Responses.processing;
 import static alpha.nomagichttp.message.Responses.status;
 import static alpha.nomagichttp.message.Responses.text;
 import static alpha.nomagichttp.testutil.TestClient.CRLF;
+import static alpha.nomagichttp.testutil.TestFiles.writeTempFile;
 import static alpha.nomagichttp.testutil.TestRequests.get;
 import static alpha.nomagichttp.testutil.TestRequests.post;
+import static alpha.nomagichttp.util.ByteBufferIterables.ofFile;
 import static alpha.nomagichttp.util.ByteBufferIterables.ofString;
+import static alpha.nomagichttp.util.ByteBuffers.asciiBytes;
 import static alpha.nomagichttp.util.ScopedValues.channel;
 import static java.lang.System.Logger.Level.DEBUG;
 import static java.lang.System.Logger.Level.ERROR;
 import static java.lang.System.Logger.Level.INFO;
+import static java.nio.channels.FileChannel.open;
+import static java.nio.file.StandardOpenOption.WRITE;
 import static java.time.Duration.ofMillis;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -175,9 +182,9 @@ class ErrorTest extends AbstractRealTest
             "GET /not-found HTTP/1.0"       + CRLF + CRLF);
         assertThat(rsp).isEqualTo(
             "HTTP/1.0 426 Upgrade Required" + CRLF +
-            "Content-Length: 0"             + CRLF +
             "Upgrade: HTTP/1.1"             + CRLF +
-            "Connection: close"             + CRLF + CRLF);
+            "Connection: Upgrade"           + CRLF +
+            "Content-Length: 0"             + CRLF+ CRLF);
         assertThat(pollServerError())
             .isExactlyInstanceOf(HttpVersionTooOldException.class)
             .hasNoCause()
@@ -602,6 +609,9 @@ class ErrorTest extends AbstractRealTest
         assertThatNoWarningOrErrorIsLogged();
     }
     
+    // TODO: fileResponse_blockedByWriteLock
+    // Link in JavaDoc MessageTest fileResponse_okay
+    
     @Disabled("We need to implement timeouts for v-threads")
     @Test
     void ReadTimeoutException_duringHead()
@@ -777,6 +787,7 @@ class ErrorTest extends AbstractRealTest
     }
     
     // channel remains fully open
+    // TODO: Link ClientLifeCycleTest#clientClosesChannel_serverReceivedPartialHead
     @Test
     void Special_requestBodyConsumerFails() throws IOException, InterruptedException {
         onErrorAssert(OopsException.class, ch ->
@@ -846,6 +857,7 @@ class ErrorTest extends AbstractRealTest
         logRecorder()
             .assertAwaitChildClose();
         // Second one causes some problems
+        // TODO: See below, is repeated in next test case
         var rec = logRecorder().take(
             ERROR, """
               Response bytes already sent, \
@@ -865,7 +877,7 @@ class ErrorTest extends AbstractRealTest
     
     /** The error version of {@link ExampleTest#RequestTrailers()}. */
     @Test
-    void Special_requestTrailersDiscarded_errorNotHandled() throws IOException, InterruptedException {
+    void Special_requestTrailersDiscarded_errorNotHandled() throws IOException {
         server().add("/", POST().apply(req ->
                 text(req.body().toText())));
         var rsp = client().writeReadTextUntilEOS("""

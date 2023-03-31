@@ -13,6 +13,7 @@ import alpha.nomagichttp.message.ResourceByteBufferIterable;
 import alpha.nomagichttp.message.Response;
 
 import java.io.IOException;
+import java.util.concurrent.TimeoutException;
 
 /**
  * A transmitter of data from a response to a byte channel.<p>
@@ -54,12 +55,12 @@ public interface ChannelWriter
      * response is finite — return the number of bytes written, which will be a
      * positive number.
      * 
-     * @param response to send (must not be {@code null})
+     * @param rsp response to send (must not be {@code null})
      * 
      * @return the number of bytes written
      * 
      * @throws NullPointerException
-     *             if {@code response} is {@code null}
+     *             if {@code rsp} is {@code null}
      * @throws IllegalStateException
      *             if the HTTP exchange to which the writer was bound, is over
      * @throws IllegalStateException
@@ -86,10 +87,19 @@ public interface ChannelWriter
      * @throws IllegalResponseBodyException
      *             if the request — to which the response is a response — has
      *             HTTP method {@code HEAD} or {@code CONNECT}
+     * @throws InterruptedException
+     *             if interrupted while waiting on a write-lock
+     *             (may only be applicable for a file-backed response body)
+     * @throws TimeoutException
+     *             if waiting on a write-lock timed out
+     *             (may only be application for a file-backed response body)
      * @throws IOException
      *             if an I/O error occurs
+     *             (the origin can be file-backed response body, as well as the
+     *              destination channel)
      */
-    long write(Response response) throws IOException;
+    long write(Response rsp)
+            throws InterruptedException, TimeoutException, IOException;
     
     /**
      * Returns whether a final response has been sent.
@@ -112,8 +122,8 @@ public interface ChannelWriter
      * Schedules the client channel to close after the final response.<p>
      * 
      * The client channel may close for other reasons, such as the response
-     * already containing the "Connection: close" header. If this wouldn't be
-     * the case however, this method guarantees that the response will set the
+     * containing the "Connection: close" header. If this wouldn't be the case
+     * however, this method guarantees that the response will set the
      * "Connection: close" header and subsequently close the channel.<p>
      * 
      * This method can be used by code whenever it does not have access to- or
@@ -123,11 +133,11 @@ public interface ChannelWriter
      * which will also cause the writer to ensure the "Connection: close" header
      * is set. However, there are some incredibly dumb HTTP clients out there
      * (Jetty and Reactor, at least), which if their corresponding output stream
-     * is closed, will close the entire connection without waiting on the final
-     * response.<p>
+     * is closed, will cause the client to immediately close the entire
+     * connection without waiting on the final response (lol?).<p>
      * 
-     * The reason argument should begin with a lower-cased letter as it will be
-     * appended to another string.<p>
+     * The {@code reason} argument should begin with a lower-cased letter as it
+     * will be appended to another string.<p>
      * 
      * This method is NOP if the close has already been scheduled.
      * 

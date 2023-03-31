@@ -85,9 +85,7 @@ import static java.util.Locale.ROOT;
  * classloading. For instance, in the previous example, all steps before the
  * statement which sets the header traverses through cached entities. This is
  * true even if one replaces {@code processing()} with the more explicit {@code
- * status(102, "Processing")}.<p>
- * 
- * This class and the produced responses are thread-safe and non-blocking.
+ * status(102, "Processing")}.
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  */

@@ -405,7 +405,7 @@ class ExampleTest extends AbstractRealTest
     
     /**
      * The happy version of
-     * {@link ErrorTest#Special_requestTrailers_errorNotHandled()}.
+     * {@link ErrorTest#Special_requestTrailersDiscarded_errorNotHandled()}.
      */
     // TODO: Currently not a public example. Update docs.
     @Test

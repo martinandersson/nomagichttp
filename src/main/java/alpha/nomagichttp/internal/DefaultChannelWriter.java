@@ -19,6 +19,7 @@ import java.nio.channels.WritableByteChannel;
 import java.time.Duration;
 import java.util.List;
 import java.util.Optional;
+import java.util.concurrent.TimeoutException;
 
 import static alpha.nomagichttp.HttpConstants.HeaderName.CONNECTION;
 import static alpha.nomagichttp.HttpConstants.HeaderName.CONTENT_LENGTH;
@@ -135,7 +136,8 @@ public final class DefaultChannelWriter implements ChannelWriter
     }
     
     @Override
-    public long write(final Response app1) throws IOException {
+    public long write(final Response app1)
+            throws InterruptedException, TimeoutException, IOException {
         requireNonNull(app1);
         requireValidState();
         if (discard1XXInformational(app1) || ignoreRepeated100Continue(app1)) {
@@ -176,6 +178,7 @@ public final class DefaultChannelWriter implements ChannelWriter
         }
     }
     
+    // TODO: See new log message; rename discard to ignore here and in config
     private static boolean discard1XXInformational(Response r) {
         if (r.isInformational() && httpVersion().isLessThan(HTTP_1_1)) {
             if (httpServer().getConfig().discardRejectedInformational()) {
@@ -329,7 +332,8 @@ public final class DefaultChannelWriter implements ChannelWriter
     {
         private boolean sawConnectionClose;
         
-        Result process(Response app) throws IOException {
+        Result process(Response app)
+                throws InterruptedException, TimeoutException, IOException {
             // We call iterator and length only once, for several reasons.
             // We need a reliable length, so there must be one global iteration.
             // And a nested call to iterator could forever block if there's a
@@ -345,15 +349,22 @@ public final class DefaultChannelWriter implements ChannelWriter
                 long len = upstream.length();
                 Response mod = closeIfOldHttp(app);
                 mod = tryChunkedEncoding(mod, len, it);
+                // TODO: Extremely ugly, needs refactoring
+                ByteBufferIterator whatToWrite = it;
                 if (mod.body() != upstream) {
                     len = mod.body().length();
                     assert len == -1 : "Decorated by de-/inflating codec";
+                    try {
+                        whatToWrite = mod.body().iterator();
+                    } catch (InterruptedException | TimeoutException | IOException e) {
+                        throw new AssertionError(e);
+                    }
                 }
                 mod = trackConnectionClose(mod);
                 boolean closeChannel = trackUnsuccessful(mod);
                 mod = ensureCorrectFraming(mod, len);
                 return new Result(
-                        mod, it, mod.isFinal() && sawConnectionClose, closeChannel);
+                        mod, whatToWrite, mod.isFinal() && sawConnectionClose, closeChannel);
             }, it);
         }
         

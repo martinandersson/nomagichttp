@@ -8,6 +8,7 @@ import alpha.nomagichttp.message.MaxRequestBodyConversionSizeExceededException;
 import alpha.nomagichttp.message.MediaType;
 import alpha.nomagichttp.message.Request;
 import alpha.nomagichttp.message.UnsupportedTransferCodingException;
+import alpha.nomagichttp.util.JvmPathLock;
 import alpha.nomagichttp.util.Throwing;
 
 import java.io.ByteArrayOutputStream;
@@ -21,6 +22,8 @@ import java.nio.file.OpenOption;
 import java.nio.file.Path;
 import java.nio.file.attribute.FileAttribute;
 import java.util.Set;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 
 import static alpha.nomagichttp.HttpConstants.HeaderName.CONTENT_LENGTH;
 import static alpha.nomagichttp.HttpConstants.HeaderName.TRANSFER_ENCODING;
@@ -28,11 +31,15 @@ import static alpha.nomagichttp.internal.Blah.requireVirtualThread;
 import static alpha.nomagichttp.util.Blah.EMPTY_BYTEARRAY;
 import static alpha.nomagichttp.util.Blah.addExactOrCap;
 import static alpha.nomagichttp.util.ScopedValues.httpServer;
+import static java.lang.Long.MAX_VALUE;
 import static java.nio.ByteBuffer.wrap;
 import static java.nio.charset.CodingErrorAction.REPORT;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.nio.file.StandardOpenOption.CREATE_NEW;
 import static java.nio.file.StandardOpenOption.WRITE;
+import static java.util.Objects.requireNonNull;
+import static java.util.concurrent.TimeUnit.NANOSECONDS;
+import static java.util.concurrent.TimeUnit.SECONDS;
 
 /**
  * Default implementation of {@code Request.Body}.
@@ -41,11 +48,6 @@ import static java.nio.file.StandardOpenOption.WRITE;
  */
 final class RequestBody implements Request.Body
 {
-    // Copy-pasted from FileChannel.NO_ATTRIBUTES
-    @SuppressWarnings("rawtypes")
-    private static final FileAttribute<?>[]
-            NO_ATTRIBUTES = new FileAttribute[0];
-    
     /**
      * Creates a request body.
      * 
@@ -145,24 +147,52 @@ final class RequestBody implements Request.Body
     }
     
     @Override
-    public long toFile(Path file, OpenOption... options) throws IOException {
-        return toFile(file, Set.of(options), NO_ATTRIBUTES);
+    public long toFile(Path path, OpenOption... options)
+            throws InterruptedException, TimeoutException, IOException {
+        long nanos = MAX_VALUE;
+        try {
+            nanos = httpServer().getConfig().timeoutFileLock().toNanos();
+        } catch (ArithmeticException useMaxVal) {}
+        return toFile(path, nanos, NANOSECONDS, Set.of(options));
     }
     
     @Override
     public long toFile(
-            Path path, Set<? extends OpenOption> opts,
-            FileAttribute<?>... attrs)
-            throws IOException
+            Path path, long timeout, TimeUnit unit,
+            Set<? extends OpenOption> opts, FileAttribute<?>... attrs)
+            throws InterruptedException, TimeoutException, IOException
     {
+        try (var lck = JvmPathLock.readLock(path, 1, SECONDS)) {
+            return toFile0(path, opts, attrs);
+        }
+    }
+    
+    @Override
+    public long toFileNoLock(
+            Path path, OpenOption... opts) throws IOException {
+        return toFile0(path, Set.of(opts));
+    }
+    
+    @Override
+    public long toFileNoLock(
+            Path path, Set<? extends OpenOption> opts,
+            FileAttribute<?>... attrs) throws IOException {
+        // Aliasing for correct naming in stacktrace
+        return toFile0(path, opts, attrs);
+    }
+    
+    private long toFile0(
+            Path path, Set<? extends OpenOption> opts,
+            FileAttribute<?>... attrs) throws IOException {
+        requireNonNull(path);
+        final var opt = !opts.isEmpty() ? opts : Set.of(WRITE, CREATE_NEW);
+        requireNonNull(attrs);
+        requireVirtualThread();
         if (isEmpty()) {
             return 0;
         }
-        requireVirtualThread();
-        final var opt = !opts.isEmpty() ? opts : Set.of(WRITE, CREATE_NEW);
         long c = 0;
         try (var dst = FileChannel.open(path, opt, attrs);
-             var lck = dst.lock();
              var src = iterator())
         {
             while (src.hasNext()) {

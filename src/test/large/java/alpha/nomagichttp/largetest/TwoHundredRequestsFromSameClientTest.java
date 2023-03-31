@@ -153,8 +153,8 @@ class TwoHundredRequestsFromSameClientTest extends AbstractLargeRealTest
         
         assertThat(rsp).isEqualTo(
             "HTTP/1.1 200 OK"                         + CRLF +
-            "Content-Length: " + b.length()           + CRLF +
-            "Content-Type: text/plain; charset=utf-8" + CRLF + CRLF +
+            "Content-Type: text/plain; charset=utf-8" + CRLF +
+            "Content-Length: " + b.length()           + CRLF + CRLF +
             
             b);
     }

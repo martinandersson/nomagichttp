@@ -3,6 +3,7 @@ package alpha.nomagichttp.util;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 
+import static alpha.nomagichttp.util.Blah.EMPTY_BYTEARRAY;
 import static java.nio.ByteBuffer.wrap;
 import static java.nio.charset.StandardCharsets.US_ASCII;
 
@@ -48,6 +49,24 @@ public final class ByteBuffers
     }
     
     /**
+     * Copies all bytes from the given bytebuffer into a new {@code byte[]}.<p>
+     * 
+     * This method will update the given buffer's position, and when this method
+     * returns normally, the buffer will have no more bytes remaining.
+     * 
+     * @param buf to drain
+     * @return see JavaDoc
+     */
+    public static byte[] toArray(ByteBuffer buf) {
+        if (!buf.hasRemaining()) {
+            return EMPTY_BYTEARRAY;
+        }
+        var arr = new byte[buf.remaining()];
+        buf.get(arr);
+        return arr;
+    }
+    
+    /**
      * Encode the given string using {@link StandardCharsets#US_ASCII}.
      * 
      * @param str to encode
@@ -56,4 +75,6 @@ public final class ByteBuffers
     public static ByteBuffer asciiBytes(String str) {
         return wrap(str.getBytes(US_ASCII));
     }
+    
+    // TODO: asciiString
 }

@@ -23,6 +23,7 @@ import java.io.IOException;
 import java.util.Collection;
 import java.util.NoSuchElementException;
 import java.util.Optional;
+import java.util.concurrent.TimeoutException;
 
 import static alpha.nomagichttp.HttpConstants.HeaderName.EXPECT;
 import static alpha.nomagichttp.HttpConstants.HeaderName.TRANSFER_ENCODING;
@@ -298,7 +299,11 @@ final class HttpExchange
                     // ...or when app requests the body
                     r.body().onConsumption(() -> {
                         if (!writer.wroteFinal()) {
-                            writer.write(continue_());
+                            try {
+                                writer.write(continue_());
+                            } catch (Exception e) {
+                                throw new AssertionError("No I/O body", e);
+                            }
                         }
                     });
                 }
@@ -311,6 +316,7 @@ final class HttpExchange
     private Response __requireWriterConformance(Response rsp, String entity) {
         if (rsp == null) {
             if (!writer.wroteFinal()) {
+                // TODO: "processing chain"
                 throw new NullPointerException(entity +
                     " processing returned null without writing a final response.");
             }

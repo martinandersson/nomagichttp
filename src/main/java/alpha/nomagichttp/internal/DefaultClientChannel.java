@@ -8,6 +8,7 @@ import alpha.nomagichttp.util.Throwing;
 
 import java.io.IOException;
 import java.nio.channels.SocketChannel;
+import java.util.concurrent.TimeoutException;
 
 import static java.lang.System.Logger.Level.WARNING;
 
@@ -120,7 +121,8 @@ final class DefaultClientChannel implements ClientChannel
     // ------
     
     @Override
-    public long write(Response response) throws IOException {
+    public long write(Response response)
+            throws InterruptedException, TimeoutException, IOException {
         return writer.write(response);
     }
     @Override

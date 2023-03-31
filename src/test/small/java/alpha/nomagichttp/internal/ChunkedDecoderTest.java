@@ -6,6 +6,7 @@ import org.junit.jupiter.api.Test;
 import java.io.IOException;
 import java.nio.BufferOverflowException;
 import java.util.NoSuchElementException;
+import java.util.concurrent.TimeoutException;
 import java.util.function.Supplier;
 import java.util.stream.Stream;
 
@@ -27,7 +28,8 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 final class ChunkedDecoderTest
 {
     @Test
-    void happyPath_oneBuffer() throws IOException {
+    void happyPath_oneBuffer()
+        throws InterruptedException, TimeoutException, IOException {
         var testee = decode(
                 // Size
                 "1\r\n" +
@@ -44,19 +46,22 @@ final class ChunkedDecoderTest
     }
     
     @Test
-    void happyPath_distinctBuffers_1() throws IOException {
+    void happyPath_distinctBuffers_1()
+        throws InterruptedException, TimeoutException, IOException {
         var testee = decode("5\r\n", "ABCDE\r\n", "0\r\n", "\r\n");
         assertIterable(testee, asciiBytes("ABCDE"));
     }
     
     @Test
-    void happyPath_distinctBuffers_2() throws IOException {
+    void happyPath_distinctBuffers_2()
+        throws InterruptedException, TimeoutException, IOException {
         var testee = decode("2\r\nAB\r\n", "2\r\nCD\r\n", "0\r\n\r\n");
         assertIterable(testee, asciiBytes("ABCD"));
     }
     
     @Test
-    void empty_1() throws IOException {
+    void empty_1()
+        throws InterruptedException, TimeoutException, IOException {
         var testee = decode("0\r\n\r\n ...trailing data in stream...");
         assertIterable(testee, asciiBytes(""));
         // Or, alternatively:

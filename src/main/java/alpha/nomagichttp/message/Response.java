@@ -53,7 +53,11 @@ import static alpha.nomagichttp.HttpConstants.StatusCode;
  * to the client verbatim/unaltered; i.e. casing and white space will be
  * preserved.<p>
  * 
- * The implementation is fully thread-safe and can be freely cached.<p>
+ * The {@code Response} implementation is thread-safe, but a non-empty response
+ * body does not have to be. All responses created by the NoMagicHTTP library
+ * are fully thread-safe (response and body), and can be cached globally and
+ * reused, but only as long as <i>the application</i> itself did not explicitly
+ * provide a response body that is not thread-safe.<p>
  * 
  * The implementation does not necessarily implement {@code hashCode} and
  * {@code equals}.

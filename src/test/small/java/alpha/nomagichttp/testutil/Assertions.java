@@ -5,6 +5,7 @@ import alpha.nomagichttp.message.ResourceByteBufferIterable;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.concurrent.TimeoutException;
 
 import static alpha.nomagichttp.util.Streams.stream;
 import static java.nio.ByteBuffer.allocate;
@@ -29,20 +30,25 @@ public final class Assertions {
      *   <li>Number of iterated items are fewer or more</li>
      *   <li>Iterated items are not {@link ByteBuffer#equals(Object) equal}
      *       (in order)</li>
-     *   <li>A known {@link ResourceByteBufferIterable#length() length} is the
-     *       same as the sum of all remaining bytes in the expected</li>
+     *   <li>A known {@link ResourceByteBufferIterable#length() length} is not
+     *       the same as the sum of all remaining bytes in the expected</li>
      * </ul>
      * 
      * @param iterable to iterate
      * @param first item expected
      * @param more items expected
      * 
-     * @throws IOException on I/O error
+     * @throws InterruptedException
+     *             if interrupted while waiting on something
+     * @throws TimeoutException
+     *             when a blocking operation times out
+     * @throws IOException
+     *             on I/O error
      */
     public static void assertIterable(
             ResourceByteBufferIterable iterable,
             ByteBuffer first, ByteBuffer... more)
-            throws IOException {
+            throws InterruptedException, TimeoutException, IOException {
         long len;
         var actual = new ArrayList<>();
         try (var it = iterable.iterator()) {
