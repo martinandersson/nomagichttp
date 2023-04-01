@@ -301,7 +301,7 @@ public final class JvmPathLock implements AutoCloseable
      * Attempts to unlock this lock.<p>
      * 
      * Only the first invocation, by the owning thread, has an effect.
-     * Subsequent invocations by the owning thread, are always NOP.
+     * Subsequent invocations by the owning thread, are NOP.
      * 
      * @throws IllegalMonitorStateException
      *             if the calling thread is not the owner
