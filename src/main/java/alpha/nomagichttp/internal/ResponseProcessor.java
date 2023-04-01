@@ -2,7 +2,6 @@ package alpha.nomagichttp.internal;
 
 import alpha.nomagichttp.HttpConstants.Version;
 import alpha.nomagichttp.message.ByteBufferIterator;
-import alpha.nomagichttp.message.HeaderHolder;
 import alpha.nomagichttp.message.IllegalResponseBodyException;
 import alpha.nomagichttp.message.ResourceByteBufferIterable;
 import alpha.nomagichttp.message.Response;
@@ -132,7 +131,7 @@ final class ResponseProcessor
         // No support for HTTP 1.0 Keep-Alive
         if (rsp.isFinal() &&
             ver.isLessThan(HTTP_1_1) &&
-            !__rspHasConnectionClose(rsp))
+            !rsp.headers().hasConnectionClose())
         {
             return __setConnectionClose(rsp);
         }
@@ -183,7 +182,7 @@ final class ResponseProcessor
     private Response trackConnectionClose(Response rsp) {
         final Response out;
         if (sawConnectionClose) {
-            if (rsp.isFinal() && !__rspHasConnectionClose(rsp)) {
+            if (rsp.isFinal() && !rsp.headers().hasConnectionClose()) {
                 LOG.log(DEBUG,
                     "Connection-close flag propagates to final response");
                 out = __setConnectionClose(rsp);
@@ -191,7 +190,7 @@ final class ResponseProcessor
                 // Message not final or already has the header = NOP
                 out = rsp;
             }
-        } else if (__rspHasConnectionClose(rsp)) {
+        } else if (rsp.headers().hasConnectionClose()) {
             // Set flag, but no need to modify response
             sawConnectionClose = true;
             out = rsp;
@@ -255,13 +254,9 @@ final class ResponseProcessor
         }
     }
     
-    private static boolean __rspHasConnectionClose(HeaderHolder h) {
-        return h.headers().contains(CONNECTION, "close");
-    }
-    
     private static boolean __reqHasConnectionClose() {
         return skeletonRequest().map(SkeletonRequest::head)
-                        .map(ResponseProcessor::__rspHasConnectionClose)
+                        .map(h -> h.headers().hasConnectionClose())
                         .orElse(false);
     }
     

@@ -12,8 +12,6 @@ import java.util.Map;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
 
-import static alpha.nomagichttp.HttpConstants.HeaderName.CONNECTION;
-import static alpha.nomagichttp.HttpConstants.HeaderName.CONTENT_LENGTH;
 import static alpha.nomagichttp.HttpConstants.StatusCode.THREE_HUNDRED_FOUR;
 import static alpha.nomagichttp.HttpConstants.StatusCode.TWO_HUNDRED_FOUR;
 import static alpha.nomagichttp.util.ByteBufferIterables.empty;
@@ -292,7 +290,7 @@ final class DefaultResponse implements Response
                     this);
             
             if (r.isInformational()) {
-                if (r.headers().contains(CONNECTION, "close")) {
+                if (r.headers().hasConnectionClose()) {
                     throw new IllegalStateException(
                             "\"Connection: close\" set on 1XX (Informational) response.");
                 }

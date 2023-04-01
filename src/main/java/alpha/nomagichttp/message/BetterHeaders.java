@@ -222,4 +222,17 @@ public interface BetterHeaders
     default void forEach(BiConsumer<String, ? super List<String>> action) {
         delegate().map().forEach(action);
     }
+    
+    /**
+     * Returns whether the {@value HttpConstants.HeaderName#CONNECTION} header
+     * is present and contains the value "close".<p>
+     * 
+     * This method is equivalent to:
+     * <pre>
+     *   {@link #contains(String, String) contains}("Connection", "close")
+     * </pre>
+     * 
+     * @return see JavaDoc
+     */
+    boolean hasConnectionClose();
 }

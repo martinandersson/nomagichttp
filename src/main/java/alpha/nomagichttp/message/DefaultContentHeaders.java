@@ -9,6 +9,7 @@ import java.util.Optional;
 import java.util.OptionalLong;
 import java.util.stream.Stream;
 
+import static alpha.nomagichttp.HttpConstants.HeaderName.CONNECTION;
 import static alpha.nomagichttp.HttpConstants.HeaderName.CONTENT_LENGTH;
 import static alpha.nomagichttp.HttpConstants.HeaderName.CONTENT_TYPE;
 import static alpha.nomagichttp.HttpConstants.HeaderName.TRANSFER_ENCODING;
@@ -79,6 +80,21 @@ public class DefaultContentHeaders implements ContentHeaders
                       else Strings.splitToSink(line, ',', sink);})
                   .map(String::strip)
                   .filter(not(String::isEmpty));
+    }
+    
+    private int hcc = -1;
+    
+    @Override
+    public boolean hasConnectionClose() {
+        if (hcc != -1) {
+            return hcc == 1;
+        }
+        if (contains(CONNECTION, "close")) {
+            hcc = 1;
+            return true;
+        }
+        hcc = 0;
+        return false;
     }
     
     private Optional<MediaType> cc;
