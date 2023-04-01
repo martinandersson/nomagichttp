@@ -15,7 +15,6 @@ import org.opentest4j.TestAbortedException;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.nio.channels.Channel;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.concurrent.ExecutionException;
@@ -83,8 +82,7 @@ class BigFileRequestTest extends AbstractLargeRealTest
     @Order(1)
     void post() throws IOException {
         final String rsp;
-        Channel conn = client().openConnection();
-        try (conn) {
+        try (var conn = client().openConnection()) {
             rsp = client().write(
                   "POST /file HTTP/1.1"          + CRLF +
                   "Content-Length: " + FILE_SIZE + CRLF + CRLF)
@@ -109,8 +107,7 @@ class BigFileRequestTest extends AbstractLargeRealTest
     void get() throws IOException {
         assumeTrue(saved);
         final ByteBuffer body;
-        Channel conn = client().openConnection();
-        try (conn) {
+        try (var conn = client().openConnection()) {
             String head = client().write(
                       "GET /file HTTP/1.0" + CRLF + CRLF)
                     .shutdownOutput()

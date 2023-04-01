@@ -40,8 +40,7 @@ class AfterActionTest extends AbstractRealTest
                    .map(id -> rsp.toBuilder().header(X_CORRELATION_ID, id).build())
                    .orElse(rsp));
         
-        var ch = client().openConnection();
-        try (ch) {
+        try (var conn = client().openConnection()) {
             var rsp1 = client().writeReadTextUntil(
                 "GET /hello HTTP/1.1"                     + CRLF + CRLF, "hello");
             assertThat(rsp1).isEqualTo(

@@ -13,7 +13,6 @@ import org.junit.jupiter.params.provider.ValueSource;
 
 import java.io.IOException;
 import java.nio.channels.AsynchronousCloseException;
-import java.nio.channels.Channel;
 import java.nio.channels.ClosedByInterruptException;
 import java.nio.channels.ClosedChannelException;
 import java.util.ArrayList;
@@ -55,8 +54,7 @@ class ClientLifeCycleTest extends AbstractRealTest
     void http1_0_nonPersistent() throws IOException, InterruptedException {
         server().add("/", GET().apply(req -> noContent()));
         
-        Channel ch = client().openConnection();
-        try (ch) {
+        try (var conn = client().openConnection()) {
             String rsp = client().writeReadTextUntilNewlines(
                 "GET / HTTP/1.0"         + CRLF +
                 "Connection: keep-alive" + CRLF + CRLF); // <-- does not matter
@@ -82,8 +80,7 @@ class ClientLifeCycleTest extends AbstractRealTest
             return noContent();
         }));
         
-        Channel ch = client().openConnection();
-        try (ch) {
+        try (var conn = client().openConnection()) {
             var rsp = client()
                   .writeReadTextUntilNewlines("GET / HTTP/1.1" + CRLF + CRLF);
             assertThat(rsp)
@@ -181,8 +178,7 @@ class ClientLifeCycleTest extends AbstractRealTest
             }
             throw new AssertionError();
         }));
-        Channel ch = client().openConnection();
-        try (ch) {
+        try (var conn = client().openConnection()) {
             client().write(
                 "GET / HTTP/1.1"    + CRLF +
                 "Content-Length: 2" + CRLF + CRLF +
@@ -220,9 +216,7 @@ class ClientLifeCycleTest extends AbstractRealTest
         // It would be weird if we could use an API to cause a broken pipe.
         // This implementation was found to work on Windows, albeit not on Linux nor macOS.
         assumeTrue(Environment.isWindows());
-        
-        Channel ch = client().openConnection();
-        try (ch) {
+        try (var conn = client().openConnection()) {
             assertThatThrownBy(() ->
                 client().interruptReadAfter(1, MILLISECONDS)
                         .writeReadTextUntilEOS("X"))
@@ -319,8 +313,7 @@ class ClientLifeCycleTest extends AbstractRealTest
             send.acquire();
             return noContent();
         }));
-        Channel ch = client().openConnection();
-        try (ch) {
+        try (var conn = client().openConnection()) {
             client().write(addConnCloseHeader ?
                            get("Connection: close") : get())
                     .shutdownOutput();
@@ -351,8 +344,7 @@ class ClientLifeCycleTest extends AbstractRealTest
             received.add(req.body().toText());
             return null;
         }));
-        Channel ch = client().openConnection();
-        try (ch) {
+        try (var conn = client().openConnection()) {
             client().write(
                 "POST / HTTP/1.1"   + CRLF +
                 "Content-Length: 5" + CRLF);
@@ -417,8 +409,7 @@ class ClientLifeCycleTest extends AbstractRealTest
             received.add(req.body().toText());
             return null;
         }));
-        Channel ch = client().openConnection();
-        try (ch) {
+        try (var conn = client().openConnection()) {
             // Until EOS!
             assertThat(client().writeReadTextUntilEOS(
                     "POST / HTTP/1.1"         + CRLF +

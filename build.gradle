@@ -113,8 +113,9 @@ Werror = false;
 
 tasks.withType(JavaCompile).configureEach {
     options.compilerArgs.addAll(
-        // Enable all warnings
-        '-Xlint:all',
+        // Enable all warnings, minus try-with-resources
+        // https://stackoverflow.com/a/73861648/1268003
+        '-Xlint:all,-try',
         // Also check JavaDoc (protected and higher)
         '-Xdoclint:all/protected',
         // Talk more

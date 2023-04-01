@@ -33,9 +33,7 @@ import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.ValueSource;
 
 import java.io.IOException;
-import java.nio.channels.Channel;
 import java.nio.channels.InterruptedByTimeoutException;
-import java.nio.channels.OverlappingFileLockException;
 
 import static alpha.nomagichttp.handler.RequestHandler.GET;
 import static alpha.nomagichttp.handler.RequestHandler.HEAD;
@@ -44,23 +42,17 @@ import static alpha.nomagichttp.handler.RequestHandler.TRACE;
 import static alpha.nomagichttp.message.Responses.badRequest;
 import static alpha.nomagichttp.message.Responses.internalServerError;
 import static alpha.nomagichttp.message.Responses.noContent;
-import static alpha.nomagichttp.message.Responses.ok;
 import static alpha.nomagichttp.message.Responses.processing;
 import static alpha.nomagichttp.message.Responses.status;
 import static alpha.nomagichttp.message.Responses.text;
 import static alpha.nomagichttp.testutil.TestClient.CRLF;
-import static alpha.nomagichttp.testutil.TestFiles.writeTempFile;
 import static alpha.nomagichttp.testutil.TestRequests.get;
 import static alpha.nomagichttp.testutil.TestRequests.post;
-import static alpha.nomagichttp.util.ByteBufferIterables.ofFile;
 import static alpha.nomagichttp.util.ByteBufferIterables.ofString;
-import static alpha.nomagichttp.util.ByteBuffers.asciiBytes;
 import static alpha.nomagichttp.util.ScopedValues.channel;
 import static java.lang.System.Logger.Level.DEBUG;
 import static java.lang.System.Logger.Level.ERROR;
 import static java.lang.System.Logger.Level.INFO;
-import static java.nio.channels.FileChannel.open;
-import static java.nio.file.StandardOpenOption.WRITE;
 import static java.time.Duration.ofMillis;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -824,13 +816,13 @@ class ErrorTest extends AbstractRealTest
         final int max = server().getConfig().maxUnsuccessfulResponses();
         LOG.log(INFO, () -> "Max unsuccessful: " + max);
         
-        try (Channel ch = client().openConnection()) {
+        try (var conn = client().openConnection()) {
             for (int i = max; i > 1; --i) {
                 if (LOG.isLoggable(INFO)) {
                     LOG.log(INFO, "Running #" + i);
                 }
                 sendBadRequest.run();
-                assertTrue(ch.isOpen());
+                assertTrue(conn.isOpen());
             }
             LOG.log(INFO, "Running last.");
             sendBadRequest.run();

@@ -13,7 +13,6 @@ import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.nio.channels.Channel;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
@@ -73,8 +72,7 @@ class DetailTest extends AbstractRealTest
             "Content-Type: text/plain; charset=utf-8" + CRLF +
             "Content-Length: 3"                       + CRLF + CRLF;
         
-        Channel ch = client().openConnection();
-        try (ch) {
+        try (var conn = client().openConnection()) {
             var res1 = client().writeReadTextUntil(post("ABC"), "ABC");
             assertThat(res1).isEqualTo(resHead + "ABC");
             
@@ -108,8 +106,7 @@ class DetailTest extends AbstractRealTest
             X-Trailer: $3
             
             """;
-        Channel ch = client().openConnection();
-        try (ch) {
+        try (var conn = client().openConnection()) {
             var req1 = template.replace("$1", "/discard-body")
                                .replace("$2", "X-Dummy: value")
                                .replace("$3", "dummy value");
@@ -149,8 +146,7 @@ class DetailTest extends AbstractRealTest
                 "false");
         };
         
-        Channel ch = client().openConnection();
-        try (ch) {
+        try (var conn = client().openConnection()) {
             exchange.run();
             // Body auto-discarded. This is using the same connection:
             exchange.run();
@@ -185,8 +181,7 @@ class DetailTest extends AbstractRealTest
                 "Content-Length: 0"     + CRLF + CRLF);
         };
         
-        Channel ch = client().openConnection();
-        try (ch) {
+        try (var conn = client().openConnection()) {
             exchange.run();
             exchange.run();
         }
@@ -361,8 +356,7 @@ class DetailTest extends AbstractRealTest
         final Instant then;
         final String req = "GET / HTTP/1.1" + CRLF;
         final String rsp;
-        Channel ch = client().openConnection();
-        try (ch) {
+        try (var conn = client().openConnection()) {
             client().write(req);
             then = now();
             rsp = client().writeReadTextUntilNewlines(CRLF);

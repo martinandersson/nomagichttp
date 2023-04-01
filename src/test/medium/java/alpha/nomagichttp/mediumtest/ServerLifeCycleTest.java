@@ -8,7 +8,6 @@ import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
 import java.net.ConnectException;
-import java.nio.channels.Channel;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Future;
 import java.util.concurrent.Semaphore;
@@ -77,8 +76,7 @@ class ServerLifeCycleTest extends AbstractRealTest
                 text(req.body().toText())));
         
         Future<Void> fut;
-        Channel ch = client().openConnection();
-        try (ch) {
+        try (var conn = client().openConnection()) {
             String rsp1 = client().writeReadTextUntilNewlines(
                 "POST / HTTP/1.1"                        + CRLF +
                 "Content-Length: 3"                      + CRLF +
