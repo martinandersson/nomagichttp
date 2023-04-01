@@ -124,17 +124,17 @@ public final class DefaultChannelWriter implements ChannelWriter
             throws InterruptedException, TimeoutException, IOException {
         requireNonNull(app1);
         requireValidState();
-        var ver = skeletonRequest()
+        var httpVer = skeletonRequest()
                       .map(SkeletonRequest::httpVersion)
                       .orElse(HTTP_1_1);
-        if (discard1XXInformational(app1, ver) ||
+        if (discard1XXInformational(app1, httpVer) ||
             ignoreRepeated100Continue(app1)) {
             return 0;
         }
         final Response app2 = invokeAppActions(app1);
-        final Result bag = serverActions.process(app2, ver);
+        final Result bag = serverActions.process(app2, httpVer);
         try (bag) {
-            return write0(bag.response(), bag.body(), ver);
+            return write0(bag.response(), bag.body(), httpVer);
         } finally {
             if (bag.closeChannel()) {
                 dismiss();
@@ -166,7 +166,6 @@ public final class DefaultChannelWriter implements ChannelWriter
         }
     }
     
-    // TODO: See new log message; rename discard to ignore here and in config
     private static boolean discard1XXInformational(Response r, Version httpVer) {
         if (r.isInformational() && httpVer.isLessThan(HTTP_1_1)) {
             if (httpServer().getConfig().discardRejectedInformational()) {
@@ -190,17 +189,17 @@ public final class DefaultChannelWriter implements ChannelWriter
     }
     
     private Response invokeAppActions(Response r) {
-        final var skeleton = skeletonRequest().orElse(null);
-        if (skeleton == null) {
+        final var req = skeletonRequest().orElse(null);
+        if (req == null) {
             LOG.log(DEBUG,
                 "No valid request available; will not run after-actions");
             return r;
         }
         if (matches == null) {
-            matches = appActions.lookupAfter(skeleton.target());
+            matches = appActions.lookupAfter(req.target());
         }
         for (var m : matches) {
-            final Request app = requestWithParams(reader, skeleton, m.segments());
+            final Request app = requestWithParams(reader, req, m.segments());
             try {
                 r = requireNonNull(m.action().apply(app, r));
             } catch (RuntimeException e) {
@@ -210,26 +209,27 @@ public final class DefaultChannelWriter implements ChannelWriter
         return r;
     }
     
-    private long write0(Response rsp, ByteBufferIterator body, Version httpVer) throws IOException {
+    private long write0(Response r, ByteBufferIterator body, Version ver)
+            throws IOException {
         final long started;
-        wroteFinal = rsp.isFinal();
+        wroteFinal = r.isFinal();
         inflight = true;
         started = nanoTime();
-        long n = addExactOrCap(writeHead(rsp, httpVer), tryWriteBody(body));
-        // Request.trailers() documented close() must be called first
+        long n = addExactOrCap(writeHead(r, ver), tryWriteBody(body));
+        // Request.trailers() documented that close() must be called first
         body.close();
-        n = addExactOrCap(n, tryWriteTrailers(rsp));
+        n = addExactOrCap(n, tryWriteTrailers(r));
         final long finished = nanoTime();
         // Revert only on success; otherwise channel is corrupt
         inflight = false;
-        final var finalRsp = rsp;
+        final var finalR = r;
         final var finalN = n;
         LOG.log(DEBUG, () ->
             "Sent %s (%s) {bytes: %s, duration: %s}".formatted(
-                finalRsp.statusCode(), finalRsp.reasonPhrase(),
+                finalR.statusCode(), finalR.reasonPhrase(),
                 finalN, Duration.ofNanos(finished - started)));
         httpServer().events().dispatchLazy(ResponseSent.INSTANCE,
-                () -> finalRsp,
+                () -> finalR,
                 () -> new ResponseSent.Stats(started, finished, finalN));
         return n;
     }
@@ -262,8 +262,6 @@ public final class DefaultChannelWriter implements ChannelWriter
     
     private int tryWriteTrailers(Response r) throws IOException {
         if (!r.headers().contains(TRAILER)) {
-            // This is UGLY, and will be removed soon
-            // (this whole class will be refactored)
             return r.headers().contains(TRANSFER_ENCODING, "chunked") ?
                     doWrite(asciiBytes(CRLF_STR)) :
                     0;
