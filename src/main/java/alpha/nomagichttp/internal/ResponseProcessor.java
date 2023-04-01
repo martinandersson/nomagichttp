@@ -127,40 +127,37 @@ final class ResponseProcessor
         }
     }
     
-    private static Response closeIfOldHttp(Response rsp, Version ver) {
+    private static Response closeIfOldHttp(Response r, Version ver) {
         // No support for HTTP 1.0 Keep-Alive
-        if (rsp.isFinal() &&
-            ver.isLessThan(HTTP_1_1) &&
-            !rsp.headers().hasConnectionClose())
-        {
-            return __setConnectionClose(rsp);
-        }
-        return rsp;
+        return r.isFinal() &&
+               ver.isLessThan(HTTP_1_1) &&
+              !r.headers().hasConnectionClose() ?
+                   __setConnectionClose(r) : r;
     }
     
     private static Response tryChunkedEncoding(
-            Response rsp, Version ver, long len, ByteBufferIterator body) {
-        final boolean trPresent = rsp.headers().contains(TRAILER);
+            Response r, Version ver, long len, ByteBufferIterator body) {
+        final boolean trPresent = r.headers().contains(TRAILER);
         if (ver.isLessThan(HTTP_1_1)) {
             if (trPresent) {
                 LOG.log(DEBUG, """
                     HTTP/1.0 has no support for response trailers, \
                     discarding them""");
-                return rsp.toBuilder().removeTrailers().build();
+                return r.toBuilder().removeTrailers().build();
             }
             // Connection will close; no need to do chunking
-            return rsp;
+            return r;
         }
         if (!trPresent && len >= 0) {
             // No trailers and a known length makes chunking unnecessary
-            return rsp;
+            return r;
         }
         // We could mark the end of a response by closing the connection.
         // But, this is an unreliable method best to avoid (RFC 7230 §3.3.3.).
         LOG.log(DEBUG, """
                 Response trailers and/or unknown body length; \
                 applying chunked encoding""");
-        if (rsp.headers().contains(TRANSFER_ENCODING)) {
+        if (r.headers().contains(TRANSFER_ENCODING)) {
             // TODO: Once we use more codings, implement and use
             //      Response.Builder.addHeaderToken()
             // Note; it's okay to repeat TE; RFC 7230, 3.2.2, 3.3.1.
@@ -168,10 +165,10 @@ final class ResponseProcessor
             throw new IllegalArgumentException(
                 "Transfer-Encoding in response was not expected");
         }
-        return rsp.toBuilder()
-                .addHeader(TRANSFER_ENCODING, "chunked")
-                .body(new ChunkedEncoder(body))
-                .build();
+        return r.toBuilder()
+                  .addHeader(TRANSFER_ENCODING, "chunked")
+                  .body(new ChunkedEncoder(body))
+                  .build();
     }
     
     // TODO: ClientChannel and this implementation accepts interim Connection: close
@@ -179,24 +176,24 @@ final class ResponseProcessor
     //       (in agreement with implicit rule from RFC 7230 §6.1)
     //       We should do no propagation. Finally, the header checks the builder
     //       do we must repeat; DRY.
-    private Response trackConnectionClose(Response rsp) {
+    private Response trackConnectionClose(Response r) {
         final Response out;
         if (sawConnectionClose) {
-            if (rsp.isFinal() && !rsp.headers().hasConnectionClose()) {
+            if (r.isFinal() && !r.headers().hasConnectionClose()) {
                 LOG.log(DEBUG,
                     "Connection-close flag propagates to final response");
-                out = __setConnectionClose(rsp);
+                out = __setConnectionClose(r);
             } else {
                 // Message not final or already has the header = NOP
-                out = rsp;
+                out = r;
             }
-        } else if (rsp.headers().hasConnectionClose()) {
+        } else if (r.headers().hasConnectionClose()) {
             // Set flag, but no need to modify response
             sawConnectionClose = true;
-            out = rsp;
-        } else if (!rsp.isFinal()) {
+            out = r;
+        } else if (!r.isFinal()) {
             // Haven't seen the header before and flag is false = NOP
-            out = rsp;
+            out = r;
         } else {
             final String why =
                 __reqHasConnectionClose() ? "the request headers' did." :
@@ -207,20 +204,20 @@ final class ResponseProcessor
                 LOG.log(DEBUG, () ->
                     "Will set \"Connection: close\" because " + why);
                 sawConnectionClose = true;
-                out = __setConnectionClose(rsp);
+                out = __setConnectionClose(r);
             } else {
-                out = rsp;
+                out = r;
             }
         }
         return out;
     }
     
-    private boolean trackUnsuccessful(Response rsp) {
+    private boolean trackUnsuccessful(Response r) {
         // TODO: This is legacy code from before we had virtual threads when
         //       we could not rely on thread identity. Now, we might as well
         //       just use a thread-local. Probably faster.
         final String key = "alpha.nomagichttp.dcw.nUnsuccessful";
-        if (isClientError(rsp.statusCode()) || isServerError(rsp.statusCode())) {
+        if (isClientError(r.statusCode()) || isServerError(r.statusCode())) {
             // Bump error counter
             int n = channel().attributes().<Integer>asMapAny().merge(key, 1, Integer::sum);
             return n >= httpServer().getConfig().maxUnsuccessfulResponses();
@@ -231,33 +228,32 @@ final class ResponseProcessor
         return false;
     }
     
-    private static Response ensureCorrectFraming(Response rsp, long len) {
-        if (rsp.headers().contains(TRANSFER_ENCODING)) {
-            return __dealWithTransferEncoding(rsp);
+    private static Response ensureCorrectFraming(Response r, long len) {
+        if (r.headers().contains(TRANSFER_ENCODING)) {
+            return __dealWithTransferEncoding(r);
         }
         assert len >= 0 : "If <= -1, chunked encoding was applied";
-        final var rMethod = skeletonRequest().map(req ->
-                req.head().line().method());
-        if (rMethod.filter(HEAD::equals).isPresent()) {
-            return __dealWithHeadRequest(rsp, len);
+        final var reqMethod = skeletonRequest()
+                .map(req -> req.head().line().method());
+        if (reqMethod.filter(HEAD::equals).isPresent()) {
+            return __dealWithHeadRequest(r, len);
         }
-        if (rsp.statusCode() == THREE_HUNDRED_FOUR) {
-            return __dealWith304(rsp, len);
+        if (r.statusCode() == THREE_HUNDRED_FOUR) {
+            return __dealWith304(r, len);
         }
-        final var cLength = rsp.headers().contentLength();
-        if (cLength.isPresent()) {
-            return __dealWithCL(rsp, rMethod, cLength.getAsLong(), len);
+        final var cLen = r.headers().contentLength();
+        if (cLen.isPresent()) {
+            return __dealWithCL(r, reqMethod, cLen.getAsLong(), len);
         } else if (len == 0) {
-            return __dealWithNoCLNoBody(rsp, rMethod);
+            return __dealWithNoCLNoBody(r, reqMethod);
         } else {
-            return __dealWithNoCLHasBody(rsp, len);
+            return __dealWithNoCLHasBody(r, len);
         }
     }
     
     private static boolean __reqHasConnectionClose() {
-        return skeletonRequest().map(SkeletonRequest::head)
-                        .map(h -> h.headers().hasConnectionClose())
-                        .orElse(false);
+        return skeletonRequest().map(req ->
+                req.head().headers().hasConnectionClose()).orElse(false);
     }
     
     private static Response __setConnectionClose(Response r) {
