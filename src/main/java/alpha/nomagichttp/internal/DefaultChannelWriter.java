@@ -19,7 +19,6 @@ import java.util.List;
 import java.util.concurrent.TimeoutException;
 
 import static alpha.nomagichttp.HttpConstants.HeaderName.TRAILER;
-import static alpha.nomagichttp.HttpConstants.HeaderName.TRANSFER_ENCODING;
 import static alpha.nomagichttp.HttpConstants.StatusCode.ONE_HUNDRED;
 import static alpha.nomagichttp.HttpConstants.Version.HTTP_1_1;
 import static alpha.nomagichttp.handler.ResponseRejectedException.Reason.PROTOCOL_NOT_SUPPORTED;
@@ -266,13 +265,13 @@ public final class DefaultChannelWriter implements ChannelWriter
                     doWrite(asciiBytes(CRLF_STR)) :
                     0;
         }
-        var map = r.trailers().map();
-        if (map.isEmpty()) {
+        var tr = r.trailers().map();
+        if (tr.isEmpty()) {
             throw new IllegalArgumentException("Empty trailers");
         }
         // TODO: Log warning if client did not indicate acceptance?
         //       (boolean accepted = request.headers().contains("TE", "trailers"))
-        var forWriting = map.entrySet().stream()
+        var forWriting = tr.entrySet().stream()
                 .<String>mapMulti(
                     (e, sink) -> e.getValue().forEach(v ->
                         sink.accept(e.getKey() + ": " + v)))
@@ -290,7 +289,8 @@ public final class DefaultChannelWriter implements ChannelWriter
             // Likely already shut down, this is more for updating our state
             var ch = channel();
             if (ch.isOutputOpen()) {
-                LOG.log(DEBUG, "Write operation failed, shutting down output stream.");
+                LOG.log(DEBUG,
+                    "Write operation failed, shutting down output stream.");
                 channel().shutdownOutput();
             }
             throw t;
