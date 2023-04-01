@@ -310,8 +310,8 @@ final class ResponseProcessor
             BODY_IN_204 = "Body in 204 response";
     
     private static Response dealWithCL(
-            Response r, Optional<String> rMethod,
-            long cLength, long actualLen)
+            Response r, Optional<String> reqMethod,
+            long cLen, long actualLen)
     {
             // "A server MUST NOT send a Content-Length header field in any
             //  response with a status code of 1xx (Informational) or 204
@@ -335,18 +335,18 @@ final class ResponseProcessor
             } else if (r.isSuccessful()) {
                 // "A server MUST NOT send a Content-Length header field in
                 //  any 2xx (Successful) response to a CONNECT request"
-                if (rMethod.filter(CONNECT::equals).isPresent()) {
+                if (CONNECT.equals(reqMethod.orElse(""))) {
                     throw new IllegalArgumentException(
                             "$1 header in response to a $2 request"
                             .replace("$1", CONTENT_LENGTH)
                             .replace("$2", CONNECT));
                 }
             }
-            if (cLength != actualLen) {
+            if (cLen != actualLen) {
                 throw new IllegalArgumentException(
                       "Discrepancy between $1=$2 and actual body length $3"
                       .replace("$1", CONTENT_LENGTH)
-                      .replace("$2", valueOf(cLength))
+                      .replace("$2", valueOf(cLen))
                       .replace("$3", valueOf(actualLen)));
             }
             // Use the given content-length
