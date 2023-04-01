@@ -124,11 +124,14 @@ public final class DefaultChannelWriter implements ChannelWriter
             throws InterruptedException, TimeoutException, IOException {
         requireNonNull(app1);
         requireValidState();
-        var ver = skeletonRequest().map(SkeletonRequest::httpVersion).orElse(HTTP_1_1);
-        if (discard1XXInformational(app1, ver) || ignoreRepeated100Continue(app1)) {
+        var ver = skeletonRequest()
+                      .map(SkeletonRequest::httpVersion)
+                      .orElse(HTTP_1_1);
+        if (discard1XXInformational(app1, ver) ||
+            ignoreRepeated100Continue(app1)) {
             return 0;
         }
-        final Response app2 = invokeUserActions(app1);
+        final Response app2 = invokeAppActions(app1);
         final Result bag = serverActions.process(app2, ver);
         try (bag) {
             return write0(bag.response(), bag.body(), ver);
@@ -186,7 +189,7 @@ public final class DefaultChannelWriter implements ChannelWriter
         return false;
     }
     
-    private Response invokeUserActions(Response r) {
+    private Response invokeAppActions(Response r) {
         final var skeleton = skeletonRequest().orElse(null);
         if (skeleton == null) {
             LOG.log(DEBUG,

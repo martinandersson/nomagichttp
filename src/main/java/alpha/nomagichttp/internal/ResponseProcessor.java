@@ -94,8 +94,8 @@ final class ResponseProcessor
      */
     Result process(Response app, Version httpVer)
             throws InterruptedException, TimeoutException, IOException {
-        var upstream = app.body();
-        var it = upstream.iterator();
+        final var upstream = app.body();
+        final var it = upstream.iterator();
         return getOrCloseResource(() -> {
             long len = upstream.length();
             Response mod = closeIfOldHttp(app, httpVer);
@@ -125,36 +125,35 @@ final class ResponseProcessor
         }
     }
     
-    private static Response closeIfOldHttp(Response r, Version httpVer) {
+    private static Response closeIfOldHttp(Response rsp, Version ver) {
         // No support for HTTP 1.0 Keep-Alive
-        if (r.isFinal() &&
-            httpVer.isLessThan(HTTP_1_1) &&
-            !__rspHasConnectionClose(r))
+        if (rsp.isFinal() &&
+            ver.isLessThan(HTTP_1_1) &&
+            !__rspHasConnectionClose(rsp))
         {
-            return __setConnectionClose(r);
+            return __setConnectionClose(rsp);
         }
-        return r;
+        return rsp;
     }
     
     private static Response tryChunkedEncoding(Response r, Version httpVer, long len, ByteBufferIterator body) {
-        final boolean trailersPresent = r.headers().contains(TRAILER);
+        final boolean trPresent = r.headers().contains(TRAILER);
         if (httpVer.isLessThan(HTTP_1_1)) {
-            if (trailersPresent) {
+            if (trPresent) {
                 LOG.log(DEBUG, """
                     HTTP/1.0 has no support for response trailers, \
                     discarding them""");
                 return r.toBuilder().removeTrailers().build();
             }
+            // Connection will close; no need to do chunking
             return r;
         }
-        if (!trailersPresent && len >= 0) {
+        if (!trPresent && len >= 0) {
+            // No trailers and a known length makes chunking unnecessary
             return r;
         }
-        /*
-          Instead of chunked, we could mark the end of a response by closing
-          the connection. But, this is an inherently unreliable method best
-          to avoid (RFC 7230 §3.3.3.).
-         */
+        // We could mark the end of a response by closing the connection.
+        // But, this is an unreliable method best to avoid (RFC 7230 §3.3.3.).
         LOG.log(DEBUG, """
                 Response trailers and/or unknown body length; \
                 applying chunked encoding""");
