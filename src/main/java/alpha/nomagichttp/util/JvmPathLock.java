@@ -142,7 +142,7 @@ import static java.util.concurrent.locks.ReentrantReadWriteLock.WriteLock;
  * file lock within the same JVM will actually throw an
  * {@link OverlappingFileLockException}. The quote unquote "shared" lock is not
  * shared within the same JVM! Shame on the developer who attempts to share
- * file access within his own program lol (well, they must have a reason).<p>
+ * file access within his own program lol (well, they must have a reason).
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  */

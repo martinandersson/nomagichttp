@@ -12,7 +12,12 @@ import static alpha.nomagichttp.util.ByteBuffers.asArray;
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  */
-public final class TestFiles {
+public final class TestFiles
+{
+    private TestFiles () {
+        // Empty
+    }
+    
     /**
      * Creates a temp file and writes the given content into the file.<p>
      * 

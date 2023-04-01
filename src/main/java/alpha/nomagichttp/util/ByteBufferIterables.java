@@ -297,7 +297,7 @@ public final class ByteBufferIterables
      * which is exactly what the {@code iterator} method does.<p>
      * 
      * The lock is unlocked no later than when the iterator's {@code close}
-     * method is called.<p>
+     * method is called.
      * 
      * @param file     to read bytes from
      * @param timeout  the time the iterator waits for a lock

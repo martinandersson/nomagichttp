@@ -55,7 +55,7 @@ import static org.junit.jupiter.api.Assertions.assertSame;
  * 
  * This class will assert on server stop that no errors were delivered to an
  * error handler. If errors are expected, then the test must consume all errors
- * using {@link #pollServerError()}.<p>
+ * using {@link #pollServerError()}.
  * 
  * <pre>
  *   class MyTest extends AbstractRealTest {
@@ -334,7 +334,7 @@ public abstract class AbstractRealTest
      * 
      * The purpose of the action is <i>not</i> to handle errors, nor can it stop
      * the server's error handler chain from executing. For the purpose of
-     * handling errors, use {@link #usingErrorHandler(ErrorHandler)}.<p>
+     * handling errors, use {@link #usingErrorHandler(ErrorHandler)}.
      * 
      * @param trigger an instance of this type triggers the action
      * @param action to run
@@ -502,6 +502,11 @@ public abstract class AbstractRealTest
      * Stop server gracefully and await the completion of all HTTP exchanges.<p>
      * 
      * Is NOP if server never started.
+     * 
+     * @throws IOException
+     *           on I/O error
+     * @throws InterruptedException
+     *           if interrupted while waiting on client connections to terminate
      */
     protected final void stopServer() throws IOException, InterruptedException {
         if (server == null) {
@@ -542,6 +547,11 @@ public abstract class AbstractRealTest
     /**
      * Will gracefully stop the server (to capture all log records) and assert
      * that no log record was found with a level greater than {@code INFO}.
+     * 
+     * @throws IOException
+     *           on I/O error
+     * @throws InterruptedException
+     *           if interrupted while waiting on client connections to terminate
      */
     protected final void assertThatNoWarningOrErrorIsLogged()
             throws IOException, InterruptedException {
@@ -553,6 +563,11 @@ public abstract class AbstractRealTest
      * that no log record was found with a level greater than {@code INFO}.
      * 
      * @param excludeClasses classes that are allowed to log waring/error
+     * 
+     * @throws IOException
+     *           on I/O error
+     * @throws InterruptedException
+     *           if interrupted while waiting on client connections to terminate
      */
     protected final void assertThatNoWarningOrErrorIsLoggedExcept(
             Class<?>... excludeClasses)
