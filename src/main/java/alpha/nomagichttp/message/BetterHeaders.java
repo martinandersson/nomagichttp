@@ -81,6 +81,7 @@ public interface BetterHeaders
      * @return {@code true} if header is present, otherwise {@code false}
      * @throws NullPointerException if {@code headerName} is {@code null} 
      */
+    // TODO: Rename isPresent? Also rename isMissingOrEmpty?
     default boolean contains(String headerName) {
         // NPE is unfortunately not documented in JDK
         return delegate().map().containsKey(requireNonNull(headerName));
