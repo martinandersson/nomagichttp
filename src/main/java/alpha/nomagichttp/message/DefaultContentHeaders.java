@@ -97,6 +97,21 @@ public class DefaultContentHeaders implements ContentHeaders
         return false;
     }
     
+    private int htec = -1;
+    
+    @Override
+    public boolean hasTransferEncodingChunked() {
+        if (htec != -1) {
+            return htec == 1;
+        }
+        if (contains(TRANSFER_ENCODING, "chunked")) {
+            htec = 1;
+            return true;
+        }
+        htec = 0;
+        return false;
+    }
+    
     private Optional<MediaType> cc;
     
     @Override

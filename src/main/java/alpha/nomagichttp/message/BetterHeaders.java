@@ -235,4 +235,17 @@ public interface BetterHeaders
      * @return see JavaDoc
      */
     boolean hasConnectionClose();
+    
+    /**
+     * Returns whether the {@value HttpConstants.HeaderName#TRANSFER_ENCODING}
+     * header is present and contains the value "chunked".<p>
+     * 
+     * This method is equivalent to:
+     * <pre>
+     *   {@link #contains(String, String) contains}("Transfer-Encoding", "chunked")
+     * </pre>
+     * 
+     * @return see JavaDoc
+     */
+    boolean hasTransferEncodingChunked();
 }

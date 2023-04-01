@@ -23,7 +23,6 @@ import java.io.IOException;
 import java.util.Collection;
 import java.util.NoSuchElementException;
 import java.util.Optional;
-import java.util.concurrent.TimeoutException;
 
 import static alpha.nomagichttp.HttpConstants.HeaderName.EXPECT;
 import static alpha.nomagichttp.HttpConstants.HeaderName.TRANSFER_ENCODING;
@@ -445,7 +444,7 @@ final class HttpExchange
             if (r.head().headers().contains("Trailer")) {
                 return true;
             } // TODO: For HTTP/2, we may need another strategy here
-              else return !r.head().headers().contains(TRANSFER_ENCODING, "chunked");
+              else return !r.head().headers().hasTransferEncodingChunked();
         }
         if (len == -1) {
             return false;

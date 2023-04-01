@@ -262,7 +262,7 @@ public final class DefaultChannelWriter implements ChannelWriter
     
     private int tryWriteTrailers(Response r) throws IOException {
         if (!r.headers().contains(TRAILER)) {
-            return r.headers().contains(TRANSFER_ENCODING, "chunked") ?
+            return r.headers().hasTransferEncodingChunked() ?
                     doWrite(asciiBytes(CRLF_STR)) :
                     0;
         }
