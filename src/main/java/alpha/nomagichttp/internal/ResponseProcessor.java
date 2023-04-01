@@ -4,6 +4,7 @@ import alpha.nomagichttp.HttpConstants.Version;
 import alpha.nomagichttp.message.ByteBufferIterator;
 import alpha.nomagichttp.message.HeaderHolder;
 import alpha.nomagichttp.message.IllegalResponseBodyException;
+import alpha.nomagichttp.message.ResourceByteBufferIterable;
 import alpha.nomagichttp.message.Response;
 
 import java.io.Closeable;
@@ -30,7 +31,7 @@ import static java.lang.String.valueOf;
 import static java.lang.System.Logger.Level.DEBUG;
 
 /**
- * Applies message delimiting.<p>
+ * Is semantically a set of privileged after-actions.<p>
  * 
  * Core responsibilities, if applicable:
  * <ul>
@@ -59,14 +60,40 @@ final class ResponseProcessor
         }
     }
     
+    /**
+     * Ensures the given response is ready for transmission.<p>
+     * 
+     * This method will call {@code Response.Body.iterator()}, and return the
+     * same iterator — or a decorator — in the returned result object, which is
+     * the reference the writer must use when writing the response body. The
+     * result's response object must only be used to build a status-line,
+     * retrieve headers and trailers.<p>
+     * 
+     * The call to {@code iterator} may open system resources, and so, the
+     * writer must close the returned result object, or the iterator contained
+     * within. The writer must <i>not</i> call the {@code iterator} method,
+     * again, as this could cause the application's response body implementation
+     * to unnecessarily open more system resources. Even worse, a nested call to
+     * {@code iterator} could forever block if there's a non-reentrant mutex
+     * involved (weird, but still).<p>
+     * 
+     * The reason why this method calls {@code iterator} is primarily to
+     * lock-down the response body length.
+     * 
+     * @param app the original
+     * @param httpVer HTTP version used by the current exchange
+     * 
+     * @return see JavaDoc
+     * 
+     * @throws InterruptedException
+     *             from {@link ResourceByteBufferIterable#iterator()}
+     * @throws TimeoutException
+     *             from {@link ResourceByteBufferIterable#iterator()}
+     * @throws IOException
+     *             from {@link ResourceByteBufferIterable#iterator()}
+     */
     Result process(Response app, Version httpVer)
             throws InterruptedException, TimeoutException, IOException {
-        // We call iterator and length only once, for several reasons.
-        // We need a reliable length, so there must be one global iteration.
-        // And a nested call to iterator could forever block if there's a
-        // non-reentrant mutex involved (weird, but still).
-        // Improved performance is a nice bonus (e.g. just one File.size
-        // call)
         var upstream = app.body();
         var it = upstream.iterator();
         return getOrCloseResource(() -> {
