@@ -131,8 +131,8 @@ final class ResponseProcessor
         // No support for HTTP 1.0 Keep-Alive
         return r.isFinal() &&
                ver.isLessThan(HTTP_1_1) &&
-              !r.headers().hasConnectionClose() ?
-                   __setConnectionClose(r) : r;
+               !r.headers().hasConnectionClose() ?
+                   setConnectionClose(r) : r;
     }
     
     private static Response tryChunkedEncoding(
@@ -182,7 +182,7 @@ final class ResponseProcessor
             if (r.isFinal() && !r.headers().hasConnectionClose()) {
                 LOG.log(DEBUG,
                     "Connection-close flag propagates to final response");
-                out = __setConnectionClose(r);
+                out = setConnectionClose(r);
             } else {
                 // Message not final or already has the header = NOP
                 out = r;
@@ -196,7 +196,7 @@ final class ResponseProcessor
             out = r;
         } else {
             final String why =
-                __reqHasConnectionClose() ? "the request headers' did." :
+                requestHasConnClose()     ? "the request headers' did." :
                 !channel().isInputOpen()  ? "the client's input stream has shut down." :
                 !httpServer().isRunning() ? "the server has stopped." :
                 scheduledClose;
@@ -204,7 +204,7 @@ final class ResponseProcessor
                 LOG.log(DEBUG, () ->
                     "Will set \"Connection: close\" because " + why);
                 sawConnectionClose = true;
-                out = __setConnectionClose(r);
+                out = setConnectionClose(r);
             } else {
                 out = r;
             }
@@ -230,37 +230,37 @@ final class ResponseProcessor
     
     private static Response ensureCorrectFraming(Response r, long len) {
         if (r.headers().contains(TRANSFER_ENCODING)) {
-            return __dealWithTransferEncoding(r);
+            return dealWithTransferEncoding(r);
         }
         assert len >= 0 : "If <= -1, chunked encoding was applied";
         final var reqMethod = skeletonRequest()
                 .map(req -> req.head().line().method());
         if (reqMethod.filter(HEAD::equals).isPresent()) {
-            return __dealWithHeadRequest(r, len);
+            return dealWithHeadRequest(r, len);
         }
         if (r.statusCode() == THREE_HUNDRED_FOUR) {
-            return __dealWith304(r, len);
+            return dealWith304(r, len);
         }
         final var cLen = r.headers().contentLength();
         if (cLen.isPresent()) {
-            return __dealWithCL(r, reqMethod, cLen.getAsLong(), len);
+            return dealWithCL(r, reqMethod, cLen.getAsLong(), len);
         } else if (len == 0) {
-            return __dealWithNoCLNoBody(r, reqMethod);
+            return dealWithNoCLNoBody(r, reqMethod);
         } else {
-            return __dealWithNoCLHasBody(r, len);
+            return dealWithNoCLHasBody(r, len);
         }
     }
     
-    private static boolean __reqHasConnectionClose() {
+    private static Response setConnectionClose(Response r) {
+        return r.toBuilder().header(CONNECTION, "close").build();
+    }
+    
+    private static boolean requestHasConnClose() {
         return skeletonRequest().map(req ->
                 req.head().headers().hasConnectionClose()).orElse(false);
     }
     
-    private static Response __setConnectionClose(Response r) {
-        return r.toBuilder().header(CONNECTION, "close").build();
-    }
-    
-    private static Response __dealWithTransferEncoding(Response r) {
+    private static Response dealWithTransferEncoding(Response r) {
         if (r.isInformational()) {
             throw new IllegalArgumentException(
                     TRANSFER_ENCODING + " header in 1xx response");
@@ -280,7 +280,7 @@ final class ResponseProcessor
         return r;
     }
     
-    private static Response __dealWithHeadRequest(Response r, long actualLen) {
+    private static Response dealWithHeadRequest(Response r, long actualLen) {
         // We don't care about the presence of Content-Length, but:
         if (actualLen != 0) {
             throw new IllegalResponseBodyException(
@@ -292,7 +292,7 @@ final class ResponseProcessor
         return r;
     }
     
-    private static Response __dealWith304(Response r, long actualLen) {
+    private static Response dealWith304(Response r, long actualLen) {
         // "A 304 response cannot contain a message-body" (RFC 7234 §4.1)
         if (actualLen != 0) {
             throw new IllegalResponseBodyException(
@@ -309,7 +309,7 @@ final class ResponseProcessor
             BODY_IN_1XX = "Body in 1xx response",
             BODY_IN_204 = "Body in 204 response";
     
-    private static Response __dealWithCL(
+    private static Response dealWithCL(
             Response r, Optional<String> rMethod,
             long cLength, long actualLen)
     {
@@ -353,7 +353,7 @@ final class ResponseProcessor
             return r;
     }
     
-    private static Response __dealWithNoCLNoBody(
+    private static Response dealWithNoCLNoBody(
             Response r, Optional<String> rMethod)
     {
         return r.isInformational() ||
@@ -363,7 +363,7 @@ final class ResponseProcessor
                    r.toBuilder().header(CONTENT_LENGTH, "0").build();
     }
     
-    private static Response __dealWithNoCLHasBody(Response r, long actualLen) {
+    private static Response dealWithNoCLHasBody(Response r, long actualLen) {
          if (r.isInformational()) {
              throw new IllegalResponseBodyException(BODY_IN_1XX, r);
          }
