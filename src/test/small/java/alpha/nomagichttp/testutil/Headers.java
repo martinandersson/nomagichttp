@@ -62,9 +62,7 @@ public final class Headers
      */
     public static LinkedHashMap<String, List<String>> linkedHashMap(
             BetterHeaders headers) {
-        var copy = new LinkedHashMap<String, List<String>>();
-        headers.forEach(copy::put);
-        return copy;
+        return copy(new LinkedHashMap<>(), headers);
     }
     
     /**
@@ -91,7 +89,9 @@ public final class Headers
      */
     public static TreeMap<String, List<String>> treeMap(
             String... nameValuePairs) {
-        return putHeaders(new TreeMap<>(CASE_INSENSITIVE_ORDER), nameValuePairs);
+        return putHeaders(
+                new TreeMap<>(CASE_INSENSITIVE_ORDER),
+                nameValuePairs);
     }
     
     /**
@@ -115,9 +115,7 @@ public final class Headers
      * @see #linkedHashMap(String...) 
      */
     public static TreeMap<String, List<String>> treeMap(BetterHeaders headers) {
-        var copy = new TreeMap<String, List<String>>(CASE_INSENSITIVE_ORDER);
-        headers.forEach(copy::put);
-        return copy;
+        return copy(new TreeMap<>(CASE_INSENSITIVE_ORDER), headers);
     }
     
     private static <M extends Map<String, List<String>>> M putHeaders(
@@ -130,6 +128,12 @@ public final class Headers
                    v = nameValuePairs[i + 1];
             destination.computeIfAbsent(k, k0 -> new ArrayList<>(1)).add(v);
         }
+        return destination;
+    }
+    
+    private static <M extends Map<String, List<String>>> M copy(
+            M destination, BetterHeaders source) {
+        source.forEach(destination::put);
         return destination;
     }
 }
