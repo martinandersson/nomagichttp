@@ -64,6 +64,7 @@ import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
 import static alpha.nomagichttp.HttpConstants.Version.HTTP_1_1;
+import static alpha.nomagichttp.testutil.Headers.linkedHashMap;
 import static alpha.nomagichttp.util.Streams.toList;
 import static java.net.http.HttpClient.Version;
 import static java.net.http.HttpRequest.BodyPublisher;
@@ -1079,7 +1080,7 @@ public abstract class HttpClientFacade
                             sink.accept(name.apply(h));
                             sink.accept(value.apply(h)); })
                         .toArray(String[]::new);
-                return new DefaultContentHeaders(Headers.linkedHashMap(pairs), false);
+                return new DefaultContentHeaders(linkedHashMap(pairs), false);
             };
         }
         

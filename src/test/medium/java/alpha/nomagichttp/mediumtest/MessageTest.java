@@ -1,7 +1,6 @@
 package alpha.nomagichttp.mediumtest;
 
 import alpha.nomagichttp.testutil.AbstractRealTest;
-import alpha.nomagichttp.testutil.Headers;
 import alpha.nomagichttp.testutil.HttpClientFacade;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -19,6 +18,7 @@ import static alpha.nomagichttp.handler.RequestHandler.GET;
 import static alpha.nomagichttp.handler.RequestHandler.POST;
 import static alpha.nomagichttp.message.Responses.ok;
 import static alpha.nomagichttp.message.Responses.text;
+import static alpha.nomagichttp.testutil.Headers.linkedHashMap;
 import static alpha.nomagichttp.testutil.HttpClientFacade.Implementation.JDK;
 import static alpha.nomagichttp.testutil.HttpClientFacade.Implementation.JETTY;
 import static alpha.nomagichttp.testutil.TestClient.CRLF;
@@ -218,7 +218,7 @@ class MessageTest extends AbstractRealTest
                     .addHeaders(
                         "Connection", "close",
                         "Trailer", "One, Two")
-                    .addTrailers(() -> Headers.linkedHashMap(
+                    .addTrailers(() -> linkedHashMap(
                         "One", "Foo",
                         "Two", "Bar"))
                     .build()));
