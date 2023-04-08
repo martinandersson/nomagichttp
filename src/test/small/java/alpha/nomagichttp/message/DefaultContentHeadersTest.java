@@ -1,6 +1,6 @@
 package alpha.nomagichttp.message;
 
-import alpha.nomagichttp.util.Headers;
+import alpha.nomagichttp.testutil.Headers;
 import org.junit.jupiter.api.Test;
 
 import java.util.LinkedHashMap;

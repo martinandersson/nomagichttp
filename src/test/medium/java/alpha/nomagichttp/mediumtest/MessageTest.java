@@ -1,8 +1,8 @@
 package alpha.nomagichttp.mediumtest;
 
 import alpha.nomagichttp.testutil.AbstractRealTest;
+import alpha.nomagichttp.testutil.Headers;
 import alpha.nomagichttp.testutil.HttpClientFacade;
-import alpha.nomagichttp.util.Headers;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;

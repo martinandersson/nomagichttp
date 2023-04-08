@@ -2,7 +2,7 @@ package alpha.nomagichttp.internal;
 
 import alpha.nomagichttp.message.BadRequestException;
 import alpha.nomagichttp.message.DefaultContentHeaders;
-import alpha.nomagichttp.util.Headers;
+import alpha.nomagichttp.testutil.Headers;
 import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
