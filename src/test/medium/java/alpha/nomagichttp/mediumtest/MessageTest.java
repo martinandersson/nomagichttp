@@ -218,7 +218,7 @@ class MessageTest extends AbstractRealTest
                     .addHeaders(
                         "Connection", "close",
                         "Trailer", "One, Two")
-                    .addTrailers(() -> Headers.of(
+                    .addTrailers(() -> Headers.linkedHashMap(
                         "One", "Foo",
                         "Two", "Bar"))
                     .build()));

@@ -38,7 +38,9 @@ public final class Headers
      * 
      * @see #treeMap(BetterHeaders)
      */
-    public static LinkedHashMap<String, List<String>> of(String... nameValuePairs) {
+    public static LinkedHashMap<String, List<String>> linkedHashMap(
+            String... nameValuePairs)
+    {
         if (nameValuePairs.length % 2 != 0) {
             throw new IllegalArgumentException(
                     "Please provide an even number of pairs.");
@@ -70,7 +72,7 @@ public final class Headers
      * @throws NullPointerException
      *             if {@code headers} is {@code null}
      * 
-     * @see #of(String...) 
+     * @see #linkedHashMap(String...) 
      */
     public static TreeMap<String, List<String>> treeMap(BetterHeaders headers) {
         var map = new TreeMap<String, List<String>>(CASE_INSENSITIVE_ORDER);

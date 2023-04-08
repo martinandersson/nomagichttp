@@ -1079,7 +1079,7 @@ public abstract class HttpClientFacade
                             sink.accept(name.apply(h));
                             sink.accept(value.apply(h)); })
                         .toArray(String[]::new);
-                return new DefaultContentHeaders(Headers.of(pairs), false);
+                return new DefaultContentHeaders(Headers.linkedHashMap(pairs), false);
             };
         }
         

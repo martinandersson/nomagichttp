@@ -98,6 +98,6 @@ final class DefaultContentHeadersTest
     }
     
     private static DefaultContentHeaders of(String... headers) {
-        return new DefaultContentHeaders(Headers.of(headers), false);
+        return new DefaultContentHeaders(Headers.linkedHashMap(headers), false);
     }
 }

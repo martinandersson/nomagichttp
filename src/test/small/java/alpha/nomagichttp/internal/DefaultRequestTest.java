@@ -20,7 +20,7 @@ import static alpha.nomagichttp.Config.DEFAULT;
 import static alpha.nomagichttp.HttpConstants.Version.HTTP_1_1;
 import static alpha.nomagichttp.internal.DefaultRequest.requestWithoutParams;
 import static alpha.nomagichttp.internal.SkeletonRequestTarget.parse;
-import static alpha.nomagichttp.testutil.Headers.of;
+import static alpha.nomagichttp.testutil.Headers.linkedHashMap;
 import static alpha.nomagichttp.testutil.ReadableByteChannels.ofString;
 import static alpha.nomagichttp.util.DummyScopedValue.where;
 import static alpha.nomagichttp.util.ScopedValues.__HTTP_SERVER;
@@ -41,7 +41,7 @@ final class DefaultRequestTest
 {
     @Test
     void body_toText_happyPath() throws Exception {
-        var req = createRequest(of("Content-Length", "3"), "abc");
+        var req = createRequest(linkedHashMap("Content-Length", "3"), "abc");
         
         // Implementation needs access to Config.maxRequestBodyConversionSize()
         var server = mock(HttpServer.class);
@@ -64,7 +64,7 @@ final class DefaultRequestTest
     
     @Test
     void body_toText_BadHeaderException() {
-        var req = createRequest(of(
+        var req = createRequest(linkedHashMap(
                 "Content-Length", "3",
                 "Content-Type", "first",
                 "Content-Type", "second"),
@@ -76,7 +76,7 @@ final class DefaultRequestTest
     
     @Test
     void body_toText_IllegalCharsetNameException() {
-        var req = createRequest(of(
+        var req = createRequest(linkedHashMap(
                 "Content-Length", "3",
                 "Content-Type", "text/plain;charset=."),
                 "abc");
@@ -87,7 +87,7 @@ final class DefaultRequestTest
     
     @Test
     void body_toText_UnsupportedCharsetException() {
-        var req = createRequest(of(
+        var req = createRequest(linkedHashMap(
                 "Content-Length", "3",
                 "Content-Type", "text/plain;charset=from-another-galaxy"),
                 "abc");
@@ -142,6 +142,6 @@ final class DefaultRequestTest
     }
     
     private static Request createEmptyRequest() {
-        return createRequest(of(), "");
+        return createRequest(linkedHashMap(), "");
     }
 }
