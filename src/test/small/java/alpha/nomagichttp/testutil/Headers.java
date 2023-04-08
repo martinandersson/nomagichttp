@@ -55,32 +55,6 @@ public final class Headers
     }
     
     /**
-     * Copies the given headers into a multivalued, case-insensitive
-     * {@code TreeMap}.<p>
-     * 
-     * The returned map will be equal to another {@code TreeMap}, as long as the
-     * other map contains the same set of header names (case-insensitive) and
-     * values (case-sensitive).<p>
-     * 
-     * The iteration order of the returned map is defined by
-     * {@link String#compareToIgnoreCase(String)}.
-     * 
-     * @param headers to copy
-     * 
-     * @return see JavaDoc
-     * 
-     * @throws NullPointerException
-     *             if {@code headers} is {@code null}
-     * 
-     * @see #linkedHashMap(String...) 
-     */
-    public static TreeMap<String, List<String>> treeMap(BetterHeaders headers) {
-        var map = new TreeMap<String, List<String>>(CASE_INSENSITIVE_ORDER);
-        headers.forEach(map::put);
-        return map;
-    }
-    
-    /**
      * Puts the given headers into a multivalued, case-insensitive
      * {@code TreeMap}.<p>
      * 
@@ -112,6 +86,32 @@ public final class Headers
                    v = nameValuePairs[i + 1];
             map.computeIfAbsent(k, k0 -> new ArrayList<>(1)).add(v);
         }
+        return map;
+    }
+    
+    /**
+     * Copies the given headers into a multivalued, case-insensitive
+     * {@code TreeMap}.<p>
+     * 
+     * The returned map will be equal to another {@code TreeMap}, as long as the
+     * other map contains the same set of header names (case-insensitive) and
+     * values (case-sensitive).<p>
+     * 
+     * The iteration order of the returned map is defined by
+     * {@link String#compareToIgnoreCase(String)}.
+     * 
+     * @param headers to copy
+     * 
+     * @return see JavaDoc
+     * 
+     * @throws NullPointerException
+     *             if {@code headers} is {@code null}
+     * 
+     * @see #linkedHashMap(String...) 
+     */
+    public static TreeMap<String, List<String>> treeMap(BetterHeaders headers) {
+        var map = new TreeMap<String, List<String>>(CASE_INSENSITIVE_ORDER);
+        headers.forEach(map::put);
         return map;
     }
 }
