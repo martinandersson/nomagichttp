@@ -1,6 +1,8 @@
 package alpha.nomagichttp.testutil;
 
 import alpha.nomagichttp.message.BetterHeaders;
+import alpha.nomagichttp.message.ContentHeaders;
+import alpha.nomagichttp.message.DefaultContentHeaders;
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -11,7 +13,7 @@ import java.util.TreeMap;
 import static java.lang.String.CASE_INSENSITIVE_ORDER;
 
 /**
- * Utility methods for constructing header {@code Map}s.
+ * Utility methods for constructing headers.
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  */
@@ -19,6 +21,24 @@ public final class Headers
 {
     private Headers() {
         // Empty
+    }
+    
+    /**
+     * Constructs the default implementation of {@code ContentHeaders}.<p>
+     * 
+     * The values will <i>not</i> have trailing whitespace stripped.
+     * 
+     * @param nameValuePairs header entries
+     * 
+     * @return see JavaDoc
+     * 
+     * @throws NullPointerException
+     *             if {@code nameValuePairs} is {@code null}
+     * @throws IllegalArgumentException
+     *             if {@code nameValuePairs.length} is not even
+     */
+    public static ContentHeaders contentHeaders(String... nameValuePairs) {
+        return new DefaultContentHeaders(linkedHashMap(nameValuePairs), false);
     }
     
     /**

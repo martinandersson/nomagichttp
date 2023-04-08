@@ -1,10 +1,9 @@
 package alpha.nomagichttp.internal;
 
 import alpha.nomagichttp.message.BadRequestException;
-import alpha.nomagichttp.message.DefaultContentHeaders;
 import org.junit.jupiter.api.Test;
 
-import static alpha.nomagichttp.testutil.Headers.linkedHashMap;
+import static alpha.nomagichttp.testutil.Headers.contentHeaders;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
@@ -16,7 +15,7 @@ final class RequestBodyTest
 {
     @Test
     void contentLengthAndTransferEncoding_BadRequestException() {
-        var crash = headers(
+        var crash = contentHeaders(
                 "Content-Length", "123",
                 "Transfer-Encoding", "chunked");
         assertThatThrownBy(() -> RequestBody.of(crash, null))
@@ -24,9 +23,5 @@ final class RequestBodyTest
                 .hasMessage("Content-Length and Transfer-Encoding are both present.")
                 .hasNoSuppressedExceptions()
                 .hasNoCause();
-    }
-    
-    private static DefaultContentHeaders headers(String... pair) {
-        return new DefaultContentHeaders(linkedHashMap(pair), false);
     }
 }
