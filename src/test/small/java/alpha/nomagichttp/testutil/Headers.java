@@ -80,6 +80,28 @@ public final class Headers
         return map;
     }
     
+    /**
+     * Puts the given headers into a multivalued, case-insensitive
+     * {@code TreeMap}.<p>
+     * 
+     * The returned map will be equal to another {@code TreeMap}, as long as the
+     * other map contains the same set of header names (case-insensitive) and
+     * values (case-sensitive).<p>
+     * 
+     * The iteration order of the returned map is defined by
+     * {@link String#compareToIgnoreCase(String)}.
+     * 
+     * @param nameValuePairs header entries
+     * 
+     * @return see JavaDoc
+     * 
+     * @throws NullPointerException
+     *             if {@code headers} is {@code null}
+     * @throws IllegalArgumentException
+     *             if {@code nameValuePairs.length} is not even
+     * 
+     * @see #linkedHashMap(String...) 
+     */
     public static TreeMap<String, List<String>> treeMap(String... nameValuePairs) {
         if (nameValuePairs.length % 2 != 0) {
             throw new IllegalArgumentException("Please provide an even number of pairs.");
