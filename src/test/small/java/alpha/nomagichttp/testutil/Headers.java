@@ -36,7 +36,7 @@ public final class Headers
      * @throws IllegalArgumentException
      *             if {@code nameValuePairs.length} is not even
      * 
-     * @see #treeMap(BetterHeaders)
+     * @see #treeMap(String...) 
      */
     public static LinkedHashMap<String, List<String>> linkedHashMap(
             String... nameValuePairs)
