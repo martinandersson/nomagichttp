@@ -106,6 +106,13 @@ tasks.withType(Test).configureEach {
 }
 // Preview features and incubator modules produce warnings, so suppress treating warning as errors:
 Werror = false;
+tasks.withType(Javadoc).configureEach {
+    options {
+        addBooleanOption('-enable-preview', true)
+        addStringOption('-release', "$RELEASE_FOR")
+        addStringOption('-add-modules', 'jdk.incubator.concurrent')
+    }
+}
 // TODO: Will probably have to add the JVM flags to withType(JavaExec) as well
 // -------------------------------------------------------
 

@@ -9,7 +9,7 @@ import alpha.nomagichttp.message.RequestLineParseException;
  * A parser of {@code RawRequest.Line}.<p>
  * 
  * When left with a choice, this parser follows a lenient model rather than a
- * strict one.<p>
+ * strict one.
  * 
  * <h2>General rules</h2>
  * 
@@ -25,7 +25,7 @@ import alpha.nomagichttp.message.RequestLineParseException;
  * This parser ignores CR immediately preceding LF; it is never consumed as part
  * of the request. If anything else follows the CR an exception is thrown,
  * except for cases where it is either considered as a word boundary
- * (start-line) or ignored as leading whitespace.<p>
+ * (start-line) or ignored as leading whitespace.
  * 
  * <h2>Request-line rules</h2>
  *

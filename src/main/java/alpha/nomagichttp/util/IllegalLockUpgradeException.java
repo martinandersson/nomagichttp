@@ -13,4 +13,11 @@ import java.util.concurrent.TimeUnit;
  */
 public final class IllegalLockUpgradeException extends RuntimeException {
     private static final long serialVersionUID = 1L;
+    
+    /**
+     * Constructs this object.
+     */
+    IllegalLockUpgradeException() {
+        // Empty
+    }
 }

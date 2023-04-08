@@ -39,8 +39,6 @@ import static java.util.Objects.requireNonNull;
  * <a href="../../../../java.base/java/util/concurrent/package-summary.html#MemoryVisibility">
  * <i>happen-before</i></a> any actions taken by the thread dropping the value.
  * 
- * @jls 17.4.5 Happens-before Order
- * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  * @param <V> type of thing in the box
  */

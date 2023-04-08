@@ -347,7 +347,7 @@ final class HttpExchange
      * Before any exception leaves this method, it will first be logged.<p>
      * 
      * This method is the "end station"; either we can produce a response or
-     * it'll be the end of this exchange.<p>
+     * it'll be the end of this exchange.
      * 
      * @param e exception to handle
      * @param req the request (okay to be null)

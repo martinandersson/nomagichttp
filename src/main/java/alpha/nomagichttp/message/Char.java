@@ -7,7 +7,7 @@ import static java.util.Locale.ROOT;
 import static java.util.stream.Collectors.toMap;
 
 /**
- * Utility enumeration of char values relevant for the HTTP protocol.
+ * Utility enumeration of char values relevant to the HTTP protocol.
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  */

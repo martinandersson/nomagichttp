@@ -58,7 +58,7 @@ public interface ContentHeaders extends BetterHeaders
      * The returned deque is modifiable, and consequently, not cached.
      * 
      * @apiNote
-     * Will do modifiable and cache whenever
+     * Will do unmodifiable and cache whenever
      * <a href="https://bugs.openjdk.java.net/browse/JDK-6407460">JDK-6407460</a>
      * is resolved.
      * 

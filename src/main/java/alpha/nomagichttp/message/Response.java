@@ -50,8 +50,7 @@ import static alpha.nomagichttp.HttpConstants.StatusCode;
  * }</pre>
  * 
  * The content of the response head (status line and headers) will be written
- * to the client verbatim/unaltered; i.e. casing and white space will be
- * preserved.<p>
+ * to the client verbatim (casing will be preserved).<p>
  * 
  * The {@code Response} implementation is thread-safe, but a non-empty response
  * body does not have to be. All responses created by the NoMagicHTTP library

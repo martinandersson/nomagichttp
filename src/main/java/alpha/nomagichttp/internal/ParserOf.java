@@ -25,8 +25,8 @@ import static java.lang.System.Logger.Level.DEBUG;
  * This parser interprets the HTTP line terminator the same as is done and
  * documented by the {@link ParserOfRequestLine}'s parser (see section "General
  * rules"). This parser also follows the contract defined by
- * {@link BetterHeaders}, e.g. header names may not be empty but the values
- * may.<p>
+ * {@link BetterHeaders}, e.g. header names must not be empty but the values
+ * can.
  * 
  * <h2>Header names</h2>
  * 

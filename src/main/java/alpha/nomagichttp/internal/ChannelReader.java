@@ -120,7 +120,7 @@ public final class ChannelReader implements ByteBufferIterable
      * Long.MAX_VALUE} (inclusive).<p>
      * 
      * Being unlimited is the default mode of the reader, and going back to
-     * unlimited requires a {@link #reset() reset}.<p>
+     * unlimited requires a {@link #reset() reset}.
      * 
      * @param limit the limit
      * 
@@ -145,7 +145,7 @@ public final class ChannelReader implements ByteBufferIterable
     }
     
     /**
-     * Unset the {@link #limit(long) limit}.<p>
+     * Unset the {@link #limit(long) limit}.
      * 
      * @apiNote
      * This method was added in anticipation of a particular
