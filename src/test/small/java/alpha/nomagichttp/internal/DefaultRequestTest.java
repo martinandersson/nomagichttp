@@ -10,8 +10,6 @@ import java.io.IOException;
 import java.nio.charset.IllegalCharsetNameException;
 import java.nio.charset.UnsupportedCharsetException;
 import java.nio.file.Paths;
-import java.util.LinkedHashMap;
-import java.util.List;
 import java.util.Set;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
@@ -41,7 +39,7 @@ final class DefaultRequestTest
 {
     @Test
     void body_toText_happyPath() throws Exception {
-        var req = createRequest(linkedHashMap("Content-Length", "3"), "abc");
+        var req = createRequest("abc", "Content-Length", "3");
         
         // Implementation needs access to Config.maxRequestBodyConversionSize()
         var server = mock(HttpServer.class);
@@ -64,11 +62,10 @@ final class DefaultRequestTest
     
     @Test
     void body_toText_BadHeaderException() {
-        var req = createRequest(linkedHashMap(
+        var req = createRequest("abc",
                 "Content-Length", "3",
                 "Content-Type", "first",
-                "Content-Type", "second"),
-                "abc");
+                "Content-Type", "second");
         assertThatThrownBy(() -> req.body().toText())
                 .isExactlyInstanceOf(BadHeaderException.class)
                 .hasMessage("Multiple Content-Type values in request.");
@@ -76,10 +73,9 @@ final class DefaultRequestTest
     
     @Test
     void body_toText_IllegalCharsetNameException() {
-        var req = createRequest(linkedHashMap(
+        var req = createRequest("abc",
                 "Content-Length", "3",
-                "Content-Type", "text/plain;charset=."),
-                "abc");
+                "Content-Type", "text/plain;charset=.");
         assertThatThrownBy(() -> req.body().toText())
                 .isExactlyInstanceOf(IllegalCharsetNameException.class);
                 // Message not specified
@@ -87,10 +83,9 @@ final class DefaultRequestTest
     
     @Test
     void body_toText_UnsupportedCharsetException() {
-        var req = createRequest(linkedHashMap(
+        var req = createRequest("abc",
                 "Content-Length", "3",
-                "Content-Type", "text/plain;charset=from-another-galaxy"),
-                "abc");
+                "Content-Type", "text/plain;charset=from-another-galaxy");
         assertThatThrownBy(() -> req.body().toText())
                 .isExactlyInstanceOf(UnsupportedCharsetException.class);
     }
@@ -120,7 +115,7 @@ final class DefaultRequestTest
     }
     
     private static Request createRequest(
-            LinkedHashMap<String, List<String>> headers, String reqBody) {
+            String reqBody, String... headersNameValuePairs) {
         var line = new RawRequest.Line(
                        "test-method",
                        "test-requestTarget",
@@ -128,7 +123,7 @@ final class DefaultRequestTest
                        -1, -1);
         var head = new RawRequest.Head(
                        line,
-                       new RequestHeaders(headers));
+                       new RequestHeaders(linkedHashMap(headersNameValuePairs)));
         var body = RequestBody.of(
                        head.headers(),
                        new ChannelReader(ofString(reqBody)));
@@ -142,6 +137,6 @@ final class DefaultRequestTest
     }
     
     private static Request createEmptyRequest() {
-        return createRequest(linkedHashMap(), "");
+        return createRequest("");
     }
 }
