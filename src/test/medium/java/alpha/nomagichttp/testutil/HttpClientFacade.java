@@ -993,7 +993,7 @@ public abstract class HttpClientFacade
                     () -> HttpConstants.Version.valueOf(jdk.version().name()).toString(),
                     jdk::statusCode,
                     unsupported(),
-                    () -> new DefaultContentHeaders(new LinkedHashMap<>(jdk.headers().map()), false),
+                    () -> oMap(jdk.headers().map()),
                     jdk::body,
                     unsupportedIO());
         }
@@ -1003,7 +1003,7 @@ public abstract class HttpClientFacade
                     () -> okhttp.protocol().toString().toUpperCase(ROOT),
                     okhttp::code,
                     okhttp::message,
-                    () -> new DefaultContentHeaders(new LinkedHashMap<>(okhttp.headers().toMultimap()), false),
+                    () -> oMap(okhttp.headers().toMultimap()),
                     () -> body,
                     supplyOurHeadersTypeIO(() ->
                         StreamSupport.stream(okhttp.trailers().spliterator(), false),
@@ -1059,6 +1059,12 @@ public abstract class HttpClientFacade
                         Map.Entry::getValue));
         }
         
+        private static BetterHeaders oMap(Map<String, List<String>> map) {
+            return map instanceof LinkedHashMap<String, List<String>> lhm ?
+                    new DefaultContentHeaders(lhm, false) :
+                    new DefaultContentHeaders(new LinkedHashMap<>(map), false);
+        }
+        
         private static <T> Supplier<BetterHeaders> supplyOurHeadersType(
                 Supplier<Stream<T>> fromNativeHeaders,
                 Function<? super T, String> name, Function<? super T, String> value) {
@@ -1080,7 +1086,7 @@ public abstract class HttpClientFacade
                             sink.accept(name.apply(h));
                             sink.accept(value.apply(h)); })
                         .toArray(String[]::new);
-                return new DefaultContentHeaders(linkedHashMap(pairs), false);
+                return oMap(linkedHashMap(pairs));
             };
         }
         
