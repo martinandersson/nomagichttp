@@ -6,7 +6,6 @@ import alpha.nomagichttp.message.Request;
 import alpha.nomagichttp.message.Response;
 import alpha.nomagichttp.route.NoRouteFoundException;
 import alpha.nomagichttp.testutil.AbstractRealTest;
-import alpha.nomagichttp.testutil.Headers;
 import alpha.nomagichttp.testutil.HttpClientFacade;
 import alpha.nomagichttp.util.Throwing;
 import org.junit.jupiter.api.DisplayName;
@@ -224,7 +223,7 @@ class ExampleTest extends AbstractRealTest
         if (impl != JDK) {
             assertThat(rsp.reasonPhrase()).isEqualTo("OK");
         }
-        assertThat(Headers.treeMap(rsp.headers())).isEqualTo(treeMap(
+        assertThat(treeMap(rsp.headers())).isEqualTo(treeMap(
             "Content-Length", "11",
             "Content-Type",   "text/plain; charset=" +
                 (impl == JETTY ? "UTF-8" : "utf-8"),
