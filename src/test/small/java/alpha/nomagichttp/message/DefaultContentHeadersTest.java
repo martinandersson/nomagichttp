@@ -1,11 +1,11 @@
 package alpha.nomagichttp.message;
 
-import alpha.nomagichttp.testutil.Headers;
 import org.junit.jupiter.api.Test;
 
 import java.util.LinkedHashMap;
 import java.util.List;
 
+import static alpha.nomagichttp.testutil.Headers.linkedHashMap;
 import static java.util.Map.entry;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -98,6 +98,6 @@ final class DefaultContentHeadersTest
     }
     
     private static DefaultContentHeaders of(String... headers) {
-        return new DefaultContentHeaders(Headers.linkedHashMap(headers), false);
+        return new DefaultContentHeaders(linkedHashMap(headers), false);
     }
 }

@@ -2,9 +2,9 @@ package alpha.nomagichttp.internal;
 
 import alpha.nomagichttp.message.BadRequestException;
 import alpha.nomagichttp.message.DefaultContentHeaders;
-import alpha.nomagichttp.testutil.Headers;
 import org.junit.jupiter.api.Test;
 
+import static alpha.nomagichttp.testutil.Headers.linkedHashMap;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
@@ -27,6 +27,6 @@ final class RequestBodyTest
     }
     
     private static DefaultContentHeaders headers(String... pair) {
-        return new DefaultContentHeaders(Headers.linkedHashMap(pair), false);
+        return new DefaultContentHeaders(linkedHashMap(pair), false);
     }
 }
