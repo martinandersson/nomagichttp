@@ -5,6 +5,7 @@ import alpha.nomagichttp.message.BetterHeaders;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.TreeMap;
 
 import static java.lang.String.CASE_INSENSITIVE_ORDER;
@@ -39,19 +40,8 @@ public final class Headers
      * @see #treeMap(String...) 
      */
     public static LinkedHashMap<String, List<String>> linkedHashMap(
-            String... nameValuePairs)
-    {
-        if (nameValuePairs.length % 2 != 0) {
-            throw new IllegalArgumentException(
-                    "Please provide an even number of pairs.");
-        }
-        var map = new LinkedHashMap<String, List<String>>();
-        for (int i = 0; i < nameValuePairs.length - 1; i += 2) {
-            String k = nameValuePairs[i],
-                   v = nameValuePairs[i + 1];
-            map.computeIfAbsent(k, k0 -> new ArrayList<>(1)).add(v);
-        }
-        return map;
+            String... nameValuePairs) {
+        return putHeaders(new LinkedHashMap<>(), nameValuePairs);
     }
     
     /**
@@ -71,8 +61,7 @@ public final class Headers
      * @see #treeMap(BetterHeaders)
      */
     public static LinkedHashMap<String, List<String>> linkedHashMap(
-            BetterHeaders headers)
-    {
+            BetterHeaders headers) {
         var copy = new LinkedHashMap<String, List<String>>();
         headers.forEach(copy::put);
         return copy;
@@ -100,17 +89,9 @@ public final class Headers
      * 
      * @see #linkedHashMap(String...) 
      */
-    public static TreeMap<String, List<String>> treeMap(String... nameValuePairs) {
-        if (nameValuePairs.length % 2 != 0) {
-            throw new IllegalArgumentException("Please provide an even number of pairs.");
-        }
-        var map = new TreeMap<String, List<String>>(CASE_INSENSITIVE_ORDER);
-        for (int i = 0; i < nameValuePairs.length - 1; i += 2) {
-            String k = nameValuePairs[i],
-                   v = nameValuePairs[i + 1];
-            map.computeIfAbsent(k, k0 -> new ArrayList<>(1)).add(v);
-        }
-        return map;
+    public static TreeMap<String, List<String>> treeMap(
+            String... nameValuePairs) {
+        return putHeaders(new TreeMap<>(CASE_INSENSITIVE_ORDER), nameValuePairs);
     }
     
     /**
@@ -137,5 +118,18 @@ public final class Headers
         var copy = new TreeMap<String, List<String>>(CASE_INSENSITIVE_ORDER);
         headers.forEach(copy::put);
         return copy;
+    }
+    
+    private static <M extends Map<String, List<String>>> M putHeaders(
+            M destination, String... nameValuePairs) {
+        if (nameValuePairs.length % 2 != 0) {
+            throw new IllegalArgumentException("Please provide an even number of pairs.");
+        }
+        for (int i = 0; i < nameValuePairs.length - 1; i += 2) {
+            String k = nameValuePairs[i],
+                   v = nameValuePairs[i + 1];
+            destination.computeIfAbsent(k, k0 -> new ArrayList<>(1)).add(v);
+        }
+        return destination;
     }
 }
