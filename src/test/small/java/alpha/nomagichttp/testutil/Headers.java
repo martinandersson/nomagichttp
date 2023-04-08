@@ -55,6 +55,30 @@ public final class Headers
     }
     
     /**
+     * Copies the given headers into a multivalued {@code LinkedHashMap}.<p>
+     * 
+     * The returned map will obviously retain the provided order of headers, but
+     * does not provide a case-insensitive {@code equals} method for the header
+     * names.
+     * 
+     * @param headers to copy
+     * 
+     * @return see JavaDoc
+     * 
+     * @throws NullPointerException
+     *             if {@code headers} is {@code null}
+     * 
+     * @see #treeMap(BetterHeaders)
+     */
+    public static LinkedHashMap<String, List<String>> linkedHashMap(
+            BetterHeaders headers)
+    {
+        var copy = new LinkedHashMap<String, List<String>>();
+        headers.forEach(copy::put);
+        return copy;
+    }
+    
+    /**
      * Puts the given headers into a multivalued, case-insensitive
      * {@code TreeMap}.<p>
      * 

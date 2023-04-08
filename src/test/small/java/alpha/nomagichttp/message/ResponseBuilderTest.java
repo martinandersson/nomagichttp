@@ -3,9 +3,9 @@ package alpha.nomagichttp.message;
 import org.assertj.core.api.MapAssert;
 import org.junit.jupiter.api.Test;
 
-import java.util.LinkedHashMap;
 import java.util.List;
 
+import static alpha.nomagichttp.testutil.Headers.linkedHashMap;
 import static alpha.nomagichttp.util.ByteBufferIterables.empty;
 import static java.util.List.of;
 import static java.util.Map.entry;
@@ -62,7 +62,7 @@ final class ResponseBuilderTest
             .addHeaders("k", "v3",
                         "k", "v2")
             .build();
-        assertHeadersMap(r).containsExactly(
+        assertHeadersMap(r).containsOnly(
             entry("k", of("v2", "v1", "v3", "v2")));
     }
     
@@ -127,7 +127,7 @@ final class ResponseBuilderTest
     @Test
     void headerReplace() {
         Response r = builder(-1).header("k", "v1").header("k", "v2").build();
-        assertHeadersMap(r).containsExactly(
+        assertHeadersMap(r).containsOnly(
             entry("k", of("v2")));
     }
     
@@ -176,12 +176,6 @@ final class ResponseBuilderTest
     }
     
     private static MapAssert<String, List<String>> assertHeadersMap(Response r) {
-        return assertThat(copy(r.headers()));
-    }
-    
-    private static LinkedHashMap<String, List<String>> copy(BetterHeaders h) {
-        var copy = new LinkedHashMap<String, List<String>>();
-        h.forEach(copy::put);
-        return copy;
+        return assertThat(linkedHashMap(r.headers()));
     }
 }

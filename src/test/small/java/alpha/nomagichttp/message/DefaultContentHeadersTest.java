@@ -2,7 +2,6 @@ package alpha.nomagichttp.message;
 
 import org.junit.jupiter.api.Test;
 
-import java.util.LinkedHashMap;
 import java.util.List;
 
 import static alpha.nomagichttp.testutil.Headers.linkedHashMap;
@@ -15,10 +14,8 @@ final class DefaultContentHeadersTest
     @Test
     void caseIsRetained_butQueryingIsNotCaseSensitive() {
         var testee = of("name", "VALUE");
-        var copy = new LinkedHashMap<String, List<String>>();
-        testee.forEach(copy::put);
-        assertThat(copy)
-                .containsExactly(entry("name", List.of("VALUE")));
+        assertThat(linkedHashMap(testee))
+                .containsOnly(entry("name", List.of("VALUE")));
         assertThat(testee.contains("NAME", "value"))
                 .isTrue();
         assertThat(testee.allValues("nAmE"))

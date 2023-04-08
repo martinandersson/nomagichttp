@@ -8,11 +8,11 @@ import org.assertj.core.api.MapAssert;
 import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
-import java.util.LinkedHashMap;
 import java.util.List;
 
 import static alpha.nomagichttp.internal.ParserOf.headers;
 import static alpha.nomagichttp.testutil.ByteBufferIterables.just;
+import static alpha.nomagichttp.testutil.Headers.linkedHashMap;
 import static java.util.List.of;
 import static java.util.Map.entry;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -33,7 +33,7 @@ final class ParserOfTest
             Host: www.example.com
             Accept: text/plain;charset=utf-8\n\r
             """;
-        assertThat(parse(str)).containsOnly(
+        assertThat(parse(str)).containsExactly(
             entry("User-Agent", of("curl/7.16.3 libcurl/7.16.3 OpenSSL/0.9.7l zlib/1.2.3")),
             entry("Host",       of("www.example.com")),
             entry("Accept",     of("text/plain;charset=utf-8")));
@@ -162,7 +162,7 @@ final class ParserOfTest
             Foo: world
             Foo: again\n
             """;
-        assertThat(parse(str)).containsOnly(
+        assertThat(parse(str)).containsExactly(
             entry("Foo", of("", "world", "again")),
             entry("Bar", of("hello")));
     }
@@ -174,7 +174,7 @@ final class ParserOfTest
               Line 2
             Another: Value\n
             """;
-        assertThat(parse(str)).containsOnly(
+        assertThat(parse(str)).containsExactly(
             entry("Name",    of("Line 1 Line 2")),
             entry("Another", of("Value")));
     }
@@ -208,9 +208,7 @@ final class ParserOfTest
     
     private static MapAssert<String, List<String>>
         assertThat(Request.Headers actual) {
-            var copy = new LinkedHashMap<String, List<String>>();
-            actual.forEach(copy::put);
-            return Assertions.assertThat(copy);
+            return Assertions.assertThat(linkedHashMap(actual));
     }
     
     private static AbstractThrowableAssert<?, ? extends Throwable>
