@@ -37,12 +37,17 @@ public final class EchoHeaders
         app.add("/echo", GET().apply(request -> {
             // 204 (No Content)
             var builder = Responses.noContent().toBuilder();
-            request.headers().forEach((name, vals) -> {
+            for (var entry : request.headers()) {
+                var name = entry.getKey();
                 // 204 response must not contain this header
-                if (!name.equalsIgnoreCase(CONTENT_LENGTH)) {
-                    vals.forEach(v -> builder.addHeader(name, v));
+                if (name.equalsIgnoreCase(CONTENT_LENGTH)) {
+                    continue;
                 }
-            });
+                for (var values : entry.getValue()) {
+                    // Mutating operations returns a new builder instance
+                    builder = builder.addHeader(name, values);
+                }
+            }
             return builder.build();
         }));
         
