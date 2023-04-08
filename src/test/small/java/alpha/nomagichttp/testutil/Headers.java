@@ -134,8 +134,8 @@ public final class Headers
      * @see #linkedHashMap(String...) 
      */
     public static TreeMap<String, List<String>> treeMap(BetterHeaders headers) {
-        var map = new TreeMap<String, List<String>>(CASE_INSENSITIVE_ORDER);
-        headers.forEach(map::put);
-        return map;
+        var copy = new TreeMap<String, List<String>>(CASE_INSENSITIVE_ORDER);
+        headers.forEach(copy::put);
+        return copy;
     }
 }
