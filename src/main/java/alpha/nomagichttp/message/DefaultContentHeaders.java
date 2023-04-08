@@ -1,12 +1,17 @@
 package alpha.nomagichttp.message;
 
-import alpha.nomagichttp.util.Strings;
-
-import java.net.http.HttpHeaders;
 import java.util.ArrayDeque;
 import java.util.Deque;
+import java.util.Iterator;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.NoSuchElementException;
 import java.util.Optional;
 import java.util.OptionalLong;
+import java.util.RandomAccess;
+import java.util.TreeMap;
+import java.util.function.BiConsumer;
 import java.util.stream.Stream;
 
 import static alpha.nomagichttp.HttpConstants.HeaderName.CONNECTION;
@@ -14,78 +19,108 @@ import static alpha.nomagichttp.HttpConstants.HeaderName.CONTENT_LENGTH;
 import static alpha.nomagichttp.HttpConstants.HeaderName.CONTENT_TYPE;
 import static alpha.nomagichttp.HttpConstants.HeaderName.TRANSFER_ENCODING;
 import static alpha.nomagichttp.message.MediaType.parse;
-import static alpha.nomagichttp.util.Headers.of;
+import static alpha.nomagichttp.util.Strings.containsIgnoreCase;
+import static alpha.nomagichttp.util.Strings.requireNoSurroundingWS;
+import static alpha.nomagichttp.util.Strings.splitToSink;
 import static java.lang.Long.parseLong;
+import static java.lang.String.CASE_INSENSITIVE_ORDER;
 import static java.text.MessageFormat.format;
 import static java.util.Objects.requireNonNull;
 import static java.util.function.Predicate.not;
 import static java.util.stream.Collectors.toCollection;
 
 /**
- * Default implementation of {@link ContentHeaders}.<p>
- * 
- * Is a convenient base class with final implementations for
- * equals/hashCode/toString/allTokens/allTokensKeepQuotes. Also provides
- * accessors for non-public hop-by-hop headers.
+ * Default implementation of {@link ContentHeaders}.
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  */
 public class DefaultContentHeaders implements ContentHeaders
 {
     private static final DefaultContentHeaders EMPTY
-            = new DefaultContentHeaders(of());
+            = new DefaultContentHeaders(new LinkedHashMap<>(), false);
     
     /**
-     * Returns an empty headers' object.
+     * Returns an empty {@code DefaultContentHeaders} (singleton).
      * 
-     * @return an empty headers' object (singleton)
+     * @return see JavaDoc
      */
     public static DefaultContentHeaders empty() {
         return EMPTY;
     }
     
-    private final HttpHeaders jdk;
+    /** Saved iteration order. */
+    private final String[] keys;
+    /** Case-insensitive. Modifiable; don't leak. */
+    private final Map<String, List<String>> lookup;
     
     /**
      * Constructs this object.
      * 
-     * @param delegate backing values
-     * @throws NullPointerException if {@code delegate} is {@code null}
+     * @param entries multivalued {@code Map} of headers
+     * @param stripTrailing whether to strip trailing whitespace from values
+     * 
+     * @throws NullPointerException
+     *             if {@code entries} is {@code null}
+     * @throws IllegalArgumentException
+     *             if a header name is repeated using different casing
      */
-    public DefaultContentHeaders(HttpHeaders delegate) {
-        this.jdk = requireNonNull(delegate);
+    public DefaultContentHeaders(
+            LinkedHashMap<String, List<String>> entries, boolean stripTrailing)
+    {
+        var len = entries.size();
+        var keys = new String[len];
+        var idx  = new int[1];
+        var lookup = new TreeMap<String, List<String>>(CASE_INSENSITIVE_ORDER);
+        entries.forEach((k, v) -> {
+            if (lookup.put(k, copyOf(v, stripTrailing)) != null) {
+                throw new IllegalArgumentException(
+                        "Header name repeated with different casing: " + k);
+            }
+            keys[idx[0]++] = k;
+        });
+        this.keys = keys;
+        this.lookup = lookup;
+    }
+    
+    private static List<String> copyOf(
+            List<String> values, boolean stripTrailing)
+    {
+        if (stripTrailing) {
+            var l = values.stream().map(v -> {
+                assert v.isEmpty() || !Character.isWhitespace(v.charAt(0)) :
+                        "Parser shouldn't have accepted leading whitespace";
+                return v.stripTrailing();
+            }).toList();
+            assert l instanceof RandomAccess;
+            return l;
+        }
+        return List.copyOf(values);
+    }
+    
+    
+    // ----------------------
+    //   BETTER HEADERS API
+    // ----------------------
+    
+    @Override
+    public final boolean contains(String headerName) {
+        requireNoSurroundingWS(headerName);
+        return lookup.containsKey(headerName);
     }
     
     @Override
-    public final HttpHeaders delegate() {
-        return jdk;
+    public final boolean contains(String headerName, String valueSubstring) {
+        requireNonNull(valueSubstring);
+        return allValues(requireNoSurroundingWS(headerName))
+              .stream()
+              .anyMatch(v -> containsIgnoreCase(v, valueSubstring));
+        
     }
+    
+    private byte hcc = -1;
     
     @Override
-    public Stream<String> allTokens(String name) {
-        return allTokens0(name, false);
-    }
-    
-    @Override
-    public Stream<String> allTokensKeepQuotes(String name) {
-        return allTokens0(name, true);
-    }
-    
-    private Stream<String> allTokens0(String name, boolean keepQuotes) {
-        // NPE not documented in JDK
-        return jdk.allValues(requireNonNull(name))
-                  .stream()
-                  .<String>mapMulti((line, sink) -> {
-                      if (keepQuotes) Strings.splitToSink(line, ',', '"', sink);
-                      else Strings.splitToSink(line, ',', sink);})
-                  .map(String::strip)
-                  .filter(not(String::isEmpty));
-    }
-    
-    private int hcc = -1;
-    
-    @Override
-    public boolean hasConnectionClose() {
+    public final boolean hasConnectionClose() {
         if (hcc != -1) {
             return hcc == 1;
         }
@@ -97,10 +132,10 @@ public class DefaultContentHeaders implements ContentHeaders
         return false;
     }
     
-    private int htec = -1;
+    private byte htec = -1;
     
     @Override
-    public boolean hasTransferEncodingChunked() {
+    public final boolean hasTransferEncodingChunked() {
         if (htec != -1) {
             return htec == 1;
         }
@@ -111,6 +146,97 @@ public class DefaultContentHeaders implements ContentHeaders
         htec = 0;
         return false;
     }
+    
+    @Override
+    public final boolean isMissingOrEmpty(String headerName) {
+        // allMatch returns true if the stream is empty
+        return allValues(headerName).stream().allMatch(String::isEmpty);
+    }
+    
+    @Override
+    public final Optional<String> firstValue(String headerName) {
+        var values = allValues(headerName);
+        return values.isEmpty() ?
+                Optional.empty() : Optional.of(values.get(0));
+    }
+    
+    @Override
+    public OptionalLong firstValueAsLong(String headerName) {
+        var values = allValues(headerName);
+        return values.isEmpty() ?
+                OptionalLong.empty() : OptionalLong.of(parseLong(values.get(0)));
+    }
+    
+    @Override
+    public final List<String> allValues(String headerName) {
+        requireNoSurroundingWS(headerName);
+        return lookup.getOrDefault(headerName, List.of());
+    }
+    
+    @Override
+    public final Stream<String> allTokens(String headerName) {
+        return allTokens0(headerName, false);
+    }
+    
+    @Override
+    public final Stream<String> allTokensKeepQuotes(String headerName) {
+        return allTokens0(headerName, true);
+    }
+    
+    private Stream<String> allTokens0(String headerName, boolean keepQuotes) {
+        // NPE not documented in JDK
+        return allValues(headerName)
+              .stream()
+              .<String>mapMulti((line, sink) -> {
+                  if (keepQuotes) splitToSink(line, ',', '"', sink);
+                  else            splitToSink(line, ',',      sink);})
+              .map(String::strip)
+              .filter(not(String::isEmpty));
+    }
+    
+    @Override
+    public final void forEach(BiConsumer<String, List<String>> action) {
+        if (keys.length == 0) {
+            requireNonNull(action);
+        }
+        for (String k : keys) {
+            action.accept(k, lookup.get(k));
+        }
+    }
+    
+    @Override
+    public Iterator<Map.Entry<String, List<String>>> iterator() {
+        return new IteratorImpl();
+    }
+    
+    @Override
+    public final String toString() {
+        return lookup.toString();
+    }
+    
+    class IteratorImpl implements Iterator<Map.Entry<String, List<String>>> {
+        private int idx = 0;
+        
+        @Override
+        public boolean hasNext() {
+            return idx < keys.length;
+        }
+        
+        @Override
+        public Map.Entry<String, List<String>> next() {
+            if (!hasNext()) {
+                throw new NoSuchElementException();
+            }
+            var k = keys[idx++];
+            var v = lookup.get(k);
+            return Map.entry(k, v);
+        }
+    }
+    
+    
+    // -----------------------
+    //   CONTENT HEADERS API
+    // -----------------------
     
     private Optional<MediaType> cc;
     
@@ -180,23 +306,5 @@ public class DefaultContentHeaders implements ContentHeaders
                 TRANSFER_ENCODING, te.getLast()));
         }
         return te;
-    }
-    
-    @Override
-    public final boolean equals(Object obj) {
-        if (obj == null || this.getClass() != obj.getClass()) {
-            return false;
-        }
-        return this.delegate().equals(((ContentHeaders) obj).delegate());
-    }
-    
-    @Override
-    public final int hashCode() {
-        return this.delegate().hashCode();
-    }
-    
-    @Override
-    public final String toString() {
-        return this.delegate().toString();
     }
 }

@@ -36,7 +36,7 @@ class AfterActionTest extends AbstractRealTest
             .after("/*", (req, rsp) ->
                 req.attributes()
                    .<String>getOptAny(X_CORRELATION_ID)
-                   .or(() -> req.headers().delegate().firstValue(X_CORRELATION_ID))
+                   .or(() -> req.headers().firstValue(X_CORRELATION_ID))
                    .map(id -> rsp.toBuilder().header(X_CORRELATION_ID, id).build())
                    .orElse(rsp));
         
@@ -74,7 +74,7 @@ class AfterActionTest extends AbstractRealTest
             .after("/*", (req, rsp) ->
                 rsp.toBuilder().header("X-Count", "1").build())
             .after("/*", (req, rsp) -> {
-                long v = rsp.headers().delegate().firstValueAsLong("X-Count").getAsLong();
+                long v = rsp.headers().firstValueAsLong("X-Count").getAsLong();
                 return rsp.toBuilder().header("X-Count", valueOf(++v)).build();
             });
         

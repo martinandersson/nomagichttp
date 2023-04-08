@@ -1,6 +1,10 @@
 package alpha.nomagichttp.message;
 
+import org.assertj.core.api.MapAssert;
 import org.junit.jupiter.api.Test;
+
+import java.util.LinkedHashMap;
+import java.util.List;
 
 import static alpha.nomagichttp.util.ByteBufferIterables.empty;
 import static java.util.List.of;
@@ -21,7 +25,7 @@ final class ResponseBuilderTest
         Response r = builder(200, "OK").build();
         assertThat(r.statusCode()).isEqualTo(200);
         assertThat(r.reasonPhrase()).isEqualTo("OK");
-        assertThat(r.headers().delegate().map()).isEmpty();
+        assertHeadersMap(r).isEmpty();
         assertSame(r.body(), empty());
     }
     
@@ -30,7 +34,7 @@ final class ResponseBuilderTest
         Response r = builder(102).build();
         assertThat(r.statusCode()).isEqualTo(102);
         assertThat(r.reasonPhrase()).isEqualTo("Unknown");
-        assertThat(r.headers().delegate().map()).isEmpty();
+        assertHeadersMap(r).isEmpty();
         assertSame(r.body(), empty());
     }
     
@@ -47,7 +51,7 @@ final class ResponseBuilderTest
     @Test
     void headerAddOne() {
         Response r = builder(-1).addHeaders("k", "v").build();
-        assertThat(r.headersForWriting()).containsExactly("k: v");
+        assertHeadersMap(r).containsOnly(entry("k", of("v")));
     }
     
     @Test
@@ -58,37 +62,73 @@ final class ResponseBuilderTest
             .addHeaders("k", "v3",
                         "k", "v2")
             .build();
-        
-        assertThat(r.headers().delegate().map()).containsOnly(
+        assertHeadersMap(r).containsExactly(
             entry("k", of("v2", "v1", "v3", "v2")));
-        
-        assertThat(r.headersForWriting()).containsExactly(
-            "k: v2",
-            "k: v1",
-            "k: v3",
-            "k: v2");
+    }
+    
+    // TODO: Add Key X " " (one whitespace) below
+    //       Also need tests white whitespace in the name.
+    // RFC 7230 §3.2.5. Field Parsing
+    // "The field value does not
+    //   include any leading or trailing whitespace" so we should actually trim the values.
+    // Might as well trim the header names too. Will simplify API; one less
+    // "IllegalStateException" upon building
+    // TODO: equals; order does not matter
+    
+    
+    // No validation of whitespace in header, values are allowed to be empty
+    @Test
+    void headerEmptyValues() {
+        var r = builder(-1).addHeaders(
+            "k 1", "",
+            "k 2", "",
+            "k 1", "").build();
+        assertHeadersMap(r).containsExactly(
+            entry("k 1", of("", "")),
+            entry("k 2", of("")));
     }
     
     @Test
-    void headerEmptyValue() {
-        var r = builder(-1).addHeaders(
-            "Key 1", "",
-            "Key 2", "   ").build();
-        assertThat(r.headersForWriting()).containsExactly(
-            "Key 1: ",
-            "Key 2:    ");
+    void noLeadingWhiteSpace_key() {
+        assertWhiteSpaceCrash(" k", "v", "Leading", " k");
+    }
+    
+    @Test
+    void noLeadingWhiteSpace_value() {
+        assertWhiteSpaceCrash("k", " v", "Leading", " v");
+    }
+    
+    @Test
+    void noTrailingWhiteSpace_key() {
+        assertWhiteSpaceCrash("k ", "v", "Trailing", "k ");
+    }
+    
+    @Test
+    void noTrailingWhiteSpace_value() {
+        assertWhiteSpaceCrash("k", "v ", "Trailing", "v ");
+    }
+    
+    private static void assertWhiteSpaceCrash(
+            String k, String v, String prefix, String bad) {
+        var b = builder(-1);
+        assertThatThrownBy(() -> b.addHeader(k, v))
+            .isExactlyInstanceOf(IllegalArgumentException.class)
+            .hasMessage(prefix + " whitespace in \"" + bad + "\".")
+            .hasNoCause()
+            .hasNoSuppressedExceptions();
     }
     
     @Test
     void headerRemove() {
         Response r = builder(-1).header("k", "v").removeHeader("k").build();
-        assertThat(r.headersForWriting()).isEmpty();
+        assertHeadersMap(r).isEmpty();
     }
     
     @Test
     void headerReplace() {
         Response r = builder(-1).header("k", "v1").header("k", "v2").build();
-        assertThat(r.headersForWriting()).containsExactly("k: v2");
+        assertHeadersMap(r).containsExactly(
+            entry("k", of("v2")));
     }
     
     @Test
@@ -97,30 +137,19 @@ final class ResponseBuilderTest
         assertThatThrownBy(b::build)
             .isExactlyInstanceOf(IllegalStateException.class)
             .hasMessage(
-                "java.lang.IllegalArgumentException: duplicate key: abC")
-            .hasNoSuppressedExceptions()
-            .cause()
-                // From HttpHeaders.of
-                .isExactlyInstanceOf(IllegalArgumentException.class)
-                .hasMessage("duplicate key: abC")
-                .hasNoSuppressedExceptions()
-                .hasNoCause();
+                // Caused by
+                "java.lang.IllegalArgumentException: Header name repeated with different casing: abC")
+            .hasNoSuppressedExceptions();
     }
     
     @Test
     void headerNameIsEmpty() {
-        var b = builder(-1).header("  ", "<-- empty");
-        assertThatThrownBy(b::build)
-            .isExactlyInstanceOf(IllegalStateException.class)
-            .hasMessage(
-                "java.lang.IllegalArgumentException: empty key")
+        var b = builder(-1);
+        assertThatThrownBy(() -> b.header("", "<-- empty"))
+            .isExactlyInstanceOf(IllegalArgumentException.class)
+            .hasMessage("Empty header name")
             .hasNoSuppressedExceptions()
-            .cause()
-                // From HttpHeaders.of
-                .isExactlyInstanceOf(IllegalArgumentException.class)
-                .hasNoSuppressedExceptions()
-                .hasNoCause()
-                .hasMessage("empty key");
+            .hasNoCause();
     }
     
     @Test
@@ -144,5 +173,15 @@ final class ResponseBuilderTest
         return DefaultResponse.DefaultBuilder.ROOT.
                 statusCode(code)
                 .reasonPhrase(phrase);
+    }
+    
+    private static MapAssert<String, List<String>> assertHeadersMap(Response r) {
+        return assertThat(copy(r.headers()));
+    }
+    
+    private static LinkedHashMap<String, List<String>> copy(BetterHeaders h) {
+        var copy = new LinkedHashMap<String, List<String>>();
+        h.forEach(copy::put);
+        return copy;
     }
 }

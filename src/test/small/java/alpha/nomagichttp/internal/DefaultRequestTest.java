@@ -7,10 +7,11 @@ import alpha.nomagichttp.message.Request;
 import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
-import java.net.http.HttpHeaders;
 import java.nio.charset.IllegalCharsetNameException;
 import java.nio.charset.UnsupportedCharsetException;
 import java.nio.file.Paths;
+import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Set;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
@@ -118,7 +119,8 @@ final class DefaultRequestTest
         }
     }
     
-    private static Request createRequest(HttpHeaders headers, String reqBody) {
+    private static Request createRequest(
+            LinkedHashMap<String, List<String>> headers, String reqBody) {
         var line = new RawRequest.Line(
                        "test-method",
                        "test-requestTarget",

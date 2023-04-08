@@ -2,6 +2,8 @@ package alpha.nomagichttp.testutil;
 
 import alpha.nomagichttp.HttpConstants;
 import alpha.nomagichttp.HttpServer;
+import alpha.nomagichttp.message.BetterHeaders;
+import alpha.nomagichttp.message.DefaultContentHeaders;
 import alpha.nomagichttp.util.Headers;
 import alpha.nomagichttp.util.Streams;
 import io.netty.buffer.ByteBuf;
@@ -45,7 +47,6 @@ import java.io.InputStream;
 import java.io.UncheckedIOException;
 import java.net.MalformedURLException;
 import java.net.URI;
-import java.net.http.HttpHeaders;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.util.ArrayList;
@@ -54,14 +55,11 @@ import java.util.EnumSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeoutException;
 import java.util.function.BiConsumer;
-import java.util.function.BiFunction;
 import java.util.function.Function;
 import java.util.function.IntSupplier;
-import java.util.function.Predicate;
 import java.util.function.Supplier;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
@@ -77,7 +75,6 @@ import static java.nio.charset.StandardCharsets.US_ASCII;
 import static java.time.Duration.ofSeconds;
 import static java.util.Arrays.stream;
 import static java.util.Locale.ROOT;
-import static java.util.Objects.deepEquals;
 import static java.util.Objects.requireNonNull;
 import static java.util.function.Predicate.not;
 import static org.apache.hc.core5.http.ContentType.APPLICATION_OCTET_STREAM;
@@ -976,17 +973,16 @@ public abstract class HttpClientFacade
      * Delegates all operations to the underlying client's response
      * implementation.<p>
      * 
-     * This class not cache anything, and if possible, it'll delegate to the
-     * client's implementation lazily. The purpose is to have problems occur
+     * This class does not cache anything, and if possible, it'll delegate to
+     * the client's implementation lazily. The purpose is to have problems occur
      * with a nice stack trace exactly when and where it is a problem, i.e. in
      * response assert statements.<p>
      * 
-     * Two instances are equal only if each operation-pair return equal values
-     * (as determined by using {@link Objects#deepEquals(Object, Object)}), or
-     * if they both throw two equal {@code UnsupportedOperationException}s. Any
-     * other exception will be rethrown from the {@code equals} method.<p>
-     * 
-     * {@code hashCode} is not implemented.
+     * {@code hashCode} and {@code equals} throws
+     * {@link UnsupportedOperationException}. This is due to headers being
+     * processed differently by clients; some keep header name casing as
+     * received, some lower-case the names. Some may even change the casing of
+     * values.
      * 
      * @param <B> body type
      */
@@ -997,7 +993,7 @@ public abstract class HttpClientFacade
                     () -> HttpConstants.Version.valueOf(jdk.version().name()).toString(),
                     jdk::statusCode,
                     unsupported(),
-                    jdk::headers,
+                    () -> new DefaultContentHeaders(new LinkedHashMap<>(jdk.headers().map()), false),
                     jdk::body,
                     unsupportedIO());
         }
@@ -1007,7 +1003,7 @@ public abstract class HttpClientFacade
                     () -> okhttp.protocol().toString().toUpperCase(ROOT),
                     okhttp::code,
                     okhttp::message,
-                    () -> Headers.of(okhttp.headers().toMultimap()),
+                    () -> new DefaultContentHeaders(new LinkedHashMap<>(okhttp.headers().toMultimap()), false),
                     () -> body,
                     supplyOurHeadersTypeIO(() ->
                         StreamSupport.stream(okhttp.trailers().spliterator(), false),
@@ -1063,7 +1059,7 @@ public abstract class HttpClientFacade
                         Map.Entry::getValue));
         }
         
-        private static <T> Supplier<HttpHeaders> supplyOurHeadersType(
+        private static <T> Supplier<BetterHeaders> supplyOurHeadersType(
                 Supplier<Stream<T>> fromNativeHeaders,
                 Function<? super T, String> name, Function<? super T, String> value) {
             return () -> {
@@ -1075,7 +1071,7 @@ public abstract class HttpClientFacade
             };
         }
         
-        private static <T> IOSupplier<HttpHeaders> supplyOurHeadersTypeIO(
+        private static <T> IOSupplier<BetterHeaders> supplyOurHeadersTypeIO(
                 IOSupplier<Stream<T>> fromNativeHeaders,
                 Function<? super T, String> name, Function<? super T, String> value) {
             return () -> {
@@ -1084,7 +1080,7 @@ public abstract class HttpClientFacade
                             sink.accept(name.apply(h));
                             sink.accept(value.apply(h)); })
                         .toArray(String[]::new);
-                return Headers.of(pairs);
+                return new DefaultContentHeaders(Headers.of(pairs), false);
             };
         }
         
@@ -1099,17 +1095,17 @@ public abstract class HttpClientFacade
         private final Supplier<String> version;
         private final IntSupplier statusCode;
         private final Supplier<String> reasonPhrase;
-        private final Supplier<HttpHeaders> headers;
+        private final Supplier<BetterHeaders> headers;
         private final Supplier<? extends B> body;
-        private final IOSupplier<HttpHeaders> trailers;
+        private final IOSupplier<BetterHeaders> trailers;
         
         private ResponseFacade(
                 Supplier<String> version,
                 IntSupplier statusCode,
                 Supplier<String> reasonPhrase,
-                Supplier<HttpHeaders> headers,
+                Supplier<BetterHeaders> headers,
                 Supplier<? extends B> body,
-                IOSupplier<HttpHeaders> trailers)
+                IOSupplier<BetterHeaders> trailers)
         {
             this.version      = version;
             this.statusCode   = statusCode;
@@ -1154,7 +1150,7 @@ public abstract class HttpClientFacade
          * 
          * @return headers
          */
-        public HttpHeaders headers() {
+        public BetterHeaders headers() {
             return headers.get();
         }
         
@@ -1174,7 +1170,7 @@ public abstract class HttpClientFacade
          * @return the trailers
          * @throws IOException if an I/O error occurs (only by OkHttp)
          */
-        public HttpHeaders trailers() throws IOException {
+        public BetterHeaders trailers() throws IOException {
             return trailers.get();
         }
         
@@ -1194,55 +1190,12 @@ public abstract class HttpClientFacade
         
         @Override
         public int hashCode() {
-            // Pseudo-implementation to stop compilation warning, which stops the build
-            // (equals implemented but not hashCode)
-            return super.hashCode();
+            throw new UnsupportedOperationException();
         }
-        
-        private static final List<Function<ResponseFacade<?>, ?>> GETTERS = List.of(
-                // Add new getters for inclusion into equals() here please
-                ResponseFacade::version,
-                ResponseFacade::statusCode,
-                ResponseFacade::reasonPhrase,
-                ResponseFacade::headers,
-                ResponseFacade::body );
         
         @Override
         public boolean equals(Object other) {
-            if (other == null || other.getClass() != getClass()) {
-                return false;
-            }
-            
-            BiFunction<ResponseFacade<?>, Function<ResponseFacade<?>, ?>, ?>
-                    getVal = (container, operation) -> {
-                            try {
-                                return operation.apply(container);
-                            } catch (UnsupportedOperationException e) {
-                                // This is also considered a value lol
-                                return e;
-                            }
-                    };
-            
-            var that = (ResponseFacade<?>) other;
-            Predicate<Function<ResponseFacade<?>, ?>> check = method ->
-                    almostDeepEquals(getVal.apply(this, method), getVal.apply(that, method));
-            
-            for (var m : GETTERS) {
-                if (!check.test(m)) {
-                    return false;
-                }
-            }
-            return true;
-        }
-        
-        private boolean almostDeepEquals(Object v1, Object v2) {
-            if ((v1 != null && v1.getClass() == UnsupportedOperationException.class) &&
-                (v2 != null && v2.getClass() == UnsupportedOperationException.class)) {
-                // Same class, compare message
-                v1 = ((Throwable) v1).getMessage();
-                v2 = ((Throwable) v2).getMessage();
-            }
-            return deepEquals(v1, v2);
+            throw new UnsupportedOperationException();
         }
     }
     

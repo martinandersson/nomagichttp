@@ -8,6 +8,7 @@ import org.assertj.core.api.MapAssert;
 import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
+import java.util.LinkedHashMap;
 import java.util.List;
 
 import static alpha.nomagichttp.internal.ParserOf.headers;
@@ -207,7 +208,9 @@ final class ParserOfTest
     
     private static MapAssert<String, List<String>>
         assertThat(Request.Headers actual) {
-            return Assertions.assertThat(actual.delegate().map());
+            var copy = new LinkedHashMap<String, List<String>>();
+            actual.forEach(copy::put);
+            return Assertions.assertThat(copy);
     }
     
     private static AbstractThrowableAssert<?, ? extends Throwable>

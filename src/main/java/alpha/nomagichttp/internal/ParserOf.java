@@ -7,13 +7,10 @@ import alpha.nomagichttp.message.HeaderParseException;
 import alpha.nomagichttp.message.MaxRequestHeadSizeExceededException;
 import alpha.nomagichttp.message.MaxRequestTrailersSizeExceededException;
 import alpha.nomagichttp.message.Request;
-import alpha.nomagichttp.util.Headers;
 
-import java.net.http.HttpHeaders;
 import java.util.ArrayList;
-import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.function.Function;
 import java.util.function.Supplier;
 
@@ -96,6 +93,7 @@ final class ParserOf<H extends BetterHeaders> extends AbstractResultParser<H>
                 in, reqLineLen,
                 maxHeadSize - reqLineLen,
                 MaxRequestHeadSizeExceededException::new,
+                RequestHeaders.EMPTY,
                 RequestHeaders::new);
     }
     
@@ -118,12 +116,14 @@ final class ParserOf<H extends BetterHeaders> extends AbstractResultParser<H>
                 in, -1,
                 maxTrailersSize,
                 MaxRequestTrailersSizeExceededException::new,
-                DefaultContentHeaders::new);
+                DefaultContentHeaders.empty(),
+                map -> new DefaultContentHeaders(map, true));
     }
     
     private final int logicalPos, maxBytes;
     private final Supplier<? extends RuntimeException> exceeded;
-    private final Function<HttpHeaders, ? extends H> finisher;
+    private final H empty;
+    private final Function<LinkedHashMap<String, List<String>>, ? extends H> finisher;
     private final TokenParser parser;
     
     private ParserOf(
@@ -131,13 +131,15 @@ final class ParserOf<H extends BetterHeaders> extends AbstractResultParser<H>
             int logicalPos,
             int maxBytes,
             Supplier<? extends RuntimeException> exceeded,
-            Function<HttpHeaders, ? extends H> finisher)
+            H empty,
+            Function<LinkedHashMap<String, List<String>>, ? extends H> finisher)
     {
         super(in);
         this.logicalPos = logicalPos;
         this.maxBytes = maxBytes;
         assert maxBytes >= 0;
         this.exceeded = exceeded;
+        this.empty = empty;
         this.finisher = finisher;
         this.parser = new TokenParser();
     }
@@ -171,7 +173,7 @@ final class ParserOf<H extends BetterHeaders> extends AbstractResultParser<H>
         }
         
         private int parsing = NAME;
-        private Map<String, List<String>> values;
+        private LinkedHashMap<String, List<String>> headers;
         
         H parse(byte b) {
             current(b);
@@ -188,7 +190,7 @@ final class ParserOf<H extends BetterHeaders> extends AbstractResultParser<H>
         private String name;
         int parseName() {
             if (isLeadingWhitespace() && isNotCR() && isNotLF()) {
-                if (values == null) {
+                if (headers == null) {
                     throw parseException(
                         "Leading whitespace in header name is not accepted.");
                 }
@@ -229,11 +231,12 @@ final class ParserOf<H extends BetterHeaders> extends AbstractResultParser<H>
                 return VAL;
             }
             else {
-                if (values == null) {
-                    values = new HashMap<>();
+                if (headers == null) {
+                    headers = new LinkedHashMap<>();
                 }
-                // Relying on HttpHeaders to trim the final value
-                values.computeIfAbsent(name, k -> new ArrayList<>(1)).add(v);
+                // Will strip trailing whitespace in build()
+                // (value can be folded)
+                headers.computeIfAbsent(name, k -> new ArrayList<>(1)).add(v);
                 return NAME;
             }
         }
@@ -246,7 +249,7 @@ final class ParserOf<H extends BetterHeaders> extends AbstractResultParser<H>
                 return DONE;
             } else if (!isWhitespace()) {
                 // Restore header value and manually call the "standard" method
-                List<String> v = values.get(name);
+                List<String> v = headers.get(name);
                 String last = v.remove(v.size() - 1);
                 
                 if (!last.isEmpty()) {
@@ -262,15 +265,16 @@ final class ParserOf<H extends BetterHeaders> extends AbstractResultParser<H>
         }
         
         private H build() {
-            HttpHeaders h;
+            if (headers == null) {
+                return empty;
+            }
             try {
-                h = Headers.of(values != null ? values : Map.of());
+                return finisher.apply(headers);
             } catch (IllegalArgumentException cause) {
                 var t = new HeaderParseException(null, (byte) -1, (byte) -1, -1, byteCount());
                 t.initCause(cause);
                 throw t;
             }
-            return finisher.apply(h);
         }
     }
 }

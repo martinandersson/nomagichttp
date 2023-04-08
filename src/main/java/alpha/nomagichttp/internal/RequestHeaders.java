@@ -6,7 +6,7 @@ import alpha.nomagichttp.message.MediaType;
 import alpha.nomagichttp.message.MediaTypeParseException;
 import alpha.nomagichttp.message.Request;
 
-import java.net.http.HttpHeaders;
+import java.util.LinkedHashMap;
 import java.util.List;
 
 import static alpha.nomagichttp.HttpConstants.HeaderName.ACCEPT;
@@ -14,8 +14,11 @@ import static alpha.nomagichttp.HttpConstants.HeaderName.ACCEPT;
 final class RequestHeaders
         extends DefaultContentHeaders implements Request.Headers
 {
-    RequestHeaders(HttpHeaders headers) {
-        super(headers);
+    static final Request.Headers EMPTY
+            = new RequestHeaders(new LinkedHashMap<>());
+    
+    RequestHeaders(LinkedHashMap<String, List<String>> headers) {
+        super(headers, true);
     }
     
     private List<MediaType> ac;

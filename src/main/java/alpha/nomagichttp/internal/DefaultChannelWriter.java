@@ -16,7 +16,10 @@ import java.nio.ByteBuffer;
 import java.nio.channels.WritableByteChannel;
 import java.time.Duration;
 import java.util.List;
+import java.util.StringJoiner;
 import java.util.concurrent.TimeoutException;
+import java.util.function.BiConsumer;
+import java.util.function.Consumer;
 
 import static alpha.nomagichttp.HttpConstants.HeaderName.TRAILER;
 import static alpha.nomagichttp.HttpConstants.StatusCode.ONE_HUNDRED;
@@ -29,13 +32,11 @@ import static alpha.nomagichttp.util.Blah.addExactOrCap;
 import static alpha.nomagichttp.util.ByteBuffers.asciiBytes;
 import static alpha.nomagichttp.util.ScopedValues.channel;
 import static alpha.nomagichttp.util.ScopedValues.httpServer;
-import static java.lang.String.join;
 import static java.lang.System.Logger.Level.DEBUG;
 import static java.lang.System.Logger.Level.WARNING;
 import static java.lang.System.nanoTime;
 import static java.util.Objects.requireNonNull;
 import static java.util.Objects.requireNonNullElse;
-import static java.util.stream.Collectors.joining;
 
 /**
  * Default implementation of {@code ChannelWriter}.<p>
@@ -60,7 +61,7 @@ import static java.util.stream.Collectors.joining;
  */
 // TODO: Implement ResponseTimeoutException,
 //       depending on design, possibly described in JavaDoc
-public final class DefaultChannelWriter implements ChannelWriter
+final class DefaultChannelWriter implements ChannelWriter
 {
     private static final System.Logger LOG
             = System.getLogger(DefaultChannelWriter.class.getPackageName());
@@ -237,8 +238,8 @@ public final class DefaultChannelWriter implements ChannelWriter
         final String
             phra = requireNonNullElse(r.reasonPhrase(), ""),
             line = httpVer + SP + r.statusCode() + SP + phra + CRLF_STR,
-            vals = join(CRLF_STR, r.headersForWriting()),
-            head = line + (vals.isEmpty() ? CRLF_STR : vals + CRLF_STR + CRLF_STR);
+            vals = headersForWriting(r.headers()::forEach),
+            head = line + vals;
         
         // TODO: For each component, including headers, we can cache the
         //       ByteBuffers and feed the channel slices.
@@ -265,18 +266,13 @@ public final class DefaultChannelWriter implements ChannelWriter
                     doWrite(asciiBytes(CRLF_STR)) :
                     0;
         }
-        var tr = r.trailers().map();
+        var tr = r.trailers();
         if (tr.isEmpty()) {
             throw new IllegalArgumentException("Empty trailers");
         }
         // TODO: Log warning if client did not indicate acceptance?
         //       (boolean accepted = request.headers().contains("TE", "trailers"))
-        var forWriting = tr.entrySet().stream()
-                .<String>mapMulti(
-                    (e, sink) -> e.getValue().forEach(v ->
-                        sink.accept(e.getKey() + ": " + v)))
-                .collect(joining(CRLF_STR));
-        return doWrite(asciiBytes(forWriting + CRLF_STR + CRLF_STR));
+        return doWrite(asciiBytes(headersForWriting(tr::forEach)));
     }
     
     private int doWrite(ByteBuffer buf) throws IOException {
@@ -297,5 +293,20 @@ public final class DefaultChannelWriter implements ChannelWriter
         }
         byteCount = addExactOrCap(byteCount, n);
         return n;
+    }
+    
+    /**
+     * Will finish with 1 CRLF, if empty, otherwise 2 CRLF.
+     * 
+     * @param r source
+     * 
+     * @return headers for writing
+     */
+    private static String headersForWriting(Consumer<BiConsumer<String, List<String>>> r) {
+        var sj = new StringJoiner(CRLF_STR, "", CRLF_STR + CRLF_STR)
+                .setEmptyValue(CRLF_STR);
+        r.accept((k, vals) ->
+                vals.forEach(v -> sj.add(k + ": " + v)));
+        return sj.toString();
     }
 }

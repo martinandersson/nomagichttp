@@ -7,6 +7,7 @@ import alpha.nomagichttp.message.Response;
 import alpha.nomagichttp.route.NoRouteFoundException;
 import alpha.nomagichttp.testutil.AbstractRealTest;
 import alpha.nomagichttp.testutil.HttpClientFacade;
+import alpha.nomagichttp.util.Headers;
 import alpha.nomagichttp.util.Throwing;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -39,7 +40,7 @@ import static alpha.nomagichttp.testutil.HttpClientFacade.Implementation.REACTOR
 import static alpha.nomagichttp.testutil.HttpClientFacade.ResponseFacade;
 import static alpha.nomagichttp.testutil.LogRecords.rec;
 import static alpha.nomagichttp.testutil.TestClient.CRLF;
-import static alpha.nomagichttp.util.Headers.of;
+import static alpha.nomagichttp.util.Headers.treeMap;
 import static alpha.nomagichttp.util.ScopedValues.channel;
 import static java.lang.System.Logger.Level.WARNING;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -92,7 +93,7 @@ class ExampleTest extends AbstractRealTest
             // Assume all other supports retrieving the reason-phrase
             assertThat(rsp.reasonPhrase()).isEqualTo("OK");
         }
-        assertThat(rsp.headers()).isEqualTo(of(
+        assertThat(treeMap(rsp.headers())).isEqualTo(treeMap(
             "Content-Type",   "text/plain; charset=" +
                 // Lowercase version is what the server sends.
                 (impl == JETTY ? "UTF-8" : "utf-8"),
@@ -132,9 +133,22 @@ class ExampleTest extends AbstractRealTest
         assertThat(res2).isEqualTo(res1);
     }
     
-    @ParameterizedTest(name = "GreetParameter/{0}")
+    @ParameterizedTest(name = "GreetParameter-PathParam/{0}")
     @EnumSource
-    void GreetParameter_compatibility(HttpClientFacade.Implementation impl)
+    void GreetParameter_compatibility_pathParam(HttpClientFacade.Implementation impl)
+            throws IOException, ExecutionException, InterruptedException, TimeoutException {
+        GreetParameter_compatibility_engine(impl, "/hello/John");
+    }
+    
+    @ParameterizedTest(name = "GreetParameter-Query/{0}")
+    @EnumSource
+    void GreetParameter_compatibility_query(HttpClientFacade.Implementation impl)
+            throws IOException, ExecutionException, InterruptedException, TimeoutException {
+        GreetParameter_compatibility_engine(impl, "/hello?name=John");
+    }
+    
+    private void GreetParameter_compatibility_engine(
+            HttpClientFacade.Implementation impl, String reqTarget)
             throws IOException, ExecutionException, InterruptedException, TimeoutException
     {
         addRoutesGreetParameter(true);
@@ -142,26 +156,22 @@ class ExampleTest extends AbstractRealTest
         HttpClientFacade req = impl.create(serverPort())
                 .addClientHeader("Accept", "text/plain; charset=utf-8");
         
-        var rsp1 = req.getText("/hello/John", HTTP_1_1);
+        var rsp = req.getText(reqTarget, HTTP_1_1);
         
-        assertThat(rsp1.version()).isEqualTo("HTTP/1.1");
-        assertThat(rsp1.statusCode()).isEqualTo(200);
+        assertThat(rsp.version()).isEqualTo("HTTP/1.1");
+        assertThat(rsp.statusCode()).isEqualTo(200);
         if (impl != JDK) {
             // Assume all other supports retrieving the reason-phrase
-            assertThat(rsp1.reasonPhrase()).isEqualTo("OK");
+            assertThat(rsp.reasonPhrase()).isEqualTo("OK");
         }
-        assertThat(rsp1.headers()).isEqualTo(of(
+        // JDK and OkHTTP will lower-case all keys
+        assertThat(treeMap(rsp.headers())).isEqualTo(treeMap(
             "Content-Type",   "text/plain; charset=" +
                 (impl == JETTY ? "UTF-8" : "utf-8"),
             "Content-Length", "11",
             "Connection",     "close"));
-        assertThat(rsp1.body()).isEqualTo(
+        assertThat(rsp.body()).isEqualTo(
             "Hello John!");
-        
-        // TODO: a path/query parameter API in the facade that uses the
-        //       implementation's API for building the encoded URI
-        var rsp2 = req.getText("/hello?name=John", HTTP_1_1);
-        assertThat(rsp1).isEqualTo(rsp2);
     }
     
     private void addRoutesGreetParameter(boolean closeChild) throws IOException {
@@ -214,7 +224,7 @@ class ExampleTest extends AbstractRealTest
         if (impl != JDK) {
             assertThat(rsp.reasonPhrase()).isEqualTo("OK");
         }
-        assertThat(rsp.headers()).isEqualTo(of(
+        assertThat(Headers.treeMap(rsp.headers())).isEqualTo(treeMap(
             "Content-Length", "11",
             "Content-Type",   "text/plain; charset=" +
                 (impl == JETTY ? "UTF-8" : "utf-8"),
@@ -280,11 +290,16 @@ class ExampleTest extends AbstractRealTest
     
     private void addRouteEchoHeaders(boolean closeChild) throws IOException {
         server().add("/echo", GET().apply(req -> {
-            var rsp = noContent().toBuilder()
-                .addHeaders(req.headers())
-                .removeHeader(CONTENT_LENGTH)
-                .build();
-            return tryScheduleClose(rsp, closeChild);
+            var b = noContent().toBuilder();
+            for (var entry : req.headers()) {
+                var k = entry.getKey();
+                if (!k.equalsIgnoreCase(CONTENT_LENGTH)) {
+                    for (var vals : entry.getValue()) {
+                        b = b.addHeader(k, vals);
+                    }
+                }
+            }
+            return tryScheduleClose(b.build(), closeChild);
         }));
     }
     
@@ -414,7 +429,7 @@ class ExampleTest extends AbstractRealTest
         // Echo body and append trailer value
         server().add("/", POST().apply(req ->
                 text(req.body().toText() +
-                     req.trailers().delegate().firstValue("Append-This").get())));
+                     req.trailers().allValues("Append-This").get(0))));
         
         var rsp = client().writeReadTextUntilEOS("""
                 POST / HTTP/1.1

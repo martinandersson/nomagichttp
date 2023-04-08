@@ -7,9 +7,8 @@ import alpha.nomagichttp.handler.RequestHandler;
 import alpha.nomagichttp.util.ByteBufferIterables;
 import alpha.nomagichttp.util.Headers;
 
-import java.net.http.HttpHeaders;
+import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.function.Supplier;
 
 import static alpha.nomagichttp.HttpConstants.ReasonPhrase;
@@ -128,16 +127,6 @@ public interface Response extends HeaderHolder
     String reasonPhrase();
     
     /**
-     * Returns HTTP headers as they are written on the wire.<p>
-     * 
-     * The default implementation adheres to the contract as defined in JavaDoc
-     * of {@link Response}. A custom implementation is free to change this.
-     * 
-     * @return HTTP headers
-     */
-    Iterable<String> headersForWriting();
-    
-    /**
      * Returns the message body (possibly empty).
      * 
      * @return the message body
@@ -148,15 +137,13 @@ public interface Response extends HeaderHolder
      * Returns trailers.<p>
      * 
      * A response that wishes to send trailers must set the
-     * {@value HttpConstants.HeaderName#TRAILER} header.<p>
-     * 
-     * The value(s) should precisely match the trailer name(s). The server will
-     * not even call this method if the "Trailer" header is not set. Otherwise,
-     * this method will be called exactly once after the body has been written,
-     * more specifically; after {@code ByteBufferIterable.close} has been
-     * called. The method must then return non-empty trailers. The server does
-     * not verify that the actual trailers sent was correctly enumerated in the
-     * "Trailer" header.
+     * {@value HttpConstants.HeaderName#TRAILER} header. The value(s) should
+     * precisely match the trailer name(s). The server will not even call this
+     * method if the header has not been set. Otherwise, this method will be
+     * called exactly once after the body has been written, more specifically;
+     * after {@code ByteBufferIterable.close} has been called. The method must
+     * then return non-empty trailers. The server does not verify that the
+     * actual trailers sent is correctly enumerated in the "Trailer" header.
      * 
      * @apiNote
      * Although
@@ -172,7 +159,7 @@ public interface Response extends HeaderHolder
      * @return trailers (possibly {@code null})
      * @see Request#trailers() 
      */
-    default HttpHeaders trailers() {
+    default LinkedHashMap<String, List<String>> trailers() {
         return null;
     }
     
@@ -244,33 +231,51 @@ public interface Response extends HeaderHolder
      * 
      * Status code is the only required field.<p>
      * 
-     * All the remaining JavaDoc related to headers is true for the default
-     * builder implementation building the default response implementation.<p>
-     * 
-     * The content of header names and values are generally not validated. The
-     * application must not write invalid data such as a header name with
+     * Leading and trailing whitespace in header names and values, is not
+     * accepted (
+     * <a href="https://datatracker.ietf.org/doc/html/rfc7230/#section-3.2.4">RFC §3.2.4. Field Parsing</a>
+     * ). Header names are not accepted to be empty, values may be empty. The
+     * content is generally not validated. The application should only use
+     * visible US ASCII characters, and never write a header name with
      * whitespace in it (
      * <a href="https://datatracker.ietf.org/doc/html/rfc7230#section-3.2">RFC 7230 §3.2</a>
-     * ). Header values can be empty.<p>
+     * ).<p>
      * 
-     * Adding many values to the same header name replicates the header across
+     * Adding values to the same header name replicates the header across
      * multiple rows in the response. It does <strong>not</strong> join the
      * values on the same row. If this is desired, first join multiple values
      * and then pass it to the builder as one.<p>
      * 
-     * Header order is not significant, but the addition order will be preserved
-     * on the wire except for duplicated names which will be grouped together
-     * and inserted at the occurrence of the first.<p>
+     * Header order for different names is not significant (see note). The
+     * addition order will be preserved on the wire, except for a duplicated
+     * name whose entry will be inserted after the last occurrence (i.e., they
+     * are grouped).<p>
      * 
      * Although the builder will strive to fail-fast, some message variants are
-     * illegal depending on future context. They may build just fine but cause
-     * an exception to be thrown at a later point. For example responding a
-     * response with a body to a {@code HEAD} request.<p>
+     * illegal depending on a future context. That is to say, they may build
+     * just fine but cause an exception to be thrown at a later point. For
+     * example responding a response with a body to a {@code HEAD} request.<p>
      * 
      * The implementation is thread-safe and non-blocking.<p>
      * 
      * The implementation does not necessarily implement {@code hashCode} and
      * {@code equals}.
+     * 
+     * @apiNote
+     * Order may be significant for the same header name. For example, the
+     * following cookie will end up storing the value "bar":
+     * <pre>
+     *   Set-Cookie: whatever=foo
+     *   Set-Cookie: whatever=bar
+     * </pre>
+     * 
+     * Although the order for different names is not significant, "it is a good
+     * practice to send header fields that contain control data first" (
+     * <a href="https://datatracker.ietf.org/doc/html/rfc7230#section-3.2.2">RFC 7230 §3.2.2. Field Order</a>
+     * ). Examples of "control data" includes "Age", "Cache-Control", "Expires",
+     * et cetera (
+     * <a href="https://datatracker.ietf.org/doc/html/rfc7231#section-7.1">RFC 7231 §7.1. Control Data</a>
+     * ).
      * 
      * @author Martin Andersson (webmaster at martinandersson.com)
      */
@@ -279,19 +284,25 @@ public interface Response extends HeaderHolder
         /**
          * Sets a status code.
          * 
-         * @param  statusCode value (any integer value)
+         * @param statusCode value (any integer value)
+         * 
          * @return a new builder representing the new state
-         * @see    StatusCode
+         * 
+         * @see StatusCode
          */
         Builder statusCode(int statusCode);
         
         /**
          * Sets a reason phrase.
          * 
-         * @param  reasonPhrase value (any non-null string)
-         * @throws NullPointerException if {@code reasonPhrase} is {@code null}
+         * @param reasonPhrase value (any non-null string)
+         * 
          * @return a new builder representing the new state
-         * @see    ReasonPhrase
+         * 
+         * @throws NullPointerException
+         *             if {@code reasonPhrase} is {@code null}
+         * 
+         * @see ReasonPhrase
          */
         Builder reasonPhrase(String reasonPhrase);
         
@@ -301,42 +312,56 @@ public interface Response extends HeaderHolder
          * This method overwrites all previously set values for the given name
          * (case-sensitive).
          * 
-         * @param  name of header
-         * @param  value of header
+         * @param name of header
+         * @param value of header
          * 
          * @return a new builder representing the new state
          * 
          * @throws NullPointerException
          *             if any argument is {@code null}
+         * @throws IllegalArgumentException
+         *             if any argument has leading or trailing whitespace
+         * @throws IllegalArgumentException
+         *             if {@code name} is empty
          * 
          * @see HttpConstants.HeaderName
          */
         Builder header(String name, String value);
         
         /**
-         * Removes all occurrences of a header.<p>
+         * Removes <i>all</i> occurrences of a header.<p>
          * 
          * This method operates without regard to casing.
          * 
-         * @param  name of the header
+         * @param name of the header
+         * 
          * @return a new builder representing the new state
-         * @throws NullPointerException if {@code name} is {@code null}
+         * 
+         * @throws NullPointerException
+         *              if {@code name} is {@code null}
+         * @throws IllegalArgumentException
+         *             if {@code name} has leading or trailing whitespace
+         * @throws IllegalArgumentException
+         *             if {@code name} is empty
          */
         Builder removeHeader(String name);
         
         /**
          * Removes all occurrences of given a header value.<p>
          * 
-         * This method operates without regard to casing for both header name
-         * and value.<p>
+         * This method operates without regard to casing.
          * 
-         * If there are no mapped values left after the operation, the header
-         * will also be removed.
+         * @param name of the header
+         * @param value to remove
          * 
-         * @param  name of the header
-         * @param  value predicate
          * @return a new builder representing the new state
-         * @throws NullPointerException if any argument is {@code null}
+         * 
+         * @throws NullPointerException
+         *             if any argument is {@code null}
+         * @throws IllegalArgumentException
+         *             if any argument has leading or trailing whitespace
+         * @throws IllegalArgumentException
+         *             if {@code name} is empty
          */
         Builder removeHeaderValue(String name, String value);
         
@@ -352,7 +377,11 @@ public interface Response extends HeaderHolder
          * @return a new builder representing the new state
          * 
          * @throws NullPointerException
-         *             if any argument or is {@code null}
+         *             if any argument is {@code null}
+         * @throws IllegalArgumentException
+         *             if any argument has leading or trailing whitespace
+         * @throws IllegalArgumentException
+         *             if {@code name} is empty
          * 
          * @see HttpConstants.HeaderName
          */
@@ -361,11 +390,15 @@ public interface Response extends HeaderHolder
         /**
          * Adds header(s) to this response.<p>
          * 
+         * This method is equivalent to calling
+         * {@link #addHeader(String, String) addHeader}, for each given pair.<p>
+         * 
          * Iterating the {@code String[]} must alternate between header-names
          * and values.<p>
          * 
-         * The results are undefined if the {@code String[]} is modified before
-         * the response has been built.
+         * The implementation is free to modify the contents of the given
+         * {@code String[]}. The results are undefined if the application
+         * modifies the array after having called this method.
          * 
          * @param name of header
          * @param value of header
@@ -377,58 +410,14 @@ public interface Response extends HeaderHolder
          *             if any argument or array element is {@code null}
          * @throws IllegalArgumentException
          *             if {@code morePairs.length} is odd
+         * @throws IllegalArgumentException
+         *             if any given string has leading or trailing whitespace
+         * @throws IllegalArgumentException
+         *             if {@code name} is empty
          * 
          * @see HttpConstants.HeaderName
          */
         Builder addHeaders(String name, String value, String... morePairs);
-        
-        /**
-         * Adds all headers from the given headers object.
-         * 
-         * @implSpec
-         * The default implementation is
-         * <pre>
-         *     return this.{@link #addHeaders(Map)
-         *       addHeaders}(headers.{@link BetterHeaders#delegate()
-         *         delegate}().{@link HttpHeaders#map() map}());
-         * </pre>
-         * 
-         * The delegate's map does not provide a guarantee regarding the
-         * ordering.
-         * 
-         * @param headers to add
-         * 
-         * @return a new builder representing the new state
-         * 
-         * @throws NullPointerException
-         *             if {@code headers} is {@code null}
-         * 
-         * @see HttpConstants.HeaderName
-         */
-        default Builder addHeaders(BetterHeaders headers) { // TODO: Remove!
-            return addHeaders(headers.delegate().map());
-        }
-        
-        /**
-         * Adds all headers from the given map.<p>
-         * 
-         * The order of the response headers will follow the iteration order of
-         * the provided map.<p>
-         * 
-         * The specified {@code Map} (and its values) must be effectively
-         * unmodifiable. Changes to the contents after this method returns will
-         * have undefined application behavior.
-         * 
-         * @param headers to add
-         * 
-         * @return a new builder representing the new state
-         * 
-         * @throws NullPointerException
-         *             if {@code headers} is {@code null}
-         * 
-         * @see HttpConstants.HeaderName
-         */
-        Builder addHeaders(Map<String, List<String>> headers);
         
         /**
          * Sets a message body.<p>
@@ -484,8 +473,15 @@ public interface Response extends HeaderHolder
          * If the HTTP exchange is using a version less than 1.1, then the
          * trailers will be silently discarded.<p>
          * 
-         * Trailers will be written out on the wire in almost the same way
-         * headers are. The only exception is that the order is not defined.
+         * Trailers will be written out on the wire in the same way headers are;
+         * order and casing is preserved. Although this builder requires that
+         * header names- and values has no leading or trailing whitespace, the
+         * same validation does not happen for the given trailers. Nonetheless,
+         * the application should ensure there is no such whitespace in the
+         * given strings.<p>
+         * 
+         * The application must not modify the {@code Map} or its values after
+         * it has been supplied to the server.
          * 
          * @param trailers called after the body has been iterated
          * 
@@ -498,7 +494,7 @@ public interface Response extends HeaderHolder
          * @see Headers
          * @see Config#rejectClientsUsingHTTP1_0() 
          */
-        Builder addTrailers(Supplier<HttpHeaders> trailers);
+        Builder addTrailers(Supplier<LinkedHashMap<String, List<String>>> trailers);
         
         /**
          * Remove a previously set trailers' supplier, if present.
@@ -515,9 +511,7 @@ public interface Response extends HeaderHolder
          * @return a response
          * 
          * @throws IllegalStateException
-         *             If a header name is repeated using different casing
-         * @throws IllegalStateException
-         *             if a header name is empty (after trimming whitespaces)
+         *             if a header name is repeated using different casing
          * @throws IllegalStateException
          *             if status code is 1XX (Informational) and header {@code
          *             Connection: close} is set (

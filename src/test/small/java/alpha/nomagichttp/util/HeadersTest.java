@@ -54,8 +54,6 @@ final class HeadersTest
     }
     
     private static MapAssert<String, List<String>> assertPairs(String... nameValuePairs) {
-        return assertThat(Headers.of(nameValuePairs).map());
+        return assertThat(Headers.of(nameValuePairs));
     }
-    
-    
 }

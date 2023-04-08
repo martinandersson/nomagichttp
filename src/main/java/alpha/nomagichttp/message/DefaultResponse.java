@@ -2,9 +2,9 @@ package alpha.nomagichttp.message;
 
 import alpha.nomagichttp.HttpConstants;
 import alpha.nomagichttp.util.AbstractImmutableBuilder;
+import alpha.nomagichttp.util.ByteBufferIterables;
 
 import java.io.IOException;
-import java.net.http.HttpHeaders;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -14,9 +14,7 @@ import java.util.function.Supplier;
 
 import static alpha.nomagichttp.HttpConstants.StatusCode.THREE_HUNDRED_FOUR;
 import static alpha.nomagichttp.HttpConstants.StatusCode.TWO_HUNDRED_FOUR;
-import static alpha.nomagichttp.util.ByteBufferIterables.empty;
-import static alpha.nomagichttp.util.Headers.of;
-import static java.util.Collections.emptyList;
+import static alpha.nomagichttp.util.Strings.requireNoSurroundingWS;
 import static java.util.Objects.requireNonNull;
 
 /**
@@ -32,25 +30,22 @@ final class DefaultResponse implements Response
     private final int statusCode;
     private final String reasonPhrase;
     private final ContentHeaders headers;
-    private final Iterable<String> forWriting;
     private final ResourceByteBufferIterable body;
-    private final Supplier<HttpHeaders> trailers;
+    private final Supplier<LinkedHashMap<String, List<String>>> trailers;
     private final DefaultBuilder origin;
     
     private DefaultResponse(
             int statusCode,
             String reasonPhrase,
-            HttpHeaders headers,
+            ContentHeaders headers,
             // Is unmodifiable
-            Iterable<String> forWriting,
             ResourceByteBufferIterable body,
-            Supplier<HttpHeaders> trailers,
+            Supplier<LinkedHashMap<String, List<String>>> trailers,
             DefaultBuilder origin)
     {
         this.statusCode = statusCode;
         this.reasonPhrase = reasonPhrase;
-        this.headers = new DefaultContentHeaders(headers);
-        this.forWriting = forWriting;
+        this.headers = headers;
         this.body = body;
         this.trailers = trailers;
         this.origin = origin;
@@ -72,17 +67,12 @@ final class DefaultResponse implements Response
     }
     
     @Override
-    public Iterable<String> headersForWriting() {
-        return forWriting;
-    }
-    
-    @Override
     public ResourceByteBufferIterable body() {
         return body;
     }
     
     @Override
-    public HttpHeaders trailers() {
+    public LinkedHashMap<String, List<String>> trailers() {
         return trailers == null ? null : trailers.get();
     }
     
@@ -113,9 +103,9 @@ final class DefaultResponse implements Response
         private static class MutableState {
             Integer statusCode;
             String reasonPhrase;
-            Map<String, List<String>> headers;
+            LinkedHashMap<String, List<String>> headers;
             ResourceByteBufferIterable body;
-            Supplier<HttpHeaders> trailers;
+            Supplier<LinkedHashMap<String, List<String>>> trailers;
             
             void removeHeader(String name) {
                 assert name != null;
@@ -177,59 +167,60 @@ final class DefaultResponse implements Response
         
         @Override
         public Response.Builder statusCode(int statusCode) {
-            return new DefaultBuilder(this, s ->
-                    s.statusCode = statusCode);
+            return new DefaultBuilder(this, s -> s.statusCode = statusCode);
         }
         
         @Override
         public Response.Builder reasonPhrase(String reasonPhrase) {
             requireNonNull(reasonPhrase, "reasonPhrase");
-            return new DefaultBuilder(this, s ->
-                    s.reasonPhrase = reasonPhrase);
+            return new DefaultBuilder(this, s -> s.reasonPhrase = reasonPhrase);
         }
         
         @Override
         public Response.Builder header(String name, String value) {
-            requireNonNull(name, "name");
-            requireNonNull(value, "value");
-            return new DefaultBuilder(this, s ->
-                    s.addHeader(true, name, value));
+            final String key = requireNotEmpty(requireNoSurroundingWS(name)),
+                         val = requireNoSurroundingWS(value);
+            return new DefaultBuilder(this, s -> s.addHeader(true, key, val));
         }
         
         @Override
         public Response.Builder removeHeader(String name) {
-            requireNonNull(name, "name");
-            return new DefaultBuilder(this, s -> s.removeHeader(name));
+            final String key = requireNotEmpty(requireNoSurroundingWS(name));
+            return new DefaultBuilder(this, s -> s.removeHeader(key));
         }
         
         @Override
         public Response.Builder removeHeaderValue(String name, String value) {
-            requireNonNull(name, "name");
-            requireNonNull(value, "value");
-            return new DefaultBuilder(this, s ->
-                    s.removeHeaderValue(name, value));
+            final String key = requireNotEmpty(requireNoSurroundingWS(name)),
+                         val = requireNoSurroundingWS(value);
+            return new DefaultBuilder(this, s -> s.removeHeaderValue(key, val));
         }
         
         @Override
         public Response.Builder addHeader(String name, String value) {
-            requireNonNull(name, "name");
-            requireNonNull(value, "value");
-            return new DefaultBuilder(this, s ->
-                    s.addHeader(false, name, value));
+            final String key = requireNotEmpty(requireNoSurroundingWS(name)),
+                         val = requireNoSurroundingWS(value);
+            return new DefaultBuilder(this, s -> s.addHeader(false, key, val));
         }
         
         @Override
         public Response.Builder addHeaders(String name, String value, String... morePairs) {
-            requireNonNull(name, "name");
-            requireNonNull(value, "value");
+            final String key1 = requireNotEmpty(requireNoSurroundingWS(name)),
+                         val1 = requireNoSurroundingWS(value);
             for (int i = 0; i < morePairs.length; ++i) {
-                requireNonNull(morePairs[i], "morePairs[" + i + "]");
+                if (i % 2 == 0) {
+                    // Key
+                    morePairs[i] = requireNotEmpty(requireNoSurroundingWS(morePairs[i]));
+                } else {
+                    // Val
+                    morePairs[i] = requireNoSurroundingWS(morePairs[i]);
+                }
             }
             if (morePairs.length % 2 != 0) {
                 throw new IllegalArgumentException("morePairs.length is not even");
             }
             return new DefaultBuilder(this, ms -> {
-                ms.addHeader(false, name, value);
+                ms.addHeader(false, key1, val1);
                 for (int i = 0; i < morePairs.length - 1; i += 2) {
                     String k = morePairs[i],
                            v = morePairs[i + 1];
@@ -239,21 +230,13 @@ final class DefaultResponse implements Response
         }
         
         @Override
-        public Response.Builder addHeaders(Map<String, List<String>> headers) {
-            requireNonNull(headers);
-            return new DefaultBuilder(this, s ->
-                    headers.forEach((name, values) ->
-                            values.forEach(v -> s.addHeader(false, name, v))));
-        }
-        
-        @Override
         public Response.Builder body(ResourceByteBufferIterable body) {
             requireNonNull(body, "body");
             return new DefaultBuilder(this, s -> s.body = body);
         }
         
         @Override
-        public Builder addTrailers(Supplier<HttpHeaders> trailers) {
+        public Builder addTrailers(Supplier<LinkedHashMap<String, List<String>>> trailers) {
             requireNonNull(trailers, "trailers");
             return new DefaultBuilder(this, s -> s.trailers = trailers);
         }
@@ -268,23 +251,19 @@ final class DefaultResponse implements Response
             MutableState s = constructState(MutableState::new);
             setDefaults(s);
             
-            final HttpHeaders headers;
+            final ContentHeaders headers;
             try {
-                headers = s.headers == null ? of() : of(s.headers);
+                headers = s.headers == null ?
+                        DefaultContentHeaders.empty() :
+                        new DefaultContentHeaders(s.headers, false);
             } catch (IllegalArgumentException e) {
                 throw new IllegalStateException(e);
             }
-            
-            Iterable<String> forWriting = s.headers == null ? emptyList() :
-                    s.headers.entrySet().stream().flatMap(e ->
-                            e.getValue().stream().map(v -> e.getKey() + ": " + v))
-                    .toList();
             
             Response r = new DefaultResponse(
                     s.statusCode,
                     s.reasonPhrase,
                     headers,
-                    forWriting,
                     s.body,
                     s.trailers,
                     this);
@@ -305,12 +284,19 @@ final class DefaultResponse implements Response
             return r;
         }
         
+        private static String requireNotEmpty(String name) {
+            if (name.isEmpty()) {
+                throw new IllegalArgumentException("Empty header name");
+            }
+            return name;
+        }
+        
         private static void setDefaults(MutableState s) {
             if (s.reasonPhrase == null) {
                 s.reasonPhrase = HttpConstants.ReasonPhrase.UNKNOWN; }
             
             if (s.body == null) {
-                s.body = empty(); }
+                s.body = ByteBufferIterables.empty(); }
         }
         
         private static boolean isEmpty(Response r) {

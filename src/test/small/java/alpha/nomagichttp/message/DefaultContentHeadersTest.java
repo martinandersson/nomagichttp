@@ -3,6 +3,7 @@ package alpha.nomagichttp.message;
 import alpha.nomagichttp.util.Headers;
 import org.junit.jupiter.api.Test;
 
+import java.util.LinkedHashMap;
 import java.util.List;
 
 import static java.util.Map.entry;
@@ -14,12 +15,16 @@ final class DefaultContentHeadersTest
     @Test
     void caseIsRetained_butQueryingIsNotCaseSensitive() {
         var testee = of("name", "VALUE");
-        assertThat(testee.delegate().map())
+        var copy = new LinkedHashMap<String, List<String>>();
+        testee.forEach(copy::put);
+        assertThat(copy)
                 .containsExactly(entry("name", List.of("VALUE")));
-        assertThat(testee.allTokens("NAME"))
-                .containsOnly("VALUE");
         assertThat(testee.contains("NAME", "value"))
                 .isTrue();
+        assertThat(testee.allValues("nAmE"))
+                .containsOnly("VALUE");
+        assertThat(testee.allTokens("NaMe"))
+                .containsOnly("VALUE");
     }
     
     @Test
@@ -83,7 +88,16 @@ final class DefaultContentHeadersTest
             .hasNoCause();
     }
     
+    @Test
+    void toStringTest() {
+        var testee = of(
+            "K1", "a", "K1", "b",
+            "K2", "c");
+        assertThat(testee.toString())
+            .isEqualTo("{K1=[a, b], K2=[c]}");
+    }
+    
     private static DefaultContentHeaders of(String... headers) {
-        return new DefaultContentHeaders(Headers.of(headers));
+        return new DefaultContentHeaders(Headers.of(headers), false);
     }
 }

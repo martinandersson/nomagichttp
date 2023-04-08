@@ -9,6 +9,8 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
 
 import java.io.IOException;
+import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeoutException;
 
@@ -202,7 +204,9 @@ class MessageTest extends AbstractRealTest
         // Jetty has no public support for trailers
         // TODO: Verify Jetty if and when they add support
         if (impl != JETTY) {
-            assertThat(rsp.trailers().map()).containsExactly(
+            var copy = new LinkedHashMap<String, List<String>>();
+            rsp.trailers().forEach(copy::put);
+            assertThat(copy).containsExactly(
                 entry("One", of("Foo")), entry("Two", of("Bar")));
         }
     }

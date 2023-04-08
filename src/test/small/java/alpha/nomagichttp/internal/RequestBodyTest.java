@@ -27,6 +27,6 @@ final class RequestBodyTest
     }
     
     private static DefaultContentHeaders headers(String... pair) {
-        return new DefaultContentHeaders(Headers.of(pair));
+        return new DefaultContentHeaders(Headers.of(pair), false);
     }
 }

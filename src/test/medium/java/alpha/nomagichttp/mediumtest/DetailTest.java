@@ -91,7 +91,7 @@ class DetailTest extends AbstractRealTest
             .add("/echo-trailer", POST().apply(req -> {
                 // Still must consume the body before trailers lol
                 var discard = req.body().toText();
-                var trailer = req.trailers().delegate().firstValue("X-Trailer").get();
+                var trailer = req.trailers().firstValue("X-Trailer").get();
                 return text(trailer);
             }));
         var template = """

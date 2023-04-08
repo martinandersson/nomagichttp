@@ -1,5 +1,6 @@
 package alpha.nomagichttp.util;
 
+import java.util.Objects;
 import java.util.function.Consumer;
 import java.util.function.IntPredicate;
 import java.util.stream.Stream;
@@ -264,5 +265,66 @@ public final class Strings
             }
         }
         return false;
+    }
+    
+    /**
+     * Throws {@code IllegalArgumentException} if the given {@code str} contains
+     * leading or trailing whitespace.
+     * 
+     * @param str to validate
+     * 
+     * @return the same {@code str} reference
+     * 
+     * @throws NullPointerException
+     *             if {@code str} is {@code null}
+     * @throws IllegalArgumentException
+     *             see JavaDoc
+     * 
+     * @see Character#isWhitespace(int) 
+     */
+    public static String requireNoSurroundingWS(String str) {
+        requireNoEffect(str, str.stripLeading(), "Leading");
+        requireNoEffect(str, str.stripTrailing(), "Trailing");
+        return str;
+    }
+    
+    private static void requireNoEffect(String org, String res, String prefix) {
+        if (!Objects.equals(org, res)) {
+            throw new IllegalArgumentException(
+                    prefix + " whitespace in \"" + org + "\".");
+        }
+        // Now, why the hell did we not just do Character.isWhitespace(int)?
+        // For starters, I might have if I knew how to retrieve the last code
+        // point from a String. JavaDoc of String.codePointAt/Before() indicates
+        // we would have to throw in ninja code to get the last code point, and
+        // indeed, if we follow the UTF-16 branch of the String.stripTrailing()
+        // implementation, we will eventually find ninja code querying
+        // Character.isLow/HighSurrogate() — they really should have added a
+        // String.lastCodePoint() lol.
+        // 
+        // Now, am I a rocket scientist that would trust my code if I were to
+        // re-implement what they did? Hell no! By piggybacking on the
+        // implementation from the Java Gods, we will [hopefully] get a correct
+        // as well as an optimized implementation, for 99.99% of all cases, when
+        // there is no surrounding white space lol.
+        // 
+        // It should be noted that "optimized implementation for 99.99% of all
+        // cases" is only true if the String.strip() implementation returns
+        // the same String reference on NOP. If the method were to return a new
+        // copy each time, then obviously equals() would have to fully iterate
+        // two byte arrays, each time. This is very unlikely as it would be a
+        // profoundly stupid implementation, but something old implementations
+        // of trim() actually used to do lol, so ... am I too happy with what we
+        // currently have going? Well, it depends. Both of these statements are
+        // correct:
+        // 
+        // 1) It is LIKELY, that for 99.99% of all cases, the current
+        //    implementation is both optimized and correct.
+        // 2) If we were to instead implement lastCodePoint(), it is LIKELY that
+        //    the performance would be comparatively lower for 99.99% of all
+        //    cases, nor would we be fully confident in its correctness.
+        // 
+        // The only advantage with #2 is code readability; an oh so important
+        // thing. But hopefully this comment will make up for it.
     }
 }

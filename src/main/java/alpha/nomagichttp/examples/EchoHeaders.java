@@ -34,14 +34,17 @@ public final class EchoHeaders
     public static void main(String... args) throws IOException, InterruptedException {
         HttpServer app = HttpServer.create();
         
-        app.add("/echo", GET().apply(request ->
-                // 204 (No Content)
-                Responses.noContent()
-                         .toBuilder()
-                             .addHeaders(request.headers())
-                             // 204 response must not contain this header
-                             .removeHeader(CONTENT_LENGTH)
-                             .build()));
+        app.add("/echo", GET().apply(request -> {
+            // 204 (No Content)
+            var builder = Responses.noContent().toBuilder();
+            request.headers().forEach((name, vals) -> {
+                // 204 response must not contain this header
+                if (!name.equalsIgnoreCase(CONTENT_LENGTH)) {
+                    vals.forEach(v -> builder.addHeader(name, v));
+                }
+            });
+            return builder.build();
+        }));
         
         System.out.println("Listening on port " + PORT + ".");
         app.start(PORT);
