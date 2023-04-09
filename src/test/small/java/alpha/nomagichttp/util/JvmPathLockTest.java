@@ -1,6 +1,5 @@
 package alpha.nomagichttp.util;
 
-import alpha.nomagichttp.testutil.Interrupt;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -12,6 +11,7 @@ import java.util.concurrent.TimeoutException;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.stream.Stream;
 
+import static alpha.nomagichttp.testutil.Interrupt.interruptAfter;
 import static java.util.concurrent.Executors.newSingleThreadExecutor;
 import static java.util.concurrent.ForkJoinPool.commonPool;
 import static java.util.concurrent.TimeUnit.SECONDS;
@@ -124,7 +124,7 @@ final class JvmPathLockTest
          // Unlike the JDK (which would block until timeout), our API crashes,
          // and no matter the specified timeout; it happens at once
          assertThatThrownBy(() ->
-                 Interrupt.after(1, SECONDS, "writeLock", () ->
+                 interruptAfter(1, SECONDS, "writeLock", () ->
                      JvmPathLock.writeLock(blabla, timeout, SECONDS)))
              .isExactlyInstanceOf(IllegalLockUpgradeException.class)
              .hasMessage(null)

@@ -17,6 +17,7 @@ import java.util.Collection;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
+import static alpha.nomagichttp.testutil.Interrupt.interruptAfter;
 import static alpha.nomagichttp.util.IOExceptions.isCausedByBrokenInputStream;
 import static alpha.nomagichttp.util.IOExceptions.isCausedByBrokenOutputStream;
 import static java.lang.System.Logger.Level.DEBUG;
@@ -315,7 +316,7 @@ public final class TestClient
         int size = setSmallBufferGetActual(SO_RCVBUF);
         ByteBuffer buf = allocate(size + 1);
         try {
-            int r = Interrupt.after(1, SECONDS, "serverClosedOutput",
+            int r = interruptAfter(1, SECONDS, "serverClosedOutput",
                         () -> ch.read(buf));
             return r == -1;
         } catch (IOException e) {
@@ -354,7 +355,7 @@ public final class TestClient
         ByteBuffer buf = allocate(size + 1);
         try {
             // Test 1
-            Interrupt.after(1, SECONDS, "serverClosedInput", () -> {
+            interruptAfter(1, SECONDS, "serverClosedInput", () -> {
                 while (buf.hasRemaining()) {
                     int r = ch.write(buf);
                     assertThat(r).isPositive().describedAs(
@@ -640,14 +641,14 @@ public final class TestClient
     
     private void doWrite(byte[] data) throws IOException {
         requireContent(data);
-        Interrupt.after(wAmount, wUnit, "doWrite", () -> {
+        interruptAfter(wAmount, wUnit, "doWrite", () -> {
             int r = ch.write(wrap(data));
             assertThat(r).isEqualTo(data.length);
         });
     }
     
     private void doRead(FiniteByteBufferSink sink) throws IOException {
-        Interrupt.after(rAmount, rUnit, "doRead", () -> {
+        interruptAfter(rAmount, rUnit, "doRead", () -> {
             ByteBuffer buf = allocate(BUF_SIZE);
             while (!sink.hasReachedEnd()) {
                 if (ch.read(buf) == -1) {

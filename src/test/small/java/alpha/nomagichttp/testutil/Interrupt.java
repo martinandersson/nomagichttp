@@ -43,11 +43,11 @@ public final class Interrupt
      * 
      * @throws X as defined by action
      */
-    public static <X extends Exception> void after(
+    public static <X extends Exception> void interruptAfter(
             long duration, TimeUnit unit, String name,
             Throwing.Runnable<X> action)
             throws X {
-        after(duration, unit, name, () -> {
+        interruptAfter(duration, unit, name, () -> {
             action.run();
             return null;
         });
@@ -72,7 +72,7 @@ public final class Interrupt
      * 
      * @throws X as defined by action
      */
-    public static <V, X extends Exception> V after(
+    public static <V, X extends Exception> V interruptAfter(
             long duration, TimeUnit unit, String name,
             Throwing.Supplier<V, X> action)
             throws X {
