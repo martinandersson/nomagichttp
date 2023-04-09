@@ -10,8 +10,8 @@ import java.nio.ByteBuffer;
 import java.nio.channels.ReadableByteChannel;
 import java.util.NoSuchElementException;
 
-import static alpha.nomagichttp.internal.Blah.CHANNEL_BLOCKING;
-import static alpha.nomagichttp.internal.Blah.requireVirtualThread;
+import static alpha.nomagichttp.internal.VThreads.CHANNEL_BLOCKING;
+import static alpha.nomagichttp.internal.VThreads.requireVirtualThread;
 import static alpha.nomagichttp.util.Blah.addExactOrCap;
 import static alpha.nomagichttp.util.Blah.toIntOrMaxValue;
 import static alpha.nomagichttp.util.ScopedValues.channel;

@@ -27,7 +27,7 @@ import java.util.concurrent.TimeoutException;
 
 import static alpha.nomagichttp.HttpConstants.HeaderName.CONTENT_LENGTH;
 import static alpha.nomagichttp.HttpConstants.HeaderName.TRANSFER_ENCODING;
-import static alpha.nomagichttp.internal.Blah.requireVirtualThread;
+import static alpha.nomagichttp.internal.VThreads.requireVirtualThread;
 import static alpha.nomagichttp.util.Blah.EMPTY_BYTEARRAY;
 import static alpha.nomagichttp.util.Blah.addExactOrCap;
 import static alpha.nomagichttp.util.Blah.toNanosOrMaxValue;

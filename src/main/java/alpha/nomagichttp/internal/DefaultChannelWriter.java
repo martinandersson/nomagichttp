@@ -25,7 +25,7 @@ import static alpha.nomagichttp.HttpConstants.HeaderName.TRAILER;
 import static alpha.nomagichttp.HttpConstants.StatusCode.ONE_HUNDRED;
 import static alpha.nomagichttp.HttpConstants.Version.HTTP_1_1;
 import static alpha.nomagichttp.handler.ResponseRejectedException.Reason.PROTOCOL_NOT_SUPPORTED;
-import static alpha.nomagichttp.internal.Blah.CHANNEL_BLOCKING;
+import static alpha.nomagichttp.internal.VThreads.CHANNEL_BLOCKING;
 import static alpha.nomagichttp.internal.DefaultRequest.requestWithParams;
 import static alpha.nomagichttp.internal.HttpExchange.skeletonRequest;
 import static alpha.nomagichttp.util.Blah.addExactOrCap;

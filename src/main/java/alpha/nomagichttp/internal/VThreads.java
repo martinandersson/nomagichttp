@@ -1,13 +1,13 @@
 package alpha.nomagichttp.internal;
 
 /**
- * Is a namespace for things that doesn't belong anywhere.
+ * Require a virtual thread.
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  */
-final class Blah
+final class VThreads
 {
-    private Blah() {
+    private VThreads() {
         // Empty
     }
     
