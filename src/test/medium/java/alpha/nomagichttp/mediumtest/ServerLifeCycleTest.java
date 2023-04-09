@@ -50,8 +50,8 @@ class ServerLifeCycleTest extends AbstractRealTest
         var latch = new CountDownLatch(1);
         Future<Void> fut;
         // ForkJoinPool wraps the AsyncCloseExc in two layers of RuntimeException lol
-        try (var exec = newVirtualThreadPerTaskExecutor()) {
-            fut = exec.submit(() ->
+        try (var vThread = newVirtualThreadPerTaskExecutor()) {
+            fut = vThread.submit(() ->
                     server.start(port -> latch.countDown()));
             latch.await();
             assertThat(fut.isDone()).isFalse();

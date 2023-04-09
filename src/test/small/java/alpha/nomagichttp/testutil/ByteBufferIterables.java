@@ -67,8 +67,8 @@ public final class ByteBufferIterables {
      */
     public static String getStringVThread(ByteBufferIterable bytes)
             throws ExecutionException, InterruptedException, TimeoutException {
-        try (var exec = newVirtualThreadPerTaskExecutor()) {
-            return exec.submit(() -> getString(bytes)).get(1, SECONDS);
+        try (var vThread = newVirtualThreadPerTaskExecutor()) {
+            return vThread.submit(() -> getString(bytes)).get(1, SECONDS);
         }
     }
     
@@ -88,8 +88,8 @@ public final class ByteBufferIterables {
      */
     public static byte getNextByteVThread(ByteBufferIterable source)
             throws ExecutionException, InterruptedException, TimeoutException {
-        try (var exec = newVirtualThreadPerTaskExecutor()) {
-            return exec.submit(() -> source.iterator().next().get())
+        try (var vThread = newVirtualThreadPerTaskExecutor()) {
+            return vThread.submit(() -> source.iterator().next().get())
                     .get(1, SECONDS);
         }
     }
@@ -141,8 +141,8 @@ public final class ByteBufferIterables {
      */
     public static List<byte[]> getItemsVThread(ByteBufferIterable source)
             throws ExecutionException, InterruptedException, TimeoutException {
-        try (var exec = newVirtualThreadPerTaskExecutor()) {
-            return exec.submit(() -> getItems(source)).get(1, SECONDS);
+        try (var vThread = newVirtualThreadPerTaskExecutor()) {
+            return vThread.submit(() -> getItems(source)).get(1, SECONDS);
         }
     }
 }

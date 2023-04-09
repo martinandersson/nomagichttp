@@ -109,8 +109,8 @@ final class DefaultRequestTest
     
     private static long getUsingVThread(Callable<Long> task)
             throws InterruptedException, ExecutionException {
-        try (var exec = newVirtualThreadPerTaskExecutor()) {
-            return exec.submit(task).get();
+        try (var vThread = newVirtualThreadPerTaskExecutor()) {
+            return vThread.submit(task).get();
         }
     }
     
