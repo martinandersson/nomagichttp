@@ -36,7 +36,7 @@ public final class VThreads {
      * @throws TimeoutException
      *             if the {@code task} takes longer than 1 second
      */
-    public static <R> R getUsingVThread(Callable<R> task)
+    public static <R> R getUsingVThread(Callable<? extends R> task)
             throws InterruptedException, ExecutionException, TimeoutException {
         try (var vThread = newVirtualThreadPerTaskExecutor()) {
             return vThread.submit(task).get(1, SECONDS);
