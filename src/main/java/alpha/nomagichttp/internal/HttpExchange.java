@@ -25,7 +25,6 @@ import java.util.NoSuchElementException;
 import java.util.Optional;
 
 import static alpha.nomagichttp.HttpConstants.HeaderName.EXPECT;
-import static alpha.nomagichttp.HttpConstants.HeaderName.TRANSFER_ENCODING;
 import static alpha.nomagichttp.HttpConstants.Method.TRACE;
 import static alpha.nomagichttp.HttpConstants.Version.HTTP_1_0;
 import static alpha.nomagichttp.HttpConstants.Version.HTTP_1_1;
@@ -475,7 +474,7 @@ final class HttpExchange
                     child.shutdownInput();
                     throw e;
                 }
-            } else if (r.head().headers().contains(TRANSFER_ENCODING, "chunked")) {
+            } else if (r.head().headers().hasTransferEncodingChunked()) {
                 closeChannel(DEBUG, "It is unknown if trailers are present");
                 return;
             }
