@@ -1,11 +1,8 @@
 package alpha.nomagichttp.message;
 
-import org.assertj.core.api.MapAssert;
 import org.junit.jupiter.api.Test;
 
-import java.util.List;
-
-import static alpha.nomagichttp.testutil.Headers.linkedHashMap;
+import static alpha.nomagichttp.testutil.Assertions.assertHeaders;
 import static alpha.nomagichttp.util.ByteBufferIterables.empty;
 import static java.util.List.of;
 import static java.util.Map.entry;
@@ -25,7 +22,7 @@ final class ResponseBuilderTest
         Response r = builder(200, "OK").build();
         assertThat(r.statusCode()).isEqualTo(200);
         assertThat(r.reasonPhrase()).isEqualTo("OK");
-        assertHeadersMap(r).isEmpty();
+        assertHeaders(r).isEmpty();
         assertSame(r.body(), empty());
     }
     
@@ -34,7 +31,7 @@ final class ResponseBuilderTest
         Response r = builder(102).build();
         assertThat(r.statusCode()).isEqualTo(102);
         assertThat(r.reasonPhrase()).isEqualTo("Unknown");
-        assertHeadersMap(r).isEmpty();
+        assertHeaders(r).isEmpty();
         assertSame(r.body(), empty());
     }
     
@@ -51,7 +48,7 @@ final class ResponseBuilderTest
     @Test
     void headerAddOne() {
         Response r = builder(-1).addHeaders("k", "v").build();
-        assertHeadersMap(r).containsOnly(entry("k", of("v")));
+        assertHeaders(r).containsOnly(entry("k", of("v")));
     }
     
     @Test
@@ -62,7 +59,7 @@ final class ResponseBuilderTest
             .addHeaders("k", "v3",
                         "k", "v2")
             .build();
-        assertHeadersMap(r).containsOnly(
+        assertHeaders(r).containsOnly(
             entry("k", of("v2", "v1", "v3", "v2")));
     }
     
@@ -83,7 +80,7 @@ final class ResponseBuilderTest
             "k 1", "",
             "k 2", "",
             "k 1", "").build();
-        assertHeadersMap(r).containsExactly(
+        assertHeaders(r).containsExactly(
             entry("k 1", of("", "")),
             entry("k 2", of("")));
     }
@@ -121,13 +118,13 @@ final class ResponseBuilderTest
     @Test
     void headerRemove() {
         Response r = builder(-1).header("k", "v").removeHeader("k").build();
-        assertHeadersMap(r).isEmpty();
+        assertHeaders(r).isEmpty();
     }
     
     @Test
     void headerReplace() {
         Response r = builder(-1).header("k", "v1").header("k", "v2").build();
-        assertHeadersMap(r).containsOnly(
+        assertHeaders(r).containsOnly(
             entry("k", of("v2")));
     }
     
@@ -173,9 +170,5 @@ final class ResponseBuilderTest
         return DefaultResponse.DefaultBuilder.ROOT.
                 statusCode(code)
                 .reasonPhrase(phrase);
-    }
-    
-    private static MapAssert<String, List<String>> assertHeadersMap(Response r) {
-        return assertThat(linkedHashMap(r.headers()));
     }
 }

@@ -3,7 +3,9 @@ package alpha.nomagichttp.testutil;
 import alpha.nomagichttp.HttpConstants;
 import alpha.nomagichttp.HttpServer;
 import alpha.nomagichttp.message.BetterHeaders;
+import alpha.nomagichttp.message.ContentHeaders;
 import alpha.nomagichttp.message.DefaultContentHeaders;
+import alpha.nomagichttp.message.HeaderHolder;
 import alpha.nomagichttp.util.Streams;
 import io.netty.buffer.ByteBuf;
 import kotlin.Pair;
@@ -986,7 +988,7 @@ public abstract class HttpClientFacade
      * 
      * @param <B> body type
      */
-    public static final class ResponseFacade<B> {
+    public static final class ResponseFacade<B> implements HeaderHolder {
         
         static <B> ResponseFacade<B> fromJDK(java.net.http.HttpResponse<? extends B> jdk) {
             return new ResponseFacade<>(
@@ -1059,13 +1061,13 @@ public abstract class HttpClientFacade
                         Map.Entry::getValue));
         }
         
-        private static BetterHeaders oMap(Map<String, List<String>> map) {
+        private static ContentHeaders oMap(Map<String, List<String>> map) {
             return map instanceof LinkedHashMap<String, List<String>> lhm ?
                     new DefaultContentHeaders(lhm, false) :
                     new DefaultContentHeaders(new LinkedHashMap<>(map), false);
         }
         
-        private static <T> Supplier<BetterHeaders> supplyOurHeadersType(
+        private static <T> Supplier<ContentHeaders> supplyOurHeadersType(
                 Supplier<Stream<T>> fromNativeHeaders,
                 Function<? super T, String> name, Function<? super T, String> value) {
             return () -> {
@@ -1077,7 +1079,7 @@ public abstract class HttpClientFacade
             };
         }
         
-        private static <T> IOSupplier<BetterHeaders> supplyOurHeadersTypeIO(
+        private static <T> IOSupplier<ContentHeaders> supplyOurHeadersTypeIO(
                 IOSupplier<Stream<T>> fromNativeHeaders,
                 Function<? super T, String> name, Function<? super T, String> value) {
             return () -> {
@@ -1101,17 +1103,17 @@ public abstract class HttpClientFacade
         private final Supplier<String> version;
         private final IntSupplier statusCode;
         private final Supplier<String> reasonPhrase;
-        private final Supplier<BetterHeaders> headers;
+        private final Supplier<ContentHeaders> headers;
         private final Supplier<? extends B> body;
-        private final IOSupplier<BetterHeaders> trailers;
+        private final IOSupplier<? extends BetterHeaders> trailers;
         
         private ResponseFacade(
                 Supplier<String> version,
                 IntSupplier statusCode,
                 Supplier<String> reasonPhrase,
-                Supplier<BetterHeaders> headers,
+                Supplier<ContentHeaders> headers,
                 Supplier<? extends B> body,
-                IOSupplier<BetterHeaders> trailers)
+                IOSupplier<? extends BetterHeaders> trailers)
         {
             this.version      = version;
             this.statusCode   = statusCode;
@@ -1156,7 +1158,8 @@ public abstract class HttpClientFacade
          * 
          * @return headers
          */
-        public BetterHeaders headers() {
+        @Override
+        public ContentHeaders headers() {
             return headers.get();
         }
         

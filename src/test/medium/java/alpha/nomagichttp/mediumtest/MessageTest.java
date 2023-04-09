@@ -16,6 +16,7 @@ import static alpha.nomagichttp.handler.RequestHandler.GET;
 import static alpha.nomagichttp.handler.RequestHandler.POST;
 import static alpha.nomagichttp.message.Responses.ok;
 import static alpha.nomagichttp.message.Responses.text;
+import static alpha.nomagichttp.testutil.Assertions.assertHeaders;
 import static alpha.nomagichttp.testutil.Headers.linkedHashMap;
 import static alpha.nomagichttp.testutil.HttpClientFacade.Implementation.JDK;
 import static alpha.nomagichttp.testutil.HttpClientFacade.Implementation.JETTY;
@@ -202,7 +203,7 @@ class MessageTest extends AbstractRealTest
         // Jetty has no public support for trailers
         // TODO: Verify Jetty if and when they add support
         if (impl != JETTY) {
-            assertThat(linkedHashMap(rsp.trailers())).containsExactly(
+            assertHeaders(rsp).containsExactly(
                 entry("One", of("Foo")), entry("Two", of("Bar")));
         }
     }

@@ -1,12 +1,17 @@
 package alpha.nomagichttp.testutil;
 
+import alpha.nomagichttp.message.BetterHeaders;
+import alpha.nomagichttp.message.HeaderHolder;
 import alpha.nomagichttp.message.ResourceByteBufferIterable;
+import org.assertj.core.api.MapAssert;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.TimeoutException;
 
+import static alpha.nomagichttp.testutil.Headers.linkedHashMap;
 import static alpha.nomagichttp.util.Streams.stream;
 import static java.nio.ByteBuffer.allocate;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -19,6 +24,40 @@ import static org.assertj.core.api.Assertions.assertThat;
 public final class Assertions {
     private Assertions() {
         // Empty
+    }
+    
+    /**
+     * Returns a {@code MapAssert} of the given headers.<p>
+     * 
+     * This method is equivalent to:
+     * <pre>
+     *   {@link #assertHeaders(BetterHeaders) assertHeaders
+     *   }(holder.{@link HeaderHolder#headers() headers}())
+     * </pre>
+     * 
+     * @param holder to get headers from
+     * 
+     * @return see JavaDoc
+     */
+    public static MapAssert<String, List<String>> assertHeaders(
+            HeaderHolder holder) {
+        return assertHeaders(holder.headers());
+    }
+    
+    /**
+     * Returns a {@code MapAssert} of the given {@code headers}.<p>
+     * 
+     * The headers are copied into a {@code LinkedHashMap}; i.e. the returned
+     * API may be used to assert both <i>order and case-sensitive header
+     * names</i>.
+     * 
+     * @param headers to assert
+     * 
+     * @return see JavaDoc
+     */
+    public static MapAssert<String, List<String>> assertHeaders(
+            BetterHeaders headers) {
+        return assertThat(linkedHashMap(headers));
     }
     
     /**
