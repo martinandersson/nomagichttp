@@ -224,8 +224,7 @@ final class HttpExchange
         }
         var req = new SkeletonRequest(h, v,
                 SkeletonRequestTarget.parse(h.line().target()),
-                RequestBody.of(h.headers(), reader),
-                new DefaultAttributes());
+                RequestBody.of(h.headers(), reader));
         __requireNoBodyInTRACE(req);
         return req;
     }

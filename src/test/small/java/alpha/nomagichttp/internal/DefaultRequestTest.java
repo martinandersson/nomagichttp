@@ -111,8 +111,7 @@ final class DefaultRequestTest
                        head,
                        HTTP_1_1,
                        parse("/?"),
-                       body,
-                       new DefaultAttributes());
+                       body);
         return requestWithoutParams(null, skel);
     }
     

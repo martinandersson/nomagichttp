@@ -7,29 +7,43 @@ import alpha.nomagichttp.message.RawRequest;
 /**
  * A thin version of a request.<p>
  * 
- * This class has a raw request head, but it isn't so raw, after all. It carries
- * almost all the head-related data that the {@link DefaultRequest}
- * implementation returns, except for a parsed {@link HttpConstants.Version}
- * which is available in this class.<p>
- * 
- * Therefore, this class is just a hair away from being a complete request. The
- * one thing missing is the API for path parameters, which is provided by the
- * default request implementation.
+ * This class contains almost all components needed for a complete
+ * {@link DefaultRequest}. The one thing missing is path parameters.
  * 
  * @author Martin Andersson (webmaster@martinandersson.com)
  */
-record SkeletonRequest(
-        RawRequest.Head head,
-        HttpConstants.Version httpVersion, // (as established by HTTP exchange)
-        SkeletonRequestTarget target,
-        RequestBody body,
-        Attributes attributes)
-{
-    SkeletonRequest {
-        assert head != null;
-        assert httpVersion != null;
-        assert target != null;
-        assert body != null;
-        assert attributes != null;
+final class SkeletonRequest {
+    private final RawRequest.Head head;
+    private final HttpConstants.Version httpVersion;
+    private final SkeletonRequestTarget target;
+    private final RequestBody body;
+    private final Attributes attributes;
+    
+    SkeletonRequest(
+            RawRequest.Head head,
+            HttpConstants.Version httpVersion,
+            SkeletonRequestTarget target,
+            RequestBody body) {
+        this.head = head;
+        this.httpVersion = httpVersion;
+        this.target = target;
+        this.body = body;
+        this.attributes = new DefaultAttributes();
+    }
+    
+    RawRequest.Head head() {
+        return head;
+    }
+    HttpConstants.Version httpVersion() {
+        return httpVersion;
+    }
+    SkeletonRequestTarget target() {
+        return target;
+    }
+    RequestBody body() {
+        return body;
+    }
+    Attributes attributes() {
+        return attributes;
     }
 }
