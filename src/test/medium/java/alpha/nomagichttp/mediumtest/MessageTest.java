@@ -203,7 +203,7 @@ class MessageTest extends AbstractRealTest
         // Jetty has no public support for trailers
         // TODO: Verify Jetty if and when they add support
         if (impl != JETTY) {
-            assertHeaders(rsp).containsExactly(
+            assertHeaders(rsp.trailers()).containsExactly(
                 entry("One", of("Foo")), entry("Two", of("Bar")));
         }
     }
