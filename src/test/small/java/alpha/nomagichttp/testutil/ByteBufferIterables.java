@@ -10,11 +10,10 @@ import java.util.List;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeoutException;
 
+import static alpha.nomagichttp.testutil.VThreads.getUsingVThread;
 import static java.nio.charset.StandardCharsets.US_ASCII;
 import static java.util.Arrays.stream;
 import static java.util.Collections.unmodifiableList;
-import static java.util.concurrent.Executors.newVirtualThreadPerTaskExecutor;
-import static java.util.concurrent.TimeUnit.SECONDS;
 import static java.util.stream.Collectors.joining;
 
 /**
@@ -31,7 +30,11 @@ public final class ByteBufferIterables {
      * Returns a bytebuffer iterable of US-ASCII decoded strings.
      * 
      * @param items contents
+     * 
      * @return see JavaDoc
+     * 
+     * @throws NullPointerException
+     *             if {@code items} is {@code null}
      */
     public static ByteBufferIterable just(String... items) {
         return alpha.nomagichttp.util.ByteBufferIterables.just(
@@ -44,6 +47,9 @@ public final class ByteBufferIterables {
      * @param bytes to decode
      * 
      * @return the decoded content
+     * 
+     * @throws NullPointerException
+     *             if {@code bytes} is {@code null}
      */
     public static String getString(ByteBufferIterable bytes) {
         return getItems(bytes).stream()
@@ -58,18 +64,18 @@ public final class ByteBufferIterables {
      * 
      * @return the decoded content
      * 
+     * @throws NullPointerException
+     *             if {@code bytes} is {@code null}
+     * @throws InterruptedException
+     *             if the calling thread is interrupted while waiting
      * @throws ExecutionException
      *             if {@link #getString(ByteBufferIterable)} throws an exception
-     * @throws InterruptedException
-     *             if the current thread was interrupted while waiting
      * @throws TimeoutException
-     *             if waiting more than 1 second for the result
+     *             if {@code getString} takes longer than 1 second
      */
     public static String getStringVThread(ByteBufferIterable bytes)
-            throws ExecutionException, InterruptedException, TimeoutException {
-        try (var vThread = newVirtualThreadPerTaskExecutor()) {
-            return vThread.submit(() -> getString(bytes)).get(1, SECONDS);
-        }
+            throws InterruptedException, ExecutionException, TimeoutException {
+        return getUsingVThread(() -> getString(bytes));
     }
     
     /**
@@ -79,19 +85,18 @@ public final class ByteBufferIterables {
      * 
      * @return the byte
      * 
-     * @throws ExecutionException
-     *             if the given source throws an exception
+     * @throws NullPointerException
+     *             if {@code source} is {@code null}
      * @throws InterruptedException
-     *             if the current thread was interrupted while waiting
+     *             if the calling thread is interrupted while waiting
+     * @throws ExecutionException
+     *             if the given {@code source} throws an exception
      * @throws TimeoutException
      *             if waiting more than 1 second for the result
      */
     public static byte getByteVThread(ByteBufferIterable source)
-            throws ExecutionException, InterruptedException, TimeoutException {
-        try (var vThread = newVirtualThreadPerTaskExecutor()) {
-            return vThread.submit(() -> source.iterator().next().get())
-                    .get(1, SECONDS);
-        }
+            throws InterruptedException, ExecutionException, TimeoutException {
+        return getUsingVThread(() -> source.iterator().next().get());
     }
     
     /**
@@ -103,6 +108,9 @@ public final class ByteBufferIterables {
      * @param source to iterate
      * 
      * @return see JavaDoc
+     * 
+     * @throws NullPointerException
+     *             if {@code source} is {@code null}
      */
     public static List<byte[]> getItems(ByteBufferIterable source) {
         var items = new ArrayList<byte[]>();
@@ -132,17 +140,17 @@ public final class ByteBufferIterables {
      * 
      * @return see JavaDoc
      * 
+     * @throws NullPointerException
+     *             if {@code source} is {@code null}
+     * @throws InterruptedException
+     *             if the calling thread is interrupted while waiting
      * @throws ExecutionException
      *             if {@link #getItems(ByteBufferIterable)} throws an exception
-     * @throws InterruptedException
-     *             if the current thread was interrupted while waiting
      * @throws TimeoutException
-     *             if waiting more than 1 second for the result
+     *             if {@code getItems} takes longer than 1 second
      */
     public static List<byte[]> getItemsVThread(ByteBufferIterable source)
             throws ExecutionException, InterruptedException, TimeoutException {
-        try (var vThread = newVirtualThreadPerTaskExecutor()) {
-            return vThread.submit(() -> getItems(source)).get(1, SECONDS);
-        }
+        return getUsingVThread(() -> getItems(source));
     }
 }

@@ -11,8 +11,8 @@ import java.nio.charset.IllegalCharsetNameException;
 import java.nio.charset.UnsupportedCharsetException;
 import java.nio.file.Paths;
 import java.util.Set;
-import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeoutException;
 
 import static alpha.nomagichttp.Config.DEFAULT;
 import static alpha.nomagichttp.HttpConstants.Version.HTTP_1_1;
@@ -20,10 +20,10 @@ import static alpha.nomagichttp.internal.DefaultRequest.requestWithoutParams;
 import static alpha.nomagichttp.internal.SkeletonRequestTarget.parse;
 import static alpha.nomagichttp.testutil.Headers.linkedHashMap;
 import static alpha.nomagichttp.testutil.ReadableByteChannels.ofString;
+import static alpha.nomagichttp.testutil.VThreads.getUsingVThread;
 import static alpha.nomagichttp.util.DummyScopedValue.where;
 import static alpha.nomagichttp.util.ScopedValues.__HTTP_SERVER;
 import static java.nio.file.Files.notExists;
-import static java.util.concurrent.Executors.newVirtualThreadPerTaskExecutor;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -45,12 +45,9 @@ final class DefaultRequestTest
         var server = mock(HttpServer.class);
         when(server.getConfig()).thenReturn(DEFAULT);
         
-        final String str = where(__HTTP_SERVER, server, () -> {
+        final String str = where(__HTTP_SERVER, server, () ->
             // ...and a virtual thread, otherwise WrongThreadException
-            try (var vThread = newVirtualThreadPerTaskExecutor()) {
-                return vThread.submit(() -> req.body().toText()).get();
-            }
-        });
+            getUsingVThread(() -> req.body().toText()));
         
         assertThat(str).isEqualTo("abc");
     }
@@ -92,7 +89,7 @@ final class DefaultRequestTest
     
     @Test
     void body_toFile_empty()
-            throws InterruptedException, ExecutionException {
+            throws InterruptedException, ExecutionException, TimeoutException {
         var letsHopeItDoesNotExist = Paths.get("child porn sites.txt");
         // Pre condition
         assertThat(notExists(letsHopeItDoesNotExist))
@@ -105,13 +102,6 @@ final class DefaultRequestTest
         // Post condition (test failed legitimately, or machine is a pedophile?)
         assertThat(notExists(letsHopeItDoesNotExist))
                 .isTrue();
-    }
-    
-    private static long getUsingVThread(Callable<Long> task)
-            throws InterruptedException, ExecutionException {
-        try (var vThread = newVirtualThreadPerTaskExecutor()) {
-            return vThread.submit(task).get();
-        }
     }
     
     private static Request createRequest(
