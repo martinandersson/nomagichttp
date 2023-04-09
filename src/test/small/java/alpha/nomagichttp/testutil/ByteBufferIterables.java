@@ -86,7 +86,7 @@ public final class ByteBufferIterables {
      * @throws TimeoutException
      *             if waiting more than 1 second for the result
      */
-    public static byte getNextByteVThread(ByteBufferIterable source)
+    public static byte getByteVThread(ByteBufferIterable source)
             throws ExecutionException, InterruptedException, TimeoutException {
         try (var vThread = newVirtualThreadPerTaskExecutor()) {
             return vThread.submit(() -> source.iterator().next().get())

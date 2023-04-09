@@ -12,7 +12,7 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeoutException;
 
 import static alpha.nomagichttp.testutil.ByteBufferIterables.getItemsVThread;
-import static alpha.nomagichttp.testutil.ByteBufferIterables.getNextByteVThread;
+import static alpha.nomagichttp.testutil.ByteBufferIterables.getByteVThread;
 import static alpha.nomagichttp.testutil.ByteBufferIterables.getStringVThread;
 import static alpha.nomagichttp.testutil.ReadableByteChannels.ofString;
 import static alpha.nomagichttp.util.DummyScopedValue.where;
@@ -177,7 +177,7 @@ final class ChannelReaderTest
     
     private void assertNextCharIs(char c)
             throws ExecutionException, InterruptedException, TimeoutException {
-        assertThat((int) getNextByteVThread(testee)).isEqualTo(c);
+        assertThat((int) getByteVThread(testee)).isEqualTo(c);
     }
     
     private static ClientChannel withChannelMock(
