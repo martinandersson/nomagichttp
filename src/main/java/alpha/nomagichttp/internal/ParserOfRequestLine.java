@@ -73,7 +73,7 @@ final class ParserOfRequestLine extends AbstractResultParser<RawRequest.Line>
     {
         final int r = byteCount();
         if (r == maxBytes) {
-            throw new MaxRequestHeadSizeException();
+            throw new MaxRequestHeadSizeException(maxBytes);
         }
         if (r == 1) {
             started = System.nanoTime();

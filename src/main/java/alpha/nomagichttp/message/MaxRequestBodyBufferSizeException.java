@@ -10,13 +10,15 @@ import alpha.nomagichttp.Config;
  * 
  * @see Config#maxRequestBodyBufferSize()
  */
-public final class MaxRequestBodyBufferSizeException extends RuntimeException {
+public final class MaxRequestBodyBufferSizeException extends AbstractSizeException {
     private static final long serialVersionUID = 1L;
     
     /**
      * Constructs a {@code MaxRequestBodyBufferSizeException}.
+     * 
+     * @param configuredMax the exceeded tolerance
      */
-    public MaxRequestBodyBufferSizeException() {
-        // Empty
+    public MaxRequestBodyBufferSizeException(int configuredMax) {
+        super(configuredMax);
     }
 }

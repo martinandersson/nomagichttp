@@ -229,8 +229,9 @@ final class RequestBody implements Request.Body
     }
     
     private byte[] bytesFast(int cap) throws IOException {
-        if (cap > httpServer().getConfig().maxRequestBodyBufferSize()) {
-            throw new MaxRequestBodyBufferSizeException();
+        final int max = httpServer().getConfig().maxRequestBodyBufferSize();
+        if (cap > max) {
+            throw new MaxRequestBodyBufferSizeException(max);
         }
         final byte[] dst = new byte[cap];
         int offset = 0;

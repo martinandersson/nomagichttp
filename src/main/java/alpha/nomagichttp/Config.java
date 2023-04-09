@@ -34,7 +34,7 @@ import java.util.concurrent.TimeUnit;
  * Any configuration object can be turned into a builder for customization. The
  * static method {@link #configuration()} is a shortcut for {@code
  * Config.DEFAULT.toBuilder()} and allows for fluent overrides of individual
- * values.<p>
+ * values.
  * <pre>
  *   new HttpServer(configuration()
  *           .{@link #rejectClientsUsingHTTP1_0() rejectClientsUsingHTTP1_0}(true)

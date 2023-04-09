@@ -12,7 +12,7 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.function.Function;
-import java.util.function.Supplier;
+import java.util.function.IntFunction;
 
 import static java.lang.System.Logger.Level.DEBUG;
 
@@ -121,7 +121,8 @@ final class ParserOf<H extends BetterHeaders> extends AbstractResultParser<H>
     }
     
     private final int logicalPos, maxBytes;
-    private final Supplier<? extends RuntimeException> exceeded;
+    // Should be ? extends AbstractSizeException (not public)
+    private final IntFunction<? extends RuntimeException> exceeded;
     private final H empty;
     private final Function<LinkedHashMap<String, List<String>>, ? extends H> finisher;
     private final TokenParser parser;
@@ -130,7 +131,7 @@ final class ParserOf<H extends BetterHeaders> extends AbstractResultParser<H>
             ByteBufferIterable in,
             int logicalPos,
             int maxBytes,
-            Supplier<? extends RuntimeException> exceeded,
+            IntFunction<? extends RuntimeException> exceeded,
             H empty,
             Function<LinkedHashMap<String, List<String>>, ? extends H> finisher)
     {
@@ -153,7 +154,7 @@ final class ParserOf<H extends BetterHeaders> extends AbstractResultParser<H>
     protected H tryParse(byte b) throws HeaderParseException {
         final int n = byteCount();
         if (n == maxBytes) {
-            throw exceeded.get();
+            throw exceeded.apply(maxBytes);
         }
         return parser.parse(b);
     }

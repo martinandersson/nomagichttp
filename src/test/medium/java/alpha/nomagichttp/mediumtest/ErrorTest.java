@@ -285,9 +285,9 @@ class ErrorTest extends AbstractRealTest
             Content-Length: 0\r\n\r\n""");
         assertThatServerErrorObservedAndLogged()
             .isExactlyInstanceOf(MaxRequestHeadSizeException.class)
+            .hasMessage("Configured max tolerance is 1 bytes.")
             .hasNoCause()
-            .hasNoSuppressedExceptions()
-            .hasMessage(null);
+            .hasNoSuppressedExceptions();
     }
     
     @Test
