@@ -18,7 +18,7 @@ import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.function.Function;
 
-import static java.lang.Long.MAX_VALUE;
+import static alpha.nomagichttp.util.Blah.toNanosOrMaxValue;
 import static java.lang.String.format;
 import static java.util.Collections.unmodifiableMap;
 import static java.util.Objects.requireNonNull;
@@ -273,11 +273,7 @@ public final class JvmPathLock implements AutoCloseable
     
     private static long remaining(Instant start, long timeout, TimeUnit unit) {
         var deadline = start.plus(timeout, unit.toChronoUnit());
-        try {
-            return Duration.between(start, deadline).toNanos();
-        } catch (ArithmeticException e) {
-            return MAX_VALUE;
-        }
+        return toNanosOrMaxValue(Duration.between(start, deadline));
     }
     
     private final Path key;

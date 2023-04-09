@@ -1,6 +1,7 @@
 package alpha.nomagichttp.util;
 
 import java.io.Closeable;
+import java.time.Duration;
 
 import static java.lang.Math.addExact;
 
@@ -134,13 +135,28 @@ public final class Blah
      * 
      * @param v to cast to an integer
      * 
-     * @return the result
+     * @return see JavaDoc
      */
     public static int toIntOrMaxValue(long v) {
         try {
             return Math.toIntExact(v);
         } catch (ArithmeticException e) {
             return Integer.MAX_VALUE;
+        }
+    }
+    
+    /**
+     * Returns {@code v.toNanos()}; capping the result at {@code Long.MAX_VALUE}.
+     * 
+     * @param d to get total nanos from
+     * 
+     * @return see JavaDoc
+     */
+    public static long toNanosOrMaxValue(Duration d) {
+        try {
+            return d.toNanos();
+        } catch (ArithmeticException e) {
+            return Long.MAX_VALUE;
         }
     }
 }

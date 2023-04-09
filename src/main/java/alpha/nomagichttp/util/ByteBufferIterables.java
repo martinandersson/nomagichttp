@@ -22,6 +22,7 @@ import java.nio.file.Files;
 import java.nio.file.NoSuchFileException;
 import java.nio.file.OpenOption;
 import java.nio.file.Path;
+import java.time.Duration;
 import java.util.NoSuchElementException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
@@ -30,10 +31,10 @@ import java.util.stream.StreamSupport;
 
 import static alpha.nomagichttp.util.Blah.addExactOrCap;
 import static alpha.nomagichttp.util.Blah.getOrCloseResource;
+import static alpha.nomagichttp.util.Blah.toNanosOrMaxValue;
 import static alpha.nomagichttp.util.ByteBuffers.asArray;
 import static alpha.nomagichttp.util.ScopedValues.httpServer;
 import static alpha.nomagichttp.util.Streams.stream;
-import static java.lang.Long.MAX_VALUE;
 import static java.nio.ByteBuffer.allocateDirect;
 import static java.nio.channels.FileChannel.open;
 import static java.nio.charset.CodingErrorAction.REPLACE;
@@ -489,27 +490,11 @@ public final class ByteBufferIterables
             
             private JvmPathLock readLock()
                     throws InterruptedException, TimeoutException {
-                long t = MAX_VALUE;
-                if (timeout == null) {
-                    try {
-                        t = httpServer().getConfig().timeoutFileLock().toNanos();
-                    } catch (ArithmeticException useMaxVal) {}
-                }
-                return JvmPathLock.readLock(file, t, NANOSECONDS);
-            }
-            
-            private static FileChannel acquireSharedLock(FileChannel ch)
-                    throws IOException
-            {
-                var lock = getOrCloseResource(() ->
-                        ch.lock(0, MAX_VALUE, true), ch);
-                if (!lock.isShared()) {
-                    // TODO: Config.acceptExclusiveFileLock() ??
-                    // (don't want to force-check this on JVM startup; we may never serve files)
-                    throw new UnsupportedOperationException(
-                        "No operating system support for shared file locks.");
-                }
-                return ch;
+                final Duration dur = timeout == null ?
+                        httpServer().getConfig().timeoutFileLock() :
+                        Duration.of(timeout, unit.toChronoUnit());
+                return JvmPathLock.readLock(
+                        file, toNanosOrMaxValue(dur), NANOSECONDS);
             }
             
             @Override

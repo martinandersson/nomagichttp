@@ -30,8 +30,8 @@ import static alpha.nomagichttp.HttpConstants.HeaderName.TRANSFER_ENCODING;
 import static alpha.nomagichttp.internal.Blah.requireVirtualThread;
 import static alpha.nomagichttp.util.Blah.EMPTY_BYTEARRAY;
 import static alpha.nomagichttp.util.Blah.addExactOrCap;
+import static alpha.nomagichttp.util.Blah.toNanosOrMaxValue;
 import static alpha.nomagichttp.util.ScopedValues.httpServer;
-import static java.lang.Long.MAX_VALUE;
 import static java.nio.ByteBuffer.wrap;
 import static java.nio.charset.CodingErrorAction.REPORT;
 import static java.nio.charset.StandardCharsets.UTF_8;
@@ -149,11 +149,8 @@ final class RequestBody implements Request.Body
     @Override
     public long toFile(Path path, OpenOption... options)
             throws InterruptedException, TimeoutException, IOException {
-        long nanos = MAX_VALUE;
-        try {
-            nanos = httpServer().getConfig().timeoutFileLock().toNanos();
-        } catch (ArithmeticException useMaxVal) {}
-        return toFile(path, nanos, NANOSECONDS, Set.of(options));
+        var dur = httpServer().getConfig().timeoutFileLock();
+        return toFile(path, toNanosOrMaxValue(dur), NANOSECONDS, Set.of(options));
     }
     
     @Override
