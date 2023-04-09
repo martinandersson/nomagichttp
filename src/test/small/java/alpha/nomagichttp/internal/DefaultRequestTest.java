@@ -1,6 +1,5 @@
 package alpha.nomagichttp.internal;
 
-import alpha.nomagichttp.HttpServer;
 import alpha.nomagichttp.message.BadHeaderException;
 import alpha.nomagichttp.message.RawRequest;
 import alpha.nomagichttp.message.Request;
@@ -14,21 +13,17 @@ import java.util.Set;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeoutException;
 
-import static alpha.nomagichttp.Config.DEFAULT;
 import static alpha.nomagichttp.HttpConstants.Version.HTTP_1_1;
 import static alpha.nomagichttp.internal.DefaultRequest.requestWithoutParams;
 import static alpha.nomagichttp.internal.SkeletonRequestTarget.parse;
 import static alpha.nomagichttp.testutil.Headers.linkedHashMap;
 import static alpha.nomagichttp.testutil.ReadableByteChannels.ofString;
+import static alpha.nomagichttp.testutil.ScopedValues.whereServerIsBound;
 import static alpha.nomagichttp.testutil.VThreads.getUsingVThread;
-import static alpha.nomagichttp.util.DummyScopedValue.where;
-import static alpha.nomagichttp.util.ScopedValues.__HTTP_SERVER;
 import static java.nio.file.Files.notExists;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
 
 /**
  * Small tests of {@link DefaultRequest}.
@@ -40,15 +35,10 @@ final class DefaultRequestTest
     @Test
     void body_toText_happyPath() throws Exception {
         var req = createRequest("abc", "Content-Length", "3");
-        
         // Implementation needs access to Config.maxRequestBodyConversionSize()
-        var server = mock(HttpServer.class);
-        when(server.getConfig()).thenReturn(DEFAULT);
-        
-        final String str = where(__HTTP_SERVER, server, () ->
+        final String str = whereServerIsBound(() ->
             // ...and a virtual thread, otherwise WrongThreadException
             getUsingVThread(() -> req.body().toText()));
-        
         assertThat(str).isEqualTo("abc");
     }
     

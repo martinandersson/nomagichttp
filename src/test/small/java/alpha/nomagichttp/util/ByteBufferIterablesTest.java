@@ -1,6 +1,5 @@
 package alpha.nomagichttp.util;
 
-import alpha.nomagichttp.HttpServer;
 import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
@@ -9,20 +8,16 @@ import java.nio.charset.MalformedInputException;
 import java.util.List;
 import java.util.concurrent.TimeoutException;
 
-import static alpha.nomagichttp.Config.DEFAULT;
 import static alpha.nomagichttp.testutil.Assertions.assertIterable;
+import static alpha.nomagichttp.testutil.ScopedValues.whereServerIsBound;
 import static alpha.nomagichttp.testutil.TestFiles.writeTempFile;
 import static alpha.nomagichttp.util.ByteBufferIterables.just;
 import static alpha.nomagichttp.util.ByteBuffers.asArray;
 import static alpha.nomagichttp.util.ByteBuffers.asciiBytes;
-import static alpha.nomagichttp.util.DummyScopedValue.where;
-import static alpha.nomagichttp.util.ScopedValues.__HTTP_SERVER;
 import static java.nio.ByteBuffer.allocate;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
 
 /**
  * Small tests of {@link ByteBufferIterables}.
@@ -66,9 +61,7 @@ final class ByteBufferIterablesTest
         var content = asciiBytes("Hello, World!");
         var file = writeTempFile(content);
         var testee = ByteBufferIterables.ofFile(file);
-        var server = mock(HttpServer.class);
-        when(server.getConfig()).thenReturn(DEFAULT);
-        where(__HTTP_SERVER, server, () -> {
+        whereServerIsBound(() -> {
             assertIterable(testee, content);
             // Can go again
             assertIterable(testee, content);
