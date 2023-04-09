@@ -802,7 +802,7 @@ class ErrorTest extends AbstractRealTest
     }
     
     @Test
-    void Special_maxUnsuccessfulResponses() throws IOException, InterruptedException {
+    void Special_maxErrorResponses() throws IOException, InterruptedException {
         server().add("/", GET().apply(req -> badRequest().toBuilder()
                 // This header would have caused the server to close the connection,
                 // but we want to run many "failed" responses
@@ -813,8 +813,8 @@ class ErrorTest extends AbstractRealTest
             assertThat(rsp).startsWith("HTTP/1.1 400 Bad Request");
         };
         
-        final int max = server().getConfig().maxUnsuccessfulResponses();
-        LOG.log(INFO, () -> "Max unsuccessful: " + max);
+        final int max = server().getConfig().maxErrorResponses();
+        LOG.log(INFO, () -> "Configured max: " + max);
         
         try (var conn = client().openConnection()) {
             for (int i = max; i > 1; --i) {

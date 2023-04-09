@@ -25,9 +25,9 @@ import static alpha.nomagichttp.HttpConstants.HeaderName.TRAILER;
 import static alpha.nomagichttp.HttpConstants.StatusCode.ONE_HUNDRED;
 import static alpha.nomagichttp.HttpConstants.Version.HTTP_1_1;
 import static alpha.nomagichttp.handler.ResponseRejectedException.Reason.PROTOCOL_NOT_SUPPORTED;
-import static alpha.nomagichttp.internal.VThreads.CHANNEL_BLOCKING;
 import static alpha.nomagichttp.internal.DefaultRequest.requestWithParams;
 import static alpha.nomagichttp.internal.HttpExchange.skeletonRequest;
+import static alpha.nomagichttp.internal.VThreads.CHANNEL_BLOCKING;
 import static alpha.nomagichttp.util.Blah.addExactOrCap;
 import static alpha.nomagichttp.util.ByteBuffers.asciiBytes;
 import static alpha.nomagichttp.util.ScopedValues.channel;
@@ -141,7 +141,7 @@ final class DefaultChannelWriter implements ChannelWriter
                 var ch = channel();
                 if (ch.isInputOpen() || ch.isOutputOpen()) {
                     LOG.log(DEBUG, """
-                            Max number of unsuccessful responses reached, \
+                            Max number of error responses reached, \
                             closing channel.""");
                     ch.close();
                 }

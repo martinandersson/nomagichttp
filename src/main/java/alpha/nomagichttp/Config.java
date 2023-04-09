@@ -57,7 +57,7 @@ public interface Config
      * Max request head size = 8 000 <br>
      * Max request body conversion size = 20 971 520 (20 MB) <br>
      * Max request trailers' size = 8 000 <br>
-     * Max unsuccessful responses = 3 <br>
+     * Max error responses = 3 <br>
      * Reject clients using HTTP/1.0 = false <br>
      * Discard rejected informational = true <br>
      * Immediately continue Expect 100 = false <br>
@@ -139,7 +139,7 @@ public interface Config
      * @return max number of consecutively unsuccessful responses
      *         before closing channel
      */
-    int maxUnsuccessfulResponses();
+    int maxErrorResponses();
     
     /**
      * Reject HTTP/1.0 clients, yes or no.<p>
@@ -423,9 +423,9 @@ public interface Config
          * 
          * @param newVal new value
          * @return a new builder representing the new state
-         * @see Config#maxUnsuccessfulResponses()
+         * @see Config#maxErrorResponses()
          */
-        Builder maxUnsuccessfulResponses(int newVal);
+        Builder maxErrorResponses(int newVal);
         
         /**
          * Sets a new value.

@@ -220,7 +220,7 @@ final class ResponseProcessor
         if (isClientError(r.statusCode()) || isServerError(r.statusCode())) {
             // Bump error counter
             int n = channel().attributes().<Integer>asMapAny().merge(key, 1, Integer::sum);
-            return n >= httpServer().getConfig().maxUnsuccessfulResponses();
+            return n >= httpServer().getConfig().maxErrorResponses();
         } else {
             // Reset
             channel().attributes().set(key, 0);

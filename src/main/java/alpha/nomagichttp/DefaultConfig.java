@@ -18,7 +18,7 @@ final class DefaultConfig implements Config {
     private final int      maxRequestHeadSize,
                            maxRequestBodyBufferSize,
                            maxRequestTrailersSize,
-                           maxUnsuccessfulResponses;
+                           maxErrorResponses;
     private final boolean  rejectClientsUsingHTTP1_0,
                            discardRejectedInformational,
                            immediatelyContinueExpect100;
@@ -33,7 +33,7 @@ final class DefaultConfig implements Config {
         maxRequestHeadSize           = s.maxRequestHeadSize;
         maxRequestBodyBufferSize     = s.maxRequestBodyBufferSize;
         maxRequestTrailersSize       = s.maxRequestTrailersSize;
-        maxUnsuccessfulResponses     = s.maxUnsuccessfulResponses;
+        maxErrorResponses            = s.maxErrorResponses;
         rejectClientsUsingHTTP1_0    = s.rejectClientsUsingHTTP1_0;
         discardRejectedInformational = s.discardRejectedInformational;
         immediatelyContinueExpect100 = s.immediatelyContinueExpect100;
@@ -60,8 +60,8 @@ final class DefaultConfig implements Config {
     }
     
     @Override
-    public int maxUnsuccessfulResponses() {
-        return maxUnsuccessfulResponses;
+    public int maxErrorResponses() {
+        return maxErrorResponses;
     }
     
     @Override
@@ -119,7 +119,7 @@ final class DefaultConfig implements Config {
             int      maxRequestHeadSize           = 8_000,
                      maxRequestBodyBufferSize     = 20_971_520,
                      maxRequestTrailersSize       = 8_000,
-                     maxUnsuccessfulResponses     = 3;
+                     maxErrorResponses            = 3;
             boolean  rejectClientsUsingHTTP1_0    = false,
                      discardRejectedInformational = true,
                      immediatelyContinueExpect100 = false;
@@ -149,8 +149,8 @@ final class DefaultConfig implements Config {
         }
         
         @Override
-        public Builder maxUnsuccessfulResponses(int newVal) {
-            return new DefaultBuilder(this, s -> s.maxUnsuccessfulResponses = newVal);
+        public Builder maxErrorResponses(int newVal) {
+            return new DefaultBuilder(this, s -> s.maxErrorResponses = newVal);
         }
         
         @Override
