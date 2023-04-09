@@ -1,6 +1,5 @@
 package alpha.nomagichttp.util;
 
-import alpha.nomagichttp.testutil.IOSupplier;
 import alpha.nomagichttp.testutil.Interrupt;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
@@ -122,18 +121,11 @@ final class JvmPathLockTest
     void lockUpgrading_crash(int timeout)
             throws InterruptedException, TimeoutException {
          var r = readLock();
-         // TODO: This is terrible. Need to modernize Interrupt.after
-         IOSupplier<JvmPathLock> testee = () -> {
-             try {
-                 return JvmPathLock.writeLock(blabla, timeout, SECONDS);
-             } catch (InterruptedException | TimeoutException e) {
-                 throw new RuntimeException(e);
-             }
-         };
          // Unlike the JDK (which would block until timeout), our API crashes,
          // and no matter the specified timeout; it happens at once
          assertThatThrownBy(() ->
-                 Interrupt.after(1, SECONDS, "writeLock", testee))
+                 Interrupt.after(1, SECONDS, "writeLock", () ->
+                     JvmPathLock.writeLock(blabla, timeout, SECONDS)))
              .isExactlyInstanceOf(IllegalLockUpgradeException.class)
              .hasMessage(null)
              .hasNoCause()

@@ -1,6 +1,7 @@
 package alpha.nomagichttp.testutil;
 
-import java.io.IOException;
+import alpha.nomagichttp.util.Throwing;
+
 import java.nio.channels.ClosedByInterruptException;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
@@ -29,20 +30,24 @@ public final class Interrupt
     
     /**
      * Executes the given action and interrupts the current thread after a
-     * specified amount of time, unless the action completes sooner.
+     * specified amount of time, unless the action completes sooner.<p>
+     * 
+     * If and when the thread is interrupted, many ongoing channel operations
+     * will return exceptionally with {@link ClosedByInterruptException}.
      * 
      * @param duration duration of timeout
      * @param unit unit of duration
-     * @param op operation name (for logging)
+     * @param name operation name (for logging)
      * @param action to execute
+     * @param <X> action exception type
      * 
-     * @throws IOException if an I/O error occurs
-     *                     (this includes {@link ClosedByInterruptException}!)
+     * @throws X as defined by action
      */
-    public static void after(
-            long duration, TimeUnit unit, String op, IORunnable action)
-                throws IOException {
-        after(duration, unit, op, () -> {
+    public static <X extends Exception> void after(
+            long duration, TimeUnit unit, String name,
+            Throwing.Runnable<X> action)
+            throws X {
+        after(duration, unit, name, () -> {
             action.run();
             return null;
         });
@@ -51,22 +56,26 @@ public final class Interrupt
     /**
      * Retrieves the result of the given action and interrupts the current
      * thread after a specified amount of time, unless the action completes
-     * sooner.
+     * sooner.<p>
+     * 
+     * If and when the thread is interrupted, many ongoing channel operations
+     * will return exceptionally with {@link ClosedByInterruptException}.
      * 
      * @param duration duration of timeout
      * @param unit unit of duration
-     * @param op operation name (for logging)
+     * @param name operation name (for logging)
      * @param action to execute
      * @param <V> action result type
+     * @param <X> action exception type
      * 
      * @return action result
      * 
-     * @throws IOException if an I/O error occurs
-     *                     (this includes {@link ClosedByInterruptException}!)
+     * @throws X as defined by action
      */
-    public static <V> V after(
-            long duration, TimeUnit unit, String op, IOSupplier<V> action)
-            throws IOException {
+    public static <V, X extends Exception> V after(
+            long duration, TimeUnit unit, String name,
+            Throwing.Supplier<V, X> action)
+            throws X {
         final Thread worker = Thread.currentThread();
         
         if (duration <= 0) {
@@ -79,7 +88,7 @@ public final class Interrupt
             synchronized (timer) {
                 if (timer[0]) {
                     LOG.log(INFO, () ->
-                            "Interrupting operation \"" + op + "\".");
+                            "Interrupting operation \"" + name + "\".");
                     worker.interrupt();
                     timer[0] = false;
                 }
