@@ -20,7 +20,7 @@ final class DefaultConfig implements Config {
                            maxRequestTrailersSize,
                            maxUnsuccessfulResponses;
     private final boolean  rejectClientsUsingHTTP1_0,
-                           ignoreRejectedInformational,
+                           discardRejectedInformational,
                            immediatelyContinueExpect100;
     private final Duration timeoutRead,
                            timeoutResponse,
@@ -35,7 +35,7 @@ final class DefaultConfig implements Config {
         maxRequestTrailersSize       = s.maxRequestTrailersSize;
         maxUnsuccessfulResponses     = s.maxUnsuccessfulResponses;
         rejectClientsUsingHTTP1_0    = s.rejectClientsUsingHTTP1_0;
-        ignoreRejectedInformational  = s.ignoreRejectedInformational;
+        discardRejectedInformational = s.discardRejectedInformational;
         immediatelyContinueExpect100 = s.immediatelyContinueExpect100;
         timeoutRead                  = s.timeoutRead;
         timeoutResponse              = s.timeoutResponse;
@@ -71,7 +71,7 @@ final class DefaultConfig implements Config {
     
     @Override
     public boolean discardRejectedInformational() {
-        return ignoreRejectedInformational;
+        return discardRejectedInformational;
     }
     
     @Override
@@ -121,7 +121,7 @@ final class DefaultConfig implements Config {
                      maxRequestTrailersSize       = 8_000,
                      maxUnsuccessfulResponses     = 3;
             boolean  rejectClientsUsingHTTP1_0    = false,
-                     ignoreRejectedInformational  = true,
+                     discardRejectedInformational = true,
                      immediatelyContinueExpect100 = false;
             Duration timeoutRead                  = ofSeconds(90),
                      timeoutResponse              = timeoutRead,
@@ -159,8 +159,8 @@ final class DefaultConfig implements Config {
         }
         
         @Override
-        public Builder ignoreRejectedInformational(boolean newVal) {
-            return new DefaultBuilder(this, s -> s.ignoreRejectedInformational = newVal);
+        public Builder discardRejectedInformational(boolean newVal) {
+            return new DefaultBuilder(this, s -> s.discardRejectedInformational = newVal);
         }
         
         @Override

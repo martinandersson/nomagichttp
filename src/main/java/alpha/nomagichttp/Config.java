@@ -28,11 +28,19 @@ import java.util.concurrent.TimeUnit;
  * 
  * The implementation is immutable and thread-safe.<p>
  * 
- * The implementation used if none is specified is {@link #DEFAULT}.<p>
+ * The configuration instance used by the server — if none is specified — is
+ * {@link #DEFAULT}.<p>
  * 
  * Any configuration object can be turned into a builder for customization. The
  * static method {@link #configuration()} is a shortcut for {@code
- * Config.DEFAULT.toBuilder()}.<p>
+ * Config.DEFAULT.toBuilder()} and allows for fluent overrides of individual
+ * values.<p>
+ * <pre>
+ *   new HttpServer(configuration()
+ *           .{@link #rejectClientsUsingHTTP1_0() rejectClientsUsingHTTP1_0}(true)
+ *           ...
+ *           .build());
+ * </pre>
  * 
  * In the JDK Reference Implementation, the number of platform threads available
  * for scheduling virtual threads may be specified using the system property
@@ -44,14 +52,17 @@ import java.util.concurrent.TimeUnit;
 public interface Config
 {
     /**
-     * Values used:<p>
+     * This configuration instance contains the following values:<p>
      * 
      * Max request head size = 8 000 <br>
+     * Max request body conversion size = 20 971 520 (20 MB) <br>
+     * Max request trailers' size = 8 000 <br>
      * Max unsuccessful responses = 3 <br>
-     * Reject clients using HTTP/1.0 = true <br>
-     * Ignore rejected informational = true <br>
+     * Reject clients using HTTP/1.0 = false <br>
+     * Discard rejected informational = true <br>
      * Immediately continue Expect 100 = false <br>
-     * Timeout idle connection = 90 seconds
+     * Timeout ... to be defined <br>
+     * Implement missing options = true
      */
     Config DEFAULT = DefaultConfig.DefaultBuilder.ROOT.build();
     
@@ -62,7 +73,7 @@ public interface Config
      * Once the limit has been exceeded, a {@link
      * MaxRequestHeadSizeExceededException} is thrown.<p>
      * 
-     * The default implementation returns {@code 8_000}.
+     * The default implementation returns {@code 8_000}.<p>
      * 
      * The default value corresponds to <a
      * href="https://tools.ietf.org/html/rfc7230#section-3.1.1">RFC 7230 §3.1.1</a>
@@ -113,7 +124,6 @@ public interface Config
      * 
      * @return number of request trailer bytes processed before exception
      */
-    // TODO: Rename to length
     int maxRequestTrailersSize();
     
     /**
@@ -433,7 +443,7 @@ public interface Config
          * @return a new builder representing the new state
          * @see Config#discardRejectedInformational()
          */
-        Builder ignoreRejectedInformational(boolean newVal);
+        Builder discardRejectedInformational(boolean newVal);
         
         /**
          * Sets a new value.
