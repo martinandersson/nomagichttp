@@ -206,7 +206,7 @@ public interface Request extends HeaderHolder, AttributeHolder
      *             if the body has not been consumed
      * @throws HeaderParseException
      *             if parsing fails
-     * @throws MaxRequestTrailersSizeExceededException
+     * @throws MaxRequestTrailersSizeException
      *             if the length of trailers exceeds the configured tolerance
      * @throws IOException
      *             if an I/O error occurs
@@ -793,7 +793,7 @@ public interface Request extends HeaderHolder, AttributeHolder
          * @throws CharacterCodingException
          *             if input is malformed, or
          *             if a character is unmappable
-         * @throws MaxRequestBodyConversionSizeExceededException
+         * @throws MaxRequestBodyBufferSizeException
          *             if the body size exceeds the internal buffer limit
          * @throws IOException
          *             if an I/O error occurs
@@ -826,7 +826,7 @@ public interface Request extends HeaderHolder, AttributeHolder
          * @throws CharacterCodingException
          *             if input is malformed, or
          *             if a character is unmappable
-         * @throws MaxRequestBodyConversionSizeExceededException
+         * @throws MaxRequestBodyBufferSizeException
          *             if the body size exceeds the internal buffer limit
          * @throws IOException
          *             if an I/O error occurs
@@ -993,7 +993,7 @@ public interface Request extends HeaderHolder, AttributeHolder
          *             if {@code length} is unknown
          * @throws BufferOverflowException
          *             if {@code length} is greater than {@code Integer.MAX_VALUE}
-         * @throws MaxRequestBodyConversionSizeExceededException
+         * @throws MaxRequestBodyBufferSizeException
          *             if the body size exceeds the internal buffer limit
          * @throws IOException
          *             if an I/O error occurs

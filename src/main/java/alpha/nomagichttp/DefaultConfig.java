@@ -16,7 +16,7 @@ import static java.util.Objects.requireNonNull;
 final class DefaultConfig implements Config {
     private final Builder  builder;
     private final int      maxRequestHeadSize,
-                           maxRequestBodyConversionSize,
+                           maxRequestBodyBufferSize,
                            maxRequestTrailersSize,
                            maxUnsuccessfulResponses;
     private final boolean  rejectClientsUsingHTTP1_0,
@@ -31,7 +31,7 @@ final class DefaultConfig implements Config {
     DefaultConfig(Builder b, DefaultBuilder.MutableState s) {
         builder                      = b;
         maxRequestHeadSize           = s.maxRequestHeadSize;
-        maxRequestBodyConversionSize = s.maxRequestBodyConversionSize;
+        maxRequestBodyBufferSize     = s.maxRequestBodyBufferSize;
         maxRequestTrailersSize       = s.maxRequestTrailersSize;
         maxUnsuccessfulResponses     = s.maxUnsuccessfulResponses;
         rejectClientsUsingHTTP1_0    = s.rejectClientsUsingHTTP1_0;
@@ -50,8 +50,8 @@ final class DefaultConfig implements Config {
     }
     
     @Override
-    public int maxRequestBodyConversionSize() {
-        return maxRequestBodyConversionSize;
+    public int maxRequestBodyBufferSize() {
+        return maxRequestBodyBufferSize;
     }
     
     @Override
@@ -117,7 +117,7 @@ final class DefaultConfig implements Config {
         
         static class MutableState {
             int      maxRequestHeadSize           = 8_000,
-                     maxRequestBodyConversionSize = 20_971_520,
+                     maxRequestBodyBufferSize     = 20_971_520,
                      maxRequestTrailersSize       = 8_000,
                      maxUnsuccessfulResponses     = 3;
             boolean  rejectClientsUsingHTTP1_0    = false,
@@ -144,8 +144,8 @@ final class DefaultConfig implements Config {
         }
         
         @Override
-        public Builder maxRequestBodyConversionSize(int newVal) {
-            return new DefaultBuilder(this, s -> s.maxRequestBodyConversionSize = newVal);
+        public Builder maxRequestBodyBufferSize(int newVal) {
+            return new DefaultBuilder(this, s -> s.maxRequestBodyBufferSize = newVal);
         }
         
         @Override

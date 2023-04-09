@@ -12,7 +12,7 @@ import alpha.nomagichttp.message.HeaderParseException;
 import alpha.nomagichttp.message.HttpVersionTooNewException;
 import alpha.nomagichttp.message.HttpVersionTooOldException;
 import alpha.nomagichttp.message.IllegalRequestBodyException;
-import alpha.nomagichttp.message.MaxRequestTrailersSizeExceededException;
+import alpha.nomagichttp.message.MaxRequestTrailersSizeException;
 import alpha.nomagichttp.message.RawRequest;
 import alpha.nomagichttp.message.Request;
 import alpha.nomagichttp.message.RequestLineParseException;
@@ -465,7 +465,7 @@ final class HttpExchange
                 LOG.log(DEBUG, "Discarding request trailers before new exchange");
                 try {
                     requestWithoutParams(reader, r).trailers();
-                } catch (HeaderParseException | MaxRequestTrailersSizeExceededException e) {
+                } catch (HeaderParseException | MaxRequestTrailersSizeException e) {
                     // DEBUG because the app was obviously not interested in the request
                     LOG.log(DEBUG, """
                         Error while discarding request trailers, \

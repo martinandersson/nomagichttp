@@ -4,7 +4,7 @@ import alpha.nomagichttp.message.BadRequestException;
 import alpha.nomagichttp.message.ByteBufferIterable;
 import alpha.nomagichttp.message.ByteBufferIterator;
 import alpha.nomagichttp.message.ContentHeaders;
-import alpha.nomagichttp.message.MaxRequestBodyConversionSizeExceededException;
+import alpha.nomagichttp.message.MaxRequestBodyBufferSizeException;
 import alpha.nomagichttp.message.MediaType;
 import alpha.nomagichttp.message.Request;
 import alpha.nomagichttp.message.UnsupportedTransferCodingException;
@@ -229,8 +229,8 @@ final class RequestBody implements Request.Body
     }
     
     private byte[] bytesFast(int cap) throws IOException {
-        if (cap > httpServer().getConfig().maxRequestBodyConversionSize()) {
-            throw new MaxRequestBodyConversionSizeExceededException();
+        if (cap > httpServer().getConfig().maxRequestBodyBufferSize()) {
+            throw new MaxRequestBodyBufferSizeException();
         }
         final byte[] dst = new byte[cap];
         int offset = 0;

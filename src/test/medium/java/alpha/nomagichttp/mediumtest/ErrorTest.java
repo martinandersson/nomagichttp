@@ -9,7 +9,7 @@ import alpha.nomagichttp.message.HttpVersionTooNewException;
 import alpha.nomagichttp.message.HttpVersionTooOldException;
 import alpha.nomagichttp.message.IllegalRequestBodyException;
 import alpha.nomagichttp.message.IllegalResponseBodyException;
-import alpha.nomagichttp.message.MaxRequestHeadSizeExceededException;
+import alpha.nomagichttp.message.MaxRequestHeadSizeException;
 import alpha.nomagichttp.message.MediaType;
 import alpha.nomagichttp.message.MediaTypeParseException;
 import alpha.nomagichttp.message.ReadTimeoutException;
@@ -272,7 +272,7 @@ class ErrorTest extends AbstractRealTest
     }
     
     @Test
-    void MaxRequestHeadSizeExceededException()
+    void MaxRequestHeadSizeException()
             throws IOException, InterruptedException
     {
         usingConfiguration()
@@ -284,7 +284,7 @@ class ErrorTest extends AbstractRealTest
             Connection: close\r
             Content-Length: 0\r\n\r\n""");
         assertThatServerErrorObservedAndLogged()
-            .isExactlyInstanceOf(MaxRequestHeadSizeExceededException.class)
+            .isExactlyInstanceOf(MaxRequestHeadSizeException.class)
             .hasNoCause()
             .hasNoSuppressedExceptions()
             .hasMessage(null);

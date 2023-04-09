@@ -5,7 +5,6 @@ import alpha.nomagichttp.HttpConstants;
 import alpha.nomagichttp.HttpServer;
 import alpha.nomagichttp.handler.RequestHandler;
 import alpha.nomagichttp.util.ByteBufferIterables;
-import alpha.nomagichttp.util.Headers;
 
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -491,7 +490,6 @@ public interface Response extends HeaderHolder
          *             if {@code trailers} is {@code null}
          * 
          * @see Request#trailers()
-         * @see Headers
          * @see Config#rejectClientsUsingHTTP1_0() 
          */
         Builder addTrailers(Supplier<LinkedHashMap<String, List<String>>> trailers);

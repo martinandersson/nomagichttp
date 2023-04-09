@@ -35,7 +35,7 @@ final class DefaultRequestTest
     @Test
     void body_toText_happyPath() throws Exception {
         var req = createRequest("abc", "Content-Length", "3");
-        // Implementation needs access to Config.maxRequestBodyConversionSize()
+        // Implementation needs access to Config.maxRequestBodyBufferSize()
         final String str = whereServerIsBound(() ->
             // ...and a virtual thread, otherwise WrongThreadException
             getUsingVThread(() -> req.body().toText()));

@@ -4,8 +4,8 @@ import alpha.nomagichttp.message.BetterHeaders;
 import alpha.nomagichttp.message.ByteBufferIterable;
 import alpha.nomagichttp.message.DefaultContentHeaders;
 import alpha.nomagichttp.message.HeaderParseException;
-import alpha.nomagichttp.message.MaxRequestHeadSizeExceededException;
-import alpha.nomagichttp.message.MaxRequestTrailersSizeExceededException;
+import alpha.nomagichttp.message.MaxRequestHeadSizeException;
+import alpha.nomagichttp.message.MaxRequestTrailersSizeException;
 import alpha.nomagichttp.message.Request;
 
 import java.util.ArrayList;
@@ -76,7 +76,7 @@ final class ParserOf<H extends BetterHeaders> extends AbstractResultParser<H>
      * Creates a parser of request headers.<p>
      * 
      * If the delta between the two given integers are exceeded while parsing,
-     * the parser will throw a {@link MaxRequestHeadSizeExceededException}.
+     * the parser will throw a {@link MaxRequestHeadSizeException}.
      * 
      * @param in byte source
      * @param reqLineLen number of bytes already parsed from the head
@@ -92,7 +92,7 @@ final class ParserOf<H extends BetterHeaders> extends AbstractResultParser<H>
         return new ParserOf<>(
                 in, reqLineLen,
                 maxHeadSize - reqLineLen,
-                MaxRequestHeadSizeExceededException::new,
+                MaxRequestHeadSizeException::new,
                 RequestHeaders.EMPTY,
                 RequestHeaders::new);
     }
@@ -101,7 +101,7 @@ final class ParserOf<H extends BetterHeaders> extends AbstractResultParser<H>
      * Creates a parser of request trailers.<p>
      * 
      * If {@code maxTrailersSize} is exceeded while parsing, the parser will
-     * throw a {@link MaxRequestTrailersSizeExceededException}.
+     * throw a {@link MaxRequestTrailersSizeException}.
      * 
      * @param in byte source
      * @param maxTrailersSize max bytes to parse
@@ -115,7 +115,7 @@ final class ParserOf<H extends BetterHeaders> extends AbstractResultParser<H>
         return new ParserOf<>(
                 in, -1,
                 maxTrailersSize,
-                MaxRequestTrailersSizeExceededException::new,
+                MaxRequestTrailersSizeException::new,
                 DefaultContentHeaders.empty(),
                 map -> new DefaultContentHeaders(map, true));
     }

@@ -8,15 +8,15 @@ import alpha.nomagichttp.Config;
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  * 
- * @see Config#maxRequestBodyConversionSize()
+ * @see Config#maxRequestBodyBufferSize()
  */
-public final class MaxRequestBodyConversionSizeExceededException extends RuntimeException {
+public final class MaxRequestBodyBufferSizeException extends RuntimeException {
     private static final long serialVersionUID = 1L;
     
     /**
-     * Constructs a {@code MaxRequestBodyConversionSizeExceededException}.
+     * Constructs a {@code MaxRequestBodyBufferSizeException}.
      */
-    public MaxRequestBodyConversionSizeExceededException() {
+    public MaxRequestBodyBufferSizeException() {
         // Empty
     }
 }

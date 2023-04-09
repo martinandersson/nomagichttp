@@ -4,9 +4,9 @@ import alpha.nomagichttp.handler.ClientChannel;
 import alpha.nomagichttp.handler.ErrorHandler;
 import alpha.nomagichttp.handler.ResponseRejectedException;
 import alpha.nomagichttp.message.HttpVersionTooOldException;
-import alpha.nomagichttp.message.MaxRequestBodyConversionSizeExceededException;
-import alpha.nomagichttp.message.MaxRequestHeadSizeExceededException;
-import alpha.nomagichttp.message.MaxRequestTrailersSizeExceededException;
+import alpha.nomagichttp.message.MaxRequestBodyBufferSizeException;
+import alpha.nomagichttp.message.MaxRequestHeadSizeException;
+import alpha.nomagichttp.message.MaxRequestTrailersSizeException;
 import alpha.nomagichttp.message.ReadTimeoutException;
 import alpha.nomagichttp.message.Request;
 import alpha.nomagichttp.message.Response;
@@ -70,8 +70,8 @@ public interface Config
      * Returns the max number of bytes processed while parsing a request head
      * before giving up.<p>
      * 
-     * Once the limit has been exceeded, a {@link
-     * MaxRequestHeadSizeExceededException} is thrown.<p>
+     * Once the limit has been exceeded, a {@link MaxRequestHeadSizeException}
+     * is thrown.<p>
      * 
      * The default implementation returns {@code 8_000}.<p>
      * 
@@ -88,11 +88,11 @@ public interface Config
      * Returns the max number of bytes that the {@link Request.Body} API accepts
      * to internally buffer.<p>
      * 
-     * Once the limit has been exceeded, a {@link
-     * MaxRequestBodyConversionSizeExceededException} is thrown.<p>
+     * Once the limit has been exceeded, a
+     * {@link MaxRequestBodyBufferSizeException} is thrown.<p>
      * 
      * This configuration applies <i>only</i> to high-level methods that
-     * internally buffer up the whole body, such as {@link Request.Body#bytes()}
+     * internally buffer the whole body, such as {@link Request.Body#bytes()}
      * and {@link Request.Body#toText()}.<p>
      * 
      * The request body size itself has no limit (nor is there such a
@@ -111,14 +111,14 @@ public interface Config
      * 
      * @return see JavaDoc
      */
-    int maxRequestBodyConversionSize();
+    int maxRequestBodyBufferSize();
     
     /**
      * Returns the max number of bytes processed while parsing request trailers
      * before giving up.<p>
      * 
-     * Once the limit has been exceeded, a {@link
-     * MaxRequestTrailersSizeExceededException} is thrown.<p>
+     * Once the limit has been exceeded, a
+     * {@link MaxRequestTrailersSizeException} is thrown.<p>
      * 
      * The default implementation returns {@code 8_000}.
      * 
@@ -177,10 +177,10 @@ public interface Config
      * 1XX responses to the channel without concern for incompatible clients.<p>
      * 
      * Turning this option off causes {@link ClientChannel#write(Response)} to
-     * throw a {@link ResponseRejectedException} if the response is 1XX and the
-     * recipient is incompatible. This necessitates that the application must
-     * either handle the exception explicitly, or query the active HTTP version
-     * ({@link Request#httpVersion()}) before attempting to send such a
+     * throw a {@link ResponseRejectedException} for 1XX responses when the
+     * protocol version used is HTTP/1.0. This necessitates that the application
+     * must either handle the exception explicitly, or query the active HTTP
+     * version ({@link Request#httpVersion()}) before attempting to send such a
      * response.
      * 
      * @return whether to discard 1XX responses for incompatible clients
@@ -411,9 +411,9 @@ public interface Config
          * 
          * @param newVal new value
          * @return a new builder representing the new state
-         * @see Config#maxRequestBodyConversionSize()
+         * @see Config#maxRequestBodyBufferSize()
          */
-        Builder maxRequestBodyConversionSize(int newVal);
+        Builder maxRequestBodyBufferSize(int newVal);
         
         /**
          * Sets a new value.<p>

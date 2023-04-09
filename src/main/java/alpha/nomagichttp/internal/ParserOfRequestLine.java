@@ -1,7 +1,7 @@
 package alpha.nomagichttp.internal;
 
 import alpha.nomagichttp.message.ByteBufferIterable;
-import alpha.nomagichttp.message.MaxRequestHeadSizeExceededException;
+import alpha.nomagichttp.message.MaxRequestHeadSizeException;
 import alpha.nomagichttp.message.RawRequest;
 import alpha.nomagichttp.message.RequestLineParseException;
 
@@ -69,11 +69,11 @@ final class ParserOfRequestLine extends AbstractResultParser<RawRequest.Line>
     
     @Override
     protected RawRequest.Line tryParse(byte b)
-          throws RequestLineParseException, MaxRequestHeadSizeExceededException
+          throws RequestLineParseException, MaxRequestHeadSizeException
     {
         final int r = byteCount();
         if (r == maxBytes) {
-            throw new MaxRequestHeadSizeExceededException();
+            throw new MaxRequestHeadSizeException();
         }
         if (r == 1) {
             started = System.nanoTime();

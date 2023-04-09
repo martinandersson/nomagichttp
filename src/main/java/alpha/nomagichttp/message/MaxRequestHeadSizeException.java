@@ -10,13 +10,13 @@ import alpha.nomagichttp.Config;
  * 
  * @see Config#maxRequestHeadSize()
  */
-public final class MaxRequestHeadSizeExceededException extends RuntimeException {
+public final class MaxRequestHeadSizeException extends RuntimeException {
     private static final long serialVersionUID = 1L;
     
     /**
-     * Constructs a {@code MaxRequestHeadSizeExceededException}.
+     * Constructs a {@code MaxRequestHeadSizeException}.
      */
-    public MaxRequestHeadSizeExceededException() {
+    public MaxRequestHeadSizeException() {
         // Empty
     }
 }

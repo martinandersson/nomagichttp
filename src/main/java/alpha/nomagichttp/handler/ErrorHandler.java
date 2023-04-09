@@ -14,9 +14,9 @@ import alpha.nomagichttp.message.HttpVersionTooNewException;
 import alpha.nomagichttp.message.HttpVersionTooOldException;
 import alpha.nomagichttp.message.IllegalRequestBodyException;
 import alpha.nomagichttp.message.IllegalResponseBodyException;
-import alpha.nomagichttp.message.MaxRequestBodyConversionSizeExceededException;
-import alpha.nomagichttp.message.MaxRequestHeadSizeExceededException;
-import alpha.nomagichttp.message.MaxRequestTrailersSizeExceededException;
+import alpha.nomagichttp.message.MaxRequestBodyBufferSizeException;
+import alpha.nomagichttp.message.MaxRequestHeadSizeException;
+import alpha.nomagichttp.message.MaxRequestTrailersSizeException;
 import alpha.nomagichttp.message.MediaTypeParseException;
 import alpha.nomagichttp.message.ReadTimeoutException;
 import alpha.nomagichttp.message.Request;
@@ -214,19 +214,19 @@ public interface ErrorHandler
      *     <td> {@link Responses#notImplemented()}} </td>
      *   </tr>
      *   <tr>
-     *     <th scope="row"> {@link MaxRequestHeadSizeExceededException} </th>
+     *     <th scope="row"> {@link MaxRequestHeadSizeException} </th>
      *     <td> None </td>
      *     <td> Yes </td>
      *     <td> {@link Responses#entityTooLarge()} </td>
      *   </tr>
      *   <tr>
-     *     <th scope="row"> {@link MaxRequestTrailersSizeExceededException} </th>
+     *     <th scope="row"> {@link MaxRequestTrailersSizeException} </th>
      *     <td> None </td>
      *     <td> Yes </td>
      *     <td> {@link Responses#entityTooLarge()} </td>
      *   </tr>
      *   <tr>
-     *     <th scope="row"> {@link MaxRequestBodyConversionSizeExceededException} </th>
+     *     <th scope="row"> {@link MaxRequestBodyBufferSizeException} </th>
      *     <td> None </td>
      *     <td> Yes </td>
      *     <td> {@link Responses#entityTooLarge()} </td>
@@ -358,9 +358,9 @@ public interface ErrorHandler
             res = httpVersionNotSupported();
         } catch (UnsupportedTransferCodingException e) {
             res = notImplemented();
-        } catch (MaxRequestHeadSizeExceededException |
-                 MaxRequestTrailersSizeExceededException |
-                 MaxRequestBodyConversionSizeExceededException e) {
+        } catch (MaxRequestHeadSizeException |
+                 MaxRequestTrailersSizeException |
+                 MaxRequestBodyBufferSizeException e) {
             log(exc);
             res = entityTooLarge();
         } catch (NoRouteFoundException e) {
