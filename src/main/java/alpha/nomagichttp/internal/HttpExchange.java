@@ -26,7 +26,6 @@ import java.util.Optional;
 
 import static alpha.nomagichttp.HttpConstants.HeaderName.EXPECT;
 import static alpha.nomagichttp.HttpConstants.Method.TRACE;
-import static alpha.nomagichttp.HttpConstants.Version.HTTP_1_0;
 import static alpha.nomagichttp.HttpConstants.Version.HTTP_1_1;
 import static alpha.nomagichttp.handler.ErrorHandler.BASE;
 import static alpha.nomagichttp.internal.DefaultRequest.requestWithoutParams;
@@ -218,9 +217,9 @@ final class HttpExchange
     
     private SkeletonRequest __createRequest(RawRequest.Head h) {
         Version v = __parseHttpVersion(h.line().httpVersion());
-        if (v == HTTP_1_0 && conf.rejectClientsUsingHTTP1_0()) {
+        if (v.isLessThan(conf.minHttpVersion())) {
             throw new HttpVersionTooOldException(
-                    h.line().httpVersion(), "HTTP/1.1");
+                    h.line().httpVersion(), HTTP_1_1);
         }
         var req = new SkeletonRequest(h, v,
                 SkeletonRequestTarget.parse(h.line().target()),
@@ -229,16 +228,15 @@ final class HttpExchange
         return req;
     }
     
-    private static Version __parseHttpVersion(String httpVersion) {
-        final String upgrade = "HTTP/1.1"; // for now
+    private static Version __parseHttpVersion(String rawVersion) {
         final Version v;
         try {
-            v = Version.parse(httpVersion);
+            v = Version.parse(rawVersion);
         } catch (IllegalArgumentException e) {
             String[] comp = e.getMessage().split(":");
             if (comp.length == 1) {
                 // No literal for minor
-                __requireHTTP1(parseInt(comp[0]), httpVersion, upgrade);
+                __requireHTTP1(parseInt(comp[0]), rawVersion, HTTP_1_1);
                 throw new AssertionError("""
                         String "HTTP/<single digit>" should have failed with \
                         parse exception (missing minor).""");
@@ -246,21 +244,19 @@ final class HttpExchange
                 // No literal for major + minor (i.e., version < HTTP/0.9)
                 assert comp.length == 2;
                 assert parseInt(comp[0]) <= 0;
-                throw new HttpVersionTooOldException(httpVersion, upgrade);
+                throw new HttpVersionTooOldException(rawVersion, HTTP_1_1);
             }
         }
-        __requireHTTP1(v.major(), httpVersion, "HTTP/1.1");
+        __requireHTTP1(v.major(), rawVersion, HTTP_1_1);
         return v;
     }
     
-    private static void __requireHTTP1(
-            int major, String rejectedVersion, String upgrade)
-    {
+    private static void __requireHTTP1(int major, String raw, Version upgrade) {
         if (major < 1) {
-            throw new HttpVersionTooOldException(rejectedVersion, upgrade);
+            throw new HttpVersionTooOldException(raw, upgrade);
         }
         if (major > 1) { // for now
-            throw new HttpVersionTooNewException(rejectedVersion);
+            throw new HttpVersionTooNewException(raw);
         }
     }
     

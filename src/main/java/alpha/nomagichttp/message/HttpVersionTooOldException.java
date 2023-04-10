@@ -1,6 +1,7 @@
 package alpha.nomagichttp.message;
 
 import alpha.nomagichttp.HttpConstants;
+import alpha.nomagichttp.HttpConstants.Version;
 import alpha.nomagichttp.HttpServer;
 import alpha.nomagichttp.handler.ErrorHandler;
 
@@ -33,9 +34,9 @@ public class HttpVersionTooOldException extends RuntimeException
      * @param upgrade server's proposed version
      * @throws NullPointerException if any argument is {@code null}
      */
-    public HttpVersionTooOldException(String httpVersion, String upgrade) {
+    public HttpVersionTooOldException(String httpVersion, Version upgrade) {
         this.version = requireNonNull(httpVersion);
-        this.upgrade = requireNonNull(upgrade);
+        this.upgrade = upgrade.toString();
     }
     
     /**
