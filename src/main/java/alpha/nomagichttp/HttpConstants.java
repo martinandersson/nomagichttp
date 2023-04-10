@@ -3131,6 +3131,8 @@ public final class HttpConstants {
             return this.minor().getAsInt() > other.minor().getAsInt();
         }
         
+        private String str;
+        
         /**
          * Returns the HTTP-version field value.<p>
          * 
@@ -3140,7 +3142,9 @@ public final class HttpConstants {
          */
         @Override
         public String toString() {
-            return "HTTP/" + major() + (minor().isEmpty() ? "" : "." + minor().getAsInt()); 
+            String s = str;
+            return s != null ? s : (str =
+                "HTTP/" + major() + (minor().isEmpty() ? "" : "." + minor().getAsInt()));
         }
     }
 }
