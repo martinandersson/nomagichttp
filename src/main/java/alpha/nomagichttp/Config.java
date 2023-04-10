@@ -1,5 +1,6 @@
 package alpha.nomagichttp;
 
+import alpha.nomagichttp.HttpConstants.Version;
 import alpha.nomagichttp.handler.ClientChannel;
 import alpha.nomagichttp.handler.ErrorHandler;
 import alpha.nomagichttp.handler.ResponseRejectedException;
@@ -37,7 +38,8 @@ import java.util.concurrent.TimeUnit;
  * values.
  * <pre>
  *   new HttpServer(configuration()
- *           .{@link #rejectClientsUsingHTTP1_0() rejectClientsUsingHTTP1_0}(true)
+ *           .{@link #minHttpVersion() minHttpVersion
+ *            }({@link HttpConstants.Version#HTTP_1_1 HTTP_1_1})
  *           ...
  *           .build());
  * </pre>
@@ -58,7 +60,7 @@ public interface Config
      * Max request body conversion size = 20 971 520 (20 MB) <br>
      * Max request trailers' size = 8 000 <br>
      * Max error responses = 3 <br>
-     * Reject clients using HTTP/1.0 = false <br>
+     * Min HTTP version = 1.0 <br>
      * Discard rejected informational = true <br>
      * Immediately continue Expect 100 = false <br>
      * Timeout ... to be defined <br>
@@ -142,32 +144,30 @@ public interface Config
     int maxErrorResponses();
     
     /**
-     * Reject HTTP/1.0 clients, yes or no.<p>
+     * Minimum supported HTTP version.<p>
      * 
-     * By default, this method returns {@code false} and the server will
-     * therefore accept HTTP/1.0 clients.<p>
+     * By default, this method returns
+     * {@link HttpConstants.Version#HTTP_1_0 HTTP/1.0}.<p>
      * 
-     * Rejection takes place through a server-thrown {@link
-     * HttpVersionTooOldException} which by default gets translated to a
-     * "426 Upgrade Required" response.<p>
+     * If a client sends a request with an older HTTP version than what is
+     * configured, a {@link HttpVersionTooOldException} is thrown, which by
+     * default gets translated to a "426 Upgrade Required" response.<p>
      * 
      * HTTP/1.0 does not by default support persistent connections and there
-     * are a number of issues related to HTTP/1.0's Keep-Alive mechanism which
+     * are a number of issues related to HTTP/1.0's Keep-Alive mechanism — which
      * the NoMagicHTTP server does not support. All HTTP/1.0 connections will
      * therefore close after each response, which is inefficient. It's
-     * recommended to override this value with {@code true}. As a library
+     * recommended to override this value with
+     * {@link HttpConstants.Version#HTTP_1_1 HTTP/1.1}. As a library
      * however, we have to be backwards compatible and support as many
-     * applications as possible "out of the box", hence the {@code false}
-     * default.<p>
+     * applications as possible "out of the box".<p>
      * 
-     * Note that HTTP/0.9 or older clients are always rejected (can not be
-     * configured differently).<p>
+     * The minimum version the NoMagicHTTP supports is HTTP/1.0, and the maximum
+     * version currently supported is HTTP/1.1.
      * 
-     * The default implementation returns {@code false}.
-     * 
-     * @return whether to reject HTTP/1.0 clients
+     * @return the minimum supported HTTP version
      */
-    boolean rejectClientsUsingHTTP1_0();
+    Version minHttpVersion();
     
     /**
      * Discard 1XX (Informational) responses when the recipient is an
@@ -431,10 +431,19 @@ public interface Config
          * Sets a new value.
          * 
          * @param newVal new value
+         * 
          * @return a new builder representing the new state
-         * @see Config#rejectClientsUsingHTTP1_0()
+         * 
+         * @throws NullPointerException
+         *             if {@code newVal} is {@code null}
+         * 
+         * @throws IllegalArgumentException
+         *             if {@code newVal} is less than HTTP/1.0
+         *             or greater than HTTP/1.1
+         * 
+         * @see Config#minHttpVersion()
          */
-        Builder rejectClientsUsingHTTP1_0(boolean newVal);
+        Builder minHttpVersion(Version newVal);
         
         /**
          * Sets a new value.

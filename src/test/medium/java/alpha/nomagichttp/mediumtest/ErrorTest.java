@@ -35,6 +35,7 @@ import org.junit.jupiter.params.provider.ValueSource;
 import java.io.IOException;
 import java.nio.channels.InterruptedByTimeoutException;
 
+import static alpha.nomagichttp.HttpConstants.Version.HTTP_1_1;
 import static alpha.nomagichttp.handler.RequestHandler.GET;
 import static alpha.nomagichttp.handler.RequestHandler.HEAD;
 import static alpha.nomagichttp.handler.RequestHandler.POST;
@@ -169,7 +170,7 @@ class ErrorTest extends AbstractRealTest
             throws IOException, InterruptedException
     {
         usingConfiguration()
-            .rejectClientsUsingHTTP1_0(true);
+            .minHttpVersion(HTTP_1_1);
         String rsp = client().writeReadTextUntilNewlines(
             "GET /not-found HTTP/1.0"       + CRLF + CRLF);
         assertThat(rsp).isEqualTo(

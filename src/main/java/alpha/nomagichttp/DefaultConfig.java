@@ -1,10 +1,13 @@
 package alpha.nomagichttp;
 
+import alpha.nomagichttp.HttpConstants.Version;
 import alpha.nomagichttp.util.AbstractImmutableBuilder;
 
 import java.time.Duration;
 import java.util.function.Consumer;
 
+import static alpha.nomagichttp.HttpConstants.Version.HTTP_1_0;
+import static alpha.nomagichttp.HttpConstants.Version.HTTP_1_1;
 import static java.time.Duration.ofSeconds;
 import static java.util.Objects.requireNonNull;
 
@@ -19,8 +22,8 @@ final class DefaultConfig implements Config {
                            maxRequestBodyBufferSize,
                            maxRequestTrailersSize,
                            maxErrorResponses;
-    private final boolean  rejectClientsUsingHTTP1_0,
-                           discardRejectedInformational,
+    private final Version  minHttpVersion;
+    private final boolean  discardRejectedInformational,
                            immediatelyContinueExpect100;
     private final Duration timeoutRead,
                            timeoutResponse,
@@ -34,7 +37,7 @@ final class DefaultConfig implements Config {
         maxRequestBodyBufferSize     = s.maxRequestBodyBufferSize;
         maxRequestTrailersSize       = s.maxRequestTrailersSize;
         maxErrorResponses            = s.maxErrorResponses;
-        rejectClientsUsingHTTP1_0    = s.rejectClientsUsingHTTP1_0;
+        minHttpVersion               = s.minHttpVersion;
         discardRejectedInformational = s.discardRejectedInformational;
         immediatelyContinueExpect100 = s.immediatelyContinueExpect100;
         timeoutRead                  = s.timeoutRead;
@@ -65,8 +68,8 @@ final class DefaultConfig implements Config {
     }
     
     @Override
-    public boolean rejectClientsUsingHTTP1_0() {
-        return rejectClientsUsingHTTP1_0;
+    public HttpConstants.Version minHttpVersion() {
+        return minHttpVersion;
     }
     
     @Override
@@ -120,8 +123,8 @@ final class DefaultConfig implements Config {
                      maxRequestBodyBufferSize     = 20_971_520,
                      maxRequestTrailersSize       = 8_000,
                      maxErrorResponses            = 3;
-            boolean  rejectClientsUsingHTTP1_0    = false,
-                     discardRejectedInformational = true,
+            Version  minHttpVersion               = HTTP_1_0;
+            boolean  discardRejectedInformational = true,
                      immediatelyContinueExpect100 = false;
             Duration timeoutRead                  = ofSeconds(90),
                      timeoutResponse              = timeoutRead,
@@ -154,8 +157,11 @@ final class DefaultConfig implements Config {
         }
         
         @Override
-        public Builder rejectClientsUsingHTTP1_0(boolean newVal) {
-            return new DefaultBuilder(this, s -> s.rejectClientsUsingHTTP1_0 = newVal);
+        public Builder minHttpVersion(Version newVal) {
+            if (newVal.isLessThan(HTTP_1_0) || newVal.isGreaterThan(HTTP_1_1)) {
+                
+            }
+            return new DefaultBuilder(this, s -> s.minHttpVersion = newVal);
         }
         
         @Override

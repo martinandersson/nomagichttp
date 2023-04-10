@@ -490,7 +490,7 @@ public interface Response extends HeaderHolder
          *             if {@code trailers} is {@code null}
          * 
          * @see Request#trailers()
-         * @see Config#rejectClientsUsingHTTP1_0() 
+         * @see Config#minHttpVersion() 
          */
         Builder addTrailers(Supplier<LinkedHashMap<String, List<String>>> trailers);
         

@@ -3079,10 +3079,12 @@ public final class HttpConstants {
          * 
          * E.g., this returns true: {@code HTTP_1.0.isLessThan(HTTP_1.1)}.
          * 
-         * @param  other version to compare with
-         * @return {@code true} if the given version is less than this version,
-         *         otherwise {@code false}
-         * @throws NullPointerException if {@code other} is {@code null}
+         * @param other version to compare with
+         * 
+         * @return see JavaDoc
+         * 
+         * @throws NullPointerException
+         *             if {@code other} is {@code null}
          */
         public boolean isLessThan(Version other) {
             if (this.major() < other.major()) {
@@ -3092,11 +3094,41 @@ public final class HttpConstants {
                 return false;
             }
             if (minor().isEmpty()) {
-                // Same version
+                // Same version (HTTP/2 or newer)
+                assert other.minor().isEmpty();
                 return false;
             }
             assert other.minor().isPresent();
             return this.minor().getAsInt() < other.minor().getAsInt();
+        }
+        
+        /**
+         * Returns {@code true} if the given version is greater than this
+         * version, otherwise {@code false}.<p>
+         * 
+         * E.g., this returns true: {@code HTTP_1.1.isGreaterThan(HTTP_1.0)}.
+         * 
+         * @param other version to compare with
+         * 
+         * @return see JavaDoc
+         * 
+         * @throws NullPointerException
+         *             if {@code other} is {@code null}
+         */
+        public boolean isGreaterThan(Version other) {
+            if (this.major() > other.major()) {
+                return true;
+            }
+            if (this.major() < other.major()) {
+                return false;
+            }
+            if (minor().isEmpty()) {
+                // Same version (HTTP/2 or newer)
+                assert other.minor().isEmpty();
+                return false;
+            }
+            assert other.minor().isPresent();
+            return this.minor().getAsInt() > other.minor().getAsInt();
         }
         
         /**
