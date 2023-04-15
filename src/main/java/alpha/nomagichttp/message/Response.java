@@ -21,7 +21,7 @@ import static alpha.nomagichttp.HttpConstants.StatusCode;
  * <pre>{@code
  *   // May use HttpConstants.StatusCode/ReasonPhrase instead of int and "string"
  *   Response r = Response.builder(204, "No Content")
- *                        .header("My-Header", "value")
+ *                        .setHeader("My-Header", "value")
  *                        .build();
  * }</pre>
  * 
@@ -35,7 +35,7 @@ import static alpha.nomagichttp.HttpConstants.StatusCode;
  * 
  * <pre>{@code
  *   Response r = Responses.noContent().toBuilder()
- *                         .header("My-Header", "value")
+ *                         .setHeader("My-Header", "value")
  *                         .build();
  * }</pre>
  * 
@@ -333,7 +333,7 @@ public interface Response extends HeaderHolder
          * @throws IllegalArgumentException
          *             if {@code name} is empty
          */
-        Builder header(String name, String value);
+        Builder setHeader(String name, String value);
         
         /**
          * Removes <i>all</i> occurrences of a header.<p>

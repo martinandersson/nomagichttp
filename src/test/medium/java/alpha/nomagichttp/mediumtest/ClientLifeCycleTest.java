@@ -401,7 +401,7 @@ class ClientLifeCycleTest extends AbstractRealTest
         server().add("/", POST().apply(req -> {
             channel().write(noContent()
                     .toBuilder()
-                    .header("Connection", "close")
+                    .setHeader("Connection", "close")
                     .build());
             assertThat(channel().isOutputOpen())
                     .isFalse();

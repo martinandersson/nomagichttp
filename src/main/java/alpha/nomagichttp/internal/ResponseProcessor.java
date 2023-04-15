@@ -212,7 +212,7 @@ final class ResponseProcessor
                 "Transfer-Encoding in response was not expected");
         }
         return r.toBuilder()
-                  .addHeader(TRANSFER_ENCODING, "chunked")
+                  .setHeader(TRANSFER_ENCODING, "chunked")
                   .body(new ChunkedEncoder(body))
                   .build();
     }
@@ -371,7 +371,7 @@ final class ResponseProcessor
                r.statusCode() == TWO_HUNDRED_FOUR ||
                rMethod.filter(CONNECT::equals).isPresent() ?
                    r :
-                   r.toBuilder().header(CONTENT_LENGTH, "0").build();
+                   r.toBuilder().setHeader(CONTENT_LENGTH, "0").build();
     }
     
     private static Response dealWithNoCLHasBody(Response r, long actualLen) {
@@ -383,7 +383,7 @@ final class ResponseProcessor
          }
          // Would be weird if the request method is CONNECT??? (RFC 7231 §4.3.6)
         return r.toBuilder()
-            .header(CONTENT_LENGTH, valueOf(actualLen))
+            .setHeader(CONTENT_LENGTH, valueOf(actualLen))
             .build();
     }
 }

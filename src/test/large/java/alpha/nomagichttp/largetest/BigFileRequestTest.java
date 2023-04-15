@@ -73,7 +73,7 @@ class BigFileRequestTest extends AbstractLargeRealTest
         // Retrieve the file
         var get = GET().apply(req ->
                 ok(ofFile(file)).toBuilder()
-                    .header("Connection", "close").build());
+                    .setHeader("Connection", "close").build());
         server().add("/file", post, get);
     }
     

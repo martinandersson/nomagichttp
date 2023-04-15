@@ -159,7 +159,7 @@ class MessageTest extends AbstractRealTest
                     .isEqualTo("chunked");
             return ok(ofSupplier(req.body().iterator()::next))
                     .toBuilder()
-                    .header("Connection", "close")
+                    .setHeader("Connection", "close")
                     .build();
         }));
     }

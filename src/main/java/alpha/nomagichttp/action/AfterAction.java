@@ -24,7 +24,7 @@ import java.util.function.BiFunction;
  *   AfterAction trySetId = (req, rsp) -{@literal >}
  *           req.attributes().{@literal <}String{@literal >}getOptAny("my.saved.correlation-id")
  *              .or(() -{@literal >} req.headers().firstValue(X_CORRELATION_ID))
- *              .map(id -{@literal >} rsp.toBuilder().header(X_CORRELATION_ID, id).build())
+ *              .map(id -{@literal >} rsp.toBuilder().setHeader(X_CORRELATION_ID, id).build())
  *              .orElse(rsp);
  *   // Propagate for all exchanges
  *   server.after("/*", trySetId);

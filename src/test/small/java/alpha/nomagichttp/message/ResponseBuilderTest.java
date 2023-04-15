@@ -55,7 +55,7 @@ final class ResponseBuilderTest
     @Test
     void headersAddRepeated() {
         Response r = builder(-1)
-            .header(    "k", "v1")
+            .setHeader( "k", "v1")
             .addHeader( "k", "v2")
             .addHeaders("k", "v3",
                         "k", "v4")
@@ -140,13 +140,13 @@ final class ResponseBuilderTest
     
     @Test
     void headerRemove() {
-        Response r = builder(-1).header("k", "v").removeHeader("k").build();
+        Response r = builder(-1).setHeader("k", "v").removeHeader("k").build();
         assertHeaders(r).isEmpty();
     }
     
     @Test
     void headerReplace() {
-        Response r = builder(-1).header("k", "v1").header("k", "v2").build();
+        Response r = builder(-1).setHeader("k", "v1").setHeader("k", "v2").build();
         assertHeaders(r).containsOnly(
             entry("k", of("v2")));
     }
@@ -165,7 +165,7 @@ final class ResponseBuilderTest
     @Test
     void headerNameIsEmpty() {
         var b = builder(-1);
-        assertThatThrownBy(() -> b.header("", "<-- empty"))
+        assertThatThrownBy(() -> b.setHeader("", "<-- empty"))
             .isExactlyInstanceOf(IllegalArgumentException.class)
             .hasMessage("Empty header name")
             .hasNoSuppressedExceptions()
@@ -174,7 +174,7 @@ final class ResponseBuilderTest
     
     @Test
     void connectionCloseOn1XX() {
-        var b = builder(123).header("coNnEcTiOn", "cLoSe");
+        var b = builder(123).setHeader("coNnEcTiOn", "cLoSe");
         assertThatThrownBy(b::build)
             .isExactlyInstanceOf(IllegalStateException.class)
             .hasMessage(

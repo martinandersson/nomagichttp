@@ -57,7 +57,7 @@ import static alpha.nomagichttp.message.MediaType.parse;
  *          // Send a 102 (Processing) update
  *          var response = {@link Responses#processing() processing}()
  *              .{@link Response#toBuilder() toBuilder
- *              }().{@link Response.Builder#header(String, String) header
+ *              }().{@link Response.Builder#setHeader(String, String) setHeader
  *              }("Progress", "45%").{@link Response.Builder#build() build}();
  *         {@link ScopedValues#channel() channel
  *           }().{@link ChannelWriter#write(Response) write

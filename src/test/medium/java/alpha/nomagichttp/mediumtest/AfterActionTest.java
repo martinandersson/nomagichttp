@@ -37,7 +37,7 @@ class AfterActionTest extends AbstractRealTest
                 req.attributes()
                    .<String>getOptAny(X_CORRELATION_ID)
                    .or(() -> req.headers().firstValue(X_CORRELATION_ID))
-                   .map(id -> rsp.toBuilder().header(X_CORRELATION_ID, id).build())
+                   .map(id -> rsp.toBuilder().setHeader(X_CORRELATION_ID, id).build())
                    .orElse(rsp));
         
         try (var conn = client().openConnection()) {
@@ -72,10 +72,10 @@ class AfterActionTest extends AbstractRealTest
     void multistage() throws IOException, InterruptedException {
         server()
             .after("/*", (req, rsp) ->
-                rsp.toBuilder().header("X-Count", "1").build())
+                rsp.toBuilder().setHeader("X-Count", "1").build())
             .after("/*", (req, rsp) -> {
                 long v = rsp.headers().firstValueAsLong("X-Count").getAsLong();
-                return rsp.toBuilder().header("X-Count", valueOf(++v)).build();
+                return rsp.toBuilder().setHeader("X-Count", valueOf(++v)).build();
             });
         
         var rsp = client().writeReadTextUntilNewlines(

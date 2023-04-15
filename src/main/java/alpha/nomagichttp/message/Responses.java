@@ -71,7 +71,7 @@ import static java.util.Locale.ROOT;
  * <pre>
  *   Response update = Responses.processing() // 102 (Processing)
  *                              .toBuilder()
- *                              .header("Progress", "45%")
+ *                              .setHeader("Progress", "45%")
  *                              .build();
  * </pre>
  * 
@@ -417,7 +417,7 @@ public final class Responses
     public static Response ok(
             ResourceByteBufferIterable body, String contentType) {
         return CACHE.get(TWO_HUNDRED, OK).toBuilder()
-                .header(CONTENT_TYPE, contentType)
+                .setHeader(CONTENT_TYPE, contentType)
                 .body(body)
                 .build();
     }
@@ -685,7 +685,7 @@ public final class Responses
             b = b.reasonPhrase(phrase);
         }
         if (isClosingConnection(code)) {
-            b = b.header(CONNECTION, "close");
+            b = b.setHeader(CONNECTION, "close");
         }
         return b.build();
     }

@@ -190,7 +190,7 @@ final class DefaultResponse implements Response
         }
         
         @Override
-        public Response.Builder header(String name, String value) {
+        public Response.Builder setHeader(String name, String value) {
             final String key = requireNotEmpty(requireNoSurroundingWS(name)),
                          val = requireNoSurroundingWS(value);
             return new DefaultBuilder(this, s -> s.addHeader(true, key, val));

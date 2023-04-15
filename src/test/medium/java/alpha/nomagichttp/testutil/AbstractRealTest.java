@@ -627,7 +627,7 @@ public abstract class AbstractRealTest
      * @return with command set
      */
     protected static Response setHeaderConnectionClose(Response rsp) {
-        return rsp.toBuilder().header("Connection", "close").build();
+        return rsp.toBuilder().setHeader("Connection", "close").build();
     }
     
     private static String toString(TestInfo test) {

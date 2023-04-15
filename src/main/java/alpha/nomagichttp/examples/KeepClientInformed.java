@@ -55,7 +55,7 @@ public final class KeepClientInformed
     private static Response mkProgressReport(int secondsLeft) {
         return Responses.processing() // 102 (Processing)
                         .toBuilder()
-                            .addHeader("Time-Left", secondsLeft + " second(s)")
+                            .setHeader("Time-Left", secondsLeft + " second(s)")
                             .build();
     }
 }

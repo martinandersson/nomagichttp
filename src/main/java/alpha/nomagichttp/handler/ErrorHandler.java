@@ -378,7 +378,7 @@ public interface ErrorHandler
             } else {
                 log(exc);
             }
-            res = status.toBuilder().addHeader(ALLOW, allow.collect(joining(", "))).build();
+            res = status.toBuilder().setHeader(ALLOW, allow.collect(joining(", "))).build();
         } catch (MediaTypeNotAcceptedException e) {
             log(exc);
             res = notAcceptable();
