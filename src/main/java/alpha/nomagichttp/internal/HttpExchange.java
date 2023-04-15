@@ -198,7 +198,7 @@ final class HttpExchange
             String[] comp = e.getMessage().split(":");
             if (comp.length == 1) {
                 // No component for minor
-                __requireHTTP1(parseInt(comp[0]), raw, HTTP_1_1, e);
+                requireHTTP1(parseInt(comp[0]), raw, HTTP_1_1, e);
                 throw new AssertionError("""
                         String "HTTP/1" should have failed with \
                         parse exception (missing minor).""");
@@ -222,7 +222,7 @@ final class HttpExchange
             throw new HttpVersionTooOldException(raw, HTTP_1_1);
         }
         // Our version requirement
-        __requireHTTP1(ver.major(), raw, HTTP_1_1, null);
+        requireHTTP1(ver.major(), raw, HTTP_1_1, null);
         // And we also require an empty body in a TRACE request
         // (not suitable as a before-action; they are invoked only for valid requests)
         if (req.head().line().method().equals(TRACE) && !req.body().isEmpty()) {
@@ -232,7 +232,7 @@ final class HttpExchange
         return req;
     }
     
-    private static void __requireHTTP1(
+    private static void requireHTTP1(
             int major, String raw, Version upgrade, Throwable cause) {
         if (major < 1) {
             throw new HttpVersionTooOldException(raw, upgrade, cause);
@@ -300,10 +300,10 @@ final class HttpExchange
             }
         }
         var rsp = reqProc.execute(req);
-        return __requireWriterConformance(rsp, "Request");
+        return requireWriterConformance(rsp, "Request");
     }
     
-    private Optional<Response> __requireWriterConformance(Response rsp, String entity) {
+    private Optional<Response> requireWriterConformance(Response rsp, String entity) {
         if (rsp == null) {
             if (!writer.wroteFinal()) {
                 // TODO: "processing chain"
@@ -391,16 +391,16 @@ final class HttpExchange
             throw e;
         }
         LOG.log(DEBUG, () -> "Attempting to resolve " + e);
-        return __resolve(e);
+        return resolve(e);
     }
     
-    Optional<Response> __resolve(Exception e) throws Exception {
+    private Optional<Response> resolve(Exception e) throws Exception {
         try {
             if (handlers.isEmpty()) {
                 return of(BASE.apply(e, null, null));
             }
-            var rsp = __usingHandlers(e);
-            return __requireWriterConformance(rsp, "Error");
+            var rsp = usingHandlers(e);
+            return requireWriterConformance(rsp, "Error");
         } catch (Exception fromChain) {
             e.addSuppressed(fromChain);
             LOG.log(ERROR, "Error processing chain failed to handle this", e);
@@ -409,21 +409,18 @@ final class HttpExchange
         }
     }
     
-    private Response __usingHandlers(Exception e) {
+    private Response usingHandlers(Exception e) {
         class ChainImpl extends AbstractChain<ErrorHandler> {
             ChainImpl() { super(handlers); }
-            
             @Override
             Response callIntermittentHandler(
                     ErrorHandler eh, Chain passMeThrough) {
                 return eh.apply(e, unchecked(passMeThrough), req());
             }
-            
             @Override
             Response callFinalHandler() {
                 return BASE.apply(e, null, req());
             }
-            
             private Request req() {
                 return skeletonRequest()
                         .map(r -> requestWithoutParams(reader, r))
