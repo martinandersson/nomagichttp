@@ -185,13 +185,13 @@ final class ResponseProcessor
             Response r, Version reqVer, long len, ByteBufferIterator body) {
         final boolean trPresent = r.headers().contains(TRAILER);
         if (reqVer == null || reqVer.isLessThan(HTTP_1_1)) {
+            // Connection will close; no need to do chunking, but:
             if (trPresent) {
                 LOG.log(DEBUG, """
                     Client has no support for response trailers, \
                     discarding them""");
                 return r.toBuilder().removeTrailers().build();
             }
-            // Connection will close; no need to do chunking
             return r;
         }
         if (!trPresent && len >= 0) {
@@ -204,8 +204,8 @@ final class ResponseProcessor
                 Response trailers and/or unknown body length; \
                 applying chunked encoding""");
         if (r.headers().contains(TRANSFER_ENCODING)) {
-            // TODO: Once we use more codings, implement and use
-            //      Response.Builder.addHeaderToken()
+            // TODO: We are going to implement various codecs,
+            //       and then we can just append "chunked"?
             // Note; it's okay to repeat TE; RFC 7230, 3.2.2, 3.3.1.
             // But more clean to append.
             throw new IllegalArgumentException(
