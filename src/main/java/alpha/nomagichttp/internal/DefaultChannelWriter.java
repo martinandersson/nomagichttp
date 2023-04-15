@@ -117,45 +117,21 @@ final class DefaultChannelWriter implements ChannelWriter
     }
     
     @Override
-    public long write(final Response app1)
-            throws InterruptedException, TimeoutException, IOException
-    {
-        requireNonNull(app1);
+    public long write(final Response r)
+            throws InterruptedException, TimeoutException, IOException {
+        requireNonNull(r);
         requireValidState();
-        var req    = skeletonRequest().orElse(null);
+        var req = skeletonRequest().orElse(null);
         var reqVer = req == null ? null : req.httpVersion();
         var rspVer = conformantResponseVer();
-        if (app1.isInformational()) {
-            if (reqVer == null) {
-                throw new ResponseRejectedException(
-                        app1, CLIENT_PROTOCOL_UNKNOWN_BUT_NEEDED, """
-                        The error handler should not be sending 1XX (Informational).""");
-            }
-            if (discard1XXInformational(app1, reqVer) ||
-                ignoreRepeated100Continue(app1)) {
-                return 0;
-            }
+        if (r.isInformational() && mayAbort(r, reqVer)) {
+            return 0;
         }
-        final Response app2 = invokeAppActions(app1, req);
-        final Result bag = process(app2, req, reqVer);
+        final Result bag = process(invokeAppActions(r, req), req, reqVer);
         try (bag) {
             return write0(bag.response(), bag.body(), rspVer);
         } finally {
-            if (bag.closeChannel()) {
-                dismiss();
-                var ch = channel();
-                if (ch.isInputOpen() || ch.isOutputOpen()) {
-                    LOG.log(DEBUG, """
-                            Max number of error responses reached, \
-                            closing channel.""");
-                    ch.close();
-                }
-            } else if (bag.response().headers().hasConnectionClose() &&
-                       channel().isOutputOpen()) {
-                LOG.log(DEBUG, "Saw \"Connection: close\", shutting down output.");
-                dismiss();
-                channel().shutdownOutput();
-            }
+            tryCloseAndSelfDismiss(bag);
         }
     }
     
@@ -217,7 +193,16 @@ final class DefaultChannelWriter implements ChannelWriter
         return HTTP_1_1;
     }
     
-    private static boolean discard1XXInformational(Response r, Version reqVer) {
+    private boolean mayAbort(Response r, Version reqVer) {
+        if (reqVer == null) {
+            throw new ResponseRejectedException(
+                    r, CLIENT_PROTOCOL_UNKNOWN_BUT_NEEDED, """
+                    The error handler should not be sending 1XX (Informational).""");
+        }
+        return discard1XXInfo(r, reqVer) || ignoreRepeated100Continue(r);
+    }
+    
+    private static boolean discard1XXInfo(Response r, Version reqVer) {
         if (reqVer.isLessThan(HTTP_1_1)) {
             if (httpServer().getConfig().discardRejectedInformational()) {
                 LOG.log(DEBUG, () ->
@@ -357,5 +342,23 @@ final class DefaultChannelWriter implements ChannelWriter
         src.accept((k, vals) ->
                 vals.forEach(v -> sj.add(k + ": " + v)));
         return sj.toString();
+    }
+    
+    private void tryCloseAndSelfDismiss(Result bag) {
+        if (bag.closeChannel()) {
+            dismiss();
+            var ch = channel();
+            if (ch.isInputOpen() || ch.isOutputOpen()) {
+                LOG.log(DEBUG, """
+                        Max number of error responses reached, \
+                        closing channel.""");
+                ch.close();
+            }
+        } else if (bag.response().headers().hasConnectionClose() &&
+                   channel().isOutputOpen()) {
+            LOG.log(DEBUG, "Saw \"Connection: close\", shutting down output.");
+            dismiss();
+            channel().shutdownOutput();
+        }
     }
 }
