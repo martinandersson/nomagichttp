@@ -28,6 +28,7 @@ import static alpha.nomagichttp.handler.ResponseRejectedException.Reason.CLIENT_
 import static alpha.nomagichttp.handler.ResponseRejectedException.Reason.CLIENT_PROTOCOL_UNKNOWN_BUT_NEEDED;
 import static alpha.nomagichttp.internal.DefaultRequest.requestWithParams;
 import static alpha.nomagichttp.internal.HttpExchange.skeletonRequest;
+import static alpha.nomagichttp.internal.ResponseProcessor.process;
 import static alpha.nomagichttp.internal.VThreads.CHANNEL_BLOCKING;
 import static alpha.nomagichttp.util.Blah.addExactOrCap;
 import static alpha.nomagichttp.util.ByteBuffers.asciiBytes;
@@ -74,7 +75,6 @@ final class DefaultChannelWriter implements ChannelWriter
     private final WritableByteChannel out;
     private final DefaultActionRegistry appActions;
     private final ChannelReader reader;
-    private final ResponseProcessor serverActions;
     private List<Match<AfterAction>> matches;
     private boolean dismissed;
     private long byteCount;
@@ -92,7 +92,6 @@ final class DefaultChannelWriter implements ChannelWriter
         this.out = out;
         this.appActions = actions;
         this.reader = reader;
-        this.serverActions = new ResponseProcessor();
     }
     
     /**
@@ -137,7 +136,7 @@ final class DefaultChannelWriter implements ChannelWriter
             }
         }
         final Response app2 = invokeAppActions(app1);
-        final Result bag = serverActions.process(app2, reqVer);
+        final Result bag = process(app2, reqVer);
         try (bag) {
             return write0(bag.response(), bag.body(), rspVer);
         } finally {
@@ -150,7 +149,8 @@ final class DefaultChannelWriter implements ChannelWriter
                             closing channel.""");
                     ch.close();
                 }
-            } else if (bag.closeOutput() && channel().isOutputOpen()) {
+            } else if (bag.response().headers().hasConnectionClose() &&
+                       channel().isOutputOpen()) {
                 LOG.log(DEBUG, "Saw \"Connection: close\", shutting down output.");
                 dismiss();
                 channel().shutdownOutput();

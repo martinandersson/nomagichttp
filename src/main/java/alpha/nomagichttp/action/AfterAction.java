@@ -7,12 +7,11 @@ import alpha.nomagichttp.message.Response;
 import java.util.function.BiFunction;
 
 /**
- * Is an action executed after the channel has received a response.<p>
+ * Is an action executed after the channel writer has received a response.<p>
  * 
- * More specifically, the action is executed just before the
- * {@link ClientChannel} attempts to send a valid response on the wire. The
- * action may return the same response instance unmodified, or produce another
- * alternative response.<p>
+ * More specifically, the action is executed just before {@link ClientChannel}
+ * attempts to send a valid response on the wire. The action may return the same
+ * response instance unmodified, or produce another alternative response.<p>
  * 
  * To build on the example provided in {@link ActionRegistry}, here is one way
  * to propagate a correlation id from the request headers- or attributes,

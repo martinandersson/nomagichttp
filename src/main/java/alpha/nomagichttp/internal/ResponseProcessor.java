@@ -32,13 +32,7 @@ import static java.lang.String.valueOf;
 import static java.lang.System.Logger.Level.DEBUG;
 
 /**
- * Is semantically a set of privileged after-actions.<p>
- * 
- * Core responsibilities, if applicable:
- * <ul>
- *   <li>Set "Connection: close"</li>
- *   <li>Message delimiting (Transfer-Encoding/Content-Length)</li>
- * </ul>
+ * Makes a response ready for transmission.
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  */
@@ -47,12 +41,13 @@ final class ResponseProcessor
     private static final System.Logger LOG
             = System.getLogger(ResponseProcessor.class.getPackageName());
     
-    private boolean sawConnectionClose;
+    private ResponseProcessor() {
+        // Empty
+    }
     
     record Result (
             Response response,
             ByteBufferIterator body,
-            boolean closeOutput,
             boolean closeChannel) implements Closeable {
         @Override
         public void close() throws IOException {
@@ -63,6 +58,11 @@ final class ResponseProcessor
     /**
      * Ensures the given response is ready for transmission.<p>
      * 
+     * This method semantically performs a set of privileged after-actions.
+     * Specifically, the method will — if needed — apply chunked encoding, set
+     * the "Connection: close" header, and ensure the response is properly
+     * delimited (Transfer-Encoding/Content-Length).<p>
+     * 
      * This method will call {@code Response.Body.iterator()}, and return the
      * same iterator — or a decorator — in the returned result object, which is
      * the reference the writer must use when writing the response body. The
@@ -71,11 +71,11 @@ final class ResponseProcessor
      * 
      * The call to {@code iterator} may open system resources, and so, the
      * writer must close the returned result object, or the iterator contained
-     * within. The writer must <i>not</i> call the {@code iterator} method,
-     * again, as this could cause the application's response body implementation
-     * to unnecessarily open more system resources. Even worse, a nested call to
-     * {@code iterator} could forever block if there's a non-reentrant mutex
-     * involved (weird, but still).<p>
+     * within. The writer must <i>not</i> call the body's {@code iterator}
+     * method, again, as this could cause the application's response body
+     * implementation to unnecessarily open more system resources. Even worse, a
+     * nested call to {@code iterator} could forever block if there's a
+     * non-reentrant mutex involved (weird, but still).<p>
      * 
      * The reason why this method calls {@code iterator} is primarily to
      * lock-down the response body length.
@@ -92,14 +92,13 @@ final class ResponseProcessor
      * @throws IOException
      *             from {@link ResourceByteBufferIterable#iterator()}
      */
-    Result process(Response app, Version reqVer)
+    static Result process(Response app, Version reqVer)
             throws InterruptedException, TimeoutException, IOException {
         final var upstream = app.body();
         final var it = upstream.iterator();
         return getOrCloseResource(() -> {
             long len = upstream.length();
-            Response mod = app.isInformational() ? app :
-                    tryCloseNonPersistentConn(app, reqVer);
+            Response mod = tryCloseNonPersistentConn(app, reqVer);
             mod = tryChunkedEncoding(mod, reqVer, len, it);
             ByteBufferIterator bodyToWrite = it;
             if (mod.body() != upstream) {
@@ -111,21 +110,19 @@ final class ResponseProcessor
                     throw new AssertionError(e);
                 }
             }
-            mod = trackConnectionClose(mod);
+            mod = tryPropagateConnClose(mod);
             mod = ensureCorrectFraming(mod, len);
             return new Result(
-                    // Contents
+                    // Content
                     mod, bodyToWrite,
-                    // closeOutput
-                    mod.isFinal() && sawConnectionClose,
                     // closeChannel
-                    trackUnsuccessful(mod));
+                    trackErrorResponses(mod));
         }, it);
     }
     
     /**
      * Sets the "Connection: close" header on the given response, if the
-     * connection is not persistent.<p>
+     * response is final and the connection is not persistent.<p>
      * 
      * The connection is deemed not persistent, if the
      * {@linkplain HttpExchange#skeletonRequest()} skeleton request is not
@@ -133,19 +130,19 @@ final class ResponseProcessor
      * 
      * The skeleton request may not be available due to an early error.
      * Technically, some of these cases requires a closing of the connection
-     * (for example incorrect message framing), but in other cases we could have
-     * saved the connection (for example by discarding an illegal body in a
-     * TRACE request). But, all connections will be indiscriminately closed,
-     * primarily as a means to simplify the code base. Moreover, early errors
-     * are infrequent (compared to valid requests), and may even indicate a
-     * malicious actor. But, our ability to host connections is limited; any
+     * (for example incorrect message syntax, thus framing), but in other cases
+     * we could have saved the connection (for example by discarding an illegal
+     * body in a TRACE request). But, all connections will be indiscriminately
+     * closed, primarily as a means to simplify the code base. Moreover, early
+     * errors are infrequent (compared to valid requests), and may even indicate
+     * a malicious actor. But, our ability to host connections is limited; any
      * opportunity really we get to kick the connection then we should.<p>
      * 
      * In contrast, there are late errors that may occur after the request
      * processing chain has been invoked, which all of them should result in a
      * subject-relevant fallback response. Closing for late errors is determined
      * by {@link Config#maxErrorResponses()}, and implemented by
-     * {@link #trackUnsuccessful(Response)}.<p>
+     * {@link #trackErrorResponses(Response)}.<p>
      * 
      * Noteworthy: The skeleton request may also not be available because
      * {@link HttpExchange} rejected the version; it was too old, or it was too
@@ -170,6 +167,9 @@ final class ResponseProcessor
      * @return possibly a modified response
      */
     private static Response tryCloseNonPersistentConn(Response r, Version reqVer) {
+        if (r.isInformational()) {
+            return r;
+        }
         if (reqVer == null) {
             return tryAddConnectionClose(r, LOG, DEBUG,
                      "no request is available (early error)");
@@ -216,45 +216,20 @@ final class ResponseProcessor
                   .build();
     }
     
-    // TODO: ClientChannel and this implementation accepts interim Connection: close
-    //       But Response.Builder forbids setting the header on an interim response!
-    //       (in agreement with implicit rule from RFC 7230 §6.1)
-    //       We should do no propagation. Finally, the header checks the builder
-    //       do we must repeat; DRY.
-    private Response trackConnectionClose(Response r) {
-        final Response out;
-        if (sawConnectionClose) {
-            if (r.isFinal()) {
-                out = tryAddConnectionClose(r,
-                        LOG, DEBUG, "flag propagates to final response");
-            } else {
-                // Message not final or already has the header = NOP
-                out = r;
-            }
-        } else if (r.headers().hasConnectionClose()) {
-            // Set flag, but no need to modify response
-            sawConnectionClose = true;
-            out = r;
-        } else if (!r.isFinal()) {
-            // Haven't seen the header before and flag is false = NOP
-            out = r;
-        } else {
-            final String why =
-                requestHasConnClose()     ? "the request headers' did" :
-                !channel().isInputOpen()  ? "the client's input stream has shut down" :
-                !httpServer().isRunning() ? "the server has stopped" :
-                                            null;
-            if (why != null) {
-                sawConnectionClose = true;
-                out = tryAddConnectionClose(r, LOG, DEBUG, why);
-            } else {
-                out = r;
-            }
+    private static Response tryPropagateConnClose(Response r) {
+        if (r.isInformational() || r.headers().hasConnectionClose()) {
+            return r;
         }
-        return out;
+        final String why =
+            requestHasConnClose()     ? "the request headers' did" :
+            !channel().isInputOpen()  ? "the client's input stream has shut down" :
+            !httpServer().isRunning() ? "the server has stopped" :
+                                        null;
+        return why == null ? r :
+                tryAddConnectionClose(r, LOG, DEBUG, why);
     }
     
-    private boolean trackUnsuccessful(Response r) {
+    private static boolean trackErrorResponses(Response r) {
         final var key = "alpha.nomagichttp.dcw.nUnsuccessful";
         if (isClientError(r.statusCode()) || isServerError(r.statusCode())) {
             // Bump error counter
