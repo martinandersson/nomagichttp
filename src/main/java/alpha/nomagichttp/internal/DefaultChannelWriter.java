@@ -50,8 +50,8 @@ import static java.util.Objects.requireNonNullElse;
  *   <li>Write the response</li>
  * </ul>
  * 
- * This class also closes a non-persistent HTTP connection, but it should be
- * noted that it is {@code ResponseProcessor} who makes the decision.<p>
+ * This class closes a non-persistent HTTP connection, but it should be noted
+ * that it is {@code ResponseProcessor} who makes the decision.<p>
  * 
  * The writer instance is legal to use immediately after having been created
  * until the final response has been written, or after an explicit call to
