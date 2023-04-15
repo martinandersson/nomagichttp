@@ -272,14 +272,13 @@ final class DefaultChannelWriter implements ChannelWriter
         final long finished = nanoTime();
         // Revert only on success; otherwise channel is corrupt
         inflight = false;
-        final var finalR = r;
         final var finalN = n;
         LOG.log(DEBUG, () ->
             "Sent %s (%s) {bytes: %s, duration: %s}".formatted(
-                finalR.statusCode(), finalR.reasonPhrase(),
+                r.statusCode(), r.reasonPhrase(),
                 finalN, Duration.ofNanos(finished - started)));
         httpServer().events().dispatchLazy(ResponseSent.INSTANCE,
-                () -> finalR,
+                () -> r,
                 () -> new ResponseSent.Stats(started, finished, finalN));
         return n;
     }
