@@ -55,13 +55,13 @@ final class ResponseBuilderTest
     @Test
     void headersAddRepeated() {
         Response r = builder(-1)
-            .header(    "k", "v2")
-            .addHeader( "k", "v1")
+            .header(    "k", "v1")
+            .addHeader( "k", "v2")
             .addHeaders("k", "v3",
-                        "k", "v2")
+                        "k", "v4")
             .build();
         assertHeaders(r).containsOnly(
-            entry("k", of("v2", "v1", "v3", "v2")));
+            entry("k", of("v1", "v2", "v3", "v4")));
     }
     
     // No validation of whitespace in header, values are allowed to be empty
