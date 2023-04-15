@@ -143,7 +143,6 @@ final class DefaultResponse implements Response
             
             void appendHeaderToken(String name, String token) {
                 var vals = getOrCreateEntry(name);
-                boolean success = false;
                 // In reverse
                 for (int i = vals.size() - 1; i >= 0; --i) {
                     var v = vals.get(i);
@@ -152,14 +151,12 @@ final class DefaultResponse implements Response
                     }
                     vals.remove(i);
                     vals.add(i, v + ", " + token);
-                    success = true;
-                    break;
+                    return; // Job done
                 }
-                if (!success) {
-                    vals.add(token);
-                }
+                vals.add(token);
             }
             
+            // The call-site must add to the returned list 
             private List<String> getOrCreateEntry(String name) {
                 return getOrCreateHeaders().computeIfAbsent(
                         name, k -> new ArrayList<>(INITIAL_CAPACITY));
