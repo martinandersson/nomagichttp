@@ -220,8 +220,8 @@ final class DefaultChannelWriter implements ChannelWriter
     private static boolean discard1XXInformational(Response r, Version reqVer) {
         if (reqVer.isLessThan(HTTP_1_1)) {
             if (httpServer().getConfig().discardRejectedInformational()) {
-                LOG.log(DEBUG,
-                    "Ignoring 1XX (Informational) response for " + reqVer +" client.");
+                LOG.log(DEBUG, () ->
+                    "Ignoring 1XX (Informational) response for " + reqVer + " client.");
                 return true;
             }
             throw new ResponseRejectedException(r, CLIENT_PROTOCOL_DOES_NOT_SUPPORT,
