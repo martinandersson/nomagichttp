@@ -70,7 +70,7 @@ import static java.util.stream.Stream.of;
  * processing chain failed.<p>
  * 
  * The purpose of error handlers is to cater the client with a response even in
- * the event of a failure. Therefore, an error handler must return a response,
+ * the event of a failure. Therefore, an error handler should return a response,
  * either by returning one directly, or yielding to the next error handler,
  * which will eventually be the server's base handler, which has a fallback
  * response for all exceptions.

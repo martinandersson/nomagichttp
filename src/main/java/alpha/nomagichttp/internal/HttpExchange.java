@@ -155,35 +155,15 @@ final class HttpExchange
     }
     
     void begin0() throws Exception {
-        SkeletonRequest req = null;
-        Response rsp;
+        final SkeletonRequest req;
         try {
             LOG.log(DEBUG, "Parsing the request");
             req = validate(createRequest(parseHead()));
-            LOG.log(DEBUG, "Executing the request processing chain");
-            rsp = process(req);
-        } catch (Exception exc) {
-            rsp = handleException(exc, req);
+        } catch (Exception e) {
+            handleException(e);
+            return;
         }
-        if (rsp != null) {
-            assert !writer.wroteFinal();
-            LOG.log(DEBUG, "Writing final response");
-            if (req != null && !canDiscardRequestData(req)) {
-                rsp = tryAddConnectionClose(rsp, LOG, DEBUG,
-                        "can not discard remaining request data");
-            }
-            final var rsp2 = rsp;
-            final var req2 = req;
-            where(SKELETON_REQUEST, ofNullable(req), () -> {
-                try {
-                    writer.write(rsp2);
-                } catch (Exception e) {
-                    // TODO: Huge smell.
-                    writer.write(handleException(e, req2));
-                }
-                return null;
-            });
-        }
+        handleRequest(req);
         if (!child.isInputOpen() || !child.isOutputOpen()) {
             LOG.log(DEBUG, """
                     Channel is half-closed or closed, \
@@ -191,12 +171,7 @@ final class HttpExchange
             return;
         }
         assert writer.wroteFinal();
-        if (req != null) {
-            tryToDiscardRequestDataInChannel(req);
-        }
-        // Else we parsed a request, but it just wasn't valid/accepted.
-        // This doesn't end the connection, which for instance may be upgraded.
-        // TODO: This is terrible. We need to discard data from invalid request as well.
+        tryToDiscardRequestDataInChannel(req);
     }
     
     private RawRequest.Head parseHead() throws IOException {
@@ -267,45 +242,68 @@ final class HttpExchange
         }
     }
     
+    private void handleRequest(SkeletonRequest req) throws Exception {
+        where(SKELETON_REQUEST, of(req), () -> {
+            try {
+                LOG.log(DEBUG, "Executing the request processing chain");
+                var rsp = processRequest(req);
+                if (rsp.isPresent()) {
+                    LOG.log(DEBUG, "Writing final response");
+                    var r = rsp.get();
+                    if (!canDiscardRequestData(req)) {
+                        r = tryAddConnectionClose(r, LOG, DEBUG,
+                                "can not discard remaining request data");
+                    }
+                    writer.write(r);
+                }
+            } catch (Exception e) {
+                handleException(e);
+            }
+            return null;
+        });
+    }
+    
     /**
      * Executes the request processor.<p>
      * 
      * The returned response is guaranteed to be in conformance with the state
-     * of the writer; either null because the final response was already
-     * written, or a non-null final response.
+     * of the writer; either an empty {@code Optional} because a final response
+     * was already written, or a final response contained within the returned
+     * {@code Optional}.
      * 
-     * @param r request (assumed to not be null)
+     * @param req the request
+     * 
      * @return see JavaDoc
-     * @throws Exception from the request processor
+     * 
+     * @throws Exception
+     *             from the request processor
      */
-    private Response process(SkeletonRequest r) throws Exception {
-        return where(SKELETON_REQUEST, of(r), () -> {
-            // Potentially send 100 (Continue)...
-            if (!r.httpVersion().isLessThan(HTTP_1_1) &&
-                 r.head().headers().contains(EXPECT, "100-continue"))
-            {
-                if (conf.immediatelyContinueExpect100()) {
-                    // ...right away
-                    writer.write(continue_());
-                } else {
-                    // ...or when app requests the body
-                    r.body().onConsumption(() -> {
-                        if (!writer.wroteFinal()) {
-                            try {
-                                writer.write(continue_());
-                            } catch (Exception e) {
-                                throw new AssertionError("No I/O body", e);
-                            }
+    private Optional<Response> processRequest(SkeletonRequest req) throws Exception {
+        // Potentially send 100 (Continue)...
+        if (!req.httpVersion().isLessThan(HTTP_1_1) &&
+             req.head().headers().contains(EXPECT, "100-continue"))
+        {
+            if (conf.immediatelyContinueExpect100()) {
+                // ...right away
+                writer.write(continue_());
+            } else {
+                // ...or when app requests the body
+                req.body().onConsumption(() -> {
+                    if (!writer.wroteFinal()) {
+                        try {
+                            writer.write(continue_());
+                        } catch (Exception e) {
+                            throw new AssertionError("No I/O body", e);
                         }
-                    });
-                }
+                    }
+                });
             }
-            var rsp = reqProc.execute(r);
-            return __requireWriterConformance(rsp, "Request");
-        });
+        }
+        var rsp = reqProc.execute(req);
+        return __requireWriterConformance(rsp, "Request");
     }
     
-    private Response __requireWriterConformance(Response rsp, String entity) {
+    private Optional<Response> __requireWriterConformance(Response rsp, String entity) {
         if (rsp == null) {
             if (!writer.wroteFinal()) {
                 // TODO: "processing chain"
@@ -319,39 +317,56 @@ final class HttpExchange
             throw new IllegalArgumentException(entity +
                 " processing both wrote and returned a final response.");
         }
-        return rsp;
+        return ofNullable(rsp);
+    }
+    
+    /**
+     * Calls {@link #tryProcessException(Exception)} and writes the fallback
+     * response to the channel.<p>
+     * 
+     * If writing the fallback response fails, the new exception is logged, then
+     * the channel will be closed, and then the new exception is thrown.<p>
+     * 
+     * It should be noted that which exception this method throws is irrelevant.
+     * This method is the "end station"; either we can produce and write a
+     * fallback response or it'll be the end of the exchange.
+     * 
+     * @param e the exception to handle
+     * 
+     * @throws Exception
+     *             from failure to process the exception or write the response
+     */
+    private void handleException(Exception e) throws Exception {
+        var rsp = tryProcessException(e);
+        if (rsp.isPresent()) {
+            try {
+                writer.write(rsp.get());
+            } catch (Exception fromWrite) {
+                closeChannel(ERROR,
+                    "Failed to write fallback response", fromWrite);
+                throw fromWrite;
+            }
+        }
     }
     
     /**
      * Executes the error handler chain.<p>
      * 
-     * As is the case with {@link #process(SkeletonRequest)}, this method
+     * As is the case with {@link #processRequest(SkeletonRequest)}, this method
      * also guarantees that the returned response is in conformance with the
      * state of the writer.<p>
      * 
-     * If the exception can not be processed, it is re-thrown. If an error
-     * handler throws an exception, it will be suppressed in favor of
-     * propagating the given exception (just like Java's try-with-resources).<p>
+     * If this method does not process the exception or processing fails, the
+     * given exception is logged, then the channel will be closed, and then the
+     * given exception is rethrown.
      * 
-     * Before throwing an exception, this method will ensure that the channel is
-     * either in a half-closed state or fully closed. This is merely to signal
-     * the enclosing server that it should not begin a new HTTP exchange.<p>
-     * 
-     * Before any exception leaves this method, it will first be logged.<p>
-     * 
-     * This method is the "end station"; either we can produce a response or
-     * it'll be the end of this exchange.
-     * 
-     * @param e exception to handle
-     * @param req the request (okay to be null)
+     * @param e the exception to process
      * 
      * @return the response produced by the error handler chain
      * 
      * @throws Exception see JavaDoc
      */
-    private Response handleException(
-            Exception e, SkeletonRequest req) throws Exception
-    {
+    private Optional<Response> tryProcessException(Exception e) throws Exception {
         if (e instanceof InterruptedException) {
             // There's no spurious interruption
             closeChannel(WARNING, "Exchange is over; thread interrupted", e);
@@ -376,20 +391,18 @@ final class HttpExchange
             throw e;
         }
         LOG.log(DEBUG, () -> "Attempting to resolve " + e);
-        return __resolve(e, req);
+        return __resolve(e);
     }
     
-    Response __resolve(Exception e, SkeletonRequest req) throws Exception {
+    Optional<Response> __resolve(Exception e) throws Exception {
         try {
             if (handlers.isEmpty()) {
-                return BASE.apply(e, null, null);
+                return of(BASE.apply(e, null, null));
             }
-            var rsp = where(SKELETON_REQUEST,
-                    req == null ? null : of(req),
-                    () -> __usingHandlers(e));
+            var rsp = __usingHandlers(e);
             return __requireWriterConformance(rsp, "Error");
-        } catch (Exception suppressed) {
-            e.addSuppressed(suppressed);
+        } catch (Exception fromChain) {
+            e.addSuppressed(fromChain);
             LOG.log(ERROR, "Error processing chain failed to handle this", e);
             child.close();
             throw e;
