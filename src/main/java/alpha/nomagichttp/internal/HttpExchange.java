@@ -27,6 +27,7 @@ import java.util.Optional;
 import static alpha.nomagichttp.HttpConstants.HeaderName.EXPECT;
 import static alpha.nomagichttp.HttpConstants.Method.TRACE;
 import static alpha.nomagichttp.HttpConstants.Version.HTTP_1_1;
+import static alpha.nomagichttp.handler.ClientChannel.tryAddConnectionClose;
 import static alpha.nomagichttp.handler.ErrorHandler.BASE;
 import static alpha.nomagichttp.internal.DefaultRequest.requestWithoutParams;
 import static alpha.nomagichttp.internal.ErrorHandlerException.unchecked;
@@ -168,7 +169,8 @@ final class HttpExchange
             assert !writer.wroteFinal();
             LOG.log(DEBUG, "Writing final response");
             if (req != null && !canDiscardRequestData(req)) {
-                writer.scheduleClose("can not discard remaining request data.");
+                rsp = tryAddConnectionClose(rsp, LOG, DEBUG,
+                        "can not discard remaining request data");
             }
             final var rsp2 = rsp;
             final var req2 = req;

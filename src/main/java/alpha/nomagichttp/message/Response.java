@@ -418,8 +418,8 @@ public interface Response extends HeaderHolder
         
         /**
          * Appends the given {@code token} to the last non-empty header value,
-         * if present, otherwise the method adds the token as a standalone
-         * header value.<p>
+         * if present, otherwise the method adds the token as a new header
+         * value.<p>
          * 
          * If this method appends the token to a present, non-empty header
          * value, the separator used will be ", ". The given {@code token}

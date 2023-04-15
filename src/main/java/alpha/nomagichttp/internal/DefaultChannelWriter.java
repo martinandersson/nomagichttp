@@ -118,11 +118,6 @@ final class DefaultChannelWriter implements ChannelWriter
     }
     
     @Override
-    public void scheduleClose(String reason) {
-        serverActions.scheduleClose(reason);
-    }
-    
-    @Override
     public long write(final Response app1)
             throws InterruptedException, TimeoutException, IOException
     {

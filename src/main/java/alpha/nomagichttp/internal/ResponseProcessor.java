@@ -13,7 +13,6 @@ import java.io.IOException;
 import java.util.Optional;
 import java.util.concurrent.TimeoutException;
 
-import static alpha.nomagichttp.HttpConstants.HeaderName.CONNECTION;
 import static alpha.nomagichttp.HttpConstants.HeaderName.CONTENT_LENGTH;
 import static alpha.nomagichttp.HttpConstants.HeaderName.TRAILER;
 import static alpha.nomagichttp.HttpConstants.HeaderName.TRANSFER_ENCODING;
@@ -24,6 +23,7 @@ import static alpha.nomagichttp.HttpConstants.StatusCode.TWO_HUNDRED_FOUR;
 import static alpha.nomagichttp.HttpConstants.StatusCode.isClientError;
 import static alpha.nomagichttp.HttpConstants.StatusCode.isServerError;
 import static alpha.nomagichttp.HttpConstants.Version.HTTP_1_1;
+import static alpha.nomagichttp.handler.ClientChannel.tryAddConnectionClose;
 import static alpha.nomagichttp.internal.HttpExchange.skeletonRequest;
 import static alpha.nomagichttp.util.Blah.getOrCloseResource;
 import static alpha.nomagichttp.util.ScopedValues.channel;
@@ -48,7 +48,6 @@ final class ResponseProcessor
             = System.getLogger(ResponseProcessor.class.getPackageName());
     
     private boolean sawConnectionClose;
-    private String scheduledClose;
     
     record Result (
             Response response,
@@ -124,12 +123,6 @@ final class ResponseProcessor
         }, it);
     }
     
-    void scheduleClose(String reason) {
-        if (scheduledClose == null) {
-            scheduledClose = reason;
-        }
-    }
-    
     /**
      * Sets the "Connection: close" header on the given response, if the
      * connection is not persistent.<p>
@@ -178,10 +171,10 @@ final class ResponseProcessor
      */
     private static Response tryCloseNonPersistentConn(Response r, Version reqVer) {
         if (reqVer == null) {
-            return tryAddConnectionClose(r,
+            return tryAddConnectionClose(r, LOG, DEBUG,
                      "no request is available (early error)");
         } else if (reqVer.isLessThan(HTTP_1_1)) {
-            return tryAddConnectionClose(r,
+            return tryAddConnectionClose(r, LOG, DEBUG,
                      reqVer + " does not support a persistent connection");
         }
         return r;
@@ -232,7 +225,8 @@ final class ResponseProcessor
         final Response out;
         if (sawConnectionClose) {
             if (r.isFinal()) {
-                out = tryAddConnectionClose(r, "flag propagates to final response");
+                out = tryAddConnectionClose(r,
+                        LOG, DEBUG, "flag propagates to final response");
             } else {
                 // Message not final or already has the header = NOP
                 out = r;
@@ -249,10 +243,10 @@ final class ResponseProcessor
                 requestHasConnClose()     ? "the request headers' did" :
                 !channel().isInputOpen()  ? "the client's input stream has shut down" :
                 !httpServer().isRunning() ? "the server has stopped" :
-                scheduledClose;
+                                            null;
             if (why != null) {
                 sawConnectionClose = true;
-                out = tryAddConnectionClose(r, why);
+                out = tryAddConnectionClose(r, LOG, DEBUG, why);
             } else {
                 out = r;
             }
@@ -294,14 +288,6 @@ final class ResponseProcessor
         } else {
             return dealWithNoCLHasBody(r, len);
         }
-    }
-    
-    private static Response tryAddConnectionClose(Response r, String why) {
-        if (r.headers().hasConnectionClose()) {
-            return r;
-        }
-        LOG.log(DEBUG, () -> "Will set \"Connection: close\" because " + why + ".");
-        return r.toBuilder().appendHeaderToken(CONNECTION, "close").build();
     }
     
     private static boolean requestHasConnClose() {

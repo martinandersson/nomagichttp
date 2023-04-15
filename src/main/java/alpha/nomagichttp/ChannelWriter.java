@@ -116,31 +116,4 @@ public interface ChannelWriter
      * @return see JavaDoc
      */
     long byteCount();
-    
-    /**
-     * Schedules the client channel to close after the final response.<p>
-     * 
-     * The client channel may close for other reasons, such as the response
-     * containing the "Connection: close" header. If this wouldn't be the case
-     * however, this method guarantees that the response will set the
-     * "Connection: close" header and subsequently close the channel.<p>
-     * 
-     * This method can be used by code whenever it does not have access to- or
-     * can not otherwise manipulate an outbound response object.<p>
-     * 
-     * An alternative would be to simply shut down the channel's input stream,
-     * which will also cause the writer to ensure the "Connection: close" header
-     * is set. However, there are some incredibly dumb HTTP clients out there
-     * (Jetty and Reactor, at least), which if their corresponding output stream
-     * is closed, will cause the client to immediately close the entire
-     * connection without waiting on the final response (lol?).<p>
-     * 
-     * The {@code reason} argument should begin with a lower-cased letter as it
-     * will be appended to another string.<p>
-     * 
-     * This method is NOP if the close has already been scheduled.
-     * 
-     * @param reason to log if this method has an effect
-     */
-    void scheduleClose(String reason);
 }
