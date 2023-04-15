@@ -108,7 +108,6 @@ final class DefaultResponse implements Response
             Supplier<LinkedHashMap<String, List<String>>> trailers;
             
             void removeHeader(String name) {
-                assert name != null;
                 if (headers == null) {
                     return;
                 }
@@ -117,8 +116,6 @@ final class DefaultResponse implements Response
             }
             
             void removeHeaderValue(String name, String value) {
-                assert name != null;
-                assert value != null;
                 if (headers == null) {
                     return;
                 }
@@ -137,21 +134,40 @@ final class DefaultResponse implements Response
             }
             
             void addHeader(boolean clearFirst, String name, String value) {
-                assert name != null;
-                assert value != null;
-                List<String> v = getOrCreateHeaders()
-                        .computeIfAbsent(name, k -> new ArrayList<>(INITIAL_CAPACITY));
+                var vals = getOrCreateEntry(name);
                 if (clearFirst) {
-                    v.clear();
+                    vals.clear();
                 }
-                v.add(value);
+                vals.add(value);
+            }
+            
+            void appendHeaderToken(String name, String token) {
+                var vals = getOrCreateEntry(name);
+                boolean success = false;
+                // In reverse
+                for (int i = vals.size() - 1; i >= 0; --i) {
+                    var v = vals.get(i);
+                    if (v.isEmpty()) {
+                        continue;
+                    }
+                    vals.remove(i);
+                    vals.add(i, v + ", " + token);
+                    success = true;
+                    break;
+                }
+                if (!success) {
+                    vals.add(token);
+                }
+            }
+            
+            private List<String> getOrCreateEntry(String name) {
+                return getOrCreateHeaders().computeIfAbsent(
+                        name, k -> new ArrayList<>(INITIAL_CAPACITY));
             }
             
             private Map<String, List<String>> getOrCreateHeaders() {
-                if (headers == null) {
-                    headers = new LinkedHashMap<>();
-                }
-                return headers;
+                var h = headers;
+                return h == null ? (headers = new LinkedHashMap<>()) : h;
             }
         }
         
@@ -227,6 +243,14 @@ final class DefaultResponse implements Response
                     ms.addHeader(false, k, v);
                 }
             });
+        }
+        
+        @Override
+        public Builder appendHeaderToken(String name, String token) {
+            requireNotEmpty(requireNoSurroundingWS(name));
+            requireNotEmpty(requireNoSurroundingWS(token));
+            return new DefaultBuilder(this, ms ->
+                    ms.appendHeaderToken(name, token));
         }
         
         @Override

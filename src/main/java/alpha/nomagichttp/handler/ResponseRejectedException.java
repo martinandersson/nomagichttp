@@ -1,7 +1,6 @@
 package alpha.nomagichttp.handler;
 
 import alpha.nomagichttp.ChannelWriter;
-import alpha.nomagichttp.HttpConstants;
 import alpha.nomagichttp.message.Response;
 
 import static java.util.Objects.requireNonNull;
@@ -10,10 +9,7 @@ import static java.util.Objects.requireNonNull;
  * A response has been rejected for writing.<p>
  * 
  * Is thrown by {@link ChannelWriter#write(Response)} if a response is rejected
- * for a {@link #reason()}. The {@link ErrorHandler#BASE base error
- * handler} will translate this exception to a {@value
- * HttpConstants.StatusCode#FOUR_HUNDRED_TWENTY_SIX} ({@value
- * HttpConstants.ReasonPhrase#UPGRADE_REQUIRED}) response.
+ * for a {@link #reason()}.
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  */
@@ -22,15 +18,23 @@ public class ResponseRejectedException extends RuntimeException
     // TODO: Encapsulate reason in static factories, just like ExchangeDeath
     
     /**
-     * The reason why a response was rejected.
+     * Is a reason why a response was rejected.
      */
     public enum Reason {
         /**
-         * The response status-code is 1XX and HTTP version used is {@literal <} 1.1.
+         * The response status-code is 1XX, but the request failed to parse.<p>
+         * 
+         * The request processing chain was never invoked, because the request
+         * never parsed. And so, this reason indicates that an error handler
+         * attempted to write an informational response, which is kind of weird.
          */
-        PROTOCOL_NOT_SUPPORTED;
+        CLIENT_PROTOCOL_UNKNOWN_BUT_NEEDED,
         
-        // TODO: Any other reason added here will require JavaDoc update
+        /**
+         * The response status-code is 1XX, and HTTP version used by the client
+         * is {@literal <} 1.1.
+         */
+        CLIENT_PROTOCOL_DOES_NOT_SUPPORT;
     }
     
     private static final long serialVersionUID = 1L;

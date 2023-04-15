@@ -1,6 +1,6 @@
 package alpha.nomagichttp.message;
 
-import alpha.nomagichttp.HttpConstants;
+import alpha.nomagichttp.Config;
 import alpha.nomagichttp.HttpServer;
 import alpha.nomagichttp.handler.ErrorHandler;
 
@@ -12,12 +12,9 @@ import static java.util.Objects.requireNonNull;
  * 
  * Any HTTP version equal to or greater than HTTP/2 is too new.<p>
  * 
- * Most likely, the client request will start as an HTTP/1.1 request with an
- * {@value HttpConstants.HeaderName#UPGRADE} set, which is currently ignored by
- * the NoMagicHTTP server, and therefore the request will not upgrade but keep
- * running on HTTP/1.1 instead of crashing. This exception will only be observed
- * if the client <i>begin</i> a new exchange using HTTP/2. Future work will add
- * support for HTTP/2.<p>
+ * HTTP/2 requires the exchange to begin as HTTP/1.1, then upgrades to HTTP/2
+ * (RFC 7540 §3 "Starting HTTP/2"), which the NoMagicHTTP server currently
+ * doesn't do. And so, this exception should actually never be observed.<p>
  * 
  * The {@link ErrorHandler#BASE base error handler} will translate this
  * exception to a {@link Responses#httpVersionNotSupported() 505 HTTP Version
@@ -26,7 +23,7 @@ import static java.util.Objects.requireNonNull;
  * @author Martin Andersson (webmaster at martinandersson.com)
  * 
  * @see HttpServer
- * @see HttpConstants.Version
+ * @see Config#minHttpVersion()
  */
 public class HttpVersionTooNewException extends RuntimeException
 {
@@ -38,9 +35,13 @@ public class HttpVersionTooNewException extends RuntimeException
      * Constructs a {@code HttpVersionTooNewException}.
      *
      * @param httpVersion rejected
-     * @throws NullPointerException if {@code version} is {@code null}
+     * @param cause what caused this exception (may be {@code null})
+     * 
+     * @throws NullPointerException
+     *             if {@code version} is {@code null}
      */
-    public HttpVersionTooNewException(String httpVersion) {
+    public HttpVersionTooNewException(String httpVersion, Throwable cause) {
+        super(cause);
         version = requireNonNull(httpVersion);
     }
     

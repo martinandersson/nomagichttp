@@ -1,6 +1,7 @@
 package alpha.nomagichttp.message;
 
 import java.util.ArrayDeque;
+import java.util.Collection;
 import java.util.Deque;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
@@ -65,7 +66,8 @@ public class DefaultContentHeaders implements ContentHeaders
      *             if a header name is repeated using different casing
      */
     public DefaultContentHeaders(
-            LinkedHashMap<String, List<String>> entries, boolean stripTrailing)
+            LinkedHashMap<String, ? extends Collection<String>> entries,
+            boolean stripTrailing)
     {
         var len = entries.size();
         var keys = new String[len];
@@ -83,7 +85,7 @@ public class DefaultContentHeaders implements ContentHeaders
     }
     
     private static List<String> copyOf(
-            List<String> values, boolean stripTrailing)
+            Collection<String> values, boolean stripTrailing)
     {
         if (stripTrailing) {
             var l = values.stream().map(v -> {
@@ -156,15 +158,15 @@ public class DefaultContentHeaders implements ContentHeaders
     @Override
     public final Optional<String> firstValue(String headerName) {
         var values = allValues(headerName);
-        return values.isEmpty() ?
-                Optional.empty() : Optional.of(values.get(0));
+        return values.isEmpty() ? Optional.empty() :
+                Optional.of(values.get(0));
     }
     
     @Override
     public OptionalLong firstValueAsLong(String headerName) {
         var values = allValues(headerName);
-        return values.isEmpty() ?
-                OptionalLong.empty() : OptionalLong.of(parseLong(values.get(0)));
+        return values.isEmpty() ? OptionalLong.empty() :
+                OptionalLong.of(parseLong(values.get(0)));
     }
     
     @Override

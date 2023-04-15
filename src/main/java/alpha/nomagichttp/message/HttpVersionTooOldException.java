@@ -1,6 +1,6 @@
 package alpha.nomagichttp.message;
 
-import alpha.nomagichttp.HttpConstants;
+import alpha.nomagichttp.Config;
 import alpha.nomagichttp.HttpConstants.Version;
 import alpha.nomagichttp.HttpServer;
 import alpha.nomagichttp.handler.ErrorHandler;
@@ -19,7 +19,7 @@ import static java.util.Objects.requireNonNull;
  * @author Martin Andersson (webmaster at martinandersson.com)
  * 
  * @see HttpServer
- * @see HttpConstants.Version
+ * @see Config#minHttpVersion()
  */
 public class HttpVersionTooOldException extends RuntimeException
 {
@@ -28,13 +28,30 @@ public class HttpVersionTooOldException extends RuntimeException
     private final String version, upgrade;
     
     /**
-     * Constructs a {@code HttpVersionTooOldException}.
+     * Constructs an {@code HttpVersionTooOldException}.
      * 
      * @param httpVersion rejected
      * @param upgrade server's proposed version
-     * @throws NullPointerException if any argument is {@code null}
+     * 
+     * @throws NullPointerException
+     *             if any argument is {@code null}
      */
     public HttpVersionTooOldException(String httpVersion, Version upgrade) {
+        this(httpVersion, upgrade, null);
+    }
+    
+    /**
+     * Constructs an {@code HttpVersionTooOldException}.
+     * 
+     * @param httpVersion rejected
+     * @param upgrade server's proposed version
+     * @param cause what caused this exception (may be {@code null})
+     * 
+     * @throws NullPointerException
+     *             if {@code httpVersion} or {@code upgrade} is {@code null}
+     */
+    public HttpVersionTooOldException(String httpVersion, Version upgrade, Throwable cause) {
+        super(cause);
         this.version = requireNonNull(httpVersion);
         this.upgrade = upgrade.toString();
     }

@@ -30,7 +30,6 @@ import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
-import org.junit.jupiter.params.provider.ValueSource;
 
 import java.io.IOException;
 import java.nio.channels.InterruptedByTimeoutException;
@@ -144,8 +143,8 @@ class ErrorTest extends AbstractRealTest
     
     // By default, server rejects clients older than HTTP/1.0
     @ParameterizedTest
-    @ValueSource(strings = {"-1.23", "0.5", "0.8", "0.9"})
-    void HttpVersionTooOldException_lessThan1_0(String version)
+    @CsvSource({"-1.23,false", "0.5,false", "0.8,false", "0.9,true"})
+    void HttpVersionTooOldException_lessThan1_0(String version, boolean hasLiteral)
             throws IOException, InterruptedException
     {
         String rsp = client().writeReadTextUntilNewlines(
@@ -153,18 +152,29 @@ class ErrorTest extends AbstractRealTest
         assertThat(rsp).isEqualTo(
             "HTTP/1.1 426 Upgrade Required" + CRLF +
             "Upgrade: HTTP/1.1"             + CRLF +
-            "Connection: Upgrade"           + CRLF +
+            "Connection: upgrade, close"    + CRLF +
             "Content-Length: 0"             + CRLF + CRLF);
-        assertThat(pollServerError())
+        var throwable = assertThat(pollServerError())
             .isExactlyInstanceOf(HttpVersionTooOldException.class)
-            .hasNoCause()
-            .hasNoSuppressedExceptions()
-            .hasMessage(null);
+            .hasNoSuppressedExceptions();
+        if (hasLiteral) {
+            throwable.hasMessage(null)
+                     .hasNoSuppressedExceptions()
+                     .hasNoCause();
+        } else {
+            var v = version.replace(".", ":");
+            throwable.hasMessage("java.lang.IllegalArgumentException: " + v)
+                     .cause()
+                     .isExactlyInstanceOf(IllegalArgumentException.class)
+                     .hasMessage(v)
+                     .hasNoSuppressedExceptions()
+                     .hasNoCause();
+        }
         logRecorder()
             .assertThatNoErrorWasLogged();
     }
     
-    // Server may be configured to reject also HTTP/1.0 clients
+    // Server may be configured to reject old clients
     @Test
     void HttpVersionTooOldException_eq1_0()
             throws IOException, InterruptedException
@@ -174,9 +184,9 @@ class ErrorTest extends AbstractRealTest
         String rsp = client().writeReadTextUntilNewlines(
             "GET /not-found HTTP/1.0"       + CRLF + CRLF);
         assertThat(rsp).isEqualTo(
-            "HTTP/1.0 426 Upgrade Required" + CRLF +
+            "HTTP/1.1 426 Upgrade Required" + CRLF +
             "Upgrade: HTTP/1.1"             + CRLF +
-            "Connection: Upgrade"           + CRLF +
+            "Connection: upgrade, close"    + CRLF +
             "Content-Length: 0"             + CRLF+ CRLF);
         assertThat(pollServerError())
             .isExactlyInstanceOf(HttpVersionTooOldException.class)
@@ -189,20 +199,31 @@ class ErrorTest extends AbstractRealTest
     
     // Some newer versions are currently not supported
     @ParameterizedTest
-    @ValueSource(strings = {"2", "3", "999"})
-    void HttpVersionTooNewException(String version)
+    @CsvSource({"2,true", "3,true", "999,false"})
+    void HttpVersionTooNewException(String version, boolean hasLiteral)
             throws IOException, InterruptedException
     {
         String rsp = client().writeReadTextUntilNewlines(
             "GET / HTTP/" + version                   + CRLF + CRLF);
         assertThat(rsp).isEqualTo(
             "HTTP/1.1 505 HTTP Version Not Supported" + CRLF +
+            "Connection: close"                       + CRLF +
             "Content-Length: 0"                       + CRLF + CRLF);
-        assertThat(pollServerError())
+        var throwable = assertThat(pollServerError())
             .isExactlyInstanceOf(HttpVersionTooNewException.class)
-            .hasNoCause()
-            .hasNoSuppressedExceptions()
-            .hasMessage(null);
+            .hasNoSuppressedExceptions();
+        if (hasLiteral) {
+            throwable.hasMessage(null)
+                     .hasNoCause();
+        } else {
+            throwable.hasMessage("java.lang.IllegalArgumentException: 999:")
+                     .hasNoSuppressedExceptions()
+                     .cause()
+                         .isExactlyInstanceOf(IllegalArgumentException.class)
+                         .hasMessage("999:")
+                         .hasNoSuppressedExceptions()
+                         .hasNoCause();
+        }
         logRecorder()
             .assertThatNoErrorWasLogged();
     }
@@ -262,6 +283,7 @@ class ErrorTest extends AbstractRealTest
             """);
         assertThat(rsp).isEqualTo("""
             HTTP/1.1 501 Not Implemented\r
+            Connection: close\r
             Content-Length: 0\r\n\r\n""");
         assertThat(pollServerError())
             .isExactlyInstanceOf(UnsupportedTransferCodingException.class)
@@ -572,8 +594,8 @@ class ErrorTest extends AbstractRealTest
         String rsp = client().writeReadTextUntilNewlines(
             "HEAD / HTTP/1.1"                    + CRLF + CRLF);
         assertThat(rsp).isEqualTo(
-            "HTTP/1.1 500 Internal Server Error" + CRLF +
-            "Content-Length: 0"                  + CRLF + CRLF);
+            // No Content-Length (see ResponseProcessor.dealWithHeadRequest)
+            "HTTP/1.1 500 Internal Server Error" + CRLF + CRLF);
         assertThatServerErrorObservedAndLogged()
             .isExactlyInstanceOf(IllegalResponseBodyException.class)
             .hasNoCause()
@@ -591,7 +613,7 @@ class ErrorTest extends AbstractRealTest
         String rsp = client().writeReadTextUntil(
             "GET / HTTP/1.0"                          + CRLF + CRLF, "Done!");
         assertThat(rsp).isEqualTo(
-            "HTTP/1.0 200 OK"                         + CRLF +
+            "HTTP/1.1 200 OK"                         + CRLF +
             "Content-Type: text/plain; charset=utf-8" + CRLF +
             "Connection: close"                       + CRLF +
             "Content-Length: 5"                       + CRLF + CRLF +

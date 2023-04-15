@@ -24,7 +24,8 @@ import java.util.function.Consumer;
 import static alpha.nomagichttp.HttpConstants.HeaderName.TRAILER;
 import static alpha.nomagichttp.HttpConstants.StatusCode.ONE_HUNDRED;
 import static alpha.nomagichttp.HttpConstants.Version.HTTP_1_1;
-import static alpha.nomagichttp.handler.ResponseRejectedException.Reason.PROTOCOL_NOT_SUPPORTED;
+import static alpha.nomagichttp.handler.ResponseRejectedException.Reason.CLIENT_PROTOCOL_DOES_NOT_SUPPORT;
+import static alpha.nomagichttp.handler.ResponseRejectedException.Reason.CLIENT_PROTOCOL_UNKNOWN_BUT_NEEDED;
 import static alpha.nomagichttp.internal.DefaultRequest.requestWithParams;
 import static alpha.nomagichttp.internal.HttpExchange.skeletonRequest;
 import static alpha.nomagichttp.internal.VThreads.CHANNEL_BLOCKING;
@@ -46,8 +47,10 @@ import static java.util.Objects.requireNonNullElse;
  *   <li>Invoke after-actions</li>
  *   <li>Finalize response using {@link ResponseProcessor}</li>
  *   <li>Write the response</li>
- *   <li>Close a non-persistent HTTP connection</li>
  * </ul>
+ * 
+ * This class also closes a non-persistent HTTP connection, but it should be
+ * noted that it is {@code ResponseProcessor} who makes the decision.<p>
  * 
  * The writer instance is legal to use immediately after having been created
  * until the final response has been written, or after an explicit call to
@@ -121,20 +124,27 @@ final class DefaultChannelWriter implements ChannelWriter
     
     @Override
     public long write(final Response app1)
-            throws InterruptedException, TimeoutException, IOException {
+            throws InterruptedException, TimeoutException, IOException
+    {
         requireNonNull(app1);
         requireValidState();
-        var httpVer = skeletonRequest()
-                      .map(SkeletonRequest::httpVersion)
-                      .orElse(HTTP_1_1);
-        if (discard1XXInformational(app1, httpVer) ||
-            ignoreRepeated100Continue(app1)) {
-            return 0;
+        var reqVer = skeletonRequest().map(SkeletonRequest::httpVersion).orElse(null);
+        var rspVer = conformantResponseVer();
+        if (app1.isInformational()) {
+            if (reqVer == null) {
+                throw new ResponseRejectedException(
+                        app1, CLIENT_PROTOCOL_UNKNOWN_BUT_NEEDED, """
+                        The error handler should not be sending 1XX (Informational).""");
+            }
+            if (discard1XXInformational(app1, reqVer) ||
+                ignoreRepeated100Continue(app1)) {
+                return 0;
+            }
         }
         final Response app2 = invokeAppActions(app1);
-        final Result bag = serverActions.process(app2, httpVer);
+        final Result bag = serverActions.process(app2, reqVer);
         try (bag) {
-            return write0(bag.response(), bag.body(), httpVer);
+            return write0(bag.response(), bag.body(), rspVer);
         } finally {
             if (bag.closeChannel()) {
                 dismiss();
@@ -145,7 +155,7 @@ final class DefaultChannelWriter implements ChannelWriter
                             closing channel.""");
                     ch.close();
                 }
-            } else if (bag.closeConnection() && channel().isOutputOpen()) {
+            } else if (bag.closeOutput() && channel().isOutputOpen()) {
                 LOG.log(DEBUG, "Saw \"Connection: close\", shutting down output.");
                 dismiss();
                 channel().shutdownOutput();
@@ -166,15 +176,60 @@ final class DefaultChannelWriter implements ChannelWriter
         }
     }
     
-    private static boolean discard1XXInformational(Response r, Version httpVer) {
-        if (r.isInformational() && httpVer.isLessThan(HTTP_1_1)) {
+    /**
+     * Returns the HTTP version that must be used for the response.<p>
+     * 
+     * Currently, this method returns {@code HTTP_1_1}, whether a request has
+     * been successfully parsed and whatever version the request may be
+     * using.<p>
+     * 
+     * <a href="https://datatracker.ietf.org/doc/html/rfc7230/#section-2.6">
+     * RFC 7230 §2.6</a>:
+     * <blockquote><pre>
+     *   A server SHOULD send a response version equal to the highest version to
+     *   which the server is conformant that has a major version less than or
+     *   equal to the one received in the request. A server MUST NOT send a
+     *   version to which it is not conformant.
+     * </pre></blockquote>
+     * 
+     * We are not "conformant" with HTTP/0.X, nor do we yet implement HTTP/2,
+     * and so returning HTTP/1.1 in all cases is just fine.<p>
+     * 
+     * Same section from the RFC also writes:
+     * <blockquote><pre>
+     *   When an HTTP/1.1 message is sent to an HTTP/1.0 recipient or a
+     *   recipient whose version is unknown, the HTTP/1.1 message is constructed
+     *   such that it can be interpreted as a valid HTTP/1.0 message if all the
+     *   newer features are ignored.
+     * </pre></blockquote>
+     * 
+     * This class, the {@link HttpExchange} and the {@link ResponseProcessor}
+     * have logical branching that ensures no HTTP/1.1 features are sent to a
+     * client not known to be at least HTTP/1.1. For example, chunked
+     * encoding.<p>
+     * 
+     * When we add support for HTTP/2, this method implementation will have to
+     * change, such that the "highest conformant version" is computed.
+     * Additionally, all the aforementioned classes will likely have to be split
+     * into specialized types for a given major version of HTTP, or, some other
+     * mechanism will be put in place to quote unquote "shape" the response
+     * message into whatever is accepted by the client.
+     * 
+     * @return see JavaDoc
+     */
+    private static Version conformantResponseVer() {
+        return HTTP_1_1;
+    }
+    
+    private static boolean discard1XXInformational(Response r, Version reqVer) {
+        if (reqVer.isLessThan(HTTP_1_1)) {
             if (httpServer().getConfig().discardRejectedInformational()) {
                 LOG.log(DEBUG,
-                    "Ignoring 1XX (Informational) response for HTTP/1.0 client.");
+                    "Ignoring 1XX (Informational) response for " + reqVer +" client.");
                 return true;
             }
-            throw new ResponseRejectedException(r, PROTOCOL_NOT_SUPPORTED,
-                    httpVer + " does not support 1XX (Informational) responses.");
+            throw new ResponseRejectedException(r, CLIENT_PROTOCOL_DOES_NOT_SUPPORT,
+                    reqVer + " client does not accept 1XX (Informational) responses.");
         }
         return false;
     }
@@ -240,7 +295,6 @@ final class DefaultChannelWriter implements ChannelWriter
             line = httpVer + SP + r.statusCode() + SP + phra + CRLF_STR,
             vals = headersForWriting(r.headers()::forEach),
             head = line + vals;
-        
         // TODO: For each component, including headers, we can cache the
         //       ByteBuffers and feed the channel slices.
         return doWrite(asciiBytes(head));
@@ -296,16 +350,17 @@ final class DefaultChannelWriter implements ChannelWriter
     }
     
     /**
-     * Will finish with 1 CRLF, if empty, otherwise 2 CRLF.
+     * Will finish with 1 {@code CRLF}, if empty, otherwise 2 {@code CRLF}.
      * 
-     * @param r source
+     * @param src source
      * 
      * @return headers for writing
      */
-    private static String headersForWriting(Consumer<BiConsumer<String, List<String>>> r) {
+    private static String headersForWriting(
+            Consumer<BiConsumer<String, List<String>>> src) {
         var sj = new StringJoiner(CRLF_STR, "", CRLF_STR + CRLF_STR)
                 .setEmptyValue(CRLF_STR);
-        r.accept((k, vals) ->
+        src.accept((k, vals) ->
                 vals.forEach(v -> sj.add(k + ": " + v)));
         return sj.toString();
     }

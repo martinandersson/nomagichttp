@@ -36,7 +36,6 @@ import java.util.stream.Stream;
 import static alpha.nomagichttp.HttpConstants.HeaderName.ALLOW;
 import static alpha.nomagichttp.HttpConstants.Method.OPTIONS;
 import static alpha.nomagichttp.handler.ResponseRejectedException.Reason;
-import static alpha.nomagichttp.handler.ResponseRejectedException.Reason.PROTOCOL_NOT_SUPPORTED;
 import static alpha.nomagichttp.message.Responses.badRequest;
 import static alpha.nomagichttp.message.Responses.entityTooLarge;
 import static alpha.nomagichttp.message.Responses.httpVersionNotSupported;
@@ -143,6 +142,7 @@ public interface ErrorHandler
      * @param req request object
      * 
      * @return a fallback response
+     *         (must be {@linkplain Response#isFinal() final})
      * 
      * @see ErrorHandler
      */
@@ -305,16 +305,18 @@ public interface ErrorHandler
      *   <tr>
      *     <th scope="row">{@link ResponseRejectedException} </th>
      *     <td> Reason is
-     *          {@link Reason#PROTOCOL_NOT_SUPPORTED}</td>
-     *     <td> No </td>
-     *     <td> {@link Responses#upgradeRequired(String)} </td>
+     *          {@link Reason#CLIENT_PROTOCOL_UNKNOWN_BUT_NEEDED
+     *                   CLIENT_PROTOCOL_UNKNOWN_BUT_NEEDED}</td>
+     *     <td> Yes </td>
+     *     <td> {@link Responses#internalServerError()} </td>
      *   </tr>
      *   <tr>
      *     <th scope="row">{@link ResponseRejectedException} </th>
-     *     <td> Reason is <strong>not</strong>
-     *          {@link Reason#PROTOCOL_NOT_SUPPORTED}</td>
+     *     <td> Reason is
+     *          {@link Reason#CLIENT_PROTOCOL_DOES_NOT_SUPPORT
+     *                   CLIENT_PROTOCOL_DOES_NOT_SUPPORT}</td>
      *     <td> No </td>
-     *     <td> {@link Responses#internalServerError()} </td>
+     *     <td> {@link Responses#upgradeRequired(String)} </td>
      *   </tr>
      *   <tr>
      *     <th scope="row"> {@link ReadTimeoutException} </th>
@@ -384,9 +386,14 @@ public interface ErrorHandler
             log(exc);
             res = unsupportedMediaType();
         } catch (ResponseRejectedException e) {
-            res = e.reason() == PROTOCOL_NOT_SUPPORTED ?
-                    upgradeRequired("HTTP/1.1") :
-                    internalServerError();
+            res = switch (e.reason()) {
+                case CLIENT_PROTOCOL_UNKNOWN_BUT_NEEDED -> {
+                    log(exc);
+                    yield internalServerError();
+                }
+                case CLIENT_PROTOCOL_DOES_NOT_SUPPORT -> upgradeRequired("HTTP/1.1");
+                default -> throw new AssertionError();
+            };
         } catch (ReadTimeoutException e) {
             res = requestTimeout();
         } catch (ResponseTimeoutException e) {

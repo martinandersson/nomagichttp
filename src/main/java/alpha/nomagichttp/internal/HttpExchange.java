@@ -40,6 +40,7 @@ import static java.lang.System.Logger.Level.ERROR;
 import static java.lang.System.Logger.Level.WARNING;
 import static java.lang.System.nanoTime;
 import static java.util.Optional.of;
+import static java.util.Optional.ofNullable;
 
 /**
  * Orchestrator of an HTTP exchange from request to response.<p>
@@ -73,10 +74,15 @@ final class HttpExchange
     /**
      * Returns the skeleton request.<p>
      * 
-     * The skeleton request is only available after the request head has been
-     * received and parsed, which includes the HTTP version. Until then, this
-     * method returns {@code null}. This is especially important to be aware of
-     * for the channel writer who may be executed at a very early stage.
+     * The skeleton request is only available (non-empty Optional) after the
+     * request head has been received, parsed and validated.<p>
+     * 
+     * If this method returns an empty Optional, then the exchange has run into
+     * an early error; which does not necessarily have to be a message syntax
+     * error. For example, the HTTP version could have been correctly specified,
+     * just not mappable on our side to a {@link Version Version} literal, or, a
+     * particular Transfer-Encoding token is not supported (we wouldn't be able
+     * to read the body).
      * 
      * @return see JavaDoc
      */
@@ -152,9 +158,9 @@ final class HttpExchange
         Response rsp;
         try {
             LOG.log(DEBUG, "Parsing the request");
-            req = parseRequest();
+            req = validate(createRequest(parseHead()));
             LOG.log(DEBUG, "Executing the request processing chain");
-            rsp = processRequest(req);
+            rsp = process(req);
         } catch (Exception exc) {
             rsp = handleException(exc, req);
         }
@@ -164,14 +170,17 @@ final class HttpExchange
             if (req != null && !canDiscardRequestData(req)) {
                 writer.scheduleClose("can not discard remaining request data.");
             }
-            try {
-                final var rsp2 = rsp;
-                where(SKELETON_REQUEST,
-                    req == null ? null : of(req),
-                    () -> writer.write(rsp2));
-            } catch (Exception exc) {
-                writer.write(handleException(exc, req));
-            }
+            final var rsp2 = rsp;
+            final var req2 = req;
+            where(SKELETON_REQUEST, ofNullable(req), () -> {
+                try {
+                    writer.write(rsp2);
+                } catch (Exception e) {
+                    // TODO: Huge smell.
+                    writer.write(handleException(e, req2));
+                }
+                return null;
+            });
         }
         if (!child.isInputOpen() || !child.isOutputOpen()) {
             LOG.log(DEBUG, """
@@ -188,83 +197,71 @@ final class HttpExchange
         // TODO: This is terrible. We need to discard data from invalid request as well.
     }
     
-    private SkeletonRequest parseRequest() throws IOException {
-        final RawRequest.Head h;
-        try {
-            RawRequest.Line l = new ParserOfRequestLine(
-                    reader, conf.maxRequestHeadSize()).parse();
-            h = __parseRequestHeaders(l);
-        } catch (Throwable t) {
-            writer.scheduleClose("parsing request failed.");
-            throw t;
-        }
-        return __createRequest(h);
-    }
-    
-    private RawRequest.Head __parseRequestHeaders(RawRequest.Line l)
-            throws IOException {
-        var p = ParserOf.headers(reader, l.length(), conf.maxRequestHeadSize());
-        var hs = p.parse();
-        var h = new RawRequest.Head(l, hs);
+    private RawRequest.Head parseHead() throws IOException {
+        var line = new ParserOfRequestLine(
+                reader, conf.maxRequestHeadSize()).parse();
+        var parser = ParserOf.headers(reader, line.length(), conf.maxRequestHeadSize());
+        var headers = parser.parse();
+        var head = new RawRequest.Head(line, headers);
         server.events().dispatchLazy(RequestHeadReceived.INSTANCE,
-                () -> h,
+                () -> head,
                 () -> new RequestHeadReceived.Stats(
-                        l.nanoTimeOnStart(),
+                        line.nanoTimeOnStart(),
                         nanoTime(),
-                        addExact(l.length(), p.byteCount())));
-        return h;
+                        addExact(line.length(), parser.byteCount())));
+        return head;
     }
     
-    private SkeletonRequest __createRequest(RawRequest.Head h) {
-        Version v = __parseHttpVersion(h.line().httpVersion());
-        if (v.isLessThan(conf.minHttpVersion())) {
-            throw new HttpVersionTooOldException(
-                    h.line().httpVersion(), HTTP_1_1);
-        }
-        var req = new SkeletonRequest(h, v,
-                SkeletonRequestTarget.parse(h.line().target()),
-                RequestBody.of(h.headers(), reader));
-        __requireNoBodyInTRACE(req);
-        return req;
-    }
-    
-    private static Version __parseHttpVersion(String rawVersion) {
-        final Version v;
+    private SkeletonRequest createRequest(RawRequest.Head h) {
+        final String raw = h.line().httpVersion();
+        final Version ver;
         try {
-            v = Version.parse(rawVersion);
+            ver = Version.parse(h.line().httpVersion());
         } catch (IllegalArgumentException e) {
             String[] comp = e.getMessage().split(":");
             if (comp.length == 1) {
-                // No literal for minor
-                __requireHTTP1(parseInt(comp[0]), rawVersion, HTTP_1_1);
+                // No component for minor
+                __requireHTTP1(parseInt(comp[0]), raw, HTTP_1_1, e);
                 throw new AssertionError("""
-                        String "HTTP/<single digit>" should have failed with \
+                        String "HTTP/1" should have failed with \
                         parse exception (missing minor).""");
             } else {
                 // No literal for major + minor (i.e., version < HTTP/0.9)
                 assert comp.length == 2;
                 assert parseInt(comp[0]) <= 0;
-                throw new HttpVersionTooOldException(rawVersion, HTTP_1_1);
+                throw new HttpVersionTooOldException(raw, HTTP_1_1, e);
             }
         }
-        __requireHTTP1(v.major(), rawVersion, HTTP_1_1);
-        return v;
+        return new SkeletonRequest(h, ver,
+                SkeletonRequestTarget.parse(h.line().target()),
+                RequestBody.of(h.headers(), reader));
     }
     
-    private static void __requireHTTP1(int major, String raw, Version upgrade) {
-        if (major < 1) {
-            throw new HttpVersionTooOldException(raw, upgrade);
+    private SkeletonRequest validate(SkeletonRequest req) {
+        var raw = req.head().line().httpVersion();
+        var ver = req.httpVersion();
+        // App's version requirement
+        if (ver.isLessThan(conf.minHttpVersion())) {
+            throw new HttpVersionTooOldException(raw, HTTP_1_1);
         }
-        if (major > 1) { // for now
-            throw new HttpVersionTooNewException(raw);
-        }
-    }
-    
-    // NOT suitable as a before-action; they are invoked only for valid requests
-    private static void __requireNoBodyInTRACE(SkeletonRequest req) {
+        // Our version requirement
+        __requireHTTP1(ver.major(), raw, HTTP_1_1, null);
+        // And we also require an empty body in a TRACE request
+        // (not suitable as a before-action; they are invoked only for valid requests)
         if (req.head().line().method().equals(TRACE) && !req.body().isEmpty()) {
             throw new IllegalRequestBodyException(
                     req.head(), req.body(), "Body in a TRACE request.");
+        }
+        return req;
+    }
+    
+    private static void __requireHTTP1(
+            int major, String raw, Version upgrade, Throwable cause) {
+        if (major < 1) {
+            throw new HttpVersionTooOldException(raw, upgrade, cause);
+        }
+        if (major > 1) { // for now
+            throw new HttpVersionTooNewException(raw, cause);
         }
     }
     
@@ -272,14 +269,14 @@ final class HttpExchange
      * Executes the request processor.<p>
      * 
      * The returned response is guaranteed to be in conformance with the state
-     * of the writer: either null because the final response was already
+     * of the writer; either null because the final response was already
      * written, or a non-null final response.
      * 
      * @param r request (assumed to not be null)
      * @return see JavaDoc
      * @throws Exception from the request processor
      */
-    private Response processRequest(SkeletonRequest r) throws Exception {
+    private Response process(SkeletonRequest r) throws Exception {
         return where(SKELETON_REQUEST, of(r), () -> {
             // Potentially send 100 (Continue)...
             if (!r.httpVersion().isLessThan(HTTP_1_1) &&
@@ -326,7 +323,7 @@ final class HttpExchange
     /**
      * Executes the error handler chain.<p>
      * 
-     * As is the case with {@link #processRequest(SkeletonRequest)}, this method
+     * As is the case with {@link #process(SkeletonRequest)}, this method
      * also guarantees that the returned response is in conformance with the
      * state of the writer.<p>
      * 

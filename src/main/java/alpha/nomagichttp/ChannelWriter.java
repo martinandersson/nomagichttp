@@ -43,9 +43,10 @@ public interface ChannelWriter
      * implementation has no obligation to protect itself from recursion.<p>
      * 
      * Only at most one 100 (Continue) response will be sent. Repeated 100
-     * (Continue) responses are ignored. Also ignored - unless configured
+     * (Continue) responses are ignored. Also ignored — unless configured
      * differently by {@link Config#discardRejectedInformational()} — is any
-     * attempt to write a 1XX (Informational) to an HTTP/1.0 client.<p>
+     * attempt to write a 1XX (Informational) to a client older than
+     * HTTP/1.1.<p>
      * 
      * For both of the aforementioned cases, this method short-circuits and
      * returns 0. Otherwise, the method will invoke relevant
@@ -70,9 +71,7 @@ public interface ChannelWriter
      *             if {@code response} {@link Response#isFinal() isFinal} and a
      *             final response has already been sent
      * @throws ResponseRejectedException
-     *             if {@link Config#discardRejectedInformational()} returns false,
-     *             and status-code is 1XX,
-     *             and HTTP version used is {@literal <} 1.1
+     *             for a {@link ResponseRejectedException.Reason Reason}
      * @throws BadHeaderException
      *             for the same reasons as specified in
      *             {@link ContentHeaders#contentLength()}

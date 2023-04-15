@@ -159,7 +159,7 @@ final class DefaultConfig implements Config {
         @Override
         public Builder minHttpVersion(Version newVal) {
             if (newVal.isLessThan(HTTP_1_0) || newVal.isGreaterThan(HTTP_1_1)) {
-                
+                throw new IllegalArgumentException();
             }
             return new DefaultBuilder(this, s -> s.minHttpVersion = newVal);
         }

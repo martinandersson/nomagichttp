@@ -559,8 +559,21 @@ public final class Responses
         return CACHE.get(FOUR_HUNDRED_TWENTY_SIX, UPGRADE_REQUIRED).toBuilder()
                 .addHeaders(
                     UPGRADE, upgrade,
-                    CONNECTION, UPGRADE)
+                    CONNECTION, "upgrade")
                 .build();
+        /*
+         * The server may add a "close" token for a non-persistent connection,
+         * which for a humanoid may result in a very weird message:
+         * 
+         *   Upgrade: HTTP/1.1
+         *   Connection: upgrade, close
+         * 
+         * How can the connection upgrade at the same time we are closing it!?
+         * The "upgrade" token is not a command. It simply marks the Upgrade
+         * header as a hop-by-hop header, such that a proxy can remove or
+         * replace it with his own connection options sent to his client. See
+         * RFC 7230 section "6.1. Connection" and "6.7. Upgrade".
+         */
     }
     
     /**

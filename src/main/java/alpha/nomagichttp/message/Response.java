@@ -149,13 +149,14 @@ public interface Response extends HeaderHolder
      * <a href="https://www.rfc-editor.org/rfc/rfc7230#section-4.4">RFC 7230 §4.4</a>
      * specifies the "Trailer" header as optional (unfortunately), the server
      * must know in advance before sending the body whether trailers will be
-     * present, as trailers may require the server to apply chunked encoding.
-     * Thus, why the trailer is upgraded to be required.
+     * present, as the presence of trailers may require the server to apply
+     * chunked encoding. Thus, why the trailer is upgraded to be required.
      * 
      * @implSpec
      * The default implementation returns {@code null}.
      * 
      * @return trailers (possibly {@code null})
+     * 
      * @see Request#trailers() 
      */
     default LinkedHashMap<String, List<String>> trailers() {
@@ -243,7 +244,8 @@ public interface Response extends HeaderHolder
      * Adding values to the same header name replicates the header across
      * multiple rows in the response. It does <strong>not</strong> join the
      * values on the same row. If this is desired, first join multiple values
-     * and then pass it to the builder as one.<p>
+     * and then pass it to the builder as one, or consider using
+     * {@link #appendHeaderToken(String, String)}.<p>
      * 
      * Header order for different names is not significant (see note). The
      * addition order will be preserved on the wire, except for a duplicated
@@ -277,6 +279,8 @@ public interface Response extends HeaderHolder
      * ).
      * 
      * @author Martin Andersson (webmaster at martinandersson.com)
+     * 
+     * @see HttpConstants.HeaderName
      */
     interface Builder
     {
@@ -322,8 +326,6 @@ public interface Response extends HeaderHolder
          *             if any argument has leading or trailing whitespace
          * @throws IllegalArgumentException
          *             if {@code name} is empty
-         * 
-         * @see HttpConstants.HeaderName
          */
         Builder header(String name, String value);
         
@@ -367,8 +369,8 @@ public interface Response extends HeaderHolder
         /**
          * Adds a header to this response.<p>
          * 
-         * If the header is already present (case-sensitive) then it will be
-         * repeated in the response.
+         * If the header is already present, then it will be repeated in the
+         * response.
          * 
          * @param name of the header
          * @param value of the header
@@ -381,8 +383,6 @@ public interface Response extends HeaderHolder
          *             if any argument has leading or trailing whitespace
          * @throws IllegalArgumentException
          *             if {@code name} is empty
-         * 
-         * @see HttpConstants.HeaderName
          */
         Builder addHeader(String name, String value);
         
@@ -413,10 +413,34 @@ public interface Response extends HeaderHolder
          *             if any given string has leading or trailing whitespace
          * @throws IllegalArgumentException
          *             if {@code name} is empty
-         * 
-         * @see HttpConstants.HeaderName
          */
         Builder addHeaders(String name, String value, String... morePairs);
+        
+        /**
+         * Appends the given {@code token} to the last non-empty header value,
+         * if present, otherwise the method adds the token as a standalone
+         * header value.<p>
+         * 
+         * If this method appends the token to a present, non-empty header
+         * value, the separator used will be ", ". The given {@code token}
+         * should not begin with a comma, and the header field should be defined
+         * as a comma-separated list.<p>
+         * 
+         * This method operates without regard to casing.
+         * 
+         * @param name of the header
+         * @param token to append
+         * 
+         * @return a new builder representing the new state
+         * 
+         * @throws NullPointerException
+         *             if any argument is {@code null}
+         * @throws IllegalArgumentException
+         *             if any argument has leading or trailing whitespace
+         * @throws IllegalArgumentException
+         *             if any argument is empty
+         */
+        Builder appendHeaderToken(String name, String token);
         
         /**
          * Sets a message body.<p>
@@ -469,12 +493,16 @@ public interface Response extends HeaderHolder
          *   boolean accepted = request.headers().contains("TE", "trailers");
          * </pre>
          * 
-         * If the HTTP exchange is using a version less than 1.1, then the
-         * trailers will be silently discarded.<p>
+         * If the request failed to parse, or it parsed but the client specified
+         * an HTTP version older than 1.1, then the trailers will be silently
+         * discarded. If the request is available, then the client's version can
+         * be queried using {@link Request#httpVersion()}. The server can be
+         * configured to not accept connections from old clients using
+         * {@link Config#minHttpVersion()}.<p>
          * 
          * Trailers will be written out on the wire in the same way headers are;
          * order and casing is preserved. Although this builder requires that
-         * header names- and values has no leading or trailing whitespace, the
+         * header names- and values have no leading or trailing whitespace, the
          * same validation does not happen for the given trailers. Nonetheless,
          * the application should ensure there is no such whitespace in the
          * given strings.<p>

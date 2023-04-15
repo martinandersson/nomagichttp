@@ -60,7 +60,7 @@ class ClientLifeCycleTest extends AbstractRealTest
                 "Connection: keep-alive" + CRLF + CRLF); // <-- does not matter
             
             assertThat(rsp).isEqualTo(
-                "HTTP/1.0 204 No Content" + CRLF +
+                "HTTP/1.1 204 No Content" + CRLF +
                 "Connection: close"       + CRLF + CRLF);
             
             logRecorder().assertAwaitChildClose();

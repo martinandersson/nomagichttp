@@ -2,6 +2,7 @@ package alpha.nomagichttp.message;
 
 import org.junit.jupiter.api.Test;
 
+import static alpha.nomagichttp.HttpConstants.HeaderName.CONNECTION;
 import static alpha.nomagichttp.testutil.Assertions.assertHeaders;
 import static alpha.nomagichttp.util.ByteBufferIterables.empty;
 import static java.util.List.of;
@@ -63,16 +64,6 @@ final class ResponseBuilderTest
             entry("k", of("v2", "v1", "v3", "v2")));
     }
     
-    // TODO: Add Key X " " (one whitespace) below
-    //       Also need tests white whitespace in the name.
-    // RFC 7230 §3.2.5. Field Parsing
-    // "The field value does not
-    //   include any leading or trailing whitespace" so we should actually trim the values.
-    // Might as well trim the header names too. Will simplify API; one less
-    // "IllegalStateException" upon building
-    // TODO: equals; order does not matter
-    
-    
     // No validation of whitespace in header, values are allowed to be empty
     @Test
     void headerEmptyValues() {
@@ -83,6 +74,38 @@ final class ResponseBuilderTest
         assertHeaders(r).containsExactly(
             entry("k 1", of("", "")),
             entry("k 2", of("")));
+    }
+    
+    @Test
+    void appendToken_exists() {
+        var r = builder(-1).addHeaders(
+                    CONNECTION, "upgrade")
+                .appendHeaderToken(CONNECTION, "close")
+                .build();
+        assertHeaders(r).containsExactly(
+            entry(CONNECTION, of("upgrade, close")));
+    }
+    
+    @Test
+    void appendToken_addsNew() {
+        var r = builder(-1).addHeaders(
+                    "Something", "else")
+                .appendHeaderToken(CONNECTION, "close")
+                .build();
+        assertHeaders(r).containsExactly(
+            entry("Something", of("else")),
+            entry(CONNECTION, of("close")));
+    }
+    
+    @Test
+    void appendToken_skipEmpty() {
+        var r = builder(-1).addHeaders(
+                    CONNECTION, "me-first",
+                    CONNECTION, "")
+                .appendHeaderToken(CONNECTION, "close")
+                .build();
+        assertHeaders(r).containsExactly(
+            entry(CONNECTION, of("me-first, close", "")));
     }
     
     @Test

@@ -63,7 +63,7 @@ class MessageTest extends AbstractRealTest
     
     // TODO: Any client that can't do HTTP/1.0 can simply be ignored
     /**
-     * Can make an HTTP/1.0 request (and get HTTP/1.0 response).<p>
+     * Can make an HTTP/1.0 request (gets HTTP/1.1 response).<p>
      * 
      * See {@link ErrorTest} for cases related to unsupported versions.
      */
@@ -76,7 +76,7 @@ class MessageTest extends AbstractRealTest
             "GET / HTTP/1.0" + CRLF + CRLF, "Received HTTP/1.0");
         
         assertThat(resp).isEqualTo(
-            "HTTP/1.0 200 OK"                         + CRLF +
+            "HTTP/1.1 200 OK"                         + CRLF +
             "Content-Type: text/plain; charset=utf-8" + CRLF +
             "Connection: close"                       + CRLF +
             "Content-Length: 17"                      + CRLF + CRLF +

@@ -144,43 +144,43 @@ public interface Config
     int maxErrorResponses();
     
     /**
-     * Minimum supported HTTP version.<p>
+     * Returns the minimum supported HTTP version.<p>
      * 
      * By default, this method returns
      * {@link HttpConstants.Version#HTTP_1_0 HTTP/1.0}.<p>
      * 
      * If a client sends a request with an older HTTP version than what is
-     * configured, a {@link HttpVersionTooOldException} is thrown, which by
-     * default gets translated to a "426 Upgrade Required" response.<p>
+     * configured, an {@link HttpVersionTooOldException} is thrown, which by
+     * default gets translated to a 426 (Upgrade Required) response.<p>
      * 
-     * HTTP/1.0 does not by default support persistent connections and there
-     * are a number of issues related to HTTP/1.0's Keep-Alive mechanism — which
-     * the NoMagicHTTP server does not support. All HTTP/1.0 connections will
+     * HTTP/1.0 does not support persistent connections and there are a number
+     * of issues related to the unofficial "keep-alive" mechanism — which the
+     * NoMagicHTTP server does not implement. All HTTP/1.0 connections will
      * therefore close after each response, which is inefficient. It's
-     * recommended to override this value with
-     * {@link HttpConstants.Version#HTTP_1_1 HTTP/1.1}. As a library
-     * however, we have to be backwards compatible and support as many
-     * applications as possible "out of the box".<p>
+     * recommended to set this value to
+     * {@link HttpConstants.Version#HTTP_1_1 HTTP/1.1}. As a library however, we
+     * have to be backwards compatible and support as many applications as
+     * possible "out of the box".<p>
      * 
-     * The minimum version the NoMagicHTTP supports is HTTP/1.0, and the maximum
-     * version currently supported is HTTP/1.1.
+     * The minimum version the NoMagicHTTP implements is HTTP/1.0, and the
+     * maximum version currently implemented is HTTP/1.1.
      * 
      * @return the minimum supported HTTP version
      */
     Version minHttpVersion();
     
     /**
-     * Discard 1XX (Informational) responses when the recipient is an
-     * HTTP/1.0 client.<p>
+     * Discard 1XX (Informational) responses when the recipient is a client
+     * using an HTTP version older than HTTP/1.1.<p>
      * 
      * The default value is {@code true} and the application can safely write
      * 1XX responses to the channel without concern for incompatible clients.<p>
      * 
      * Turning this option off causes {@link ClientChannel#write(Response)} to
      * throw a {@link ResponseRejectedException} for 1XX responses when the
-     * protocol version used is HTTP/1.0. This necessitates that the application
-     * must either handle the exception explicitly, or query the active HTTP
-     * version ({@link Request#httpVersion()}) before attempting to send such a
+     * client is incompatible. This necessitates that the application must
+     * either handle the exception explicitly, or query the active HTTP version
+     * ({@link Request#httpVersion()}) before attempting to send such a
      * response.
      * 
      * @return whether to discard 1XX responses for incompatible clients
@@ -192,17 +192,20 @@ public interface Config
      * {@code Expect: 100-continue} header.<p>
      * 
      * This value is by default {@code false}, which enables the application to
-     * delay the client's body submission until it responds a 100 (Continue).<p>
+     * delay the client's body submission until it responds a 100 (Continue)
+     * response.<p>
      * 
      * Even when this configuration value is {@code false}, the server will
-     * still attempt to respond a 100 (Continue) to the client, but delayed
-     * until the application's first access of a non-empty request body (all
-     * methods in {@link Request.Body} except {@link Request.Body#length() size}
-     * and {@link Request.Body#isEmpty() isEmpty}).<p>
+     * still attempt to respond a 100 (Continue) response to the client, but
+     * delayed until the application's first access of a non-empty request body
+     * (all methods in {@link Request.Body} except
+     * {@link Request.Body#length() size} and
+     * {@link Request.Body#isEmpty() isEmpty}).<p>
      * 
      * This means that the application developer does not need to be aware of
-     * the {@code Expect: 100-continue} but still receive the full benefit, and
-     * the developer who is aware can take full charge as he pleases.<p>
+     * the {@code Expect: 100-continue} feature but still receive the full
+     * benefit, and the developer who is aware can take control as he
+     * pleases.<p>
      * 
      * Regardless of the configured value, the server never attempts to
      * send a 100 (Continue) response to an HTTP/1.0 client since HTTP/1.0 does

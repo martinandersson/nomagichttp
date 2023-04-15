@@ -1,7 +1,9 @@
 package alpha.nomagichttp.internal;
 
+import alpha.nomagichttp.Config;
 import alpha.nomagichttp.HttpConstants.Version;
 import alpha.nomagichttp.message.ByteBufferIterator;
+import alpha.nomagichttp.message.HttpVersionTooOldException;
 import alpha.nomagichttp.message.IllegalResponseBodyException;
 import alpha.nomagichttp.message.ResourceByteBufferIterable;
 import alpha.nomagichttp.message.Response;
@@ -51,7 +53,7 @@ final class ResponseProcessor
     record Result (
             Response response,
             ByteBufferIterator body,
-            boolean closeConnection,
+            boolean closeOutput,
             boolean closeChannel) implements Closeable {
         @Override
         public void close() throws IOException {
@@ -66,7 +68,7 @@ final class ResponseProcessor
      * same iterator — or a decorator — in the returned result object, which is
      * the reference the writer must use when writing the response body. The
      * result's response object must only be used to build a status-line,
-     * retrieve headers and trailers.<p>
+     * headers and trailers.<p>
      * 
      * The call to {@code iterator} may open system resources, and so, the
      * writer must close the returned result object, or the iterator contained
@@ -80,7 +82,7 @@ final class ResponseProcessor
      * lock-down the response body length.
      * 
      * @param app the original
-     * @param httpVer HTTP version used by the current exchange
+     * @param reqVer client/request HTTP version
      * 
      * @return see JavaDoc
      * 
@@ -91,14 +93,15 @@ final class ResponseProcessor
      * @throws IOException
      *             from {@link ResourceByteBufferIterable#iterator()}
      */
-    Result process(Response app, Version httpVer)
+    Result process(Response app, Version reqVer)
             throws InterruptedException, TimeoutException, IOException {
         final var upstream = app.body();
         final var it = upstream.iterator();
         return getOrCloseResource(() -> {
             long len = upstream.length();
-            Response mod = closeIfOldHttp(app, httpVer);
-            mod = tryChunkedEncoding(mod, httpVer, len, it);
+            Response mod = app.isInformational() ? app :
+                    tryCloseNonPersistentConn(app, reqVer);
+            mod = tryChunkedEncoding(mod, reqVer, len, it);
             ByteBufferIterator bodyToWrite = it;
             if (mod.body() != upstream) {
                 len = mod.body().length();
@@ -114,7 +117,7 @@ final class ResponseProcessor
             return new Result(
                     // Contents
                     mod, bodyToWrite,
-                    // closeConnection
+                    // closeOutput
                     mod.isFinal() && sawConnectionClose,
                     // closeChannel
                     trackUnsuccessful(mod));
@@ -127,21 +130,70 @@ final class ResponseProcessor
         }
     }
     
-    private static Response closeIfOldHttp(Response r, Version ver) {
-        // No support for HTTP 1.0 Keep-Alive
-        return r.isFinal() &&
-               ver.isLessThan(HTTP_1_1) &&
-               !r.headers().hasConnectionClose() ?
-                   setConnectionClose(r) : r;
+    /**
+     * Sets the "Connection: close" header on the given response, if the
+     * connection is not persistent.<p>
+     * 
+     * The connection is deemed not persistent, if the
+     * {@linkplain HttpExchange#skeletonRequest()} skeleton request is not
+     * available, or the request version is older than HTTP/1.1.<p>
+     * 
+     * The skeleton request may not be available due to an early error.
+     * Technically, some of these cases requires a closing of the connection
+     * (for example incorrect message framing), but in other cases we could have
+     * saved the connection (for example by discarding an illegal body in a
+     * TRACE request). But, all connections will be indiscriminately closed,
+     * primarily as a means to simplify the code base. Moreover, early errors
+     * are infrequent (compared to valid requests), and may even indicate a
+     * malicious actor. But, our ability to host connections is limited; any
+     * opportunity really we get to kick the connection then we should.<p>
+     * 
+     * In contrast, there are late errors that may occur after the request
+     * processing chain has been invoked, which all of them should result in a
+     * subject-relevant fallback response. Closing for late errors is determined
+     * by {@link Config#maxErrorResponses()}, and implemented by
+     * {@link #trackUnsuccessful(Response)}.<p>
+     * 
+     * Noteworthy: The skeleton request may also not be available because
+     * {@link HttpExchange} rejected the version; it was too old, or it was too
+     * new. Today, there's really no way we could save that connection. If the
+     * version was too old, well, voila; HTTP/1.0 (and older) does not support
+     * persistent connections, nor do we support the unofficial "keep-alive"
+     * mechanism. Version was too new? Erm, this would actually be weird, as
+     * the client ought to connect first using HTTP/1.1 which then upgrades to
+     * HTTP/2 (unless the client already knows the server supports HTTP/2) —
+     * either way, there's no "Downgrade" header lol. So again, still makes
+     * sense to indiscriminately close the connection.<p>
+     * 
+     * More noteworthy stuff: It is very likely that when we add support for
+     * protocol upgrading — aka. 101 (Switching Protocols) — the
+     * {@link HttpVersionTooOldException} exception will still represent a
+     * terminal failure for the connection (upgrading failed). What happens on
+     * successful upgrading we shall wait and see.
+     * 
+     * @param r response
+     * @param reqVer request version
+     * 
+     * @return possibly a modified response
+     */
+    private static Response tryCloseNonPersistentConn(Response r, Version reqVer) {
+        if (reqVer == null) {
+            return tryAddConnectionClose(r,
+                     "no request is available (early error)");
+        } else if (reqVer.isLessThan(HTTP_1_1)) {
+            return tryAddConnectionClose(r,
+                     reqVer + " does not support a persistent connection");
+        }
+        return r;
     }
     
     private static Response tryChunkedEncoding(
-            Response r, Version ver, long len, ByteBufferIterator body) {
+            Response r, Version reqVer, long len, ByteBufferIterator body) {
         final boolean trPresent = r.headers().contains(TRAILER);
-        if (ver.isLessThan(HTTP_1_1)) {
+        if (reqVer == null || reqVer.isLessThan(HTTP_1_1)) {
             if (trPresent) {
                 LOG.log(DEBUG, """
-                    HTTP/1.0 has no support for response trailers, \
+                    Client has no support for response trailers, \
                     discarding them""");
                 return r.toBuilder().removeTrailers().build();
             }
@@ -179,10 +231,8 @@ final class ResponseProcessor
     private Response trackConnectionClose(Response r) {
         final Response out;
         if (sawConnectionClose) {
-            if (r.isFinal() && !r.headers().hasConnectionClose()) {
-                LOG.log(DEBUG,
-                    "Connection-close flag propagates to final response");
-                out = setConnectionClose(r);
+            if (r.isFinal()) {
+                out = tryAddConnectionClose(r, "flag propagates to final response");
             } else {
                 // Message not final or already has the header = NOP
                 out = r;
@@ -196,15 +246,13 @@ final class ResponseProcessor
             out = r;
         } else {
             final String why =
-                requestHasConnClose()     ? "the request headers' did." :
-                !channel().isInputOpen()  ? "the client's input stream has shut down." :
-                !httpServer().isRunning() ? "the server has stopped." :
+                requestHasConnClose()     ? "the request headers' did" :
+                !channel().isInputOpen()  ? "the client's input stream has shut down" :
+                !httpServer().isRunning() ? "the server has stopped" :
                 scheduledClose;
             if (why != null) {
-                LOG.log(DEBUG, () ->
-                    "Will set \"Connection: close\" because " + why);
                 sawConnectionClose = true;
-                out = setConnectionClose(r);
+                out = tryAddConnectionClose(r, why);
             } else {
                 out = r;
             }
@@ -213,10 +261,7 @@ final class ResponseProcessor
     }
     
     private boolean trackUnsuccessful(Response r) {
-        // TODO: This is legacy code from before we had virtual threads when
-        //       we could not rely on thread identity. Now, we might as well
-        //       just use a thread-local. Probably faster.
-        final String key = "alpha.nomagichttp.dcw.nUnsuccessful";
+        final var key = "alpha.nomagichttp.dcw.nUnsuccessful";
         if (isClientError(r.statusCode()) || isServerError(r.statusCode())) {
             // Bump error counter
             int n = channel().attributes().<Integer>asMapAny().merge(key, 1, Integer::sum);
@@ -251,8 +296,12 @@ final class ResponseProcessor
         }
     }
     
-    private static Response setConnectionClose(Response r) {
-        return r.toBuilder().header(CONNECTION, "close").build();
+    private static Response tryAddConnectionClose(Response r, String why) {
+        if (r.headers().hasConnectionClose()) {
+            return r;
+        }
+        LOG.log(DEBUG, () -> "Will set \"Connection: close\" because " + why + ".");
+        return r.toBuilder().appendHeaderToken(CONNECTION, "close").build();
     }
     
     private static boolean requestHasConnClose() {
@@ -268,7 +317,7 @@ final class ResponseProcessor
             throw new IllegalArgumentException(
                     TRANSFER_ENCODING + " header in 204 response");
         }
-        //  "A sender MUST NOT send a Content-Length header field in any message
+        // "A sender MUST NOT send a Content-Length header field in any message
         //  that contains a Transfer-Encoding header field." (RFC 7230 §3.3.2)
         if (r.headers().contentLength().isPresent()) {
             throw new IllegalArgumentException(
@@ -289,6 +338,9 @@ final class ResponseProcessor
         }
         // "A server MAY send a Content-Length header field in a response to
         //  a HEAD request" (RFC 7230 §3.3.2)
+        // 
+        // "the response terminates at the end of the header section"
+        // (RFC 7231 §4.3.2)
         return r;
     }
     
@@ -300,8 +352,10 @@ final class ResponseProcessor
                     .replace("$1", valueOf(THREE_HUNDRED_FOUR)), r);
         }
         // "A server MAY send a Content-Length header field in a 304 (Not
-        //  Modified) response to a conditional GET request"
-        //  (RFC 7230 §3.3.2)
+        //  Modified) response to a conditional GET request" (RFC 7230 §3.3.2)
+        // 
+        // "A 304 response [...] is always terminated by the first empty line
+        //  after the header fields." (RFC 7232 §4.1)
         return r;
     }
     
