@@ -81,7 +81,8 @@ final class ResponseProcessor
      * lock-down the response body length.
      * 
      * @param app the original
-     * @param reqVer client/request HTTP version
+     * @param req the request (may be {@code null})
+     * @param reqVer client/request HTTP version (may be {@code null})
      * 
      * @return see JavaDoc
      * 
@@ -92,7 +93,7 @@ final class ResponseProcessor
      * @throws IOException
      *             from {@link ResourceByteBufferIterable#iterator()}
      */
-    static Result process(Response app, Version reqVer)
+    static Result process(Response app, SkeletonRequest req, Version reqVer)
             throws InterruptedException, TimeoutException, IOException {
         final var upstream = app.body();
         final var it = upstream.iterator();
@@ -110,7 +111,7 @@ final class ResponseProcessor
                     throw new AssertionError(e);
                 }
             }
-            mod = tryPropagateConnClose(mod);
+            mod = tryPropagateConnClose(mod, req);
             mod = ensureCorrectFraming(mod, len);
             return new Result(
                     // Content
@@ -216,17 +217,17 @@ final class ResponseProcessor
                   .build();
     }
     
-    private static Response tryPropagateConnClose(Response r) {
-        if (r.isInformational() || r.headers().hasConnectionClose()) {
-            return r;
+    private static Response tryPropagateConnClose(Response rsp, SkeletonRequest req) {
+        if (rsp.isInformational() || rsp.headers().hasConnectionClose()) {
+            return rsp;
         }
         final String why =
-            requestHasConnClose()     ? "the request headers' did" :
+            (req != null && req.head().headers().hasConnectionClose()) ? "the request headers' did" :
             !channel().isInputOpen()  ? "the client's input stream has shut down" :
             !httpServer().isRunning() ? "the server has stopped" :
                                         null;
-        return why == null ? r :
-                tryAddConnectionClose(r, LOG, DEBUG, why);
+        return why == null ? rsp :
+                tryAddConnectionClose(rsp, LOG, DEBUG, why);
     }
     
     private static boolean trackErrorResponses(Response r) {
@@ -263,11 +264,6 @@ final class ResponseProcessor
         } else {
             return dealWithNoCLHasBody(r, len);
         }
-    }
-    
-    private static boolean requestHasConnClose() {
-        return skeletonRequest().map(req ->
-                req.head().headers().hasConnectionClose()).orElse(false);
     }
     
     private static Response dealWithTransferEncoding(Response r) {

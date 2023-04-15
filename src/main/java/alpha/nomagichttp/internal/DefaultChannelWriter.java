@@ -122,7 +122,8 @@ final class DefaultChannelWriter implements ChannelWriter
     {
         requireNonNull(app1);
         requireValidState();
-        var reqVer = skeletonRequest().map(SkeletonRequest::httpVersion).orElse(null);
+        var req    = skeletonRequest().orElse(null);
+        var reqVer = req == null ? null : req.httpVersion();
         var rspVer = conformantResponseVer();
         if (app1.isInformational()) {
             if (reqVer == null) {
@@ -135,8 +136,8 @@ final class DefaultChannelWriter implements ChannelWriter
                 return 0;
             }
         }
-        final Response app2 = invokeAppActions(app1);
-        final Result bag = process(app2, reqVer);
+        final Response app2 = invokeAppActions(app1, req);
+        final Result bag = process(app2, req, reqVer);
         try (bag) {
             return write0(bag.response(), bag.body(), rspVer);
         } finally {
@@ -238,12 +239,11 @@ final class DefaultChannelWriter implements ChannelWriter
         return false;
     }
     
-    private Response invokeAppActions(Response r) {
-        final var req = skeletonRequest().orElse(null);
+    private Response invokeAppActions(Response rsp, SkeletonRequest req) {
         if (req == null) {
             LOG.log(DEBUG,
                 "No valid request available; will not run after-actions");
-            return r;
+            return rsp;
         }
         if (matches == null) {
             matches = appActions.lookupAfter(req.target());
@@ -251,12 +251,12 @@ final class DefaultChannelWriter implements ChannelWriter
         for (var m : matches) {
             final Request app = requestWithParams(reader, req, m.segments());
             try {
-                r = requireNonNull(m.action().apply(app, r));
+                rsp = requireNonNull(m.action().apply(app, rsp));
             } catch (RuntimeException e) {
                 throw new AfterActionException(e);
             }
         }
-        return r;
+        return rsp;
     }
     
     private long write0(Response r, ByteBufferIterator body, Version ver)
