@@ -198,7 +198,9 @@ public interface Request extends HeaderHolder, AttributeHolder
      * For requests of an older HTTP version ({@literal <} 1.1), this method
      * returns an empty headers object.<p>
      * 
-     * The trailers are cached and this method can be called many times.
+     * This method performs channel read operations only the first time it is
+     * accessed. The resulting trailers are cached and returned on subsequent
+     * invocations.
      * 
      * @return trailing headers
      * 

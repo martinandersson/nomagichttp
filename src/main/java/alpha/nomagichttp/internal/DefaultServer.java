@@ -217,7 +217,7 @@ public final class DefaultServer implements HttpServer
             var r = new ChannelReader(ch);
             // Exchange loop; breaks when a new exchange should not begin
             for (;;) {
-                var w = new DefaultChannelWriter(ch, actions, r);
+                var w = new DefaultChannelWriter(ch, actions);
                 api.use(w);
                 var exch = new HttpExchange(
                         this, actions, routes, eh, api, r, w);

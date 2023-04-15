@@ -74,7 +74,6 @@ final class DefaultChannelWriter implements ChannelWriter
     
     private final WritableByteChannel out;
     private final DefaultActionRegistry appActions;
-    private final ChannelReader reader;
     private List<Match<AfterAction>> matches;
     private boolean dismissed;
     private long byteCount;
@@ -86,12 +85,9 @@ final class DefaultChannelWriter implements ChannelWriter
     private int n100continue;
     
     DefaultChannelWriter(
-            WritableByteChannel out,
-            DefaultActionRegistry actions,
-            ChannelReader reader) {
+            WritableByteChannel out, DefaultActionRegistry actions) {
         this.out = out;
         this.appActions = actions;
-        this.reader = reader;
     }
     
     /**
@@ -234,7 +230,7 @@ final class DefaultChannelWriter implements ChannelWriter
             matches = appActions.lookupAfter(req.target());
         }
         for (var m : matches) {
-            final Request app = requestWithParams(reader, req, m.segments());
+            final Request app = requestWithParams(req, m.segments());
             try {
                 rsp = requireNonNull(m.action().apply(app, rsp));
             } catch (RuntimeException e) {

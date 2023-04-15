@@ -27,15 +27,12 @@ final class RequestProcessor
     
     private final DefaultActionRegistry actions;
     private final DefaultRouteRegistry routes;
-    private final ChannelReader reader;
     
     RequestProcessor(
             DefaultActionRegistry actions,
-            DefaultRouteRegistry routes,
-            ChannelReader reader) {
+            DefaultRouteRegistry routes) {
         this.actions = actions;
         this.routes = routes;
-        this.reader = reader;
     }
     
     /**
@@ -76,7 +73,7 @@ final class RequestProcessor
         Response callIntermittentHandler(
                      Match<BeforeAction> entity, Chain passMeThrough)
                  throws Exception {
-            var req = requestWithParams(reader, this.req, entity.segments());
+            var req = requestWithParams(this.req, entity.segments());
             var act = entity.action();
             return act.apply(req, passMeThrough);
         }
@@ -89,7 +86,7 @@ final class RequestProcessor
     
     private Response invokeRequestHandler(SkeletonRequest r) throws Exception {
         var route = routes.lookup(r.target());
-        Request app = requestWithParams(reader, r, route.segments());
+        Request app = requestWithParams(r, route.segments());
         return findRequestHandler(r.head(), route).apply(app);
     }
     

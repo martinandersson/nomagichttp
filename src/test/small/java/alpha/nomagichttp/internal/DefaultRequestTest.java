@@ -111,8 +111,10 @@ final class DefaultRequestTest
                        head,
                        HTTP_1_1,
                        parse("/?"),
-                       body);
-        return requestWithoutParams(null, skel);
+                       body,
+                       // Not reading trailers
+                       null);
+        return requestWithoutParams(skel);
     }
     
     private static Request createEmptyRequest() {

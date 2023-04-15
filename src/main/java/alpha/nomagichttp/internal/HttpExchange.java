@@ -29,7 +29,6 @@ import static alpha.nomagichttp.HttpConstants.Method.TRACE;
 import static alpha.nomagichttp.HttpConstants.Version.HTTP_1_1;
 import static alpha.nomagichttp.handler.ClientChannel.tryAddConnectionClose;
 import static alpha.nomagichttp.handler.ErrorHandler.BASE;
-import static alpha.nomagichttp.internal.DefaultRequest.requestWithoutParams;
 import static alpha.nomagichttp.internal.ErrorHandlerException.unchecked;
 import static alpha.nomagichttp.message.Responses.continue_;
 import static alpha.nomagichttp.util.DummyScopedValue.where;
@@ -118,7 +117,7 @@ final class HttpExchange
         this.child    = child;
         this.reader   = reader;
         this.writer   = writer;
-        this.reqProc  = new RequestProcessor(actions, routes, reader);
+        this.reqProc  = new RequestProcessor(actions, routes);
     }
     
     /**
@@ -189,11 +188,11 @@ final class HttpExchange
         return head;
     }
     
-    private SkeletonRequest createRequest(RawRequest.Head h) {
-        final String raw = h.line().httpVersion();
+    private SkeletonRequest createRequest(RawRequest.Head head) {
+        final String raw = head.line().httpVersion();
         final Version ver;
         try {
-            ver = Version.parse(h.line().httpVersion());
+            ver = Version.parse(head.line().httpVersion());
         } catch (IllegalArgumentException e) {
             String[] comp = e.getMessage().split(":");
             if (comp.length == 1) {
@@ -209,9 +208,11 @@ final class HttpExchange
                 throw new HttpVersionTooOldException(raw, HTTP_1_1, e);
             }
         }
-        return new SkeletonRequest(h, ver,
-                SkeletonRequestTarget.parse(h.line().target()),
-                RequestBody.of(h.headers(), reader));
+        return new SkeletonRequest(
+                head, ver,
+                SkeletonRequestTarget.parse(head.line().target()),
+                RequestBody.of(head.headers(), reader),
+                reader);
     }
     
     private SkeletonRequest validate(SkeletonRequest req) {
@@ -423,7 +424,7 @@ final class HttpExchange
             }
             private Request req() {
                 return skeletonRequest()
-                        .map(r -> requestWithoutParams(reader, r))
+                        .map(DefaultRequest::requestWithoutParams)
                         .orElse(null);
             }
         }
@@ -469,7 +470,7 @@ final class HttpExchange
             if (r.head().headers().contains("Trailer")) {
                 LOG.log(DEBUG, "Discarding request trailers before new exchange");
                 try {
-                    requestWithoutParams(reader, r).trailers();
+                    r.trailers();
                 } catch (HeaderParseException | MaxRequestTrailersSizeException e) {
                     // DEBUG because the app was obviously not interested in the request
                     LOG.log(DEBUG, """
