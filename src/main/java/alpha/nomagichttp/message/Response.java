@@ -247,15 +247,21 @@ public interface Response extends HeaderHolder
      * and then pass it to the builder as one, or consider using
      * {@link #appendHeaderToken(String, String)}.<p>
      * 
+     * Header name and values will be written on the wire verbatim (unmodified;
+     * casing preserved). However, {@link #build()} throws an
+     * {@link IllegalStateException} if a header name has been duplicated using
+     * different casing.<p>
+     * 
      * Header order for different names is not significant (see note). The
      * addition order will be preserved on the wire, except for a duplicated
      * name whose entry will be inserted after the last occurrence (i.e., they
      * are grouped).<p>
      * 
      * Although the builder will strive to fail-fast, some message variants are
-     * illegal depending on a future context. That is to say, they may build
-     * just fine but cause an exception to be thrown at a later point. For
-     * example responding a response with a body to a {@code HEAD} request.<p>
+     * illegal depending on a future context. That is to say, the
+     * {@code Response} may build just fine but cause an exception to be thrown
+     * at a later point. For example, responding a response body to a
+     * {@code HEAD} request.<p>
      * 
      * The implementation is thread-safe and non-blocking.<p>
      * 
@@ -348,7 +354,10 @@ public interface Response extends HeaderHolder
         Builder removeHeader(String name);
         
         /**
-         * Removes all occurrences of given a header value.<p>
+         * Removes <i>all</i> occurrences of the given header value.<p>
+         * 
+         * If the header only has one value — which is removed — then the header
+         * is also removed.<p>
          * 
          * This method operates without regard to casing.
          * 
@@ -395,9 +404,9 @@ public interface Response extends HeaderHolder
          * Iterating the {@code String[]} must alternate between header-names
          * and values.<p>
          * 
-         * The implementation is free to modify the contents of the given
-         * {@code String[]}. The results are undefined if the application
-         * modifies the array after having called this method.
+         * The implementation is free to keep a reference to the given
+         * {@code String[]} for future reads. The results are undefined if the
+         * application modifies the array after having called this method.
          * 
          * @param name of header
          * @param value of header
