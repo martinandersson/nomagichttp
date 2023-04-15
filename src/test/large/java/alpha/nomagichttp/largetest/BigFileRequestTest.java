@@ -109,11 +109,11 @@ class BigFileRequestTest extends AbstractLargeRealTest
         final ByteBuffer body;
         try (var conn = client().openConnection()) {
             String head = client().write(
-                      "GET /file HTTP/1.0" + CRLF + CRLF)
+                      "GET /file HTTP/1.1" + CRLF + CRLF)
                     .shutdownOutput()
                     .readTextUntilNewlines();
             assertThat(head).isEqualTo(
-                "HTTP/1.0 200 OK"                        + CRLF +
+                "HTTP/1.1 200 OK"                        + CRLF +
                 "Content-Type: application/octet-stream" + CRLF +
                 "Connection: close"                      + CRLF +
                 "Content-Length: " + FILE_SIZE           + CRLF + CRLF);
