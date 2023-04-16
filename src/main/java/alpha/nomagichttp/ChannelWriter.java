@@ -91,7 +91,7 @@ public interface ChannelWriter
      *             (may only be applicable for a file-backed response body)
      * @throws TimeoutException
      *             if waiting on a write-lock timed out
-     *             (may only be application for a file-backed response body)
+     *             (may only be applicable for a file-backed response body)
      * @throws IOException
      *             if an I/O error occurs
      *             (the origin can be file-backed response body, as well as the

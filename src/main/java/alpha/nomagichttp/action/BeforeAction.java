@@ -3,6 +3,7 @@ package alpha.nomagichttp.action;
 import alpha.nomagichttp.Chain;
 import alpha.nomagichttp.HttpServer;
 import alpha.nomagichttp.event.RequestHeadReceived;
+import alpha.nomagichttp.handler.ClientChannel;
 import alpha.nomagichttp.handler.ErrorHandler;
 import alpha.nomagichttp.message.Request;
 import alpha.nomagichttp.message.Response;
@@ -11,7 +12,7 @@ import alpha.nomagichttp.util.Throwing;
 /**
  * Is an action executed before the request handler.<p>
  * 
- * The action is executed between a valid request head has been received and
+ * The action is executed in-between a valid request head has been received and
  * the server attempts at resolving the request handler. The action may decide
  * to proceed the request processing chain or return a response directly.<p>
  * 
@@ -40,11 +41,11 @@ import alpha.nomagichttp.util.Throwing;
  * 
  * TODO: Give example.<p>
  * 
- * Word of caution: Error handlers are called from outside of the request
- * processing chain. For the previous example, this means that error handlers
- * will not be able to observe the bound value. They will, however, be able to
- * read request attributes (assuming the request exists at that point in
- * time).<p>
+ * Word of caution: Error handlers are executed outside the lexical scope of the
+ * request processing chain. And so, for the previous example, this means that
+ * the error handlers will not be able to observe the bound value. They will,
+ * however, be able to read request attributes (assuming the request exists at
+ * that point in time).<p>
  * 
  * An action is known on other corners of the internet as a "filter", although
  * the NoMagicHTTP library has avoided this naming convention due to the fact
@@ -73,9 +74,9 @@ import alpha.nomagichttp.util.Throwing;
  * <pre>
  *   ErrorHandler hideResource = (exc, chain, request) -{@literal >} {
  *       if (exc instanceof MySuspiciousRequestException) {
- *           // Or set response header "Connection: close" (equivalent)
- *           channel().shutdownInput();
- *           return Responses.notFound();
+ *           // Set "Connection: close" header
+ *           return {@link ClientChannel#tryAddConnectionClose(Response) tryAddConnectionClose
+ *                  }(Responses.notFound());
  *       }
  *       return chain.proceed();
  *   };

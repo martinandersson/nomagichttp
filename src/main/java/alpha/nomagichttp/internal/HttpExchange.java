@@ -125,10 +125,10 @@ final class HttpExchange
      * 
      * The exchange will attempt to deal with exceptions through the error
      * handler(s), and the base handler has a fallback response for all
-     * exceptions. If an exception can not be processed into a response, it will
-     * be logged and the channel will be set in a half-closed or fully closed
-     * state. In either way, the exception is considered handled and not
-     * re-thrown.<p>
+     * exceptions. If an exception can not be processed into a response and
+     * transmitted, the exception or a new one (from failed write) will be
+     * logged, and the channel will be set in a half-closed or fully closed
+     * state. The exception is considered handled and not re-thrown.<p>
      * 
      * Only a Throwable (that is not an Exception) may come out of this
      * method.<p>
@@ -365,7 +365,8 @@ final class HttpExchange
      * 
      * @return the response produced by the error handler chain
      * 
-     * @throws Exception see JavaDoc
+     * @throws Exception
+     *             see JavaDoc
      */
     private Optional<Response> tryProcessException(Exception e) throws Exception {
         if (e instanceof InterruptedException) {

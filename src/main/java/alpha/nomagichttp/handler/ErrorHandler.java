@@ -51,7 +51,6 @@ import static alpha.nomagichttp.message.Responses.unsupportedMediaType;
 import static alpha.nomagichttp.message.Responses.upgradeRequired;
 import static alpha.nomagichttp.util.ScopedValues.channel;
 import static alpha.nomagichttp.util.ScopedValues.httpServer;
-import static java.lang.System.Logger.Level;
 import static java.lang.System.Logger.Level.DEBUG;
 import static java.lang.System.Logger.Level.ERROR;
 import static java.util.stream.Collectors.joining;
@@ -91,9 +90,6 @@ import static java.util.stream.Stream.of;
  * The server will call error handlers only if the channel remains open for
  * writing at the time of the error, and only if no response bytes have already
  * been written. The error handler itself must never throw an exception.<p>
- * 
- * An exception that can not- or couldn't be handled will be logged on level
- * {@link Level#WARNING WARNING} or {@link Level#ERROR ERROR}.<p>
  * 
  * The error handler must be thread-safe, as it may be called concurrently.<p>
  * 

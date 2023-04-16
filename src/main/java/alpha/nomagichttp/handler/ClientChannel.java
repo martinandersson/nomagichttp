@@ -67,6 +67,8 @@ public interface ClientChannel extends ChannelWriter, AttributeHolder
      * @throws IllegalArgumentException
      *             if the response
      *             {@link Response#isInformational() isInformational()}
+     * 
+     * @see ClientChannel
      */
     static Response tryAddConnectionClose(Response rsp) {
         requireNotInformational(rsp);
