@@ -173,7 +173,7 @@ final class HttpExchange
         }
         assert writer.wroteFinal();
         tryDiscardRequest(req, false)
-            .ifPresent(why -> closeChannel(DEBUG, why));
+            .ifPresent(this::closeChannel);
     }
     
     private RawRequest.Head parseHead() throws IOException {
@@ -388,7 +388,7 @@ final class HttpExchange
             throw e;
         }
         if (e instanceof RequestLineParseException pe && pe.byteCount() == 0) {
-            closeChannel(DEBUG, "client aborted the exchange");
+            closeChannel("client aborted the exchange");
             throw e;
         }
         if (!child.isOutputOpen()) {
@@ -531,10 +531,9 @@ final class HttpExchange
         assert req.body().isEmpty();
     }
     
-    // TODO: Inline DEBUG
-    private void closeChannel(Level level, String why) {
+    private void closeChannel(String why) {
         if (child.isInputOpen() || child.isOutputOpen()) {
-            LOG.log(level, () -> "Closing the channel because " + why + ".");
+            LOG.log(DEBUG, () -> "Closing the channel because " + why + ".");
             child.close();
         }
     }
