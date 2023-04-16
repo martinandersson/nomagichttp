@@ -250,7 +250,7 @@ final class HttpExchange
         where(SKELETON_REQUEST, of(req), () -> {
             try {
                 LOG.log(DEBUG, "Executing the request processing chain");
-                // TODO: More compact?, and verify log message syntax
+                // TODO: More compact?
                 var rsp = processRequest(req);
                 if (rsp.isPresent()) {
                     LOG.log(DEBUG, "Writing final response");
@@ -388,7 +388,7 @@ final class HttpExchange
             throw e;
         }
         if (e instanceof RequestLineParseException pe && pe.byteCount() == 0) {
-            closeChannel(DEBUG, "Client aborted the exchange");
+            closeChannel(DEBUG, "client aborted the exchange");
             throw e;
         }
         if (!child.isOutputOpen()) {
@@ -534,14 +534,14 @@ final class HttpExchange
     // TODO: Inline DEBUG
     private void closeChannel(Level level, String why) {
         if (child.isInputOpen() || child.isOutputOpen()) {
-            LOG.log(level, () -> why + "; closing the channel.");
+            LOG.log(level, () -> "Closing the channel because " + why + ".");
             child.close();
         }
     }
     
     private void closeChannel(Level level, String why, Exception exc) {
         if (child.isInputOpen() || child.isOutputOpen()) {
-            LOG.log(level, () -> why + "; closing channel.", exc);
+            LOG.log(level, () -> why + " (closing channel).", exc);
             child.close();
         } else {
             LOG.log(level, () -> why + ".", exc);

@@ -122,7 +122,7 @@ class ClientLifeCycleTest extends AbstractRealTest
         client().openConnection().close();
         // This one is pretty important for the test, hence the assert
         logRecorder().assertAwait(
-              DEBUG, "Client aborted the exchange; closing the channel.");
+              DEBUG, "Closing the channel because client aborted the exchange.");
         logRecorder().assertAwaitChildClose();
         assertThatNoWarningOrErrorIsLogged();
     }
@@ -389,7 +389,7 @@ class ClientLifeCycleTest extends AbstractRealTest
             // because server's writer shut down the output stream, or
             "Channel is half-closed or closed, a new HTTP exchange will not begin." :
             // the next logical exchange actually started, but immediately aborted
-            "Client aborted the exchange; closing the channel.");
+            "Closing the channel because client aborted the exchange.");
         assertThatNoWarningOrErrorIsLogged();
     }
     
