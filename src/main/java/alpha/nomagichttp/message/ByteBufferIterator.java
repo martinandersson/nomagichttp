@@ -95,8 +95,8 @@ public interface ByteBufferIterator extends Closeable
             Throwing.Consumer<? super ByteBuffer, ? extends IOException> action)
             throws IOException
     {
-        requireNonNull(action);
         try (this) {
+            requireNonNull(action);
             while (hasNext()) {
                 // On different lines for traceability
                 var buf = next();
