@@ -25,6 +25,7 @@ import java.util.NoSuchElementException;
 import java.util.Optional;
 
 import static alpha.nomagichttp.HttpConstants.HeaderName.EXPECT;
+import static alpha.nomagichttp.HttpConstants.HeaderName.TRAILER;
 import static alpha.nomagichttp.HttpConstants.Method.TRACE;
 import static alpha.nomagichttp.HttpConstants.Version.HTTP_1_1;
 import static alpha.nomagichttp.handler.ClientChannel.tryAddConnectionClose;
@@ -39,6 +40,7 @@ import static java.lang.System.Logger.Level.DEBUG;
 import static java.lang.System.Logger.Level.ERROR;
 import static java.lang.System.Logger.Level.WARNING;
 import static java.lang.System.nanoTime;
+import static java.util.Optional.empty;
 import static java.util.Optional.of;
 import static java.util.Optional.ofNullable;
 
@@ -90,7 +92,7 @@ final class HttpExchange
         try {
             return SKELETON_REQUEST.get();
         } catch (NoSuchElementException e) {
-            return Optional.empty();
+            return empty();
         }
     }
     
@@ -170,7 +172,8 @@ final class HttpExchange
             return;
         }
         assert writer.wroteFinal();
-        tryToDiscardRequestDataInChannel(req);
+        tryDiscardRequest(req, false)
+            .ifPresent(why -> closeChannel(DEBUG, why));
     }
     
     private RawRequest.Head parseHead() throws IOException {
@@ -247,13 +250,14 @@ final class HttpExchange
         where(SKELETON_REQUEST, of(req), () -> {
             try {
                 LOG.log(DEBUG, "Executing the request processing chain");
+                // TODO: More compact?, and verify log message syntax
                 var rsp = processRequest(req);
                 if (rsp.isPresent()) {
                     LOG.log(DEBUG, "Writing final response");
                     var r = rsp.get();
-                    if (!canDiscardRequestData(req)) {
-                        r = tryAddConnectionClose(r, LOG, DEBUG,
-                                "can not discard remaining request data");
+                    var why = tryDiscardRequest(req, true);
+                    if (why.isPresent()) {
+                        r = tryAddConnectionClose(r, LOG, DEBUG, why.get());
                     }
                     writer.write(r);
                 }
@@ -440,73 +444,95 @@ final class HttpExchange
         }
     }
     
-    private static boolean canDiscardRequestData(SkeletonRequest r) {
-        final long len = r.body().length();
-        if (len == 0) {
-            // Closing channel may be completely unnecessary, because
-            // trailers may not even be there. Thank you, RFC, for telling
-            // clients they "should" add the Trailer header.
-            if (r.head().headers().contains("Trailer")) {
-                return true;
-            } // TODO: For HTTP/2, we may need another strategy here
-              else return !r.head().headers().hasTransferEncodingChunked();
-        }
-        if (len == -1) {
-            return false;
-        } else return len < 666;
-    }
-    
     /**
-     * Try to discard remaining message data in the channel.<p>
+     * Tries to discard remaining message data in the channel.<p>
      * 
-     * If discarding is not possible, the channel will be closed.
+     * If discarding is not possible nor desired, for example, there is too much
+     * remaining data; then this method returns an {@code Optional} with the
+     * reason why. A non-empty {@code Optional} necessitates that the call-site
+     * schedules the channel to be closed in the future or closes the channel
+     * immediately.<p>
+     * 
+     * If discarding is possible, desired, and {@code dryRun} is {@code false},
+     * then this method will attempt to discard the remaining data. If
+     * discarding fails, this method will ensure that the exception is logged
+     * and the channel is closed, before returning exceptionally. On success, or
+     * if discarding is not needed, an empty {@code Optional} is returned.<p>
+     * 
+     * If {@code dryRun} is {@code true}, then this method will not have an
+     * effect, but nothing is changed regarding the semantics of the return
+     * value.
      * 
      * @param r the request
+     * @param dryRun whether this method should have an effect
+     * 
+     * @return the reason why remaining data can not be discarded
+     * 
+     * @throws IOException
+     *             if an I/O error occurs
      */
-    private void tryToDiscardRequestDataInChannel(SkeletonRequest r)
-            throws IOException
-    {
-        final long len = r.body().length();
-        if (len == 0) {
-            if (r.head().headers().contains("Trailer")) {
-                LOG.log(DEBUG, "Discarding request trailers before new exchange");
-                try {
-                    r.trailers();
-                } catch (HeaderParseException | MaxRequestTrailersSizeException e) {
-                    // DEBUG because the app was obviously not interested in the request
-                    LOG.log(DEBUG, """
-                        Error while discarding request trailers, \
-                        shutting down the input stream.""", e);
-                    child.shutdownInput();
-                    throw e;
-                }
+    private Optional<String> tryDiscardRequest(
+            SkeletonRequest r, boolean dryRun) throws IOException {
+        // Note: ChunkedDecoder returns -1 until empty, then it returns 0...
+        final long remaining = r.body().length();
+        if (remaining == 0) {
+            // ...and so the body could've been chunked, and trailers could follow
+            if (r.head().headers().contains(TRAILER)) {
+                // And now we know for sure
+                // TODO: API to check if trailers were retrieved and successfully parsed already
+                if (!dryRun) discardTrailers(r);
             } else if (r.head().headers().hasTransferEncodingChunked()) {
-                closeChannel(DEBUG, "It is unknown if trailers are present");
-                return;
+                // May or may not be present. Thank you, RFC, for telling
+                // clients they "should" add the Trailer header.
+                // TODO: API to check if trailers were retrieved and successfully parsed already
+                // TODO: Make static fields
+                return of("It is unknown if trailers are present");
             }
-            return;
+            // Discarding trailers was successful, or they are not present
+            // TODO: For HTTP/2, they may be present?
+            return empty();
         }
-        if (len == -1) {
-            closeChannel(DEBUG,
-                "Unknown length of request data is remaining");
-        } else if (len >= 666) {
-            closeChannel(DEBUG,
-                "A satanic volume of request data is remaining");
+        if (remaining == -1) {
+            return of("Unknown length of request data is remaining");
+        } else if (remaining >= 666) {
+            return of("A satanic volume of request data is remaining");
         } else {
-            LOG.log(DEBUG, "Discarding request body before new exchange");
-            try {
-                r.body().iterator().forEachRemaining(buf ->
-                        buf.position(buf.limit()));
-            } catch (IOException e) {
-                // DEBUG because the app was obviously not interested in the request
-                LOG.log(DEBUG, "I/O error while discarding request body.", e);
-                assert !child.isInputOpen();
-                throw e;
-            }
-            assert r.body().isEmpty();
+            if (!dryRun) discardBody(r);
+            return empty();
+            // HTTP/1.1 requires chunking, so no trailers if length is known
+            // TODO: With HTTP/2, I believe we can not make the same assumption!
         }
     }
     
+    private void discardTrailers(SkeletonRequest req) throws IOException {
+        LOG.log(DEBUG, "Discarding request trailers");
+        try {
+            req.trailers();
+        } catch (HeaderParseException | MaxRequestTrailersSizeException e) {
+            // DEBUG because the app was obviously not interested in the request
+            LOG.log(DEBUG, """
+                Error while discarding request trailers, \
+                shutting down the input stream.""", e);
+            child.shutdownInput();
+            throw e;
+        }
+    }
+    
+    private void discardBody(SkeletonRequest req) throws IOException {
+        LOG.log(DEBUG, "Discarding request body before new exchange");
+        try {
+            req.body().iterator().forEachRemaining(buf ->
+                    buf.position(buf.limit()));
+        } catch (IOException e) {
+            // DEBUG because the app was obviously not interested in the request
+            LOG.log(DEBUG, "I/O error while discarding request body.", e);
+            assert !child.isInputOpen();
+            throw e;
+        }
+        assert req.body().isEmpty();
+    }
+    
+    // TODO: Inline DEBUG
     private void closeChannel(Level level, String why) {
         if (child.isInputOpen() || child.isOutputOpen()) {
             LOG.log(level, () -> why + "; closing the channel.");
