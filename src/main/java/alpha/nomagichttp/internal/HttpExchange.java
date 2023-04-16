@@ -485,7 +485,6 @@ final class HttpExchange
                 // May or may not be present. Thank you, RFC, for telling
                 // clients they "should" add the Trailer header.
                 // TODO: API to check if trailers were retrieved and successfully parsed already
-                // TODO: Make static fields
                 return of("It is unknown if trailers are present");
             }
             // Discarding trailers was successful, or they are not present
