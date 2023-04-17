@@ -474,24 +474,26 @@ final class HttpExchange
             SkeletonRequest r, boolean dryRun) throws IOException {
         // Note: ChunkedDecoder returns -1 until empty, then it returns 0...
         final long remaining = r.body().length();
+        if (remaining == -1) {
+            return of("unknown length of request data is remaining");
+        }
+        if (remaining >= 666) {
+            return of("a satanic volume of request data is remaining");
+        }
         if (remaining == 0) {
-            // ...and so the body could be chunked, and trailers could follow
+            // ...and so the body could have been chunked, and trailers could follow
             // TODO: For HTTP/2, we may need a different strategy?
             // TODO: API to check if trailers were retrieved and successfully parsed already
             if (!dryRun && r.head().headers().hasTransferEncodingChunked()) {
                 discardTrailers(r);
             }
-            return empty();
-        } else if (remaining == -1) {
-            return of("unknown length of request data is remaining");
-        } else if (remaining >= 666) {
-            return of("a satanic volume of request data is remaining");
         } else {
-            // HTTP/1.1 requires chunking, so no trailers if length is known
+            // HTTP/1.1 requires chunking for trailers, and we have a known
+            // length, and so no trailers to discard
             // TODO: For HTTP/2, we may not be able to make the same assumption?
             if (!dryRun) discardBody(r);
-            return empty();
         }
+        return empty();
     }
     
     private void discardTrailers(SkeletonRequest req) throws IOException {
