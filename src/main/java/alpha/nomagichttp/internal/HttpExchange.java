@@ -178,7 +178,8 @@ final class HttpExchange
     private RawRequest.Head parseHead() throws IOException {
         var line = new ParserOfRequestLine(
                 reader, conf.maxRequestHeadSize()).parse();
-        var parser = ParserOf.headers(reader, line.length(), conf.maxRequestHeadSize());
+        var parser = ParserOf.headers(
+                reader, line.length(), conf.maxRequestHeadSize());
         var headers = parser.parse();
         var head = new RawRequest.Head(line, headers);
         server.events().dispatchLazy(RequestHeadReceived.INSTANCE,
