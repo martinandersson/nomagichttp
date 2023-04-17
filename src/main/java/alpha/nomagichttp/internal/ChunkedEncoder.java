@@ -17,19 +17,27 @@ import static java.util.Collections.addAll;
 import static java.util.Objects.requireNonNull;
 
 /**
- * Encodes each upstream bytebuffer into a chunked chunk.<p>
+ * Encodes each upstream bytebuffer into a {@code chunk} sent downstream.<p>
  * 
- * Is used to by {@link DefaultChannelWriter} to decorate the response body if
- * the body has an unknown length and/or the response has trailers (which in
+ * Is used by {@link ResponseProcessor} to decorate the response body if the
+ * body has an unknown length and/or the response has trailers (which in
  * HTTP/1.1 requires chunked encoding; will likely not be necessary for
  * HTTP/2?).<p>
  * 
- * Specifically, this class encodes {@code chunk} and {@code last-chunk} from
- * <a href="https://datatracker.ietf.org/doc/html/rfc7230#section-4.1">RFC 7230 §4.1</a>
- * . The trailers (optional) and final {@code CRLF} is added/written by the
- * channel writer.
+ * When the upstream turns empty, one {@code last-chunk} is sent downstream
+ * before this class turns empty.<p>
+ * 
+ * Chunk extensions are not supported.<p>
+ * 
+ * The {@code trailer-part} (optional) and final {@code CRLF} is added/written
+ * by {@link DefaultChannelWriter}.<p>
+ * 
+ * The life cycle is the same as that of {@link ChunkedDecoder}; single-use
+ * only.
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
+ * 
+ * @see <a href="https://datatracker.ietf.org/doc/html/rfc7230#section-4.1">RFC 7230 §4.1</a>
  */
 final class ChunkedEncoder implements ResourceByteBufferIterable
 {

@@ -16,10 +16,16 @@ import static java.nio.ByteBuffer.allocate;
 import static java.util.HexFormat.fromHexDigitsToLong;
 
 /**
- * Decodes HTTP/1.1 chunked encoding.<p>
+ * Decodes chunked-encoded bytes.<p>
+ * 
+ * Specifically, this class decodes any number of {@code chunk}s, followed by
+ * one {@code last-chunk}.<p>
+ * 
+ * This class does not parse trailers, nor does it yield the final {@code CRLF}
+ * terminating the {@code chunked-body}.<p>
  * 
  * Chunk extensions are discarded. As far as the author is aware, no server
- * provides support for them. Total over-engineering by the RFC lol<p>
+ * provides support for them. Total over-engineering by the RFC lol.<p>
  * 
  * Similarly to {@link ParserOfRequestLine}'s parser, LF is the de facto line
  * terminator. A preceding CR is optional.<p>
@@ -33,12 +39,13 @@ import static java.util.HexFormat.fromHexDigitsToLong;
  * The implementation supports single-use only. Technically, as far as this
  * class is concerned, it could have been easy to implement to start a new
  * decoding operation for each new iterator. However,
- * {@link DefaultRequest#trailers()} is banking on a reliable implementation of
+ * {@link SkeletonRequest#trailers()} is banking on a reliable implementation of
  * {@link Request.Body#isEmpty()}, and so this implementation will switch length
  * to 0 as soon as the first (and only) decoding operation is done. The
  * underlying channel reader can then be used to parse request trailers.
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
+ * 
  * @see <a href="https://datatracker.ietf.org/doc/html/rfc7230#section-4.1">RFC 7230 §4.1</a>
  */
 public final class ChunkedDecoder implements ByteBufferIterable

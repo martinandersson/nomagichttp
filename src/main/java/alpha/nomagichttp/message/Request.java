@@ -174,7 +174,7 @@ public interface Request extends HeaderHolder, AttributeHolder
      * 
      * RFC 7230 §4.4 defines an HTTP header "Trailer" which it says clients
      * should use to list what trailers will be sent after the body. The RFC
-     * also suggest that the server move trailers to the "existing header
+     * also suggests that the server move trailers to the "existing header
      * fields" and then remove the "Trailer" header, i.e. make it look like
      * trailing headers are normal headers (asynchronous APIs were not so common
      * at the time!). And to preempt the damage that may result from hoisting
