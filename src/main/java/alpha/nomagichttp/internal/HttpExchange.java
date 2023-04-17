@@ -248,24 +248,22 @@ final class HttpExchange
     
     private void handleRequest(SkeletonRequest req) throws Exception {
         where(SKELETON_REQUEST, of(req), () -> {
-            try {
-                LOG.log(DEBUG, "Executing the request processing chain");
-                // TODO: More compact?
-                var rsp = processRequest(req);
-                if (rsp.isPresent()) {
-                    LOG.log(DEBUG, "Writing final response");
-                    var r = rsp.get();
-                    var why = tryDiscardRequest(req, true);
-                    if (why.isPresent()) {
-                        r = tryAddConnectionClose(r, LOG, DEBUG, why.get());
-                    }
-                    writer.write(r);
-                }
-            } catch (Exception e) {
-                handleException(e);
-            }
-            return null;
-        });
+          try {
+              LOG.log(DEBUG, "Executing the request processing chain");
+              var rsp = processRequest(req);
+              if (rsp.isPresent()) {
+                  // If we will not be able to discard, add "Connection: close"
+                  var r = tryDiscardRequest(req, true).map(whyNot ->
+                            tryAddConnectionClose(rsp.get(), LOG, DEBUG, whyNot))
+                          .orElseGet(rsp::get);
+                  LOG.log(DEBUG, "Writing final response");
+                  writer.write(r);
+              }
+          } catch (Exception e) {
+              handleException(e);
+          }
+          return null;
+      });
     }
     
     /**
