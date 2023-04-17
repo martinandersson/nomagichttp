@@ -25,7 +25,6 @@ import java.util.NoSuchElementException;
 import java.util.Optional;
 
 import static alpha.nomagichttp.HttpConstants.HeaderName.EXPECT;
-import static alpha.nomagichttp.HttpConstants.HeaderName.TRAILER;
 import static alpha.nomagichttp.HttpConstants.Method.TRACE;
 import static alpha.nomagichttp.HttpConstants.Version.HTTP_1_1;
 import static alpha.nomagichttp.handler.ClientChannel.tryAddConnectionClose;
@@ -476,30 +475,22 @@ final class HttpExchange
         // Note: ChunkedDecoder returns -1 until empty, then it returns 0...
         final long remaining = r.body().length();
         if (remaining == 0) {
-            // ...and so the body could've been chunked, and trailers could follow
-            if (r.head().headers().contains(TRAILER)) {
-                // And now we know for sure
-                // TODO: API to check if trailers were retrieved and successfully parsed already
-                if (!dryRun) discardTrailers(r);
-            } else if (r.head().headers().hasTransferEncodingChunked()) {
-                // May or may not be present. Thank you, RFC, for telling
-                // clients they "should" add the Trailer header.
-                // TODO: API to check if trailers were retrieved and successfully parsed already
-                return of("It is unknown if trailers are present");
+            // ...and so the body could be chunked, and trailers could follow
+            // TODO: For HTTP/2, we may need a different strategy?
+            // TODO: API to check if trailers were retrieved and successfully parsed already
+            if (!dryRun && r.head().headers().hasTransferEncodingChunked()) {
+                discardTrailers(r);
             }
-            // Discarding trailers was successful, or they are not present
-            // TODO: For HTTP/2, they may be present?
             return empty();
-        }
-        if (remaining == -1) {
-            return of("Unknown length of request data is remaining");
+        } else if (remaining == -1) {
+            return of("unknown length of request data is remaining");
         } else if (remaining >= 666) {
-            return of("A satanic volume of request data is remaining");
+            return of("a satanic volume of request data is remaining");
         } else {
+            // HTTP/1.1 requires chunking, so no trailers if length is known
+            // TODO: For HTTP/2, we may not be able to make the same assumption?
             if (!dryRun) discardBody(r);
             return empty();
-            // HTTP/1.1 requires chunking, so no trailers if length is known
-            // TODO: With HTTP/2, I believe we can not make the same assumption!
         }
     }
     

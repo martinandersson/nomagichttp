@@ -7,11 +7,9 @@ import alpha.nomagichttp.message.RawRequest;
 
 import java.io.IOException;
 
-import static alpha.nomagichttp.HttpConstants.HeaderName.TRAILER;
 import static alpha.nomagichttp.HttpConstants.Version.HTTP_1_1;
 import static alpha.nomagichttp.message.DefaultContentHeaders.empty;
 import static alpha.nomagichttp.util.ScopedValues.httpServer;
-import static java.lang.System.Logger.Level.WARNING;
 
 /**
  * A thin version of a request.<p>
@@ -61,7 +59,7 @@ final class SkeletonRequest
     RequestBody body() {
         return body;
     }
-
+    
     BetterHeaders trailers() throws IOException {
         var tr = trailers;
         return tr != null ? tr : (trailers = trailers0());
@@ -75,11 +73,6 @@ final class SkeletonRequest
         }
         if (httpVersion().isLessThan(HTTP_1_1)) {
             return empty();
-        }
-        if (LOG.isLoggable(WARNING) && !head().headers().contains(TRAILER)) {
-            LOG.log(WARNING, """
-                    No trailer header present, \
-                    Request.trailers() may block until timeout""");
         }
         var maxLen = httpServer().getConfig().maxRequestTrailersSize();
         try {

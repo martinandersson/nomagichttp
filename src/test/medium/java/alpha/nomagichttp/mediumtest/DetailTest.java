@@ -91,40 +91,42 @@ class DetailTest extends AbstractRealTest
             .add("/echo-trailer", POST().apply(req -> {
                 // Still must consume the body before trailers lol
                 var discard = req.body().toText();
-                var trailer = req.trailers().firstValue("X-Trailer").get();
+                var trailer = req.trailers().firstValue("My-Trailer").get();
                 return text(trailer);
             }));
         var template = """
             POST $1 HTTP/1.1
             Transfer-Encoding: chunked
-            Trailer: Just to save the connection
             $2
+            My-Trailer: $3
             
             3
             abc
             0
-            X-Trailer: $3
+            My-Trailer: $4
             
             """;
         try (var conn = client().openConnection()) {
             var req1 = template.replace("$1", "/discard-body")
-                               .replace("$2", "X-Dummy: value")
-                               .replace("$3", "dummy value");
+                               .replace("$2", "My-Dummy: dummy")
+                               .replace("$3", "dummy")
+                               .replace("$4", "dummy");
             var rsp1 = client().writeReadTextUntilNewlines(req1);
             assertThat(rsp1).isEqualTo(
                     "HTTP/1.1 204 No Content\r\n\r\n");
             // Can push a message over the same conn and echo the last trailer
             var req2 = template.replace("$1", "/echo-trailer")
                                .replace("$2", "Connection: close")
-                               .replace("$3", "I care!");
+                               .replace("$3", "Don't pick from header")
+                               .replace("$4", "Hello");
             var rsp2 = client().writeReadTextUntilEOS(req2);
             assertThat(rsp2).isEqualTo("""
                 HTTP/1.1 200 OK\r
                 Content-Type: text/plain; charset=utf-8\r
                 Connection: close\r
-                Content-Length: 7\r
+                Content-Length: 5\r
                 \r
-                I care!""");
+                Hello""");
         }
     }
     
@@ -197,7 +199,7 @@ class DetailTest extends AbstractRealTest
             Connection: close
             
             0
-            Trailer: This too is discarded
+            Blabla: This is also discarded
             
             """);
         assertThat(rsp).isEqualTo("""
