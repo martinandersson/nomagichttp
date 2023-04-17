@@ -428,7 +428,7 @@ class ExampleTest extends AbstractRealTest
         // Echo body and append trailer value
         server().add("/", POST().apply(req ->
                 text(req.body().toText() +
-                     req.trailers().allValues("Append-This").get(0))));
+                     req.trailers().firstValue("Append-This").get())));
         
         var rsp = client().writeReadTextUntilEOS("""
                 POST / HTTP/1.1
