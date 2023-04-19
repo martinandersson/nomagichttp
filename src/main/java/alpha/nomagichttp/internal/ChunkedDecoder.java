@@ -21,8 +21,8 @@ import static java.util.HexFormat.fromHexDigitsToLong;
  * Specifically, this class decodes any number of {@code chunk}s, followed by
  * one {@code last-chunk}.<p>
  * 
- * This class does not parse trailers, nor does it yield the final {@code CRLF}
- * terminating the {@code chunked-body}.<p>
+ * This class does not parse trailers, nor does it consume the final
+ * {@code CRLF} terminating the {@code chunked-body}.<p>
  * 
  * Chunk extensions are discarded. As far as the author is aware, no server
  * provides support for them. Total over-engineering by the RFC lol.<p>

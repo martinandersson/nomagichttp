@@ -667,7 +667,7 @@ public interface Request extends HeaderHolder, AttributeHolder
      * {@link FileChannel#open(Path,Set,FileAttribute[]) FileChannel.open}
      * propagates as-is, and have — for the sake of brevity — not been repeated
      * by the JavaDoc in this interface. For example, trying to save the body to
-     * a file that already exists, and no open option was specified, will throw
+     * a file that already exists, and no open option was specified, may throw
      * a {@link FileAlreadyExistsException} <i>(
      * {@linkplain java.nio.file optional specific exception})</i>.<p>
      * 

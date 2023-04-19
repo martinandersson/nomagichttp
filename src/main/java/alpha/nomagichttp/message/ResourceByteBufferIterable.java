@@ -22,21 +22,21 @@ import java.util.concurrent.TimeoutException;
  * 
  * Being regenerative means that new iterators are forever supported. They are
  * mostly derived from finite and repeatable sources. For example, each new
- * iterator of a response body may read bytes from a byte array or a backing
+ * iterator of a response body may read bytes from a backing byte array or a
  * file. The {@link #length() length} is the number of bytes that each new
- * iterator will observe. Iteration should not drain or take bytes away from the
- * iterable; different iterations should normally observe the same byte
- * sequence. The length will only change if the contents of the source changes.
- * The empty state can over time toggle back and forth. A regenerative iterable
- * must support being iterated concurrently by multiple threads.<p>
+ * iterator will observe. Iteration should normally not drain or take bytes away
+ * from the iterable, and different iterations should normally observe the same
+ * byte sequence. The length will only change if the content of the source
+ * changes. The empty state can over time toggle back and forth. A regenerative
+ * iterable must support being iterated concurrently by multiple threads.<p>
  * 
  * Non-regenerative means that iterators drain bytes from a non-repeatable
  * source. For example, each new iterator of a request body may be reading from
  * an updating cursor position inside a logically delimited segment of a byte
  * stream (the socket). In this case, iteration will reduce the iterable's
  * length, which will eventually become empty and stay empty. Many iterations
- * can come and go, but the implementation is not required to support concurrent
- * iterations.
+ * can over time come and go, but the implementation is not required to support
+ * concurrent iterations.
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  */

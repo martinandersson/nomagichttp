@@ -252,7 +252,7 @@ final class HttpExchange
               LOG.log(DEBUG, "Executing the request processing chain");
               var rsp = processRequest(req);
               if (rsp.isPresent()) {
-                  // If we will not be able to discard, add "Connection: close"
+                  // If the request isn't discarded later, add "Connection: close" now
                   var r = tryDiscardRequest(req, true).map(whyNot ->
                             tryAddConnectionClose(rsp.get(), LOG, DEBUG, whyNot))
                           .orElseGet(rsp::get);
@@ -459,7 +459,15 @@ final class HttpExchange
      * 
      * If {@code dryRun} is {@code true}, then this method will not have an
      * effect, but nothing is changed regarding the semantics of the return
-     * value.
+     * value.<p>
+     * 
+     * @implNote
+     * This method does not check the shut-down state of the input stream.
+     * Firstly, a closed input stream propagates as a "non-persistent
+     * connection" in {@link ResponseProcessor}. Secondly, {@link #begin0()}
+     * does not even try to discard if the connection is half-closed. So, in
+     * both cases, there is no need for us to bother, and if we had, it would
+     * only have been duplicated work.
      * 
      * @param r the request
      * @param dryRun whether this method should have an effect
