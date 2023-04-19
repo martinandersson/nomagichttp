@@ -113,8 +113,8 @@ public final class ChannelReader implements ByteBufferIterable
      * bytes, then that will be 3 fewer bytes available for the subsequent
      * iterator.<p>
      * 
-     * After the limit has been reached, {@code hasNext} will simply return
-     * false and {@code iterator} will return an empty iterator.<p>
+     * After the limit has been reached, {@code hasNext} will return false and
+     * {@code iterator} will return an empty iterator.<p>
      * 
      * A valid value for the limit is any number from 0 (inclusive) to {@code
      * Long.MAX_VALUE} (inclusive).<p>
