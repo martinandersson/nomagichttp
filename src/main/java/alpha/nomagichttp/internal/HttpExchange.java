@@ -489,18 +489,22 @@ final class HttpExchange
         }
         if (remaining == 0) {
             // ...and so the body could have been chunked, and trailers could follow
-            // TODO: For HTTP/2, we may need a different strategy?
-            // TODO: API to check if trailers were retrieved and successfully parsed already
-            if (!dryRun && r.head().headers().hasTransferEncodingChunked()) {
-                discardTrailers(r);
-            }
+            return switch (r.trParsingStatus()) {
+                case NOT_APPLICABLE, SUCCESS ->
+                       empty();
+                case NOT_STARTED -> {
+                       if (!dryRun) discardTrailers(r);
+                       yield empty(); }
+                case FAILED ->
+                       of("trailers failed to parse");
+            };
         } else {
             // HTTP/1.1 requires chunking for trailers, and we have a known
             // length, and so no trailers to discard
-            // TODO: For HTTP/2, we may not be able to make the same assumption?
+            // TODO: For HTTP/2, we may not be able to make the same assumption
             if (!dryRun) discardBody(r);
+            return empty();
         }
-        return empty();
     }
     
     private void discardTrailers(SkeletonRequest req) throws IOException {

@@ -66,6 +66,8 @@ import static java.lang.System.Logger.Level.DEBUG;
  * @author Martin Andersson (webmaster at martinandersson.com)
  * 
  * @param <H> parsed header's type
+ * 
+ * @see SkeletonRequest.TrParsingStatus
  */
 final class ParserOf<H extends BetterHeaders> extends AbstractResultParser<H>
 {
