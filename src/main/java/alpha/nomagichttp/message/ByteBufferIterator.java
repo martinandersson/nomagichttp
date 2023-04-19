@@ -53,9 +53,6 @@ public interface ByteBufferIterator extends Closeable
      * 
      * @return see JavaDoc
      */
-    // TODO: Does not throw IOException as of today,
-    //       coz I think we can, for file iterator, impl hasNext as desire and not use Files.size.
-    //       Remove comment after first file iterator impl if still true.
     boolean hasNext();
     
     /**
