@@ -86,8 +86,6 @@ final class ParserOf<H extends BetterHeaders> extends AbstractResultParser<H>
      * 
      * @return a parser of request headers
      */
-    // TODO: use httpServer().getConfig() instead of argument
-    //       (less arg pollution and better traceability)
     static ParserOf<Request.Headers>
             headers(ByteBufferIterable in, int reqLineLen, int maxHeadSize)
     {
@@ -109,8 +107,6 @@ final class ParserOf<H extends BetterHeaders> extends AbstractResultParser<H>
      * @param maxTrailersSize max bytes to parse
      * @return a parser of request trailers
      */
-    // TODO: use httpServer().getConfig() instead of argument
-    //       (less arg pollution and better traceability)
     static ParserOf<BetterHeaders>
             trailers(ByteBufferIterable in, int maxTrailersSize)
     {
