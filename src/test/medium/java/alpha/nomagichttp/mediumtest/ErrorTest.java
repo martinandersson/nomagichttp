@@ -880,8 +880,9 @@ class ErrorTest extends AbstractRealTest
             IllegalArgumentException.class);
         assertThat(rec).isNotNull();
         assertThat(rec.getThrown())
-            .hasMessage(
-                "Request processing both wrote and returned a final response.")
+            .hasMessage("""
+                Request processing chain \
+                both wrote and returned a final response.""")
             .hasNoCause()
             .hasNoSuppressedExceptions();
         logRecorder()

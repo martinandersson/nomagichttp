@@ -309,16 +309,16 @@ final class HttpExchange
     private Optional<Response> requireWriterConformance(Response rsp, String entity) {
         if (rsp == null) {
             if (!writer.wroteFinal()) {
-                // TODO: "processing chain"
-                throw new NullPointerException(entity +
-                    " processing returned null without writing a final response.");
+                throw new NullPointerException(entity + """
+                        processing chain returned null \
+                        without writing a final response.""");
             }
         } else if (!rsp.isFinal()) {
             throw new IllegalArgumentException(entity +
-                " processing returned a non-final response.");
+                " processing chain returned a non-final response.");
         } else if (writer.wroteFinal()) {
             throw new IllegalArgumentException(entity +
-                " processing both wrote and returned a final response.");
+                " processing chain both wrote and returned a final response.");
         }
         return ofNullable(rsp);
     }
