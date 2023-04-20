@@ -13,7 +13,7 @@ import alpha.nomagichttp.util.ScopedValues;
  * The chain is made up of any number of executing entities. These entities will
  * be any number of {@link BeforeAction}s leading up to a
  * {@link RequestHandler}, or any number of application-provided
- * {@link ErrorHandler}s leading up to the server's fallback error handler.<p>
+ * {@link ErrorHandler}s leading up to the server's base error handler.<p>
  * 
  * The chain should return a final response. A before-action will normally not
  * produce a response and instead yield control to the rest of the chain. An
