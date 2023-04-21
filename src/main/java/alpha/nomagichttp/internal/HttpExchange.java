@@ -31,6 +31,7 @@ import static alpha.nomagichttp.handler.ClientChannel.tryAddConnectionClose;
 import static alpha.nomagichttp.handler.ErrorHandler.BASE;
 import static alpha.nomagichttp.internal.ErrorHandlerException.unchecked;
 import static alpha.nomagichttp.message.Responses.continue_;
+import static alpha.nomagichttp.util.Blah.throwsNoChecked;
 import static alpha.nomagichttp.util.DummyScopedValue.where;
 import static java.lang.Integer.parseInt;
 import static java.lang.Math.addExact;
@@ -293,11 +294,8 @@ final class HttpExchange
                 // ...or when app requests the body
                 req.body().onConsumption(() -> {
                     if (!writer.wroteFinal()) {
-                        try {
-                            writer.write(continue_());
-                        } catch (Exception e) {
-                            throw new AssertionError("No I/O body", e);
-                        }
+                        // Exception not expected, at this point
+                        throwsNoChecked(() -> writer.write(continue_()));
                     }
                 });
             }

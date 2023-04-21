@@ -5,11 +5,10 @@ import alpha.nomagichttp.message.Request;
 import org.assertj.core.api.AbstractThrowableAssert;
 import org.junit.jupiter.api.Test;
 
-import java.io.IOException;
-
 import static alpha.nomagichttp.internal.ParserOf.headers;
 import static alpha.nomagichttp.testutil.Assertions.assertHeaders;
 import static alpha.nomagichttp.testutil.ByteBufferIterables.just;
+import static alpha.nomagichttp.util.Blah.throwsNoChecked;
 import static java.util.List.of;
 import static java.util.Map.entry;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -204,10 +203,8 @@ final class ParserOfTest
     }
     
     private static Request.Headers parse(String... items) {
-        try {
-            return headers(just(items), 0, 9_999).parse();
-        } catch (IOException e) {
-            throw new AssertionError(e);
-        }
+        var parser = headers(just(items), 0, 9_999);
+        // Throws no IOException because we are not reading from a channel
+        return throwsNoChecked(parser::parse);
     }
 }

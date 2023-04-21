@@ -3,14 +3,13 @@ package alpha.nomagichttp.testutil;
 import alpha.nomagichttp.message.ByteBufferIterable;
 import alpha.nomagichttp.util.ByteBuffers;
 
-import java.io.IOException;
-import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeoutException;
 
 import static alpha.nomagichttp.testutil.VThreads.getUsingVThread;
+import static alpha.nomagichttp.util.Blah.throwsNoChecked;
 import static java.nio.charset.StandardCharsets.US_ASCII;
 import static java.util.Arrays.stream;
 import static java.util.Collections.unmodifiableList;
@@ -42,7 +41,11 @@ public final class ByteBufferIterables {
     }
     
     /**
-     * Decodes all remaining bytes as a US-ASCII string.
+     * Decodes all remaining bytes as a US-ASCII string.<p>
+     * 
+     * This method assumes that the source does not throw an
+     * {@code IOException}, and will translate such an exception into an
+     * {@code AssertionError}.
      * 
      * @param bytes to decode
      * 
@@ -102,8 +105,12 @@ public final class ByteBufferIterables {
     /**
      * Copies all iterated bytearrays.<p>
      * 
-     * This method is intended for tests that need to assert the contents of the
-     * source as well as how exactly the contents was iterated.
+     * This method is intended for tests that need to assert the content of the
+     * source as well as how exactly the content was iterated.<p>
+     * 
+     * This method assumes that the source does not throw an
+     * {@code IOException}, and will translate such an exception into an
+     * {@code AssertionError}.
      * 
      * @param source to iterate
      * 
@@ -116,12 +123,7 @@ public final class ByteBufferIterables {
         var items = new ArrayList<byte[]>();
         var it = source.iterator();
         while (it.hasNext()) {
-            final ByteBuffer buf;
-            try {
-                buf = it.next();
-            } catch (IOException e) {
-                throw new AssertionError(e);
-            }
+            var buf = throwsNoChecked(it::next);
             // buf is read-only, can't do buf.array()
             var arr = new byte[buf.remaining()];
             buf.get(arr);
@@ -134,7 +136,7 @@ public final class ByteBufferIterables {
      * Copies all iterated bytearrays, using a virtual thread.<p>
      * 
      * This method is intended for tests that need to assert the contents of the
-     * source as well as how exactly the contents was iterated.
+     * source as well as how exactly the content was iterated.
      * 
      * @param source to iterate
      * 

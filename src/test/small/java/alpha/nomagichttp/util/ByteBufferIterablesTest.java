@@ -11,6 +11,7 @@ import java.util.concurrent.TimeoutException;
 import static alpha.nomagichttp.testutil.Assertions.assertIterable;
 import static alpha.nomagichttp.testutil.ScopedValues.whereServerIsBound;
 import static alpha.nomagichttp.testutil.TestFiles.writeTempFile;
+import static alpha.nomagichttp.util.Blah.throwsNoChecked;
 import static alpha.nomagichttp.util.ByteBufferIterables.just;
 import static alpha.nomagichttp.util.ByteBuffers.asArray;
 import static alpha.nomagichttp.util.ByteBuffers.asciiBytes;
@@ -85,12 +86,8 @@ final class ByteBufferIterablesTest
         assertThat(iterable.isEmpty()).isFalse();
         var it = iterable.iterator();
         assertThat(it.hasNext()).isTrue();
-        final ByteBuffer enc;
-        try {
-            enc = it.next();
-        } catch (IOException e) {
-            throw new AssertionError(e);
-        }
+        // Reading from memory; no I/O
+        final ByteBuffer enc = throwsNoChecked(it::next);
         assertThat(it.hasNext()).isFalse();
         assertThat(iterable.isEmpty()).isFalse();
         // If we were to decode using UTF_16, the replacement char is "�"

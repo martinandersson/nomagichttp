@@ -8,10 +8,10 @@ import org.assertj.core.api.Assertions;
 import org.assertj.core.api.ObjectAssert;
 import org.junit.jupiter.api.Test;
 
-import java.io.IOException;
 import java.util.List;
 
 import static alpha.nomagichttp.testutil.ByteBufferIterables.just;
+import static alpha.nomagichttp.util.Blah.throwsNoChecked;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
@@ -106,11 +106,9 @@ final class ParserOfRequestLineTest
     }
     
     private static RawRequest.Line parse(String... items) {
-        try {
-            return new ParserOfRequestLine(just(items), 9_999).parse();
-        } catch (IOException e) {
-            throw new AssertionError(e);
-        }
+        var parser = new ParserOfRequestLine(just(items), 9_999);
+        // Throws no IOException because we are not reading from a channel
+        return throwsNoChecked(parser::parse);
     }
     
     private static AbstractListAssert<?, List<?>, Object, ObjectAssert<Object>>

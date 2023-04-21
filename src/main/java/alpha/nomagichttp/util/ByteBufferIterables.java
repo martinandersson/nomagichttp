@@ -31,6 +31,7 @@ import java.util.stream.StreamSupport;
 
 import static alpha.nomagichttp.util.Blah.addExactOrCap;
 import static alpha.nomagichttp.util.Blah.getOrCloseResource;
+import static alpha.nomagichttp.util.Blah.throwsNoChecked;
 import static alpha.nomagichttp.util.Blah.toNanosOrMaxValue;
 import static alpha.nomagichttp.util.ByteBuffers.asArray;
 import static alpha.nomagichttp.util.ScopedValues.httpServer;
@@ -189,13 +190,11 @@ public final class ByteBufferIterables
      * @see <a href="https://stackoverflow.com/a/27781166">StackOverflow answer</a>
      */
     public static ByteBufferIterable ofStringUnsafe(String str) {
-        try {
-            return ofString(str, UTF_8.newEncoder()
-                                      .onMalformedInput(REPLACE)
-                                      .onUnmappableCharacter(REPLACE));
-        } catch (CharacterCodingException e) {
-            throw new AssertionError(e);
-        }
+        var enc = UTF_8.newEncoder()
+                       .onMalformedInput(REPLACE)
+                       .onUnmappableCharacter(REPLACE);
+        // No checked because of REPLACE (REPORT is what throws)
+        return throwsNoChecked(() -> ofString(str, enc));
     }
     
     /**

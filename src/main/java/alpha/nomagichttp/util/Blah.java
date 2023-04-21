@@ -130,6 +130,43 @@ public final class Blah
     }
     
     /**
+     * Returns the result of the given supplier.<p>
+     * 
+     * If the supplier throws a checked exception, an {@link AssertionError}
+     * will be thrown instead (with the checked exception set as its cause).<p>
+     * 
+     * This method is intended to be used if a particular method invocation is
+     * known to not throw a checked exception, and should even then, only be
+     * used because the call-site would otherwise have to falsely declare the
+     * checked exception in its method signature.<p>
+     * 
+     * A checked exception should already be documented by the target method. It
+     * may still be necessary, however, to add a comment explaining why the
+     * exception is assumed to never occur.
+     * 
+     * <pre>
+     *   var parser = new MyParser(inMemorySource);
+     *   // Throws no IOException because we are not reading from an I/O source
+     *   var result = throwsNoChecked(parser::parse);
+     * </pre>
+     * 
+     * @param f function to get the result from
+     * @param <T> result type
+     * 
+     * @return the result from the function
+     */
+    public static <T> T throwsNoChecked(Throwing.Supplier<T, ?> f) {
+        try {
+            return f.get();
+        } catch (Exception e) {
+            if (e instanceof RuntimeException rte) {
+                throw rte;
+            }
+            throw new AssertionError(e);
+        }
+    }
+    
+    /**
      * Returns {@code v} as an integer; capping the result at
      * {@code Integer.MAX_VALUE}
      * 
