@@ -91,7 +91,8 @@ final class ResponseProcessor
      * @throws TimeoutException
      *             from {@link ResourceByteBufferIterable#iterator()}
      * @throws IOException
-     *             from {@link ResourceByteBufferIterable#iterator()}
+     *             from {@link ResourceByteBufferIterable#iterator()}, or
+     *             from {@link ResourceByteBufferIterable#length()}
      */
     static Result process(Response app, SkeletonRequest req, Version reqVer)
             throws InterruptedException, TimeoutException, IOException {
