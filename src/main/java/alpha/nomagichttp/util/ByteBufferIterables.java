@@ -295,7 +295,7 @@ public final class ByteBufferIterables
      * <i>co-operative</i> means that any other concurrent thread must acquire a
      * lock for the same file before accessing it, using {@link JvmPathLock}
      * directly, or by calling a method that uses the {@code JvmPathLock},
-     * which is exactly what the {@code iterator} method does.<p>
+     * which is what the {@code iterator} method does.<p>
      * 
      * The lock is unlocked no later than when the iterator's {@code close}
      * method is called.
@@ -333,6 +333,8 @@ public final class ByteBufferIterables
      * 
      * @throws NullPointerException
      *             if {@code file} is {@code null}
+     * 
+     * @see ResourceByteBufferIterable#length()
      */
     public static ResourceByteBufferIterable ofFileNoLock(Path file) {
         return new OfFile(file, false);

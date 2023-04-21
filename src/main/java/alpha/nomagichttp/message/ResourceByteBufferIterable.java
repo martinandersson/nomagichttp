@@ -72,14 +72,17 @@ public interface ResourceByteBufferIterable
      * 
      * This method returns {@code -1} if the length is unknown, meaning that an
      * iteration can observe any number of bytes, from none at all to infinite.
-     * This is generally the case for codecs and streaming data.<p>
+     * An unknown length is generally the case for codecs and streaming data.<p>
      * 
      * For a regenerative iterable with a known length ({@code >= 0}), this
      * method will return the same value each time it is called synchronously
      * in-between {@code iterator} and {@code ByteBufferIterator.close}.
-     * Otherwise, the returned value may be immediately outdated. For example,
-     * the size of a file. But, an iterable backed by a file must hold a file
-     * lock during iteration.<p>
+     * If called outside an iteration, the returned value may be immediately
+     * outdated. For example, the size of a file. An iterable backed by a file
+     * should hold a file lock during iteration, or otherwise ensure that the
+     * length does not change. The length may be used to pre-announce the length
+     * of a response body, and if it changes during iteration, bad stuff
+     * happens.<p>
      * 
      * For a non-regenerative iterable with a known length, the value is dynamic
      * and will over the course of iteration be reduced. For such kind of
