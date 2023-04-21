@@ -153,18 +153,13 @@ class BigFileRequestTest extends AbstractLargeRealTest
     
     @ParameterizedTest(name = "get/{0}")
     @EnumSource
-    void get_compatibility(HttpClientFacade.Implementation impl) {
+    void get_compatibility(HttpClientFacade.Implementation impl)
+            throws IOException, ExecutionException, InterruptedException, TimeoutException
+    {
         assumeTrue(saved);
         assumeClientCanReceiveBigFile(impl);
-        HttpClientFacade.ResponseFacade<byte[]> rsp;
-        try {
-            rsp = impl.create(serverPort()).getBytes("/file", HTTP_1_1);
-        } catch (IOException |
-                 InterruptedException |
-                 ExecutionException |
-                 TimeoutException e) {
-            throw new AssertionError(e);
-        }
+        HttpClientFacade.ResponseFacade<byte[]> rsp
+                = impl.create(serverPort()).getBytes("/file", HTTP_1_1);
         assertThat(rsp.version()).isEqualTo("HTTP/1.1");
         assertThat(rsp.statusCode()).isEqualTo(200);
         assertThat(rsp.body()).isEqualTo(contents);
