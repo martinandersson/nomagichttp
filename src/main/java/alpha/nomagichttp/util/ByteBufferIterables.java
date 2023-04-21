@@ -549,7 +549,7 @@ public final class ByteBufferIterables
                     // Can be null; see iterator()
                     if (ch != null) ch.close();
                 } finally {
-                    lck.close();
+                    if (lck != null) lck.close();
                 }
             }
         }
