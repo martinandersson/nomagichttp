@@ -305,23 +305,30 @@ final class DefaultChannelWriter implements ChannelWriter
     }
     
     private int doWrite(ByteBuffer buf) throws IOException {
-        final int n;
-        try {
-            n = out.write(buf);
-            assert n != 0 : CHANNEL_BLOCKING;
-        } catch (Throwable t) {
-            dismiss();
-            // Likely already shut down, this is more for updating our state
-            var ch = channel();
-            if (ch.isOutputOpen()) {
-                LOG.log(DEBUG,
-                    "Write operation failed, shutting down output stream.");
-                channel().shutdownOutput();
-            }
-            throw t;
+        int tot = 0;
+        // In local tests, for most of the clients, the entire buffer is written
+        // in the first write operation. The only exception was Apache and only
+        // rarely. Wrapping the write in while() solved the problem.
+        // TODO: Reactor may also have had the same prob!?
+        while (buf.hasRemaining()) {
+          try {
+              int n = out.write(buf);
+              assert n > 0 : CHANNEL_BLOCKING;
+              tot += n;
+          } catch (Throwable t) {
+              dismiss();
+              // Likely already shut down, this is more for updating our state
+              var ch = channel();
+              if (ch.isOutputOpen()) {
+                  LOG.log(DEBUG,
+                      "Write operation failed, shutting down output stream.");
+                  channel().shutdownOutput();
+              }
+              throw t;
+          }
         }
-        byteCount = addExactOrCap(byteCount, n);
-        return n;
+        byteCount = addExactOrCap(byteCount, tot);
+        return tot;
     }
     
     /**
