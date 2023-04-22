@@ -33,7 +33,8 @@ import static java.util.Objects.requireNonNull;
  * by {@link DefaultChannelWriter}.<p>
  * 
  * The life cycle is the same as that of {@link ChunkedDecoder}; single-use
- * only.
+ * only. There is one small difference; Closing {@code ChunkedDecoder} is NOP.
+ * Closing {@code ChunkedEncoder} propagates to the upstream.
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  * 
