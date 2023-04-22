@@ -457,7 +457,7 @@ final class HttpExchange
      * 
      * If {@code dryRun} is {@code true}, then this method will not have an
      * effect, but nothing is changed regarding the semantics of the return
-     * value.<p>
+     * value.
      * 
      * @implNote
      * This method does not check the shut-down state of the input stream.
