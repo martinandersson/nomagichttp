@@ -305,11 +305,11 @@ final class DefaultChannelWriter implements ChannelWriter
     }
     
     private int doWrite(ByteBuffer buf) throws IOException {
-        int tot = 0;
         // In local tests, for most of the clients, the entire buffer is written
         // in the first write operation. The only exception was Apache and only
         // rarely. Wrapping the write in while() solved the problem.
         // TODO: Reactor may also have had the same prob!?
+        int tot = 0;
         while (buf.hasRemaining()) {
           try {
               int n = out.write(buf);
