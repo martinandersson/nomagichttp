@@ -278,6 +278,7 @@ class DetailTest extends AbstractRealTest
     
     @Test
     void response_unknownLength_bodyEmpty() throws IOException {
+        // TODO: A variant without client setting "Connection: close"
         var empty = new ByteBufferIterable() {
             public ByteBufferIterator iterator() {
                 return ByteBufferIterator.Empty.INSTANCE;
@@ -293,8 +294,8 @@ class DetailTest extends AbstractRealTest
         assertThat(rsp).isEqualTo("""
             HTTP/1.1 200 OK\r
             Content-Type: application/octet-stream\r
-            Transfer-Encoding: chunked\r
             Connection: close\r
+            Transfer-Encoding: chunked\r
             \r
             0\r\n\r
             """);

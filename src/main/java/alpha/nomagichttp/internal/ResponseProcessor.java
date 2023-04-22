@@ -26,6 +26,7 @@ import static alpha.nomagichttp.HttpConstants.Version.HTTP_1_1;
 import static alpha.nomagichttp.handler.ClientChannel.tryAddConnectionClose;
 import static alpha.nomagichttp.internal.HttpExchange.skeletonRequest;
 import static alpha.nomagichttp.util.Blah.getOrCloseResource;
+import static alpha.nomagichttp.util.Blah.throwsNoChecked;
 import static alpha.nomagichttp.util.ScopedValues.channel;
 import static alpha.nomagichttp.util.ScopedValues.httpServer;
 import static java.lang.String.valueOf;
@@ -60,13 +61,13 @@ final class ResponseProcessor
      * 
      * This method semantically performs a set of privileged after-actions.
      * Specifically, the method will — if needed — apply chunked encoding, set
-     * the "Connection: close" header, and ensure the response is properly
+     * the "Connection: close" header, and ensure that the response is properly
      * delimited (Transfer-Encoding/Content-Length).<p>
      * 
      * This method will call {@code Response.Body.iterator()}, and return the
      * same iterator — or a decorator — in the returned result object, which is
      * the reference the writer must use when writing the response body. The
-     * result's response object must only be used to build a status-line,
+     * result's response object must only be used to build a status line,
      * headers and trailers.<p>
      * 
      * The call to {@code iterator} may open system resources, and so, the
@@ -78,7 +79,7 @@ final class ResponseProcessor
      * non-reentrant mutex involved (weird, but still).<p>
      * 
      * The reason why this method calls {@code iterator} is primarily to
-     * lock-down the response body length.
+     * lock down the response body length.
      * 
      * @param app the original
      * @param req the request (may be {@code null})
@@ -96,59 +97,62 @@ final class ResponseProcessor
      */
     static Result process(Response app, SkeletonRequest req, Version reqVer)
             throws InterruptedException, TimeoutException, IOException {
-        final var upstream = app.body();
+        Response mod1 = tryCloseNonPersistentConn(app, req, reqVer);
+        final var upstream = mod1.body();
         final var it = upstream.iterator();
         return getOrCloseResource(() -> {
             long len = upstream.length();
-            Response mod = tryCloseNonPersistentConn(app, reqVer);
-            mod = tryChunkedEncoding(mod, reqVer, len, it);
+            final Response mod2 = tryChunkedEncoding(mod1, reqVer, len, it);
             ByteBufferIterator bodyToWrite = it;
-            if (mod.body() != upstream) {
-                len = mod.body().length();
-                assert len == -1 : "Decorated by de-/inflating codec";
-                try {
-                    bodyToWrite = mod.body().iterator();
-                } catch (InterruptedException | TimeoutException | IOException e) {
-                    throw new AssertionError(e);
-                }
+            if (mod2.body() != upstream) {
+                len = mod2.body().length();
+                assert len == -1 : "Decorated by single-use de-/inflating codec";
+                bodyToWrite = throwsNoChecked(() -> mod2.body().iterator());
             }
-            mod = tryPropagateConnClose(mod, req);
-            mod = ensureCorrectFraming(mod, len);
+            final Response mod3 = ensureCorrectFraming(mod2, len);
             return new Result(
                     // Content
-                    mod, bodyToWrite,
+                    mod3, bodyToWrite,
                     // closeChannel
-                    trackErrorResponses(mod));
+                    trackErrorResponses(mod2));
         }, it);
     }
     
     /**
      * Sets the "Connection: close" header on the given response, if the
-     * response is final and the connection is not persistent.<p>
+     * connection is deemed not persistent.<p>
      * 
-     * The connection is deemed not persistent, if the
-     * {@linkplain HttpExchange#skeletonRequest()} skeleton request is not
-     * available, or the request version is older than HTTP/1.1.<p>
+     * The connection is deemed not persistent if any one of these conditions
+     * is true:
+     * <ul>
+     *   <li>The request is not available (null)</li>
+     *   <li>The request version is older than HTTP/1.1</li>
+     *   <li>The request has "Connection: close"</li>
+     *   <li>The input stream is closed</li>
+     *   <li>The HTTP server is not running</li>
+     * </ul>
      * 
-     * The skeleton request may not be available due to an early error.
-     * Technically, some of these cases requires a closing of the connection
-     * (for example incorrect message syntax, thus framing), but in other cases
-     * we could have saved the connection (for example by discarding an illegal
-     * body in a TRACE request). But, all connections will be indiscriminately
-     * closed, primarily as a means to simplify the code base. Moreover, early
-     * errors are infrequent (compared to valid requests), and may even indicate
-     * a malicious actor. But, our ability to host connections is limited; any
-     * opportunity really we get to kick the connection then we should.<p>
+     * The request may not be available due to an <i>early</i> error.
+     * Technically, some of these cases require a closing of the connection (for
+     * example, an incorrect message syntax; delimiter lost), but in other cases
+     * we could have saved the connection (for example, by discarding an illegal
+     * body in a TRACE request). However, for early errors, all connections will
+     * be indiscriminately closed, primarily as a means to simplify the code
+     * base. Early errors are infrequent (compared to valid requests), and may
+     * even indicate a malicious actor. So the harm done is limited and may even
+     * be advantageous. One must also have in mind that our ability to host
+     * connections is limited; any opportunity really we get to kick the
+     * connection then we should.<p>
      * 
-     * In contrast, there are late errors that may occur after the request
-     * processing chain has been invoked, which all of them should result in a
+     * There are <i>late errors</i> that may occur after the request processing
+     * chain has been invoked, which all of them should result in a
      * subject-relevant fallback response. Closing for late errors is determined
      * by {@link Config#maxErrorResponses()}, and implemented by
      * {@link #trackErrorResponses(Response)}.<p>
      * 
      * Noteworthy: The skeleton request may also not be available because
      * {@link HttpExchange} rejected the version; it was too old, or it was too
-     * new. Today, there's really no way we could save that connection. If the
+     * new. Today there's really no way we could save that connection. If the
      * version was too old, well, voila; HTTP/1.0 (and older) does not support
      * persistent connections, nor do we support the unofficial "keep-alive"
      * mechanism. Version was too new? Erm, this would actually be weird, as
@@ -161,32 +165,44 @@ final class ResponseProcessor
      * protocol upgrading — aka. 101 (Switching Protocols) — the
      * {@link HttpVersionTooOldException} exception will still represent a
      * terminal failure for the connection (upgrading failed). What happens on
-     * successful upgrading we shall wait and see.
+     * successful upgrading we shall wait and see.<p>
      * 
-     * @param r response
+     * Even more noteworthy stuff: The {@code HttpExchange} may preempt this
+     * class with a "Connection: close" if it is possible for the exchange to
+     * determine that it will not be able to discard an unconsumed request.
+     * 
+     * @param rsp response
      * @param reqVer request version
      * 
      * @return possibly a modified response
      */
-    private static Response tryCloseNonPersistentConn(Response r, Version reqVer) {
-        if (r.isInformational()) {
-            return r;
+    private static Response tryCloseNonPersistentConn(
+            Response rsp, SkeletonRequest req, Version reqVer) {
+        if (rsp.isInformational() || rsp.headers().hasConnectionClose()) {
+            return rsp;
         }
+        // TODO: DRY
         if (reqVer == null) {
-            return tryAddConnectionClose(r, LOG, DEBUG,
+            return tryAddConnectionClose(rsp, LOG, DEBUG,
                      "no request is available (early error)");
         } else if (reqVer.isLessThan(HTTP_1_1)) {
-            return tryAddConnectionClose(r, LOG, DEBUG,
+            return tryAddConnectionClose(rsp, LOG, DEBUG,
                      reqVer + " does not support a persistent connection");
         }
-        return r;
+        final String why =
+            (req != null && req.head().headers().hasConnectionClose())
+                                      ? "the request headers' did" :
+            !channel().isInputOpen()  ? "the client's input stream has shut down" :
+            !httpServer().isRunning() ? "the server has stopped" : null;
+        return why == null ? rsp :
+                tryAddConnectionClose(rsp, LOG, DEBUG, why);
     }
     
     private static Response tryChunkedEncoding(
             Response r, Version reqVer, long len, ByteBufferIterator body) {
         final boolean trPresent = r.headers().contains(TRAILER);
         if (reqVer == null || reqVer.isLessThan(HTTP_1_1)) {
-            // Connection will close; no need to do chunking, but:
+            // Can not do chunking for unknown length, but:
             if (trPresent) {
                 LOG.log(DEBUG, """
                     Client has no support for response trailers, \
@@ -195,12 +211,12 @@ final class ResponseProcessor
             }
             return r;
         }
-        if (!trPresent && len >= 0) {
-            // No trailers and a known length makes chunking unnecessary
+        if (!trPresent && len >= 0 ) {
+            // No trailers and a known length make chunking unnecessary
             return r;
         }
         // We could mark the end of a response by closing the connection.
-        // But, this is an unreliable method best to avoid (RFC 7230 §3.3.3.).
+        // But this is an unreliable method best to avoid (RFC 7230 §3.3.3.).
         LOG.log(DEBUG, """
                 Response trailers and/or unknown body length; \
                 applying chunked encoding""");
@@ -216,19 +232,6 @@ final class ResponseProcessor
                   .setHeader(TRANSFER_ENCODING, "chunked")
                   .body(new ChunkedEncoder(body))
                   .build();
-    }
-    
-    private static Response tryPropagateConnClose(Response rsp, SkeletonRequest req) {
-        if (rsp.isInformational() || rsp.headers().hasConnectionClose()) {
-            return rsp;
-        }
-        final String why =
-            (req != null && req.head().headers().hasConnectionClose()) ? "the request headers' did" :
-            !channel().isInputOpen()  ? "the client's input stream has shut down" :
-            !httpServer().isRunning() ? "the server has stopped" :
-                                        null;
-        return why == null ? rsp :
-                tryAddConnectionClose(rsp, LOG, DEBUG, why);
     }
     
     private static boolean trackErrorResponses(Response r) {
@@ -248,7 +251,7 @@ final class ResponseProcessor
         if (r.headers().contains(TRANSFER_ENCODING)) {
             return dealWithTransferEncoding(r);
         }
-        assert len >= 0 : "If <= -1, chunked encoding was applied";
+        assert len >= 0 : "If <= -1, transfer encoding chunked was applied";
         final var reqMethod = skeletonRequest()
                 .map(req -> req.head().line().method());
         if (reqMethod.filter(HEAD::equals).isPresent()) {
