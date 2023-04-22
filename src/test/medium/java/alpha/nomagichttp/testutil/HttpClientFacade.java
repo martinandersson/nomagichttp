@@ -922,12 +922,12 @@ public abstract class HttpClientFacade
                     .protocol(toReactorVersion(ver));
             
             for (var entry : clientHeaders()) {
-                var name = entry.getKey();
-                for (var value : entry.getValue()) {
-                    // Yup, one "consume" a mutable object, but... also returns a new client
-                    // (who doesn't love a good surprise huh!)
-                    client = client.headers(h -> h.add(name, value));
-                }
+                 var name = entry.getKey();
+                 for (var value : entry.getValue()) {
+                     // Yup, one "consume" a mutable object, but... also returns a new client
+                     // (who doesn't love a good surprise huh!)
+                     client = client.headers(h -> h.add(name, value));
+                 }
             }
             
             // "uri() should be invoked before request()" says the JavaDoc.
