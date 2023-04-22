@@ -181,18 +181,11 @@ final class ResponseProcessor
         if (rsp.isInformational() || rsp.headers().hasConnectionClose()) {
             return rsp;
         }
-        // TODO: DRY
-        if (reqVer == null) {
-            return tryAddConnectionClose(rsp, LOG, DEBUG,
-                     "no request is available (early error)");
-        } else if (reqVer.isLessThan(HTTP_1_1)) {
-            return tryAddConnectionClose(rsp, LOG, DEBUG,
-                     reqVer + " does not support a persistent connection");
-        }
         final String why =
-            (req != null && req.head().headers().hasConnectionClose())
-                                      ? "the request headers' did" :
-            !channel().isInputOpen()  ? "the client's input stream has shut down" :
+            req == null ? "no request is available (early error)" :
+            reqVer.isLessThan(HTTP_1_1) ? reqVer + " does not support a persistent connection" :
+            req.head().headers().hasConnectionClose() ? "the request headers' did" :
+            !channel().isInputOpen() ? "the client's input stream has shut down" :
             !httpServer().isRunning() ? "the server has stopped" : null;
         return why == null ? rsp :
                 tryAddConnectionClose(rsp, LOG, DEBUG, why);
