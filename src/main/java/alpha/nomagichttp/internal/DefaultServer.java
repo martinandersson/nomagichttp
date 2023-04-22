@@ -28,6 +28,7 @@ import java.util.concurrent.Future;
 import java.util.concurrent.TimeoutException;
 import java.util.function.IntConsumer;
 
+import static alpha.nomagichttp.internal.VThreads.CHANNEL_BLOCKING;
 import static alpha.nomagichttp.util.Blah.getOrCloseResource;
 import static alpha.nomagichttp.util.Blah.runOrCloseResource;
 import static alpha.nomagichttp.util.DummyScopedValue.where;
@@ -147,7 +148,7 @@ public final class DefaultServer implements HttpServer
             var ssc1 = addr instanceof UnixDomainSocketAddress ?
                     open(UNIX) : open();
             runOrCloseResource(() -> {
-                assert ssc1.isBlocking();
+                assert ssc1.isBlocking() : CHANNEL_BLOCKING;
                 ssc1.bind(addr);
                 started = now();
                 LOG.log(INFO, () -> "Opened server channel: " + ssc1);
@@ -188,7 +189,7 @@ public final class DefaultServer implements HttpServer
                 for (;;) {
                     var child = parent.accept();
                     // Reader and writer depend on blocking mode for correct behavior
-                    assert child.isBlocking();
+                    assert child.isBlocking() : CHANNEL_BLOCKING;
                     LOG.log(DEBUG, () -> "Accepted child: " + child);
                     runOrCloseResource(() -> scope.fork(() -> {
                         try {
