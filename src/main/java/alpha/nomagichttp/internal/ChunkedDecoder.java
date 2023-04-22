@@ -106,7 +106,8 @@ public final class ChunkedDecoder implements ByteBufferIterable
             view.clear();
             decode();
             view.limit(buf.position());
-            assert buf.hasRemaining() || parsing == DONE;
+            assert view.hasRemaining() || parsing == DONE :
+                    "Either we decoded something or we were done";
             return view;
         }
         
