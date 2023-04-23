@@ -1,6 +1,5 @@
 package alpha.nomagichttp.largetest;
 
-import alpha.nomagichttp.message.Responses;
 import alpha.nomagichttp.testutil.AbstractLargeRealTest;
 import alpha.nomagichttp.testutil.HttpClientFacade;
 import alpha.nomagichttp.testutil.HttpClientFacade.ResponseFacade;
@@ -22,6 +21,7 @@ import java.util.stream.Stream;
 
 import static alpha.nomagichttp.HttpConstants.Version.HTTP_1_1;
 import static alpha.nomagichttp.handler.RequestHandler.POST;
+import static alpha.nomagichttp.message.Responses.text;
 import static alpha.nomagichttp.testutil.HttpClientFacade.Implementation.REACTOR;
 import static alpha.nomagichttp.testutil.HttpClientFacade.Implementation.createAll;
 import static alpha.nomagichttp.testutil.HttpClientFacade.Implementation.createAllExceptFor;
@@ -51,19 +51,9 @@ class TwoHundredRequestsFromSameClientTest extends AbstractLargeRealTest
     private Channel conn;
     @BeforeAll
     void addHandler() throws IOException {
-        server().add("/", POST().apply(req -> {
-            var rsp = Responses.text(req.body().toText());
-            // TODO: We need to extend the life-time of client connections.
-            //       E.g. by keeping a thread local client instance.
-            //       Then add HttpClientFacade.shutdown() or something like that.
-            //       Move DetailTest.connection_reuse() to ClientLifeCycleTest
-            //       and add a client compatibility test for the reuse.
-            //       After-all in this test class will shutdown, no server-side hacks.
-            if (!req.headers().contains("User-Agent", "TestClient")) {
-                rsp = setHeaderConnectionClose(rsp);
-            }
-            return rsp;
-        }));
+        // Echo the body
+        server().add("/", POST().apply(
+                req -> text(req.body().toText())));
     }
     
     @AfterAll

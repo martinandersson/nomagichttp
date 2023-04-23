@@ -20,6 +20,7 @@ import alpha.nomagichttp.message.Response;
 import alpha.nomagichttp.util.DummyScopedValue;
 
 import java.io.IOException;
+import java.nio.channels.ClosedByInterruptException;
 import java.util.Collection;
 import java.util.NoSuchElementException;
 import java.util.Optional;
@@ -371,8 +372,33 @@ final class HttpExchange
     private Optional<Response> tryProcessException(Exception e) throws Exception {
         if (e instanceof InterruptedException) {
             // There's no spurious interruption
-            closeChannel(WARNING, "Exchange is over; thread interrupted", e);
+            closeChannel("thread interrupted");
             throw e;
+        }
+        // TODO: Currently we are assuming this comes from our channel.
+        //       Reintroduce ExchangeDeath.ByRead/ByWrite; I/O errors from app
+        //       code we must try to resolve lol
+        if (e instanceof ClosedByInterruptException) {
+            if (!server.isRunning()) {
+                // This we expect; all servers stop at some point lol
+                closeChannel("the application stopped the server");
+            } else {
+                // Only logged if either stream is open; should never happen
+                closeChannel(WARNING,
+                      "the ClientChannel API was not used to close the child");
+            }
+            throw e;
+        }
+        // Most likely, the client closed his output or channel (reader EOS)
+        if (e instanceof RequestLineParseException pe && pe.byteCount() == 0) {
+            closeChannel("client aborted the exchange");
+            throw e;
+            // TODO: We may want to raise events for these aborts,
+            //       1) Clean abort with no previous communication
+            //          = suspicious!
+            //       2) We have a previous request
+            //          = bad client software did not set "Connection: close"
+            //            (we save and report the user-agent)
         }
         if (e instanceof AfterActionException) {
             closeChannel(ERROR, "Breach of developer contract", e);
@@ -381,10 +407,6 @@ final class HttpExchange
         if (writer.byteCount() > 0) {
             closeChannel(ERROR,
                 "Response bytes already sent, can not handle this error", e);
-            throw e;
-        }
-        if (e instanceof RequestLineParseException pe && pe.byteCount() == 0) {
-            closeChannel("client aborted the exchange");
             throw e;
         }
         if (!child.isOutputOpen()) {
@@ -534,8 +556,12 @@ final class HttpExchange
     }
     
     private void closeChannel(String why) {
+        closeChannel(DEBUG, why);
+    }
+    
+    private void closeChannel(Level level, String why) {
         if (child.isInputOpen() || child.isOutputOpen()) {
-            LOG.log(DEBUG, () -> "Closing the channel because " + why + ".");
+            LOG.log(level, () -> "Closing the channel because " + why + ".");
             child.close();
         }
     }

@@ -64,16 +64,11 @@ class BigFileRequestTest extends AbstractLargeRealTest
         var post = POST().apply(req -> {
             var len = req.body().toFile(file, WRITE, CREATE, TRUNCATE_EXISTING);
             return noContent().toBuilder()
-                    .addHeaders(
-                      "Received", Long.toString(len),
-                      // Enable clean stop of server after-all
-                      "Connection", "close")
+                    .setHeader("Received", Long.toString(len))
                     .build();
         });
         // Retrieve the file
-        var get = GET().apply(req ->
-                ok(ofFile(file)).toBuilder()
-                    .setHeader("Connection", "close").build());
+        var get = GET().apply(req -> ok(ofFile(file)));
         server().add("/file", post, get);
     }
     
@@ -95,8 +90,7 @@ class BigFileRequestTest extends AbstractLargeRealTest
         }
         assertThat(rsp).isEqualTo(
             "HTTP/1.1 204 No Content" + CRLF +
-            "Received: " + FILE_SIZE  + CRLF +
-            "Connection: close"       + CRLF + CRLF);
+            "Received: " + FILE_SIZE  + CRLF + CRLF);
         assertFileContentsOnDisk();
         saved = true;
     }
@@ -115,7 +109,6 @@ class BigFileRequestTest extends AbstractLargeRealTest
             assertThat(head).isEqualTo(
                 "HTTP/1.1 200 OK"                        + CRLF +
                 "Content-Type: application/octet-stream" + CRLF +
-                "Connection: close"                      + CRLF +
                 "Content-Length: " + FILE_SIZE           + CRLF + CRLF);
             // The TestClient can sometimes take time to complete. Most of the
             // time - on my machine - it takes roughly 2.2 seconds. Reactor
