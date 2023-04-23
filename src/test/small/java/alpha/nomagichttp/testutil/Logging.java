@@ -59,7 +59,7 @@ public final class Logging
      * invocation
      * <pre>
      *     Logging.{@link #setLevel(Class, Level)
-     *       setLevel}(HttpServer.class, level.ALL);
+     *       setLevel}(HttpServer.class, Level.ALL);
      * </pre>
      */
     public static void everything() {
