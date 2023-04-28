@@ -61,8 +61,9 @@ final class ResponseProcessor
      * 
      * This method semantically performs a set of privileged after-actions.
      * Specifically, the method will — if needed — apply chunked encoding, set
-     * the "Connection: close" header, and ensure that the response is properly
-     * delimited (Transfer-Encoding/Content-Length).<p>
+     * the "Connection: close" header for non-persistent connections, and ensure
+     * that the response is properly delimited
+     * (Transfer-Encoding/Content-Length).<p>
      * 
      * This method will call {@code Response.Body.iterator()}, and return the
      * same iterator — or a decorator — in the returned result object, which is

@@ -8,6 +8,7 @@ import alpha.nomagichttp.message.BetterHeaders;
 import alpha.nomagichttp.message.Response;
 
 import java.io.IOException;
+import java.nio.channels.ClosedChannelException;
 
 import static alpha.nomagichttp.HttpConstants.HeaderName.CONNECTION;
 import static java.util.Objects.requireNonNull;
@@ -31,12 +32,13 @@ import static java.util.Objects.requireNonNull;
  * read timeout} when sending long-lasting streams.<p>
  * 
  * None of the shutdown/close methods in this class throws {@link IOException},
- * although the underlying channel do. It is assumed (perhaps wrongfully?
- * *scratching head*) that there is nothing the application can or would like to
- * do about the exception, nor would the exception mean that the operation
- * wasn't successful (if the resource can't even close then it's pretty much
- * dead as dead can be), hence the exception is logged on the {@code WARNING}
- * level and then ignored.
+ * although the underlying channel do. It is assumed that there is nothing the
+ * application can or would like to do about the exception, nor does such an
+ * exception mean that the operation wasn't successful (if the resource can't
+ * even close then it's pretty much as dead as dead can be, right? *scratching
+ * head*), hence no {@code IOException} propagates. An {@code IOException} that
+ * is not a {@link ClosedChannelException} will be logged on the {@code WARNING}
+ * level.
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  */
@@ -158,14 +160,15 @@ public interface ClientChannel extends ChannelWriter, AttributeHolder
     /**
      * Shutdown the input stream.<p>
      * 
-     * If this operation fails or effectively terminates the connection (output
-     * stream was also shutdown), then this method cascades to
-     * {@link #close()}.<p>
-     * 
-     * Be warned that there are some dumb HTTP clients out there (Jetty and the
-     * Darwin-award winner Reactor, at least), which if their corresponding
-     * output stream is closed, will immediately close the entire connection
-     * without waiting on the final response (lol?).<p>
+     * A purist developer may be tempted to use this method after having read a
+     * request, and there is no intent to run more exchanges over the same
+     * connection. Be warned, however, that there are some dumb HTTP clients out
+     * there (Jetty and the Darwin-award winner Reactor, at least), which if
+     * their corresponding output stream is closed, will immediately close the
+     * entire connection without waiting on the final response, even if the
+     * response is actively being transmitted (big lol?). To be the good
+     * samaritan and save their asses, it is therefore recommended to never use
+     * this method.<p>
      * 
      * Is NOP if input already shutdown or channel is closed.
      */
@@ -173,10 +176,6 @@ public interface ClientChannel extends ChannelWriter, AttributeHolder
     
     /**
      * Shutdown the output stream.<p>
-     * 
-     * If this operation fails or effectively terminates the connection (input
-     * stream was also shutdown), then this method propagates to {@link
-     * #close()}.<p>
      * 
      * Is NOP if output already shutdown or channel is closed.
      */

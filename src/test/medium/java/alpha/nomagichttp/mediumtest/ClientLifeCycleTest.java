@@ -426,6 +426,7 @@ class ClientLifeCycleTest extends AbstractRealTest
     }
     
     // Server shuts down input after request, can still write response
+    // TODO: Also with request body the app accesses after input shutdown: -1 or AsyncCloseExc?
     @Test
     void intermittentStreamShutdown_serverInput() throws IOException, InterruptedException {
         server().add("/", GET().apply(req -> {

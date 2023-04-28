@@ -499,9 +499,12 @@ public abstract class AbstractRealTest
     }
     
     /**
-     * Stop server gracefully and await the completion of all HTTP exchanges.<p>
+     * Stop the server and await, at most 1 second, the completion of all
+     * HTTP exchanges.<p>
      * 
-     * Is NOP if server never started.
+     * After 1 second, all client connections will close.<p>
+     * 
+     * Is NOP if the server never started.
      * 
      * @throws IOException
      *           on I/O error

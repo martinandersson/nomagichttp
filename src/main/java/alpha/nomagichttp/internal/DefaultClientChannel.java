@@ -7,6 +7,7 @@ import alpha.nomagichttp.message.Response;
 import alpha.nomagichttp.util.Throwing;
 
 import java.io.IOException;
+import java.nio.channels.ClosedChannelException;
 import java.nio.channels.SocketChannel;
 import java.util.concurrent.TimeoutException;
 
@@ -16,7 +17,9 @@ import static java.lang.System.Logger.Level.WARNING;
  * Default implementation of {@code ClientChannel}.<p>
  * 
  * Implements shutdown/close methods and delegates the writer-api to
- * {@link ChannelWriter}.
+ * {@link ChannelWriter}.<p>
+ * 
+ * For life cycle details, see {@link #use(ChannelWriter)}.
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  */
@@ -42,7 +45,17 @@ final class DefaultClientChannel implements ClientChannel
     }
     
     /**
-     * Sets or replaces the backing writer.
+     * Sets or replaces the backing writer.<p>
+     * 
+     * Only one {@code ClientChannel} is created per child/connection, and
+     * possibly re-used across many HTTP exchanges. The client channel is merely
+     * an API on top of the underlying child, and also contains attributes which
+     * therefore span across multiple exchanges.<p>
+     * 
+     * However, the life of the backing writer implementation is bound to only
+     * one exchange. For example, to ensure that no responses can be sent after
+     * the final response. That is why this method is used to set/replace the
+     * writer instance at the start of each new exchange.
      * 
      * @param writer to be used as backing write implementation
      */
@@ -69,33 +82,21 @@ final class DefaultClientChannel implements ClientChannel
     }
     
     @Override
-    public void shutdownOutput() {
-        if (outputClosed) {
-            return;
-        }
-        try {
-            runSafe(child::shutdownOutput, "shutdownOutput");
-        } finally {
-            if (inputClosed) {
-                close();
-            }
-            outputClosed = true;
-        }
-    }
-    
-    @Override
     public void shutdownInput() {
         if (inputClosed) {
             return;
         }
-        try {
-            runSafe(child::shutdownInput, "shutdownInput");
-        } finally {
-            if (outputClosed) {
-                close();
-            }
-            inputClosed = true;
+        inputClosed = true;
+        runSafe(child::shutdownInput, "shutdownInput");
+    }
+    
+    @Override
+    public void shutdownOutput() {
+        if (outputClosed) {
+            return;
         }
+        outputClosed = true;
+        runSafe(child::shutdownOutput, "shutdownOutput");
     }
     
     @Override
@@ -107,13 +108,28 @@ final class DefaultClientChannel implements ClientChannel
         runSafe(child::close, "close");
     }
     
-    private void runSafe(Throwing.Runnable<IOException> r, String method) {
+    private void runSafe(Throwing.Runnable<IOException> op, String method) {
+        // ClosedChannelException does not cause us to mark both streams as
+        // having been shut down, or in other words, closing a stream will never
+        // have the side effect of cascading to a shut-down of the other.
+        //     Because cascading just isn't within our responsibility. It is
+        // DefaultServer and HttpExchange that manages the channel. Moreover,
+        // and perhaps most crucially, if we were to cascade, then it would
+        // actually make it harder if not impossible for HttpExchange to
+        // accurately deduce which series of events led up to the channel being
+        // in its current state, and consequently, what log message should the
+        // exchange use when closing the channel. Consider, for example, how
+        // HttpExchange.tryProcessException() handles
+        // ClosedByInterruptException, which may originate from a read-failure,
+        // because the server stopped.
         try {
-            r.run();
+            op.run();
+        } catch (ClosedChannelException e) {
+            // Great, job done!
         } catch (IOException e) {
             LOG.log(WARNING, () ->
                     "Not propagating this exception; the " +
-                    method + " method call is considered successful.", e);
+                    method + " operation is considered successful.", e);
         }
     }
     

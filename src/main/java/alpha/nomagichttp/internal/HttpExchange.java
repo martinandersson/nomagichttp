@@ -54,7 +54,7 @@ import static java.util.Optional.ofNullable;
  *   <li>Execute the request chain</li>
  *   <li>Resolve an exception using error handler(s)</li>
  *   <li>Write the response</li>
- *   <li>Discard remaining data in request body</li>
+ *   <li>Possibly discard remaining data in the request body</li>
  * </ul>
  * 
  * Additionally:
@@ -63,6 +63,13 @@ import static java.util.Optional.ofNullable;
  *   <li>Reject a TRACE request with a body</li>
  *   <li>Log the exchange workflow on DEBUG level</li>
  * </ul>
+ * 
+ * This class also implicitly manages the child's life-cycle, in that the
+ * child will remain fully open for as long as the enclosing server should keep
+ * running new exchanges. This responsibility is implemented in cooperation
+ * with {@link ChannelReader}, who half-closes the child on end-of-stream, and
+ * with {@link DefaultChannelWriter}, who bears the brunt of the burden to
+ * half-close or close the child if the connection is deemed not persistent.
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  */
@@ -375,9 +382,9 @@ final class HttpExchange
             closeChannel("thread interrupted");
             throw e;
         }
-        // TODO: Currently we are assuming this comes from our channel.
-        //       Reintroduce ExchangeDeath.ByRead/ByWrite; I/O errors from app
-        //       code we must try to resolve lol
+        // TODO: Currently we are assuming this comes from our channel. Mark
+        //       this exception; I/O errors from app code we must try to resolve
+        //       lol. Also update code comment in DefaultClientChannel.
         if (e instanceof ClosedByInterruptException) {
             if (!server.isRunning()) {
                 // This we expect; all servers stop at some point lol
@@ -389,7 +396,7 @@ final class HttpExchange
             }
             throw e;
         }
-        // Most likely, the client closed his output or channel (reader EOS)
+        // Most likely, the client closed his output (reader EOS)
         if (e instanceof RequestLineParseException pe && pe.byteCount() == 0) {
             closeChannel("client aborted the exchange");
             throw e;
