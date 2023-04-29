@@ -69,16 +69,15 @@ class ServerLifeCycleTest extends AbstractRealTest
         assertThatServerStopsNormally(fut);
     }
     
-    // Rename? start_writeHalfRequest_stop_writeTheRest
     @Test
-    void serverStop_serverCompletesActiveExchange() throws Exception {
-        // Client send request head, not body
+    void serverStop_activeExchangeCompletes() throws Exception {
+        // Client sends the request head, not body
         // Server consumes the head, returns 100 (Continue)
-        // Client call HttpServer.stop()
-        //     Returned stage is not completed
+        // Client calls HttpServer.stop()
+        //     Returned Future is not completed
         //     Server accepts no new connections
-        // Client send the rest of the request
-        //     Stage completes
+        // Client sends the rest of the request
+        //     Future completes
         
         server().add("/", POST().apply(req ->
                 text(req.body().toText())));
@@ -117,7 +116,7 @@ class ServerLifeCycleTest extends AbstractRealTest
                 
                 "Hi!");
             
-            // Not dependent on the closure of this connection
+            // Not dependent on the closure of client's connection
             logRecorder().assertAwaitChildClose();
         }
         
@@ -127,7 +126,7 @@ class ServerLifeCycleTest extends AbstractRealTest
     }
     
     @Test
-    void serverStop_exchangeNotActive() throws IOException, InterruptedException {
+    void serverStop_inactiveExchangeAborts() throws IOException, InterruptedException {
         server();
         try (var conn = client().openConnection()) {
             // Wait for the server to save the child reference in children.
@@ -142,17 +141,15 @@ class ServerLifeCycleTest extends AbstractRealTest
                 .isLessThan(ofSeconds(1));
             assertNewConnectionIsRejected();
             logRecorder().assertThatLogContainsOnlyOnce(
-                // DefaultServer closes the channel directly, circumventing the state of DefaultClientChannel
                 rec(DEBUG, "Exchange did not start; closing inactive child."),
-                // HttpExchange depends on the output stream to [falsely] remain open, to identify this cause
-                rec(DEBUG, "Closing the channel because the application stopped the server."));
+                rec(DEBUG, "All exchanges finished within the graceful period."));
             // TODO: Should assertThatNoWarningOrErrorIsLogged(),
             //       but said method requires the server to already be running lol.
         }
     }
     
     @Test
-    void serverStop_timesOut_handlerStalled() throws IOException, InterruptedException {
+    void serverStop_graceExpires_handlerStalled() throws IOException, InterruptedException {
         var stopServer = new Semaphore(0);
         server().add("/", GET().apply(req -> {
             stopServer.release();
@@ -167,22 +164,20 @@ class ServerLifeCycleTest extends AbstractRealTest
             // Stopping completes after a 1-second graceful period
             assertThat(Duration.between(before, now()))
                 .isGreaterThanOrEqualTo(ofSeconds(1));
-            // The log does not say "the application stopped the server",
-            // because the server does not investigate nor make assumptions why
-            // the thread was interrupted.
             logRecorder().assertThatLogContainsOnlyOnce(
+                rec(DEBUG, "Graceful deadline expired; shutting down scope."),
                 rec(DEBUG, "Closing the channel because thread interrupted."));
             // TODO: Should assertThatNoWarningOrErrorIsLogged()
         }
     }
     
     @Test
-    void serverStop_timesOut_clientStalled() throws IOException, InterruptedException {
+    void serverStop_graceExpires_clientStalled() throws IOException, InterruptedException {
         var stopServer = new Semaphore(0);
         server().add("/", POST().apply(req -> {
             stopServer.release();
             req.body().bytes();
-            throw new AssertionError("XXX");
+            throw new AssertionError("The body is never sent");
         }));
         try (var conn = client().openConnection()) {
             client().write(
@@ -193,8 +188,8 @@ class ServerLifeCycleTest extends AbstractRealTest
             stopServer();
             assertThat(Duration.between(before, now()))
                 .isGreaterThanOrEqualTo(ofSeconds(1));
-            logRecorder().assertThatLogContainsOnlyOnce(
-                rec(DEBUG, "Closing the channel because the application stopped the server."));
+            logRecorder().assertThatLogContainsOnlyOnce(rec(
+                DEBUG, "Graceful deadline expired; shutting down scope."));
             // TODO: Should assertThatNoWarningOrErrorIsLogged()
         }
     }

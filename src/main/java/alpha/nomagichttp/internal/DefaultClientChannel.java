@@ -108,20 +108,7 @@ final class DefaultClientChannel implements ClientChannel
         runSafe(child::close, "close");
     }
     
-    static void runSafe(Throwing.Runnable<IOException> op, String method) {
-        // ClosedChannelException does not cause us to mark both streams as
-        // having been shut down, or in other words, closing a stream will never
-        // have the side effect of cascading to a shut-down of the other.
-        //     Because cascading just isn't within our responsibility. It is
-        // DefaultServer and HttpExchange that manages the channel. Moreover,
-        // and perhaps most crucially, if we were to cascade, then it would
-        // actually make it harder if not impossible for HttpExchange to
-        // accurately deduce which series of events led up to the channel being
-        // in its current state, and consequently, what log message should the
-        // exchange use when closing the channel. Consider, for example, how
-        // HttpExchange.tryProcessException() handles
-        // ClosedChannelException, which may originate from a read-failure,
-        // because the server stopped.
+    private static void runSafe(Throwing.Runnable<IOException> op, String method) {
         try {
             op.run();
         } catch (ClosedChannelException e) {

@@ -8,6 +8,7 @@ import alpha.nomagichttp.event.DefaultEventHub;
 import alpha.nomagichttp.event.EventHub;
 import alpha.nomagichttp.event.HttpServerStarted;
 import alpha.nomagichttp.event.HttpServerStopped;
+import alpha.nomagichttp.handler.ClientChannel;
 import alpha.nomagichttp.handler.ErrorHandler;
 import alpha.nomagichttp.route.Route;
 import jdk.incubator.concurrent.StructuredTaskScope;
@@ -22,7 +23,7 @@ import java.nio.channels.SocketChannel;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
-import java.util.Set;
+import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
@@ -30,7 +31,6 @@ import java.util.concurrent.Future;
 import java.util.concurrent.TimeoutException;
 import java.util.function.IntConsumer;
 
-import static alpha.nomagichttp.internal.DefaultClientChannel.runSafe;
 import static alpha.nomagichttp.internal.VThreads.CHANNEL_BLOCKING;
 import static alpha.nomagichttp.util.Blah.getOrCloseResource;
 import static alpha.nomagichttp.util.Blah.runOrCloseResource;
@@ -54,6 +54,8 @@ import static java.util.Objects.requireNonNull;
  */
 public final class DefaultServer implements HttpServer
 {
+    private static final int INITIAL_CAPACITY = 100;
+    
     private static final System.Logger LOG
             = System.getLogger(DefaultServer.class.getPackageName());
     
@@ -66,7 +68,7 @@ public final class DefaultServer implements HttpServer
     //     using channel for direct transfer operations and bytebuffers
     private final Confined<ServerSocketChannel> parent;
     private final CountDownLatch terminated;
-    private final Set<ChannelReader> children;
+    private final Map<ClientChannel, ChannelReader> children;
     private       Instant started;
     // Memory consistency not specified between
     //     ServerSocketChannel.close() and AsynchronousCloseException
@@ -88,7 +90,7 @@ public final class DefaultServer implements HttpServer
                 r -> where(__HTTP_SERVER, this, r));
         this.parent  = new Confined<>();
         this.terminated = new CountDownLatch(1);
-        this.children = ConcurrentHashMap.newKeySet();
+        this.children = new ConcurrentHashMap<>(INITIAL_CAPACITY);
         this.started = null;
         this.waitForChildren = null;
     }
@@ -96,7 +98,7 @@ public final class DefaultServer implements HttpServer
     @Override
     public Void start(IntConsumer ofPort)
             throws IOException, InterruptedException {
-        start0(lookBackSystemPickedPort(), requireNonNull(ofPort));
+        start0(loopBackSystemPickedPort(), requireNonNull(ofPort));
         // Because start0() returns exceptionally
         throw new InternalError("Dead code");
     }
@@ -125,7 +127,7 @@ public final class DefaultServer implements HttpServer
     public Future<Void> startAsync() throws IOException {
         final var fut = new CompletableFuture<Void>();
         final ServerSocketChannel ch
-                = openOrFail(lookBackSystemPickedPort());
+                = openOrFail(loopBackSystemPickedPort());
         runOrCloseResource(() ->
             startVirtualThread(() -> {
                 try {
@@ -220,11 +222,11 @@ public final class DefaultServer implements HttpServer
     }
     
     private void handleChild(SocketChannel ch) throws IOException {
+        final var api = new DefaultClientChannel(ch);
         var r = new ChannelReader(ch);
-        children.add(r);
+        children.put(api, r);
         try (ch) {
             LOG.log(DEBUG, () -> "Accepted child: " + ch);
-            var api = new DefaultClientChannel(ch);
             // Exchange loop; breaks when a new exchange should not begin
             for (;;) {
                 var w = new DefaultChannelWriter(ch, actions);
@@ -232,19 +234,18 @@ public final class DefaultServer implements HttpServer
                 var exch = new HttpExchange(
                         this, actions, routes, eh, api, r, w);
                 where(__CHANNEL, api, exch::begin);
-                children.remove(r);
                 r.dismiss();
                 w.dismiss();
                 // ResponseProcessor will set "Connection: close" if !isRunning()
                 if (api.isInputOpen() && api.isOutputOpen()) {
                     r = r.newReader();
-                    children.add(r);
+                    children.put(api, r);
                 } else {
                     break;
                 }
             }
         } finally {
-            children.remove(r);
+            children.remove(api);
             LOG.log(DEBUG, () -> "Closed child: " + ch);
         }
     }
@@ -255,6 +256,7 @@ public final class DefaultServer implements HttpServer
         if (obj == null) {
             // On shutdown, children should observe:
             //     java.net.ClosedByInterruptException
+            LOG.log(DEBUG, "No graceful period; shutting down scope.");
             scope.shutdown();
             scope.join();
         } else {
@@ -265,7 +267,9 @@ public final class DefaultServer implements HttpServer
             assert obj.getClass() == Instant.class;
             try {
                 scope.joinUntil((Instant) obj);
+                LOG.log(DEBUG, "All exchanges finished within the graceful period.");
             } catch (TimeoutException ignored) {
+                LOG.log(DEBUG, "Graceful deadline expired; shutting down scope.");
                 // Enclosing try-with-resources > scope.close() > scope.shutdown()
             }
         }
@@ -336,17 +340,16 @@ public final class DefaultServer implements HttpServer
      * blocking read operations to continuously check the server's running state
      * — would impose complexity and degrade performance.<p>
      * 
-     * Stopping the server is what signals no new HTTP exchanges to commence
-     * over the same connection. This is implemented by
+     * The server being stopped is what signals no new HTTP exchanges to
+     * commence over the same connection. This is implemented by
      * {@link ResponseProcessor} (which checks the server's running state before
      * approving a new exchange).
      */
     private void closeInactiveChildren() {
-        children.forEach(reader -> {
+        children.forEach((api, reader) -> {
             if (reader.hasNotStarted()) {
                 LOG.log(DEBUG, "Exchange did not start; closing inactive child.");
-                var ch = reader.getChild();
-                runSafe(ch::close, "close");
+                api.close();
             }
         });
     }
@@ -410,7 +413,7 @@ public final class DefaultServer implements HttpServer
         }
     }
     
-    private static SocketAddress lookBackSystemPickedPort() {
+    private static SocketAddress loopBackSystemPickedPort() {
         return new InetSocketAddress(getLoopbackAddress(), 0);
     }
     

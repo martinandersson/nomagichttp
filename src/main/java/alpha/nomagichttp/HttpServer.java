@@ -479,8 +479,8 @@ public interface HttpServer extends RouteRegistry, ActionRegistry
     /**
      * Closes the port listening for client connections.<p>
      * 
-     * This method will cause all client connections to close, regardless if
-     * the connection is currently being used by an active HTTP exchange.<p>
+     * This method will cause all client connections to immediately close,
+     * regardless if the connection is being used by an active HTTP exchange.<p>
      * 
      * If the server has not started, or it has already stopped, then this
      * method is NOP.

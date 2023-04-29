@@ -7,7 +7,6 @@ import alpha.nomagichttp.message.Request;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.nio.channels.Channel;
 import java.nio.channels.ReadableByteChannel;
 import java.util.NoSuchElementException;
 
@@ -66,6 +65,7 @@ public final class ChannelReader implements ByteBufferIterable
     private       ByteBuffer view;
     private boolean started;
     private volatile boolean startedVol;
+    private Throwable thr;
     private final ByteBufferIterator it;
     // Number of bytes remaining to be read from the upstream
     private long desire;
@@ -107,12 +107,14 @@ public final class ChannelReader implements ByteBufferIterable
     }
     
     /**
-     * Returns the underlying child.
+     * Returns the throwable that caused a read operation to fail.<p>
      * 
-     * @return
+     * This method returns {@code null} if no read operation has failed.
+     * 
+     * @return see JavaDoc
      */
-    Channel getChild() {
-        return src;
+    Throwable getThrowable() {
+        return thr;
     }
     
     /**
@@ -313,6 +315,7 @@ public final class ChannelReader implements ByteBufferIterable
             try {
                 return src.read(dst);
             } catch (Throwable t) {
+                thr = t;
                 forceDismiss();
                 shutdownInput("Read operation failed");
                 throw t;

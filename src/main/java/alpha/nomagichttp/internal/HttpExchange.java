@@ -382,14 +382,10 @@ final class HttpExchange
             closeChannel("thread interrupted");
             throw e;
         }
-        // TODO: Currently we are assuming this comes from our channel read. Mark
-        //       this exception; I/O errors from app code we must try to resolve
-        //       lol. Also update code comment in DefaultClientChannel, and test
-        //       cases in ServerLifeCycleTest.
-        if (e instanceof ClosedChannelException &&
-            !child.isInputOpen() && child.isOutputOpen() &&
+        if (e == reader.getThrowable() &&
+            e instanceof ClosedChannelException &&
             !server.isRunning()) {
-            closeChannel("the application stopped the server");
+            // DefaultServer.stop() cascaded into closing an inactive child
             throw e;
         }
         // Most likely, the client closed his output (reader EOS)
