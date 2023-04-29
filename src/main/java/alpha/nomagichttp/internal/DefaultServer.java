@@ -99,15 +99,15 @@ public final class DefaultServer implements HttpServer
     public Void start(IntConsumer ofPort)
             throws IOException, InterruptedException {
         start0(loopBackSystemPickedPort(), requireNonNull(ofPort));
-        // Because start0() returns exceptionally
-        throw new InternalError("Dead code");
+        // start0() returns exceptionally!
+        throw newDeadCode();
     }
     
     @Override
     public Void start(SocketAddress address)
             throws IOException, InterruptedException {
         start0(requireNonNull(address), null);
-        throw new InternalError("Dead code");
+        throw newDeadCode();
     }
     
     private void start0(SocketAddress addr, IntConsumer ofPort)
@@ -136,8 +136,7 @@ public final class DefaultServer implements HttpServer
                     fut.completeExceptionally(t);
                     return;
                 }
-                fut.completeExceptionally(
-                    new InternalError("Dead code"));
+                fut.completeExceptionally(newDeadCode());
         }), ch);
         return getOrCloseResource(() ->
             fut.whenComplete((isNull, thrFromLoop) -> {
@@ -169,6 +168,7 @@ public final class DefaultServer implements HttpServer
         return ssc2;
     }
     
+    // Bind the server instance and translate where's "Exception" to our signature
     private void runAcceptLoop(ServerSocketChannel ch)
             throws IOException, InterruptedException
     {
@@ -176,48 +176,54 @@ public final class DefaultServer implements HttpServer
             where(__HTTP_SERVER, this, () -> runAcceptLoop0(ch));
         } catch (Exception e) {
             switch (e) {
-                // From accept() or close()
                 case IOException t -> throw t;
-                // From exit()
                 case InterruptedException t -> throw t;
-                // Would only expect StructureViolationException at this point
                 default -> throw new AssertionError(e);
             }
         }
         assert false;
     }
     
+    // Manage the loop-enclosing scope; graceful stop before closing
     private Void runAcceptLoop0(ServerSocketChannel parent)
             throws IOException, InterruptedException
     {
         try (var scope = new StructuredTaskScope<>()) {
             try {
-                // Accept loop; can not complete without throwing an exception
-                for (;;) {
-                    var child = parent.accept();
-                    // Reader and writer depend on blocking mode for correct behavior
-                    assert child.isBlocking() : CHANNEL_BLOCKING;
-                    runOrCloseResource(() -> scope.fork(() -> {
-                        try {
-                            handleChild(child);
-                        } catch (Throwable t) {
-                            if (!(t instanceof Exception)) { // Throwable, Error
-                                // Virtual threads do not log anything, we're more kind
-                                LOG.log(ERROR, "Unexpected", t);
-                            }
-                            throw t;
-                        }
-                        return null;
-                    }), child);
-                }
+                runAcceptLoop1(parent, scope);
             } finally {
                 closeParent();
                 closeInactiveChildren();
-                exit(scope);
+                join(scope);
             }
         } finally {
             terminated.countDown();
             assert children.isEmpty();
+        }
+        throw newDeadCode();
+    }
+    
+    private void runAcceptLoop1(
+            ServerSocketChannel parent, StructuredTaskScope<?> scope)
+            throws IOException
+    {
+        // The loop can not complete without throwing an exception
+        for (;;) {
+            var child = parent.accept();
+            // Reader and writer depend on blocking mode for correct behavior
+            assert child.isBlocking() : CHANNEL_BLOCKING;
+            runOrCloseResource(() -> scope.fork(() -> {
+                try {
+                    handleChild(child);
+                } catch (Throwable t) {
+                    if (!(t instanceof Exception)) { // Throwable, Error
+                        // Virtual threads do not log anything, we're more kind
+                        LOG.log(ERROR, "Unexpected", t);
+                    }
+                    throw t;
+                }
+                return null;
+            }), child);
         }
     }
     
@@ -292,7 +298,7 @@ public final class DefaultServer implements HttpServer
     }
     
     /** Shutdown then join, or joinUntil graceful timeout. */
-    private void exit(StructuredTaskScope<?> scope) throws InterruptedException {
+    private void join(StructuredTaskScope<?> scope) throws InterruptedException {
         var wfc = waitForChildren;
         if (wfc == null) {
             // On shutdown, children should observe:
@@ -397,6 +403,10 @@ public final class DefaultServer implements HttpServer
         } catch (ClosedChannelException e) {
             throw notRunning();
         }
+    }
+    
+    private static InternalError newDeadCode() {
+        return new InternalError("Dead code");
     }
     
     private static SocketAddress loopBackSystemPickedPort() {
