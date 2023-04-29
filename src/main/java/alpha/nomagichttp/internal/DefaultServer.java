@@ -22,12 +22,15 @@ import java.nio.channels.SocketChannel;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeoutException;
 import java.util.function.IntConsumer;
 
+import static alpha.nomagichttp.internal.DefaultClientChannel.runSafe;
 import static alpha.nomagichttp.internal.VThreads.CHANNEL_BLOCKING;
 import static alpha.nomagichttp.util.Blah.getOrCloseResource;
 import static alpha.nomagichttp.util.Blah.runOrCloseResource;
@@ -63,6 +66,7 @@ public final class DefaultServer implements HttpServer
     //     using channel for direct transfer operations and bytebuffers
     private final Confined<ServerSocketChannel> parent;
     private final CountDownLatch terminated;
+    private final Set<ChannelReader> children;
     private       Instant started;
     // Memory consistency not specified between
     //     ServerSocketChannel.close() and AsynchronousCloseException
@@ -84,6 +88,7 @@ public final class DefaultServer implements HttpServer
                 r -> where(__HTTP_SERVER, this, r));
         this.parent  = new Confined<>();
         this.terminated = new CountDownLatch(1);
+        this.children = ConcurrentHashMap.newKeySet();
         this.started = null;
         this.waitForChildren = null;
     }
@@ -190,7 +195,6 @@ public final class DefaultServer implements HttpServer
                     var child = parent.accept();
                     // Reader and writer depend on blocking mode for correct behavior
                     assert child.isBlocking() : CHANNEL_BLOCKING;
-                    LOG.log(DEBUG, () -> "Accepted child: " + child);
                     runOrCloseResource(() -> scope.fork(() -> {
                         try {
                             handleChild(child);
@@ -209,13 +213,18 @@ public final class DefaultServer implements HttpServer
                 close();
                 exit(scope);
             }
+        } finally {
+            terminated.countDown();
+            assert children.isEmpty();
         }
     }
     
     private void handleChild(SocketChannel ch) throws IOException {
+        var r = new ChannelReader(ch);
+        children.add(r);
         try (ch) {
+            LOG.log(DEBUG, () -> "Accepted child: " + ch);
             var api = new DefaultClientChannel(ch);
-            var r = new ChannelReader(ch);
             // Exchange loop; breaks when a new exchange should not begin
             for (;;) {
                 var w = new DefaultChannelWriter(ch, actions);
@@ -223,43 +232,42 @@ public final class DefaultServer implements HttpServer
                 var exch = new HttpExchange(
                         this, actions, routes, eh, api, r, w);
                 where(__CHANNEL, api, exch::begin);
+                children.remove(r);
                 r.dismiss();
                 w.dismiss();
-                // DefaultChannelWriter will set "Connection: close" if !isRunning()
+                // ResponseProcessor will set "Connection: close" if !isRunning()
                 if (api.isInputOpen() && api.isOutputOpen()) {
                     r = r.newReader();
+                    children.add(r);
                 } else {
                     break;
                 }
             }
         } finally {
+            children.remove(r);
             LOG.log(DEBUG, () -> "Closed child: " + ch);
         }
     }
     
-    /** Shutdown then join, or joinUntil then shutdown. */
+    /** Shutdown then join, or joinUntil graceful timeout. */
     private void exit(StructuredTaskScope<?> scope) throws InterruptedException {
-        try {
-            Object obj = waitForChildren;
-            if (obj == null) {
-                // On shutdown, children should observe:
-                //     java.net.ClosedByInterruptException
-                scope.shutdown();
-                scope.join();
-            } else {
-                if (obj instanceof Duration d) {
-                    // joinUntil() is going to reverse this lol
-                    obj = now().plus(d);
-                }
-                assert obj.getClass() == Instant.class;
-                try {
-                    scope.joinUntil((Instant) obj);
-                } catch (TimeoutException ignored) {
-                    // Enclosing try-with-resources > scope.close() > scope.shutdown()
-                }
+        Object obj = waitForChildren;
+        if (obj == null) {
+            // On shutdown, children should observe:
+            //     java.net.ClosedByInterruptException
+            scope.shutdown();
+            scope.join();
+        } else {
+            if (obj instanceof Duration d) {
+                // joinUntil() is going to reverse this lol
+                obj = now().plus(d);
             }
-        } finally {
-            terminated.countDown();
+            assert obj.getClass() == Instant.class;
+            try {
+                scope.joinUntil((Instant) obj);
+            } catch (TimeoutException ignored) {
+                // Enclosing try-with-resources > scope.close() > scope.shutdown()
+            }
         }
     }
     
@@ -290,34 +298,57 @@ public final class DefaultServer implements HttpServer
         closeAndAwaitChildren();
     }
     
-    private boolean close() throws IOException {
-        return this.parent.dropThrowsX(channel -> {
-            try {
-                channel.close();
-                LOG.log(INFO, () -> "Closed server channel: " + channel);
-            } catch (Throwable close) {
-                LOG.log(INFO, () -> {
-                    var msg = "Attempted to close server channel: ";
-                    try {
-                        msg += channel;
-                    } catch (Throwable toString) {
-                        msg += "N/A";
-                        close.addSuppressed(toString);
-                    }
-                    return msg;
-                });
-                throw close;
-            } finally {
-                events().dispatch(HttpServerStopped.INSTANCE, now(), started);
-            }
-        });
-    }
-    
     private void closeAndAwaitChildren()
             throws IOException, InterruptedException {
         if (close()) {
             terminated.await();
         }
+    }
+    
+    private boolean close() throws IOException {
+        boolean success = this.parent.dropThrowsX(channel -> {
+            try {
+                channel.close();
+                LOG.log(INFO, () -> "Closed server channel: " + channel);
+            } catch (Throwable t) {
+                LOG.log(INFO, () -> closeFailedMessage(channel, t));
+                throw t;
+            } finally {
+                events().dispatch(HttpServerStopped.INSTANCE, now(), started);
+            }
+        });
+        if (success) {
+            closeInactiveChildren();
+        }
+        return success;
+    }
+    
+    /**
+     * Closes all inactive children.<p>
+     * 
+     * The purpose of this method is to not stall the threads running and
+     * stopping the server more than necessary.<p>
+     * 
+     * This method will close all children associated with an exchange that has
+     * not started. This means that a child may be closed whilst reading
+     * arriving request bytes. Well, one has to draw the line somewhere. A finer
+     * granularity — such as counting received bytes or otherwise timing out
+     * blocking read operations to continuously check the server's running state
+     * — would impose complexity and degrade performance.<p>
+     * 
+     * Stopping the server is what signals no new HTTP exchanges to commence
+     * over the same connection. This is implemented by
+     * {@link ResponseProcessor} (which checks the server's running state before
+     * approving a new exchange).
+     */
+    private void closeInactiveChildren() {
+        children.forEach(reader -> {
+            if (reader.hasNotStarted()) {
+                LOG.log(DEBUG, "Exchange did not start; closing inactive child.");
+                var ch = reader.getChild();
+                runSafe(ch::close, "close");
+            }
+        });
     }
     
     @Override
@@ -385,5 +416,17 @@ public final class DefaultServer implements HttpServer
     
     private static IllegalStateException notRunning() {
         return new IllegalStateException("Server is not running");
+    }
+    
+    private static String closeFailedMessage(
+            ServerSocketChannel parent, Throwable fromClose) {
+        var msg = "Attempted to close server channel: ";
+        try {
+            msg += parent;
+        } catch (Throwable fromToString) {
+            msg += "N/A";
+            fromClose.addSuppressed(fromToString);
+        }
+        return msg;
     }
 }

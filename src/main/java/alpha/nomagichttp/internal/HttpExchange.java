@@ -20,7 +20,7 @@ import alpha.nomagichttp.message.Response;
 import alpha.nomagichttp.util.DummyScopedValue;
 
 import java.io.IOException;
-import java.nio.channels.ClosedByInterruptException;
+import java.nio.channels.ClosedChannelException;
 import java.util.Collection;
 import java.util.NoSuchElementException;
 import java.util.Optional;
@@ -382,18 +382,14 @@ final class HttpExchange
             closeChannel("thread interrupted");
             throw e;
         }
-        // TODO: Currently we are assuming this comes from our channel. Mark
+        // TODO: Currently we are assuming this comes from our channel read. Mark
         //       this exception; I/O errors from app code we must try to resolve
-        //       lol. Also update code comment in DefaultClientChannel.
-        if (e instanceof ClosedByInterruptException) {
-            if (!server.isRunning()) {
-                // This we expect; all servers stop at some point lol
-                closeChannel("the application stopped the server");
-            } else {
-                // Only logged if either stream is open; should never happen
-                closeChannel(WARNING,
-                      "the ClientChannel API was not used to close the child");
-            }
+        //       lol. Also update code comment in DefaultClientChannel, and test
+        //       cases in ServerLifeCycleTest.
+        if (e instanceof ClosedChannelException &&
+            !child.isInputOpen() && child.isOutputOpen() &&
+            !server.isRunning()) {
+            closeChannel("the application stopped the server");
             throw e;
         }
         // Most likely, the client closed his output (reader EOS)

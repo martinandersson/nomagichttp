@@ -405,7 +405,7 @@ public interface HttpServer extends RouteRegistry, ActionRegistry
      * Closes the port listening for client connections.<p>
      * 
      * This method will cause all client connections that are currently not
-     * being used to close and signal all active HTTP exchanges to close the
+     * being used to close and signals all active HTTP exchanges to close the
      * underlying client connection after the final response. This is also known
      * as a graceful shutdown.<p>
      * 

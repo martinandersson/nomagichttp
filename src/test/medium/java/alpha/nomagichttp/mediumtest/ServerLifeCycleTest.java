@@ -8,13 +8,21 @@ import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
 import java.net.ConnectException;
+import java.time.Duration;
+import java.time.Instant;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Future;
 import java.util.concurrent.Semaphore;
 
+import static alpha.nomagichttp.handler.RequestHandler.GET;
 import static alpha.nomagichttp.handler.RequestHandler.POST;
 import static alpha.nomagichttp.message.Responses.text;
+import static alpha.nomagichttp.testutil.LogRecords.rec;
 import static alpha.nomagichttp.testutil.TestClient.CRLF;
+import static alpha.nomagichttp.testutil.TestRequests.get;
+import static java.lang.System.Logger.Level.DEBUG;
+import static java.time.Duration.ofSeconds;
+import static java.time.Instant.now;
 import static java.util.concurrent.Executors.newVirtualThreadPerTaskExecutor;
 import static java.util.concurrent.ForkJoinPool.commonPool;
 import static java.util.concurrent.TimeUnit.SECONDS;
@@ -32,7 +40,7 @@ import static org.assertj.core.api.AssertionsForClassTypes.assertThatThrownBy;
 class ServerLifeCycleTest extends AbstractRealTest
 {
     @Test
-    void simpleStartStop_async() throws IOException, InterruptedException {
+    void startStop_async() throws IOException, InterruptedException {
         // Implicit startAsync() + getPort()
         server();
         // Can open connection
@@ -45,7 +53,7 @@ class ServerLifeCycleTest extends AbstractRealTest
     
     // Without the superclass support; asserting less
     @Test
-    void simpleStartStop_block() throws InterruptedException, IOException {
+    void startStop_block() throws InterruptedException, IOException {
         var server = HttpServer.create();
         var latch = new CountDownLatch(1);
         Future<Void> fut;
@@ -118,8 +126,81 @@ class ServerLifeCycleTest extends AbstractRealTest
         assertNewConnectionIsRejected();
     }
     
+    @Test
+    void serverStop_exchangeNotActive() throws IOException, InterruptedException {
+        server();
+        try (var conn = client().openConnection()) {
+            // Wait for the server to save the child reference in children.
+            // Otherwise, the thread stopping may not observe and close the
+            // inactive child, which would cause the server-stop to complete
+            // after 1 second, which is tested in the next test cases.
+            logRecorder().assertAwaitChildAccept();
+            Instant before = now();
+            stopServer();
+            // Stopping should be completed more or less instantaneously
+            assertThat(Duration.between(before, now()))
+                .isLessThan(ofSeconds(1));
+            assertNewConnectionIsRejected();
+            logRecorder().assertThatLogContainsOnlyOnce(
+                // DefaultServer closes the channel directly, circumventing the state of DefaultClientChannel
+                rec(DEBUG, "Exchange did not start; closing inactive child."),
+                // HttpExchange depends on the output stream to [falsely] remain open, to identify this cause
+                rec(DEBUG, "Closing the channel because the application stopped the server."));
+            // TODO: Should assertThatNoWarningOrErrorIsLogged(),
+            //       but said method requires the server to already be running lol.
+        }
+    }
+    
+    @Test
+    void serverStop_timesOut_handlerStalled() throws IOException, InterruptedException {
+        var stopServer = new Semaphore(0);
+        server().add("/", GET().apply(req -> {
+            stopServer.release();
+            SECONDS.sleep(2);
+            throw new AssertionError("Thread supposed to be interrupted");
+        }));
+        try (var conn = client().openConnection()) {
+            client().write(get());
+            stopServer.acquire();
+            Instant before = now();
+            stopServer();
+            // Stopping completes after a 1-second graceful period
+            assertThat(Duration.between(before, now()))
+                .isGreaterThanOrEqualTo(ofSeconds(1));
+            // The log does not say "the application stopped the server",
+            // because the server does not investigate nor make assumptions why
+            // the thread was interrupted.
+            logRecorder().assertThatLogContainsOnlyOnce(
+                rec(DEBUG, "Closing the channel because thread interrupted."));
+            // TODO: Should assertThatNoWarningOrErrorIsLogged()
+        }
+    }
+    
+    @Test
+    void serverStop_timesOut_clientStalled() throws IOException, InterruptedException {
+        var stopServer = new Semaphore(0);
+        server().add("/", POST().apply(req -> {
+            stopServer.release();
+            req.body().bytes();
+            throw new AssertionError("XXX");
+        }));
+        try (var conn = client().openConnection()) {
+            client().write(
+                "POST / HTTP/1.1"     + CRLF +
+                "Content-Length: 999" + CRLF + CRLF);
+            stopServer.acquire();
+            Instant before = now();
+            stopServer();
+            assertThat(Duration.between(before, now()))
+                .isGreaterThanOrEqualTo(ofSeconds(1));
+            logRecorder().assertThatLogContainsOnlyOnce(
+                rec(DEBUG, "Closing the channel because the application stopped the server."));
+            // TODO: Should assertThatNoWarningOrErrorIsLogged()
+        }
+    }
+    
     private void assertNewConnectionIsRejected() {
-        TestClient client = new TestClient(serverPort());
+        var client = new TestClient(serverPort());
         // On Windows 10, msg is "Connection refused: connect"
         // On Ubuntu 20.04, msg is "Connection refused"
         assertThatThrownBy(client::openConnection)

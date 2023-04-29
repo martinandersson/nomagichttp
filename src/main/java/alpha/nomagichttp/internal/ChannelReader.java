@@ -7,6 +7,7 @@ import alpha.nomagichttp.message.Request;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.nio.channels.Channel;
 import java.nio.channels.ReadableByteChannel;
 import java.util.NoSuchElementException;
 
@@ -63,6 +64,8 @@ public final class ChannelReader implements ByteBufferIterable
     private final ByteBuffer dst;
     // Not final because can be switched to EOS
     private       ByteBuffer view;
+    private boolean started;
+    private volatile boolean startedVol;
     private final ByteBufferIterator it;
     // Number of bytes remaining to be read from the upstream
     private long desire;
@@ -101,6 +104,38 @@ public final class ChannelReader implements ByteBufferIterable
         this.view   = view != null ? view : dst.asReadOnlyBuffer();
         this.it     = new IteratorImpl();
         this.desire = UNLIMITED;
+    }
+    
+    /**
+     * Returns the underlying child.
+     * 
+     * @return
+     */
+    Channel getChild() {
+        return src;
+    }
+    
+    /**
+     * Returns {@code true} if no read operation has completed.<p>
+     * 
+     * If this method returns {@code true}, then the connection is considered
+     * inactive/not being in use, and it is safe to close the child during a
+     * graceful shutdown of the server.<p>
+     * 
+     * If this method returns {@code false}, then at least one read operation
+     * completed, successfully or otherwise. In this case, the server must not
+     * close the child during a graceful shutdown, but let the exchange run to
+     * its natural completion.<p>
+     * 
+     * The state of the child's input and output streams, and the dismissed
+     * state of this reader, are irrelevant.<p>
+     * 
+     * The read is volatile.
+     * 
+     * @return see JavaDoc
+     */
+    boolean hasNotStarted() {
+        return !startedVol;
     }
     
     /**
@@ -281,6 +316,10 @@ public final class ChannelReader implements ByteBufferIterable
                 forceDismiss();
                 shutdownInput("Read operation failed");
                 throw t;
+            } finally {
+                if (!started) {
+                    startedVol = started = true;
+                }
             }
         }
         
