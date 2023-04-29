@@ -404,16 +404,15 @@ public interface HttpServer extends RouteRegistry, ActionRegistry
     /**
      * Closes the port listening for client connections.<p>
      * 
-     * This method will cause all client connections that are currently not
-     * being used to close and signals all active HTTP exchanges to close the
-     * underlying client connection after the final response. This is also known
-     * as a graceful shutdown.<p>
+     * This method will also close all client connections that are not being
+     * used, and signal active HTTP exchanges to close the client connection
+     * after the final response.<p>
      * 
-     * The thread invoking this method and the thread blocked in {@code start()}
-     * will only return when the last client connection is closed. Which one
-     * returns first is not defined.<p>
+     * The thread invoking this method and the thread blocked in
+     * {@code start()}, will only return when the last client connection is
+     * closed. Which thread return first is not defined.<p>
      * 
-     * Using this method can in theory result in both threads waiting forever
+     * Using this method can, in theory, result in both threads waiting forever
      * for the completion of HTTP exchanges (the server guards against stale
      * exchanges not making any progress but does not impose a maximum runtime
      * length). Consider using one of the other {@code stop} methods.<p>
@@ -431,39 +430,12 @@ public interface HttpServer extends RouteRegistry, ActionRegistry
      * Closes the port listening for client connections.<p>
      * 
      * Equivalent to {@link #stop()}, except the graceful period — during which
-     * the threads awaiting an orderly close of all client connections — ends
-     * around the time of the deadline, at which point all client connections
-     * will close.<p>
+     * the threads await an orderly close of all client connections — ends after
+     * the given timeout, at which point all client connections will close.<p>
      * 
-     * This method has no observable effect if the server is stopping or has
-     * already stopped.
-     * 
-     * @param deadline when to force-close all client connections
-     * 
-     * @throws NullPointerException
-     *             if {@code deadline} is {@code null}
-     * @throws IOException
-     *             if an I/O error occurs
-     * @throws InterruptedException
-     *             if interrupted while waiting on client connections to terminate
-     */
-    // TODO: "No observable effect" because the new deadline will always be set.
-    //       But not sure this is such a good idea. Just don't; the thread that
-    //       closes also set his deadline. Then we change to NOP in this JavaDoc.
-    void stop(Instant deadline) throws IOException, InterruptedException;
-    
-    /**
-     * Closes the port listening for client connections.<p>
-     * 
-     * Equivalent to {@link #stop()}, except the graceful period — during which
-     * the threads awaiting an orderly close of all client connections — ends
-     * after a given timeout, at which point all client connections will
-     * close.<p>
-     * 
-     * Technically, this method is never NOP, because it will always set a new
-     * deadline (and overwrite a previously set deadline/timeout). However, this
-     * in turn will only have a noticeable effect if the server hasn't already
-     * stopped.
+     * This method has no effect if the server has already stopped. If the
+     * server is in the process of stopping, then this method could, in theory,
+     * overwrite a previously set timeout.
      * 
      * @param timeout when to force-close all client connections
      * 
@@ -479,11 +451,32 @@ public interface HttpServer extends RouteRegistry, ActionRegistry
     /**
      * Closes the port listening for client connections.<p>
      * 
-     * This method will cause all client connections to immediately close,
-     * regardless if the connection is being used by an active HTTP exchange.<p>
+     * Equivalent to {@link #stop(Duration)}, except the end of the graceful
+     * period is specified using an {@link Instant}.
      * 
-     * If the server has not started, or it has already stopped, then this
-     * method is NOP.
+     * @param deadline when to force-close all client connections
+     * 
+     * @throws NullPointerException
+     *             if {@code deadline} is {@code null}
+     * @throws IOException
+     *             if an I/O error occurs
+     * @throws InterruptedException
+     *             if interrupted while waiting on client connections to terminate
+     */
+    void stop(Instant deadline) throws IOException, InterruptedException;
+    
+    /**
+     * Closes the port listening for client connections.<p>
+     * 
+     * This method will also close all client connections, regardless if the
+     * connection is being used by an active HTTP exchange.<p>
+     * 
+     * This method has no effect if the server has already stopped. If the
+     * server is in the process of stopping, then this method will void a
+     * previously set deadline for a graceful period.<p>
+     * 
+     * As is the case with all {@code stop} methods; this method will only
+     * return once all client connections have closed.
      * 
      * @throws IOException
      *             if an I/O error occurs

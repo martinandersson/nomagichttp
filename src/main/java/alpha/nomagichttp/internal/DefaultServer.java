@@ -72,7 +72,7 @@ public final class DefaultServer implements HttpServer
     private       Instant started;
     // Memory consistency not specified between
     //     ServerSocketChannel.close() and AsynchronousCloseException
-    private volatile Object waitForChildren;
+    private volatile Instant waitForChildren;
     
     /**
      * Constructs a {@code DefaultServer}.
@@ -211,8 +211,8 @@ public final class DefaultServer implements HttpServer
                     }), child);
                 }
             } finally {
-                // Must signal children we're closing down
-                close();
+                closeParent();
+                closeInactiveChildren();
                 exit(scope);
             }
         } finally {
@@ -250,67 +250,8 @@ public final class DefaultServer implements HttpServer
         }
     }
     
-    /** Shutdown then join, or joinUntil graceful timeout. */
-    private void exit(StructuredTaskScope<?> scope) throws InterruptedException {
-        Object obj = waitForChildren;
-        if (obj == null) {
-            // On shutdown, children should observe:
-            //     java.net.ClosedByInterruptException
-            LOG.log(DEBUG, "No graceful period; shutting down scope.");
-            scope.shutdown();
-            scope.join();
-        } else {
-            if (obj instanceof Duration d) {
-                // joinUntil() is going to reverse this lol
-                obj = now().plus(d);
-            }
-            assert obj.getClass() == Instant.class;
-            try {
-                scope.joinUntil((Instant) obj);
-                LOG.log(DEBUG, "All exchanges finished within the graceful period.");
-            } catch (TimeoutException ignored) {
-                LOG.log(DEBUG, "Graceful deadline expired; shutting down scope.");
-                // Enclosing try-with-resources > scope.close() > scope.shutdown()
-            }
-        }
-    }
-    
-    @Override
-    public void stop() throws IOException, InterruptedException {
-        stop(Instant.MAX);
-    }
-    
-    @Override
-    public void stop(Instant deadline)
-            throws IOException, InterruptedException {
-        waitForChildren = requireNonNull(deadline);
-        closeAndAwaitChildren();
-    }
-    
-    @Override
-    public void stop(Duration timeout)
-            throws IOException, InterruptedException {
-        waitForChildren = requireNonNull(timeout);
-        closeAndAwaitChildren();
-    }
-    
-    // Aliasing for correct semantics and a stacktrace that makes sense for app developer
-    @Override
-    public void kill()
-            throws IOException, InterruptedException {
-        waitForChildren = Instant.now();
-        closeAndAwaitChildren();
-    }
-    
-    private void closeAndAwaitChildren()
-            throws IOException, InterruptedException {
-        if (close()) {
-            terminated.await();
-        }
-    }
-    
-    private boolean close() throws IOException {
-        boolean success = this.parent.dropThrowsX(channel -> {
+    private void closeParent() throws IOException {
+        this.parent.dropThrowsX(channel -> {
             try {
                 channel.close();
                 LOG.log(INFO, () -> "Closed server channel: " + channel);
@@ -321,10 +262,6 @@ public final class DefaultServer implements HttpServer
                 events().dispatch(HttpServerStopped.INSTANCE, now(), started);
             }
         });
-        if (success) {
-            closeInactiveChildren();
-        }
-        return success;
     }
     
     /**
@@ -352,6 +289,55 @@ public final class DefaultServer implements HttpServer
                 api.close();
             }
         });
+    }
+    
+    /** Shutdown then join, or joinUntil graceful timeout. */
+    private void exit(StructuredTaskScope<?> scope) throws InterruptedException {
+        var wfc = waitForChildren;
+        if (wfc == null) {
+            // On shutdown, children should observe:
+            //     java.net.ClosedByInterruptException
+            LOG.log(DEBUG, "No graceful period; shutting down scope.");
+            scope.shutdown();
+            scope.join();
+        } else {
+            try {
+                scope.joinUntil(wfc);
+                LOG.log(DEBUG, "All exchanges finished within the graceful period.");
+            } catch (TimeoutException ignored) {
+                LOG.log(DEBUG, "Graceful deadline expired; shutting down scope.");
+                // Enclosing try-with-resources > scope.close() > scope.shutdown()
+            }
+        }
+    }
+    
+    @Override
+    public void stop() throws IOException, InterruptedException {
+        stop(Instant.MAX);
+    }
+    
+    @Override
+    public void stop(Duration timeout)
+            throws IOException, InterruptedException {
+        stop(now().plus(timeout));
+    }
+    
+    @Override
+    public void stop(Instant deadline)
+            throws IOException, InterruptedException {
+        waitForChildren = requireNonNull(deadline);
+        closeParent();
+        terminated.await();
+    }
+    
+    @Override
+    public void kill()
+            throws IOException, InterruptedException {
+        waitForChildren = null;
+        closeParent();
+        // No rolling back the kill switch 😂
+        children.forEach((api, reader) -> api.close());
+        terminated.await();
     }
     
     @Override
