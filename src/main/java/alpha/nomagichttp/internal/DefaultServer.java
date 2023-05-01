@@ -191,6 +191,7 @@ public final class DefaultServer implements HttpServer
         try (var scope = new StructuredTaskScope<>()) {
             try {
                 runAcceptLoop1(parent, scope);
+                throw newDeadCode();
             } finally {
                 closeParent();
                 closeInactiveChildren();
@@ -200,14 +201,13 @@ public final class DefaultServer implements HttpServer
             terminated.countDown();
             assert children.isEmpty();
         }
-        throw newDeadCode();
     }
     
     private void runAcceptLoop1(
             ServerSocketChannel parent, StructuredTaskScope<?> scope)
             throws IOException
     {
-        // The loop can not complete without throwing an exception
+        // The loop can not complete without throwing an exception (from accept)
         for (;;) {
             var child = parent.accept();
             // Reader and writer depend on blocking mode for correct behavior
@@ -227,11 +227,11 @@ public final class DefaultServer implements HttpServer
         }
     }
     
-    private void handleChild(SocketChannel ch) throws IOException {
+    private void handleChild(SocketChannel ch) {
         final var api = new DefaultClientChannel(ch);
         var r = new ChannelReader(ch);
         children.put(api, r);
-        try (ch) {
+        try {
             LOG.log(DEBUG, () -> "Accepted child: " + ch);
             // Exchange loop; breaks when a new exchange should not begin
             for (;;) {
@@ -252,7 +252,10 @@ public final class DefaultServer implements HttpServer
             }
         } finally {
             children.remove(api);
-            LOG.log(DEBUG, () -> "Closed child: " + ch);
+            if (api.isInputOpen() || api.isOutputOpen()) {
+                LOG.log(DEBUG, () -> "Closing child: " + ch);
+                api.close();
+            }
         }
     }
     

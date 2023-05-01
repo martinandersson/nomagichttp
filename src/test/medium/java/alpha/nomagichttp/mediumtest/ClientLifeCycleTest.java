@@ -24,6 +24,7 @@ import java.util.logging.LogRecord;
 import static alpha.nomagichttp.handler.RequestHandler.GET;
 import static alpha.nomagichttp.handler.RequestHandler.POST;
 import static alpha.nomagichttp.message.Responses.noContent;
+import static alpha.nomagichttp.testutil.LogRecords.rec;
 import static alpha.nomagichttp.testutil.TestClient.CRLF;
 import static alpha.nomagichttp.testutil.TestRequests.get;
 import static alpha.nomagichttp.util.ScopedValues.channel;
@@ -63,7 +64,7 @@ class ClientLifeCycleTest extends AbstractRealTest
                 "HTTP/1.1 204 No Content" + CRLF +
                 "Connection: close"       + CRLF + CRLF);
             
-            logRecorder().assertAwaitChildClose();
+            logRecorder().assertAwaitClosingChild();
         }
     }
     
@@ -97,33 +98,19 @@ class ClientLifeCycleTest extends AbstractRealTest
             // (it is the test worker thread that logs this message)
             logRecorder().assertAwait(
                     DEBUG, "EOS; server closed my read stream.");
-            logRecorder().assertAwaitChildClose();
+            if (streamOnly) {
+                logRecorder().assertAwaitClosingChild();
+            } // Else no reason for DefaultServer.handleChild to call close (again)
         }
-        
         // Implicit assert that no error was delivered to the error handler
     }
     
     // Client immediately closes the channel; no error handler and no warning
     @Test
     void clientClosesChannel_serverReceivedNoBytes() throws IOException, InterruptedException {
-        /*
-         Just for the "record" (no pun intended), the log is as of 2023-03-22
-         something like this:
-           
-           {tstamp} | Test worker | INFO | {pkg}.DefaultServer lambda$openOrFail$8 | Opened server channel: {...}
-           {tstamp} | dead-35     | FINE | {pkg}.DefaultServer runAcceptLoop0 | Accepted child: {...}
-           {tstamp} | Test worker | FINE | {pkg}.TestClient closeChannel | Closed test-client channel.
-           {tstamp} | Test worker | INFO | {pkg}.DefaultServer lambda$close$17 | Closed server channel: {...}
-           {tstamp} | dead-44     | FINE | {pkg}.HttpExchange begin0 | Parsing the request
-           {tstamp} | dead-44     | FINE | {pkg}.ChannelReader shutdownInput | EOS, shutting down input stream.
-           {tstamp} | dead-44     | FINE | {pkg}.HttpExchange closeChannel | Client aborted the exchange; closing the channel.
-           {tstamp} | dead-44     | FINE | {pkg}.DefaultServer handleChild | Closed child: {...}
-         */
         client().openConnection().close();
-        // This one is pretty important for the test, hence the assert
         logRecorder().assertAwait(
               DEBUG, "Closing the channel because client aborted the exchange.");
-        logRecorder().assertAwaitChildClose();
         assertThatNoWarningOrErrorIsLogged();
     }
     
@@ -201,12 +188,13 @@ class ClientLifeCycleTest extends AbstractRealTest
     
     private void assert400BadRequestNoWarning()
             throws InterruptedException, IOException {
-        logRecorder()
-            .assertAwait(DEBUG, "Sent 400 (Bad Request)");
-        logRecorder()
-            .assertAwaitChildClose();
+        logRecorder().assertAwait(
+            DEBUG, "Sent 400 (Bad Request)");
         // No warnings or errors!
         assertThatNoWarningOrErrorIsLogged();
+        logRecorder().assertThatLogContainsOnlyOnce(
+            rec(DEBUG, "EOS, shutting down input stream."),
+            rec(DEBUG, "Saw \"Connection: close\", shutting down output."));
     }
     
     // Broken pipe always end the exchange, no error handling no logging
@@ -320,11 +308,6 @@ class ClientLifeCycleTest extends AbstractRealTest
             send.release();
             var rsp = client().readTextUntilEOS();
             assert204NoContent(rsp, addConnCloseHeader);
-            // Either server closed channel's output,
-            // or server will notice client closed server's input
-            // (in the next exchange) — and so, we can await child closure
-            // before test client fully closes.
-            logRecorder().assertAwaitChildClose();
         }
         assertHttpExchangeCompletes(addConnCloseHeader);
     }
@@ -348,13 +331,11 @@ class ClientLifeCycleTest extends AbstractRealTest
             client().write(
                 "POST / HTTP/1.1"   + CRLF +
                 "Content-Length: 5" + CRLF);
-            // SIMPLIFY
             if (addConnCloseHeader) {
                 client().write(
-                    "Connection: close" + CRLF + CRLF);
-            } else {
-                client().write(CRLF);
+                    "Connection: close" + CRLF);
             }
+            client().write(CRLF);
             var rsp = client().readTextUntilNewlines();
             assert204NoContent(rsp, addConnCloseHeader);
             // Done reading, but not done sending
@@ -362,14 +343,6 @@ class ClientLifeCycleTest extends AbstractRealTest
             // Server is still able to receive this:
             client().write("Body!");
             assertThat(received.poll(1, SECONDS)).isEqualTo("Body!");
-            // Client's shut down of input is not observed by the server, as
-            // there is no pending write operation after the response.
-            if (addConnCloseHeader) {
-                logRecorder().assertAwaitChildClose();
-            }
-        }
-        if (!addConnCloseHeader) {
-            logRecorder().assertAwaitChildClose();
         }
         assertHttpExchangeCompletes(addConnCloseHeader);
     }
@@ -384,11 +357,11 @@ class ClientLifeCycleTest extends AbstractRealTest
     
     private void assertHttpExchangeCompletes(boolean requestHadConnClose)
             throws IOException, InterruptedException {
-        // Reason why exchange ended, is
+        // Reason why exchange ended, is because
         logRecorder().assertAwait(DEBUG, requestHadConnClose ?
-            // because server's writer shut down the output stream, or
-            "Channel is half-closed or closed, a new HTTP exchange will not begin." :
-            // the next logical exchange actually started, but immediately aborted
+            // ResponseProcessor half-closed, causing DefaultServer to close
+            "Closing child: java.nio.channels.SocketChannel[connected oshut local=" :
+            // or the next exchange actually started, but immediately aborted
             "Closing the channel because client aborted the exchange.");
         assertThatNoWarningOrErrorIsLogged();
     }
@@ -420,7 +393,7 @@ class ClientLifeCycleTest extends AbstractRealTest
             // Client send the rest
             client().write("Hi");
             // Server proactively close the child before we do
-            logRecorder().assertAwaitChildClose();
+            logRecorder().assertAwaitClosingChild();
         }
         assertThat(received.poll(1, SECONDS)).isEqualTo("Hi");
     }

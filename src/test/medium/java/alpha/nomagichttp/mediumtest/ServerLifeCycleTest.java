@@ -41,9 +41,7 @@ class ServerLifeCycleTest extends AbstractRealTest
 {
     @Test
     void startStop_async() throws IOException, InterruptedException {
-        // Implicit startAsync() + getPort()
-        server();
-        // Can open connection
+        // Can open connection (implicit HttpServer.startAsync)
         client().openConnection().close();
         // Implicit stop()
         assertThatNoWarningOrErrorIsLogged();
@@ -117,7 +115,7 @@ class ServerLifeCycleTest extends AbstractRealTest
                 "Hi!");
             
             // Not dependent on the closure of client's connection
-            logRecorder().assertAwaitChildClose();
+            logRecorder().assertAwaitClosingChild();
         }
         
         assertThat(fut.get(1, SECONDS)).isNull();
@@ -127,7 +125,6 @@ class ServerLifeCycleTest extends AbstractRealTest
     
     @Test
     void serverStop_inactiveExchangeAborts() throws IOException, InterruptedException {
-        server();
         try (var conn = client().openConnection()) {
             // Wait for the server to save the child reference in children.
             // Otherwise, the thread stopping may not observe and close the

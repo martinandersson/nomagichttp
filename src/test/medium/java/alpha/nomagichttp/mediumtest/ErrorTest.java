@@ -45,6 +45,7 @@ import static alpha.nomagichttp.message.Responses.noContent;
 import static alpha.nomagichttp.message.Responses.processing;
 import static alpha.nomagichttp.message.Responses.status;
 import static alpha.nomagichttp.message.Responses.text;
+import static alpha.nomagichttp.testutil.LogRecords.rec;
 import static alpha.nomagichttp.testutil.TestClient.CRLF;
 import static alpha.nomagichttp.testutil.TestRequests.get;
 import static alpha.nomagichttp.testutil.TestRequests.post;
@@ -825,7 +826,7 @@ class ErrorTest extends AbstractRealTest
     }
     
     @Test
-    void Special_maxErrorResponses() throws IOException, InterruptedException {
+    void Special_maxErrorResponses() throws IOException {
         server().add("/", GET().apply(req -> badRequest().toBuilder()
                 // This header would have caused the server to close the connection,
                 // but we want to run many "failed" responses
@@ -850,7 +851,8 @@ class ErrorTest extends AbstractRealTest
             LOG.log(INFO, "Running last.");
             sendBadRequest.run();
             
-            logRecorder().assertAwaitChildClose();
+            logRecorder().assertThatLogContainsOnlyOnce(rec(
+                DEBUG, "Max number of error responses reached, closing channel."));
             assertTrue(client().serverClosedOutput());
             assertTrue(client().serverClosedInput());
         }
@@ -866,12 +868,11 @@ class ErrorTest extends AbstractRealTest
         }));
         String rsp = client().writeReadTextUntilNewlines(
             "GET / HTTP/1.1"          + CRLF + CRLF);
-        // First one succeeds
+        // The first one succeeded
         assertThat(rsp).isEqualTo(
             "HTTP/1.1 204 No Content" + CRLF + CRLF);
-        logRecorder()
-            .assertAwaitChildClose();
-        // Second one causes some problems
+        stopServer();
+        // The second one caused some problems
         // TODO: See below, is repeated in next test case
         var rec = logRecorder().take(
             ERROR, """

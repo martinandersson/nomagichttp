@@ -535,15 +535,16 @@ public final class Logging
         }
         
         /**
-         * Assertively await on the server log to indicate a child was closed.
+         * Assertively await on the server log to indicate a child is being
+         * closed.
          * 
          * @throws InterruptedException
          *             if the current thread is interrupted while waiting
          * @throws AssertionError
          *             on timeout (record not observed)
          */
-        public void assertAwaitChildClose() throws InterruptedException {
-            assertAwait(DEBUG, "Closed child:");
+        public void assertAwaitClosingChild() throws InterruptedException {
+            assertAwait(DEBUG, "Closing child:");
         }
         
         /**

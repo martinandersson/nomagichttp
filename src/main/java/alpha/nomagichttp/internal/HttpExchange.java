@@ -174,9 +174,7 @@ final class HttpExchange
         }
         handleRequest(req);
         if (!child.isInputOpen() || !child.isOutputOpen()) {
-            LOG.log(DEBUG, """
-                    Channel is half-closed or closed, \
-                    a new HTTP exchange will not begin.""");
+            // DefaultServer will log "Closing child"
             return;
         }
         assert writer.wroteFinal();
