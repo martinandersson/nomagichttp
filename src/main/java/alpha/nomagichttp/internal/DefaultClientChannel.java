@@ -72,16 +72,6 @@ final class DefaultClientChannel implements ClientChannel
     // --------------
     
     @Override
-    public boolean isInputOpen() {
-        return !inputClosed;
-    }
-    
-    @Override
-    public boolean isOutputOpen() {
-        return !outputClosed;
-    }
-    
-    @Override
     public void shutdownInput() {
         if (inputClosed) {
             return;
@@ -118,6 +108,31 @@ final class DefaultClientChannel implements ClientChannel
                     "Not propagating this exception; the " +
                     method + " operation is considered successful.", e);
         }
+    }
+    
+    @Override
+    public boolean isInputOpen() {
+        return !inputClosed;
+    }
+    
+    @Override
+    public boolean isOutputOpen() {
+        return !outputClosed;
+    }
+    
+    @Override
+    public boolean isAnyStreamOpen() {
+        return isInputOpen() || isOutputOpen();
+    }
+    
+    @Override
+    public boolean isBothStreamsOpen() {
+        return isInputOpen() && isOutputOpen();
+    }
+    
+    @Override
+    public boolean isClosed() {
+        return inputClosed && outputClosed;
     }
     
     // WRITER

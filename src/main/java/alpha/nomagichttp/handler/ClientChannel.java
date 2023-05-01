@@ -31,6 +31,10 @@ import static java.util.Objects.requireNonNull;
  * explicitly abort an exchange, or to stop the {@linkplain Config#timeoutRead()
  * read timeout} when sending long-lasting streams.<p>
  * 
+ * None of the {@code is} methods probe the channel's actual status. These
+ * methods read non-volatile state which is set when a stream is shutdown and/or
+ * the channel closes.<p>
+ * 
  * None of the shutdown/close methods in this class throws {@link IOException},
  * although the underlying channel do. It is assumed that there is nothing the
  * application can or would like to do about the exception, nor does such an
@@ -136,28 +140,6 @@ public interface ClientChannel extends ChannelWriter, AttributeHolder
     }
     
     /**
-     * Returns {@code true} if the input stream is open.<p>
-     * 
-     * This method does not probe the channel's actual status. It simply reads a
-     * local flag set by the {@link #shutdownInput()} and {@link #close()}
-     * methods.
-     * 
-     * @return see JavaDoc
-     */
-    boolean isInputOpen();
-    
-    /**
-     * Returns {@code true} if the output stream is open.<p>
-     * 
-     * This method does not probe the channel's actual status. It simply reads a
-     * local flag set by the {@link #shutdownOutput()} and {@link #close()}
-     * methods.
-     * 
-     * @return see JavaDoc
-     */
-    boolean isOutputOpen();
-    
-    /**
      * Shutdown the input stream.<p>
      * 
      * A purist developer may be tempted to use this method after having read a
@@ -189,9 +171,51 @@ public interface ClientChannel extends ChannelWriter, AttributeHolder
      * prefer. Only gaming enthusiasts should be using this method.<p>
      * 
      * Is NOP if channel is already closed.
-     * 
-     * @see #shutdownInput()
-     * @see #shutdownOutput()
      */
     void close();
+    
+    /**
+     * Returns {@code true} if the input stream is open.
+     * 
+     * @return see JavaDoc
+     * 
+     * @see ClientChannel
+     */
+    boolean isInputOpen();
+    
+    /**
+     * Returns {@code true} if the output stream is open.
+     * 
+     * @return see JavaDoc
+     * 
+     * @see ClientChannel
+     */
+    boolean isOutputOpen();
+    
+    /**
+     * Returns {@code true} if the input- and/or output stream is open.
+     * 
+     * @return see JavaDoc.
+     * 
+     * @see ClientChannel
+     */
+    boolean isAnyStreamOpen();
+    
+    /**
+     * Returns {@code true} if the input- and output streams are both open.
+     * 
+     * @return see JavaDoc.
+     * 
+     * @see ClientChannel
+     */
+    boolean isBothStreamsOpen();
+    
+    /**
+     * Returns {@code true} if the input- and output streams are both shut down.
+     * 
+     * @return see JavaDoc.
+     * 
+     * @see ClientChannel
+     */
+    boolean isClosed();
 }

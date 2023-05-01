@@ -807,7 +807,7 @@ class ErrorTest extends AbstractRealTest
     @Test
     void Special_requestBodyConsumerFails() throws IOException, InterruptedException {
         onErrorAssert(OopsException.class, ch ->
-            assertThat(ch.isInputOpen() && ch.isOutputOpen()).isTrue());
+            assertThat(ch.isBothStreamsOpen()).isTrue());
         server().add("/", POST().apply(req -> {
             // Read one byte before crash
             req.body().iterator().next().get();

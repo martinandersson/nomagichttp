@@ -243,7 +243,7 @@ public final class DefaultServer implements HttpServer
                 r.dismiss();
                 w.dismiss();
                 // ResponseProcessor will set "Connection: close" if !isRunning()
-                if (api.isInputOpen() && api.isOutputOpen()) {
+                if (api.isBothStreamsOpen()) {
                     r = r.newReader();
                     children.put(api, r);
                 } else {
@@ -252,7 +252,7 @@ public final class DefaultServer implements HttpServer
             }
         } finally {
             children.remove(api);
-            if (api.isInputOpen() || api.isOutputOpen()) {
+            if (api.isAnyStreamOpen()) {
                 LOG.log(DEBUG, () -> "Closing child: " + ch);
                 api.close();
             }

@@ -351,7 +351,7 @@ final class DefaultChannelWriter implements ChannelWriter
         if (bag.closeChannel()) {
             dismiss();
             var ch = channel();
-            if (ch.isInputOpen() || ch.isOutputOpen()) {
+            if (ch.isAnyStreamOpen()) {
                 LOG.log(DEBUG, """
                         Max number of error responses reached, \
                         closing channel.""");

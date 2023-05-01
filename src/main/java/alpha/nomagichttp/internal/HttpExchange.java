@@ -156,7 +156,7 @@ final class HttpExchange
         try {
             begin0();
         } catch (Exception e) {
-            if (child.isInputOpen() && child.isOutputOpen()) {
+            if (child.isBothStreamsOpen()) {
                 throw new AssertionError(e);
             }
             // Else considered handled and ignored
@@ -173,13 +173,11 @@ final class HttpExchange
             return;
         }
         handleRequest(req);
-        if (!child.isInputOpen() || !child.isOutputOpen()) {
-            // DefaultServer will log "Closing child"
-            return;
+        if (child.isBothStreamsOpen()) {
+            assert writer.wroteFinal();
+            tryDiscardRequest(req, false)
+                .ifPresent(this::closeChannel);
         }
-        assert writer.wroteFinal();
-        tryDiscardRequest(req, false)
-            .ifPresent(this::closeChannel);
     }
     
     private RawRequest.Head parseHead() throws IOException {
@@ -557,14 +555,14 @@ final class HttpExchange
     }
     
     private void closeChannel(Level level, String why) {
-        if (child.isInputOpen() || child.isOutputOpen()) {
+        if (child.isAnyStreamOpen()) {
             LOG.log(level, () -> "Closing the channel because " + why + ".");
             child.close();
         }
     }
     
     private void closeChannel(Level level, String why, Exception exc) {
-        if (child.isInputOpen() || child.isOutputOpen()) {
+        if (child.isAnyStreamOpen()) {
             LOG.log(level, () -> why + " (closing channel).", exc);
             child.close();
         } else {
