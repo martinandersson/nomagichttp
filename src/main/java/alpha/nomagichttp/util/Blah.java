@@ -80,7 +80,7 @@ public final class Blah
      * 
      * @throws X if method throws
      */
-    public static <T, X extends Exception> T getOrCloseResource(
+    public static <T, X extends Exception> T getOrClose(
           Throwing.Supplier<? extends T, X> method,
           // TODO: AutoCloseable, then change close "this" to close "lck" in OfFile
           Closeable resource)
@@ -112,7 +112,7 @@ public final class Blah
      * 
      * @throws X if method throws
      */
-    public static <X extends Exception> void runOrCloseResource(
+    public static <X extends Exception> void runOrClose(
           Throwing.Runnable<X> method,
           Closeable resource)
           throws X

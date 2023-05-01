@@ -30,7 +30,7 @@ import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
 import static alpha.nomagichttp.util.Blah.addExactOrCap;
-import static alpha.nomagichttp.util.Blah.getOrCloseResource;
+import static alpha.nomagichttp.util.Blah.getOrClose;
 import static alpha.nomagichttp.util.Blah.throwsNoChecked;
 import static alpha.nomagichttp.util.Blah.toNanosOrMaxValue;
 import static alpha.nomagichttp.util.ByteBuffers.asArray;
@@ -484,8 +484,8 @@ public final class ByteBufferIterables
                 // call to next()
                 this.view = buf.asReadOnlyBuffer().position(BUF_SIZE);
                 this.lck = useLock ? readLock() : null;
-                this.ch = getOrCloseResource(() -> open(file, READ), this);
-                this.len = getOrCloseResource(ch::size, this);
+                this.ch = getOrClose(() -> open(file, READ), this);
+                this.len = getOrClose(ch::size, this);
                 this.count = 0;
             }
             

@@ -32,8 +32,8 @@ import java.util.concurrent.TimeoutException;
 import java.util.function.IntConsumer;
 
 import static alpha.nomagichttp.internal.VThreads.CHANNEL_BLOCKING;
-import static alpha.nomagichttp.util.Blah.getOrCloseResource;
-import static alpha.nomagichttp.util.Blah.runOrCloseResource;
+import static alpha.nomagichttp.util.Blah.getOrClose;
+import static alpha.nomagichttp.util.Blah.runOrClose;
 import static alpha.nomagichttp.util.DummyScopedValue.where;
 import static alpha.nomagichttp.util.ScopedValues.__CHANNEL;
 import static alpha.nomagichttp.util.ScopedValues.__HTTP_SERVER;
@@ -128,7 +128,7 @@ public final class DefaultServer implements HttpServer
         final var fut = new CompletableFuture<Void>();
         final ServerSocketChannel ch
                 = openOrFail(loopBackSystemPickedPort());
-        runOrCloseResource(() ->
+        runOrClose(() ->
             startVirtualThread(() -> {
                 try {
                     runAcceptLoop(ch);
@@ -138,7 +138,7 @@ public final class DefaultServer implements HttpServer
                 }
                 fut.completeExceptionally(newDeadCode());
         }), ch);
-        return getOrCloseResource(() ->
+        return getOrClose(() ->
             fut.whenComplete((isNull, thrFromLoop) -> {
                 try {
                     ch.close();
@@ -153,7 +153,7 @@ public final class DefaultServer implements HttpServer
         var ssc2 = this.parent.initThrowsX(() -> {
             var ssc1 = addr instanceof UnixDomainSocketAddress ?
                     open(UNIX) : open();
-            runOrCloseResource(() -> {
+            runOrClose(() -> {
                 assert ssc1.isBlocking() : CHANNEL_BLOCKING;
                 ssc1.bind(addr);
                 started = now();
@@ -212,7 +212,7 @@ public final class DefaultServer implements HttpServer
             var child = parent.accept();
             // Reader and writer depend on blocking mode for correct behavior
             assert child.isBlocking() : CHANNEL_BLOCKING;
-            runOrCloseResource(() -> scope.fork(() -> {
+            runOrClose(() -> scope.fork(() -> {
                 try {
                     runHttpExchanges(child);
                 } catch (Throwable t) {

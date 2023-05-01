@@ -25,7 +25,7 @@ import static alpha.nomagichttp.HttpConstants.StatusCode.isServerError;
 import static alpha.nomagichttp.HttpConstants.Version.HTTP_1_1;
 import static alpha.nomagichttp.handler.ClientChannel.tryAddConnectionClose;
 import static alpha.nomagichttp.internal.HttpExchange.skeletonRequest;
-import static alpha.nomagichttp.util.Blah.getOrCloseResource;
+import static alpha.nomagichttp.util.Blah.getOrClose;
 import static alpha.nomagichttp.util.Blah.throwsNoChecked;
 import static alpha.nomagichttp.util.ScopedValues.channel;
 import static alpha.nomagichttp.util.ScopedValues.httpServer;
@@ -101,7 +101,7 @@ final class ResponseProcessor
         Response mod1 = tryCloseNonPersistentConn(app, req, reqVer);
         final var upstream = mod1.body();
         final var it = upstream.iterator();
-        return getOrCloseResource(() -> {
+        return getOrClose(() -> {
             long len = upstream.length();
             final Response mod2 = tryChunkedEncoding(mod1, reqVer, len, it);
             ByteBufferIterator bodyToWrite = it;
