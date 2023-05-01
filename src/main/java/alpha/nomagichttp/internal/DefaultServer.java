@@ -214,7 +214,7 @@ public final class DefaultServer implements HttpServer
             assert child.isBlocking() : CHANNEL_BLOCKING;
             runOrCloseResource(() -> scope.fork(() -> {
                 try {
-                    handleChild(child);
+                    runHttpExchanges(child);
                 } catch (Throwable t) {
                     if (!(t instanceof Exception)) { // Throwable, Error
                         // Virtual threads do not log anything, we're more kind
@@ -227,7 +227,7 @@ public final class DefaultServer implements HttpServer
         }
     }
     
-    private void handleChild(SocketChannel ch) {
+    private void runHttpExchanges(SocketChannel ch) {
         final var api = new DefaultClientChannel(ch);
         var r = new ChannelReader(ch);
         children.put(api, r);
