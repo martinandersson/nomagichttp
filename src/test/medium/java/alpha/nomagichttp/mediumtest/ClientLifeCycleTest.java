@@ -401,7 +401,8 @@ class ClientLifeCycleTest extends AbstractRealTest
     // Server shuts down input after request, can still write response
     // TODO: Also with request body the app accesses after input shutdown: -1 or AsyncCloseExc?
     @Test
-    void intermittentStreamShutdown_serverInput() throws IOException, InterruptedException {
+    void intermittentStreamShutdown_serverInput()
+            throws IOException, InterruptedException {
         server().add("/", GET().apply(req -> {
             channel().shutdownInput();
             assertThat(channel().isInputOpen()).isFalse();
@@ -416,7 +417,8 @@ class ClientLifeCycleTest extends AbstractRealTest
         // We saw the effect already; "Connection: close"
         // (this asserts why)
         logRecorder().assertAwait(DEBUG, """
-            Will set "Connection: close" because the client's input stream has shut down.""");
+            Setting "Connection: close" because \
+            the client's input stream has shut down.""");
         // Should be no error on any level
         logRecorder().assertThatNoErrorWasLogged();
     }

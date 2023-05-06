@@ -124,7 +124,7 @@ public interface ClientChannel extends ChannelWriter, AttributeHolder
             return rsp;
         }
         logger.log(level, () ->
-                   "Will set \"Connection: close\" because " + why + ".");
+                   "Setting \"Connection: close\" because " + why + ".");
         return appendConnectionClose(rsp);
     }
     
