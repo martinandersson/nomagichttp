@@ -110,7 +110,7 @@ class ClientLifeCycleTest extends AbstractRealTest
     void clientClosesChannel_serverReceivedNoBytes() throws IOException, InterruptedException {
         client().openConnection().close();
         logRecorder().assertAwait(
-              DEBUG, "Closing the channel because client aborted the exchange.");
+              DEBUG, "Closing the child because client aborted the exchange.");
         assertThatNoWarningOrErrorIsLogged();
     }
     
@@ -362,7 +362,7 @@ class ClientLifeCycleTest extends AbstractRealTest
             // ResponseProcessor half-closed, causing DefaultServer to close
             "Closing child: java.nio.channels.SocketChannel[connected oshut local=" :
             // or the next exchange actually started, but immediately aborted
-            "Closing the channel because client aborted the exchange.");
+            "Closing the child because client aborted the exchange.");
         assertThatNoWarningOrErrorIsLogged();
     }
     

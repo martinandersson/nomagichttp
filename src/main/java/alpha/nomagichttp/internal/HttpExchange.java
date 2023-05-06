@@ -556,14 +556,14 @@ final class HttpExchange
     
     private void closeChannel(Level level, String why) {
         if (child.isAnyStreamOpen()) {
-            LOG.log(level, () -> "Closing the channel because " + why + ".");
+            LOG.log(level, () -> "Closing the child because " + why + ".");
             child.close();
         }
     }
     
     private void closeChannel(Level level, String why, Exception exc) {
         if (child.isAnyStreamOpen()) {
-            LOG.log(level, () -> why + " (closing channel).", exc);
+            LOG.log(level, () -> why + " (closing child).", exc);
             child.close();
         } else {
             LOG.log(level, () -> why + ".", exc);

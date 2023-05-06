@@ -821,7 +821,7 @@ class ErrorTest extends AbstractRealTest
             .hasNoCause()
             .hasNoSuppressedExceptions();
         logRecorder().assertAwait(DEBUG,
-            "Closing the channel because client aborted the exchange.");
+            "Closing the child because client aborted the exchange.");
     }
     
     @Test
@@ -876,7 +876,7 @@ class ErrorTest extends AbstractRealTest
         var rec = logRecorder().take(
             ERROR, """
               Response bytes already sent, \
-              can not handle this error (closing channel).""",
+              can not handle this error (closing child).""",
             IllegalArgumentException.class);
         assertThat(rec).isNotNull();
         assertThat(rec.getThrown())
