@@ -163,7 +163,7 @@ class ServerLifeCycleTest extends AbstractRealTest
                 .isGreaterThanOrEqualTo(ofSeconds(1));
             logRecorder().assertThatLogContainsOnlyOnce(
                 rec(DEBUG, "Graceful deadline expired; shutting down scope."),
-                rec(DEBUG, "Closing the channel because thread interrupted."));
+                rec(DEBUG, "Closing the child because thread interrupted."));
             // TODO: Should assertThatNoWarningOrErrorIsLogged()
         }
     }
