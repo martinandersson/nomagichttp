@@ -261,7 +261,7 @@ final class HttpExchange
                   var r = tryDiscardRequest(req, true).map(whyNot ->
                             tryAddConnectionClose(rsp.get(), LOG, DEBUG, whyNot))
                           .orElseGet(rsp::get);
-                  LOG.log(DEBUG, "Writing final response");
+                  LOG.log(DEBUG, "Writing the final response");
                   writer.write(r);
               }
           } catch (Exception e) {
