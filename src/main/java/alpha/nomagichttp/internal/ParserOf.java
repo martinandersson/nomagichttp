@@ -242,9 +242,9 @@ final class ParserOf<H extends BetterHeaders> extends AbstractResultParser<H>
         
         int parseValFolded() {
             if (isLF()) {
-                LOG.log(DEBUG,
-                    "Unexpected LF when anticipating a folded header value. " +
-                    "But, we forgive.");
+                LOG.log(DEBUG, """
+                    Unexpected LF when anticipating a folded header value. \
+                    But, we forgive.""");
                 return DONE;
             } else if (!isWhitespace()) {
                 // Restore header value and manually call the "standard" method
