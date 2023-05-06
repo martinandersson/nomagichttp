@@ -277,8 +277,8 @@ public final class TestClient
      */
     public TestClient shutdownOutput() throws IOException {
         requireConnectionIsOpen();
+        LOG.log(DEBUG, "Shutting down the output stream.");
         ch.shutdownOutput();
-        LOG.log(DEBUG, "Shut down channel's output stream.");
         return this;
     }
     
@@ -291,8 +291,8 @@ public final class TestClient
      */
     public TestClient shutdownInput() throws IOException {
         requireConnectionIsOpen();
+        LOG.log(DEBUG, "Shutting down the input stream.");
         ch.shutdownInput();
-        LOG.log(DEBUG, "Shut down channel's input stream.");
         return this;
     }
     
@@ -696,8 +696,8 @@ public final class TestClient
     
     private void closeChannel() throws IOException {
         if (ch != null) {
+            LOG.log(DEBUG, "Closing the test client's channel.");
             ch.close();
-            LOG.log(DEBUG, "Closed test-client channel.");
             ch = null;
         }
         if (unconsumed.flip().hasRemaining()) {
