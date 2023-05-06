@@ -262,11 +262,8 @@ public final class DefaultServer implements HttpServer
     private void closeParent() throws IOException {
         this.parent.dropThrowsX(channel -> {
             try {
+                LOG.log(INFO, () -> "Closing server channel: " + channel);
                 channel.close();
-                LOG.log(INFO, () -> "Closed server channel: " + channel);
-            } catch (Throwable t) {
-                LOG.log(INFO, () -> closeFailedMessage(channel, t));
-                throw t;
             } finally {
                 events().dispatch(HttpServerStopped.INSTANCE, now(), started);
             }
@@ -418,17 +415,5 @@ public final class DefaultServer implements HttpServer
     
     private static IllegalStateException notRunning() {
         return new IllegalStateException("Server is not running");
-    }
-    
-    private static String closeFailedMessage(
-            ServerSocketChannel parent, Throwable fromClose) {
-        var msg = "Attempted to close server channel: ";
-        try {
-            msg += parent;
-        } catch (Throwable fromToString) {
-            msg += "N/A";
-            fromClose.addSuppressed(fromToString);
-        }
-        return msg;
     }
 }
