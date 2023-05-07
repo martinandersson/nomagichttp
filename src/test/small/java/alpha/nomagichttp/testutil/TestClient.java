@@ -104,7 +104,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  * <pre>
  *   server.add("/echo-body",
  *       POST().apply(req ->
- *           req.body().toText().thenApply(Responses::text)));
+ *           req.body().toText()));
  *   try (Channel ch = client.openConnection()) {
  *       client.write("""
  *           POST /echo-body HTTP/1.1\r
