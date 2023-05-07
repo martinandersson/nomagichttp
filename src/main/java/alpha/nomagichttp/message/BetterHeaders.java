@@ -34,7 +34,7 @@ import java.util.stream.Stream;
  * Header value(s) can be an empty string, which would indicate the occurrence
  * of a header, just being empty, e.g. "Foo: ".<p>
  * 
- * The iteration order of header keys, values and tokens, is equal to the
+ * The iteration order of header keys, values and tokens; is equal to the
  * received (request) or transmission order (response), after grouping
  * (repeated headers are grouped into one {@code List} of values).<p>
  * 

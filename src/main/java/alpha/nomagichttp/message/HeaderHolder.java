@@ -13,6 +13,7 @@ public interface HeaderHolder {
      * the body of the HTTP message. They do not include trailing headers.
      * 
      * @see Request#trailers()
+     * 
      * @return the HTTP headers (never {@code null})
      */
     ContentHeaders headers();
