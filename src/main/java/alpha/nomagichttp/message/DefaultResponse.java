@@ -31,7 +31,7 @@ final class DefaultResponse implements Response
     private final String reasonPhrase;
     private final ContentHeaders headers;
     private final ResourceByteBufferIterable body;
-    private final Supplier<LinkedHashMap<String, List<String>>> trailers;
+    private final Supplier<Map<String, List<String>>> trailers;
     private final DefaultBuilder origin;
     
     private DefaultResponse(
@@ -40,7 +40,7 @@ final class DefaultResponse implements Response
             ContentHeaders headers,
             // Is unmodifiable
             ResourceByteBufferIterable body,
-            Supplier<LinkedHashMap<String, List<String>>> trailers,
+            Supplier<Map<String, List<String>>> trailers,
             DefaultBuilder origin)
     {
         this.statusCode = statusCode;
@@ -72,7 +72,7 @@ final class DefaultResponse implements Response
     }
     
     @Override
-    public LinkedHashMap<String, List<String>> trailers() {
+    public Map<String, List<String>> trailers() {
         return trailers == null ? null : trailers.get();
     }
     
@@ -105,7 +105,7 @@ final class DefaultResponse implements Response
             String reasonPhrase;
             LinkedHashMap<String, List<String>> headers;
             ResourceByteBufferIterable body;
-            Supplier<LinkedHashMap<String, List<String>>> trailers;
+            Supplier<Map<String, List<String>>> trailers;
             
             void removeHeader(String name) {
                 if (headers == null) {
@@ -257,7 +257,7 @@ final class DefaultResponse implements Response
         }
         
         @Override
-        public Builder addTrailers(Supplier<LinkedHashMap<String, List<String>>> trailers) {
+        public Builder addTrailers(Supplier<Map<String, List<String>>> trailers) {
             requireNonNull(trailers, "trailers");
             return new DefaultBuilder(this, s -> s.trailers = trailers);
         }

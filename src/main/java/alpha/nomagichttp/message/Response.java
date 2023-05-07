@@ -8,6 +8,7 @@ import alpha.nomagichttp.util.ByteBufferIterables;
 
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.function.Supplier;
 
 import static alpha.nomagichttp.HttpConstants.ReasonPhrase;
@@ -142,7 +143,7 @@ public interface Response extends HeaderHolder
      * called exactly once after the body has been written, more specifically;
      * after {@code ByteBufferIterable.close} has been called. The method must
      * then return non-empty trailers. The server does not verify that the
-     * actual trailers sent is correctly enumerated in the "Trailer" header.
+     * actual trailers sent are correctly enumerated in the "Trailer" header.
      * 
      * @apiNote
      * Although
@@ -159,7 +160,8 @@ public interface Response extends HeaderHolder
      * 
      * @see Request#trailers() 
      */
-    default LinkedHashMap<String, List<String>> trailers() {
+    // TODO: Shouldn't have to be Linked. Can be documented, and util method referenced.
+    default Map<String, List<String>> trailers() {
         return null;
     }
     
@@ -490,8 +492,8 @@ public interface Response extends HeaderHolder
          * The given supplier will be used as a delegate implementation for
          * {@link Response#trailers()}.<p>
          * 
-         * The application must populate the HTTP header "Trailer" with the
-         * names of the trailers that will be sent.<p>
+         * The application must also set the HTTP header
+         * {@value HttpConstants.HeaderName#TRAILER}.<p>
          * 
          * The application should only send trailers if the client has indicated
          * that they are accepted (
@@ -503,18 +505,19 @@ public interface Response extends HeaderHolder
          * </pre>
          * 
          * If the request failed to parse, or it parsed but the client specified
-         * an HTTP version older than 1.1, then the trailers will be silently
-         * discarded. If the request is available, then the client's version can
-         * be queried using {@link Request#httpVersion()}. The server can be
-         * configured to not accept connections from old clients using
+         * an HTTP version older than 1.1, then the trailers will not be
+         * written. The client's version can be queried using
+         * {@link Request#httpVersion()}, and the server can be configured to not
+         * accept connections from old clients using
          * {@link Config#minHttpVersion()}.<p>
          * 
          * Trailers will be written out on the wire in the same way headers are;
-         * order and casing is preserved. Although this builder requires that
-         * header names- and values have no leading or trailing whitespace, the
-         * same validation does not happen for the given trailers. Nonetheless,
-         * the application should ensure there is no such whitespace in the
-         * given strings.<p>
+         * order and casing are preserved (assuming the used {@code Map}
+         * implementation has a defined order). Although this builder requires
+         * that header names and values have no leading or trailing whitespace,
+         * the same validation does not happen for the given trailers.
+         * Nonetheless, the application should ensure there is no such
+         * whitespace in the given strings.<p>
          * 
          * The application must not modify the {@code Map} or its values after
          * it has been supplied to the server.
@@ -527,9 +530,9 @@ public interface Response extends HeaderHolder
          *             if {@code trailers} is {@code null}
          * 
          * @see Request#trailers()
-         * @see Config#minHttpVersion() 
+         * @see Response#trailers()
          */
-        Builder addTrailers(Supplier<LinkedHashMap<String, List<String>>> trailers);
+        Builder addTrailers(Supplier<Map<String, List<String>>> trailers);
         
         /**
          * Remove a previously set trailers' supplier, if present.
