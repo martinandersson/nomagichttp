@@ -5,7 +5,6 @@ import alpha.nomagichttp.message.Char;
 
 import java.io.IOException;
 
-import static java.lang.Math.min;
 import static java.lang.System.Logger.Level.DEBUG;
 
 /**
