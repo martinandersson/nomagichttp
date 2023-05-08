@@ -297,8 +297,8 @@ public interface Route
      * as long as it is a unique name for the route. The only purpose of the
      * name is for the HTTP server to use it as a key in a map.<p>
      * 
-     * The pattern consuming methods will take (and remove) the first char - if
-     * it is a ':' or '*' - as an indicator of the parameter type. The {@code
+     * The pattern-consuming methods will take (and remove) the first char — if
+     * it is a ':' or '*' — as an indicator of the parameter type. The {@code
      * paramXXX()} builder methods accept the given string at face value.
      * <pre>{@code
      *   Route.builder("/:user")                    Access using request.target().pathParam("user")

@@ -12,7 +12,6 @@ import alpha.nomagichttp.util.JvmPathLock;
 import alpha.nomagichttp.util.ScopedValues;
 
 import java.io.IOException;
-import java.net.URLDecoder;
 import java.nio.Buffer;
 import java.nio.BufferOverflowException;
 import java.nio.ByteBuffer;
@@ -218,36 +217,48 @@ public interface Request extends HeaderHolder, AttributeHolder
     BetterHeaders trailers() throws IOException;
     
     /**
-     * An API to access segments, path parameters (interpreted segments), query
-     * key/value pairs and a fragment from the resource-target of a request.<p>
+     * The resource-target of a request.<p>
      * 
-     * Path parameters come in two forms; single- and catch-all. The former is
-     * required in order for the action/handler to have been matched, the latter
-     * is optional but the server will make sure the value is always present and
-     * begins with a '/'. Query parameters are always optional. Read more in the
-     * JavaDoc of {@link Route}.<p>
+     * The components of the target are path segments, path parameters (named
+     * segments), query key/value pairs, and a fragment (document anchor).<p>
      * 
-     * A query value will be assumed to end with a space, ampersand ('&amp;') or
-     * number sign ('&#35;') character. In particular, note that the semicolon
-     * ('&#59;') has no special meaning; it will <i>not</i> be processed as a
-     * separator (contrary to
+     * Path parameters come in two forms; single- and catch-all. Single path
+     * parameters are required for the action/handler to be matched. Catch-all
+     * path parameters are optional, but the server will make sure the value is
+     * always present and starts with a '/'. Query parameters are optional, and
+     * so may not be present. Read more in the JavaDoc of {@link Route}.
+     * 
+     * <h2>Features of the server's parser of the query string</h2>
+     * 
+     * The separator for a query's key from its value is the equals sign
+     * character ('='). The value ends with an ampersand ('&amp;') — which marks
+     * the start of a new key/value pair — a whitespace character or the number
+     * sign ('&#35;'). For example:
+     * 
+     * <pre>
+     *   /where?key1=value1&amp;key2=value2
+     * </pre>
+     * 
+     * The semicolon ('&#59;') has no special meaning; it will <i>not</i>
+     * deliminate a new key/value pair, and so it will become part of the query
+     * key or value, depending on its location. Contrary to
      * <a href="https://www.w3.org/TR/1999/REC-html401-19991224/appendix/notes.html#h-B.2.2">W3</a>,
-     * we argue that magic is the trouble).<p>
+     * we argue that kicking a can of problems down the road and rely on some
+     * unspecified magic sauce being present on the server, is ill-advised and
+     * unprofessional.<p>
      * 
-     * The exact structure of the query string is not standardized (
-     * <a href="https://en.wikipedia.org/wiki/Query_string">Wikipedia</a>). The
-     * NoMagicHTTP library supports repeated query keys and query keys with no
-     * value (will be mapped to the empty string).<p>
+     * The parser supports repeated query keys and keys with no value (will be
+     * mapped to the empty string).<p>
      * 
      * Tokens (path parameter values, query keys/values) are not interpreted or
-     * parsed by the HTTP server. In particular, note that there is no
-     * API-support for so called <i>path matrix variables</i> (nor is this magic
-     * standardized) and appending brackets ("[]") to the query key has no
-     * special meaning; it will simply become part of the query key itself.<p>
+     * parsed. In particular, there is no API-support for so called <i>path
+     * matrix variables</i> (nor is this magic standardized) and appending
+     * brackets ("[]") to the query key has no special meaning; they will become
+     * part of the query key itself.<p>
      * 
      * If embedding multiple query values into one key entry is desired, then
      * splitting and parsing the value with whatever delimiting character one
-     * choose is pretty straight forward:
+     * chooses is pretty straight forward:
      * 
      * <pre>{@code
      *     // "?numbers=1,2,3"
@@ -261,9 +272,9 @@ public interface Request extends HeaderHolder, AttributeHolder
      *                        .toArray();
      * }</pre>
      * 
-     * Instead of using a non-standardized separator, it's far more straight
-     * forward and fool-proof (number separator would be dependent on regional
-     * format) to rely on repetition instead:
+     * Instead of using a non-standardized separator, it's more straight forward
+     * and fool-proof (number separator would be dependent on regional format)
+     * to rely on repetition instead:
      * 
      * <pre>{@code
      *     // "?number=1&number=2&number=3"
@@ -273,31 +284,40 @@ public interface Request extends HeaderHolder, AttributeHolder
      *                         .toArray();
      * }</pre>
      * 
-     * Methods that does not carry the "raw" suffix will URL decode (aka.
-     * percent-decode, aka. escape) the tokens (segment values, query keys,
-     * path- and query parameter values) as if using
-     * {@link URLDecoder#decode(String, Charset) URLDecoder.decode(segment,
-     * StandardCharsets.UTF_8)} <i>except</i> the plus sign ('+') is <i>not</i>
-     * converted to a space character and remains the same. If this is not
-     * desired, use methods that carries the suffix "raw". The raw version is
-     * useful when need be to unescape values using a different strategy, for
-     * example when receiving a query string from a browser submitting an HTML
-     * form using the "GET" method. The default encoding the browser uses will
-     * be
-     * <a href="https://www.w3.org/TR/html401/interact/forms.html#h-17.13.4.1">
-     * application/x-www-form-urlencoded</a> which escapes space characters
-     * using the plus character ('+').
+     * <h2>Decoded versus raw</h2>
+     * 
+     * Methods which do not carry the "raw" suffix will percent-decode (aka. URL
+     * decode) the tokens (segment values, query keys, path- and query parameter
+     * values). For example, "Hello%20World" becomes "Hello World".<p>
+     * 
+     * The raw version is useful when there is a need to unescape values using
+     * a different algorithm. For example, a browser submitting an HTML form
+     * will by default use the <a href="https://www.w3.org/TR/html401/interact/forms.html#h-17.13.4.1">
+     * application/x-www-form-urlencoded</a> encoding, which escapes space
+     * characters using the plus character ('+') (and not "%20" as used by
+     * percent-encoding).
      * 
      * <pre>{@code
-     *     // Note: key needs to be in its raw form
-     *     String nondecoded = request.target().queryFirstRaw("q");
-     *     // '+' is replaced with ' '
-     *     String formdata = java.net.URLDecoder.decode(nondecoded, StandardCharsets.UTF_8);
+     *     import static java.net.URLDecoder.decode;
+     *     import static java.nio.charset.StandardCharsets.UTF_8;
+     *     ...
+     *     String nondecoded = request.target().queryFirstRaw("my-input-name");
+     *     String formdata = decode(nondecoded, UTF_8);
      * }</pre>
      * 
-     * The implementation is thread-safe and non-blocking.
+     * TODO: Discourage base64url encoding for text-to-text.
+     * 
+     * <h2>Thread safety and identity</h2>
+     * 
+     * The implementation is thread-safe and non-blocking.<p>
+     * 
+     * The implementation is not required to implement {@code hashCode} and
+     * {@code equals}.
      * 
      * @author Martin Andersson (webmaster at martinandersson.com)
+     * 
+     * @see <a href="https://en.wikipedia.org/wiki/Query_string">"Query-string", Wikipedia</a>
+     * @see <a href="https://datatracker.ietf.org/doc/html/rfc3986#section-2.1">"2.1. Percent-Encoding", RFC 3986</a>
      */
     interface Target
     {
