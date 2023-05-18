@@ -39,32 +39,36 @@ import java.util.stream.Stream;
 /**
  * An inbound HTTP request.<p>
  * 
- * The invoked entity may have been associated with a unique path pattern, which
- * affects path parameters available in the {@link Request#target()}. To support
- * this, the request object is unique per invoked entity. A {@link BeforeAction}
- * will receive a different instance than what the {@link RequestHandler}
- * receives. The only real difference will be the underlying reference to the
- * target component.<p>
+ * The invoked entity receiving a request object may have been associated with a
+ * unique path pattern, containing path parameters, which are available in the
+ * {@link Request#target()}.<p>
  * 
  * For example, although request "/hello" matches before-action "/:foo" and
  * {@link Route} "/:bar", the former will have to use the key "foo" when
  * retrieving the segment value from the target and a request handler of the
  * latter will have to use the key "bar".<p>
  * 
- * As another example, suppose a before-action registers using the pattern
- * "/*seg" and there's also a route "/hello/:seg". For an inbound request
- * "/hello/world", the former's "seg" parameter will map to the value
- * "/hello/world" but the route's request handler will observe the value
- * "world" using the same key.<p>
+ * The keys may be the same, but the values may differ. Suppose a before-action
+ * is registered using the pattern "/*seg" and a route is registered using
+ * "/hello/:seg". For an inbound request "/hello/world", the former's "seg"
+ * parameter will map to the value "/hello/world" but the route's request
+ * handler will observe the value "world" using the same key.<p>
  * 
- * All other components of the request object is shared by all request instances
- * created throughout the HTTP exchange, most importantly the request attributes
- * and body. Changes to these structures is visible across execution boundaries,
- * such as setting attributes and consuming the body bytes (which should be
- * done only once!).<p>
+ * To support path parameters, the request object will be a unique instance per
+ * receiving entity. A {@link BeforeAction} will receive a different instance
+ * than what the {@link RequestHandler} receives. Logically, both request
+ * objects represent the same request, and they share almost all the same
+ * underlying components, except for the target component.<p>
  * 
- * The implementation is mostly thread-safe. The exceptions are the
- * {@code Request.Body} and the {@link #trailers() trailers} method.<p>
+ * All other components of the request object are shared by all instances
+ * created throughout the HTTP exchange; most importantly, the request
+ * attributes and body. Changes to these structures are visible across execution
+ * boundaries, such as setting attributes and consuming the body bytes (which
+ * should be done only once).<p>
+ * 
+ * The implementation and containing components are mostly thread-safe; the
+ * exception being {@code Request.Body} and the {@link #trailers() trailers}
+ * method.<p>
  * 
  * Any operation on the request object that falls through to a channel read
  * operation (consuming body bytes or parsing trailers), and is performed after
