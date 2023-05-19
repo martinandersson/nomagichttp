@@ -78,11 +78,10 @@ import static java.util.stream.Collectors.joining;
  * ("version" and "structure"):
  * "application/vnd.example; version=2; structure=json".<p>
  * 
- * In reality, it's probably a bit easier to both understand and implement
- * media type logic if the application can skip the parameters. The previous
- * example could be rewritten as "application/vnd.example.v2+json". This example
- * could be even more simplified if the major version is moved to the resource
- * URI.<p>
+ * In reality, it's probably easier to both understand and implement media type
+ * logic if the application can skip the parameters. The previous example could
+ * be rewritten as "application/vnd.example.v2+json". This example could be
+ * further simplified if the major version is moved to the resource URI.<p>
  * 
  * This class as well as the server implementation does not treat parameters any
  * differently whether they are or are not attached to a media range specified

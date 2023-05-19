@@ -7,8 +7,6 @@ import alpha.nomagichttp.message.MediaType;
 import alpha.nomagichttp.message.Request;
 
 import java.net.URI;
-import java.net.URLDecoder;
-import java.nio.charset.Charset;
 import java.util.Collection;
 import java.util.stream.Stream;
 
@@ -18,15 +16,15 @@ import java.util.stream.Stream;
  * ).<p>
  * 
  * The route is associated with one or more <i>request handlers</i>. In HTTP
- * parlance, handlers are also known as different "representations" of the
- * resource. Which handler specifically to invoke for the request is determined
- * by qualifying metadata and specificity, as detailed in the Javadoc of {@link
+ * parlance, handlers are also known as "representations" of the resource. Which
+ * handler specifically to invoke for the request is determined by qualifying
+ * metadata and specificity, as detailed in the Javadoc of {@link
  * RequestHandler}.<p>
  * 
  * A {@code Route} can be built using {@link #builder(String)}. For convince,
- * the {@code HttpServer} has a method that both builds and add the route at the
- * same time; {@link HttpServer#add(String, RequestHandler, RequestHandler...)}.
- * <p>
+ * the {@code HttpServer} has a method that both builds and adds the route at
+ * the same time;
+ * {@link HttpServer#add(String, RequestHandler, RequestHandler...)}.<p>
  * 
  * An inbound request will match exactly zero or one route in the
  * {@link RouteRegistry} held by the HTTP server. Attempting to add a route to a
@@ -122,16 +120,21 @@ import java.util.stream.Stream;
  * including no value at all. One can not register {@code "/src"} and {@code
  * "/src/*filepath"} in the same registry at the same time.<p>
  * 
+ * There is no support for specifying parameters of a segment, for example,
+ * "/user;v=2". This segment would be matched literally against registered
+ * routes; characters like ";" and "=" have no special meaning. The example
+ * could instead have been modelled as "/v2/user".<p>
+ * 
  * Query parameters are always optional (can not be configured as required),
  * they can not be used to distinguish one route from another, nor do they
  * affect how a request path is matched against a route.<p>
  * 
- * In order to find a matching route, the following steps are applied to the
- * request path:
+ * To find a matching route, the following steps are applied to the request
+ * path:
  * 
  * <ul>
  *   <li>Clustered forward slashes are reduced to just one. Empty segments are
- *       not supported and will consequently be discarded.</li>
+ *       not supported and will be discarded.</li>
  *   <li>All trailing forward slashes are truncated. A trailing slash is usually
  *       used to separate a file from a directory. However, "R" in URI stands
  *       for <i>resource</i>. Be that a file, directory, whatever - makes no
@@ -139,20 +142,15 @@ import java.util.stream.Stream;
  *   <li>The empty path will be replaced with "/".</li>
  *   <li>The path is split into segments using the forward slash character as a
  *       separator.</li>
- *   <li>Each segment will be percent-decoded as if using {@link
- *       URLDecoder#decode(String, Charset) URLDecoder.decode(segment, StandardCharsets.UTF_8)}
- *       <i>except</i> the plus sign ('+') is <i>not</i> converted to a space
- *       character and remains the same (standard
- *       <a href="https://tools.ietf.org/html/rfc3986#section-2.1">RFC 3986</a> behavior).</li>
+ *   <li>Each segment will be percent-decoded (
+ *       <a href="https://datatracker.ietf.org/doc/html/rfc3986#section-2.1">RFC 3986 §2.1</a>).</li>
  *   <li>Dot-segments (".", "..") are normalized as defined by step 1 and 2 in
  *       Javadoc of {@link URI#normalize()} (basically "." is removed and ".."
  *       removes the previous segment, also see <a href="https://tools.ietf.org/html/rfc7231#section-9.1">
  *       RFC 7231 §9.1</a>)</li>
  *   <li>Finally, all remaining segments that are not interpreted as a path
- *       parameter value must match a route's segments exactly and in order. In
- *       particular, note that route-matching is case-sensitive and characters
- *       such as "+" and "*" has no special meaning, they will be compared
- *       literally.</li>
+ *       parameter value must match a route's segments exactly (case-sensitive)
+ *       and in order.</li>
  * </ul>
  * 
  * The implementation is thread-safe and immutable. It does not necessarily
@@ -169,8 +167,7 @@ public interface Route
     /**
      * Returns a {@code Route} builder.<p>
      * 
-     * The most simplest route that can be built is the root without path
-     * parameters:
+     * The simplest route that can be built is the root without path parameters:
      * 
      * <pre>{@code
      *     RequestHandler handler = ...
@@ -193,10 +190,9 @@ public interface Route
      * 
      * As per the first example, using the builder makes it possible to avoid
      * embedding syntax-driven tokens in favor of explicit {@code paramXXX()}
-     * method calls. This is of course always desired; the less magic the
-     * better. If the application declares a route using one single pattern
-     * string, as in the last example, then there's a method available in the
-     * {@code HttpServer} interface that accomplishes the same thing:
+     * method calls. If the application declares a route using one single
+     * pattern string, as in the last example, then there's a method available
+     * in the {@code HttpServer} interface that accomplishes the same thing:
      * <pre>
      *   RequestHandler handler = ...
      *   HttpServer server = ...

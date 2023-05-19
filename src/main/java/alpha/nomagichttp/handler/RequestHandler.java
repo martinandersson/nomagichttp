@@ -244,9 +244,9 @@ import static alpha.nomagichttp.message.MediaType.parse;
  * HttpConstants.HeaderName#ACCEPT_CHARSET} and {@value
  * HttpConstants.HeaderName#ACCEPT_LANGUAGE}.<p>
  * 
- * There is no library-provided support for magical request parameters
- * ("?format=json") and so-called "URL suffixes" ("/my-resource.json"). The
- * handler is free to implement such branching.
+ * There is no library-provided support for magical parameters with a special
+ * meaning ("?format=json") and no support for so-called "URL suffixes"
+ * ("/my-resource.json"). The handler is free to implement such branching.
  * 
  * <h3>Media type parameters</h3>
  * 
