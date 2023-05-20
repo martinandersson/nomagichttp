@@ -98,7 +98,7 @@ final class JvmPathLockTest
               var other = commonPool().submit(() -> {
                   assertThatThrownBy(otherLock::get)
                       .isExactlyInstanceOf(TimeoutException.class)
-                      .hasMessage("Wanted a "+ name +" lock for path: \\blabla")
+                      .hasMessage("Wanted a "+ name +" lock for path: " + blabla)
                       .hasNoCause()
                       .hasNoSuppressedExceptions();
                   return null;
