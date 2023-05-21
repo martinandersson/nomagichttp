@@ -48,12 +48,12 @@ import static org.junit.jupiter.api.Assertions.assertSame;
  * 
  * The client will be configured with the server's port.<p>
  * 
- * Both the server- and client APIs are already pretty easy to use on their own.
- * The added value of this class is packaging both into one class with some
- * added details such as automatic log recording and collection/verification of
- * server errors.<p>
+ * Both the server and client APIs are already pretty easy to use on their own.
+ * The added value of this class is packaging both into one class together with
+ * some extra features such as automatic log recording, and
+ * collection/verification of server errors.<p>
  * 
- * This class will assert on server stop that no errors were delivered to an
+ * This class will assert on server-stop that no errors were delivered to an
  * error handler. If errors are expected, then the test must consume all errors
  * using {@link #pollServerError()}.
  * 
@@ -70,18 +70,18 @@ import static org.junit.jupiter.api.Assertions.assertSame;
  *       }
  *      {@literal @}Test
  *       void second() {
- *           // Uses another server instance
+ *           // Is using another server instance
  *           server()...
  *       }
  *   }
  * </pre>
  * 
- * By default, after each test; the server is stopped and both the server and
- * client reference is set to null. This can be disabled through a constructor
- * argument "afterEachStop". Sharing the server across tests is good for
- * reducing system taxation when running a large number of tests where test
- * isolation is not needed or perhaps even unwanted. Also useful could be to
- * share a client's persistent connection across many tests.<p>
+ * By default, after each test, the server is stopped and both the server and
+ * client references are set to null. This can be disabled through a constructor
+ * argument {@code afterEachStop}, in which case the subsequent test will reuse
+ * the same server and client. Running different tests using the same resources
+ * may be desired for testing purposes, but is also good for reducing system
+ * taxation when test isolation is not needed.<p>
  * 
  * Log recording will by default be activated for each test. The recorder can be
  * retrieved using {@link #logRecorder()}. Records can be retrieved at any time
@@ -89,8 +89,8 @@ import static org.junit.jupiter.api.Assertions.assertSame;
  * 
  * Log recording is intended for detailed tests that are awaiting log events
  * and/or running assertions on log records. Tests concerned with performance
- * ought to not use log recording which can be disabled with a constructor
- * argument.
+ * ought to disable log recording by means of the constructor argument
+ * {@code useLogRecording}.
  * 
  * <pre>
  *  {@literal @}TestInstance(PER_CLASS)
@@ -120,7 +120,7 @@ import static org.junit.jupiter.api.Assertions.assertSame;
  * This class will in a static {@code @BeforeAll} method named "beforeAll" call
  * {@code Logging.setLevel(ALL)} in order to enable very detailed logging, such
  * as each byte processed in the request head. Tests that run a large number of
- * requests and/or are concerned about performance ought to stop JUnit from
+ * requests and/or are concerned with performance ought to stop JUnit from
  * calling the method by hiding it.
  * 
  * <pre>
@@ -132,10 +132,13 @@ import static org.junit.jupiter.api.Assertions.assertSame;
  *   }
  * </pre>
  * 
+ * Both of the former examples have been combined into
+ * {@code AbstractLargeRealTest}.<p>
+ * 
  * Please note that currently, the {@code TestClient} is not thread-safe nor is
  * this class (well, except for the collection and retrieval of server errors).
- * This will likely change when work commence to add tests that execute requests
- * in parallel.
+ * This will likely change when work commences to add tests that execute
+ * requests in parallel.
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  */
