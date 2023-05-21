@@ -31,19 +31,23 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * POSTs one hundred small requests and one hundred big requests using the same
- * client. For the NoMagicHTTP's TestClient, all requests are also guaranteed to
- * be sent over the same connection.<p>
+ * client.<p>
  * 
- * The purpose is to ensure that server-side bytebuffer pooling and constant
- * switching of Flow.Subscriber works as expected without data corruption.<p>
+ * The purpose of the test is to ensure successful communication of
+ * differently-sized requests, over the same connection.<p>
  * 
- * TODO: A similar test, but with loads of concurrent clients, each with their
- * own unique data stream.
+ * For the NoMagicHTTP's TestClient, all requests are guaranteed to be sent over
+ * the same connection. Other clients do not expose an API to handle the
+ * connection or even query its characteristics, but they should nonetheless all
+ * be using a persistent connection (see {@link HttpClientFacade}).<p>
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  */
+// TODO: A similar test, but with loads of concurrent clients
+// TODO: Assert persistent connections (e.g. by counting children on the server)
 class TwoHundredRequestsFromSameClientTest extends AbstractLargeRealTest
 {
+    // One hundred small bodies + one hundred big bodies = 200 requests
     private static final int REQUESTS_PER_BATCH = 100;
     
     private static final Map<String, LongStream.Builder> STATS = new HashMap<>();
@@ -72,27 +76,10 @@ class TwoHundredRequestsFromSameClientTest extends AbstractLargeRealTest
                     // Skip first (possible connection setup)
                     tc.build().map(NANOSECONDS::toMicros).skip(1).summaryStatistics());
         }
-        
         STATS.forEach((test, elapsed) ->
             System.out.println(test + " (ms): " + elapsed
                 .build().map(NANOSECONDS::toMillis).skip(1).summaryStatistics()));
     }
-    
-    /*
-     Findings from a dry-run on developer's Windows machine 2021-08-20 (count = 99):
-         
-         small/TestClient (μs): sum=53152, min=320, average=536.888889, max=910
-         small/JDK (ms):        sum=130, min=1, average=1.313131, max=3
-         small/OkHttp (ms):     sum=203, min=2, average=2.050505, max=3
-         small/Jetty (ms):      sum=665, min=5, average=6.717172, max=11
-         small/Apache (ms):     sum=698, min=6, average=7.050505, max=12
-         
-         big/OkHttp (ms):       sum=1709, min=3, average=17.262626, max=39
-         big/Reactor (ms):      sum=1998, min=4, average=20.181818, max=49
-         big/JDK (ms):          sum=2110, min=4, average=21.313131, max=53
-         big/Jetty (ms):        sum=2336, min=8, average=23.595960, max=45
-         big/TestClient (ms):   sum=2945, min=3, average=29.747475, max=64
-     */
     
     @ParameterizedTest(name = "small/TestClient")
     @MethodSource("smallBodies")
@@ -165,10 +152,11 @@ class TwoHundredRequestsFromSameClientTest extends AbstractLargeRealTest
     }
     
     private static Stream<String> bigBodies() {
-        final int channelBufferPoolSize = 5 * 16 * 1_024,
-                  halfOfIt = channelBufferPoolSize / 2,
-                  enlarged = channelBufferPoolSize * 10;
-        return requestBodies(REQUESTS_PER_BATCH, halfOfIt, enlarged);
+        // ChannelReader#BUFFER_SIZE
+        final int bufSize  = 512,
+                  oneThird = bufSize / 3,
+                  tenTimes = bufSize * 10;
+        return requestBodies(REQUESTS_PER_BATCH, oneThird, tenTimes);
     }
     
     private Stream<Arguments> smallBodiesAndClient() {
