@@ -156,7 +156,7 @@ final class HttpExchange
         try {
             begin0();
         } catch (Exception e) {
-            if (child.isBothStreamsOpen()) {
+            if (child.areBothStreamsOpen()) {
                 throw new AssertionError(e);
             }
             // Else considered handled and ignored
@@ -173,7 +173,7 @@ final class HttpExchange
             return;
         }
         handleRequest(req);
-        if (child.isBothStreamsOpen()) {
+        if (child.areBothStreamsOpen()) {
             assert writer.wroteFinal();
             tryDiscardRequest(req, false)
                 .ifPresent(this::closeChannel);

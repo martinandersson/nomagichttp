@@ -208,7 +208,7 @@ public interface ClientChannel extends ChannelWriter, AttributeHolder
      * 
      * @see ClientChannel
      */
-    boolean isBothStreamsOpen();
+    boolean areBothStreamsOpen();
     
     /**
      * Returns {@code true} if the input- and output streams are both shut down.

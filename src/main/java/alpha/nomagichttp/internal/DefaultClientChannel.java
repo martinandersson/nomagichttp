@@ -126,7 +126,7 @@ final class DefaultClientChannel implements ClientChannel
     }
     
     @Override
-    public boolean isBothStreamsOpen() {
+    public boolean areBothStreamsOpen() {
         return isInputOpen() && isOutputOpen();
     }
     
