@@ -52,12 +52,12 @@ import static org.assertj.core.api.Assertions.assertThat;
  * 
  * @see DetailTest
  */
-class ExampleTest extends AbstractRealTest
+final class ExampleTest extends AbstractRealTest
 {
     @Test
     @DisplayName("HelloWorld/TestClient")
     void HelloWorld() throws IOException {
-        addRouteHelloWorld(false);
+        addRouteHelloWorld();
         
         String req =
             "GET /hello HTTP/1.1"               + CRLF +
@@ -78,7 +78,7 @@ class ExampleTest extends AbstractRealTest
     void HelloWorld_compatibility(HttpClientFacade.Implementation impl)
             throws IOException, InterruptedException, TimeoutException, ExecutionException
     {
-        addRouteHelloWorld(true);
+        addRouteHelloWorld();
         
         ResponseFacade<String> rsp = impl.create(serverPort())
                 .addClientHeader("Accept", "text/plain; charset=utf-8")
@@ -94,21 +94,20 @@ class ExampleTest extends AbstractRealTest
             "Content-Type",   "text/plain; charset=" +
                 // Lowercase version is what the server sends.
                 (impl == JETTY ? "UTF-8" : "utf-8"),
-            "Content-Length", "12",
-            "Connection",     "close"));
+            "Content-Length", "12"));
         assertThat(rsp.body()).isEqualTo(
             "Hello World!");
     }
     
-    private void addRouteHelloWorld(boolean closeChild) throws IOException {
+    private void addRouteHelloWorld() throws IOException {
         server().add("/hello", GET().apply(
-              greet(req -> "World", closeChild)));
+              greet(req -> "World")));
     }
     
     @Test
     @DisplayName("GreetParameter/TestClient")
     void GreetParameter() throws IOException {
-        addRoutesGreetParameter(false);
+        addRoutesGreetParameter();
         
         String req1 =
             "GET /hello/John HTTP/1.1"          + CRLF +
@@ -148,7 +147,7 @@ class ExampleTest extends AbstractRealTest
             HttpClientFacade.Implementation impl, String reqTarget)
             throws IOException, ExecutionException, InterruptedException, TimeoutException
     {
-        addRoutesGreetParameter(true);
+        addRoutesGreetParameter();
         
         HttpClientFacade req = impl.create(serverPort())
                 .addClientHeader("Accept", "text/plain; charset=utf-8");
@@ -165,25 +164,24 @@ class ExampleTest extends AbstractRealTest
         assertThat(treeMap(rsp.headers())).isEqualTo(treeMap(
             "Content-Type",   "text/plain; charset=" +
                 (impl == JETTY ? "UTF-8" : "utf-8"),
-            "Content-Length", "11",
-            "Connection",     "close"));
+            "Content-Length", "11"));
         assertThat(rsp.body()).isEqualTo(
             "Hello John!");
     }
     
-    private void addRoutesGreetParameter(boolean closeChild) throws IOException {
+    private void addRoutesGreetParameter() throws IOException {
         // Name from path
         server().add("/hello/:name", GET().apply(
-              greet(req -> req.target().pathParam("name"), closeChild)));
+              greet(req -> req.target().pathParam("name"))));
         // Name from query
         server().add("/hello", GET().apply(
-              greet(req -> req.target().queryFirst("name").get(), closeChild)));
+              greet(req -> req.target().queryFirst("name").get())));
     }
     
     @Test
     @DisplayName("GreetBody/TestClient")
     void GreetBody() throws IOException {
-        addRouteGreetBody(false);
+        addRouteGreetBody();
         
         String req =
             "POST /hello HTTP/1.1"                    + CRLF +
@@ -208,7 +206,7 @@ class ExampleTest extends AbstractRealTest
     void GreetBody_compatibility(HttpClientFacade.Implementation impl)
             throws IOException, InterruptedException, ExecutionException, TimeoutException
     {
-        addRouteGreetBody(true);
+        addRouteGreetBody();
         
         HttpClientFacade req = impl.create(serverPort())
                 .addClientHeader("Accept", "text/plain; charset=utf-8");
@@ -224,21 +222,20 @@ class ExampleTest extends AbstractRealTest
         assertThat(treeMap(rsp.headers())).isEqualTo(treeMap(
             "Content-Length", "11",
             "Content-Type",   "text/plain; charset=" +
-                (impl == JETTY ? "UTF-8" : "utf-8"),
-            "Connection",     "close"));
+                (impl == JETTY ? "UTF-8" : "utf-8")));
         assertThat(rsp.body()).isEqualTo(
             "Hello John!");
     }
     
-    private void addRouteGreetBody(boolean closeChild) throws IOException {
+    private void addRouteGreetBody() throws IOException {
         server().add("/hello", POST().apply(
-              greet(req -> req.body().toText(), closeChild)));
+              greet(req -> req.body().toText())));
     }
     
     @Test
     @DisplayName("EchoHeaders/TestClient")
     void EchoHeaders() throws IOException {
-        addRouteEchoHeaders(false);
+        addRouteEchoHeaders();
         
         String req =
             "GET /echo HTTP/1.1"        + CRLF +
@@ -265,7 +262,7 @@ class ExampleTest extends AbstractRealTest
             throw new TestAbortedException();
         }
         
-        addRouteEchoHeaders(true);
+        addRouteEchoHeaders();
         
         var rsp = impl.create(serverPort())
                 .addClientHeader("My-Header", "Value 1")
@@ -285,7 +282,7 @@ class ExampleTest extends AbstractRealTest
             "My-Header")).containsExactly("Value 1", "Value 2");
     }
     
-    private void addRouteEchoHeaders(boolean closeChild) throws IOException {
+    private void addRouteEchoHeaders() throws IOException {
         server().add("/echo", GET().apply(req -> {
             var b = noContent().toBuilder();
             for (var entry : req.headers()) {
@@ -296,14 +293,14 @@ class ExampleTest extends AbstractRealTest
                     }
                 }
             }
-            return tryScheduleClose(b.build(), closeChild);
+            return b.build();
         }));
     }
     
     @Test
     @DisplayName("KeepClientInformed/TestClient")
     public void KeepClientInformed() throws IOException {
-        addRouteKeepClientInformed(false);
+        addRouteKeepClientInformed();
         // TODO: This isn't up to date with the example.
         //       Also revise the other test cases.
         //       We want a one-to-one exchange replica for each example.
@@ -336,17 +333,17 @@ class ExampleTest extends AbstractRealTest
             throw new TestAbortedException();
         }
         
-        addRouteKeepClientInformed(true);
+        addRouteKeepClientInformed();
         var rsp = impl.create(serverPort()).getText("/", HTTP_1_1);
         assertThat(rsp.body()).isEqualTo("Done!");
     }
     
-    private void addRouteKeepClientInformed(boolean closeChild) throws IOException {
+    private void addRouteKeepClientInformed() throws IOException {
         server().add("/", GET().apply(req -> {
             var ch = channel();
             ch.write(processing());
             ch.write(processing());
-            return tryScheduleClose(text("Done!"), closeChild);
+            return text("Done!");
         }));
     }
     
@@ -453,15 +450,7 @@ class ExampleTest extends AbstractRealTest
     
     private static
         Throwing.Function<Request, Response, IOException> greet(
-                Throwing.Function<Request, String, IOException> getName,
-                boolean closeChild) {
-        return req -> {
-            var rsp = text("Hello " + getName.apply(req) + "!");
-            return tryScheduleClose(rsp, closeChild);
-        };
-    }
-    
-    private static Response tryScheduleClose(Response rsp, boolean ifTrue) {
-        return ifTrue ? setHeaderConnectionClose(rsp) : rsp;
+                Throwing.Function<Request, String, IOException> getName) {
+        return req -> text("Hello " + getName.apply(req) + "!");
     }
 }

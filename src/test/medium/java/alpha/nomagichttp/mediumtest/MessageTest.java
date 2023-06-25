@@ -43,7 +43,7 @@ import static org.junit.jupiter.api.Assumptions.assumeTrue;
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  */
-class MessageTest extends AbstractRealTest
+final class MessageTest extends AbstractRealTest
 {
     // TODO: Run tests using different clients
     
@@ -157,10 +157,7 @@ class MessageTest extends AbstractRealTest
         server().add("/", POST().apply(req -> {
             assertThat(req.headers().transferEncoding().getLast())
                     .isEqualTo("chunked");
-            return ok(ofSupplier(req.body().iterator()::next))
-                    .toBuilder()
-                    .setHeader("Connection", "close")
-                    .build();
+            return ok(ofSupplier(req.body().iterator()::next));
         }));
     }
     

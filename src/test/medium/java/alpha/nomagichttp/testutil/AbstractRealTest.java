@@ -4,7 +4,6 @@ import alpha.nomagichttp.Config;
 import alpha.nomagichttp.HttpServer;
 import alpha.nomagichttp.handler.ClientChannel;
 import alpha.nomagichttp.handler.ErrorHandler;
-import alpha.nomagichttp.message.Response;
 import org.assertj.core.api.AbstractThrowableAssert;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
@@ -644,21 +643,6 @@ public abstract class AbstractRealTest
               .hasNoSuppressedExceptions()
               .hasNoCause()
               .hasMessage(null);
-    }
-    
-    /**
-     * Shortcut for opening up the response and set the "Connection: close"
-     * header.<p>
-     * 
-     * This method is useful for tests where the HTTP client would have kept the
-     * connection alive which in turn would hinder a graceful server stop from
-     * completing in a timely manner.
-     * 
-     * @param rsp response
-     * @return with command set
-     */
-    protected static Response setHeaderConnectionClose(Response rsp) {
-        return rsp.toBuilder().setHeader("Connection", "close").build();
     }
     
     private static String toString(TestInfo test) {
