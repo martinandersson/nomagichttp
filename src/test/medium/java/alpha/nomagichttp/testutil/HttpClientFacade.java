@@ -1,7 +1,6 @@
 package alpha.nomagichttp.testutil;
 
 import alpha.nomagichttp.HttpConstants;
-import alpha.nomagichttp.HttpServer;
 import alpha.nomagichttp.message.BetterHeaders;
 import alpha.nomagichttp.message.ContentHeaders;
 import alpha.nomagichttp.message.DefaultContentHeaders;
