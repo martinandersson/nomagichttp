@@ -5,6 +5,8 @@ plugins {
     id 'maven-publish'
 }
 
+// TODO: Replace with Toolchains
+// https://docs.gradle.org/8.2-rc-2/userguide/toolchains.html
 final var RELEASE_FOR = JavaVersion.VERSION_19
 if (!JavaVersion.current().isCompatibleWith(RELEASE_FOR)) {
     throw new Exception(
