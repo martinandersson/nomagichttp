@@ -113,11 +113,11 @@ import static org.assertj.core.api.Assertions.assertThat;
  *   }
  * </pre>
  * 
- * The underlying clients used does not expose an API for user-control of the
+ * The underlying clients used do not expose an API for user-control of the
  * connection, and so, the facade implementation can do no better. In fact, the
  * life-cycle and performance characteristics of the facade and its underlying
- * client objects are pretty much unknown. Most of them have - unfortunately
- * quite expectedly - zero documentation regarding the client's life-cycle and
+ * client objects are pretty much unknown. Most of them have — unfortunately, 
+ * quite expectedly — zero documentation regarding the client's life-cycle and
  * how it should be cached and used. Never mind concerns such as thread-safety
  * and identity lol. Hence, this class will mostly not cache the client object,
  * using one new client instance for each request executed.<p>
