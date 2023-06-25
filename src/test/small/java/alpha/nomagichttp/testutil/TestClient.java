@@ -30,6 +30,7 @@ import static java.nio.ByteBuffer.wrap;
 import static java.nio.charset.StandardCharsets.US_ASCII;
 import static java.util.Objects.requireNonNull;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
+import static java.util.concurrent.TimeUnit.NANOSECONDS;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -198,12 +199,11 @@ public final class TestClient
         this.factory = requireNonNull(factory);
         this.unconsumed = allocate(BUF_SIZE);
         this.initialSize = BUF_SIZE;
+        interruptTimeoutReset();
     }
     
-    private long     rAmount = 2_000,
-                     wAmount = 2_000;
-    private TimeUnit rUnit   = MILLISECONDS,
-                     wUnit   = MILLISECONDS;
+    private long rAmount, wAmount;
+    private TimeUnit rUnit, wUnit;
     
     /**
      * Interrupt the read operation after a given timeout.
@@ -221,6 +221,24 @@ public final class TestClient
     }
     
     /**
+     * Change the read operation's timeout given a delta.<p>
+     * 
+     * For example, invoking {@code interruptReadAfter(1.5)} on a client that
+     * uses default timeout values will increase the timeout from 2 seconds to
+     * 3.
+     * 
+     * @param delta amount
+     * @return this for chaining/fluency
+     * @see TestClient
+     * @see Interrupt
+     */
+    public TestClient interruptReadAfter(double delta) {
+        rAmount = (long) (rUnit.toNanos(rAmount) * delta);
+        rUnit = NANOSECONDS;
+        return this;
+    }
+    
+    /**
      * Interrupt the write operation after a given timeout.
      * 
      * @param amount of duration
@@ -232,6 +250,21 @@ public final class TestClient
     public TestClient interruptWriteAfter(long amount, TimeUnit unit) {
         wAmount = amount;
         wUnit = unit;
+        return this;
+    }
+    
+    /**
+     * Reset the timeout for write and read operations to their default values.
+     * 
+     * @return this for chaining/fluency
+     * @see TestClient
+     * @see Interrupt
+     */
+    public TestClient interruptTimeoutReset() {
+        rAmount = 2_000;
+        wAmount = 2_000;
+        rUnit   = MILLISECONDS;
+        wUnit   = MILLISECONDS;
         return this;
     }
     

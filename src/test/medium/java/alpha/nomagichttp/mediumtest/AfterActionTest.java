@@ -11,6 +11,7 @@ import static alpha.nomagichttp.HttpConstants.HeaderName.X_CORRELATION_ID;
 import static alpha.nomagichttp.handler.RequestHandler.GET;
 import static alpha.nomagichttp.message.Responses.noContent;
 import static alpha.nomagichttp.message.Responses.text;
+import static alpha.nomagichttp.testutil.Environment.isLinux;
 import static alpha.nomagichttp.testutil.TestClient.CRLF;
 import static java.lang.String.valueOf;
 import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
@@ -41,6 +42,11 @@ class AfterActionTest extends AbstractRealTest
                    .orElse(rsp));
         
         try (var conn = client().openConnection()) {
+            // Start processing the first request can take a long time on:
+            if (isLinux()) {
+                client().interruptReadAfter(1.5);
+            }
+            
             var rsp1 = client().writeReadTextUntil(
                 "GET /hello HTTP/1.1"                     + CRLF + CRLF, "hello");
             assertThat(rsp1).isEqualTo(
@@ -50,6 +56,10 @@ class AfterActionTest extends AbstractRealTest
                 "Content-Length: 5"                       + CRLF + CRLF +
                 
                 "hello");
+            
+            if (isLinux()) {
+                client().interruptTimeoutReset();
+            }
             
             var rsp2 = client().writeReadTextUntilEOS(
                 "GET /bye HTTP/1.1"                       + CRLF +
