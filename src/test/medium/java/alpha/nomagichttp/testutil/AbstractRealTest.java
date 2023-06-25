@@ -145,6 +145,13 @@ import static org.junit.jupiter.api.Assertions.assertSame;
  */
 public abstract class AbstractRealTest
 {
+    /**
+     * The server stop's graceful period, in seconds.<p>
+     * 
+     * Used by {@link #stopServer(boolean)}.
+     */
+    protected static final int STOP_GRACEFUL_SECONDS = 2;
+    
     private static final System.Logger LOG
             = System.getLogger(AbstractRealTest.class.getPackageName());
     
@@ -517,8 +524,8 @@ public abstract class AbstractRealTest
     }
     
     /**
-     * Stop the server and await, at most 2 seconds, the completion of
-     * all HTTP exchanges.<p>
+     * Stop the server and await, at most {@value STOP_GRACEFUL_SECONDS}
+     * seconds, the completion of all HTTP exchanges.<p>
      * 
      * Is NOP if the server never started or has stopped already.<p>
      * 
@@ -539,7 +546,7 @@ public abstract class AbstractRealTest
             return;
         }
         try {
-            server.stop(Duration.ofSeconds(2));
+            server.stop(Duration.ofSeconds(STOP_GRACEFUL_SECONDS));
             assertThat(server.isRunning()).isFalse();
             assertThat(errors).isEmpty();
             assertThatServerStopsNormally(start);

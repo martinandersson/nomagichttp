@@ -149,7 +149,7 @@ class ServerLifeCycleTest extends AbstractRealTest
         var stopServer = new Semaphore(0);
         server().add("/", GET().apply(req -> {
             stopServer.release();
-            SECONDS.sleep(2);
+            SECONDS.sleep(STOP_GRACEFUL_SECONDS + 1);
             throw new AssertionError("Thread supposed to be interrupted");
         }));
         try (var conn = client().openConnection()) {
