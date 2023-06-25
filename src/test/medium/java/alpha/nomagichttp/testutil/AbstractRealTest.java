@@ -150,7 +150,7 @@ public abstract class AbstractRealTest
      * 
      * Used by {@link #stopServer(boolean)}.
      */
-    protected static final int STOP_GRACEFUL_SECONDS = 2;
+    protected static final int STOP_GRACEFUL_SECONDS = 3;
     
     private static final System.Logger LOG
             = System.getLogger(AbstractRealTest.class.getPackageName());
