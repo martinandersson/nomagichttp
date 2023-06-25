@@ -353,12 +353,12 @@ class DetailTest extends AbstractRealTest
                 stats.add((AbstractByteCountedStats) s));
         
         final long then;
-        final String req = "GET / HTTP/1.1" + CRLF;
+        final String req = "GET / HTTP/1.1";
         final String rsp;
         try (var conn = client().openConnection()) {
             client().write(req);
             then = nanoTime();
-            rsp = client().writeReadTextUntilNewlines(CRLF);
+            rsp = client().writeReadTextUntilNewlines(CRLF + CRLF);
         }
         
         assertThat(rsp).isEqualTo(
@@ -376,6 +376,6 @@ class DetailTest extends AbstractRealTest
         final long expDur = nanoTime() - then;
         
         assertThat(s.elapsedNanos()).isBetween(0L, expDur);
-        assertThat(s.byteCount()).isEqualTo(exchToExpByteCnt.applyAsLong(req + CRLF, rsp));
+        assertThat(s.byteCount()).isEqualTo(exchToExpByteCnt.applyAsLong(req + CRLF + CRLF, rsp));
     }
 }
