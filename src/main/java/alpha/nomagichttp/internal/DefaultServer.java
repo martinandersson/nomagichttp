@@ -289,12 +289,20 @@ public final class DefaultServer implements HttpServer
      * approving a new exchange).
      */
     private void closeInactiveChildren() {
-        children.forEach((api, reader) -> {
+        int size = 0, closed = 0;
+        for (var entry : children.entrySet()) {
+            ++size;
+            var reader = entry.getValue();
+            var api = entry.getKey();
             if (reader.hasNotStarted()) {
-                LOG.log(DEBUG, "Exchange did not start; closing inactive child.");
                 api.close();
+                ++closed;
             }
-        });
+        }
+        if (LOG.isLoggable(DEBUG)) {
+            LOG.log(DEBUG,
+              "Closed %s inactive children of a total %s.".formatted(closed, size));
+        }
     }
     
     /** Shutdown then join, or joinUntil graceful timeout. */

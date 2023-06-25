@@ -138,7 +138,7 @@ class ServerLifeCycleTest extends AbstractRealTest
                 .isLessThan(ofSeconds(1));
             assertNewConnectionIsRejected();
             logRecorder().assertThatLogContainsOnlyOnce(rec(
-                DEBUG, "Exchange did not start; closing inactive child."));
+                DEBUG, "Closed 1 inactive children of a total 1."));
             // TODO: Should assertThatNoWarningOrErrorIsLogged(),
             //       but said method requires the server to already be running lol.
         }
