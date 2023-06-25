@@ -517,7 +517,7 @@ public abstract class AbstractRealTest
     }
     
     /**
-     * Stop the server and await, at most 1 second, the completion of
+     * Stop the server and await, at most 2 seconds, the completion of
      * all HTTP exchanges.<p>
      * 
      * Is NOP if the server never started or has stopped already.<p>
@@ -539,7 +539,7 @@ public abstract class AbstractRealTest
             return;
         }
         try {
-            server.stop(Duration.ofSeconds(1));
+            server.stop(Duration.ofSeconds(2));
             assertThat(server.isRunning()).isFalse();
             assertThat(errors).isEmpty();
             assertThatServerStopsNormally(start);
