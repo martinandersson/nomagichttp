@@ -137,9 +137,8 @@ class ServerLifeCycleTest extends AbstractRealTest
             assertThat(Duration.between(before, now()))
                 .isLessThan(ofSeconds(1));
             assertNewConnectionIsRejected();
-            logRecorder().assertThatLogContainsOnlyOnce(
-                rec(DEBUG, "Exchange did not start; closing inactive child."),
-                rec(DEBUG, "All exchanges finished within the graceful period."));
+            logRecorder().assertThatLogContainsOnlyOnce(rec(
+                DEBUG, "Exchange did not start; closing inactive child."));
             // TODO: Should assertThatNoWarningOrErrorIsLogged(),
             //       but said method requires the server to already be running lol.
         }
@@ -157,13 +156,12 @@ class ServerLifeCycleTest extends AbstractRealTest
             client().write(get());
             stopServer.acquire();
             Instant before = now();
-            stopServer();
+            stopServer(false);
             // Stopping completes after a 1-second graceful period
             assertThat(Duration.between(before, now()))
                 .isGreaterThanOrEqualTo(ofSeconds(1));
-            logRecorder().assertThatLogContainsOnlyOnce(
-                rec(DEBUG, "Graceful deadline expired; shutting down scope."),
-                rec(DEBUG, "Closing the child because thread interrupted."));
+            logRecorder().assertThatLogContainsOnlyOnce(rec(
+                DEBUG, "Closing the child because thread interrupted."));
             // TODO: Should assertThatNoWarningOrErrorIsLogged()
         }
     }
@@ -182,11 +180,9 @@ class ServerLifeCycleTest extends AbstractRealTest
                 "Content-Length: 999" + CRLF + CRLF);
             stopServer.acquire();
             Instant before = now();
-            stopServer();
+            stopServer(false);
             assertThat(Duration.between(before, now()))
                 .isGreaterThanOrEqualTo(ofSeconds(1));
-            logRecorder().assertThatLogContainsOnlyOnce(rec(
-                DEBUG, "Graceful deadline expired; shutting down scope."));
             // TODO: Should assertThatNoWarningOrErrorIsLogged()
         }
     }

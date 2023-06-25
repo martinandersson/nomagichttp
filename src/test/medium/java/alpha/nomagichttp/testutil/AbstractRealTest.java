@@ -33,9 +33,11 @@ import java.util.logging.LogRecord;
 import java.util.stream.Stream;
 
 import static alpha.nomagichttp.Config.DEFAULT;
+import static alpha.nomagichttp.testutil.LogRecords.rec;
 import static alpha.nomagichttp.util.ScopedValues.channel;
 import static java.lang.System.Logger.Level.DEBUG;
 import static java.util.Objects.requireNonNull;
+import static java.util.Optional.ofNullable;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static java.util.stream.Collectors.toSet;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -484,7 +486,9 @@ public abstract class AbstractRealTest
     }
     
     /**
-     * Returns the test log recorder.
+     * Returns the test log recorder.<p>
+     * 
+     * If log recording is not active, this method returns {@code null}.
      * 
      * @return the test log recorder
      */
@@ -502,12 +506,7 @@ public abstract class AbstractRealTest
     }
     
     /**
-     * Stop the server and await, at most 1 second, the completion of all
-     * HTTP exchanges.<p>
-     * 
-     * After 1 second, all client connections will close.<p>
-     * 
-     * Is NOP if the server never started.
+     * Equivalent to {@link #stopServer(boolean) stopServer(true)}.
      * 
      * @throws IOException
      *           on I/O error
@@ -515,6 +514,28 @@ public abstract class AbstractRealTest
      *           if interrupted while waiting on client connections to terminate
      */
     protected final void stopServer() throws IOException, InterruptedException {
+        stopServer(true);
+    }
+    
+    /**
+     * Stop the server and await, at most 1 second, the completion of
+     * all HTTP exchanges.<p>
+     * 
+     * Is NOP if the server never started or has stopped already.<p>
+     * 
+     * The parameter {@code graceful} has an effect only if log recording is
+     * active, and then affects what debug message is logged by the server
+     * implementation.
+     * 
+     * @param graceful whether it is expected that
+     *                 client connections complete gracefully
+     * 
+     * @throws IOException
+     *           on I/O error
+     * @throws InterruptedException
+     *           if interrupted while waiting on client connections to terminate
+     */
+    protected final void stopServer(boolean graceful) throws IOException, InterruptedException {
         if (server == null) {
             return;
         }
@@ -523,6 +544,10 @@ public abstract class AbstractRealTest
             assertThat(server.isRunning()).isFalse();
             assertThat(errors).isEmpty();
             assertThatServerStopsNormally(start);
+            ofNullable(logRecorder()).ifPresent(lr ->
+                lr.assertThatLogContainsOnlyOnce(rec(DEBUG, graceful ?
+                      "All exchanges finished within the graceful period." :
+                      "Graceful deadline expired; shutting down scope.")));
         } finally {
             server = null;
             start = null;
