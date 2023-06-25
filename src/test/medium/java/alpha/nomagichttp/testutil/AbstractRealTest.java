@@ -529,19 +529,19 @@ public abstract class AbstractRealTest
      * 
      * Is NOP if the server never started or has stopped already.<p>
      * 
-     * The parameter {@code graceful} has an effect only if log recording is
-     * active, and then affects what debug message is logged by the server
+     * The parameter {@code clean} has an effect only if log recording is
+     * active, and then it affects what debug message is logged by the server
      * implementation.
      * 
-     * @param graceful whether it is expected that
-     *                 client connections complete gracefully
+     * @param clean whether it is expected that
+     *              all exchanges finish within the graceful period
      * 
      * @throws IOException
      *           on I/O error
      * @throws InterruptedException
      *           if interrupted while waiting on client connections to terminate
      */
-    protected final void stopServer(boolean graceful) throws IOException, InterruptedException {
+    protected final void stopServer(boolean clean) throws IOException, InterruptedException {
         if (server == null) {
             return;
         }
@@ -551,7 +551,7 @@ public abstract class AbstractRealTest
             assertThat(errors).isEmpty();
             assertThatServerStopsNormally(start);
             ofNullable(logRecorder()).ifPresent(lr ->
-                lr.assertThatLogContainsOnlyOnce(rec(DEBUG, graceful ?
+                lr.assertThatLogContainsOnlyOnce(rec(DEBUG, clean ?
                       "All exchanges finished within the graceful period." :
                       "Graceful deadline expired; shutting down scope.")));
         } finally {
