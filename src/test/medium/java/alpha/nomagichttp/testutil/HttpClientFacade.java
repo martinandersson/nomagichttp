@@ -122,17 +122,17 @@ import static org.assertj.core.api.Assertions.assertThat;
  * and identity lol. Hence, this class will mostly not cache the client object,
  * using one new client instance for each request executed.<p>
  * 
- * A specified HTTP version may be rejected with an {@code
- * IllegalArgumentException}, but only on a best-effort basis. Which versions
- * specifically a client implementation supports is not always clear lol. The
- * argument will be passed forward to the client who may then blow up with
- * another exception.<p>
- * 
  * The underlying client connection will likely live in a connection pool (aka.
  * be persistent) until some weird stale timeout. And, attempts to change the
  * persistent state on the client's side may fail. For example, the JDK client
  * will throw an {@code IllegalArgumentException} if the "Connection: close"
  * header is set.<p>
+ * 
+ * A specified HTTP version may be rejected with an {@code
+ * IllegalArgumentException}, but only on a best-effort basis. Which versions
+ * specifically a client implementation supports is not always clear lol. The
+ * argument will be passed forward to the client who may then blow up with
+ * another exception.<p>
  * 
  * This class is not thread-safe and does not implement {@code hashCode} or
  * {@code equals}.
