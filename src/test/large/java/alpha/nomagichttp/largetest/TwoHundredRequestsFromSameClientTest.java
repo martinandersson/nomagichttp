@@ -39,7 +39,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  * For the NoMagicHTTP's TestClient, all requests are guaranteed to be sent over
  * the same connection. Other clients do not expose an API to handle the
  * connection or even query its characteristics, but they should nonetheless all
- * be using a persistent connection (see {@link HttpClientFacade}).<p>
+ * be using a persistent connection (see {@link HttpClientFacade}).
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  */
