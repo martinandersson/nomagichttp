@@ -13,8 +13,6 @@ import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.time.Duration;
-import java.time.Instant;
 import java.util.List;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.function.ToLongBiFunction;
@@ -35,10 +33,8 @@ import static alpha.nomagichttp.util.ByteBuffers.asciiBytes;
 import static alpha.nomagichttp.util.ScopedValues.channel;
 import static java.lang.System.Logger.Level.DEBUG;
 import static java.lang.System.Logger.Level.WARNING;
+import static java.lang.System.nanoTime;
 import static java.nio.charset.StandardCharsets.US_ASCII;
-import static java.time.Duration.ZERO;
-import static java.time.Duration.between;
-import static java.time.Instant.now;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -356,12 +352,12 @@ class DetailTest extends AbstractRealTest
         server().events().on(eventType, (ev, thing, s) ->
                 stats.add((AbstractByteCountedStats) s));
         
-        final Instant then;
+        final long then;
         final String req = "GET / HTTP/1.1" + CRLF;
         final String rsp;
         try (var conn = client().openConnection()) {
             client().write(req);
-            then = now();
+            then = nanoTime();
             rsp = client().writeReadTextUntilNewlines(CRLF);
         }
         
@@ -373,12 +369,13 @@ class DetailTest extends AbstractRealTest
                 .isExactlyInstanceOf(NoRouteFoundException.class);
         
         var s = stats.poll(1, SECONDS);
+        assert s != null;
+        
         // Can not compute this any earlier, directly after response.
         // No guarantee the event has happened at that point.
-        final Duration expDur = between(then, now());
+        final long expDur = nanoTime() - then;
         
-        assertThat(s.elapsedDuration()).isGreaterThanOrEqualTo(ZERO);
-        assertThat(s.elapsedDuration()).isLessThanOrEqualTo(expDur);
+        assertThat(s.elapsedNanos()).isBetween(0L, expDur);
         assertThat(s.byteCount()).isEqualTo(exchToExpByteCnt.applyAsLong(req + CRLF, rsp));
     }
 }
