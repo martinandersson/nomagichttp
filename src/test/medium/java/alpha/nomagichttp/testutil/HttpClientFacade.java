@@ -135,15 +135,6 @@ import static org.assertj.core.api.Assertions.assertThat;
  * will throw an {@code IllegalArgumentException} if the "Connection: close"
  * header is set.<p>
  * 
- * Even though the test may have executed only one exchange; when it proceeds to
- * call {@link HttpServer#stop()}, a new logical exchange may have already
- * commenced and so the connection will not close until timeout — if specified
- * (and if not specified, the stop method may never return until, and if, the
- * client's connection pool times out!). So, unless a persistent connection is a
- * criteria for the test case itself, the request handler ought to set a
- * "Connection: close" response header. Regardless, it's always a good idea to
- * increase test isolation by cleaning up resources in-between lol.<p>
- * 
  * This class is not thread-safe and does not implement {@code hashCode} or
  * {@code equals}.
  * 
