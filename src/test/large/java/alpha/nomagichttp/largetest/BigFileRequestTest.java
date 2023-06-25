@@ -57,7 +57,6 @@ class BigFileRequestTest extends AbstractLargeRealTest
     
     @BeforeAll
     void beforeAll() throws IOException {
-        Logging.everything();
         file = Files.createTempDirectory("nomagic").resolve("big-file");
         contents = DataUtils.bytes(FILE_SIZE);
         // Receive file and respond the length in header
