@@ -7,11 +7,18 @@ plugins {
 
 // TODO: Replace with Toolchains
 // https://docs.gradle.org/8.2-rc-2/userguide/toolchains.html
-final var RELEASE_FOR = JavaVersion.VERSION_19
+final var RELEASE_FOR = JavaVersion.VERSION_20
 if (!JavaVersion.current().isCompatibleWith(RELEASE_FOR)) {
     throw new Exception(
          "Java ${JavaVersion.current()} is not supported. " +
          "Please use at least version ${RELEASE_FOR}.");
+}
+
+jacoco {
+    // The default version 0.8.8 does not support Java 20 class files.
+    // TODO: Remove configuration block when Gradle updates the default
+    // https://docs.gradle.org/current/dsl/org.gradle.testing.jacoco.plugins.JacocoPluginExtension.html#N14B7D
+    toolVersion = '0.8.10'
 }
 
 sourceSets {

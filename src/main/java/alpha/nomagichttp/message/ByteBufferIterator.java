@@ -108,7 +108,7 @@ public interface ByteBufferIterator extends Closeable
      * @implSpec
      * The default implementation is empty.
      * 
-     * @throws IOException {@inheritDoc}
+     * @throws IOException if an I/O error occurs
      */
     @Override
     default void close() throws IOException {

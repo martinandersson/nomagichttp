@@ -1,7 +1,8 @@
-# Tell Jitpack to build using Java 19 (defaults to 8)
+# Tell Jitpack to build using Java 20 (defaults to 8)
+# https://jitpack.io/docs/BUILDING/#java-version
+# https://github.com/jitpack/jitpack.io/issues/4506#issuecomment-864562270
 before_install:
-  # Fix: https://github.com/jitpack/jitpack.io/issues/4506#issuecomment-864562270
   - source "$HOME/.sdkman/bin/sdkman-init.sh"
   - sdk update
-  - sdk install java 19.0.1-zulu
-  - sdk use java 19.0.1-zulu
+  - sdk install java 20.0.1-zulu
+  - sdk use java 20.0.1-zulu
