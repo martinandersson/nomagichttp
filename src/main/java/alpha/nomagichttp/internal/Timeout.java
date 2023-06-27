@@ -23,7 +23,7 @@ import static java.util.concurrent.TimeUnit.NANOSECONDS;
 final class Timeout
 {
     /**
-     * Schedule an action to run after the given amount of nanoseconds.
+     * Schedule an action to run after the given number of nanoseconds.
      * 
      * @param nanos time to delay
      * @param action to run
@@ -54,8 +54,8 @@ final class Timeout
     
     private final long nanos;
     private final AtomicReference<
-            CompletableFuture<
-                    ScheduledFuture<?>>> task;
+                    CompletableFuture<
+                      ScheduledFuture<?>>> task;
     
     Timeout(Duration timeout) {
         this.nanos = timeout.toNanos();
