@@ -610,7 +610,7 @@ public final class Logging
         }
         
         /**
-         * Assert that observed log records contains the given values only once.
+         * Assert that observed log records contain the given values only once.
          * 
          * @param values use {@link LogRecords#rec(Level, String, Throwable error)}
          */
