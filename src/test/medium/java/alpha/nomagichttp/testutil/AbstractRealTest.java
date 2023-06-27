@@ -150,10 +150,7 @@ public abstract class AbstractRealTest
      * 
      * Used by {@link #stopServer(boolean)}.
      */
-    // This is a pretty high value, because of GitHub Actions being slow.
-    // More specifically, their MacOS and Linux workers, not Windows.
-    // On a local dev machine this value can be 1 or 2 seconds.
-    protected static final int STOP_GRACEFUL_SECONDS = 7;
+    protected static final int STOP_GRACEFUL_SECONDS = 1;
     
     private static final System.Logger LOG
             = System.getLogger(AbstractRealTest.class.getPackageName());
