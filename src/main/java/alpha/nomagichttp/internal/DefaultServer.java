@@ -31,6 +31,7 @@ import java.util.concurrent.Future;
 import java.util.concurrent.TimeoutException;
 import java.util.function.IntConsumer;
 
+import static alpha.nomagichttp.internal.Timeout.schedule;
 import static alpha.nomagichttp.internal.VThreads.CHANNEL_BLOCKING;
 import static alpha.nomagichttp.util.Blah.getOrClose;
 import static alpha.nomagichttp.util.Blah.runOrClose;
@@ -46,6 +47,7 @@ import static java.net.StandardProtocolFamily.UNIX;
 import static java.nio.channels.ServerSocketChannel.open;
 import static java.time.Instant.now;
 import static java.util.Objects.requireNonNull;
+import static java.util.concurrent.TimeUnit.MILLISECONDS;
 
 /**
  * A fully JDK-based {@code HttpServer} implementation using virtual threads.
@@ -194,7 +196,9 @@ public final class DefaultServer implements HttpServer
                 throw newDeadCode();
             } finally {
                 closeParent();
-                closeInactiveChildren();
+                if (!closeIdlingChildren()) {
+                    schedule(MILLISECONDS.toNanos(100), this::closeIdlingChildren);
+                }
                 join(scope);
             }
         } finally {
@@ -271,24 +275,24 @@ public final class DefaultServer implements HttpServer
     }
     
     /**
-     * Closes all inactive children.<p>
+     * Closes all children associated with an exchange that has not started.<p>
      * 
      * The purpose of this method is to not stall the threads running and
      * stopping the server more than necessary.<p>
      * 
-     * This method will close all children associated with an exchange that has
-     * not started. This means that a child may be closed whilst reading
-     * arriving request bytes. Well, one has to draw the line somewhere. A finer
-     * granularity — such as counting received bytes or otherwise timing out
-     * blocking read operations to continuously check the server's running state
-     * — would impose complexity and degrade performance.<p>
-     * 
-     * The server being stopped is what signals no new HTTP exchanges to
+     * The server having been stopped is what signals no new exchanges to
      * commence over the same connection. This is implemented by
      * {@link ResponseProcessor} (which checks the server's running state before
-     * approving a new exchange).
+     * approving a new exchange).<p>
+     * 
+     * A {@code false} return means that there are still non-idling children.
+     * Because there is a race between the thread stopping the server, and the
+     * thread starting a new exchange; a {@code false} return should schedule a
+     * job to run this method one more time.
+     * 
+     * @return whether idling children exists and all of them were closed
      */
-    private void closeInactiveChildren() {
+    private boolean closeIdlingChildren() {
         int size = 0, closed = 0;
         for (var entry : children.entrySet()) {
             ++size;
@@ -301,8 +305,9 @@ public final class DefaultServer implements HttpServer
         }
         if (LOG.isLoggable(DEBUG)) {
             LOG.log(DEBUG,
-              "Closed %s inactive children of a total %s.".formatted(closed, size));
+              "Closed %s idling children of a total %s.".formatted(closed, size));
         }
+        return closed == size;
     }
     
     /** Shutdown then join, or joinUntil graceful timeout. */

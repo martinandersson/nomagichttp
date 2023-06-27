@@ -121,8 +121,8 @@ public final class ChannelReader implements ByteBufferIterable
      * Returns {@code true} if no read operation has completed.<p>
      * 
      * If this method returns {@code true}, then the connection is considered
-     * inactive/not being in use, and it is safe to close the child during a
-     * graceful shutdown of the server.<p>
+     * idling, and it is safe to close the child during a graceful shutdown of
+     * the server.<p>
      * 
      * If this method returns {@code false}, then at least one read operation
      * completed, successfully or otherwise. In this case, the server must not
@@ -133,6 +133,10 @@ public final class ChannelReader implements ByteBufferIterable
      * state of this reader, are irrelevant.<p>
      * 
      * The read is volatile.
+     * 
+     * @implNote
+     * Consequently, a connection may be closed while request bytes are being
+     * received. There's just no way around that.
      * 
      * @return see JavaDoc
      */
