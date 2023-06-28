@@ -126,6 +126,9 @@ class ServerLifeCycleTest extends AbstractRealTest
     @Test
     void serverStop_inactiveExchangeAborts() throws IOException, InterruptedException {
         try (var conn = client().openConnection()) {
+            // Wait for the server to confirm,
+            // otherwise one can not deterministically test the log of "idling children"
+            logRecorder().assertAwaitChildAccept();
             Instant before = now();
             stopServer();
             // Stopping should be completed more or less instantaneously
