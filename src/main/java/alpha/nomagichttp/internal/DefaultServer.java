@@ -279,8 +279,8 @@ public final class DefaultServer implements HttpServer
     
     private void closeParent() throws IOException {
         this.parent.dropThrowsX(channel -> {
+            LOG.log(INFO, () -> "Closing server channel: " + channel);
             try {
-                LOG.log(INFO, () -> "Closing server channel: " + channel);
                 channel.close();
             } finally {
                 events().dispatch(HttpServerStopped.INSTANCE, now(), started);
