@@ -126,11 +126,6 @@ class ServerLifeCycleTest extends AbstractRealTest
     @Test
     void serverStop_inactiveExchangeAborts() throws IOException, InterruptedException {
         try (var conn = client().openConnection()) {
-            // Wait for the server to save the child reference in children.
-            // Otherwise, the thread stopping may not observe and close the
-            // inactive child, which would cause the server-stop to complete
-            // after 1 second, which is tested in the next test cases.
-            logRecorder().assertAwaitChildAccept();
             Instant before = now();
             stopServer();
             // Stopping should be completed more or less instantaneously

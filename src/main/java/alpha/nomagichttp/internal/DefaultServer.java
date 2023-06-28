@@ -196,9 +196,23 @@ public final class DefaultServer implements HttpServer
                 throw newDeadCode();
             } finally {
                 closeParent();
-                if (!closeIdlingChildren()) {
-                    schedule(MILLISECONDS.toNanos(100), this::closeIdlingChildren);
-                }
+                closeIdlingChildren();
+                /*
+                 * There is a race between the thread stopping the server
+                 * (invoking this method), and the threads that modifies the
+                 * child map; that is to say, the thread that accepts a new
+                 * connection, and the thread beginning a new exchange.
+                 *     The race is benign, because the scope will shut down no
+                 * later than at the end of the graceful period.
+                 *     What can be the effect of the race, is having the thread
+                 * that started and the thread that is stopping the server be
+                 * blocked unnecessarily long.
+                 *     Closing idling children just one more time, ought to
+                 * unblock 99% of the cases. The block was actually quite common
+                 * in medium compatibility tests on GitHub Action's MacOS and
+                 * Linux workers.
+                 */
+                schedule(MILLISECONDS.toNanos(100), this::closeIdlingChildren);
                 join(scope);
             }
         } finally {
@@ -283,16 +297,9 @@ public final class DefaultServer implements HttpServer
      * The server having been stopped is what signals no new exchanges to
      * commence over the same connection. This is implemented by
      * {@link ResponseProcessor} (which checks the server's running state before
-     * approving a new exchange).<p>
-     * 
-     * A {@code false} return means that there are still non-idling children.
-     * Because there is a race between the thread stopping the server, and the
-     * thread starting a new exchange; a {@code false} return should schedule a
-     * job to run this method one more time.
-     * 
-     * @return whether idling children exists and all of them were closed
+     * approving a new exchange).
      */
-    private boolean closeIdlingChildren() {
+    private void closeIdlingChildren() {
         int size = 0, closed = 0;
         for (var entry : children.entrySet()) {
             ++size;
@@ -307,7 +314,6 @@ public final class DefaultServer implements HttpServer
             LOG.log(DEBUG,
               "Closed %s idling children of a total %s.".formatted(closed, size));
         }
-        return closed == size;
     }
     
     /** Shutdown then join, or joinUntil graceful timeout. */
