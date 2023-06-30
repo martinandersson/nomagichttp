@@ -37,11 +37,13 @@ import static org.assertj.core.api.AssertionsForClassTypes.assertThatThrownBy;
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  */
-class ServerLifeCycleTest extends AbstractRealTest
+final class ServerLifeCycleTest extends AbstractRealTest
 {
     @Test
     void startStop_async() throws IOException, InterruptedException {
-        // Can open connection (implicit HttpServer.startAsync)
+        // Uses HttpServer.startAsync()
+        server();
+        // Can open connection
         client().openConnection().close();
         // Implicit stop()
         assertThatNoWarningOrErrorIsLogged();
@@ -124,6 +126,7 @@ class ServerLifeCycleTest extends AbstractRealTest
     
     @Test
     void serverStop_inactiveExchangeAborts() throws IOException, InterruptedException {
+        server();
         try (var conn = client().openConnection()) {
             // Wait for the server to confirm,
             // otherwise one can not deterministically test the log of "idling children"

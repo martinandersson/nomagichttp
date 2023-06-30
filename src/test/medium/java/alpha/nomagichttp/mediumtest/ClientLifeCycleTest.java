@@ -108,6 +108,7 @@ class ClientLifeCycleTest extends AbstractRealTest
     // Client immediately closes the channel; no error handler and no warning
     @Test
     void clientClosesChannel_serverReceivedNoBytes() throws IOException, InterruptedException {
+        server();
         client().openConnection().close();
         logRecorder().assertAwait(
               DEBUG, "Closing the child because client aborted the exchange.");
@@ -127,6 +128,7 @@ class ClientLifeCycleTest extends AbstractRealTest
     @Test
     void clientClosesChannel_serverReceivedPartialHead()
             throws IOException, InterruptedException {
+        server();
         client()
             .write("XXX /incomplete");
         assertThat(pollServerError())

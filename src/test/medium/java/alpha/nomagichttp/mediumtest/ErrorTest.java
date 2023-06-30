@@ -65,7 +65,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  */
-class ErrorTest extends AbstractRealTest
+final class ErrorTest extends AbstractRealTest
 {
     private static final System.Logger LOG
             = System.getLogger(ErrorTest.class.getPackageName());
@@ -87,6 +87,7 @@ class ErrorTest extends AbstractRealTest
     
     @Test
     void RequestLineParseException() throws IOException, InterruptedException {
+        server();
         String rsp = client().writeReadTextUntilEOS(
             "GET / H T T P ....");
         assertThat(rsp).isEqualTo("""
@@ -104,6 +105,7 @@ class ErrorTest extends AbstractRealTest
     
     @Test
     void HeaderParseException() throws IOException, InterruptedException {
+        server();
         String rsp = client().writeReadTextUntilEOS("""
              GET / HTTP/1.1\r
              H e a d e r: Oops!\r\n""");
@@ -126,6 +128,7 @@ class ErrorTest extends AbstractRealTest
     
     @Test
     void HttpVersionParseException() throws IOException, InterruptedException {
+        server();
         String rsp = client().writeReadTextUntilNewlines(
             "GET / Oops"               + CRLF + CRLF);
         assertThat(rsp).isEqualTo(
@@ -147,6 +150,7 @@ class ErrorTest extends AbstractRealTest
     void HttpVersionTooOldException_lessThan1_0(String version, boolean hasLiteral)
             throws IOException, InterruptedException
     {
+        server();
         String rsp = client().writeReadTextUntilNewlines(
             "GET / HTTP/" + version         + CRLF + CRLF);
         assertThat(rsp).isEqualTo(
@@ -181,6 +185,7 @@ class ErrorTest extends AbstractRealTest
     {
         usingConfiguration()
             .minHttpVersion(HTTP_1_1);
+        server();
         String rsp = client().writeReadTextUntilNewlines(
             "GET /not-found HTTP/1.0"       + CRLF + CRLF);
         assertThat(rsp).isEqualTo(
@@ -203,6 +208,7 @@ class ErrorTest extends AbstractRealTest
     void HttpVersionTooNewException(String version, boolean hasLiteral)
             throws IOException, InterruptedException
     {
+        server();
         String rsp = client().writeReadTextUntilNewlines(
             "GET / HTTP/" + version                   + CRLF + CRLF);
         assertThat(rsp).isEqualTo(
@@ -257,6 +263,7 @@ class ErrorTest extends AbstractRealTest
     
     @Test
     void BadRequestException() throws IOException, InterruptedException {
+        server();
         String rsp = client().writeReadTextUntilEOS("""
             GET / HTTP/1.1\r
             Transfer-Encoding: chunked\r
@@ -277,6 +284,7 @@ class ErrorTest extends AbstractRealTest
     
     @Test
     void UnsupportedTransferCodingException() throws IOException, InterruptedException {
+        server();
         String rsp = client().writeReadTextUntilNewlines("""
             GET / HTTP/1.1\r
             Transfer-Encoding: blabla, chunked\r\n\r
@@ -300,6 +308,7 @@ class ErrorTest extends AbstractRealTest
     {
         usingConfiguration()
             .maxRequestHeadSize(1);
+        server();
         String rsp = client().writeReadTextUntilNewlines(
             "AB");
         assertThat(rsp).isEqualTo("""
@@ -317,6 +326,7 @@ class ErrorTest extends AbstractRealTest
     void NoRouteFoundException_default()
             throws IOException, InterruptedException
     {
+        server();
         String rsp = client().writeReadTextUntilNewlines(
             "GET /404 HTTP/1.1"      + CRLF + CRLF);
         assertThat(rsp).isEqualTo(
@@ -335,6 +345,7 @@ class ErrorTest extends AbstractRealTest
             exc instanceof NoRouteFoundException ?
                     status(499, "Custom Not Found!") :
                     chain.proceed());
+        server();
         String rsp = client().writeReadTextUntilNewlines(
             "GET /404 HTTP/1.1"              + CRLF + CRLF);
         assertThat(rsp).isEqualTo(

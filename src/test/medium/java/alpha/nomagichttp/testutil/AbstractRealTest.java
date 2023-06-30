@@ -44,15 +44,15 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.junit.jupiter.api.Assertions.assertSame;
 
 /**
- * Will create a {@link #server() server} (on first access) and a
- * {@link #client() client} (on first access).<p>
+ * Operates a {@link #server() server} and a {@link #client() client}.<p>
  * 
- * The client will be configured with the server's port.<p>
+ * Both the server and the client are created on first access. The client will
+ * be configured with the server's port.<p>
  * 
- * Both the server and client APIs are already pretty easy to use on their own.
- * The added value of this class is packaging both into one class together with
- * some extra features such as automatic log recording, and
- * collection/verification of server errors.<p>
+ * Both the server and client APIs are easy to use on their own. The added value
+ * of this class is packaging both into one class, together with some extra
+ * features such as automatic log recording, and collection/verification of
+ * server errors.<p>
  * 
  * This class will assert on server-stop that no errors were delivered to an
  * error handler. If errors are expected, then the test must consume all errors
@@ -77,8 +77,8 @@ import static org.junit.jupiter.api.Assertions.assertSame;
  *   }
  * </pre>
  * 
- * By default, after each test, the server is stopped and both the server and
- * client references are set to null. This can be disabled through a constructor
+ * After each test, the server is stopped and both the server and client
+ * references are set to null. This can be disabled through a constructor
  * argument {@code afterEachStop}, in which case the subsequent test will reuse
  * the same server and client. Running different tests using the same resources
  * may be desired for testing purposes, but is also good for reducing system
@@ -89,8 +89,8 @@ import static org.junit.jupiter.api.Assertions.assertSame;
  * using {@link #logRecorderStop()}.<p>
  * 
  * Log recording is intended for detailed tests that are awaiting log events
- * and/or running assertions on log records. Tests concerned with performance
- * ought to disable log recording by means of the constructor argument
+ * and/or running assertions on the records. Tests concerned with performance
+ * ought to disable recording by means of the constructor argument
  * {@code useLogRecording}.
  * 
  * <pre>
@@ -101,20 +101,20 @@ import static org.junit.jupiter.api.Assertions.assertSame;
  *           // Save server + client references across tests,
  *           // and disable log recording.
  *           super(false, false);
+ *           server();
  *           conn = client().openConnection();
  *       }
  *       // Each message pair is exchange over the same connection
  *       {@literal @}RepeatedTest(999_999_999)
  *       void httpExchange() {
- *           server()...
- *           client().writeReadTextUntilNewlines(...)
+ *           client().writeReadTextUntilNewlines("GET / HTTP/1.1\r\n\r\n")
  *       }
  *       {@literal @}AfterAll
  *       void afterAll() { //  {@literal <}-- no need to be static (coz of PER_CLASS thing)
  *           stopServer();
  *           conn.close();
  *       }
- *       // Or alternatively, save on annotations and just loop inside one test method lol
+ *       // Or alternatively, save on annotations and loop inside a test method lol
  *   }
  * </pre>
  * 
@@ -138,8 +138,8 @@ import static org.junit.jupiter.api.Assertions.assertSame;
  * 
  * Please note that currently, the {@code TestClient} is not thread-safe nor is
  * this class (well, except for the collection and retrieval of server errors).
- * This will likely change when work commences to add tests that execute
- * requests in parallel.
+ * This may change when work commences to add tests that execute requests in
+ * parallel.
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  */
@@ -240,7 +240,7 @@ public abstract class AbstractRealTest
     /**
      * Proxied short-cut equivalent to
      * <pre>{@code
-     *  Config modified = current.toBuilder().
+     *  Config modified = currentConf.toBuilder().
      *     <all set calls goes here>
      *     .build();
      *  usingConfig(modified.build());
@@ -431,9 +431,7 @@ public abstract class AbstractRealTest
      *             if the server has never started
      */
     protected final int serverPort() {
-        if (port == 0) {
-            throw new IllegalStateException("Server never started.");
-        }
+        requireServerStarted();
         return port;
     }
     
@@ -441,15 +439,17 @@ public abstract class AbstractRealTest
      * Returns the client instance.<p>
      * 
      * If the current client reference is null, a client will be created with
-     * the server's port. In this case, the server will be accessed using the
-     * {@link #server() server} method. Consequently, a test only needs to call
-     * this method to set up both.
+     * the server's port.
      * 
      * @return the client instance
      * 
-     * @throws IOException if an I/O error occurs
+     * @throws IllegalStateException
+     *             if the server has never started
+     * @throws IOException
+     *             if an I/O error occurs
      */
     protected final TestClient client() throws IOException {
+        requireServerStarted();
         if (client == null) {
             client = new TestClient(server());
         }
@@ -656,6 +656,12 @@ public abstract class AbstractRealTest
         Method m = test.getTestMethod().get();
         String n = m.getDeclaringClass().getSimpleName() + "." + m.getName() + "()";
         return n + " -> " + test.getDisplayName();
+    }
+    
+    private void requireServerStarted() {
+        if (port == 0) {
+            throw new IllegalStateException("Server never started.");
+        }
     }
     
     private void requireServerIsRunning() {
