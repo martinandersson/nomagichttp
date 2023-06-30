@@ -283,6 +283,7 @@ public final class DefaultServer implements HttpServer
             try {
                 channel.close();
             } finally {
+                assert !channel.isOpen();
                 events().dispatch(HttpServerStopped.INSTANCE, now(), started);
             }
         });

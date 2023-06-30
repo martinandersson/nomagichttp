@@ -102,7 +102,6 @@ class ServerLifeCycleTest extends AbstractRealTest
             toContinue.acquire();
             assertThat(fut.isDone()).isFalse();
             assertThat(server().isRunning()).isFalse();
-            assertNewConnectionIsRejected();
             
             String rsp2 = client().writeReadTextUntil(
                 "Hi!"                                     + CRLF + CRLF, "Hi!");
