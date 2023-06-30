@@ -166,7 +166,7 @@ final class HttpExchange
     void begin0() throws Exception {
         final SkeletonRequest req;
         try {
-            LOG.log(DEBUG, "Parsing the request");
+            LOG.log(DEBUG, "Parsing request");
             req = validate(createRequest(parseHead()));
         } catch (Exception e) {
             handleException(e);
