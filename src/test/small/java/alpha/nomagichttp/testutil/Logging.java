@@ -341,7 +341,7 @@ public final class Logging
                     var r = it.next();
                     if (r.getLevel().equals(jul) &&
                         r.getMessage().startsWith(messageStartsWith) &&
-                        error.isInstance(r.getThrown()))
+                        error.isInstance(r.getThrown())) // TODO: param should be able to be null
                     {
                         it.remove();
                         match = r;
