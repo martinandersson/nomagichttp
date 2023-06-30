@@ -5,8 +5,11 @@ import alpha.nomagichttp.HttpServer;
 import alpha.nomagichttp.event.EventHub;
 import alpha.nomagichttp.handler.ClientChannel;
 import alpha.nomagichttp.message.Response;
+import jdk.incubator.concurrent.ScopedValue;
 
 import java.util.NoSuchElementException;
+
+import static jdk.incubator.concurrent.ScopedValue.newInstance;
 
 /**
  * A namespace for scoped values.<p>
@@ -32,8 +35,7 @@ public final class ScopedValues
     //       This will also ensure application code can not rebind.
     
     /** TEMPORARILY */
-    public static DummyScopedValue<HttpServer>
-            __HTTP_SERVER = DummyScopedValue.newInstance();
+    public static ScopedValue<HttpServer> __HTTP_SERVER = newInstance();
     
     /**
      * Returns the server.<p>
@@ -63,8 +65,7 @@ public final class ScopedValues
     }
     
     /** TEMPORARILY */
-    public static  DummyScopedValue<ClientChannel>
-            __CHANNEL = DummyScopedValue.newInstance();
+    public static  ScopedValue<ClientChannel> __CHANNEL = newInstance();
     
     /**
      * Returns the client channel.<p>

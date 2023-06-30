@@ -12,6 +12,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 /**
  * Small tests for {@link DummyScopedValue}.
  */
+@Deprecated
 final class DummyScopedValueTest
 {
     final DummyScopedValue<String> testee = newInstance();

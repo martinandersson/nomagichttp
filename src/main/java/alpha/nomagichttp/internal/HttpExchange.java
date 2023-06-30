@@ -17,7 +17,7 @@ import alpha.nomagichttp.message.RawRequest;
 import alpha.nomagichttp.message.Request;
 import alpha.nomagichttp.message.RequestLineParseException;
 import alpha.nomagichttp.message.Response;
-import alpha.nomagichttp.util.DummyScopedValue;
+import jdk.incubator.concurrent.ScopedValue;
 
 import java.io.IOException;
 import java.nio.channels.ClosedChannelException;
@@ -33,7 +33,6 @@ import static alpha.nomagichttp.handler.ErrorHandler.BASE;
 import static alpha.nomagichttp.internal.ErrorHandlerException.unchecked;
 import static alpha.nomagichttp.message.Responses.continue_;
 import static alpha.nomagichttp.util.Blah.throwsNoChecked;
-import static alpha.nomagichttp.util.DummyScopedValue.where;
 import static java.lang.Integer.parseInt;
 import static java.lang.Math.addExact;
 import static java.lang.System.Logger.Level;
@@ -44,6 +43,8 @@ import static java.lang.System.nanoTime;
 import static java.util.Optional.empty;
 import static java.util.Optional.of;
 import static java.util.Optional.ofNullable;
+import static jdk.incubator.concurrent.ScopedValue.newInstance;
+import static jdk.incubator.concurrent.ScopedValue.where;
 
 /**
  * Orchestrator of an HTTP exchange from request to response.<p>
@@ -78,8 +79,8 @@ final class HttpExchange
     private static final System.Logger
             LOG = System.getLogger(HttpExchange.class.getPackageName());
     
-    private static final DummyScopedValue<Optional<SkeletonRequest>>
-            SKELETON_REQUEST = DummyScopedValue.newInstance();
+    private static final ScopedValue<Optional<SkeletonRequest>>
+            SKELETON_REQUEST = newInstance();
     
     /**
      * Returns the skeleton request.<p>

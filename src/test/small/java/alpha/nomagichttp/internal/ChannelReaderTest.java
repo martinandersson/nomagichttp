@@ -11,11 +11,11 @@ import java.util.List;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeoutException;
 
-import static alpha.nomagichttp.testutil.ByteBufferIterables.getItemsVThread;
 import static alpha.nomagichttp.testutil.ByteBufferIterables.getByteVThread;
+import static alpha.nomagichttp.testutil.ByteBufferIterables.getItemsVThread;
 import static alpha.nomagichttp.testutil.ByteBufferIterables.getStringVThread;
 import static alpha.nomagichttp.testutil.ReadableByteChannels.ofString;
-import static alpha.nomagichttp.util.DummyScopedValue.where;
+import static jdk.incubator.concurrent.ScopedValue.where;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.AssertionsForClassTypes.assertThatThrownBy;
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;

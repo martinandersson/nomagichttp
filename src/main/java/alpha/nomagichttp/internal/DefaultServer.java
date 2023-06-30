@@ -35,7 +35,6 @@ import static alpha.nomagichttp.internal.Timeout.schedule;
 import static alpha.nomagichttp.internal.VThreads.CHANNEL_BLOCKING;
 import static alpha.nomagichttp.util.Blah.getOrClose;
 import static alpha.nomagichttp.util.Blah.runOrClose;
-import static alpha.nomagichttp.util.DummyScopedValue.where;
 import static alpha.nomagichttp.util.ScopedValues.__CHANNEL;
 import static alpha.nomagichttp.util.ScopedValues.__HTTP_SERVER;
 import static java.lang.System.Logger.Level.DEBUG;
@@ -48,6 +47,7 @@ import static java.nio.channels.ServerSocketChannel.open;
 import static java.time.Instant.now;
 import static java.util.Objects.requireNonNull;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
+import static jdk.incubator.concurrent.ScopedValue.where;
 
 /**
  * A fully JDK-based {@code HttpServer} implementation using virtual threads.

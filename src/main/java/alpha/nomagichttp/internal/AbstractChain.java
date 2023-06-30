@@ -2,7 +2,7 @@ package alpha.nomagichttp.internal;
 
 import alpha.nomagichttp.Chain;
 import alpha.nomagichttp.message.Response;
-import alpha.nomagichttp.util.DummyScopedValue;
+import jdk.incubator.concurrent.ScopedValue;
 
 import java.util.Collection;
 import java.util.IdentityHashMap;
@@ -10,6 +10,8 @@ import java.util.Iterator;
 import java.util.Set;
 
 import static java.util.Collections.newSetFromMap;
+import static jdk.incubator.concurrent.ScopedValue.newInstance;
+import static jdk.incubator.concurrent.ScopedValue.where;
 
 /**
  * Provides {@code Chain.proceed} verification.<p>
@@ -25,8 +27,7 @@ import static java.util.Collections.newSetFromMap;
  */
 abstract class AbstractChain<E>
 {
-    private static final DummyScopedValue<Object>
-            ENTITY_RUNNING = DummyScopedValue.newInstance();
+    private static final ScopedValue<Object> ENTITY_RUNNING = newInstance();
     
     private final Iterator<? extends E> entities;
     private final Set<Object> yielded;
@@ -53,7 +54,7 @@ abstract class AbstractChain<E>
             return callFinalHandler();
         } else {
             var e = entities.next();
-            return DummyScopedValue.where(ENTITY_RUNNING, e, () ->
+            return where(ENTITY_RUNNING, e, () ->
                     // Recursive
                     callIntermittentHandler(e, () -> proceed0(true)));
         }

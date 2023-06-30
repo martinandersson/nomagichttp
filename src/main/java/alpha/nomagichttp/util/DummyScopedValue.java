@@ -24,6 +24,7 @@ import java.util.concurrent.Callable;
  * @author Martin Andersson (webmaster at martinandersson.com)
  * @param <T> the type of the object bound to this ScopedValue
  */
+@Deprecated(since = "yesterday", forRemoval = true)
 public final class DummyScopedValue<T>
 {
     /**

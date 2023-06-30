@@ -5,8 +5,8 @@ import alpha.nomagichttp.HttpServer;
 import java.util.concurrent.Callable;
 
 import static alpha.nomagichttp.Config.DEFAULT;
-import static alpha.nomagichttp.util.DummyScopedValue.where;
 import static alpha.nomagichttp.util.ScopedValues.__HTTP_SERVER;
+import static jdk.incubator.concurrent.ScopedValue.where;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 

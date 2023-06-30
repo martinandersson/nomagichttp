@@ -1,10 +1,13 @@
 package alpha.nomagichttp.testutil;
 
+import jdk.incubator.concurrent.StructuredTaskScope;
+
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Future;
 import java.util.concurrent.TimeoutException;
 
-import static java.util.concurrent.Executors.newVirtualThreadPerTaskExecutor;
+import static java.time.Instant.now;
 import static java.util.concurrent.TimeUnit.SECONDS;
 
 /**
@@ -18,7 +21,7 @@ public final class VThreads {
     }
     
     /**
-     * Get a result from the given callable, using a virtual thread.<p>
+     * Get a result from the given callable, using a forked virtual thread.<p>
      * 
      * This method will wait at most 1 second for the result.
      * 
@@ -38,8 +41,12 @@ public final class VThreads {
      */
     public static <R> R getUsingVThread(Callable<? extends R> task)
             throws InterruptedException, ExecutionException, TimeoutException {
-        try (var vThread = newVirtualThreadPerTaskExecutor()) {
-            return vThread.submit(task).get(1, SECONDS);
+        try (var scope = new StructuredTaskScope<>()) {
+            Future<R> fut = scope.fork(task);
+            scope.joinUntil(now().plusSeconds(1));
+            // Future.resultNow() throws IllegalStateException, without a cause.
+            // For tests, it's kind of important to assert the cause 👍
+            return fut.get(0, SECONDS);
         }
     }
 }
