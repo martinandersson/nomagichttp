@@ -36,7 +36,6 @@ import static alpha.nomagichttp.testutil.LogRecords.rec;
 import static alpha.nomagichttp.util.ScopedValues.channel;
 import static java.lang.System.Logger.Level.DEBUG;
 import static java.util.Objects.requireNonNull;
-import static java.util.Optional.ofNullable;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static java.util.stream.Collectors.toSet;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -488,11 +487,15 @@ public abstract class AbstractRealTest
     /**
      * Returns the test log recorder.<p>
      * 
-     * If log recording is not active, this method returns {@code null}.
+     * @return see JavaDoc
      * 
-     * @return the test log recorder
+     * @throws IllegalStateException
+     *             if log recording is not active
      */
     protected final Logging.Recorder logRecorder() {
+        if (key == null) {
+            throw new IllegalStateException("Log recording is not active.");
+        }
         return key;
     }
     
@@ -544,10 +547,11 @@ public abstract class AbstractRealTest
             assertThat(server.isRunning()).isFalse();
             assertThat(errors).isEmpty();
             assertThatServerStopsNormally(start);
-            ofNullable(logRecorder()).ifPresent(lr ->
-                lr.assertThatLogContainsOnlyOnce(rec(DEBUG, clean ?
-                      "All exchanges finished within the graceful period." :
-                      "Graceful deadline expired; shutting down scope.")));
+            if (key != null) { logRecorder()
+                .assertThatLogContainsOnlyOnce(rec(DEBUG, clean ?
+                    "All exchanges finished within the graceful period." :
+                    "Graceful deadline expired; shutting down scope."));
+            }
         } finally {
             server = null;
             start = null;
@@ -559,12 +563,15 @@ public abstract class AbstractRealTest
      * {@link Logging.Recorder#assertAwaitFirstLogError()} is the same
      * instance.<p>
      * 
-     * May be used when test case needs to assert the base error handler was
-     * delivered a particular error <i>and</i> logged it (or, someone did).
+     * May be used when a test case needs to assert that the base error handler
+     * was delivered a particular error <i>and</i> logged it (or, someone did).
      * 
      * @return an assert API of sorts
      * 
-     * @throws InterruptedException if interrupted while waiting
+     * @throws InterruptedException
+     *             if interrupted while waiting
+     * @throws IllegalStateException
+     *             if log recording is not active
      */
     protected final AbstractThrowableAssert<?, ? extends Throwable>
             assertThatServerErrorObservedAndLogged() throws InterruptedException
