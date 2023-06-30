@@ -311,7 +311,7 @@ public final class DefaultServer implements HttpServer
                 ++closed;
             }
         }
-        if (LOG.isLoggable(DEBUG)) {
+        if (size > 0 && LOG.isLoggable(DEBUG)) {
             LOG.log(DEBUG,
               "Closed %s idling children of a total %s.".formatted(closed, size));
         }
