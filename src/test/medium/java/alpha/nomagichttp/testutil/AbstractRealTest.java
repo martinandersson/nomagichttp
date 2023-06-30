@@ -501,7 +501,7 @@ public abstract class AbstractRealTest
      * 
      * @return all logged records
      */
-    protected final Stream<LogRecord> logRecorderStop() {
+    private Stream<LogRecord> logRecorderStop() {
         return Logging.stopRecording(key);
     }
     
