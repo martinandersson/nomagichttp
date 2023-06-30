@@ -530,8 +530,7 @@ public abstract class AbstractRealTest
      * active, and then it affects what debug message is logged by the server
      * implementation.
      * 
-     * @param clean whether it is expected that
-     *              all exchanges finish within the graceful period
+     * @param clean asserts the log; exchanges finish within the graceful period
      * 
      * @throws IOException
      *           on I/O error
