@@ -15,12 +15,7 @@ import static jdk.incubator.concurrent.ScopedValue.newInstance;
  * A namespace for scoped values.<p>
  * 
  * The methods found herein yield instances only to code executing within a
- * particular scope, for example the request object can be retrieved from a
- * deeply nested code block executed by a request handler without itself having
- * the object passed to it explicitly as an argument.<p>
- * 
- * Code calling from outside the required scope will return exceptionally with
- * {@link NoSuchElementException}.
+ * defined scope.
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  */
@@ -41,7 +36,7 @@ public final class ScopedValues
      * Returns the server.<p>
      * 
      * The value will be accessible by code executing within a server. For
-     * example before-actions, request handlers and after-actions.<p>
+     * example; before-actions, request handlers and after-actions.<p>
      * 
      * The value will always be accessible by the server's event listeners, even
      * if the event is dispatched [and consequently executed by a thread] from
@@ -70,8 +65,7 @@ public final class ScopedValues
     /**
      * Returns the client channel.<p>
      * 
-     * The value will be accessible by code executing within an HTTP
-     * exchange.
+     * The value will be accessible by code executing within an HTTP exchange.
      * 
      * @return the client channel
      * 

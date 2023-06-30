@@ -317,7 +317,7 @@ public final class Logging
         }
         
         /**
-         * Take the earliest record found that fulfils the given criteria.
+         * Take the earliest record found that fulfils the given criteria.<p>
          * 
          * This method is useful to extract log records and run assertions only
          * on what is left behind. For example, to ensure a specific log record
