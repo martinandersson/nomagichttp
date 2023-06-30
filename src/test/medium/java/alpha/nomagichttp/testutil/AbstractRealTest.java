@@ -77,37 +77,31 @@ import static org.junit.jupiter.api.Assertions.assertSame;
  *   }
  * </pre>
  * 
- * After each test, the server is stopped and both the server and client
- * references are set to null. This can be disabled through a constructor
- * argument {@code afterEachStop}, in which case the subsequent test will reuse
- * the same server and client. Running different tests using the same resources
- * may be desired for testing purposes, but is also good for reducing system
- * taxation when test isolation is not needed.<p>
+ * By default (using the no-arg constructor), after each test, the server is
+ * stopped and both the server and client references are set to null
+ * (test isolation). This can be disabled through a constructor argument
+ * {@code afterEachStop}.<p>
  * 
- * Log recording will by default be activated for each test. The recorder can be
- * retrieved using {@link #logRecorder()}. Records can be retrieved at any time
- * using {@link #logRecorderStop()}.<p>
- * 
- * Log recording is intended for detailed tests that are awaiting log events
- * and/or running assertions on the records. Tests concerned with performance
- * ought to disable recording by means of the constructor argument
- * {@code useLogRecording}.
+ * By default, a {@link #logRecorder()} is activated for each test. Recording is
+ * intended for detailed tests that are awaiting log events and/or running
+ * assertions on the records. Tests concerned with performance ought to disable
+ * recording by means of the constructor argument {@code useLogRecording}.
  * 
  * <pre>
  *  {@literal @}TestInstance(PER_CLASS)
  *   class MyRepeatedTest extends AbstractRealTest {
  *       private final Channel conn;
  *       MyRepeatedTest() {
- *           // Save server + client references across tests,
- *           // and disable log recording.
+ *           // Reuse server + client, and disable log recording
  *           super(false, false);
  *           server();
  *           conn = client().openConnection();
  *       }
- *       // Each message pair is exchange over the same connection
+ *       // Each message pair is exchanged over the same connection
  *       {@literal @}RepeatedTest(999_999_999)
  *       void httpExchange() {
- *           client().writeReadTextUntilNewlines("GET / HTTP/1.1\r\n\r\n")
+ *           client().writeReadTextUntilNewlines("GET / HTTP/1.1\r\n\r\n");
+ *           ...
  *       }
  *       {@literal @}AfterAll
  *       void afterAll() { //  {@literal <}-- no need to be static (coz of PER_CLASS thing)
