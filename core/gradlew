@@ -1,0 +1,4 @@
+#!/bin/sh
+
+# Delegate the call to root wrapper
+exec ../gradlew -p $(pwd) "$@"

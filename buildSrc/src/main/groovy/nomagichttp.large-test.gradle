@@ -1,0 +1,22 @@
+testing {
+    suites {
+        largeTest(JvmTestSuite) {
+            dependencies {
+                implementation project()
+            }
+            
+            targets {
+                all {
+                    testTask.configure {
+                        description = 'Runs functional tests (heavy load/repeated; takes very long).'
+                        shouldRunAfter(mediumTest)
+                    }
+                }
+            }
+        }
+    }
+}
+
+tasks.named('check') {
+    dependsOn(testing.suites.largeTest)
+}

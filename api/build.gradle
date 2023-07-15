@@ -1,0 +1,4 @@
+plugins {
+    id('nomagichttp.java-conventions')
+    id('nomagichttp.jitpack-pub')
+}

@@ -1,0 +1,10 @@
+plugins {
+    id('nomagichttp.java-conventions')
+    id('nomagichttp.medium-test')
+    id('nomagichttp.large-test')
+    id('nomagichttp.jitpack-pub')
+}
+
+dependencies {
+    api(projects.api)
+}

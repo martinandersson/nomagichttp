@@ -1,0 +1,159 @@
+plugins {
+    id 'java-library'
+    id 'jacoco'
+}
+
+version = '0.5-SNAPSHOT'
+group = 'alpha.nomagichttp'
+
+base {
+    // Add root's name as a suffix.
+    // E.g. "api-0.5-SNAPSHOT.jar" becomes "nomagichttp-api-0.5-SNAPSHOT.jar".
+    archivesName = "${rootProject.name}-${archivesName.get()}"
+}
+
+repositories {
+    mavenCentral()
+}
+
+testing {
+    suites {
+        configureEach {
+            useJUnitJupiter(libs.versions.junit)
+            dependencies {
+                implementation(projects.testutil)
+            }
+        }
+    }
+}
+
+// Do not generate reports for individual projects.
+// The task is still listed, and apparently that is not a bug.
+// https://github.com/gradle/gradle/issues/25623
+tasks.named('jacocoTestReport') {
+    enabled = false
+}
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(libs.versions.jdk.get())
+        vendor = JvmVendorSpec.ORACLE
+    }
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.compilerArgs.addAll(
+        // Enable all warnings, minus try-with-resources
+        // https://stackoverflow.com/a/73861648/1268003
+        '-Xlint:all,-try',
+        // Also check JavaDoc.
+        // Is set to protected and higher, to stop warnings for test classes.
+        '-Xdoclint:all/protected',
+        // Talk more
+        '-Xdiags:verbose')
+        // Fail on warnings
+        // TEMP: Not while using jdk.incubator.concurrent
+        //'-Werror')
+}
+
+
+
+// ===========
+//   JAVADOC
+// ===========
+
+javadoc {
+    // Change from...to
+    //   "<title>alpha.nomagichttp (api 0.5-SNAPSHOT API)</title>"
+    //   "<title>alpha.nomagichttp (NoMagicHTTP 0.5-SNAPSHOT API)</title>"
+    title = "NoMagicHTTP ${version} API"
+    // Change from
+    //   "Generates Javadoc API documentation for the 'main' feature."
+    description = 'Generates Javadoc API documentation (from public symbols of the main source set).'
+}
+
+// Build JavaDoc HTML for developers, in folder "./build/docs/javadoc-all".
+def javadocAll = tasks.register('javadocAll', Javadoc) {
+    title = "${javadoc.title} (for library developers)"
+    description = 'Generates all Javadoc API documentation (from public+private symbols, of main+*test source sets).'
+    group = 'documentation'
+    
+    // Task input = all source sets, e.g. "sourceSets.mediumTest.allJava"
+    source = sourceSets.collect { it.allJava }
+    
+    // And erm... that goes for the classpath as well lol
+    // (fixes "error: cannot find symbol", e.g. @org.junit.jupiter.api.Test)
+    sourceSets.each {
+        classpath += it.compileClasspath
+    }
+    
+    options.memberLevel = JavadocMemberLevel.PRIVATE
+    destinationDir = file("$buildDir/docs/javadoc-all")
+    
+    // Demodularize
+    // (fixes "error: package com.blabla is not visible")
+    exclude 'module-info.java'
+    modularity.inferModulePath = false
+}
+
+// The built docs are not published. The chief purpose is linting 👍
+tasks.named('check') {
+    dependsOn javadocAll
+}
+
+tasks.withType(Javadoc).configureEach {
+    options {
+        // Add support for modern JavaDoc tags
+        // https://openjdk.java.net/jeps/8068562
+        tags('apiNote:a:API Note:',
+             'implSpec:a:Implementation Requirements:',
+             'implNote:a:Implementation Note:')
+        
+        // Lint everything.
+        // This was already specified for JavaCompile,
+        // but apparently JavaCompile and Javadoc lint different things.
+        // Also, can not exclude private symbols. So must skip missing.
+        // https://stackoverflow.com/a/49544352/1268003
+        // https://github.com/gradle/gradle/issues/2354#issuecomment-364857181
+        addBooleanOption('Xdoclint:all,-missing', true)
+        // TEMP: Commented out while using incubator
+        //addBooleanOption('Werror', true)
+        
+        // Text to be injected as overview
+        overview = 'src/main/java/overview.html'
+    }
+}
+
+// Add tasks "javadocJar" and "sourcesJar" (for IDE:s and other tooling)
+java {
+    withJavadocJar() // .jar contains HTML from the javadoc task, not javadocAll
+    withSourcesJar() // contains .java source code files; no .class files or HTML
+}
+
+// withJavadocJar() added the javadoc task as an assemble task dependency,
+// do the same for javadocAll (gradle build will fail if any doc task fails)
+tasks.named('assemble') {
+    dependsOn javadocAll
+}
+
+
+
+// ---- TEMPORARY while using preview features and incubator ----
+tasks.withType(JavaCompile).configureEach {
+    options.compilerArgs.addAll(
+        '--enable-preview',
+        '--add-modules', 'jdk.incubator.concurrent')
+}
+tasks.withType(Test).configureEach {
+    jvmArgs(
+        '--enable-preview',
+        '--add-modules', 'jdk.incubator.concurrent')
+}
+tasks.withType(Javadoc).configureEach {
+    options {
+        addBooleanOption('-enable-preview', true)
+        addStringOption('-release', libs.versions.jdk.get())
+        addStringOption('-add-modules', 'jdk.incubator.concurrent')
+    }
+}
+// --------------------------------------------------------------
