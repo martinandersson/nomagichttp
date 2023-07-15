@@ -103,7 +103,7 @@ _because you can_ 🎉🙌
 ## Getting Started
 
 The NoMagicHTTP library is documented through detailed and exhaustive JavaDoc of
-an API that is discoverable and intuitive. JavaDoc _is the contract_. Anything
+an API that is discoverable and intuitive. JavaDoc is _the contract_. Anything
 one reads outside of JavaDoc, is _advisory_ only.
 
 It is recommended to follow the links in each example as the source code
