@@ -96,7 +96,7 @@ Hello Stranger!
 In a real-world scenario where the Java runtime is used to start the
 application, the start-up time is pretty much instantaneous. Be prepared for
 uber-fast development cycles and running real HTTP exchanges in your test cases,
-_because you can_ 🎉🙌.
+_because you can_ 🎉🙌
 
 [1-1]: https://docs.gradle.org/current/userguide/tutorial_using_tasks.html
 
