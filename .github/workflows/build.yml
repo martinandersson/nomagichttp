@@ -25,4 +25,3 @@ jobs:
         with:
           name: Gradle Reports (Java ${{ matrix.java }} on ${{ matrix.os }})
           path: ./build/reports/
-          if-no-files-found: error
