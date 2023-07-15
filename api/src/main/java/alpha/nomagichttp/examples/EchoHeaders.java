@@ -39,7 +39,7 @@ public final class EchoHeaders
             var builder = Responses.noContent().toBuilder();
             for (var entry : request.headers()) {
                 var name = entry.getKey();
-                // 204 response must not contain this header
+                // An 204 response must not contain this header
                 if (name.equalsIgnoreCase(CONTENT_LENGTH)) {
                     continue;
                 }
