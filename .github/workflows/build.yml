@@ -24,4 +24,4 @@ jobs:
         if: always()
         with:
           name: Gradle Reports (Java ${{ matrix.java }} on ${{ matrix.os }})
-          path: ./build/reports/
+          path: ./reports/build/
