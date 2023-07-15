@@ -1,0 +1,22 @@
+testing {
+    suites {
+        mediumTest(JvmTestSuite) {
+            dependencies {
+                implementation project()
+            }
+            
+            targets {
+                all {
+                    testTask.configure {
+                        description = 'Runs functional tests (detailed; takes some time).'
+                        shouldRunAfter(test)
+                    }
+                }
+            }
+        }
+    }
+}
+
+tasks.named('check') {
+    dependsOn(testing.suites.mediumTest)
+}

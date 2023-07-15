@@ -6,6 +6,11 @@
 **A server-side Java library used to receive HTTP requests and respond to
 them.**
 
+_The branch `virtual-threads` aims to rewrite this library to use virtual
+threads instead of asynchronous channels to simplify API and implementation as
+well as to potentially gain performance. The documentation on this branch is
+likely out of date._
+
 The API is _elegant_ and based on the firmly held belief that all forms of magic
 are evil. Reflection code, error-prone annotations, missing "beans" and God-like
 "context" objects will never be a part of the library. The source code is
@@ -65,7 +70,7 @@ In subfolder `src/main/java`, create a new file `Greeter.java`:
         }
     }
 
-Make sure you are using Java 17+, then start the server:
+Make sure you are using Java 19+, then start the server:
 
 ```console
 foo@bar:~$ gradle run
@@ -132,8 +137,8 @@ Make a request to the port in a new terminal window:
 ```console
 foo@bar:~$ curl -i localhost:52063/hello
 HTTP/1.1 200 OK
-Content-Length: 12
 Content-Type: text/plain; charset=utf-8
+Content-Length: 12
 
 Hello World!
 ```
@@ -159,8 +164,8 @@ In a new terminal, run:
 ```console
 foo@bar:~$ curl -i localhost:8080/hello/John
 HTTP/1.1 200 OK
-Content-Length: 11
 Content-Type: text/plain; charset=utf-8
+Content-Length: 11
 
 Hello John!
 ```
@@ -191,8 +196,8 @@ In a new terminal, run:
 ```console
 foo@bar:~$ curl -i localhost:8080/hello -d John
 HTTP/1.1 200 OK
-Content-Length: 11
 Content-Type: text/plain; charset=utf-8
+Content-Length: 11
 
 Hello John!
 ```

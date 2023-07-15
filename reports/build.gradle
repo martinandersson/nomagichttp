@@ -1,0 +1,85 @@
+plugins {
+    // Add the clean task
+    id('base')
+    id('test-report-aggregation')
+    id('jacoco-report-aggregation')
+}
+
+// Fixes:
+//   "Cannot resolve external dependency org.jacoco:org.jacoco.ant:0.8.10
+//    because no repositories are defined."
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    testReportAggregation(projects.core)
+    jacocoAggregation(projects.core)
+}
+
+// The "aggregate" plugin supports only one test type, the irony 😂
+// TODO: Create "allTestCoverage" when there's a canonical solution.
+// https://github.com/gradle/gradle/issues/24272
+// https://stackoverflow.com/q/71378795/1268003
+// https://github.com/gradle/gradle/issues/23223   <-- hackety solutions
+reporting {
+    reports {
+        testResult(AggregateTestReport) { 
+            testType = TestSuiteType.UNIT_TEST
+        }
+        
+        testCoverage(JacocoCoverageReport) { 
+            testType = TestSuiteType.UNIT_TEST
+        }
+        
+        mediumTestResult(AggregateTestReport) { 
+            testType = 'medium-test'
+        }
+        
+        mediumTestCoverage(JacocoCoverageReport) { 
+            testType = 'medium-test'
+        }
+        
+        largeTestResult(AggregateTestReport) { 
+            testType = 'large-test'
+        }
+        
+        largeTestCoverage(JacocoCoverageReport) { 
+            testType = 'large-test'
+        }
+    }
+}
+
+tasks.withType(TestReport).configureEach {
+     // E.g. "mediumTestResult" > "mediumTest"
+    def type = it.name.minus('Result');
+     // Change from...to
+     //   ./build/reports/xxx-test/aggregated-results/
+     //   ./build/gradle/xxxTest/
+    destinationDirectory = file("$buildDir/gradle/${type}")
+}
+
+tasks.withType(JacocoReport).configureEach {
+    // E.g. "mediumTestCoverage" > "mediumTest"
+    def type = it.name.minus('Coverage');
+    reports {
+        // Do not generate
+        //   ./build/reports/jacoco/xxxTestCoverage/xxxTestCoverage.xml
+        xml.required = false
+        // Change from...to
+        //   ./build/reports/jacoco/xxxTestCoverage/html/
+        //   ./build/jacoco/xxxTest/
+        html.outputLocation = file("$buildDir/jacoco/${type}")
+    }
+}
+
+// Test tasks automagically trigger report aggregation
+['test', 'mediumTest', 'largeTest'].each {
+    def outerRef = it
+    // TODO: Fix extremely long syntax
+    // https://discuss.gradle.org/t/very-long-syntax-when-using-type-safe-project-accessors/39423
+    projects.core.dependencyProject.tasks.named(outerRef) {
+        finalizedBy(tasks.named("${outerRef}Result"))
+        finalizedBy(tasks.named("${outerRef}Coverage"))
+    }
+}

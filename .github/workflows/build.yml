@@ -3,26 +3,19 @@ on: [ push, pull_request ]
 
 jobs:
   build:
-    name: Build using Java ${{ matrix.java }} on ${{ matrix.os }}
+    name: Build on ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
-        os:   [ windows-latest, macOS-latest, ubuntu-latest ]
-        java: [ '17' ]
+        os: [ windows-latest, macOS-latest, ubuntu-latest ]
     steps:
-            # https://github.com/marketplace/actions/checkout
-      - uses: actions/checkout@v3.3.0
-            # https://github.com/marketplace/actions/setup-java-jdk
-      - uses: actions/setup-java@v3.9.0
-        with:
-          distribution: 'zulu'
-          java-version: ${{ matrix.java }}
+        # https://github.com/marketplace/actions/checkout
+      - uses: actions/checkout@v3.5.3
       - run: ./gradlew build
-            # https://github.com/marketplace/actions/upload-a-build-artifact
+        # https://github.com/marketplace/actions/upload-a-build-artifact
       - uses: actions/upload-artifact@v3.1.2
         if: always()
         with:
-          name: Gradle Reports (Java ${{ matrix.java }} on ${{ matrix.os }})
-          path: ./build/reports/
-          if-no-files-found: error
+          name: Gradle Reports (${{ matrix.os }})
+          path: ./reports/build/
