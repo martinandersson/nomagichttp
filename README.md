@@ -104,7 +104,7 @@ _because you can_ 🎉🙌
 
 The NoMagicHTTP library is documented through detailed and exhaustive JavaDoc of
 an API that is discoverable and intuitive. JavaDoc is _the contract_. Anything
-one reads outside of JavaDoc, is _advisory_ only.
+one reads outside of JavaDoc, is _advisory only_.
 
 It is recommended to follow the links in each example as the source code
 contains useful commentary that explains the API used.
