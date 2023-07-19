@@ -23,8 +23,7 @@ import static jdk.incubator.concurrent.ScopedValue.newInstance;
  * @author Martin Andersson (webmaster at martinandersson.com)
  */
 // TODO: Rename to NoMagicHTTP/Standard/Library ScopedValues ?
-public final class ScopedValues
-{
+public final class ScopedValues {
     private ScopedValues() {
         // Empty
     }
