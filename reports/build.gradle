@@ -51,6 +51,7 @@ reporting {
 }
 
 tasks.withType(TestReport).configureEach {
+    group = 'Aggregated reports'
      // E.g. "mediumTestResult" > "mediumTest"
     def type = it.name.minus('Result');
      // Change from...to
@@ -60,6 +61,7 @@ tasks.withType(TestReport).configureEach {
 }
 
 tasks.withType(JacocoReport).configureEach {
+    group = 'Aggregated reports'
     // E.g. "mediumTestCoverage" > "mediumTest"
     def type = it.name.minus('Coverage');
     reports {
