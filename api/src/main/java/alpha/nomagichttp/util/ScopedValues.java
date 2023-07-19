@@ -73,14 +73,14 @@ public final class ScopedValues {
     }
     
     /**
-     * Contains the {@code HttpServer} instance, if bound.<p>
+     * Contains the {@code HttpServer} instance, if bound.
      * 
      * @see #httpServer()
      */
     public static final ScopedValue<HttpServer> HTTP_SERVER = newInstance();
     
     /**
-     * Contains the {@code ClientChannel} instance, if bound.<p>
+     * Contains the {@code ClientChannel} instance, if bound.
      * 
      * @see #channel()
      */
