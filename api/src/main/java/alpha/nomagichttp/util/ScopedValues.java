@@ -14,8 +14,11 @@ import static jdk.incubator.concurrent.ScopedValue.newInstance;
 /**
  * A namespace for scoped values.<p>
  * 
- * The methods found herein yield instances only to code executing within a
- * defined scope.
+ * The scoped instances are bound within a defined scope.<p>
+ * 
+ * The server may rely on the values bound, and is free to assume that the value
+ * is a particular implementation. The application must not rebind a scoped
+ * instance to something else.
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  */
@@ -26,16 +29,17 @@ public final class ScopedValues
         // Empty
     }
     
-    // TODO: Use service loading to find instances initialized by server impl, not static fields.
-    //       This will also ensure application code can not rebind.
-    
-    /** TEMPORARILY */
+    /**
+     * Contains the {@code HttpServer} instance, if bound.<p>
+     * 
+     * @see #httpServer()
+     */
     public static ScopedValue<HttpServer> __HTTP_SERVER = newInstance();
     
     /**
      * Returns the server.<p>
      * 
-     * The value will be accessible by code executing within a server. For
+     * The value will be accessible by code running within a server. For
      * example; before-actions, request handlers and after-actions.<p>
      * 
      * The value will always be accessible by the server's event listeners, even
@@ -59,13 +63,17 @@ public final class ScopedValues
         return __HTTP_SERVER.get();
     }
     
-    /** TEMPORARILY */
-    public static  ScopedValue<ClientChannel> __CHANNEL = newInstance();
+    /**
+     * Contains the {@code ClientChannel} instance, if bound.<p>
+     * 
+     * @see #channel()
+     */
+    public static ScopedValue<ClientChannel> __CHANNEL = newInstance();
     
     /**
      * Returns the client channel.<p>
      * 
-     * The value will be accessible by code executing within an HTTP exchange.
+     * The value will be accessible by code running within an HTTP exchange.
      * 
      * @return the client channel
      * 
