@@ -184,7 +184,7 @@ final class ChannelReaderTest
           Throwing.Runnable<? extends Exception> assertions) throws Exception {
         var ch = mock(ClientChannel.class);
         when(ch.isInputOpen()).thenReturn(true);
-        where(ScopedValues.__CHANNEL, ch, () -> {
+        where(ScopedValues.CHANNEL, ch, () -> {
             assertions.run();
             return null;
         });

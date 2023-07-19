@@ -35,8 +35,8 @@ import static alpha.nomagichttp.core.Timeout.schedule;
 import static alpha.nomagichttp.core.VThreads.CHANNEL_BLOCKING;
 import static alpha.nomagichttp.util.Blah.getOrClose;
 import static alpha.nomagichttp.util.Blah.runOrClose;
+import static alpha.nomagichttp.util.ScopedValues.CHANNEL;
 import static alpha.nomagichttp.util.ScopedValues.HTTP_SERVER;
-import static alpha.nomagichttp.util.ScopedValues.__CHANNEL;
 import static java.lang.System.Logger.Level.DEBUG;
 import static java.lang.System.Logger.Level.ERROR;
 import static java.lang.System.Logger.Level.INFO;
@@ -257,7 +257,7 @@ public final class DefaultServer implements HttpServer
                 api.use(w);
                 var exch = new HttpExchange(
                         this, actions, routes, eh, api, r, w);
-                where(__CHANNEL, api, exch::begin);
+                where(CHANNEL, api, exch::begin);
                 r.dismiss();
                 w.dismiss();
                 // ResponseProcessor will set "Connection: close" if !isRunning()

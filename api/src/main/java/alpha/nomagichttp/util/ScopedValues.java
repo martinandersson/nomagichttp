@@ -70,7 +70,7 @@ public final class ScopedValues
      * @see <a href="https://stackoverflow.com/q/75047540/1268003">StackOverflow Question</a>
      */
     public static ClientChannel channel() {
-        return __CHANNEL.get();
+        return CHANNEL.get();
     }
     
     /**
@@ -85,5 +85,5 @@ public final class ScopedValues
      * 
      * @see #channel()
      */
-    public static final ScopedValue<ClientChannel> __CHANNEL = newInstance();
+    public static final ScopedValue<ClientChannel> CHANNEL = newInstance();
 }
