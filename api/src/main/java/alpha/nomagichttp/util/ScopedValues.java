@@ -78,12 +78,12 @@ public final class ScopedValues
      * 
      * @see #httpServer()
      */
-    public static ScopedValue<HttpServer> __HTTP_SERVER = newInstance();
+    public static final ScopedValue<HttpServer> __HTTP_SERVER = newInstance();
     
     /**
      * Contains the {@code ClientChannel} instance, if bound.<p>
      * 
      * @see #channel()
      */
-    public static ScopedValue<ClientChannel> __CHANNEL = newInstance();
+    public static final ScopedValue<ClientChannel> __CHANNEL = newInstance();
 }
