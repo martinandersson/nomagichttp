@@ -5,7 +5,7 @@ import alpha.nomagichttp.HttpServer;
 import java.util.concurrent.Callable;
 
 import static alpha.nomagichttp.Config.DEFAULT;
-import static alpha.nomagichttp.util.ScopedValues.__HTTP_SERVER;
+import static alpha.nomagichttp.util.ScopedValues.HTTP_SERVER;
 import static jdk.incubator.concurrent.ScopedValue.where;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
@@ -41,6 +41,6 @@ public final class ScopedValues {
             throws Exception {
         var server = mock(HttpServer.class);
         when(server.getConfig()).thenReturn(DEFAULT);
-        return where(__HTTP_SERVER, server, op);
+        return where(HTTP_SERVER, server, op);
     }
 }

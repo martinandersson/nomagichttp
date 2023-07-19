@@ -53,7 +53,7 @@ public final class ScopedValues
      * @throws NoSuchElementException if the server instance is not bound
      */
     public static HttpServer httpServer() {
-        return __HTTP_SERVER.get();
+        return HTTP_SERVER.get();
     }
     
     /**
@@ -78,7 +78,7 @@ public final class ScopedValues
      * 
      * @see #httpServer()
      */
-    public static final ScopedValue<HttpServer> __HTTP_SERVER = newInstance();
+    public static final ScopedValue<HttpServer> HTTP_SERVER = newInstance();
     
     /**
      * Contains the {@code ClientChannel} instance, if bound.<p>

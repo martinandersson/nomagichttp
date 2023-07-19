@@ -35,8 +35,8 @@ import static alpha.nomagichttp.core.Timeout.schedule;
 import static alpha.nomagichttp.core.VThreads.CHANNEL_BLOCKING;
 import static alpha.nomagichttp.util.Blah.getOrClose;
 import static alpha.nomagichttp.util.Blah.runOrClose;
+import static alpha.nomagichttp.util.ScopedValues.HTTP_SERVER;
 import static alpha.nomagichttp.util.ScopedValues.__CHANNEL;
-import static alpha.nomagichttp.util.ScopedValues.__HTTP_SERVER;
 import static java.lang.System.Logger.Level.DEBUG;
 import static java.lang.System.Logger.Level.ERROR;
 import static java.lang.System.Logger.Level.INFO;
@@ -88,8 +88,8 @@ public final class DefaultServer implements HttpServer
         this.routes  = new DefaultRouteRegistry(this);
         this.eh      = List.of(eh);
         this.events  = new DefaultEventHub(
-                () -> !__HTTP_SERVER.isBound(),
-                r -> where(__HTTP_SERVER, this, r));
+                () -> !HTTP_SERVER.isBound(),
+                r -> where(HTTP_SERVER, this, r));
         this.parent  = new Confined<>();
         this.terminated = new CountDownLatch(1);
         this.children = new ConcurrentHashMap<>(INITIAL_CAPACITY);
@@ -118,7 +118,7 @@ public final class DefaultServer implements HttpServer
         try (ServerSocketChannel ch = openOrFail(addr)) {
             if (ofPort != null) {
                 int port = getPort();
-                where(__HTTP_SERVER, this, () -> ofPort.accept(port));
+                where(HTTP_SERVER, this, () -> ofPort.accept(port));
             }
             runAcceptLoop(ch);
         }
@@ -175,7 +175,7 @@ public final class DefaultServer implements HttpServer
             throws IOException, InterruptedException
     {
         try {
-            where(__HTTP_SERVER, this, () -> runAcceptLoop0(ch));
+            where(HTTP_SERVER, this, () -> runAcceptLoop0(ch));
         } catch (Exception e) {
             switch (e) {
                 case IOException t -> throw t;
