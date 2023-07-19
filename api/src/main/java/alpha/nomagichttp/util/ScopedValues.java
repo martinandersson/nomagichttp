@@ -30,13 +30,6 @@ public final class ScopedValues
     }
     
     /**
-     * Contains the {@code HttpServer} instance, if bound.<p>
-     * 
-     * @see #httpServer()
-     */
-    public static ScopedValue<HttpServer> __HTTP_SERVER = newInstance();
-    
-    /**
      * Returns the server.<p>
      * 
      * The value will be accessible by code running within a server. For
@@ -64,13 +57,6 @@ public final class ScopedValues
     }
     
     /**
-     * Contains the {@code ClientChannel} instance, if bound.<p>
-     * 
-     * @see #channel()
-     */
-    public static ScopedValue<ClientChannel> __CHANNEL = newInstance();
-    
-    /**
      * Returns the client channel.<p>
      * 
      * The value will be accessible by code running within an HTTP exchange.
@@ -86,4 +72,18 @@ public final class ScopedValues
     public static ClientChannel channel() {
         return __CHANNEL.get();
     }
+    
+    /**
+     * Contains the {@code HttpServer} instance, if bound.<p>
+     * 
+     * @see #httpServer()
+     */
+    public static ScopedValue<HttpServer> __HTTP_SERVER = newInstance();
+    
+    /**
+     * Contains the {@code ClientChannel} instance, if bound.<p>
+     * 
+     * @see #channel()
+     */
+    public static ScopedValue<ClientChannel> __CHANNEL = newInstance();
 }
