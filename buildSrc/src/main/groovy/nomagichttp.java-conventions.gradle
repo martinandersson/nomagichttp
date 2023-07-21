@@ -69,13 +69,12 @@ javadoc {
     title = "NoMagicHTTP ${version} API"
     // Change from
     //   "Generates Javadoc API documentation for the 'main' feature."
-    description = 'Generates Javadoc API documentation (from public symbols of the main source set).'
+    description = 'Generates Javadoc API documentation (from public symbols in the main source set).'
 }
 
-// Build JavaDoc HTML for developers, in folder "./build/docs/javadoc-all".
 def javadocAll = tasks.register('javadocAll', Javadoc) {
     title = "${javadoc.title} (for library developers)"
-    description = 'Generates all Javadoc API documentation (from public+private symbols, of main+*test source sets).'
+    description = 'Generates all Javadoc API documentation (from private+ symbols, in main+*test source sets).'
     group = 'documentation'
     
     // Task input = all source sets, e.g. "sourceSets.mediumTest.allJava"
@@ -96,7 +95,6 @@ def javadocAll = tasks.register('javadocAll', Javadoc) {
     modularity.inferModulePath = false
 }
 
-// The built docs are not published. The chief purpose is linting 👍
 tasks.named('check') {
     dependsOn javadocAll
 }

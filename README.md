@@ -103,17 +103,13 @@ _because you can_ 🎉🙌
 ## Getting Started
 
 The NoMagicHTTP library is documented through detailed and exhaustive JavaDoc of
-an API that is discoverable and intuitive. JavaDoc is _the contract_. Anything
-one reads outside of JavaDoc, is _advisory only_.
+an API that is discoverable and intuitive. JavaDoc is _the contract_, and meant
+to be the only documentation needed. Anything one reads outside of JavaDoc, is
+_advisory only_.
 
-It is recommended to follow the links in each example as the source code
-contains useful commentary that explains the API used.
-
-The examples provided in subsequent sections, are packaged with the published
+Subsequent sections discuss example code, which are packaged with the published
 JAR and can be executed simply by replacing the `mainClass` value in the
-previous Gradle build file.
-
-To run the first example below, simply replace the class reference:
+previous Gradle build file. For example, to run the first example below:
 
 ```groovy
 application {
@@ -121,7 +117,10 @@ application {
 }
 ```
 
-### Selecting port
+It is recommended to follow the links in each example as the source code
+contains useful commentary that explains the API used.
+
+### Hello World
 
 If a port is not specified, the system will pick a port on the loopback address.
 
@@ -164,7 +163,7 @@ Listening on port 8080.
 In a new terminal, run:
 
 ```console
-foo@bar:projectfolder$ curl -i localhost:8080/hello/John
+foo@bar:~$ curl -i localhost:8080/hello/John
 HTTP/1.1 200 OK
 Content-Type: text/plain; charset=utf-8
 Content-Length: 11
@@ -172,7 +171,7 @@ Content-Length: 11
 Hello John!
 ```
 
-Alternatively, you may pass the name as a query parameter:
+Alternatively, one may pass the name as a query parameter:
 
 ```console
 foo@bar:projectfolder$ curl -i localhost:8080/hello?name=John
@@ -196,7 +195,7 @@ Listening on port 8080.
 In a new terminal, run:
 
 ```console
-foo@bar:projectfolder$ curl -i localhost:8080/hello -d John
+foo@bar:~$ curl -i localhost:8080/hello -d John
 HTTP/1.1 200 OK
 Content-Type: text/plain; charset=utf-8
 Content-Length: 11
@@ -222,7 +221,7 @@ Listening on port 8080.
 In a new terminal, run:
 
 ```console
-foo@bar:projectfolder$ curl -i localhost:8080/echo \
+foo@bar:~$ curl -i localhost:8080/echo \
     -H "My-Header: Value 1" \
     -H "My-Header: Value 2"
 HTTP/1.1 204 No Content
@@ -254,7 +253,7 @@ Listening on port 8080.
 In a new terminal, run:
 
 ```console
-foo@bar:projectfolder$ curl -i localhost:8080
+foo@bar:~$ curl -i localhost:8080
 HTTP/1.1 102 Processing
 Time-Left: 3 second(s)
 
