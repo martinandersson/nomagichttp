@@ -26,7 +26,7 @@ and consequently, what parts of the HTTP stack have not yet been delivered.
 
 [0-1]: https://openjdk.org/jeps/425
 [0-2]: https://jitpack.io/com/github/martinandersson/nomagichttp/api/-SNAPSHOT/javadoc/alpha.nomagichttp/alpha/nomagichttp/HttpServer.html
-[0-3]: POA.md
+[0-3]: docs/POA.md
 
 ## Minimal Example
 
