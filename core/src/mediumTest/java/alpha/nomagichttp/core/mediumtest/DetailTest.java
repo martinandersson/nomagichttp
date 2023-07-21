@@ -15,7 +15,6 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.List;
 import java.util.concurrent.ArrayBlockingQueue;
-import java.util.function.ToLongBiFunction;
 
 import static alpha.nomagichttp.handler.RequestHandler.GET;
 import static alpha.nomagichttp.handler.RequestHandler.POST;
@@ -41,8 +40,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 /**
  * Tests concerning details of the server.<p>
  * 
- * Not so much "GET ..." and then expect "HTTP/1.1 200 ..." - the "casual"
- * exchange. Rather; perhaps make semi-weird calls and expect a particular
+ * Not so much "GET ..." and then expect "HTTP/1.1 200 ..." — the casual
+ * exchange. Rather, perhaps make semi-weird calls and expect a particular
  * server behavior. You know, details.<p>
  * 
  * Many tests will likely require a fine-grained control of the client and do
@@ -336,29 +335,34 @@ class DetailTest extends AbstractRealTest
     
     @Test
     void event_RequestHeadReceived() throws IOException, InterruptedException {
-        event_engine(RequestHeadReceived.class, (req, rsp) -> req.getBytes(US_ASCII).length);
+        event_engine(RequestHeadReceived.class);
     }
     
     @Test
     void event_ResponseSent() throws IOException, InterruptedException {
-        event_engine(ResponseSent.class, (req, rsp) -> rsp.getBytes(US_ASCII).length);
+        event_engine(ResponseSent.class);
     }
     
-    private void event_engine(Class<?> eventType, ToLongBiFunction<String, String> exchToExpByteCnt)
+    private void event_engine(Class<?> eventType)
             throws IOException, InterruptedException
     {
         // Save event locally
-        var stats = new ArrayBlockingQueue<AbstractByteCountedStats>(1);
+        var eventSink = new ArrayBlockingQueue<AbstractByteCountedStats>(1);
         server().events().on(eventType, (ev, thing, s) ->
-                stats.add((AbstractByteCountedStats) s));
+                eventSink.add((AbstractByteCountedStats) s));
         
-        final long then;
-        final String req = "GET / HTTP/1.1";
-        final String rsp;
+        final long   beforeReq,
+                     beforeRsp,
+                     afterRsp;
+        final String req = "GET / HTTP/1.1",
+                     rsp;
+        
         try (var conn = client().openConnection()) {
+            beforeReq = nanoTime();
             client().write(req);
-            then = nanoTime();
+            beforeRsp = nanoTime();
             rsp = client().writeReadTextUntilNewlines(CRLF + CRLF);
+            afterRsp = nanoTime();
         }
         
         assertThat(rsp).isEqualTo(
@@ -368,14 +372,19 @@ class DetailTest extends AbstractRealTest
         assertThatServerErrorObservedAndLogged()
                 .isExactlyInstanceOf(NoRouteFoundException.class);
         
-        var s = stats.poll(1, SECONDS);
-        assert s != null;
+        var stats = eventSink.poll(1, SECONDS);
+        assert stats != null;
         
-        // Can not compute this any earlier, directly after response.
-        // No guarantee the event has happened at that point.
-        final long expDur = nanoTime() - then;
+        final long expMaxDur = afterRsp - (
+            eventType == RequestHeadReceived.class ? beforeReq : beforeRsp);
+        assertThat(stats.elapsedNanos()).isBetween(0L, expMaxDur);
         
-        assertThat(s.elapsedNanos()).isBetween(0L, expDur);
-        assertThat(s.byteCount()).isEqualTo(exchToExpByteCnt.applyAsLong(req + CRLF + CRLF, rsp));
+        final long expLen = eventType == RequestHeadReceived.class ?
+            lengthOf(req + CRLF + CRLF) :lengthOf(rsp);
+        assertThat(stats.byteCount()).isEqualTo(expLen);
+    }
+    
+    private static long lengthOf(String message) {
+        return message.getBytes(US_ASCII).length;
     }
 }
