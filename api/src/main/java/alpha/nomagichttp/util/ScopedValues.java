@@ -16,9 +16,11 @@ import static jdk.incubator.concurrent.ScopedValue.newInstance;
  * 
  * The scoped instances are bound within a defined scope.<p>
  * 
- * The server may rely on the values bound, and is free to assume that the value
- * is a particular implementation. The application must not rebind a scoped
- * instance to something else.
+ * Generally, one should prefer using static methods declared in this class to
+ * access bound values.<p>
+ * 
+ * The static fields must never be rebound to {@code null}, as the server
+ * itself may access the values, and is free to assume the presence of a value.
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  */
