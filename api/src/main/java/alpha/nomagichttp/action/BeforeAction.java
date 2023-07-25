@@ -22,10 +22,10 @@ import alpha.nomagichttp.util.Throwing;
  * 
  * Although a before-action can be used to handle exceptions — and for well
  * defined route patterns this is certainly an option — the {@link ErrorHandler}
- * is what should be used for global errors.
+ * is what should be used for global errors.<p>
  * 
- * <pre>
- *   BeforeAction giveRole = (request, chain) -{@literal >} {
+ * {@snippet :
+ *   BeforeAction giveRole = (request, chain) -> {
  *       String role = myAuthLogic(request.headers());
  *       request.attributes().set("user.role", role);
  *       return chain.proceed();
@@ -33,7 +33,7 @@ import alpha.nomagichttp.util.Throwing;
  *   HttpServer server = ...
  *   // Apply to all requests
  *   server.before("/*", giveRole);
- * </pre>
+ * }
  * 
  * If the value stored in the attributes acts as a default and will need to be
  * temporarily rebound at a later point in time, consider using a
@@ -53,10 +53,10 @@ import alpha.nomagichttp.util.Throwing;
  * free to do anything, including ordering pizza online.<p>
  * 
  * In particular, a before-action has no obligation to proceed the request
- * processing chain.
+ * processing chain.<p>
  * 
- * <pre>
- *   BeforeAction onlyAdminsAllowed = (request, chain) -{@literal >} {
+ * {@snippet :
+ *   BeforeAction onlyAdminsAllowed = (request, chain) -> {
  *       String role = request.attributes().getAny("user.role");
  *       if (!"admin".equals(role)) {
  *           // Short-circuit the rest of the processing chain
@@ -67,21 +67,22 @@ import alpha.nomagichttp.util.Throwing;
  *   HttpServer server = ...
  *   // Apply to the "admin" namespace
  *   server.before("/admin/*", onlyAdminsAllowed);
- * </pre>
+ * }
  * 
  * An exception thrown from the before-action will be handed off to the error
- * handlers. This is a variant of the previous example:
- * <pre>
- *   ErrorHandler hideResource = (exc, chain, request) -{@literal >} {
+ * handlers. This is a variant of the previous example:<p>
+ * 
+ * {@snippet :
+ *   ErrorHandler hideResource = (exc, chain, request) -> {
  *       if (exc instanceof MySuspiciousRequestException) {
  *           // Set "Connection: close" header
- *           return {@link ClientChannel#tryAddConnectionClose(Response) tryAddConnectionClose
- *                  }(Responses.notFound());
+ *           // @link substring="tryAddConnectionClose" target="ClientChannel#tryAddConnectionClose(Response)" :
+ *           return tryAddConnectionClose(Responses.notFound());
  *       }
  *       return chain.proceed();
  *   };
  *   HttpServer server = HttpServer.create(hideResource);
- *   BeforeAction requireAdmin = (request, chain) -{@literal >} {
+ *   BeforeAction requireAdmin = (request, chain) -> {
  *       request.attributes()
  *              .getOpt("user.role")
  *              .filter("admin"::equals)
@@ -89,7 +90,7 @@ import alpha.nomagichttp.util.Throwing;
  *       return chain.proceed();
  *   };
  *   server.before("/admin/*", requireAdmin);
- * </pre>
+ * }
  * 
  * The action is called only after a request head has been received and
  * validated. For example, the action is not called if a request head fails to
