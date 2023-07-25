@@ -72,9 +72,9 @@ import static java.util.stream.Stream.of;
  * the event of a failure. Therefore, an error handler should return a response,
  * either by returning one directly, or yielding to the next error handler,
  * which will eventually be the server's base handler, which has a fallback
- * response for all exceptions.
+ * response for all exceptions.<p>
  * 
- * <pre>{@code
+ * {@snippet :
  *   ErrorHandler forMyExpected = (exception, chain, request) -> {
  *       if (exception instanceof MyExpectedException e) {
  *           return someResponse();
@@ -82,7 +82,7 @@ import static java.util.stream.Stream.of;
  *       // Don't know what this is, so try the next error handler
  *       return chain.proceed();
  *   };
- * }</pre>
+ * }
  * 
  * Error handlers will be called in the same order they were registered with the
  * server.<p>

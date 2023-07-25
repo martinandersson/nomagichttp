@@ -52,17 +52,26 @@ public interface ClientChannel extends ChannelWriter, AttributeHolder
      * Ensures that the returned response's {@value HeaderName#CONNECTION}
      * header contains the token "close".<p>
      * 
-     * The implementation is equivalent to:
-     * <pre>
-     *     if (rsp.{@link Response#headers() headers
-     *             }().{@link BetterHeaders#hasConnectionClose() hasConnectionClose}()) {
-     *         return rsp;
-     *     }
-     *     return rsp.{@link Response#toBuilder() toBuilder}()
-     *               .{@link Response.Builder#appendHeaderToken(String, String)
-     *                appendHeaderToken}("Connection", "close")
-     *               .{@link Response.Builder#build() build}();
-     * </pre>
+     * The implementation is equivalent to:<p>
+     * 
+     * {@snippet :
+     *   // @link substring="headers" target="Response#headers()" region
+     *   // @link substring="hasConnectionClose" target="BetterHeaders#hasConnectionClose()" region
+     *   if (rsp.headers().hasConnectionClose()) {
+     *       return rsp;
+     *   }
+     *   // @end
+     *   // @end
+     *   // @link substring="toBuilder" target="Response#toBuilder()" region
+     *   // @link substring="appendHeaderToken" target="Response.Builder#appendHeaderToken(String, String)" region
+     *   // @link substring="build" target="Response.Builder#build()" region
+     *   return rsp.toBuilder()
+     *             .appendHeaderToken("Connection", "close")
+     *             .build();
+     *   // @end
+     *   // @end
+     *   // @end
+     * }
      * 
      * @param rsp the response
      * 

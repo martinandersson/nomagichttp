@@ -38,34 +38,48 @@ import static alpha.nomagichttp.message.MediaType.parse;
  * The request handler's {@code apply} method is expected to return a so-called
  * "final response", which the server will then write to the client.<p>
  * 
- * For example, responding 200 (OK):
- * <pre>
+ * For example, responding 200 (OK):<p>
+ * 
+ * {@snippet :
+ *   // @link substring="apply" target ="Builder#apply(Throwing.Function)" region
  *   RequestHandler textPlain
- *           = GET().{@link Builder#apply(Throwing.Function) apply
- *             }(requestIgnored -> {@link Responses#text(String) text
- *             }("Goodbye! Come again."));
- * </pre>
+ *            // @link substring="text" target ="Responses#text(String)" :
+  *           = GET().apply(requestIgnored -> text("Goodbye! Come again."));
+ *   // @end
+ * }
  * 
  * A final response may be preceded by any number of interim responses from
  * category 1XX (Informational) (since HTTP 1.1). For example, interim responses
- * can be used to send progress reports on a long-running job.
+ * can be used to send progress reports on a long-running job.<p>
  * 
- * <pre>
- *     requestIgnored -> {
- *          // First we do some work, hypothetically
- *          ...
- *          // Send a 102 (Processing) update
- *          var response = {@link Responses#processing() processing}()
- *              .{@link Response#toBuilder() toBuilder
- *              }().{@link Response.Builder#setHeader(String, String) setHeader
- *              }("Progress", "45%").{@link Response.Builder#build() build}();
- *         {@link ScopedValues#channel() channel
- *           }().{@link ChannelWriter#write(Response) write
- *           }(response);
- *         // At some point we're done and respond 204 (No Content)
- *         return noContent();
- *     }
- * </pre>
+ * {@snippet :
+ *   // @link substring="processing" target="Responses#processing()" region
+ *   // @link substring="toBuilder" target="Response#toBuilder()" region
+ *   // @link substring="setHeader" target="Response.Builder#setHeader(String, String)" region
+ *   // @link substring="build" target="Response.Builder#build()" region
+ *   // @link substring="channel" target="ScopedValues#channel()" region
+ *   // @link substring="write" target="ChannelWriter#write(Response)" region
+ *   // @link substring="noContent" target="Responses#noContent()" region
+ *   requestIgnored -> {
+ *       // First we do some work, hypothetically
+ *       ...
+ *       
+ *       // Send a 102 (Processing) update
+ *       Response rsp = processing()
+ *           .toBuilder().setHeader("Progress", "45%").build();
+ *       channel().write(rsp);
+ *       
+ *       // At some point we're done and respond 204 (No Content)
+ *       return noContent();
+ *   }
+ *   // @end
+ *   // @end
+ *   // @end
+ *   // @end
+ *   // @end
+ *   // @end
+ *   // @end
+ * }
  * 
  * There are other ways to execute a long-running job. For example, the
  * application could do {@code Thread.startVirtualThread(myJob)}, and return a
@@ -80,37 +94,39 @@ import static alpha.nomagichttp.message.MediaType.parse;
  * returned from the {@code apply} method. If the application needs to execute
  * logic post-transmission of a response and this logic must execute within the
  * request handler, then writing the final response explicitly is an
- * alternative.
+ * alternative.<p>
  * 
- * <pre>{@code
- *     request -> {
- *         channel().write(text("Secret data"));
- *         // User download succeeded, now we need to
- *         sendReportToGovernment(request);
- *         // And server has no need for a response anymore
- *         return null;
- *     }
- * }</pre>
+ * {@snippet :
+ *   request -> {
+ *       channel().write(text("Secret data"));
+ *       // User download succeeded, now we need to
+ *       sendReportToGovernment(request);
+ *       // And server has no need for a response anymore
+ *       return null;
+ *   }
+ * }
  * 
  * If the post-transmission logic does not need to execute within the handler,
- * then a more clean approach is to subscribe to the {@link ResponseSent} event.
+ * then an alternative is to subscribe to the {@link ResponseSent} event.<p>
  * 
- * <pre>
- *     // TODO: We need to fix the event API lol
- *     class Metrics {
- *         static void collect(
- *             ResponseSent thisStupidArgNeedsToGo,
- *             Response rsp,
- *             ResponseSent.Stats stats)
- *         {
- *             ...
- *         }
- *     }
- *     // Somewhere else
- *     server.{@link HttpServer#events() events
- *       }().{@link EventEmitter#on(Class, BiConsumer) on
- *       }(ResponseSent.class, Metrics::collect)
- * </pre>
+ * {@snippet :
+ *   // TODO: We need to fix the event API lol
+ *   class Metrics {
+ *       static void collect(
+ *           ResponseSent thisStupidArgNeedsToGo,
+ *           Response rsp,
+ *           ResponseSent.Stats stats)
+ *       {
+ *           ...
+ *       }
+ *   }
+ *   // @link substring="events" target="HttpServer#events()" region
+ *   // @link substring="on" target="EventEmitter#on(Class, BiConsumer)" region
+  *   // Somewhere else
+ *   server.events().on(ResponseSent.class, Metrics::collect);
+ *   // @end
+ *   // @end
+ * }
  * 
  * <h2>Handler Selection</h2>
  * 
@@ -149,22 +165,28 @@ import static alpha.nomagichttp.message.MediaType.parse;
  * {@link MediaType#NOTHING_AND_ALL} and produces "*&#47;*". These are also
  * the default media types used if not specified.<p>
  * 
- * Example:
- * <pre>
+ * Given this code:<p>
+ * 
+ * {@snippet :
  *   // The request's content headers will never eliminate this candidate
  *   Response textPlain = Responses.text("greeting=Hello");
  *   RequestHandler regularFallback
  *       = GET().apply(requestIgnored -> textPlain);
  *   
  *   // An acquired taste
- *   Response json = Responses.json("{\"greeting\": \"Hello\"}");
+ *   Response json = Responses.json("""
+ *       {"greeting": "Hello"}""");
  *   RequestHandler specificJson
  *       = GET().produces("application/json")
  *              .apply(requestIgnored -> json);
  *   
  *   // Add-order does not matter
  *   server.add("/greeting", specificJson, regularFallback);
- *   
+ * }
+ * 
+ * The result is:
+ * 
+ * <pre>
  *   // Result
  *   GET /greeting HTTP/1.1
  *   Host: www.example.com
@@ -288,11 +310,15 @@ import static alpha.nomagichttp.message.MediaType.parse;
  * Prefer passing method arguments. If not possible, then there's a few
  * options.<p>
  * 
- * Data that needs to be accessed throughout the HTTP exchange:
- * <pre>
- *   request.{@link Request#attributes() attributes
- *     }().{@link Attributes#set(String, Object) set}("my-data", 123);
- * </pre>
+ * Data that needs to be accessed throughout the HTTP exchange:<p>
+ * 
+ * {@snippet :
+ *   // @link substring="attributes" target="Request#attributes()" region
+ *   // @link substring="set" target="Attributes#set(String, Object)" region
+ *   request.attributes().set("my-data", 123);
+ *   // @end
+ *   // @end
+ * }
  * 
  * For data that needs to span multiple HTTP exchanges, see the JavaDoc of
  * {@link ScopedValues#channel()}.
@@ -434,10 +460,13 @@ public interface RequestHandler extends Throwing.Function<Request, Response, Exc
     /**
      * Builder of a {@code RequestHandler}.<p>
      * 
-     * A builder can be created using static factories from the enclosing class:
-     * <pre>
-     *   RequestHandler.Builder forGetRequests = RequestHandler.{@link #GET() GET}();
-     * </pre>
+     * A builder can be created using static factories from the enclosing
+     * class:<p>
+     * 
+     * {@snippet :
+     *   // @link substring="GET" target="#GET()" :
+     *   RequestHandler.Builder forGetRequests = RequestHandler.GET();
+     * }
      * 
      * When the builder has been constructed, the HTTP method will already have
      * been set. What remains is to set consuming and producing media types
@@ -454,42 +483,43 @@ public interface RequestHandler extends Throwing.Function<Request, Response, Exc
      * which the builder's constructed handler instance delegates to. This
      * should be fine for most use cases. For more advanced use cases (for
      * example, hot-swapping the request-processing logic), one can create a
-     * class that implements the interface:
+     * class that implements the interface:<p>
      * 
-     * <pre>
-     *   class MyProcessor implements Throwing.Function{@literal <}Request, Exception{@literal >} {
+     * {@snippet :
+     *   class MyProcessor implements Throwing.Function<Request, Response, Exception> {
      *       MyProcessor(My threadSafeDependencies) {
      *           ...
      *       }
-     *       {@literal @}Override
+     *       @Override
      *       public Response apply(Request req) {
      *           ...
      *       }
      *   }
      *   server.add("/", GET().apply(new MyProcessor(...)));
-     * </pre>
+     * }
      * 
-     * Or, if one wishes to skip the builder altogether:
-     * <pre>
+     * Or, if one wishes to skip the builder altogether:<p>
+     * 
+     * {@snippet :
      *   class MyEndpoint implements RequestHandler {
      *       MyEndpoint(My threadSafeDependencies) {
      *           ...
      *       }
-     *       {@literal @}Override
+     *       @Override
      *       public String method() {
      *           return "GET"; // Or use HttpConstants
      *       }
-     *       {@literal @}Override
+     *       @Override
      *       public Response apply(Request req) {
      *           ...
      *       }
      *   }
      *   HttpServer.create().add("/", new MyEndpoint(...));
-     * </pre>
+     * }
      * 
      * State-modifying methods return the same builder instance invoked. The
      * builder is not thread-safe. It should be used only temporarily while
-     * constructing a request handler and then the builder reference should be
+     * constructing a request handler, and then the builder reference should be
      * discarded.<p>
      * 
      * The implementation is not required to implement {@code hashCode} and
