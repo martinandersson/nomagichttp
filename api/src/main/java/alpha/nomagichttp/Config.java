@@ -34,15 +34,19 @@ import java.util.concurrent.TimeUnit;
  * 
  * Any configuration object can be turned into a builder for customization. The
  * static method {@link #configuration()} is a shortcut for {@code
- * Config.DEFAULT.toBuilder()} and allows for fluent overrides of individual
- * values.
- * <pre>
+ * Config.DEFAULT.toBuilder()}, and allows for fluent overrides of individual
+ * values.<p>
+ * 
+ * {@snippet :
+ *   // @link substring="minHttpVersion" target="#minHttpVersion()" region
+ *   // @link substring="HTTP_1_1" target="HttpConstants.Version#HTTP_1_1" region
  *   new HttpServer(configuration()
- *           .{@link #minHttpVersion() minHttpVersion
- *            }({@link HttpConstants.Version#HTTP_1_1 HTTP_1_1})
+ *           .minHttpVersion(HTTP_1_1)
  *           ...
  *           .build());
- * </pre>
+ *   // @end
+ *   // @end
+ * }
  * 
  * In the JDK Reference Implementation, the number of platform threads available
  * for scheduling virtual threads may be specified using the system property

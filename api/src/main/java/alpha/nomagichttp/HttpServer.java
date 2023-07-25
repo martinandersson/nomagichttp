@@ -55,17 +55,26 @@ import java.util.function.IntConsumer;
  * it needs to <i>{@code start()}</i> which will open the server's listening
  * port.<p>
  * 
- * A trivial example:
- * <pre>
- *   HttpServer.{@link #create(ErrorHandler...) create}()
- *             .{@link #add(String, RequestHandler, RequestHandler...) add
- *                 }("/", {@link RequestHandler#GET()
- *                 GET}().{@link RequestHandler.Builder#apply(Throwing.Function)
- *                 apply}(request -> {@link Responses#text(String)
- *                 text}("Hello")))
- *             .{@link #start(IntConsumer) start}(port ->
+ * A trivial example:<p>
+ * 
+ * {@snippet :
+ *   // @link substring="create" target="#create(ErrorHandler...)" region
+ *   // @link substring="add" target="#add(String, RequestHandler, RequestHandler...)" region
+ *   // @link substring="GET" target="RequestHandler#GET()" region
+ *   // @link substring="apply" target="RequestHandler.Builder#apply(Throwing.Function)" region
+ *   // @link substring="text" target="Responses#text(String)" region
+ *   // @link substring="start" target="#start(IntConsumer)" region
+ *   HttpServer.create()
+ *             .add("/", GET().apply(request -> text("Hello")))
+ *             .start(port ->
  *                 System.out.println("Listening on port: " + port));
- * </pre>
+ *   // @end
+ *   // @end
+ *   // @end
+ *   // @end
+ *   // @end
+ *   // @end
+ * }
  * 
  * What was <i>added</i> to the server is a {@link RequestHandler} mapped to a
  * {@link Route} pattern. Optionally, one can also register
