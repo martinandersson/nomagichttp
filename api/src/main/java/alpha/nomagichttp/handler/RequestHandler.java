@@ -533,10 +533,11 @@ public interface RequestHandler extends Throwing.Function<Request, Response, Exc
          * Sets consumption media-type to {@link MediaType#NOTHING}.
          * 
          * @implSpec
-         * The default implementation is equivalent to:
-         * <pre>
-         *   return consumes(MediaType.NOTHING)
-         * </pre>
+         * The default implementation is equivalent to:<p>
+         * 
+         * {@snippet :
+         *   return consumes(MediaType.NOTHING);
+         * }
          * 
          * @return this (for chaining/fluency)
          */
@@ -550,10 +551,11 @@ public interface RequestHandler extends Throwing.Function<Request, Response, Exc
          * @param mediaType to set
          * 
          * @implSpec
-         * The default implementation is equivalent to:
-         * <pre>
-         *   return consumes(MediaType.parse(mediaType))
-         * </pre>
+         * The default implementation is equivalent to:<p>
+         * 
+         * {@snippet :
+         *   return consumes(MediaType.parse(mediaType));
+         * }
          * 
          * @return this (for chaining/fluency)
          * 
@@ -584,10 +586,11 @@ public interface RequestHandler extends Throwing.Function<Request, Response, Exc
          * @param mediaType to set
          * 
          * @implSpec
-         * The default implementation is equivalent to:
-         * <pre>
-         *   return produces(MediaType.parse(mediaType))
-         * </pre>
+         * The default implementation is equivalent to:<p>
+         * 
+         * {@snippet :
+         *   return produces(MediaType.parse(mediaType));
+         * }
          * 
          * @return this (for chaining/fluency)
          * 
