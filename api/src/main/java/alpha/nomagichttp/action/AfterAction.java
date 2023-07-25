@@ -15,20 +15,21 @@ import java.util.function.BiFunction;
  * 
  * To build on the example provided in {@link ActionRegistry}, here is one way
  * to propagate a correlation id from the request headers- or attributes,
- * falling back to no response modification if the value is not present:
- * <pre>
+ * falling back to no response modification if the value is not present:<p>
+ * 
+ * {@snippet :
  *   import static alpha.nomagichttp.HttpConstants.HeaderName.X_CORRELATION_ID;
  *   ...
  *   
  *   HttpServer server = ...
- *   AfterAction trySetId = (req, rsp) -{@literal >}
- *           req.attributes().{@literal <}String{@literal >}getOptAny("my.saved.correlation-id")
- *              .or(() -{@literal >} req.headers().firstValue(X_CORRELATION_ID))
- *              .map(id -{@literal >} rsp.toBuilder().setHeader(X_CORRELATION_ID, id).build())
+ *   AfterAction trySetId = (req, rsp) ->
+ *           req.attributes().<String>getOptAny("my.saved.correlation-id")
+ *              .or(() -> req.headers().firstValue(X_CORRELATION_ID))
+ *              .map(id -> rsp.toBuilder().setHeader(X_CORRELATION_ID, id).build())
  *              .orElse(rsp);
  *   // Propagate for all exchanges
  *   server.after("/*", trySetId);
- * </pre>
+ * }
  * 
  * An after-action must never throw an exception. It wouldn't make sense to run
  * such an error though the error handlers as doing so would be subject to a
