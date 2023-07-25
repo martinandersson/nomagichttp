@@ -116,7 +116,7 @@ public final class HttpConstants {
          * new resource.<p>
          * 
          * For example, posting an element to a collection. In this case, if the
-         * request is repeated the collection grows by 1 element each time.
+         * request is repeated, the collection grows by 1 element each time.
          * 
          * <pre>
          *   --{@literal >}
