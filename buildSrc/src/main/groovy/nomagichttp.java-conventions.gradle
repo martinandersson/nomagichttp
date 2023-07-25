@@ -136,6 +136,11 @@ java {
     withSourcesJar() // contains .java source code files; no .class files or HTML
 }
 
+tasks.named('sourcesJar') {
+    // No need to package this file with the sources jar
+    sourceSets.main.java.exclude 'overview.html'
+}
+
 // withJavadocJar() added the javadoc task as an assemble task dependency,
 // do the same for javadocAll (gradle build will fail if any doc task fails)
 tasks.named('assemble') {
