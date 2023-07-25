@@ -70,6 +70,10 @@ javadoc {
     // Change from
     //   "Generates Javadoc API documentation for the 'main' feature."
     description = 'Generates Javadoc API documentation (from public symbols in the main source set).'
+    
+    options {
+        author = true
+    }
 }
 
 def javadocAll = tasks.register('javadocAll', Javadoc) {
@@ -93,6 +97,10 @@ def javadocAll = tasks.register('javadocAll', Javadoc) {
     // (fixes "error: package com.blabla is not visible")
     exclude 'module-info.java'
     modularity.inferModulePath = false
+    
+    options {
+        author = true
+    }
 }
 
 tasks.named('check') {
