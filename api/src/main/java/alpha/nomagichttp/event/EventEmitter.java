@@ -20,14 +20,15 @@ import java.util.function.Consumer;
  * generally not be a replacement of what would otherwise have been a simple
  * method call even if that means coupling. Generally, only when the side effect
  * is a different concern <i>and</i> there are at least two such side effects
- * should decoupling by using events be considered an option.
+ * should decoupling by using events be considered an option.<p>
  * 
- * <pre>
- *   class ShoppingCart extends {@link AbstractEventEmitter} {
+ * {@snippet :
+ *   // @link substring="AbstractEventEmitter" target="AbstractEventEmitter" :
+ *   class ShoppingCart extends AbstractEventEmitter {
  *       enum ItemAdded { INSTANCE }
  *       public void addItem(Item thing) {
  *           this.doStuff();
- *           super.emit(ItemAdded.INSTANCE, thing); // {@literal <}-- look, no objects created
+ *           super.emit(ItemAdded.INSTANCE, thing); // <-- look, no objects created
  *       }
  *   }
  *   // somewhere else
@@ -36,15 +37,16 @@ import java.util.function.Consumer;
  *   // and also somewhere else
  *   Counter metrics = ...
  *   someCart.on(ItemAdded.class, metrics::increment);
- * </pre>
+ * }
  * 
  * Event listeners observe events of the runtime type to which they subscribe.
  * Listeners can not subscribe to a superclass and then receive events that are
  * a subtype of the superclass. Think of the backing data structure as a {@code
  * Map} from event runtime type to a bunch of listeners invoked for that
- * specific event type (that's literally how the default implementation works).
- * <pre>
+ * specific event type (that's literally how the default implementation
+ * works).<p>
  * 
+ * {@snippet :
  *   EventEmitter source = ...
  *   
  *   // Receives only new Object(), not "string"
@@ -54,10 +56,10 @@ import java.util.function.Consumer;
  *   source.on(String.class, new MyConsumer());
  *   
  *   // One may register the same listener for multiple types
- *   Consumer{@literal <}Object{@literal >} receivesBoth = System.out::println;
+ *   Consumer<Object> receivesBoth = System.out::println;
  *   source.on(Object.class, receivesBoth);
  *   source.on(String.class, receivesBoth);
- * </pre>
+ * }
  * 
  * A {@link ScatteringEventEmitter} supports subscribing to <i>all</i>
  * events.<p>
@@ -118,22 +120,23 @@ import java.util.function.Consumer;
  * listener's object equality).<p>
  * 
  * Lambdas create different instances. This will subscribe but fail to
- * unsubscribe:
- * <pre>
+ * unsubscribe:<p>
+ * 
+ * {@snippet :
  *   EventEmitter emitter = ...
  *   // True
  *   emitter.on(Something.class, System.out::println);
  *   // False
  *   emitter.off(Something.class, System.out::println);
- * </pre>
+ * }
  * 
- * Solution:
- * <pre>
+ * Solution:<p>
  * 
- *   Consumer{@literal <}Something{@literal >} listener = System.out::println;
+ * {@snippet :
+ *   Consumer<Something> listener = System.out::println;
  *   emitter.on(Something.class, listener);
  *   emitter.off(Something.class, listener);
- * </pre>
+ * }
  * 
  * If a listener throws an exception, then that exception will propagate up the
  * call stack and remaining listeners in the call chain will not observe the

@@ -10,10 +10,12 @@ import static java.util.concurrent.TimeUnit.NANOSECONDS;
  * 
  * This class contains no references to wall-clock time. The event is emitted
  * immediately after {@link #nanoTimeOnStop()}, and so, a wall-clock reference
- * to when the task started can be approximated:
- * <pre>
- *   var then = Instant.now().minusNanos({@link #elapsedNanos()});
- * </pre>
+ * to when the task started can be approximated:<p>
+ * 
+ * {@snippet :
+ *   // @link substring="elapsedNanos" target="#elapsedNanos()" :
+ *   var then = Instant.now().minusNanos(elapsedNanos());
+ * }
  * 
  * This class and all subclasses are thread-safe.<p>
  * 

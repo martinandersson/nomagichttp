@@ -26,14 +26,15 @@ import static java.util.Objects.requireNonNull;
  * 
  * By default, the emitter will be backed by concurrent data structures. But
  * this can be customized. For example, here's how to create an emitter that
- * is not thread-safe: 
- * <pre>{@code
+ * is not thread-safe:<p>
+ * 
+ * {@snippet :
  *   class ComponentScopedEmitter extends AbstractEventEmitter {
  *       ComponentScopedEmitter() {
- *           super(new HashMap{@literal <}{@literal >}(), HashSet::new);
+ *           super(new HashMap<>(), HashSet::new);
  *       }
  *   }
- * }</pre>
+ * }
  * 
  * Constructors in this class optionally accept a when-condition that if it
  * returns true, will make this class call the decorator which in turn must call
@@ -41,15 +42,15 @@ import static java.util.Objects.requireNonNull;
  * the when-condition returns false, the listeners will be called directly
  * without going through the decorator. The intended use case is for
  * implementations to be able to ensure that a {@code ScopedValue} is always
- * bound.
+ * bound.<p>
  * 
- * <pre>{@code
+ * {@snippet :
  *   EventEmitter emitter = new DefaultEventHub(
  *         () -> !MY_SCOPED_VALUE.isBound(),
  *         listeners -> ScopedValue.where(MY_SCOPED_VALUE, ..., listeners));
  *   // Listeners will now always be able to retrieve the scoped value
  *   emitter.dispatch("event");
- * }</pre>
+ * }
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  */

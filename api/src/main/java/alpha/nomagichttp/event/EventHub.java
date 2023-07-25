@@ -151,31 +151,35 @@ public interface EventHub extends ScatteringEventEmitter, EventEmitter
     /**
      * Assign this hub to redistribute all events from the given emitter.<p>
      * 
-     * The reference to the given emitter is not stored in the hub and will thus
-     * not stop the emitter from being garbage collected.<p>
+     * The reference to the given emitter is not stored in the hub and using
+     * this will not hinder the emitter from being garbage collected.<p>
      * 
-     * If the given emitter is an event hub itself, consider using the static
-     * method {@link #combine(Iterable)} instead. Combining creates a new hub
-     * instance instead of affecting this instance. Consider this example:
+     * If the given emitter is an event hub itself, consider instead using the
+     * static method {@link #combine(Iterable)}. Combining creates a new hub
+     * instance. Consider this example:<p>
      * 
-     * <pre>{@code
+     * {@snippet :
      *   server1.events().on(ThingCreated.class, (ev) -> globalCounter.increment());
      *   server2.events().on(ThingCreated.class, (ev) -> globalCounter.increment());
+     *   
      *   // Somewhere else smarty pants creates a "global hub" and exposes it globally
      *   server2.events().redistribute(server1.events());
      *   EventHub global = server2.events();
+     *   
      *   // Someone uses the reference and unintentionally subscribes a duplicated counter
      *   global.on(ThingCreated.class, (ev) -> globalCounter.increment());
+     *   
      *   // This will now bump the counter twice
      *   global.dispatch(ThingCreated.INSTANCE);
-     * }</pre>
+     * }
      * 
-     * Solution:
-     * <pre>{@code
+     * Solution:<p>
+     * 
+     * {@snippet :
      *   ...
      *   EventHub global = EventHub.combine(server1, server2);
      *   ...
-     * }</pre>
+     * }
      * 
      * @param emitter to redistribute
      * @throws NullPointerException if {@code emitter} is {@code null}
