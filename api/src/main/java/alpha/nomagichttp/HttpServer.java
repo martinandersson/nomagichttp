@@ -108,15 +108,15 @@ import java.util.function.IntConsumer;
  * 
  * It is possible to start multiple server instances on different ports. One
  * use-case is to expose public endpoints on one port but keep more sensitive
- * administrator endpoints on another more secluded port.
+ * administrator endpoints on another more secluded port.<p>
  * 
- * <pre>{@code
+ * {@snippet :
  *   try (var exec = Executors.newVirtualThreadPerTaskExecutor()) {
  *       exec.submit(() -> HttpServer.create().start(8080));
  *       exec.submit(() -> HttpServer.create().start(8081));
  *       // Implicit exec.close() will await termination of both servers
  *   }
- * }</pre>
+ * }
  * 
  * This example also illustrated why all blocking {@code start} methods' return
  * type is declared {@code Void}, as opposed to {@code void}; it is to enable
@@ -250,13 +250,14 @@ public interface HttpServer extends RouteRegistry, ActionRegistry
      * and for local testing. Production code should use a {@code start} method
      * that allows to specify a port or an address.<p>
      * 
-     * The implementation is equivalent to:
-     * <pre>
+     * The implementation is equivalent to:<p>
+     * 
+     * {@snippet :
      *   InetAddress addr = InetAddress.getLoopbackAddress();
      *   int port = 0;
      *   SocketAddress local = new InetSocketAddress(addr, port);
-     *   return {@link #start(SocketAddress) start}(local);
-     * </pre>
+     *   return start(local); // @link substring="start" target="#start(SocketAddress)"
+     * }
      * 
      * The given port consumer is invoked by the same thread calling this
      * method, after having bound the address but before going into the
@@ -289,17 +290,17 @@ public interface HttpServer extends RouteRegistry, ActionRegistry
      * one of the other start methods will bind the server's address and then
      * run the accept-loop; aka. "listen" for client connections. This method,
      * however, will bind the address, then start a virtual thread that runs the
-     * accept-loop, and then return out.
+     * accept-loop, and then return out.<p>
      * 
-     * <pre>{@code
-     *     HttpServer testee = ...
-     *     Future<Void> future = testee.startAsync();
-     *     var client = new MyTestHttpClient(testee.getPort());
-     *     var response = client.sendSomeRequest();
-     *     assertThat(response).isEqualTo(...);
-     *     testee.stop();
-     *     assertThat(future)...
-     * }</pre>
+     * {@snippet :
+     *   HttpServer testee = ...
+     *   Future<Void> future = testee.startAsync();
+     *   var client = new MyTestHttpClient(testee.getPort());
+     *   var response = client.sendSomeRequest();
+     *   assertThat(response).isEqualTo(...);
+     *   testee.stop();
+     *   assertThat(future)...
+     * }
      * 
      * TODO: Complete the previous example
      * <p>
@@ -328,12 +329,15 @@ public interface HttpServer extends RouteRegistry, ActionRegistry
      * unspecified address".
      * 
      * @implSpec
-     * The default implementation is equivalent to:
-     * <pre>
-     *     return {@link #start(SocketAddress) start
-     *     }(new {@link InetSocketAddress#InetSocketAddress(int) InetSocketAddress
-     *     }(port));
-     * </pre>
+     * The default implementation is equivalent to:<p>
+     * 
+     * {@snippet :
+     *   // @link substring="start" target="#start(SocketAddress)" region
+     *   // @link substring="InetSocketAddress" target="InetSocketAddress#InetSocketAddress(int)" region
+     *   return start(new InetSocketAddress(port));
+     *   // @end
+     *   // @end
+     * }
      * 
      * @param port to use
      * 
@@ -357,12 +361,15 @@ public interface HttpServer extends RouteRegistry, ActionRegistry
      * Listens for client connections on a given hostname and port.
      * 
      * @implSpec
-     * The default implementation is equivalent to:
-     * <pre>
-     *     return {@link #start(SocketAddress) start
-     *     }(new {@link InetSocketAddress#InetSocketAddress(String, int) InetSocketAddress
-     *     }(hostname, port));
-     * </pre>
+     * The default implementation is equivalent to:<p>
+     * 
+     * {@snippet :
+     *   // @link substring="start" target="#start(SocketAddress)" region
+     *   // @link substring="InetSocketAddress" target="InetSocketAddress#InetSocketAddress(String, int)" region
+     *   return start(new InetSocketAddress(hostname, port));
+     *   // @end
+     *   // @end
+     * }
      * 
      * @param hostname to use
      * @param port to use
@@ -532,32 +539,39 @@ public interface HttpServer extends RouteRegistry, ActionRegistry
      * Returns the event hub associated with this server.<p>
      * 
      * The event hub can be used to subscribe to server-related events. For
-     * example:
-     * <pre>{@code
+     * example:<p>
+     * 
+     * {@snippet :
      *   HttpServer server = ...
-     *   server.events().on(HttpServerStarted.class, (event, when) ->
-     *           System.out.println("Server started at " + when));
-     * }</pre>
+     *   server.events().on(HttpServerStarted.class,
+     *           (event, when) -> System.out.println("Server started at " + when));
+     * }
      * 
      * The hub can also be used to emit application-specific events
-     * programmatically, even from application-code executing within the server.
-     * <pre>
-     *   {@link ScopedValues#httpServer() httpServer
-     *   }().events().{@link EventHub#dispatch(Object) dispatch}("Hello!");
-     * </pre>
+     * programmatically, even from application-code running within the
+     * server.<p>
+     * 
+     * {@snippet :
+     *   // @link substring="httpServer" target="ScopedValues#httpServer()" region
+     *   // @link substring="dispatch" target="EventHub#dispatch(Object)" region
+     *   httpServer().events().dispatch("Hello!");
+     *   // @end
+     *   // @end
+     * }
      * 
      * The hub is not bound to the running state of the server. The hub can be
      * used by the application to dispatch its own events before the server has
      * started, while the server is running and after the server has stopped.<p>
      * 
      * If the application runs multiple servers, a JVM-global hub can be created
-     * like so:
-     * <pre>
+     * like so:<p>
+     * 
+     * {@snippet :
      *   EventHub one = server1.events(),
      *            two = server2.events(),
-     *            all = EventHub.{@link
-     *   EventHub#combine(ScatteringEventEmitter, ScatteringEventEmitter, ScatteringEventEmitter...) combine}(one, two);
-     * </pre>
+     *            // @link substring="combine" target="EventHub#combine(ScatteringEventEmitter, ScatteringEventEmitter, ScatteringEventEmitter...)" :
+     *            all = EventHub.combine(one, two);
+     * }
      * 
      * All event objects emitted by the HttpServer is an enum instance and does
      * not contain any event-specific information. The event metadata is passed
@@ -628,12 +642,17 @@ public interface HttpServer extends RouteRegistry, ActionRegistry
      * Returns the port this server is listening to.
      * 
      * @implSpec
-     * The default implementation is equivalent to:
-     * <pre>
-     *   return (({@link InetSocketAddress
-     *       }) {@link #getLocalAddress() getLocalAddress
-     *       }()).{@link InetSocketAddress#getPort() getPort}();
-     * </pre>
+     * The default implementation is equivalent to:<p>
+     * 
+     * {@snippet :
+     *   // @link substring="InetSocketAddress" target="InetSocketAddress" region
+     *   // @link substring="getLocalAddress" target="#getLocalAddress()" region
+     *   // @link substring="getPort" target="InetSocketAddress#getPort()" region
+     *   return ((InetSocketAddress) getLocalAddress()).getPort();
+     *   // @end
+     *   // @end
+     *   // @end
+     * }
      * 
      * @return see JavaDoc
      * 
