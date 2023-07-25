@@ -147,7 +147,7 @@ import alpha.nomagichttp.route.RouteRegistry;
  *                 .after(mySpecificPathAction)
  *             .after(myAllResponsesAction)
  *             ...
- * </pre>
+ * }
  * 
  * An action added to the registry is not necessarily <i>immediately</i> visible
  * to currently active HTTP exchanges and should generally be registered before
