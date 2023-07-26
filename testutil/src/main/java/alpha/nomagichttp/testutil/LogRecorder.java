@@ -118,7 +118,7 @@ public final class LogRecorder
     }
     
     /**
-     * Stream a snapshot of all records observed.
+     * Returns a Stream of all records.
      * 
      * @return see JavaDoc
      */
@@ -127,9 +127,9 @@ public final class LogRecorder
                 .flatMap(RecordHandler::recordsStream)
                 .sorted(comparing(LogRecord::getInstant));
     }
-
+    
     /**
-     * Returns a snapshot of all recorded errors.
+     * Returns a Deque of all recorded errors.
      * 
      * @return see JavaDoc
      */
@@ -143,14 +143,17 @@ public final class LogRecorder
     /**
      * Take the earliest record found that fulfils the given criteria.<p>
      * 
-     * This method is useful to extract log records and run assertions only
-     * on what is left behind. For example, to ensure a specific log record
-     * of an error was the only logged error, call this method and then
+     * This method is useful to extract log records and limit subsequent
+     * assertions to what is left behind.<p>
+     * 
+     * For example, to ensure that a specific log record of an error was the
+     * only logged error, call this method and then
      * {@link #assertThatNoErrorWasLogged()}.
      * 
      * @param level record level predicate
      * @param messageStartsWith record message predicate
      * @param error record error predicate (instance of)
+     * 
      * @return the record, or {@code null} if not found
      */
     public LogRecord take(
