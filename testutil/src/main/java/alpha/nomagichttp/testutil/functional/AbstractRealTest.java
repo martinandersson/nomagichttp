@@ -56,11 +56,11 @@ import static org.junit.jupiter.api.Assertions.assertSame;
  * 
  * This class will assert on server-stop that no errors were delivered to an
  * error handler. If errors are expected, then the test must consume all errors
- * using {@link #pollServerError()}.
+ * using {@link #pollServerError()}.<p>
  * 
- * <pre>
+ * {@snippet :
  *   class MyTest extends AbstractRealTest {
- *      {@literal @}Test
+ *       @Test
  *       void first() {
  *           // Implicit start of server on access
  *           server().add(someRoute)...
@@ -69,13 +69,13 @@ import static org.junit.jupiter.api.Assertions.assertSame;
  *           assertThat(response)...
  *           // Implicit server stop
  *       }
- *      {@literal @}Test
+ *       @Test
  *       void second() {
  *           // Is using another server instance
  *           server()...
  *       }
  *   }
- * </pre>
+ * }
  * 
  * By default (using the no-arg constructor), after each test, the server is
  * stopped and both the server and client references are set to null
@@ -85,10 +85,10 @@ import static org.junit.jupiter.api.Assertions.assertSame;
  * By default, a {@link #logRecorder()} is activated for each test. Recording is
  * intended for detailed tests that are awaiting log events and/or running
  * assertions on the records. Tests concerned with performance ought to disable
- * recording by means of the constructor argument {@code useLogRecording}.
+ * recording by means of the constructor argument {@code useLogRecording}.<p>
  * 
- * <pre>
- *  {@literal @}TestInstance(PER_CLASS)
+ * {@snippet :
+ *   @TestInstance(PER_CLASS)
  *   class MyRepeatedTest extends AbstractRealTest {
  *       private final Channel conn;
  *       MyRepeatedTest() {
@@ -98,34 +98,34 @@ import static org.junit.jupiter.api.Assertions.assertSame;
  *           conn = client().openConnection();
  *       }
  *       // Each message pair is exchanged over the same connection
- *       {@literal @}RepeatedTest(999_999_999)
+ *       @RepeatedTest(999_999_999)
  *       void httpExchange() {
  *           client().writeReadTextUntilNewlines("GET / HTTP/1.1\r\n\r\n");
  *           ...
  *       }
- *       {@literal @}AfterAll
+ *       @AfterAll
  *       void afterAll() { //  {@literal <}-- no need to be static (coz of PER_CLASS thing)
  *           stopServer();
  *           conn.close();
  *       }
  *       // Or alternatively, save on annotations and loop inside a test method lol
  *   }
- * </pre>
+ * }
  * 
  * This class will in a static {@code @BeforeAll} method named "beforeAll" call
  * {@code Logging.setLevel(ALL)} in order to enable very detailed logging, such
  * as each byte processed in the request head. Tests that run a large number of
  * requests and/or are concerned with performance ought to stop JUnit from
- * calling the method by hiding it.
+ * calling the method by hiding it.<p>
  * 
- * <pre>
+ * {@snippet :
  *   class MyQuietTest extends AbstractRealTest {
  *       static void beforeAll() {
  *           // Use default log level
  *       }
  *       ...
  *   }
- * </pre>
+ * }
  * 
  * Both of the former examples have been combined into
  * {@code AbstractLargeRealTest}.<p>
