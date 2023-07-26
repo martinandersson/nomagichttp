@@ -486,7 +486,7 @@ public abstract class AbstractRealTest
     }
     
     /**
-     * Returns the test log recorder.
+     * Returns the log recorder instance.
      * 
      * @return see JavaDoc
      * 

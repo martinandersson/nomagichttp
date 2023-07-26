@@ -55,8 +55,8 @@ public final class Logging
     /**
      * Log everything.<p>
      * 
-     * An invocation of this method behaves in exactly the same way as the
-     * invocation
+     * This method is equivalent to:
+     * 
      * <pre>
      *     Logging.{@link #setLevel(Class, Level)
      *       setLevel}(HttpServer.class, Level.ALL);
