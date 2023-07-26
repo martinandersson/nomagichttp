@@ -180,7 +180,7 @@ public abstract class AbstractRealTest
         this.onError = new HashMap<>();
     }
     
-    private LogRecorder key;
+    private LogRecorder recorder;
     private HttpServer server;
     private Future<Void> start;
     private Config config;
@@ -198,7 +198,7 @@ public abstract class AbstractRealTest
     final void beforeEach(TestInfo test) {
         LOG.log(DEBUG, () -> "Executing " + toString(test));
         if (useLogRecording) {
-            key = LogRecorder.startRecording();
+            recorder = LogRecorder.startRecording();
         }
     }
     
@@ -495,10 +495,10 @@ public abstract class AbstractRealTest
      *             if log recording is not active
      */
     protected final LogRecorder logRecorder() {
-        if (key == null) {
+        if (recorder == null) {
             throw new IllegalStateException("Log recording is not active.");
         }
-        return key;
+        return recorder;
     }
     
     /**
@@ -507,7 +507,7 @@ public abstract class AbstractRealTest
      * @return all logged records
      */
     private Stream<LogRecord> logRecorderStop() {
-        return LogRecorder.stopRecording(key);
+        return recorder.stopRecording();
     }
     
     /**
@@ -548,7 +548,7 @@ public abstract class AbstractRealTest
             assertThat(server.isRunning()).isFalse();
             assertThat(errors).isEmpty();
             assertThatServerStopsNormally(start);
-            if (key != null) { logRecorder()
+            if (recorder != null) { logRecorder()
                 .assertThatLogContainsOnlyOnce(rec(DEBUG, clean ?
                     "All exchanges finished within the graceful period." :
                     "Graceful deadline expired; shutting down scope."));

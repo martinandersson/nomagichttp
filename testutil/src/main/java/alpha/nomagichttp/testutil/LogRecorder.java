@@ -30,7 +30,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * Is a subscription key and API for waiting on- and asserting log records.<p>
+ * Is a util for waiting on and asserting log records.<p>
  * 
  * {@code await()} methods (and derivatives such as {@code assertAwait()}) will
  * by default wait at most 3 seconds. This can be configured differently using
@@ -50,7 +50,7 @@ public final class LogRecorder
      *       startRecording}(HttpServer.class);
      * </pre>
      * 
-     * @return key to use as argument to {@link #stopRecording(LogRecorder)}
+     * @return a new log recorder
      * 
      * @throws NullPointerException if any arg is {@code null}
      */
@@ -62,8 +62,7 @@ public final class LogRecorder
      * Start recording log records from the loggers of the packages that the
      * given components belong to.<p>
      * 
-     * Recording should eventually be stopped using {@link
-     * #stopRecording(LogRecorder)}.<p>
+     * Recording should eventually be stopped using {@link #stopRecording()}.<p>
      * 
      * Recording is especially useful for running assertions on the server's
      * generated log.<p>
@@ -86,7 +85,7 @@ public final class LogRecorder
      * @param firstComponent at least one
      * @param more may be provided
      * 
-     * @return key to use as argument to {@link #stopRecording(LogRecorder)}
+     * @return a new log recorder
      * 
      * @throws NullPointerException if any arg is {@code null}
      */
@@ -99,20 +98,6 @@ public final class LogRecorder
                 }).toArray(RecordListener[]::new);
         
         return new LogRecorder(l);
-    }
-    
-    /**
-     * Stop recording log records and extract all observed records.
-     * 
-     * @param key returned from {@link #startRecording(Class, Class[])}
-     * 
-     * @return all log records recorded from start until now (orderly; FIFO)
-     */
-    public static Stream<LogRecord> stopRecording(LogRecorder key) { // TODO: Replace with recorder.stop()
-        return key.listeners()
-                .peek(r -> Logging.removeHandler(r.component(), r))
-                .flatMap(RecordListener::recordsStream)
-                .sorted(comparing(LogRecord::getInstant));
     }
     
     private static final System.Logger LOG
@@ -460,6 +445,17 @@ public final class LogRecorder
                 LogRecord::getMessage,
                 LogRecord::getThrown)
             .containsOnlyOnce(values);
+    }
+    
+    /**
+     * Stop recording log records and extract all observed records.
+     * 
+     * @return all log records recorded from start until now (orderly; FIFO)
+     */
+    public Stream<LogRecord> stopRecording() {
+        return listeners().peek(r -> Logging.removeHandler(r.component(), r))
+                          .flatMap(RecordListener::recordsStream)
+                          .sorted(comparing(LogRecord::getInstant));
     }
     
     private static final class RecordListener extends Handler {
