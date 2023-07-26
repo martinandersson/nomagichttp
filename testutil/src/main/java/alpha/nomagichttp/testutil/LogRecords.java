@@ -65,7 +65,7 @@ public final class LogRecords {
      * 
      * Internally, a new instance of a formatter class is used to produce the
      * string and so this method should only be used when programmatically
-     * peeking log records from a {@link Logging.Recorder}.<p>
+     * peeking log records from a {@link LogRecorder}.<p>
      * 
      * The same formatting is automagically applied to the Gradle report if test
      * calls {@link Logging#setLevel(Class, Level)}, except the

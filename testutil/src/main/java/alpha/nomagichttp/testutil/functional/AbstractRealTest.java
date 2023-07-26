@@ -4,6 +4,7 @@ import alpha.nomagichttp.Config;
 import alpha.nomagichttp.HttpServer;
 import alpha.nomagichttp.handler.ClientChannel;
 import alpha.nomagichttp.handler.ErrorHandler;
+import alpha.nomagichttp.testutil.LogRecorder;
 import alpha.nomagichttp.testutil.Logging;
 import org.assertj.core.api.AbstractThrowableAssert;
 import org.junit.jupiter.api.AfterEach;
@@ -179,7 +180,7 @@ public abstract class AbstractRealTest
         this.onError = new HashMap<>();
     }
     
-    private Logging.Recorder key;
+    private LogRecorder key;
     private HttpServer server;
     private Future<Void> start;
     private Config config;
@@ -197,7 +198,7 @@ public abstract class AbstractRealTest
     final void beforeEach(TestInfo test) {
         LOG.log(DEBUG, () -> "Executing " + toString(test));
         if (useLogRecording) {
-            key = Logging.startRecording();
+            key = LogRecorder.startRecording();
         }
     }
     
@@ -493,7 +494,7 @@ public abstract class AbstractRealTest
      * @throws IllegalStateException
      *             if log recording is not active
      */
-    protected final Logging.Recorder logRecorder() {
+    protected final LogRecorder logRecorder() {
         if (key == null) {
             throw new IllegalStateException("Log recording is not active.");
         }
@@ -506,7 +507,7 @@ public abstract class AbstractRealTest
      * @return all logged records
      */
     private Stream<LogRecord> logRecorderStop() {
-        return Logging.stopRecording(key);
+        return LogRecorder.stopRecording(key);
     }
     
     /**
@@ -560,8 +561,7 @@ public abstract class AbstractRealTest
     
     /**
      * Asserts that {@link #pollServerError()} and
-     * {@link Logging.Recorder#assertAwaitFirstLogError()} is the same
-     * instance.<p>
+     * {@link LogRecorder#assertAwaitFirstLogError()} is the same instance.<p>
      * 
      * May be used when a test case needs to assert that the base error handler
      * was delivered a particular error <i>and</i> logged it (or, someone did).
