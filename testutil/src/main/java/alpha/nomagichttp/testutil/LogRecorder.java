@@ -90,31 +90,31 @@ public final class LogRecorder
      * @throws NullPointerException if any arg is {@code null}
      */
     public static LogRecorder startRecording(Class<?> firstComponent, Class<?>... more) {
-        RecordListener[] l = Stream.concat(of(firstComponent), of(more))
+        RecordHandler[] h = Stream.concat(of(firstComponent), of(more))
                 .map(c -> {
-                    RecordListener rl = new RecordListener(c);
-                    Logging.addHandler(c, rl);
-                    return rl;
-                }).toArray(RecordListener[]::new);
+                    var rh = new RecordHandler(c);
+                    Logging.addHandler(c, rh);
+                    return rh;
+                }).toArray(RecordHandler[]::new);
         
-        return new LogRecorder(l);
+        return new LogRecorder(h);
     }
     
     private static final System.Logger LOG
             = System.getLogger(LogRecorder.class.getPackageName());
     
-    private final RecordListener[] l;
+    private final RecordHandler[] handlers;
     private long timeout;
     private TimeUnit unit;
     
-    private LogRecorder(RecordListener[] listeners) {
-        l = listeners;
-        timeout = 3;
-        unit = SECONDS;
+    private LogRecorder(RecordHandler[] handlers) {
+        this.handlers = handlers;
+             timeout  = 3;
+             unit     = SECONDS;
     }
     
-    private Stream<RecordListener> listeners() {
-        return Stream.of(l);
+    private Stream<RecordHandler> handlers() {
+        return Stream.of(handlers);
     }
     
     /**
@@ -123,8 +123,8 @@ public final class LogRecorder
      * @return see JavaDoc
      */
     public Stream<LogRecord> records() {
-        return listeners()
-                .flatMap(RecordListener::recordsStream)
+        return handlers()
+                .flatMap(RecordHandler::recordsStream)
                 .sorted(comparing(LogRecord::getInstant));
     }
 
@@ -159,8 +159,8 @@ public final class LogRecorder
     {
         var jul = toJUL(level);
         LogRecord match = null;
-        for (var listener : l) {
-            var it = listener.recordsDeque().iterator();
+        for (var h : handlers) {
+            var it = h.recordsDeque().iterator();
             while (it.hasNext()) {
                 var r = it.next();
                 if (r.getLevel().equals(jul) &&
@@ -212,8 +212,8 @@ public final class LogRecorder
     public boolean await(Predicate<LogRecord> test) throws InterruptedException {
         requireNonNull(test);
         var latch = new CountDownLatch(1);
-        for (RecordListener rl : l) {
-            rl.monitor(rec -> {
+        for (RecordHandler h : handlers) {
+            h.monitor(rec -> {
                 // Run callback only once
                 if (latch.getCount() == 0) {
                     return;
@@ -453,17 +453,17 @@ public final class LogRecorder
      * @return all log records recorded from start until now (orderly; FIFO)
      */
     public Stream<LogRecord> stopRecording() {
-        return listeners().peek(r -> Logging.removeHandler(r.component(), r))
-                          .flatMap(RecordListener::recordsStream)
+        return handlers().peek(r -> Logging.removeHandler(r.component(), r))
+                          .flatMap(RecordHandler::recordsStream)
                           .sorted(comparing(LogRecord::getInstant));
     }
     
-    private static final class RecordListener extends Handler {
+    private static final class RecordHandler extends Handler {
         private final Class<?> cmp;
         private final Deque<LogRecord> deq;
         private final List<Consumer<LogRecord>> mon;
         
-        RecordListener(Class<?> component) {
+        RecordHandler(Class<?> component) {
             cmp = component;
             deq = new ConcurrentLinkedDeque<>();
             mon = new ArrayList<>();
