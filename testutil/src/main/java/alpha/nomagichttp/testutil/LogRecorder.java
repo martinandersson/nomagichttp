@@ -141,20 +141,33 @@ public final class LogRecorder
     }
     
     /**
-     * Take the earliest record found that fulfils the given criteria.<p>
+     * Take the earliest matched record.<p>
      * 
      * This method is useful to extract log records and limit subsequent
      * assertions to what is left behind.<p>
      * 
      * For example, to ensure that a specific log record of an error was the
      * only logged error, call this method and then
-     * {@link #assertThatNoErrorWasLogged()}.
+     * {@link #assertThatNoErrorWasLogged()}.<p>
+     * 
+     * For a record to be a match, all tests of the record's mapped values must
+     * pass:
+     * 
+     * <ul>
+     *   <li>The level is <i>equal to</i> the given level
+     *   <li>The message starts with the given string
+     *   <li>The error is null if the given class argument is null,
+     *       otherwise an <i>instance of</i>
+     * </ul>
      * 
      * @param level record level predicate
      * @param messageStartsWith record message predicate
-     * @param error record error predicate (instance of)
+     * @param error record error predicate
      * 
      * @return the record, or {@code null} if not found
+     * 
+     * @throws NullPointerException
+     *             if {@code level} or {@code messageStartsWith} is {@code null}
      */
     public LogRecord take(
             System.Logger.Level level, String messageStartsWith,
@@ -166,9 +179,10 @@ public final class LogRecorder
             var it = h.recordsDeque().iterator();
             while (it.hasNext()) {
                 var r = it.next();
+                var t = r.getThrown();
                 if (r.getLevel().equals(jul) &&
                     r.getMessage().startsWith(messageStartsWith) &&
-                    error.isInstance(r.getThrown())) // TODO: param should be able to be null
+                    (error == null ? t == null : error.isInstance(t)))
                 {
                     it.remove();
                     match = r;
@@ -470,7 +484,7 @@ public final class LogRecorder
             cmp = component;
             deq = new ConcurrentLinkedDeque<>();
             mon = new ArrayList<>();
-            setLevel(java.util.logging.Level.ALL);
+            super.setLevel(java.util.logging.Level.ALL);
         }
         
         /**
