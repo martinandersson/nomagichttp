@@ -1,8 +1,5 @@
 package alpha.nomagichttp.message;
 
-import alpha.nomagichttp.action.BeforeAction;
-import alpha.nomagichttp.handler.RequestHandler;
-
 import java.util.Optional;
 import java.util.concurrent.ConcurrentMap;
 import java.util.function.Supplier;
@@ -12,14 +9,11 @@ import static java.util.Objects.requireNonNull;
 /**
  * An API for storing and accessing objects associated with a holder.<p>
  * 
- * Is useful when passing data across non-nested execution boundaries where the
- * holder is the data carrier. Within a nested scope, 
- * 
- * <pre>{@code
+ * {@snippet :
  *   request.attributes().set("my.stuff", new MyClass());
  *   // Somewhere else
  *   MyClass obj = request.attributes().getAny("my.stuff");
- * }</pre>
+ * }
  * 
  * The implementation is thread-safe and never replaced throughout the life of
  * the header holder.<p>
@@ -59,12 +53,13 @@ public interface Attributes {
      * Gets a named value if present, otherwise creates and stores it.
      * 
      * @implSpec
-     * The default implementation is equivalent to:
-     * <pre>{@code
+     * The default implementation is equivalent to:<p>
+     * 
+     * {@snippet :
      *   return this.<V>asMapAny()
      *              .computeIfAbsent(name,
      *                  keyIgnored -> Objects.requireNonNull(s.get()));
-     * }</pre>
+     * }
      * 
      * @param name of value (any non-null string)
      * @param factory of a new value if not already present
@@ -86,17 +81,18 @@ public interface Attributes {
     /**
      * Returns the value of the named attribute cast to V.<p>
      * 
-     * This method is equivalent to:
-     * <pre>{@code
+     * This method is equivalent to:<p>
+     * 
+     * {@snippet :
      *   V v = (V) get(name);
-     * }</pre>
+     * }
      * 
      * Except the cast is implicit and the type is inferred by the Java
      * compiler. The call site will still blow up with a {@code
      * ClassCastException} if a non-null object can not be cast to the
-     * inferred type.
+     * inferred type.<p>
      * 
-     * <pre>{@code
+     * {@snippet :
      *   // Given
      *   request.attributes().set("name", "my string");
      *   
@@ -105,7 +101,7 @@ public interface Attributes {
      *   
      *   // ClassCastException
      *   DateTimeFormatter oops = request.attributes().getAny("name");
-     * }</pre>
+     * }
      * 
      * @param <V>  value type (explicitly provided on call site or inferred 
      *             by Java compiler)
@@ -137,9 +133,9 @@ public interface Attributes {
      * Unlike {@link #getAny(String)} where the {@code ClassCastException}
      * is immediate for non-null and assignment-incompatible types, this
      * method should generally be considered unsafe as the
-     * ClassCastException is delayed (known as "heap pollution").
+     * ClassCastException is delayed (known as "heap pollution").<p>
      * 
-     * <pre>{@code
+     * {@snippet :
      *   // Given
      *   request.attributes().set("name", "my string");
      *   
@@ -151,7 +147,7 @@ public interface Attributes {
      *   
      *   // Let's give the problem to someone else in the future
      *   anotherDestination(poison);
-     * }</pre>
+     * }
      * 
      * @param <V>  value type (explicitly provided on call site or inferred 
      *             by Java compiler)
@@ -178,13 +174,13 @@ public interface Attributes {
      * 
      * Unlike {@link #getOptAny(String)}, using this method can not lead to
      * heap pollution if the returned map is immediately used to work with
-     * the values. For example:
+     * the values.<p>
      * 
-     * <pre>{@code
+     * {@snippet :
      *   int v = request.attributes()
      *                  .<Integer>asMapAny()
      *                  .merge("my.counter", 1, Integer::sum);
-     * }</pre>
+     * }
      * 
      * @param <V> value type (explicitly provided on call site or inferred 
      *            by Java compiler)

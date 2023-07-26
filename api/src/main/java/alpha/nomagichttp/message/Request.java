@@ -262,31 +262,31 @@ public interface Request extends HeaderHolder, AttributeHolder
      * 
      * If embedding multiple query values into one key entry is desired, then
      * splitting and parsing the value with whatever delimiting character one
-     * chooses is pretty straight forward:
+     * chooses is pretty straight forward:<p>
      * 
-     * <pre>{@code
-     *     // "?numbers=1,2,3"
-     *     // WARNING: This ignores the presence of repeated entries
-     *     String[] vals = request.target()
-     *                            .queryFirst("numbers")
-     *                            .get()
-     *                            .split(",");
-     *     int[] ints = Arrays.stream(vals)
-     *                        .mapToInt(Integer::parseInt)
-     *                        .toArray();
-     * }</pre>
+     * {@snippet :
+     *   // "?numbers=1,2,3"
+     *   // WARNING: This ignores the presence of repeated entries
+     *   String[] vals = request.target()
+     *                          .queryFirst("numbers")
+     *                          .get()
+     *                          .split(",");
+     *   int[] ints = Arrays.stream(vals)
+     *                      .mapToInt(Integer::parseInt)
+     *                      .toArray();
+     * }
      * 
      * Instead of using a non-standardized separator, it's more straight forward
      * and fool-proof (number separator would be dependent on regional format)
-     * to rely on repetition instead:
+     * to rely on repetition instead:<p>
      * 
-     * <pre>{@code
-     *     // "?number=1&number=2&number=3"
-     *     int[] ints = request.target()
-     *                         .queryStream("number")
-     *                         .mapToInt(Integer::parseInt)
-     *                         .toArray();
-     * }</pre>
+     * {@snippet :
+     *   // "?number=1&number=2&number=3"
+     *   int[] ints = request.target()
+     *                       .queryStream("number")
+     *                       .mapToInt(Integer::parseInt)
+     *                       .toArray();
+     * }
      * 
      * <h2>Decoded versus raw</h2>
      * 
@@ -299,15 +299,15 @@ public interface Request extends HeaderHolder, AttributeHolder
      * will by default use the <a href="https://www.w3.org/TR/html401/interact/forms.html#h-17.13.4.1">
      * application/x-www-form-urlencoded</a> encoding, which escapes space
      * characters using the plus character ('+') (and not "%20" as used by
-     * percent-encoding).
+     * percent-encoding).<p>
      * 
-     * <pre>{@code
+     * {@snippet :
      *     import static java.net.URLDecoder.decode;
      *     import static java.nio.charset.StandardCharsets.UTF_8;
      *     ...
      *     String nondecoded = request.target().queryFirstRaw("my-input-name");
      *     String formdata = decode(nondecoded, UTF_8);
-     * }</pre>
+     * }
      * 
      * TODO: Discourage base64url encoding for text-to-text.
      * 
@@ -642,8 +642,9 @@ public interface Request extends HeaderHolder, AttributeHolder
     /**
      * Is an API for reading the request body in various forms.<p>
      * 
-     * A few examples:
-     * <pre>{@code
+     * A few examples:<p>
+     * 
+     * {@snippet :
      *   // Convert all bytes to a String
      *   var string = request.body().toText();
      *   
@@ -660,7 +661,7 @@ public interface Request extends HeaderHolder, AttributeHolder
      *   // Functional iteration
      *   request.body().iterator()
      *                 .forEachRemaining(byteBuffer -> ...);
-     * }</pre>
+     * }
      * 
      * <h2>Handling errors</h2>
      * 
@@ -672,11 +673,8 @@ public interface Request extends HeaderHolder, AttributeHolder
      * 
      * Errors that originate from the channel's read operation will have shut
      * down the input stream. Before attempting to read the body again, always
-     * check first if
-     * <pre>
-     *   {@link ScopedValues#channel() channel
-     *       }().{@link ClientChannel#isInputOpen() isInputOpen}()
-     * </pre>
+     * check first if {@link ScopedValues#channel() channel}()
+     * .{@link ClientChannel#isInputOpen() isInputOpen}().
      * 
      * <h2>Saving to file</h2>
      * 
@@ -713,9 +711,9 @@ public interface Request extends HeaderHolder, AttributeHolder
      * 
      * Future work will add API-support for resuming file uploads and downloads.
      * For now, an application that does not want to implement such a feature on
-     * its own, will likely want to do something like this:
+     * its own, will likely want to do something like this:<p>
      * 
-     * <pre>
+     * {@snippet :
      *   try {
      *       request.body().toFile(path, ...);
      *   } catch (IOException rethrow) {
@@ -723,7 +721,7 @@ public interface Request extends HeaderHolder, AttributeHolder
      *       Files.deleteIfExists(path);
      *       throw rethrow;
      *   }
-     * </pre>
+     * }
      * 
      * <h2>Consuming bytes</h2>
      * 
@@ -791,15 +789,20 @@ public interface Request extends HeaderHolder, AttributeHolder
          * UTF-8 is backwards compatible with ASCII and required by all Java
          * virtual machines to be supported.<p>
          * 
-         * Thee is no method overload that accepts a charset or a decoder,
-         * because it isn't conceivable that many applications will need it.
-         * However, if desired:
+         * There is no method overload that accepts a charset or a decoder.
+         * If desired:<p>
          * 
-         * <pre>
-         *     var charseq = myWeirdCharset.{@link Charset#newDecoder() newDecoder
-         *     }().{@link CharsetDecoder#decode(ByteBuffer) decode
-         *     }({@link ByteBuffer#wrap(byte[]) wrap}(body.{@link #bytes() bytes}()));
-         * </pre>
+         * {@snippet :
+         *   // @link substring="newDecoder" target="Charset#newDecoder()" region
+         *   // @link substring="decode" target="CharsetDecoder#decode(ByteBuffer)" region
+         *   // @link substring="wrap" target="ByteBuffer#wrap(byte[])" region
+         *   // @link substring="bytes" target="#bytes()" region
+         *   CharSequence cs = myWeirdCharset.newDecoder().decode(wrap(body.bytes()));
+         *   // @end
+         *   // @end
+         *   // @end
+         *   // @end
+         * }
          * 
          * Avoid using {@link Charset#decode(ByteBuffer)} as it will use
          * thread-locals to cache the decoder, which is not ideal for virtual
@@ -828,16 +831,19 @@ public interface Request extends HeaderHolder, AttributeHolder
          * 
          * @return the body as a char sequence
          */
+        // TODO: Read JavaDoc. Perhaps provide an overload?
         CharSequence toCharSequence() throws IOException;
         
         /**
          * Converts the remaining body bytes to a string.
          * 
          * @implSpec
-         * The default implementation is equivalent to:
-         * <pre>
-         *   return {@link #toCharSequence() toCharSequence}().toString();
-         * </pre>
+         * The default implementation is equivalent to:<p>
+         * 
+         * {@snippet :
+         *   // @link substring="toCharSequence" target="#toCharSequence()" :
+         *   return toCharSequence().toString();
+         * }
          * 
          * @throws BadHeaderException
          *             if headers has multiple Content-Type values
@@ -881,9 +887,9 @@ public interface Request extends HeaderHolder, AttributeHolder
          * where the values used for {@code timeout} and {@code unit} are
          * derived from
          * <pre>
-         *     {@link ScopedValues#httpServer() httpServer
-         *     }().{@link HttpServer#getConfig() getConfig
-         *     }().{@link Config#timeoutFileLock() timeoutFileLock}()
+         *     {@link ScopedValues#httpServer()
+         *     httpServer}().{@link HttpServer#getConfig()
+         *     getConfig}().{@link Config#timeoutFileLock() timeoutFileLock}()
          * </pre>
          * and {@code opts} is a {@code Set} containing the options specified to
          * this method.

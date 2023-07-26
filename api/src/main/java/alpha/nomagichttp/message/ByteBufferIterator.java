@@ -70,16 +70,17 @@ public interface ByteBufferIterator extends Closeable
     /**
      * Performs the given action for each remaining bytebuffer.<p>
      * 
-     * Exceptions thrown by the action immediately propagates to the caller.
+     * Exceptions thrown by the action immediately propagate to the caller.
      * 
      * @implSpec
-     * The default implementation is equivalent to:
-     * <pre>{@code
-     *     try (this) {
-     *         while (hasNext())
-     *             action.accept(next());
-     *     }
-     * }</pre>
+     * The default implementation is equivalent to:<p>
+     * 
+     * {@snippet :
+     *   try (this) {
+     *       while (hasNext())
+     *           action.accept(next());
+     *   }
+     * }
      * 
      * @param action the action to be performed for each bytebuffer
      * 

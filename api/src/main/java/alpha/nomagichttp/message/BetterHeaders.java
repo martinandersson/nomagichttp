@@ -22,14 +22,14 @@ import java.util.stream.Stream;
  * Retrieved header names and values will retain letter capitalization, just as
  * they were received — or, will be sent — on the wire. Header names and values
  * are case-insensitive when specified as arguments to querying methods declared
- * by this interface or an implementation of it.
+ * by this interface or an implementation of it.<p>
  * 
- * <pre>
+ * {@snippet :
  *   BetterHeaders headers = // from "Foo: bar"
  *   headers.forEach(...) // name = Foo, value = bar
  *   headers.allTokens("FOO") // returns "bar"
  *   headers.contains("foo", "BAR") // true
- * </pre>
+ * }
  * 
  * Header value(s) can be an empty string, which would indicate the occurrence
  * of a header, just being empty, e.g. "Foo: ".<p>
@@ -85,11 +85,12 @@ public interface BetterHeaders extends Iterable<Map.Entry<String, List<String>>>
      *   User-Agent: curl/7.68.0
      * </pre>
      * 
-     * Returns true:
-     * <pre>
+     * Returns true:<p>
+     * 
+     * {@snippet :
      *   request.headers().contains("user-agent", "cUrL");
      *   request.headers().contains("User-Agent", "curl/7.68.0");
-     * </pre>
+     * }
      * 
      * This method searches through repeated headers.<p>
      * 
@@ -111,10 +112,12 @@ public interface BetterHeaders extends Iterable<Map.Entry<String, List<String>>>
      * Returns whether the {@value HttpConstants.HeaderName#CONNECTION} header
      * is present and contains the value substring "close".<p>
      * 
-     * This method is equivalent to:
-     * <pre>
-     *   {@link #contains(String, String) contains}("Connection", "close")
-     * </pre>
+     * This method is equivalent to:<p>
+     * 
+     * {@snippet :
+     *   // @link substring="contains" target="#contains(String, String)" :
+     *   contains("Connection", "close");
+     * }
      * 
      * @return see JavaDoc
      */
@@ -124,10 +127,12 @@ public interface BetterHeaders extends Iterable<Map.Entry<String, List<String>>>
      * Returns whether the {@value HttpConstants.HeaderName#TRANSFER_ENCODING}
      * header is present and contains the value "chunked".<p>
      * 
-     * This method is equivalent to:
-     * <pre>
-     *   {@link #contains(String, String) contains}("Transfer-Encoding", "chunked")
-     * </pre>
+     * This method is equivalent to:<p>
+     * 
+     * {@snippet :
+     *   // @link substring="contains" target="#contains(String, String)" :
+     *   contains("Transfer-Encoding", "chunked");
+     * }
      * 
      * @return see JavaDoc
      */
@@ -137,10 +142,12 @@ public interface BetterHeaders extends Iterable<Map.Entry<String, List<String>>>
      * Returns {@code true} if the given header is missing or all of its mapped
      * values are empty, otherwise {@code false}.<p>
      * 
-     * A method semantically equivalent to "isMissing" is already provided:
-     * <pre>
-     *   boolean isMissing = !headers.{@link #contains(String) contains}("My-Fortune");
-     * </pre>
+     * A method semantically equivalent to "isMissing" is already provided:<p>
+     * 
+     * {@snippet :
+     *   // @link substring="contains" target="#contains(String)" :
+     *   boolean isMissing = !headers.contains("My-Fortune");
+     * }
      * 
      * @param headerName the header name
      * 
