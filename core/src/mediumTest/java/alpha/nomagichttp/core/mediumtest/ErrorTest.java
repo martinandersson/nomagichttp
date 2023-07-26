@@ -889,7 +889,6 @@ final class ErrorTest extends AbstractRealTest
               Response bytes already sent, \
               can not handle this error (closing child).""",
             IllegalArgumentException.class);
-        assertThat(rec).isNotNull();
         assertThat(rec.getThrown())
             .hasMessage("""
                 Request processing chain \
@@ -927,7 +926,6 @@ final class ErrorTest extends AbstractRealTest
         var rec = logRecorder().take(
             DEBUG, "Error while discarding request trailers, shutting down the input stream.",
             HeaderParseException.class);
-        assertThat(rec).isNotNull();
         assertThat(rec.getThrown())
             .hasToString("""
                 HeaderParseException{prev=(hex:0x68, decimal:104, char:"h"), \

@@ -164,10 +164,12 @@ public final class LogRecorder
      * @param messageStartsWith record message predicate
      * @param error record error predicate
      * 
-     * @return the record, or {@code null} if not found
+     * @return the record (never {@code null})
      * 
      * @throws NullPointerException
      *             if {@code level} or {@code messageStartsWith} is {@code null}
+     * @throws AssertionError
+     *             if a match could not be found
      */
     public LogRecord take(
             System.Logger.Level level, String messageStartsWith,
@@ -189,6 +191,9 @@ public final class LogRecorder
                     break;
                 }
             }
+        }
+        if (match == null) {
+            throw new AssertionError("No log record match");
         }
         return match;
     }
