@@ -12,6 +12,8 @@ package alpha.nomagichttp.handler;
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  */
+// TODO: Read JavaDoc. We may wish to expose an empty buffer sentinel EOS
+//       ..for purists programmers that doesn't wanna do .isEmpty().
 public final class EndOfStreamException extends RuntimeException {
     private static final long serialVersionUID = 1L;
     
