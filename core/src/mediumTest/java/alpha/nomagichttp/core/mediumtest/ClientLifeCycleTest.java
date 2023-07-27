@@ -1,12 +1,9 @@
 package alpha.nomagichttp.core.mediumtest;
 
 import alpha.nomagichttp.handler.EndOfStreamException;
-import alpha.nomagichttp.handler.ErrorHandler;
-import alpha.nomagichttp.message.Char;
 import alpha.nomagichttp.testutil.functional.AbstractRealTest;
 import alpha.nomagichttp.testutil.functional.Environment;
 import alpha.nomagichttp.testutil.functional.TestClient;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
@@ -16,10 +13,8 @@ import java.nio.channels.AsynchronousCloseException;
 import java.nio.channels.ClosedByInterruptException;
 import java.nio.channels.ClosedChannelException;
 import java.util.ArrayList;
-import java.util.Objects;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.Semaphore;
-import java.util.logging.LogRecord;
 
 import static alpha.nomagichttp.handler.RequestHandler.GET;
 import static alpha.nomagichttp.handler.RequestHandler.POST;
@@ -199,95 +194,25 @@ class ClientLifeCycleTest extends AbstractRealTest
             rec(DEBUG, "Saw \"Connection: close\", shutting down output."));
     }
     
-    // Broken pipe always end the exchange, no error handling no logging
+    // Broken pipe ends the exchange, no error handling no logging
     @Test
-    @Disabled("Reconsider if we want to suppress handling broken pipe- and logging stacktrace")
     void brokenPipe() throws InterruptedException, IOException {
         // It would be weird if we could use an API to cause a broken pipe.
         // This implementation was found to work on Windows, albeit not on Linux nor macOS.
         assumeTrue(Environment.isWindows());
+        server();
         try (var conn = client().openConnection()) {
             assertThatThrownBy(() ->
                 client().interruptReadAfter(1, MILLISECONDS)
                         .writeReadTextUntilEOS("X"))
                 .isExactlyInstanceOf(ClosedByInterruptException.class);
-            
-            Thread.interrupted(); // Clear flag
-            try {
-                logRecorder().assertAwait(
-                    DEBUG, "Read operation failed (broken pipe), will shutdown stream.");
-            } catch (AssertionError rethrow) {
-                // GitHub's slow Windows Server is observing an IOException not
-                // considered broken pipe. This is for debugging.
-                if (!LOG.isLoggable(DEBUG)) {
-                    throw rethrow;
-                }
-                
-                var err = logRecorder().records()
-                                       .map(LogRecord::getThrown)
-                                       .filter(Objects::nonNull)
-                                       .findFirst()
-                                       .orElseThrow(() -> {
-                                           LOG.log(WARNING, "Unexpectedly, no error was logged.");
-                                           return rethrow;
-                                       });
-                
-                if (err.getMessage() == null) {
-                    LOG.log(WARNING, "Unexpectedly, logged error has no message.");
-                } else {
-                    var msg = err.getMessage();
-                    LOG.log(DEBUG, "Message of error: \"" + msg + "\".");
-                    LOG.log(DEBUG, "Will dump details on the last five chars.");
-                    int cap = Math.min(msg.length(), 5);
-                    msg.substring(msg.length() - cap).chars().forEach(c ->
-                        LOG.log(DEBUG, Char.toDebugString((char) c)));
-                }
-                throw rethrow;
-            }
-            
-            // <here>, log may be different, see next comment
-            
+            // Clear flag
+            Thread.interrupted();
             logRecorder().assertAwait(
-                DEBUG, "Broken pipe, closing channel. (end of HTTP exchange)");
+                DEBUG, "Read operation failed, shutting down input stream.");
         }
-        
-        // What can be said about the log before the end of the exchange is
-        // dependent on the speed of the machine.
-        // 
-        // On my Windows 10 machine (fast), a RequestLineSubscriber subscribes
-        // to the channel and consequently the HttpExchange will observe the
-        // broken pipe and ignore it, well, except for closing the child of
-        // course. In this case, the log will only indicate a broken read. No
-        // other errors are logged.
-        // 
-        // On GitHub's Windows Server 2019 (slow), the broken pipe will happen
-        // before the head subscriber arrives. In regards to the log, this error
-        // is still ignored by both ChannelByteBufferPublisher and
-        // AnnounceToChannel; no stack trace logged.
-        //     However, when the head subscriber do arrive, he will be
-        // terminated with an "IllegalStateException: Publisher has shutdown.",
-        // which is delivered to the error handler, which logs the exception
-        // with stack and attempts to respond 500 Internal Server Error, which
-        // then hits a broken pipe on the write operation.
-        
-        // So, this may happen:
-        Throwable thr = pollServerErrorNow();
-        if (thr != null) {
-            assertThat(thr)
-                .isExactlyInstanceOf(IllegalStateException.class)
-                .hasNoCause()
-                .hasNoSuppressedExceptions()
-                .hasMessage("Publisher has shutdown.");
-            
-            // And if it does, we also expect the write failure
-            logRecorder().assertAwait(
-                DEBUG, "Write operation failed (broken pipe), will shutdown stream.");
-        }
-        
         // Test client will have logged a WARNING, "about to crash".
-        // And of course, error handler might have logged the closed publisher.
-        // Both we allow.
-        assertThatNoWarningOrErrorIsLoggedExcept(TestClient.class, ErrorHandler.class);
+        assertThatNoWarningOrErrorIsLoggedExcept(TestClient.class);
     }
     
     // Client writes request,
