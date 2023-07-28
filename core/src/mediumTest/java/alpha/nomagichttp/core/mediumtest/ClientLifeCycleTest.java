@@ -104,9 +104,8 @@ class ClientLifeCycleTest extends AbstractRealTest
     void clientClosesChannel_serverReceivedNoBytes() throws IOException, InterruptedException {
         server();
         client().openConnection().close();
-        logRecorder().assertAwait(DEBUG,
-                         "Closing the child because client aborted the exchange.")
-                     .assertNoThrowableNorWarning();
+        logRecorder().assertAwait(
+            DEBUG, "Closing the child because client aborted the exchange.");
     }
     
     /**
@@ -188,11 +187,10 @@ class ClientLifeCycleTest extends AbstractRealTest
                          DEBUG, "Sent 400 (Bad Request)")
                      .assertContainsOnlyOnce(
                          rec(DEBUG, "EOS, shutting down input stream."));
-        stopServer();
         // No warnings or errors!
-        logRecorder().assertNoThrowableNorWarning()
-                     .assertContainsOnlyOnce(
-                         rec(DEBUG, "Saw \"Connection: close\", shutting down output."));
+        stopServer();
+        logRecorder().assertContainsOnlyOnce(
+                rec(DEBUG, "Saw \"Connection: close\", shutting down output."));
     }
     
     // Broken pipe ends the exchange, no error handling no logging
@@ -284,15 +282,14 @@ class ClientLifeCycleTest extends AbstractRealTest
     }
     
     private void assertHttpExchangeCompletes(boolean requestHadConnClose)
-            throws IOException, InterruptedException {
+            throws InterruptedException {
         // Reason why exchange ended, is because
         logRecorder()
             .assertAwait(DEBUG, requestHadConnClose ?
                 // ResponseProcessor half-closed, causing DefaultServer to close
                 "Closing child: java.nio.channels.SocketChannel[connected oshut local=" :
                 // or the next exchange actually started, but immediately aborted
-                "Closing the child because client aborted the exchange.")
-            .assertNoThrowableNorWarning();
+                "Closing the child because client aborted the exchange.");
     }
     
     // Server shuts down output after response, can still read request
@@ -342,14 +339,9 @@ class ClientLifeCycleTest extends AbstractRealTest
             .isEqualTo(
                 "HTTP/1.1 204 No Content" + CRLF +
                 "Connection: close"       + CRLF + CRLF);
-        logRecorder()
-            .assertNoThrowableNorWarning()
-            // We saw the effect already; "Connection: close"
-            // (this asserts why)
-            .assertAwait(DEBUG, """
+        // This asserts why
+        logRecorder().assertAwait(DEBUG, """
                 Setting "Connection: close" because \
-                the client's input stream has shut down.""")
-            // Should be no error on any level
-            .assertNoThrowable();
+                the client's input stream has shut down.""");
     }
 }

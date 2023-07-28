@@ -219,7 +219,7 @@ final class MessageTest extends AbstractRealTest
     }
     
     @Test
-    void fileResponse_okay() throws IOException, InterruptedException {
+    void fileResponse_okay() throws IOException {
         var file = writeTempFile(asciiBytes("Hello, World!"));;
         server().add(
             "/", GET().apply(req -> ok(ofFile(file))));
@@ -230,6 +230,5 @@ final class MessageTest extends AbstractRealTest
             Content-Length: 13\r
             \r
             Hello, World!""");
-        logRecorder().assertNoThrowableNorWarning();
     }
 }

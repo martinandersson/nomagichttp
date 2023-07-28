@@ -23,7 +23,7 @@ import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
 class AfterActionTest extends AbstractRealTest
 {
     @Test
-    void javadoc_ex() throws IOException, InterruptedException {
+    void javadoc_ex() throws IOException {
         server()
             .before("/*", (req, chain) -> {
                 if (req.headers().isMissingOrEmpty(X_CORRELATION_ID)) {
@@ -71,8 +71,6 @@ class AfterActionTest extends AbstractRealTest
                 "Content-Length: 3"                       + CRLF + CRLF +
                 
                 "bye");
-            
-            logRecorder().assertNoThrowableNorWarning();
         }
     }
     

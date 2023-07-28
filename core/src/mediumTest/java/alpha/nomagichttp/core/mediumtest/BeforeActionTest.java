@@ -18,7 +18,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 class BeforeActionTest extends AbstractRealTest
 {
     @Test
-    void triple() throws IOException, InterruptedException {
+    void triple() throws IOException {
         server().before("/:A/*", (r, chain) -> {
                     // Set first segment as "msg" attribute
                     r.attributes().set("msg",
@@ -45,7 +45,6 @@ class BeforeActionTest extends AbstractRealTest
             "Content-Length: 10"                      + CRLF + CRLF +
             
             "helloworld");
-        logRecorder().assertNoThrowableNorWarning();
     }
     
     @Test

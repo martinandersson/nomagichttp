@@ -521,7 +521,10 @@ public abstract class AbstractRealTest
      * 
      * The parameter {@code clean} has an effect only if log recording is
      * active, and then it affects what debug message is logged by the server
-     * implementation.
+     * implementation.<p>
+     * 
+     * If log recording is enabled, this method calls
+     * {@link LogRecorder#assertNoThrowableNorWarning()}.
      * 
      * @param clean asserts the log; exchanges finish within the graceful period
      * 

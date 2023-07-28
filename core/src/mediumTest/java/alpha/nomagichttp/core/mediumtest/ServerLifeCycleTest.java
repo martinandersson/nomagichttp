@@ -46,7 +46,6 @@ final class ServerLifeCycleTest extends AbstractRealTest
         // Can open connection
         client().openConnection().close();
         stopServer();
-        logRecorder().assertNoThrowableNorWarning();
         // Can not open connection
         assertNewConnectionIsRejected();
     }
@@ -139,7 +138,6 @@ final class ServerLifeCycleTest extends AbstractRealTest
             assertNewConnectionIsRejected();
             logRecorder().assertContainsOnlyOnce(rec(
                 DEBUG, "Closed 1 idling children of a total 1."));
-            logRecorder().assertNoThrowableNorWarning();
         }
     }
     
@@ -161,7 +159,6 @@ final class ServerLifeCycleTest extends AbstractRealTest
                 .isGreaterThanOrEqualTo(ofSeconds(1));
             logRecorder().assertContainsOnlyOnce(rec(
                 DEBUG, "Closing the child because thread interrupted."));
-            logRecorder().assertNoThrowableNorWarning();
         }
     }
     
