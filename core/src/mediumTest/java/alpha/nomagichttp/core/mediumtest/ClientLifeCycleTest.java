@@ -19,7 +19,6 @@ import static alpha.nomagichttp.handler.RequestHandler.GET;
 import static alpha.nomagichttp.handler.RequestHandler.POST;
 import static alpha.nomagichttp.mediumtest.util.TestRequests.get;
 import static alpha.nomagichttp.message.Responses.noContent;
-import static alpha.nomagichttp.testutil.LogRecords.rec;
 import static alpha.nomagichttp.testutil.TestConstants.CRLF;
 import static alpha.nomagichttp.util.ScopedValues.channel;
 import static java.lang.System.Logger.Level.DEBUG;
@@ -186,11 +185,11 @@ class ClientLifeCycleTest extends AbstractRealTest
         logRecorder().assertAwait(
                          DEBUG, "Sent 400 (Bad Request)")
                      .assertContainsOnlyOnce(
-                         rec(DEBUG, "EOS, shutting down input stream."));
+                         DEBUG, "EOS, shutting down input stream.");
         // No warnings or errors!
         stopServer();
         logRecorder().assertContainsOnlyOnce(
-                rec(DEBUG, "Saw \"Connection: close\", shutting down output."));
+            DEBUG, "Saw \"Connection: close\", shutting down output.");
     }
     
     // Broken pipe ends the exchange, no error handling no logging

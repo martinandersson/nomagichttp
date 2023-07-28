@@ -28,7 +28,7 @@ public final class LogRecords {
     }
     
     /**
-     * Create an AssertJ Tuple consisting of a log- level and message.
+     * Create an AssertJ Tuple of a log level and message.
      * 
      * @param level of log record
      * @param msg of log record
@@ -38,23 +38,7 @@ public final class LogRecords {
      *             if {@code level} is {@code null}, perhaps also for {@code msg}
      */
     public static Tuple rec(Level level, String msg) {
-        return rec(level, msg, null);
-    }
-    
-    /**
-     * Create an AssertJ Tuple consisting of a log- level, message and error.
-     * 
-     * @param level of log record
-     * @param msg of log record
-     * @param error of log record
-     * @return a tuple
-     * 
-     * @throws NullPointerException
-     *             if {@code level} is {@code null},
-     *             perhaps also for the other arguments
-     */
-    public static Tuple rec(Level level, String msg, Throwable error) {
-        return tuple(toJUL(level), msg, error);
+        return tuple(toJUL(level), msg);
     }
     
     /**

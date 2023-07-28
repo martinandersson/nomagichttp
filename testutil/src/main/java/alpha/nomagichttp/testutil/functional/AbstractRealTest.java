@@ -30,7 +30,6 @@ import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 
 import static alpha.nomagichttp.Config.DEFAULT;
-import static alpha.nomagichttp.testutil.LogRecords.rec;
 import static alpha.nomagichttp.util.ScopedValues.channel;
 import static java.lang.System.Logger.Level.DEBUG;
 import static java.util.Objects.requireNonNull;
@@ -543,9 +542,9 @@ public abstract class AbstractRealTest
             assertThat(errors).isEmpty();
             assertAwaitNormalStop(start);
             if (recorder != null) {
-                logRecorder().assertContainsOnlyOnce(rec(DEBUG, clean ?
+                logRecorder().assertContainsOnlyOnce(DEBUG, clean ?
                     "All exchanges finished within the graceful period." :
-                    "Graceful deadline expired; shutting down scope."));
+                    "Graceful deadline expired; shutting down scope.");
                 logRecorder().assertNoThrowableNorWarning();
             }
         } finally {

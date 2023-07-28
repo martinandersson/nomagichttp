@@ -18,7 +18,6 @@ import static alpha.nomagichttp.handler.RequestHandler.GET;
 import static alpha.nomagichttp.handler.RequestHandler.POST;
 import static alpha.nomagichttp.mediumtest.util.TestRequests.get;
 import static alpha.nomagichttp.message.Responses.text;
-import static alpha.nomagichttp.testutil.LogRecords.rec;
 import static alpha.nomagichttp.testutil.TestConstants.CRLF;
 import static java.lang.System.Logger.Level.DEBUG;
 import static java.time.Duration.ofSeconds;
@@ -136,8 +135,8 @@ final class ServerLifeCycleTest extends AbstractRealTest
             assertThat(Duration.between(before, now()))
                 .isLessThan(ofSeconds(1));
             assertNewConnectionIsRejected();
-            logRecorder().assertContainsOnlyOnce(rec(
-                DEBUG, "Closed 1 idling children of a total 1."));
+            logRecorder().assertContainsOnlyOnce(
+                DEBUG, "Closed 1 idling children of a total 1.");
         }
     }
     
@@ -157,8 +156,8 @@ final class ServerLifeCycleTest extends AbstractRealTest
             // Stopping completes after a 1-second graceful period
             assertThat(Duration.between(before, now()))
                 .isGreaterThanOrEqualTo(ofSeconds(1));
-            logRecorder().assertContainsOnlyOnce(rec(
-                DEBUG, "Closing the child because thread interrupted."));
+            logRecorder().assertContainsOnlyOnce(
+                DEBUG, "Closing the child because thread interrupted.");
         }
     }
     

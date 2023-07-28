@@ -26,7 +26,6 @@ import static alpha.nomagichttp.message.Responses.continue_;
 import static alpha.nomagichttp.message.Responses.noContent;
 import static alpha.nomagichttp.message.Responses.ok;
 import static alpha.nomagichttp.message.Responses.text;
-import static alpha.nomagichttp.testutil.LogRecords.rec;
 import static alpha.nomagichttp.testutil.TestConstants.CRLF;
 import static alpha.nomagichttp.util.ByteBuffers.asciiBytes;
 import static alpha.nomagichttp.util.ScopedValues.channel;
@@ -247,7 +246,7 @@ class DetailTest extends AbstractRealTest
         logRecorder()
             .assertContainsOnlyOnce(
                 // First ignored 100 Continue silently logged
-                rec(DEBUG, "Ignoring repeated 100 (Continue)."))
+                DEBUG, "Ignoring repeated 100 (Continue).")
             .assertRemove(
                 // But any more than that and level escalates
                 WARNING, "Ignoring repeated 100 (Continue).");

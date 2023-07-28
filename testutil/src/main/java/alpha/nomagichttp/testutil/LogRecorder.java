@@ -2,7 +2,6 @@ package alpha.nomagichttp.testutil;
 
 import alpha.nomagichttp.HttpServer;
 import org.assertj.core.api.AbstractThrowableAssert;
-import org.assertj.core.groups.Tuple;
 
 import java.util.ArrayList;
 import java.util.Deque;
@@ -17,6 +16,7 @@ import java.util.logging.Handler;
 import java.util.logging.LogRecord;
 import java.util.stream.Stream;
 
+import static alpha.nomagichttp.testutil.LogRecords.rec;
 import static alpha.nomagichttp.testutil.LogRecords.toJUL;
 import static java.lang.System.Logger.Level.WARNING;
 import static java.util.Comparator.comparing;
@@ -325,7 +325,7 @@ public final class LogRecorder
      * Assertively await and removes the earliest record with a throwable that
      * is an instance of the given type.
      * 
-     * @param filter type expected
+     * @param error record error predicate (must be an <i>instance of</i>)
      * 
      * @return an assert object of the throwable
      * 
@@ -337,14 +337,14 @@ public final class LogRecorder
      *             on timeout (throwable not observed)
      */
     public AbstractThrowableAssert<?, ? extends Throwable>
-           assertAwaitRemoveError(Class<? extends Throwable> filter)
+           assertAwaitRemoveError(Class<? extends Throwable> error)
            throws InterruptedException
     {
-        requireNonNull(filter);
+        requireNonNull(error);
         var match = new AtomicReference<LogRecord>();
         assertAwait(rec -> {
             var t = rec.getThrown();
-            if (filter.isInstance(t)) {
+            if (error.isInstance(t)) {
                 match.set(rec);
                 return true;
             }
@@ -359,6 +359,9 @@ public final class LogRecorder
      * Asserts that no record has a throwable.
      * 
      * @return this for chaining/fluency
+     * 
+     * @throws AssertionError
+     *             if a record has a throwable
      */
     public LogRecorder assertNoThrowable() {
         assertThat(records()).extracting(r -> {
@@ -374,10 +377,14 @@ public final class LogRecorder
     }
     
     /**
-     * Asserts that no record exists with a level greater than {@code INFO},
-     * nor anyone that has a throwable.
+     * Asserts that no record has a throwable nor a level greater than
+     * {@code INFO}.
      * 
      * @return this for chaining/fluency
+     * 
+     * @throws AssertionError
+     *             if a record has a throwable
+     *             or a level greater than {@code INFO}
      */
     public LogRecorder assertNoThrowableNorWarning() {
         assertThat(records())
@@ -387,19 +394,24 @@ public final class LogRecorder
     }
     
     /**
-     * Assert that observed records contain the given values only once.
+     * Assert that only one record has the given values.<p>
      * 
-     * @param values use {@link LogRecords#rec(System.Logger.Level, String, Throwable error)}
+     * The record's throwable, if present, has no effect.
+     * 
+     * @param level record level predicate
+     * @param message record message predicate
      * 
      * @return this for chaining/fluency
+     * 
+     * @throws AssertionError
+     *             if not exactly one record is found
      */
-    public LogRecorder assertContainsOnlyOnce(Tuple... values) {
+    public LogRecorder assertContainsOnlyOnce(System.Logger.Level level, String message) {
         assertThat(records())
             .extracting(
                 LogRecord::getLevel,
-                LogRecord::getMessage,
-                LogRecord::getThrown)
-            .containsOnlyOnce(values);
+                LogRecord::getMessage)
+            .containsOnlyOnce(rec(level, message));
         return this;
     }
     
