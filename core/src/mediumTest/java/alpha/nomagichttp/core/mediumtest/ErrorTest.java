@@ -614,9 +614,10 @@ final class ErrorTest extends AbstractRealTest
             "Content-Length: 5"                       + CRLF + CRLF +
             
             "Done!");
-        logRecorder().assertAwait(DEBUG,
-                "Ignoring 1XX (Informational) response for HTTP/1.0 client.");
-        logRecorder().assertNoThrowableNorWarning();
+        logRecorder()
+            .assertAwait(DEBUG,
+                "Ignoring 1XX (Informational) response for HTTP/1.0 client.")
+            .assertNoThrowableNorWarning();
     }
     
     // TODO: fileResponse_blockedByWriteLock

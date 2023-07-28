@@ -91,7 +91,7 @@ class ClientLifeCycleTest extends AbstractRealTest
             // Clean close from server caused our end to receive EOS
             // (it is the test worker thread that logs this message)
             logRecorder().assertAwait(
-                    DEBUG, "EOS; server closed my read stream.");
+                DEBUG, "EOS; server closed my read stream.");
             if (streamOnly) {
                 logRecorder().assertAwaitClosingChild();
             } // Else no reason for DefaultServer.handleChild to call close (again)
@@ -104,9 +104,9 @@ class ClientLifeCycleTest extends AbstractRealTest
     void clientClosesChannel_serverReceivedNoBytes() throws IOException, InterruptedException {
         server();
         client().openConnection().close();
-        logRecorder().assertAwait(
-              DEBUG, "Closing the child because client aborted the exchange.");
-        logRecorder().assertNoThrowableNorWarning();
+        logRecorder().assertAwait(DEBUG,
+                         "Closing the child because client aborted the exchange.")
+                     .assertNoThrowableNorWarning();
     }
     
     /**
@@ -185,14 +185,14 @@ class ClientLifeCycleTest extends AbstractRealTest
     private void assert400BadRequestNoWarning()
             throws InterruptedException, IOException {
         logRecorder().assertAwait(
-            DEBUG, "Sent 400 (Bad Request)");
-        logRecorder().assertContainsOnlyOnce(
-            rec(DEBUG, "EOS, shutting down input stream."));
+                         DEBUG, "Sent 400 (Bad Request)")
+                     .assertContainsOnlyOnce(
+                         rec(DEBUG, "EOS, shutting down input stream."));
         stopServer();
         // No warnings or errors!
-        logRecorder().assertNoThrowableNorWarning();
-        logRecorder().assertContainsOnlyOnce(
-            rec(DEBUG, "Saw \"Connection: close\", shutting down output."));
+        logRecorder().assertNoThrowableNorWarning()
+                     .assertContainsOnlyOnce(
+                         rec(DEBUG, "Saw \"Connection: close\", shutting down output."));
     }
     
     // Broken pipe ends the exchange, no error handling no logging
@@ -286,12 +286,13 @@ class ClientLifeCycleTest extends AbstractRealTest
     private void assertHttpExchangeCompletes(boolean requestHadConnClose)
             throws IOException, InterruptedException {
         // Reason why exchange ended, is because
-        logRecorder().assertAwait(DEBUG, requestHadConnClose ?
-            // ResponseProcessor half-closed, causing DefaultServer to close
-            "Closing child: java.nio.channels.SocketChannel[connected oshut local=" :
-            // or the next exchange actually started, but immediately aborted
-            "Closing the child because client aborted the exchange.");
-        logRecorder().assertNoThrowableNorWarning();
+        logRecorder()
+            .assertAwait(DEBUG, requestHadConnClose ?
+                // ResponseProcessor half-closed, causing DefaultServer to close
+                "Closing child: java.nio.channels.SocketChannel[connected oshut local=" :
+                // or the next exchange actually started, but immediately aborted
+                "Closing the child because client aborted the exchange.")
+            .assertNoThrowableNorWarning();
     }
     
     // Server shuts down output after response, can still read request
@@ -341,13 +342,14 @@ class ClientLifeCycleTest extends AbstractRealTest
             .isEqualTo(
                 "HTTP/1.1 204 No Content" + CRLF +
                 "Connection: close"       + CRLF + CRLF);
-        logRecorder().assertNoThrowableNorWarning();
-        // We saw the effect already; "Connection: close"
-        // (this asserts why)
-        logRecorder().assertAwait(DEBUG, """
-            Setting "Connection: close" because \
-            the client's input stream has shut down.""");
-        // Should be no error on any level
-        logRecorder().assertNoThrowable();
+        logRecorder()
+            .assertNoThrowableNorWarning()
+            // We saw the effect already; "Connection: close"
+            // (this asserts why)
+            .assertAwait(DEBUG, """
+                Setting "Connection: close" because \
+                the client's input stream has shut down.""")
+            // Should be no error on any level
+            .assertNoThrowable();
     }
 }

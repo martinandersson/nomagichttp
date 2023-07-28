@@ -141,17 +141,20 @@ public final class LogRecorder
      * @param level record level predicate
      * @param messageStartsWith record message predicate
      * 
+     * @return this for chaining/fluency
+     * 
      * @throws NullPointerException
      *             if any argument is {@code null}
      * @throws AssertionError
      *             if a match could not be found
      */
-    public void assertTake(
+    public LogRecorder assertTake(
             System.Logger.Level level, String messageStartsWith) {
         var jul = toJUL(level);
         requireNonNull(messageStartsWith);
         assertNotNull(take(r -> r.getLevel().equals(jul) &&
                   r.getMessage().startsWith(messageStartsWith)));
+        return this;
     }
     
     /**
@@ -217,6 +220,8 @@ public final class LogRecorder
      * 
      * @param test of record
      * 
+     * @return this for chaining/fluency
+     * 
      * @throws NullPointerException
      *             if {@code test} is {@code null}
      * @throws InterruptedException
@@ -224,7 +229,7 @@ public final class LogRecorder
      * @throws AssertionError
      *             on timeout (record not observed)
      */
-    public void assertAwait(Predicate<LogRecord> test)
+    public LogRecorder assertAwait(Predicate<LogRecord> test)
                 throws InterruptedException {
         requireNonNull(test);
         var latch = new CountDownLatch(1);
@@ -240,10 +245,11 @@ public final class LogRecorder
             });
             // optimization (no need to continue), that's all
             if (latch.getCount() == 0) {
-                return;
+                return this;
             }
         }
         assertTrue(latch.await(timeout, unit));
+        return this;
     }
     
     /**
@@ -253,6 +259,8 @@ public final class LogRecorder
      * @param level record level predicate
      * @param messageStartsWith record message predicate
      * 
+     * @return this for chaining/fluency
+     * 
      * @throws NullPointerException
      *             if any arg is {@code null}
      * @throws InterruptedException
@@ -260,12 +268,12 @@ public final class LogRecorder
      * @throws AssertionError
      *             on timeout (record not observed)
      */
-    public void assertAwait(System.Logger.Level level, String messageStartsWith)
+    public LogRecorder assertAwait(System.Logger.Level level, String messageStartsWith)
                 throws InterruptedException {
         requireNonNull(level);
         requireNonNull(messageStartsWith);
-        assertAwait(r -> r.getLevel().equals(toJUL(level)) &&
-                          r.getMessage().startsWith(messageStartsWith));
+        return assertAwait(r -> r.getLevel().equals(toJUL(level)) &&
+                                r.getMessage().startsWith(messageStartsWith));
     }
     
     /**
@@ -294,10 +302,11 @@ public final class LogRecorder
         requireNonNull(level);
         requireNonNull(messageStartsWith);
         requireNonNull(error);
-        assertAwait(r -> r.getLevel().equals(toJUL(level)) &&
-                         r.getMessage().startsWith(messageStartsWith) &&
-                         error.isInstance(r.getThrown()));
-        return assertTake(level, messageStartsWith, error);
+        return assertAwait(r ->
+                   r.getLevel().equals(toJUL(level)) &&
+                   r.getMessage().startsWith(messageStartsWith) &&
+                   error.isInstance(r.getThrown()))
+              .assertTake(level, messageStartsWith, error);
     }
     
     /**
@@ -378,8 +387,10 @@ public final class LogRecorder
     
     /**
      * Assert that no observed log record contains a throwable.
+     * 
+     * @return this for chaining/fluency
      */
-    public void assertNoThrowable() {
+    public LogRecorder assertNoThrowable() {
         assertThat(records()).extracting(r -> {
             var t = r.getThrown();
             if (t != null) {
@@ -389,30 +400,37 @@ public final class LogRecorder
             }
             return t;
         }).containsOnlyNulls();
+        return this;
     }
     
     /**
      * Asserts that no log record exists with a level greater than {@code INFO},
      * nor anyone that has a throwable.
+     * 
+     * @return this for chaining/fluency
      */
-    public void assertNoThrowableNorWarning() {
+    public LogRecorder assertNoThrowableNorWarning() {
         assertThat(records())
             .noneMatch(v -> v.getLevel().intValue() > java.util.logging.Level.INFO.intValue())
             .noneMatch(v -> v.getThrown() != null);
+        return this;
     }
     
     /**
      * Assert that observed log records contain the given values only once.
      * 
      * @param values use {@link LogRecords#rec(System.Logger.Level, String, Throwable error)}
+     * 
+     * @return this for chaining/fluency
      */
-    public void assertContainsOnlyOnce(Tuple... values) {
+    public LogRecorder assertContainsOnlyOnce(Tuple... values) {
         assertThat(records())
             .extracting(
                 LogRecord::getLevel,
                 LogRecord::getMessage,
                 LogRecord::getThrown)
             .containsOnlyOnce(values);
+        return this;
     }
     
     /**
