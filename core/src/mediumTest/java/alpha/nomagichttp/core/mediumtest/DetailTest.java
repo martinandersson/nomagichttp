@@ -246,9 +246,10 @@ class DetailTest extends AbstractRealTest
         // Logging specified in JavaDoc of ClientChannel.write()
         logRecorder().assertThatLogContainsOnlyOnce(
                 // First ignored 100 Continue silently logged
-                rec(DEBUG, "Ignoring repeated 100 (Continue)."),
+                rec(DEBUG, "Ignoring repeated 100 (Continue)."));
+        logRecorder().take(
                 // But any more than that and level escalates
-                rec(WARNING, "Ignoring repeated 100 (Continue)."));
+                WARNING, "Ignoring repeated 100 (Continue).");
     }
     
     @Test

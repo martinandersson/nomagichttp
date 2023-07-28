@@ -381,7 +381,7 @@ final class ExampleTest extends AbstractRealTest
         assertThat(res2).isEqualTo(
             "HTTP/1.1 500 Internal Server Error" + CRLF +
             "Content-Length: 0"                  + CRLF + CRLF);
-        assertThat(pollServerError())
+        assertThatServerErrorObservedAndLogged()
                 .isExactlyInstanceOf(FileAlreadyExistsException.class);
         assertThat(Files.readString(file))
                 .isEqualTo("Foo");
@@ -406,7 +406,7 @@ final class ExampleTest extends AbstractRealTest
         
         assertThat(freqs.get("GET").sum())
               .isOne();
-        assertThat(pollServerError())
+        assertThatServerErrorObservedAndLogged()
               .isExactlyInstanceOf(NoRouteFoundException.class);
     }
     

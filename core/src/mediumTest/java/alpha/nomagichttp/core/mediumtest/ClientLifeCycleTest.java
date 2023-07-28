@@ -81,7 +81,7 @@ class ClientLifeCycleTest extends AbstractRealTest
                   .writeReadTextUntilNewlines("GET / HTTP/1.1" + CRLF + CRLF);
             assertThat(rsp)
                   .isEmpty();
-            logRecorder().assertAwait(
+            logRecorder().assertAwaitTake(
                   WARNING,
                   "Output stream is not open, can not handle this error.",
                   // This I can't really explain. lol?
@@ -187,10 +187,12 @@ class ClientLifeCycleTest extends AbstractRealTest
             throws InterruptedException, IOException {
         logRecorder().assertAwait(
             DEBUG, "Sent 400 (Bad Request)");
+        logRecorder().assertThatLogContainsOnlyOnce(
+            rec(DEBUG, "EOS, shutting down input stream."));
+        stopServer();
         // No warnings or errors!
         assertThatNoWarningOrErrorIsLogged();
         logRecorder().assertThatLogContainsOnlyOnce(
-            rec(DEBUG, "EOS, shutting down input stream."),
             rec(DEBUG, "Saw \"Connection: close\", shutting down output."));
     }
     
@@ -211,8 +213,8 @@ class ClientLifeCycleTest extends AbstractRealTest
             logRecorder().assertAwait(
                 DEBUG, "Read operation failed, shutting down input stream.");
         }
-        // Test client will have logged a WARNING, "about to crash".
-        assertThatNoWarningOrErrorIsLoggedExcept(TestClient.class);
+        // From the test worker's TestClient
+        logRecorder().take(WARNING, "About to crash");
     }
     
     // Client writes request,

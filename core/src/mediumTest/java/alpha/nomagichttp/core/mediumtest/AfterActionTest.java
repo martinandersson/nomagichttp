@@ -5,7 +5,6 @@ import alpha.nomagichttp.testutil.functional.AbstractRealTest;
 import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
-import java.util.Deque;
 
 import static alpha.nomagichttp.HttpConstants.HeaderName.X_CORRELATION_ID;
 import static alpha.nomagichttp.handler.RequestHandler.GET;
@@ -113,18 +112,14 @@ class AfterActionTest extends AbstractRealTest
               "GET / HTTP/1.1" + CRLF + CRLF);
         assertThat(rsp)
               .isEmpty();
-        // First error is handed to the error handler, who also logs it
+        // The first error is handed off to the error handler, who also logs it
         assertThatServerErrorObservedAndLogged()
               .isExactlyInstanceOf(NoRouteFoundException.class)
               .hasMessage("/")
               .hasNoCause()
               .hasNoSuppressedExceptions();
         // The subsequent after-action exception is logged, but no error handler
-        Deque<Throwable> errors = logRecorder().recordedErrors();
-        assertThat(errors.size())
-              .isEqualTo(2);
-        // The first error already asserted; NoRouteFoundException
-        assertThat(errors.getLast())
+        assertThat(logRecorder().assertAwaitTakeError())
               .hasToString(
                   "alpha.nomagichttp.core.AfterActionException: " +
                       "java.lang.IllegalStateException: boom!");
@@ -140,10 +135,7 @@ class AfterActionTest extends AbstractRealTest
               .writeReadTextUntilEOS("GET / HTTP/1.1" + CRLF + CRLF);
         assertThat(rsp)
               .isEmpty();
-        // Error handler is not called, but error logged
-        Deque<Throwable> errors = logRecorder().recordedErrors();
-        assertThat(errors.size()).isEqualTo(1);
-        assertThat(errors.getLast()).hasToString(
+        assertThat(logRecorder().takeError()).hasToString(
               "alpha.nomagichttp.core.AfterActionException: " +
               "java.lang.NullPointerException");
     }

@@ -407,7 +407,7 @@ final class ErrorTest extends AbstractRealTest
             HTTP/1.1 500 Internal Server Error\r
             Content-Length: 0\r\n\r\n""");
         var thr = logRecorder()
-            .assertAwaitFirstLogErrorOf(MediaTypeParseException.class);
+            .assertAwaitTakeError(MediaTypeParseException.class);
         assertThat(thr)
             .isExactlyInstanceOf(MediaTypeParseException.class)
             .hasNoCause()
@@ -430,7 +430,7 @@ final class ErrorTest extends AbstractRealTest
             HTTP/1.1 406 Not Acceptable\r
             Content-Length: 0\r\n\r\n""");
         var thr = logRecorder()
-            .assertAwaitFirstLogErrorOf(MediaTypeNotAcceptedException.class);
+            .assertAwaitTakeError(MediaTypeNotAcceptedException.class);
         assertThat(thr)
             .isExactlyInstanceOf(MediaTypeNotAcceptedException.class)
             .hasNoCause()
@@ -453,7 +453,7 @@ final class ErrorTest extends AbstractRealTest
             HTTP/1.1 415 Unsupported Media Type\r
             Content-Length: 0\r\n\r\n""");
         var thr = logRecorder()
-            .assertAwaitFirstLogErrorOf(MediaTypeUnsupportedException.class);
+            .assertAwaitTakeError(MediaTypeUnsupportedException.class);
         assertThat(thr)
             .isExactlyInstanceOf(MediaTypeUnsupportedException.class)
             .hasNoCause()
@@ -476,7 +476,7 @@ final class ErrorTest extends AbstractRealTest
             HTTP/1.1 500 Internal Server Error\r
             Content-Length: 0\r\n\r\n""");
         var thr = logRecorder()
-            .assertAwaitFirstLogErrorOf(AmbiguousHandlerException.class);
+            .assertAwaitTakeError(AmbiguousHandlerException.class);
         assertThat(thr)
             .isExactlyInstanceOf(AmbiguousHandlerException.class)
             .hasNoCause()
@@ -797,7 +797,7 @@ final class ErrorTest extends AbstractRealTest
         assertThat(rsp)
               .isEmpty();
         // But the exceptions were logged
-        var thr = logRecorder().assertAwaitFirstLogError();
+        var thr = logRecorder().assertAwaitTakeError();
         assertThat(thr)
               .isExactlyInstanceOf(OopsException.class)
               .hasMessage("first")
@@ -827,7 +827,7 @@ final class ErrorTest extends AbstractRealTest
         assertThat(rsp).isEqualTo(
             "HTTP/1.1 500 Internal Server Error" + CRLF +
             "Content-Length: 0"                  + CRLF + CRLF);
-        assertThat(pollServerError())
+        assertThatServerErrorObservedAndLogged()
             .isExactlyInstanceOf(OopsException.class)
             .hasNoCause()
             .hasNoSuppressedExceptions();
@@ -881,15 +881,14 @@ final class ErrorTest extends AbstractRealTest
         // The first one succeeded
         assertThat(rsp).isEqualTo(
             "HTTP/1.1 204 No Content" + CRLF + CRLF);
-        stopServer();
         // The second one caused some problems
         // TODO: See below, is repeated in next test case
-        var rec = logRecorder().take(
+        var thr = logRecorder().assertAwaitTake(
             ERROR, """
               Response bytes already sent, \
               can not handle this error (closing child).""",
             IllegalArgumentException.class);
-        assertThat(rec.getThrown())
+        assertThat(thr)
             .hasMessage("""
                 Request processing chain \
                 both wrote and returned a final response.""")
@@ -923,10 +922,10 @@ final class ErrorTest extends AbstractRealTest
                 Content-Length: 6\r
                 \r
                 Hello\s""");
-        var rec = logRecorder().take(
+        var thr = logRecorder().take(
             DEBUG, "Error while discarding request trailers, shutting down the input stream.",
             HeaderParseException.class);
-        assertThat(rec.getThrown())
+        assertThat(thr)
             .hasToString("""
                 HeaderParseException{prev=(hex:0x68, decimal:104, char:"h"), \
                 curr=(hex:0x20, decimal:32, char:" "), pos=N/A, \

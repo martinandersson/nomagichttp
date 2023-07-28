@@ -22,14 +22,12 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.concurrent.BlockingDeque;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import java.util.concurrent.LinkedBlockingDeque;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
-import java.util.function.Predicate;
 import java.util.logging.LogRecord;
 import java.util.stream.Stream;
 
@@ -39,7 +37,6 @@ import static alpha.nomagichttp.util.ScopedValues.channel;
 import static java.lang.System.Logger.Level.DEBUG;
 import static java.util.Objects.requireNonNull;
 import static java.util.concurrent.TimeUnit.SECONDS;
-import static java.util.stream.Collectors.toSet;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.junit.jupiter.api.Assertions.assertSame;
@@ -52,12 +49,18 @@ import static org.junit.jupiter.api.Assertions.assertSame;
  * 
  * Both the server and client APIs are easy to use on their own. The added value
  * of this class is packaging both into one class, together with some extra
- * features such as automatic log recording, and collection/verification of
- * server errors.<p>
+ * features such as enabled log recording, and collection/verification of server
+ * errors.<p>
  * 
- * This class will assert on server-stop that no errors were delivered to an
- * error handler. If errors are expected, then the test must consume all errors
- * using {@link #pollServerError()}.<p>
+ * When the server is stopped, this class asserts that no errors were delivered
+ * to an error handler, that no log record was logged on a level greater than
+ * {@code INFO}, and that no log record has a throwable.<p>
+ * 
+ * If any kind of errors and/or warnings are expected, then the test must
+ * consume exceptions using {@link #pollServerError()}, or take records from the
+ * recorder using {@link LogRecorder#take(System.Logger.Level, String)}. If it
+ * is expected that an exception is both handled and logged, one can use
+ * {@link #assertThatServerErrorObservedAndLogged()}.<p>
  * 
  * {@snippet :
  *   class MyTest extends AbstractRealTest {
@@ -132,9 +135,8 @@ import static org.junit.jupiter.api.Assertions.assertSame;
  * {@code AbstractLargeRealTest}.<p>
  * 
  * Please note that currently, the {@code TestClient} is not thread-safe nor is
- * this class (well, except for the collection and retrieval of server errors).
- * This may change when work commences to add tests that execute requests in
- * parallel.
+ * this class. This may change when work commences to add tests that execute
+ * requests in parallel.
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  */
@@ -548,10 +550,11 @@ public abstract class AbstractRealTest
             assertThat(server.isRunning()).isFalse();
             assertThat(errors).isEmpty();
             assertThatServerStopsNormally(start);
-            if (recorder != null) { logRecorder()
-                .assertThatLogContainsOnlyOnce(rec(DEBUG, clean ?
+            if (recorder != null) {
+                logRecorder().assertThatLogContainsOnlyOnce(rec(DEBUG, clean ?
                     "All exchanges finished within the graceful period." :
                     "Graceful deadline expired; shutting down scope."));
+                assertThatNoWarningOrErrorIsLogged();
             }
         } finally {
             server = null;
@@ -561,7 +564,7 @@ public abstract class AbstractRealTest
     
     /**
      * Asserts that {@link #pollServerError()} and
-     * {@link LogRecorder#assertAwaitFirstLogError()} is the same instance.<p>
+     * {@link LogRecorder#assertAwaitTakeError()} is the same instance.<p>
      * 
      * May be used when a test case needs to assert that the base error handler
      * was delivered a particular error <i>and</i> logged it (or, someone did).
@@ -578,52 +581,18 @@ public abstract class AbstractRealTest
     {
         requireServerIsRunning();
         Throwable t = pollServerError();
-        assertSame(t, logRecorder().assertAwaitFirstLogError());
+        assertSame(t, logRecorder().assertAwaitTakeError());
         return assertThat(t);
     }
     
     /**
-     * Will gracefully stop the server (to capture all log records) and assert
-     * that no log record was found with a level greater than {@code INFO}.
-     * 
-     * @throws IOException
-     *           on I/O error
-     * @throws InterruptedException
-     *           if interrupted while waiting on client connections to terminate
+     * Asserts that no log record exists with a level greater than {@code INFO},
+     * nor anyone that has a throwable.
      */
-    protected final void assertThatNoWarningOrErrorIsLogged()
-            throws IOException, InterruptedException {
-        assertThatNoWarningOrErrorIsLoggedExcept();
-    }
-    
-    /**
-     * Will gracefully stop the server (to capture all log records) and assert
-     * that no log record was found with a level greater than {@code INFO}.
-     * 
-     * @param excludeClasses classes that are allowed to log waring/error
-     * 
-     * @throws IOException
-     *           on I/O error
-     * @throws InterruptedException
-     *           if interrupted while waiting on client connections to terminate
-     */
-    protected final void assertThatNoWarningOrErrorIsLoggedExcept(
-            Class<?>... excludeClasses)
-            throws IOException, InterruptedException
-    {
-        requireServerIsRunning();
-        stopServer();
-        
-        Set<String> excl = excludeClasses.length == 0 ? Set.of() :
-                Stream.of(excludeClasses).map(Class::getName).collect(toSet());
-        
-        Predicate<String> match = source -> source != null &&
-                                  excl.stream().anyMatch(source::startsWith);
-        
-        assertThat(logRecorderStop()
-                .filter(r -> !match.test(r.getSourceClassName()))
-                .mapToInt(r -> r.getLevel().intValue()))
-                .noneMatch(v -> v > java.util.logging.Level.INFO.intValue());
+    protected final void assertThatNoWarningOrErrorIsLogged() {
+        assertThat(logRecorder().records())
+            .noneMatch(v -> v.getLevel().intValue() > java.util.logging.Level.INFO.intValue())
+            .noneMatch(v -> v.getThrown() != null);
     }
     
     /**

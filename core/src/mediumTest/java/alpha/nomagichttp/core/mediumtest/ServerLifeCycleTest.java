@@ -45,7 +45,7 @@ final class ServerLifeCycleTest extends AbstractRealTest
         server();
         // Can open connection
         client().openConnection().close();
-        // Implicit stop()
+        stopServer();
         assertThatNoWarningOrErrorIsLogged();
         // Can not open connection
         assertNewConnectionIsRejected();
@@ -139,8 +139,7 @@ final class ServerLifeCycleTest extends AbstractRealTest
             assertNewConnectionIsRejected();
             logRecorder().assertThatLogContainsOnlyOnce(rec(
                 DEBUG, "Closed 1 idling children of a total 1."));
-            // TODO: Should assertThatNoWarningOrErrorIsLogged(),
-            //       but said method requires the server to already be running lol.
+            assertThatNoWarningOrErrorIsLogged();
         }
     }
     
@@ -162,7 +161,7 @@ final class ServerLifeCycleTest extends AbstractRealTest
                 .isGreaterThanOrEqualTo(ofSeconds(1));
             logRecorder().assertThatLogContainsOnlyOnce(rec(
                 DEBUG, "Closing the child because thread interrupted."));
-            // TODO: Should assertThatNoWarningOrErrorIsLogged()
+            assertThatNoWarningOrErrorIsLogged();
         }
     }
     

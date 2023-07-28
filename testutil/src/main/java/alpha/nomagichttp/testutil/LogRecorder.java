@@ -143,6 +143,33 @@ public final class LogRecorder
     /**
      * Take the earliest matched record.<p>
      * 
+     * For a record to be a match, all tests of the record's mapped values must
+     * pass:
+     * 
+     * <ul>
+     *   <li>The level is <i>equal to</i> the given level
+     *   <li>The message starts with the given string
+     * </ul>
+     * 
+     * @param level record level predicate
+     * @param messageStartsWith record message predicate
+     * 
+     * @throws NullPointerException
+     *             if any argument is {@code null}
+     * @throws AssertionError
+     *             if a match could not be found
+     */
+    public void take(
+            System.Logger.Level level, String messageStartsWith) {
+        var jul = toJUL(level);
+        requireNonNull(messageStartsWith);
+        take(r -> r.getLevel().equals(jul) &&
+                  r.getMessage().startsWith(messageStartsWith));
+    }
+    
+    /**
+     * Take the earliest matched record.<p>
+     * 
      * This method is useful to extract log records and limit subsequent
      * assertions to what is left behind.<p>
      * 
@@ -156,39 +183,56 @@ public final class LogRecorder
      * <ul>
      *   <li>The level is <i>equal to</i> the given level
      *   <li>The message starts with the given string
-     *   <li>The error is null if the given class argument is null,
-     *       otherwise an <i>instance of</i>
+     *   <li>The throwable is an <i>instance of</i> {@code error}
      * </ul>
      * 
      * @param level record level predicate
      * @param messageStartsWith record message predicate
      * @param error record error predicate
      * 
-     * @return the record (never {@code null})
+     * @return the error (never {@code null})
      * 
      * @throws NullPointerException
-     *             if {@code level} or {@code messageStartsWith} is {@code null}
+     *             if any argument is {@code null}
      * @throws AssertionError
      *             if a match could not be found
      */
-    public LogRecord take(
+    public Throwable take(
             System.Logger.Level level, String messageStartsWith,
             Class<? extends Throwable> error)
     {
         var jul = toJUL(level);
+        requireNonNull(messageStartsWith);
+        requireNonNull(error);
+        return take(r -> r.getLevel().equals(jul) &&
+                         r.getMessage().startsWith(messageStartsWith) &&
+                         error.isInstance(r.getThrown())).getThrown();
+    }
+    
+    /**
+     * Take the earliest record which has a throwable.
+     * 
+     * @return the record (never {@code null})
+     * 
+     * @throws AssertionError
+     *             if a match could not be found
+     * 
+     * @see #take(System.Logger.Level, String, Class)
+     */
+    public Throwable takeError() {
+        return take(r -> r.getThrown() != null).getThrown();
+    }
+    
+    private LogRecord take(Predicate<LogRecord> test) {
         LogRecord match = null;
-        for (var h : handlers) {
+        search: for (var h : handlers) {
             var it = h.recordsDeque().iterator();
             while (it.hasNext()) {
                 var r = it.next();
-                var t = r.getThrown();
-                if (r.getLevel().equals(jul) &&
-                    r.getMessage().startsWith(messageStartsWith) &&
-                    (error == null ? t == null : error.isInstance(t)))
-                {
+                if (test.test(r)) {
                     it.remove();
                     match = r;
-                    break;
+                    break search;
                 }
             }
         }
@@ -362,10 +406,11 @@ public final class LogRecorder
      * @throws AssertionError
      *             on timeout (record not observed)
      */
-    public void assertAwait(
+    public Throwable assertAwaitTake(
             System.Logger.Level level, String messageStartsWith, Class<? extends Throwable> error)
             throws InterruptedException {
         assertTrue(await(level, messageStartsWith, error));
+        return take(level, messageStartsWith, error);
     }
     
     /**
@@ -394,7 +439,7 @@ public final class LogRecorder
     }
     
     /**
-     * Assertively await the first logged error.
+     * Assertively await and take the first logged error of any type.
      * 
      * @return the error
      * 
@@ -403,13 +448,13 @@ public final class LogRecorder
      * @throws AssertionError
      *             on timeout (record not observed)
      */
-    public Throwable assertAwaitFirstLogError() throws InterruptedException {
-        return assertAwaitFirstLogErrorOf(Throwable.class);
+    public Throwable assertAwaitTakeError() throws InterruptedException {
+        return assertAwaitTakeError(Throwable.class);
     }
     
     /**
-     * Assertively await the first logged error that is an instance of the
-     * given type.
+     * Assertively await and take the first logged error that is an instance of
+     * the given type.
      * 
      * @param filter type expected
      * @return the error
@@ -421,23 +466,23 @@ public final class LogRecorder
      * @throws AssertionError
      *             on timeout (throwable not observed)
      */
-    public Throwable assertAwaitFirstLogErrorOf(
+    public Throwable assertAwaitTakeError(
             Class<? extends Throwable> filter)
             throws InterruptedException
     {
         requireNonNull(filter);
-        AtomicReference<Throwable> thr = new AtomicReference<>();
+        AtomicReference<LogRecord> match = new AtomicReference<>();
         assertAwait(rec -> {
             var t = rec.getThrown();
             if (filter.isInstance(t)) {
-                thr.set(t);
+                match.set(rec);
                 return true;
             }
             return false;
         });
-        var t = thr.get();
-        assert t != null; // Just my paranoia lol
-        return t;
+        var rec = match.get();
+        take(r -> r == rec);
+        return rec.getThrown();
     }
     
     /**
