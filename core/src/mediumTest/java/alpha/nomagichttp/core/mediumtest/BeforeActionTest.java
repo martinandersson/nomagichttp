@@ -45,7 +45,7 @@ class BeforeActionTest extends AbstractRealTest
             "Content-Length: 10"                      + CRLF + CRLF +
             
             "helloworld");
-        logRecorder().assertThatNoWarningOrErrorIsLogged();
+        logRecorder().assertNoThrowableNorWarning();
     }
     
     @Test
