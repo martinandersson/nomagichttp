@@ -46,18 +46,19 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
  * 
  * Both the server and client APIs are easy to use on their own. The added value
  * of this class is packaging both into one class, together with some extra
- * features such as enabled log recording, and collection/verification of server
- * errors.<p>
+ * features such as enabled log recording, and the collection of exceptions
+ * delivered to the server's error handler(s).<p>
  * 
- * When the server is stopped, this class asserts that no errors were delivered
- * to an error handler, that no log record was logged on a level greater than
+ * When the server is stopped, this class asserts that no exceptions were
+ * handled, and that no log record was logged on a level greater than
  * {@code INFO}, and that no log record has a throwable.<p>
  * 
- * If any kind of errors and/or warnings are expected, then the test must
- * consume exceptions using {@link #pollServerError()}, or take records from the
- * recorder using {@link LogRecorder#assertRemove(System.Logger.Level, String)}.
- * If it is expected that an exception is both handled and logged, one can use
- * {@link #assertThatServerErrorObservedAndLogged()}.<p>
+ * If any kind of exceptions and/or warnings are expected, then the test must
+ * consume exceptions using {@link #pollServerError()} and/or take records from
+ * the recorder using
+ * {@link LogRecorder#assertRemove(System.Logger.Level, String)}. If it is
+ * expected that an exception is both handled and logged, one can use
+ * {@link #assertServerHandledAndAndLogged()}.<p>
  * 
  * {@snippet :
  *   class MyTest extends AbstractRealTest {
@@ -114,10 +115,10 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
  * }
  * 
  * This class will in a static {@code @BeforeAll} method named "beforeAll" call
- * {@code Logging.setLevel(ALL)} in order to enable very detailed logging, such
- * as each byte processed in the request head. Tests that run a large number of
- * requests and/or are concerned with performance ought to stop JUnit from
- * calling the method by hiding it.<p>
+ * {@link Logging#everything()} to enable very detailed logging, such as each
+ * byte processed in the request head. Tests that run a large number of requests
+ * and/or are concerned with performance ought to stop JUnit from calling the
+ * method by hiding it.<p>
  * 
  * {@snippet :
  *   class MyQuietTest extends AbstractRealTest {
@@ -581,8 +582,8 @@ public abstract class AbstractRealTest
     }
     
     /**
-     * Asserts that {@link #pollServerError()} and
-     * {@link LogRecorder#assertAwaitRemoveError()} is the same instance.<p>
+     * Calls {@link LogRecorder#assertAwaitRemoveError()} and asserts that
+     * {@link #pollServerError()} returns the same instance.<p>
      * 
      * May be used when a test case needs to assert that the base error handler
      * was delivered a particular error <i>and</i> logged it (or, someone did).
@@ -596,7 +597,7 @@ public abstract class AbstractRealTest
      *             if log recording is not active
      */
     protected final AbstractThrowableAssert<?, ? extends Throwable>
-            assertThatServerErrorObservedAndLogged() throws InterruptedException
+            assertServerHandledAndAndLogged() throws InterruptedException
     {
         requireServerIsRunning();
         return logRecorder()

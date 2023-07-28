@@ -93,7 +93,7 @@ class AfterActionTest extends AbstractRealTest
             "X-Count: 2"             + CRLF +
             "Content-Length: 0"      + CRLF + CRLF);
         
-        assertThatServerErrorObservedAndLogged()
+        assertServerHandledAndAndLogged()
                 .isExactlyInstanceOf(NoRouteFoundException.class)
                 .hasMessage("/404")
                 .hasNoCause()
@@ -113,7 +113,7 @@ class AfterActionTest extends AbstractRealTest
         assertThat(rsp)
               .isEmpty();
         // The first error is handed off to the error handler, who also logs it
-        assertThatServerErrorObservedAndLogged()
+        assertServerHandledAndAndLogged()
               .isExactlyInstanceOf(NoRouteFoundException.class)
               .hasMessage("/")
               .hasNoCause()

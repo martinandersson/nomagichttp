@@ -371,7 +371,7 @@ class DetailTest extends AbstractRealTest
             "HTTP/1.1 404 Not Found" + CRLF +
             "Content-Length: 0"      + CRLF + CRLF);
         
-        assertThatServerErrorObservedAndLogged()
+        assertServerHandledAndAndLogged()
                 .isExactlyInstanceOf(NoRouteFoundException.class);
         
         var stats = eventSink.poll(1, SECONDS);

@@ -315,7 +315,7 @@ final class ErrorTest extends AbstractRealTest
             HTTP/1.1 413 Entity Too Large\r
             Connection: close\r
             Content-Length: 0\r\n\r\n""");
-        assertThatServerErrorObservedAndLogged()
+        assertServerHandledAndAndLogged()
             .isExactlyInstanceOf(MaxRequestHeadSizeException.class)
             .hasMessage("Configured max tolerance is 1 bytes.")
             .hasNoCause()
@@ -332,7 +332,7 @@ final class ErrorTest extends AbstractRealTest
         assertThat(rsp).isEqualTo(
             "HTTP/1.1 404 Not Found" + CRLF +
             "Content-Length: 0"      + CRLF + CRLF);
-        assertThatServerErrorObservedAndLogged()
+        assertServerHandledAndAndLogged()
             .isExactlyInstanceOf(NoRouteFoundException.class)
             .hasNoCause()
             .hasNoSuppressedExceptions()
@@ -369,7 +369,7 @@ final class ErrorTest extends AbstractRealTest
             // Actually, order is not defined, let's see for how long this test pass
             "Allow: POST, GET"                + CRLF +
             "Content-Length: 0"               + CRLF + CRLF);
-        assertThatServerErrorObservedAndLogged()
+        assertServerHandledAndAndLogged()
             .isExactlyInstanceOf(MethodNotAllowedException.class)
             .hasMessage("No handler found for method token \"BLABLA\".")
             .hasNoCause()
@@ -406,7 +406,7 @@ final class ErrorTest extends AbstractRealTest
         assertThat(rsp).isEqualTo("""
             HTTP/1.1 500 Internal Server Error\r
             Content-Length: 0\r\n\r\n""");
-        assertThatServerErrorObservedAndLogged()
+        assertServerHandledAndAndLogged()
             .isExactlyInstanceOf(MediaTypeParseException.class)
             .hasNoCause()
             .hasNoSuppressedExceptions()
@@ -425,7 +425,7 @@ final class ErrorTest extends AbstractRealTest
         assertThat(rsp).isEqualTo("""
             HTTP/1.1 406 Not Acceptable\r
             Content-Length: 0\r\n\r\n""");
-        assertThatServerErrorObservedAndLogged()
+        assertServerHandledAndAndLogged()
             .isExactlyInstanceOf(MediaTypeNotAcceptedException.class)
             .hasNoCause()
             .hasNoSuppressedExceptions()
@@ -444,7 +444,7 @@ final class ErrorTest extends AbstractRealTest
         assertThat(rsp).isEqualTo("""
             HTTP/1.1 415 Unsupported Media Type\r
             Content-Length: 0\r\n\r\n""");
-        assertThatServerErrorObservedAndLogged()
+        assertServerHandledAndAndLogged()
             .isExactlyInstanceOf(MediaTypeUnsupportedException.class)
             .hasNoCause()
             .hasNoSuppressedExceptions()
@@ -463,7 +463,7 @@ final class ErrorTest extends AbstractRealTest
         assertThat(rsp).isEqualTo("""
             HTTP/1.1 500 Internal Server Error\r
             Content-Length: 0\r\n\r\n""");
-        assertThatServerErrorObservedAndLogged()
+        assertServerHandledAndAndLogged()
             .isExactlyInstanceOf(AmbiguousHandlerException.class)
             .hasNoCause()
             .hasNoSuppressedExceptions()
@@ -573,7 +573,7 @@ final class ErrorTest extends AbstractRealTest
         assertThat(rsp).isEqualTo(
             "HTTP/1.1 500 Internal Server Error" + CRLF +
             "Content-Length: 0"                  + CRLF + CRLF);
-        assertThatServerErrorObservedAndLogged()
+        assertServerHandledAndAndLogged()
             .isExactlyInstanceOf(IllegalResponseBodyException.class)
             .hasNoCause()
             .hasNoSuppressedExceptions()
@@ -591,7 +591,7 @@ final class ErrorTest extends AbstractRealTest
         assertThat(rsp).isEqualTo(
             // No Content-Length (see ResponseProcessor.dealWithHeadRequest)
             "HTTP/1.1 500 Internal Server Error" + CRLF + CRLF);
-        assertThatServerErrorObservedAndLogged()
+        assertServerHandledAndAndLogged()
             .isExactlyInstanceOf(IllegalResponseBodyException.class)
             .hasNoCause()
             .hasNoSuppressedExceptions()
@@ -667,7 +667,7 @@ final class ErrorTest extends AbstractRealTest
             "HTTP/1.1 503 Service Unavailable" + CRLF +
             "Content-Length: 0"                + CRLF +
             "Connection: close"                + CRLF + CRLF);
-        assertThatServerErrorObservedAndLogged()
+        assertServerHandledAndAndLogged()
             .isExactlyInstanceOf(ResponseTimeoutException.class)
             .hasNoCause()
             .hasNoSuppressedExceptions()
@@ -804,7 +804,7 @@ final class ErrorTest extends AbstractRealTest
         assertThat(rsp).isEqualTo(
             "HTTP/1.1 500 Internal Server Error" + CRLF +
             "Content-Length: 0"                  + CRLF + CRLF);
-        assertThatServerErrorObservedAndLogged()
+        assertServerHandledAndAndLogged()
             .isExactlyInstanceOf(OopsException.class)
             .hasNoCause()
             .hasNoSuppressedExceptions();
