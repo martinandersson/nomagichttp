@@ -1,6 +1,7 @@
 package alpha.nomagichttp.testutil;
 
 import alpha.nomagichttp.HttpServer;
+import alpha.nomagichttp.testutil.functional.AbstractRealTest;
 import org.assertj.core.api.AbstractThrowableAssert;
 
 import java.util.ArrayList;
@@ -28,18 +29,57 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * Is a util for asserting and optionally await log records.<p>
+ * A utility for asserting and optionally awaiting log records.<p>
  * 
- * Methods that await log records will by default timeout at most 3 seconds.
- * This can be configured differently using
+ * Many methods in this class accept predicate arguments for matching a record.
+ * Each observed record's values are compared with the arguments accordingly:
+ * 
+ * <ul>
+ *   <li>{@code getLevel()} must be equal to {@code level} 
+ *   <li>{@code getMessage()} must be equal to {@code message}
+ *   <li>{@code getMessage().}{@link String#startsWith(String) startsWith}{@code ()}
+ *       must return {@code true} given {@code messageStartsWith}
+ *   <li>{@code getThrown()} must be an instance of {@code thr}</li>
+ * </ul>
+ * 
+ * Methods with an "assert" prefix throws an {@code AssertionError} if the
+ * record can not be found.<p>
+ * 
+ * Methods with an "await" word in the name will block waiting on a log record
+ * if it hasn't already been published. By default, the timeout happens after 3
+ * seconds. This can be configured differently using
  * {@link #timeoutAfter(long, TimeUnit)}.<p>
  * 
- * WARNING: Recording is implemented through adding a handler to each targeted
- * logger. The handler's {@code publish(LogRecord)} method is
+ * Sometimes, waiting on a log record is crucial for tests asserting records
+ * produced by other threads than the test worker, which applies to most server
+ * components as the server runs in a different thread. Otherwise, there could
+ * be timing issues.<p>
+ * 
+ * Methods with "remove" in their name will remove and return the earliest
+ * record which is a match, meaning that the matched record will never be
+ * matched again. The purpose is to limit subsequent assertions to what is left
+ * behind.<p>
+ * 
+ * For example:
+ * {@snippet :
+ *              // The test provoked an expected warning...
+ *              // @link substring="assertRemove" target="#assertRemove(System.Logger.Level, String)" :
+ *     recorder.assertRemove(WARNING, "Exceptional event")
+ *              // ...but no other warnings or records with a throwable are expected
+ *              // @link substring="assertNoThrownNorWarning" target="#assertNoThrownNorWarning()" :
+ *             .assertNoThrownNorWarning();
+ * }
+ * 
+ * Removing warnings and records with a throwable is required by
+ * {@link AbstractRealTest}, which after each test asserts a problem-free
+ * log.<p>
+ * 
+ * Create a log recorder using {@link #startRecording()}.<p>
+ * 
+ * <strong>WARNING</strong>: Recording is implemented by adding a handler to each
+ * targeted logger. The handler's {@code publish(LogRecord)} method is
  * {@code synchronized}. This lock is not expected to be contended. Nonetheless,
  * the recording feature should not be used in time-critical code.
- * 
- * @see #startRecording(Class, Class[])
  */
 public final class LogRecorder
 {
@@ -55,7 +95,8 @@ public final class LogRecorder
      * 
      * @return a new log recorder
      * 
-     * @throws NullPointerException if any arg is {@code null}
+     * @throws NullPointerException
+     *             if any arg is {@code null}
      */
     public static LogRecorder startRecording() {
         return startRecording(HttpServer.class);
@@ -65,26 +106,15 @@ public final class LogRecorder
      * Starts recording log records from the loggers of the packages that the
      * given components belong to.<p>
      * 
-     * Recording should eventually be stopped using {@link #stopRecording()}.<p>
-     * 
-     * Recording is especially useful for running assertions on the server's
-     * generated log.<p>
-     * 
-     * The returned recorder supports waiting on the arrival of a particular log
-     * record. This is crucial for tests asserting records produced by other
-     * threads than the test worker, which applies to most server components as
-     * the server runs in a different thread. Otherwise, there could be timing
-     * issues.<p>
-     * 
-     * The awaiting feature can also be used solely as a mechanism to await a
-     * particular event before moving on.
+     * Recording should eventually be stopped using {@link #stopRecording()}.
      * 
      * @param firstComponent at least one
      * @param more may be provided
      * 
      * @return a new log recorder
      * 
-     * @throws NullPointerException if any arg is {@code null}
+     * @throws NullPointerException
+     *             if any argument is {@code null}
      */
     public static LogRecorder startRecording(Class<?> firstComponent, Class<?>... more) {
         RecordHandler[] h = Stream.concat(of(firstComponent), of(more))
@@ -111,12 +141,13 @@ public final class LogRecorder
     }
     
     /**
-     * Sets a new timeout for {@code await()} methods.<p>
+     * Sets a new timeout for methods awaiting a log record.<p>
      * 
      * This method is not thread-safe.
      * 
      * @param timeout value
      * @param unit of timeout
+     * 
      * @return this for chaining/fluency
      */
     public LogRecorder timeoutAfter(long timeout, TimeUnit unit) {
@@ -126,21 +157,10 @@ public final class LogRecorder
     }
     
     /**
-     * Removes the earliest matched record.<p>
+     * Removes the matched record.
      * 
-     * This method is useful to extract log records and limit subsequent
-     * assertions to what is left behind.<p>
-     * 
-     * For a record to be a match, all tests of the record's mapped values must
-     * pass:
-     * 
-     * <ul>
-     *   <li>The level is <i>equal to</i> the given level
-     *   <li>The message starts with the given string
-     * </ul>
-     * 
-     * @param level record level predicate
-     * @param messageStartsWith record message predicate
+     * @param level record's level predicate
+     * @param messageStartsWith record's message predicate
      * 
      * @return this for chaining/fluency
      * 
@@ -148,6 +168,8 @@ public final class LogRecorder
      *             if any argument is {@code null}
      * @throws AssertionError
      *             if a match could not be found
+     * 
+     * @see LogRecorder
      */
     public LogRecorder assertRemove(
             System.Logger.Level level, String messageStartsWith) {
@@ -160,19 +182,11 @@ public final class LogRecorder
     }
     
     /**
-     * Removes the earliest matched record.<p>
+     * Removes the matched record.
      * 
-     * This method is equivalent to:
-     * <pre>
-     *   {@link #assertRemove(System.Logger.Level, String)}
-     * </pre>
-     * 
-     * But adds one more predicate; the record's throwable is an <i>instance
-     * of</i> {@code thr}.
-     * 
-     * @param level record level predicate
-     * @param messageStartsWith record message predicate
-     * @param thr record throwable predicate
+     * @param level record's level predicate
+     * @param messageStartsWith record's message predicate
+     * @param thr record's thrown predicate
      * 
      * @return an assert object of the throwable
      * 
@@ -180,6 +194,8 @@ public final class LogRecorder
      *             if any argument is {@code null}
      * @throws AssertionError
      *             if a match could not be found
+     * 
+     * @see LogRecorder
      */
     public AbstractThrowableAssert<?, ? extends Throwable>
            assertRemove(System.Logger.Level level, String messageStartsWith,
@@ -203,27 +219,28 @@ public final class LogRecorder
      * @throws AssertionError
      *             if a match could not be found
      * 
-     * @see #assertRemove(System.Logger.Level, String, Class)
+     * @see LogRecorder
      */
     public AbstractThrowableAssert<?, ? extends Throwable> assertRemoveThrown() {
         return assertThat(assertRemoveIf(r -> r.getThrown() != null).getThrown());
     }
     
     /**
-     * Returns immediately if a log record of the given level with the given
-     * message-prefix has been published, or await its arrival.
+     * Returns a matched record immediately, or awaits its arrival.
      * 
-     * @param level record level predicate
-     * @param messageStartsWith record message predicate
+     * @param level record's level predicate
+     * @param messageStartsWith record's message predicate
      * 
      * @return this for chaining/fluency
      * 
      * @throws NullPointerException
-     *             if any arg is {@code null}
+     *             if any argument is {@code null}
      * @throws InterruptedException
      *             if the current thread is interrupted while waiting
      * @throws AssertionError
      *             on timeout (record not observed)
+     * 
+     * @see LogRecorder
      */
     public LogRecorder
            assertAwait(System.Logger.Level level, String messageStartsWith)
@@ -235,21 +252,22 @@ public final class LogRecorder
     }
     
     /**
-     * Returns immediately if a log record of the given level with the given
-     * message-prefix and a throwable has been published, or await its arrival.
+     * Removes and returns a matched record immediately, or awaits its arrival.
      * 
-     * @param level record level predicate
-     * @param messageStartsWith record message predicate
-     * @param thr record throwable predicate (must be an <i>instance of</i>)
+     * @param level record's level predicate
+     * @param messageStartsWith record's message predicate
+     * @param thr record's thrown predicate
      * 
      * @return an assert object of the throwable
      * 
      * @throws NullPointerException
-     *             if any arg is {@code null}
+     *             if any argument is {@code null}
      * @throws InterruptedException
      *             if the current thread is interrupted while waiting
      * @throws AssertionError
      *             on timeout (record not observed)
+     * 
+     * @see LogRecorder
      */
     public AbstractThrowableAssert<?, ? extends Throwable>
            assertAwaitRemove(
@@ -268,7 +286,8 @@ public final class LogRecorder
     }
     
     /**
-     * Assertively awaits and removes the earliest record with a throwable.
+     * Removes and returns, immediately, a record with a throwable, or await its
+     * arrival.
      * 
      * @return an assert object of the throwable
      * 
@@ -276,6 +295,8 @@ public final class LogRecorder
      *             if the current thread is interrupted while waiting
      * @throws AssertionError
      *             on timeout (record not observed)
+     * 
+     * @see LogRecorder
      */
     public AbstractThrowableAssert<?, ? extends Throwable>
            assertAwaitRemoveThrown()
@@ -334,15 +355,17 @@ public final class LogRecorder
     }
     
     /**
-     * Assert that only one record has the given values.<p>
+     * Asserts that only one record has the given values.<p>
      * 
      * The record's throwable, if present, has no effect.
      * 
-     * @param level record level predicate
-     * @param message record message predicate
+     * @param level record's level predicate
+     * @param message record's message predicate
      * 
      * @return this for chaining/fluency
      * 
+     * @throws NullPointerException
+     *             if any argument is {@code null}
      * @throws AssertionError
      *             if not exactly one record is found
      */
@@ -373,7 +396,7 @@ public final class LogRecorder
     }
     
     /**
-     * Remove and returns the earliest record matching the given predicate.
+     * Removes and returns the earliest record matching the given predicate.
      * 
      * @param test record predicate
      * 

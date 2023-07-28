@@ -35,9 +35,10 @@ public final class LogRecords {
      * @return a tuple
      * 
      * @throws NullPointerException
-     *             if {@code level} is {@code null}, perhaps also for {@code msg}
+     *             if any argument is {@code null}
      */
     public static Tuple rec(Level level, String msg) {
+        requireNonNull(msg);
         return tuple(toJUL(level), msg);
     }
     
