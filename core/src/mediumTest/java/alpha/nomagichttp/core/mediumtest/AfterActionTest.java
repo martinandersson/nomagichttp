@@ -119,7 +119,7 @@ class AfterActionTest extends AbstractRealTest
               .hasNoCause()
               .hasNoSuppressedExceptions();
         // The subsequent after-action exception is logged, but no error handler
-        assertThat(logRecorder().assertAwaitTakeError())
+        logRecorder().assertAwaitTakeError()
               .hasToString(
                   "alpha.nomagichttp.core.AfterActionException: " +
                       "java.lang.IllegalStateException: boom!");
@@ -135,7 +135,7 @@ class AfterActionTest extends AbstractRealTest
               .writeReadTextUntilEOS("GET / HTTP/1.1" + CRLF + CRLF);
         assertThat(rsp)
               .isEmpty();
-        assertThat(logRecorder().assertTakeError()).hasToString(
+        logRecorder().assertTakeError().hasToString(
               "alpha.nomagichttp.core.AfterActionException: " +
               "java.lang.NullPointerException");
     }

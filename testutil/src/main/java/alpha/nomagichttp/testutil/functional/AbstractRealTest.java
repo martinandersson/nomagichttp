@@ -574,15 +574,16 @@ public abstract class AbstractRealTest
      * @throws InterruptedException
      *             if interrupted while waiting
      * @throws IllegalStateException
+     *             if the server is not running, or
      *             if log recording is not active
      */
     protected final AbstractThrowableAssert<?, ? extends Throwable>
             assertThatServerErrorObservedAndLogged() throws InterruptedException
     {
         requireServerIsRunning();
-        Throwable t = pollServerError();
-        assertSame(t, logRecorder().assertAwaitTakeError());
-        return assertThat(t);
+        return logRecorder()
+                   .assertAwaitTakeError()
+                   .isSameAs(pollServerError());
     }
     
     /**

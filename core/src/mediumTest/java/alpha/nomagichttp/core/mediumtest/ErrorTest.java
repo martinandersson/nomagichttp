@@ -406,17 +406,13 @@ final class ErrorTest extends AbstractRealTest
         assertThat(rsp).isEqualTo("""
             HTTP/1.1 500 Internal Server Error\r
             Content-Length: 0\r\n\r\n""");
-        var thr = logRecorder()
-            .assertAwaitTakeError(MediaTypeParseException.class);
-        assertThat(thr)
+        assertThatServerErrorObservedAndLogged()
             .isExactlyInstanceOf(MediaTypeParseException.class)
             .hasNoCause()
             .hasNoSuppressedExceptions()
             .hasMessage("""
                 Can not parse "BOOM!". \
                 Expected exactly one forward slash in <type/subtype>.""");
-        assertThat(thr)
-            .isSameAs(pollServerErrorNow());
     }
     
     @Test
@@ -429,17 +425,13 @@ final class ErrorTest extends AbstractRealTest
         assertThat(rsp).isEqualTo("""
             HTTP/1.1 406 Not Acceptable\r
             Content-Length: 0\r\n\r\n""");
-        var thr = logRecorder()
-            .assertAwaitTakeError(MediaTypeNotAcceptedException.class);
-        assertThat(thr)
+        assertThatServerErrorObservedAndLogged()
             .isExactlyInstanceOf(MediaTypeNotAcceptedException.class)
             .hasNoCause()
             .hasNoSuppressedExceptions()
             .hasMessage("""
                 No handler found matching \
                 "Accept: text/different" header in request.""");
-        assertThat(thr)
-            .isSameAs(pollServerErrorNow());
     }
     
     @Test
@@ -452,17 +444,13 @@ final class ErrorTest extends AbstractRealTest
         assertThat(rsp).isEqualTo("""
             HTTP/1.1 415 Unsupported Media Type\r
             Content-Length: 0\r\n\r\n""");
-        var thr = logRecorder()
-            .assertAwaitTakeError(MediaTypeUnsupportedException.class);
-        assertThat(thr)
+        assertThatServerErrorObservedAndLogged()
             .isExactlyInstanceOf(MediaTypeUnsupportedException.class)
             .hasNoCause()
             .hasNoSuppressedExceptions()
             .hasMessage("""
                 No handler found matching \
                 "Content-Type: text/different" header in request.""");
-        assertThat(thr)
-            .isSameAs(pollServerErrorNow());
     }
     
     @Test
@@ -475,9 +463,7 @@ final class ErrorTest extends AbstractRealTest
         assertThat(rsp).isEqualTo("""
             HTTP/1.1 500 Internal Server Error\r
             Content-Length: 0\r\n\r\n""");
-        var thr = logRecorder()
-            .assertAwaitTakeError(AmbiguousHandlerException.class);
-        assertThat(thr)
+        assertThatServerErrorObservedAndLogged()
             .isExactlyInstanceOf(AmbiguousHandlerException.class)
             .hasNoCause()
             .hasNoSuppressedExceptions()
@@ -487,8 +473,6 @@ final class ErrorTest extends AbstractRealTest
                 consumes="<nothing and all>", produces="text/plain", logic=?}, \
                 DefaultRequestHandler{method="GET", \
                 consumes="<nothing and all>", produces="text/html", logic=?}]""");
-        assertThat(thr)
-            .isSameAs(pollServerErrorNow());
     }
     
     @Test
@@ -797,19 +781,11 @@ final class ErrorTest extends AbstractRealTest
         assertThat(rsp)
               .isEmpty();
         // But the exceptions were logged
-        var thr = logRecorder().assertAwaitTakeError();
-        assertThat(thr)
+        logRecorder().assertAwaitTakeError()
               .isExactlyInstanceOf(OopsException.class)
               .hasMessage("first")
-              .hasNoCause();
-        var suppressed = thr.getSuppressed();
-        assertThat(suppressed)
-              .hasSize(1);
-        assertThat(suppressed[0])
-              .isExactlyInstanceOf(OopsException.class)
-              .hasMessage("second")
               .hasNoCause()
-              .hasNoSuppressedExceptions();
+              .hasSuppressedException(new OopsException("second"));
     }
     
     // channel remains fully open
@@ -883,21 +859,16 @@ final class ErrorTest extends AbstractRealTest
             "HTTP/1.1 204 No Content" + CRLF + CRLF);
         // The second one caused some problems
         // TODO: See below, is repeated in next test case
-        var thr = logRecorder().assertAwaitTake(
-            ERROR, """
-              Response bytes already sent, \
-              can not handle this error (closing child).""",
-            IllegalArgumentException.class);
-        assertThat(thr)
+        logRecorder().assertAwaitTake(
+                ERROR, """
+                    Response bytes already sent, \
+                    can not handle this error (closing child).""",
+                IllegalArgumentException.class)
             .hasMessage("""
                 Request processing chain \
                 both wrote and returned a final response.""")
             .hasNoCause()
             .hasNoSuppressedExceptions();
-        logRecorder()
-            // No other errors were logged
-            .assertNoThrowable();
-        // Implicit assert that no error was delivered to the error handler
     }
     
     /** The error version of {@link ExampleTest#RequestTrailers()}. */
@@ -922,19 +893,14 @@ final class ErrorTest extends AbstractRealTest
                 Content-Length: 6\r
                 \r
                 Hello\s""");
-        var thr = logRecorder().assertTake(
-            DEBUG, "Error while discarding request trailers, shutting down the input stream.",
-            HeaderParseException.class);
-        assertThat(thr)
+        logRecorder().assertTake(
+                DEBUG, "Error while discarding request trailers, shutting down the input stream.",
+                HeaderParseException.class)
             .hasToString("""
                 HeaderParseException{prev=(hex:0x68, decimal:104, char:"h"), \
                 curr=(hex:0x20, decimal:32, char:" "), pos=N/A, \
                 msg=Whitespace in header name or before colon is not accepted.}""")
             .hasNoCause()
             .hasNoSuppressedExceptions();
-        logRecorder()
-            // No other errors were logged
-            .assertNoThrowable();
-        // Implicit assert that no error was delivered to the error handler
     }
 }

@@ -1,6 +1,8 @@
 package alpha.nomagichttp.testutil;
 
 import alpha.nomagichttp.HttpServer;
+import org.assertj.core.api.AbstractThrowableAssert;
+import org.assertj.core.api.ObjectAssert;
 import org.assertj.core.groups.Tuple;
 
 import java.util.ArrayList;
@@ -148,7 +150,7 @@ public final class LogRecorder
             System.Logger.Level level, String messageStartsWith) {
         var jul = toJUL(level);
         requireNonNull(messageStartsWith);
-        assertNotNull(assertTake(r -> r.getLevel().equals(jul) &&
+        assertNotNull(take(r -> r.getLevel().equals(jul) &&
                   r.getMessage().startsWith(messageStartsWith)));
     }
     
@@ -175,41 +177,38 @@ public final class LogRecorder
      * @param messageStartsWith record message predicate
      * @param error record error predicate
      * 
-     * @return the error (never {@code null})
+     * @return an assert object of the throwable
      * 
      * @throws NullPointerException
      *             if any argument is {@code null}
      * @throws AssertionError
      *             if a match could not be found
      */
-    public Throwable assertTake(
+    public AbstractThrowableAssert<?, ? extends Throwable> assertTake(
             System.Logger.Level level, String messageStartsWith,
             Class<? extends Throwable> error)
     {
         var jul = toJUL(level);
         requireNonNull(messageStartsWith);
         requireNonNull(error);
-        var rec = assertTake(r -> r.getLevel().equals(jul) &&
-                         r.getMessage().startsWith(messageStartsWith) &&
-                         error.isInstance(r.getThrown()));
-        assertNotNull(rec);
-        return rec.getThrown();
+        var rec = take(r -> r.getLevel().equals(jul) &&
+                            r.getMessage().startsWith(messageStartsWith) &&
+                            error.isInstance(r.getThrown()));
+        return assertThat(rec.getThrown());
     }
     
     /**
      * Takes the earliest record which has a throwable.
      * 
-     * @return the record (never {@code null})
+     * @return an assert object of the throwable
      * 
      * @throws AssertionError
      *             if a match could not be found
      * 
      * @see #assertTake(System.Logger.Level, String, Class)
      */
-    public Throwable assertTakeError() {
-        var rec = assertTake(r -> r.getThrown() != null).getThrown();
-        assertNotNull(rec);
-        return rec;
+    public AbstractThrowableAssert<?, ? extends Throwable> assertTakeError() {
+        return assertThat(take(r -> r.getThrown() != null).getThrown());
     }
     
     /**
@@ -225,7 +224,8 @@ public final class LogRecorder
      * @throws AssertionError
      *             on timeout (record not observed)
      */
-    public void assertAwait(Predicate<LogRecord> test) throws InterruptedException {
+    public void assertAwait(Predicate<LogRecord> test)
+                throws InterruptedException {
         requireNonNull(test);
         var latch = new CountDownLatch(1);
         for (RecordHandler h : handlers) {
@@ -260,9 +260,8 @@ public final class LogRecorder
      * @throws AssertionError
      *             on timeout (record not observed)
      */
-    public void assertAwait(
-            System.Logger.Level level, String messageStartsWith)
-            throws InterruptedException {
+    public void assertAwait(System.Logger.Level level, String messageStartsWith)
+                throws InterruptedException {
         requireNonNull(level);
         requireNonNull(messageStartsWith);
         assertAwait(r -> r.getLevel().equals(toJUL(level)) &&
@@ -277,8 +276,7 @@ public final class LogRecorder
      * @param messageStartsWith record message predicate
      * @param error record error predicate (must be an <i>instance of</i>)
      * 
-     * @return {@code true} when target record is observed, or
-     *         {@code false} on timeout (record not observed)
+     * @return an assert object of the throwable
      * 
      * @throws NullPointerException
      *             if any arg is {@code null}
@@ -287,9 +285,12 @@ public final class LogRecorder
      * @throws AssertionError
      *             on timeout (record not observed)
      */
-    public Throwable assertAwaitTake(
-            System.Logger.Level level, String messageStartsWith, Class<? extends Throwable> error)
-            throws InterruptedException {
+    public AbstractThrowableAssert<?, ? extends Throwable>
+           assertAwaitTake(
+               System.Logger.Level level, String messageStartsWith,
+               Class<? extends Throwable> error)
+           throws InterruptedException
+    {
         requireNonNull(level);
         requireNonNull(messageStartsWith);
         requireNonNull(error);
@@ -327,14 +328,17 @@ public final class LogRecorder
     /**
      * Assertively await and take the first logged error of any type.
      * 
-     * @return the error
+     * @return an assert object of the throwable
      * 
      * @throws InterruptedException
      *             if the current thread is interrupted while waiting
      * @throws AssertionError
      *             on timeout (record not observed)
      */
-    public Throwable assertAwaitTakeError() throws InterruptedException {
+    public AbstractThrowableAssert<?, ? extends Throwable>
+           assertAwaitTakeError()
+           throws InterruptedException
+    {
         return assertAwaitTakeError(Throwable.class);
     }
     
@@ -343,7 +347,8 @@ public final class LogRecorder
      * the given type.
      * 
      * @param filter type expected
-     * @return the error
+     * 
+     * @return an assert object of the throwable
      * 
      * @throws NullPointerException
      *             if {@code filter} is {@code null}
@@ -352,12 +357,12 @@ public final class LogRecorder
      * @throws AssertionError
      *             on timeout (throwable not observed)
      */
-    public Throwable assertAwaitTakeError(
-            Class<? extends Throwable> filter)
-            throws InterruptedException
+    public AbstractThrowableAssert<?, ? extends Throwable>
+           assertAwaitTakeError(Class<? extends Throwable> filter)
+           throws InterruptedException
     {
         requireNonNull(filter);
-        AtomicReference<LogRecord> match = new AtomicReference<>();
+        var match = new AtomicReference<LogRecord>();
         assertAwait(rec -> {
             var t = rec.getThrown();
             if (filter.isInstance(t)) {
@@ -367,8 +372,8 @@ public final class LogRecorder
             return false;
         });
         var rec = match.get();
-        assertNotNull(assertTake(r -> r == rec));
-        return rec.getThrown();
+        assertNotNull(take(r -> r == rec));
+        return assertThat(rec.getThrown());
     }
     
     /**
@@ -431,7 +436,7 @@ public final class LogRecorder
                 .sorted(comparing(LogRecord::getInstant));
     }
     
-    private LogRecord assertTake(Predicate<LogRecord> test) {
+    private LogRecord take(Predicate<LogRecord> test) {
         LogRecord match = null;
         search: for (var h : handlers) {
             var it = h.recordsDeque().iterator();
@@ -444,6 +449,7 @@ public final class LogRecorder
                 }
             }
         }
+        assertNotNull(match);
         return match;
     }
     
