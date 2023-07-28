@@ -153,8 +153,9 @@ public final class LogRecorder
             System.Logger.Level level, String messageStartsWith) {
         var jul = toJUL(level);
         requireNonNull(messageStartsWith);
-        assertNotNull(removeIf(r -> r.getLevel().equals(jul) &&
-                  r.getMessage().startsWith(messageStartsWith)));
+        assertNotNull(assertRemoveIf(r ->
+                r.getLevel().equals(jul) &&
+                r.getMessage().startsWith(messageStartsWith)));
         return this;
     }
     
@@ -187,9 +188,10 @@ public final class LogRecorder
         var jul = toJUL(level);
         requireNonNull(messageStartsWith);
         requireNonNull(error);
-        var rec = removeIf(r -> r.getLevel().equals(jul) &&
-                            r.getMessage().startsWith(messageStartsWith) &&
-                            error.isInstance(r.getThrown()));
+        var rec = assertRemoveIf(r ->
+                r.getLevel().equals(jul) &&
+                r.getMessage().startsWith(messageStartsWith) &&
+                error.isInstance(r.getThrown()));
         return assertThat(rec.getThrown());
     }
     
