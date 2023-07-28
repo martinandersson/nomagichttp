@@ -111,6 +111,21 @@ public final class LogRecorder
     }
     
     /**
+     * Sets a new timeout for {@code await()} methods.<p>
+     * 
+     * This method is not thread-safe.
+     * 
+     * @param timeout value
+     * @param unit of timeout
+     * @return this for chaining/fluency
+     */
+    public LogRecorder timeoutAfter(long timeout, TimeUnit unit) {
+        this.timeout = timeout;
+        this.unit = unit;
+        return this;
+    }
+    
+    /**
      * Takes the earliest matched record.<p>
      * 
      * For a record to be a match, all tests of the record's mapped values must
@@ -195,21 +210,6 @@ public final class LogRecorder
         var rec = assertTake(r -> r.getThrown() != null).getThrown();
         assertNotNull(rec);
         return rec;
-    }
-    
-    /**
-     * Sets a new timeout for {@code await()} methods.<p>
-     * 
-     * This method is not thread-safe.
-     * 
-     * @param timeout value
-     * @param unit of timeout
-     * @return this for chaining/fluency
-     */
-    public LogRecorder timeoutAfter(long timeout, TimeUnit unit) {
-        this.timeout = timeout;
-        this.unit = unit;
-        return this;
     }
     
     /**
