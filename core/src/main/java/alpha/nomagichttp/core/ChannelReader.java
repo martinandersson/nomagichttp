@@ -39,10 +39,8 @@ import static java.nio.ByteBuffer.allocateDirect;
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  */
-// TODO:
-//    1) Must ensure we have a "echo large body" test,
+// TODO: Must ensure we have a "echo large body" test,
 //       i.e. reader and writer active at the same time
-//    2) Implement exception if buf is released back without new position 2x in a row
 public final class ChannelReader implements ByteBufferIterable
 {
     private static final System.Logger
