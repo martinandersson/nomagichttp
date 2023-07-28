@@ -206,7 +206,7 @@ public final class LogRecorder
      * @see #assertRemove(System.Logger.Level, String, Class)
      */
     public AbstractThrowableAssert<?, ? extends Throwable> assertRemoveError() {
-        return assertThat(removeIf(r -> r.getThrown() != null).getThrown());
+        return assertThat(assertRemoveIf(r -> r.getThrown() != null).getThrown());
     }
     
     /**
@@ -291,7 +291,7 @@ public final class LogRecorder
         });
         var rec = match.get();
         assert rec != null;
-        removeIf(r -> r == rec);
+        assertRemoveIf(r -> r == rec);
         return assertThat(rec.getThrown());
     }
     
@@ -382,7 +382,7 @@ public final class LogRecorder
      * @throws AssertionError
      *             if no record matched the predicate
      */
-    private LogRecord removeIf(Predicate<LogRecord> test) {
+    private LogRecord assertRemoveIf(Predicate<LogRecord> test) {
         LogRecord match = null;
         search: for (var h : handlers) {
             var it = h.recordsDeque().iterator();
