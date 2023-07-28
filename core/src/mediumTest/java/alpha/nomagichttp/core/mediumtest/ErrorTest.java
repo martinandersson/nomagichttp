@@ -100,7 +100,7 @@ final class ErrorTest extends AbstractRealTest
             .hasNoSuppressedExceptions()
             .hasMessage("Whitespace in HTTP-version not accepted.");
         logRecorder()
-            .assertThatNoErrorWasLogged();
+            .assertNoThrowable();
     }
     
     @Test
@@ -123,7 +123,7 @@ final class ErrorTest extends AbstractRealTest
                 curr=(hex:0x20, decimal:32, char:" "), pos=17, \
                 msg=Whitespace in header name or before colon is not accepted.}""");
         logRecorder()
-            .assertThatNoErrorWasLogged();
+            .assertNoThrowable();
     }
     
     @Test
@@ -141,7 +141,7 @@ final class ErrorTest extends AbstractRealTest
             .hasNoSuppressedExceptions()
             .hasMessage("No forward slash.");
         logRecorder()
-            .assertThatNoErrorWasLogged();
+            .assertNoThrowable();
     }
     
     // By default, server rejects clients older than HTTP/1.0
@@ -175,7 +175,7 @@ final class ErrorTest extends AbstractRealTest
                      .hasNoCause();
         }
         logRecorder()
-            .assertThatNoErrorWasLogged();
+            .assertNoThrowable();
     }
     
     // Server may be configured to reject old clients
@@ -199,7 +199,7 @@ final class ErrorTest extends AbstractRealTest
             .hasNoSuppressedExceptions()
             .hasMessage(null);
         logRecorder()
-            .assertThatNoErrorWasLogged();
+            .assertNoThrowable();
     }
     
     // Some newer versions are currently not supported
@@ -231,7 +231,7 @@ final class ErrorTest extends AbstractRealTest
                          .hasNoCause();
         }
         logRecorder()
-            .assertThatNoErrorWasLogged();
+            .assertNoThrowable();
     }
     
     @Test
@@ -258,7 +258,7 @@ final class ErrorTest extends AbstractRealTest
                     Can not parse "BOOM!". \
                     Expected exactly one forward slash in <type/subtype>.""");
         logRecorder()
-            .assertThatNoErrorWasLogged();
+            .assertNoThrowable();
     }
     
     @Test
@@ -279,7 +279,7 @@ final class ErrorTest extends AbstractRealTest
             .hasNoSuppressedExceptions()
             .hasMessage("Content-Length and Transfer-Encoding are both present.");
         logRecorder()
-            .assertThatNoErrorWasLogged();
+            .assertNoThrowable();
     }
     
     @Test
@@ -299,7 +299,7 @@ final class ErrorTest extends AbstractRealTest
             .hasNoSuppressedExceptions()
             .hasMessage("Unsupported Transfer-Encoding: blabla");
         logRecorder()
-            .assertThatNoErrorWasLogged();
+            .assertNoThrowable();
     }
     
     @Test
@@ -351,7 +351,7 @@ final class ErrorTest extends AbstractRealTest
         assertThat(rsp).isEqualTo(
             "HTTP/1.1 499 Custom Not Found!" + CRLF +
             "Content-Length: 0"              + CRLF + CRLF);
-        logRecorder().assertThatNoErrorWasLogged();
+        logRecorder().assertNoThrowable();
     }
     
     // Expect 405 (Method Not Allowed)
@@ -519,7 +519,7 @@ final class ErrorTest extends AbstractRealTest
             java.lang.NumberFormatException: \
             not a hexadecimal digit: "X" = 88""");
         logRecorder()
-            .assertThatNoErrorWasLogged();
+            .assertNoThrowable();
     }
     
     @Test
@@ -541,7 +541,7 @@ final class ErrorTest extends AbstractRealTest
             Connection: close\r
             Content-Length: 0\r\n\r\n""");
         logRecorder()
-            .assertThatNoErrorWasLogged();
+            .assertNoThrowable();
         assertThat(pollServerErrorNow())
             .isExactlyInstanceOf(DecoderException.class)
             .hasNoSuppressedExceptions()
@@ -573,7 +573,7 @@ final class ErrorTest extends AbstractRealTest
             .hasNoSuppressedExceptions()
             .hasMessage("Body in a TRACE request.");
         logRecorder()
-            .assertThatNoErrorWasLogged();
+            .assertNoThrowable();
     }
     
     @Test
@@ -659,7 +659,7 @@ final class ErrorTest extends AbstractRealTest
             .hasMessage("java.nio.channels.InterruptedByTimeoutException")
             .hasCauseExactlyInstanceOf(InterruptedByTimeoutException.class);
         logRecorder()
-            .assertThatNoErrorWasLogged();
+            .assertNoThrowable();
     }
     
     // ReadTimeoutException_duringBody ?
@@ -896,7 +896,7 @@ final class ErrorTest extends AbstractRealTest
             .hasNoSuppressedExceptions();
         logRecorder()
             // No other errors were logged
-            .assertThatNoErrorWasLogged();
+            .assertNoThrowable();
         // Implicit assert that no error was delivered to the error handler
     }
     
@@ -934,7 +934,7 @@ final class ErrorTest extends AbstractRealTest
             .hasNoSuppressedExceptions();
         logRecorder()
             // No other errors were logged
-            .assertThatNoErrorWasLogged();
+            .assertNoThrowable();
         // Implicit assert that no error was delivered to the error handler
     }
 }

@@ -3,7 +3,6 @@ package alpha.nomagichttp.core.mediumtest;
 import alpha.nomagichttp.handler.EndOfStreamException;
 import alpha.nomagichttp.testutil.functional.AbstractRealTest;
 import alpha.nomagichttp.testutil.functional.Environment;
-import alpha.nomagichttp.testutil.functional.TestClient;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
@@ -349,6 +348,6 @@ class ClientLifeCycleTest extends AbstractRealTest
             Setting "Connection: close" because \
             the client's input stream has shut down.""");
         // Should be no error on any level
-        logRecorder().assertThatNoErrorWasLogged();
+        logRecorder().assertNoThrowable();
     }
 }

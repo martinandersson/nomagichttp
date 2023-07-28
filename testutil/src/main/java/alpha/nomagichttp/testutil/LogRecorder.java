@@ -159,7 +159,7 @@ public final class LogRecorder
      * 
      * For example, to ensure that a specific log record of an error was the
      * only logged error, call this method and then
-     * {@link #assertThatNoErrorWasLogged()}.<p>
+     * {@link #assertNoThrowable()}.<p>
      * 
      * For a record to be a match, all tests of the record's mapped values must
      * pass:
@@ -403,7 +403,7 @@ public final class LogRecorder
     /**
      * Assert that no observed log record contains a throwable.
      */
-    public void assertThatNoErrorWasLogged() {
+    public void assertNoThrowable() {
         assertThat(records()).extracting(r -> {
             var t = r.getThrown();
             if (t != null) {
