@@ -205,7 +205,7 @@ public final class LogRecorder
      * 
      * @see #assertRemove(System.Logger.Level, String, Class)
      */
-    public AbstractThrowableAssert<?, ? extends Throwable> assertRemoveError() {
+    public AbstractThrowableAssert<?, ? extends Throwable> assertRemoveThrown() {
         return assertThat(assertRemoveIf(r -> r.getThrown() != null).getThrown());
     }
     
@@ -278,7 +278,7 @@ public final class LogRecorder
      *             on timeout (record not observed)
      */
     public AbstractThrowableAssert<?, ? extends Throwable>
-           assertAwaitRemoveError()
+           assertAwaitRemoveThrown()
            throws InterruptedException
     {
         var match = new AtomicReference<LogRecord>();
@@ -303,7 +303,7 @@ public final class LogRecorder
      * @throws AssertionError
      *             if a record has a throwable
      */
-    public LogRecorder assertNoThrowable() {
+    public LogRecorder assertNoThrown() {
         assertThat(records()).extracting(r -> {
             var t = r.getThrown();
             if (t != null) {
@@ -326,7 +326,7 @@ public final class LogRecorder
      *             if a record has a throwable
      *             or a level greater than {@code INFO}
      */
-    public LogRecorder assertNoThrowableNorWarning() {
+    public LogRecorder assertNoThrownNorWarning() {
         assertThat(records())
             .noneMatch(v -> v.getLevel().intValue() > java.util.logging.Level.INFO.intValue())
             .noneMatch(v -> v.getThrown() != null);

@@ -523,7 +523,7 @@ public abstract class AbstractRealTest
      * implementation.<p>
      * 
      * If log recording is enabled, this method calls
-     * {@link LogRecorder#assertNoThrowableNorWarning()}.
+     * {@link LogRecorder#assertNoThrownNorWarning()}.
      * 
      * @param clean asserts the log; exchanges finish within the graceful period
      * 
@@ -545,7 +545,7 @@ public abstract class AbstractRealTest
                 logRecorder().assertContainsOnlyOnce(DEBUG, clean ?
                     "All exchanges finished within the graceful period." :
                     "Graceful deadline expired; shutting down scope.");
-                logRecorder().assertNoThrowableNorWarning();
+                logRecorder().assertNoThrownNorWarning();
             }
         } finally {
             server = null;
@@ -584,7 +584,7 @@ public abstract class AbstractRealTest
     }
     
     /**
-     * Calls {@link LogRecorder#assertAwaitRemoveError()} and asserts that
+     * Calls {@link LogRecorder#assertAwaitRemoveThrown()} and asserts that
      * {@link #pollServerError()} returns the same instance.<p>
      * 
      * May be used when a test case needs to assert that the base error handler
@@ -603,7 +603,7 @@ public abstract class AbstractRealTest
     {
         requireServerIsRunning();
         return logRecorder()
-                   .assertAwaitRemoveError()
+                   .assertAwaitRemoveThrown()
                    .isSameAs(pollServerError());
     }
     
