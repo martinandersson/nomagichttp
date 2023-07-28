@@ -394,6 +394,16 @@ public final class LogRecorder
                 .sorted(comparing(LogRecord::getInstant));
     }
     
+    /**
+     * Remove and returns the earliest record matching the given predicate.
+     * 
+     * @param test record predicate
+     * 
+     * @return the record (never {@code null}
+     * 
+     * @throws AssertionError
+     *             if no record matched the predicate
+     */
     private LogRecord removeIf(Predicate<LogRecord> test) {
         LogRecord match = null;
         search: for (var h : handlers) {
